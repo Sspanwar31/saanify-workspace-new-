@@ -2,20 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  Plus, RefreshCcw, Download, MoreHorizontal, Eye, Edit, Trash2, 
-  Users, UserCheck, UserX, Clock 
+  Plus, RefreshCcw, MoreHorizontal, Edit, Trash2, 
+  Users, UserCheck, UserX 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'; // Keep for delete/update if needed, or move to API later
 
 export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
@@ -29,62 +28,63 @@ export default function MembersPage() {
     name: '', father_name: '', phone: '', email: '', address: '', join_date: new Date().toISOString().split('T')[0], status: 'active'
   });
 
-  // 1. Fetch Data
+  // 1. Fetch Data (Using API now)
+  const fetchMembers = async (id: string) => {
+     try {
+       const res = await fetch(`/api/client/members?client_id=${id}`);
+       if (res.ok) {
+         const data = await res.json();
+         setMembers(data);
+       }
+     } catch (e) {
+       console.error("Fetch error:", e);
+     } finally {
+       setLoading(false);
+     }
+  };
+
   useEffect(() => {
-    const fetchMembers = async () => {
-       const userStr = localStorage.getItem('current_user');
-       if(!userStr) return;
+    const userStr = localStorage.getItem('current_user');
+    if(userStr) {
        const user = JSON.parse(userStr);
        setClientId(user.id);
-
-       const { data, error } = await supabase.from('members').select('*').eq('client_id', user.id).order('created_at', { ascending: false });
-       if(data) setMembers(data);
-       setLoading(false);
-    };
-    fetchMembers();
+       fetchMembers(user.id);
+    }
   }, []);
-
-  const refreshData = async () => {
-    const { data } = await supabase.from('members').select('*').eq('client_id', clientId).order('created_at', { ascending: false });
-    if(data) setMembers(data);
-  };
 
   // 2. Actions
   const handleSave = async () => {
      if(!formData.name || !formData.phone) return toast.error("Name and Phone required");
      
-     let error;
-     if(editingId) {
-        // Update: Use direct Supabase call (no auth creation needed)
-        const { error: err } = await supabase.from('members').update(formData).eq('id', editingId);
-        error = err;
-     } else {
-        // Insert: Use new API with auto-auth creation
+     // Use API for creation (Handles Auth + DB)
+     if(!editingId) {
         const res = await fetch('/api/client/add-member', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...formData, client_id: clientId })
         });
         const data = await res.json();
-        if (!res.ok) {
-          error = { message: data.error };
-        }
+        if(!res.ok) { toast.error(data.error); return; }
+        toast.success("Member Added");
+     } else {
+        // Update can be direct via Supabase RLS (usually allowed) or create API update later
+        const { error } = await supabase.from('members').update(formData).eq('id', editingId);
+        if(error) { toast.error(error.message); return; }
+        toast.success("Member Updated");
      }
 
-     if(error) toast.error(error.message);
-     else {
-        toast.success(editingId ? "Member Updated" : "Member Added");
-        setIsDialogOpen(false);
-        refreshData();
-        setFormData({ name: '', father_name: '', phone: '', email: '', address: '', join_date: new Date().toISOString().split('T')[0], status: 'active' });
-     }
+     setIsDialogOpen(false);
+     fetchMembers(clientId);
+     setFormData({ name: '', father_name: '', phone: '', email: '', address: '', join_date: new Date().toISOString().split('T')[0], status: 'active' });
   };
 
   const handleDelete = async (id: string) => {
      if(!confirm("Delete member?")) return;
-     await supabase.from('members').delete().eq('id', id);
-     toast.success("Member Deleted");
-     refreshData();
+     const { error } = await supabase.from('members').delete().eq('id', id);
+     if(error) toast.error("Delete failed (RLS Error). Contact Admin."); 
+     else {
+        toast.success("Member Deleted");
+        fetchMembers(clientId);
+     }
   };
 
   const openEdit = (m: any) => {
@@ -98,7 +98,7 @@ export default function MembersPage() {
 
   const activeCount = members.filter(m => m.status === 'active').length;
 
-  if (loading) return <div className="p-10 text-center">Loading Members...</div>;
+  if (loading) return <div className="p-10 text-center">Loading Ledger...</div>;
 
   return (
     <div className="p-8 space-y-6">
@@ -109,11 +109,11 @@ export default function MembersPage() {
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500">Inactive</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{members.length - activeCount}</div></CardContent></Card>
        </div>
 
-       {/* TABLE HEADER */}
-       <div className="flex justify-between items-center bg-white p-4 rounded-lg border">
+       {/* HEADER */}
+       <div className="flex justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
           <div><h1 className="text-2xl font-bold">Members Ledger</h1><p className="text-gray-500">Manage society members</p></div>
           <div className="flex gap-2">
-             <Button variant="outline" onClick={refreshData}><RefreshCcw className="w-4 h-4 mr-2"/> Refresh</Button>
+             <Button variant="outline" onClick={() => fetchMembers(clientId)}><RefreshCcw className="w-4 h-4 mr-2"/> Refresh</Button>
              <Button onClick={() => {setEditingId(null); setIsDialogOpen(true);}} className="bg-orange-500 hover:bg-orange-600"><Plus className="w-4 h-4 mr-2"/> Add New Member</Button>
           </div>
        </div>
@@ -144,7 +144,7 @@ export default function MembersPage() {
                      </TableCell>
                   </TableRow>
                 ))}
-                {members.length === 0 && <TableRow><TableCell colSpan={6} className="text-center p-8">No members found</TableCell></TableRow>}
+                {members.length === 0 && <TableRow><TableCell colSpan={6} className="text-center p-8 text-slate-500">No members found</TableCell></TableRow>}
              </TableBody>
            </Table>
          </CardContent>
