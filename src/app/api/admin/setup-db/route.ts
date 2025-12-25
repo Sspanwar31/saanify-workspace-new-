@@ -113,6 +113,26 @@ export async function POST() {
       ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
       CREATE POLICY "Client Manage Transactions" ON transactions FOR ALL USING (client_id = auth.uid());
 
+      -- 8. LOANS TABLE
+      CREATE TABLE IF NOT EXISTS loans (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          amount NUMERIC NOT NULL,
+          interest_rate NUMERIC DEFAULT 2,
+          duration_months INT DEFAULT 12,
+          status TEXT DEFAULT 'pending', -- pending, active, completed, rejected
+          remaining_balance NUMERIC DEFAULT 0,
+          start_date DATE,
+          end_date DATE
+      );
+
+      -- RLS for Loans
+      ALTER TABLE loans ENABLE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS "Client Manage Loans" ON loans;
+      CREATE POLICY "Client Manage Loans" ON loans FOR ALL USING (client_id = auth.uid());
+
       -- 7. AUTOMATION LOGS TABLE
       CREATE TABLE IF NOT EXISTS system_tasks (
           task_key TEXT PRIMARY KEY, -- e.g., 'schema_sync', 'email_welcome'
