@@ -95,7 +95,25 @@ export async function POST() {
       -- Allow Clients to Insert (WITH CHECK ensures they mark it as their own)
       CREATE POLICY "Client Insert Members" ON members FOR INSERT WITH CHECK (client_id = auth.uid());
 
-      -- 5. AUTOMATION LOGS TABLE
+      -- 6. TRANSACTIONS TABLE (Passbook)
+      CREATE TABLE IF NOT EXISTS transactions (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          date DATE DEFAULT CURRENT_DATE,
+          amount NUMERIC NOT NULL,
+          type TEXT NOT NULL, -- deposit, loan, interest, withdrawal
+          payment_mode TEXT DEFAULT 'CASH', -- CASH, BANK, UPI
+          description TEXT,
+          balance NUMERIC DEFAULT 0 -- Running balance snapshot
+      );
+
+      -- RLS for Transactions
+      ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY "Client Manage Transactions" ON transactions FOR ALL USING (client_id = auth.uid());
+
+      -- 7. AUTOMATION LOGS TABLE
       CREATE TABLE IF NOT EXISTS system_tasks (
           task_key TEXT PRIMARY KEY, -- e.g., 'schema_sync', 'email_welcome'
           label TEXT,
