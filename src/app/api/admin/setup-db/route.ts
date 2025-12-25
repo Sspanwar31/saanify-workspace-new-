@@ -62,7 +62,29 @@ export async function POST() {
       ALTER TABLE clients ADD COLUMN IF NOT EXISTS subscription_expiry TIMESTAMP WITH TIME ZONE;
       ALTER TABLE clients ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
-      -- 4. AUTOMATION LOGS TABLE
+      -- 4. MEMBERS TABLE (Linked to Client)
+      CREATE TABLE IF NOT EXISTS members (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          name TEXT NOT NULL,
+          father_name TEXT,
+          phone TEXT,
+          email TEXT,
+          address TEXT,
+          join_date DATE DEFAULT CURRENT_DATE,
+          status TEXT DEFAULT 'active',
+          total_deposits NUMERIC DEFAULT 0
+      );
+
+      -- RLS Policy for Members
+      ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+
+      -- Allow Clients to manage ONLY their own members
+      CREATE POLICY "Client Manage Members" ON members
+      FOR ALL USING (client_id = auth.uid());
+
+      -- 5. AUTOMATION LOGS TABLE
       CREATE TABLE IF NOT EXISTS system_tasks (
           task_key TEXT PRIMARY KEY, -- e.g., 'schema_sync', 'email_welcome'
           label TEXT,
