@@ -53,15 +53,22 @@ export default function MembersPage() {
   const handleSave = async () => {
      if(!formData.name || !formData.phone) return toast.error("Name and Phone required");
      
-     const payload = { ...formData, client_id: clientId };
-     
      let error;
      if(editingId) {
+        // Update: Use direct Supabase call (no auth creation needed)
         const { error: err } = await supabase.from('members').update(formData).eq('id', editingId);
         error = err;
      } else {
-        const { error: err } = await supabase.from('members').insert([payload]);
-        error = err;
+        // Insert: Use new API with auto-auth creation
+        const res = await fetch('/api/client/add-member', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...formData, client_id: clientId })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          error = { message: data.error };
+        }
      }
 
      if(error) toast.error(error.message);

@@ -66,6 +66,7 @@ export async function POST() {
       CREATE TABLE IF NOT EXISTS members (
           id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
           client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           name TEXT NOT NULL,
           father_name TEXT,
@@ -77,12 +78,22 @@ export async function POST() {
           total_deposits NUMERIC DEFAULT 0
       );
 
+      -- Add auth_user_id column to existing members table if not exists
+      ALTER TABLE members ADD COLUMN IF NOT EXISTS auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+
       -- RLS Policy for Members
       ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 
-      -- Allow Clients to manage ONLY their own members
-      CREATE POLICY "Client Manage Members" ON members
-      FOR ALL USING (client_id = auth.uid());
+      -- Drop existing policy if it exists
+      DROP POLICY IF EXISTS "Client Manage Members" ON members;
+
+      -- Allow Clients to Select, Update, Delete their own members
+      CREATE POLICY "Client Select Members" ON members FOR SELECT USING (client_id = auth.uid());
+      CREATE POLICY "Client Update Members" ON members FOR UPDATE USING (client_id = auth.uid());
+      CREATE POLICY "Client Delete Members" ON members FOR DELETE USING (client_id = auth.uid());
+
+      -- Allow Clients to Insert (WITH CHECK ensures they mark it as their own)
+      CREATE POLICY "Client Insert Members" ON members FOR INSERT WITH CHECK (client_id = auth.uid());
 
       -- 5. AUTOMATION LOGS TABLE
       CREATE TABLE IF NOT EXISTS system_tasks (
