@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Plus, RefreshCcw, MoreHorizontal, Edit, Trash2, 
-  Users, UserCheck, UserX 
+  Users, UserCheck, UserX, Loader2 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase'; // Keep for delete/update if needed, or move to API later
 
 export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
@@ -23,12 +22,12 @@ export default function MembersPage() {
   
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '', father_name: '', phone: '', email: '', address: '', join_date: new Date().toISOString().split('T')[0], status: 'active'
   });
 
-  // 1. Fetch Data (Using API now)
   const fetchMembers = async (id: string) => {
      try {
        const res = await fetch(`/api/client/members?client_id=${id}`);
@@ -36,11 +35,8 @@ export default function MembersPage() {
          const data = await res.json();
          setMembers(data);
        }
-     } catch (e) {
-       console.error("Fetch error:", e);
-     } finally {
-       setLoading(false);
-     }
+     } catch (e) { console.error(e); } 
+     finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -52,38 +48,54 @@ export default function MembersPage() {
     }
   }, []);
 
-  // 2. Actions
+  // ACTIONS
   const handleSave = async () => {
      if(!formData.name || !formData.phone) return toast.error("Name and Phone required");
+     setIsSaving(true);
      
-     // Use API for creation (Handles Auth + DB)
-     if(!editingId) {
-        const res = await fetch('/api/client/add-member', {
-            method: 'POST',
-            body: JSON.stringify({ ...formData, client_id: clientId })
-        });
-        const data = await res.json();
-        if(!res.ok) { toast.error(data.error); return; }
-        toast.success("Member Added");
-     } else {
-        // Update can be direct via Supabase RLS (usually allowed) or create API update later
-        const { error } = await supabase.from('members').update(formData).eq('id', editingId);
-        if(error) { toast.error(error.message); return; }
-        toast.success("Member Updated");
-     }
+     try {
+         if(editingId) {
+            // UPDATE via API
+            const res = await fetch('/api/client/members', {
+                method: 'PUT',
+                body: JSON.stringify({ id: editingId, ...formData })
+            });
+            if(!res.ok) throw new Error("Update Failed");
+            toast.success("Member Updated");
+         } else {
+            // CREATE via API (Separate route for creation as it handles Auth)
+            const res = await fetch('/api/client/add-member', {
+                method: 'POST',
+                body: JSON.stringify({ ...formData, client_id: clientId })
+            });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.error);
+            toast.success("Member Added");
+         }
 
-     setIsDialogOpen(false);
-     fetchMembers(clientId);
-     setFormData({ name: '', father_name: '', phone: '', email: '', address: '', join_date: new Date().toISOString().split('T')[0], status: 'active' });
+         setIsDialogOpen(false);
+         fetchMembers(clientId);
+         setFormData({ name: '', father_name: '', phone: '', email: '', address: '', join_date: new Date().toISOString().split('T')[0], status: 'active' });
+
+     } catch(e: any) {
+         toast.error(e.message);
+     } finally {
+         setIsSaving(false);
+     }
   };
 
   const handleDelete = async (id: string) => {
-     if(!confirm("Delete member?")) return;
-     const { error } = await supabase.from('members').delete().eq('id', id);
-     if(error) toast.error("Delete failed (RLS Error). Contact Admin."); 
-     else {
-        toast.success("Member Deleted");
-        fetchMembers(clientId);
+     if(!confirm("Delete member? This cannot be undone.")) return;
+     
+     const loadingToast = toast.loading("Deleting...");
+     try {
+         const res = await fetch(`/api/client/members?id=${id}`, { method: 'DELETE' });
+         if(!res.ok) throw new Error("Delete Failed");
+         
+         toast.success("Member Deleted", { id: loadingToast });
+         fetchMembers(clientId);
+     } catch(e) {
+         toast.error("Failed to delete", { id: loadingToast });
      }
   };
 
@@ -98,7 +110,7 @@ export default function MembersPage() {
 
   const activeCount = members.filter(m => m.status === 'active').length;
 
-  if (loading) return <div className="p-10 text-center">Loading Ledger...</div>;
+  if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-blue-600"/></div>;
 
   return (
     <div className="p-8 space-y-6">
@@ -121,32 +133,37 @@ export default function MembersPage() {
        {/* TABLE */}
        <Card>
          <CardContent className="p-0">
-           <Table>
-             <TableHeader>
-                <TableRow>
-                   <TableHead>Name</TableHead><TableHead>Father Name</TableHead><TableHead>Phone</TableHead>
-                   <TableHead>Join Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-             </TableHeader>
-             <TableBody>
-                {members.map(m => (
-                  <TableRow key={m.id}>
-                     <TableCell className="font-medium">{m.name}</TableCell>
-                     <TableCell>{m.father_name}</TableCell>
-                     <TableCell>{m.phone}</TableCell>
-                     <TableCell>{m.join_date}</TableCell>
-                     <TableCell><Badge variant={m.status === 'active' ? 'default' : 'destructive'}>{m.status}</Badge></TableCell>
-                     <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                           <Button size="icon" variant="ghost" onClick={() => openEdit(m)}><Edit className="w-4 h-4"/></Button>
-                           <Button size="icon" variant="ghost" className="text-red-500" onClick={() => handleDelete(m.id)}><Trash2 className="w-4 h-4"/></Button>
-                        </div>
-                     </TableCell>
-                  </TableRow>
-                ))}
-                {members.length === 0 && <TableRow><TableCell colSpan={6} className="text-center p-8 text-slate-500">No members found</TableCell></TableRow>}
-             </TableBody>
-           </Table>
+           <div className="rounded-md border">
+            <Table>
+                <TableHeader className="bg-slate-50">
+                    <TableRow>
+                    <TableHead>Name</TableHead><TableHead>Father Name</TableHead><TableHead>Phone</TableHead>
+                    <TableHead>Join Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {members.map(m => (
+                    <TableRow key={m.id}>
+                        <TableCell className="font-medium">{m.name}</TableCell>
+                        <TableCell>{m.father_name}</TableCell>
+                        <TableCell>{m.phone}</TableCell>
+                        <TableCell>{m.join_date}</TableCell>
+                        <TableCell><Badge variant={m.status === 'active' ? 'default' : 'destructive'}>{m.status}</Badge></TableCell>
+                        <TableCell className="text-right">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal className="w-4 h-4"/></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openEdit(m)}><Edit className="w-4 h-4 mr-2"/> Edit</DropdownMenuItem>
+                                    <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(m.id)}><Trash2 className="w-4 h-4 mr-2"/> Delete</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                    {members.length === 0 && <TableRow><TableCell colSpan={6} className="text-center p-8 text-slate-500">No members found</TableCell></TableRow>}
+                </TableBody>
+            </Table>
+           </div>
          </CardContent>
        </Card>
 
@@ -165,7 +182,9 @@ export default function MembersPage() {
                    <SelectTrigger><SelectValue/></SelectTrigger>
                    <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
                 </Select>
-                <Button onClick={handleSave} className="w-full bg-orange-500 hover:bg-orange-600">{editingId ? 'Update' : 'Add Member'}</Button>
+                <Button onClick={handleSave} disabled={isSaving} className="w-full bg-orange-500 hover:bg-orange-600">
+                    {isSaving ? <Loader2 className="animate-spin"/> : (editingId ? 'Update' : 'Add Member')}
+                </Button>
              </div>
           </DialogContent>
        </Dialog>
