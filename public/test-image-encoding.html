@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Image URL Encoding</title>
+</head>
+<body>
+    <h2>Testing Image URL Encoding Fix</h2>
+    
+    <h3>Original Problematic URL:</h3>
+    <img src="/uploads/payment-proofs/1764338893228_Screenshot (1).png" 
+         style="max-width: 300px; border: 2px solid red;"
+         onerror="this.nextElementSibling.style.display='block'; this.style.display='none'">
+    <div style="display: none; color: red;">❌ Failed to load (unencoded URL)</div>
+    
+    <h3>Fixed Encoded URL:</h3>
+    <img src="/uploads/payment-proofs/1764338893228_Screenshot%20(1).png" 
+         style="max-width: 300px; border: 2px solid green;"
+         onerror="this.nextElementSibling.style.display='block'; this.style.display='none'">
+    <div style="display: none; color: red;">❌ Failed to load (encoded URL)</div>
+    
+    <h3>Placeholder Fallback:</h3>
+    <img src="/placeholder-screenshot.svg" 
+         style="max-width: 300px; border: 2px solid blue;"
+         onerror="this.nextElementSibling.style.display='block'; this.style.display='none'">
+    <div style="display: none; color: red;">❌ Failed to load placeholder</div>
+    
+    <script>
+        console.log('Testing image URL encoding...');
+        const problematicUrl = '1764338893228_Screenshot (1).png';
+        const encoded = problematicUrl.split('/').pop().replace(/ /g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29');
+        console.log('Original:', problematicUrl);
+        console.log('Encoded:', encoded);
+        console.log('Full path:', `/uploads/payment-proofs/${encoded}`);
+    </script>
+</body>
+</html>

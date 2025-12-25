@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SuperAdmin Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 8px; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+        button { background: #2196F3; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        pre { background: #2a2a2a; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 SuperAdmin Debug Page</h1>
+    
+    <div class="debug-section">
+        <h2 class="info">🎯 Quick Test Steps:</h2>
+        <ol>
+            <li><strong>Open SuperAdmin in New Tab:</strong> <button onclick="openSuperAdmin()">Open SuperAdmin</button></li>
+            <li><strong>Run Debug Script:</strong> <button onclick="runDebug()">Run Debug</button></li>
+            <li><strong>Check Console:</strong> Open DevTools (F12) → Console tab</li>
+            <li><strong>Look for:</strong> "Found Automation button" messages</li>
+        </ol>
+    </div>
+
+    <div class="debug-section">
+        <h2 class="info">🔍 What Debug Script Does:</h2>
+        <ul>
+            <li>Scans all navigation buttons</li>
+            <li>Looks for "Automation" button specifically</li>
+            <li>Automatically clicks Automation button</li>
+            <li>Checks if automation section appears</li>
+            <li>Analyzes page content for automation elements</li>
+        </ul>
+    </div>
+
+    <div class="debug-section">
+        <h2 class="info">📋 Expected Results:</h2>
+        <ul>
+            <li>✅ Should find "Automation" button in sidebar</li>
+            <li>✅ Should automatically click it</li>
+            <li>✅ Should show automation section content</li>
+            <li>✅ Should see "Connected" status indicator</li>
+            <li>✅ Should see toggle buttons and "Run Now" buttons</li>
+        </ul>
+    </div>
+
+    <div class="debug-section">
+        <h2 class="info">🚨 If Automation Still Not Visible:</h2>
+        <ul>
+            <li><strong>Check if you're on the right page:</strong> Should be /superadmin</li>
+            <li><strong>Check if you're logged in:</strong> Should see superadmin name/profile</li>
+            <li><strong>Check browser console:</strong> Look for JavaScript errors</li>
+            <li><strong>Try hard refresh:</strong> Ctrl+Shift+R to clear cache</li>
+            <li><strong>Try different browser:</strong> Chrome, Firefox, etc.</li>
+        </ul>
+    </div>
+
+    <div class="debug-section">
+        <h2 class="info">📞 Manual Check:</h2>
+        <p>If automation button is not visible, manually check the sidebar for:</p>
+        <ul>
+            <li>Overview</li>
+            <li>Client Management</li>
+            <li>Subscription & Billing</li>
+            <li>Analytics</li>
+            <li>Activity Monitor</li>
+            <li>Data Visualization</li>
+            <li><strong>Automation ← This should be here!</strong></li>
+            <li>System Settings</li>
+        </ul>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        function openSuperAdmin() {
+            window.open('/superadmin', '_blank');
+        }
+
+        function runDebug() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p class="info">🔍 Loading debug script...</p>';
+            
+            // Load and execute debug script
+            const script = document.createElement('script');
+            script.src = '/debug-superadmin.js';
+            script.onload = () => {
+                results.innerHTML = '<p class="success">✅ Debug script loaded! Check SuperAdmin tab console.</p>';
+            };
+            script.onerror = () => {
+                results.innerHTML = '<p class="error">❌ Failed to load debug script</p>';
+            };
+            document.head.appendChild(script);
+        }
+
+        // Auto-instructions
+        console.log('🔧 SuperAdmin Debug Page Loaded');
+        console.log('📝 Instructions:');
+        console.log('1. Click "Open SuperAdmin" button');
+        console.log('2. Click "Run Debug" button');
+        console.log('3. Check the SuperAdmin tab console for results');
+    </script>
+</body>
+</html>

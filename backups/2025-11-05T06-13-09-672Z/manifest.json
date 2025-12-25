@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-11-05T06:13:09.721Z",
+  "deployId": "deploy-1762323189672",
+  "backupDir": "backups/2025-11-05T06-13-09-672Z",
+  "files": [
+    "code.json",
+    "database.json",
+    "environment.json",
+    "schema.prisma"
+  ],
+  "checksum": "79bd44992425814dd792623da4416e6d66d0450f94cac5960669799b08bd0d92"
+}

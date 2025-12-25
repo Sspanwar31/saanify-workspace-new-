@@ -1,0 +1,210 @@
+{
+  "timestamp": "2025-11-05T06:13:09.676Z",
+  "deployId": "deploy-1762323189672",
+  "tables": {
+    "users": [
+      {
+        "id": "cmhhzy2do0000k59baqn3q0sj",
+        "email": "ADMIN@saanify.com",
+        "name": "ADMIN",
+        "password": "$2b$12$iTEco/tXh56WS.l.B/AQIu.X7rDS4F8OIQ.UFGHDbvjojMlQlyQ2i",
+        "role": "ADMIN",
+        "isActive": true,
+        "lastLoginAt": "2025-11-05T04:31:35.801Z",
+        "societyAccountId": null,
+        "createdAt": "2025-11-02T17:40:10.764Z",
+        "updatedAt": "2025-11-05T04:31:35.802Z"
+      },
+      {
+        "id": "cmhhzy2o30003k59bpws5pwf9",
+        "email": "admin@greenvalley.com",
+        "name": "Robert Johnson",
+        "password": "$2b$12$8EAC.5w8aCes.durBFbwY.wA0U09dw2.xoEZSpkm2F/jiePHc7d8G",
+        "role": "CLIENT",
+        "isActive": true,
+        "lastLoginAt": null,
+        "societyAccountId": "cmhhzy2dr0001k59bajsvibnl",
+        "createdAt": "2025-11-02T17:40:11.139Z",
+        "updatedAt": "2025-11-02T17:40:11.139Z"
+      },
+      {
+        "id": "cmhhzy2yf0006k59btqt2o3sp",
+        "email": "admin@sunsetapartments.com",
+        "name": "Maria Garcia",
+        "password": "$2b$12$.QCoU8Uo.tSLULCEje6SkekE0JDxjstMRc0ttMZq3E0gsH7vSpKTy",
+        "role": "CLIENT",
+        "isActive": true,
+        "lastLoginAt": null,
+        "societyAccountId": "cmhhzy2o50004k59bh7wq97c9",
+        "createdAt": "2025-11-02T17:40:11.511Z",
+        "updatedAt": "2025-11-02T17:40:11.511Z"
+      },
+      {
+        "id": "cmhhzy3940009k59behdd0zwk",
+        "email": "admin@royalresidency.com",
+        "name": "William Chen",
+        "password": "$2b$12$Qqq9V8wdn6PC.tLQ.HbFteReiQ.bPbZg6FKK7f4dontt05qIcgT1S",
+        "role": "CLIENT",
+        "isActive": true,
+        "lastLoginAt": null,
+        "societyAccountId": "cmhhzy2yh0007k59bsee5mn14",
+        "createdAt": "2025-11-02T17:40:11.897Z",
+        "updatedAt": "2025-11-02T17:40:11.897Z"
+      },
+      {
+        "id": "cmhhzy3je000ck59bmlt0doug",
+        "email": "admin@blueskyheights.com",
+        "name": "Patricia Williams",
+        "password": "$2b$12$KgYKrSr.7oYu98M3qV141ulKECN2KWoC3MBm1WjrHyVeW7C3pqx.2",
+        "role": "CLIENT",
+        "isActive": false,
+        "lastLoginAt": null,
+        "societyAccountId": "cmhhzy397000ak59bt76jf6pr",
+        "createdAt": "2025-11-02T17:40:12.267Z",
+        "updatedAt": "2025-11-02T17:40:12.267Z"
+      },
+      {
+        "id": "cmhhzy3tn000ek59bxwyud9ll",
+        "email": "client@saanify.com",
+        "name": "Demo Client",
+        "password": "$2b$12$TtrfMfsqVC7ik8zMxHD0f.Ju92WOrOOpyxA69p4KsGyzV97g.0H1q",
+        "role": "CLIENT",
+        "isActive": true,
+        "lastLoginAt": "2025-11-05T06:10:48.335Z",
+        "societyAccountId": "cmhhzy2dr0001k59bajsvibnl",
+        "createdAt": "2025-11-02T17:40:12.636Z",
+        "updatedAt": "2025-11-05T06:10:48.336Z"
+      }
+    ],
+    "societies": [
+      {
+        "id": "cmhhzy2dr0001k59bajsvibnl",
+        "name": "Green Valley Society",
+        "adminName": "Robert Johnson",
+        "email": "admin@greenvalley.com",
+        "phone": "+91 98765 43210",
+        "address": "123 Green Valley Road, Bangalore",
+        "subscriptionPlan": "PRO",
+        "status": "ACTIVE",
+        "trialEndsAt": null,
+        "subscriptionEndsAt": "2024-12-31T00:00:00.000Z",
+        "isActive": true,
+        "createdAt": "2025-11-02T17:40:10.767Z",
+        "updatedAt": "2025-11-02T17:40:10.767Z",
+        "users": [
+          {
+            "id": "cmhhzy2o30003k59bpws5pwf9",
+            "email": "admin@greenvalley.com",
+            "name": "Robert Johnson",
+            "password": "$2b$12$8EAC.5w8aCes.durBFbwY.wA0U09dw2.xoEZSpkm2F/jiePHc7d8G",
+            "role": "CLIENT",
+            "isActive": true,
+            "lastLoginAt": null,
+            "societyAccountId": "cmhhzy2dr0001k59bajsvibnl",
+            "createdAt": "2025-11-02T17:40:11.139Z",
+            "updatedAt": "2025-11-02T17:40:11.139Z"
+          },
+          {
+            "id": "cmhhzy3tn000ek59bxwyud9ll",
+            "email": "client@saanify.com",
+            "name": "Demo Client",
+            "password": "$2b$12$TtrfMfsqVC7ik8zMxHD0f.Ju92WOrOOpyxA69p4KsGyzV97g.0H1q",
+            "role": "CLIENT",
+            "isActive": true,
+            "lastLoginAt": "2025-11-05T06:10:48.335Z",
+            "societyAccountId": "cmhhzy2dr0001k59bajsvibnl",
+            "createdAt": "2025-11-02T17:40:12.636Z",
+            "updatedAt": "2025-11-05T06:10:48.336Z"
+          }
+        ]
+      },
+      {
+        "id": "cmhhzy2o50004k59bh7wq97c9",
+        "name": "Sunset Apartments",
+        "adminName": "Maria Garcia",
+        "email": "admin@sunsetapartments.com",
+        "phone": "+91 98765 43211",
+        "address": "456 Sunset Boulevard, Mumbai",
+        "subscriptionPlan": "TRIAL",
+        "status": "TRIAL",
+        "trialEndsAt": "2025-11-09T17:40:10.765Z",
+        "subscriptionEndsAt": null,
+        "isActive": true,
+        "createdAt": "2025-11-02T17:40:11.142Z",
+        "updatedAt": "2025-11-02T17:40:11.142Z",
+        "users": [
+          {
+            "id": "cmhhzy2yf0006k59btqt2o3sp",
+            "email": "admin@sunsetapartments.com",
+            "name": "Maria Garcia",
+            "password": "$2b$12$.QCoU8Uo.tSLULCEje6SkekE0JDxjstMRc0ttMZq3E0gsH7vSpKTy",
+            "role": "CLIENT",
+            "isActive": true,
+            "lastLoginAt": null,
+            "societyAccountId": "cmhhzy2o50004k59bh7wq97c9",
+            "createdAt": "2025-11-02T17:40:11.511Z",
+            "updatedAt": "2025-11-02T17:40:11.511Z"
+          }
+        ]
+      },
+      {
+        "id": "cmhhzy2yh0007k59bsee5mn14",
+        "name": "Royal Residency",
+        "adminName": "William Chen",
+        "email": "admin@royalresidency.com",
+        "phone": "+91 98765 43212",
+        "address": "789 Royal Street, Delhi",
+        "subscriptionPlan": "BASIC",
+        "status": "EXPIRED",
+        "trialEndsAt": null,
+        "subscriptionEndsAt": "2024-01-31T00:00:00.000Z",
+        "isActive": true,
+        "createdAt": "2025-11-02T17:40:11.514Z",
+        "updatedAt": "2025-11-02T17:40:11.514Z",
+        "users": [
+          {
+            "id": "cmhhzy3940009k59behdd0zwk",
+            "email": "admin@royalresidency.com",
+            "name": "William Chen",
+            "password": "$2b$12$Qqq9V8wdn6PC.tLQ.HbFteReiQ.bPbZg6FKK7f4dontt05qIcgT1S",
+            "role": "CLIENT",
+            "isActive": true,
+            "lastLoginAt": null,
+            "societyAccountId": "cmhhzy2yh0007k59bsee5mn14",
+            "createdAt": "2025-11-02T17:40:11.897Z",
+            "updatedAt": "2025-11-02T17:40:11.897Z"
+          }
+        ]
+      },
+      {
+        "id": "cmhhzy397000ak59bt76jf6pr",
+        "name": "Blue Sky Heights",
+        "adminName": "Patricia Williams",
+        "email": "admin@blueskyheights.com",
+        "phone": "+91 98765 43213",
+        "address": "321 Blue Sky Avenue, Pune",
+        "subscriptionPlan": "ENTERPRISE",
+        "status": "LOCKED",
+        "trialEndsAt": null,
+        "subscriptionEndsAt": "2024-06-30T00:00:00.000Z",
+        "isActive": true,
+        "createdAt": "2025-11-02T17:40:11.899Z",
+        "updatedAt": "2025-11-02T17:40:11.899Z",
+        "users": [
+          {
+            "id": "cmhhzy3je000ck59bmlt0doug",
+            "email": "admin@blueskyheights.com",
+            "name": "Patricia Williams",
+            "password": "$2b$12$KgYKrSr.7oYu98M3qV141ulKECN2KWoC3MBm1WjrHyVeW7C3pqx.2",
+            "role": "CLIENT",
+            "isActive": false,
+            "lastLoginAt": null,
+            "societyAccountId": "cmhhzy397000ak59bt76jf6pr",
+            "createdAt": "2025-11-02T17:40:12.267Z",
+            "updatedAt": "2025-11-02T17:40:12.267Z"
+          }
+        ]
+      }
+    ]
+  }
+}

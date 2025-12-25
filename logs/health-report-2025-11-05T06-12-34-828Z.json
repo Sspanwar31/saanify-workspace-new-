@@ -1,0 +1,132 @@
+{
+  "timestamp": "2025-11-05T06:12:42.174Z",
+  "healthId": "health-1762323154828",
+  "overallStatus": "healthy",
+  "healthScore": 83,
+  "checks": [
+    {
+      "name": "Environment",
+      "success": false
+    },
+    {
+      "name": "Filesystem",
+      "success": true
+    },
+    {
+      "name": "Prisma",
+      "success": true
+    },
+    {
+      "name": "Database",
+      "success": true
+    },
+    {
+      "name": "API",
+      "success": true
+    },
+    {
+      "name": "UI",
+      "success": true
+    }
+  ],
+  "details": {
+    "environment": {
+      "status": "unhealthy",
+      "details": {
+        "required": {
+          "present": [],
+          "missing": [
+            "DATABASE_URL",
+            "NEXTAUTH_SECRET"
+          ]
+        },
+        "optional": [],
+        "total": 2
+      }
+    },
+    "database": {
+      "status": "healthy",
+      "details": {
+        "connection": "ok",
+        "users": 6,
+        "societies": 4,
+        "totalRecords": 10
+      }
+    },
+    "api": {
+      "status": "degraded",
+      "details": {
+        "endpoints": [
+          {
+            "endpoint": "/api/health",
+            "status": 200,
+            "ok": true
+          },
+          {
+            "endpoint": "/api/run-migrations",
+            "status": 403,
+            "ok": false
+          }
+        ],
+        "successRate": 50
+      }
+    },
+    "ui": {
+      "status": "degraded",
+      "details": {
+        "routes": [
+          {
+            "route": "/",
+            "status": 200,
+            "ok": true
+          },
+          {
+            "route": "/login",
+            "status": 200,
+            "ok": true
+          },
+          {
+            "route": "/admin",
+            "status": 404,
+            "ok": false
+          },
+          {
+            "route": "/client",
+            "status": 404,
+            "ok": false
+          }
+        ],
+        "successRate": 50
+      }
+    },
+    "filesystem": {
+      "status": "healthy",
+      "details": {
+        "files": {
+          "existing": [
+            "package.json",
+            "next.config.ts",
+            "tailwind.config.ts",
+            "tsconfig.json",
+            "prisma/schema.prisma",
+            "src/app/page.tsx",
+            "src/app/layout.tsx",
+            "scripts/deploy-glm.js",
+            "scripts/restore-glm.js"
+          ],
+          "missing": []
+        },
+        "directories": {
+          "existing": [
+            "logs",
+            "backups",
+            "src/app/api"
+          ],
+          "missing": []
+        },
+        "totalFiles": 9,
+        "totalDirs": 3
+      }
+    }
+  }
+}

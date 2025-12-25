@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-11-05T06:13:09.675Z",
+  "deployId": "deploy-1762323189672",
+  "variables": {
+    "DATABASE_URL": "file:/home/z/my-project/db/custom.db",
+    "NEXTAUTH_SECRET": "saanify-super-secret-key-2024"
+  }
+}

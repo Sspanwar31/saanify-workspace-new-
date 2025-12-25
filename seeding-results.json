@@ -1,0 +1,137 @@
+{
+  "timestamp": "2025-12-09T16:02:58.830Z",
+  "users": [
+    {
+      "id": "user_super_admin_001",
+      "email": "ADMIN@saanify.com",
+      "name": "ADMIN",
+      "role": "ADMIN",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    },
+    {
+      "id": "user_demo_client_001",
+      "email": "client@saanify.com",
+      "name": "Demo Client",
+      "role": "CLIENT",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    },
+    {
+      "id": "user_admin_green_valley",
+      "email": "admin@greenvalley.com",
+      "name": "Robert Johnson",
+      "role": "CLIENT",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    },
+    {
+      "id": "user_admin_sunset_apartments",
+      "email": "admin@sunsetapartments.com",
+      "name": "Maria Garcia",
+      "role": "CLIENT",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    },
+    {
+      "id": "user_admin_royal_residency",
+      "email": "admin@royalresidency.com",
+      "name": "James Wilson",
+      "role": "CLIENT",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    },
+    {
+      "id": "user_admin_blue_sky",
+      "email": "admin@blueskyheights.com",
+      "name": "Patricia Brown",
+      "role": "CLIENT",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    }
+  ],
+  "society_accounts": [
+    {
+      "id": "society_green_valley",
+      "name": "Green Valley Society",
+      "adminName": "Robert Johnson",
+      "email": "admin@greenvalley.com",
+      "phone": "+91 98765 43210",
+      "address": "123 Green Valley Road, Bangalore",
+      "subscriptionPlan": "PRO",
+      "status": "ACTIVE",
+      "subscriptionEndsAt": "2024-12-31T23:59:59.000Z",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    },
+    {
+      "id": "society_sunset_apartments",
+      "name": "Sunset Apartments",
+      "adminName": "Maria Garcia",
+      "email": "admin@sunsetapartments.com",
+      "phone": "+91 98765 43211",
+      "address": "456 Sunset Boulevard, Mumbai",
+      "subscriptionPlan": "TRIAL",
+      "status": "TRIAL",
+      "trialEndsAt": "2025-12-16T16:02:58.830Z",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    },
+    {
+      "id": "society_royal_residency",
+      "name": "Royal Residency",
+      "adminName": "James Wilson",
+      "email": "admin@royalresidency.com",
+      "phone": "+91 98765 43212",
+      "address": "789 Royal Street, Delhi",
+      "subscriptionPlan": "BASIC",
+      "status": "ACTIVE",
+      "subscriptionEndsAt": "2024-11-30T23:59:59.000Z",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    },
+    {
+      "id": "society_blue_sky_heights",
+      "name": "Blue Sky Heights",
+      "adminName": "Patricia Brown",
+      "email": "admin@blueskyheights.com",
+      "phone": "+91 98765 43213",
+      "address": "321 Blue Sky Avenue, Pune",
+      "subscriptionPlan": "PRO",
+      "status": "ACTIVE",
+      "subscriptionEndsAt": "2024-12-31T23:59:59.000Z",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.830Z"
+    }
+  ],
+  "societies": [
+    {
+      "id": "society_green_valley_main",
+      "name": "Green Valley Main Society",
+      "description": "Premium residential society with modern amenities",
+      "address": "123 Green Valley Road, Bangalore",
+      "phone": "+91 98765 43210",
+      "email": "info@greenvalley.com",
+      "societyAccountId": "society_green_valley",
+      "createdByUserId": "user_admin_green_valley",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.831Z"
+    },
+    {
+      "id": "society_sunset_main",
+      "name": "Sunset Apartments Main",
+      "description": "Comfortable apartments with great city views",
+      "address": "456 Sunset Boulevard, Mumbai",
+      "phone": "+91 98765 43211",
+      "email": "info@sunsetapartments.com",
+      "societyAccountId": "society_sunset_apartments",
+      "createdByUserId": "user_admin_sunset_apartments",
+      "isActive": true,
+      "createdAt": "2025-12-09T16:02:58.831Z"
+    }
+  ],
+  "posts": [],
+  "database": "PostgreSQL",
+  "status": "success",
+  "method": "simulated"
+}

@@ -1,0 +1,118 @@
+import { NextResponse } from 'next/server';
+import { Client } from 'pg';
+
+export async function POST() {
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    return NextResponse.json({ error: "DATABASE_URL missing" }, { status: 500 });
+  }
+
+  const client = new Client({
+    connectionString: connectionString,
+    ssl: { rejectUnauthorized: false }
+  });
+
+  try {
+    await client.connect();
+
+    await client.query(`
+      BEGIN;
+      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+      
+      -- 1. FIX ADMINS TABLE
+      CREATE TABLE IF NOT EXISTS admins (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          email TEXT UNIQUE NOT NULL
+      );
+      -- Add columns if they are missing (Self-Healing)
+      ALTER TABLE admins ADD COLUMN IF NOT EXISTS password TEXT;
+      ALTER TABLE admins ADD COLUMN IF NOT EXISTS name TEXT DEFAULT 'Admin';
+      ALTER TABLE admins ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'ADMIN';
+      ALTER TABLE admins ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE';
+      ALTER TABLE admins ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+      -- 2. FIX SYSTEM SETTINGS
+      CREATE TABLE IF NOT EXISTS system_settings (
+          id INT PRIMARY KEY DEFAULT 1
+      );
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS github_username TEXT;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS github_repo TEXT;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS github_token TEXT;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS github_branch TEXT DEFAULT 'main';
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS is_maintenance_mode BOOLEAN DEFAULT FALSE;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS trial_days INT DEFAULT 15;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS max_users_basic INT DEFAULT 25;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS max_users_pro INT DEFAULT 100;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS auto_renewal BOOLEAN DEFAULT TRUE;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS email_notify BOOLEAN DEFAULT TRUE;
+      ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+      -- 3. FIX CLIENTS TABLE
+      CREATE TABLE IF NOT EXISTS clients (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          email TEXT UNIQUE NOT NULL
+      );
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS name TEXT;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS society_name TEXT;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS phone TEXT;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'BASIC';
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'PENDING';
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_lifetime BOOLEAN DEFAULT FALSE;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS subscription_expiry TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+      -- 4. AUTOMATION LOGS TABLE
+      CREATE TABLE IF NOT EXISTS system_tasks (
+          task_key TEXT PRIMARY KEY, -- e.g., 'schema_sync', 'email_welcome'
+          label TEXT,
+          last_run TIMESTAMP WITH TIME ZONE,
+          status TEXT, -- 'SUCCESS', 'FAILED', 'PENDING'
+          meta JSONB -- Store counts like { sent: 24, pending: 0 }
+      );
+
+      -- 5. SEED DATA
+      INSERT INTO system_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+      
+      -- 1. System Tasks
+      INSERT INTO system_tasks (task_key, label, status, meta) VALUES
+      ('schema_sync', 'Schema Sync', 'SUCCESS', '{}'),
+      ('backup', 'Database Backup', 'PENDING', '{}'),
+      ('restore', 'Database Restore', 'PENDING', '{}'),
+      ('auto_sync', 'Auto Data Sync', 'PENDING', '{}'),
+      ('health', 'System Health', 'SUCCESS', '{"latency": "0ms"}')
+      ON CONFLICT (task_key) DO NOTHING;
+
+      -- 2. Email Workflows
+      INSERT INTO system_tasks (task_key, label, status, meta) VALUES
+      ('email_welcome', 'Welcome Email', 'ACTIVE', '{"sent": 0, "pending": 0}'),
+      ('email_expiry', 'Trial Expiry Warning', 'ACTIVE', '{"sent": 0, "pending": 0}'),
+      ('email_fail', 'Payment Failed Alert', 'ACTIVE', '{"sent": 0, "pending": 0}'),
+      ('email_renew', 'Renewal Reminder', 'ACTIVE', '{"sent": 0, "pending": 0}')
+      ON CONFLICT (task_key) DO NOTHING;
+
+      -- 3. Push Notifications
+      INSERT INTO system_tasks (task_key, label, status, meta) VALUES
+      ('push_signup', 'New Client Signup', 'ACTIVE', '{"last_run": null}'),
+      ('push_renew', 'Subscription Renewed', 'ACTIVE', '{"last_run": null}'),
+      ('push_fail', 'Payment Failed', 'ACTIVE', '{"last_run": null}'),
+      ('push_maint', 'System Maintenance', 'ACTIVE', '{"last_run": null}')
+      ON CONFLICT (task_key) DO NOTHING;
+      
+      -- Insert Default Admin (This will now succeed because columns exist)
+      INSERT INTO admins (email, password, name, role, status)
+      VALUES ('admin@saanify.com', 'admin123', 'Super Admin', 'ADMIN', 'ACTIVE')
+      ON CONFLICT (email) DO NOTHING;
+
+      COMMIT;
+    `);
+
+    await client.end();
+    return NextResponse.json({ success: true, message: "Database Repaired & Initialized!" });
+
+  } catch (error: any) {
+    console.error("DB Setup Error:", error);
+    if (client) await client.end();
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

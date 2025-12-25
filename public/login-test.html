@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .credentials { background: #e2e3e5; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Login Test Page</h1>
+    
+    <div class="credentials">
+        <h3>📋 Test Credentials:</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+                <h4>👑 Admin Account:</h4>
+                <p><strong>Email:</strong> admin@saanify.com</p>
+                <p><strong>Password:</strong> admin123</p>
+                <p><strong>Role:</strong> ADMIN</p>
+            </div>
+            <div>
+                <h4>👤 Client Account:</h4>
+                <p><strong>Email:</strong> testuser@saanify.com</p>
+                <p><strong>Password:</strong> test123</p>
+                <p><strong>Role:</strong> CLIENT</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🧪 Quick Login Test</h3>
+        
+        <div>
+            <label>Email: </label>
+            <input type="email" id="email" value="admin@saanify.com" style="width: 200px;">
+        </div>
+        <div>
+            <label>Password: </label>
+            <input type="password" id="password" value="admin123" style="width: 200px;">
+        </div>
+        <div>
+            <label>User Type: </label>
+            <select id="userType">
+                <option value="admin">Admin</option>
+                <option value="client">Client</option>
+            </select>
+        </div>
+        
+        <button onclick="testLogin()">🚀 Test Login</button>
+        <button onclick="fillAdmin()">👑 Fill Admin</button>
+        <button onclick="fillClient()">👤 Fill Client</button>
+        
+        <div id="login-result" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🔗 Navigation Links</h3>
+        <button onclick="window.open('/login', '_blank')">🔐 Login Page</button>
+        <button onclick="window.open('/subscription', '_blank')">💳 Subscription Page</button>
+        <button onclick="window.open('/admin', '_blank')">⚙️ Admin Dashboard</button>
+        <button onclick="window.open('/client/dashboard', '_blank')">📊 Client Dashboard</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>📝 Manual Payment Test Flow</h3>
+        <ol>
+            <li><strong>Login as Client:</strong> Use testuser@saanify.com / test123</li>
+            <li><strong>Go to Subscription:</strong> Click subscription link above</li>
+            <li><strong>Select Basic Plan:</strong> Choose Basic plan (₹4,000/month)</li>
+            <li><strong>Upload Payment:</strong> Upload any screenshot as payment proof</li>
+            <li><strong>Check Status:</strong> You should see "pending" status</li>
+            <li><strong>Login as Admin:</strong> Use admin@saanify.com / admin123</li>
+            <li><strong>Approve Payment:</strong> Go to admin → subscription verification</li>
+            <li><strong>Verify Activation:</strong> Client should now have active subscription</li>
+        </ol>
+    </div>
+
+    <script>
+        function showResult(message, isSuccess = true) {
+            const element = document.getElementById('login-result');
+            element.innerHTML = message;
+            element.className = 'result ' + (isSuccess ? 'success' : 'error');
+            element.style.display = 'block';
+        }
+        
+        function fillAdmin() {
+            document.getElementById('email').value = 'admin@saanify.com';
+            document.getElementById('password').value = 'admin123';
+            document.getElementById('userType').value = 'admin';
+        }
+        
+        function fillClient() {
+            document.getElementById('email').value = 'testuser@saanify.com';
+            document.getElementById('password').value = 'test123';
+            document.getElementById('userType').value = 'client';
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const userType = document.getElementById('userType').value;
+            
+            showResult('🔄 Testing login...', true);
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        userType,
+                        rememberMe: false
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    let message = '✅ Login Successful!\\n\\n';
+                    message += `👤 User: ${data.user.name} (${data.user.email})\\n`;
+                    message += `🔑 Role: ${data.user.role}\\n`;
+                    message += `📧 Subscription: ${data.user.subscriptionStatus || 'None'}\\n`;
+                    message += `💳 Plan: ${data.user.plan || 'None'}\\n`;
+                    message += `🔗 Redirect URL: ${data.redirectUrl}`;
+                    
+                    showResult(message, true);
+                    
+                    // Auto redirect after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 3000);
+                } else {
+                    showResult(`❌ Login Failed: ${data.error || 'Unknown error'}`, false);
+                }
+            } catch (error) {
+                showResult(`❌ Network Error: ${error.message}`, false);
+            }
+        }
+        
+        // Auto-fill admin on page load
+        window.onload = function() {
+            fillAdmin();
+        };
+    </script>
+</body>
+</html>

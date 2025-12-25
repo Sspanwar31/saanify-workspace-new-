@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loan Request Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Loan Request Test</h1>
+    
+    <div class="test-section">
+        <h3>Test with Sarah Johnson (has active loan)</h3>
+        <button onclick="testLoanRequest('5dc06087-7df1-471f-a913-a039a1b96dc4')">Test John Smith</button>
+        <button onclick="testLoanRequest('b1de08dd-1523-449f-a180-fd9704128cff')">Test Sarah Johnson (Active Loan)</button>
+        <button onclick="testLoanRequest('73cdc1da-094f-407f-b01a-e8cef39b0674')">Test Michael Brown (Active Loan)</button>
+        <button onclick="testLoanRequest('4e7e98e4-8dab-4ab0-9ae0-76ede95767b5')">Test Emily Davis</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function testLoanRequest(memberId) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch('/api/client/loan-request/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        memberId: memberId,
+                        amount: 5000
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    resultDiv.innerHTML = `<p class="success">✅ SUCCESS: Loan request created! Loan ID: ${result.loanId}</p>`;
+                } else {
+                    const error = await response.json();
+                    resultDiv.innerHTML = `<p class="error">❌ FAILED: ${error.error}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ ERROR: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

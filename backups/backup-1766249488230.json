@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-12-20T16:51:28.230Z",
+  "clients": [
+    {
+      "id": 1,
+      "name": "test",
+      "email": "test@gmail.com",
+      "phone": "9782210804",
+      "address": null,
+      "created_at": "2025-12-19T17:56:47.218",
+      "updated_at": "2025-12-19T17:56:47.219",
+      "password": "123456",
+      "plan": "TRIAL",
+      "status": "ACTIVE",
+      "payment_id": null,
+      "society_name": "ghokuldham society",
+      "payment_method": null,
+      "is_lifetime": false,
+      "subscription_expiry": null
+    }
+  ],
+  "invoices": []
+}

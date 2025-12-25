@@ -1,0 +1,41 @@
+{
+  "metadata": {
+    "backup_timestamp": "2025-11-12T16:59:54.557Z",
+    "backup_type": "manual",
+    "version": "1.0",
+    "source": "saanify_local_db",
+    "record_counts": {
+      "users": 2,
+      "clients": 1,
+      "societies": 0,
+      "posts": 0,
+      "secrets": 0
+    }
+  },
+  "data": {
+    "users": [
+      {
+        "id": "1",
+        "email": "admin@saanify.com",
+        "name": "Admin User",
+        "role": "ADMIN"
+      },
+      {
+        "id": "2",
+        "email": "client@saanify.com",
+        "name": "Client User",
+        "role": "CLIENT"
+      }
+    ],
+    "clients": [
+      {
+        "id": "1",
+        "name": "Demo Society",
+        "email": "demo@saanify.com"
+      }
+    ],
+    "societies": [],
+    "posts": [],
+    "secrets": []
+  }
+}

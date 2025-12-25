@@ -1,0 +1,41 @@
+{
+  "timestamp": "2025-11-05T07:38:13.937Z",
+  "baseUrl": "https://saanify-workspace.vercel.app",
+  "tests": {
+    "health": {
+      "status": "✅ Passed",
+      "statusCode": 200
+    },
+    "superAdminLogin": {
+      "status": "✅ Passed",
+      "user": "ADMIN",
+      "role": "ADMIN"
+    },
+    "demoClientLogin": {
+      "status": "✅ Passed",
+      "user": "Demo Client",
+      "role": "CLIENT"
+    },
+    "adminDashboard": {
+      "status": "✅ Passed",
+      "statusCode": 200
+    },
+    "clientDashboard": {
+      "status": "✅ Passed",
+      "statusCode": 200
+    },
+    "databaseOperations": {
+      "status": "✅ Passed",
+      "users": 6,
+      "societies": 4,
+      "readonlyErrors": false
+    }
+  },
+  "overall": {
+    "totalTests": 6,
+    "passedTests": 6,
+    "failedTests": 0,
+    "successRate": 100,
+    "status": "✅ SYSTEM READY"
+  }
+}

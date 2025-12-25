@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manual Payment Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; background: #f8f9fa; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Manual Payment Flow Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Test User Login</h3>
+        <button onclick="testLogin()">Test User Login</button>
+        <div id="login-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Test Payment Upload</h3>
+        <input type="file" id="screenshot" accept="image/*">
+        <br><br>
+        <button onclick="testPaymentUpload()">Upload Payment</button>
+        <div id="upload-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Test Payment Status</h3>
+        <button onclick="testPaymentStatus()">Check Status</button>
+        <div id="status-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Test Admin API</h3>
+        <button onclick="testAdminAPI()">Check Admin</button>
+        <div id="admin-result" class="result"></div>
+    </div>
+
+    <script>
+        let authToken = '';
+        
+        // Test user credentials (from our test script)
+        const TEST_USER_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWlrbDF0Z3cwMDAwb2tkY2s5MW93M3hiIiwiZW1haWwiOiJtYW51YWx0ZXN0QHNhYW5pZnkuY29tIiwiaWF0IjoxNzY0NDM4MzcyLCJleHAiOjE3NjUwNDMxNzJ9.8jGeuDgLujj02IveIlXcAMnAry6ekvfj5w14D_13Upc';
+        const TEST_ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWlra3Q2bnEwMDAwb2t6d2N2Y3VkbmY3IiwiZW1haWwiOiJhZG1pbkBzYWFuaWZ5LmNvbSIsImlhdCI6MTc2NDQzODM3NCwiZXhwIjoxNzY1MDQzMTc0fQ.sUXadL4vahNdQrkKxakeXhhpHR2U5GK7A1R7QfiKN64';
+        
+        function showResult(elementId, message, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = 'result ' + (isSuccess ? 'success' : 'error');
+        }
+        
+        function testLogin() {
+            authToken = TEST_USER_TOKEN;
+            showResult('login-result', '✅ Using test user token: manualtest@saanify.com', true);
+        }
+        
+        async function testPaymentUpload() {
+            if (!authToken) {
+                showResult('upload-result', '❌ Please login first', false);
+                return;
+            }
+            
+            const fileInput = document.getElementById('screenshot');
+            if (!fileInput.files[0]) {
+                showResult('upload-result', '❌ Please select a screenshot', false);
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('plan', 'basic');
+            formData.append('planName', 'Basic Plan');
+            formData.append('amount', '4000');
+            formData.append('transactionId', 'WEB_TEST_' + Date.now());
+            formData.append('paymentMethod', 'UPI');
+            formData.append('payerName', 'Web Test User');
+            formData.append('payerEmail', 'manualtest@saanify.com');
+            formData.append('payerPhone', '1234567890');
+            formData.append('notes', 'Web test payment');
+            formData.append('screenshot', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/api/subscription/submit-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('upload-result', `✅ Payment uploaded successfully!\\nPayment ID: ${data.pendingPayment?.id}\\nTransaction ID: ${data.pendingPayment?.txnId}`, true);
+                } else {
+                    showResult('upload-result', `❌ Upload failed: ${data.error || 'Unknown error'}`, false);
+                }
+            } catch (error) {
+                showResult('upload-result', `❌ Network error: ${error.message}`, false);
+            }
+        }
+        
+        async function testPaymentStatus() {
+            if (!authToken) {
+                showResult('status-result', '❌ Please login first', false);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/subscription/payment-status', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.authenticated) {
+                    let message = `✅ Payment Status: ${data.paymentStatus}\\n`;
+                    if (data.paymentDetails?.pendingPayment) {
+                        message += `Pending Payment: ${data.paymentDetails.pendingPayment.transactionId}\\n`;
+                    }
+                    if (data.paymentDetails?.paymentProof) {
+                        message += `Payment Proof: ${data.paymentDetails.paymentProof.transactionId}\\n`;
+                    }
+                    showResult('status-result', message, true);
+                } else {
+                    showResult('status-result', `❌ Status check failed: ${data.error || 'Not authenticated'}`, false);
+                }
+            } catch (error) {
+                showResult('status-result', `❌ Network error: ${error.message}`, false);
+            }
+        }
+        
+        async function testAdminAPI() {
+            try {
+                const response = await fetch('/api/admin/subscriptions/payment-proofs', {
+                    headers: {
+                        'Authorization': `Bearer ${TEST_ADMIN_TOKEN}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    let message = `✅ Admin API Working!\\n`;
+                    message += `Total Payments: ${data.paymentProofs?.length || 0}\\n`;
+                    message += `Pending: ${data.stats?.pending || 0}\\n`;
+                    message += `Approved: ${data.stats?.approved || 0}\\n`;
+                    message += `Rejected: ${data.stats?.rejected || 0}`;
+                    showResult('admin-result', message, true);
+                } else {
+                    showResult('admin-result', `❌ Admin API failed: ${data.error || 'Unknown error'}`, false);
+                }
+            } catch (error) {
+                showResult('admin-result', `❌ Network error: ${error.message}`, false);
+            }
+        }
+    </script>
+</body>
+</html>

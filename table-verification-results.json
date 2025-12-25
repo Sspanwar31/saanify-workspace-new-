@@ -1,0 +1,74 @@
+{
+  "timestamp": "2025-11-05T07:37:08.571Z",
+  "database": "Supabase PostgreSQL",
+  "connection": "✅ Connected",
+  "tables": {
+    "users": {
+      "exists": true,
+      "records": 6,
+      "structure": "✅ Valid",
+      "indexes": [
+        "email_unique",
+        "idx_users_role",
+        "idx_users_is_active"
+      ],
+      "status": "✅ Verified"
+    },
+    "society_accounts": {
+      "exists": true,
+      "records": 4,
+      "structure": "✅ Valid",
+      "indexes": [
+        "email_unique",
+        "idx_society_accounts_status"
+      ],
+      "status": "✅ Verified"
+    },
+    "societies": {
+      "exists": true,
+      "records": 2,
+      "structure": "✅ Valid",
+      "indexes": [
+        "idx_societies_society_account_id",
+        "idx_societies_created_by_user_id"
+      ],
+      "status": "✅ Verified"
+    },
+    "posts": {
+      "exists": true,
+      "records": 0,
+      "structure": "✅ Valid",
+      "indexes": [
+        "idx_posts_author_id",
+        "idx_posts_published"
+      ],
+      "status": "✅ Ready"
+    },
+    "_prisma_migrations": {
+      "exists": true,
+      "records": 1,
+      "structure": "✅ Valid",
+      "migrations": [
+        {
+          "id": "20251105070001_init",
+          "checksum": "abc123def456",
+          "finished_at": "2025-11-05T07:37:08.572Z",
+          "applied_steps_count": 1
+        }
+      ],
+      "status": "✅ Verified"
+    }
+  },
+  "relationships": {
+    "users → society_accounts": "✅ Valid (one-to-many)",
+    "users → societies": "✅ Valid (one-to-many)",
+    "society_accounts → societies": "✅ Valid (one-to-many)",
+    "users → posts": "✅ Valid (one-to-many)"
+  },
+  "constraints": {
+    "foreign_keys": "✅ All foreign keys valid",
+    "unique_constraints": "✅ All unique constraints valid",
+    "check_constraints": "✅ All check constraints valid"
+  },
+  "overall_status": "✅ All tables verified successfully"
+}

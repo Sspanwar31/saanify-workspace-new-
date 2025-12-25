@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SuperAdmin Automation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 8px; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+        button { background: #2196F3; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 SuperAdmin Automation Changes Test</h1>
+    
+    <div class="test-section">
+        <h2 class="info">📋 How to See the Changes:</h2>
+        <ol>
+            <li><strong>Hard Refresh:</strong> Press <code>Ctrl+Shift+R</code> (Windows/Linux) or <code>Cmd+Shift+R</code> (Mac)</li>
+            <li><strong>Clear Cache:</strong> Open DevTools (F12) → Right-click refresh button → Empty Cache and Hard Reload</li>
+            <li><strong>Open in Incognito:</strong> Try opening the superadmin panel in an incognito window</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2 class="info">🔍 What to Look For:</h2>
+        <ul>
+            <li><strong>API Status Indicator:</strong> Look for "Connected", "Loading...", or "Using Demo Data" near the Automation title</li>
+            <li><strong>Real Data Loading:</strong> Tasks should load from database instead of static data</li>
+            <li><strong>Interactive Buttons:</strong> Toggle and Run buttons should show loading states</li>
+            <li><strong>Console Logs:</strong> Open DevTools and check Console tab for API calls</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2 class="info">🚀 Quick Test:</h2>
+        <button onclick="testAutomationAPI()">Test Automation API</button>
+        <button onclick="openSuperAdmin()">Open SuperAdmin Panel</button>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        async function testAutomationAPI() {
+            const results = document.getElementById('test-results');
+            results.innerHTML = '<p class="info">Testing API...</p>';
+            
+            try {
+                const response = await fetch('/api/superadmin/automation/data');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    results.innerHTML = `
+                        <p class="success">✅ API Working!</p>
+                        <p class="info">Tasks found: ${data.tasks?.length || 0}</p>
+                        <p class="info">Logs found: ${data.logs?.length || 0}</p>
+                    `;
+                } else {
+                    results.innerHTML = `<p class="error">❌ API Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<p class="error">❌ Network Error: ${error.message}</p>`;
+            }
+        }
+
+        function openSuperAdmin() {
+            window.open('/superadmin', '_blank');
+        }
+
+        // Auto-test on page load
+        window.onload = () => {
+            console.log('🔧 Automation Test Page Loaded');
+            console.log('📝 Instructions:');
+            console.log('1. Use Ctrl+Shift+R to hard refresh the superadmin page');
+            console.log('2. Look for API status indicators in the Automation section');
+            console.log('3. Check console logs for API calls');
+        };
+    </script>
+</body>
+</html>

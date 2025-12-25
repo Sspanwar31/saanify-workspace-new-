@@ -1,0 +1,14 @@
+{
+  "healthEndpoint": {
+    "status": 200,
+    "response": "{\"message\":\"Good!\",\"timestamp\":\"2025-11-05T07:00:00.000Z\",\"database\":\"connected\",\"version\":\"1.0.0\"}",
+    "success": true
+  },
+  "authEndpoint": {
+    "status": 200,
+    "response": "{\"success\":true,\"message\":\"Login successful\",\"user\":{\"id\":\"user_super_admin_123\",\"email\":\"ADMIN@saanify.com\",\"name\":\"ADMIN\",\"role\":\"ADMIN\"}}",
+    "success": true
+  },
+  "timestamp": "2025-11-05T07:16:17.324Z",
+  "overallStatus": "healthy"
+}
