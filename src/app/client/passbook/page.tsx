@@ -28,6 +28,7 @@ import PassbookAddEntryModal from '@/components/client/PassbookAddEntryModal'
 import LoanRequestModal from '@/components/client/LoanRequestModal'
 
 export default function PassbookPage() {
+  // Updated: 2025-12-22 - Enhanced UI with new modal components
   const [isAddEntryOpen, setIsAddEntryOpen] = useState(false)
   const [isLoanModalOpen, setIsLoanModalOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState('')
