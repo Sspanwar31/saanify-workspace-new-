@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Info } from 'lucide-react';
-import { useClientStore, Member } from '@/lib/client/store';
 
 interface LoanRequestModalProps {
   isOpen: boolean;
@@ -17,41 +17,73 @@ interface LoanRequestModalProps {
 }
 
 export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId }: LoanRequestModalProps) {
-  const { members, loans, requestLoan } = useClientStore();
+  // --- Supabase States ---
+  const [members, setMembers] = useState<any[]>([]);
+  const [clientId, setClientId] = useState<string | null>(null);
 
+  // --- Form States ---
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [loanAmount, setLoanAmount] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeLoanWarning, setActiveLoanWarning] = useState<string>('');
 
+  // 1. Fetch Client & Members
+  useEffect(() => {
+    if (isOpen) {
+      const fetchData = async () => {
+        const { data: clients } = await supabase.from('clients').select('id').limit(1);
+        if (clients && clients.length > 0) {
+          const cid = clients[0].id;
+          setClientId(cid);
+
+          const { data: membersData } = await supabase
+            .from('members')
+            .select('*')
+            .eq('client_id', cid);
+          
+          if (membersData) setMembers(membersData);
+        }
+      };
+      fetchData();
+    }
+  }, [isOpen]);
+
   const selectedMember = members.find(m => m.id === selectedMemberId);
 
-  // Check if member already has an active loan
+  // 2. Check for Active Loan (Async Check in Supabase)
   useEffect(() => {
-    if (selectedMemberId) {
-      const activeLoan = loans.find(loan => 
-        loan.memberId === selectedMemberId && loan.status === 'active'
-      );
-      
-      if (activeLoan) {
-        setActiveLoanWarning(`This member already has an active loan of ₹${activeLoan.remainingBalance.toLocaleString()}. New loan requests may be subject to additional review.`);
+    const checkActiveLoan = async () => {
+      if (selectedMemberId && clientId) {
+        // Query loans table for active status
+        const { data: activeLoans } = await supabase
+          .from('loans')
+          .select('*')
+          .eq('member_id', selectedMemberId)
+          .eq('status', 'active');
+        
+        if (activeLoans && activeLoans.length > 0) {
+          const loan = activeLoans[0];
+          setActiveLoanWarning(`This member already has an active loan of ₹${(loan.remaining_balance || loan.amount).toLocaleString()}. New loan requests may be subject to additional review.`);
+        } else {
+          setActiveLoanWarning('');
+        }
       } else {
         setActiveLoanWarning('');
       }
-    } else {
-      setActiveLoanWarning('');
-    }
-  }, [selectedMemberId, loans]);
+    };
+    checkActiveLoan();
+  }, [selectedMemberId, clientId]);
 
-  // Auto-select member if preSelectedMemberId is provided
+  // Auto-select if prop provided
   useEffect(() => {
     if (preSelectedMemberId && isOpen) {
       setSelectedMemberId(preSelectedMemberId);
     }
   }, [preSelectedMemberId, isOpen]);
 
+  // 3. Submit Handler (Supabase)
   const handleSubmit = async () => {
-    if (!selectedMemberId) {
+    if (!selectedMemberId || !clientId) {
       alert('Please select a member');
       return;
     }
@@ -59,27 +91,26 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
     setIsSubmitting(true);
 
     try {
-      const loanData = {
-        memberId: selectedMemberId,
-        amount: loanAmount ? parseFloat(loanAmount) : 0,
-        interestRate: 12, // Default interest rate
-        tenure: 12, // Default tenure in months
-        startDate: new Date().toISOString().split('T')[0],
-        maturityDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        emiAmount: loanAmount ? (parseFloat(loanAmount) * 1.12) / 12 : 0, // Simple EMI calculation
-        purpose: 'Loan request via super client'
-      };
+      const amountVal = loanAmount ? parseFloat(loanAmount) : 0;
+      
+      const { error } = await supabase.from('loans').insert([{
+        client_id: clientId,
+        member_id: selectedMemberId,
+        amount: amountVal,
+        status: 'pending', // Default status for requests
+        start_date: new Date().toISOString().split('T')[0],
+        // Additional fields can be added here if your schema supports them
+        // interest_rate: 12,
+        // duration: 12,
+      }]);
 
-      const result = requestLoan(loanData);
-
-      if (result.success) {
+      if (!error) {
         alert('Loan request submitted successfully!');
-        // Reset form
         setSelectedMemberId('');
         setLoanAmount('');
         onClose();
       } else {
-        alert(`Error: ${result.message}`);
+        alert(`Error: ${error.message}`);
       }
     } catch (error) {
       console.error('Error submitting loan request:', error);
@@ -89,9 +120,6 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
     }
   };
 
-  // Filter active members for selection
-  const activeMembers = members.filter(member => member.status === 'active');
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
@@ -100,7 +128,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Member Selection - Hide if preSelectedMemberId is provided */}
+          {/* Member Selection */}
           {!preSelectedMemberId ? (
             <div className="space-y-2">
               <Label htmlFor="member">Select Member</Label>
@@ -109,7 +137,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
                   <SelectValue placeholder="Choose a member" />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeMembers.map((member) => (
+                  {members.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
                       {member.name} - {member.phone}
                     </SelectItem>
@@ -128,7 +156,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
             </div>
           )}
 
-          {/* Loan Amount (Optional) */}
+          {/* Loan Amount */}
           <div className="space-y-2">
             <Label htmlFor="loanAmount">Loan Amount (Optional)</Label>
             <Input
@@ -139,7 +167,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
               onChange={(e) => setLoanAmount(e.target.value)}
             />
             <p className="text-sm text-muted-foreground">
-              If not specified, admin will determine the loan amount based on member's profile and deposit history.
+              If not specified, admin will determine the loan amount based on member's profile.
             </p>
           </div>
 
@@ -160,14 +188,9 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
               <div className="text-sm space-y-1">
                 <div><strong>Name:</strong> {selectedMember.name}</div>
                 <div><strong>Phone:</strong> {selectedMember.phone}</div>
-                <div><strong>Join Date:</strong> {selectedMember.joinDate}</div>
                 <div><strong>Status:</strong> 
-                  <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                    selectedMember.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {selectedMember.status}
+                  <span className="ml-2 px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                    Active
                   </span>
                 </div>
               </div>
