@@ -1,50 +1,54 @@
 'use client'
 
 import { useState } from 'react'
-import { useClientStore } from '@/lib/client/store'
-import { Badge } from '@/components/ui/badge'
+import { supabase } from '@/lib/supabase-simple' // Supabase
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Calendar, DollarSign, User, CheckCircle, XCircle } from 'lucide-react'
+import { Calendar, DollarSign, CheckCircle, XCircle } from 'lucide-react'
 import { ApproveLoanModal } from './ApproveLoanModal'
 
-export function LoanRequestsTable() {
-  const { loanRequests, getMemberDepositBalance } = useClientStore()
+// Accept Data as Prop
+export function LoanRequestsTable({ requests }: { requests: any[] }) {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const pendingRequests = loanRequests.filter(request => request.status === 'pending')
-
+  // --- Handlers ---
   const handleApprove = (requestId: string) => {
     setSelectedRequest(requestId)
     setIsModalOpen(true)
   }
 
-  const handleReject = (requestId: string) => {
-    // For now, just reject with a default reason
-    // In a real app, you'd want a modal for rejection reason
-    const reason = "Loan request rejected due to eligibility criteria"
-    useClientStore.getState().rejectLoan(requestId, reason)
+  const handleReject = async (requestId: string) => {
+    if(confirm("Are you sure you want to reject this loan?")) {
+       const { error } = await supabase
+         .from('loans')
+         .update({ status: 'rejected' })
+         .eq('id', requestId);
+       
+       if(!error) {
+         window.location.reload(); // Refresh to update list
+       } else {
+         alert("Error rejecting loan: " + error.message);
+       }
+    }
   }
 
   const formatDate = (dateString: string) => {
+    if(!dateString) return '-';
     return new Date(dateString).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
+      day: 'numeric', month: 'short', year: 'numeric'
     })
   }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount)
+      style: 'currency', currency: 'INR'
+    }).format(amount || 0)
   }
 
-  if (pendingRequests.length === 0) {
+  if (requests.length === 0) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center h-32">
@@ -76,18 +80,14 @@ export function LoanRequestsTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pendingRequests.map((request) => {
-                // CALCULATE LIVE DEPOSIT
-                const liveDeposit = getMemberDepositBalance(request.memberId);
-                
-                return (
+              {requests.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={`/avatars/${request.memberId}.jpg`} />
                         <AvatarFallback>
-                          {request.memberName.split(' ').map(n => n[0]).join('')}
+                          {request.memberName ? request.memberName.charAt(0) : 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col justify-center">
@@ -102,12 +102,13 @@ export function LoanRequestsTable() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="max-w-xs truncate">{request.purpose}</p>
+                    <p className="max-w-xs truncate">{request.purpose || 'Loan Request'}</p>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <DollarSign className="h-4 w-4 text-blue-600" />
-                      <span>{formatCurrency(liveDeposit)}</span>
+                      {/* Using fetched memberTotalDeposits */}
+                      <span>{formatCurrency(request.memberTotalDeposits)}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -137,21 +138,23 @@ export function LoanRequestsTable() {
                     </div>
                   </TableCell>
                 </TableRow>
-                );
-              })}
+              ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      <ApproveLoanModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setSelectedRequest(null)
-        }}
-        requestId={selectedRequest}
-      />
+      {isModalOpen && (
+        <ApproveLoanModal
+            isOpen={isModalOpen}
+            onClose={() => {
+            setIsModalOpen(false)
+            setSelectedRequest(null)
+            window.location.reload(); // Refresh after approval logic
+            }}
+            requestId={selectedRequest}
+        />
+      )}
     </>
   )
 }
