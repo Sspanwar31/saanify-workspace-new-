@@ -1,17 +1,25 @@
 'use client';
 import { useState } from 'react';
-import { useClientStore } from '@/lib/client/store';
+import { supabase } from '@/lib/supabase-simple'; // Supabase
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2 } from 'lucide-react';
 import { EditLoanModal } from './EditLoanModal';
 
-export function AllLoansTable() {
-  const { loans, deleteLoan, members } = useClientStore();
+// Accept Data as Prop
+export function AllLoansTable({ loans }: { loans: any[] }) {
   const [editingLoan, setEditingLoan] = useState<any>(null);
 
-  // AGGREGATION LOGIC
+  // --- Handlers ---
+  const handleDeleteLoan = async (loanId: string) => {
+    if(confirm("Are you sure you want to delete this loan record?")) {
+        const { error } = await supabase.from('loans').delete().eq('id', loanId);
+        if(!error) window.location.reload();
+    }
+  }
+
+  // --- AGGREGATION LOGIC (KEPT SAME) ---
   const groupedLoans = loans.reduce((acc: any, loan) => {
     if (loan.status !== 'active') return acc;
     
@@ -19,7 +27,7 @@ export function AllLoansTable() {
       acc[loan.memberId] = { 
         ...loan, 
         count: 1,
-        totalInterestEarned: 0 // Initialize tracking if needed
+        totalInterestEarned: 0 
       };
     } else {
       acc[loan.memberId].amount += loan.amount;
@@ -38,12 +46,16 @@ export function AllLoansTable() {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
 
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric'
-  });
+  const formatDate = (dateStr: string) => {
+    if(!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric'
+    });
+  }
 
   const getNextEMI = (startDate: string) => {
-    const d = new Date();
+    if(!startDate) return '-';
+    const d = new Date(startDate);
     d.setMonth(d.getMonth() + 1); // Simple +1 Month Logic
     return formatDate(d.toISOString());
   };
@@ -69,13 +81,13 @@ export function AllLoansTable() {
           <TableBody>
             {displayLoans.length > 0 ? (
               displayLoans.map((loan: any) => {
-                const memberName = members.find(m => m.id === loan.memberId)?.name || "Unknown";
-                const monthlyInterest = loan.remainingBalance * 0.01;
+                // Member Name fetched in Parent
+                const monthlyInterest = (loan.remainingBalance || 0) * 0.01;
 
                 return (
                   <TableRow key={loan.id}>
                     <TableCell>
-                      <div className="font-medium">{memberName}</div>
+                      <div className="font-medium">{loan.memberName}</div>
                       <div className="text-xs text-gray-500">
                         {loan.count > 1 ? `${loan.count} Active Loans` : ''}
                       </div>
@@ -97,7 +109,7 @@ export function AllLoansTable() {
                         <Button size="icon" variant="ghost" onClick={() => setEditingLoan(loan)}>
                           <Edit className="h-4 w-4 text-blue-500" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => deleteLoan(loan.id)}>
+                        <Button size="icon" variant="ghost" onClick={() => handleDeleteLoan(loan.id)}>
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
