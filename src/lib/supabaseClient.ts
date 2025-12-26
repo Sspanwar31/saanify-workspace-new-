@@ -189,3 +189,6 @@ export function getSupabaseProjectInfo() {
   const config = getSupabaseConfig()
   return config?.project || null
 }
+
+// Export supabase client for backward compatibility
+export const supabase = getSupabaseClient()

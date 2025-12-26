@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient'; // Adjust path
+import { supabase } from './supabaseClient'; // Local supabase client
 import { 
   Search, RefreshCw, Download, Plus, HandCoins, 
   Trash2, Edit, Calculator, X, Wallet, User 
