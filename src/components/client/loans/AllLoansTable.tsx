@@ -1,64 +1,79 @@
 'use client';
+
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Supabase
+import { supabase } from '@/lib/supabase-simple'; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, CheckCircle2 } from 'lucide-react';
 import { EditLoanModal } from './EditLoanModal';
 
-// Accept Data as Prop
+// Helper to format currency
+const formatCurrency = (val: number) => 
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
+
+// Helper to format date
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric'
+  });
+};
+
+const getNextEMI = (startDate: string) => {
+  if (!startDate) return '-';
+  const d = new Date(startDate);
+  d.setMonth(d.getMonth() + 1); // Next Month
+  return formatDate(d.toISOString());
+};
+
 export function AllLoansTable({ loans }: { loans: any[] }) {
   const [editingLoan, setEditingLoan] = useState<any>(null);
 
-  // --- Handlers ---
-  const handleDeleteLoan = async (loanId: string) => {
-    if(confirm("Are you sure you want to delete this loan record?")) {
-        const { error } = await supabase.from('loans').delete().eq('id', loanId);
-        if(!error) window.location.reload();
-    }
-  }
+  // --- LOGIC 1: FILTER (Remove Rejected) ---
+  const validLoans = loans.filter(l => l.status !== 'rejected');
 
-  // --- AGGREGATION LOGIC (KEPT SAME) ---
-  const groupedLoans = loans.reduce((acc: any, loan) => {
-    if (loan.status !== 'active') return acc;
-    
-    if (!acc[loan.memberId]) {
-      acc[loan.memberId] = { 
-        ...loan, 
-        count: 1,
-        totalInterestEarned: 0 
+  // --- LOGIC 2: GROUPING & MERGING (Aggregation) ---
+  const groupedLoans = validLoans.reduce((acc: any, loan) => {
+    const key = `${loan.memberId}-${loan.status}`; // Group by Member + Status (Active/Completed)
+
+    if (!acc[key]) {
+      // First entry for this member
+      acc[key] = {
+        ...loan,
+        count: 1, // Loan counter
+        totalAmount: loan.amount, // Total Principal
+        totalOutstanding: loan.remainingBalance, // Total Remaining
+        totalInterestCollected: loan.total_interest_collected || 0, // Total Interest Earned
+        // Keep the earliest start date
+        startDate: loan.startDate || loan.created_at
       };
     } else {
-      acc[loan.memberId].amount += loan.amount;
-      acc[loan.memberId].remainingBalance += loan.remainingBalance;
-      acc[loan.memberId].count += 1;
-      // Keep earliest start date
-      if (new Date(loan.startDate) < new Date(acc[loan.memberId].startDate)) {
-        acc[loan.memberId].startDate = loan.startDate;
+      // Merge subsequent loans
+      acc[key].count += 1;
+      acc[key].totalAmount += loan.amount;
+      acc[key].totalOutstanding += loan.remainingBalance;
+      acc[key].totalInterestCollected += (loan.total_interest_collected || 0);
+      
+      // Update start date if this loan is older
+      const currentStart = new Date(acc[key].startDate);
+      const newStart = new Date(loan.startDate || loan.created_at);
+      if (newStart < currentStart) {
+        acc[key].startDate = loan.startDate;
       }
     }
     return acc;
   }, {});
 
-  const displayLoans = Object.values(groupedLoans);
+  const displayRows = Object.values(groupedLoans);
 
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
-
-  const formatDate = (dateStr: string) => {
-    if(!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-        day: 'numeric', month: 'short', year: 'numeric'
-    });
+  // --- Handlers ---
+  const handleDeleteLoan = async (loanId: string) => {
+    if(confirm("Are you sure you want to delete this loan record? This cannot be undone.")) {
+        const { error } = await supabase.from('loans').delete().eq('id', loanId);
+        if(!error) window.location.reload();
+    }
   }
-
-  const getNextEMI = (startDate: string) => {
-    if(!startDate) return '-';
-    const d = new Date(startDate);
-    d.setMonth(d.getMonth() + 1); // Simple +1 Month Logic
-    return formatDate(d.toISOString());
-  };
 
   return (
     <>
@@ -67,51 +82,78 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
           <TableHeader>
             <TableRow className="bg-gray-50">
               <TableHead>Member</TableHead>
-              <TableHead>Loan Amount</TableHead>
+              <TableHead>Total Loan Amount</TableHead>
               <TableHead>Outstanding Balance</TableHead>
               <TableHead>Interest (1%)</TableHead>
               <TableHead>Total Interest Earned</TableHead>
               <TableHead>Start Date</TableHead>
-              <TableHead>End Date</TableHead>
               <TableHead>Next EMI</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayLoans.length > 0 ? (
-              displayLoans.map((loan: any) => {
-                // Member Name fetched in Parent
-                const monthlyInterest = (loan.remainingBalance || 0) * 0.01;
+            {displayRows.length > 0 ? (
+              displayRows.map((row: any) => {
+                // Auto Calculate Monthly Interest on Outstanding
+                const monthlyInterest = (row.totalOutstanding || 0) * 0.01;
+                
+                // Determine Status Style
+                const isClosed = row.totalOutstanding <= 0 || row.status === 'completed';
 
                 return (
-                  <TableRow key={loan.id}>
+                  <TableRow key={row.id} className={isClosed ? "bg-gray-50 opacity-70" : ""}>
                     <TableCell>
-                      <div className="font-medium">{loan.memberName}</div>
-                      <div className="text-xs text-gray-500">
-                        {loan.count > 1 ? `${loan.count} Active Loans` : ''}
+                      <div className="font-medium text-gray-900">{row.memberName}</div>
+                      <div className="text-xs text-blue-600 font-medium">
+                        {row.count > 1 ? `${row.count} Loans Merged` : 'Single Loan'}
                       </div>
                     </TableCell>
-                    <TableCell>{formatCurrency(loan.amount)}</TableCell>
-                    <TableCell className="text-red-600 font-bold">
-                      {formatCurrency(loan.remainingBalance)}
+                    
+                    <TableCell className="font-medium">
+                      {formatCurrency(row.totalAmount)}
                     </TableCell>
+                    
+                    <TableCell className={`font-bold ${isClosed ? 'text-green-600' : 'text-red-600'}`}>
+                      {isClosed ? 'Cleared' : formatCurrency(row.totalOutstanding)}
+                    </TableCell>
+                    
                     <TableCell className="text-blue-600">
-                      {formatCurrency(monthlyInterest)}
+                      {isClosed ? '-' : formatCurrency(monthlyInterest)}
                     </TableCell>
-                    <TableCell>₹0.00</TableCell>
-                    <TableCell>{formatDate(loan.startDate)}</TableCell>
-                    <TableCell>-</TableCell>
-                    <TableCell>{getNextEMI(loan.startDate)}</TableCell>
-                    <TableCell><Badge className="bg-green-100 text-green-800">Active</Badge></TableCell>
+                    
+                    <TableCell className="text-green-700 font-medium bg-green-50 rounded-md">
+                      {formatCurrency(row.totalInterestCollected)}
+                    </TableCell>
+                    
+                    <TableCell>{formatDate(row.startDate)}</TableCell>
+                    
+                    <TableCell>{isClosed ? '-' : getNextEMI(row.startDate)}</TableCell>
+                    
+                    <TableCell>
+                      {isClosed ? (
+                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Closed</Badge>
+                      ) : (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+                      )}
+                    </TableCell>
+                    
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button size="icon" variant="ghost" onClick={() => setEditingLoan(loan)}>
-                          <Edit className="h-4 w-4 text-blue-500" />
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDeleteLoan(loan.id)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        {/* Only allow edit/delete on active rows to prevent messing up history */}
+                        {!isClosed && (
+                          <>
+                            <Button size="icon" variant="ghost" onClick={() => setEditingLoan(row)}>
+                              <Edit className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => handleDeleteLoan(row.id)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </>
+                        )}
+                        {isClosed && (
+                           <CheckCircle2 className="h-5 w-5 text-green-500 ml-2" />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -119,14 +161,16 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-gray-500">No active loans found</TableCell>
+                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                  No active loans found
+                </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
 
-      {/* REUSE EDIT MODAL */}
+      {/* Edit Modal - Only opens for Active loans */}
       {editingLoan && (
         <EditLoanModal 
           isOpen={!!editingLoan} 
