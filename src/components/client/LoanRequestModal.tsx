@@ -27,19 +27,24 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeLoanWarning, setActiveLoanWarning] = useState<string>('');
 
-  // 1. Fetch Client & Members
+  // 1. Fetch Client & Members on Open
   useEffect(() => {
     if (isOpen) {
       const fetchData = async () => {
+        // Get Client ID
         const { data: clients } = await supabase.from('clients').select('id').limit(1);
+        
         if (clients && clients.length > 0) {
           const cid = clients[0].id;
           setClientId(cid);
 
+          // Get Active Members linked to this client
           const { data: membersData } = await supabase
             .from('members')
             .select('*')
-            .eq('client_id', cid);
+            .eq('client_id', cid)
+            // .eq('status', 'active') // Optional: Uncomment if you only want active members
+            .order('name', { ascending: true });
           
           if (membersData) setMembers(membersData);
         }
@@ -57,13 +62,14 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
         // Query loans table for active status
         const { data: activeLoans } = await supabase
           .from('loans')
-          .select('*')
+          .select('amount, remaining_balance')
           .eq('member_id', selectedMemberId)
-          .eq('status', 'active');
+          .eq('status', 'active'); // Assuming 'active' status means loan is ongoing
         
         if (activeLoans && activeLoans.length > 0) {
           const loan = activeLoans[0];
-          setActiveLoanWarning(`This member already has an active loan of ₹${(loan.remaining_balance || loan.amount).toLocaleString()}. New loan requests may be subject to additional review.`);
+          const balance = loan.remaining_balance || loan.amount;
+          setActiveLoanWarning(`This member already has an active loan of ₹${balance.toLocaleString()}. New loan requests may be subject to additional review.`);
         } else {
           setActiveLoanWarning('');
         }
@@ -71,10 +77,11 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
         setActiveLoanWarning('');
       }
     };
+    
     checkActiveLoan();
   }, [selectedMemberId, clientId]);
 
-  // Auto-select if prop provided
+  // Auto-select member if preSelectedMemberId is provided
   useEffect(() => {
     if (preSelectedMemberId && isOpen) {
       setSelectedMemberId(preSelectedMemberId);
@@ -93,19 +100,32 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
     try {
       const amountVal = loanAmount ? parseFloat(loanAmount) : 0;
       
-      const { error } = await supabase.from('loans').insert([{
+      // Calculate derived fields (keeping your original logic)
+      const interestRate = 12;
+      const tenureMonths = 12;
+      const startDate = new Date().toISOString().split('T')[0];
+      // Maturity date ~ 1 year later
+      const maturityDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      // Prepare payload
+      const loanData = {
         client_id: clientId,
         member_id: selectedMemberId,
         amount: amountVal,
         status: 'pending', // Default status for requests
-        start_date: new Date().toISOString().split('T')[0],
-        // Additional fields can be added here if your schema supports them
-        // interest_rate: 12,
-        // duration: 12,
-      }]);
+        start_date: startDate,
+        // Optional fields - ensure your Supabase table has these columns if you want to save them
+        interest_rate: interestRate,
+        duration_months: tenureMonths, 
+        end_date: maturityDate,
+        purpose: 'Loan request via portal'
+      };
+
+      const { error } = await supabase.from('loans').insert([loanData]);
 
       if (!error) {
         alert('Loan request submitted successfully!');
+        // Reset form
         setSelectedMemberId('');
         setLoanAmount('');
         onClose();
@@ -128,7 +148,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Member Selection */}
+          {/* Member Selection - Hide if preSelectedMemberId is provided */}
           {!preSelectedMemberId ? (
             <div className="space-y-2">
               <Label htmlFor="member">Select Member</Label>
@@ -139,7 +159,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
                 <SelectContent>
                   {members.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
-                      {member.name} - {member.phone}
+                      {member.name} {member.phone ? `- ${member.phone}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -156,7 +176,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
             </div>
           )}
 
-          {/* Loan Amount */}
+          {/* Loan Amount (Optional) */}
           <div className="space-y-2">
             <Label htmlFor="loanAmount">Loan Amount (Optional)</Label>
             <Input
@@ -167,7 +187,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
               onChange={(e) => setLoanAmount(e.target.value)}
             />
             <p className="text-sm text-muted-foreground">
-              If not specified, admin will determine the loan amount based on member's profile.
+              If not specified, admin will determine the loan amount based on member's profile and deposit history.
             </p>
           </div>
 
@@ -187,9 +207,10 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
               <h4 className="font-medium">Member Details:</h4>
               <div className="text-sm space-y-1">
                 <div><strong>Name:</strong> {selectedMember.name}</div>
-                <div><strong>Phone:</strong> {selectedMember.phone}</div>
+                <div><strong>Phone:</strong> {selectedMember.phone || 'N/A'}</div>
+                <div><strong>Join Date:</strong> {selectedMember.join_date || 'N/A'}</div>
                 <div><strong>Status:</strong> 
-                  <span className="ml-2 px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                  <span className={`ml-2 px-2 py-1 rounded-full text-xs bg-green-100 text-green-800`}>
                     Active
                   </span>
                 </div>
