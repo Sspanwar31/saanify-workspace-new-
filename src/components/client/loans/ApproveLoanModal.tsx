@@ -1,88 +1,149 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useClientStore } from '@/lib/client/store'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { 
   User, 
   DollarSign, 
   TrendingUp, 
   Shield, 
   AlertTriangle, 
-  Info,
-  Calendar,
-  Percent
-} from 'lucide-react'
+  Percent,
+  Calendar
+} from 'lucide-react';
 
 interface ApproveLoanModalProps {
-  isOpen: boolean
-  onClose: () => void
-  requestId: string | null
+  isOpen: boolean;
+  onClose: () => void;
+  requestId: string | null;
 }
 
 export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModalProps) {
-  const { loanRequests, approveLoan, getMemberDepositBalance } = useClientStore()
-  const [amount, setAmount] = useState<string>('')
-  const [isOverride, setIsOverride] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [totalDeposit, setTotalDeposit] = useState(0)
+  // --- Local States (Replaces Store) ---
+  const [request, setRequest] = useState<any>(null);
+  const [amount, setAmount] = useState<string>('');
+  const [isOverride, setIsOverride] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [totalDeposit, setTotalDeposit] = useState(0);
 
-  const request = loanRequests.find(r => r.id === requestId)
-
-  // FETCH LIVE DATA ON OPEN
+  // 1. Fetch Loan Request & Live Deposit Balance
   useEffect(() => {
-    if (isOpen && request) {
-      // 1. Get Live Balance from Store
-      const liveBalance = getMemberDepositBalance(request.memberId);
-      setTotalDeposit(liveBalance);
-      
-      // 2. Set Initial Amount
-      setAmount(request.amount?.toString() || '0');
-      setIsOverride(false);
+    if (isOpen && requestId) {
+      const fetchData = async () => {
+        // A. Fetch Loan Request Details
+        const { data: loanData, error } = await supabase
+          .from('loans')
+          .select('*, members(name, total_deposits, outstanding_loan)')
+          .eq('id', requestId)
+          .single();
+
+        if (loanData && !error) {
+          // Set Request Data
+          setRequest({
+            id: loanData.id,
+            memberId: loanData.member_id,
+            memberName: loanData.members?.name || 'Unknown',
+            amount: loanData.amount,
+            status: loanData.status
+          });
+
+          // Set Live Deposit Balance from Member Table
+          setTotalDeposit(loanData.members?.total_deposits || 0);
+          
+          // Set Initial Amount
+          setAmount(loanData.amount?.toString() || '0');
+          setIsOverride(false);
+        }
+      };
+      fetchData();
     }
-  }, [isOpen, request, getMemberDepositBalance]);
+  }, [isOpen, requestId]);
 
-  // Calculate limits with live data
-  const maxLimit = totalDeposit * 0.8
-  const requestedAmount = request?.amount || 0
-  const loanAmount = parseFloat(amount) || requestedAmount
+  // --- Logic: Limits Calculation ---
+  const maxLimit = totalDeposit * 0.8;
+  const requestedAmount = request?.amount || 0;
+  const loanAmount = parseFloat(amount) || requestedAmount;
 
-  // Validation logic
-  const isOverLimit = loanAmount > maxLimit
-  const canApprove = !isOverLimit || isOverride
+  // Validation
+  const isOverLimit = loanAmount > maxLimit;
+  const canApprove = !isOverLimit || isOverride;
 
+  // --- Submit Handler ---
   const handleSubmit = async () => {
-    if (!request || !canApprove) return
+    if (!request || !canApprove) return;
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      approveLoan(request.id, loanAmount, isOverride)
-      onClose()
-      setAmount('')
-      setIsOverride(false)
-    } catch (error) {
-      console.error('Error approving loan:', error)
+      const approvedAmount = loanAmount;
+      const today = new Date().toISOString();
+
+      // 1. Update Loan Status to Active
+      const { error: loanError } = await supabase
+        .from('loans')
+        .update({
+          status: 'active',
+          amount: approvedAmount, // Update amount if changed by admin
+          approved_amount: approvedAmount,
+          approved_at: today,
+          start_date: today.split('T')[0],
+          override_limit: isOverride,
+          interest_rate: 1, // Fixed 1%
+          remaining_balance: approvedAmount // Initial balance = Loan Amount
+        })
+        .eq('id', request.id);
+
+      if (loanError) throw loanError;
+
+      // 2. Update Member's Outstanding Loan Balance
+      // First fetch current outstanding
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('outstanding_loan')
+        .eq('id', request.memberId)
+        .single();
+      
+      const currentOutstanding = memberData?.outstanding_loan || 0;
+      const newOutstanding = currentOutstanding + approvedAmount;
+
+      await supabase
+        .from('members')
+        .update({ outstanding_loan: newOutstanding })
+        .eq('id', request.memberId);
+
+      // Success
+      alert("Loan Approved Successfully!");
+      onClose();
+      setAmount('');
+      setIsOverride(false);
+      
+      // Optional: Page refresh to show updates
+      // window.location.reload(); 
+
+    } catch (error: any) {
+      console.error('Error approving loan:', error);
+      alert('Error approving loan: ' + error.message);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR'
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
-  if (!request) return null
+  if (!request) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -108,13 +169,13 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={`/avatars/${request.memberId}.jpg`} />
                   <AvatarFallback className="bg-blue-100 text-blue-800 text-lg font-semibold">
-                    {request.memberName.split(' ').map(n => n[0]).join('')}
+                    {request.memberName.split(' ').map((n: string) => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <h3 className="font-semibold text-lg">{request.memberName}</h3>
                   <Badge variant="secondary" className="mt-1">
-                    Active Member
+                    Pending Approval
                   </Badge>
                 </div>
               </div>
@@ -131,7 +192,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{formatCurrency(totalDeposit)}</div>
-              <p className="text-blue-100 text-sm mt-1">Live balance from store</p>
+              <p className="text-blue-100 text-sm mt-1">Live balance from database</p>
             </CardContent>
           </Card>
 
@@ -264,5 +325,5 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
