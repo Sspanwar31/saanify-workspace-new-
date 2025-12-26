@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabaseClient'; // Use relative path to existing client
+import { supabase } from '@/lib/supabase-simple'; // Use simple supabase client
 import { 
   Search, RefreshCw, Download, Plus, HandCoins, 
   Trash2, Edit, Calculator, X, Wallet, User 
