@@ -20,17 +20,33 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
     setIsModalOpen(true)
   }
 
-  const handleReject = async (requestId: string) => {
-    if(confirm("Are you sure you want to reject this loan?")) {
-       const { error } = await supabase
-         .from('loans')
-         .update({ status: 'rejected' })
-         .eq('id', requestId);
-       
-       if(!error) {
-         window.location.reload(); // Refresh to update list
-       } else {
-         alert("Error rejecting loan: " + error.message);
+  // ✅ FIX: Notify then Delete
+  const handleReject = async (request: any) => {
+    if(confirm(`Are you sure you want to REJECT and DELETE the loan request for ${request.memberName}?`)) {
+       try {
+         // 1. Send Notification to Member (so they know it's rejected)
+         await supabase.from('notifications').insert([{
+           client_id: request.client_id,
+           member_id: request.memberId,
+           title: 'Loan Request Rejected',
+           message: `Your loan request for ₹${request.amount} has been rejected by the admin.`,
+           is_read: false
+         }]);
+
+         // 2. Delete Loan Request from Database
+         const { error } = await supabase
+           .from('loans')
+           .delete()
+           .eq('id', request.id);
+         
+         if(!error) {
+           window.location.reload(); // Refresh to remove from list
+         } else {
+           alert("Error deleting loan: " + error.message);
+         }
+       } catch (err) {
+         console.error(err);
+         alert("Something went wrong");
        }
     }
   }
@@ -107,7 +123,6 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <DollarSign className="h-4 w-4 text-blue-600" />
-                      {/* Using fetched memberTotalDeposits */}
                       <span>{formatCurrency(request.memberTotalDeposits)}</span>
                     </div>
                   </TableCell>
@@ -130,7 +145,7 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => handleReject(request.id)}
+                        onClick={() => handleReject(request)}
                       >
                         <XCircle className="h-4 w-4 mr-1" />
                         Reject
@@ -150,7 +165,7 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
             onClose={() => {
             setIsModalOpen(false)
             setSelectedRequest(null)
-            window.location.reload(); // Refresh after approval logic
+            window.location.reload(); 
             }}
             requestId={selectedRequest}
         />
