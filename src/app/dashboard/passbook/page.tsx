@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; 
+import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
 import { 
   Plus, 
   HandCoins, 
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-// Note: If you have these modal components, keep them. If not, comment them out.
+// Modals - Using your existing components
 import PassbookAddEntryModal from '@/components/client/PassbookAddEntryModal';
 import LoanRequestModal from '@/components/client/LoanRequestModal';
 
@@ -36,10 +36,10 @@ export default function PassbookPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
 
-  // --- 1. Fetch Client & Data on Load ---
+  // --- 1. Fetch Client ID on Load ---
   useEffect(() => {
     const initData = async () => {
-      // Get Client ID (Admin)
+      // Admin के लिए Client ID लाएं
       const { data: clients } = await supabase.from('clients').select('id').limit(1);
       if (clients && clients.length > 0) {
         setClientId(clients[0].id);
@@ -48,6 +48,7 @@ export default function PassbookPage() {
     initData();
   }, []);
 
+  // --- 2. Fetch Data when Client ID is ready ---
   useEffect(() => {
     if (clientId) {
       fetchMembers();
@@ -67,63 +68,55 @@ export default function PassbookPage() {
   // --- Fetch Passbook Entries & Calculate Balance ---
   const fetchPassbook = async () => {
     setLoading(true);
-    // Use passbook_entries table
+    // Oldest first order me layenge taki balance sahi calculate ho
     const { data, error } = await supabase
       .from('passbook_entries')
       .select('*')
-      .order('date', { ascending: true }); // Oldest first to calculate balance
+      .order('date', { ascending: true });
 
     if (data) {
       let runningBalance = 0;
+      
       const mappedEntries = data.map((entry: any) => {
-        // Logic to determine type based on amount columns
+        // Amount aur Type determine logic
         let type = 'deposit';
         let amount = entry.deposit_amount || 0;
         
         if (entry.installment_amount > 0) {
-          type = 'loan'; // Loan Repayment
+          type = 'loan'; // Loan Repayment (Installment)
           amount = entry.installment_amount;
+          // Logic: Installment dene se hath ka paisa kam hua (Passbook View) ya Loan kam hua?
+          // Usually Passbook me Installment 'Debit' side hoti hai.
           runningBalance -= parseFloat(amount);
         } else if (entry.interest_amount > 0) {
           type = 'interest';
           amount = entry.interest_amount;
-          // Interest doesn't usually add to wallet balance in passbook view, 
-          // but for now let's keep simple logic:
         } else if (entry.fine_amount > 0) {
-            type = 'interest'; 
+            type = 'interest'; // Fine as interest category
             amount = entry.fine_amount;
         } else {
             // Deposit
             runningBalance += parseFloat(entry.total_amount || 0);
         }
 
-        // Just using total_amount for display consistency with your old UI
-        const displayAmount = entry.total_amount || 0;
-
         return {
           id: entry.id,
           memberId: entry.member_id,
           date: entry.date,
           type: type, 
-          amount: parseFloat(displayAmount),
+          amount: parseFloat(entry.total_amount || 0),
           description: entry.note || entry.payment_mode || 'Entry',
           balance: runningBalance
         };
       });
 
-      // Sort Newest First for Display
+      // UI me Newest First dikhane ke liye reverse karein
       setPassbook(mappedEntries.reverse());
     }
     setLoading(false);
   };
 
-  // --- Logic: Pagination ---
-  const sortedEntries = passbook;
-  const totalPages = Math.ceil(sortedEntries.length / entriesPerPage);
-  const startIndex = (currentPage - 1) * entriesPerPage;
-  const paginatedEntries = sortedEntries.slice(startIndex, startIndex + entriesPerPage);
-
-  // --- Logic: Delete Entry (Connected to Supabase) ---
+  // --- Logic: Delete Entry ---
   const handleDeleteEntry = async (entry: any) => {
     if (confirm(`Are you sure you want to delete this entry?`)) {
       const { error } = await supabase
@@ -132,7 +125,7 @@ export default function PassbookPage() {
         .eq('id', entry.id);
       
       if (!error) {
-        fetchPassbook(); // Refresh list
+        fetchPassbook(); // List Refresh karein
       } else {
         alert('Error deleting: ' + error.message);
       }
@@ -145,7 +138,7 @@ export default function PassbookPage() {
     return member?.name || 'Unknown Member';
   };
 
-  // UI Helpers
+  // Helper: Icons
   const getEntryTypeIcon = (type: string) => {
     switch (type) {
       case 'deposit': return <TrendingUp className="h-4 w-4 text-green-600" />;
@@ -156,6 +149,7 @@ export default function PassbookPage() {
     }
   };
 
+  // Helper: Badges
   const getEntryTypeBadge = (type: string) => {
     const variants: any = {
       deposit: 'bg-green-100 text-green-800',
@@ -169,6 +163,12 @@ export default function PassbookPage() {
       </Badge>
     );
   };
+
+  // Pagination Logic
+  const sortedEntries = passbook;
+  const totalPages = Math.ceil(sortedEntries.length / entriesPerPage);
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const paginatedEntries = sortedEntries.slice(startIndex, startIndex + entriesPerPage);
 
   return (
     <div className="space-y-6">
@@ -321,13 +321,12 @@ export default function PassbookPage() {
         </CardContent>
       </Card>
 
-      {/* Modals - If these files exist in your components folder, this will work. 
-          If you deleted them, comment these lines out. */}
+      {/* Modals - Connected to refresh on close */}
       <PassbookAddEntryModal 
         isOpen={isAddEntryOpen} 
         onClose={() => {
             setIsAddEntryOpen(false);
-            fetchPassbook(); // Refresh data on close
+            fetchPassbook(); // Modal band hone par data refresh hoga
         }} 
       />
       
