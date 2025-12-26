@@ -14,6 +14,7 @@ const PassbookPage = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [clientId, setClientId] = useState<string | null>(null);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
 
   // Modals
   const [showAddEntry, setShowAddEntry] = useState(false);
@@ -82,14 +83,31 @@ const PassbookPage = () => {
   };
 
   const fetchMembers = async () => {
-    // Fetch from OLD 'members' table
-    // Also fetch 'loans' to calculate outstanding balance
-    const { data: membersData } = await supabase
-      .from('members')
-      .select('*, loans(remaining_balance, status)')
-      .eq('client_id', clientId);
+    try {
+      // Fetch from OLD 'members' table
+      // Also fetch 'loans' to calculate outstanding balance
+      const { data: membersData, error: membersError } = await supabase
+        .from('members')
+        .select('*, loans(remaining_balance, status)')
+        .eq('client_id', clientId);
 
-    if (membersData) {
+      // Log debug info
+      setDebugLog(prev => [...prev, `Client ID: ${clientId}`]);
+      setDebugLog(prev => [...prev, `Members Error: ${membersError?.message || 'None'}`]);
+      setDebugLog(prev => [...prev, `Raw Members Data: ${JSON.stringify(membersData?.slice(0, 2) || '[]')}`]);
+
+      if (membersError) {
+        setDebugLog(prev => [...prev, `Members fetch failed: ${membersError.message}`]);
+        console.error("Members fetch error:", membersError);
+        return;
+      }
+
+      if (!membersData || membersData.length === 0) {
+        setDebugLog(prev => [...prev, 'No members found for this client']);
+        setMembers([]);
+        return;
+      }
+
       // Calculate outstanding loan manually from loans relation
       const mappedMembers = membersData.map(m => {
         const activeLoan = m.loans?.find((l: any) => l.status === 'active' || l.status === 'pending');
@@ -98,7 +116,13 @@ const PassbookPage = () => {
           outstanding_loan: activeLoan ? activeLoan.remaining_balance : 0
         };
       });
+      
+      setDebugLog(prev => [...prev, `Mapped Members Count: ${mappedMembers.length}`]);
       setMembers(mappedMembers);
+    } catch (error) {
+      const errorMsg = `FetchMembers Exception: ${error}`;
+      setDebugLog(prev => [...prev, errorMsg]);
+      console.error("FetchMembers exception:", error);
     }
   };
 
@@ -487,6 +511,20 @@ const PassbookPage = () => {
           </div>
         </div>
       )}
+      
+      {/* --- DEBUG SECTION --- */}
+      <div className="mt-10 p-4 bg-black text-green-400 font-mono text-sm rounded-lg">
+        <h3 className="font-bold border-b border-gray-700 mb-2">DEBUG MODE</h3>
+        <p>Client ID: {clientId || 'NULL'}</p>
+        <p>Members Found: {members.length}</p>
+        <p>Errors: {JSON.stringify(debugLog)}</p>
+        <button 
+          onClick={() => setDebugLog([])} 
+          className="mt-2 px-3 py-1 bg-green-600 text-white rounded text-xs"
+        >
+          Clear Debug Log
+        </button>
+      </div>
     </div>
   );
 };
