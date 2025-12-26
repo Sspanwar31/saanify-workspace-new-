@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase-simple' // Supabase Connection
+import { supabase } from '@/lib/supabase-simple' 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoanRequestsTable } from '@/components/client/loans/LoanRequestsTable'
 import { AllLoansTable } from '@/components/client/loans/AllLoansTable'
@@ -9,23 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { HandCoins, TrendingUp, Clock, Calendar, DollarSign } from 'lucide-react'
 
 export default function LoansPage() {
-  // --- States ---
   const [loans, setLoans] = useState<any[]>([])
   const [loanRequests, setLoanRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  // --- Fetch Data from Supabase ---
   useEffect(() => {
     const fetchLoanData = async () => {
       setLoading(true)
       
-      // 1. Get Client ID
       const { data: clients } = await supabase.from('clients').select('id').limit(1)
       
       if (clients && clients.length > 0) {
         const clientId = clients[0].id
 
-        // 2. Fetch Loans + Member Details (Name, Phone, Total Deposits)
         const { data, error } = await supabase
           .from('loans')
           .select('*, members(name, phone, total_deposits)')
@@ -33,7 +29,6 @@ export default function LoansPage() {
           .order('created_at', { ascending: false })
 
         if (data) {
-          // Map Data to match your UI structure
           const formattedData = data.map((item: any) => ({
             ...item,
             id: item.id,
@@ -43,14 +38,16 @@ export default function LoansPage() {
             memberId: item.member_id,
             memberName: item.members?.name || 'Unknown',
             memberPhone: item.members?.phone,
-            memberTotalDeposits: item.members?.total_deposits || 0, // Needed for Requests Table
+            memberTotalDeposits: item.members?.total_deposits || 0,
             requestedDate: item.start_date || item.created_at,
             startDate: item.start_date
           }))
 
-          // Separate Lists
+          // 1. Pending List
           setLoanRequests(formattedData.filter(l => l.status === 'pending'))
-          setLoans(formattedData.filter(l => l.status !== 'pending'))
+
+          // 2. All Loans List (FIX: Only show Active or Closed. Rejected/Deleted won't show)
+          setLoans(formattedData.filter(l => ['active', 'completed', 'closed'].includes(l.status)))
         }
       }
       setLoading(false)
@@ -59,12 +56,12 @@ export default function LoansPage() {
     fetchLoanData()
   }, [])
 
-  // --- Logic: Stats Calculation ---
+  // Stats Logic
   const activeLoans = loans.filter(loan => loan.status === 'active')
-  const pendingRequests = loanRequests // Already filtered
+  const pendingRequests = loanRequests
   
   const totalDisbursed = loans
-    .filter(l => ['active', 'approved', 'completed'].includes(l.status))
+    .filter(l => ['active', 'completed'].includes(l.status))
     .reduce((sum, loan) => sum + (loan.amount || 0), 0)
 
   const formatCurrency = (amount: number) => {
@@ -76,7 +73,6 @@ export default function LoansPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Loan Management
@@ -97,9 +93,7 @@ export default function LoansPage() {
             <div className="text-2xl font-bold text-green-600">
               {loading ? '...' : activeLoans.length}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Currently active loans
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Currently active</p>
           </CardContent>
         </Card>
 
@@ -112,9 +106,7 @@ export default function LoansPage() {
             <div className="text-2xl font-bold text-yellow-600">
               {loading ? '...' : pendingRequests.length}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Awaiting approval
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Awaiting approval</p>
           </CardContent>
         </Card>
 
@@ -127,9 +119,7 @@ export default function LoansPage() {
             <div className="text-2xl font-bold text-blue-600">
               {loading ? '...' : formatCurrency(totalDisbursed)}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Total loan amount
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Total loan amount</p>
           </CardContent>
         </Card>
 
@@ -142,14 +132,11 @@ export default function LoansPage() {
             <div className="text-2xl font-bold text-orange-600">
               {loading ? '...' : formatCurrency(activeLoans.reduce((sum, loan) => sum + (loan.remainingBalance || 0), 0))}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Total outstanding balance
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Total outstanding balance</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content with Tabs */}
       <div className="space-y-4">
         <Tabs defaultValue="requests">
           <TabsList className="grid w-full grid-cols-2">
@@ -164,7 +151,7 @@ export default function LoansPage() {
             </TabsTrigger>
             <TabsTrigger value="all-loans" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              All Loans
+              All Loans 
               <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                 {loans.length}
               </span>
@@ -172,12 +159,10 @@ export default function LoansPage() {
           </TabsList>
 
           <TabsContent value="requests">
-            {/* Pass Data as Prop */}
             <LoanRequestsTable requests={pendingRequests} />
           </TabsContent>
 
           <TabsContent value="all-loans">
-             {/* Pass Data as Prop */}
             <AllLoansTable loans={loans} />
           </TabsContent>
         </Tabs>
