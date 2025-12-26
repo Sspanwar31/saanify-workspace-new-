@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,50 +15,78 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useClientStore, Member, PassbookEntry } from '@/lib/client/store';
+
+// Local Interface needed since we removed the store
+interface Member {
+  id: string;
+  name: string;
+  phone: string;
+  status: string;
+  total_deposits?: number;
+  outstanding_loan?: number;
+}
 
 interface PassbookAddEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entryToEdit?: PassbookEntry | null; // Add this prop
+  entryToEdit?: any | null;
 }
 
 export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: PassbookAddEntryModalProps) {
-  const { 
-    members, 
-    loans, 
-    addPassbookEntry, 
-    getMemberDepositBalance, 
-    getMemberOutstandingLoan 
-  } = useClientStore();
+  // --- Supabase States ---
+  const [members, setMembers] = useState<Member[]>([]);
+  const [clientId, setClientId] = useState<string | null>(null);
 
+  // --- Form States ---
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [date, setDate] = useState<Date>(new Date());
   const [paymentMode, setPaymentMode] = useState<string>('cash');
   const [depositAmount, setDepositAmount] = useState<string>('');
   const [installmentAmount, setInstallmentAmount] = useState<string>('');
 
-  // Calculated values
+  // --- Calculated Values ---
   const [currentDepositBalance, setCurrentDepositBalance] = useState<number>(0);
   const [outstandingLoan, setOutstandingLoan] = useState<number>(0);
   const [interest, setInterest] = useState<number>(0);
   const [fine, setFine] = useState<number>(0);
   const [projectedLoan, setProjectedLoan] = useState<number>(0);
   const [projectedDeposit, setProjectedDeposit] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
 
-  // Data Population Effect for Edit Mode
+  // 1. Fetch Client & Members
+  useEffect(() => {
+    if (isOpen) {
+      const fetchData = async () => {
+        // Get Client ID
+        const { data: clients } = await supabase.from('clients').select('id').limit(1);
+        if (clients && clients.length > 0) {
+          const cid = clients[0].id;
+          setClientId(cid);
+
+          // Get Members
+          const { data: membersData } = await supabase
+            .from('members')
+            .select('*')
+            .eq('client_id', cid);
+          
+          if (membersData) setMembers(membersData);
+        }
+      };
+      fetchData();
+    }
+  }, [isOpen]);
+
+  // 2. Populate for Edit Mode
   useEffect(() => {
     if (entryToEdit) {
-      setSelectedMemberId(entryToEdit.memberId);
-      setDepositAmount(entryToEdit.depositAmount?.toString() || '0');
-      setInstallmentAmount(entryToEdit.installmentAmount?.toString() || '0');
-      setPaymentMode(entryToEdit.paymentMode || 'cash');
-      // Set date if available
+      setSelectedMemberId(entryToEdit.member_id || entryToEdit.memberId);
+      setDepositAmount(entryToEdit.deposit_amount?.toString() || '0');
+      setInstallmentAmount(entryToEdit.installment_amount?.toString() || '0');
+      setPaymentMode(entryToEdit.payment_mode || 'cash');
       if (entryToEdit.date) {
         setDate(new Date(entryToEdit.date));
       }
     } else {
-      // Reset if adding new
       setDepositAmount('');
       setInstallmentAmount('');
       setPaymentMode('cash');
@@ -65,11 +94,14 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
     }
   }, [entryToEdit, isOpen]);
 
-  // Auto-calculations
+  // 3. Auto-calculations (Live Logic)
   useEffect(() => {
-    if (selectedMemberId) {
-      const depositBalance = getMemberDepositBalance(selectedMemberId);
-      const outstanding = getMemberOutstandingLoan(selectedMemberId);
+    const selectedMember = members.find(m => m.id === selectedMemberId);
+
+    if (selectedMember) {
+      // Data from Database Columns
+      const depositBalance = selectedMember.total_deposits || 0;
+      const outstanding = selectedMember.outstanding_loan || 0;
       
       setCurrentDepositBalance(depositBalance);
       setOutstandingLoan(outstanding);
@@ -97,40 +129,61 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       setProjectedLoan(0);
       setProjectedDeposit(0);
     }
-  }, [selectedMemberId, date, depositAmount, installmentAmount, getMemberDepositBalance, getMemberOutstandingLoan]);
+  }, [selectedMemberId, date, depositAmount, installmentAmount, members]);
 
   const selectedMember = members.find(m => m.id === selectedMemberId);
 
-  const handleSubmit = () => {
+  // 4. Submit Handler (Supabase)
+  const handleSubmit = async () => {
     if (!selectedMemberId || (!depositAmount && !installmentAmount)) {
       alert('Please select a member and enter at least deposit or installment amount');
       return;
     }
 
-    const entry: Omit<PassbookEntry, 'id' | 'balance'> = {
-      memberId: selectedMemberId,
-      date: format(date, 'yyyy-MM-dd'),
-      type: 'deposit',
-      amount: parseFloat(depositAmount) || 0,
-      description: 'Passbook entry',
-      balance: 0,
-      depositAmount: parseFloat(depositAmount) || 0,
-      installmentAmount: parseFloat(installmentAmount) || 0,
-      interestAmount: interest,
-      fineAmount: fine,
-      paymentMode
-    };
+    setLoading(true);
+    const depAmt = parseFloat(depositAmount) || 0;
+    const instAmt = parseFloat(installmentAmount) || 0;
+    
+    // Total Amount Calculation
+    const total = depAmt + instAmt + interest + fine;
 
-    addPassbookEntry(entry);
-    
-    // Reset form
-    setSelectedMemberId('');
-    setDepositAmount('');
-    setInstallmentAmount('');
-    setPaymentMode('cash');
-    setDate(new Date());
-    
-    onClose();
+    // A. Insert into passbook_entries
+    const { error } = await supabase.from('passbook_entries').insert([{
+      member_id: selectedMemberId,
+      member_name: selectedMember?.name,
+      date: format(date, 'yyyy-MM-dd'),
+      payment_mode: paymentMode,
+      deposit_amount: depAmt,
+      installment_amount: instAmt,
+      interest_amount: interest,
+      fine_amount: fine,
+      total_amount: total,
+      note: 'Passbook Entry'
+    }]);
+
+    if (!error) {
+      // B. Update Member Balances in Database
+      if (depAmt > 0 || instAmt > 0) {
+        const newLoanBal = (selectedMember?.outstanding_loan || 0) - instAmt;
+        const newDepositTotal = (selectedMember?.total_deposits || 0) + depAmt;
+
+        await supabase.from('members').update({
+            outstanding_loan: newLoanBal,
+            total_deposits: newDepositTotal
+        }).eq('id', selectedMemberId);
+      }
+
+      // Reset & Close
+      setSelectedMemberId('');
+      setDepositAmount('');
+      setInstallmentAmount('');
+      setPaymentMode('cash');
+      setDate(new Date());
+      onClose();
+    } else {
+      alert("Error adding entry: " + error.message);
+    }
+    setLoading(false);
   };
 
   const totalToCollect = (parseFloat(depositAmount) || 0) + 
@@ -164,7 +217,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                       <SelectValue placeholder="Search and select a member" />
                     </SelectTrigger>
                     <SelectContent>
-                      {members.filter(m => m.status === 'active').map((member) => (
+                      {members.map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name} - {member.phone}
                         </SelectItem>
@@ -371,9 +424,9 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
               onClick={handleSubmit} 
               className="w-full" 
               size="lg"
-              disabled={!selectedMemberId || (!depositAmount && !installmentAmount)}
+              disabled={loading || !selectedMemberId || (!depositAmount && !installmentAmount)}
             >
-              {entryToEdit ? 'Update Entry' : 'Create Entry'}
+              {loading ? 'Processing...' : (entryToEdit ? 'Update Entry' : 'Create Entry')}
             </Button>
           </div>
         </div>
