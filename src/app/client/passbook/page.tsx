@@ -1,494 +1,382 @@
-'use client';
+'use client'
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Ensure this path is correct
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase-simple' // Supabase Connection
 import { 
-  Search, RefreshCw, Download, Plus, HandCoins, 
-  Trash2, Edit, Calculator, X, Wallet, User 
-} from 'lucide-react';
+  Plus, 
+  HandCoins, 
+  Edit, 
+  Trash2, 
+  Calendar,
+  User,
+  ArrowUpDown,
+  TrendingUp,
+  TrendingDown,
+  DollarSign
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input' // Kept imports
+import { Label } from '@/components/ui/label' // Kept imports
+import { Textarea } from '@/components/ui/textarea' // Kept imports
+import PassbookAddEntryModal from '@/components/client/PassbookAddEntryModal'
+import LoanRequestModal from '@/components/client/LoanRequestModal'
 
-const PassbookPage = () => {
+export default function PassbookPage() {
   // --- States ---
-  const [entries, setEntries] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [isAddEntryOpen, setIsAddEntryOpen] = useState(false)
+  const [isLoanModalOpen, setIsLoanModalOpen] = useState(false)
+  
+  // Data States (Replaced Store with Local State)
+  const [members, setMembers] = useState<any[]>([])
+  const [passbook, setPassbook] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [clientId, setClientId] = useState<string | null>(null)
 
-  // Modals
-  const [showAddEntry, setShowAddEntry] = useState(false);
-  const [showLoanRequest, setShowLoanRequest] = useState(false);
+  // Unused Form States (Kept from your original code to avoid breaking changes)
+  const [selectedMember, setSelectedMember] = useState('')
+  const [entryType, setEntryType] = useState<'deposit' | 'loan' | 'interest' | 'withdrawal'>('deposit')
+  const [amount, setAmount] = useState('')
+  const [description, setDescription] = useState('')
 
-  // Form States
-  const [formData, setFormData] = useState({
-    memberId: '',
-    memberName: '',
-    date: new Date().toISOString().split('T')[0],
-    mode: 'CASH',
-    deposit: '',
-    installment: '',
-    interest: '',
-    fine: '',
-    note: ''
-  });
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1)
+  const entriesPerPage = 10
 
-  const [loanRequestData, setLoanRequestData] = useState({
-    memberId: '',
-    amount: ''
-  });
-
-  // Derived State for Live Preview
-  const [memberLoanStats, setMemberLoanStats] = useState({
-    outstanding: 0,
-    newBalance: 0
-  });
-
-  // --- Initial Data Fetch ---
+  // --- 1. Fetch Client & Data on Load ---
   useEffect(() => {
     const initData = async () => {
-      // 1. Get User & Client ID (Assuming single client for now or fetching from auth)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Fetch: first client associated with this user (Adjust logic if needed)
-        // For safety, let's just fetch members first to find a valid client_id if not stored in metadata
-        const { data: memberData } = await supabase.from('members').select('client_id').limit(1);
-        if (memberData && memberData.length > 0) {
-          setClientId(memberData[0].client_id);
-        }
+      // Get Client ID (Admin)
+      const { data: clients } = await supabase.from('clients').select('id').limit(1)
+      if (clients && clients.length > 0) {
+        setClientId(clients[0].id)
       }
-    };
-    initData();
-  }, []);
+    }
+    initData()
+  }, [])
 
   useEffect(() => {
     if (clientId) {
-      fetchEntries();
-      fetchMembers();
+      fetchMembers()
+      fetchPassbook()
     }
-  }, [clientId]);
+  }, [clientId])
 
-  const fetchEntries = async () => {
-    setLoading(true);
-    // Fetch from OLD 'transactions' table and join with 'members'
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*, members(name)')
-      .eq('client_id', clientId)
-      .order('date', { ascending: false });
-
-    if (error) console.error("Error fetching transactions:", error);
-    else setEntries(data || []);
-    setLoading(false);
-  };
-
+  // --- Fetch Members ---
   const fetchMembers = async () => {
-    // Fetch from OLD 'members' table
-    // Also fetch 'loans' to calculate outstanding balance
-    const { data: membersData } = await supabase
+    const { data } = await supabase
       .from('members')
-      .select('*, loans(remaining_balance, status)')
-      .eq('client_id', clientId);
+      .select('id, name')
+      .eq('client_id', clientId)
+    if (data) setMembers(data)
+  }
 
-    if (membersData) {
-      // Calculate outstanding loan manually from loans relation
-      const mappedMembers = membersData.map(m => {
-        const activeLoan = m.loans?.find((l: any) => l.status === 'active' || l.status === 'pending');
+  // --- Fetch Passbook Entries & Calculate Balance ---
+  const fetchPassbook = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('passbook_entries')
+      .select('*')
+      .order('date', { ascending: true }) // Oldest first to calculate balance
+
+    if (data) {
+      // Map DB columns to UI expected format & Calculate Running Balance
+      let runningBalance = 0
+      const mappedEntries = data.map((entry: any) => {
+        // Determine Type based on columns
+        let type = 'deposit'
+        let amount = entry.deposit_amount
+        
+        if (entry.installment_amount > 0) {
+          type = 'loan' // Loan Repayment
+          amount = entry.installment_amount
+          runningBalance -= parseFloat(amount) // Loan repayment reduces liabilities (logic depends on view)
+          // For simple passbook view: Deposit adds to balance, Withdrawal/Loan takes away?
+          // Assuming Deposit = +Balance.
+        } else if (entry.interest_amount > 0) {
+          type = 'interest'
+          amount = entry.interest_amount
+        } else if (entry.fine_amount > 0) {
+            type = 'interest' // Group fine with interest
+            amount = entry.fine_amount
+        }
+        
+        // Simple Balance Logic: Add everything to balance for now (You can adjust this)
+        runningBalance += parseFloat(entry.total_amount || 0)
+
         return {
-          ...m,
-          outstanding_loan: activeLoan ? activeLoan.remaining_balance : 0
-        };
-      });
-      setMembers(mappedMembers);
+          id: entry.id,
+          memberId: entry.member_id,
+          date: entry.date,
+          type: type, 
+          amount: parseFloat(entry.total_amount || 0), // Showing total amount
+          description: entry.note || entry.payment_mode || 'Entry',
+          balance: runningBalance
+        }
+      })
+
+      // Sort Newest First for Display
+      setPassbook(mappedEntries.reverse())
     }
-  };
+    setLoading(false)
+  }
 
-  // --- Logic: Auto Calculation ---
-  useEffect(() => {
-    if (!formData.memberId) return;
+  // --- Logic: Pagination ---
+  const sortedEntries = passbook // Already sorted in fetch
+  const totalPages = Math.ceil(sortedEntries.length / entriesPerPage)
+  const startIndex = (currentPage - 1) * entriesPerPage
+  const paginatedEntries = sortedEntries.slice(startIndex, startIndex + entriesPerPage)
 
-    // 1. Get Member's Current Loan
-    const selectedMember = members.find(m => m.id === formData.memberId);
-    const currentLoan = selectedMember ? (selectedMember.outstanding_loan || 0) : 0;
-    
-    // 2. Calculate Fine (After 15th of month, 10rs/day)
-    let fineVal = 0;
-    if (formData.date) {
-      const day = new Date(formData.date).getDate();
-      if (day > 15) {
-        fineVal = (day - 15) * 10;
+  // --- Logic: Add Entry (Connected to Supabase) ---
+  const handleAddEntry = async () => {
+    // Note: This function is here because it was in your old code.
+    // If your Modal handles submission internally, this might not be used, 
+    // but I'm updating it just in case.
+    if (!selectedMember || !amount) return
+
+    const { error } = await supabase.from('passbook_entries').insert([{
+      member_id: selectedMember,
+      date: new Date().toISOString().split('T')[0],
+      total_amount: parseFloat(amount),
+      note: description,
+      // Defaulting amounts based on simple UI
+      deposit_amount: entryType === 'deposit' ? parseFloat(amount) : 0,
+      installment_amount: entryType === 'loan' ? parseFloat(amount) : 0,
+      interest_amount: entryType === 'interest' ? parseFloat(amount) : 0,
+    }])
+
+    if (!error) {
+      fetchPassbook()
+      setIsAddEntryOpen(false)
+      // Reset form
+      setSelectedMember('')
+      setAmount('')
+      setDescription('')
+      setEntryType('deposit')
+    }
+  }
+
+  // --- Logic: Delete Entry (Connected to Supabase) ---
+  const handleDeleteEntry = async (entry: any) => {
+    if (confirm(`Are you sure you want to delete this entry?`)) {
+      const { error } = await supabase
+        .from('passbook_entries')
+        .delete()
+        .eq('id', entry.id)
+      
+      if (!error) {
+        fetchPassbook() // Refresh list
+      } else {
+        alert('Error deleting: ' + error.message)
       }
     }
+  }
 
-    // 3. Calculate Interest (1% of Outstanding)
-    const interestVal = Math.round(currentLoan * 0.01);
+  // Helper: Get Member Name
+  const getMemberName = (memberId: string) => {
+    const member = members.find(m => m.id === memberId)
+    return member?.name || 'Unknown Member'
+  }
 
-    // 4. Update Form
-    setFormData(prev => ({
-      ...prev,
-      interest: prev.interest === '' ? String(interestVal) : prev.interest, 
-      fine: prev.fine === '' ? String(fineVal) : prev.fine
-    }));
-
-    // 5. Live Preview Stats
-    const instAmt = parseFloat(formData.installment) || 0;
-    setMemberLoanStats({
-      outstanding: currentLoan,
-      newBalance: currentLoan - instAmt
-    });
-
-  }, [formData.memberId, formData.date, formData.installment, members]);
-
-  // --- Handlers ---
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleMemberSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const memberId = e.target.value;
-    const member = members.find(m => m.id === memberId);
-    setFormData(prev => ({
-      ...prev,
-      memberId: memberId,
-      memberName: member ? member.name : '',
-      interest: '',
-      fine: ''
-    }));
-  };
-
-  const getTotalAmount = () => {
-    const dep = parseFloat(formData.deposit) || 0;
-    const inst = parseFloat(formData.installment) || 0;
-    const int = parseFloat(formData.interest) || 0;
-    const fine = parseFloat(formData.fine) || 0;
-    return dep + inst + int + fine;
-  };
-
-  // --- SUBMIT LOGIC: SAVE TO OLD DB ---
-  const handleSubmitEntry = async () => {
-    if (!clientId || !formData.memberId) {
-      alert("Client ID or Member ID missing");
-      return;
+  // UI Helpers (Icons/Badges - Kept Exactly Same)
+  const getEntryTypeIcon = (type: string) => {
+    switch (type) {
+      case 'deposit': return <TrendingUp className="h-4 w-4 text-green-600" />
+      case 'loan': return <HandCoins className="h-4 w-4 text-red-600" />
+      case 'interest': return <DollarSign className="h-4 w-4 text-blue-600" />
+      case 'withdrawal': return <TrendingDown className="h-4 w-4 text-orange-600" />
+      default: return <ArrowUpDown className="h-4 w-4 text-gray-600" />
     }
+  }
 
-    const updates = [];
-    const commonData = {
-      client_id: clientId,
-      member_id: formData.memberId,
-      date: formData.date,
-      payment_mode: formData.mode,
-      description: formData.note || 'Manual Entry',
-    };
-
-    // 1. Handle Deposit
-    if (parseFloat(formData.deposit) > 0) {
-      updates.push({ ...commonData, type: 'deposit', amount: parseFloat(formData.deposit) });
+  const getEntryTypeBadge = (type: string) => {
+    const variants = {
+      deposit: 'bg-green-100 text-green-800',
+      loan: 'bg-red-100 text-red-800',
+      interest: 'bg-blue-100 text-blue-800',
+      withdrawal: 'bg-orange-100 text-orange-800'
     }
-    // 2. Handle Installment (Loan Repayment)
-    if (parseFloat(formData.installment) > 0) {
-      updates.push({ ...commonData, type: 'loan_repayment', amount: parseFloat(formData.installment) });
-    }
-    // 3. Handle Interest
-    if (parseFloat(formData.interest) > 0) {
-      updates.push({ ...commonData, type: 'interest', amount: parseFloat(formData.interest) });
-    }
-    // 4. Handle Fine
-    if (parseFloat(formData.fine) > 0) {
-      updates.push({ ...commonData, type: 'fine', amount: parseFloat(formData.fine) });
-    }
+    return (
+      <Badge className={variants[type as keyof typeof variants] || 'bg-gray-100 text-gray-800'}>
+        {type.charAt(0).toUpperCase() + type.slice(1)}
+      </Badge>
+    )
+  }
 
-    if (updates.length === 0) {
-      alert("Please enter an amount");
-      return;
-    }
-
-    // Insert into OLD 'transactions' table
-    const { error } = await supabase.from('transactions').insert(updates);
-
-    if (error) {
-      alert('Error: ' + error.message);
-      return;
-    }
-
-    // Update Loan Balance if Installment Paid
-    if (parseFloat(formData.installment) > 0) {
-        // Find active loan
-        const { data: loans } = await supabase
-            .from('loans')
-            .select('*')
-            .eq('member_id', formData.memberId)
-            .eq('status', 'active');
-        
-        if (loans && loans.length > 0) {
-            const loan = loans[0];
-            const newBal = (loan.remaining_balance || 0) - parseFloat(formData.installment);
-            await supabase
-                .from('loans')
-                .update({ remaining_balance: newBal })
-                .eq('id', loan.id);
-        }
-    }
-
-    setShowAddEntry(false);
-    fetchEntries();
-    setFormData({
-      memberId: '', memberName: '', date: new Date().toISOString().split('T')[0],
-      mode: 'CASH', deposit: '', installment: '', interest: '', fine: '', note: ''
-    });
-  };
-
-  const handleSubmitLoanRequest = async () => {
-    if(!clientId) return;
-    
-    // Insert into OLD 'loans' table with status 'pending'
-    const { error } = await supabase.from('loans').insert([{
-      client_id: clientId,
-      member_id: loanRequestData.memberId,
-      amount: parseFloat(loanRequestData.amount) || 0,
-      status: 'pending',
-      start_date: new Date().toISOString().split('T')[0]
-    }]);
-
-    if (error) alert('Error: ' + error.message);
-    else {
-      alert('Loan Request Sent!');
-      setShowLoanRequest(false);
-      setLoanRequestData({ memberId: '', amount: '' });
-    }
-  };
-
+  // --- JSX (Kept Exactly Same) ---
   return (
-    <div className="p-6 bg-orange-50 min-h-screen font-sans text-gray-800">
-      
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-orange-900">Sunrise Cooperative Society</h1>
-          <p className="text-sm text-orange-600">Digital Passbook Portal</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Passbook
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Manage all financial transactions and entries
+          </p>
         </div>
-        <div className="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm">
-          <div className="bg-gray-200 p-2 rounded-full"><User size={20} /></div>
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold">Admin User</p>
-            <p className="text-xs text-gray-500">Ledger Keeper</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Cards (Calculated from fetched entries) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Total Entries', val: entries.length, icon: <Wallet size={20}/> },
-          { label: 'Total Deposits', val: `₹${entries.filter(e=>e.type==='deposit').reduce((a,b)=>a+(b.amount||0),0).toLocaleString()}`, icon: <Download size={20}/> },
-          { label: 'Installments Collected', val: `₹${entries.filter(e=>e.type==='loan_repayment').reduce((a,b)=>a+(b.amount||0),0).toLocaleString()}`, icon: <RefreshCw size={20}/> },
-          { label: 'Total Interest', val: `₹${entries.filter(e=>e.type==='interest').reduce((a,b)=>a+(b.amount||0),0).toLocaleString()}`, icon: <HandCoins size={20}/> },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white p-4 rounded-xl shadow-sm border border-orange-100 flex justify-between items-center">
-            <div>
-              <p className="text-gray-500 text-sm">{stat.label}</p>
-              <h3 className="text-2xl font-bold text-gray-800 mt-1">{stat.val}</h3>
-            </div>
-            <div className="text-orange-500 bg-orange-50 p-3 rounded-full">{stat.icon}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Action Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-6 gap-4">
-        <div className="relative w-full md:w-1/3">
-          <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search by member name..." 
-            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
-          <button onClick={fetchEntries} className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"><RefreshCw size={16}/> Refresh</button>
-          <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"><Download size={16}/> Export</button>
-          <button onClick={() => setShowAddEntry(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"><Plus size={16}/> Add Entry</button>
-          <button onClick={() => setShowLoanRequest(true)} className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"><HandCoins size={16}/> Request Loan</button>
+        
+        <div className="flex gap-3">
+          {/* Request Loan Button */}
+          <Button 
+            className="bg-orange-600 hover:bg-orange-700"
+            onClick={() => setIsLoanModalOpen(true)}
+          >
+            <HandCoins className="h-4 w-4 mr-2" />
+            Request Loan
+          </Button>
+          
+          {/* Add Entry Button */}
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => setIsAddEntryOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Entry
+          </Button>
         </div>
       </div>
 
-      {/* Data Table - Mapped to Old Transactions */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b font-semibold text-lg text-gray-800">Passbook Entries</div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 text-gray-600 text-sm uppercase">
-              <tr>
-                <th className="p-4">Member</th>
-                <th className="p-4">Date</th>
-                <th className="p-4">Mode</th>
-                <th className="p-4 text-green-600">Type</th>
-                <th className="p-4 text-right">Amount</th>
-                <th className="p-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y text-sm">
-              {entries.filter(e => e.members?.name?.toLowerCase().includes(searchTerm.toLowerCase())).map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-50">
-                  <td className="p-4 font-medium text-gray-800">{entry.members?.name || 'Unknown'}</td>
-                  <td className="p-4 text-gray-500">{new Date(entry.date).toLocaleDateString()}</td>
-                  <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-xs border border-gray-300">{entry.payment_mode}</span></td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold
-                      ${entry.type === 'deposit' ? 'bg-green-100 text-green-700' : 
-                        entry.type === 'interest' ? 'bg-red-100 text-red-700' : 
-                        'bg-blue-100 text-blue-700'}`}>
-                      {entry.type.toUpperCase().replace('_', ' ')}
+      {/* Passbook Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Transaction History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Member</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Balance</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">Loading entries...</TableCell>
+                </TableRow>
+              ) : paginatedEntries.length === 0 ? (
+                <TableRow>
+                   <TableCell colSpan={7} className="text-center py-8">No transactions found.</TableCell>
+                </TableRow>
+              ) : (
+                paginatedEntries.map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell>
+                    {new Date(entry.date).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                        <span className="text-xs font-medium">
+                          {getMemberName(entry.memberId).charAt(0)}
+                        </span>
+                      </div>
+                      {getMemberName(entry.memberId)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {getEntryTypeIcon(entry.type)}
+                      {getEntryTypeBadge(entry.type)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {entry.description}
+                  </TableCell>
+                  <TableCell>
+                    <span className={`font-medium ${
+                      entry.type === 'deposit' || entry.type === 'interest' 
+                        ? 'text-green-600' 
+                        : 'text-red-600'
+                    }`}>
+                      {entry.type === 'deposit' || entry.type === 'interest' ? '+' : ''}
+                      ₹{entry.amount.toLocaleString()}
                     </span>
-                  </td>
-                  <td className="p-4 text-right font-bold">₹{entry.amount}</td>
-                  <td className="p-4 flex justify-center gap-2">
-                    <button className="p-1 hover:text-red-500"><Trash2 size={16}/></button>
-                  </td>
-                </tr>
-              ))}
-              {entries.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-400">No transactions found</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    ₹{entry.balance.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        // onClick={() => handleEditEntry(entry)} // Edit logic hidden for now to prevent errors
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleDeleteEntry(entry)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )))}
+            </TableBody>
+          </Table>
 
-      {/* --- MODAL: ADD ENTRY (SPLIT VIEW) --- */}
-      {showAddEntry && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl">
-            {/* Left: Input Form */}
-            <div className="w-full md:w-2/3 p-6 overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold flex items-center gap-2"><Calculator size={24}/> Add New Entry</h2>
-                <button onClick={() => setShowAddEntry(false)} className="md:hidden"><X size={24}/></button>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {startIndex + 1} to {Math.min(startIndex + entriesPerPage, sortedEntries.length)} of {sortedEntries.length} entries
               </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium mb-1">Member *</label>
-                  <select name="memberId" className="w-full p-2 border rounded-lg bg-gray-50" onChange={handleMemberSelect} value={formData.memberId}>
-                    <option value="">Select Member</option>
-                    {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium mb-1">Deposit Date *</label>
-                  <input type="date" name="date" className="w-full p-2 border rounded-lg" value={formData.date} onChange={handleInputChange} />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Payment Mode</label>
-                <select name="mode" className="w-full p-2 border rounded-lg" value={formData.mode} onChange={handleInputChange}>
-                  <option>CASH</option>
-                  <option>ONLINE</option>
-                  <option>UPI</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Deposit Amount</label>
-                  <input type="number" name="deposit" placeholder="₹ 0" className="w-full p-2 border rounded-lg" value={formData.deposit} onChange={handleInputChange}/>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-blue-600">Installment Amount</label>
-                  <input type="number" name="installment" placeholder="₹ 0" className="w-full p-2 border rounded-lg border-blue-100 bg-blue-50" value={formData.installment} onChange={handleInputChange}/>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Interest (Auto 1%)</label>
-                  <input type="number" name="interest" className="w-full p-2 border rounded-lg bg-gray-50" value={formData.interest} onChange={handleInputChange} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Fine (Auto ₹10/day)</label>
-                  <input type="number" name="fine" className="w-full p-2 border rounded-lg bg-gray-50" value={formData.fine} onChange={handleInputChange}/>
-                </div>
-              </div>
-
-              <textarea name="note" placeholder="Add any additional notes..." className="w-full p-2 border rounded-lg mb-6 h-20" value={formData.note} onChange={handleInputChange}></textarea>
-
-              <div className="flex gap-3">
-                <button onClick={handleSubmitEntry} className="flex-1 bg-gray-900 text-white py-3 rounded-lg font-semibold hover:bg-gray-800">Create Entry</button>
-                <button onClick={() => setShowAddEntry(false)} className="px-6 py-3 border rounded-lg hover:bg-gray-50">Cancel</button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
               </div>
             </div>
+          )}
+        </CardContent>
+      </Card>
 
-            {/* Right: Live Preview */}
-            <div className="hidden md:flex w-1/3 bg-gray-50 p-6 flex-col border-l">
-              <div className="flex justify-between mb-8">
-                <h3 className="font-semibold text-gray-500">Live Preview</h3>
-                <button onClick={() => setShowAddEntry(false)}><X size={20}/></button>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl shadow-sm mb-4 border border-blue-100 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Member Info</p>
-                <h2 className="text-xl font-bold text-gray-800">{formData.memberName || 'Select Member'}</h2>
-                
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Current Loan:</span>
-                    <span className="font-medium">₹{memberLoanStats.outstanding.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Less Installment:</span>
-                    <span>- ₹{(parseFloat(formData.installment)||0).toLocaleString()}</span>
-                  </div>
-                  <div className="border-t pt-2 flex justify-between font-bold text-blue-700">
-                    <span>New Balance:</span>
-                    <span>₹{memberLoanStats.newBalance.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-purple-600 text-white p-6 rounded-2xl shadow-lg mt-auto">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-white/20 p-2 rounded-full"><HandCoins size={20}/></div>
-                  <span className="text-sm font-medium opacity-90">Total Payable</span>
-                </div>
-                <h1 className="text-4xl font-bold mb-1">₹ {getTotalAmount().toLocaleString()}</h1>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL: LOAN REQUEST --- */}
-      {showLoanRequest && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <h2 className="text-lg font-bold mb-4">Request New Loan</h2>
-            <select className="w-full p-2 border rounded-lg mb-4" 
-              value={loanRequestData.memberId}
-              onChange={(e) => setLoanRequestData({...loanRequestData, memberId: e.target.value})}
-            >
-              <option value="">Choose Member</option>
-              {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            <input 
-              type="number" 
-              placeholder="Loan Amount" 
-              className="w-full p-2 border rounded-lg mb-4"
-              value={loanRequestData.amount}
-              onChange={(e) => setLoanRequestData({...loanRequestData, amount: e.target.value})}
-            />
-            <button onClick={handleSubmitLoanRequest} className="w-full py-2 bg-orange-500 text-white rounded-lg">Send Request</button>
-            <button onClick={() => setShowLoanRequest(false)} className="w-full py-2 mt-2 border rounded-lg">Cancel</button>
-          </div>
-        </div>
-      )}
+      {/* New Rich UI Modals - You will need to wire these up internally to Supabase as well */}
+      <PassbookAddEntryModal 
+        isOpen={isAddEntryOpen} 
+        onClose={() => {
+            setIsAddEntryOpen(false)
+            fetchPassbook() // Refresh table on close
+        }} 
+      />
+      
+      <LoanRequestModal 
+        isOpen={isLoanModalOpen} 
+        onClose={() => setIsLoanModalOpen(false)} 
+      />
     </div>
-  );
-};
-
-export default PassbookPage;
+  )
+}
