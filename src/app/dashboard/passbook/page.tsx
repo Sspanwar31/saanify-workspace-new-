@@ -47,14 +47,18 @@ const PassbookPage = () => {
   // --- Initial Data Fetch ---
   useEffect(() => {
     const initData = async () => {
-      // 1. Get User & Client ID (Assuming single client for now or fetching from auth)
+      // 1. Get User & Client ID (Query clients table directly)
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Fetch: first client associated with this user (Adjust logic if needed)
-        // For safety, let's just fetch members first to find a valid client_id if not stored in metadata
-        const { data: memberData } = await supabase.from('members').select('client_id').limit(1);
-        if (memberData && memberData.length > 0) {
-          setClientId(memberData[0].client_id);
+        // Query clients table directly to get client_id
+        const { data: clients, error } = await supabase.from('clients').select('id').limit(1);
+        if (clients && clients.length > 0) {
+          console.log("Found Client:", clients[0].id);
+          setClientId(clients[0].id);
+        } else {
+          console.error("No clients found or RLS error:", error);
+          // Fallback debug
+          setDebugLog(prev => [...prev, "Failed to fetch Client ID from 'clients' table"]);
         }
       }
     };
