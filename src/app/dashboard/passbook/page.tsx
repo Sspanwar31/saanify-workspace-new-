@@ -24,7 +24,7 @@ const PassbookPage = () => {
     memberId: '',
     memberName: '',
     date: new Date().toISOString().split('T')[0],
-    mode: 'CASH',
+    mode: 'CASH', // Default Mode
     deposit: '',
     installment: '',
     interest: '',
@@ -38,15 +38,15 @@ const PassbookPage = () => {
   });
 
   // Derived State for Live Preview (Detailed)
-  const [memberLoanStats, setMemberLoanStats] = useState({
-    outstanding: 0,
-    newBalance: 0
+  const [memberStats, setMemberStats] = useState({
+    totalDeposits: 0,  // Previously collected deposits
+    outstandingLoan: 0, // Current Loan
+    newLoanBalance: 0   // After installment
   });
 
   // --- Initial Data Fetch ---
   useEffect(() => {
     const initData = async () => {
-      // Admin ke liye Client ID fetch karna (clients table se)
       const { data: clients } = await supabase.from('clients').select('id').limit(1);
       if (clients && clients.length > 0) {
         setClientId(clients[0].id);
@@ -64,7 +64,6 @@ const PassbookPage = () => {
 
   const fetchEntries = async () => {
     setLoading(true);
-    // Fetch Data
     const { data, error } = await supabase
       .from('passbook_entries')
       .select('*, members(name)') 
@@ -75,6 +74,7 @@ const PassbookPage = () => {
   };
 
   const fetchMembers = async () => {
+    // Fetch outstanding_loan AND total_deposits
     const { data } = await supabase
       .from('members')
       .select('*')
@@ -87,9 +87,10 @@ const PassbookPage = () => {
   useEffect(() => {
     if (!formData.memberId) return;
 
-    // 1. Get Member's Current Loan
+    // 1. Get Member Info
     const selectedMember = members.find(m => m.id === formData.memberId);
     const currentLoan = selectedMember ? (selectedMember.outstanding_loan || 0) : 0;
+    const currentDeposits = selectedMember ? (selectedMember.total_deposits || 0) : 0;
     
     // 2. Calculate Fine
     let fineVal = 0;
@@ -103,7 +104,7 @@ const PassbookPage = () => {
     // 3. Calculate Interest (1%)
     const interestVal = Math.round(currentLoan * 0.01);
 
-    // 4. Update Form
+    // 4. Update Form (Auto-fill)
     setFormData(prev => ({
       ...prev,
       interest: prev.interest === '' ? String(interestVal) : prev.interest,
@@ -112,9 +113,10 @@ const PassbookPage = () => {
 
     // 5. Live Preview Stats (Calculation Logic)
     const instAmt = parseFloat(formData.installment) || 0;
-    setMemberLoanStats({
-      outstanding: currentLoan,
-      newBalance: currentLoan - instAmt
+    setMemberStats({
+      totalDeposits: currentDeposits,
+      outstandingLoan: currentLoan,
+      newLoanBalance: currentLoan - instAmt
     });
 
   }, [formData.memberId, formData.date, formData.installment, members]);
@@ -145,6 +147,7 @@ const PassbookPage = () => {
     if (!formData.memberId) return alert("Select Member");
 
     const total = getTotalAmount();
+    const depositAmt = parseFloat(formData.deposit) || 0;
     const instAmt = parseFloat(formData.installment) || 0;
 
     // 1. Save to passbook_entries
@@ -152,8 +155,8 @@ const PassbookPage = () => {
       member_id: formData.memberId,
       member_name: formData.memberName, // Name Store ho raha hai
       date: formData.date,
-      payment_mode: formData.mode,
-      deposit_amount: parseFloat(formData.deposit) || 0,
+      payment_mode: formData.mode, // ✅ Payment Mode Saved
+      deposit_amount: depositAmt,
       installment_amount: instAmt,
       interest_amount: parseFloat(formData.interest) || 0,
       fine_amount: parseFloat(formData.fine) || 0,
@@ -166,14 +169,20 @@ const PassbookPage = () => {
       return;
     }
 
-    // 2. Update Member's Loan Balance
-    if (instAmt > 0) {
+    // 2. Update Member's Balances (Loan & Total Deposits)
+    if (depositAmt > 0 || instAmt > 0) {
         const member = members.find(m => m.id === formData.memberId);
+        
+        // Logic: Decrease Loan, Increase Deposit History
         const newLoanBal = (member.outstanding_loan || 0) - instAmt;
+        const newDepositTotal = (member.total_deposits || 0) + depositAmt;
 
         await supabase
           .from('members')
-          .update({ outstanding_loan: newLoanBal })
+          .update({ 
+            outstanding_loan: newLoanBal,
+            total_deposits: newDepositTotal // ✅ Update Total Deposits
+          })
           .eq('id', formData.memberId);
         
         fetchMembers(); 
@@ -210,8 +219,7 @@ const PassbookPage = () => {
 
   return (
     <div className="p-6 bg-orange-50 min-h-screen font-sans text-gray-800">
-      
-      {/* Header */}
+      {/* Header & Stats - (No Changes, keeping same) */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-orange-900">Sunrise Cooperative Society</h1>
@@ -247,13 +255,8 @@ const PassbookPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-6 gap-4">
         <div className="relative w-full md:w-1/3">
           <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search by member name..." 
-            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <input type="text" placeholder="Search by member name..." className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
         <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
           <button onClick={fetchEntries} className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"><RefreshCw size={16}/> Refresh</button>
@@ -309,7 +312,7 @@ const PassbookPage = () => {
         </div>
       </div>
 
-      {/* --- MODAL: ADD ENTRY (DETAILED LIVE PREVIEW) --- */}
+      {/* --- MODAL: ADD ENTRY --- */}
       {showAddEntry && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl">
@@ -320,6 +323,7 @@ const PassbookPage = () => {
                 <button onClick={() => setShowAddEntry(false)} className="md:hidden"><X size={24}/></button>
               </div>
 
+              {/* Row 1: Member & Date */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                    <label className="block text-sm font-medium mb-1">Member *</label>
@@ -329,22 +333,35 @@ const PassbookPage = () => {
                    </select>
                 </div>
                 <div>
-                   <label className="block text-sm font-medium mb-1">Date</label>
+                   <label className="block text-sm font-medium mb-1">Date *</label>
                    <input type="date" name="date" className="w-full p-2 border rounded-lg" value={formData.date} onChange={handleInputChange}/>
                 </div>
               </div>
 
+              {/* Row 2: Payment Mode (ADDED BACK) */}
+              <div className="mb-4">
+                 <label className="block text-sm font-medium mb-1">Payment Mode *</label>
+                 <select name="mode" className="w-full p-2 border rounded-lg" value={formData.mode} onChange={handleInputChange}>
+                    <option value="CASH">Cash</option>
+                    <option value="ONLINE">Online</option>
+                    <option value="UPI">UPI</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                 </select>
+              </div>
+
+              {/* Row 3: Amounts */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                  <div>
-                    <label className="block text-sm font-medium mb-1">Deposit</label>
+                    <label className="block text-sm font-medium mb-1">Deposit Amount</label>
                     <input type="number" name="deposit" className="w-full p-2 border rounded-lg" value={formData.deposit} onChange={handleInputChange}/>
                  </div>
                  <div>
-                    <label className="block text-sm font-medium mb-1 text-blue-600">Installment</label>
+                    <label className="block text-sm font-medium mb-1 text-blue-600">Installment Amount</label>
                     <input type="number" name="installment" className="w-full p-2 border rounded-lg border-blue-100 bg-blue-50" value={formData.installment} onChange={handleInputChange}/>
                  </div>
               </div>
 
+              {/* Row 4: Interest & Fine */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                  <div>
                     <label className="block text-sm font-medium mb-1">Interest</label>
@@ -359,33 +376,39 @@ const PassbookPage = () => {
               <button onClick={handleSubmitEntry} className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold">Save Entry</button>
             </div>
 
-            {/* Right: Detailed Live Preview */}
+            {/* Right: Live Preview (UPDATED with Deposit Balance) */}
             <div className="hidden md:flex w-1/3 bg-gray-50 p-6 flex-col border-l">
                <h3 className="font-bold text-gray-500 mb-4">Live Preview</h3>
                
-               {/* Detailed Loan Card */}
                <div className="bg-white p-6 rounded-2xl shadow-sm mb-4 border border-blue-100 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
                 <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Member Info</p>
                 <h2 className="text-xl font-bold text-gray-800">{formData.memberName || 'Select Member'}</h2>
                 
                 <div className="mt-4 space-y-2">
+                  {/* ✅ Added Deposit Balance Row */}
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Current Loan:</span>
-                    <span className="font-medium">₹{memberLoanStats.outstanding.toLocaleString()}</span>
+                    <span className="text-gray-500">Deposit Balance:</span>
+                    <span className="font-bold text-gray-800">₹{memberStats.totalDeposits.toLocaleString()}</span>
+                  </div>
+                  
+                  <div className="w-full border-t border-dashed my-2"></div>
+
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Outstanding Loan:</span>
+                    <span className="font-medium text-red-600">₹{memberStats.outstandingLoan.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Less Installment:</span>
                     <span>- ₹{(parseFloat(formData.installment)||0).toLocaleString()}</span>
                   </div>
                   <div className="border-t pt-2 flex justify-between font-bold text-blue-700">
-                    <span>New Balance:</span>
-                    <span>₹{memberLoanStats.newBalance.toLocaleString()}</span>
+                    <span>New Loan Bal:</span>
+                    <span>₹{memberStats.newLoanBalance.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-               {/* Total Amount Card */}
                <div className="bg-purple-600 text-white p-6 rounded-2xl shadow-lg mt-auto">
                   <h1 className="text-4xl font-bold">₹ {getTotalAmount().toLocaleString()}</h1>
                   <p className="text-xs opacity-75">Total Payable</p>
@@ -395,25 +418,16 @@ const PassbookPage = () => {
         </div>
       )}
 
-      {/* --- MODAL: LOAN REQUEST --- */}
+      {/* Loan Request Modal (Same as before) */}
       {showLoanRequest && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl">
             <h2 className="text-lg font-bold mb-4">Request New Loan</h2>
-            <select className="w-full p-2 border rounded-lg mb-4" 
-              value={loanRequestData.memberId}
-              onChange={(e) => setLoanRequestData({...loanRequestData, memberId: e.target.value})}
-            >
+            <select className="w-full p-2 border rounded-lg mb-4" value={loanRequestData.memberId} onChange={(e) => setLoanRequestData({...loanRequestData, memberId: e.target.value})}>
               <option value="">Choose Member</option>
               {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
-            <input 
-              type="number" 
-              placeholder="Loan Amount" 
-              className="w-full p-2 border rounded-lg mb-4"
-              value={loanRequestData.amount}
-              onChange={(e) => setLoanRequestData({...loanRequestData, amount: e.target.value})}
-            />
+            <input type="number" placeholder="Loan Amount" className="w-full p-2 border rounded-lg mb-4" value={loanRequestData.amount} onChange={(e) => setLoanRequestData({...loanRequestData, amount: e.target.value})}/>
             <div className="flex gap-3">
               <button onClick={() => setShowLoanRequest(false)} className="flex-1 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleSubmitLoanRequest} className="flex-1 py-2 bg-orange-500 text-white rounded-lg">Send Request</button>
@@ -421,7 +435,6 @@ const PassbookPage = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
