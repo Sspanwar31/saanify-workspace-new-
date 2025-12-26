@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Use simple supabase client
+import { supabase } from '@/lib/supabase-simple'; // Ensure this path is correct
 import { 
   Search, RefreshCw, Download, Plus, HandCoins, 
   Trash2, Edit, Calculator, X, Wallet, User 
@@ -9,10 +9,11 @@ import {
 
 const PassbookPage = () => {
   // --- States ---
-  const [entries, setEntries] = useState([]);
-  const [members, setMembers] = useState([]);
+  const [entries, setEntries] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [clientId, setClientId] = useState<string | null>(null);
 
   // Modals
   const [showAddEntry, setShowAddEntry] = useState(false);
@@ -23,7 +24,7 @@ const PassbookPage = () => {
     memberId: '',
     memberName: '',
     date: new Date().toISOString().split('T')[0],
-    mode: 'Cash',
+    mode: 'CASH',
     deposit: '',
     installment: '',
     interest: '',
@@ -44,24 +45,61 @@ const PassbookPage = () => {
 
   // --- Initial Data Fetch ---
   useEffect(() => {
-    fetchEntries();
-    fetchMembers();
+    const initData = async () => {
+      // 1. Get User & Client ID (Assuming single client for now or fetching from auth)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Fetch: first client associated with this user (Adjust logic if needed)
+        // For safety, let's just fetch members first to find a valid client_id if not stored in metadata
+        const { data: memberData } = await supabase.from('members').select('client_id').limit(1);
+        if (memberData && memberData.length > 0) {
+          setClientId(memberData[0].client_id);
+        }
+      }
+    };
+    initData();
   }, []);
+
+  useEffect(() => {
+    if (clientId) {
+      fetchEntries();
+      fetchMembers();
+    }
+  }, [clientId]);
 
   const fetchEntries = async () => {
     setLoading(true);
+    // Fetch from OLD 'transactions' table and join with 'members'
     const { data, error } = await supabase
-      .from('passbook_entries')
-      .select('*')
+      .from('transactions')
+      .select('*, members(name)')
+      .eq('client_id', clientId)
       .order('date', { ascending: false });
-    if (!error) setEntries(data || []);
+
+    if (error) console.error("Error fetching transactions:", error);
+    else setEntries(data || []);
     setLoading(false);
   };
 
   const fetchMembers = async () => {
-    // Assuming you have a 'members' table with 'id', 'name', 'outstanding_loan'
-    const { data } = await supabase.from('members').select('*');
-    if (data) setMembers(data);
+    // Fetch from OLD 'members' table
+    // Also fetch 'loans' to calculate outstanding balance
+    const { data: membersData } = await supabase
+      .from('members')
+      .select('*, loans(remaining_balance, status)')
+      .eq('client_id', clientId);
+
+    if (membersData) {
+      // Calculate outstanding loan manually from loans relation
+      const mappedMembers = membersData.map(m => {
+        const activeLoan = m.loans?.find((l: any) => l.status === 'active' || l.status === 'pending');
+        return {
+          ...m,
+          outstanding_loan: activeLoan ? activeLoan.remaining_balance : 0
+        };
+      });
+      setMembers(mappedMembers);
+    }
   };
 
   // --- Logic: Auto Calculation ---
@@ -70,7 +108,7 @@ const PassbookPage = () => {
 
     // 1. Get Member's Current Loan
     const selectedMember = members.find(m => m.id === formData.memberId);
-    const currentLoan = selectedMember ? selectedMember.outstanding_loan : 0;
+    const currentLoan = selectedMember ? (selectedMember.outstanding_loan || 0) : 0;
     
     // 2. Calculate Fine (After 15th of month, 10rs/day)
     let fineVal = 0;
@@ -82,14 +120,13 @@ const PassbookPage = () => {
     }
 
     // 3. Calculate Interest (1% of Outstanding)
-    // Note: Interest is usually calculated on the opening balance of the month
     const interestVal = Math.round(currentLoan * 0.01);
 
-    // 4. Update Form (Only if fields are empty or auto-calculated, allows manual override)
+    // 4. Update Form
     setFormData(prev => ({
       ...prev,
-      interest: prev.interest === '' ? interestVal : prev.interest, // Only auto-fill if empty
-      fine: prev.fine === '' ? fineVal : prev.fine
+      interest: prev.interest === '' ? String(interestVal) : prev.interest, 
+      fine: prev.fine === '' ? String(fineVal) : prev.fine
     }));
 
     // 5. Live Preview Stats
@@ -102,21 +139,20 @@ const PassbookPage = () => {
   }, [formData.memberId, formData.date, formData.installment, members]);
 
   // --- Handlers ---
-
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleMemberSelect = (e) => {
+  const handleMemberSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const memberId = e.target.value;
     const member = members.find(m => m.id === memberId);
     setFormData(prev => ({
       ...prev,
       memberId: memberId,
       memberName: member ? member.name : '',
-      interest: '', // Reset to trigger auto-calc
-      fine: ''      // Reset to trigger auto-calc
+      interest: '',
+      fine: ''
     }));
   };
 
@@ -128,62 +164,89 @@ const PassbookPage = () => {
     return dep + inst + int + fine;
   };
 
-  // Submit Entry
+  // --- SUBMIT LOGIC: SAVE TO OLD DB ---
   const handleSubmitEntry = async () => {
-    const total = getTotalAmount();
-    const instAmt = parseFloat(formData.installment) || 0;
-
-    // 1. Insert into Passbook
-    const { error: passbookError } = await supabase.from('passbook_entries').insert([{
-      member_id: formData.memberId,
-      member_name: formData.memberName,
-      date: formData.date,
-      payment_mode: formData.mode,
-      deposit_amount: formData.deposit || 0,
-      installment_amount: formData.installment || 0,
-      interest_amount: formData.interest || 0,
-      fine_amount: formData.fine || 0,
-      total_amount: total,
-      note: formData.note
-    }]);
-
-    if (passbookError) {
-      alert('Error adding entry: ' + passbookError.message);
+    if (!clientId || !formData.memberId) {
+      alert("Client ID or Member ID missing");
       return;
     }
 
-    // 2. Update Member's Loan Balance (Decrease by Installment)
-    if (instAmt > 0) {
-      const member = members.find(m => m.id === formData.memberId);
-      const newLoanBal = (member.outstanding_loan || 0) - instAmt;
+    const updates = [];
+    const commonData = {
+      client_id: clientId,
+      member_id: formData.memberId,
+      date: formData.date,
+      payment_mode: formData.mode,
+      description: formData.note || 'Manual Entry',
+    };
 
-      await supabase
-        .from('members')
-        .update({ outstanding_loan: newLoanBal })
-        .eq('id', formData.memberId);
-      
-      // Refresh local member data
-      fetchMembers();
+    // 1. Handle Deposit
+    if (parseFloat(formData.deposit) > 0) {
+      updates.push({ ...commonData, type: 'deposit', amount: parseFloat(formData.deposit) });
+    }
+    // 2. Handle Installment (Loan Repayment)
+    if (parseFloat(formData.installment) > 0) {
+      updates.push({ ...commonData, type: 'loan_repayment', amount: parseFloat(formData.installment) });
+    }
+    // 3. Handle Interest
+    if (parseFloat(formData.interest) > 0) {
+      updates.push({ ...commonData, type: 'interest', amount: parseFloat(formData.interest) });
+    }
+    // 4. Handle Fine
+    if (parseFloat(formData.fine) > 0) {
+      updates.push({ ...commonData, type: 'fine', amount: parseFloat(formData.fine) });
+    }
+
+    if (updates.length === 0) {
+      alert("Please enter an amount");
+      return;
+    }
+
+    // Insert into OLD 'transactions' table
+    const { error } = await supabase.from('transactions').insert(updates);
+
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+
+    // Update Loan Balance if Installment Paid
+    if (parseFloat(formData.installment) > 0) {
+        // Find active loan
+        const { data: loans } = await supabase
+            .from('loans')
+            .select('*')
+            .eq('member_id', formData.memberId)
+            .eq('status', 'active');
+        
+        if (loans && loans.length > 0) {
+            const loan = loans[0];
+            const newBal = (loan.remaining_balance || 0) - parseFloat(formData.installment);
+            await supabase
+                .from('loans')
+                .update({ remaining_balance: newBal })
+                .eq('id', loan.id);
+        }
     }
 
     setShowAddEntry(false);
     fetchEntries();
-    // Reset Form
     setFormData({
       memberId: '', memberName: '', date: new Date().toISOString().split('T')[0],
-      mode: 'Cash', deposit: '', installment: '', interest: '', fine: '', note: ''
+      mode: 'CASH', deposit: '', installment: '', interest: '', fine: '', note: ''
     });
   };
 
-  // Submit Loan Request
   const handleSubmitLoanRequest = async () => {
-    const member = members.find(m => m.id === loanRequestData.memberId);
+    if(!clientId) return;
     
-    const { error } = await supabase.from('loan_requests').insert([{
+    // Insert into OLD 'loans' table with status 'pending'
+    const { error } = await supabase.from('loans').insert([{
+      client_id: clientId,
       member_id: loanRequestData.memberId,
-      member_name: member ? member.name : 'Unknown',
-      request_amount: loanRequestData.amount ? parseFloat(loanRequestData.amount) : null,
-      status: 'pending'
+      amount: parseFloat(loanRequestData.amount) || 0,
+      status: 'pending',
+      start_date: new Date().toISOString().split('T')[0]
     }]);
 
     if (error) alert('Error: ' + error.message);
@@ -193,8 +256,6 @@ const PassbookPage = () => {
       setLoanRequestData({ memberId: '', amount: '' });
     }
   };
-
-  // --- UI Components ---
 
   return (
     <div className="p-6 bg-orange-50 min-h-screen font-sans text-gray-800">
@@ -214,13 +275,13 @@ const PassbookPage = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards (Calculated from fetched entries) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Total Entries', val: entries.length, icon: <Wallet size={20}/> },
-          { label: 'Total Deposits', val: `₹${entries.reduce((a,b)=>a+(b.deposit_amount||0),0).toLocaleString()}`, icon: <Download size={20}/> },
-          { label: 'Installments Collected', val: `₹${entries.reduce((a,b)=>a+(b.installment_amount||0),0).toLocaleString()}`, icon: <RefreshCw size={20}/> },
-          { label: 'Total Interest', val: `₹${entries.reduce((a,b)=>a+(b.interest_amount||0),0).toLocaleString()}`, icon: <HandCoins size={20}/> },
+          { label: 'Total Deposits', val: `₹${entries.filter(e=>e.type==='deposit').reduce((a,b)=>a+(b.amount||0),0).toLocaleString()}`, icon: <Download size={20}/> },
+          { label: 'Installments Collected', val: `₹${entries.filter(e=>e.type==='loan_repayment').reduce((a,b)=>a+(b.amount||0),0).toLocaleString()}`, icon: <RefreshCw size={20}/> },
+          { label: 'Total Interest', val: `₹${entries.filter(e=>e.type==='interest').reduce((a,b)=>a+(b.amount||0),0).toLocaleString()}`, icon: <HandCoins size={20}/> },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-4 rounded-xl shadow-sm border border-orange-100 flex justify-between items-center">
             <div>
@@ -252,7 +313,7 @@ const PassbookPage = () => {
         </div>
       </div>
 
-      {/* Passbook Table */}
+      {/* Data Table - Mapped to Old Transactions */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="p-4 border-b font-semibold text-lg text-gray-800">Passbook Entries</div>
         <div className="overflow-x-auto">
@@ -262,37 +323,34 @@ const PassbookPage = () => {
                 <th className="p-4">Member</th>
                 <th className="p-4">Date</th>
                 <th className="p-4">Mode</th>
-                <th className="p-4 text-green-600">Deposit</th>
-                <th className="p-4 text-blue-600">Installment</th>
-                <th className="p-4 text-red-500">Interest/Fine</th>
-                <th className="p-4 text-right">Total Amount</th>
+                <th className="p-4 text-green-600">Type</th>
+                <th className="p-4 text-right">Amount</th>
                 <th className="p-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y text-sm">
-              {entries.filter(e => e.member_name?.toLowerCase().includes(searchTerm.toLowerCase())).map((entry) => (
+              {entries.filter(e => e.members?.name?.toLowerCase().includes(searchTerm.toLowerCase())).map((entry) => (
                 <tr key={entry.id} className="hover:bg-gray-50">
-                  <td className="p-4 font-medium text-gray-800">{entry.member_name}</td>
+                  <td className="p-4 font-medium text-gray-800">{entry.members?.name || 'Unknown'}</td>
                   <td className="p-4 text-gray-500">{new Date(entry.date).toLocaleDateString()}</td>
                   <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-xs border border-gray-300">{entry.payment_mode}</span></td>
-                  <td className="p-4 font-semibold text-green-600">₹{entry.deposit_amount || 0}</td>
-                  <td className="p-4 font-semibold text-blue-600">₹{entry.installment_amount || 0}</td>
-                  <td className="p-4 text-red-500">
-                    <div className="flex flex-col">
-                      <span>Int: ₹{entry.interest_amount}</span>
-                      {entry.fine_amount > 0 && <span className="text-xs">Fine: ₹{entry.fine_amount}</span>}
-                    </div>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded text-xs font-bold
+                      ${entry.type === 'deposit' ? 'bg-green-100 text-green-700' : 
+                        entry.type === 'interest' ? 'bg-red-100 text-red-700' : 
+                        'bg-blue-100 text-blue-700'}`}>
+                      {entry.type.toUpperCase().replace('_', ' ')}
+                    </span>
                   </td>
-                  <td className="p-4 text-right font-bold">₹{entry.total_amount}</td>
+                  <td className="p-4 text-right font-bold">₹{entry.amount}</td>
                   <td className="p-4 flex justify-center gap-2">
-                    <button className="p-1 hover:text-blue-500"><Edit size={16}/></button>
                     <button className="p-1 hover:text-red-500"><Trash2 size={16}/></button>
                   </td>
                 </tr>
               ))}
               {entries.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="p-8 text-center text-gray-400">No transactions found</td>
+                  <td colSpan={6} className="p-8 text-center text-gray-400">No transactions found</td>
                 </tr>
               )}
             </tbody>
@@ -304,8 +362,7 @@ const PassbookPage = () => {
       {showAddEntry && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl">
-            
-            {/* Left: Input Form (Scrollable) */}
+            {/* Left: Input Form */}
             <div className="w-full md:w-2/3 p-6 overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold flex items-center gap-2"><Calculator size={24}/> Add New Entry</h2>
@@ -329,9 +386,9 @@ const PassbookPage = () => {
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Payment Mode</label>
                 <select name="mode" className="w-full p-2 border rounded-lg" value={formData.mode} onChange={handleInputChange}>
-                  <option>Cash</option>
-                  <option>Online/UPI</option>
-                  <option>Bank Transfer</option>
+                  <option>CASH</option>
+                  <option>ONLINE</option>
+                  <option>UPI</option>
                 </select>
               </div>
 
@@ -379,7 +436,7 @@ const PassbookPage = () => {
                 
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Previous Loan:</span>
+                    <span className="text-gray-500">Current Loan:</span>
                     <span className="font-medium">₹{memberLoanStats.outstanding.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm text-green-600">
@@ -396,10 +453,9 @@ const PassbookPage = () => {
               <div className="bg-purple-600 text-white p-6 rounded-2xl shadow-lg mt-auto">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="bg-white/20 p-2 rounded-full"><HandCoins size={20}/></div>
-                  <span className="text-sm font-medium opacity-90">Total Payable Now</span>
+                  <span className="text-sm font-medium opacity-90">Total Payable</span>
                 </div>
                 <h1 className="text-4xl font-bold mb-1">₹ {getTotalAmount().toLocaleString()}</h1>
-                <p className="text-xs opacity-75">Includes Deposit + Installment + Interest + Fine</p>
               </div>
             </div>
 
@@ -411,12 +467,7 @@ const PassbookPage = () => {
       {showLoanRequest && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2"><Wallet size={20} className="text-orange-500"/> Request New Loan</h2>
-              <button onClick={() => setShowLoanRequest(false)}><X size={20}/></button>
-            </div>
-
-            <label className="block text-sm font-medium mb-1">Select Member *</label>
+            <h2 className="text-lg font-bold mb-4">Request New Loan</h2>
             <select className="w-full p-2 border rounded-lg mb-4" 
               value={loanRequestData.memberId}
               onChange={(e) => setLoanRequestData({...loanRequestData, memberId: e.target.value})}
@@ -424,25 +475,18 @@ const PassbookPage = () => {
               <option value="">Choose Member</option>
               {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
-
-            <label className="block text-sm font-medium mb-1">Loan Amount (Optional)</label>
             <input 
               type="number" 
-              placeholder="Enter amount or leave empty" 
-              className="w-full p-2 border rounded-lg mb-2"
+              placeholder="Loan Amount" 
+              className="w-full p-2 border rounded-lg mb-4"
               value={loanRequestData.amount}
               onChange={(e) => setLoanRequestData({...loanRequestData, amount: e.target.value})}
             />
-            <p className="text-xs text-gray-500 mb-6">If not specified, admin will determine the loan amount later.</p>
-
-            <div className="flex gap-3">
-              <button onClick={() => setShowLoanRequest(false)} className="flex-1 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSubmitLoanRequest} className="flex-1 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium">+ Send Request</button>
-            </div>
+            <button onClick={handleSubmitLoanRequest} className="w-full py-2 bg-orange-500 text-white rounded-lg">Send Request</button>
+            <button onClick={() => setShowLoanRequest(false)} className="w-full py-2 mt-2 border rounded-lg">Cancel</button>
           </div>
         </div>
       )}
-
     </div>
   );
 };
