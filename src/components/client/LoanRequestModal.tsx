@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
+import { supabase } from '@/lib/supabase-simple'; 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,33 +17,27 @@ interface LoanRequestModalProps {
 }
 
 export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId }: LoanRequestModalProps) {
-  // --- Supabase States ---
   const [members, setMembers] = useState<any[]>([]);
   const [clientId, setClientId] = useState<string | null>(null);
 
-  // --- Form States ---
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [loanAmount, setLoanAmount] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeLoanWarning, setActiveLoanWarning] = useState<string>('');
 
-  // 1. Fetch Client & Members on Open
+  // 1. Fetch Data
   useEffect(() => {
     if (isOpen) {
       const fetchData = async () => {
-        // Get Client ID
         const { data: clients } = await supabase.from('clients').select('id').limit(1);
-        
         if (clients && clients.length > 0) {
           const cid = clients[0].id;
           setClientId(cid);
 
-          // Get Active Members linked to this client
           const { data: membersData } = await supabase
             .from('members')
-            .select('*')
+            .select('id, name, phone, status') // Fetch specific fields
             .eq('client_id', cid)
-            // .eq('status', 'active') // Optional: Uncomment if you only want active members
             .order('name', { ascending: true });
           
           if (membersData) setMembers(membersData);
@@ -55,77 +49,56 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
 
   const selectedMember = members.find(m => m.id === selectedMemberId);
 
-  // 2. Check for Active Loan (Async Check in Supabase)
+  // 2. Check Active Loan
   useEffect(() => {
     const checkActiveLoan = async () => {
       if (selectedMemberId && clientId) {
-        // Query loans table for active status
         const { data: activeLoans } = await supabase
           .from('loans')
           .select('amount, remaining_balance')
           .eq('member_id', selectedMemberId)
-          .eq('status', 'active'); // Assuming 'active' status means loan is ongoing
+          .eq('status', 'active');
         
         if (activeLoans && activeLoans.length > 0) {
           const loan = activeLoans[0];
           const balance = loan.remaining_balance || loan.amount;
-          setActiveLoanWarning(`This member already has an active loan of ₹${balance.toLocaleString()}. New loan requests may be subject to additional review.`);
+          setActiveLoanWarning(`This member has an active loan (Bal: ₹${balance.toLocaleString()}).`);
         } else {
           setActiveLoanWarning('');
         }
-      } else {
-        setActiveLoanWarning('');
       }
     };
-    
     checkActiveLoan();
   }, [selectedMemberId, clientId]);
 
-  // Auto-select member if preSelectedMemberId is provided
+  // Auto-select
   useEffect(() => {
-    if (preSelectedMemberId && isOpen) {
-      setSelectedMemberId(preSelectedMemberId);
-    }
+    if (preSelectedMemberId && isOpen) setSelectedMemberId(preSelectedMemberId);
   }, [preSelectedMemberId, isOpen]);
 
-  // 3. Submit Handler (Supabase)
+  // 3. Submit Handler (Fixed: Removed 'purpose' to fix error)
   const handleSubmit = async () => {
-    if (!selectedMemberId || !clientId) {
-      alert('Please select a member');
-      return;
-    }
-
+    if (!selectedMemberId || !clientId) return alert('Please select a member');
     setIsSubmitting(true);
 
     try {
       const amountVal = loanAmount ? parseFloat(loanAmount) : 0;
-      
-      // Calculate derived fields (keeping your original logic)
-      const interestRate = 12;
-      const tenureMonths = 12;
       const startDate = new Date().toISOString().split('T')[0];
-      // Maturity date ~ 1 year later
-      const maturityDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      // Prepare payload
+
+      // ✅ FIXED: Only sending columns that exist in your DB
       const loanData = {
         client_id: clientId,
         member_id: selectedMemberId,
         amount: amountVal,
-        status: 'pending', // Default status for requests
+        status: 'pending',
         start_date: startDate,
-        // Optional fields - ensure your Supabase table has these columns if you want to save them
-        interest_rate: interestRate,
-        duration_months: tenureMonths, 
-        end_date: maturityDate,
-        purpose: 'Loan request via portal'
+        // purpose: 'Loan Request' // Removed to prevent error
       };
 
       const { error } = await supabase.from('loans').insert([loanData]);
 
       if (!error) {
-        alert('Loan request submitted successfully!');
-        // Reset form
+        alert('Loan request sent! Waiting for Admin Approval.');
         setSelectedMemberId('');
         setLoanAmount('');
         onClose();
@@ -133,8 +106,8 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
         alert(`Error: ${error.message}`);
       }
     } catch (error) {
-      console.error('Error submitting loan request:', error);
-      alert('An error occurred while submitting the loan request');
+      console.error(error);
+      alert('Failed to send request');
     } finally {
       setIsSubmitting(false);
     }
@@ -144,104 +117,60 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Request New Loan</DialogTitle>
+          <DialogTitle>Request New Loan</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Member Selection - Hide if preSelectedMemberId is provided */}
+        <div className="space-y-4">
+          {/* Member Select */}
           {!preSelectedMemberId ? (
             <div className="space-y-2">
-              <Label htmlFor="member">Select Member</Label>
+              <Label>Select Member</Label>
               <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a member" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Choose Member" /></SelectTrigger>
                 <SelectContent>
-                  {members.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.name} {member.phone ? `- ${member.phone}` : ''}
-                    </SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           ) : (
-            <div className="space-y-2">
-              <Label>Requesting For</Label>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <p className="font-medium text-orange-900">
-                  {selectedMember?.name}
-                </p>
-              </div>
+            <div className="bg-orange-50 p-2 rounded border border-orange-200 text-orange-900 font-medium">
+              Requesting for: {selectedMember?.name}
             </div>
           )}
 
-          {/* Loan Amount (Optional) */}
+          {/* Amount */}
           <div className="space-y-2">
-            <Label htmlFor="loanAmount">Loan Amount (Optional)</Label>
-            <Input
-              id="loanAmount"
-              type="number"
-              placeholder="Enter amount or leave empty"
-              value={loanAmount}
-              onChange={(e) => setLoanAmount(e.target.value)}
+            <Label>Loan Amount</Label>
+            <Input 
+              type="number" 
+              placeholder="Amount" 
+              value={loanAmount} 
+              onChange={(e) => setLoanAmount(e.target.value)} 
             />
-            <p className="text-sm text-muted-foreground">
-              If not specified, admin will determine the loan amount based on member's profile and deposit history.
-            </p>
           </div>
 
-          {/* Warning for Active Loans */}
+          {/* Warning */}
           {activeLoanWarning && (
-            <Alert>
+            <Alert variant="destructive" className="py-2">
               <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                {activeLoanWarning}
-              </AlertDescription>
+              <AlertDescription className="text-xs">{activeLoanWarning}</AlertDescription>
             </Alert>
           )}
 
-          {/* Member Info Display */}
-          {selectedMember && (
-            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-              <h4 className="font-medium">Member Details:</h4>
-              <div className="text-sm space-y-1">
-                <div><strong>Name:</strong> {selectedMember.name}</div>
-                <div><strong>Phone:</strong> {selectedMember.phone || 'N/A'}</div>
-                <div><strong>Join Date:</strong> {selectedMember.join_date || 'N/A'}</div>
-                <div><strong>Status:</strong> 
-                  <span className={`ml-2 px-2 py-1 rounded-full text-xs bg-green-100 text-green-800`}>
-                    Active
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Info Alert */}
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              Loan requests will be reviewed by the administrator. The final approved amount and terms are subject to admin discretion.
+          {/* Info */}
+          <Alert className="bg-blue-50 text-blue-900 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-xs">
+              This request will appear in the Admin Panel for approval (80% Limit Logic applies there).
             </AlertDescription>
           </Alert>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              className="flex-1 bg-orange-600 hover:bg-orange-700"
-              disabled={isSubmitting || !selectedMemberId}
-            >
-              {isSubmitting ? 'Submitting...' : 'Send Request'}
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting || !loanAmount} className="flex-1 bg-orange-600 hover:bg-orange-700">
+              {isSubmitting ? 'Sending...' : 'Send Request'}
             </Button>
           </div>
         </div>
