@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase-simple' // Supabase Connection
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-// Note: In tables ko bhi Supabase se connect karna padega agar ye Local Store use kar rahe hain
 import { LoanRequestsTable } from '@/components/client/loans/LoanRequestsTable'
 import { AllLoansTable } from '@/components/client/loans/AllLoansTable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { HandCoins, TrendingUp, Clock, Calendar, DollarSign } from 'lucide-react'
 
 export default function LoansPage() {
-  // --- States (Replaced Store with Local State) ---
+  // --- States ---
   const [loans, setLoans] = useState<any[]>([])
   const [loanRequests, setLoanRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,36 +19,38 @@ export default function LoansPage() {
     const fetchLoanData = async () => {
       setLoading(true)
       
-      // 1. Get Client ID (Admin)
+      // 1. Get Client ID
       const { data: clients } = await supabase.from('clients').select('id').limit(1)
       
       if (clients && clients.length > 0) {
         const clientId = clients[0].id
 
-        // 2. Fetch All Loans (Requests + Active)
-        const { data } = await supabase
+        // 2. Fetch Loans + Member Details (Name, Phone, Total Deposits)
+        const { data, error } = await supabase
           .from('loans')
-          .select('*')
+          .select('*, members(name, phone, total_deposits)')
           .eq('client_id', clientId)
+          .order('created_at', { ascending: false })
 
         if (data) {
-          // Map DB columns (snake_case) to UI expected format (camelCase)
+          // Map Data to match your UI structure
           const formattedData = data.map((item: any) => ({
             ...item,
             id: item.id,
             amount: item.amount,
             status: item.status,
-            // Critical: Map 'remaining_balance' to 'remainingBalance' for your logic
-            remainingBalance: item.remaining_balance || 0, 
-            memberId: item.member_id
+            remainingBalance: item.remaining_balance || 0,
+            memberId: item.member_id,
+            memberName: item.members?.name || 'Unknown',
+            memberPhone: item.members?.phone,
+            memberTotalDeposits: item.members?.total_deposits || 0, // Needed for Requests Table
+            requestedDate: item.start_date || item.created_at,
+            startDate: item.start_date
           }))
 
-          // Separate Pending Requests vs Active/History Loans
-          const requests = formattedData.filter(l => l.status === 'pending')
-          const allOtherLoans = formattedData.filter(l => l.status !== 'pending')
-
-          setLoanRequests(requests)
-          setLoans(allOtherLoans)
+          // Separate Lists
+          setLoanRequests(formattedData.filter(l => l.status === 'pending'))
+          setLoans(formattedData.filter(l => l.status !== 'pending'))
         }
       }
       setLoading(false)
@@ -58,14 +59,12 @@ export default function LoansPage() {
     fetchLoanData()
   }, [])
 
-  // --- Existing Logic (Unchanged) ---
-  
-  // Calculate stats
+  // --- Logic: Stats Calculation ---
   const activeLoans = loans.filter(loan => loan.status === 'active')
-  const pendingRequests = loanRequests.filter(request => request.status === 'pending')
+  const pendingRequests = loanRequests // Already filtered
   
   const totalDisbursed = loans
-    .filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'completed')
+    .filter(l => ['active', 'approved', 'completed'].includes(l.status))
     .reduce((sum, loan) => sum + (loan.amount || 0), 0)
 
   const formatCurrency = (amount: number) => {
@@ -173,11 +172,13 @@ export default function LoansPage() {
           </TabsList>
 
           <TabsContent value="requests">
-            <LoanRequestsTable />
+            {/* Pass Data as Prop */}
+            <LoanRequestsTable requests={pendingRequests} />
           </TabsContent>
 
           <TabsContent value="all-loans">
-            <AllLoansTable />
+             {/* Pass Data as Prop */}
+            <AllLoansTable loans={loans} />
           </TabsContent>
         </Tabs>
       </div>
