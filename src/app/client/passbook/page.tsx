@@ -12,7 +12,11 @@ import {
   ArrowUpDown,
   TrendingUp,
   TrendingDown,
-  DollarSign
+  DollarSign,
+  Wallet,
+  RefreshCw,
+  Download,
+  Search
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,6 +38,7 @@ export default function PassbookPage() {
   const [passbook, setPassbook] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [clientId, setClientId] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   // Unused Form States (Kept from your original code to avoid breaking changes)
   const [selectedMember, setSelectedMember] = useState('')
@@ -123,11 +128,13 @@ export default function PassbookPage() {
     setLoading(false)
   }
 
-  // --- Logic: Pagination ---
-  const sortedEntries = passbook // Already sorted in fetch
-  const totalPages = Math.ceil(sortedEntries.length / entriesPerPage)
+  // --- Logic: Pagination & Search ---
+  const filteredEntries = passbook.filter(entry => 
+    getMemberName(entry.memberId).toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  const totalPages = Math.ceil(filteredEntries.length / entriesPerPage)
   const startIndex = (currentPage - 1) * entriesPerPage
-  const paginatedEntries = sortedEntries.slice(startIndex, startIndex + entriesPerPage)
+  const paginatedEntries = filteredEntries.slice(startIndex, startIndex + entriesPerPage)
 
   // --- Logic: Add Entry (Connected to Supabase) ---
   const handleAddEntry = async () => {
@@ -205,78 +212,95 @@ export default function PassbookPage() {
     )
   }
 
-  // --- JSX (Kept Exactly Same) ---
+  // --- JSX (Sunrise Cooperative Society Theme) ---
   return (
-    <div className="space-y-6">
+    <div className="p-6 bg-orange-50 min-h-screen font-sans text-gray-800">
+      
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Passbook
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Manage all financial transactions and entries
-          </p>
+          <h1 className="text-2xl font-bold text-orange-900">Sunrise Cooperative Society</h1>
+          <p className="text-sm text-orange-600">Digital Passbook Portal</p>
         </div>
-        
-        <div className="flex gap-3">
-          {/* Request Loan Button */}
-          <Button 
-            className="bg-orange-600 hover:bg-orange-700"
-            onClick={() => setIsLoanModalOpen(true)}
-          >
-            <HandCoins className="h-4 w-4 mr-2" />
-            Request Loan
-          </Button>
-          
-          {/* Add Entry Button */}
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700"
-            onClick={() => setIsAddEntryOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Entry
-          </Button>
+        <div className="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm">
+          <div className="bg-gray-200 p-2 rounded-full"><User size={20} /></div>
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-semibold">Admin User</p>
+            <p className="text-xs text-gray-500">Ledger Keeper</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Total Entries', val: passbook.length, icon: <Wallet size={20}/> },
+          { label: 'Total Deposits', val: `₹${passbook.filter(e => e.type === 'deposit').reduce((a,b)=>a+b.amount,0).toLocaleString()}`, icon: <TrendingUp size={20}/> },
+          { label: 'Loan Repayments', val: `₹${passbook.filter(e => e.type === 'loan').reduce((a,b)=>a+b.amount,0).toLocaleString()}`, icon: <HandCoins size={20}/> },
+          { label: 'Interest/Fine', val: `₹${passbook.filter(e => e.type === 'interest').reduce((a,b)=>a+b.amount,0).toLocaleString()}`, icon: <DollarSign size={20}/> },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-4 rounded-xl shadow-sm border border-orange-100 flex justify-between items-center">
+            <div>
+              <p className="text-gray-500 text-sm">{stat.label}</p>
+              <h3 className="text-2xl font-bold text-gray-800 mt-1">{stat.val}</h3>
+            </div>
+            <div className="text-orange-500 bg-orange-50 p-3 rounded-full">{stat.icon}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Action Bar */}
+      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-6 gap-4">
+        <div className="relative w-full md:w-1/3">
+          <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Search by member name..." 
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
+          <button onClick={fetchPassbook} className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"><RefreshCw size={16}/> Refresh</button>
+          <button className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"><Download size={16}/> Export</button>
+          <button onClick={() => setIsAddEntryOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"><Plus size={16}/> Add Entry</button>
+          <button onClick={() => setIsLoanModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"><HandCoins size={16}/> Request Loan</button>
         </div>
       </div>
 
       {/* Passbook Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Transaction History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Member</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Balance</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b font-semibold text-lg text-gray-800">Passbook Entries</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 text-gray-600 text-sm uppercase">
+              <tr>
+                <th className="p-4">Date</th>
+                <th className="p-4">Member</th>
+                <th className="p-4">Type</th>
+                <th className="p-4">Description</th>
+                <th className="p-4 text-green-600">Deposit</th>
+                <th className="p-4 text-blue-600">Installment</th>
+                <th className="p-4 text-red-500">Interest/Fine</th>
+                <th className="p-4 text-right">Total Amount</th>
+                <th className="p-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y text-sm">
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">Loading entries...</TableCell>
-                </TableRow>
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-gray-400">Loading entries...</td>
+                </tr>
               ) : paginatedEntries.length === 0 ? (
-                <TableRow>
-                   <TableCell colSpan={7} className="text-center py-8">No transactions found.</TableCell>
-                </TableRow>
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-gray-400">No transactions found</td>
+                </tr>
               ) : (
                 paginatedEntries.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell>
-                    {new Date(entry.date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
+                <tr key={entry.id} className="hover:bg-gray-50">
+                  <td className="p-4 text-gray-500">{new Date(entry.date).toLocaleDateString()}</td>
+                  <td className="p-4 font-medium text-gray-800">
                     <div className="flex items-center gap-2">
                       <div className="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
                         <span className="text-xs font-medium">
@@ -285,86 +309,66 @@ export default function PassbookPage() {
                       </div>
                       {getMemberName(entry.memberId)}
                     </div>
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td className="p-4">
                     <div className="flex items-center gap-2">
                       {getEntryTypeIcon(entry.type)}
                       {getEntryTypeBadge(entry.type)}
                     </div>
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {entry.description}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`font-medium ${
-                      entry.type === 'deposit' || entry.type === 'interest' 
-                        ? 'text-green-600' 
-                        : 'text-red-600'
-                    }`}>
-                      {entry.type === 'deposit' || entry.type === 'interest' ? '+' : ''}
-                      ₹{entry.amount.toLocaleString()}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    ₹{entry.balance.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        // onClick={() => handleEditEntry(entry)} // Edit logic hidden for now to prevent errors
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => handleDeleteEntry(entry)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                  <td className="p-4 max-w-xs truncate">{entry.description}</td>
+                  <td className="p-4 font-semibold text-green-600">
+                    {entry.type === 'deposit' ? `₹${entry.amount.toLocaleString()}` : '₹0'}
+                  </td>
+                  <td className="p-4 font-semibold text-blue-600">
+                    {entry.type === 'loan' ? `₹${entry.amount.toLocaleString()}` : '₹0'}
+                  </td>
+                  <td className="p-4 text-red-500">
+                    {entry.type === 'interest' ? `₹${entry.amount.toLocaleString()}` : '₹0'}
+                  </td>
+                  <td className="p-4 text-right font-bold">₹{entry.amount.toLocaleString()}</td>
+                  <td className="p-4 flex justify-center gap-2">
+                    <button className="p-1 hover:text-blue-500"><Edit size={16}/></button>
+                    <button className="p-1 hover:text-red-500" onClick={() => handleDeleteEntry(entry)}><Trash2 size={16}/></button>
+                  </td>
+                </tr>
               )))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
+        </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Showing {startIndex + 1} to {Math.min(startIndex + entriesPerPage, sortedEntries.length)} of {sortedEntries.length} entries
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 border-t">
+            <div className="text-sm text-gray-600">
+              Showing {startIndex + 1} to {Math.min(startIndex + entriesPerPage, filteredEntries.length)} of {filteredEntries.length} entries
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* New Rich UI Modals - You will need to wire these up internally to Supabase as well */}
+      {/* New Rich UI Modals */}
       <PassbookAddEntryModal 
         isOpen={isAddEntryOpen} 
         onClose={() => {
