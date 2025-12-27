@@ -8,11 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, CheckCircle2 } from 'lucide-react';
 import { EditLoanModal } from './EditLoanModal';
 
-// Helper to format currency
 const formatCurrency = (val: number) => 
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
 
-// Helper to format date
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -23,7 +21,7 @@ const formatDate = (dateStr: string) => {
 const getNextEMI = (startDate: string) => {
   if (!startDate) return '-';
   const d = new Date(startDate);
-  d.setMonth(d.getMonth() + 1); // Next Month
+  d.setMonth(d.getMonth() + 1); 
   return formatDate(d.toISOString());
 };
 
@@ -32,7 +30,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
 
   // --- LOGIC: GROUPING & MERGING ---
   const groupedLoans = loans.reduce((acc: any, loan) => {
-    // Unique Key per member
     const key = loan.memberId; 
 
     if (!acc[key]) {
@@ -40,24 +37,16 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         ...loan,
         count: 1, 
         totalAmount: loan.amount,
-        // Since we pull remainingBalance from Members table, it is already the GRAND TOTAL for that member
         totalOutstanding: loan.remainingBalance, 
-        // Summing interest from passbook logic in parent
-        totalInterestCollected: loan.totalInterestCollected || 0, 
+        totalInterestCollected: loan.totalInterestCollected || 0, // Initial Value
         startDate: loan.startDate || loan.created_at
       };
     } else {
-      // If same member appears again (multiple active loans in history)
       acc[key].count += 1;
       acc[key].totalAmount += loan.amount;
-      // Don't add totalOutstanding again, as it's fetched from Member table (which is already a total)
-      // Just ensure we keep the latest value if needed, but usually it's same.
+      // Note: totalOutstanding aur totalInterestCollected Parent se Member level par aa rahe hain.
+      // Isliye unhe bar-bar add (+=) nahi karna hai, bas latest value rakhni hai.
       
-      // Accumulate interest
-      // Note: In parent we calculate total interest per member, so it's same for all rows. 
-      // We don't need to sum it again here, just keep the one passed.
-      
-      // Update start date to earliest
       const currentStart = new Date(acc[key].startDate);
       const newStart = new Date(loan.startDate || loan.created_at);
       if (newStart < currentStart) {
@@ -96,10 +85,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
           <TableBody>
             {displayRows.length > 0 ? (
               displayRows.map((row: any) => {
-                // Auto Calculate Monthly Interest on CURRENT Outstanding
                 const monthlyInterest = (row.totalOutstanding || 0) * 0.01;
-                
-                // Determine Status (If Outstanding is 0, mark as Cleared/Closed)
                 const isClosed = row.totalOutstanding <= 0;
 
                 return (
@@ -124,6 +110,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                     </TableCell>
                     
                     <TableCell className="text-green-700 font-medium bg-green-50 rounded-md">
+                      {/* Only Interest, No Fine */}
                       {formatCurrency(row.totalInterestCollected)}
                     </TableCell>
                     
