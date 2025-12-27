@@ -12,7 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  RefreshCw // Added Refresh Icon
+  RefreshCw 
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,8 +45,8 @@ export default function AdminFundPage() {
     totalInjected: 0,
     totalWithdrawn: 0
   })
-  const [cashInHand, setCashInHand] = useState(0) // Admin Fund ka Cash in Hand
-  const [societyCashInHand, setSocietyCashInHand] = useState(0) // Total Society Cash (from all sources)
+  const [cashInHand, setCashInHand] = useState(0) 
+  const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
   // 1. Fetch Client ID & Initial Data
   useEffect(() => {
@@ -74,12 +74,12 @@ export default function AdminFundPage() {
       return;
     }
 
-    // Fetch Ledger
+    // A. Fetch Ledger (Admin Transactions)
     const { data: ledger, error: ledgerError } = await supabase
       .from('admin_fund_ledger')
       .select('*')
       .eq('client_id', clientId)
-      .order('created_at', { ascending: false }) // Latest first
+      .order('created_at', { ascending: false })
 
     if (ledgerError) {
       console.error("Error fetching admin fund ledger:", ledgerError);
@@ -93,7 +93,6 @@ export default function AdminFundPage() {
     let totalInjected = 0;
     let totalWithdrawn = 0;
 
-    // Process in chronological order for running balance
     const sortedLedger = (ledger || []).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     const processedLedger = sortedLedger.map((transaction: any) => {
         if (transaction.type === 'INJECT') {
@@ -105,32 +104,49 @@ export default function AdminFundPage() {
         }
         return { ...transaction, runningBalance: currentRunningBalance };
     });
-    // Set the ledger in reverse order for UI (latest first)
     setAdminFundLedger(processedLedger.reverse());
 
     setSummary({
-      netBalance: currentRunningBalance, // Last calculated running balance is net balance
+      netBalance: currentRunningBalance, 
       totalInjected: totalInjected,
       totalWithdrawn: totalWithdrawn
     });
-    setCashInHand(currentRunningBalance); // Admin fund's own cash in hand
+    setCashInHand(currentRunningBalance); 
 
-    // Calculate Society's Total Cash in Hand (from Passbook)
+    // B. Calculate Society's Total Cash (Passbook + Admin Fund - Loans)
+    
+    // 1. Get Passbook Total (Inflow)
     const { data: passbookEntries } = await supabase
       .from('passbook_entries')
-      .select('deposit_amount, installment_amount, total_amount') // You can adjust these columns based on how you define 'cash'
-      .eq('member_id', clientId); // This will only count transactions by Admin, not all members
-                               // CRITICAL: You need a better way to get society's total cash.
-                               // This might need a separate 'society_cash' table or complex aggregation of ALL passbook entries.
-                               // For now, let's just sum all deposits from passbook entries as society cash
+      .select('deposit_amount, installment_amount, interest_amount, fine_amount')
     
+    let totalPassbookCollection = 0;
     if (passbookEntries) {
-        const totalDepositsFromPassbook = passbookEntries.reduce((sum, entry) => sum + (Number(entry.deposit_amount) || 0), 0);
-        const totalInstallmentsFromPassbook = passbookEntries.reduce((sum, entry) => sum + (Number(entry.installment_amount) || 0), 0);
-        // This logic is complex. It should be: Total Deposits - Total Withdrawals - Total Loans Disbursed.
-        // For now, let's keep it simple as sum of deposits for illustration.
-        setSocietyCashInHand(totalDepositsFromPassbook); 
+        totalPassbookCollection = passbookEntries.reduce((sum, entry) => 
+            sum + (Number(entry.deposit_amount)||0) + (Number(entry.installment_amount)||0) + (Number(entry.interest_amount)||0) + (Number(entry.fine_amount)||0)
+        , 0);
     }
+
+    // 2. Get Total Loans Disbursed (Outflow)
+    const { data: loans } = await supabase
+        .from('loans')
+        .select('amount')
+        .in('status', ['active', 'completed', 'approved']) // Only count money that actually left
+        .eq('client_id', clientId);
+
+    let totalLoansDisbursed = 0;
+    if (loans) {
+        totalLoansDisbursed = loans.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0);
+    }
+
+    // 3. Final Calculation
+    // Logic: (Passbook Collection) + (Admin Net Injection) - (Loans Given)
+    // Note: Admin Net Balance is already (Injected - Withdrawn), so it represents cash admin holds or put into society
+    // If Admin 'Injects', it adds to society cash. If 'Withdraws', it removes.
+    // So: Society Cash = (Passbook In) + (Admin Net Balance) - (Loan Out)
+    
+    const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
+    setSocietyCashInHand(finalSocietyCash); 
 
     setLoading(false);
   }
@@ -156,7 +172,7 @@ export default function AdminFundPage() {
             type: type,
             description: formData.description
         }]);
-        fetchAdminFundData(); // Refresh data
+        fetchAdminFundData(); 
         setFormData({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
         setIsInjectModalOpen(false);
         setIsWithdrawModalOpen(false);
@@ -171,7 +187,7 @@ export default function AdminFundPage() {
     if (!confirm("Are you sure you want to delete this transaction? This will affect balances.")) return;
     try {
         await supabase.from('admin_fund_ledger').delete().eq('id', id);
-        fetchAdminFundData(); // Refresh data
+        fetchAdminFundData(); 
     } catch (error) {
         console.error("Error deleting transaction:", error);
         alert("Failed to delete transaction.");
@@ -179,7 +195,6 @@ export default function AdminFundPage() {
   }
 
   return (
-    // ✅ FIX: Added 'p-6' for spacing
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -263,7 +278,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Society Cash Available Card */}
+        {/* Society Cash Available Card (NOW DYNAMIC) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
