@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Download, Filter, Search, X, TrendingUp, Wallet, DollarSign, Users, Percent, AlertTriangle, Calendar } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, DollarSign, Users, CreditCard, AlertTriangle, Calendar, Filter, Percent } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { differenceInMonths } from 'date-fns';
 
 export default function ReportsPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -51,7 +52,7 @@ export default function ReportsPage() {
 
   useEffect(() => { setIsMounted(true); }, []);
 
-  // 1. Fetch Data
+  // 1. Fetch All Data
   useEffect(() => {
     const fetchData = async () => {
         setLoading(true);
@@ -75,7 +76,6 @@ export default function ReportsPage() {
             if (membersRes.data) setMembers(membersRes.data);
             if (loansRes.data) setLoans(loansRes.data);
             if (passbookRes.data) {
-                // Client side filtering for passbook if needed
                 const memberIds = new Set(membersRes.data?.map(m => m.id));
                 const validEntries = passbookRes.data.filter(e => memberIds.has(e.member_id));
                 setPassbookEntries(validEntries);
@@ -93,9 +93,6 @@ export default function ReportsPage() {
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
-    // Adjust end date to include the full day
-    end.setHours(23, 59, 59, 999);
 
     // --- APPLY FILTERS ---
     const filteredPassbook = passbookEntries.filter(e => {
@@ -104,7 +101,6 @@ export default function ReportsPage() {
         const memberMatch = selectedMember === 'ALL' || e.member_id === selectedMember;
         const modeMatch = transactionMode === 'all' || (e.payment_mode || '').toLowerCase() === transactionMode;
         
-        // Transaction Type Filter
         let typeMatch = true;
         if(transactionType === 'deposit') typeMatch = (Number(e.deposit_amount) > 0);
         if(transactionType === 'loan') typeMatch = (Number(e.installment_amount) > 0);
@@ -116,7 +112,6 @@ export default function ReportsPage() {
     const filteredExpenses = expenses.filter(e => {
         const d = new Date(e.date);
         const dateMatch = d >= start && d <= end;
-        
         let typeMatch = true;
         if(transactionType === 'deposit' || transactionType === 'loan') typeMatch = false;
         
@@ -232,10 +227,8 @@ export default function ReportsPage() {
         else upiBalTotal += amt;
     });
     
-    // Subtract Expenses/Loans (Simplified: Expenses assumed cash if not tracked otherwise)
-    const totalExpOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0);
-    const totalLoanOut = loans.reduce((a,b)=>a+Number(b.amount),0);
-    cashBalTotal -= (totalExpOut + totalLoanOut);
+    const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
+    cashBalTotal -= totalOut;
 
     // --- MEMBER REPORTS (FIXED Variable Name) ---
     const memberReports = members.map(m => {
@@ -252,7 +245,7 @@ export default function ReportsPage() {
             id: m.id, name: m.name, fatherName: m.phone,
             totalDeposits: dep, loanTaken: lTaken, principalPaid: lTaken - lPend,
             interestPaid: intPaid, 
-            finePaid: finePaid, // ✅ Fixed: using finePaid, not fineP
+            finePaid: finePaid, // ✅ FIX: Correct variable name
             activeLoanBal: lPend,
             netWorth: dep - lPend, status: m.status || 'active'
         };
@@ -387,7 +380,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Modern Filter Bar */}
+      {/* Filter Bar */}
       <div className="border-b border-border/20 bg-white/80 dark:bg-black/60 backdrop-blur-sm -mx-6 px-6 py-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border">
@@ -447,36 +440,30 @@ export default function ReportsPage() {
           ))}
         </TabsList>
 
-        {/* TAB CONTENT (Kept Exactly Same as Required) */}
         <TabsContent value="summary" className="space-y-8 mt-6">
           <div className="grid gap-4 md:grid-cols-4">
-            <Card className="bg-green-50 border-green-200"><CardHeader className="pb-2"><CardTitle className="text-green-800 flex items-center gap-2"><DollarSign className="h-4 w-4"/>Total Income</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-green-700">{formatCurrency(summary.income.total)}</div></CardContent></Card>
-            <Card className="bg-red-50 border-red-200"><CardHeader className="pb-2"><CardTitle className="text-red-800 flex items-center gap-2"><TrendingDown className="h-4 w-4"/>Total Expenses</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-red-700">{formatCurrency(summary.expenses.total)}</div></CardContent></Card>
-            <Card className="bg-blue-50 border-blue-200"><CardHeader className="pb-2"><CardTitle className="text-blue-800 flex items-center gap-2"><TrendingUp className="h-4 w-4"/>Net Profit</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-blue-700">{formatCurrency(summary.netProfit)}</div></CardContent></Card>
-            <Card className="bg-purple-50 border-purple-200"><CardHeader className="pb-2"><CardTitle className="text-purple-800 flex items-center gap-2"><Users className="h-4 w-4"/>Active Members</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-purple-700">{activeMembersCount}</div></CardContent></Card>
+            <Card className="bg-green-50 border-green-200"><CardHeader className="pb-2"><CardTitle className="text-green-800">Total Income</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-green-700">{formatCurrency(summary.income.total)}</div></CardContent></Card>
+            <Card className="bg-red-50 border-red-200"><CardHeader className="pb-2"><CardTitle className="text-red-800">Total Expenses</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-red-700">{formatCurrency(summary.expenses.total)}</div></CardContent></Card>
+            <Card className="bg-blue-50 border-blue-200"><CardHeader className="pb-2"><CardTitle className="text-blue-800">Net Profit</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-blue-700">{formatCurrency(summary.netProfit)}</div></CardContent></Card>
+            <Card className="bg-purple-50 border-purple-200"><CardHeader className="pb-2"><CardTitle className="text-purple-800">Active Members</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-purple-700">{activeMembersCount}</div></CardContent></Card>
           </div>
           
           <Card className="border-l-4 border-l-blue-500 shadow-md">
-            <CardHeader><CardTitle className="text-xl font-bold text-gray-800">Profit & Loss Statement</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Profit & Loss Statement</CardTitle></CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-green-700 border-b pb-2 text-lg">INCOME (Credits)</h4>
-                  <div className="flex justify-between py-2"><span className="text-gray-600">Interest Income</span><span className="font-medium">{formatCurrency(summary.income.interest)}</span></div>
-                  <div className="flex justify-between py-2"><span className="text-gray-600">Fine Income</span><span className="font-medium">{formatCurrency(summary.income.fine)}</span></div>
-                  <div className="flex justify-between py-2"><span className="text-gray-600">Other Fees</span><span className="font-medium">{formatCurrency(summary.income.other)}</span></div>
-                  <div className="flex justify-between font-bold border-t pt-2 text-lg text-green-700"><span>Total Income</span><span>{formatCurrency(summary.income.total)}</span></div>
+                  <h4 className="font-semibold text-green-700 border-b pb-2">INCOME</h4>
+                  <div className="flex justify-between"><span>Interest</span><span>{formatCurrency(summary.income.interest)}</span></div>
+                  <div className="flex justify-between"><span>Fine</span><span>{formatCurrency(summary.income.fine)}</span></div>
+                  <div className="flex justify-between"><span>Other</span><span>{formatCurrency(summary.income.other)}</span></div>
+                  <div className="flex justify-between font-bold border-t pt-2"><span>Total</span><span>{formatCurrency(summary.income.total)}</span></div>
                 </div>
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-red-700 border-b pb-2 text-lg">EXPENSES (Debits)</h4>
-                  <div className="flex justify-between py-2"><span className="text-gray-600">Operational Cost</span><span className="font-medium">{formatCurrency(summary.expenses.ops)}</span></div>
-                  <div className="flex justify-between py-2"><span className="text-gray-600">Maturity Liability</span><span className="font-medium">{formatCurrency(summary.expenses.maturityInt)}</span></div>
-                  <div className="flex justify-between font-bold border-t pt-2 text-lg text-red-700"><span>Total Expenses</span><span>{formatCurrency(summary.expenses.total)}</span></div>
+                  <h4 className="font-semibold text-red-700 border-b pb-2">EXPENSES</h4>
+                  <div className="flex justify-between"><span>Operational</span><span>{formatCurrency(summary.expenses.ops)}</span></div>
+                  <div className="flex justify-between font-bold border-t pt-2"><span>Total</span><span>{formatCurrency(summary.expenses.total)}</span></div>
                 </div>
-              </div>
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg flex justify-between items-center border">
-                <span className="text-xl font-bold text-gray-700">NET PROFIT</span>
-                <span className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(summary.netProfit)}</span>
               </div>
             </CardContent>
           </Card>
@@ -495,12 +482,12 @@ export default function ReportsPage() {
 
         <TabsContent value="cashbook" className="space-y-6 mt-6">
           <div className="grid gap-4 md:grid-cols-4">
-            <Card className="bg-green-50"><CardHeader className="p-4"><CardTitle className="text-sm">Cash Balance</CardTitle></CardHeader><CardContent className="p-4 pt-0 text-xl font-bold text-green-700">{formatCurrency(auditData.modeStats.cashBal)}</CardContent></Card>
-            <Card className="bg-blue-50"><CardHeader className="p-4"><CardTitle className="text-sm">Bank Balance</CardTitle></CardHeader><CardContent className="p-4 pt-0 text-xl font-bold text-blue-700">{formatCurrency(auditData.modeStats.bankBal)}</CardContent></Card>
+            <Card className="bg-green-50"><CardHeader className="p-4"><CardTitle className="text-sm">Cash Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-700">{formatCurrency(auditData.modeStats.cashBal)}</div></CardContent></Card>
+            <Card className="bg-blue-50"><CardHeader className="p-4"><CardTitle className="text-sm">Bank Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-700">{formatCurrency(auditData.modeStats.bankBal)}</div></CardContent></Card>
             <Card className="bg-purple-50"><CardHeader className="p-4"><CardTitle className="text-sm">UPI Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-purple-700">{formatCurrency(auditData.modeStats.upiBal)}</div></CardContent></Card>
             <Card className="bg-orange-50"><CardHeader className="p-4"><CardTitle className="text-sm">Total Liquidity</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-orange-700">{formatCurrency(auditData.modeStats.cashBal + auditData.modeStats.bankBal + auditData.modeStats.upiBal)}</div></CardContent></Card>
           </div>
-          <Card><CardContent className="p-0 max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Date</TableHead><TableHead>Cash IN</TableHead><TableHead>Cash OUT</TableHead><TableHead>Bank IN</TableHead><TableHead>Bank OUT</TableHead><TableHead>Closing</TableHead></TableRow></TableHeader><TableBody>{auditData.cashbook.map((e: any, i: number) => (<TableRow key={i}><TableCell>{new Date(e.date).toLocaleDateString()}</TableCell><TableCell className="text-green-600">{formatCurrency(e.cashIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(e.cashOut)}</TableCell><TableCell className="text-blue-600">{formatCurrency(e.bankIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(e.bankOut)}</TableCell><TableCell className="font-bold">{formatCurrency(e.closing)}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
+          <Card><CardContent className="p-0 max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Date</TableHead><TableHead>Cash IN</TableHead><TableHead>Cash OUT</TableHead><TableHead>Bank IN</TableHead><TableHead>Bank OUT</TableHead><TableHead>Closing</TableHead></TableRow></TableHeader><TableBody>{auditData.cashbook.map((entry: any, i: number) => (<TableRow key={i}><TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.cashIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.cashOut)}</TableCell><TableCell className="text-blue-600">{formatCurrency(entry.bankIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.bankOut)}</TableCell><TableCell className="font-bold">{formatCurrency(entry.closing)}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
         </TabsContent>
 
         <TabsContent value="passbook" className="mt-6">
