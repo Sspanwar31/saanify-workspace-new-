@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; 
+import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,9 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
   const [projectedDeposit, setProjectedDeposit] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
+  // ✅ FIX: Define selectedMember AT THE TOP so it's available everywhere
+  const selectedMember = members.find(m => m.id === selectedMemberId);
+
   // 1. Fetch Client & Members
   useEffect(() => {
     if (isOpen) {
@@ -69,7 +72,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
   useEffect(() => {
     if (isOpen) {
         if (entryToEdit) {
-            // Edit Mode: Fill form
             setSelectedMemberId(entryToEdit.member_id || entryToEdit.memberId);
             setDepositAmount(entryToEdit.deposit_amount?.toString() || '0');
             setInstallmentAmount(entryToEdit.installment_amount?.toString() || '0');
@@ -80,7 +82,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                 setDate(new Date(entryToEdit.date));
             }
         } else {
-            // Add Mode: Reset
+            // Reset logic
             setSelectedMemberId('');
             setDepositAmount('');
             setInstallmentAmount('');
@@ -92,10 +94,8 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
     }
   }, [entryToEdit, isOpen]);
 
-  // 3. Auto-calculations (Logic Fixed)
+  // 3. Auto-calculations (Using the top-level selectedMember)
   useEffect(() => {
-    const selectedMember = members.find(m => m.id === selectedMemberId);
-
     if (selectedMember) {
       const depositBalance = selectedMember.total_deposits || 0;
       const outstanding = selectedMember.outstanding_loan || 0;
@@ -103,15 +103,11 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       setCurrentDepositBalance(depositBalance);
       setOutstandingLoan(outstanding);
 
-      // ✅ FIX: Auto-Calculate ONLY if NOT Editing
+      // Auto-Calculate only if NOT Editing
       if (!entryToEdit) {
-          // Interest (1% of outstanding)
-          // Agar user ne manually change nahi kiya hai tabhi auto update karein (optional logic)
-          // Ya strictly auto rakhein. Abhi ke liye hum strictly auto kar rahe hain jab member select ho.
           const calculatedInterest = Math.round(outstanding * 0.01);
           setInterestAmount(calculatedInterest.toString());
 
-          // Fine Logic (Corrected: Updates whenever Date changes)
           const dayOfMonth = date.getDate();
           const calculatedFine = dayOfMonth > 15 ? (dayOfMonth - 15) * 10 : 0;
           setFineAmount(calculatedFine.toString());
@@ -125,7 +121,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       setProjectedDeposit(depositBalance + dep);
 
     } else {
-      // Reset if no member selected
       setCurrentDepositBalance(0);
       setOutstandingLoan(0);
       if (!entryToEdit) {
@@ -135,8 +130,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       setProjectedLoan(0);
       setProjectedDeposit(0);
     }
-  }, [selectedMemberId, date, depositAmount, installmentAmount, members, entryToEdit]); 
-  // ^ 'date' dependency ensures fine updates when date changes
+  }, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
 
   // 4. Submit Handler
   const handleSubmit = async () => {
@@ -166,6 +160,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                 .single();
 
             if (currentMember) {
+                // Reverse old, Add new
                 const adjustedDeposit = (currentMember.total_deposits - oldDep) + newDepAmt;
                 const adjustedLoan = (currentMember.outstanding_loan + oldInst) - newInstAmt;
 
@@ -193,6 +188,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
         } else {
             // --- CREATE MODE ---
+            // Fetch name just to be safe
             const { data: currentMember } = await supabase
                 .from('members')
                 .select('name')
@@ -214,6 +210,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
             if (error) throw error;
 
+            // Update Balance
             if (newDepAmt > 0 || newInstAmt > 0) {
                 const { data: memData } = await supabase
                   .from('members')
