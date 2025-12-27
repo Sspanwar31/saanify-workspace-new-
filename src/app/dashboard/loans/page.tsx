@@ -22,54 +22,43 @@ export default function LoansPage() {
       if (clients && clients.length > 0) {
         const clientId = clients[0].id
 
-        // 1. Fetch Loans + Member Details (Live Outstanding is in Members table)
+        // 1. Fetch Loans
         const { data: loansData } = await supabase
           .from('loans')
           .select('*, members(id, name, phone, total_deposits, outstanding_loan)')
           .eq('client_id', clientId)
           .order('created_at', { ascending: false })
 
-        // 2. Fetch Passbook Entries (To calculate Total Interest Collected)
-        const { data: passbookData } = await supabase
-          .from('passbook_entries')
-          .select('member_id, interest_amount, fine_amount')
-          .eq('member_id', loansData?.[0]?.member_id || '') // Optimize later, currently simple fetch
-          // Note: In production, fetch passbook entries for ALL loan members
-          
-        // Fetch ALL passbook entries for this client's members (Better approach)
+        // 2. Fetch ALL Passbook entries to calculate interest
         const { data: allPassbook } = await supabase
           .from('passbook_entries')
-          .select('member_id, interest_amount, fine_amount');
+          .select('member_id, interest_amount'); // ✅ Only fetching interest
 
         if (loansData) {
           const formattedData = loansData.map((item: any) => {
-            // Calculate Total Interest Earned for this member from Passbook
+            
+            // ✅ FIX: Calculate ONLY Interest (Removed Fine)
             const memberEntries = allPassbook?.filter((e: any) => e.member_id === item.member_id) || [];
             const totalInterestEarned = memberEntries.reduce((sum: number, e: any) => 
-              sum + (Number(e.interest_amount) || 0) + (Number(e.fine_amount) || 0), 0);
+              sum + (Number(e.interest_amount) || 0), 0); // Only Interest
 
             return {
               ...item,
               id: item.id,
               amount: item.amount,
               status: item.status,
-              // ✅ CRITICAL FIX: Use Member's Live Outstanding Loan, not the static loan record
               remainingBalance: item.members?.outstanding_loan || 0,
               memberId: item.member_id,
               memberName: item.members?.name || 'Unknown',
               memberPhone: item.members?.phone,
               memberTotalDeposits: item.members?.total_deposits || 0,
-              // ✅ CRITICAL FIX: Pass calculated interest
-              totalInterestCollected: totalInterestEarned, 
+              totalInterestCollected: totalInterestEarned, // This is Member's Total Interest
               requestedDate: item.start_date || item.created_at,
               startDate: item.start_date
             }
           })
 
-          // 1. Pending List
           setLoanRequests(formattedData.filter(l => l.status === 'pending'))
-
-          // 2. All Loans List (Active/Completed/Closed)
           setLoans(formattedData.filter(l => ['active', 'completed', 'closed'].includes(l.status)))
         }
       }
@@ -79,7 +68,6 @@ export default function LoansPage() {
     fetchLoanData()
   }, [])
 
-  // Stats Logic (Updated to use live balance)
   const activeLoans = loans.filter(loan => loan.status === 'active')
   const pendingRequests = loanRequests
   
@@ -95,9 +83,7 @@ export default function LoansPage() {
   }
 
   return (
-    // ✅ FIX: Added 'p-6' for spacing issue
     <div className="p-6 space-y-6">
-      
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -119,7 +105,7 @@ export default function LoansPage() {
             <div className="text-2xl font-bold text-green-600">
               {loading ? '...' : activeLoans.length}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Currently active</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Currently active loans</p>
           </CardContent>
         </Card>
 
@@ -156,7 +142,6 @@ export default function LoansPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {/* Uses the Live Member Balance */}
               {loading ? '...' : formatCurrency(activeLoans.reduce((sum, loan) => sum + (loan.remainingBalance || 0), 0))}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400">Total outstanding balance</p>
