@@ -9,22 +9,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Download, FileText, TrendingUp, TrendingDown, DollarSign, Users, CreditCard, AlertTriangle, Calendar, Filter, Percent } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, DollarSign, Users, CreditCard, AlertTriangle, Calendar, Filter, Percent } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { differenceInMonths } from 'date-fns';
 
 export default function ReportsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
   
-  // Data States
+  // --- Raw Data States ---
   const [members, setMembers] = useState<any[]>([]);
   const [loans, setLoans] = useState<any[]>([]);
   const [passbookEntries, setPassbookEntries] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
 
-  // Filter States
+  // --- Filter States ---
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMember, setSelectedMember] = useState('ALL');
@@ -32,7 +32,7 @@ export default function ReportsPage() {
   const [transactionType, setTransactionType] = useState('all');
   const [activeTab, setActiveTab] = useState('summary');
   
-  // Calculated Audit Data
+  // --- Calculated Audit Data State ---
   const [auditData, setAuditData] = useState<any>({
     summary: { 
         income: { interest: 0, fine: 0, other: 0, total: 0 }, 
@@ -52,11 +52,12 @@ export default function ReportsPage() {
 
   useEffect(() => { setIsMounted(true); }, []);
 
-  // 1. Fetch All Data
+  // 1. Fetch All Data from Supabase
   useEffect(() => {
     const fetchData = async () => {
         setLoading(true);
         let cid = clientId;
+        // Fetch Client ID if missing
         if (!cid) {
             const { data: clients } = await supabase.from('clients').select('id').limit(1);
             if (clients && clients.length > 0) {
@@ -76,6 +77,7 @@ export default function ReportsPage() {
             if (membersRes.data) setMembers(membersRes.data);
             if (loansRes.data) setLoans(loansRes.data);
             if (passbookRes.data) {
+                // Filter passbook by client's members
                 const memberIds = new Set(membersRes.data?.map(m => m.id));
                 const validEntries = passbookRes.data.filter(e => memberIds.has(e.member_id));
                 setPassbookEntries(validEntries);
@@ -87,7 +89,7 @@ export default function ReportsPage() {
     fetchData();
   }, [clientId]);
 
-  // 2. Logic Engine
+  // 2. Calculation Engine
   useEffect(() => {
     if (loading || !members.length) return;
 
@@ -101,11 +103,10 @@ export default function ReportsPage() {
         const memberMatch = selectedMember === 'ALL' || e.member_id === selectedMember;
         const modeMatch = transactionMode === 'all' || (e.payment_mode || '').toLowerCase() === transactionMode;
         
-        // Transaction Type Filter Logic
         let typeMatch = true;
         if(transactionType === 'deposit') typeMatch = (e.deposit_amount > 0);
-        if(transactionType === 'loan') typeMatch = (e.installment_amount > 0); // Loan Repayment
-        if(transactionType === 'expense') typeMatch = false; // Passbook entries aren't expenses
+        if(transactionType === 'loan') typeMatch = (e.installment_amount > 0);
+        if(transactionType === 'expense') typeMatch = false;
 
         return dateMatch && memberMatch && modeMatch && typeMatch;
     });
@@ -113,20 +114,19 @@ export default function ReportsPage() {
     const filteredExpenses = expenses.filter(e => {
         const d = new Date(e.date);
         const dateMatch = d >= start && d <= end;
-        // Expenses don't usually have member_id or mode, but we filter Type
         let typeMatch = true;
         if(transactionType === 'deposit' || transactionType === 'loan') typeMatch = false;
         
         return dateMatch && typeMatch;
     });
 
-    // --- CALCULATIONS ---
+    // --- SUMMARY & P&L ---
     let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
     
     filteredPassbook.forEach(e => {
-        interestIncome += (e.interest_amount || 0);
-        fineIncome += (e.fine_amount || 0);
-        depositTotal += (e.deposit_amount || 0);
+        interestIncome += Number(e.interest_amount || 0);
+        fineIncome += Number(e.fine_amount || 0);
+        depositTotal += Number(e.deposit_amount || 0);
     });
 
     filteredExpenses.forEach(e => {
@@ -139,8 +139,8 @@ export default function ReportsPage() {
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
     // --- LOAN STATS ---
-    const loansIssuedTotal = loans.reduce((acc, l) => acc + (l.amount || 0), 0);
-    const loansPendingTotal = loans.reduce((acc, l) => acc + (l.remaining_balance || 0), 0);
+    const loansIssuedTotal = loans.reduce((acc, l) => acc + Number(l.amount || 0), 0);
+    const loansPendingTotal = loans.reduce((acc, l) => acc + Number(l.remaining_balance || 0), 0);
     const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     // --- DAILY LEDGER & CASHBOOK ---
@@ -159,12 +159,12 @@ export default function ReportsPage() {
 
     filteredPassbook.forEach(e => {
         const entry = getOrSetEntry(e.date);
-        const total = (e.deposit_amount||0) + (e.installment_amount||0) + (e.interest_amount||0) + (e.fine_amount||0);
+        const total = Number(e.deposit_amount||0) + Number(e.installment_amount||0) + Number(e.interest_amount||0) + Number(e.fine_amount||0);
         
-        entry.deposit += (e.deposit_amount||0);
-        entry.emi += (e.installment_amount||0);
-        entry.interest += (e.interest_amount||0);
-        entry.fine += (e.fine_amount||0);
+        entry.deposit += Number(e.deposit_amount||0);
+        entry.emi += Number(e.installment_amount||0);
+        entry.interest += Number(e.interest_amount||0);
+        entry.fine += Number(e.fine_amount||0);
         entry.cashIn += total;
 
         const mode = (e.payment_mode || 'CASH').toUpperCase();
@@ -188,9 +188,9 @@ export default function ReportsPage() {
     loans.forEach(l => {
         if (l.start_date >= startDate && l.start_date <= endDate) {
             const entry = getOrSetEntry(l.start_date);
-            entry.loanOut += l.amount;
-            entry.cashOut += l.amount;
-            entry.cashOutMode += l.amount; 
+            entry.loanOut += Number(l.amount);
+            entry.cashOut += Number(l.amount);
+            entry.cashOutMode += Number(l.amount); 
         }
     });
 
@@ -220,30 +220,33 @@ export default function ReportsPage() {
     // Mode Stats (All Time)
     let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
     passbookEntries.forEach(e => {
-        const amt = e.total_amount || 0;
+        const amt = Number(e.total_amount || 0);
         const mode = (e.payment_mode || 'CASH').toUpperCase();
         if (mode.includes('CASH')) cashBalTotal += amt;
         else if (mode.includes('BANK')) bankBalTotal += amt;
         else upiBalTotal += amt;
     });
+    
     const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
     cashBalTotal -= totalOut;
 
-    // --- MEMBER REPORTS ---
+    // --- MEMBER REPORTS (FIXED fineP variable) ---
     const memberReports = members.map(m => {
         const mEntries = passbookEntries.filter(e => e.member_id === m.id);
-        const dep = mEntries.reduce((acc, e) => acc + (e.deposit_amount || 0), 0);
-        const intPaid = mEntries.reduce((acc, e) => acc + (e.interest_amount || 0), 0);
-        const finePaid = mEntries.reduce((acc, e) => acc + (e.fine_amount || 0), 0);
+        const dep = mEntries.reduce((acc, e) => acc + (Number(e.deposit_amount) || 0), 0);
+        const intP = mEntries.reduce((acc, e) => acc + (Number(e.interest_amount) || 0), 0);
+        const fineP = mEntries.reduce((acc, e) => acc + (Number(e.fine_amount) || 0), 0); // Correct variable definition
         
         const mLoans = loans.filter(l => l.member_id === m.id);
-        const lTaken = mLoans.reduce((acc, l) => acc + (l.amount || 0), 0);
-        const lPend = mLoans.reduce((acc, l) => acc + (l.remaining_balance || 0), 0);
+        const lTaken = mLoans.reduce((acc, l) => acc + (Number(l.amount) || 0), 0);
+        const lPend = mLoans.reduce((acc, l) => acc + (Number(l.remaining_balance) || 0), 0);
         
         return {
             id: m.id, name: m.name, fatherName: m.phone,
             totalDeposits: dep, loanTaken: lTaken, principalPaid: lTaken - lPend,
-            interestPaid: intPaid, finePaid: fineP, activeLoanBal: lPend,
+            interestPaid: intP, 
+            finePaid: fineP, // ✅ Correctly using fineP
+            activeLoanBal: lPend,
             netWorth: dep - lPend, status: m.status || 'active'
         };
     });
@@ -252,7 +255,7 @@ export default function ReportsPage() {
     const maturity = members.map(m => {
         const mEntries = passbookEntries.filter(e => e.member_id === m.id && e.deposit_amount > 0);
         let monthly = 0;
-        if(mEntries.length > 0) monthly = Number(mEntries[0].deposit_amount); // First deposit logic
+        if(mEntries.length > 0) monthly = Number(mEntries[0].deposit_amount); 
         
         const tenure = 36;
         const target = monthly * tenure;
@@ -332,27 +335,21 @@ export default function ReportsPage() {
       { name: 'Income', value: summary.income.total, fill: '#10b981' },
       { name: 'Expense', value: summary.expenses.total, fill: '#ef4444' }
     ],
-    loanTrends: [
-      { name: 'Issued', value: summary.loans.issued },
-      { name: 'Recovered', value: summary.loans.recovered },
-      { name: 'Pending', value: summary.loans.pending }
-    ],
     paymentModes: [
       { name: 'Cash', value: auditData.modeStats.cashBal, fill: '#10b981' },
       { name: 'UPI', value: auditData.modeStats.upiBal, fill: '#3b82f6' },
       { name: 'Bank', value: auditData.modeStats.bankBal, fill: '#8b5cf6' },
+    ],
+    loanTrends: [
+        { name: 'Issued', value: summary.loans.issued, fill: '#3b82f6' },
+        { name: 'Recovered', value: summary.loans.recovered, fill: '#10b981' },
+        { name: 'Pending', value: summary.loans.pending, fill: '#f59e0b' }
     ]
   };
 
-  const enhancedDefaulters = auditData.defaulters.map((defaulter: any) => {
-    const member = members.find(m => m.id === defaulter.memberId);
-    const status = defaulter.daysOverdue > 60 ? 'Critical' : defaulter.daysOverdue > 30 ? 'Warning' : 'Overdue';
-    return {
-      ...defaulter,
-      memberName: member?.name || 'Unknown',
-      memberPhone: member?.phone || '',
-      status
-    };
+  const enhancedDefaulters = auditData.defaulters.map((d: any) => {
+    const mem = members.find(m => m.id === d.memberId);
+    return { ...d, memberName: mem?.name || 'Unknown', memberPhone: mem?.phone || '', status: 'Warning' };
   });
 
   return (
@@ -397,10 +394,9 @@ export default function ReportsPage() {
             <SelectTrigger className="w-40"><SelectValue placeholder="Transaction Mode" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Modes</SelectItem>
-              <SelectItem value="online">Online</SelectItem>
               <SelectItem value="cash">Cash</SelectItem>
-              <SelectItem value="cheque">Cheque</SelectItem>
-              <SelectItem value="transfer">Bank Transfer</SelectItem>
+              <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="bank">Bank</SelectItem>
             </SelectContent>
           </Select>
           <Select value={transactionType} onValueChange={setTransactionType}>
@@ -430,6 +426,7 @@ export default function ReportsPage() {
             <Card className="bg-blue-50 border-blue-200"><CardHeader className="pb-2"><CardTitle className="text-blue-800">Net Profit</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-blue-700">{formatCurrency(summary.netProfit)}</div><p className="text-sm text-muted-foreground">Income - Expenses</p></CardContent></Card>
             <Card className="bg-purple-50 border-purple-200"><CardHeader className="pb-2"><CardTitle className="text-purple-800">Active Members</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-purple-700">{activeMembersCount}</div><p className="text-sm text-muted-foreground">Current members</p></CardContent></Card>
           </div>
+          
           <Card className="border-l-4 border-l-blue-500 shadow-md">
             <CardHeader><CardTitle className="text-xl font-bold text-gray-800">Profit & Loss Statement</CardTitle></CardHeader>
             <CardContent>
@@ -454,6 +451,7 @@ export default function ReportsPage() {
               </div>
             </CardContent>
           </Card>
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 h-[350px]">
             <Card className="p-4"><CardHeader className="pb-2"><CardTitle className="text-sm">Income vs Expense</CardTitle></CardHeader><CardContent className="h-[280px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={graphData.incomeVsExpense}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip formatter={(value) => formatCurrency(Number(value))}/><Bar dataKey="value" fill="#8884d8">{graphData.incomeVsExpense.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill}/>)}</Bar></BarChart></ResponsiveContainer></CardContent></Card>
             <Card className="p-4"><CardHeader className="pb-2"><CardTitle className="text-sm">Loan Portfolio</CardTitle></CardHeader><CardContent className="h-[280px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={graphData.loanTrends}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip formatter={(value) => formatCurrency(Number(value))}/><Bar dataKey="value" fill="#3b82f6"/></BarChart></ResponsiveContainer></CardContent></Card>
@@ -462,39 +460,28 @@ export default function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="daily" className="mt-6">
-          <Card className="rounded-xl border-orange-100 shadow-sm"><CardHeader><CardTitle>Daily Ledger</CardTitle></CardHeader><CardContent><div className="max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Date</TableHead><TableHead className="text-green-600">Deposit</TableHead><TableHead className="text-green-600">EMI</TableHead><TableHead className="text-red-600">Loan Out</TableHead><TableHead className="text-green-600">Interest</TableHead><TableHead className="text-green-600">Fine</TableHead><TableHead className="text-green-600">Cash IN</TableHead><TableHead className="text-red-600">Cash OUT</TableHead><TableHead>Net Flow</TableHead><TableHead>Running Bal</TableHead></TableRow></TableHeader><TableBody>{auditData.dailyLedger.map((entry: any, i: number) => (<TableRow key={i}><TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.deposit)}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.emi)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.loanOut)}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.interest)}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.fine)}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.cashIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.cashOut)}</TableCell><TableCell className={entry.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}>{formatCurrency(entry.netFlow)}</TableCell><TableCell className="text-blue-600 font-medium">{formatCurrency(entry.runningBal)}</TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
+            <Card><CardContent className="p-0 max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Date</TableHead><TableHead>IN</TableHead><TableHead>OUT</TableHead><TableHead>Balance</TableHead></TableRow></TableHeader>
+            <TableBody>{auditData.dailyLedger.map((row: any, i: number) => (<TableRow key={i}><TableCell>{new Date(row.date).toLocaleDateString()}</TableCell><TableCell className="text-green-600">{formatCurrency(row.cashIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(row.cashOut)}</TableCell><TableCell className="font-bold text-blue-600">{formatCurrency(row.runningBal)}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
         </TabsContent>
 
         <TabsContent value="cashbook" className="space-y-6 mt-6">
           <div className="grid gap-4 md:grid-cols-4">
-            <Card className="rounded-xl border-green-100 shadow-sm"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Cash Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{formatCurrency(auditData.modeStats.cashBal)}</div></CardContent></Card>
-            <Card className="rounded-xl border-blue-100 shadow-sm"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Bank Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-600">{formatCurrency(auditData.modeStats.bankBal)}</div></CardContent></Card>
-            <Card className="rounded-xl border-purple-100 shadow-sm"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">UPI Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-purple-600">{formatCurrency(auditData.modeStats.upiBal)}</div></CardContent></Card>
-            <Card className="rounded-xl border-orange-100 shadow-sm"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Total Liquidity</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-orange-600">{formatCurrency(auditData.modeStats.cashBal + auditData.modeStats.bankBal + auditData.modeStats.upiBal)}</div></CardContent></Card>
+            <Card className="bg-green-50"><CardHeader className="p-4"><CardTitle className="text-sm">Cash Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-700">{formatCurrency(auditData.modeStats.cashBal)}</div></CardContent></Card>
+            <Card className="bg-blue-50"><CardHeader className="p-4"><CardTitle className="text-sm">Bank Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-700">{formatCurrency(auditData.modeStats.bankBal)}</div></CardContent></Card>
+            <Card className="bg-purple-50"><CardHeader className="p-4"><CardTitle className="text-sm">UPI Balance</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-purple-700">{formatCurrency(auditData.modeStats.upiBal)}</div></CardContent></Card>
+            <Card className="bg-orange-50"><CardHeader className="p-4"><CardTitle className="text-sm">Total Liquidity</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-orange-700">{formatCurrency(auditData.modeStats.cashBal + auditData.modeStats.bankBal + auditData.modeStats.upiBal)}</div></CardContent></Card>
           </div>
-          <Card className="rounded-xl border-orange-100 shadow-sm"><CardHeader><CardTitle>Cashbook Details</CardTitle></CardHeader><CardContent><div className="max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Date</TableHead><TableHead className="text-green-600">Cash IN</TableHead><TableHead className="text-red-600">Cash OUT</TableHead><TableHead className="text-green-600">Bank IN</TableHead><TableHead className="text-red-600">Bank OUT</TableHead><TableHead className="text-green-600">UPI IN</TableHead><TableHead className="text-red-600">UPI OUT</TableHead><TableHead>Closing Bal</TableHead></TableRow></TableHeader><TableBody>{auditData.cashbook.map((entry: any, i: number) => (<TableRow key={i}><TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.cashIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.cashOut)}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.bankIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.bankOut)}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.upiIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.upiOut)}</TableCell><TableCell className="text-blue-600 font-medium">{formatCurrency(entry.closing)}</TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
+          <Card><CardContent className="p-0 max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Date</TableHead><TableHead>Cash IN</TableHead><TableHead>Cash OUT</TableHead><TableHead>Bank IN</TableHead><TableHead>Bank OUT</TableHead><TableHead>UPI IN</TableHead><TableHead>UPI OUT</TableHead><TableHead>Closing</TableHead></TableRow></TableHeader><TableBody>{auditData.cashbook.map((entry: any, i: number) => (<TableRow key={i}><TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.cashIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.cashOut)}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.bankIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.bankOut)}</TableCell><TableCell className="text-green-600">{formatCurrency(entry.upiIn)}</TableCell><TableCell className="text-red-600">{formatCurrency(entry.upiOut)}</TableCell><TableCell className="text-blue-600 font-medium">{formatCurrency(entry.closing)}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
         </TabsContent>
 
         <TabsContent value="passbook" className="mt-6">
           <Card className="rounded-xl border-orange-100 shadow-sm"><CardHeader><CardTitle>Passbook Entries</CardTitle></CardHeader><CardContent><div className="max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Date</TableHead><TableHead>Member</TableHead><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Amount</TableHead><TableHead>Payment Mode</TableHead><TableHead>Balance</TableHead></TableRow></TableHeader><TableBody>{passbookEntries.map((entry: any, i: number) => (<TableRow key={i}><TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell><TableCell>{members.find(m => m.id === entry.member_id)?.name}</TableCell><TableCell><Badge variant={entry.deposit_amount > 0 ? 'default' : 'secondary'}>{entry.deposit_amount > 0 ? 'DEPOSIT' : 'PAYMENT'}</Badge></TableCell><TableCell>{entry.note || 'Entry'}</TableCell><TableCell className={entry.deposit_amount > 0 ? 'text-green-600' : 'text-red-600'}>{formatCurrency(entry.total_amount)}</TableCell><TableCell>{entry.payment_mode}</TableCell><TableCell className="text-blue-600 font-medium">{formatCurrency(entry.total_amount)}</TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
         </TabsContent>
 
-        <TabsContent value="loans" className="mt-6">
-          <Card className="rounded-xl border-orange-100 shadow-sm"><CardHeader><CardTitle>Loan Portfolio</CardTitle></CardHeader><CardContent><div className="max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Member</TableHead><TableHead>Loan Amount</TableHead><TableHead>Principal Paid</TableHead><TableHead>Balance</TableHead><TableHead>Interest Rate</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{auditData.loans.map((loan: any, i: number) => {const member = members.find(m => m.id === loan.memberId); return (<TableRow key={i}><TableCell>{member?.name || 'Unknown'}</TableCell><TableCell className="text-blue-600">{formatCurrency(loan.amount)}</TableCell><TableCell className="text-green-600">{formatCurrency(loan.amount - loan.remaining_balance)}</TableCell><TableCell className="text-red-600 font-medium">{formatCurrency(loan.remaining_balance)}</TableCell><TableCell>{loan.interestRate}%</TableCell><TableCell><Badge variant={loan.status === 'active' ? 'destructive' : loan.status === 'completed' ? 'default' : 'secondary'}>{loan.status}</Badge></TableCell></TableRow>)})}</TableBody></Table></div></CardContent></Card>
-        </TabsContent>
-
-        <TabsContent value="members" className="mt-6">
-          <Card className="rounded-xl border-orange-100 shadow-sm"><CardHeader><CardTitle>Members Report</CardTitle></CardHeader><CardContent><div className="max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Name</TableHead><TableHead>Total Deposit</TableHead><TableHead>Loan Taken</TableHead><TableHead>Principal Paid</TableHead><TableHead>Interest Paid</TableHead><TableHead>Fine Paid</TableHead><TableHead>Pending Loan</TableHead><TableHead>Net Worth</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{auditData.memberReports.map((member: any, i: number) => (<TableRow key={i}><TableCell className="font-medium"><div><div className="font-semibold">{member.name}</div><div className="text-xs text-muted-foreground">{member.fatherName}</div></div></TableCell><TableCell className="text-green-600 font-medium">{formatCurrency(member.totalDeposits)}</TableCell><TableCell className="text-blue-600 font-medium">{formatCurrency(member.loanTaken)}</TableCell><TableCell className="text-purple-600 font-medium">{formatCurrency(member.principalPaid)}</TableCell><TableCell className="text-orange-600 font-medium">{formatCurrency(member.interestPaid)}</TableCell><TableCell className="text-red-600 font-medium">{formatCurrency(member.finePaid)}</TableCell><TableCell className="text-orange-600 font-medium">{formatCurrency(member.activeLoanBal)}</TableCell><TableCell className={`font-bold ${member.netWorth >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(member.netWorth)}</TableCell><TableCell><Badge variant={member.status === 'active' ? 'default' : 'secondary'}>{member.status}</Badge></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
-        </TabsContent>
-
-        <TabsContent value="maturity" className="mt-6">
-          <Card className="rounded-xl border-orange-100 shadow-sm"><CardHeader><CardTitle>Maturity Projections</CardTitle></CardHeader><CardContent><div className="max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Member</TableHead><TableHead>Join Date</TableHead><TableHead>Current Deposit</TableHead><TableHead>Target Deposit</TableHead><TableHead>Projected Int.</TableHead><TableHead>Maturity Amount</TableHead><TableHead>Outstanding Loan</TableHead><TableHead>Net Payable</TableHead></TableRow></TableHeader><TableBody>{auditData.maturity.map((maturity: any, i: number) => (<TableRow key={i}><TableCell className="font-medium">{maturity.memberName}</TableCell><TableCell>{new Date(maturity.joinDate).toLocaleDateString()}</TableCell><TableCell className="text-green-600">{formatCurrency(maturity.currentDeposit)}</TableCell><TableCell className="text-blue-600">{formatCurrency(maturity.targetDeposit)}</TableCell><TableCell className="text-purple-600">{formatCurrency(maturity.projectedInterest)}</TableCell><TableCell className="text-orange-600 font-medium">{formatCurrency(maturity.maturityAmount)}</TableCell><TableCell className="text-red-600">{formatCurrency(maturity.outstandingLoan)}</TableCell><TableCell className={`font-medium ${maturity.netPayable >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(maturity.netPayable)}</TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
-        </TabsContent>
-
-        <TabsContent value="defaulters" className="mt-6">
-          <Card className="rounded-xl border-orange-100 shadow-sm"><CardHeader><CardTitle>Defaulters List</CardTitle></CardHeader><CardContent><div className="max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableRow><TableHead>Member</TableHead><TableHead>Phone</TableHead><TableHead>Loan Amount</TableHead><TableHead>Balance</TableHead><TableHead>Overdue Days</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{enhancedDefaulters.map((defaulter: any, i: number) => (<TableRow key={i}><TableCell className="font-medium">{defaulter.memberName}</TableCell><TableCell>{defaulter.memberPhone}</TableCell><TableCell className="text-blue-600">{formatCurrency(defaulter.amount)}</TableCell><TableCell className="text-red-600 font-medium">{formatCurrency(defaulter.remainingBalance)}</TableCell><TableCell className="text-orange-600">{defaulter.daysOverdue}</TableCell><TableCell><Badge variant={defaulter.status === 'Critical' ? 'destructive' : defaulter.status === 'Warning' ? 'secondary' : 'outline'}>{defaulter.status}</Badge></TableCell></TableRow>))}</TableBody></Table></div></CardContent></Card>
-        </TabsContent>
-
+        <TabsContent value="loans" className="mt-6"><Card><CardContent><Table><TableHeader><TableRow><TableHead>Member</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{auditData.loans.map((l: any, i: number) => (<TableRow key={i}><TableCell>{members.find(m => m.id === l.memberId)?.name}</TableCell><TableCell>{formatCurrency(l.amount)}</TableCell><TableCell>{l.status}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card></TabsContent>
+        <TabsContent value="members" className="mt-6"><Card><CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Deposit</TableHead><TableHead>Net Worth</TableHead></TableRow></TableHeader><TableBody>{auditData.memberReports.map((m: any, i: number) => (<TableRow key={i}><TableCell>{m.name}</TableCell><TableCell>{formatCurrency(m.totalDeposits)}</TableCell><TableCell>{formatCurrency(m.netWorth)}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card></TabsContent>
+        <TabsContent value="maturity" className="mt-6"><Card><CardContent><Table><TableHeader><TableRow><TableHead>Member</TableHead><TableHead>Maturity</TableHead><TableHead>Payable</TableHead></TableRow></TableHeader><TableBody>{auditData.maturity.map((m: any, i: number) => (<TableRow key={i}><TableCell>{m.memberName}</TableCell><TableCell>{formatCurrency(m.maturityAmount)}</TableCell><TableCell>{formatCurrency(m.netPayable)}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card></TabsContent>
+        <TabsContent value="defaulters" className="mt-6"><Card><CardContent><Table><TableHeader><TableRow><TableHead>Member</TableHead><TableHead>Balance</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{enhancedDefaulters.map((d: any, i: number) => (<TableRow key={i}><TableCell>{d.memberName}</TableCell><TableCell className="text-red-600">{formatCurrency(d.remainingBalance)}</TableCell><TableCell>{d.status}</TableCell></TableRow>))}</TableBody></Table></CardContent></Card></TabsContent>
       </Tabs>
     </div>
   );
