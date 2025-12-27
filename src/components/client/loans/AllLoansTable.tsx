@@ -30,32 +30,34 @@ const getNextEMI = (startDate: string) => {
 export function AllLoansTable({ loans }: { loans: any[] }) {
   const [editingLoan, setEditingLoan] = useState<any>(null);
 
-  // --- LOGIC 1: FILTER (Remove Rejected) ---
-  const validLoans = loans.filter(l => l.status !== 'rejected');
-
-  // --- LOGIC 2: GROUPING & MERGING (Aggregation) ---
-  const groupedLoans = validLoans.reduce((acc: any, loan) => {
-    const key = `${loan.memberId}-${loan.status}`; // Group by Member + Status (Active/Completed)
+  // --- LOGIC: GROUPING & MERGING ---
+  const groupedLoans = loans.reduce((acc: any, loan) => {
+    // Unique Key per member
+    const key = loan.memberId; 
 
     if (!acc[key]) {
-      // First entry for this member
       acc[key] = {
         ...loan,
-        count: 1, // Loan counter
-        totalAmount: loan.amount, // Total Principal
-        totalOutstanding: loan.remainingBalance, // Total Remaining
-        totalInterestCollected: loan.total_interest_collected || 0, // Total Interest Earned
-        // Keep the earliest start date
+        count: 1, 
+        totalAmount: loan.amount,
+        // Since we pull remainingBalance from Members table, it is already the GRAND TOTAL for that member
+        totalOutstanding: loan.remainingBalance, 
+        // Summing interest from passbook logic in parent
+        totalInterestCollected: loan.totalInterestCollected || 0, 
         startDate: loan.startDate || loan.created_at
       };
     } else {
-      // Merge subsequent loans
+      // If same member appears again (multiple active loans in history)
       acc[key].count += 1;
       acc[key].totalAmount += loan.amount;
-      acc[key].totalOutstanding += loan.remainingBalance;
-      acc[key].totalInterestCollected += (loan.total_interest_collected || 0);
+      // Don't add totalOutstanding again, as it's fetched from Member table (which is already a total)
+      // Just ensure we keep the latest value if needed, but usually it's same.
       
-      // Update start date if this loan is older
+      // Accumulate interest
+      // Note: In parent we calculate total interest per member, so it's same for all rows. 
+      // We don't need to sum it again here, just keep the one passed.
+      
+      // Update start date to earliest
       const currentStart = new Date(acc[key].startDate);
       const newStart = new Date(loan.startDate || loan.created_at);
       if (newStart < currentStart) {
@@ -67,7 +69,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
 
   const displayRows = Object.values(groupedLoans);
 
-  // --- Handlers ---
   const handleDeleteLoan = async (loanId: string) => {
     if(confirm("Are you sure you want to delete this loan record? This cannot be undone.")) {
         const { error } = await supabase.from('loans').delete().eq('id', loanId);
@@ -95,11 +96,11 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
           <TableBody>
             {displayRows.length > 0 ? (
               displayRows.map((row: any) => {
-                // Auto Calculate Monthly Interest on Outstanding
+                // Auto Calculate Monthly Interest on CURRENT Outstanding
                 const monthlyInterest = (row.totalOutstanding || 0) * 0.01;
                 
-                // Determine Status Style
-                const isClosed = row.totalOutstanding <= 0 || row.status === 'completed';
+                // Determine Status (If Outstanding is 0, mark as Cleared/Closed)
+                const isClosed = row.totalOutstanding <= 0;
 
                 return (
                   <TableRow key={row.id} className={isClosed ? "bg-gray-50 opacity-70" : ""}>
@@ -140,7 +141,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                     
                     <TableCell>
                       <div className="flex gap-2">
-                        {/* Only allow edit/delete on active rows to prevent messing up history */}
                         {!isClosed && (
                           <>
                             <Button size="icon" variant="ghost" onClick={() => setEditingLoan(row)}>
@@ -170,7 +170,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         </Table>
       </div>
 
-      {/* Edit Modal - Only opens for Active loans */}
       {editingLoan && (
         <EditLoanModal 
           isOpen={!!editingLoan} 
