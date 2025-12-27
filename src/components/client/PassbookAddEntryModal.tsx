@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
+import { supabase } from '@/lib/supabase-simple'; 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 interface PassbookAddEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entryToEdit?: any | null; // Data for editing
+  entryToEdit?: any | null; 
 }
 
 export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: PassbookAddEntryModalProps) {
@@ -34,7 +34,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
   const [depositAmount, setDepositAmount] = useState<string>('');
   const [installmentAmount, setInstallmentAmount] = useState<string>('');
   
-  // Custom Interest/Fine States (Manual Override allow karne ke liye)
   const [interestAmount, setInterestAmount] = useState<string>(''); 
   const [fineAmount, setFineAmount] = useState<string>(''); 
 
@@ -66,34 +65,34 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
     }
   }, [isOpen]);
 
-  // 2. Populate for Edit Mode (Existing Data Load Karna)
+  // 2. Populate for Edit Mode
   useEffect(() => {
     if (isOpen) {
         if (entryToEdit) {
-            // Edit Mode: Fill form with existing data
+            // Edit Mode: Fill form
             setSelectedMemberId(entryToEdit.member_id || entryToEdit.memberId);
             setDepositAmount(entryToEdit.deposit_amount?.toString() || '0');
             setInstallmentAmount(entryToEdit.installment_amount?.toString() || '0');
-            setInterestAmount(entryToEdit.interest_amount?.toString() || '0'); // Load saved interest
-            setFineAmount(entryToEdit.fine_amount?.toString() || '0');         // Load saved fine
+            setInterestAmount(entryToEdit.interest_amount?.toString() || '0'); 
+            setFineAmount(entryToEdit.fine_amount?.toString() || '0');         
             setPaymentMode(entryToEdit.payment_mode || 'cash');
             if (entryToEdit.date) {
                 setDate(new Date(entryToEdit.date));
             }
         } else {
-            // Add Mode: Reset form
+            // Add Mode: Reset
             setSelectedMemberId('');
             setDepositAmount('');
             setInstallmentAmount('');
-            setInterestAmount(''); // Clear
-            setFineAmount('');     // Clear
+            setInterestAmount(''); 
+            setFineAmount('');     
             setPaymentMode('cash');
             setDate(new Date());
         }
     }
   }, [entryToEdit, isOpen]);
 
-  // 3. Auto-calculations (Only if fields are empty OR user changes member/date)
+  // 3. Auto-calculations (Logic Fixed)
   useEffect(() => {
     const selectedMember = members.find(m => m.id === selectedMemberId);
 
@@ -104,17 +103,18 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       setCurrentDepositBalance(depositBalance);
       setOutstandingLoan(outstanding);
 
-      // Only Auto-Calculate if we are NOT in Edit Mode OR if fields are empty
-      // This prevents overwriting saved edited values
+      // ✅ FIX: Auto-Calculate ONLY if NOT Editing
       if (!entryToEdit) {
-          // Interest (1%)
-          const calculatedInterest = outstanding * 0.01;
-          if (!interestAmount) setInterestAmount(calculatedInterest.toString());
+          // Interest (1% of outstanding)
+          // Agar user ne manually change nahi kiya hai tabhi auto update karein (optional logic)
+          // Ya strictly auto rakhein. Abhi ke liye hum strictly auto kar rahe hain jab member select ho.
+          const calculatedInterest = Math.round(outstanding * 0.01);
+          setInterestAmount(calculatedInterest.toString());
 
-          // Fine
+          // Fine Logic (Corrected: Updates whenever Date changes)
           const dayOfMonth = date.getDate();
           const calculatedFine = dayOfMonth > 15 ? (dayOfMonth - 15) * 10 : 0;
-          if (!fineAmount) setFineAmount(calculatedFine.toString());
+          setFineAmount(calculatedFine.toString());
       }
 
       // Projections
@@ -125,16 +125,20 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       setProjectedDeposit(depositBalance + dep);
 
     } else {
+      // Reset if no member selected
       setCurrentDepositBalance(0);
       setOutstandingLoan(0);
+      if (!entryToEdit) {
+        setInterestAmount('');
+        setFineAmount('');
+      }
       setProjectedLoan(0);
       setProjectedDeposit(0);
     }
-  }, [selectedMemberId, date, depositAmount, installmentAmount, members, entryToEdit]);
+  }, [selectedMemberId, date, depositAmount, installmentAmount, members, entryToEdit]); 
+  // ^ 'date' dependency ensures fine updates when date changes
 
-  const selectedMember = members.find(m => m.id === selectedMemberId);
-
-  // 4. Submit Handler (Handles Both Create and Update)
+  // 4. Submit Handler
   const handleSubmit = async () => {
     if (!selectedMemberId) {
       alert('Please select a member');
@@ -143,7 +147,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
     setLoading(true);
     
-    // New Values from Form
     const newDepAmt = parseFloat(depositAmount) || 0;
     const newInstAmt = parseFloat(installmentAmount) || 0;
     const newIntAmt = parseFloat(interestAmount) || 0;
@@ -152,13 +155,10 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
     try {
         if (entryToEdit) {
-            // --- UPDATE MODE (Edit) ---
-            
-            // Step A: Revert Old Balance Effects from Member
+            // --- UPDATE MODE ---
             const oldDep = parseFloat(entryToEdit.deposit_amount) || 0;
             const oldInst = parseFloat(entryToEdit.installment_amount) || 0;
 
-            // Fetch latest member data to be safe
             const { data: currentMember } = await supabase
                 .from('members')
                 .select('outstanding_loan, total_deposits')
@@ -166,21 +166,15 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                 .single();
 
             if (currentMember) {
-                // Calculation: 
-                // 1. Remove Old Effect: (Current - OldDeposit), (Current + OldInstallment)
-                // 2. Add New Effect: (+ NewDeposit), (- NewInstallment)
-                
                 const adjustedDeposit = (currentMember.total_deposits - oldDep) + newDepAmt;
                 const adjustedLoan = (currentMember.outstanding_loan + oldInst) - newInstAmt;
 
-                // Update Member Balance
                 await supabase.from('members').update({
                     total_deposits: adjustedDeposit,
                     outstanding_loan: adjustedLoan
                 }).eq('id', selectedMemberId);
             }
 
-            // Step B: Update the Passbook Entry (FIXED: Using Update)
             const { error } = await supabase
                 .from('passbook_entries')
                 .update({
@@ -193,17 +187,21 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                     total_amount: total,
                     note: 'Edited Entry'
                 })
-                .eq('id', entryToEdit.id); // IMPORTANT: Update specific ID
+                .eq('id', entryToEdit.id);
 
             if (error) throw error;
 
         } else {
-            // --- CREATE MODE (New) ---
+            // --- CREATE MODE ---
+            const { data: currentMember } = await supabase
+                .from('members')
+                .select('name')
+                .eq('id', selectedMemberId)
+                .single();
 
-            // Insert new entry
             const { error } = await supabase.from('passbook_entries').insert([{
                 member_id: selectedMemberId,
-                member_name: selectedMember?.name,
+                member_name: currentMember?.name,
                 date: format(date, 'yyyy-MM-dd'),
                 payment_mode: paymentMode,
                 deposit_amount: newDepAmt,
@@ -216,19 +214,25 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
             if (error) throw error;
 
-            // Update Member Balance (Simple Addition/Subtraction)
             if (newDepAmt > 0 || newInstAmt > 0) {
-                const newLoanBal = (selectedMember?.outstanding_loan || 0) - newInstAmt;
-                const newDepositTotal = (selectedMember?.total_deposits || 0) + newDepAmt;
+                const { data: memData } = await supabase
+                  .from('members')
+                  .select('outstanding_loan, total_deposits')
+                  .eq('id', selectedMemberId)
+                  .single();
+                
+                if(memData) {
+                    const newLoanBal = (memData.outstanding_loan || 0) - newInstAmt;
+                    const newDepositTotal = (memData.total_deposits || 0) + newDepAmt;
 
-                await supabase.from('members').update({
-                    outstanding_loan: newLoanBal,
-                    total_deposits: newDepositTotal
-                }).eq('id', selectedMemberId);
+                    await supabase.from('members').update({
+                        outstanding_loan: newLoanBal,
+                        total_deposits: newDepositTotal
+                    }).eq('id', selectedMemberId);
+                }
             }
         }
 
-        // Success Cleanup
         onClose(); 
 
     } catch (error: any) {
@@ -255,14 +259,13 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
         </DialogHeader>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Inputs */}
+          {/* Left Column */}
           <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Entry Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Member Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="member">Select Member</Label>
                   <Select value={selectedMemberId} onValueChange={setSelectedMemberId} disabled={!!entryToEdit}>
@@ -279,7 +282,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                   </Select>
                 </div>
 
-                {/* Date Picker */}
                 <div className="space-y-2">
                   <Label>Date</Label>
                   <Popover>
@@ -306,7 +308,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                   </Popover>
                 </div>
 
-                {/* Payment Mode */}
                 <div className="space-y-2">
                   <Label htmlFor="paymentMode">Payment Mode</Label>
                   <Select value={paymentMode} onValueChange={setPaymentMode}>
@@ -322,7 +323,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                   </Select>
                 </div>
 
-                {/* Deposit Amount */}
                 <div className="space-y-2">
                   <Label htmlFor="depositAmount">Deposit Amount</Label>
                   <Input
@@ -334,7 +334,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                   />
                 </div>
 
-                {/* Installment Amount */}
                 <div className="space-y-2">
                   <Label htmlFor="installmentAmount">Installment Amount</Label>
                   <Input
@@ -346,7 +345,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                   />
                 </div>
 
-                {/* Interest & Fine (Now Editable) */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="interest">Interest</Label>
@@ -375,9 +373,8 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
             </Card>
           </div>
 
-          {/* Right Column - Live Feedback Cards */}
+          {/* Right Column */}
           <div className="space-y-4">
-            {/* Member Information Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Member Information</CardTitle>
@@ -418,7 +415,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
               </CardContent>
             </Card>
 
-            {/* Live Preview Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Live Preview</CardTitle>
@@ -474,7 +470,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
               </CardContent>
             </Card>
 
-            {/* Submit Button */}
             <Button 
               onClick={handleSubmit} 
               className="w-full" 
