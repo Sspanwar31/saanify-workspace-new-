@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, Users, BookOpen, CreditCard, TrendingUp, 
-  Wallet, Receipt, FileText, Settings, LogOut, ShieldCheck 
+  Wallet, Receipt, FileText, Settings, LogOut, ShieldCheck,
+  UserCog, Crown // ✅ New Icons Added
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -18,6 +19,11 @@ const navItems = [
   { label: 'Admin Fund', href: '/dashboard/admin-fund', icon: ShieldCheck },
   { label: 'Expenses', href: '/dashboard/expenses', icon: Wallet },
   { label: 'Reports', href: '/dashboard/reports', icon: FileText },
+  
+  // ✅ New Sections Added Here
+  { label: 'User Management', href: '/dashboard/user-management', icon: UserCog },
+  { label: 'Subscription', href: '/dashboard/subscription', icon: Crown },
+
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
