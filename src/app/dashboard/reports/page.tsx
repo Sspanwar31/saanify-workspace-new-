@@ -357,11 +357,11 @@ export default function ReportsPage() {
   const activeMembersCount = members.filter(m => m.status === 'active').length;
 
   const summary = {
-    income: { ...auditData.summary.income, total: totalIncome },
-    expense: { ...auditData.summary.expenses, total: totalExpenses },
-    netProfit
-  };
-
+  income: { ...auditData.summary.income, total: totalIncome },
+  expenses: { ...auditData.summary.expenses, total: totalExpenses }, // ✅ FIX
+  netProfit
+};
+  
   const graphData = {
     incomeVsExpense: [
       { name: 'Income', value: totalIncome, fill: '#10b981' },
