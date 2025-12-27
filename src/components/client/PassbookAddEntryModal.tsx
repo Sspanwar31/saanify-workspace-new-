@@ -16,25 +16,15 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-// Local Interface needed since we removed the store
-interface Member {
-  id: string;
-  name: string;
-  phone: string;
-  status: string;
-  total_deposits?: number;
-  outstanding_loan?: number;
-}
-
 interface PassbookAddEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entryToEdit?: any | null;
+  entryToEdit?: any | null; // Data for editing
 }
 
 export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: PassbookAddEntryModalProps) {
   // --- Supabase States ---
-  const [members, setMembers] = useState<Member[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
   const [clientId, setClientId] = useState<string | null>(null);
 
   // --- Form States ---
@@ -43,12 +33,14 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
   const [paymentMode, setPaymentMode] = useState<string>('cash');
   const [depositAmount, setDepositAmount] = useState<string>('');
   const [installmentAmount, setInstallmentAmount] = useState<string>('');
+  
+  // Custom Interest/Fine States (Manual Override allow karne ke liye)
+  const [interestAmount, setInterestAmount] = useState<string>(''); 
+  const [fineAmount, setFineAmount] = useState<string>(''); 
 
   // --- Calculated Values ---
   const [currentDepositBalance, setCurrentDepositBalance] = useState<number>(0);
   const [outstandingLoan, setOutstandingLoan] = useState<number>(0);
-  const [interest, setInterest] = useState<number>(0);
-  const [fine, setFine] = useState<number>(0);
   const [projectedLoan, setProjectedLoan] = useState<number>(0);
   const [projectedDeposit, setProjectedDeposit] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -57,13 +49,11 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
   useEffect(() => {
     if (isOpen) {
       const fetchData = async () => {
-        // Get Client ID
         const { data: clients } = await supabase.from('clients').select('id').limit(1);
         if (clients && clients.length > 0) {
           const cid = clients[0].id;
           setClientId(cid);
 
-          // Get Members
           const { data: membersData } = await supabase
             .from('members')
             .select('*')
@@ -76,119 +66,182 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
     }
   }, [isOpen]);
 
-  // 2. Populate for Edit Mode
+  // 2. Populate for Edit Mode (Existing Data Load Karna)
   useEffect(() => {
-    if (entryToEdit) {
-      setSelectedMemberId(entryToEdit.member_id || entryToEdit.memberId);
-      setDepositAmount(entryToEdit.deposit_amount?.toString() || '0');
-      setInstallmentAmount(entryToEdit.installment_amount?.toString() || '0');
-      setPaymentMode(entryToEdit.payment_mode || 'cash');
-      if (entryToEdit.date) {
-        setDate(new Date(entryToEdit.date));
-      }
-    } else {
-      setDepositAmount('');
-      setInstallmentAmount('');
-      setPaymentMode('cash');
-      setDate(new Date());
+    if (isOpen) {
+        if (entryToEdit) {
+            // Edit Mode: Fill form with existing data
+            setSelectedMemberId(entryToEdit.member_id || entryToEdit.memberId);
+            setDepositAmount(entryToEdit.deposit_amount?.toString() || '0');
+            setInstallmentAmount(entryToEdit.installment_amount?.toString() || '0');
+            setInterestAmount(entryToEdit.interest_amount?.toString() || '0'); // Load saved interest
+            setFineAmount(entryToEdit.fine_amount?.toString() || '0');         // Load saved fine
+            setPaymentMode(entryToEdit.payment_mode || 'cash');
+            if (entryToEdit.date) {
+                setDate(new Date(entryToEdit.date));
+            }
+        } else {
+            // Add Mode: Reset form
+            setSelectedMemberId('');
+            setDepositAmount('');
+            setInstallmentAmount('');
+            setInterestAmount(''); // Clear
+            setFineAmount('');     // Clear
+            setPaymentMode('cash');
+            setDate(new Date());
+        }
     }
   }, [entryToEdit, isOpen]);
 
-  // 3. Auto-calculations (Live Logic)
+  // 3. Auto-calculations (Only if fields are empty OR user changes member/date)
   useEffect(() => {
     const selectedMember = members.find(m => m.id === selectedMemberId);
 
     if (selectedMember) {
-      // Data from Database Columns
       const depositBalance = selectedMember.total_deposits || 0;
       const outstanding = selectedMember.outstanding_loan || 0;
       
       setCurrentDepositBalance(depositBalance);
       setOutstandingLoan(outstanding);
 
-      // Calculate interest (1% of outstanding loan)
-      const interestAmount = outstanding * 0.01;
-      setInterest(interestAmount);
+      // Only Auto-Calculate if we are NOT in Edit Mode OR if fields are empty
+      // This prevents overwriting saved edited values
+      if (!entryToEdit) {
+          // Interest (1%)
+          const calculatedInterest = outstanding * 0.01;
+          if (!interestAmount) setInterestAmount(calculatedInterest.toString());
 
-      // Calculate fine (if date.day > 15, fine = (day - 15) * 10)
-      const dayOfMonth = date.getDate();
-      const fineAmount = dayOfMonth > 15 ? (dayOfMonth - 15) * 10 : 0;
-      setFine(fineAmount);
+          // Fine
+          const dayOfMonth = date.getDate();
+          const calculatedFine = dayOfMonth > 15 ? (dayOfMonth - 15) * 10 : 0;
+          if (!fineAmount) setFineAmount(calculatedFine.toString());
+      }
 
-      // Calculate projected values
-      const deposit = parseFloat(depositAmount) || 0;
-      const installment = parseFloat(installmentAmount) || 0;
+      // Projections
+      const dep = parseFloat(depositAmount) || 0;
+      const inst = parseFloat(installmentAmount) || 0;
       
-      setProjectedLoan(Math.max(0, outstanding - installment));
-      setProjectedDeposit(depositBalance + deposit);
+      setProjectedLoan(Math.max(0, outstanding - inst));
+      setProjectedDeposit(depositBalance + dep);
+
     } else {
       setCurrentDepositBalance(0);
       setOutstandingLoan(0);
-      setInterest(0);
-      setFine(0);
       setProjectedLoan(0);
       setProjectedDeposit(0);
     }
-  }, [selectedMemberId, date, depositAmount, installmentAmount, members]);
+  }, [selectedMemberId, date, depositAmount, installmentAmount, members, entryToEdit]);
 
   const selectedMember = members.find(m => m.id === selectedMemberId);
 
-  // 4. Submit Handler (Supabase)
+  // 4. Submit Handler (Handles Both Create and Update)
   const handleSubmit = async () => {
-    if (!selectedMemberId || (!depositAmount && !installmentAmount)) {
-      alert('Please select a member and enter at least deposit or installment amount');
+    if (!selectedMemberId) {
+      alert('Please select a member');
       return;
     }
 
     setLoading(true);
-    const depAmt = parseFloat(depositAmount) || 0;
-    const instAmt = parseFloat(installmentAmount) || 0;
     
-    // Total Amount Calculation
-    const total = depAmt + instAmt + interest + fine;
+    // New Values from Form
+    const newDepAmt = parseFloat(depositAmount) || 0;
+    const newInstAmt = parseFloat(installmentAmount) || 0;
+    const newIntAmt = parseFloat(interestAmount) || 0;
+    const newFineAmt = parseFloat(fineAmount) || 0;
+    const total = newDepAmt + newInstAmt + newIntAmt + newFineAmt;
 
-    // A. Insert into passbook_entries
-    const { error } = await supabase.from('passbook_entries').insert([{
-      member_id: selectedMemberId,
-      member_name: selectedMember?.name,
-      date: format(date, 'yyyy-MM-dd'),
-      payment_mode: paymentMode,
-      deposit_amount: depAmt,
-      installment_amount: instAmt,
-      interest_amount: interest,
-      fine_amount: fine,
-      total_amount: total,
-      note: 'Passbook Entry'
-    }]);
+    try {
+        if (entryToEdit) {
+            // --- UPDATE MODE (Edit) ---
+            
+            // Step A: Revert Old Balance Effects from Member
+            const oldDep = parseFloat(entryToEdit.deposit_amount) || 0;
+            const oldInst = parseFloat(entryToEdit.installment_amount) || 0;
 
-    if (!error) {
-      // B. Update Member Balances in Database
-      if (depAmt > 0 || instAmt > 0) {
-        const newLoanBal = (selectedMember?.outstanding_loan || 0) - instAmt;
-        const newDepositTotal = (selectedMember?.total_deposits || 0) + depAmt;
+            // Fetch latest member data to be safe
+            const { data: currentMember } = await supabase
+                .from('members')
+                .select('outstanding_loan, total_deposits')
+                .eq('id', selectedMemberId)
+                .single();
 
-        await supabase.from('members').update({
-            outstanding_loan: newLoanBal,
-            total_deposits: newDepositTotal
-        }).eq('id', selectedMemberId);
-      }
+            if (currentMember) {
+                // Calculation: 
+                // 1. Remove Old Effect: (Current - OldDeposit), (Current + OldInstallment)
+                // 2. Add New Effect: (+ NewDeposit), (- NewInstallment)
+                
+                const adjustedDeposit = (currentMember.total_deposits - oldDep) + newDepAmt;
+                const adjustedLoan = (currentMember.outstanding_loan + oldInst) - newInstAmt;
 
-      // Reset & Close
-      setSelectedMemberId('');
-      setDepositAmount('');
-      setInstallmentAmount('');
-      setPaymentMode('cash');
-      setDate(new Date());
-      onClose();
-    } else {
-      alert("Error adding entry: " + error.message);
+                // Update Member Balance
+                await supabase.from('members').update({
+                    total_deposits: adjustedDeposit,
+                    outstanding_loan: adjustedLoan
+                }).eq('id', selectedMemberId);
+            }
+
+            // Step B: Update the Passbook Entry (FIXED: Using Update)
+            const { error } = await supabase
+                .from('passbook_entries')
+                .update({
+                    date: format(date, 'yyyy-MM-dd'),
+                    payment_mode: paymentMode,
+                    deposit_amount: newDepAmt,
+                    installment_amount: newInstAmt,
+                    interest_amount: newIntAmt,
+                    fine_amount: newFineAmt,
+                    total_amount: total,
+                    note: 'Edited Entry'
+                })
+                .eq('id', entryToEdit.id); // IMPORTANT: Update specific ID
+
+            if (error) throw error;
+
+        } else {
+            // --- CREATE MODE (New) ---
+
+            // Insert new entry
+            const { error } = await supabase.from('passbook_entries').insert([{
+                member_id: selectedMemberId,
+                member_name: selectedMember?.name,
+                date: format(date, 'yyyy-MM-dd'),
+                payment_mode: paymentMode,
+                deposit_amount: newDepAmt,
+                installment_amount: newInstAmt,
+                interest_amount: newIntAmt,
+                fine_amount: newFineAmt,
+                total_amount: total,
+                note: 'Passbook Entry'
+            }]);
+
+            if (error) throw error;
+
+            // Update Member Balance (Simple Addition/Subtraction)
+            if (newDepAmt > 0 || newInstAmt > 0) {
+                const newLoanBal = (selectedMember?.outstanding_loan || 0) - newInstAmt;
+                const newDepositTotal = (selectedMember?.total_deposits || 0) + newDepAmt;
+
+                await supabase.from('members').update({
+                    outstanding_loan: newLoanBal,
+                    total_deposits: newDepositTotal
+                }).eq('id', selectedMemberId);
+            }
+        }
+
+        // Success Cleanup
+        onClose(); 
+
+    } catch (error: any) {
+        alert("Error saving entry: " + error.message);
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   };
 
   const totalToCollect = (parseFloat(depositAmount) || 0) + 
                         (parseFloat(installmentAmount) || 0) + 
-                        interest + fine;
+                        (parseFloat(interestAmount) || 0) + 
+                        (parseFloat(fineAmount) || 0);
 
   const loanProgressPercentage = outstandingLoan > 0 ? ((outstandingLoan - projectedLoan) / outstandingLoan) * 100 : 0;
 
@@ -212,7 +265,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                 {/* Member Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="member">Select Member</Label>
-                  <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                  <Select value={selectedMemberId} onValueChange={setSelectedMemberId} disabled={!!entryToEdit}>
                     <SelectTrigger>
                       <SelectValue placeholder="Search and select a member" />
                     </SelectTrigger>
@@ -293,26 +346,28 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                   />
                 </div>
 
-                {/* Auto-calculated Fields */}
+                {/* Interest & Fine (Now Editable) */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="interest">Interest (Auto)</Label>
+                    <Label htmlFor="interest">Interest</Label>
                     <Input
                       id="interest"
                       type="number"
-                      value={interest.toFixed(2)}
-                      readOnly
-                      className="bg-muted"
+                      value={interestAmount}
+                      onChange={(e) => setInterestAmount(e.target.value)}
+                      className="bg-gray-50"
+                      placeholder="Auto"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fine">Fine (Auto)</Label>
+                    <Label htmlFor="fine">Fine</Label>
                     <Input
                       id="fine"
                       type="number"
-                      value={fine.toFixed(2)}
-                      readOnly
-                      className="bg-muted"
+                      value={fineAmount}
+                      onChange={(e) => setFineAmount(e.target.value)}
+                      className="bg-gray-50"
+                      placeholder="Auto"
                     />
                   </div>
                 </div>
@@ -382,7 +437,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                       </div>
                       <div className="flex justify-between">
                         <span>Interest/Fine:</span>
-                        <span>₹{(interest + fine).toLocaleString()}</span>
+                        <span>₹{((parseFloat(interestAmount)||0) + (parseFloat(fineAmount)||0)).toLocaleString()}</span>
                       </div>
                       <div className="border-t pt-2">
                         <div className="flex justify-between font-bold">
@@ -424,7 +479,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
               onClick={handleSubmit} 
               className="w-full" 
               size="lg"
-              disabled={loading || !selectedMemberId || (!depositAmount && !installmentAmount)}
+              disabled={loading || !selectedMemberId || (!depositAmount && !installmentAmount && !interestAmount && !fineAmount)}
             >
               {loading ? 'Processing...' : (entryToEdit ? 'Update Entry' : 'Create Entry')}
             </Button>
