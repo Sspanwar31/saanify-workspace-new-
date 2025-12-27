@@ -1,6 +1,7 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
-import { useClientStore } from '@/lib/client/store';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,13 +11,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Download, FileText, TrendingUp, TrendingDown, DollarSign, Users, CreditCard, AlertTriangle, Calendar, Filter, Percent } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { differenceInMonths } from 'date-fns';
 
 export default function ReportsPage() {
   const [isMounted, setIsMounted] = useState(false);
-  const { getAuditData, members, loans, passbookEntries } = useClientStore();
-  
-  // Global Filter State
+  const [loading, setLoading] = useState(true);
+  const [clientId, setClientId] = useState<string | null>(null);
+
+  // --- RAW DATA FROM SUPABASE ---
+  const [members, setMembers] = useState<any[]>([]);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [rawPassbook, setRawPassbook] = useState<any[]>([]);
+  const [rawExpenses, setRawExpenses] = useState<any[]>([]);
+
+  // --- UI STATE (MAPPED) ---
+  const [passbookEntries, setPassbookEntries] = useState<any[]>([]); // For Passbook Tab UI
+
+  // --- GLOBAL FILTER STATE ---
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMember, setSelectedMember] = useState('ALL');
@@ -24,157 +36,358 @@ export default function ReportsPage() {
   const [transactionType, setTransactionType] = useState('all');
   const [activeTab, setActiveTab] = useState('summary');
   
-  // Get audit data based on date filters
-  const auditData = getAuditData(startDate, endDate);
+  // --- CALCULATED AUDIT DATA STATE (Replaces getAuditData return) ---
+  const [auditData, setAuditData] = useState<any>({
+    summary: { 
+        income: { interest: 0, fine: 0, other: 0 }, 
+        expenses: { ops: 0, maturityInt: 0 },
+        assets: { deposits: 0 },
+        loans: { issued: 0, recovered: 0, pending: 0 }
+    },
+    dailyLedger: [],
+    cashbook: [],
+    modeStats: { cashBal: 0, bankBal: 0, upiBal: 0 },
+    loans: [],
+    memberReports: [],
+    maturity: [],
+    defaulters: []
+  });
 
   useEffect(() => { setIsMounted(true); }, []);
+
+  // 1. FETCH DATA FROM SUPABASE
+  useEffect(() => {
+    const fetchData = async () => {
+        setLoading(true);
+        let cid = clientId;
+        // Get Client ID
+        if (!cid) {
+            const { data: clients } = await supabase.from('clients').select('id').limit(1);
+            if (clients && clients.length > 0) {
+                cid = clients[0].id;
+                setClientId(cid);
+            }
+        }
+
+        if (cid) {
+            const [membersRes, loansRes, passbookRes, expenseRes] = await Promise.all([
+                supabase.from('members').select('*').eq('client_id', cid),
+                supabase.from('loans').select('*').eq('client_id', cid),
+                supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
+                supabase.from('expenses_ledger').select('*').eq('client_id', cid)
+            ]);
+
+            if (membersRes.data) setMembers(membersRes.data);
+            if (loansRes.data) setLoans(loansRes.data);
+            if (expenseRes.data) setRawExpenses(expenseRes.data);
+
+            if (passbookRes.data) {
+                // Filter passbook by client members locally (if no direct join)
+                const memberIds = new Set(membersRes.data?.map(m => m.id));
+                const validEntries = passbookRes.data.filter(e => memberIds.has(e.member_id));
+                setRawPassbook(validEntries);
+
+                // Map to UI Structure for "Passbook Tab" (Needs balance calculation)
+                let runningBal = 0;
+                const mappedPassbook = validEntries.map((e: any) => {
+                    const total = Number(e.total_amount || 0);
+                    // Simple Logic: All passbook entries add to society balance
+                    runningBal += total;
+                    
+                    // Determine Type for UI
+                    let type = 'DEPOSIT';
+                    let amount = total;
+                    let desc = e.note || 'Passbook Entry';
+
+                    if ((e.installment_amount || 0) > 0) { type = 'LOAN_REPAYMENT'; }
+                    if ((e.interest_amount || 0) > 0) { type = 'INTEREST'; }
+                    
+                    return {
+                        id: e.id,
+                        date: e.date,
+                        memberId: e.member_id,
+                        type: type,
+                        description: desc,
+                        amount: amount,
+                        paymentMode: e.payment_mode || 'CASH',
+                        balance: runningBal
+                    };
+                });
+                setPassbookEntries(mappedPassbook.reverse()); // Show latest first in UI
+            }
+        }
+        setLoading(false);
+    };
+    fetchData();
+  }, [clientId]);
+
+  // 2. CALCULATION ENGINE (Replicates getAuditData Logic)
+  useEffect(() => {
+    if (loading || !members.length) return;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    // Ensure end date includes the full day
+    end.setHours(23, 59, 59, 999);
+
+    // --- A. FILTER RAW DATA ---
+    const filteredPassbook = rawPassbook.filter(e => {
+        const d = new Date(e.date);
+        const dateMatch = d >= start && d <= end;
+        const memberMatch = selectedMember === 'ALL' || e.member_id === selectedMember;
+        const modeMatch = transactionMode === 'all' || (e.payment_mode || '').toLowerCase() === transactionMode;
+        
+        let typeMatch = true;
+        if(transactionType === 'deposit') typeMatch = (Number(e.deposit_amount) > 0);
+        if(transactionType === 'loan') typeMatch = (Number(e.installment_amount) > 0);
+        if(transactionType === 'expense') typeMatch = false;
+
+        return dateMatch && memberMatch && modeMatch && typeMatch;
+    });
+
+    const filteredExpenses = rawExpenses.filter(e => {
+        const d = new Date(e.date);
+        const dateMatch = d >= start && d <= end;
+        let typeMatch = true;
+        if(transactionType === 'deposit' || transactionType === 'loan') typeMatch = false;
+        return dateMatch && typeMatch;
+    });
+
+    // --- B. CALCULATE SUMMARIES ---
+    let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
+    
+    filteredPassbook.forEach(e => {
+        interestIncome += Number(e.interest_amount || 0);
+        fineIncome += Number(e.fine_amount || 0);
+        depositTotal += Number(e.deposit_amount || 0);
+    });
+
+    filteredExpenses.forEach(e => {
+        if (e.type === 'INCOME') otherIncome += Number(e.amount);
+        if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
+    });
+
+    const totalIncomeCalc = interestIncome + fineIncome + otherIncome;
+    const totalExpensesCalc = opsExpense;
+
+    // --- C. LOAN STATS ---
+    const loansIssuedTotal = loans.reduce((acc, l) => acc + Number(l.amount || 0), 0);
+    const loansPendingTotal = loans.reduce((acc, l) => acc + Number(l.remaining_balance || 0), 0);
+    const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
+
+    // --- D. DAILY LEDGER & CASHBOOK ---
+    const ledgerMap = new Map();
+    const getOrSetEntry = (dateStr: string) => {
+        if (!ledgerMap.has(dateStr)) {
+            ledgerMap.set(dateStr, { 
+                date: dateStr, deposit: 0, emi: 0, loanOut: 0, interest: 0, fine: 0, 
+                cashIn: 0, cashOut: 0,
+                cashInMode: 0, bankInMode: 0, upiInMode: 0,
+                cashOutMode: 0, bankOutMode: 0, upiOutMode: 0
+            });
+        }
+        return ledgerMap.get(dateStr);
+    };
+
+    // 1. Process Passbook (Inflow)
+    filteredPassbook.forEach(e => {
+        const entry = getOrSetEntry(e.date);
+        const total = Number(e.total_amount || 0);
+        
+        entry.deposit += Number(e.deposit_amount || 0);
+        entry.emi += Number(e.installment_amount || 0);
+        entry.interest += Number(e.interest_amount || 0);
+        entry.fine += Number(e.fine_amount || 0);
+        
+        entry.cashIn += total;
+
+        const mode = (e.payment_mode || 'CASH').toUpperCase();
+        if (mode.includes('CASH')) entry.cashInMode += total;
+        else if (mode.includes('BANK')) entry.bankInMode += total;
+        else entry.upiInMode += total;
+    });
+
+    // 2. Process Expenses (Outflow/Inflow)
+    filteredExpenses.forEach(e => {
+        const entry = getOrSetEntry(e.date);
+        const amt = Number(e.amount);
+        if (e.type === 'EXPENSE') { 
+            entry.cashOut += amt; 
+            entry.cashOutMode += amt; // Default to cash for expenses
+        } else { 
+            entry.cashIn += amt; 
+            entry.cashInMode += amt; 
+        }
+    });
+
+    // 3. Process Loans Issued (Outflow)
+    // Only apply if filter allows loan types
+    if(transactionType === 'all' || transactionType === 'loan') {
+        loans.forEach(l => {
+            // Check if loan date falls in range
+            if (l.start_date >= startDate && l.start_date <= endDate) {
+                const entry = getOrSetEntry(l.start_date);
+                const amt = Number(l.amount);
+                entry.loanOut += amt;
+                entry.cashOut += amt;
+                entry.cashOutMode += amt; // Default to cash for loans
+            }
+        });
+    }
+
+    const sortedLedger = Array.from(ledgerMap.values()).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Calculate Running Balance
+    let runningBal = 0;
+    const finalLedger = sortedLedger.map((e: any) => {
+        const netFlow = e.cashIn - e.cashOut;
+        runningBal += netFlow;
+        return { ...e, netFlow, runningBal };
+    });
+
+    // Calculate Cashbook Closing Balance
+    let closingBal = 0;
+    const finalCashbook = sortedLedger.map((e: any) => {
+        const dailyNet = (e.cashInMode + e.bankInMode + e.upiInMode) - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
+        closingBal += dailyNet;
+        return {
+            date: e.date,
+            cashIn: e.cashInMode, cashOut: e.cashOutMode,
+            bankIn: e.bankInMode, bankOut: e.bankOutMode,
+            upiIn: e.upiInMode, upiOut: e.upiOutMode,
+            closing: closingBal
+        };
+    });
+
+    // --- E. MODE STATS (Total Liquidity) ---
+    // Calculate from ALL time data, not just filtered
+    let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
+    
+    rawPassbook.forEach(e => {
+        const amt = Number(e.total_amount || 0);
+        const mode = (e.payment_mode || 'CASH').toUpperCase();
+        if (mode.includes('CASH')) cashBalTotal += amt;
+        else if (mode.includes('BANK')) bankBalTotal += amt;
+        else upiBalTotal += amt;
+    });
+
+    // Subtract All Time Expenses & Loans from Cash (Simplified Logic)
+    const totalExpAll = rawExpenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0);
+    const totalLoanAll = loans.reduce((a,b)=>a+Number(b.amount),0);
+    cashBalTotal -= (totalExpAll + totalLoanAll);
+
+
+    // --- F. MEMBER REPORTS ---
+    const memberReports = members.map(m => {
+        const mEntries = rawPassbook.filter(e => e.member_id === m.id);
+        const dep = mEntries.reduce((acc, e) => acc + (Number(e.deposit_amount) || 0), 0);
+        const intPaid = mEntries.reduce((acc, e) => acc + (Number(e.interest_amount) || 0), 0);
+        const finePaid = mEntries.reduce((acc, e) => acc + (Number(e.fine_amount) || 0), 0);
+        
+        const mLoans = loans.filter(l => l.member_id === m.id);
+        const lTaken = mLoans.reduce((acc, l) => acc + (Number(l.amount) || 0), 0);
+        const lPend = mLoans.reduce((acc, l) => acc + (Number(l.remaining_balance) || 0), 0);
+        
+        return {
+            id: m.id, name: m.name, fatherName: m.phone,
+            totalDeposits: dep, loanTaken: lTaken, principalPaid: lTaken - lPend,
+            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend,
+            netWorth: dep - lPend, status: m.status || 'active'
+        };
+    });
+
+    // --- G. MATURITY ---
+    const maturity = members.map(m => {
+        const mEntries = rawPassbook.filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0);
+        let monthly = 0;
+        if(mEntries.length > 0) monthly = Number(mEntries[0].deposit_amount); // Logic: First deposit
+        
+        const tenure = 36;
+        const target = monthly * tenure;
+        const projected = target * 0.12;
+        const maturityAmt = target + projected;
+        const outstanding = Number(m.outstanding_loan || 0);
+
+        return {
+            memberName: m.name, joinDate: m.join_date || m.created_at,
+            currentDeposit: Number(m.total_deposits || 0), targetDeposit: target,
+            projectedInterest: projected, maturityAmount: maturityAmt,
+            outstandingLoan: outstanding, netPayable: maturityAmt - outstanding
+        };
+    });
+
+    // --- H. DEFAULTERS ---
+    const defaulters = loans
+        .filter(l => l.status === 'active' && Number(l.remaining_balance) > 0)
+        .map(l => ({
+            memberId: l.member_id, amount: Number(l.amount),
+            remainingBalance: Number(l.remaining_balance),
+            daysOverdue: Math.floor((new Date().getTime() - new Date(l.start_date).getTime()) / (1000 * 3600 * 24))
+        }));
+
+    // --- UPDATE STATE ---
+    setAuditData({
+        summary: {
+            income: { interest: interestIncome, fine: fineIncome, other: otherIncome },
+            expenses: { ops: opsExpense, maturityInt: 0 },
+            assets: { deposits: depositTotal },
+            loans: { issued: loansIssuedTotal, recovered: loansRecoveredTotal, pending: loansPendingTotal }
+        },
+        dailyLedger: finalLedger,
+        cashbook: finalCashbook,
+        modeStats: { cashBal: cashBalTotal, bankBal: bankBalTotal, upiBal: upiBalTotal },
+        loans: loans.map(l => ({ ...l, interestRate: 12, memberId: l.member_id })), // Map for UI
+        memberReports,
+        maturity,
+        defaulters
+    });
+
+  }, [members, loans, rawPassbook, rawExpenses, startDate, endDate, selectedMember, transactionMode, transactionType, loading]);
+
   if (!isMounted) return null;
 
+  // --- UI FORMATTERS & CONSTANTS ---
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(n);
+  const formatCurrency = (value: number) => fmt(value || 0);
 
-  // Calculate derived metrics with safe math
+  // Derived Values for UI
   const totalIncome = (auditData.summary.income.interest || 0) + (auditData.summary.income.fine || 0) + (auditData.summary.income.other || 0);
   const totalExpenses = (auditData.summary.expenses.ops || 0) + (auditData.summary.expenses.maturityInt || 0);
   const netProfit = totalIncome - totalExpenses;
-  const totalDeposits = auditData.summary.assets.deposits || 0;
-  const emiCollected = auditData.summary.loans.recovered || 0;
-  const fineCollected = auditData.summary.income.fine || 0;
-  const loansIssued = auditData.summary.loans.issued || 0;
-  const loansPending = auditData.summary.loans.pending || 0;
   const activeMembersCount = members.filter(m => m.status === 'active').length;
 
-  // Safe currency formatter
-  const formatCurrency = (value: number) => {
-    const safeValue = value || 0;
-    return fmt(safeValue);
-  };
-
-  // Summary data structure for P&L
   const summary = {
-    income: {
-      interest: auditData.summary.income.interest || 0,
-      fine: auditData.summary.income.fine || 0,
-      other: auditData.summary.income.other || 0,
-      total: totalIncome
-    },
-    expense: {
-      ops: auditData.summary.expenses.ops || 0,
-      maturity: auditData.summary.expenses.maturityInt || 0,
-      total: totalExpenses
-    },
-    netProfit: netProfit
+    income: { ...auditData.summary.income, total: totalIncome },
+    expense: { ...auditData.summary.expenses, total: totalExpenses },
+    netProfit
   };
 
-  // Chart data
-  // Monthly Income vs Expense data
-  const monthlyData = (() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentYear = new Date().getFullYear();
-    const monthlyIncomeExpense = months.map((month, index) => {
-      const monthStartDate = new Date(currentYear, index, 1);
-      const monthEndDate = new Date(currentYear, index + 1, 0);
-      
-      const monthTransactions = auditData.dailyLedger.filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= monthStartDate && entryDate <= monthEndDate;
-      });
-      
-      const totalIncome = monthTransactions.reduce((sum, entry) => sum + (entry.cashIn || 0), 0);
-      const totalExpense = monthTransactions.reduce((sum, entry) => sum + (entry.cashOut || 0), 0);
-      
-      return {
-        name: month,
-        income: totalIncome,
-        expense: totalExpense
-      };
-    });
-    
-    return monthlyIncomeExpense;
-  })();
-
-  const incomeExpenseData = [
-    { name: 'Interest Income', value: auditData.summary.income.interest || 0, fill: '#10b981' },
-    { name: 'Fine Income', value: auditData.summary.income.fine || 0, fill: '#3b82f6' },
-    { name: 'Other Income', value: auditData.summary.income.other || 0, fill: '#8b5cf6' },
-    { name: 'Operating Expense', value: auditData.summary.expenses.ops || 0, fill: '#ef4444' },
-  ];
-
-  const loanPortfolioData = [
-    { name: 'Issued', value: auditData.summary.loans.issued || 0, fill: '#3b82f6' },
-    { name: 'Recovered', value: auditData.summary.loans.recovered || 0, fill: '#10b981' },
-    { name: 'Pending', value: auditData.summary.loans.pending || 0, fill: '#f59e0b' },
-  ];
-
-  // Payment Modes data for Pie Chart
-  const paymentModesData = [
-    { name: 'Cash', value: auditData.modeStats.cashBal || 0, fill: '#10b981' },
-    { name: 'UPI', value: auditData.modeStats.upiBal || 0, fill: '#3b82f6' },
-    { name: 'Bank', value: auditData.modeStats.bankBal || 0, fill: '#8b5cf6' },
-  ];
-
-  // Graph data structure for new layout
   const graphData = {
     incomeVsExpense: [
       { name: 'Income', value: totalIncome, fill: '#10b981' },
       { name: 'Expense', value: totalExpenses, fill: '#ef4444' }
     ],
     loanTrends: [
-      { name: 'Issued', value: loansIssued },
-      { name: 'Recovered', value: emiCollected },
-      { name: 'Pending', value: loansPending }
+      { name: 'Issued', value: auditData.summary.loans.issued },
+      { name: 'Recovered', value: auditData.summary.loans.recovered },
+      { name: 'Pending', value: auditData.summary.loans.pending }
     ],
-    paymentModes: paymentModesData
+    paymentModes: [
+      { name: 'Cash', value: auditData.modeStats.cashBal, fill: '#10b981' },
+      { name: 'UPI', value: auditData.modeStats.upiBal, fill: '#3b82f6' },
+      { name: 'Bank', value: auditData.modeStats.bankBal, fill: '#8b5cf6' },
+    ]
   };
 
-  // Enhanced defaulters with status calculation
-  const enhancedDefaulters = auditData.defaulters.map(defaulter => {
+  const enhancedDefaulters = auditData.defaulters.map((defaulter: any) => {
     const member = members.find(m => m.id === defaulter.memberId);
-    const daysOverdue = Math.floor(Math.random() * 90) + 1; // Mock calculation
-    const status = daysOverdue > 60 ? 'Critical' : daysOverdue > 30 ? 'Warning' : 'Overdue';
-    
+    const status = defaulter.daysOverdue > 60 ? 'Critical' : defaulter.daysOverdue > 30 ? 'Warning' : 'Overdue';
     return {
       ...defaulter,
       memberName: member?.name || 'Unknown',
       memberPhone: member?.phone || '',
-      daysOverdue,
       status
     };
-  });
-
-  // --- FILTERING LOGIC FOR TABS ---
-  // Applying Member, Type, and Mode filters to the data displayed in tabs
-
-  const filteredPassbookEntries = passbookEntries.filter(entry => {
-    const entryDate = new Date(entry.date);
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    const dateMatch = entryDate >= start && entryDate <= end;
-    const memberMatch = selectedMember === 'ALL' || entry.memberId === selectedMember;
-    const modeMatch = transactionMode === 'all' || (entry.paymentMode && entry.paymentMode.toLowerCase() === transactionMode);
-    const typeMatch = transactionType === 'all' || (entry.type && entry.type.toLowerCase() === transactionType);
-
-    return dateMatch && memberMatch && modeMatch && typeMatch;
-  });
-
-  const filteredLoans = auditData.loans.filter(loan => 
-    selectedMember === 'ALL' || loan.memberId === selectedMember
-  );
-
-  const filteredMemberReports = auditData.memberReports.filter(report => {
-    // Assuming memberReports has memberId or we match by finding the member
-    const member = members.find(m => m.name === report.name); // Fallback match by name if ID missing in report
-    const memberId = member ? member.id : report.memberId;
-    return selectedMember === 'ALL' || memberId === selectedMember;
-  });
-
-  const filteredDefaulters = enhancedDefaulters.filter(defaulter => 
-    selectedMember === 'ALL' || defaulter.memberId === selectedMember
-  );
-
-  const filteredMaturity = auditData.maturity.filter(item => {
-     const member = members.find(m => m.name === item.memberName);
-     return selectedMember === 'ALL' || (member && member.id === selectedMember);
   });
 
   return (
@@ -292,7 +505,7 @@ export default function ReportsPage() {
         {/* TAB 1: SUMMARY */}
         <TabsContent value="summary" className="space-y-8">
           
-          {/* A. CARDS ROW (Use safe values) */}
+          {/* CARDS ROW */}
           <div className="grid gap-4 md:grid-cols-4">
             <Card className="bg-green-50 border-green-200">
               <CardHeader className="pb-2">
@@ -343,7 +556,7 @@ export default function ReportsPage() {
             </Card>
           </div>
 
-          {/* B. PROFIT & LOSS STATEMENT (NEW SECTION) */}
+          {/* PROFIT & LOSS STATEMENT */}
           <Card className="border-l-4 border-l-blue-500 shadow-md">
             <CardHeader>
               <CardTitle className="text-xl font-bold text-gray-800">Profit & Loss Statement</CardTitle>
@@ -376,15 +589,15 @@ export default function ReportsPage() {
                   <h4 className="font-semibold text-red-700 border-b pb-2 text-lg">EXPENSES (Debits)</h4>
                   <div className="flex justify-between py-2">
                     <span className="text-gray-600">Operational Cost</span>
-                    <span className="font-medium">{formatCurrency(summary.expense.ops)}</span>
+                    <span className="font-medium">{formatCurrency(summary.expenses.ops)}</span>
                   </div>
                   <div className="flex justify-between py-2">
                     <span className="text-gray-600">Maturity Liability</span>
-                    <span className="font-medium">{formatCurrency(summary.expense.maturity)}</span>
+                    <span className="font-medium">{formatCurrency(summary.expenses.maturityInt)}</span>
                   </div>
                   <div className="flex justify-between font-bold border-t pt-2 text-lg text-red-700">
                     <span>Total Expenses</span>
-                    <span>{formatCurrency(summary.expense.total)}</span>
+                    <span>{formatCurrency(summary.expenses.total)}</span>
                   </div>
                 </div>
               </div>
@@ -399,7 +612,7 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          {/* C. GRAPHS ROW (Fixed Recharts) */}
+          {/* GRAPHS ROW */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 h-[350px]">
             {/* Income vs Expense Bar Chart */}
             <Card className="p-4">
@@ -495,7 +708,7 @@ export default function ReportsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {auditData.dailyLedger.map((entry, i) => (
+                    {auditData.dailyLedger.map((entry: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
                         <TableCell className="text-green-600">{formatCurrency(entry.deposit || 0)}</TableCell>
@@ -590,7 +803,7 @@ export default function ReportsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {auditData.cashbook.map((entry, i) => (
+                    {auditData.cashbook.map((entry: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
                         <TableCell className="text-green-600">{formatCurrency(entry.cashIn || 0)}</TableCell>
@@ -630,7 +843,7 @@ export default function ReportsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredPassbookEntries.map((entry, i) => {
+                    {passbookEntries.map((entry: any, i: number) => {
                       const member = members.find(m => m.id === entry.memberId);
                       return (
                         <TableRow key={i}>
@@ -725,7 +938,7 @@ export default function ReportsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLoans.map((loan, i) => {
+                    {auditData.loans.map((loan: any, i: number) => {
                       const member = members.find(m => m.id === loan.memberId);
                       return (
                         <TableRow key={i}>
@@ -775,7 +988,7 @@ export default function ReportsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMemberReports.map((member, i) => (
+                    {auditData.memberReports.map((member: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="font-medium">
                           <div>
@@ -828,7 +1041,7 @@ export default function ReportsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMaturity.map((maturity, i) => (
+                    {auditData.maturity.map((maturity: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="font-medium">{maturity.memberName}</TableCell>
                         <TableCell>{new Date(maturity.joinDate).toLocaleDateString()}</TableCell>
@@ -869,7 +1082,7 @@ export default function ReportsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredDefaulters.map((defaulter, i) => (
+                    {enhancedDefaulters.map((defaulter: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="font-medium">{defaulter.memberName}</TableCell>
                         <TableCell>{defaulter.memberPhone}</TableCell>
@@ -892,6 +1105,7 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
       </Tabs>
     </div>
   );
