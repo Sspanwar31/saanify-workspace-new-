@@ -250,7 +250,7 @@ export function useReportLogic() {
         else upiBalTotal += amt;
     });
     const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
-    cashBal -= totalOut;
+    cashBalTotal -= totalOut; // ✅ FIX: Changed 'cashBal' to 'cashBalTotal'
 
     // --- F. MEMBER REPORTS ---
     const memberReports = members.map(m => {
