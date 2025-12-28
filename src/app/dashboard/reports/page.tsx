@@ -1,4 +1,4 @@
-'use client';
+src/app/dashboard/reports/page.tsx='use client';
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
@@ -379,6 +379,11 @@ export default function ReportsPage() {
     ]
   };
 
+  // FIX: Define missing variables used in Loans Tab
+  const loansIssued = auditData.summary.loans.issued || 0;
+  const emiCollected = auditData.summary.loans.recovered || 0;
+  const loansPending = auditData.summary.loans.pending || 0;
+
   const enhancedDefaulters = auditData.defaulters.map((defaulter: any) => {
     const member = members.find(m => m.id === defaulter.memberId);
     const status = defaulter.daysOverdue > 60 ? 'Critical' : defaulter.daysOverdue > 30 ? 'Warning' : 'Overdue';
@@ -525,7 +530,7 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-red-700">
-                  {formatCurrency(summary.expense.total)}
+                  {formatCurrency(summary.expenses.total)}
                 </div>
                 <p className="text-sm text-muted-foreground">Operating expenses</p>
               </CardContent>
