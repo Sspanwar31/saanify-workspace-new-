@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
-import { differenceInMonths } from 'date-fns';
+import { differenceInMonths, differenceInDays } from 'date-fns';
 
 export function useReportLogic() {
   const [loading, setLoading] = useState(true);
@@ -11,7 +11,8 @@ export function useReportLogic() {
   // Raw Data
   const [members, setMembers] = useState<any[]>([]);
   const [loans, setLoans] = useState<any[]>([]);
-  const [passbookEntries, setPassbookEntries] = useState<any[]>([]);
+  const [passbookEntries, setPassbookEntries] = useState<any[]>([]); // This will now hold MAPPED data
+  const [rawPassbook, setRawPassbook] = useState<any[]>([]); // New state for Raw DB data (for calculations)
   const [expenses, setExpenses] = useState<any[]>([]);
 
   // Filter States
@@ -41,7 +42,7 @@ export function useReportLogic() {
     defaulters: []
   });
 
-  // 1. Fetch Data
+  // 1. Fetch Data & Map for UI
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -64,10 +65,44 @@ export function useReportLogic() {
 
         if (membersRes.data) setMembers(membersRes.data);
         if (loansRes.data) setLoans(loansRes.data);
+        
         if (passbookRes.data) {
+          // 1. Store Raw Data (For Calculations)
           const memberIds = new Set(membersRes.data?.map(m => m.id));
-          setPassbookEntries(passbookRes.data.filter(e => memberIds.has(e.member_id)));
+          const validRawEntries = passbookRes.data.filter(e => memberIds.has(e.member_id));
+          setRawPassbook(validRawEntries);
+
+          // 2. Map Data for UI (Fixes "Unknown Member" and "0 Amount" issue)
+          let runningBalance = 0;
+          const mappedEntries = validRawEntries.map((e: any) => {
+            const amount = Number(e.total_amount || 0);
+            runningBalance += amount;
+
+            // Determine Type
+            let type = 'DEPOSIT';
+            if (Number(e.installment_amount) > 0) type = 'LOAN_REPAYMENT';
+            else if (Number(e.interest_amount) > 0 || Number(e.fine_amount) > 0) type = 'INTEREST/FINE';
+
+            return {
+              id: e.id,
+              date: e.date,
+              memberId: e.member_id, // CamelCase for UI
+              memberName: e.member_name, // If saved in DB
+              amount: amount,        // CamelCase for UI
+              type: type,
+              description: e.note || 'Entry',
+              paymentMode: e.payment_mode || 'CASH', // CamelCase for UI
+              balance: runningBalance,
+              // Keep raw values too just in case
+              deposit_amount: e.deposit_amount,
+              installment_amount: e.installment_amount
+            };
+          });
+          
+          // Reverse to show latest first in table
+          setPassbookEntries(mappedEntries.reverse());
         }
+
         if (expenseRes.data) setExpenses(expenseRes.data);
       }
       setLoading(false);
@@ -75,7 +110,7 @@ export function useReportLogic() {
     fetchData();
   }, [clientId]);
 
-  // 2. Calculation Engine
+  // 2. Calculation Engine (Uses rawPassbook for math)
   useEffect(() => {
     if (loading || !members.length) return;
 
@@ -84,7 +119,7 @@ export function useReportLogic() {
     end.setHours(23, 59, 59, 999);
 
     // --- A. FILTER RAW DATA ---
-    const filteredPassbook = passbookEntries.filter(e => {
+    const filteredPassbook = rawPassbook.filter(e => {
         const d = new Date(e.date);
         const dateMatch = d >= start && d <= end;
         const memberMatch = filters.selectedMember === 'ALL' || e.member_id === filters.selectedMember;
@@ -120,11 +155,10 @@ export function useReportLogic() {
         if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
     });
 
-    // Maturity Liability
+    // Maturity Liability Logic (Fixed)
     let totalMaturityLiability = 0;
-
     members.forEach(m => {
-        const mDepositEntries = passbookEntries
+        const mDepositEntries = rawPassbook
             .filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
@@ -155,7 +189,7 @@ export function useReportLogic() {
     const loansPendingTotal = loans.reduce((acc, l) => acc + Number(l.remaining_balance || 0), 0);
     const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
-    // --- D. DAILY LEDGER & CASHBOOK ---
+    // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
     const getOrSetEntry = (dateStr: string) => {
         if (!ledgerMap.has(dateStr)) {
@@ -169,7 +203,6 @@ export function useReportLogic() {
         return ledgerMap.get(dateStr);
     };
 
-    // Process Passbook
     filteredPassbook.forEach(e => {
         const entry = getOrSetEntry(e.date);
         const total = Number(e.total_amount || 0);
@@ -184,7 +217,6 @@ export function useReportLogic() {
         else entry.upiInMode += total;
     });
 
-    // Process Expenses
     filteredExpenses.forEach(e => {
         const entry = getOrSetEntry(e.date);
         const amt = Number(e.amount);
@@ -192,7 +224,6 @@ export function useReportLogic() {
         else { entry.cashIn += amt; entry.cashInMode += amt; }
     });
 
-    // Process Loans
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
         loans.forEach(l => {
             if (l.start_date >= filters.startDate && l.start_date <= filters.endDate) {
@@ -213,7 +244,7 @@ export function useReportLogic() {
         return { ...e, netFlow, runningBal };
     });
 
-    // Cashbook Array
+    // Cashbook
     let closingBal = 0;
     const finalCashbook = sortedLedger.map((e: any) => {
         const dailyNet = (e.cashInMode + e.bankInMode + e.upiInMode) - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
@@ -229,7 +260,7 @@ export function useReportLogic() {
 
     // --- E. MODE STATS ---
     let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
-    passbookEntries.forEach(e => {
+    rawPassbook.forEach(e => {
         const amt = Number(e.total_amount || 0);
         const mode = (e.payment_mode || 'CASH').toUpperCase();
         if (mode.includes('CASH')) cashBalTotal += amt;
@@ -237,11 +268,11 @@ export function useReportLogic() {
         else upiBalTotal += amt;
     });
     const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
-    cashBalTotal -= totalOut;
+    cashBalTotal -= totalOut; // ✅ FIX: Ensure variable is 'cashBalTotal'
 
     // --- F. MEMBER REPORTS ---
     const memberReports = members.map(m => {
-        const mEntries = passbookEntries.filter(e => e.member_id === m.id);
+        const mEntries = rawPassbook.filter(e => e.member_id === m.id);
         const dep = mEntries.reduce((acc, e) => acc + (Number(e.deposit_amount) || 0), 0);
         const intPaid = mEntries.reduce((acc, e) => acc + (Number(e.interest_amount) || 0), 0);
         const finePaid = mEntries.reduce((acc, e) => acc + (Number(e.fine_amount) || 0), 0);
@@ -253,7 +284,7 @@ export function useReportLogic() {
 
     // --- G. MATURITY ---
     const maturity = members.map(m => {
-        const mEntries = passbookEntries.filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0);
+        const mEntries = rawPassbook.filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0);
         let monthly = 0;
         if(mEntries.length > 0) {
             const sorted = [...mEntries].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -297,7 +328,8 @@ export function useReportLogic() {
         memberReports, maturity, defaulters
     });
 
-  }, [members, loans, passbookEntries, expenses, filters, loading]);
+  }, [members, loans, rawPassbook, expenses, filters, loading]);
 
+  // ✅ Passbook Entries ko UI-Compatible state ke roop me return kar rahe hain
   return { loading, auditData, members, passbookEntries, filters, setFilters };
 }
