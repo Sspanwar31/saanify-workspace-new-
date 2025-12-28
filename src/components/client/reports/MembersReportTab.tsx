@@ -53,7 +53,6 @@ export default function MembersReportTab({ data }: MembersReportTabProps) {
                       <TableCell className="font-medium">
                         <div>
                           <div className="font-semibold text-gray-900">{member.name}</div>
-                          {/* Displaying Phone/Father Name as subtitle based on logic */}
                           <div className="text-xs text-muted-foreground">{member.fatherName}</div>
                         </div>
                       </TableCell>
@@ -84,3 +83,24 @@ export default function MembersReportTab({ data }: MembersReportTabProps) {
                       
                       <TableCell className={`font-bold ${member.netWorth >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         {formatCurrency(member.netWorth)}
+                      </TableCell>
+                      
+                      <TableCell>
+                        <Badge 
+                          variant={member.status === 'active' ? 'default' : 'secondary'}
+                          className={member.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-800'}
+                        >
+                          {member.status?.toUpperCase() || 'UNKNOWN'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
