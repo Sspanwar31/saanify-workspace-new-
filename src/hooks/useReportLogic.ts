@@ -106,7 +106,7 @@ export function useReportLogic() {
         return dateMatch && typeMatch;
     });
 
-    // --- B. SUMMARY & MATURITY LIABILITY LOGIC ---
+    // --- B. SUMMARY LOGIC ---
     let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
     
     filteredPassbook.forEach(e => {
@@ -120,43 +120,47 @@ export function useReportLogic() {
         if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
     });
 
-    // ✅ FIXED: Maturity Liability Calculation
-    // Logic: Liability = (Monthly Share) * (Months Completed)
+    // ✅ FIXED LOGIC: Maturity Liability based on DEPOSIT COUNT
     let totalMaturityLiability = 0;
 
     members.forEach(m => {
-        // 1. Get Monthly Deposit (First Deposit Logic)
-        const mEntries = passbookEntries
+        // 1. Get ONLY Deposit Entries for this member (sorted by date)
+        const mDepositEntries = passbookEntries
             .filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
-        let monthlyDeposit = 0;
-        if(mEntries.length > 0) monthlyDeposit = Number(mEntries[0].deposit_amount);
+        // Agar member ne kam se kam ek baar deposit kiya hai
+        if (mDepositEntries.length > 0) {
+             // First Deposit determines the Monthly Amount
+             const monthlyDeposit = Number(mDepositEntries[0].deposit_amount);
+             
+             // Count how many times deposit was made (This is "Deposit Paid")
+             const depositCount = mDepositEntries.length;
 
-        if (monthlyDeposit > 0) {
+             // Logic
              const tenure = 36;
              const targetDeposit = monthlyDeposit * tenure;
              const projectedInterest = targetDeposit * 0.12; // 12%
 
-             // Check Override
+             // Override Check
              const isOverride = m.maturity_is_override || false;
              const manualAmount = Number(m.maturity_manual_amount || 0);
              const settledInterest = isOverride ? manualAmount : projectedInterest;
 
-             // Monthly Share of Interest Liability
+             // Monthly Interest Share (Per month liability)
              const monthlyInterestShare = settledInterest / tenure;
 
-             // Count Installments (Tenure Completed)
-             const installmentsPaid = mEntries.length; // How many times they deposited
+             // Liability = Share * Number of times Deposited
+             const currentAccrued = monthlyInterestShare * depositCount;
 
-             // Liability = Share * Installments Paid
-             totalMaturityLiability += (monthlyInterestShare * installmentsPaid);
+             // Add to Total Liability
+             totalMaturityLiability += currentAccrued;
         }
     });
 
     // Final Totals
     const totalIncomeCalc = interestIncome + fineIncome + otherIncome;
-    const totalExpensesCalc = opsExpense + totalMaturityLiability; // ✅ Include Maturity
+    const totalExpensesCalc = opsExpense + totalMaturityLiability; // ✅ Correct Maturity Logic Added
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
     // --- C. LOAN STATS ---
@@ -246,7 +250,7 @@ export function useReportLogic() {
         else upiBalTotal += amt;
     });
     const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
-    cashBalTotal -= totalOut;
+    cashBal -= totalOut;
 
     // --- F. MEMBER REPORTS ---
     const memberReports = members.map(m => {
@@ -297,7 +301,7 @@ export function useReportLogic() {
     setAuditData({
         summary: {
             income: { interest: interestIncome, fine: fineIncome, other: otherIncome, total: totalIncomeCalc },
-            expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc }, // ✅ Fixed
+            expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
             loans: { issued: loansIssuedTotal, recovered: loansRecoveredTotal, pending: loansPendingTotal },
             netProfit: netProfitCalc
