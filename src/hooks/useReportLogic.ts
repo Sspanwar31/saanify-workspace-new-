@@ -120,21 +120,21 @@ export function useReportLogic() {
         if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
     });
 
-    // ✅ FIXED LOGIC: Maturity Liability based on DEPOSIT COUNT
+    // ✅ FIXED LOGIC: Maturity Liability = Monthly Share * Deposit Count
     let totalMaturityLiability = 0;
 
     members.forEach(m => {
-        // 1. Get ONLY Deposit Entries for this member (sorted by date)
+        // 1. Get ALL Deposit Entries for this member (Not filtered by date, we need total history)
         const mDepositEntries = passbookEntries
-            .filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            .filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0);
         
         // Agar member ne kam se kam ek baar deposit kiya hai
         if (mDepositEntries.length > 0) {
-             // First Deposit determines the Monthly Amount
-             const monthlyDeposit = Number(mDepositEntries[0].deposit_amount);
+             // First Deposit determines the Monthly Amount (Sort to find first)
+             const sortedEntries = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+             const monthlyDeposit = Number(sortedEntries[0].deposit_amount);
              
-             // Count how many times deposit was made (This is "Deposit Paid")
+             // Count how many times deposit was made (Deposit Count)
              const depositCount = mDepositEntries.length;
 
              // Logic
@@ -150,7 +150,7 @@ export function useReportLogic() {
              // Monthly Interest Share (Per month liability)
              const monthlyInterestShare = settledInterest / tenure;
 
-             // Liability = Share * Number of times Deposited
+             // Liability = Share * Deposit Count
              const currentAccrued = monthlyInterestShare * depositCount;
 
              // Add to Total Liability
@@ -268,7 +268,12 @@ export function useReportLogic() {
     const maturity = members.map(m => {
         const mEntries = passbookEntries.filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0);
         let monthly = 0;
-        if(mEntries.length > 0) monthly = Number(mEntries[0].deposit_amount);
+        if(mEntries.length > 0) {
+            // Sort to get first
+            const sorted = [...mEntries].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            monthly = Number(sorted[0].deposit_amount);
+        }
+        
         const tenure = 36;
         const target = monthly * tenure;
         const projected = target * 0.12;
