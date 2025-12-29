@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
+import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
   const [loading, setLoading] = useState(true);
@@ -66,22 +67,36 @@ export function useReportLogic() {
         
         if (passbookRes.data) {
           const memberIds = new Set(membersRes.data?.map(m => m.id));
-          // Clean Passbook Data
-          const cleanPassbook = passbookRes.data
-            .filter(e => memberIds.has(e.member_id))
-            .map((e: any) => ({
-                ...e,
-                memberId: e.member_id, // Normalize ID for calculations
-                depositAmount: Number(e.deposit_amount || 0),
-                installmentAmount: Number(e.installment_amount || 0),
-                interestAmount: Number(e.interest_amount || 0),
-                fineAmount: Number(e.fine_amount || 0),
-                amount: Number(e.total_amount || 0),
-                paymentMode: e.payment_mode,
-                description: e.note
-            }));
-          setPassbookEntries(cleanPassbook);
+          const validEntries = passbookRes.data.filter(e => memberIds.has(e.member_id));
+
+          let runningBalance = 0;
+          const mappedPassbook = validEntries.map((e: any) => {
+            const total = Number(e.total_amount || 0);
+            runningBalance += total;
+
+            let type = 'DEPOSIT';
+            if (Number(e.installment_amount) > 0) type = 'LOAN_REPAYMENT';
+            else if (Number(e.interest_amount) > 0 || Number(e.fine_amount) > 0) type = 'INTEREST/FINE';
+
+            return {
+              id: e.id,
+              date: e.date,
+              memberId: e.member_id, 
+              memberName: e.member_name, 
+              amount: total,
+              paymentMode: e.payment_mode || 'CASH', 
+              description: e.note || 'Passbook Entry',
+              type: type,
+              depositAmount: Number(e.deposit_amount || 0),
+              installmentAmount: Number(e.installment_amount || 0),
+              interestAmount: Number(e.interest_amount || 0),
+              fineAmount: Number(e.fine_amount || 0),
+              balance: runningBalance
+            };
+          });
+          setPassbookEntries(mappedPassbook); 
         }
+
         if (expenseRes.data) setExpenses(expenseRes.data);
       }
       setLoading(false);
@@ -97,7 +112,6 @@ export function useReportLogic() {
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
-    // --- A. FILTER ---
     const filteredPassbook = passbookEntries.filter(e => {
         const d = new Date(e.date);
         const dateMatch = d >= start && d <= end;
@@ -120,7 +134,6 @@ export function useReportLogic() {
         return dateMatch && typeMatch;
     });
 
-    // --- B. SUMMARY ---
     let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
     
     filteredPassbook.forEach(e => {
@@ -134,7 +147,6 @@ export function useReportLogic() {
         if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
     });
 
-    // Maturity Liability (Monthly Share * Deposit Count)
     let totalMaturityLiability = 0;
     members.forEach(m => {
         const mDepositEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
@@ -142,7 +154,6 @@ export function useReportLogic() {
              const sorted = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
              const monthlyDeposit = sorted[0].depositAmount;
              const depositCount = mDepositEntries.length;
-
              const tenure = 36;
              const targetDeposit = monthlyDeposit * tenure;
              const projectedInterest = targetDeposit * 0.12; 
@@ -158,10 +169,8 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS & PORTFOLIO (Live Calculation) ---
-    // Here we calculate Principal Paid and Balance for specific loans
+    // --- C. LOAN STATS (Live) ---
     const loansWithLiveBalance = loans.map(l => {
-        // Calculate Principal Paid based on Passbook Installments for this member
         const installmentsPaid = passbookEntries
             .filter(p => p.memberId === l.member_id && p.installmentAmount > 0)
             .reduce((sum, p) => sum + p.installmentAmount, 0);
@@ -169,16 +178,16 @@ export function useReportLogic() {
         const currentBalance = Math.max(0, Number(l.amount) - installmentsPaid);
         const isActive = currentBalance > 0;
         
-        // Fix 1: Interest Rate Column -> Show Amount (1% of Balance)
+        // Calculate Interest Amount (1% of Balance)
         const interestAmount = currentBalance * 0.01;
 
         return {
             ...l,
             memberId: l.member_id,
-            interestRate: interestAmount, // Now holds amount (e.g. 20) instead of %
-            principalPaid: installmentsPaid, // Correct Principal Paid
+            interestRate: interestAmount, // ✅ FIX: Now showing Amount (e.g. ₹90)
+            principalPaid: installmentsPaid,
             remainingBalance: currentBalance,
-            status: isActive ? 'ACTIVE' : 'CLOSED'
+            status: isActive ? 'ACTIVE' : 'CLOSED' // ✅ FIX: Auto Status
         };
     });
 
@@ -192,7 +201,9 @@ export function useReportLogic() {
         if (!ledgerMap.has(dateStr)) {
             ledgerMap.set(dateStr, { 
                 date: dateStr, deposit: 0, emi: 0, loanOut: 0, interest: 0, fine: 0, 
-                cashIn: 0, cashOut: 0, cashInMode: 0, bankInMode: 0, upiInMode: 0, cashOutMode: 0, bankOutMode: 0, upiOutMode: 0
+                cashIn: 0, cashOut: 0,
+                cashInMode: 0, bankInMode: 0, upiInMode: 0,
+                cashOutMode: 0, bankOutMode: 0, upiOutMode: 0
             });
         }
         return ledgerMap.get(dateStr);
@@ -239,7 +250,7 @@ export function useReportLogic() {
         return { ...e, netFlow, runningBal };
     });
 
-    // --- E. CASHBOOK ---
+    // Cashbook Array
     let closingBal = 0;
     const finalCashbook = sortedLedger.map((e: any) => {
         const dailyNet = (e.cashInMode + e.bankInMode + e.upiInMode) - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
@@ -253,7 +264,7 @@ export function useReportLogic() {
         };
     });
 
-    // --- F. MODE STATS ---
+    // --- E. MODE STATS ---
     let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
     passbookEntries.forEach(e => {
         const amt = e.amount;
@@ -264,6 +275,25 @@ export function useReportLogic() {
     });
     const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
     cashBalTotal -= totalOut;
+
+    // --- F. MEMBER REPORTS ---
+    const memberReports = members.map(m => {
+        const mEntries = passbookEntries.filter(e => e.memberId === m.id);
+        const dep = mEntries.reduce((acc, e) => acc + e.depositAmount, 0);
+        const intPaid = mEntries.reduce((acc, e) => acc + e.interestAmount, 0);
+        const finePaid = mEntries.reduce((acc, e) => acc + e.fineAmount, 0);
+        const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
+        const lTaken = mLoans.reduce((acc, l) => acc + Number(l.amount), 0);
+        const lPend = mLoans.reduce((acc, l) => acc + Number(l.remainingBalance), 0);
+        const lPaid = lTaken - lPend;
+
+        return { 
+            id: m.id, name: m.name, fatherName: m.phone, 
+            totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
+            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
+            netWorth: dep - lPend, status: m.status || 'active' 
+        };
+    });
 
     // --- G. MATURITY ---
     const maturity = members.map(m => {
@@ -290,38 +320,17 @@ export function useReportLogic() {
         };
     });
 
-    // --- H. DEFAULTERS (Fix 2: Name/Phone & Auto Status) ---
-    const defaulters = loansWithLiveBalance
-        .filter(l => l.status === 'ACTIVE' && l.remainingBalance > 0) // Filter only ACTIVE defaulters? or all?
-        .map(l => {
-            // Fix: Map member details correctly
-            const mem = members.find(m => m.id === l.memberId);
-            return {
-                memberId: l.memberId, 
-                memberName: mem?.name || 'Unknown', 
-                memberPhone: mem?.phone || '', 
-                amount: Number(l.amount), 
-                remainingBalance: Number(l.remainingBalance), 
-                daysOverdue: Math.floor((new Date().getTime() - new Date(l.start_date).getTime()) / (1000 * 3600 * 24)),
-                status: l.status // Passed from Live Balance calculation
-            };
-        });
-    
-    // --- I. MEMBER REPORTS ---
-    const memberReports = members.map(m => {
-        const mEntries = passbookEntries.filter(e => e.memberId === m.id);
-        const dep = mEntries.reduce((acc, e) => acc + e.depositAmount, 0);
-        const intPaid = mEntries.reduce((acc, e) => acc + e.interestAmount, 0);
-        const finePaid = mEntries.reduce((acc, e) => acc + e.fineAmount, 0);
-        const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
-        const lTaken = mLoans.reduce((acc, l) => acc + Number(l.amount), 0);
-        const lPend = mLoans.reduce((acc, l) => acc + Number(l.remainingBalance), 0);
-        
-        return { 
-            id: m.id, name: m.name, fatherName: m.phone, 
-            totalDeposits: dep, loanTaken: lTaken, principalPaid: lTaken - lPend, 
-            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
-            netWorth: dep - lPend, status: m.status || 'active' 
+    // --- H. DEFAULTERS ---
+    const defaulters = loansWithLiveBalance.filter(l => l.status === 'completed' || Number(l.remainingBalance) > 0).map(l => {
+        const mem = members.find(m => m.id === l.memberId); 
+        return {
+            memberId: l.memberId, 
+            memberName: mem?.name || 'Unknown', 
+            memberPhone: mem?.phone || '',      
+            amount: Number(l.amount), 
+            remainingBalance: Number(l.remainingBalance), 
+            daysOverdue: Math.floor((new Date().getTime() - new Date(l.start_date).getTime()) / (1000 * 3600 * 24)),
+            status: l.status // ✅ FIX: Pass the calculated status (ACTIVE/CLOSED)
         };
     });
 
@@ -336,7 +345,7 @@ export function useReportLogic() {
         dailyLedger: finalLedger,
         cashbook: finalCashbook,
         modeStats: { cashBal: cashBalTotal, bankBal: bankBalTotal, upiBal: upiBalTotal },
-        loans: loansWithLiveBalance, // Use Live loans in portfolio table
+        loans: loansWithLiveBalance,
         memberReports, maturity, defaulters
     });
 
