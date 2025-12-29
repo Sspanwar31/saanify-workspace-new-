@@ -180,13 +180,17 @@ export function useReportLogic() {
         const isActive = currentBalance > 0;
         
         // ✅ FIX: Calculate Interest Amount (1% of Balance)
-        // This replaces the string "20% / 1% p.m." with the calculated amount
+        // Ramchandar: 2000 * 0.01 = 20
+        // Raj: 4000 * 0.01 = 40
         const interestAmount = currentBalance * 0.01;
 
+        // ✅ FIX: Explicit Return to prevent old string '...l' from persisting
         return {
-            ...l,
+            id: l.id,
+            amount: l.amount,
+            start_date: l.start_date, // Required for Defaulters calculation
             memberId: l.member_id,
-            interestRate: interestAmount, // ✅ Now holds Interest Amount
+            interestRate: interestAmount, // Sets calculated amount instead of DB string
             principalPaid: installmentsPaid,
             remainingBalance: currentBalance,
             status: isActive ? 'ACTIVE' : 'CLOSED'
@@ -323,7 +327,7 @@ export function useReportLogic() {
     });
 
     // --- H. DEFAULTERS ---
-    const defaulters = loansWithLiveBalance.filter(l => l.status === 'completed' || Number(l.remainingBalance) > 0).map(l => {
+    const defaulters = loansWithLiveBalance.filter(l => l.status === 'ACTIVE' && Number(l.remainingBalance) > 0).map(l => {
         const mem = members.find(m => m.id === l.memberId); 
         return {
             memberId: l.memberId, 
