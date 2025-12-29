@@ -81,24 +81,33 @@ export default function CashbookTab({ data, stats }: CashbookTabProps) {
         </Card>
       </div>
 
-      {/* 2. CASHBOOK TABLE */}
+      {/* 2. CASHBOOK TABLE (Tally Style) */}
       <Card className="rounded-xl border-orange-100 shadow-sm">
         <CardHeader>
           <CardTitle>Cashbook - The Tally View</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[600px] overflow-y-auto">
-            <Table>
+            <Table className="w-full text-sm border-collapse">
               <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
                 <TableRow>
-                  <TableHead className="w-[120px]">Date</TableHead>
-                  <TableHead className="text-green-600 font-semibold bg-green-50/30">Cash IN</TableHead>
-                  <TableHead className="text-red-600 font-semibold bg-red-50/30">Cash OUT</TableHead>
-                  <TableHead className="text-blue-600 font-semibold bg-blue-50/30">Bank IN</TableHead>
-                  <TableHead className="text-red-600 font-semibold bg-red-50/30">Bank OUT</TableHead>
-                  <TableHead className="text-purple-600 font-semibold bg-purple-50/30">UPI IN</TableHead>
-                  <TableHead className="text-red-600 font-semibold bg-red-50/30">UPI OUT</TableHead>
-                  <TableHead className="font-bold text-right">Closing Bal</TableHead>
+                  {/* Fixed Date Column */}
+                  <TableHead className="w-[100px] text-left px-2 border-r">Date</TableHead>
+                  
+                  {/* Cash Group */}
+                  <TableHead className="text-right px-2 text-green-700 bg-green-50/40 border-r w-[12%]">Cash IN</TableHead>
+                  <TableHead className="text-right px-2 text-red-700 bg-red-50/40 border-r w-[12%] border-r-2 border-gray-300">Cash OUT</TableHead>
+                  
+                  {/* Bank Group */}
+                  <TableHead className="text-right px-2 text-blue-700 bg-blue-50/40 border-r w-[12%]">Bank IN</TableHead>
+                  <TableHead className="text-right px-2 text-red-700 bg-red-50/40 border-r w-[12%] border-r-2 border-gray-300">Bank OUT</TableHead>
+                  
+                  {/* UPI Group */}
+                  <TableHead className="text-right px-2 text-purple-700 bg-purple-50/40 border-r w-[12%]">UPI IN</TableHead>
+                  <TableHead className="text-right px-2 text-red-700 bg-red-50/40 border-r w-[12%] border-r-2 border-gray-300">UPI OUT</TableHead>
+                  
+                  {/* Closing Balance */}
+                  <TableHead className="text-right px-4 font-bold bg-gray-50 text-gray-900 w-[16%]">Closing Bal</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -110,33 +119,35 @@ export default function CashbookTab({ data, stats }: CashbookTabProps) {
                   </TableRow>
                 ) : (
                   data.map((entry: any, i: number) => (
-                    <TableRow key={i} className="hover:bg-gray-50 transition-colors">
-                      <TableCell className="font-medium text-gray-700">
-                        {new Date(entry.date).toLocaleDateString('en-IN')}
+                    <TableRow key={i} className="hover:bg-gray-50 transition-colors border-b">
+                      <TableCell className="font-medium text-gray-700 text-left px-2 border-r">
+                        {new Date(entry.date).toLocaleDateString('en-IN', {
+                            day: 'numeric', month: 'short', year: 'numeric'
+                        })}
                       </TableCell>
                       
-                      <TableCell className="text-green-600 bg-green-50/10">
+                      <TableCell className="text-right px-2 text-green-600 bg-green-50/10 border-r">
                         {entry.cashIn > 0 ? formatCurrency(entry.cashIn) : '-'}
                       </TableCell>
-                      <TableCell className="text-red-600 bg-red-50/10">
+                      <TableCell className="text-right px-2 text-red-600 bg-red-50/10 border-r border-r-2 border-gray-200">
                         {entry.cashOut > 0 ? formatCurrency(entry.cashOut) : '-'}
                       </TableCell>
                       
-                      <TableCell className="text-blue-600 bg-blue-50/10">
+                      <TableCell className="text-right px-2 text-blue-600 bg-blue-50/10 border-r">
                         {entry.bankIn > 0 ? formatCurrency(entry.bankIn) : '-'}
                       </TableCell>
-                      <TableCell className="text-red-600 bg-red-50/10">
+                      <TableCell className="text-right px-2 text-red-600 bg-red-50/10 border-r border-r-2 border-gray-200">
                         {entry.bankOut > 0 ? formatCurrency(entry.bankOut) : '-'}
                       </TableCell>
                       
-                      <TableCell className="text-purple-600 bg-purple-50/10">
+                      <TableCell className="text-right px-2 text-purple-600 bg-purple-50/10 border-r">
                         {entry.upiIn > 0 ? formatCurrency(entry.upiIn) : '-'}
                       </TableCell>
-                      <TableCell className="text-red-600 bg-red-50/10">
+                      <TableCell className="text-right px-2 text-red-600 bg-red-50/10 border-r border-r-2 border-gray-200">
                         {entry.upiOut > 0 ? formatCurrency(entry.upiOut) : '-'}
                       </TableCell>
                       
-                      <TableCell className="text-right font-bold text-blue-700 bg-blue-50/30">
+                      <TableCell className="text-right px-4 font-bold text-gray-800 bg-gray-50/50">
                         {formatCurrency(entry.closing)}
                       </TableCell>
                     </TableRow>
