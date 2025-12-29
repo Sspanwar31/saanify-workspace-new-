@@ -171,6 +171,7 @@ export function useReportLogic() {
 
     // --- C. LOAN STATS (Live) ---
     const loansWithLiveBalance = loans.map(l => {
+        // Calculate principal paid from passbook
         const installmentsPaid = passbookEntries
             .filter(p => p.memberId === l.member_id && p.installmentAmount > 0)
             .reduce((sum, p) => sum + p.installmentAmount, 0);
@@ -178,16 +179,17 @@ export function useReportLogic() {
         const currentBalance = Math.max(0, Number(l.amount) - installmentsPaid);
         const isActive = currentBalance > 0;
         
-        // Calculate Interest Amount (1% of Balance)
+        // ✅ FIX: Calculate Interest Amount (1% of Balance)
+        // This replaces the string "20% / 1% p.m." with the calculated amount
         const interestAmount = currentBalance * 0.01;
 
         return {
             ...l,
             memberId: l.member_id,
-            interestRate: interestAmount, // ✅ FIX: Now showing Amount (e.g. ₹90)
+            interestRate: interestAmount, // ✅ Now holds Interest Amount
             principalPaid: installmentsPaid,
             remainingBalance: currentBalance,
-            status: isActive ? 'ACTIVE' : 'CLOSED' // ✅ FIX: Auto Status
+            status: isActive ? 'ACTIVE' : 'CLOSED'
         };
     });
 
@@ -330,7 +332,7 @@ export function useReportLogic() {
             amount: Number(l.amount), 
             remainingBalance: Number(l.remainingBalance), 
             daysOverdue: Math.floor((new Date().getTime() - new Date(l.start_date).getTime()) / (1000 * 3600 * 24)),
-            status: l.status // ✅ FIX: Pass the calculated status (ACTIVE/CLOSED)
+            status: l.status 
         };
     });
 
