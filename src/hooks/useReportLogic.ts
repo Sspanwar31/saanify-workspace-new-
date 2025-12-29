@@ -169,38 +169,50 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (Live) ---
-    const loansWithLiveBalance = loans.map(l => {
-        // Calculate principal paid from passbook
-        const installmentsPaid = passbookEntries
-            .filter(p => p.memberId === l.member_id && p.installmentAmount > 0)
-            .reduce((sum, p) => sum + p.installmentAmount, 0);
-        
-        const currentBalance = Math.max(0, Number(l.amount) - installmentsPaid);
-        const isActive = currentBalance > 0;
-        
-        // ✅ Calculate Interest Amount (1% of Balance)
-        // Ramchandar: 2000 * 0.01 = 20
-        // Raj: 4000 * 0.01 = 40
-        const interestAmount = currentBalance * 0.01;
+   // --- C. LOAN STATS (Live) ---
+const loansWithLiveBalance = loans.map(l => {
+  // Calculate principal paid from passbook
+  const installmentsPaid = passbookEntries
+    .filter(
+      p => p.memberId === l.member_id && Number(p.installmentAmount) > 0
+    )
+    .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
 
-        // ✅ FIX: Explicit Object (Removed ...l) to Force Overwrite
-        // This ensures 'interestRate' is a NUMBER, not the DB string
-        return {
-            id: l.id,
-            amount: Number(l.amount),
-            start_date: l.start_date, // Needed for Defaulters tab
-            memberId: l.member_id,    // Needed for Member lookup
-            interestRate: interestAmount, // ✅ Overwrites DB string
-            principalPaid: installmentsPaid,
-            remainingBalance: currentBalance,
-            status: isActive ? 'ACTIVE' : 'CLOSED'
-        };
-    });
+  const loanAmount = Number(l.amount) || 0;
+  const currentBalance = Math.max(0, loanAmount - installmentsPaid);
+  const isActive = currentBalance > 0;
 
-    const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
-    const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
-    const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
+  // ✅ Interest = 1% of CURRENT BALANCE (NUMBER ONLY)
+  // 2000 -> 20
+  // 4000 -> 40
+  const interestAmount = Math.round(currentBalance * 0.01);
+
+  // ✅ Explicit object (NO spread)
+  // Ensures DB string interest_rate never leaks
+  return {
+    id: l.id,
+    memberId: l.member_id,
+    start_date: l.start_date,
+    amount: loanAmount,
+    principalPaid: installmentsPaid,
+    remainingBalance: currentBalance,
+    interestRate: interestAmount, // ✅ PURE NUMBER
+    status: isActive ? 'ACTIVE' : 'CLOSED'
+  };
+});
+
+// Totals (unchanged logic)
+const loansIssuedTotal = loansWithLiveBalance.reduce(
+  (acc, l) => acc + l.amount,
+  0
+);
+
+const loansPendingTotal = loansWithLiveBalance.reduce(
+  (acc, l) => acc + l.remainingBalance,
+  0
+);
+
+const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
