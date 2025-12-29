@@ -1,10 +1,3 @@
-
-
-The error `ReferenceError: cashBal is not defined` is occurring because inside the **Mode Stats** section, you are trying to subtract from `cashBal`, but the variable was actually declared as `cashBalTotal`.
-
-Here is the corrected code. I have only fixed the typo where `cashBal` was used instead of `cashBalTotal`.
-
-```typescript
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -327,4 +320,3 @@ export function useReportLogic() {
 
   return { loading, auditData, members, passbookEntries, filters, setFilters };
 }
-```
