@@ -1,3 +1,10 @@
+
+
+The error `ReferenceError: cashBal is not defined` is occurring because inside the **Mode Stats** section, you are trying to subtract from `cashBal`, but the variable was actually declared as `cashBalTotal`.
+
+Here is the corrected code. I have only fixed the typo where `cashBal` was used instead of `cashBalTotal`.
+
+```typescript
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -250,7 +257,7 @@ export function useReportLogic() {
         else upiBalTotal += amt;
     });
     const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
-    cashBal -= totalOut; // ✅ FIX: Ensure variable is 'cashBalTotal'
+    cashBalTotal -= totalOut; // ✅ FIX: Changed 'cashBal' to 'cashBalTotal'
 
     // --- F. MEMBER REPORTS ---
     const memberReports = members.map(m => {
@@ -320,3 +327,4 @@ export function useReportLogic() {
 
   return { loading, auditData, members, passbookEntries, filters, setFilters };
 }
+```
