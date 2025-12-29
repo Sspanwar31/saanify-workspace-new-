@@ -95,7 +95,8 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
                   <TableHead>Loan Amount</TableHead>
                   <TableHead>Principal Paid</TableHead>
                   <TableHead>Balance</TableHead>
-                  <TableHead>Interest Rate</TableHead>
+                  {/* ✅ Fixed: Header changed to Interest Amount */}
+                  <TableHead>Interest Amount</TableHead>
                   <TableHead className="text-right">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -109,7 +110,9 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
                 ) : (
                   loans.map((loan: any, i: number) => {
                     const member = members.find(m => m.id === loan.memberId);
-                    // Calculation logic preserved from original
+                    
+                    // Note: loan.principalPaid is already calculated in useReportLogic
+                    // But keeping this fallback for safety as per your request
                     const principalPaid = (loan.amount || 0) - (loan.remainingBalance || 0);
 
                     return (
@@ -126,16 +129,19 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
                         <TableCell className="text-red-600 font-bold bg-red-50/30">
                           {formatCurrency(loan.remainingBalance)}
                         </TableCell>
-                        <TableCell className="text-gray-600">
-                          {loan.interestRate || 12}% / 1% p.m.
+                        
+                        {/* ✅ Fixed: Now shows Currency Amount instead of % */}
+                        <TableCell className="text-purple-600 font-medium">
+                           {formatCurrency(loan.interestRate)}
                         </TableCell>
+                        
                         <TableCell className="text-right">
                           <Badge 
-                            variant={loan.status === 'active' ? 'destructive' : 
-                                     loan.status === 'completed' ? 'default' : 'secondary'}
-                            className={loan.status === 'active' ? 'bg-red-100 text-red-800 hover:bg-red-200' : ''}
+                            variant={loan.status === 'ACTIVE' ? 'destructive' : 
+                                     loan.status === 'COMPLETED' ? 'default' : 'secondary'}
+                            className={loan.status === 'ACTIVE' ? 'bg-red-100 text-red-800 hover:bg-red-200' : ''}
                           >
-                            {loan.status?.toUpperCase() || 'UNKNOWN'}
+                            {loan.status}
                           </Badge>
                         </TableCell>
                       </TableRow>
