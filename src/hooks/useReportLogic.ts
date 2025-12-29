@@ -179,26 +179,27 @@ export function useReportLogic() {
         const currentBalance = Math.max(0, Number(l.amount) - installmentsPaid);
         const isActive = currentBalance > 0;
         
-        // ✅ FIX: Calculate Interest Amount (1% of Balance)
+        // ✅ Calculate Interest Amount (1% of Balance)
         // Ramchandar: 2000 * 0.01 = 20
         // Raj: 4000 * 0.01 = 40
         const interestAmount = currentBalance * 0.01;
 
-        // ✅ FIX: Explicit Return to prevent old string '...l' from persisting
+        // ✅ FIX: Explicit Object (Removed ...l) to Force Overwrite
+        // This ensures 'interestRate' is a NUMBER, not the DB string
         return {
             id: l.id,
-            amount: l.amount,
-            start_date: l.start_date, // Required for Defaulters calculation
-            memberId: l.member_id,
-            interestRate: interestAmount, // Sets calculated amount instead of DB string
+            amount: Number(l.amount),
+            start_date: l.start_date, // Needed for Defaulters tab
+            memberId: l.member_id,    // Needed for Member lookup
+            interestRate: interestAmount, // ✅ Overwrites DB string
             principalPaid: installmentsPaid,
             remainingBalance: currentBalance,
             status: isActive ? 'ACTIVE' : 'CLOSED'
         };
     });
 
-    const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + Number(l.amount || 0), 0);
-    const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + Number(l.remainingBalance || 0), 0);
+    const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
+    const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
     const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     // --- D. DAILY LEDGER ---
@@ -289,8 +290,8 @@ export function useReportLogic() {
         const intPaid = mEntries.reduce((acc, e) => acc + e.interestAmount, 0);
         const finePaid = mEntries.reduce((acc, e) => acc + e.fineAmount, 0);
         const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
-        const lTaken = mLoans.reduce((acc, l) => acc + Number(l.amount), 0);
-        const lPend = mLoans.reduce((acc, l) => acc + Number(l.remainingBalance), 0);
+        const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
+        const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
         const lPaid = lTaken - lPend;
 
         return { 
@@ -327,14 +328,14 @@ export function useReportLogic() {
     });
 
     // --- H. DEFAULTERS ---
-    const defaulters = loansWithLiveBalance.filter(l => l.status === 'ACTIVE' && Number(l.remainingBalance) > 0).map(l => {
+    const defaulters = loansWithLiveBalance.filter(l => l.status === 'ACTIVE' && l.remainingBalance > 0).map(l => {
         const mem = members.find(m => m.id === l.memberId); 
         return {
             memberId: l.memberId, 
             memberName: mem?.name || 'Unknown', 
             memberPhone: mem?.phone || '',      
-            amount: Number(l.amount), 
-            remainingBalance: Number(l.remainingBalance), 
+            amount: l.amount, 
+            remainingBalance: l.remainingBalance, 
             daysOverdue: Math.floor((new Date().getTime() - new Date(l.start_date).getTime()) / (1000 * 3600 * 24)),
             status: l.status 
         };
