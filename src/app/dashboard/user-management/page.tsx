@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase-simple';
 import { 
   Users, Shield, UserCheck, Ban, Plus, Search, 
   Download, RefreshCw, Edit, Trash2, Crown, Activity, 
-  Lock, Unlock, Link as LinkIcon, Save, Check, X, AlertTriangle, FileText
+  Lock, Unlock, Link as LinkIcon, Save, Check, X, AlertTriangle, FileText, Filter as FilterIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,44 +24,17 @@ import { toast } from 'sonner';
 
 // --- CONFIGURATION CONSTANTS ---
 const PERMISSION_CATEGORIES = [
-  {
-    name: 'General Permissions',
-    items: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data']
-  },
-  {
-    name: 'User Management Permissions',
-    items: ['User Management Access', 'Manage Users', 'Manage Members']
-  },
-  {
-    name: 'Financial Permissions',
-    items: ['Manage Finance', 'Manage Loans', 'Manage Expenses', 'Approve Loans', 'Manage Passbook', 'Manage Admin Fund']
-  },
-  {
-    name: 'System Permissions',
-    items: ['Manage System', 'Manage Subscription']
-  },
-  {
-    name: 'Security Permissions',
-    items: ['View Activity Logs', 'Manage Roles', 'Ghost Mode']
-  }
+  { name: 'General Permissions', items: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data'] },
+  { name: 'User Management Permissions', items: ['User Management Access', 'Manage Users', 'Manage Members'] },
+  { name: 'Financial Permissions', items: ['Manage Finance', 'Manage Loans', 'Manage Expenses', 'Approve Loans', 'Manage Passbook', 'Manage Admin Fund'] },
+  { name: 'System Permissions', items: ['Manage System', 'Manage Subscription'] },
+  { name: 'Security Permissions', items: ['View Activity Logs', 'Manage Roles', 'Ghost Mode'] }
 ];
 
-// Initial Default Permissions
 const DEFAULT_PERMISSIONS = {
-  client_admin: [
-    'View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data',
-    'User Management Access', 'Manage Users', 'Manage Members',
-    'Manage Finance', 'Manage Loans', 'Manage Expenses', 'Approve Loans', 'Manage Passbook', 'Manage Admin Fund',
-    'Manage System', 'Manage Subscription',
-    'View Activity Logs', 'Manage Roles', 'Ghost Mode'
-  ],
-  treasurer: [
-    'View Dashboard', 'View Passbook', 'View Loans', 'View Members',
-    'Manage Finance', 'Manage Expenses', 'Manage Passbook'
-  ],
-  member: [
-    'View Dashboard'
-  ]
+  client_admin: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data', 'User Management Access', 'Manage Users', 'Manage Members', 'Manage Finance', 'Manage Loans', 'Manage Expenses', 'Approve Loans', 'Manage Passbook', 'Manage Admin Fund', 'Manage System', 'Manage Subscription', 'View Activity Logs', 'Manage Roles', 'Ghost Mode'],
+  treasurer: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'Manage Finance', 'Manage Expenses', 'Manage Passbook'],
+  member: ['View Dashboard']
 };
 
 export default function UserManagementPage() {
@@ -71,8 +44,11 @@ export default function UserManagementPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all-users');
   const [clientId, setClientId] = useState<string | null>(null);
+  
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all'); // New Status Filter
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,66 +99,44 @@ export default function UserManagementPage() {
     };
   }, [users]);
 
+  // Updated Filter Logic
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesRole = filterRole === 'all' || user.role === filterRole;
-    return matchesSearch && matchesRole;
+    const matchesStatus = filterStatus === 'all' || user.status === filterStatus; // Status Check
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
-  // --- LOGGING FUNCTION ---
+  // ... (Keep logActivity, Handlers, etc. same as before) ...
   const logActivity = async (action: string, details: string) => {
     if (!clientId) return;
-    await supabase.from('activity_logs').insert([{
-        client_id: clientId,
-        user_name: 'Current User', // Placeholder
-        action: action,
-        details: details
-    }]);
+    await supabase.from('activity_logs').insert([{ client_id: clientId, user_name: 'Current User', action: action, details: details }]);
   };
 
-  // --- HANDLERS ---
-  const handleOpenAdd = () => {
-    setEditingUser(null);
-    setFormData({ name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active' });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEdit = (user: any) => {
-    setEditingUser(user);
-    setFormData({ name: user.name, role: user.role || 'member', email: user.email || '', phone: user.phone || '', linked_member_id: user.id, status: user.status || 'active' });
-    setIsModalOpen(true);
-  };
-
+  const handleOpenAdd = () => { setEditingUser(null); setFormData({ name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active' }); setIsModalOpen(true); };
+  const handleOpenEdit = (user: any) => { setEditingUser(user); setFormData({ name: user.name, role: user.role || 'member', email: user.email || '', phone: user.phone || '', linked_member_id: user.id, status: user.status || 'active' }); setIsModalOpen(true); };
+  
   const handleSubmit = async () => {
     if(!clientId || !formData.name) return;
     try {
         if (editingUser) {
-            const { error } = await supabase.from('members').update({
-                name: formData.name, role: formData.role, email: formData.email, phone: formData.phone, status: formData.status
-            }).eq('id', editingUser.id);
+            const { error } = await supabase.from('members').update({ name: formData.name, role: formData.role, email: formData.email, phone: formData.phone, status: formData.status }).eq('id', editingUser.id);
             if (error) throw error;
             await logActivity('Update User', `Updated user: ${formData.name}`);
         } else {
-            const { error } = await supabase.from('members').insert([{
-                client_id: clientId, name: formData.name, role: formData.role, email: formData.email, phone: formData.phone, status: formData.status, join_date: new Date().toISOString()
-            }]);
+            const { error } = await supabase.from('members').insert([{ client_id: clientId, name: formData.name, role: formData.role, email: formData.email, phone: formData.phone, status: formData.status, join_date: new Date().toISOString() }]);
             if (error) throw error;
             await logActivity('Create User', `Created user: ${formData.name}`);
         }
         window.location.reload();
-    } catch (error: any) {
-        alert("Error: " + error.message);
-    }
+    } catch (error: any) { alert("Error: " + error.message); }
   };
 
   const handleDelete = async (userId: string, role: string) => {
     if (role === 'client_admin') { alert("Action Denied: Cannot delete Main Admin."); return; }
     if (confirm("Delete this user?")) {
         const { error } = await supabase.from('members').delete().eq('id', userId);
-        if (!error) {
-            setUsers(users.filter(u => u.id !== userId));
-            await logActivity('Delete User', `Deleted user ID: ${userId}`);
-        }
+        if (!error) { setUsers(users.filter(u => u.id !== userId)); await logActivity('Delete User', `Deleted user ID: ${userId}`); }
     }
   };
 
@@ -190,48 +144,35 @@ export default function UserManagementPage() {
     if (user.role === 'client_admin') return;
     const newStatus = user.status === 'active' ? 'blocked' : 'active';
     const { error } = await supabase.from('members').update({ status: newStatus }).eq('id', user.id);
-    if (!error) {
-        setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
-        await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
-    }
+    if (!error) { setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u)); await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`); }
   };
 
-  // --- PERMISSION HANDLERS ---
   const togglePermission = (role: string, permission: string) => {
     if (!isEditingRoles || role === 'client_admin') return; 
     setRoleConfig((prev: any) => {
       const currentPerms = prev[role];
-      return currentPerms.includes(permission) 
-        ? { ...prev, [role]: currentPerms.filter((p: string) => p !== permission) }
-        : { ...prev, [role]: [...currentPerms, permission] };
+      return currentPerms.includes(permission) ? { ...prev, [role]: currentPerms.filter((p: string) => p !== permission) } : { ...prev, [role]: [...currentPerms, permission] };
     });
   };
 
-  const getPermissionCount = (role: string, categoryItems: string[]) => {
-    return roleConfig[role].filter((p: string) => categoryItems.includes(p)).length;
-  };
-
-  const savePermissions = async () => {
-    setIsEditingRoles(false);
-    await logActivity('Permissions Update', 'Updated role permissions matrix');
-    toast.success("Permissions updated successfully!");
-  };
+  const savePermissions = async () => { setIsEditingRoles(false); await logActivity('Permissions Update', 'Updated role permissions matrix'); toast.success("Permissions updated successfully!"); };
 
   const getRoleBadgeColor = (role: string) => {
-    switch(role) {
-        case 'client_admin': return 'bg-purple-100 text-purple-800';
-        case 'treasurer': return 'bg-green-100 text-green-800';
-        default: return 'bg-blue-100 text-blue-800';
-    }
+    switch(role) { case 'client_admin': return 'bg-purple-100 text-purple-800'; case 'treasurer': return 'bg-green-100 text-green-800'; default: return 'bg-blue-100 text-blue-800'; }
   };
+  const getPermissionCount = (role: string, categoryItems: string[]) => { return roleConfig[role].filter((p: string) => categoryItems.includes(p)).length; };
+
 
   return (
     <div className="p-6 space-y-6">
+      
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div><h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1><p className="text-gray-600 dark:text-gray-400 mt-2">Manage administrators, treasurers, and society members.</p></div>
         <div className="flex gap-2"><Button variant="outline" onClick={() => window.location.reload()}><RefreshCw className="h-4 w-4 mr-2"/> Refresh</Button><Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleOpenAdd}><Plus className="h-4 w-4 mr-2"/> Add User</Button></div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card><CardContent className="p-6 flex justify-between items-center"><div><p className="text-sm font-medium text-gray-500">Total Users</p><h3 className="text-2xl font-bold text-blue-600">{stats.total}</h3></div><div className="p-3 bg-blue-100 rounded-lg"><Users className="h-6 w-6 text-blue-600"/></div></CardContent></Card>
         <Card><CardContent className="p-6 flex justify-between items-center"><div><p className="text-sm font-medium text-gray-500">Active Users</p><h3 className="text-2xl font-bold text-green-600">{stats.active}</h3></div><div className="p-3 bg-green-100 rounded-lg"><UserCheck className="h-6 w-6 text-green-600"/></div></CardContent></Card>
@@ -243,12 +184,56 @@ export default function UserManagementPage() {
         <div className="flex justify-center mb-6"><TabsList className="grid w-full max-w-3xl grid-cols-3"><TabsTrigger value="all-users"><Users className="h-4 w-4 mr-2"/> All Users</TabsTrigger><TabsTrigger value="roles"><Shield className="h-4 w-4 mr-2"/> Roles & Permissions</TabsTrigger><TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2"/> Activity Logs</TabsTrigger></TabsList></div>
 
         <TabsContent value="all-users" className="space-y-4">
-            <div className="bg-white p-4 rounded-lg border flex flex-wrap gap-4 items-center">
-                <div className="relative w-72"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400"/><Input placeholder="Search users..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/></div>
-                <Select value={filterRole} onValueChange={setFilterRole}><SelectTrigger className="w-40"><SelectValue placeholder="All Roles" /></SelectTrigger><SelectContent><SelectItem value="all">All Roles</SelectItem><SelectItem value="client_admin">Client Admin</SelectItem><SelectItem value="treasurer">Treasurer</SelectItem><SelectItem value="member">Member</SelectItem></SelectContent></Select>
+            
+            {/* ✅ UPDATED FILTERS BAR */}
+            <div className="bg-white p-4 rounded-lg border flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto items-center">
+                    <div className="flex items-center gap-2 text-gray-500 font-medium">
+                        <FilterIcon className="h-4 w-4" /> Filters
+                    </div>
+                    
+                    {/* Search */}
+                    <div className="relative w-full md:w-72">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400"/>
+                        <Input 
+                            placeholder="Search users by name or email..." 
+                            className="pl-10 h-10" 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Status Filter (New) */}
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="w-full md:w-40 h-10"><SelectValue placeholder="All Status" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="blocked">Blocked</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {/* Role Filter */}
+                    <Select value={filterRole} onValueChange={setFilterRole}>
+                        <SelectTrigger className="w-full md:w-40 h-10"><SelectValue placeholder="All Roles" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Roles</SelectItem>
+                            <SelectItem value="client_admin">Client Admin</SelectItem>
+                            <SelectItem value="treasurer">Treasurer</SelectItem>
+                            <SelectItem value="member">Member</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* Export Button */}
+                <Button variant="outline" className="w-full md:w-auto h-10">
+                    <Download className="h-4 w-4 mr-2"/> Export
+                </Button>
             </div>
-            <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader className="bg-gray-50"><TableRow><TableHead>User Info</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Phone</TableHead><TableHead>Linked</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>
-                {loading ? <TableRow><TableCell colSpan={6} className="text-center py-8">Loading users...</TableCell></TableRow> : filteredUsers.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8">No users found.</TableCell></TableRow> : filteredUsers.map((user) => (
+
+            <Card>
+                <CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader className="bg-gray-50"><TableRow><TableHead>User Info</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Phone</TableHead><TableHead>Linked</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>
+                {loading ? <TableRow><TableCell colSpan={6} className="text-center py-8">Loading users...</TableCell></TableRow> : filteredUsers.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8">No users found matching filters.</TableCell></TableRow> : filteredUsers.map((user) => (
                     <TableRow key={user.id}>
                         <TableCell><div className="flex items-center gap-3"><Avatar><AvatarImage src={`/avatars/${user.id}.jpg`} /><AvatarFallback>{user.name.charAt(0)}</AvatarFallback></Avatar><div><p className="font-medium text-gray-900">{user.name}</p><p className="text-xs text-gray-500">{user.email}</p></div></div></TableCell>
                         <TableCell><Badge className={`${getRoleBadgeColor(user.role)} border-0`}>{user.role.replace('_', ' ').toUpperCase()}</Badge></TableCell>
@@ -286,8 +271,8 @@ export default function UserManagementPage() {
                     </Card>
                 ))}
             </div>
-            <Card><CardContent className="p-0"><Table><TableHeader><TableRow className="bg-gray-100"><TableHead className="w-[300px]">Permission</TableHead><TableHead className="text-center bg-purple-50 text-purple-900">Client Admin</TableHead><TableHead className="text-center bg-green-50 text-green-900">Treasurer</TableHead><TableHead className="text-center bg-blue-50 text-blue-900">Member</TableHead></TableRow></TableHeader><TableBody>
-                {PERMISSION_CATEGORIES.map((cat) => (<><TableRow key={cat.name} className="bg-gray-50/50 hover:bg-gray-50"><TableCell colSpan={4} className="font-bold text-gray-700 py-3">{cat.name}</TableCell></TableRow>{cat.items.map(perm => (
+            <Card><CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Permission</TableHead><TableHead className="text-center bg-purple-50">Client Admin</TableHead><TableHead className="text-center bg-green-50">Treasurer</TableHead><TableHead className="text-center bg-blue-50">Member</TableHead></TableRow></TableHeader><TableBody>
+                {PERMISSION_CATEGORIES.map((cat) => (<><TableRow key={cat.name} className="bg-gray-50/50"><TableCell colSpan={4} className="font-bold text-gray-700 py-3">{cat.name}</TableCell></TableRow>{cat.items.map(perm => (
                     <TableRow key={perm}><TableCell className="text-gray-600 pl-6">{perm}</TableCell>
                     <TableCell className="text-center"><div className="flex justify-center"><Checkbox checked={roleConfig.client_admin.includes(perm)} disabled className="data-[state=checked]:bg-purple-600" /></div></TableCell>
                     <TableCell className="text-center"><div className="flex justify-center"><Checkbox checked={roleConfig.treasurer.includes(perm)} disabled={!isEditingRoles} onCheckedChange={() => togglePermission('treasurer', perm)} className="data-[state=checked]:bg-green-600"/></div></TableCell>
