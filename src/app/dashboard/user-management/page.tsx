@@ -22,7 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
-// --- CONSTANTS ---
+// --- CONFIGURATION CONSTANTS ---
 const PERMISSION_CATEGORIES = [
   { name: 'General Permissions', items: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data'] },
   { name: 'User Management Permissions', items: ['User Management Access', 'Manage Users', 'Manage Members'] },
@@ -45,10 +45,12 @@ export default function UserManagementPage() {
   const [activeTab, setActiveTab] = useState('all-users');
   const [clientId, setClientId] = useState<string | null>(null);
   
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
+  // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -204,7 +206,7 @@ export default function UserManagementPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         
-        {/* ✅ UPDATED TAB LIST DESIGN (Pill Shape Centered) */}
+        {/* ✅ UPDATED TAB LIST DESIGN */}
         <div className="flex justify-center mb-8">
             <TabsList className="grid w-full max-w-2xl grid-cols-3 h-12 bg-white rounded-full p-1 shadow-sm border">
                 <TabsTrigger value="all-users" className="rounded-full text-sm font-medium data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 transition-all">
@@ -222,10 +224,10 @@ export default function UserManagementPage() {
         {/* 1. All Users Tab Content */}
         <TabsContent value="all-users" className="space-y-6">
             
-            {/* ✅ FIXED FILTER BAR LAYOUT (Spaced Out & Clean) */}
+            {/* ✅ FIXED FILTER BAR LAYOUT */}
             <div className="bg-white p-6 rounded-xl border shadow-sm flex flex-col xl:flex-row gap-6 items-center">
                 
-                {/* Search - Takes available space */}
+                {/* Search */}
                 <div className="relative w-full xl:flex-grow">
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"/>
                     <Input 
@@ -236,7 +238,7 @@ export default function UserManagementPage() {
                     />
                 </div>
 
-                {/* Filters Group - Right Aligned on Desktop */}
+                {/* Filters Group */}
                 <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
                     <div className="w-full sm:w-48">
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -383,6 +385,7 @@ export default function UserManagementPage() {
                     <TableCell className="text-center"><div className="flex justify-center"><Checkbox checked={roleConfig.member.includes(perm)} disabled className="data-[state=checked]:bg-blue-600"/></div></TableCell></TableRow>
                 ))}</>))}
             </TableBody></Table></CardContent></Card>
+            {isEditingRoles && <Alert className="bg-yellow-50 border-yellow-200"><AlertTriangle className="h-4 w-4 text-yellow-600"/><AlertDescription className="text-yellow-800 text-xs">You are in Edit Mode. Changes to permissions will affect what users can see and do immediately after saving.</AlertDescription></Alert>}
         </TabsContent>
 
         <TabsContent value="activity">
