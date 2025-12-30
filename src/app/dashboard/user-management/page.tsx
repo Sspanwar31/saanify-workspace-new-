@@ -1,322 +1,359 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react'
 import { 
-  Plus, Users, Shield, UserCheck, RefreshCw, Crown, 
-  TrendingUp, Download, Eye, Edit, Trash2, Search, Filter 
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // ✅ Added Tabs
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { toast } from 'sonner';
+  Users, 
+  Shield, 
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Activity,
+  TrendingUp,
+  Plus,
+  Edit,
+  Eye,
+  Ban,
+  UserX,
+  Ghost,
+  Settings,
+  FileText,
+  Calendar,
+  Search,
+  Filter,
+  Download,
+  RefreshCw
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useSuperClientStore, User, ActivityLog, Role, MOCK_ROLES, Permission } from '@/lib/super-client/store'
 
-export default function UserManagementPage() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('users'); // ✅ Tab State
+// Import Components
+import AllUsersTab from '@/components/super-client/users/AllUsersTab'
+import RolesPermissionsTab from '@/components/super-client/users/RolesPermissionsTab'
+import ActivityLogsTab from '@/components/super-client/users/ActivityLogsTab'
+import AddUserModal from '@/components/super-client/users/AddUserModal'
+import EditUserModal from '@/components/super-client/users/EditUserModal'
 
-  // 1. Fetch Users from Supabase
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+export default function UsersPage() {
+  const { 
+    users, 
+    activityLogs, 
+    roles,
+    getActiveUsers, 
+    getBlockedUsers,
+    hasPermission,
+    addUser,
+    blockUser,
+    unblockUser,
+    deleteUser,
+    linkMember,
+    unlinkMember,
+    impersonateUser,
+    stopImpersonation,
+    togglePermission,
+    currentUser
+  } = useSuperClientStore()
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    // Fetch profiles or members table depending on your auth setup
-    // Assuming 'members' table holds user info for now
-    const { data: clients } = await supabase.from('clients').select('id').limit(1);
-    if (clients && clients.length > 0) {
-        const { data, error } = await supabase
-            .from('members')
-            .select('*')
-            .eq('client_id', clients[0].id);
-        
-        if (data) {
-            // Map Supabase data to UI format
-            const mappedUsers = data.map((u: any) => ({
-                id: u.id,
-                name: u.name,
-                email: u.email || 'N/A', // Assuming email might be missing in members table
-                role: u.role || 'Member', // Default to Member if no role column
-                status: u.status || 'active',
-                phone: u.phone,
-                joinDate: u.created_at
-            }));
-            setUsers(mappedUsers);
-        }
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [activeTab, setActiveTab] = useState('all-users')
+  const [isGhostMode, setIsGhostMode] = useState(false)
+  const [ghostModeUser, setGhostModeUser] = useState<User | null>(null)
+
+  // Check permissions
+  const canManageUsers = currentUser ? 
+    (typeof currentUser.role === 'object' && currentUser.role.id === 'SUPER_ADMIN') || 
+    (typeof currentUser.role === 'string' && currentUser.role === 'SUPER_ADMIN') || 
+    hasPermission(currentUser.id, 'MANAGE_USERS') || 
+    hasPermission(currentUser.id, 'manage_users') ||
+    hasPermission(currentUser.id, 'MANAGE_ROLES') ||
+    hasPermission(currentUser.id, 'manage_roles') : false
+  
+  const canViewActivityLogs = currentUser ? 
+    hasPermission(currentUser.id, 'VIEW_ACTIVITY_LOGS') || 
+    hasPermission(currentUser.id, 'view_activity_logs') : false
+    
+  const canUseGhostMode = currentUser ? 
+    hasPermission(currentUser.id, 'GHOST_MODE') : false
+
+  const activeUsers = getActiveUsers()
+  const blockedUsers = getBlockedUsers()
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user)
+    setIsEditUserModalOpen(true)
+  }
+
+  const handleBlockUser = (userId: string) => {
+    blockUser(userId)
+  }
+
+  const handleUnblockUser = (userId: string) => {
+    unblockUser(userId)
+  }
+
+  const handleDeleteUser = (userId: string) => {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      deleteUser(userId)
     }
-    setLoading(false);
-  };
+  }
 
-  // Stats Calculation
-  const stats = useMemo(() => {
-    return {
-      totalUsers: users.length,
-      activeUsers: users.filter(u => u.status === 'active').length,
-      inactiveUsers: users.filter(u => u.status === 'inactive').length,
-      adminUsers: users.filter(u => u.role?.toLowerCase().includes('admin')).length
-    };
-  }, [users]);
+  const handleGhostMode = (user: User) => {
+    if (isGhostMode) {
+      stopImpersonation()
+      setIsGhostMode(false)
+      setGhostModeUser(null)
+    } else {
+      impersonateUser(user.id)
+      setIsGhostMode(true)
+      setGhostModeUser(user)
+    }
+  }
 
-  const handleRefresh = () => {
-    fetchUsers();
-    toast.success('Data Refreshed');
-  };
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success': return <CheckCircle className="h-4 w-4 text-green-600" />
+      case 'pending': return <Clock className="h-4 w-4 text-yellow-600" />
+      case 'error': return <AlertTriangle className="h-4 w-4 text-red-600" />
+      default: return <Activity className="h-4 w-4 text-gray-600" />
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      success: 'bg-green-100 text-green-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      error: 'bg-red-100 text-red-800'
+    }
+    return (
+      <Badge className={variants[status as keyof typeof variants] || 'bg-gray-100 text-gray-800'}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    )
+  }
+
+  const getRoleBadge = (role: string) => {
+    const roleConfig = MOCK_ROLES.find(r => r.id === role)
+    return (
+      <Badge className={roleConfig?.color || 'bg-gray-100 text-gray-800'}>
+        {roleConfig?.name || role}
+      </Badge>
+    )
+  }
 
   return (
-    <div className="space-y-6 p-6">
-      
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage users, roles, permissions, and monitor system activity</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            User Management
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Manage users, roles, permissions, and monitor system activity
+          </p>
         </div>
-        <div className="flex gap-2">
-           <Button variant="outline" onClick={handleRefresh} disabled={loading}>
-             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
-           </Button>
-           <Button variant="outline">
-             <Download className="h-4 w-4 mr-2" /> Export
-           </Button>
-           <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-             <Plus className="h-4 w-4 mr-2" /> Add User
-           </Button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total Users</p>
-              <h3 className="text-2xl font-bold text-gray-900">{stats.totalUsers}</h3>
-              <p className="text-xs text-gray-400">Registered users</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-lg"><Users className="h-6 w-6 text-blue-600"/></div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Active Users</p>
-              <h3 className="text-2xl font-bold text-green-600">{stats.activeUsers}</h3>
-              <p className="text-xs text-gray-400">Currently active</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg"><UserCheck className="h-6 w-6 text-green-600"/></div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Blocked Users</p>
-              <h3 className="text-2xl font-bold text-red-600">{stats.inactiveUsers}</h3>
-              <p className="text-xs text-gray-400">Blocked accounts</p>
-            </div>
-            <div className="p-3 bg-slate-100 rounded-lg"><Shield className="h-6 w-6 text-slate-600"/></div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total Roles</p>
-              <h3 className="text-2xl font-bold text-purple-600">3</h3>
-              <p className="text-xs text-gray-400">System roles</p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-lg"><Crown className="h-6 w-6 text-purple-600"/></div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ✅ FIX: Added Tabs Structure */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         
-        {/* Tab Buttons */}
-        <div className="flex items-center justify-center mb-6">
-            <TabsList className="grid w-full max-w-3xl grid-cols-3 h-12 bg-white border shadow-sm rounded-full p-1">
-                <TabsTrigger value="users" className="rounded-full data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                    <Users className="h-4 w-4 mr-2"/> All Users
-                </TabsTrigger>
-                <TabsTrigger value="roles" className="rounded-full data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                    <Shield className="h-4 w-4 mr-2"/> Roles & Permissions
-                </TabsTrigger>
-                <TabsTrigger value="activity" className="rounded-full data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                    <TrendingUp className="h-4 w-4 mr-2"/> Activity Logs
-                </TabsTrigger>
-            </TabsList>
+        {/* Ghost Mode Indicator */}
+        {isGhostMode && ghostModeUser && (
+          <div className="flex items-center gap-2 bg-purple-100 text-purple-800 px-4 py-2 rounded-lg">
+            <Ghost className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Impersonating: {ghostModeUser.name}
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => handleGhostMode(ghostModeUser)}
+              className="text-purple-800 hover:text-purple-900"
+            >
+              Stop
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {users.length}
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Registered users
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <Shield className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {activeUsers.length}
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Currently active
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Blocked Users</CardTitle>
+            <Ban className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {blockedUsers.length}
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Blocked accounts
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Roles</CardTitle>
+            <Settings className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {roles.length}
+            </div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              System roles
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="all-users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              All Users
+            </TabsTrigger>
+            <TabsTrigger value="roles-permissions" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Roles & Permissions
+            </TabsTrigger>
+            <TabsTrigger value="activity-logs" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Activity Logs
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Add User Button - Only for users with MANAGE_USERS permission */}
+          {canManageUsers && activeTab === 'all-users' && (
+            <Dialog open={isAddUserModalOpen} onOpenChange={setIsAddUserModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add User
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add New User</DialogTitle>
+                </DialogHeader>
+                <AddUserModal 
+                  onClose={() => setIsAddUserModalOpen(false)}
+                  onSuccess={() => setIsAddUserModalOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
-        {/* 1. All Users Tab Content */}
-        <TabsContent value="users">
-            <div className="flex items-center justify-between bg-white p-4 rounded-lg border mb-4">
-                <div className="relative w-72">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input placeholder="Search users..." className="pl-10"/>
-                </div>
-                <Button variant="ghost" size="sm"><Filter className="h-4 w-4 mr-2"/> Filter</Button>
-            </div>
-
-            <Card>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Role</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Phone</TableHead>
-                                <TableHead>Join Date</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {users.length === 0 ? (
-                                <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No users found.</TableCell></TableRow>
-                            ) : (
-                                users.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell className="font-medium">{user.name}</TableCell>
-                                        <TableCell>{user.email}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                                {user.role}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={user.status === 'active' ? 'default' : 'secondary'} 
-                                                   className={user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                                                {user.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>{user.phone}</TableCell>
-                                        <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button size="icon" variant="ghost"><Edit className="h-4 w-4 text-blue-500"/></Button>
-                                                <Button size="icon" variant="ghost"><Trash2 className="h-4 w-4 text-red-500"/></Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+        {/* All Users Tab */}
+        <TabsContent value="all-users" className="space-y-4">
+          <AllUsersTab 
+            users={users}
+            currentUser={currentUser}
+            canManageUsers={canManageUsers}
+            canUseGhostMode={canUseGhostMode}
+            onEditUser={handleEditUser}
+            onBlockUser={handleBlockUser}
+            onUnblockUser={handleUnblockUser}
+            onDeleteUser={handleDeleteUser}
+            onGhostMode={handleGhostMode}
+            isGhostMode={isGhostMode}
+          />
         </TabsContent>
 
-        {/* 2. Roles & Permissions Tab Content (Static UI from Screenshot) */}
-        <TabsContent value="roles">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Client Admin Role */}
-                <Card>
-                    <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                            <Shield className="h-6 w-6 text-purple-600"/>
-                            <Badge className="bg-purple-100 text-purple-800">12 permissions</Badge>
-                        </div>
-                        <CardTitle className="text-lg mt-2">Client Admin</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-gray-500 mb-4">Society Owner - Full Access</p>
-                        <div className="flex gap-2 flex-wrap">
-                            <Badge variant="outline">View</Badge>
-                            <Badge variant="outline">Edit</Badge>
-                            <Badge variant="outline">Delete</Badge>
-                            <Badge variant="outline">+9 more</Badge>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Treasurer Role */}
-                <Card>
-                    <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                            <Shield className="h-6 w-6 text-green-600"/>
-                            <Badge className="bg-green-100 text-green-800">5 permissions</Badge>
-                        </div>
-                        <CardTitle className="text-lg mt-2">Treasurer</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-gray-500 mb-4">Financial Management</p>
-                        <div className="flex gap-2 flex-wrap">
-                            <Badge variant="outline">View</Badge>
-                            <Badge variant="outline">Edit</Badge>
-                            <Badge variant="outline">+2 more</Badge>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Member Role */}
-                <Card>
-                    <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                            <Shield className="h-6 w-6 text-gray-600"/>
-                            <Badge className="bg-gray-100 text-gray-800">1 permission</Badge>
-                        </div>
-                        <CardTitle className="text-lg mt-2">Member</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-gray-500 mb-4">Read-only Portal Access</p>
-                        <div className="flex gap-2 flex-wrap">
-                            <Badge variant="outline">View</Badge>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-            
-            <Card className="mt-8 border-dashed">
-                <CardContent className="p-8 text-center text-gray-500">
-                    <p className="font-medium">General Permissions & Role Settings</p>
-                    <p className="text-sm mt-1">Configure system-wide access policies here.</p>
-                </CardContent>
-            </Card>
+        {/* Roles & Permissions Tab */}
+        <TabsContent value="roles-permissions" className="space-y-4">
+          <RolesPermissionsTab 
+            roles={roles}
+            canManageUsers={canManageUsers}
+            togglePermission={togglePermission}
+            currentUser={currentUser}
+          />
         </TabsContent>
 
-        {/* 3. Activity Logs Tab Content (Placeholder) */}
-        <TabsContent value="activity">
-            <Card>
-                <CardHeader>
-                    <CardTitle>System Activity Logs</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead>Action</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>IP Address</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <TableRow>
-                                <TableCell>System Admin</TableCell>
-                                <TableCell>Updated role permissions</TableCell>
-                                <TableCell>{new Date().toLocaleDateString()}</TableCell>
-                                <TableCell>192.168.1.1</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell>Treasurer</TableCell>
-                                <TableCell>Added new expense entry</TableCell>
-                                <TableCell>{new Date().toLocaleDateString()}</TableCell>
-                                <TableCell>192.168.1.5</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </TabsContent>
+        {/* Activity Logs Tab - Only for users with VIEW_ACTIVITY_LOGS permission */}
+        {canViewActivityLogs && (
+          <TabsContent value="activity-logs" className="space-y-4">
+            <ActivityLogsTab 
+              activityLogs={activityLogs}
+              users={users}
+            />
+          </TabsContent>
+        )}
 
+        {/* Permission Denied Message for Activity Logs */}
+        {!canViewActivityLogs && activeTab === 'activity-logs' && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Shield className="h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Access Denied
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 text-center">
+                You don't have permission to view activity logs. 
+                Please contact your administrator for access.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </Tabs>
 
+      {/* Edit User Modal */}
+      <Dialog open={isEditUserModalOpen} onOpenChange={setIsEditUserModalOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <EditUserModal 
+              user={selectedUser}
+              onClose={() => setIsEditUserModalOpen(false)}
+              onSuccess={() => setIsEditUserModalOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
-  );
+  )
 }
