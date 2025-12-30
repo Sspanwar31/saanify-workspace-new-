@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Supabase Connection Added
+import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/lib/supabase-simple';
 import { 
   Plus, 
   Users, 
   Shield, 
   UserCheck, 
-  RefreshCw, // Added for refresh
+  RefreshCw,
   Crown,
   TrendingUp,
   Key,
@@ -18,8 +18,11 @@ import {
   Search,
   Filter,
   Download,
-  Activity // Added for Activity Logs Tab
+  Activity,
+  Ban,
+  Link as LinkIcon // Renamed to avoid conflict with standard Link
 } from 'lucide-react';
+import { toast } from 'sonner'; // Added for toast notifications
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,12 +33,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'; // Added Table Imports
 
-// Removed: import { useClientStore, User, ActivityLog, Role, MOCK_ROLES, Permission } from '@/lib/client/store';
-// Removed: import AddUserModal from '@/components/super-client/users/AddUserModal';
-// Removed: import EditUserModal from '@/components/super-client/users/EditUserModal';
-
-// Mock Data Interfaces (If you don't have them defined globally)
+// Mock Data Interfaces
 interface User {
   id: string;
   name: string;
@@ -49,9 +49,7 @@ interface User {
 }
 interface ActivityLog { id: string; userId: string; action: string; timestamp: string; }
 interface Role { id: string; name: string; color?: string; }
-interface Permission { id: string; name: string; }
 
-// Mock Data (If Supabase doesn't return all fields or for initial state)
 const MOCK_ROLES: Role[] = [
   { id: 'client_admin', name: 'Client Admin', color: 'bg-purple-100 text-purple-800' },
   { id: 'treasurer', name: 'Treasurer', color: 'bg-green-100 text-green-800' },
@@ -59,29 +57,43 @@ const MOCK_ROLES: Role[] = [
 ];
 
 export default function UserManagementPage() {
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  // Fixed: Added isModalOpen and formData state as they are used in JSX but were missing
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null); // Used in edit
+  const [formData, setFormData] = useState({
+    name: '',
+    role: 'member',
+    email: '',
+    phone: '',
+    linked_member_id: '',
+    status: 'active'
+  });
+
   const [activeTab, setActiveTab] = useState('all-users');
-  const [users, setUsers] = useState<any[]>([]); // State for fetched users
-  const [roles, setRoles] = useState<Role[]>(MOCK_ROLES); // Roles from static data or fetched
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]); // Assuming activity logs are fetched
+  const [users, setUsers] = useState<any[]>([]);
+  const [roles, setRoles] = useState<Role[]>(MOCK_ROLES);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
 
-  // Mock permissions check function (replace with actual Supabase check if needed)
+  // ✅ FIX: Calculate stats from users to avoid "stats is not defined" error
+  const stats = {
+    total: users.length,
+    active: users.filter(u => u.status === 'active').length,
+    blocked: users.filter(u => u.status === 'blocked').length
+  };
+
+  // Mock permissions check
   const hasPermission = (userId: string, permission: string) => {
     const user = users.find(u => u.id === userId);
     if (!user) return false;
-    // Check role permissions (simplified)
     if (user.role === 'client_admin' && permission.includes('MANAGE')) return true;
     if (user.role === 'treasurer' && permission.includes('FINANCIAL')) return true;
     return false;
   };
 
-  // Fetch Client ID and User Data
   useEffect(() => {
     const fetchUserData = async () => {
       setLoading(true);
@@ -95,15 +107,13 @@ export default function UserManagementPage() {
       }
 
       if (cid) {
-        // Fetch Members as Users
         const { data, error } = await supabase
           .from('members')
           .select('id, name, email, phone, role, status, join_date, created_at')
           .eq('client_id', cid)
-          .order('role', { ascending: true }); // Show Admins first
+          .order('role', { ascending: true });
         
         if (data) {
-          // Map to match expected structure
           const mappedUsers = data.map((u: any) => ({
             id: u.id,
             name: u.name,
@@ -113,38 +123,38 @@ export default function UserManagementPage() {
             phone: u.phone || '',
             joinDate: u.join_date || u.created_at,
             lastLogin: u.last_login || null,
-            linked_member_id: u.id // Assuming user IS the member in this context
+            linked_member_id: u.id
           }));
           setUsers(mappedUsers);
         }
       }
       setLoading(false);
     };
-    fetchData();
+    fetchUserData();
   }, [clientId]);
 
-  // --- Mock Functions (Replace with actual Supabase calls if needed) ---
-  // These are placeholders. Actual implementation would involve Supabase API calls.
-  const addUser = (newUser: any) => { /* ... add to Supabase ... */ };
-  const blockUser = (userId: string) => { /* ... update status to 'blocked' ... */ };
-  const unblockUser = (userId: string) => { /* ... update status to 'active' ... */ };
-  const deleteUser = (userId: string) => { /* ... delete user ... */ };
-  const linkMember = (userId: string, memberId: string) => { /* ... link logic ... */ };
-  const unlinkMember = (userId: string) => { /* ... unlink logic ... */ };
+  // Functions (Placeholders keeping logic same)
+  const addUser = (newUser: any) => { /* ... */ };
+  const blockUser = (userId: string) => { /* ... */ };
+  const unblockUser = (userId: string) => { /* ... */ };
+  const deleteUser = (userId: string) => { /* ... */ };
+  const linkMember = (userId: string, memberId: string) => { /* ... */ };
+  const unlinkMember = (userId: string) => { /* ... */ };
   const impersonateUser = (userId: string) => { console.log("Impersonating user:", userId); };
   const stopImpersonation = () => { console.log("Stopping impersonation"); };
-  const togglePermission = (userId: string, permission: string, value: boolean) => { console.log(`Toggling permission ${permission} for ${userId} to ${value}`); };
+  const togglePermission = (userId: string, permission: string, value: boolean) => { console.log(`Toggling permission ${permission}`); };
 
   const handleAddUser = (userData: any) => {
     const newUser = {
       ...userData,
-      id: `user-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`,
+      id: `user-${Date.now().toString(36)}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      status: 'active' // Default status
+      status: 'active'
     };
     setUsers([...users, newUser]);
     toast.success('User Added', { description: `${newUser.name} added successfully.` });
+    setIsModalOpen(false); // Close modal
   };
 
   const handleSaveUser = (savedUser: any) => {
@@ -169,17 +179,48 @@ export default function UserManagementPage() {
   };
 
   const handleToggleBlock = async (user: any) => {
-    if (user.role === 'client_admin') return; // Prevent blocking admin
+    if (user.role === 'client_admin') return;
 
     const newStatus = user.status === 'active' ? 'blocked' : 'active';
     const { error } = await supabase.from('members').update({ status: newStatus }).eq('id', user.id);
     
     if (!error) {
         setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
-        toast.notify(newStatus === 'active' ? '✅ User Unblocked' : '✅ User Blocked', { description: `${user.name} is now ${newStatus}.` });
+        toast.success(newStatus === 'active' ? '✅ User Unblocked' : '✅ User Blocked', { description: `${user.name} is now ${newStatus}.` });
     } else {
         alert("Error updating status: " + error.message);
     }
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setFormData({
+      name: user.name,
+      role: user.role,
+      email: user.email,
+      phone: user.phone,
+      linked_member_id: user.linked_member_id || '',
+      status: user.status
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = () => {
+    if (selectedUser) {
+        handleSaveUser({ ...formData, id: selectedUser.id });
+    } else {
+        handleAddUser(formData);
+    }
+    setIsModalOpen(false);
+    setSelectedUser(null);
+    setFormData({
+      name: '',
+      role: 'member',
+      email: '',
+      phone: '',
+      linked_member_id: '',
+      status: 'active'
+    });
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -190,9 +231,16 @@ export default function UserManagementPage() {
     }
   };
 
+  // Filter logic
+  const filteredUsers = users.filter(user => {
+      const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRole = filterRole === 'all' || user.role === filterRole;
+      return matchesSearch && matchesRole;
+  });
+
   return (
     <div className="space-y-6 p-6">
-      
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -204,7 +252,18 @@ export default function UserManagementPage() {
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
             </Button>
             <Button variant="outline" className="flex items-center gap-2"><Download className="h-4 w-4"/> Export</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setIsAddUserModalOpen(true)}>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => {
+                setSelectedUser(null);
+                setFormData({
+                  name: '',
+                  role: 'member',
+                  email: '',
+                  phone: '',
+                  linked_member_id: '',
+                  status: 'active'
+                });
+                setIsModalOpen(true);
+            }}>
                 <Plus className="h-4 w-4"/> Add User
             </Button>
         </div>
@@ -313,7 +372,7 @@ export default function UserManagementPage() {
                                             </TableCell>
                                             <TableCell className="text-gray-600">{user.phone}</TableCell>
                                             <TableCell>
-                                                {user.role === 'member' ? ( // Assuming link is only for members
+                                                {user.role === 'member' ? ( 
                                                      <div className="flex items-center text-blue-600 text-xs">
                                                         <LinkIcon className="h-3 w-3 mr-1"/> Linked
                                                      </div>
@@ -325,7 +384,6 @@ export default function UserManagementPage() {
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
 
-                                                    {/* Block/Unblock Button */}
                                                     {user.role !== 'client_admin' && (
                                                         <Button 
                                                             variant="ghost" size="icon" 
@@ -337,8 +395,7 @@ export default function UserManagementPage() {
                                                         </Button>
                                                     )}
 
-                                                    {/* Delete Button */}
-                                                    {user.role !== 'client_admin' && ( // Admin cannot be deleted
+                                                    {user.role !== 'client_admin' && (
                                                         <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(user.id, user.role)}>
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -358,7 +415,6 @@ export default function UserManagementPage() {
         {/* 2. Roles & Permissions Tab */}
         <TabsContent value="roles">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* MOCK ROLES DATA - Replace with Supabase Data Fetch */}
                 {MOCK_ROLES.map(role => (
                     <Card key={role.id} className="border-2" style={{ borderColor: role.color?.split('-')[2] || '#ccc' }}>
                         <CardHeader className="pb-2">
@@ -407,10 +463,10 @@ export default function UserManagementPage() {
                                 ) : (
                                     activityLogs.map(log => (
                                         <TableRow key={log.id}>
-                                            <TableCell>{log.user?.name || 'Unknown'}</TableCell>
+                                            <TableCell>{(users.find(u => u.id === log.userId))?.name || 'Unknown'}</TableCell>
                                             <TableCell>{log.action}</TableCell>
                                             <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
-                                            <TableCell className="text-right">{log.ipAddress || 'N/A'}</TableCell>
+                                            <TableCell className="text-right">N/A</TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -426,7 +482,7 @@ export default function UserManagementPage() {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-                <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+                <DialogTitle>{selectedUser ? 'Edit User' : 'Add New User'}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
@@ -453,7 +509,6 @@ export default function UserManagementPage() {
                     <Input id="phone" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+91..."/>
                 </div>
                 
-                {/* Link Member Dropdown - Show only if Member role is selected */}
                 {formData.role === 'member' && (
                     <div className="grid gap-2">
                         <Label>Link to Member Record</Label>
@@ -461,7 +516,7 @@ export default function UserManagementPage() {
                             <SelectTrigger><SelectValue placeholder="Select Member Ledger..." /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="not_linked">Not Linked</SelectItem>
-                                {members.map(m => (<SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>))}
+                                {users.map(m => (<SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -480,7 +535,7 @@ export default function UserManagementPage() {
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleSubmit} className="bg-blue-600 text-white">{editingUser ? 'Update User' : 'Create User'}</Button>
+                <Button onClick={handleSubmit} className="bg-blue-600 text-white">{selectedUser ? 'Update User' : 'Create User'}</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
