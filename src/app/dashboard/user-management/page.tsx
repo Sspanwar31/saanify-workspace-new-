@@ -183,50 +183,51 @@ export default function UserManagementPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex justify-center mb-6"><TabsList className="grid w-full max-w-3xl grid-cols-3"><TabsTrigger value="all-users"><Users className="h-4 w-4 mr-2"/> All Users</TabsTrigger><TabsTrigger value="roles"><Shield className="h-4 w-4 mr-2"/> Roles & Permissions</TabsTrigger><TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2"/> Activity Logs</TabsTrigger></TabsList></div>
 
+        {/* 1. All Users Tab */}
         <TabsContent value="all-users" className="space-y-4">
             
-            {/* ✅ UPDATED FILTERS BAR */}
-            <div className="bg-white p-4 rounded-lg border flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto items-center">
-                    <div className="flex items-center gap-2 text-gray-500 font-medium">
-                        <FilterIcon className="h-4 w-4" /> Filters
-                    </div>
-                    
-                    {/* Search */}
-                    <div className="relative w-full md:w-72">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400"/>
-                        <Input 
-                            placeholder="Search users by name or email..." 
-                            className="pl-10 h-10" 
-                            value={searchTerm} 
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    {/* Status Filter (New) */}
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                        <SelectTrigger className="w-full md:w-40 h-10"><SelectValue placeholder="All Status" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="blocked">Blocked</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    {/* Role Filter */}
-                    <Select value={filterRole} onValueChange={setFilterRole}>
-                        <SelectTrigger className="w-full md:w-40 h-10"><SelectValue placeholder="All Roles" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Roles</SelectItem>
-                            <SelectItem value="client_admin">Client Admin</SelectItem>
-                            <SelectItem value="treasurer">Treasurer</SelectItem>
-                            <SelectItem value="member">Member</SelectItem>
-                        </SelectContent>
-                    </Select>
+            {/* ✅ UPDATED FILTERS BAR - Matches Screenshot Style */}
+            <div className="bg-white p-4 rounded-lg border flex flex-col md:flex-row gap-4 items-center">
+                
+                {/* 1. Filter Label */}
+                <div className="flex items-center gap-2 text-gray-900 font-semibold mr-2">
+                    <Search className="h-5 w-5" /> Filters
+                </div>
+                
+                {/* 2. Search Bar (Expanded Width) */}
+                <div className="relative flex-grow">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400"/>
+                    <Input 
+                        placeholder="Search users by name or email..." 
+                        className="pl-10 h-10 w-full" 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
 
-                {/* Export Button */}
-                <Button variant="outline" className="w-full md:w-auto h-10">
+                {/* 3. Status Filter */}
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-[180px] h-10 bg-white"><SelectValue placeholder="All Status" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="blocked">Blocked</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                {/* 4. Role Filter */}
+                <Select value={filterRole} onValueChange={setFilterRole}>
+                    <SelectTrigger className="w-[180px] h-10 bg-white"><SelectValue placeholder="All Roles" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        <SelectItem value="client_admin">Client Admin</SelectItem>
+                        <SelectItem value="treasurer">Treasurer</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                {/* 5. Export Button */}
+                <Button variant="outline" className="h-10 px-4">
                     <Download className="h-4 w-4 mr-2"/> Export
                 </Button>
             </div>
@@ -265,14 +266,13 @@ export default function UserManagementPage() {
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between"><span>General</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[0].items)}/7</span></div>
                                 <div className="flex justify-between"><span>Financial</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[2].items)}/6</span></div>
-                                <div className="flex justify-between"><span>System</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[3].items)}/2</span></div>
                             </div>
                         </CardContent>
                     </Card>
                 ))}
             </div>
             <Card><CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Permission</TableHead><TableHead className="text-center bg-purple-50">Client Admin</TableHead><TableHead className="text-center bg-green-50">Treasurer</TableHead><TableHead className="text-center bg-blue-50">Member</TableHead></TableRow></TableHeader><TableBody>
-                {PERMISSION_CATEGORIES.map((cat) => (<><TableRow key={cat.name} className="bg-gray-50/50"><TableCell colSpan={4} className="font-bold text-gray-700 py-3">{cat.name}</TableCell></TableRow>{cat.items.map(perm => (
+                {PERMISSION_CATEGORIES.map((cat) => (<><TableRow key={cat.name} className="bg-gray-50/50 hover:bg-gray-50"><TableCell colSpan={4} className="font-bold text-gray-700 py-3">{cat.name}</TableCell></TableRow>{cat.items.map(perm => (
                     <TableRow key={perm}><TableCell className="text-gray-600 pl-6">{perm}</TableCell>
                     <TableCell className="text-center"><div className="flex justify-center"><Checkbox checked={roleConfig.client_admin.includes(perm)} disabled className="data-[state=checked]:bg-purple-600" /></div></TableCell>
                     <TableCell className="text-center"><div className="flex justify-center"><Checkbox checked={roleConfig.treasurer.includes(perm)} disabled={!isEditingRoles} onCheckedChange={() => togglePermission('treasurer', perm)} className="data-[state=checked]:bg-green-600"/></div></TableCell>
