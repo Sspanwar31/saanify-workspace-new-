@@ -2,20 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
-import { Crown, CheckCircle, Loader2, Calendar, Users } from 'lucide-react';
+import { Crown, CheckCircle, RefreshCw, Loader2, Calendar, Users, Clock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import PaymentModal from '@/components/client/subscription/PaymentModal';
 
-/* =======================
-   STATIC PLANS (UI ONLY)
-   ======================= */
 const PLANS = [
-  { id: 'BASIC', name: 'Basic', price: 4000, durationDays: 30, features: ['Up to 200 Members', '30 Days', 'Monthly Reports'] },
-  { id: 'PRO', name: 'Professional', price: 7000, durationDays: 30, features: ['Up to 2000 Members', 'Priority Support', 'API Access'] },
-  { id: 'ENTERPRISE', name: 'Enterprise', price: 10000, durationDays: 30, features: ['Unlimited Members', '24/7 Support', 'White Label'] }
+  { id: 'BASIC', name: 'Basic', price: 4000, durationDays: 30, features: ['Up to 200 Members', '30 Days', 'Monthly Reports'], color: 'bg-white border-2 border-gray-200' },
+  { id: 'PRO', name: 'Professional', price: 7000, durationDays: 30, features: ['Up to 2000 Members', 'Priority Support', 'API Access'], color: 'bg-blue-600 text-white hover:bg-blue-700' },
+  { id: 'ENTERPRISE', name: 'Enterprise', price: 10000, durationDays: 30, features: ['Unlimited Members', '24/7 Support', 'White Label'], color: 'bg-purple-100 text-purple-700' }
 ];
 
 export default function SubscriptionPage() {
@@ -23,57 +21,57 @@ export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<any>(null);
   const [memberCount, setMemberCount] = useState(0);
   const [clientId, setClientId] = useState<string | null>(null);
+  
+  // Pending State
+  const [pendingOrder, setPendingOrder] = useState<any>(null);
 
+  // Modal State
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
-  /* =======================
-     FETCH LIVE SUBSCRIPTION
-     ======================= */
+  // 1. Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       const { data: clients } = await supabase.from('clients').select('*').limit(1);
-
+      
       if (clients && clients.length > 0) {
         const client = clients[0];
         setClientId(client.id);
+        
+        // A. Check for Pending Orders
+        const { data: pending } = await supabase
+            .from('subscription_orders')
+            .select('*')
+            .eq('client_id', client.id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        if (pending) setPendingOrder(pending);
 
+        // B. Calculate Days Remaining
         const today = new Date();
         const expiry = new Date(client.plan_end_date || new Date());
         const diffTime = expiry.getTime() - today.getTime();
         const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-        const startStr = client.plan_start_date
-          ? new Date(client.plan_start_date).toLocaleDateString('en-IN')
-          : '-';
-        const endStr = client.plan_end_date
-          ? new Date(client.plan_end_date).toLocaleDateString('en-IN')
-          : '-';
-
+        // C. Set Subscription Data
         setSubscription({
-          planName: client.plan_name,
-          status: client.subscription_status,
-          startStr,
-          endStr,
-          daysRemaining,
-          limit:
-            client.plan_name === 'Basic'
-              ? 200
-              : client.plan_name === 'Professional'
-              ? 2000
-              : 9999
+            planName: client.plan_name || 'Free',
+            status: client.subscription_status || 'inactive',
+            startStr: client.plan_start_date ? new Date(client.plan_start_date).toLocaleDateString('en-IN') : '-',
+            endStr: client.plan_end_date ? new Date(client.plan_end_date).toLocaleDateString('en-IN') : '-',
+            daysRemaining,
+            limit: client.plan_name === 'Free' ? 100 : (client.plan_name === 'Basic' ? 200 : (client.plan_name === 'Professional' ? 2000 : 9999))
         });
 
-        const { count } = await supabase
-          .from('members')
-          .select('*', { count: 'exact', head: true })
-          .eq('client_id', client.id);
-
+        // D. Count Members
+        const { count } = await supabase.from('members').select('*', { count: 'exact', head: true }).eq('client_id', client.id);
         setMemberCount(count || 0);
       }
       setLoading(false);
     };
-
     fetchData();
   }, []);
 
@@ -82,141 +80,131 @@ export default function SubscriptionPage() {
     setIsPaymentOpen(true);
   };
 
-  if (loading)
-    return (
-      <div className="flex justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
+  const handleCancelRequest = async () => {
+    if(!pendingOrder) return;
+    if(confirm("Are you sure you want to cancel this request?")) {
+        await supabase.from('subscription_orders').delete().eq('id', pendingOrder.id);
+        window.location.reload();
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-8 w-8 text-blue-600"/></div>;
 
   return (
-    <div className="space-y-10 p-6 max-w-7xl mx-auto">
-
-      {/* =======================
-         PAGE HEADER
-         ======================= */}
+    <div className="space-y-8 p-6">
+      
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Subscription & Billing</h1>
-        <p className="text-gray-500 mt-1">
-          Manage your plan and upgrade anytime
-        </p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Subscription Plans</h1>
+        <p className="text-gray-600 mt-2">Choose the perfect plan for your society management needs</p>
       </div>
 
-      {/* =======================
-         CURRENT PLAN
-         ======================= */}
-      <Card className="border-l-4 border-blue-600">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-700">
-            <Crown className="h-5 w-5 text-blue-600" />
-            Current Subscription
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid md:grid-cols-4 gap-6 items-center">
-
-          <div>
-            <p className="text-xs text-gray-500 uppercase">Plan</p>
-            <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-blue-700">
-                {subscription.planName}
-              </h2>
-              <Badge>{subscription.status}</Badge>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs text-gray-500 uppercase mb-1">Member Usage</p>
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="w-4 h-4 text-gray-400" />
-              <span className="font-semibold">
-                {memberCount} / {subscription.limit}
-              </span>
-            </div>
-            <Progress value={(memberCount / subscription.limit) * 100} />
-          </div>
-
-          <div className="text-sm text-gray-700 space-y-1">
-            <div className="flex gap-2">
-              <Calendar className="w-4 h-4" /> Start: {subscription.startStr}
-            </div>
-            <div className="flex gap-2">
-              <Calendar className="w-4 h-4" /> End: {subscription.endStr}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-xl p-4 text-center border">
-            <p className="text-xs text-gray-500 uppercase">Days Remaining</p>
-            <p
-              className={`text-2xl font-bold ${
-                subscription.daysRemaining > 5
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              }`}
-            >
-              {subscription.daysRemaining}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* =======================
-         PLANS GRID (NO TRIAL)
-         ======================= */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {PLANS.map(plan => (
-          <Card
-            key={plan.id}
-            className={`relative ${
-              plan.id === 'PRO' ? 'ring-2 ring-blue-600' : ''
-            }`}
-          >
-            {plan.id === 'PRO' && (
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
-                Most Popular
-              </Badge>
-            )}
-
-            <CardHeader className="text-center">
-              <CardTitle>{plan.name}</CardTitle>
-              <div className="text-3xl font-bold mt-2">
-                ₹{plan.price.toLocaleString()}
-                <span className="text-sm text-gray-500"> / month</span>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-5">
-              <ul className="space-y-3">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-gray-600">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                className="w-full h-11"
-                onClick={() => handleBuyNow(plan)}
-                disabled={subscription.planName === plan.name}
-              >
-                {subscription.planName === plan.name
-                  ? 'Current Plan'
-                  : 'Upgrade'}
-              </Button>
+      {/* ⚠️ PENDING SCREEN LOGIC */}
+      {pendingOrder ? (
+         <Card className="border-l-4 border-l-orange-500 bg-orange-50 shadow-md">
+            <CardContent className="p-8 flex flex-col items-center text-center space-y-4">
+                <div className="p-4 bg-orange-100 rounded-full animate-pulse">
+                    <Clock className="h-10 w-10 text-orange-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-orange-800">Verification Pending</h2>
+                <p className="text-orange-700 max-w-lg">
+                    You have requested for the <strong>{pendingOrder.plan_name}</strong> plan. 
+                    Please wait while our admin verifies your payment details (Transaction ID: {pendingOrder.transaction_id}).
+                </p>
+                <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => window.location.reload()}>
+                        <RefreshCw className="h-4 w-4 mr-2"/> Check Status
+                    </Button>
+                    <Button variant="destructive" onClick={handleCancelRequest}>
+                        Cancel Request
+                    </Button>
+                </div>
             </CardContent>
-          </Card>
-        ))}
-      </div>
+         </Card>
+      ) : (
+         <>
+             {/* Current Subscription Card */}
+            <Card className="border-l-4 border-l-blue-600 shadow-sm">
+                <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-lg text-gray-700">
+                        <Crown className="h-5 w-5 text-blue-600"/> Current Subscription
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+                    <div>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Active Plan</p>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-2xl font-bold text-blue-700">{subscription.planName}</h2>
+                            <Badge variant={subscription.status === 'active' ? "default" : "destructive"}>
+                                {subscription.status?.toUpperCase()}
+                            </Badge>
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Member Usage</p>
+                        <div className="flex items-center gap-2 mb-1">
+                            <Users className="w-4 h-4 text-gray-400"/>
+                            <span className="font-semibold text-gray-700">{memberCount} / {subscription.limit}</span>
+                        </div>
+                        <Progress value={(memberCount / subscription.limit) * 100} className="h-2" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Validity Period</p>
+                        <div className="text-sm text-gray-700 space-y-1">
+                            <div className="flex items-center gap-2"><Calendar className="w-3 h-3"/> Start: <span className="font-medium">{subscription.startStr}</span></div>
+                            <div className="flex items-center gap-2"><Calendar className="w-3 h-3"/> End: <span className="font-medium">{subscription.endStr}</span></div>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl text-center border">
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Status</p>
+                        <p className={`text-xl font-bold ${subscription.daysRemaining > 5 ? 'text-green-600' : 'text-red-600'}`}>
+                            {subscription.daysRemaining} Days
+                        </p>
+                        <p className="text-xs text-gray-400">Remaining</p>
+                    </div>
+                </div>
+                </CardContent>
+            </Card>
 
-      {/* =======================
-         PAYMENT MODAL
-         ======================= */}
+            {/* Plans Grid */}
+            <div className="grid gap-6 md:grid-cols-4">
+                {PLANS.map((plan) => (
+                <Card key={plan.id} className={`relative transition-all hover:shadow-lg ${plan.id === 'PRO' ? 'ring-2 ring-blue-500 shadow-md' : 'border-gray-200'}`}>
+                    {plan.id === 'PRO' && <div className="absolute -top-3 left-1/2 transform -translate-x-1/2"><Badge className="bg-blue-600 px-3 py-1">Most Popular</Badge></div>}
+                    <CardHeader className="text-center pb-2">
+                    <CardTitle className="text-xl font-bold">{plan.name}</CardTitle>
+                    <div className="text-3xl font-extrabold mt-3 text-gray-900">
+                        ₹{plan.price.toLocaleString()}<span className="text-sm font-normal text-gray-500">/30 days</span>
+                    </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6 pt-4">
+                    <ul className="space-y-3">
+                        {plan.features.map((feature, i) => (
+                        <li key={i} className="flex items-start gap-3 text-sm text-gray-600"><CheckCircle className="h-5 w-5 text-green-500 shrink-0" /> <span>{feature}</span></li>
+                        ))}
+                    </ul>
+                    <Button 
+                        className={`w-full h-11 text-base ${plan.color} transition-transform active:scale-95`} 
+                        onClick={() => handleBuyNow(plan)}
+                        disabled={subscription.planName === plan.name}
+                    >
+                        {subscription.planName === plan.name ? 'Current Plan' : 'Buy Now'}
+                    </Button>
+                    </CardContent>
+                </Card>
+                ))}
+            </div>
+         </>
+      )}
+
+      {/* Payment Modal */}
       {selectedPlan && clientId && (
-        <PaymentModal
-          isOpen={isPaymentOpen}
-          onClose={() => setIsPaymentOpen(false)}
-          plan={selectedPlan}
-          clientId={clientId}
+        <PaymentModal 
+            isOpen={isPaymentOpen} 
+            onClose={() => setIsPaymentOpen(false)} 
+            plan={selectedPlan}
+            clientId={clientId}
         />
       )}
     </div>
