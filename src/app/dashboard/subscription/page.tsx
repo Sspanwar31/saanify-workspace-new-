@@ -1,299 +1,142 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { 
-  Crown, 
-  TrendingUp, 
-  CheckCircle,
-  Clock,
-  Users,
-  Calendar,
-  CreditCard,
-  Loader2,
-  AlertTriangle,
-  RefreshCw
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useClientStore, SUBSCRIPTION_PLANS } from '@/lib/client/store'
-import { toast } from 'sonner'
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase-simple';
+import { Crown, TrendingUp, CheckCircle, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
+import PaymentModal from '@/components/client/subscription/PaymentModal';
+
+// Static Plan Config
+const PLANS = [
+  { id: 'TRIAL', name: 'Free Trial', price: 0, durationDays: 15, features: ['Up to 100 Members', '15 Days', 'Basic Support'], color: 'bg-gray-100 text-gray-800' },
+  { id: 'BASIC', name: 'Basic', price: 4000, durationDays: 30, features: ['Up to 200 Members', '30 Days', 'Monthly Reports'], color: 'bg-white border-2 border-gray-200' },
+  { id: 'PRO', name: 'Professional', price: 7000, durationDays: 30, features: ['Up to 2000 Members', 'Priority Support', 'API Access'], color: 'bg-blue-600 text-white hover:bg-blue-700' },
+  { id: 'ENTERPRISE', name: 'Enterprise', price: 10000, durationDays: 30, features: ['Unlimited Members', '24/7 Support', 'White Label'], color: 'bg-purple-100 text-purple-700' }
+];
 
 export default function SubscriptionPage() {
-  const { members, subscription, upgradePlan, simulateExpiry, forceUnlock } = useClientStore()
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
-
-  // Helper functions for date calculations
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
-  }
-
-  const calculateDaysRemaining = (expiryDate: string) => {
-    const today = new Date()
-    const expiry = new Date(expiryDate)
-    const diffTime = expiry.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return Math.max(0, diffDays)
-  }
-
-  const calculateTimeProgress = (startDate: string, expiryDate: string) => {
-    const start = new Date(startDate)
-    const expiry = new Date(expiryDate)
-    const today = new Date()
-    
-    const totalTime = expiry.getTime() - start.getTime()
-    const elapsedTime = today.getTime() - start.getTime()
-    
-    const progress = Math.min(100, Math.max(0, (elapsedTime / totalTime) * 100))
-    return Math.round(progress)
-  }
-
-  // Calculate subscription metrics
-  const currentPlan = SUBSCRIPTION_PLANS[subscription.currentPlan]
-  const maxMembers = currentPlan.maxMembers === Infinity ? subscription.memberCount : currentPlan.maxMembers
-  const memberPercentage = Math.round((subscription.memberCount / maxMembers) * 100)
-  const daysRemaining = calculateDaysRemaining(subscription.expiryDate)
-  const timePercentage = calculateTimeProgress(subscription.subscriptionDate || subscription.expiryDate, subscription.expiryDate)
+  const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [memberCount, setMemberCount] = useState(0);
+  const [clientId, setClientId] = useState<string | null>(null);
   
-  // Determine color for days remaining based on urgency
-  const getDaysRemainingColor = (days: number) => {
-    if (days > 5) return 'text-green-600'
-    if (days > 0) return 'text-orange-600'
-    return 'text-red-600'
-  }
+  // Modal State
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
-  const handlePlanUpgrade = async (planId: string) => {
-    setSelectedPlan(planId)
-    setIsProcessingPayment(true)
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Upgrade the plan
-    upgradePlan(planId as 'TRIAL' | 'BASIC' | 'PRO' | 'ENTERPRISE')
-    
-    setIsProcessingPayment(false)
-    setSelectedPlan(null)
-    
-    const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
-    toast.success(`Payment Successful! Plan upgraded to ${plan.name}`)
-  }
+  // 1. Fetch Subscription Data
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: clients } = await supabase.from('clients').select('*').limit(1);
+      if (clients && clients.length > 0) {
+        const client = clients[0];
+        setClientId(client.id);
+        
+        // Calculate Days Remaining
+        const today = new Date();
+        const expiry = new Date(client.plan_end_date || new Date());
+        const diffTime = expiry.getTime() - today.getTime();
+        const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-  const handleSimulateExpiry = () => {
-    simulateExpiry()
-    toast.warning('Subscription expired! Dashboard locked.')
-  }
+        setSubscription({
+            planName: client.plan_name || 'Free',
+            status: client.subscription_status || 'inactive',
+            startDate: client.plan_start_date,
+            endDate: client.plan_end_date,
+            daysRemaining
+        });
 
-  const handleForceUnlock = () => {
-    forceUnlock()
-    toast.success('Subscription renewed! Dashboard unlocked.')
-  }
+        // Count Members
+        const { count } = await supabase.from('members').select('*', { count: 'exact', head: true }).eq('client_id', client.id);
+        setMemberCount(count || 0);
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
 
-  const subscriptionPlans = Object.values(SUBSCRIPTION_PLANS)
+  const handleBuyNow = (plan: any) => {
+    setSelectedPlan(plan);
+    setIsPaymentOpen(true);
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-8 w-8 text-blue-600"/></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
+      
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Subscription Plans
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Choose the perfect plan for your society management needs
-        </p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Subscription Plans</h1>
+        <p className="text-gray-600 mt-2">Choose the perfect plan for your society management needs</p>
       </div>
 
-      {/* Current Status */}
+      {/* Current Subscription Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Crown className="h-5 w-5" />
-            Current Subscription
-          </CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Crown className="h-5 w-5"/> Current Subscription</CardTitle></CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Top Row: Plan Name & Status */}
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-primary">{currentPlan.name}</h2>
-              <Badge variant={subscription.status === 'ACTIVE' ? "default" : "destructive"}>
-                {subscription.status}
-              </Badge>
+              <h2 className="text-2xl font-bold text-blue-600">{subscription.planName}</h2>
+              <Badge variant={subscription.status === 'active' ? "default" : "destructive"}>{subscription.status?.toUpperCase()}</Badge>
             </div>
-
-            {/* Middle Row: Member Usage */}
             <div className="text-sm text-gray-500">
-              Members: {subscription.memberCount} / {currentPlan.maxMembers === Infinity ? 'Unlimited' : currentPlan.maxMembers}
-              <Progress value={memberPercentage} className="h-2 mt-1" />
+              Members: {memberCount} used
+              <Progress value={(memberCount / 2000) * 100} className="h-2 mt-1" />
             </div>
-
-            {/* Bottom Row: Time Tracking (NEW) */}
             <div className="bg-gray-50 p-3 rounded-md border">
               <div className="flex justify-between text-sm font-medium mb-2">
-                <span>Start: {formatDate(subscription.subscriptionDate || subscription.expiryDate)}</span>
-                <span>End: {formatDate(subscription.expiryDate)}</span>
+                <span>Start: {subscription.startDate ? new Date(subscription.startDate).toLocaleDateString() : '-'}</span>
+                <span>End: {subscription.endDate ? new Date(subscription.endDate).toLocaleDateString() : '-'}</span>
               </div>
-              <Progress value={timePercentage} className="h-2 mb-2" />
-              <div className={`text-center font-bold ${getDaysRemainingColor(daysRemaining)}`}>
-                {daysRemaining} Days Remaining
+              <div className={`text-center font-bold ${subscription.daysRemaining > 5 ? 'text-green-600' : 'text-red-600'}`}>
+                {subscription.daysRemaining} Days Remaining
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Pricing Plans */}
+      {/* Plans Grid */}
       <div className="grid gap-6 md:grid-cols-4">
-        {subscriptionPlans.map((plan) => (
+        {PLANS.map((plan) => (
           <Card key={plan.id} className={`relative ${plan.id === 'PRO' ? 'ring-2 ring-blue-500' : ''}`}>
-            {plan.id === 'PRO' && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-blue-600 text-white">
-                  Most Popular
-                </Badge>
-              </div>
-            )}
-            
+            {plan.id === 'PRO' && <div className="absolute -top-3 left-1/2 transform -translate-x-1/2"><Badge className="bg-blue-600">Most Popular</Badge></div>}
             <CardHeader className="text-center">
               <CardTitle className="text-xl">{plan.name}</CardTitle>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                {plan.price === 0 ? 'Free' : `₹${plan.price}`}
-                <span className="text-sm font-normal text-gray-600 dark:text-gray-400">
-                  {plan.price > 0 ? `/${plan.durationDays} days` : ''}
-                </span>
-              </div>
+              <div className="text-3xl font-bold mt-2">₹{plan.price}<span className="text-sm font-normal text-gray-500">/30 days</span></div>
             </CardHeader>
-            
             <CardContent className="space-y-4">
               <ul className="space-y-3">
-                {plan.features.map((feature, featureIndex) => (
-                  <li key={featureIndex} className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-gray-700 dark:text-gray-300">{feature}</span>
-                  </li>
+                {plan.features.map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm text-gray-600"><CheckCircle className="h-4 w-4 text-green-600" /> {feature}</li>
                 ))}
               </ul>
-              
               <Button 
-                className={`w-full ${plan.color} hover:opacity-90`}
-                disabled={plan.id === subscription.currentPlan}
-                onClick={() => handlePlanUpgrade(plan.id)}
+                className={`w-full ${plan.color}`} 
+                onClick={() => handleBuyNow(plan)}
+                disabled={subscription.planName === plan.name}
               >
-                {plan.id === subscription.currentPlan ? 'Current Plan' : 'Buy Now'}
+                {subscription.planName === plan.name ? 'Current Plan' : 'Buy Now'}
               </Button>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Usage Statistics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Usage Statistics
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{subscription.memberCount}</div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Members</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {Math.round((subscription.memberCount / (SUBSCRIPTION_PLANS[subscription.currentPlan].maxMembers === Infinity ? subscription.memberCount : SUBSCRIPTION_PLANS[subscription.currentPlan].maxMembers)) * 100)}%
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Plan Used</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{SUBSCRIPTION_PLANS[subscription.currentPlan].name}</div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Current Plan</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{subscription.status}</div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Developer Testing Tools */}
-      <Card className="border-2 border-dashed border-orange-300 bg-orange-50/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-orange-700">
-            <AlertTriangle className="h-5 w-5" />
-            🛠️ Developer Testing Tools
-          </CardTitle>
-          <p className="text-sm text-orange-600">
-            These tools are for development and testing purposes only. Use them to simulate subscription scenarios.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={handleSimulateExpiry}
-              disabled={subscription.status === 'EXPIRED'}
-            >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Simulate Expiry Now
-            </Button>
-            <Button
-              variant="default"
-              className="w-full bg-green-600 hover:bg-green-700"
-              onClick={handleForceUnlock}
-              disabled={subscription.status === 'ACTIVE'}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Force Unlock / Renew
-            </Button>
-          </div>
-          <div className="mt-4 p-4 bg-white rounded-lg border border-orange-200">
-            <h4 className="font-semibold text-orange-800 mb-2">Testing Guide:</h4>
-            <ul className="text-sm text-orange-700 space-y-1">
-              <li>• <strong>Simulate Expiry:</strong> Sets expiry date to yesterday, instantly locking the dashboard</li>
-              <li>• <strong>Force Unlock:</strong> Extends subscription by 30 days, unlocking the dashboard</li>
-              <li>• Test the lock screen behavior by simulating expiry first</li>
-              <li>• Use Force Unlock to restore access after testing</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Payment Processing Modal */}
-      <Dialog open={isProcessingPayment} onOpenChange={setIsProcessingPayment}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Processing Payment
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center space-y-4 py-6">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-            <p className="text-center text-gray-600">
-              Processing payment via Razorpay...
-            </p>
-            <p className="text-sm text-gray-500">
-              Please wait while we process your subscription upgrade
-            </p>
-            {selectedPlan && (
-              <div className="text-center">
-                <p className="font-semibold">Upgrading to:</p>
-                <p className="text-lg font-bold text-blue-600">
-                  {SUBSCRIPTION_PLANS[selectedPlan as keyof typeof SUBSCRIPTION_PLANS].name}
-                </p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Payment Modal */}
+      {selectedPlan && clientId && (
+        <PaymentModal 
+            isOpen={isPaymentOpen} 
+            onClose={() => setIsPaymentOpen(false)} 
+            plan={selectedPlan}
+            clientId={clientId}
+        />
+      )}
     </div>
-  )
+  );
 }
