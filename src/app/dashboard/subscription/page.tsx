@@ -9,7 +9,6 @@ import {
   Loader2,
   Calendar,
   Users,
-  Clock,
   AlertTriangle,
   ShieldCheck
 } from 'lucide-react';
@@ -20,31 +19,28 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import PaymentModal from '@/components/client/subscription/PaymentModal';
 
-/* -------------------- PLANS (UNCHANGED) -------------------- */
+/* -------------------- PLANS (UNCHANGED DATA) -------------------- */
 const PLANS = [
   {
     id: 'BASIC',
     name: 'Basic',
     price: 4000,
     durationDays: 30,
-    features: ['Up to 200 Members', '30 Days', 'Monthly Reports'],
-    color: 'bg-white border-2 border-gray-200'
+    features: ['Up to 200 Members', '30 Days Validity', 'Monthly Reports']
   },
   {
     id: 'PRO',
     name: 'Professional',
     price: 7000,
     durationDays: 30,
-    features: ['Up to 2000 Members', 'Priority Support', 'API Access'],
-    color: 'bg-blue-600 text-white hover:bg-blue-700'
+    features: ['Up to 2000 Members', 'Priority Support', 'API Access']
   },
   {
     id: 'ENTERPRISE',
     name: 'Enterprise',
     price: 10000,
     durationDays: 30,
-    features: ['Unlimited Members', '24/7 Support', 'White Label'],
-    color: 'bg-purple-100 text-purple-700'
+    features: ['Unlimited Members', '24/7 Support', 'White Label']
   }
 ];
 
@@ -53,11 +49,7 @@ export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<any>(null);
   const [memberCount, setMemberCount] = useState(0);
   const [clientId, setClientId] = useState<string | null>(null);
-
-  // pending order (UNCHANGED LOGIC)
   const [pendingOrder, setPendingOrder] = useState<any>(null);
-
-  // modal
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
@@ -83,8 +75,10 @@ export default function SubscriptionPage() {
 
         const today = new Date();
         const expiry = new Date(client.plan_end_date || new Date());
-        const diffTime = expiry.getTime() - today.getTime();
-        const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        const daysRemaining = Math.max(
+          0,
+          Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        );
 
         setSubscription({
           planName: client.plan_name || 'Free',
@@ -141,63 +135,42 @@ export default function SubscriptionPage() {
     );
 
   return (
-    <div className="space-y-8 p-6">
+    <div className="space-y-10 p-6">
       {/* HEADER */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Subscription Plans
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">Subscription Plans</h1>
         <p className="text-gray-600 mt-2">
-          Choose the perfect plan for your society management needs
+          Upgrade your society with secure, scalable plans
         </p>
       </div>
 
-      {/* ================= PENDING VERIFICATION (MODERN UI) ================= */}
+      {/* ================= PENDING VERIFICATION ================= */}
       {pendingOrder ? (
-        <Card className="relative overflow-hidden border-none shadow-xl bg-gradient-to-br from-orange-50 to-amber-100">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),transparent)]" />
-
-          <CardContent className="relative p-10 flex flex-col items-center text-center space-y-6">
-            <div className="h-20 w-20 rounded-full bg-orange-100 flex items-center justify-center shadow-inner">
+        <Card className="border-none shadow-xl bg-gradient-to-br from-orange-50 to-amber-100">
+          <CardContent className="p-10 flex flex-col items-center text-center space-y-6">
+            <div className="h-20 w-20 rounded-full bg-orange-100 flex items-center justify-center">
               <ShieldCheck className="h-10 w-10 text-orange-600" />
             </div>
 
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-orange-800">
-                Payment Under Verification
-              </h2>
-              <p className="text-orange-700 max-w-xl">
-                Your request for the{' '}
-                <strong>{pendingOrder.plan_name}</strong> plan has been received.
-                Our team is verifying your payment details.
-              </p>
+            <h2 className="text-3xl font-bold text-orange-800">
+              Payment Under Verification
+            </h2>
+
+            <p className="text-orange-700 max-w-xl">
+              Your request for <strong>{pendingOrder.plan_name}</strong> plan is
+              under verification.
+            </p>
+
+            <div className="w-full max-w-md bg-white rounded-xl border p-5 space-y-3 text-left">
+              <Row label="Plan" value={pendingOrder.plan_name} />
+              <Row label="Transaction ID" value={pendingOrder.transaction_id} mono />
+              <Row label="Status" value={<Badge className="bg-orange-500">Pending</Badge>} />
             </div>
 
-            <div className="w-full max-w-md bg-white/70 backdrop-blur rounded-xl border p-5 text-left space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Plan</span>
-                <span className="font-semibold">{pendingOrder.plan_name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Transaction ID</span>
-                <span className="font-mono text-xs">
-                  {pendingOrder.transaction_id}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Status</span>
-                <Badge className="bg-orange-500">Pending Approval</Badge>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Expected Time</span>
-                <span className="font-medium">2–4 hours</span>
-              </div>
-            </div>
-
-            <div className="flex gap-4 pt-2">
+            <div className="flex gap-4">
               <Button variant="outline" onClick={() => window.location.reload()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh Status
+                Refresh
               </Button>
               <Button variant="destructive" onClick={handleCancelRequest}>
                 Cancel Request
@@ -206,150 +179,81 @@ export default function SubscriptionPage() {
 
             <p className="text-xs text-orange-700 flex items-center gap-1">
               <AlertTriangle className="h-4 w-4" />
-              You will be notified once verification is completed
+              Admin approval required
             </p>
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* ================= CURRENT SUBSCRIPTION (UNCHANGED) ================= */}
-          <Card className="border-l-4 border-l-blue-600 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg text-gray-700">
+          {/* ================= CURRENT SUBSCRIPTION ================= */}
+          <Card className="border-l-4 border-l-blue-600">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 <Crown className="h-5 w-5 text-blue-600" />
                 Current Subscription
               </CardTitle>
             </CardHeader>
 
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-bold mb-1">
-                    Active Plan
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold text-blue-700">
-                      {subscription.planName}
-                    </h2>
-                    <Badge
-                      variant={
-                        subscription.status === 'active'
-                          ? 'default'
-                          : 'destructive'
-                      }
-                    >
-                      {subscription.status?.toUpperCase()}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-bold mb-1">
-                    Member Usage
-                  </p>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Users className="w-4 h-4 text-gray-400" />
-                    <span className="font-semibold text-gray-700">
-                      {memberCount} / {subscription.limit}
-                    </span>
-                  </div>
-                  <Progress
-                    value={(memberCount / subscription.limit) * 100}
-                    className="h-2"
-                  />
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-bold mb-1">
-                    Validity Period
-                  </p>
-                  <div className="text-sm text-gray-700 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3 h-3" /> Start:{' '}
-                      <span className="font-medium">
-                        {subscription.startStr}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3 h-3" /> End:{' '}
-                      <span className="font-medium">
-                        {subscription.endStr}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-xl text-center border">
-                  <p className="text-xs text-gray-500 uppercase font-bold mb-1">
-                    Status
-                  </p>
-                  <p
-                    className={`text-xl font-bold ${
-                      subscription.daysRemaining > 5
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {subscription.daysRemaining} Days
-                  </p>
-                  <p className="text-xs text-gray-400">Remaining</p>
-                </div>
-              </div>
+            <CardContent className="grid md:grid-cols-4 gap-6">
+              <InfoBlock title="Plan" value={subscription.planName} />
+              <InfoBlock
+                title="Members"
+                value={`${memberCount} / ${subscription.limit}`}
+              >
+                <Progress value={(memberCount / subscription.limit) * 100} />
+              </InfoBlock>
+              <InfoBlock title="Valid Till" value={subscription.endStr} />
+              <InfoBlock
+                title="Days Left"
+                value={`${subscription.daysRemaining} Days`}
+                highlight
+              />
             </CardContent>
           </Card>
 
-          {/* ================= PLANS GRID (UNCHANGED) ================= */}
-          <div className="grid gap-6 md:grid-cols-4">
+          {/* ================= MODERN PLANS GRID ================= */}
+          <div className="grid gap-8 md:grid-cols-3">
             {PLANS.map(plan => (
               <Card
                 key={plan.id}
-                className={`relative transition-all hover:shadow-lg ${
+                className={`relative overflow-hidden transition hover:shadow-xl ${
                   plan.id === 'PRO'
-                    ? 'ring-2 ring-blue-500 shadow-md'
-                    : 'border-gray-200'
+                    ? 'ring-2 ring-blue-600'
+                    : 'border'
                 }`}
               >
                 {plan.id === 'PRO' && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-blue-600 px-3 py-1">
-                      Most Popular
-                    </Badge>
-                  </div>
+                  <Badge className="absolute top-4 right-4 bg-blue-600">
+                    Most Popular
+                  </Badge>
                 )}
 
-                <CardHeader className="text-center pb-2">
-                  <CardTitle className="text-xl font-bold">
-                    {plan.name}
-                  </CardTitle>
-                  <div className="text-3xl font-extrabold mt-3 text-gray-900">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <p className="text-4xl font-bold mt-3">
                     ₹{plan.price.toLocaleString()}
-                    <span className="text-sm font-normal text-gray-500">
-                      /30 days
-                    </span>
-                  </div>
+                  </p>
+                  <p className="text-sm text-gray-500">per 30 days</p>
                 </CardHeader>
 
-                <CardContent className="space-y-6 pt-4">
+                <CardContent className="space-y-6">
                   <ul className="space-y-3">
-                    {plan.features.map((feature, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start gap-3 text-sm text-gray-600"
-                      >
-                        <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
-                        <span>{feature}</span>
+                    {plan.features.map((f, i) => (
+                      <li key={i} className="flex gap-3 text-sm">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        {f}
                       </li>
                     ))}
                   </ul>
 
                   <Button
-                    className={`w-full h-11 text-base ${plan.color}`}
-                    onClick={() => handleBuyNow(plan)}
+                    className="w-full h-11 text-base"
                     disabled={subscription.planName === plan.name}
+                    onClick={() => handleBuyNow(plan)}
                   >
                     {subscription.planName === plan.name
                       ? 'Current Plan'
-                      : 'Buy Now'}
+                      : 'Upgrade'}
                   </Button>
                 </CardContent>
               </Card>
@@ -358,7 +262,6 @@ export default function SubscriptionPage() {
         </>
       )}
 
-      {/* ================= PAYMENT MODAL (UNCHANGED) ================= */}
       {selectedPlan && clientId && (
         <PaymentModal
           isOpen={isPaymentOpen}
@@ -367,6 +270,34 @@ export default function SubscriptionPage() {
           clientId={clientId}
         />
       )}
+    </div>
+  );
+}
+
+/* -------------------- SMALL UI HELPERS -------------------- */
+function InfoBlock({ title, value, children, highlight }: any) {
+  return (
+    <div className="bg-gray-50 p-4 rounded-xl border">
+      <p className="text-xs text-gray-500 uppercase font-bold mb-1">{title}</p>
+      <p
+        className={`text-xl font-bold ${
+          highlight ? 'text-green-600' : 'text-gray-800'
+        }`}
+      >
+        {value}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, value, mono }: any) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className={mono ? 'font-mono text-xs' : 'font-semibold'}>
+        {value}
+      </span>
     </div>
   );
 }
