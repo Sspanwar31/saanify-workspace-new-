@@ -2,19 +2,15 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-// --- KEY FIXING LOGIC (AS IS) ---
+// --- KEY FIXING LOGIC ---
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-
   if (!rawKey) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 is missing");
   }
-
-  // Check agar key encoded hai
   if (!rawKey.startsWith('eyJ')) {
     return Buffer.from(rawKey, 'base64').toString('utf-8');
   }
-
   return rawKey;
 };
 
@@ -53,10 +49,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2️⃣ Update SAME pending order
-    // CHANGE 1: Table ka naam 'subscriptions' kiya (Aapke database ke hisab se)
+    // 2️⃣ Update Pending Order
+    // ✅ FIX: Table Name 'subscription_orders' kar diya hai
     const { data: subData, error: subError } = await supabase
-      .from('subscriptions') 
+      .from('subscription_orders') 
       .update({
         status: 'success',
         transaction_id: paymentId, 
@@ -71,7 +67,7 @@ export async function POST(req: Request) {
       throw new Error('Subscription update failed');
     }
 
-    // 3️⃣ Update client plan
+    // 3️⃣ Update Client Plan
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(startDate.getDate() + 30);
@@ -91,8 +87,7 @@ export async function POST(req: Request) {
       throw clientError;
     }
 
-    // CHANGE 2: Response me 'isPaid: true' add kiya
-    // Isse aapka frontend "Success" alert dikhayega aur page refresh karega
+    // ✅ Frontend ko 'isPaid: true' bhej rahe hain taaki refresh ho sake
     return NextResponse.json({ 
         message: 'Success', 
         isPaid: true 
