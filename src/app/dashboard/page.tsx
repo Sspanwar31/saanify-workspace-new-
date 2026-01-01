@@ -3,35 +3,34 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   TrendingUp, TrendingDown, Wallet, Building2, Smartphone, 
-  AlertTriangle, CheckCircle, Clock, Users, ArrowUpRight, 
-  Landmark, AlertCircle, LogOut 
+  CheckCircle, Users, Landmark, AlertCircle, LogOut 
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 
 export default function ClientDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<any>(null);
 
-  // MOCK FINANCIALS (Replace with real tables later)
-  // For now, we derive basic stats from the 'client' row itself
+  // ✅ AB DATA 0 SE SHURU HOGA (Backend se bhara jayega)
   const [financials, setFinancials] = useState({
-    netProfit: 45000,
-    totalIncome: 120000,
-    totalExpense: 75000,
-    cashBal: 12000,
-    bankBal: 45000,
-    upiBal: 8000
+    netProfit: 0,
+    totalIncome: 0,
+    totalExpense: 0,
+    cashBal: 0,
+    bankBal: 0,
+    upiBal: 0,
+    depositTotal: 0
   });
+
+  const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -40,12 +39,24 @@ export default function ClientDashboard() {
         
         try {
             const user = JSON.parse(storedUser);
-            // Fetch fresh data from Supabase
-            const { data } = await supabase.from('clients').select('*').eq('id', user.id).single();
-            if (data) setClientData(data);
-            else setClientData(user); // Fallback
+            
+            // 1. Client Details Fetch karna
+            const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
+            if (client) setClientData(client);
+            else setClientData(user);
+
+            // 2. ✅ REAL FINANCIAL DATA FETCH KARNA
+            const { data: transactions } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('client_id', user.id);
+
+            if (transactions) {
+                calculateFinancials(transactions);
+            }
+
         } catch(e) {
-            console.error(e);
+            console.error("Error fetching dashboard data:", e);
         } finally {
             setLoading(false);
         }
@@ -53,16 +64,70 @@ export default function ClientDashboard() {
     init();
   }, [router]);
 
+  // ✅ CALCULATE LOGIC (Jadu Yaha Hai)
+  const calculateFinancials = (data: any[]) => {
+    let income = 0;
+    let expense = 0;
+    let cash = 0;
+    let bank = 0;
+    let upi = 0;
+
+    // Monthly Chart Data ke liye map
+    const monthlyMap: {[key: string]: number} = {};
+
+    data.forEach(t => {
+        const amt = Number(t.amount);
+        
+        // Income vs Expense Calculation
+        if (t.type === 'income') {
+            income += amt;
+            // Liquidity Add karna
+            if (t.category === 'cash') cash += amt;
+            if (t.category === 'bank') bank += amt;
+            if (t.category === 'upi') upi += amt;
+        } else {
+            expense += amt;
+            // Liquidity Subtract karna (Kharche se paisa kam hoga)
+            if (t.category === 'cash') cash -= amt;
+            if (t.category === 'bank') bank -= amt;
+            if (t.category === 'upi') upi -= amt;
+        }
+
+        // Chart Data banana (Month wise)
+        const month = new Date(t.created_at).toLocaleString('default', { month: 'short' });
+        if (t.type === 'income') {
+            monthlyMap[month] = (monthlyMap[month] || 0) + amt;
+        }
+    });
+
+    // Chart array convert
+    const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
+
+    setFinancials({
+        netProfit: income - expense,
+        totalIncome: income,
+        totalExpense: expense,
+        cashBal: cash,
+        bankBal: bank,
+        upiBal: upi,
+        depositTotal: income // Example: Total Deposits = Total Income (Change logic if needed)
+    });
+    setChartData(chart);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('current_user');
     router.push('/login');
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center">Loading Financial Cockpit...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading Dashboard...</div>;
   if (!clientData) return null;
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
-  const profitMargin = ((financials.netProfit / financials.totalIncome) * 100).toFixed(1);
+  const profitMargin = financials.totalIncome > 0 
+    ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
+    : "0";
+    
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   return (
@@ -163,12 +228,12 @@ export default function ClientDashboard() {
          <div className="space-y-4">
             <Alert className="bg-yellow-50 border-yellow-200">
                <AlertCircle className="h-4 w-4 text-yellow-600" />
-               <AlertTitle className="text-yellow-800">Action Required</AlertTitle>
-               <AlertDescription className="text-yellow-700">3 pending loan requests.</AlertDescription>
+               <AlertTitle className="text-yellow-800">System Status</AlertTitle>
+               <AlertDescription className="text-yellow-700">Data live from Supabase.</AlertDescription>
             </Alert>
             <Card>
                <CardContent className="p-4 flex justify-between items-center">
-                  <div><p className="text-xs text-gray-500">Total Deposits</p><h4 className="text-xl font-bold">{fmt(850000)}</h4></div>
+                  <div><p className="text-xs text-gray-500">Total Volume</p><h4 className="text-xl font-bold">{fmt(financials.totalIncome + financials.totalExpense)}</h4></div>
                   <Users className="text-orange-500" />
                </CardContent>
             </Card>
@@ -178,10 +243,10 @@ export default function ClientDashboard() {
             <CardHeader><CardTitle>Monthly Performance</CardTitle></CardHeader>
             <CardContent className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[{ month: 'Jan', amount: 45000 }, { month: 'Feb', amount: 52000 }]}>
+                <BarChart data={chartData.length > 0 ? chartData : [{month: 'No Data', amount: 0}]}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <Tooltip />
+                  <Tooltip formatter={(value) => fmt(Number(value))} />
                   <Bar dataKey="amount" fill="#10B981" radius={[4,4,0,0]} name="Income" />
                 </BarChart>
               </ResponsiveContainer>
