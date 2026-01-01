@@ -10,6 +10,7 @@ const getServiceRoleKey = () => {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 is missing");
   }
 
+  // Check agar key encoded hai
   if (!rawKey.startsWith('eyJ')) {
     return Buffer.from(rawKey, 'base64').toString('utf-8');
   }
@@ -26,12 +27,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const orderId =
-      body.razorpay_order_id || body.orderCreationId;
-    const paymentId =
-      body.razorpay_payment_id || body.razorpayPaymentId;
-    const signature =
-      body.razorpay_signature || body.razorpaySignature;
+    const orderId = body.razorpay_order_id || body.orderCreationId;
+    const paymentId = body.razorpay_payment_id || body.razorpayPaymentId;
+    const signature = body.razorpay_signature || body.razorpaySignature;
 
     if (!orderId || !paymentId || !signature) {
       return NextResponse.json(
@@ -55,15 +53,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2️⃣ Update SAME pending order (IMPORTANT FIX)
+    // 2️⃣ Update SAME pending order
+    // CHANGE 1: Table ka naam 'subscriptions' kiya (Aapke database ke hisab se)
     const { data: subData, error: subError } = await supabase
-      .from('subscription_orders') // ✅ correct table
+      .from('subscriptions') 
       .update({
         status: 'success',
-        transaction_id: paymentId, // ✅ replace order_id with payment_id
+        transaction_id: paymentId, 
         payment_method: 'RAZORPAY',
       })
-      .eq('transaction_id', orderId) // ✅ match pending order
+      .eq('transaction_id', orderId) 
       .select()
       .single();
 
@@ -92,7 +91,12 @@ export async function POST(req: Request) {
       throw clientError;
     }
 
-    return NextResponse.json({ success: true });
+    // CHANGE 2: Response me 'isPaid: true' add kiya
+    // Isse aapka frontend "Success" alert dikhayega aur page refresh karega
+    return NextResponse.json({ 
+        message: 'Success', 
+        isPaid: true 
+    });
 
   } catch (error: any) {
     console.error('FINAL VERIFICATION ERROR:', error);
