@@ -14,6 +14,17 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// --- RAZORPAY SCRIPT LOADER ---
+const loadRazorpay = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,51 +43,91 @@ export default function PaymentModal({
   const [loading, setLoading] = useState(false);
   const [txnId, setTxnId] = useState('');
 
-  // ---------------- ONLINE PAYMENT (UNCHANGED) ----------------
+  // ---------------- ONLINE PAYMENT (REAL RAZORPAY LOGIC) ----------------
   const handleOnlinePay = async () => {
     setLoading(true);
+
+    // 1. Load Razorpay SDK
+    const isLoaded = await loadRazorpay();
+    if (!isLoaded) {
+      toast.error('Razorpay SDK failed to load. Check internet connection.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { data: order, error } = await supabase
-        .from('subscription_orders')
-        .insert([{
-          client_id: clientId,
-          plan_name: plan.name,
-          amount: plan.price,
-          payment_method: 'RAZORPAY',
-          status: 'pending'
-        }])
-        .select()
-        .single();
+      // 2. Create Order on Backend
+      const response = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            amount: plan.price, 
+            planName: plan.name, 
+            clientId: clientId 
+        }),
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Order creation failed');
 
-      setTimeout(async () => {
-        await supabase
-          .from('subscription_orders')
-          .update({
-            status: 'success',
-            transaction_id: 'PAY_' + Date.now()
-          })
-          .eq('id', order.id);
+      // 3. Initialize Razorpay Options
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Key from Vercel Env
+        amount: plan.price * 100, // Paise
+        currency: 'INR',
+        name: 'Saanify V2',
+        description: `Upgrade to ${plan.name} Plan`,
+        order_id: data.orderId, // Order ID from Backend
+        
+        // 4. Handle Success
+        handler: async function (response: any) {
+          toast.loading("Verifying Payment...");
 
-        const newEndDate = new Date();
-        newEndDate.setDate(newEndDate.getDate() + plan.durationDays);
+          // Call Backend to Verify Signature & Activate Plan
+          const verifyRes = await fetch('/api/payment/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderCreationId: data.orderId,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              clientId: clientId,
+              planDuration: plan.durationDays
+            }),
+          });
 
-        await supabase.from('clients').update({
-          plan_name: plan.name,
-          plan_start_date: new Date(),
-          plan_end_date: newEndDate,
-          subscription_status: 'active'
-        }).eq('id', clientId);
+          const verifyData = await verifyRes.json();
 
-        toast.success(`Plan upgraded to ${plan.name}`);
-        setLoading(false);
-        onClose();
-        window.location.reload();
-      }, 2000);
+          if (verifyData.isPaid) {
+            toast.dismiss();
+            toast.success("Payment Successful! Plan Activated.");
+            onClose();
+            window.location.reload(); // Refresh to show new plan
+          } else {
+            toast.dismiss();
+            toast.error("Payment Verification Failed. Contact Support.");
+          }
+        },
+        prefill: {
+          name: 'Society Admin', // Optional: You can fetch user details here
+          email: 'admin@society.com',
+          contact: '',
+        },
+        theme: {
+          color: '#2563eb', // Blue color to match UI
+        },
+      };
 
-    } catch (err) {
-      toast.error('Payment failed');
+      // 5. Open Popup
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+      
+      // Stop loading spinner immediately so user can see popup
+      setLoading(false);
+
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Payment initialization failed');
       setLoading(false);
     }
   };
@@ -97,6 +148,7 @@ export default function PaymentModal({
       if (error) throw error;
       toast.success('Request submitted for verification');
       onClose();
+      window.location.reload(); // Reload to show pending screen
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -166,9 +218,9 @@ export default function PaymentModal({
                   <Button
                     onClick={handleOnlinePay}
                     disabled={loading}
-                    className="w-full h-12 text-lg"
+                    className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700 shadow-md"
                   >
-                    {loading ? <Loader2 className="animate-spin" /> : `Pay ₹${plan.price}`}
+                    {loading ? <Loader2 className="animate-spin" /> : `Pay ₹${plan.price.toLocaleString()}`}
                   </Button>
 
                   <div className="flex justify-center gap-4 mt-3 opacity-60">
@@ -235,7 +287,7 @@ export default function PaymentModal({
                       handleManualSubmit();
                     }}
                     disabled={loading}
-                    className="w-full"
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white shadow-md"
                   >
                     {loading ? <Loader2 className="animate-spin" /> : 'Verify Transaction'}
                   </Button>
