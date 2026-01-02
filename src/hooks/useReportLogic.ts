@@ -1,370 +1,358 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+'use client';
 
-export const useReportLogic = () => {
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase'; // Correct import path
+
+export function useReportLogic() {
   const [loading, setLoading] = useState(true);
   
   // Raw Data States
-  const [passbookEntries, setPassbookEntries] = useState<any[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
-  const [loans, setLoans] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [passbookEntries, setPassbookEntries] = useState<any[]>([]); 
+  const [expenses, setExpenses] = useState<any[]>([]);
 
-  // Filter State
+  // Filter States
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0], // Jan 1st
-    endDate: new Date().toISOString().split('T')[0], // Today
+    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
     selectedMember: 'ALL',
     transactionMode: 'all',
     transactionType: 'all'
   });
 
-  // Output Data Structure
-  const [auditData, setAuditData] = useState({
+  // Calculated Data Structure (Original)
+  const [auditData, setAuditData] = useState<any>({
     summary: { 
         income: { interest: 0, fine: 0, other: 0, total: 0 }, 
         expenses: { ops: 0, maturityInt: 0, total: 0 },
-        loans: { issued: 0, recovered: 0, pending: 0 },
         assets: { deposits: 0 },
+        loans: { issued: 0, recovered: 0, pending: 0 },
         netProfit: 0
     },
-    dailyLedger: [] as any[],
-    cashbook: [] as any[],
+    dailyLedger: [],
+    cashbook: [],
     modeStats: { cashBal: 0, bankBal: 0, upiBal: 0 },
-    memberReports: [] as any[],
-    loans: [] as any[],
-    maturity: [] as any[],
-    defaulters: [] as any[]
+    loans: [],
+    memberReports: [],
+    maturity: [],
+    defaulters: []
   });
 
-  // 1. FETCH DATA FROM SUPABASE (Correct Table Names)
+  // 1. Fetch Data (FIXED BACKEND CONNECTION)
   useEffect(() => {
     const fetchData = async () => {
       const storedUser = localStorage.getItem('current_user');
       if (!storedUser) return;
       const user = JSON.parse(storedUser);
+      const cid = user.id; // Logged in user ID
 
-      try {
-        setLoading(true);
+      setLoading(true);
 
-        // A. Passbook (Income) - Table: 'passbook_entries'
-        // NOTE: Client ID filter hataya hai kyunki table me column nahi hai
-        const { data: pbData } = await supabase
-          .from('passbook_entries')
-          .select('*');
+      if (cid) {
+        // A. Fetch Tables (Sahi Table Names ke sath)
+        const [membersRes, loansRes, passbookRes, expenseRes] = await Promise.all([
+          // Members data (Clients table se le rahe hain agar members table alag nahi hai)
+          supabase.from('clients').select('*').eq('id', cid), 
+          // Loans
+          supabase.from('loans').select('*').eq('client_id', cid),
+          // Passbook (No ID filter to avoid blank data)
+          supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
+          // Expenses
+          supabase.from('expenses_ledger').select('*').eq('client_id', cid)
+        ]);
 
-        // B. Expenses - Table: 'expenses_ledger'
-        const { data: expData } = await supabase
-          .from('expenses_ledger')
-          .select('*')
-          .eq('client_id', user.id);
+        if (membersRes.data) setMembers(membersRes.data);
+        if (loansRes.data) setLoans(loansRes.data);
+        if (expenseRes.data) setExpenses(expenseRes.data);
+        
+        // B. Map Passbook Data (Original Logic Restored)
+        if (passbookRes.data) {
+          let runningBalance = 0;
+          
+          // Map DB columns (snake_case) to Code variables (camelCase)
+          const mappedPassbook = passbookRes.data.map((e: any) => {
+            const total = Number(e.total_amount || 0);
+            runningBalance += total;
 
-        // C. Loans - Table: 'loans'
-        const { data: loanData } = await supabase
-          .from('loans')
-          .select('*')
-          .eq('client_id', user.id);
+            let type = 'DEPOSIT';
+            if (Number(e.installment_amount) > 0) type = 'LOAN_REPAYMENT';
+            else if (Number(e.interest_amount) > 0 || Number(e.fine_amount) > 0) type = 'INTEREST/FINE';
 
-        // D. Members - Table: 'clients'
-        // Hum clients table ko hi members maan rahe hain (Agar members table alag hai to yaha change karein)
-        const { data: memData } = await supabase
-           .from('clients') 
-           .select('*')
-           .eq('id', user.id); 
-
-        setPassbookEntries(pbData || []);
-        setExpenses(expData || []);
-        setLoans(loanData || []);
-        setMembers(memData || []);
-
-      } catch (error) {
-        console.error("Error fetching report data:", error);
-      } finally {
-        setLoading(false);
+            return {
+              id: e.id,
+              date: e.date || e.created_at, // Date fix
+              memberId: e.member_id, 
+              memberName: e.member_name, 
+              amount: total,
+              paymentMode: e.payment_mode || 'CASH', 
+              description: e.note || 'Passbook Entry',
+              type: type,
+              // Mapping crucial for calculations
+              depositAmount: Number(e.deposit_amount || 0),
+              installmentAmount: Number(e.installment_amount || 0),
+              interestAmount: Number(e.interest_amount || 0),
+              fineAmount: Number(e.fine_amount || 0),
+              balance: runningBalance
+            };
+          });
+          setPassbookEntries(mappedPassbook); 
+        }
       }
+      setLoading(false);
     };
-
     fetchData();
   }, []);
 
-  // 2. CALCULATION ENGINE (Full Logic Restored)
+  // 2. Calculation Engine (NO CHANGES - EXACT ORIGINAL LOGIC)
   useEffect(() => {
-    if (loading) return;
+    if (loading) return; // Removed members check to allow rendering even if members list is empty
 
-    // --- DATE FILTER LOGIC ---
     const start = new Date(filters.startDate);
     const end = new Date(filters.endDate);
-    end.setHours(23, 59, 59);
+    end.setHours(23, 59, 59, 999);
 
-    const isDateInRange = (dateStr: string) => {
-        if(!dateStr) return false;
-        const d = new Date(dateStr);
-        return d >= start && d <= end;
+    const filteredPassbook = passbookEntries.filter(e => {
+        const d = new Date(e.date);
+        const dateMatch = d >= start && d <= end;
+        const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
+        const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase() === filters.transactionMode;
+        
+        let typeMatch = true;
+        if(filters.transactionType === 'deposit') typeMatch = (e.depositAmount > 0);
+        if(filters.transactionType === 'loan') typeMatch = (e.installmentAmount > 0);
+        if(filters.transactionType === 'expense') typeMatch = false; 
+
+        return dateMatch && memberMatch && modeMatch && typeMatch;
+    });
+
+    const filteredExpenses = expenses.filter(e => {
+        const d = new Date(e.date || e.created_at);
+        const dateMatch = d >= start && d <= end;
+        let typeMatch = true;
+        if(filters.transactionType === 'deposit' || filters.transactionType === 'loan') typeMatch = false;
+        return dateMatch && typeMatch;
+    });
+
+    let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
+    
+    filteredPassbook.forEach(e => {
+        interestIncome += e.interestAmount;
+        fineIncome += e.fineAmount;
+        depositTotal += e.depositAmount;
+    });
+
+    filteredExpenses.forEach(e => {
+        if (e.type === 'INCOME') otherIncome += Number(e.amount);
+        if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
+    });
+
+    // Maturity Logic
+    let totalMaturityLiability = 0;
+    members.forEach(m => {
+        const mDepositEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
+        if (mDepositEntries.length > 0) {
+             const sorted = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+             const monthlyDeposit = sorted[0].depositAmount;
+             const depositCount = mDepositEntries.length;
+             const tenure = 36;
+             const targetDeposit = monthlyDeposit * tenure;
+             const projectedInterest = targetDeposit * 0.12; 
+             const isOverride = m.maturity_is_override || false;
+             const manualAmount = Number(m.maturity_manual_amount || 0);
+             const settledInterest = isOverride ? manualAmount : projectedInterest;
+             const monthlyShare = settledInterest / tenure;
+             totalMaturityLiability += (monthlyShare * depositCount);
+        }
+    });
+
+    const totalIncomeCalc = interestIncome + fineIncome + otherIncome;
+    const totalExpensesCalc = opsExpense + totalMaturityLiability; 
+    const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
+
+   // --- C. LOAN STATS (Live) ---
+    const loansWithLiveBalance = loans.map(l => {
+      const installmentsPaid = passbookEntries
+        .filter(p => p.memberId === l.member_id && Number(p.installmentAmount) > 0)
+        .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
+
+      const loanAmount = Number(l.amount) || 0;
+      const currentBalance = Math.max(0, loanAmount - installmentsPaid);
+      const isActive = currentBalance > 0;
+      const interestAmount = Math.round(currentBalance * 0.01);
+
+      return {
+        id: l.id,
+        memberId: l.member_id,
+        start_date: l.start_date,
+        amount: loanAmount,
+        principalPaid: installmentsPaid,
+        remainingBalance: currentBalance,
+        interestRate: interestAmount, 
+        status: isActive ? 'ACTIVE' : 'CLOSED'
+      };
+    });
+
+    const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
+    const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
+    const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
+
+    // --- D. DAILY LEDGER ---
+    const ledgerMap = new Map();
+    const getOrSetEntry = (dateStr: string) => {
+        if (!ledgerMap.has(dateStr)) {
+            ledgerMap.set(dateStr, { 
+                date: dateStr, deposit: 0, emi: 0, loanOut: 0, interest: 0, fine: 0, 
+                cashIn: 0, cashOut: 0,
+                cashInMode: 0, bankInMode: 0, upiInMode: 0,
+                cashOutMode: 0, bankOutMode: 0, upiOutMode: 0
+            });
+        }
+        return ledgerMap.get(dateStr);
     };
 
-    // Filter Raw Data
-    const filteredPassbook = passbookEntries.filter(p => isDateInRange(p.date || p.created_at));
-    const filteredExpenses = expenses.filter(e => isDateInRange(e.date || e.created_at));
-    
-    // --- A. SUMMARY CALCULATION ---
-    let interestIncome = 0;
-    let fineIncome = 0;
-    let totalIncome = 0;
-    let depositTotal = 0;
-
-    let opsExpense = 0;
-    let totalExpense = 0;
-
-    // Calculate Income
-    filteredPassbook.forEach(p => {
-        const amt = Number(p.total_amount || 0);
-        totalIncome += amt;
-        interestIncome += Number(p.interest_amount || 0);
-        fineIncome += Number(p.fine_amount || 0);
-        depositTotal += Number(p.deposit_amount || 0);
+    filteredPassbook.forEach(e => {
+        const entry = getOrSetEntry(e.date);
+        const total = e.amount;
+        entry.deposit += e.depositAmount;
+        entry.emi += e.installmentAmount;
+        entry.interest += e.interestAmount;
+        entry.fine += e.fineAmount;
+        entry.cashIn += total;
+        const mode = (e.paymentMode || 'CASH').toUpperCase();
+        if (mode.includes('CASH')) entry.cashInMode += total;
+        else if (mode.includes('BANK')) entry.bankInMode += total;
+        else entry.upiInMode += total;
     });
-    const otherIncome = totalIncome - (interestIncome + fineIncome);
 
-    // Calculate Expense
     filteredExpenses.forEach(e => {
-        const amt = Number(e.amount || 0);
-        totalExpense += amt;
-        if(e.type === 'EXPENSE') opsExpense += amt;
+        const entry = getOrSetEntry(e.date || e.created_at); // Expense Date Fix
+        const amt = Number(e.amount);
+        if (e.type === 'EXPENSE') { entry.cashOut += amt; entry.cashOutMode += amt; }
+        else { entry.cashIn += amt; entry.cashInMode += amt; }
     });
 
-    const netProfit = totalIncome - totalExpense;
+    if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
+        loans.forEach(l => {
+            if (l.start_date >= filters.startDate && l.start_date <= filters.endDate) {
+                const entry = getOrSetEntry(l.start_date);
+                const amt = Number(l.amount);
+                entry.loanOut += amt;
+                entry.cashOut += amt;
+                entry.cashOutMode += amt; 
+            }
+        });
+    }
 
-    // --- B. LOAN CALCULATIONS (Live Balance) ---
-    const loansWithBalance = loans.map(l => {
-        // Find installments paid in Passbook for this loan/member
-        const installmentsPaid = passbookEntries
-            .filter(p => p.member_id === l.member_id && Number(p.installment_amount) > 0)
-            .reduce((sum, p) => sum + Number(p.installment_amount), 0);
-
-        const loanAmount = Number(l.amount) || 0;
-        const currentBalance = Math.max(0, loanAmount - installmentsPaid);
-        const isActive = currentBalance > 0 && l.status === 'active';
-
-        return {
-            ...l,
-            amount: loanAmount,
-            remainingBalance: currentBalance,
-            status: isActive ? 'active' : 'closed'
-        };
-    });
-
-    const loansIssued = loansWithBalance.reduce((acc, l) => acc + l.amount, 0);
-    const loansPending = loansWithBalance.filter(l => l.status === 'active').reduce((acc, l) => acc + l.remainingBalance, 0);
-    const loansRecovered = loansIssued - loansPending;
-    const loansCount = loansWithBalance.filter(l => l.status === 'active').length;
-
-
-    // --- C. DAILY LEDGER & CASHBOOK (Merging 3 Tables) ---
-    const ledgerMap: any = {};
-    const cashbookArr: any[] = [];
-    
-    let cashBal = 0, bankBal = 0, upiBal = 0;
-
-    const allTrans = [
-        ...filteredPassbook.map(p => ({ ...p, cat: 'IN', dateObj: new Date(p.date || p.created_at) })),
-        ...filteredExpenses.map(e => ({ ...e, cat: 'EXP', dateObj: new Date(e.date || e.created_at) })),
-        ...loans.filter(l => isDateInRange(l.created_at)).map(l => ({ ...l, cat: 'LOAN', dateObj: new Date(l.created_at) }))
-    ].sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
-
+    const sortedLedger = Array.from(ledgerMap.values()).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
     let runningBal = 0;
-    let cashbookClosing = 0;
-
-    allTrans.forEach(t => {
-        const dateKey = t.dateObj.toISOString().split('T')[0];
-        
-        if (!ledgerMap[dateKey]) {
-            ledgerMap[dateKey] = {
-                date: t.dateObj, deposit: 0, emi: 0, loanOut: 0, interest: 0, fine: 0,
-                cashIn: 0, cashOut: 0, netFlow: 0, runningBal: 0,
-                cashInMode: 0, bankInMode: 0, upiInMode: 0, // For Cashbook
-                cashOutMode: 0, bankOutMode: 0, upiOutMode: 0
-            };
-        }
-
-        const mode = (t.payment_mode || t.mode || t.category || '').toLowerCase();
-        let amt = 0;
-        let isCash = mode.includes('cash');
-        let isBank = mode.includes('bank');
-        let isUpi = mode.includes('upi');
-        // Default to cash if unknown
-        if(!isBank && !isUpi) isCash = true;
-
-        if (t.cat === 'IN') {
-            // INCOME
-            amt = Number(t.total_amount || 0);
-            ledgerMap[dateKey].deposit += Number(t.deposit_amount || 0);
-            ledgerMap[dateKey].emi += Number(t.installment_amount || 0);
-            ledgerMap[dateKey].interest += Number(t.interest_amount || 0);
-            ledgerMap[dateKey].fine += Number(t.fine_amount || 0);
-            
-            if (isCash) { ledgerMap[dateKey].cashInMode += amt; cashBal += amt; }
-            else if (isBank) { ledgerMap[dateKey].bankInMode += amt; bankBal += amt; }
-            else if (isUpi) { ledgerMap[dateKey].upiInMode += amt; upiBal += amt; }
-
-            ledgerMap[dateKey].cashIn += amt;
-            runningBal += amt;
-            ledgerMap[dateKey].netFlow += amt;
-            cashbookClosing += amt;
-
-        } else if (t.cat === 'EXP') {
-            // EXPENSE
-            amt = Number(t.amount || 0);
-            ledgerMap[dateKey].cashOut += amt;
-            
-            // Assume Expense is Cash Out unless specified
-            if (isCash) { ledgerMap[dateKey].cashOutMode += amt; cashBal -= amt; }
-            else if (isBank) { ledgerMap[dateKey].bankOutMode += amt; bankBal -= amt; }
-            else if (isUpi) { ledgerMap[dateKey].upiOutMode += amt; upiBal -= amt; }
-
-            runningBal -= amt;
-            ledgerMap[dateKey].netFlow -= amt;
-            cashbookClosing -= amt;
-
-        } else if (t.cat === 'LOAN') {
-            // LOAN OUT
-            amt = Number(t.amount || 0);
-            ledgerMap[dateKey].loanOut += amt;
-            ledgerMap[dateKey].cashOut += amt;
-            
-            // Loan usually given in Cash/Bank
-            if (isCash) { ledgerMap[dateKey].cashOutMode += amt; cashBal -= amt; }
-            else { ledgerMap[dateKey].bankOutMode += amt; bankBal -= amt; } // Default bank if not cash
-
-            runningBal -= amt;
-            ledgerMap[dateKey].netFlow -= amt;
-            cashbookClosing -= amt;
-        }
-
-        ledgerMap[dateKey].runningBal = runningBal;
+    const finalLedger = sortedLedger.map((e: any) => {
+        const netFlow = e.cashIn - e.cashOut;
+        runningBal += netFlow;
+        return { ...e, netFlow, runningBal };
     });
 
-    // Generate Cashbook Array from Ledger Map
-    Object.values(ledgerMap).forEach((e: any) => {
-        cashbookArr.push({
+    // Cashbook Array
+    let closingBal = 0;
+    const finalCashbook = sortedLedger.map((e: any) => {
+        const dailyNet = (e.cashInMode + e.bankInMode + e.upiInMode) - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
+        closingBal += dailyNet;
+        return {
             date: e.date,
             cashIn: e.cashInMode, cashOut: e.cashOutMode,
             bankIn: e.bankInMode, bankOut: e.bankOutMode,
             upiIn: e.upiInMode, upiOut: e.upiOutMode,
-            closing: e.runningBal // Simplified Closing
-        });
-    });
-
-    // --- D. MEMBER REPORTS ---
-    const memberReports = members.map(m => {
-        const mEntries = passbookEntries.filter(e => e.member_id === m.id);
-        const mLoans = loansWithBalance.filter(l => l.member_id === m.id);
-        
-        const dep = mEntries.reduce((acc, e) => acc + Number(e.deposit_amount || 0), 0);
-        const intPaid = mEntries.reduce((acc, e) => acc + Number(e.interest_amount || 0), 0);
-        const finePaid = mEntries.reduce((acc, e) => acc + Number(e.fine_amount || 0), 0);
-        
-        const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
-        const lActiveBal = mLoans.filter(l => l.status === 'active').reduce((acc, l) => acc + l.remainingBalance, 0);
-        
-        return { 
-            id: m.id, 
-            name: m.name || m.member_name || 'Member',
-            phone: m.phone || '',
-            totalDeposits: dep, 
-            loanTaken: lTaken, 
-            principalPaid: lTaken - lActiveBal, 
-            interestPaid: intPaid, 
-            finePaid: finePaid, 
-            activeLoanBal: lActiveBal, 
-            netWorth: dep - lActiveBal, 
-            status: m.status || 'active' 
+            closing: closingBal
         };
     });
 
-    // --- E. MATURITY PROJECTION ---
+    // --- E. MODE STATS ---
+    let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
+    passbookEntries.forEach(e => {
+        const amt = e.amount;
+        const mode = (e.paymentMode || 'CASH').toUpperCase();
+        if (mode.includes('CASH')) cashBalTotal += amt;
+        else if (mode.includes('BANK')) bankBalTotal += amt;
+        else upiBalTotal += amt;
+    });
+    const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
+    cashBalTotal -= totalOut;
+
+    // --- F. MEMBER REPORTS ---
+    const memberReports = members.map(m => {
+        const mEntries = passbookEntries.filter(e => e.memberId === m.id);
+        const dep = mEntries.reduce((acc, e) => acc + e.depositAmount, 0);
+        const intPaid = mEntries.reduce((acc, e) => acc + e.interestAmount, 0);
+        const finePaid = mEntries.reduce((acc, e) => acc + e.fineAmount, 0);
+        const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
+        const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
+        const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
+        const lPaid = lTaken - lPend;
+
+        return { 
+            id: m.id, name: m.name, fatherName: m.phone, 
+            totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
+            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
+            netWorth: dep - lPend, status: m.status || 'active' 
+        };
+    });
+
+    // --- G. MATURITY ---
     const maturity = members.map(m => {
-        // Example Logic (Same as before)
-        const mEntries = passbookEntries.filter(e => e.member_id === m.id && Number(e.deposit_amount) > 0);
+        const mEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
         let monthly = 0;
         if(mEntries.length > 0) {
-            monthly = Number(mEntries[0].deposit_amount || 0);
+            const sorted = [...mEntries].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            monthly = sorted[0].depositAmount;
         }
-        
-        const tenure = 36; // Example 3 years
+        const tenure = 36;
         const target = monthly * tenure;
-        const projected = target * 0.12; // 12% Interest
-        
-        // Manual override check (if columns exist)
+        const projected = target * 0.12;
         const isOverride = m.maturity_is_override || false;
         const manualAmount = Number(m.maturity_manual_amount || 0);
         const settledInterest = isOverride ? manualAmount : projected;
         const maturityAmt = target + settledInterest;
-        
-        // Find outstanding loan
-        const outstanding = loansWithBalance
-            .filter(l => l.member_id === m.id && l.status === 'active')
-            .reduce((s, l) => s + l.remainingBalance, 0);
+        const outstanding = Number(m.outstanding_loan || 0);
 
         return { 
-            memberName: m.name || 'Member', 
-            joinDate: m.join_date || m.created_at, 
-            currentDeposit: Number(m.total_deposits || 0), // Assuming aggregated column or calculate from passbook
-            targetDeposit: target, 
-            projectedInterest: settledInterest, 
-            maturityAmount: maturityAmt, 
-            outstandingLoan: outstanding, 
-            netPayable: maturityAmt - outstanding
+            memberName: m.name, joinDate: m.join_date || m.created_at, 
+            currentDeposit: Number(m.total_deposits || 0), targetDeposit: target, 
+            projectedInterest: settledInterest, maturityAmount: maturityAmt, 
+            outstandingLoan: outstanding, netPayable: maturityAmt - outstanding
         };
     });
 
-    // --- F. DEFAULTERS LIST ---
-    // Logic: Active loans with overdue (Mock logic for now as 'due_date' missing)
-    const defaulters = loansWithBalance
-        .filter(l => l.status === 'active' && l.remainingBalance > 0)
-        .map(l => {
-            const mem = members.find(m => m.id === l.member_id); 
-            // Mock overdue check: if loan is older than 30 days
-            const daysOpen = Math.floor((new Date().getTime() - new Date(l.created_at).getTime()) / (1000 * 3600 * 24));
-            
-            return {
-                memberId: l.member_id, 
-                memberName: mem?.name || 'Unknown', 
-                memberPhone: mem?.phone || '',      
-                amount: l.amount, 
-                remainingBalance: l.remainingBalance, 
-                daysOverdue: daysOpen > 30 ? daysOpen : 0, // Example logic
-                status: daysOpen > 90 ? 'Critical' : 'Overdue' 
-            };
-        })
-        .filter(d => d.daysOverdue > 0); // Show only if overdue
-
-
-    // --- FINAL STATE UPDATE ---
-    setAuditData({
-        summary: {
-            income: { interest: interestIncome, fine: fineIncome, other: otherIncome, total: totalIncome },
-            expenses: { ops: opsExpense, maturityInt: 0, total: totalExpense },
-            loans: { issued: loansIssued, recovered: loansRecovered, pending: loansCount },
-            assets: { deposits: depositTotal },
-            netProfit: netProfit
-        },
-        dailyLedger: Object.values(ledgerMap).reverse(),
-        cashbook: cashbookArr.reverse(),
-        modeStats: { cashBal, bankBal, upiBal },
-        loans: loansWithBalance,
-        memberReports, 
-        maturity, 
-        defaulters
+    // --- H. DEFAULTERS ---
+    const defaulters = loansWithLiveBalance.filter(l => l.status === 'ACTIVE' && l.remainingBalance > 0).map(l => {
+        const mem = members.find(m => m.id === l.memberId); 
+        return {
+            memberId: l.memberId, 
+            memberName: mem?.name || 'Unknown', 
+            memberPhone: mem?.phone || '',      
+            amount: l.amount, 
+            remainingBalance: l.remainingBalance, 
+            daysOverdue: Math.floor((new Date().getTime() - new Date(l.start_date).getTime()) / (1000 * 3600 * 24)),
+            status: l.status 
+        };
     });
 
-  }, [passbookEntries, expenses, loans, members, filters, loading]);
+    setAuditData({
+        summary: {
+            income: { interest: interestIncome, fine: fineIncome, other: otherIncome, total: totalIncomeCalc },
+            expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
+            assets: { deposits: depositTotal },
+            loans: { issued: loansIssuedTotal, recovered: loansRecoveredTotal, pending: loansPendingTotal },
+            netProfit: netProfitCalc
+        },
+        dailyLedger: finalLedger,
+        cashbook: finalCashbook,
+        modeStats: { cashBal: cashBalTotal, bankBal: bankBalTotal, upiBal: upiBalTotal },
+        loans: loansWithLiveBalance,
+        memberReports, maturity, defaulters
+    });
 
-  return {
-    loading,
-    auditData,
-    members,
-    passbookEntries,
-    filters,
-    setFilters
-  };
-};
+  }, [members, loans, passbookEntries, expenses, filters, loading]);
+
+  const reversedPassbook = [...passbookEntries].reverse();
+  return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
+}
