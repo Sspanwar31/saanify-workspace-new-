@@ -28,7 +28,7 @@ export default function ClientDashboard() {
     bankBal: 0,
     upiBal: 0,
     depositTotal: 0,
-    pendingLoans: 0 // New field for alert
+    pendingLoans: 0
   });
 
   const [chartData, setChartData] = useState<any[]>([]);
@@ -41,37 +41,41 @@ export default function ClientDashboard() {
         try {
             const user = JSON.parse(storedUser);
             
-            // 1. Client Fetch
+            // 1. Client Details Fetch
             const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
             if (client) setClientData(client);
             else setClientData(user);
 
-            // --- 3 TABLES SE DATA FETCH KARNA ---
+            // --- REAL DATA FETCHING (Correct Table Names ke sath) ---
             
-            // A. Passbook Data (Income & Liquidity)
+            // A. Passbook Data (Income Source) - Table: 'passbook_entries'
+            // NOTE: Aapki passbook table me 'client_id' nahi hai, isliye hum filter nahi laga rahe.
             const passbookReq = supabase
-                .from('passbook')
+                .from('passbook_entries') 
                 .select('*'); 
-                // .eq('client_id', user.id); // Uncomment agar RLS nahi hai
 
-            // B. Expenses Data (Table 2: transactions/expenses)
-            // Aapke data me 'type' column hai (INCOME/EXPENSE)
+            // B. Expenses Data (Expense Source) - Table: 'expenses_ledger'
             const expenseReq = supabase
-                .from('expenses') // ⚠️ Confirm karein table ka naam 'expenses' hai ya 'transactions'
+                .from('expenses_ledger') 
                 .select('*')
-                .eq('type', 'EXPENSE'); // Sirf kharche chahiye
+                .eq('client_id', user.id) // Is table me client_id hai
+                .eq('type', 'EXPENSE'); // Hume sirf kharche chahiye
 
-            // C. Loans Data (Pending Requests ke liye)
+            // C. Loans Data - Table: 'loans'
             const loansReq = supabase
                 .from('loans')
-                .select('*');
+                .select('*')
+                .eq('client_id', user.id);
 
-            // Sab ek sath run karein (Fast Performance)
+            // Execute all queries
             const [passbookRes, expenseRes, loansRes] = await Promise.all([passbookReq, expenseReq, loansReq]);
 
-            if (passbookRes.data && expenseRes.data && loansRes.data) {
-                calculateFinancials(passbookRes.data, expenseRes.data, loansRes.data);
-            }
+            // Calculation Logic Call
+            calculateFinancials(
+                passbookRes.data || [], 
+                expenseRes.data || [], 
+                loansRes.data || []
+            );
 
         } catch(e) {
             console.error("Error fetching dashboard data:", e);
@@ -82,7 +86,7 @@ export default function ClientDashboard() {
     init();
   }, [router]);
 
-  // ✅ LOGIC: Teeno tables ko mix karke calculation
+  // ✅ LOGIC: Teeno tables ka data mix karke calculation
   const calculateFinancials = (passbook: any[], expenses: any[], loans: any[]) => {
     let income = 0;
     let expenseTotal = 0;
@@ -95,49 +99,51 @@ export default function ClientDashboard() {
 
     // 1. Passbook se Income aur Liquidity Jodo
     passbook.forEach(t => {
+        // Aapke data me 'total_amount' column hai
         const amt = Number(t.total_amount) || 0;
+        
+        // Aapke data me 'payment_mode' hai (cash, bank, upi)
         const mode = (t.payment_mode || '').toLowerCase().trim();
-        const date = t.date ? new Date(t.date) : new Date(t.created_at);
+        
+        // Date column 'date' hai
+        const dateStr = t.date || t.created_at;
+        const date = dateStr ? new Date(dateStr) : new Date();
 
         income += amt;
 
-        // Liquidity Buckets (Joda)
+        // Liquidity Position Logic
         if (mode === 'cash') cash += amt;
         else if (mode === 'bank' || mode === 'cheque') bank += amt;
         else if (mode === 'upi' || mode === 'online') upi += amt;
 
-        // Chart Data
+        // Monthly Chart Data
         const month = date.toLocaleString('default', { month: 'short' });
         monthlyMap[month] = (monthlyMap[month] || 0) + amt;
     });
 
-    // 2. Expenses Table se Kharcha Jodo
+    // 2. Expenses Ledger se Kharcha Jodo
     expenses.forEach(e => {
+        // Aapke data me 'amount' column hai
         const amt = Number(e.amount) || 0;
         expenseTotal += amt;
-        
-        // Note: Agar expense table me bhi 'payment_mode' hota, to hum
-        // specific bucket (Cash/Bank) se minus kar sakte the.
-        // Abhi ke liye hum ise sirf Net Profit aur Total Expense ke liye use kar rahe hain.
-        // Agar aap chahein to Cash se minus kar sakte hain:
-        // cash -= amt; 
     });
 
-    // 3. Loans Table se Pending Requests Gino
+    // 3. Loans se Active/Pending Count karo
     loans.forEach(l => {
-        if (l.status === 'pending' || l.status === 'requested') {
+        // Aapke data me status 'active' hai
+        if (l.status === 'active' || l.status === 'pending' || l.status === 'requested') {
             pendingLoanCount++;
         }
     });
 
-    // Chart array convert
+    // Final Setup
     const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
 
     setFinancials({
-        netProfit: income - expenseTotal, // Profit = Total Income - Total Expense
+        netProfit: income - expenseTotal, // Income (Passbook) - Expense (Ledger)
         totalIncome: income,
         totalExpense: expenseTotal,
-        cashBal: cash, // Filhal Total Cash Collection dikha raha hai
+        cashBal: cash,
         bankBal: bank,
         upiBal: upi,
         depositTotal: income,
@@ -262,8 +268,8 @@ export default function ClientDashboard() {
                <AlertTitle className="text-yellow-800">System Status</AlertTitle>
                <AlertDescription className="text-yellow-700">
                  {financials.pendingLoans > 0 
-                   ? `${financials.pendingLoans} pending loan requests.` 
-                   : "System updated live from Supabase."}
+                   ? `${financials.pendingLoans} active loans.` 
+                   : "Data updated live from Supabase."}
                </AlertDescription>
             </Alert>
             <Card>
