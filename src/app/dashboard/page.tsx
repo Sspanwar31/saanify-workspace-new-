@@ -19,7 +19,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<any>(null);
 
-  // ✅ AB DATA 0 SE SHURU HOGA (Backend se bhara jayega)
+  // Initial Financial State
   const [financials, setFinancials] = useState({
     netProfit: 0,
     totalIncome: 0,
@@ -27,7 +27,8 @@ export default function ClientDashboard() {
     cashBal: 0,
     bankBal: 0,
     upiBal: 0,
-    depositTotal: 0
+    depositTotal: 0,
+    pendingLoans: 0 // New field for alert
   });
 
   const [chartData, setChartData] = useState<any[]>([]);
@@ -40,19 +41,36 @@ export default function ClientDashboard() {
         try {
             const user = JSON.parse(storedUser);
             
-            // 1. Client Details Fetch karna
+            // 1. Client Fetch
             const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
             if (client) setClientData(client);
             else setClientData(user);
 
-            // 2. ✅ REAL FINANCIAL DATA FETCH KARNA
-            const { data: transactions } = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('client_id', user.id);
+            // --- 3 TABLES SE DATA FETCH KARNA ---
+            
+            // A. Passbook Data (Income & Liquidity)
+            const passbookReq = supabase
+                .from('passbook')
+                .select('*'); 
+                // .eq('client_id', user.id); // Uncomment agar RLS nahi hai
 
-            if (transactions) {
-                calculateFinancials(transactions);
+            // B. Expenses Data (Table 2: transactions/expenses)
+            // Aapke data me 'type' column hai (INCOME/EXPENSE)
+            const expenseReq = supabase
+                .from('expenses') // ⚠️ Confirm karein table ka naam 'expenses' hai ya 'transactions'
+                .select('*')
+                .eq('type', 'EXPENSE'); // Sirf kharche chahiye
+
+            // C. Loans Data (Pending Requests ke liye)
+            const loansReq = supabase
+                .from('loans')
+                .select('*');
+
+            // Sab ek sath run karein (Fast Performance)
+            const [passbookRes, expenseRes, loansRes] = await Promise.all([passbookReq, expenseReq, loansReq]);
+
+            if (passbookRes.data && expenseRes.data && loansRes.data) {
+                calculateFinancials(passbookRes.data, expenseRes.data, loansRes.data);
             }
 
         } catch(e) {
@@ -64,39 +82,51 @@ export default function ClientDashboard() {
     init();
   }, [router]);
 
-  // ✅ CALCULATE LOGIC (Jadu Yaha Hai)
-  const calculateFinancials = (data: any[]) => {
+  // ✅ LOGIC: Teeno tables ko mix karke calculation
+  const calculateFinancials = (passbook: any[], expenses: any[], loans: any[]) => {
     let income = 0;
-    let expense = 0;
+    let expenseTotal = 0;
     let cash = 0;
     let bank = 0;
     let upi = 0;
+    let pendingLoanCount = 0;
 
-    // Monthly Chart Data ke liye map
     const monthlyMap: {[key: string]: number} = {};
 
-    data.forEach(t => {
-        const amt = Number(t.amount);
-        
-        // Income vs Expense Calculation
-        if (t.type === 'income') {
-            income += amt;
-            // Liquidity Add karna
-            if (t.category === 'cash') cash += amt;
-            if (t.category === 'bank') bank += amt;
-            if (t.category === 'upi') upi += amt;
-        } else {
-            expense += amt;
-            // Liquidity Subtract karna (Kharche se paisa kam hoga)
-            if (t.category === 'cash') cash -= amt;
-            if (t.category === 'bank') bank -= amt;
-            if (t.category === 'upi') upi -= amt;
-        }
+    // 1. Passbook se Income aur Liquidity Jodo
+    passbook.forEach(t => {
+        const amt = Number(t.total_amount) || 0;
+        const mode = (t.payment_mode || '').toLowerCase().trim();
+        const date = t.date ? new Date(t.date) : new Date(t.created_at);
 
-        // Chart Data banana (Month wise)
-        const month = new Date(t.created_at).toLocaleString('default', { month: 'short' });
-        if (t.type === 'income') {
-            monthlyMap[month] = (monthlyMap[month] || 0) + amt;
+        income += amt;
+
+        // Liquidity Buckets (Joda)
+        if (mode === 'cash') cash += amt;
+        else if (mode === 'bank' || mode === 'cheque') bank += amt;
+        else if (mode === 'upi' || mode === 'online') upi += amt;
+
+        // Chart Data
+        const month = date.toLocaleString('default', { month: 'short' });
+        monthlyMap[month] = (monthlyMap[month] || 0) + amt;
+    });
+
+    // 2. Expenses Table se Kharcha Jodo
+    expenses.forEach(e => {
+        const amt = Number(e.amount) || 0;
+        expenseTotal += amt;
+        
+        // Note: Agar expense table me bhi 'payment_mode' hota, to hum
+        // specific bucket (Cash/Bank) se minus kar sakte the.
+        // Abhi ke liye hum ise sirf Net Profit aur Total Expense ke liye use kar rahe hain.
+        // Agar aap chahein to Cash se minus kar sakte hain:
+        // cash -= amt; 
+    });
+
+    // 3. Loans Table se Pending Requests Gino
+    loans.forEach(l => {
+        if (l.status === 'pending' || l.status === 'requested') {
+            pendingLoanCount++;
         }
     });
 
@@ -104,13 +134,14 @@ export default function ClientDashboard() {
     const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
 
     setFinancials({
-        netProfit: income - expense,
+        netProfit: income - expenseTotal, // Profit = Total Income - Total Expense
         totalIncome: income,
-        totalExpense: expense,
-        cashBal: cash,
+        totalExpense: expenseTotal,
+        cashBal: cash, // Filhal Total Cash Collection dikha raha hai
         bankBal: bank,
         upiBal: upi,
-        depositTotal: income // Example: Total Deposits = Total Income (Change logic if needed)
+        depositTotal: income,
+        pendingLoans: pendingLoanCount
     });
     setChartData(chart);
   };
@@ -120,7 +151,7 @@ export default function ClientDashboard() {
     router.push('/login');
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading Dashboard...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading Financial Cockpit...</div>;
   if (!clientData) return null;
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
@@ -229,11 +260,15 @@ export default function ClientDashboard() {
             <Alert className="bg-yellow-50 border-yellow-200">
                <AlertCircle className="h-4 w-4 text-yellow-600" />
                <AlertTitle className="text-yellow-800">System Status</AlertTitle>
-               <AlertDescription className="text-yellow-700">Data live from Supabase.</AlertDescription>
+               <AlertDescription className="text-yellow-700">
+                 {financials.pendingLoans > 0 
+                   ? `${financials.pendingLoans} pending loan requests.` 
+                   : "System updated live from Supabase."}
+               </AlertDescription>
             </Alert>
             <Card>
                <CardContent className="p-4 flex justify-between items-center">
-                  <div><p className="text-xs text-gray-500">Total Volume</p><h4 className="text-xl font-bold">{fmt(financials.totalIncome + financials.totalExpense)}</h4></div>
+                  <div><p className="text-xs text-gray-500">Total Deposits</p><h4 className="text-xl font-bold">{fmt(financials.depositTotal)}</h4></div>
                   <Users className="text-orange-500" />
                </CardContent>
             </Card>
