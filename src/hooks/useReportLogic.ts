@@ -1,4 +1,4 @@
-'use client';
+aap ap update code de rahe ho jsis me dashoboard par real profit dikhe isliye vpas code de raha hu jisme ye logic jod kar do without koi section change kar only dashboard caclaultion change karkke = code = 'use client';
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
@@ -27,7 +27,7 @@ export function useReportLogic() {
   const [auditData, setAuditData] = useState<any>({
     summary: { 
         income: { interest: 0, fine: 0, other: 0, total: 0 }, 
-        expenses: { ops: 0, maturityInt: 0, total: 0 }, // ✅ Added maturityInt for breakdown
+        expenses: { ops: 0, maturityInt: 0, total: 0 },
         assets: { deposits: 0 },
         loans: { issued: 0, recovered: 0, pending: 0 },
         netProfit: 0
@@ -112,7 +112,6 @@ export function useReportLogic() {
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
-    // --- A. FILTER RAW DATA (For Cashflow/Ledger) ---
     const filteredPassbook = passbookEntries.filter(e => {
         const d = new Date(e.date);
         const dateMatch = d >= start && d <= end;
@@ -135,7 +134,6 @@ export function useReportLogic() {
         return dateMatch && typeMatch;
     });
 
-    // --- B. SUMMARY LOGIC ---
     let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
     
     filteredPassbook.forEach(e => {
@@ -149,11 +147,8 @@ export function useReportLogic() {
         if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
     });
 
-    // ✅ LOGIC: Maturity Liability (Accrued Interest)
-    // Even if not paid out, this is a liability/expense for "Real Profit"
     let totalMaturityLiability = 0;
     members.forEach(m => {
-        // Use ALL passbook entries (not filtered by date) to get total accrued interest
         const mDepositEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
         if (mDepositEntries.length > 0) {
              const sorted = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -166,47 +161,58 @@ export function useReportLogic() {
              const manualAmount = Number(m.maturity_manual_amount || 0);
              const settledInterest = isOverride ? manualAmount : projectedInterest;
              const monthlyShare = settledInterest / tenure;
-             
-             // Formula: Monthly Share * Deposit Count
              totalMaturityLiability += (monthlyShare * depositCount);
         }
     });
 
     const totalIncomeCalc = interestIncome + fineIncome + otherIncome;
-    
-    // ✅ NEW LOGIC: Total Expense = Operational Expense + Maturity Liability
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
-    
-    // Real Profit = Income - (Ops + Maturity)
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (Live) ---
-    const loansWithLiveBalance = loans.map(l => {
-        const installmentsPaid = passbookEntries
-            .filter(p => p.memberId === l.member_id && p.installmentAmount > 0)
-            .reduce((sum, p) => sum + p.installmentAmount, 0);
-        
-        const currentBalance = Math.max(0, Number(l.amount) - installmentsPaid);
-        const isActive = currentBalance > 0;
-        
-        // Interest = 1% of Balance
-        const interestAmount = Math.round(currentBalance * 0.01);
+   // --- C. LOAN STATS (Live) ---
+const loansWithLiveBalance = loans.map(l => {
+  // Calculate principal paid from passbook
+  const installmentsPaid = passbookEntries
+    .filter(
+      p => p.memberId === l.member_id && Number(p.installmentAmount) > 0
+    )
+    .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
 
-        return {
-            id: l.id,
-            amount: Number(l.amount),
-            start_date: l.start_date,
-            memberId: l.member_id,
-            interestRate: interestAmount, 
-            principalPaid: installmentsPaid,
-            remainingBalance: currentBalance,
-            status: isActive ? 'ACTIVE' : 'CLOSED'
-        };
-    });
+  const loanAmount = Number(l.amount) || 0;
+  const currentBalance = Math.max(0, loanAmount - installmentsPaid);
+  const isActive = currentBalance > 0;
 
-    const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
-    const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
-    const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
+  // ✅ Interest = 1% of CURRENT BALANCE (NUMBER ONLY)
+  // 2000 -> 20
+  // 4000 -> 40
+  const interestAmount = Math.round(currentBalance * 0.01);
+
+  // ✅ Explicit object (NO spread)
+  // Ensures DB string interest_rate never leaks
+  return {
+    id: l.id,
+    memberId: l.member_id,
+    start_date: l.start_date,
+    amount: loanAmount,
+    principalPaid: installmentsPaid,
+    remainingBalance: currentBalance,
+    interestRate: interestAmount, // ✅ PURE NUMBER
+    status: isActive ? 'ACTIVE' : 'CLOSED'
+  };
+});
+
+// Totals (unchanged logic)
+const loansIssuedTotal = loansWithLiveBalance.reduce(
+  (acc, l) => acc + l.amount,
+  0
+);
+
+const loansPendingTotal = loansWithLiveBalance.reduce(
+  (acc, l) => acc + l.remainingBalance,
+  0
+);
+
+const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
@@ -350,11 +356,10 @@ export function useReportLogic() {
     setAuditData({
         summary: {
             income: { interest: interestIncome, fine: fineIncome, other: otherIncome, total: totalIncomeCalc },
-            // ✅ FIXED: Adding Maturity Liability to Total Expenses
             expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
             loans: { issued: loansIssuedTotal, recovered: loansRecoveredTotal, pending: loansPendingTotal },
-            netProfit: netProfitCalc // ✅ Now calculated as Income - (Ops + Maturity)
+            netProfit: netProfitCalc
         },
         dailyLedger: finalLedger,
         cashbook: finalCashbook,
@@ -367,4 +372,4 @@ export function useReportLogic() {
 
   const reversedPassbook = [...passbookEntries].reverse();
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
-}
+} 
