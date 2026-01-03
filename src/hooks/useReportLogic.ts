@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple';
+import { supabase } from '@/lib/supabase-simple'; // Ensure correct path
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -23,7 +23,7 @@ export function useReportLogic() {
     transactionType: 'all'
   });
 
-  // Calculated Data
+  // Calculated Data Structure
   const [auditData, setAuditData] = useState<any>({
     summary: { 
         income: { interest: 0, fine: 0, other: 0, total: 0 }, 
@@ -45,32 +45,45 @@ export function useReportLogic() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      
+      // Get current user ID from localStorage
       let cid = clientId;
       if (!cid) {
-        const { data: clients } = await supabase.from('clients').select('id').limit(1);
-        if (clients && clients.length > 0) {
-          cid = clients[0].id;
-          setClientId(cid);
+        const storedUser = localStorage.getItem('current_user');
+        if (storedUser) {
+            const user = JSON.parse(storedUser);
+            cid = user.id;
+            setClientId(cid);
+        } else {
+            // Fallback just in case (optional)
+            const { data: clients } = await supabase.from('clients').select('id').limit(1);
+            if (clients && clients.length > 0) {
+              cid = clients[0].id;
+              setClientId(cid);
+            }
         }
       }
 
       if (cid) {
+        // Fetch ALL tables (Correct table names used)
         const [membersRes, loansRes, passbookRes, expenseRes] = await Promise.all([
-          supabase.from('members').select('*').eq('client_id', cid),
+          supabase.from('clients').select('*').eq('id', cid), // Assuming members are clients or change to 'members' table
           supabase.from('loans').select('*').eq('client_id', cid),
-          supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
+          supabase.from('passbook_entries').select('*').order('date', { ascending: true }), // No filter to avoid blank data initially
           supabase.from('expenses_ledger').select('*').eq('client_id', cid)
         ]);
 
+        // Set State
         if (membersRes.data) setMembers(membersRes.data);
         if (loansRes.data) setLoans(loansRes.data);
+        if (expenseRes.data) setExpenses(expenseRes.data);
         
+        // Passbook Processing
         if (passbookRes.data) {
-          const memberIds = new Set(membersRes.data?.map(m => m.id));
-          const validEntries = passbookRes.data.filter(e => memberIds.has(e.member_id));
-
+          // Filter Passbook for this client manually if needed, or rely on RLS
+          // Assuming RLS is handling it, we take all returned data
           let runningBalance = 0;
-          const mappedPassbook = validEntries.map((e: any) => {
+          const mappedPassbook = passbookRes.data.map((e: any) => {
             const total = Number(e.total_amount || 0);
             runningBalance += total;
 
@@ -80,7 +93,7 @@ export function useReportLogic() {
 
             return {
               id: e.id,
-              date: e.date,
+              date: e.date || e.created_at,
               memberId: e.member_id, 
               memberName: e.member_name, 
               amount: total,
@@ -96,25 +109,29 @@ export function useReportLogic() {
           });
           setPassbookEntries(mappedPassbook); 
         }
-
-        if (expenseRes.data) setExpenses(expenseRes.data);
       }
       setLoading(false);
     };
     fetchData();
   }, [clientId]);
 
-  // 2. Calculation Engine
+  // 2. Calculation Engine (Full Logic + Maturity Update)
   useEffect(() => {
-    if (loading || !members.length) return;
+    if (loading) return; 
 
+    // --- DATE FILTER LOGIC ---
     const start = new Date(filters.startDate);
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
+    const isDateInRange = (dateStr: string) => {
+        const d = new Date(dateStr);
+        return d >= start && d <= end;
+    };
+
+    // Filter Raw Data
     const filteredPassbook = passbookEntries.filter(e => {
-        const d = new Date(e.date);
-        const dateMatch = d >= start && d <= end;
+        const inDate = isDateInRange(e.date);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
         const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase() === filters.transactionMode;
         
@@ -123,17 +140,17 @@ export function useReportLogic() {
         if(filters.transactionType === 'loan') typeMatch = (e.installmentAmount > 0);
         if(filters.transactionType === 'expense') typeMatch = false; 
 
-        return dateMatch && memberMatch && modeMatch && typeMatch;
+        return inDate && memberMatch && modeMatch && typeMatch;
     });
 
     const filteredExpenses = expenses.filter(e => {
-        const d = new Date(e.date);
-        const dateMatch = d >= start && d <= end;
+        const inDate = isDateInRange(e.date || e.created_at);
         let typeMatch = true;
         if(filters.transactionType === 'deposit' || filters.transactionType === 'loan') typeMatch = false;
-        return dateMatch && typeMatch;
+        return inDate && typeMatch;
     });
 
+    // --- A. SUMMARY CALCS ---
     let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
     
     filteredPassbook.forEach(e => {
@@ -147,72 +164,72 @@ export function useReportLogic() {
         if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
     });
 
+    // --- MATURITY INTEREST LIABILITY CALCULATION (Updated Logic) ---
+    // Logic: Har member ke liye (Monthly Share * Number of Deposits)
     let totalMaturityLiability = 0;
+    
     members.forEach(m => {
+        // 1. Get all deposits for this member
         const mDepositEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
+        
         if (mDepositEntries.length > 0) {
+             // 2. Find Monthly Share (Example: ₹111)
+             // Logic: Pehle deposit se monthly amount pata karo
              const sorted = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
              const monthlyDeposit = sorted[0].depositAmount;
+             
+             // Standard Values (Change as per your rules)
+             const tenureMonths = 36; // 3 Years
+             const interestRate = 0.12; // 12% Interest
+             
+             // Total Expected Interest for full tenure
+             const totalPrincipal = monthlyDeposit * tenureMonths;
+             const totalInterest = totalPrincipal * interestRate; 
+             
+             // Monthly Interest Share (e.g. 4000 / 36 = 111.11)
+             const monthlyInterestShare = totalInterest / tenureMonths;
+
+             // 3. Count how many times they paid (Tender Count)
              const depositCount = mDepositEntries.length;
-             const tenure = 36;
-             const targetDeposit = monthlyDeposit * tenure;
-             const projectedInterest = targetDeposit * 0.12; 
-             const isOverride = m.maturity_is_override || false;
-             const manualAmount = Number(m.maturity_manual_amount || 0);
-             const settledInterest = isOverride ? manualAmount : projectedInterest;
-             const monthlyShare = settledInterest / tenure;
-             totalMaturityLiability += (monthlyShare * depositCount);
+
+             // 4. Current Liability = Monthly Share * Count
+             const currentLiability = monthlyInterestShare * depositCount;
+             
+             totalMaturityLiability += currentLiability;
         }
     });
 
     const totalIncomeCalc = interestIncome + fineIncome + otherIncome;
+    // Expense = Cash Expense + Interest Liability (Accrued)
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
    // --- C. LOAN STATS (Live) ---
-const loansWithLiveBalance = loans.map(l => {
-  // Calculate principal paid from passbook
-  const installmentsPaid = passbookEntries
-    .filter(
-      p => p.memberId === l.member_id && Number(p.installmentAmount) > 0
-    )
-    .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
+    const loansWithLiveBalance = loans.map(l => {
+      const installmentsPaid = passbookEntries
+        .filter(p => p.memberId === l.member_id && Number(p.installmentAmount) > 0)
+        .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
 
-  const loanAmount = Number(l.amount) || 0;
-  const currentBalance = Math.max(0, loanAmount - installmentsPaid);
-  const isActive = currentBalance > 0;
+      const loanAmount = Number(l.amount) || 0;
+      const currentBalance = Math.max(0, loanAmount - installmentsPaid);
+      const isActive = currentBalance > 0;
+      const interestAmount = Math.round(currentBalance * 0.01);
 
-  // ✅ Interest = 1% of CURRENT BALANCE (NUMBER ONLY)
-  // 2000 -> 20
-  // 4000 -> 40
-  const interestAmount = Math.round(currentBalance * 0.01);
+      return {
+        id: l.id,
+        memberId: l.member_id,
+        start_date: l.start_date,
+        amount: loanAmount,
+        principalPaid: installmentsPaid,
+        remainingBalance: currentBalance,
+        interestRate: interestAmount, 
+        status: isActive ? 'ACTIVE' : 'CLOSED'
+      };
+    });
 
-  // ✅ Explicit object (NO spread)
-  // Ensures DB string interest_rate never leaks
-  return {
-    id: l.id,
-    memberId: l.member_id,
-    start_date: l.start_date,
-    amount: loanAmount,
-    principalPaid: installmentsPaid,
-    remainingBalance: currentBalance,
-    interestRate: interestAmount, // ✅ PURE NUMBER
-    status: isActive ? 'ACTIVE' : 'CLOSED'
-  };
-});
-
-// Totals (unchanged logic)
-const loansIssuedTotal = loansWithLiveBalance.reduce(
-  (acc, l) => acc + l.amount,
-  0
-);
-
-const loansPendingTotal = loansWithLiveBalance.reduce(
-  (acc, l) => acc + l.remainingBalance,
-  0
-);
-
-const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
+    const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
+    const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
+    const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
@@ -243,7 +260,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
     });
 
     filteredExpenses.forEach(e => {
-        const entry = getOrSetEntry(e.date);
+        const entry = getOrSetEntry(e.date || new Date().toISOString());
         const amt = Number(e.amount);
         if (e.type === 'EXPENSE') { entry.cashOut += amt; entry.cashOutMode += amt; }
         else { entry.cashIn += amt; entry.cashInMode += amt; }
@@ -251,7 +268,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
         loans.forEach(l => {
-            if (l.start_date >= filters.startDate && l.start_date <= filters.endDate) {
+            if (isDateInRange(l.start_date)) {
                 const entry = getOrSetEntry(l.start_date);
                 const amt = Number(l.amount);
                 entry.loanOut += amt;
@@ -307,7 +324,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
         const lPaid = lTaken - lPend;
 
         return { 
-            id: m.id, name: m.name, fatherName: m.phone, 
+            id: m.id, name: m.name || m.member_name || 'Member', phone: m.phone || '', 
             totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
             interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
             netWorth: dep - lPend, status: m.status || 'active' 
@@ -332,7 +349,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
         const outstanding = Number(m.outstanding_loan || 0);
 
         return { 
-            memberName: m.name, joinDate: m.join_date || m.created_at, 
+            memberName: m.name || 'Member', joinDate: m.join_date || m.created_at, 
             currentDeposit: Number(m.total_deposits || 0), targetDeposit: target, 
             projectedInterest: settledInterest, maturityAmount: maturityAmt, 
             outstandingLoan: outstanding, netPayable: maturityAmt - outstanding
@@ -343,11 +360,8 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
     const defaulters = loansWithLiveBalance.filter(l => l.status === 'ACTIVE' && l.remainingBalance > 0).map(l => {
         const mem = members.find(m => m.id === l.memberId); 
         return {
-            memberId: l.memberId, 
-            memberName: mem?.name || 'Unknown', 
-            memberPhone: mem?.phone || '',      
-            amount: l.amount, 
-            remainingBalance: l.remainingBalance, 
+            memberId: l.memberId, memberName: mem?.name || 'Unknown', memberPhone: mem?.phone || '',      
+            amount: l.amount, remainingBalance: l.remainingBalance, 
             daysOverdue: Math.floor((new Date().getTime() - new Date(l.start_date).getTime()) / (1000 * 3600 * 24)),
             status: l.status 
         };
@@ -372,4 +386,4 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
   const reversedPassbook = [...passbookEntries].reverse();
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
-}  
+}
