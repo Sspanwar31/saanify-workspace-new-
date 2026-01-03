@@ -1,375 +1,356 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple';
-import { differenceInMonths } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { 
+  TrendingUp, TrendingDown, Wallet, Building2, Smartphone, 
+  CheckCircle, Users, Landmark, AlertCircle, LogOut 
+} from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
+import { supabase } from '@/lib/supabase';
 
-export function useReportLogic() {
+export default function ClientDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [clientId, setClientId] = useState<string | null>(null);
+  const [clientData, setClientData] = useState<any>(null);
 
-  // Raw Data States
-  const [members, setMembers] = useState<any[]>([]);
-  const [loans, setLoans] = useState<any[]>([]);
-  const [passbookEntries, setPassbookEntries] = useState<any[]>([]); 
-  const [expenses, setExpenses] = useState<any[]>([]);
-
-  // Filter States
-  const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    selectedMember: 'ALL',
-    transactionMode: 'all',
-    transactionType: 'all'
+  // Initial Financial State (0 se shuru)
+  const [financials, setFinancials] = useState({
+    netProfit: 0,
+    totalIncome: 0,
+    totalExpense: 0,
+    cashBal: 0,
+    bankBal: 0,
+    upiBal: 0,
+    depositTotal: 0,
+    pendingLoans: 0
   });
 
-  // Calculated Data
-  const [auditData, setAuditData] = useState<any>({
-    summary: { 
-        income: { interest: 0, fine: 0, other: 0, total: 0 }, 
-        expenses: { ops: 0, maturityInt: 0, total: 0 },
-        assets: { deposits: 0 },
-        loans: { issued: 0, recovered: 0, pending: 0 },
-        netProfit: 0
-    },
-    dailyLedger: [],
-    cashbook: [],
-    modeStats: { cashBal: 0, bankBal: 0, upiBal: 0 },
-    loans: [],
-    memberReports: [],
-    maturity: [],
-    defaulters: []
-  });
+  const [chartData, setChartData] = useState<any[]>([]);
 
-  // 1. Fetch Data
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      let cid = clientId;
-      if (!cid) {
-        const { data: clients } = await supabase.from('clients').select('id').limit(1);
-        if (clients && clients.length > 0) {
-          cid = clients[0].id;
-          setClientId(cid);
-        }
-      }
-
-      if (cid) {
-        const [membersRes, loansRes, passbookRes, expenseRes] = await Promise.all([
-          supabase.from('members').select('*').eq('client_id', cid),
-          supabase.from('loans').select('*').eq('client_id', cid),
-          supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
-          supabase.from('expenses_ledger').select('*').eq('client_id', cid)
-        ]);
-
-        if (membersRes.data) setMembers(membersRes.data);
-        if (loansRes.data) setLoans(loansRes.data);
+    const init = async () => {
+        const storedUser = localStorage.getItem('current_user');
+        if (!storedUser) { router.push('/login'); return; }
         
-        if (passbookRes.data) {
-          const memberIds = new Set(membersRes.data?.map(m => m.id));
-          const validEntries = passbookRes.data.filter(e => memberIds.has(e.member_id));
+        try {
+            const user = JSON.parse(storedUser);
+            
+            // 1. Client Fetch (User Details)
+            const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
+            if (client) setClientData(client);
+            else setClientData(user);
 
-          let runningBalance = 0;
-          const mappedPassbook = validEntries.map((e: any) => {
-            const total = Number(e.total_amount || 0);
-            runningBalance += total;
+            // --- FETCH DATA FOR DASHBOARD ---
+            // Hum saara data raw fetch karenge aur browser me calculate karenge
+            
+            // A. Passbook (Income + Liquidity + Maturity Base)
+            const passbookReq = supabase
+                .from('passbook_entries')
+                .select('*'); 
 
-            let type = 'DEPOSIT';
-            if (Number(e.installment_amount) > 0) type = 'LOAN_REPAYMENT';
-            else if (Number(e.interest_amount) > 0 || Number(e.fine_amount) > 0) type = 'INTEREST/FINE';
+            // B. Expenses (Cash Expense)
+            const expenseReq = supabase
+                .from('expenses_ledger') 
+                .select('*')
+                .eq('client_id', user.id)
+                .eq('type', 'EXPENSE');
 
-            return {
-              id: e.id,
-              date: e.date,
-              memberId: e.member_id, 
-              memberName: e.member_name, 
-              amount: total,
-              paymentMode: e.payment_mode || 'CASH', 
-              description: e.note || 'Passbook Entry',
-              type: type,
-              depositAmount: Number(e.deposit_amount || 0),
-              installmentAmount: Number(e.installment_amount || 0),
-              interestAmount: Number(e.interest_amount || 0),
-              fineAmount: Number(e.fine_amount || 0),
-              balance: runningBalance
-            };
-          });
-          setPassbookEntries(mappedPassbook); 
-        }
+            // C. Loans (Pending/Active Requests)
+            const loansReq = supabase
+                .from('loans')
+                .select('*')
+                .eq('client_id', user.id);
 
-        if (expenseRes.data) setExpenses(expenseRes.data);
-      }
-      setLoading(false);
-    };
-    fetchData();
-  }, [clientId]);
+            // D. Admin Funds (Agar future me chahiye ho, abhi logic me nahi joda)
+            // const adminFundsReq = ...
 
-  // 2. Calculation Engine
-  useEffect(() => {
-    if (loading || !members.length) return;
+            // Run All Queries Parallel
+            const [passbookRes, expenseRes, loansRes] = await Promise.all([
+                passbookReq, expenseReq, loansReq
+            ]);
 
-    const start = new Date(filters.startDate);
-    const end = new Date(filters.endDate);
-    end.setHours(23, 59, 59, 999);
-
-    const filteredPassbook = passbookEntries.filter(e => {
-        const d = new Date(e.date);
-        const dateMatch = d >= start && d <= end;
-        const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
-        const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase() === filters.transactionMode;
-        
-        let typeMatch = true;
-        if(filters.transactionType === 'deposit') typeMatch = (e.depositAmount > 0);
-        if(filters.transactionType === 'loan') typeMatch = (e.installmentAmount > 0);
-        if(filters.transactionType === 'expense') typeMatch = false; 
-
-        return dateMatch && memberMatch && modeMatch && typeMatch;
-    });
-
-    const filteredExpenses = expenses.filter(e => {
-        const d = new Date(e.date);
-        const dateMatch = d >= start && d <= end;
-        let typeMatch = true;
-        if(filters.transactionType === 'deposit' || filters.transactionType === 'loan') typeMatch = false;
-        return dateMatch && typeMatch;
-    });
-
-    let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
-    
-    filteredPassbook.forEach(e => {
-        interestIncome += e.interestAmount;
-        fineIncome += e.fineAmount;
-        depositTotal += e.depositAmount;
-    });
-
-    filteredExpenses.forEach(e => {
-        if (e.type === 'INCOME') otherIncome += Number(e.amount);
-        if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
-    });
-
-    let totalMaturityLiability = 0;
-    members.forEach(m => {
-        const mDepositEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
-        if (mDepositEntries.length > 0) {
-             const sorted = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-             const monthlyDeposit = sorted[0].depositAmount;
-             const depositCount = mDepositEntries.length;
-             const tenure = 36;
-             const targetDeposit = monthlyDeposit * tenure;
-             const projectedInterest = targetDeposit * 0.12; 
-             const isOverride = m.maturity_is_override || false;
-             const manualAmount = Number(m.maturity_manual_amount || 0);
-             const settledInterest = isOverride ? manualAmount : projectedInterest;
-             const monthlyShare = settledInterest / tenure;
-             totalMaturityLiability += (monthlyShare * depositCount);
-        }
-    });
-
-    const totalIncomeCalc = interestIncome + fineIncome + otherIncome;
-    const totalExpensesCalc = opsExpense + totalMaturityLiability; 
-    const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
-
-   // --- C. LOAN STATS (Live) ---
-const loansWithLiveBalance = loans.map(l => {
-  // Calculate principal paid from passbook
-  const installmentsPaid = passbookEntries
-    .filter(
-      p => p.memberId === l.member_id && Number(p.installmentAmount) > 0
-    )
-    .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
-
-  const loanAmount = Number(l.amount) || 0;
-  const currentBalance = Math.max(0, loanAmount - installmentsPaid);
-  const isActive = currentBalance > 0;
-
-  // ✅ Interest = 1% of CURRENT BALANCE (NUMBER ONLY)
-  // 2000 -> 20
-  // 4000 -> 40
-  const interestAmount = Math.round(currentBalance * 0.01);
-
-  // ✅ Explicit object (NO spread)
-  // Ensures DB string interest_rate never leaks
-  return {
-    id: l.id,
-    memberId: l.member_id,
-    start_date: l.start_date,
-    amount: loanAmount,
-    principalPaid: installmentsPaid,
-    remainingBalance: currentBalance,
-    interestRate: interestAmount, // ✅ PURE NUMBER
-    status: isActive ? 'ACTIVE' : 'CLOSED'
-  };
-});
-
-// Totals (unchanged logic)
-const loansIssuedTotal = loansWithLiveBalance.reduce(
-  (acc, l) => acc + l.amount,
-  0
-);
-
-const loansPendingTotal = loansWithLiveBalance.reduce(
-  (acc, l) => acc + l.remainingBalance,
-  0
-);
-
-const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
-
-    // --- D. DAILY LEDGER ---
-    const ledgerMap = new Map();
-    const getOrSetEntry = (dateStr: string) => {
-        if (!ledgerMap.has(dateStr)) {
-            ledgerMap.set(dateStr, { 
-                date: dateStr, deposit: 0, emi: 0, loanOut: 0, interest: 0, fine: 0, 
-                cashIn: 0, cashOut: 0,
-                cashInMode: 0, bankInMode: 0, upiInMode: 0,
-                cashOutMode: 0, bankOutMode: 0, upiOutMode: 0
-            });
-        }
-        return ledgerMap.get(dateStr);
-    };
-
-    filteredPassbook.forEach(e => {
-        const entry = getOrSetEntry(e.date);
-        const total = e.amount;
-        entry.deposit += e.depositAmount;
-        entry.emi += e.installmentAmount;
-        entry.interest += e.interestAmount;
-        entry.fine += e.fineAmount;
-        entry.cashIn += total;
-        const mode = (e.paymentMode || 'CASH').toUpperCase();
-        if (mode.includes('CASH')) entry.cashInMode += total;
-        else if (mode.includes('BANK')) entry.bankInMode += total;
-        else entry.upiInMode += total;
-    });
-
-    filteredExpenses.forEach(e => {
-        const entry = getOrSetEntry(e.date);
-        const amt = Number(e.amount);
-        if (e.type === 'EXPENSE') { entry.cashOut += amt; entry.cashOutMode += amt; }
-        else { entry.cashIn += amt; entry.cashInMode += amt; }
-    });
-
-    if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
-        loans.forEach(l => {
-            if (l.start_date >= filters.startDate && l.start_date <= filters.endDate) {
-                const entry = getOrSetEntry(l.start_date);
-                const amt = Number(l.amount);
-                entry.loanOut += amt;
-                entry.cashOut += amt;
-                entry.cashOutMode += amt; 
+            if (passbookRes.data) {
+                calculateFinancials(
+                    passbookRes.data || [], 
+                    expenseRes.data || [], 
+                    loansRes.data || []
+                );
             }
-        });
-    }
 
-    const sortedLedger = Array.from(ledgerMap.values()).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    let runningBal = 0;
-    const finalLedger = sortedLedger.map((e: any) => {
-        const netFlow = e.cashIn - e.cashOut;
-        runningBal += netFlow;
-        return { ...e, netFlow, runningBal };
-    });
-
-    // Cashbook Array
-    let closingBal = 0;
-    const finalCashbook = sortedLedger.map((e: any) => {
-        const dailyNet = (e.cashInMode + e.bankInMode + e.upiInMode) - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
-        closingBal += dailyNet;
-        return {
-            date: e.date,
-            cashIn: e.cashInMode, cashOut: e.cashOutMode,
-            bankIn: e.bankInMode, bankOut: e.bankOutMode,
-            upiIn: e.upiInMode, upiOut: e.upiOutMode,
-            closing: closingBal
-        };
-    });
-
-    // --- E. MODE STATS ---
-    let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
-    passbookEntries.forEach(e => {
-        const amt = e.amount;
-        const mode = (e.paymentMode || 'CASH').toUpperCase();
-        if (mode.includes('CASH')) cashBalTotal += amt;
-        else if (mode.includes('BANK')) bankBalTotal += amt;
-        else upiBalTotal += amt;
-    });
-    const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
-    cashBalTotal -= totalOut;
-
-    // --- F. MEMBER REPORTS ---
-    const memberReports = members.map(m => {
-        const mEntries = passbookEntries.filter(e => e.memberId === m.id);
-        const dep = mEntries.reduce((acc, e) => acc + e.depositAmount, 0);
-        const intPaid = mEntries.reduce((acc, e) => acc + e.interestAmount, 0);
-        const finePaid = mEntries.reduce((acc, e) => acc + e.fineAmount, 0);
-        const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
-        const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
-        const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
-        const lPaid = lTaken - lPend;
-
-        return { 
-            id: m.id, name: m.name, fatherName: m.phone, 
-            totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
-            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
-            netWorth: dep - lPend, status: m.status || 'active' 
-        };
-    });
-
-    // --- G. MATURITY ---
-    const maturity = members.map(m => {
-        const mEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
-        let monthly = 0;
-        if(mEntries.length > 0) {
-            const sorted = [...mEntries].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            monthly = sorted[0].depositAmount;
+        } catch(e) {
+            console.error("Error fetching dashboard data:", e);
+        } finally {
+            setLoading(false);
         }
-        const tenure = 36;
-        const target = monthly * tenure;
-        const projected = target * 0.12;
-        const isOverride = m.maturity_is_override || false;
-        const manualAmount = Number(m.maturity_manual_amount || 0);
-        const settledInterest = isOverride ? manualAmount : projected;
-        const maturityAmt = target + settledInterest;
-        const outstanding = Number(m.outstanding_loan || 0);
+    };
+    init();
+  }, [router]);
 
-        return { 
-            memberName: m.name, joinDate: m.join_date || m.created_at, 
-            currentDeposit: Number(m.total_deposits || 0), targetDeposit: target, 
-            projectedInterest: settledInterest, maturityAmount: maturityAmt, 
-            outstandingLoan: outstanding, netPayable: maturityAmt - outstanding
-        };
+  // ✅ UPDATED LOGIC: Include Maturity Liability in Expense
+  const calculateFinancials = (passbook: any[], expenses: any[], loans: any[]) => {
+    let income = 0;
+    let cashExpense = 0;
+    let cash = 0;
+    let bank = 0;
+    let upi = 0;
+    let pendingLoanCount = 0;
+
+    const monthlyMap: {[key: string]: number} = {};
+
+    // 1. Passbook se Income aur Liquidity Calculate karna
+    passbook.forEach(t => {
+        const amt = Number(t.total_amount) || 0;
+        const mode = (t.payment_mode || '').toLowerCase().trim();
+        const date = t.date ? new Date(t.date) : new Date(t.created_at);
+
+        // Add to Total Income
+        income += amt;
+
+        // Liquidity Buckets Update
+        if (mode.includes('cash')) cash += amt;
+        else if (mode.includes('bank') || mode.includes('cheque')) bank += amt;
+        else if (mode.includes('upi') || mode.includes('online')) upi += amt;
+
+        // Chart Data Preparation
+        const month = date.toLocaleString('default', { month: 'short' });
+        monthlyMap[month] = (monthlyMap[month] || 0) + amt;
     });
 
-    // --- H. DEFAULTERS ---
-    const defaulters = loansWithLiveBalance.filter(l => l.status === 'ACTIVE' && l.remainingBalance > 0).map(l => {
-        const mem = members.find(m => m.id === l.memberId); 
-        return {
-            memberId: l.memberId, 
-            memberName: mem?.name || 'Unknown', 
-            memberPhone: mem?.phone || '',      
-            amount: l.amount, 
-            remainingBalance: l.remainingBalance, 
-            daysOverdue: Math.floor((new Date().getTime() - new Date(l.start_date).getTime()) / (1000 * 3600 * 24)),
-            status: l.status 
-        };
+    // 2. Expenses Table se Cash Kharcha Calculate karna
+    expenses.forEach(e => {
+        const amt = Number(e.amount) || 0;
+        cashExpense += amt;
     });
 
-    setAuditData({
-        summary: {
-            income: { interest: interestIncome, fine: fineIncome, other: otherIncome, total: totalIncomeCalc },
-            expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
-            assets: { deposits: depositTotal },
-            loans: { issued: loansIssuedTotal, recovered: loansRecoveredTotal, pending: loansPendingTotal },
-            netProfit: netProfitCalc
-        },
-        dailyLedger: finalLedger,
-        cashbook: finalCashbook,
-        modeStats: { cashBal: cashBalTotal, bankBal: bankBalTotal, upiBal: upiBalTotal },
-        loans: loansWithLiveBalance,
-        memberReports, maturity, defaulters
+    // 3. Loans se Pending/Active Count
+    loans.forEach(l => {
+        if (l.status === 'pending' || l.status === 'requested' || l.status === 'active') {
+            if(l.status === 'active') pendingLoanCount++; // Counting active loans
+        }
     });
 
-  }, [members, loans, passbookEntries, expenses, filters, loading]);
+    // --- 4. NEW LOGIC: Calculate Maturity Liability (Hidden Expense) ---
+    // Formula: (Monthly Share * Deposit Count) for each member
+    
+    let maturityLiability = 0;
 
-  const reversedPassbook = [...passbookEntries].reverse();
-  return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
+    // Group deposits by Member ID
+    const memberDeposits: {[key: string]: any[]} = {};
+    
+    passbook.forEach(p => {
+        // Sirf un entries ko lein jisme deposit amount hai
+        if(p.member_id && Number(p.deposit_amount) > 0) {
+            if(!memberDeposits[p.member_id]) memberDeposits[p.member_id] = [];
+            memberDeposits[p.member_id].push(p);
+        }
+    });
+
+    // Har Member ka Interest Liability Calculate karein
+    Object.keys(memberDeposits).forEach(memberId => {
+        const deposits = memberDeposits[memberId];
+        if (deposits.length > 0) {
+             // A. Find Monthly Amount (First deposit se)
+             const sorted = deposits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+             const monthlyDeposit = Number(sorted[0].deposit_amount || 0);
+             
+             // B. Constants (Aapke rules ke hisab se)
+             const tenureMonths = 36; // 3 Years
+             const interestRate = 0.12; // 12% Interest
+             
+             // C. Total Expected Interest
+             const totalPrincipal = monthlyDeposit * tenureMonths;
+             const totalInterest = totalPrincipal * interestRate; 
+             
+             // D. Monthly Interest Share (e.g. ₹4000 / 36 = ₹111.11)
+             const monthlyInterestShare = totalInterest / tenureMonths;
+
+             // E. Count payments made
+             const depositCount = deposits.length;
+
+             // F. Current Liability = Monthly Interest * Kitni baar jama kiya
+             const currentLiability = monthlyInterestShare * depositCount;
+             
+             maturityLiability += currentLiability;
+        }
+    });
+
+    // --- FINAL TOTALS ---
+    
+    // Total Expense = Cash Expense (Ops) + Maturity Liability (Interest)
+    const totalExpenseFinal = cashExpense + maturityLiability;
+    
+    // Net Profit = Income - Total Expense
+    const netProfitFinal = income - totalExpenseFinal;
+
+    // Chart formatting
+    const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
+
+    // Set State
+    setFinancials({
+        netProfit: netProfitFinal,
+        totalIncome: income,
+        totalExpense: totalExpenseFinal, // ✅ Ab isme Maturity bhi judi hai
+        cashBal: cash, 
+        bankBal: bank,
+        upiBal: upi,
+        depositTotal: income,
+        pendingLoans: pendingLoanCount
+    });
+    setChartData(chart);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('current_user');
+    router.push('/login');
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading Financial Cockpit...</div>;
+  if (!clientData) return null;
+
+  const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
+  
+  // Profit Margin Calculation
+  const profitMargin = financials.totalIncome > 0 
+    ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
+    : "0";
+    
+  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-6 md:p-8 space-y-6">
+      
+      {/* HEADER */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{clientData.society_name || 'My Society'}</h1>
+          <p className="text-slate-500 text-sm">Financial Overview • {clientData.name}</p>
+        </div>
+        <div className="flex items-center gap-4">
+            <div className="text-right hidden md:block">
+            <p className="text-xs text-slate-400 font-mono uppercase">SYSTEM DATE</p>
+            <p className="font-bold text-slate-700">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500 hover:bg-red-50"><LogOut className="w-5 h-5"/></Button>
+        </div>
+      </div>
+
+      {/* SECTION 1: FINANCIAL HEALTH */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className={`border-l-4 ${financials.netProfit >= 0 ? 'border-l-green-500 bg-green-50/50' : 'border-l-red-500 bg-red-50/50'}`}>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Net Profit</CardTitle></CardHeader>
+          <CardContent>
+            <div className={`text-3xl font-bold ${financials.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                {fmt(financials.netProfit)}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Actual Earnings</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Income</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{fmt(financials.totalIncome)}</div>
+            <div className="flex items-center text-xs text-green-600 mt-1"><TrendingUp className="w-3 h-3 mr-1"/> Interest + Fines</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Expense</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{fmt(financials.totalExpense)}</div>
+            <div className="flex items-center text-xs text-red-600 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Liability</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Margin</CardTitle></CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${Number(profitMargin) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{profitMargin}%</div>
+            <p className="text-xs text-slate-500 mt-1">Health Indicator</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* SECTION 2: LIQUIDITY */}
+      <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mt-4">
+        <Landmark className="w-5 h-5 text-orange-600" /> Liquidity Position
+      </h3>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="bg-emerald-50 border-emerald-200">
+           <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-emerald-700 uppercase">Cash In Hand</span>
+                 <Wallet className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-bold text-emerald-800">{fmt(financials.cashBal)}</div>
+           </CardContent>
+        </Card>
+        <Card className="bg-blue-50 border-blue-200">
+           <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-blue-700 uppercase">Bank</span>
+                 <Building2 className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="text-2xl font-bold text-blue-800">{fmt(financials.bankBal)}</div>
+           </CardContent>
+        </Card>
+        <Card className="bg-purple-50 border-purple-200">
+           <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-purple-700 uppercase">UPI</span>
+                 <Smartphone className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="text-2xl font-bold text-purple-800">{fmt(financials.upiBal)}</div>
+           </CardContent>
+        </Card>
+        <Card className="bg-slate-900 text-white">
+           <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-slate-300 uppercase">Total Liquidity</span>
+                 <CheckCircle className="w-4 h-4 text-green-400" />
+              </div>
+              <div className="text-2xl font-bold">{fmt(totalLiquidity)}</div>
+           </CardContent>
+        </Card>
+      </div>
+
+      {/* SECTION 3: ALERTS & CHARTS */}
+      <div className="grid gap-6 md:grid-cols-3">
+         <div className="space-y-4">
+            <Alert className="bg-yellow-50 border-yellow-200">
+               <AlertCircle className="h-4 w-4 text-yellow-600" />
+               <AlertTitle className="text-yellow-800">System Status</AlertTitle>
+               <AlertDescription className="text-yellow-700">
+                 {financials.pendingLoans > 0 
+                   ? `${financials.pendingLoans} active loans.` 
+                   : "System updated live from Supabase."}
+               </AlertDescription>
+            </Alert>
+            <Card>
+               <CardContent className="p-4 flex justify-between items-center">
+                  <div><p className="text-xs text-gray-500">Total Deposits</p><h4 className="text-xl font-bold">{fmt(financials.depositTotal)}</h4></div>
+                  <Users className="text-orange-500" />
+               </CardContent>
+            </Card>
+         </div>
+
+         <Card className="col-span-2">
+            <CardHeader><CardTitle>Monthly Performance</CardTitle></CardHeader>
+            <CardContent className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData.length > 0 ? chartData : [{month: 'No Data', amount: 0}]}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <Tooltip formatter={(value) => fmt(Number(value))} />
+                  <Bar dataKey="amount" fill="#10B981" radius={[4,4,0,0]} name="Income" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+         </Card>
+      </div>
+    </div>
+  );
 }
