@@ -41,41 +41,42 @@ export default function ClientDashboard() {
         try {
             const user = JSON.parse(storedUser);
             
-            // 1. Client Details Fetch
+            // 1. Client Fetch
             const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
             if (client) setClientData(client);
             else setClientData(user);
 
-            // --- REAL DATA FETCHING (Correct Table Names ke sath) ---
+            // --- FETCH DATA FOR DASHBOARD ---
             
-            // A. Passbook Data (Income Source) - Table: 'passbook_entries'
-            // NOTE: Aapki passbook table me 'client_id' nahi hai, isliye hum filter nahi laga rahe.
+            // A. Passbook (Income + Liquidity + Maturity Base)
             const passbookReq = supabase
-                .from('passbook_entries') 
+                .from('passbook_entries')
                 .select('*'); 
 
-            // B. Expenses Data (Expense Source) - Table: 'expenses_ledger'
+            // B. Expenses (Cash Expense & Other Income)
             const expenseReq = supabase
                 .from('expenses_ledger') 
                 .select('*')
-                .eq('client_id', user.id) // Is table me client_id hai
-                .eq('type', 'EXPENSE'); // Hume sirf kharche chahiye
+                .eq('client_id', user.id);
 
-            // C. Loans Data - Table: 'loans'
+            // C. Loans (Status)
             const loansReq = supabase
                 .from('loans')
                 .select('*')
                 .eq('client_id', user.id);
 
-            // Execute all queries
-            const [passbookRes, expenseRes, loansRes] = await Promise.all([passbookReq, expenseReq, loansReq]);
+            // Run Queries
+            const [passbookRes, expenseRes, loansRes] = await Promise.all([
+                passbookReq, expenseReq, loansReq
+            ]);
 
-            // Calculation Logic Call
-            calculateFinancials(
-                passbookRes.data || [], 
-                expenseRes.data || [], 
-                loansRes.data || []
-            );
+            if (passbookRes.data) {
+                calculateFinancials(
+                    passbookRes.data || [], 
+                    expenseRes.data || [], 
+                    loansRes.data || []
+                );
+            }
 
         } catch(e) {
             console.error("Error fetching dashboard data:", e);
@@ -86,67 +87,137 @@ export default function ClientDashboard() {
     init();
   }, [router]);
 
-  // ✅ LOGIC: Teeno tables ka data mix karke calculation
+  // ✅ LOGIC: Real Profit & Maturity Liability Logic
   const calculateFinancials = (passbook: any[], expenses: any[], loans: any[]) => {
-    let income = 0;
-    let expenseTotal = 0;
+    // Variables for Calculation
+    let realIncome = 0; // Only Interest + Fine
+    let cashExpense = 0;
+    
+    // Liquidity (Ye alag hai Income se)
     let cash = 0;
     let bank = 0;
     let upi = 0;
+    
     let pendingLoanCount = 0;
+    let totalDepositsCollected = 0; // For Deposits Card
 
     const monthlyMap: {[key: string]: number} = {};
 
-    // 1. Passbook se Income aur Liquidity Jodo
+    // 1. Passbook Processing
     passbook.forEach(t => {
-        // Aapke data me 'total_amount' column hai
-        const amt = Number(t.total_amount) || 0;
+        const totalAmt = Number(t.total_amount) || 0; // Cash Flow (Liquidity ke liye)
         
-        // Aapke data me 'payment_mode' hai (cash, bank, upi)
+        // Income Logic: Sirf Interest aur Fine hi profit hai
+        const interest = Number(t.interest_amount) || 0;
+        const fine = Number(t.fine_amount) || 0;
+        const deposit = Number(t.deposit_amount) || 0;
+
+        realIncome += (interest + fine);
+        totalDepositsCollected += deposit;
+
+        // Liquidity Logic (Cash Flow)
         const mode = (t.payment_mode || '').toLowerCase().trim();
-        
-        // Date column 'date' hai
-        const dateStr = t.date || t.created_at;
-        const date = dateStr ? new Date(dateStr) : new Date();
+        if (mode.includes('cash')) cash += totalAmt;
+        else if (mode.includes('bank') || mode.includes('cheque')) bank += totalAmt;
+        else if (mode.includes('upi') || mode.includes('online')) upi += totalAmt;
 
-        income += amt;
-
-        // Liquidity Position Logic
-        if (mode === 'cash') cash += amt;
-        else if (mode === 'bank' || mode === 'cheque') bank += amt;
-        else if (mode === 'upi' || mode === 'online') upi += amt;
-
-        // Monthly Chart Data
+        // Chart Data (Income based)
+        const date = t.date ? new Date(t.date) : new Date(t.created_at);
         const month = date.toLocaleString('default', { month: 'short' });
-        monthlyMap[month] = (monthlyMap[month] || 0) + amt;
+        // Chart me hum total cash flow dikha rahe hain ya sirf income, 
+        // usually cash flow dikhate hain monthly performance ke liye
+        monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
     });
 
-    // 2. Expenses Ledger se Kharcha Jodo
+    // 2. Expenses Ledger Processing
     expenses.forEach(e => {
-        // Aapke data me 'amount' column hai
         const amt = Number(e.amount) || 0;
-        expenseTotal += amt;
-    });
-
-    // 3. Loans se Active/Pending Count karo
-    loans.forEach(l => {
-        // Aapke data me status 'active' hai
-        if (l.status === 'active' || l.status === 'pending' || l.status === 'requested') {
-            pendingLoanCount++;
+        
+        if (e.type === 'EXPENSE') {
+            cashExpense += amt;
+            
+            // Expense means cash going out, so subtract from liquidity
+            // Defaulting removal from Cash if not specified, logic can be enhanced
+            cash -= amt; 
+        } 
+        else if (e.type === 'INCOME') {
+            // Agar koi aur income hai (e.g. Form Fees)
+            realIncome += amt;
+            cash += amt; // Assuming cash income
         }
     });
 
-    // Final Setup
+    // 3. Loans Count Logic
+    loans.forEach(l => {
+        if (l.status === 'active') pendingLoanCount++;
+        // Loan diya hai toh cash kam hua hoga
+        // Note: Agar passbook me loan entry nahi hai toh yahan se minus karein
+        // Assuming Loan Out is manual cash out
+        // cash -= Number(l.amount); // Uncomment only if loans NOT in expenses
+    });
+
+    // --- 4. MATURITY LIABILITY CALCULATION (The Missing Piece) ---
+    // Formula: (Monthly Share * Deposit Count) for each member
+    
+    let maturityLiability = 0;
+
+    // Group deposits by Member
+    const memberDeposits: {[key: string]: any[]} = {};
+    passbook.forEach(p => {
+        if(p.member_id && Number(p.deposit_amount) > 0) {
+            if(!memberDeposits[p.member_id]) memberDeposits[p.member_id] = [];
+            memberDeposits[p.member_id].push(p);
+        }
+    });
+
+    // Har Member ka Interest Liability Calculate karein
+    Object.keys(memberDeposits).forEach(memberId => {
+        const deposits = memberDeposits[memberId];
+        if (deposits.length > 0) {
+             // A. Find Monthly Amount (First deposit se)
+             const sorted = deposits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+             const monthlyDeposit = Number(sorted[0].deposit_amount || 0);
+             
+             // B. Constants (Change as per your rules)
+             const tenureMonths = 36; // 3 Years
+             const interestRate = 0.12; // 12% Interest
+             
+             // C. Total Expected Interest
+             const totalPrincipal = monthlyDeposit * tenureMonths;
+             const totalInterest = totalPrincipal * interestRate; 
+             
+             // D. Monthly Interest Share (e.g. ₹4000 / 36 = ₹111.11)
+             const monthlyInterestShare = totalInterest / tenureMonths;
+
+             // E. Count payments made
+             const depositCount = deposits.length;
+
+             // F. Current Liability = Monthly Interest * Kitni baar jama kiya
+             const currentLiability = monthlyInterestShare * depositCount;
+             
+             maturityLiability += currentLiability;
+        }
+    });
+
+    // --- FINAL TOTALS ---
+    
+    // Total Expense = Cash Expense (Ops) + Maturity Liability (Hidden Interest)
+    const totalExpenseFinal = cashExpense + maturityLiability;
+    
+    // Real Net Profit = Actual Income (Interest+Fine) - All Expenses
+    const netProfitFinal = realIncome - totalExpenseFinal;
+
+    // Chart formatting
     const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
 
     setFinancials({
-        netProfit: income - expenseTotal, // Income (Passbook) - Expense (Ledger)
-        totalIncome: income,
-        totalExpense: expenseTotal,
-        cashBal: cash,
+        netProfit: netProfitFinal,
+        totalIncome: realIncome, // Ab ye sirf Interest+Fine dikhayega (Real Income)
+        totalExpense: totalExpenseFinal, // Includes Maturity Liability
+        cashBal: cash, 
         bankBal: bank,
         upiBal: upi,
-        depositTotal: income,
+        depositTotal: totalDepositsCollected,
         pendingLoans: pendingLoanCount
     });
     setChartData(chart);
@@ -161,6 +232,8 @@ export default function ClientDashboard() {
   if (!clientData) return null;
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
+  
+  // Profit Margin Calculation
   const profitMargin = financials.totalIncome > 0 
     ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
     : "0";
@@ -187,13 +260,18 @@ export default function ClientDashboard() {
 
       {/* SECTION 1: FINANCIAL HEALTH */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-l-4 border-l-green-500 bg-green-50/50">
+        {/* Net Profit Card */}
+        <Card className={`border-l-4 ${financials.netProfit >= 0 ? 'border-l-green-500 bg-green-50/50' : 'border-l-red-500 bg-red-50/50'}`}>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Net Profit</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-700">{fmt(financials.netProfit)}</div>
+            <div className={`text-3xl font-bold ${financials.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                {fmt(financials.netProfit)}
+            </div>
             <p className="text-xs text-slate-500 mt-1">Actual Earnings</p>
           </CardContent>
         </Card>
+
+        {/* Total Income Card */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Income</CardTitle></CardHeader>
           <CardContent>
@@ -201,17 +279,21 @@ export default function ClientDashboard() {
             <div className="flex items-center text-xs text-green-600 mt-1"><TrendingUp className="w-3 h-3 mr-1"/> Interest + Fines</div>
           </CardContent>
         </Card>
+
+        {/* Total Expense Card (Updated with Maturity) */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Expense</CardTitle></CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{fmt(financials.totalExpense)}</div>
-            <div className="flex items-center text-xs text-red-600 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Salary</div>
+            <div className="flex items-center text-xs text-red-600 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Liability</div>
           </CardContent>
         </Card>
+
+        {/* Margin Card */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Margin</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{profitMargin}%</div>
+            <div className={`text-2xl font-bold ${Number(profitMargin) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{profitMargin}%</div>
             <p className="text-xs text-slate-500 mt-1">Health Indicator</p>
           </CardContent>
         </Card>
@@ -269,7 +351,7 @@ export default function ClientDashboard() {
                <AlertDescription className="text-yellow-700">
                  {financials.pendingLoans > 0 
                    ? `${financials.pendingLoans} active loans.` 
-                   : "Data updated live from Supabase."}
+                   : "System updated live from Supabase."}
                </AlertDescription>
             </Alert>
             <Card>
