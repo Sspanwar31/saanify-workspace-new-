@@ -372,4 +372,4 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
   const reversedPassbook = [...passbookEntries].reverse();
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
-} isko dekhiye isme problem hai kya lekin isem humare sare section hai humko only 3 section sahi karna hai usem bhi sirf humko unko bachand supbase se jodan hai baki kuch change nahi karna hai bachand logic calculation table aur ui sub same rahna chaiye 
+}
