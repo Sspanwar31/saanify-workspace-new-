@@ -1,5 +1,4 @@
-aap ap update code de rahe ho jsis me dashoboard par real profit dikhe isliye vpas code de raha hu jisme ye logic jod kar do without koi section change kar only dashboard caclaultion change karkke = code = 'use client';
-
+'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
 import { differenceInMonths } from 'date-fns';
