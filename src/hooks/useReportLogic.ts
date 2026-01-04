@@ -1,6 +1,7 @@
 'use client';
+
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple';
+import { supabase } from '@/lib/supabase'; // Updated import to standard
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -40,70 +41,119 @@ export function useReportLogic() {
     defaulters: []
   });
 
-  // 1. Fetch Data
+  // 1. Fetch Data (DUAL LOGIC IMPLEMENTED HERE)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      
+      // Determine Context
       let cid = clientId;
       if (!cid) {
-        const { data: clients } = await supabase.from('clients').select('id').limit(1);
-        if (clients && clients.length > 0) {
-          cid = clients[0].id;
-          setClientId(cid);
+        const storedUser = localStorage.getItem('current_user');
+        if (storedUser) {
+            cid = JSON.parse(storedUser).id;
+            setClientId(cid);
         }
       }
 
+      // Check if viewing as Admin (Access Panel Mode)
+      const isAdminView = localStorage.getItem('admin_session') === 'true';
+
       if (cid) {
-        const [membersRes, loansRes, passbookRes, expenseRes] = await Promise.all([
-          supabase.from('members').select('*').eq('client_id', cid),
-          supabase.from('loans').select('*').eq('client_id', cid),
-          supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
-          supabase.from('expenses_ledger').select('*').eq('client_id', cid)
-        ]);
+        try {
+            let membersData, loansData, passbookData, expensesData;
 
-        if (membersRes.data) setMembers(membersRes.data);
-        if (loansRes.data) setLoans(loansRes.data);
-        
-        if (passbookRes.data) {
-          const memberIds = new Set(membersRes.data?.map(m => m.id));
-          const validEntries = passbookRes.data.filter(e => memberIds.has(e.member_id));
+            if (isAdminView) {
+                // --- OPTION A: ADMIN MODE (API CALL TO BYPASS RLS) ---
+                // Admin frontend se direct call nahi karega, API se mangega
+                const fetchFromApi = async (table: string) => {
+                    const res = await fetch('/api/admin/get-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ table, clientId: cid })
+                    });
+                    const json = await res.json();
+                    return json.data || [];
+                };
 
-          let runningBalance = 0;
-          const mappedPassbook = validEntries.map((e: any) => {
-            const total = Number(e.total_amount || 0);
-            runningBalance += total;
+                const [m, l, p, e] = await Promise.all([
+                    fetchFromApi('members'),
+                    fetchFromApi('loans'),
+                    fetchFromApi('passbook_entries'),
+                    fetchFromApi('expenses_ledger')
+                ]);
 
-            let type = 'DEPOSIT';
-            if (Number(e.installment_amount) > 0) type = 'LOAN_REPAYMENT';
-            else if (Number(e.interest_amount) > 0 || Number(e.fine_amount) > 0) type = 'INTEREST/FINE';
+                membersData = m;
+                loansData = l;
+                passbookData = p?.sort((a:any, b:any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                expensesData = e;
 
-            return {
-              id: e.id,
-              date: e.date,
-              memberId: e.member_id, 
-              memberName: e.member_name, 
-              amount: total,
-              paymentMode: e.payment_mode || 'CASH', 
-              description: e.note || 'Passbook Entry',
-              type: type,
-              depositAmount: Number(e.deposit_amount || 0),
-              installmentAmount: Number(e.installment_amount || 0),
-              interestAmount: Number(e.interest_amount || 0),
-              fineAmount: Number(e.fine_amount || 0),
-              balance: runningBalance
-            };
-          });
-          setPassbookEntries(mappedPassbook); 
+            } else {
+                // --- OPTION B: NORMAL MODE (DIRECT SUPABASE + RLS) ---
+                const [membersRes, loansRes, passbookRes, expenseRes] = await Promise.all([
+                    supabase.from('members').select('*').eq('client_id', cid),
+                    supabase.from('loans').select('*').eq('client_id', cid),
+                    supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
+                    supabase.from('expenses_ledger').select('*').eq('client_id', cid)
+                ]);
+
+                membersData = membersRes.data || [];
+                loansData = loansRes.data || [];
+                passbookData = passbookRes.data || [];
+                expensesData = expenseRes.data || [];
+            }
+
+            // --- SET STATE (Common for both) ---
+            setMembers(membersData);
+            setLoans(loansData);
+            setExpenses(expensesData);
+
+            if (passbookData) {
+                // Member ID Filter (Security Layer for RLS mode)
+                // Admin mode me sab aa jayega, Client mode me RLS already filter kar chuka hoga
+                // Lekin safe side ke liye hum memberIds check karte hain
+                const memberIds = new Set(membersData.map((m: any) => m.id));
+                // Note: Agar admin mode hai aur memberIds match nahi ho rahe (sync issue), to filter hata sakte hain
+                const validEntries = isAdminView ? passbookData : passbookData.filter((e: any) => memberIds.has(e.member_id));
+
+                let runningBalance = 0;
+                const mappedPassbook = validEntries.map((e: any) => {
+                    const total = Number(e.total_amount || 0);
+                    runningBalance += total;
+
+                    let type = 'DEPOSIT';
+                    if (Number(e.installment_amount) > 0) type = 'LOAN_REPAYMENT';
+                    else if (Number(e.interest_amount) > 0 || Number(e.fine_amount) > 0) type = 'INTEREST/FINE';
+
+                    return {
+                        id: e.id,
+                        date: e.date || e.created_at,
+                        memberId: e.member_id, 
+                        memberName: e.member_name, 
+                        amount: total,
+                        paymentMode: e.payment_mode || 'CASH', 
+                        description: e.note || 'Passbook Entry',
+                        type: type,
+                        depositAmount: Number(e.deposit_amount || 0),
+                        installmentAmount: Number(e.installment_amount || 0),
+                        interestAmount: Number(e.interest_amount || 0),
+                        fineAmount: Number(e.fine_amount || 0),
+                        balance: runningBalance
+                    };
+                });
+                setPassbookEntries(mappedPassbook); 
+            }
+
+        } catch (error) {
+            console.error("Data Fetch Error:", error);
         }
-
-        if (expenseRes.data) setExpenses(expenseRes.data);
       }
       setLoading(false);
     };
     fetchData();
   }, [clientId]);
 
-  // 2. Calculation Engine
+  // 2. Calculation Engine (EXACT SAME AS BEFORE)
   useEffect(() => {
     if (loading || !members.length) return;
 
@@ -126,7 +176,7 @@ export function useReportLogic() {
     });
 
     const filteredExpenses = expenses.filter(e => {
-        const d = new Date(e.date);
+        const d = new Date(e.date || e.created_at);
         const dateMatch = d >= start && d <= end;
         let typeMatch = true;
         if(filters.transactionType === 'deposit' || filters.transactionType === 'loan') typeMatch = false;
@@ -148,6 +198,7 @@ export function useReportLogic() {
 
     let totalMaturityLiability = 0;
     members.forEach(m => {
+        // Use ALL passbook entries for maturity, not date filtered
         const mDepositEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
         if (mDepositEntries.length > 0) {
              const sorted = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -169,49 +220,33 @@ export function useReportLogic() {
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
    // --- C. LOAN STATS (Live) ---
-const loansWithLiveBalance = loans.map(l => {
-  // Calculate principal paid from passbook
-  const installmentsPaid = passbookEntries
-    .filter(
-      p => p.memberId === l.member_id && Number(p.installmentAmount) > 0
-    )
-    .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
+    const loansWithLiveBalance = loans.map(l => {
+      const installmentsPaid = passbookEntries
+        .filter(
+          p => p.memberId === l.member_id && Number(p.installmentAmount) > 0
+        )
+        .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
 
-  const loanAmount = Number(l.amount) || 0;
-  const currentBalance = Math.max(0, loanAmount - installmentsPaid);
-  const isActive = currentBalance > 0;
+      const loanAmount = Number(l.amount) || 0;
+      const currentBalance = Math.max(0, loanAmount - installmentsPaid);
+      const isActive = currentBalance > 0;
+      const interestAmount = Math.round(currentBalance * 0.01);
 
-  // ✅ Interest = 1% of CURRENT BALANCE (NUMBER ONLY)
-  // 2000 -> 20
-  // 4000 -> 40
-  const interestAmount = Math.round(currentBalance * 0.01);
+      return {
+        id: l.id,
+        memberId: l.member_id,
+        start_date: l.start_date,
+        amount: loanAmount,
+        principalPaid: installmentsPaid,
+        remainingBalance: currentBalance,
+        interestRate: interestAmount, 
+        status: isActive ? 'ACTIVE' : 'CLOSED'
+      };
+    });
 
-  // ✅ Explicit object (NO spread)
-  // Ensures DB string interest_rate never leaks
-  return {
-    id: l.id,
-    memberId: l.member_id,
-    start_date: l.start_date,
-    amount: loanAmount,
-    principalPaid: installmentsPaid,
-    remainingBalance: currentBalance,
-    interestRate: interestAmount, // ✅ PURE NUMBER
-    status: isActive ? 'ACTIVE' : 'CLOSED'
-  };
-});
-
-// Totals (unchanged logic)
-const loansIssuedTotal = loansWithLiveBalance.reduce(
-  (acc, l) => acc + l.amount,
-  0
-);
-
-const loansPendingTotal = loansWithLiveBalance.reduce(
-  (acc, l) => acc + l.remainingBalance,
-  0
-);
-
-const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
+    const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
+    const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
+    const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
@@ -242,7 +277,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
     });
 
     filteredExpenses.forEach(e => {
-        const entry = getOrSetEntry(e.date);
+        const entry = getOrSetEntry(e.date || new Date().toISOString());
         const amt = Number(e.amount);
         if (e.type === 'EXPENSE') { entry.cashOut += amt; entry.cashOutMode += amt; }
         else { entry.cashIn += amt; entry.cashInMode += amt; }
@@ -250,6 +285,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
         loans.forEach(l => {
+            // Check loan date against filter range
             if (l.start_date >= filters.startDate && l.start_date <= filters.endDate) {
                 const entry = getOrSetEntry(l.start_date);
                 const amt = Number(l.amount);
@@ -284,6 +320,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
     // --- E. MODE STATS ---
     let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
+    // Use FULL Passbook (not filtered) for current Balance
     passbookEntries.forEach(e => {
         const amt = e.amount;
         const mode = (e.paymentMode || 'CASH').toUpperCase();
@@ -306,7 +343,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
         const lPaid = lTaken - lPend;
 
         return { 
-            id: m.id, name: m.name, fatherName: m.phone, 
+            id: m.id, name: m.name || m.member_name || 'Member', phone: m.phone || '', 
             totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
             interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
             netWorth: dep - lPend, status: m.status || 'active' 
@@ -331,7 +368,7 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
         const outstanding = Number(m.outstanding_loan || 0);
 
         return { 
-            memberName: m.name, joinDate: m.join_date || m.created_at, 
+            memberName: m.name || 'Member', joinDate: m.join_date || m.created_at, 
             currentDeposit: Number(m.total_deposits || 0), targetDeposit: target, 
             projectedInterest: settledInterest, maturityAmount: maturityAmt, 
             outstandingLoan: outstanding, netPayable: maturityAmt - outstanding
@@ -371,4 +408,4 @@ const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
 
   const reversedPassbook = [...passbookEntries].reverse();
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
-} 
+}
