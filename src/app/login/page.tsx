@@ -91,7 +91,8 @@ export default function LoginPage() {
 
       if (member) {
         localStorage.setItem('current_member', JSON.stringify(member));
-        router.push(member.role === 'treasurer' ? '/treasurer' : '/member');
+        // Agar Treasurer hai to '/treasurer', agar Member hai to '/member-portal'
+        router.push(member.role === 'treasurer' ? '/treasurer' : '/member-portal');
         return;
       }
 
