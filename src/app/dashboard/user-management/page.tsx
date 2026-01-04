@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase-simple'; 
+import { supabase } from '@/lib/supabase'; // Updated import path
 import { 
   Users, Shield, UserCheck, Ban, Plus, Search, 
   Download, RefreshCw, Edit, Trash2, Crown, Activity, 
-  Lock, Unlock, Link as LinkIcon, Save, Check, X, AlertTriangle, FileText, Filter as FilterIcon
+  Lock, Unlock, Link as LinkIcon, Save, X, Filter as FilterIcon,
+  Eye, EyeOff // New Icons for Password
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,10 +20,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
-// --- CONFIGURATION CONSTANTS ---
+// --- CONFIGURATION CONSTANTS (UNCHANGED) ---
 const PERMISSION_CATEGORIES = [
   { name: 'General Permissions', items: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data'] },
   { name: 'User Management Permissions', items: ['User Management Access', 'Manage Users', 'Manage Members'] },
@@ -52,9 +52,13 @@ export default function UserManagementPage() {
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Loading state for save
+  const [showPassword, setShowPassword] = useState(false); // Toggle Password Visibility
   const [editingUser, setEditingUser] = useState<any>(null);
+  
+  // ✅ Updated Form Data to include Password
   const [formData, setFormData] = useState({
-    name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active'
+    name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active', password: ''
   });
 
   // Roles State
@@ -65,13 +69,13 @@ export default function UserManagementPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      const storedUser = localStorage.getItem('current_user');
       let cid = clientId;
-      if (!cid) {
-        const { data: clients } = await supabase.from('clients').select('id').limit(1);
-        if (clients && clients.length > 0) {
-            cid = clients[0].id;
-            setClientId(cid);
-        }
+      
+      if (!cid && storedUser) {
+        const user = JSON.parse(storedUser);
+        cid = user.id;
+        setClientId(cid);
       }
 
       if (cid) {
@@ -111,30 +115,80 @@ export default function UserManagementPage() {
     await supabase.from('activity_logs').insert([{ client_id: clientId, user_name: 'Current User', action: action, details: details }]);
   };
 
-  const handleOpenAdd = () => { setEditingUser(null); setFormData({ name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active' }); setIsModalOpen(true); };
-  const handleOpenEdit = (user: any) => { setEditingUser(user); setFormData({ name: user.name, role: user.role || 'member', email: user.email || '', phone: user.phone || '', linked_member_id: user.id, status: user.status || 'active' }); setIsModalOpen(true); };
+  const handleOpenAdd = () => { 
+      setEditingUser(null); 
+      setFormData({ name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active', password: '' }); 
+      setIsModalOpen(true); 
+  };
   
+  const handleOpenEdit = (user: any) => { 
+      setEditingUser(user); 
+      setFormData({ 
+          name: user.name, role: user.role || 'member', email: user.email || '', 
+          phone: user.phone || '', linked_member_id: user.id, status: user.status || 'active',
+          password: '' // Don't show old password
+      }); 
+      setIsModalOpen(true); 
+  };
+  
+  // ✅ NEW: Handle Submit using API (Create/Update Login + DB)
   const handleSubmit = async () => {
-    if(!clientId || !formData.name) return;
+    if(!clientId || !formData.name || !formData.email) {
+        toast.error("Name and Email are required");
+        return;
+    }
+
+    setIsSaving(true); // Start loading
+
     try {
-        if (editingUser) {
-            const { error } = await supabase.from('members').update({ name: formData.name, role: formData.role, email: formData.email, phone: formData.phone, status: formData.status }).eq('id', editingUser.id);
-            if (error) throw error;
-            await logActivity('Update User', `Updated user: ${formData.name}`);
-        } else {
-            const { error } = await supabase.from('members').insert([{ client_id: clientId, name: formData.name, role: formData.role, email: formData.email, phone: formData.phone, status: formData.status, join_date: new Date().toISOString() }]);
-            if (error) throw error;
-            await logActivity('Create User', `Created user: ${formData.name}`);
-        }
-        window.location.reload();
-    } catch (error: any) { alert("Error: " + error.message); }
+        const payload = {
+            id: editingUser ? editingUser.id : null, // ID only if editing
+            clientId: clientId,
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            role: formData.role,
+            status: formData.status,
+            password: formData.password // Optional for edit, Required for new
+        };
+
+        const response = await fetch('/api/users/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.error);
+
+        toast.success(editingUser ? "User Updated Successfully" : "User Created Successfully");
+        await logActivity(editingUser ? 'Update User' : 'Create User', `${editingUser ? 'Updated' : 'Created'} user: ${formData.name}`);
+        
+        setIsModalOpen(false);
+        window.location.reload(); // Refresh list
+
+    } catch (error: any) { 
+        console.error(error);
+        toast.error(error.message || "Operation failed"); 
+    } finally {
+        setIsSaving(false); // Stop loading
+    }
   };
 
   const handleDelete = async (userId: string, role: string) => {
     if (role === 'client_admin') { alert("Action Denied: Cannot delete Main Admin."); return; }
-    if (confirm("Delete this user?")) {
+    if (confirm("Delete this user? This will also remove their login access.")) {
+        // Note: For full cleanup, API should handle deletion too.
+        // For now, removing from DB prevents login due to logic checks.
         const { error } = await supabase.from('members').delete().eq('id', userId);
-        if (!error) { setUsers(users.filter(u => u.id !== userId)); await logActivity('Delete User', `Deleted user ID: ${userId}`); }
+        if (!error) { 
+            setUsers(users.filter(u => u.id !== userId)); 
+            await logActivity('Delete User', `Deleted user ID: ${userId}`); 
+            toast.success("User Deleted");
+        } else {
+            toast.error("Delete Failed: " + error.message);
+        }
     }
   };
 
@@ -142,7 +196,11 @@ export default function UserManagementPage() {
     if (user.role === 'client_admin') return;
     const newStatus = user.status === 'active' ? 'blocked' : 'active';
     const { error } = await supabase.from('members').update({ status: newStatus }).eq('id', user.id);
-    if (!error) { setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u)); await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`); }
+    if (!error) { 
+        setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u)); 
+        await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`); 
+        toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
+    }
   };
 
   const togglePermission = (role: string, permission: string) => {
@@ -175,7 +233,7 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      {/* ✅ 2. TABS (Moved Above Stats) */}
+      {/* ✅ 2. TABS */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex justify-center mb-6">
             <TabsList className="grid w-full max-w-2xl grid-cols-3 h-12 bg-white rounded-full p-1 shadow-sm border">
@@ -191,8 +249,7 @@ export default function UserManagementPage() {
             </TabsList>
         </div>
 
-        {/* 3. Stats Cards (Now Inside Tabs Flow visually, but technically outside TabsContent to show on all tabs if desired, OR keep inside All Users. Based on your request, I will keep them ABOVE tab content but BELOW tab list so they are visible always) */}
-        
+        {/* 3. Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <Card className="border-none shadow-md hover:shadow-lg transition-shadow">
                 <CardContent className="p-6 flex justify-between items-center">
@@ -254,8 +311,8 @@ export default function UserManagementPage() {
             </TableBody></Table></div></CardContent></Card>
         </TabsContent>
 
+        {/* Roles & Activity Tabs (Unchanged) */}
         <TabsContent value="roles" className="space-y-6">
-            {/* Keeping Roles Content Same as Provided */}
             <div className="flex justify-between items-center bg-white p-6 rounded-xl border shadow-sm">
                 <div><h2 className="text-lg font-bold text-gray-900">Role Capabilities</h2><p className="text-sm text-gray-500 mt-1">Configure what each role can access and perform.</p></div>
                 <div className="flex gap-3">{isEditingRoles ? <><Button variant="outline" onClick={() => setIsEditingRoles(false)} className="text-red-600 border-red-200 bg-red-50 hover:bg-red-100"><X className="h-4 w-4 mr-2"/> Cancel</Button><Button onClick={savePermissions} className="bg-green-600 text-white hover:bg-green-700 shadow-md"><Save className="h-4 w-4 mr-2"/> Save Changes</Button></> : <Button onClick={() => setIsEditingRoles(true)} className="bg-blue-600 text-white hover:bg-blue-700 shadow-md"><Edit className="h-4 w-4 mr-2"/> Edit Permissions</Button>}</div>
@@ -282,7 +339,7 @@ export default function UserManagementPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Modals remain same */}
+      {/* ✅ MODAL WITH PASSWORD INPUT */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader><DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle></DialogHeader>
@@ -291,10 +348,33 @@ export default function UserManagementPage() {
                 <div className="grid gap-2"><Label>Role</Label><Select value={formData.role} onValueChange={(val) => setFormData({...formData, role: val})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="client_admin">Client Admin</SelectItem><SelectItem value="treasurer">Treasurer</SelectItem><SelectItem value="member">Member</SelectItem></SelectContent></Select></div>
                 <div className="grid gap-2"><Label>Email</Label><Input value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="user@example.com"/></div>
                 <div className="grid gap-2"><Label>Phone</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+91..."/></div>
+                
+                {/* ✅ PASSWORD FIELD ADDED */}
+                <div className="grid gap-2">
+                    <Label>Password</Label>
+                    <div className="relative">
+                        <Input 
+                            type={showPassword ? "text" : "password"} 
+                            placeholder={editingUser ? "Enter new to reset (Optional)" : "Set Password"} 
+                            value={formData.password} 
+                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                    </div>
+                    {editingUser && <p className="text-[10px] text-gray-400">Only enter if you want to change the password.</p>}
+                </div>
+
                 {formData.role === 'member' && <div className="grid gap-2"><Label>Link Member</Label><Select value={formData.linked_member_id} onValueChange={(val) => setFormData({...formData, linked_member_id: val})}><SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger><SelectContent><SelectItem value="not_linked">Not Linked</SelectItem>{ledgerMembers.map(m => (<SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>))}</SelectContent></Select></div>}
                 <div className="flex justify-between items-center border p-3 rounded"><Label>Status</Label><Switch checked={formData.status === 'active'} onCheckedChange={(c) => setFormData({...formData, status: c ? 'active' : 'blocked'})}/></div>
             </div>
-            <DialogFooter><Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button><Button onClick={handleSubmit} className="bg-blue-600 text-white">Save</Button></DialogFooter>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={isSaving} className="bg-blue-600 text-white">
+                    {isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
