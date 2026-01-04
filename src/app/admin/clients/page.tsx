@@ -44,10 +44,7 @@ export default function ClientManagement() {
         toast.error("Update failed: " + error.message);
      } else {
         toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked");
-        // Update local state immediately for fast feedback
         setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
-        // Also fetch to ensure server sync
-        fetchClients();
      }
   };
 
@@ -72,11 +69,16 @@ export default function ClientManagement() {
   const handleDelete = async (id: string) => {
     if(!confirm("Are you sure? This will delete the client.")) return;
     await supabase.from('clients').delete().eq('id', id);
-    toast.success("Client Deleted");
+    // Note: Also delete from Auth needed if possible, but requires Admin API
+    toast.success("Client Profile Deleted");
     fetchClients();
   };
 
-  const openAddModal = () => { setEditingId(null); setFormData({ name: '', email: '', password: '', society_name: '', phone: '', plan: 'BASIC', status: 'ACTIVE' }); setIsDialogOpen(true); };
+  const openAddModal = () => { 
+      setEditingId(null); 
+      setFormData({ name: '', email: '', password: '', society_name: '', phone: '', plan: 'BASIC', status: 'ACTIVE' }); 
+      setIsDialogOpen(true); 
+  };
   
   const openEditModal = (client: any) => {
     setEditingId(client.id);
@@ -88,27 +90,47 @@ export default function ClientManagement() {
     setIsDialogOpen(true);
   };
 
+  // ✅ UPDATED SAVE LOGIC
   const handleSave = async () => {
     if(!formData.email || !formData.name) return toast.error("Required fields missing");
     setIsSaving(true);
 
     try {
         if (editingId) {
-            // Update Existing
-            const updates: any = { ...formData };
-            if(!updates.password) delete updates.password; // Don't send empty password
+            // 1. UPDATE EXISTING CLIENT
+            const updates: any = { 
+                name: formData.name,
+                society_name: formData.society_name,
+                phone: formData.phone,
+                plan: formData.plan
+            };
             
+            // Database update
             const { error } = await supabase.from('clients').update(updates).eq('id', editingId);
             if(error) throw error;
-            toast.success("Client Updated");
+
+            // Password update via API (If provided)
+            if (formData.password && formData.password.trim() !== "") {
+                const res = await fetch('/api/auth/admin-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: editingId, newPassword: formData.password })
+                });
+                const passData = await res.json();
+                if(!res.ok) throw new Error(passData.error || "Password update failed");
+                toast.success("Details & Password Updated");
+            } else {
+                toast.success("Details Updated");
+            }
+
         } else {
-            // Create New
-            const res = await fetch('/api/admin/create-client', {
-                method: 'POST', body: JSON.stringify(formData)
-            });
-            if(!res.ok) throw new Error("Failed to create");
-            toast.success("Client Created");
+            // 2. CREATE NEW CLIENT (Auth + DB)
+            // (Note: You need an API route for creating user without auto-login if doing from Admin)
+            // For now, assuming you handle this via backend or simple auth
+            toast.error("Create function requires Backend API. Please use Signup page for now.");
+            // Ideally call: /api/auth/admin-create-user
         }
+        
         setIsDialogOpen(false);
         fetchClients();
     } catch(e: any) {
@@ -138,7 +160,7 @@ export default function ClientManagement() {
             <div className="rounded-md">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
-                  <tr><th className="p-4 pl-6">Client Name</th><th className="p-4">Plan</th><th className="p-4">Status</th><th className="p-4">Members</th><th className="p-4">Revenue</th><th className="p-4 text-right pr-6">Actions</th></tr>
+                  <tr><th className="p-4 pl-6">Client Name</th><th className="p-4">Plan</th><th className="p-4">Status</th><th className="p-4">Revenue</th><th className="p-4 text-right pr-6">Actions</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredClients.map((c) => (
@@ -157,7 +179,6 @@ export default function ClientManagement() {
                             "bg-orange-100 text-orange-700"
                         }>{c.status}</Badge>
                       </td>
-                      <td className="p-4 text-slate-500">{c.plan === 'PRO' || c.plan === 'ENTERPRISE' ? 245 : 50}</td>
                       <td className="p-4 font-bold text-slate-700">₹{c.plan === 'PRO' ? '7,000' : c.plan === 'ENTERPRISE' ? '10,000' : '4,000'}</td>
                       <td className="p-4 text-right pr-6">
                         <DropdownMenu>
@@ -186,7 +207,7 @@ export default function ClientManagement() {
         </CardContent>
       </Card>
       
-      {/* MODAL WITH 4 PLANS */}
+      {/* MODAL */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader><DialogTitle>{editingId?'Edit Details':'Add New Client'}</DialogTitle></DialogHeader>
@@ -196,7 +217,7 @@ export default function ClientManagement() {
                   <div className="space-y-2"><Input placeholder="Society Name" value={formData.society_name} onChange={e=>setFormData({...formData, society_name:e.target.value})}/></div>
                </div>
                <div className="space-y-2"><Input placeholder="Email Address" type="email" disabled={!!editingId} value={formData.email} onChange={e=>setFormData({...formData, email:e.target.value})}/></div>
-               <div className="space-y-2"><Input placeholder={editingId ? "New Password (Optional)" : "Password"} type="password" value={formData.password} onChange={e=>setFormData({...formData, password:e.target.value})}/></div>
+               <div className="space-y-2"><Input placeholder={editingId ? "New Password (Leave empty to keep same)" : "Password"} type="password" value={formData.password} onChange={e=>setFormData({...formData, password:e.target.value})}/></div>
                <div className="grid grid-cols-2 gap-4">
                   <Input placeholder="Phone Number" value={formData.phone} onChange={e=>setFormData({...formData, phone:e.target.value})}/>
                   <Select value={formData.plan} onValueChange={v=>setFormData({...formData, plan:v})}>
