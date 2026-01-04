@@ -8,8 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import {
-  Loader2, Lock, Mail, Eye, EyeOff,
-  ShieldCheck, CheckCircle2, Building2
+  Loader2,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  CheckCircle2,
+  Building2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -32,7 +38,10 @@ export default function LoginPage() {
       });
 
       if (error) {
-        if (formData.email === 'admin@saanify.com' && error.message.includes('Invalid')) {
+        if (
+          formData.email === 'admin@saanify.com' &&
+          error.message.includes('Invalid')
+        ) {
           await createSuperAdmin();
           return;
         }
@@ -52,14 +61,22 @@ export default function LoginPage() {
 
   const checkRoleAndRedirect = async (userId: string) => {
     try {
-      const { data: admin } = await supabase.from('admins').select('*').eq('id', userId).single();
+      const { data: admin } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('id', userId)
+        .single();
       if (admin) {
         localStorage.setItem('admin_session', 'true');
         router.push('/admin');
         return;
       }
 
-      const { data: client } = await supabase.from('clients').select('*').eq('id', userId).single();
+      const { data: client } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', userId)
+        .single();
       if (client) {
         localStorage.setItem('current_user', JSON.stringify(client));
         router.push('/dashboard');
@@ -80,7 +97,9 @@ export default function LoginPage() {
 
       throw new Error();
     } catch {
-      toast.error('Login Failed', { description: 'Profile not linked.' });
+      toast.error('Login Failed', {
+        description: 'Profile not linked.',
+      });
       setLoading(false);
     }
   };
@@ -104,7 +123,9 @@ export default function LoginPage() {
       password: formData.password,
     });
     if (data.user) {
-      await supabase.from('admins').upsert([{ id: data.user.id, email: formData.email }]);
+      await supabase
+        .from('admins')
+        .upsert([{ id: data.user.id, email: formData.email }]);
       router.push('/admin');
     }
   };
@@ -112,14 +133,14 @@ export default function LoginPage() {
   /* ================= UI START ================= */
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-5 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
+    <div className="min-h-screen grid lg:grid-cols-2 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
 
-      {/* LEFT HERO */}
-      <div className="hidden lg:flex lg:col-span-3 bg-gradient-to-br from-[#0B132B] via-[#0E1B3C] to-[#0B132B] p-14 text-white relative">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(58,134,255,0.15),transparent_40%)]" />
+      {/* LEFT HERO (BALANCED) */}
+      <div className="hidden lg:flex bg-gradient-to-br from-[#0B132B] via-[#0E1B3C] to-[#0B132B] px-16 py-20 text-white relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(58,134,255,0.12),transparent_45%)]" />
 
         <div className="relative z-10 max-w-xl">
-          <div className="flex items-center gap-3 mb-16">
+          <div className="flex items-center gap-3 mb-14">
             <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
               <Building2 className="text-blue-400" />
             </div>
@@ -131,9 +152,8 @@ export default function LoginPage() {
             <span className="text-blue-400">Financial Management</span>
           </h1>
 
-          <p className="text-slate-300 text-lg mb-10">
-            Deposits, loans, expenses & compliance —
-            all in one secure platform.
+          <p className="text-slate-300 text-lg mb-10 leading-relaxed">
+            Deposits, loans, expenses & compliance — all in one secure platform.
           </p>
 
           <div className="space-y-4">
@@ -144,15 +164,15 @@ export default function LoginPage() {
             ].map((t) => (
               <div key={t} className="flex items-center gap-3">
                 <CheckCircle2 className="text-emerald-400" />
-                <span>{t}</span>
+                <span className="text-slate-200">{t}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* RIGHT LOGIN */}
-      <div className="lg:col-span-2 flex items-center justify-center p-6">
+      {/* RIGHT LOGIN (PRIMARY FOCUS) */}
+      <div className="flex items-center justify-center px-8">
         <Card className="w-full max-w-md backdrop-blur-xl bg-white/70 border border-slate-200 shadow-xl rounded-2xl">
           <CardContent className="p-8 space-y-6">
 
@@ -176,7 +196,9 @@ export default function LoginPage() {
                   <Input
                     className="pl-10 h-12 bg-slate-50"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -189,7 +211,9 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     className="pl-10 pr-10 h-12 bg-slate-50"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
                   />
                   <button
                     type="button"
