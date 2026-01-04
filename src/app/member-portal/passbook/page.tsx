@@ -1,36 +1,55 @@
 'use client';
 
-import { useState } from 'react';
-import { useClientStore } from '@/lib/client/store';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUpRight, ArrowDownRight, Calendar, Filter } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Calendar, Loader2 } from 'lucide-react';
 
 export default function MemberPassbook() {
-  const { currentUser, getMemberPassbook } = useClientStore();
-  const memberId = currentUser?.linkedMemberId;
-  const [filter, setFilter] = useState<'all' | 'deposit' | 'loan' | 'installment'>('all');
-  
-  if (!memberId) return null;
+  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState<any[]>([]);
+  const [filter, setFilter] = useState('all');
+  const [balance, setBalance] = useState(0);
 
-  const entries = getMemberPassbook(memberId);
-  
-  // Filter entries based on selected filter
-  const filteredEntries = entries.filter(entry => {
-    if (filter === 'all') return true;
-    if (filter === 'deposit') return entry.type === 'deposit' || entry.type === 'DEPOSIT';
-    if (filter === 'loan') return entry.type === 'loan';
-    if (filter === 'installment') return entry.type === 'installment' || entry.type === 'INSTALLMENT';
-    return true;
+  useEffect(() => {
+    const fetchPassbook = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if(!user) return;
+
+        // Get Member ID
+        const { data: member } = await supabase.from('members').select('id').eq('auth_user_id', user.id).single();
+        
+        if(member) {
+            const { data } = await supabase
+                .from('passbook_entries')
+                .select('*')
+                .eq('member_id', member.id)
+                .order('date', { ascending: false }); // Newest First
+
+            if(data) {
+                // Calculate Running Balance logic if not stored in DB, or just sum
+                // Here assuming simple sum for display
+                const total = data.reduce((acc, curr) => acc + (Number(curr.total_amount) || 0), 0);
+                setBalance(total);
+                setEntries(data);
+            }
+        }
+        setLoading(false);
+    };
+    fetchPassbook();
+  }, []);
+
+  if(loading) return <div className="p-10 text-center"><Loader2 className="animate-spin inline"/> Loading...</div>;
+
+  const filteredEntries = entries.filter(e => {
+      if(filter === 'all') return true;
+      // Simple logic: Deposit > 0 is Deposit, else Expense/Loan
+      if(filter === 'deposit') return Number(e.deposit_amount) > 0;
+      if(filter === 'loan') return Number(e.installment_amount) > 0; // Paying Loan
+      return true;
   });
-
-  // Sort by date (newest first)
-  const sortedEntries = filteredEntries.sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  const currentBalance = entries.length > 0 ? entries[entries.length - 1].balance : 0;
 
   return (
     <div className="space-y-6">
@@ -39,7 +58,7 @@ export default function MemberPassbook() {
         <h1 className="text-xl font-bold">My Passbook</h1>
         <div className="text-right">
           <p className="text-sm text-gray-500">Current Balance</p>
-          <p className="text-2xl font-bold text-gray-900">₹{currentBalance.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-gray-900">₹{balance.toLocaleString('en-IN')}</p>
         </div>
       </div>
 
@@ -49,7 +68,7 @@ export default function MemberPassbook() {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-blue-100 text-sm">Total Balance</p>
-              <p className="text-3xl font-bold">₹{currentBalance.toLocaleString()}</p>
+              <p className="text-3xl font-bold">₹{balance.toLocaleString('en-IN')}</p>
             </div>
             <div className="bg-white/20 p-3 rounded-full">
               <ArrowUpRight className="w-6 h-6" />
@@ -60,81 +79,54 @@ export default function MemberPassbook() {
 
       {/* Filter Buttons */}
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {[
-          { value: 'all', label: 'All' },
-          { value: 'deposit', label: 'Deposits' },
-          { value: 'loan', label: 'Loans' },
-          { value: 'installment', label: 'EMIs' }
-        ].map((f) => (
+        {['all', 'deposit', 'loan'].map((f) => (
           <Button
-            key={f.value}
-            variant={filter === f.value ? 'default' : 'outline'}
+            key={f}
+            variant={filter === f ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setFilter(f.value as any)}
-            className={`whitespace-nowrap ${filter === f.value ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+            onClick={() => setFilter(f)}
+            className={`capitalize ${filter === f ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
           >
-            {f.label}
+            {f}
           </Button>
         ))}
       </div>
 
-      {/* Transactions List */}
+      {/* List */}
       <Card className="rounded-2xl">
         <CardContent className="p-0">
-          {sortedEntries.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-gray-500">No transactions found</p>
-            </div>
+          {filteredEntries.length === 0 ? (
+            <div className="p-8 text-center"><p className="text-gray-500">No transactions found</p></div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {sortedEntries.map((entry) => (
+              {filteredEntries.map((entry) => {
+                const isDeposit = Number(entry.deposit_amount) > 0;
+                const amt = isDeposit ? entry.deposit_amount : (Number(entry.installment_amount) + Number(entry.interest_amount));
+                
+                return (
                 <div key={entry.id} className="p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3">
-                      <div className={`p-2 rounded-full ${
-                        entry.type === 'deposit' || entry.type === 'DEPOSIT' 
-                          ? 'bg-green-100 text-green-600' 
-                          : entry.type === 'loan'
-                          ? 'bg-blue-100 text-blue-600'
-                          : 'bg-orange-100 text-orange-600'
-                      }`}>
-                        {entry.type === 'deposit' || entry.type === 'DEPOSIT' ? (
-                          <ArrowDownRight className="w-4 h-4" />
-                        ) : (
-                          <ArrowUpRight className="w-4 h-4" />
-                        )}
+                      <div className={`p-2 rounded-full ${isDeposit ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                        {isDeposit ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{entry.description}</p>
+                        <p className="font-medium text-gray-900">{entry.note || (isDeposit ? 'Deposit' : 'Loan Repayment')}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <Calendar className="w-3 h-3 text-gray-400" />
-                          <p className="text-sm text-gray-500">
-                            {new Date(entry.date).toLocaleDateString()}
-                          </p>
-                          {entry.paymentMode && (
-                            <Badge variant="outline" className="text-xs">
-                              {entry.paymentMode}
-                            </Badge>
-                          )}
+                          <p className="text-sm text-gray-500">{new Date(entry.date).toLocaleDateString()}</p>
+                          <Badge variant="outline" className="text-xs uppercase">{entry.payment_mode}</Badge>
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`font-bold ${
-                        entry.type === 'deposit' || entry.type === 'DEPOSIT' 
-                          ? 'text-green-600' 
-                          : 'text-red-600'
-                      }`}>
-                        {entry.type === 'deposit' || entry.type === 'DEPOSIT' ? '+' : '-'}
-                        ₹{entry.amount.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Balance: ₹{entry.balance.toLocaleString()}
+                      <p className={`font-bold ${isDeposit ? 'text-green-600' : 'text-red-600'}`}>
+                        {isDeposit ? '+' : '-'} ₹{Number(amt).toLocaleString('en-IN')}
                       </p>
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </CardContent>
