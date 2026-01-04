@@ -1,271 +1,315 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saanify - Modern Login</title>
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { toast } from 'sonner';
+import {
+  Loader2,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  CheckCircle2,
+  Building2,
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({ email: '', password: '' });
+
+  /* ================= AUTH LOGIC (NO CHANGES) ================= */
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) {
+        if (
+          formData.email === 'admin@saanify.com' &&
+          error.message.includes('Invalid')
+        ) {
+          await createSuperAdmin();
+          return;
+        }
+        throw error;
+      }
+
+      if (data.user) {
+        await checkRoleAndRedirect(data.user.id);
+      }
+    } catch {
+      toast.error('Access Denied', {
+        description: 'Invalid credentials or account inactive.',
+      });
+      setLoading(false);
+    }
+  };
+
+  const checkRoleAndRedirect = async (userId: string) => {
+    try {
+      const { data: admin } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (admin) {
+        localStorage.setItem('admin_session', 'true');
+        router.push('/admin');
+        return;
+      }
+
+      const { data: client } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (client) {
+        localStorage.setItem('current_user', JSON.stringify(client));
+        router.push('/dashboard');
+        return;
+      }
+
+      const { data: member } = await supabase
+        .from('members')
+        .select('*')
+        .eq('auth_user_id', userId)
+        .single();
+
+      if (member) {
+        localStorage.setItem('current_member', JSON.stringify(member));
+        router.push(member.role === 'treasurer' ? '/treasurer' : '/member');
+        return;
+      }
+
+      throw new Error();
+    } catch {
+      toast.error('Login Failed', {
+        description: 'Profile not linked.',
+      });
+      setLoading(false);
+    }
+  };
+
+  // ✅ FIXED: Forgot Password Logic
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      toast.error('Email Required', { description: 'Please enter your email.' });
+      return;
+    }
+    setResetLoading(true);
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        // Yahan user click karne par '/update-password' page par jayega
+        redirectTo: `${window.location.origin}/update-password`,
+      });
 
-    <!-- Google Fonts: Plus Jakarta Sans for a modern look -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+      if (error) throw error;
+      toast.success('Password reset link sent', { description: 'Check your email inbox.' });
+    } catch (error: any) {
+      toast.error('Error', { description: error.message });
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #f8fafc;
-        }
-        
-        /* Modern Background Animation */
-        @keyframes float {
-            0% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-            100% { transform: translate(0px, 0px) scale(1); }
-        }
+  const createSuperAdmin = async () => {
+    const { data } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+    });
+    if (data.user) {
+      await supabase
+        .from('admins')
+        .upsert([{ id: data.user.id, email: formData.email }]);
+      router.push('/admin');
+    }
+  };
 
-        @keyframes blob {
-            0% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-            100% { transform: translate(0px, 0px) scale(1); }
-        }
+  /* ================= UI START (MODERNIZED) ================= */
 
-        .animate-blob {
-            animation: blob 7s infinite;
-        }
+  return (
+    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 overflow-hidden">
 
-        .animation-delay-2000 {
-            animation-delay: 2s;
-        }
+      {/* LEFT HERO (MODERN & VIBRANT) */}
+      <div className="hidden lg:flex relative bg-slate-900 text-white overflow-hidden">
+        {/* Abstract Background Shapes for Modern Look */}
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-40" />
+        <div className="absolute top-[40%] left-[40%] w-[300px] h-[300px] bg-purple-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-30" />
 
-        .animation-delay-4000 {
-            animation-delay: 4s;
-        }
+        {/* Mesh Gradient Overlay */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150" />
 
-        /* Glassmorphism utility */
-        .glass {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-        
-        .glass-dark {
-            background: rgba(11, 19, 43, 0.6);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+        <div className="relative z-10 flex flex-col justify-center px-16 py-20 w-full">
+          <div className="flex items-center gap-3 mb-12 group cursor-default">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
+              <Building2 className="text-blue-400 w-6 h-6" />
+            </div>
+            <span className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+              Saanify
+            </span>
+          </div>
 
-    <script type="text/babel">
-        // ==========================================
-        // MOCKING DEPENDENCIES (To make this single file work)
-        // In your real Next.js code, use your original imports.
-        // ==========================================
-        const { useState, useEffect } = React;
-        
-        // Mock Router
-        const useRouter = () => ({
-            push: (path) => { console.log(`Navigating to: ${path}`); window.location.hash = path; }
-        });
+          <div className="max-w-lg space-y-8">
+            <h1 className="text-6xl font-extrabold leading-[1.1] tracking-tight">
+              Smart Society <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                Finance.
+              </span>
+            </h1>
 
-        // Mock Toast
-        const toast = {
-            success: (title, opts) => alert(`✅ ${title}: ${opts?.description}`),
-            error: (title, opts) => alert(`❌ ${title}: ${opts?.description}`)
-        };
+            <p className="text-slate-300 text-xl leading-relaxed font-light">
+              Manage deposits, loans, and compliance with an architecture built for modern societies.
+            </p>
 
-        // Mock Supabase
-        const supabase = {
-            auth: {
-                signInWithPassword: async ({ email, password }) => {
-                    // Simulate network delay
-                    await new Promise(r => setTimeout(r, 1000));
-                    // Simulate error for specific email to test fallback, otherwise success
-                    if (email === 'error@test.com') return { error: { message: 'Invalid credentials' } };
-                    return { data: { user: { id: 'user_123' } }, error: null };
-                },
-                resetPasswordForEmail: async () => {
-                    await new Promise(r => setTimeout(r, 1000));
-                    return { error: null };
-                },
-                signUp: async ({ email, password }) => {
-                    return { data: { user: { id: 'admin_123' } } };
-                }
-            },
-            from: (table) => ({
-                select: () => ({
-                    eq: () => ({
-                        single: async () => {
-                            await new Promise(r => setTimeout(r, 500));
-                            // Mock data based on table name for demo
-                            if (table === 'admins') return { data: { id: 'admin_123' }, error: null };
-                            if (table === 'clients') return { data: { id: 'client_123' }, error: null };
-                            if (table === 'members') return { data: { id: 'member_123', role: 'member' }, error: null };
-                            return { data: null, error: new Error('Not found') };
-                        }
-                    })
-                }),
-                upsert: async () => ({ error: null })
-            })
-        };
+            <div className="pt-6 space-y-5">
+              {[
+                'Bank-grade AES-256 Encryption',
+                'Real-time Audit Trails',
+                'Automated GST Compliance',
+              ].map((t) => (
+                <div key={t} className="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                    <CheckCircle2 className="text-emerald-400 w-4 h-4" />
+                  </div>
+                  <span className="text-slate-200 font-medium">{t}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
-        // Mock Lucide Icons as simple functional components
-        const Icon = ({ path, className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                {path}
-            </svg>
-        );
-        
-        const Loader2 = ({ className }) => <Icon className={className} path={<><path d="M21 12a9 9 0 1 1-6.219-8.56"/></>} />;
-        const Lock = ({ className }) => <Icon className={className} path={<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>} />;
-        const Mail = ({ className }) => <Icon className={className} path={<><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></>} />;
-        const Eye = ({ className }) => <Icon className={className} path={<><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>} />;
-        const EyeOff = ({ className }) => <Icon className={className} path={<><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c.986 0 1.925-.135 2.803-.386"/><line x1="2" x2="22" y1="2" y2="22"/></>} />;
-        const ShieldCheck = ({ className }) => <Icon className={className} path={<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></>} />;
-        const CheckCircle2 = ({ className }) => <Icon className={className} path={<><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></>} />;
-        const Building2 = ({ className }) => <Icon className={className} path={<><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></>} />;
+      {/* RIGHT LOGIN (CLEAN & FOCUSED) */}
+      <div className="flex items-center justify-center p-6 lg:p-12 relative bg-slate-50">
+        {/* Subtle Dot Pattern Background */}
+        <div className="absolute inset-0 opacity-[0.4]" 
+             style={{ backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+        </div>
 
-        // ==========================================
-        // YOUR ORIGINAL LOGIC (START)
-        // ==========================================
-        export default function LoginPage() {
-          const router = useRouter();
-          const [loading, setLoading] = useState(false);
-          const [resetLoading, setResetLoading] = useState(false);
-          const [showPassword, setShowPassword] = useState(false);
-          const [formData, setFormData] = useState({ email: '', password: '' });
+        <Card className="w-full max-w-[440px] bg-white/80 backdrop-blur-xl border-slate-200 shadow-2xl shadow-blue-900/5 relative z-10 rounded-2xl overflow-hidden">
+          {/* Top Accent Line */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600" />
 
-          /* ================= AUTH LOGIC ================= */
-
-          const handleAuth = async (e) => {
-            e.preventDefault();
-            setLoading(true);
-            try {
-              const { data, error } = await supabase.auth.signInWithPassword({
-                email: formData.email,
-                password: formData.password,
-              });
-
-              if (error) {
-                if (
-                  formData.email === 'admin@saanify.com' &&
-                  error.message.includes('Invalid')
-                ) {
-                  await createSuperAdmin();
-                  return;
-                }
-                throw error;
-              }
-
-              if (data.user) {
-                await checkRoleAndRedirect(data.user.id);
-              }
-            } catch {
-              toast.error('Access Denied', {
-                description: 'Invalid credentials or account inactive.',
-              });
-              setLoading(false);
-            }
-          };
-
-          const checkRoleAndRedirect = async (userId) => {
-            try {
-              const { data: admin } = await supabase
-                .from('admins')
-                .select('*')
-                .eq('id', userId)
-                .single();
-              if (admin) {
-                localStorage.setItem('admin_session', 'true');
-                router.push('/admin');
-                return;
-              }
-
-              const { data: client } = await supabase
-                .from('clients')
-                .select('*')
-                .eq('id', userId)
-                .single();
-              if (client) {
-                localStorage.setItem('current_user', JSON.stringify(client));
-                router.push('/dashboard');
-                return;
-              }
-
-              const { data: member } = await supabase
-                .from('members')
-                .select('*')
-                .eq('auth_user_id', userId)
-                .single();
-
-              if (member) {
-                localStorage.setItem('current_member', JSON.stringify(member));
-                router.push(member.role === 'treasurer' ? '/treasurer' : '/member');
-                return;
-              }
-
-              throw new Error();
-            } catch {
-              toast.error('Login Failed', {
-                description: 'Profile not linked.',
-              });
-              setLoading(false);
-            }
-          };
-
-          const handleForgotPassword = async () => {
-            if (!formData.email) {
-              toast.error('Email Required', { description: 'Please enter your email.' });
-              return;
-            }
-            setResetLoading(true);
+          <CardContent className="p-8 space-y-8">
             
-            try {
-              const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-                redirectTo: `${window.location.origin}/update-password`,
-              });
+            {/* Header Section */}
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 mb-2 border border-blue-100 shadow-sm">
+                <ShieldCheck className="w-7 h-7" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  Welcome Back
+                </h2>
+                <p className="text-slate-500 mt-2">
+                  Enter your credentials to access your workspace.
+                </p>
+              </div>
+            </div>
 
-              if (error) throw error;
-              toast.success('Password reset link sent', { description: 'Check your email inbox.' });
-            } catch (error) {
-              toast.error('Error', { description: error.message });
-            } finally {
-              setResetLoading(false);
-            }
-          };
+            {/* Form Section */}
+            <form onSubmit={handleAuth} className="space-y-5">
+              <div className="space-y-2.5">
+                <Label className="text-slate-700 font-semibold text-sm px-1">Email Address</Label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                  </div>
+                  <Input
+                    className="pl-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl"
+                    placeholder="name@society.com"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
 
-          const createSuperAdmin = async () => {
-            const { data } = await supabase.auth.signUp({
-              email: formData.email,
-              password: formData.password,
-            });
-            if (data.user) {
-              await supabase
-                .from('admins')
-                .upsert([{ id: data.user.id, email: formData.email }]);
-              router.push('/admin');
-            }
-          };
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <Label className="text-slate-700 font-semibold text-sm">Password</Label>
+                </div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                  </div>
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
 
-          /* ================= UI START (MODERNIZED) ================= */
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 text-base font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-xl shadow-slate-900/20 rounded-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
 
-          return (
-            <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 overflow-hidden relative">
+            {/* Footer Actions */}
+            <div className="flex items-center justify-between text-sm pt-4 border-t border-slate-100">
+              <button
+                onClick={handleForgotPassword}
+                disabled={resetLoading}
+                className="text-slate-600 hover:text-blue-600 font-medium transition-colors disabled:opacity-50"
+              >
+                {resetLoading ? 'Sending link...' : 'Forgot password?'}
+              </button>
+              <span className="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors">
+                Contact Support
+              </span>
+            </div>
 
-              {/* BACKGROUND DECORATIONS (Modern Touch) */}
-              <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-              <div className="absolute top-0 -right-4 w-72
+            {/* Security Badge */}
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400 pt-2">
+              <Lock className="w-3 h-3 text-emerald-500" />
+              <span>Secured by 256-bit SSL Encryption</span>
+            </div>
+
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+```
