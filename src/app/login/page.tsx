@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
-  /* ================= AUTH LOGIC (UNCHANGED) ================= */
+  /* ================= AUTH LOGIC ================= */
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,17 +104,27 @@ export default function LoginPage() {
     }
   };
 
+  // ✅ FIXED: Forgot Password Logic
   const handleForgotPassword = async () => {
     if (!formData.email) {
-      toast.error('Email Required');
+      toast.error('Email Required', { description: 'Please enter your email.' });
       return;
     }
     setResetLoading(true);
-    await supabase.auth.resetPasswordForEmail(formData.email, {
-      redirectTo: `${window.location.origin}/update-password`,
-    });
-    setResetLoading(false);
-    toast.success('Password reset link sent');
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        // Yahan user click karne par '/update-password' page par jayega
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+
+      if (error) throw error;
+      toast.success('Password reset link sent', { description: 'Check your email inbox.' });
+    } catch (error: any) {
+      toast.error('Error', { description: error.message });
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   const createSuperAdmin = async () => {
@@ -136,7 +146,7 @@ export default function LoginPage() {
     <div className="min-h-screen grid lg:grid-cols-2 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
 
       {/* LEFT HERO (BALANCED) */}
-      <div className="hidden lg:flex bg-gradient-to-br from-[#0B132B] via-[#0E1B3C] to-[#0B132B] px-16 py-20 text-white relative">
+      <div className="hidden lg:flex bg-gradient-to-br from-[#0B132B] via-[#0E1B3C] to-[#0B132B] px-16 py-20 text-white relative flex-col justify-center">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(58,134,255,0.12),transparent_45%)]" />
 
         <div className="relative z-10 max-w-xl">
@@ -172,29 +182,30 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT LOGIN (PRIMARY FOCUS) */}
-      <div className="flex items-center justify-center px-8">
-        <Card className="w-full max-w-md backdrop-blur-xl bg-white/70 border border-slate-200 shadow-xl rounded-2xl">
-          <CardContent className="p-8 space-y-6">
+      <div className="flex items-center justify-center px-8 bg-white">
+        <Card className="w-full max-w-md border-0 shadow-none">
+          <CardContent className="p-0 space-y-8">
 
-            <div className="text-center">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold mb-4">
-                <ShieldCheck className="w-4 h-4" /> Secure Access
+            <div className="text-left space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold mb-4 border border-blue-100">
+                <ShieldCheck className="w-3 h-3" /> Secure Access Portal
               </div>
               <h2 className="text-3xl font-bold text-slate-900">
-                Society Admin Login
+                Welcome Back
               </h2>
-              <p className="text-slate-500 mt-1">
-                Access your financial dashboard securely
+              <p className="text-slate-500">
+                Sign in to manage your society finances
               </p>
             </div>
 
             <form onSubmit={handleAuth} className="space-y-5">
-              <div>
-                <Label>Email Address</Label>
+              <div className="space-y-2">
+                <Label className="text-slate-700 font-medium">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 text-slate-400" />
+                  <Mail className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" />
                   <Input
-                    className="pl-10 h-12 bg-slate-50"
+                    className="pl-11 h-12 bg-white border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="name@society.com"
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
@@ -203,13 +214,14 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div>
-                <Label>Password</Label>
+              <div className="space-y-2">
+                <Label className="text-slate-700 font-medium">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 text-slate-400" />
+                  <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
-                    className="pl-10 pr-10 h-12 bg-slate-50"
+                    className="pl-11 pr-11 h-12 bg-white border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
@@ -217,10 +229,10 @@ export default function LoginPage() {
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-3 text-slate-400"
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff /> : <Eye />}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
@@ -228,26 +240,27 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700 shadow-lg"
+                className="w-full h-12 text-lg font-semibold bg-[#3A86FF] hover:bg-[#2563EB] shadow-lg shadow-blue-500/20 rounded-lg transition-all"
               >
-                {loading && <Loader2 className="mr-2 animate-spin" />}
+                {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                 Secure Login
               </Button>
             </form>
 
-            <div className="flex justify-between text-sm">
+            <div className="flex items-center justify-between text-sm pt-2">
               <button
                 onClick={handleForgotPassword}
                 disabled={resetLoading}
-                className="text-blue-600 font-medium"
+                className="text-[#3A86FF] font-medium hover:underline disabled:opacity-50"
               >
-                Forgot password?
+                {resetLoading ? 'Sending...' : 'Forgot password?'}
               </button>
-              <span className="text-slate-500">Contact Support</span>
+              <span className="text-slate-500 cursor-pointer hover:text-slate-700">Contact Support</span>
             </div>
 
-            <div className="text-xs text-center text-slate-400 pt-4 border-t">
-              🔐 256-bit Encryption • RBI Compliant
+            <div className="text-xs text-center text-slate-400 pt-8 border-t border-slate-100 flex items-center justify-center gap-2">
+              <Lock className="w-3 h-3" />
+              <span>256-bit Encryption • RBI Compliant</span>
             </div>
 
           </CardContent>
