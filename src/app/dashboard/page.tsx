@@ -48,12 +48,12 @@ export default function ClientDashboard() {
 
             // --- FETCH DATA FOR DASHBOARD ---
             
-            // A. Passbook (Income + Liquidity + Maturity Base)
+            // A. Passbook (Income + Liquidity)
             const passbookReq = supabase
                 .from('passbook_entries')
                 .select('*'); 
 
-            // B. Expenses (Cash Expense & Other Income)
+            // B. Expenses (Cash Expense)
             const expenseReq = supabase
                 .from('expenses_ledger') 
                 .select('*')
@@ -65,16 +65,23 @@ export default function ClientDashboard() {
                 .select('*')
                 .eq('client_id', user.id);
 
+            // D. Members (Zaroori hai Maturity Calculation ke liye)
+            const membersReq = supabase
+                .from('members')
+                .select('*')
+                .eq('client_id', user.id);
+
             // Run Queries
-            const [passbookRes, expenseRes, loansRes] = await Promise.all([
-                passbookReq, expenseReq, loansReq
+            const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
+                passbookReq, expenseReq, loansReq, membersReq
             ]);
 
             if (passbookRes.data) {
                 calculateFinancials(
                     passbookRes.data || [], 
                     expenseRes.data || [], 
-                    loansRes.data || []
+                    loansRes.data || [],
+                    membersRes.data || [] // Members Data bhi pass kiya
                 );
             }
 
@@ -87,13 +94,14 @@ export default function ClientDashboard() {
     init();
   }, [router]);
 
-  // ✅ LOGIC: Real Profit & Maturity Liability Logic
-  const calculateFinancials = (passbook: any[], expenses: any[], loans: any[]) => {
+  // ✅ LOGIC: Real Profit & Maturity Liability Logic (Matches Report)
+  const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[]) => {
+    
     // Variables for Calculation
-    let realIncome = 0; // Only Interest + Fine
+    let realIncome = 0; // Interest + Fine Only
     let cashExpense = 0;
     
-    // Liquidity (Ye alag hai Income se)
+    // Liquidity (Cash Flow)
     let cash = 0;
     let bank = 0;
     let upi = 0;
@@ -105,9 +113,10 @@ export default function ClientDashboard() {
 
     // 1. Passbook Processing
     passbook.forEach(t => {
-        const totalAmt = Number(t.total_amount) || 0; // Cash Flow (Liquidity ke liye)
+        const totalAmt = Number(t.total_amount) || 0; // Cash Flow
         
         // Income Logic: Sirf Interest aur Fine hi profit hai
+        // Deposit ko income me nahi jodna chahiye (wo liability hai)
         const interest = Number(t.interest_amount) || 0;
         const fine = Number(t.fine_amount) || 0;
         const deposit = Number(t.deposit_amount) || 0;
@@ -115,17 +124,15 @@ export default function ClientDashboard() {
         realIncome += (interest + fine);
         totalDepositsCollected += deposit;
 
-        // Liquidity Logic (Cash Flow)
+        // Liquidity Logic (Cash Flow based on Total Amount)
         const mode = (t.payment_mode || '').toLowerCase().trim();
         if (mode.includes('cash')) cash += totalAmt;
         else if (mode.includes('bank') || mode.includes('cheque')) bank += totalAmt;
         else if (mode.includes('upi') || mode.includes('online')) upi += totalAmt;
 
-        // Chart Data (Income based)
+        // Chart Data (Cash Flow ke hisab se)
         const date = t.date ? new Date(t.date) : new Date(t.created_at);
         const month = date.toLocaleString('default', { month: 'short' });
-        // Chart me hum total cash flow dikha rahe hain ya sirf income, 
-        // usually cash flow dikhate hain monthly performance ke liye
         monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
     });
 
@@ -135,15 +142,13 @@ export default function ClientDashboard() {
         
         if (e.type === 'EXPENSE') {
             cashExpense += amt;
-            
-            // Expense means cash going out, so subtract from liquidity
-            // Defaulting removal from Cash if not specified, logic can be enhanced
+            // Subtract from Liquidity (Default Cash)
             cash -= amt; 
         } 
         else if (e.type === 'INCOME') {
-            // Agar koi aur income hai (e.g. Form Fees)
+            // Agar koi aur income hai (Form Fees etc.)
             realIncome += amt;
-            cash += amt; // Assuming cash income
+            cash += amt; 
         }
     });
 
@@ -151,13 +156,12 @@ export default function ClientDashboard() {
     loans.forEach(l => {
         if (l.status === 'active') pendingLoanCount++;
         // Loan diya hai toh cash kam hua hoga
-        // Note: Agar passbook me loan entry nahi hai toh yahan se minus karein
-        // Assuming Loan Out is manual cash out
-        // cash -= Number(l.amount); // Uncomment only if loans NOT in expenses
+        // (Agar expenses me entry nahi hai toh yahan minus karein)
+        // cash -= Number(l.amount); 
     });
 
-    // --- 4. MATURITY LIABILITY CALCULATION (The Missing Piece) ---
-    // Formula: (Monthly Share * Deposit Count) for each member
+    // --- 4. MATURITY LIABILITY CALCULATION (The Real Fix) ---
+    // Formula: (Monthly Share * Deposit Count)
     
     let maturityLiability = 0;
 
@@ -170,41 +174,52 @@ export default function ClientDashboard() {
         }
     });
 
-    // Har Member ka Interest Liability Calculate karein
+    // Calculate Liability per member (Using Member Settings)
     Object.keys(memberDeposits).forEach(memberId => {
         const deposits = memberDeposits[memberId];
+        // Member ki details nikalo (taaki manual override check kar sakein)
+        const memberInfo = membersList.find(m => m.id === memberId);
+
         if (deposits.length > 0) {
-             // A. Find Monthly Amount (First deposit se)
+             // A. Monthly Amount (First deposit se)
              const sorted = deposits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
              const monthlyDeposit = Number(sorted[0].deposit_amount || 0);
              
-             // B. Constants (Change as per your rules)
+             // B. Constants
              const tenureMonths = 36; // 3 Years
-             const interestRate = 0.12; // 12% Interest
              
-             // C. Total Expected Interest
-             const totalPrincipal = monthlyDeposit * tenureMonths;
-             const totalInterest = totalPrincipal * interestRate; 
-             
-             // D. Monthly Interest Share (e.g. ₹4000 / 36 = ₹111.11)
-             const monthlyInterestShare = totalInterest / tenureMonths;
+             // --- CRITICAL CHECK: Manual Override ---
+             const isOverride = memberInfo?.maturity_is_override || false;
+             const manualAmount = Number(memberInfo?.maturity_manual_amount || 0);
 
-             // E. Count payments made
+             let settledInterest = 0;
+
+             if (isOverride && manualAmount > 0) {
+                 // Agar Manual Amount set hai
+                 settledInterest = manualAmount;
+             } else {
+                 // Standard 12% Calculation
+                 const totalPrincipal = monthlyDeposit * tenureMonths;
+                 settledInterest = totalPrincipal * 0.12; 
+             }
+             
+             // C. Monthly Interest Share
+             const monthlyInterestShare = settledInterest / tenureMonths;
+
+             // D. Count payments made
              const depositCount = deposits.length;
 
-             // F. Current Liability = Monthly Interest * Kitni baar jama kiya
-             const currentLiability = monthlyInterestShare * depositCount;
-             
-             maturityLiability += currentLiability;
+             // E. Current Liability
+             maturityLiability += (monthlyInterestShare * depositCount);
         }
     });
 
     // --- FINAL TOTALS ---
     
-    // Total Expense = Cash Expense (Ops) + Maturity Liability (Hidden Interest)
+    // Total Expense = Ops Cost + Maturity Liability
     const totalExpenseFinal = cashExpense + maturityLiability;
     
-    // Real Net Profit = Actual Income (Interest+Fine) - All Expenses
+    // Real Net Profit = Actual Income - All Expenses
     const netProfitFinal = realIncome - totalExpenseFinal;
 
     // Chart formatting
@@ -212,8 +227,8 @@ export default function ClientDashboard() {
 
     setFinancials({
         netProfit: netProfitFinal,
-        totalIncome: realIncome, // Ab ye sirf Interest+Fine dikhayega (Real Income)
-        totalExpense: totalExpenseFinal, // Includes Maturity Liability
+        totalIncome: realIncome, // Interest + Fine + Other
+        totalExpense: totalExpenseFinal, // Includes Ops + Maturity
         cashBal: cash, 
         bankBal: bank,
         upiBal: upi,
@@ -233,7 +248,7 @@ export default function ClientDashboard() {
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
   
-  // Profit Margin Calculation
+  // Profit Margin Calculation (Safe Divide)
   const profitMargin = financials.totalIncome > 0 
     ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
     : "0";
@@ -260,7 +275,7 @@ export default function ClientDashboard() {
 
       {/* SECTION 1: FINANCIAL HEALTH */}
       <div className="grid gap-4 md:grid-cols-4">
-        {/* Net Profit Card */}
+        {/* Net Profit Card - Color Changes dynamically */}
         <Card className={`border-l-4 ${financials.netProfit >= 0 ? 'border-l-green-500 bg-green-50/50' : 'border-l-red-500 bg-red-50/50'}`}>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Net Profit</CardTitle></CardHeader>
           <CardContent>
@@ -271,7 +286,7 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Total Income Card */}
+        {/* Total Income */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Income</CardTitle></CardHeader>
           <CardContent>
@@ -280,7 +295,7 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Total Expense Card (Updated with Maturity) */}
+        {/* Total Expense - Updated with Maturity */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Expense</CardTitle></CardHeader>
           <CardContent>
@@ -289,7 +304,7 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Margin Card */}
+        {/* Margin */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Margin</CardTitle></CardHeader>
           <CardContent>
