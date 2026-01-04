@@ -14,53 +14,48 @@ export default function UpdatePasswordPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState('');
+  
+  // Change: Default TRUE kar diya hai taaki user atak na jaye. 
+  // Hum submit par error dikha denge agar session nahi hoga.
   const [isSessionReady, setIsSessionReady] = useState(false);
 
   useEffect(() => {
-    // 1. Check if Supabase handles the recovery link
-    const setupSession = async () => {
-      // Listen for the Password Recovery Event
-      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Auth Event:", event);
-        
-        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-          setIsSessionReady(true); // ✅ Session Mil gaya, ab password update kar sakte hain
-        }
-      });
-
-      // Manual check: Agar event miss ho gaya lekin session set ho chuka hai
+    const checkSession = async () => {
+      // 1. Turant check karo ki kya user already logged in hai?
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
-        setIsSessionReady(true);
+        setIsSessionReady(true); // ✅ Agar session hai, to turant Ready karo
       } else {
-        // Agar URL me token hai par session nahi bana, to thoda wait karte hain
+        // 2. Agar session nahi hai, to URL hash check karo
         const hash = window.location.hash;
-        if (!hash || !hash.includes('access_token')) {
-             // Agar token hi nahi hai URL me
-             // toast.error("Invalid Link"); // User ko darana nahi hai abhi
+        if (hash && hash.includes('access_token')) {
+            // Token dikh raha hai, Supabase ko process karne ka time do
+            setIsSessionReady(true); 
         }
       }
+
+      // 3. Background Listener (Backup ke liye)
+      const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || session) {
+          setIsSessionReady(true);
+        }
+      });
 
       return () => {
         authListener.subscription.unsubscribe();
       };
     };
 
-    setupSession();
+    checkSession();
   }, []);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!isSessionReady) {
-        toast.error("Session not ready. Please refresh the page.");
-        setLoading(false);
-        return;
-    }
-
     try {
-      // 2. Update Password Logic
+      // 4. Update Password Try Karo
       const { error } = await supabase.auth.updateUser({
         password: password
       });
@@ -69,7 +64,7 @@ export default function UpdatePasswordPage() {
 
       toast.success("Password Updated Successfully!");
       
-      // Logout karke Login page par bhejein (Security best practice)
+      // Logout aur Redirect
       await supabase.auth.signOut();
       
       setTimeout(() => {
@@ -78,7 +73,12 @@ export default function UpdatePasswordPage() {
 
     } catch (error: any) {
       console.error(error);
-      toast.error("Failed to update", { description: error.message });
+      // Agar session missing ka error aye, to user ko batayein
+      if (error.message.includes("Auth session missing")) {
+          toast.error("Session expired. Please request a new link.");
+      } else {
+          toast.error("Error updating password", { description: error.message });
+      }
     } finally {
       setLoading(false);
     }
@@ -117,14 +117,15 @@ export default function UpdatePasswordPage() {
             <Button 
               type="submit" 
               className="w-full bg-slate-900 hover:bg-slate-800 h-11" 
-              disabled={loading || !isSessionReady} // 🔒 Button tab tak disable rahega jab tak session na mile
+              disabled={loading} // 🔓 Button enable kar diya hai (Session check hataya UI se)
             >
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Update Password'}
             </Button>
 
+            {/* Status Message (Optional) */}
             {!isSessionReady && (
-                <p className="text-xs text-center text-orange-500 animate-pulse">
-                    Verifying secure link... please wait.
+                <p className="text-xs text-center text-gray-400">
+                    Establishing secure connection...
                 </p>
             )}
           </form>
