@@ -2,116 +2,110 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { 
-  Card, CardHeader, CardTitle, CardContent 
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Phone, Mail, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 
-export default function SettingsPage() {
-  const [userData, setUserData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: ''
-  });
+export default function MemberSettings() {
+  const [member, setMember] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Fetch user data on mount
   useEffect(() => {
-    async function fetchUser() {
-      setLoading(true);
-      const { data, error } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUserData({
-          name: data.user.user_metadata?.name || '',
-          email: data.user.email || '',
-          phone: data.user.user_metadata?.phone || '',
-          password: ''
-        });
-      }
-      setLoading(false);
-    }
-    fetchUser();
-  }, []);
-
-  const handleChange = (field: string, value: string) => {
-    setUserData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    setLoading(true);
-    const updates = {
-      data: {
-        name: userData.name,
-        phone: userData.phone
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if(user) {
+        const { data } = await supabase.from('members').select('*').eq('auth_user_id', user.id).single();
+        setMember(data);
       }
     };
-    const { error } = await supabase.auth.updateUser(updates);
-    if (error) alert('Update failed: ' + error.message);
-    else alert('Profile updated successfully!');
+    fetchProfile();
+  }, []);
+
+  const handlePasswordUpdate = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("Password too short");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     setLoading(false);
+    
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Password Updated!");
+      setNewPassword('');
+    }
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold text-slate-900">Account Settings</h1>
 
-      <Card>
+      {/* Profile Section */}
+      <Card className="shadow-lg rounded-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" /> Profile
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold">Profile Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={userData.name}
-                onChange={e => handleChange('name', e.target.value)}
-                placeholder="Your name"
-              />
+            
+            <div className="space-y-2">
+              <Label className="text-slate-500">Full Name</Label>
+              <div className="flex items-center gap-2 border p-3 rounded-lg bg-slate-50 text-slate-800 hover:shadow-sm transition-shadow">
+                <User className="w-5 h-5 text-slate-400"/> {member?.name || '-'}
+              </div>
             </div>
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={userData.phone}
-                onChange={e => handleChange('phone', e.target.value)}
-                placeholder="Your phone number"
-              />
+
+            <div className="space-y-2">
+              <Label className="text-slate-500">Phone</Label>
+              <div className="flex items-center gap-2 border p-3 rounded-lg bg-slate-50 text-slate-800 hover:shadow-sm transition-shadow">
+                <Phone className="w-5 h-5 text-slate-400"/> {member?.phone || '-'}
+              </div>
             </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                value={userData.email}
-                disabled
-                placeholder="Your email"
-              />
+
+            <div className="col-span-1 md:col-span-2 space-y-2">
+              <Label className="text-slate-500">Email Address</Label>
+              <div className="flex items-center gap-2 border p-3 rounded-lg bg-slate-50 text-slate-800 hover:shadow-sm transition-shadow">
+                <Mail className="w-5 h-5 text-slate-400"/> {member?.email || '-'}
+              </div>
             </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={userData.password}
-                onChange={e => handleChange('password', e.target.value)}
-                placeholder="New password"
-              />
+
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Security Section */}
+      <Card className="shadow-lg rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Security</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Change Password</Label>
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                <Input 
+                  type="password" 
+                  placeholder="Enter new password" 
+                  className="pl-10"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <Button 
+                onClick={handlePasswordUpdate} 
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 text-white transition-all"
+              >
+                {loading ? 'Updating...' : 'Update'}
+              </Button>
             </div>
           </div>
-          <Button 
-            className="mt-4"
-            onClick={handleSave} 
-            disabled={loading}
-          >
-            {loading ? 'Saving...' : 'Save Changes'}
-          </Button>
         </CardContent>
       </Card>
     </div>
