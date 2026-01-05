@@ -1,10 +1,3 @@
-
-
-Is error ki wajah code ke beech mein likha hua **random `code`** shabd hai jo JavaScript samajh nahi pa raha. Ye shayad copy-paste karte time galti se aa gaya hai.
-
-Maine aapke code se ye `code` shabd remove kar diya hai. Ab ye perfectly kaam karega.
-
-```tsx
 'use client';
 
 import { useState } from 'react';
