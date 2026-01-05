@@ -20,7 +20,8 @@ import {
   Wallet,
   AlertCircle,
   TrendingUp,
-  Clock
+  Clock,
+  Bell // Icon for notification
 } from 'lucide-react';
 
 export default function MemberLoans() {
@@ -33,6 +34,7 @@ export default function MemberLoans() {
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // 1. Fetch Data & Member ID
   useEffect(() => {
     const fetchLoans = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -61,16 +63,63 @@ export default function MemberLoans() {
     fetchLoans();
   }, []);
 
+  // 2. ✅ NEW: Real-time Notification Listener
+  // Ye code background me wait karega ki kab Admin notification table me entry karega
+  useEffect(() => {
+    if (!member?.id) return;
+
+    console.log("🔔 Listening for notifications for Member:", member.id);
+
+    const channel = supabase
+      .channel('realtime-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT', // Jab bhi nayi row add hogi
+          schema: 'public',
+          table: 'notifications',
+          filter: `member_id=eq.${member.id}` // Sirf is member ke liye
+        },
+        (payload) => {
+          console.log("New Notification:", payload);
+          
+          // Toast Notification Dikhana
+          const newNotif = payload.new;
+          toast(newNotif.title, {
+            description: newNotif.message,
+            action: {
+              label: 'View',
+              onClick: () => console.log('Notification clicked')
+            },
+            duration: 5000, // 5 seconds tak dikhega
+            icon: <Bell className="w-5 h-5 text-blue-500" />
+          });
+
+          // Agar Loan status change hua hai to page refresh kar do (UI update ke liye)
+          if (newNotif.title.toLowerCase().includes('loan')) {
+             window.location.reload(); 
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [member]);
+
   const currentInterest = useMemo(() => {
     if (!activeLoan) return 0;
     return Math.round(Number(activeLoan.remaining_balance) * 0.01);
   }, [activeLoan]);
 
+  // Handle Request (Same as before)
   const handleRequest = async () => {
     if (!amount) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('loans').insert([{
+      // 1. Insert Loan
+      const { error: loanError } = await supabase.from('loans').insert([{
         client_id: member.client_id,
         member_id: member.id,
         amount: Number(amount),
@@ -79,7 +128,10 @@ export default function MemberLoans() {
         created_at: new Date().toISOString()
       }]);
 
-      if (error) throw error;
+      if (loanError) throw loanError;
+
+      // 2. Create Notification for Admin (Optional but good practice)
+      // (Admin side notification logic admin panel me hona chahiye, ye member side hai)
 
       toast.success('Loan request sent successfully');
       setPendingRequest({ amount: Number(amount), status: 'pending' });
