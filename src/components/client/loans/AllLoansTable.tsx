@@ -1,171 +1,175 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, CheckCircle2 } from 'lucide-react';
-import { EditLoanModal } from './EditLoanModal';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
-const formatCurrency = (val: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
+interface EditLoanModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  loanData: any;
+}
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric'
-  });
-};
+export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps) {
+  // State for editable fields
+  const [amount, setAmount] = useState<number>(0);
+  const [remainingBalance, setRemainingBalance] = useState<number>(0);
+  
+  const [loading, setLoading] = useState(false);
 
-const getNextEMI = (startDate: string) => {
-  if (!startDate) return '-';
-  const d = new Date(startDate);
-  d.setMonth(d.getMonth() + 1);
-  return formatDate(d.toISOString());
-};
-
-export function AllLoansTable({ loans }: { loans: any[] }) {
-  const [editingLoan, setEditingLoan] = useState<any>(null);
-
-  // --- LOGIC: GROUPING & MERGING ---
-  const groupedLoans = loans.reduce((acc: any, loan) => {
-    const key = loan.memberId;
-    // Removed "code" text from here
-
-    if (!acc[key]) {
-      acc[key] = {
-        ...loan,
-        count: 1, 
-        totalAmount: loan.amount,
-        totalOutstanding: loan.remainingBalance, 
-        totalInterestCollected: loan.totalInterestCollected || 0, // Initial Value
-        startDate: loan.startDate || loan.created_at
-      };
-    } else {
-      acc[key].count += 1;
-      acc[key].totalAmount += loan.amount;
-      // Note: totalOutstanding aur totalInterestCollected Parent se Member level par aa rahe hain.
-      // Isliye unhe bar-bar add (+=) nahi karna hai, bas latest value rakhni hai.
-      
-      const currentStart = new Date(acc[key].startDate);
-      const newStart = new Date(loan.startDate || loan.created_at);
-      if (newStart < currentStart) {
-        acc[key].startDate = loan.startDate;
-      }
+  // Populate form when modal opens or data changes
+  useEffect(() => {
+    if (loanData) {
+      setAmount(loanData.amount || 0);
+      setRemainingBalance(loanData.remainingBalance || 0);
     }
-    return acc;
-  }, {});
+  }, [loanData, isOpen]);
 
-  const displayRows = Object.values(groupedLoans);
+  const handleUpdate = async () => {
+    if (!loanData?.id) return;
 
-  const handleDeleteLoan = async (loanId: string) => {
-    if(confirm("Are you sure you want to delete this loan record? This cannot be undone.")) {
-      const { error } = await supabase.from('loans').delete().eq('id', loanId);
-      if(!error) window.location.reload();
+    // Basic Validation
+    if (amount < 0 || remainingBalance < 0) {
+      toast.error('Invalid Amount', { description: 'Values cannot be negative.' });
+      return;
     }
-  }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('loans')
+        .update({
+          amount: amount,
+          remainingBalance: remainingBalance,
+          // Note: Hum sirf Amount aur Balance update kar rahe hain, baaki data safe rahega.
+        })
+        .eq('id', loanData.id);
+
+      if (error) throw error;
+
+      toast.success('Loan Updated', { description: 'Changes saved successfully.' });
+      onClose(); // Modal band karein
+      window.location.reload(); // Refresh to show new data in table
+    } catch (error: any) {
+      toast.error('Update Failed', { description: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <>
-      <div className="border rounded-lg bg-white overflow-x-auto">
-        <Table className="min-w-[1000px]">
-          <TableHeader>
-            <TableRow className="bg-gray-50">
-              <TableHead>Member</TableHead>
-              <TableHead>Total Loan Amount</TableHead>
-              <TableHead>Outstanding Balance</TableHead>
-              <TableHead>Interest (1%)</TableHead>
-              <TableHead>Total Interest Earned</TableHead>
-              <TableHead>Start Date</TableHead>
-              <TableHead>Next EMI</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {displayRows.length > 0 ? (
-              displayRows.map((row: any) => {
-                const monthlyInterest = (row.totalOutstanding || 0) * 0.01;
-                const isClosed = row.totalOutstanding <= 0;
-                // Removed "code" text from here
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Edit Loan Details</DialogTitle>
+          <DialogDescription>
+            Adjust the total principal or the outstanding balance for this loan.
+          </DialogDescription>
+        </DialogHeader>
 
-                return (
-                  <TableRow key={row.id} className={isClosed ? "bg-gray-50 opacity-70" : ""}>
-                    <TableCell>
-                      <div className="font-medium text-gray-900">{row.memberName}</div>
-                      <div className="text-xs text-blue-600 font-medium">
-                        {row.count > 1 ? `${row.count} Loans Merged` : 'Single Loan'}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell className="font-medium">
-                      {formatCurrency(row.totalAmount)}
-                    </TableCell>
-                    
-                    <TableCell className={`font-bold ${isClosed ? 'text-green-600' : 'text-red-600'}`}>
-                      {isClosed ? 'Cleared' : formatCurrency(row.totalOutstanding)}
-                    </TableCell>
-                    
-                    <TableCell className="text-blue-600">
-                      {isClosed ? '-' : formatCurrency(monthlyInterest)}
-                    </TableCell>
-                    
-                    <TableCell className="text-green-700 font-medium bg-green-50 rounded-md">
-                      {/* Only Interest, No Fine */}
-                      {formatCurrency(row.totalInterestCollected)}
-                    </TableCell>
-                    
-                    <TableCell>{formatDate(row.startDate)}</TableCell>
-                    
-                    <TableCell>{isClosed ? '-' : getNextEMI(row.startDate)}</TableCell>
-                    
-                    <TableCell>
-                      {isClosed ? (
-                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Closed</Badge>
-                      ) : (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
-                      )}
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {!isClosed && (
-                          <>
-                            <Button size="icon" variant="ghost" onClick={() => setEditingLoan(row)}>
-                              <Edit className="h-4 w-4 text-blue-500" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => handleDeleteLoan(row.id)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </>
-                        )}
-                        {isClosed && (
-                           <CheckCircle2 className="h-5 w-5 text-green-500 ml-2" />
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+        <div className="grid gap-4 py-4">
+          {/* --- READ ONLY FIELDS (Context kept) --- */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="memberName" className="text-right text-slate-500 font-medium">
+              Member Name
+            </Label>
+            <Input
+              id="memberName"
+              value={loanData?.memberName || '-'}
+              disabled
+              className="col-span-3 bg-slate-50 border-slate-200 text-slate-700"
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="startDate" className="text-right text-slate-500 font-medium">
+              Start Date
+            </Label>
+            <Input
+              id="startDate"
+              value={loanData?.startDate ? new Date(loanData.startDate).toLocaleDateString() : '-'}
+              disabled
+              className="col-span-3 bg-slate-50 border-slate-200 text-slate-700"
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="status" className="text-right text-slate-500 font-medium">
+              Current Status
+            </Label>
+            <Input
+              id="status"
+              value={loanData?.status || 'Active'}
+              disabled
+              className="col-span-3 bg-slate-50 border-slate-200 text-slate-700"
+            />
+          </div>
+
+          <div className="h-px bg-slate-200 my-2" />
+
+          {/* --- EDITABLE FIELDS --- */}
+          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="amount" className="text-right font-bold text-slate-800">
+              Total Amount
+            </Label>
+            <div className="col-span-3 relative">
+              <span className="absolute left-3 top-2.5 text-slate-500">₹</span>
+              <Input
+                id="amount"
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+                className="pl-7 font-medium text-blue-600 focus-visible:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="remainingBalance" className="text-right font-bold text-slate-800">
+              Outstanding
+            </Label>
+            <div className="col-span-3 relative">
+              <span className="absolute left-3 top-2.5 text-slate-500">₹</span>
+              <Input
+                id="remainingBalance"
+                type="number"
+                value={remainingBalance}
+                onChange={(e) => setRemainingBalance(parseFloat(e.target.value) || 0)}
+                className="pl-7 font-medium text-red-600 focus-visible:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleUpdate} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
             ) : (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                  No active loans found
-                </TableCell>
-              </TableRow>
+              'Save Changes'
             )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {editingLoan && (
-        <EditLoanModal 
-          isOpen={!!editingLoan} 
-          onClose={() => setEditingLoan(null)} 
-          loanData={editingLoan} 
-        />
-      )}
-    </>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
