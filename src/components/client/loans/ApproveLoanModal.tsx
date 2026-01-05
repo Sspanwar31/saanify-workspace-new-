@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
+import { supabase } from '@/lib/supabase'; // Updated import
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner'; // ✅ Toast Import
 import { 
   User, 
   DollarSign, 
@@ -18,7 +19,8 @@ import {
   Shield, 
   AlertTriangle, 
   Percent,
-  Calendar
+  Calendar,
+  Loader2 // ✅ Loader Icon
 } from 'lucide-react';
 
 interface ApproveLoanModalProps {
@@ -28,7 +30,7 @@ interface ApproveLoanModalProps {
 }
 
 export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModalProps) {
-  // --- Local States (Replaces Store) ---
+  // --- Local States ---
   const [request, setRequest] = useState<any>(null);
   const [amount, setAmount] = useState<string>('');
   const [isOverride, setIsOverride] = useState(false);
@@ -51,12 +53,13 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           setRequest({
             id: loanData.id,
             memberId: loanData.member_id,
+            clientId: loanData.client_id, // ✅ Client ID capture kiya notification ke liye
             memberName: loanData.members?.name || 'Unknown',
             amount: loanData.amount,
             status: loanData.status
           });
 
-          // Set Live Deposit Balance from Member Table
+          // Set Live Deposit Balance
           setTotalDeposit(loanData.members?.total_deposits || 0);
           
           // Set Initial Amount
@@ -77,7 +80,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
   const isOverLimit = loanAmount > maxLimit;
   const canApprove = !isOverLimit || isOverride;
 
-  // --- Submit Handler ---
+  // --- Submit Handler (Updated) ---
   const handleSubmit = async () => {
     if (!request || !canApprove) return;
 
@@ -91,20 +94,19 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
         .from('loans')
         .update({
           status: 'active',
-          amount: approvedAmount, // Update amount if changed by admin
+          amount: approvedAmount,
           approved_amount: approvedAmount,
           approved_at: today,
           start_date: today.split('T')[0],
           override_limit: isOverride,
           interest_rate: 1, // Fixed 1%
-          remaining_balance: approvedAmount // Initial balance = Loan Amount
+          remaining_balance: approvedAmount
         })
         .eq('id', request.id);
 
       if (loanError) throw loanError;
 
       // 2. Update Member's Outstanding Loan Balance
-      // First fetch current outstanding
       const { data: memberData } = await supabase
         .from('members')
         .select('outstanding_loan')
@@ -119,18 +121,32 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
         .update({ outstanding_loan: newOutstanding })
         .eq('id', request.memberId);
 
-      // Success
-      alert("Loan Approved Successfully!");
+      // 3. ✅ NEW: Insert Notification for Member
+      const { error: notifError } = await supabase.from('notifications').insert([{
+          client_id: request.clientId,
+          member_id: request.memberId,
+          title: "Loan Approved ✅",
+          message: `Your loan of ₹${approvedAmount.toLocaleString('en-IN')} has been approved.`,
+          type: "success",
+          is_read: false,
+          created_at: new Date().toISOString()
+      }]);
+
+      if (notifError) console.error("Notification Error:", notifError);
+
+      // Success Toast
+      toast.success("Loan Approved Successfully!");
+      
       onClose();
       setAmount('');
       setIsOverride(false);
       
-      // Optional: Page refresh to show updates
-      // window.location.reload(); 
+      // Page refresh to reflect changes immediately
+      window.location.reload(); 
 
     } catch (error: any) {
       console.error('Error approving loan:', error);
-      alert('Error approving loan: ' + error.message);
+      toast.error('Error approving loan: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -231,7 +247,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
                 />
               </div>
               
-              {/* Requested Amount Info */}
               <div className="text-sm text-muted-foreground">
                 Requested: {formatCurrency(requestedAmount)}
               </div>
@@ -320,7 +335,13 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             disabled={!canApprove || isSubmitting || !amount}
             className="bg-green-600 hover:bg-green-700"
           >
-            {isSubmitting ? 'Approving...' : 'Approve Loan'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approving...
+              </>
+            ) : (
+              'Approve Loan'
+            )}
           </Button>
         </div>
       </DialogContent>
