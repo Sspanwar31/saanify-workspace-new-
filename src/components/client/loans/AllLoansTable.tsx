@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase-simple';
+import { supabase } from '@/lib/supabase'; // ✅ Correct Import
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, CheckCircle2 } from 'lucide-react';
 import { EditLoanModal } from './EditLoanModal';
 
-const formatCurrency = (val: number) =>
+const formatCurrency = (val: number) => 
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
 
 const formatDate = (dateStr: string) => {
@@ -21,17 +21,16 @@ const formatDate = (dateStr: string) => {
 const getNextEMI = (startDate: string) => {
   if (!startDate) return '-';
   const d = new Date(startDate);
-  d.setMonth(d.getMonth() + 1);
+  d.setMonth(d.getMonth() + 1); 
   return formatDate(d.toISOString());
 };
 
 export function AllLoansTable({ loans }: { loans: any[] }) {
   const [editingLoan, setEditingLoan] = useState<any>(null);
 
-  // --- LOGIC: GROUPING & MERGING ---
+  // --- LOGIC: GROUPING & MERGING (As Requested: UNCHANGED) ---
   const groupedLoans = loans.reduce((acc: any, loan) => {
-    const key = loan.memberId;
-    // Removed "code" text from here
+    const key = loan.memberId; 
 
     if (!acc[key]) {
       acc[key] = {
@@ -39,14 +38,12 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         count: 1, 
         totalAmount: loan.amount,
         totalOutstanding: loan.remainingBalance, 
-        totalInterestCollected: loan.totalInterestCollected || 0, // Initial Value
+        totalInterestCollected: loan.totalInterestCollected || 0,
         startDate: loan.startDate || loan.created_at
       };
     } else {
       acc[key].count += 1;
       acc[key].totalAmount += loan.amount;
-      // Note: totalOutstanding aur totalInterestCollected Parent se Member level par aa rahe hain.
-      // Isliye unhe bar-bar add (+=) nahi karna hai, bas latest value rakhni hai.
       
       const currentStart = new Date(acc[key].startDate);
       const newStart = new Date(loan.startDate || loan.created_at);
@@ -61,8 +58,8 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
 
   const handleDeleteLoan = async (loanId: string) => {
     if(confirm("Are you sure you want to delete this loan record? This cannot be undone.")) {
-      const { error } = await supabase.from('loans').delete().eq('id', loanId);
-      if(!error) window.location.reload();
+        const { error } = await supabase.from('loans').delete().eq('id', loanId);
+        if(!error) window.location.reload();
     }
   }
 
@@ -88,7 +85,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
               displayRows.map((row: any) => {
                 const monthlyInterest = (row.totalOutstanding || 0) * 0.01;
                 const isClosed = row.totalOutstanding <= 0;
-                // Removed "code" text from here
 
                 return (
                   <TableRow key={row.id} className={isClosed ? "bg-gray-50 opacity-70" : ""}>
@@ -112,7 +108,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                     </TableCell>
                     
                     <TableCell className="text-green-700 font-medium bg-green-50 rounded-md">
-                      {/* Only Interest, No Fine */}
                       {formatCurrency(row.totalInterestCollected)}
                     </TableCell>
                     
