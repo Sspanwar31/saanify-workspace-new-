@@ -176,4 +176,3 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
     </>
   );
 }
-```
