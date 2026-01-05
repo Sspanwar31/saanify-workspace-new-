@@ -30,8 +30,9 @@ const getNextEMI = (startDate: string) => {
 export function AllLoansTable({ loans }: { loans: any[] }) {
   const [editingLoan, setEditingLoan] = useState<any>(null);
 
-  // --- LOGIC 1: FILTER (Remove Rejected) ---
-  const validLoans = loans.filter(l => l.status !== 'rejected');
+  // --- LOGIC 1: FILTER (Remove Rejected AND NULL) ---
+  // FIXED: Added check for (l.status && ...) to handle null values
+  const validLoans = loans.filter(l => l.status && l.status !== 'rejected');
 
   // --- LOGIC 2: GROUPING & MERGING (Aggregation) ---
   const groupedLoans = validLoans.reduce((acc: any, loan) => {
@@ -98,8 +99,8 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                 // Auto Calculate Monthly Interest on Outstanding
                 const monthlyInterest = (row.totalOutstanding || 0) * 0.01;
                 
-                // Determine Status Style
-                const isClosed = row.totalOutstanding <= 0 || row.status === 'completed';
+                // Determine Status Style (Using optional chaining just in case)
+                const isClosed = (row.totalOutstanding || 0) <= 0 || row.status === 'completed';
 
                 return (
                   <TableRow key={row.id} className={isClosed ? "bg-gray-50 opacity-70" : ""}>
