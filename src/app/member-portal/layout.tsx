@@ -1,86 +1,141 @@
 'use client';
 
 import {
-  LayoutDashboard,
-  BookOpen,
+  Wallet,
   CreditCard,
-  Settings,
-  LogOut
+  IndianRupee,
+  CalendarCheck,
+  AlertCircle
 } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useClientStore } from '@/lib/client/store';
 
-export default function MemberLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+export default function MemberDashboard() {
   const { currentUser } = useClientStore();
 
-  const navItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, href: '/member-portal/dashboard' },
-    { label: 'Passbook', icon: BookOpen, href: '/member-portal/passbook' },
-    { label: 'Loans', icon: CreditCard, href: '/member-portal/loans' },
-    { label: 'Settings', icon: Settings, href: '/member-portal/settings' },
-  ];
+  /**
+   * ⚠️ IMPORTANT
+   * Yahan jo values use ho rahi hain
+   * wo SAME store / props se aayengi
+   * jo pehle aa rahi thi.
+   *
+   * Agar already backend se aa rahi hain
+   * to yahan sirf UI use ho raha hai.
+   */
+
+  const dashboard = currentUser?.dashboard || {};
+
+  const {
+    totalDeposited = 0,
+    activeLoanAmount = 0,
+    currentInterest = 0,
+    totalInstallmentsPaid = 0,
+    lastPaymentDate,
+    loanActive = false
+  } = dashboard;
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col bg-white border-r">
-        <div className="px-6 py-5 border-b">
-          <h1 className="text-lg font-bold text-gray-800">Saanify</h1>
-          <p className="text-xs text-gray-500">Member Portal</p>
+    <div className="space-y-6">
+      {/* ===== TOP SUMMARY CARDS ===== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Deposited */}
+        <div className="bg-white rounded-xl p-4 border shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">Total Deposited</p>
+            <Wallet className="w-4 h-4 text-orange-500" />
+          </div>
+          <p className="text-lg font-bold mt-1">₹{totalDeposited}</p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            Total amount paid till date
+          </p>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-3">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium transition
-                  ${isActive
-                    ? 'bg-orange-50 text-orange-600'
-                    : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 border-t">
-          <button className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md">
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
+        {/* Active Loan */}
+        <div className="bg-white rounded-xl p-4 border shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">Active Loan</p>
+            <CreditCard className="w-4 h-4 text-pink-500" />
+          </div>
+          <p className="text-lg font-bold mt-1">
+            ₹{loanActive ? activeLoanAmount : 0}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {loanActive ? 'Loan running' : 'No active loan'}
+          </p>
         </div>
-      </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white px-6 py-4 border-b flex justify-between items-center">
+        {/* Current Interest */}
+        <div className="bg-white rounded-xl p-4 border shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">Current Interest</p>
+            <IndianRupee className="w-4 h-4 text-green-500" />
+          </div>
+          <p className="text-lg font-bold mt-1">
+            ₹{loanActive ? currentInterest : 0}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {loanActive
+              ? 'This month interest'
+              : 'No interest (loan inactive)'}
+          </p>
+        </div>
+
+        {/* Installments Paid */}
+        <div className="bg-white rounded-xl p-4 border shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">Installments Paid</p>
+            <CalendarCheck className="w-4 h-4 text-blue-500" />
+          </div>
+          <p className="text-lg font-bold mt-1">
+            ₹{totalInstallmentsPaid}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-1">
+            Total installment amount
+          </p>
+        </div>
+      </div>
+
+      {/* ===== STATUS SECTION ===== */}
+      <div className="bg-white rounded-xl border p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5" />
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">
-              Good Evening, {currentUser?.name}
-            </h2>
-            <p className="text-xs text-gray-500">
-              Member Account Overview
+            <p className="text-sm font-semibold text-gray-800">
+              Account Status
             </p>
-          </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {loanActive
+                ? 'Your loan is currently active. Please ensure timely installment payments.'
+                : 'Your account is in good standing. No active loans.'}
+            </p>
 
-          <div className="h-9 w-9 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 font-bold">
-            {currentUser?.name?.charAt(0)}
+            {lastPaymentDate && (
+              <p className="text-[11px] text-gray-400 mt-2">
+                Last payment on: <span className="font-medium">{lastPaymentDate}</span>
+              </p>
+            )}
           </div>
-        </header>
+        </div>
+      </div>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
+      {/* ===== QUICK ACTIONS ===== */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-5 border">
+          <p className="text-sm font-semibold text-orange-800">
+            Need a Loan?
+          </p>
+          <p className="text-xs text-orange-700 mt-1">
+            Request a new loan directly from your account.
+          </p>
+        </div>
+
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5 border">
+          <p className="text-sm font-semibold text-gray-800">
+            View Passbook
+          </p>
+          <p className="text-xs text-gray-600 mt-1">
+            Check deposits, installments & transaction history.
+          </p>
+        </div>
       </div>
     </div>
   );
