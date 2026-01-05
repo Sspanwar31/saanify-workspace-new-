@@ -81,7 +81,7 @@ export default function MemberLoans() {
 
       if (error) throw error;
 
-      toast.success('Loan request sent');
+      toast.success('Loan request sent successfully');
       setPendingRequest({ amount: Number(amount), status: 'pending' });
       setIsRequestOpen(false);
       setAmount('');
@@ -161,9 +161,7 @@ export default function MemberLoans() {
 
       {/* 🔹 SECTION 2: MY LOAN */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-700">
-          My Loan
-        </h2>
+        <h2 className="text-lg font-semibold text-slate-700">My Loan</h2>
 
         {activeLoan && (
           <Card className="border-l-4 border-l-red-500">
@@ -222,15 +220,21 @@ export default function MemberLoans() {
         )}
       </div>
 
-      {/* 🔹 SECTION 3: REQUEST LOAN */}
-      {!activeLoan && !pendingRequest && (
+      {/* 🔹 SECTION 3: REQUEST LOAN (ALWAYS VISIBLE) */}
+      <div className="pt-4">
         <Button
           onClick={() => setIsRequestOpen(true)}
           className="w-full h-12 text-lg rounded-xl"
         >
           Request New Loan
         </Button>
-      )}
+
+        {(activeLoan || pendingRequest) && (
+          <p className="mt-2 text-xs text-slate-500 text-center">
+            You can request another loan even if one is active or under review.
+          </p>
+        )}
+      </div>
 
       {/* MODAL */}
       <Dialog open={isRequestOpen} onOpenChange={setIsRequestOpen}>
