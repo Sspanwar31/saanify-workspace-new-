@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'; // Updated import to standard
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -47,6 +47,7 @@ export function useReportLogic() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      
       let cid = clientId;
       if (!cid) {
         const storedUser = localStorage.getItem('current_user');
@@ -148,11 +149,17 @@ export function useReportLogic() {
 
   // 2. Calculation Engine
   useEffect(() => {
-    if (loading || !members.length) return;
+    if (loading || !members.length) return; 
 
     const start = new Date(filters.startDate);
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
+
+    const isDateInRange = (dateStr: string) => {
+        if(!dateStr) return false;
+        const d = new Date(dateStr);
+        return d >= start && d <= end;
+    };
 
     const filteredPassbook = passbookEntries.filter(e => {
         const inDate = isDateInRange(e.date);
@@ -166,12 +173,6 @@ export function useReportLogic() {
 
         return inDate && memberMatch && modeMatch && typeMatch;
     });
-
-    const isDateInRange = (dateStr: string) => {
-        if(!dateStr) return false;
-        const d = new Date(dateStr);
-        return d >= start && d <= end;
-    };
 
     const filteredExpenses = expenses.filter(e => isDateInRange(e.date || e.created_at));
     const filteredAdminFunds = adminFunds.filter(a => isDateInRange(a.date || a.created_at));
@@ -213,19 +214,24 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-   // --- C. LOAN STATS (FIXED: ONLY INTEREST, NO FINE) ---
+    // --- C. LOAN STATS (FIXED: ROBUST INTEREST CALCULATION) ---
     const loansWithLiveBalance = loans.map(l => {
-      // 1. Member ke saare loans count karo
-      const memberLoanCount = loans.filter(ln => ln.member_id === l.member_id).length || 1;
-
-      // 2. Member ka TOTAL INTEREST (without Fine) calculate karo
+      // 1. Calculate Interest Collected (Using both possible property names for safety)
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
-        .reduce((sum, p) => sum + Number(p.interestAmount || 0), 0); // ✅ Fine Ignore kiya
+        .reduce((sum, p) => {
+            // Check mapped property OR raw db property to be safe
+            const intVal = Number(p.interestAmount ?? p.interest_amount ?? 0);
+            return sum + intVal;
+        }, 0); 
 
-      // 3. Interest ko barabar baato (Distribute) taaki Table Sum sahi aaye
+      // 2. Count Loans for Distribution
+      const memberLoanCount = loans.filter(ln => ln.member_id === l.member_id).length || 1;
+      
+      // 3. Distributed Interest per loan
       const distributedInterest = memberTotalInterest / memberLoanCount;
 
+      // 4. DB Values
       const loanAmount = Number(l.amount) || 0;
       const currentBalance = Number(l.remaining_balance) || 0;
       
@@ -241,7 +247,7 @@ export function useReportLogic() {
         principalPaid: principalPaid,
         remainingBalance: currentBalance,
         interestRate: interestAmount, 
-        totalInterestCollected: distributedInterest, // ✅ Updated (Only Interest)
+        totalInterestCollected: distributedInterest, // ✅ Correctly Summed Interest Only
         status: l.status
       };
     });
@@ -250,6 +256,7 @@ export function useReportLogic() {
     const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
     const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
     const loansPendingCount = loansWithLiveBalance.filter(l => l.status === 'active').length;
+
 
     // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
