@@ -28,78 +28,54 @@ interface EditLoanModalProps {
 }
 
 export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps) {
-  // --- States for Editable Fields ---
   const [totalAmount, setTotalAmount] = useState('');
   const [outstanding, setOutstanding] = useState('');
   const [status, setStatus] = useState('active'); 
   const [loading, setLoading] = useState(false);
 
-  // --- Initialize Data on Open ---
   useEffect(() => {
     if (loanData) {
-      // Data fill kar rahe hain (Fallback 0 ke sath)
-      setTotalAmount(loanData.amount?.toString() || loanData.totalAmount?.toString() || '0');
-      setOutstanding(loanData.remainingBalance?.toString() || loanData.totalOutstanding?.toString() || '0');
+      // ✅ FIX: Hum Specifc Loan ka data utha rahe hain, Total wala nahi
+      // Isse "Outstanding > Total" wala error nahi aayega
+      const specificAmount = loanData.amount || 0;
+      const specificOutstanding = loanData.remainingBalance || loanData.remaining_balance || 0;
+
+      setTotalAmount(specificAmount.toString());
+      setOutstanding(specificOutstanding.toString());
       setStatus(loanData.status?.toLowerCase() || 'active');
     }
   }, [loanData]);
 
-  // --- Auto-Sync Logic: Handle Total Amount Change ---
-  const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVal = e.target.value;
-    setTotalAmount(newVal);
-
-    const newTotal = Number(newVal);
-    const currentOutstanding = Number(outstanding);
-
-    // Agar Naya Total, Current Outstanding se KAM hai
-    // To Outstanding ko bhi Total ke barabar kar do (Auto-fix)
-    if (newTotal < currentOutstanding) {
-        setOutstanding(newVal);
-    }
-  };
-
-  // --- Handle Save Logic (Using API) ---
   const handleSave = async () => {
     setLoading(true);
     try {
       const newTotal = Number(totalAmount);
       const newOutstanding = Number(outstanding);
 
-      // 1. Validation: Outstanding Total se jyada nahi ho sakta
-      if (newOutstanding > newTotal) {
-        toast.error("Error: Outstanding balance cannot be greater than Total Loan Amount");
+      // --- VALIDATION REMOVED ---
+      // Aapke kehne par validation hata di hai taaki aap freely edit kar sakein.
+      // Bas negative value check rakha hai.
+      if (newTotal < 0 || newOutstanding < 0) {
+        toast.error("Values cannot be negative");
         setLoading(false);
         return;
       }
 
-      if (newTotal <= 0) {
-        toast.error("Total Amount must be greater than 0");
-        setLoading(false);
-        return;
-      }
-
-      // 2. Auto Status Logic (Optional Helper)
-      // Agar Outstanding 0 kar diya, to loan close ho jana chahiye
+      // Auto Close Logic: Agar dono 0 kar diye to close
       let finalStatus = status;
-      if (newOutstanding === 0 && status === 'active') {
+      if (newOutstanding === 0 && newTotal === 0) {
          finalStatus = 'closed'; 
       }
-      // Agar Outstanding > 0 hai aur status closed hai, to active kar do
-      if (newOutstanding > 0 && status === 'closed') {
-         finalStatus = 'active';
-      }
 
-      // 3. API CALL (Bypassing RLS via Admin API)
-      // Hum direct database call nahi kar rahe taaki RLS error na aaye
+      // API Call
       const response = await fetch('/api/loans/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: loanData.id,
-          amount: newTotal,             // Updating Total Loan Amount
-          remaining_balance: newOutstanding, // Updating Outstanding Balance
-          status: finalStatus           // Updating Status
+          amount: newTotal,
+          remaining_balance: newOutstanding,
+          status: finalStatus
         })
       });
 
@@ -107,8 +83,8 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
 
       if (!response.ok) throw new Error(result.error || "Update failed");
 
-      toast.success("Loan corrected successfully");
-      window.location.reload(); // Refresh table to show changes
+      toast.success("Loan updated successfully");
+      window.location.reload(); 
 
     } catch (error: any) {
       console.error("Update Error:", error);
@@ -128,13 +104,13 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
             <div className="p-2 bg-blue-100 rounded-full">
                 <Edit2 className="w-5 h-5 text-blue-600"/>
             </div>
-            Edit Loan Details
+            Edit Loan Record
           </DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-6 py-4">
           
-          {/* 1. READ ONLY INFO (Member & Meta Data) */}
+          {/* Read Only Info */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 grid grid-cols-2 gap-4">
              <div>
                 <Label className="text-xs text-slate-500 uppercase flex items-center gap-1 font-bold">
@@ -166,10 +142,8 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
              </div>
           </div>
 
-          {/* 2. EDITABLE FIELDS (Main Logic) */}
+          {/* Editable Fields */}
           <div className="grid grid-cols-2 gap-6">
-            
-            {/* Field A: Total Loan Amount */}
             <div className="space-y-2">
               <Label htmlFor="total" className="text-blue-700 font-semibold">Total Approved</Label>
               <div className="relative">
@@ -178,14 +152,13 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
                   id="total"
                   type="number"
                   value={totalAmount}
-                  onChange={handleTotalChange} // ✅ Using Auto-Sync Handler here
+                  onChange={(e) => setTotalAmount(e.target.value)}
                   className="pl-7 h-11 text-lg font-bold border-blue-200 focus:border-blue-500 bg-white"
                 />
               </div>
-              <p className="text-[10px] text-gray-400">Edit original principal amount</p>
+              <p className="text-[10px] text-gray-400">Set to 0 to cancel loan</p>
             </div>
 
-            {/* Field B: Outstanding Balance */}
             <div className="space-y-2">
               <Label htmlFor="outstanding" className="text-red-700 font-semibold">Outstanding Bal</Label>
               <div className="relative">
@@ -198,11 +171,11 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
                   className="pl-7 h-11 text-lg font-bold border-red-200 focus:border-red-500 text-red-600 bg-white"
                 />
               </div>
-              <p className="text-[10px] text-gray-400">Edit remaining amount to pay</p>
+              <p className="text-[10px] text-gray-400">Set to 0 to clear dues</p>
             </div>
           </div>
 
-          {/* 3. STATUS TOGGLE (Manual Override) */}
+          {/* Status Toggle */}
           <div className="flex items-center justify-between border-t border-slate-100 pt-4 px-1">
              <div className="space-y-0.5">
                 <Label className="text-sm font-semibold text-slate-700">Loan Status Override</Label>
@@ -219,12 +192,12 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
              </div>
           </div>
 
-          {/* 4. WARNING BOX */}
+          {/* Warning */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-3 items-start">
             <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-amber-800 leading-relaxed">
               <p className="font-bold mb-1">⚠️ Admin Correction Mode</p>
-              <p>Changing these values will directly update the database record via API. Ensure "Total Approved" matches the original agreement and "Outstanding" reflects true pending amount.</p>
+              <p>You are editing the specific loan record. To remove a wrong entry, set amounts to 0.</p>
             </div>
           </div>
 
