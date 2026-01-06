@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, Eye, Lock, User } from 'lucide-react';
+import { Edit, Trash2, User, Lock, Loader2 } from 'lucide-react';
 import { EditLoanModal } from './EditLoanModal';
 import { toast } from 'sonner';
 
@@ -21,6 +21,7 @@ interface MemberLoansModalProps {
 
 export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberLoansModalProps) {
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
@@ -32,16 +33,35 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
     });
   };
 
-  const handleDelete = async (loanId: string) => {
+  // ✅ NEW: Delete with Notification Logic
+  const handleDelete = async (loan: any) => {
     if(!confirm("Are you sure you want to DELETE this loan entry? This action cannot be undone.")) return;
 
+    setDeletingId(loan.id);
     try {
-        const { error } = await supabase.from('loans').delete().eq('id', loanId);
+        // 1. Notify Member (Toast ke liye)
+        const { error: notifError } = await supabase.from('notifications').insert([{
+            client_id: loan.client_id || loan.clientId,
+            member_id: loan.member_id || loan.memberId,
+            title: 'Loan Deleted 🗑️',
+            message: `Your loan record of ${formatCurrency(loan.amount)} has been removed by admin.`,
+            type: 'error', // Red color
+            is_read: false,
+            created_at: new Date().toISOString()
+        }]);
+
+        if(notifError) console.error("Notification Error", notifError);
+
+        // 2. Delete Loan
+        const { error } = await supabase.from('loans').delete().eq('id', loan.id);
         if(error) throw error;
-        toast.success("Loan entry deleted");
+        
+        toast.success("Loan entry deleted & Member notified");
         window.location.reload();
     } catch(e: any) {
-        toast.error(e.message);
+        toast.error("Delete Failed: " + e.message);
+    } finally {
+        setDeletingId(null);
     }
   };
 
@@ -70,7 +90,11 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
               </TableHeader>
               <TableBody>
                 {loans.map((loan) => {
-                  const isClosed = loan.remainingBalance <= 0 || loan.status === 'closed';
+                  // ✅ FIX: Priority to Raw DB Value (snake_case) to avoid wrong calculations
+                  const amount = Number(loan.amount || 0);
+                  const balance = Number(loan.remaining_balance ?? loan.remainingBalance ?? 0);
+                  
+                  const isClosed = balance <= 0 || loan.status === 'closed';
                   
                   return (
                     <TableRow key={loan.id} className={`hover:bg-slate-50 ${isClosed ? 'opacity-70 bg-slate-50/50' : ''}`}>
@@ -79,15 +103,16 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
                       </TableCell>
                       
                       <TableCell className="font-bold text-blue-600">
-                        {formatCurrency(loan.amount)}
+                        {formatCurrency(amount)}
                       </TableCell>
                       
+                      {/* ✅ Correct Balance Display */}
                       <TableCell className={isClosed ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-                        {isClosed ? 'Cleared' : formatCurrency(loan.remainingBalance)}
+                        {isClosed ? 'Cleared' : formatCurrency(balance)}
                       </TableCell>
                       
                       <TableCell className="text-purple-600">
-                        {isClosed ? '-' : formatCurrency(Math.round(loan.remainingBalance * 0.01))}
+                        {isClosed ? '-' : formatCurrency(Math.round(balance * 0.01))}
                       </TableCell>
                       
                       <TableCell>
@@ -100,18 +125,32 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {isClosed ? (
-                            // LOCKED MODE (For Closed Loans)
                             <Button size="sm" variant="ghost" disabled className="text-gray-400 cursor-not-allowed">
                                <Lock className="w-4 h-4 mr-1"/> Locked
                             </Button>
                           ) : (
-                            // EDIT MODE (For Active Loans)
                             <>
-                                <Button size="sm" variant="outline" onClick={() => setSelectedLoan({...loan, memberName})}>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => setSelectedLoan({
+                                        ...loan, 
+                                        memberName,
+                                        // Ensure we pass the correct values to Edit Modal too
+                                        remainingBalance: balance,
+                                        amount: amount
+                                    })}
+                                >
                                     <Edit className="w-4 h-4 mr-1"/> Edit
                                 </Button>
-                                <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(loan.id)}>
-                                    <Trash2 className="w-4 h-4"/>
+                                <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="text-red-500 hover:bg-red-50" 
+                                    onClick={() => handleDelete(loan)}
+                                    disabled={deletingId === loan.id}
+                                >
+                                    {deletingId === loan.id ? <Loader2 className="w-4 h-4 animate-spin"/> : <Trash2 className="w-4 h-4"/>}
                                 </Button>
                             </>
                           )}
@@ -130,7 +169,6 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
         </DialogContent>
       </Dialog>
 
-      {/* Edit Modal (Wahi purana wala jo humne fix kiya tha) */}
       {selectedLoan && (
         <EditLoanModal 
           isOpen={!!selectedLoan}
