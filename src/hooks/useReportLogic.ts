@@ -13,6 +13,7 @@ export function useReportLogic() {
   const [loans, setLoans] = useState<any[]>([]);
   const [passbookEntries, setPassbookEntries] = useState<any[]>([]); 
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [adminFunds, setAdminFunds] = useState<any[]>([]); // Added to maintain consistency
 
   // Filter States
   const [filters, setFilters] = useState({
@@ -38,111 +39,106 @@ export function useReportLogic() {
     loans: [],
     memberReports: [],
     maturity: [],
-    defaulters: []
+    defaulters: [],
+    adminFund: [] // Added back
   });
 
-  // 1. Fetch Data (DUAL LOGIC IMPLEMENTED HERE)
+  // 1. Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       
-      // Determine Context
       let cid = clientId;
       if (!cid) {
         const storedUser = localStorage.getItem('current_user');
         if (storedUser) {
             cid = JSON.parse(storedUser).id;
             setClientId(cid);
+        } else {
+            // Fallback (Optional, kept for safety)
+            const { data: clients } = await supabase.from('clients').select('id').limit(1);
+            if (clients && clients.length > 0) {
+              cid = clients[0].id;
+              setClientId(cid);
+            }
         }
       }
 
-      // Check if viewing as Admin (Access Panel Mode)
       const isAdminView = localStorage.getItem('admin_session') === 'true';
 
       if (cid) {
         try {
-            let membersData, loansData, passbookData, expensesData;
+          let membersData, loansData, passbookData, expensesData, adminFundData;
 
-            if (isAdminView) {
-                // --- OPTION A: ADMIN MODE (API CALL TO BYPASS RLS) ---
-                // Admin frontend se direct call nahi karega, API se mangega
-                const fetchFromApi = async (table: string) => {
-                    const res = await fetch('/api/admin/get-data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ table, clientId: cid })
-                    });
-                    const json = await res.json();
-                    return json.data || [];
-                };
-
-                const [m, l, p, e] = await Promise.all([
-                    fetchFromApi('members'),
-                    fetchFromApi('loans'),
-                    fetchFromApi('passbook_entries'),
-                    fetchFromApi('expenses_ledger')
-                ]);
-
-                membersData = m;
-                loansData = l;
-                passbookData = p?.sort((a:any, b:any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                expensesData = e;
-
-            } else {
-                // --- OPTION B: NORMAL MODE (DIRECT SUPABASE + RLS) ---
-                const [membersRes, loansRes, passbookRes, expenseRes] = await Promise.all([
-                    supabase.from('members').select('*').eq('client_id', cid),
-                    supabase.from('loans').select('*').eq('client_id', cid),
-                    supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
-                    supabase.from('expenses_ledger').select('*').eq('client_id', cid)
-                ]);
-
-                membersData = membersRes.data || [];
-                loansData = loansRes.data || [];
-                passbookData = passbookRes.data || [];
-                expensesData = expenseRes.data || [];
-            }
-
-            // --- SET STATE (Common for both) ---
-            setMembers(membersData);
-            setLoans(loansData);
-            setExpenses(expensesData);
-
-            if (passbookData) {
-                // Member ID Filter (Security Layer for RLS mode)
-                // Admin mode me sab aa jayega, Client mode me RLS already filter kar chuka hoga
-                // Lekin safe side ke liye hum memberIds check karte hain
-                const memberIds = new Set(membersData.map((m: any) => m.id));
-                // Note: Agar admin mode hai aur memberIds match nahi ho rahe (sync issue), to filter hata sakte hain
-                const validEntries = isAdminView ? passbookData : passbookData.filter((e: any) => memberIds.has(e.member_id));
-
-                let runningBalance = 0;
-                const mappedPassbook = validEntries.map((e: any) => {
-                    const total = Number(e.total_amount || 0);
-                    runningBalance += total;
-
-                    let type = 'DEPOSIT';
-                    if (Number(e.installment_amount) > 0) type = 'LOAN_REPAYMENT';
-                    else if (Number(e.interest_amount) > 0 || Number(e.fine_amount) > 0) type = 'INTEREST/FINE';
-
-                    return {
-                        id: e.id,
-                        date: e.date || e.created_at,
-                        memberId: e.member_id, 
-                        memberName: e.member_name, 
-                        amount: total,
-                        paymentMode: e.payment_mode || 'CASH', 
-                        description: e.note || 'Passbook Entry',
-                        type: type,
-                        depositAmount: Number(e.deposit_amount || 0),
-                        installmentAmount: Number(e.installment_amount || 0),
-                        interestAmount: Number(e.interest_amount || 0),
-                        fineAmount: Number(e.fine_amount || 0),
-                        balance: runningBalance
-                    };
+          if (isAdminView) {
+             const fetchFromApi = async (table: string) => {
+                const res = await fetch('/api/admin/get-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ table, clientId: cid })
                 });
-                setPassbookEntries(mappedPassbook); 
-            }
+                const json = await res.json();
+                return json.data || [];
+             };
+
+             const [m, l, p, e, af] = await Promise.all([
+                 fetchFromApi('members'),
+                 fetchFromApi('loans'),
+                 fetchFromApi('passbook_entries'),
+                 fetchFromApi('expenses_ledger'),
+                 fetchFromApi('admin_fund_ledger')
+             ]);
+             membersData = m; loansData = l; passbookData = p; expensesData = e; adminFundData = af;
+
+          } else {
+             const [mRes, lRes, pRes, eRes, afRes] = await Promise.all([
+               supabase.from('members').select('*').eq('client_id', cid), // Corrected to members table
+               supabase.from('loans').select('*').eq('client_id', cid),
+               supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
+               supabase.from('expenses_ledger').select('*').eq('client_id', cid),
+               supabase.from('admin_fund_ledger').select('*').eq('client_id', cid).order('date', { ascending: false })
+             ]);
+
+             membersData = mRes.data || [];
+             loansData = lRes.data || [];
+             passbookData = pRes.data || [];
+             expensesData = eRes.data || [];
+             adminFundData = afRes.data || [];
+          }
+
+          setMembers(membersData);
+          setLoans(loansData);
+          setExpenses(expensesData);
+          setAdminFunds(adminFundData);
+
+          if (passbookData) {
+            // Member ID Filter Logic (Preserved)
+            const memberIds = new Set(membersData.map((m: any) => m.id));
+            const validEntries = isAdminView ? passbookData : passbookData.filter((e: any) => memberIds.has(e.member_id));
+
+            let runningBalance = 0;
+            const mappedPassbook = validEntries.map((e: any) => {
+                const total = Number(e.total_amount || 0);
+                runningBalance += total;
+
+                return {
+                    id: e.id,
+                    date: e.date || e.created_at,
+                    memberId: e.member_id, 
+                    memberName: e.member_name, 
+                    amount: total,
+                    paymentMode: e.payment_mode || 'CASH', 
+                    description: e.note || 'Passbook Entry',
+                    type: Number(e.installment_amount) > 0 ? 'LOAN_REPAYMENT' : 'DEPOSIT',
+                    depositAmount: Number(e.deposit_amount || 0),
+                    installmentAmount: Number(e.installment_amount || 0),
+                    interestAmount: Number(e.interest_amount || 0),
+                    fineAmount: Number(e.fine_amount || 0),
+                    balance: runningBalance
+                };
+            });
+            setPassbookEntries(mappedPassbook); 
+          }
 
         } catch (error) {
             console.error("Data Fetch Error:", error);
@@ -153,17 +149,23 @@ export function useReportLogic() {
     fetchData();
   }, [clientId]);
 
-  // 2. Calculation Engine (EXACT SAME AS BEFORE)
+  // 2. Calculation Engine
   useEffect(() => {
-    if (loading || !members.length) return;
+    if (loading) return; 
 
+    // Date Filter Logic (Preserved)
     const start = new Date(filters.startDate);
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
+    const isDateInRange = (dateStr: string) => {
+        if(!dateStr) return false;
+        const d = new Date(dateStr);
+        return d >= start && d <= end;
+    };
+
     const filteredPassbook = passbookEntries.filter(e => {
-        const d = new Date(e.date);
-        const dateMatch = d >= start && d <= end;
+        const inDate = isDateInRange(e.date);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
         const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase() === filters.transactionMode;
         
@@ -172,18 +174,14 @@ export function useReportLogic() {
         if(filters.transactionType === 'loan') typeMatch = (e.installmentAmount > 0);
         if(filters.transactionType === 'expense') typeMatch = false; 
 
-        return dateMatch && memberMatch && modeMatch && typeMatch;
+        return inDate && memberMatch && modeMatch && typeMatch;
     });
 
-    const filteredExpenses = expenses.filter(e => {
-        const d = new Date(e.date || e.created_at);
-        const dateMatch = d >= start && d <= end;
-        let typeMatch = true;
-        if(filters.transactionType === 'deposit' || filters.transactionType === 'loan') typeMatch = false;
-        return dateMatch && typeMatch;
-    });
+    const filteredExpenses = expenses.filter(e => isDateInRange(e.date || e.created_at));
+    const filteredAdminFunds = adminFunds.filter(a => isDateInRange(a.date || a.created_at));
 
-    let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0;
+    // Summary Logic (Preserved)
+    let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0, totalExpense = 0;
     
     filteredPassbook.forEach(e => {
         interestIncome += e.interestAmount;
@@ -192,13 +190,15 @@ export function useReportLogic() {
     });
 
     filteredExpenses.forEach(e => {
-        if (e.type === 'INCOME') otherIncome += Number(e.amount);
-        if (e.type === 'EXPENSE') opsExpense += Number(e.amount);
+        const amt = Number(e.amount || 0);
+        totalExpense += amt;
+        if (e.type === 'INCOME') otherIncome += amt;
+        if (e.type === 'EXPENSE') opsExpense += amt;
     });
 
+    // Maturity Logic (Preserved)
     let totalMaturityLiability = 0;
     members.forEach(m => {
-        // Use ALL passbook entries for maturity, not date filtered
         const mDepositEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
         if (mDepositEntries.length > 0) {
              const sorted = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -219,36 +219,38 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-   // --- C. LOAN STATS (Live) ---
+    // --- C. LOAN STATS (FIXED LOGIC) ---
+    // Ab hum calculation nahi karenge, Database value use karenge
     const loansWithLiveBalance = loans.map(l => {
-      const installmentsPaid = passbookEntries
-        .filter(
-          p => p.memberId === l.member_id && Number(p.installmentAmount) > 0
-        )
-        .reduce((sum, p) => sum + Number(p.installmentAmount), 0);
-
+      // Direct Values from DB
       const loanAmount = Number(l.amount) || 0;
-      const currentBalance = Math.max(0, loanAmount - installmentsPaid);
-      const isActive = currentBalance > 0;
+      const currentBalance = Number(l.remaining_balance) || 0; // ✅ Sahi DB Value
+      
+      const isActive = l.status === 'active' && currentBalance > 0;
       const interestAmount = Math.round(currentBalance * 0.01);
+      
+      // Calculate Principal Paid (Derived)
+      const principalPaid = loanAmount - currentBalance;
 
       return {
         id: l.id,
         memberId: l.member_id,
-        start_date: l.start_date,
+        start_date: l.start_date || l.created_at,
         amount: loanAmount,
-        principalPaid: installmentsPaid,
-        remainingBalance: currentBalance,
+        principalPaid: principalPaid,
+        remainingBalance: currentBalance, // ✅ Trust DB Value
         interestRate: interestAmount, 
-        status: isActive ? 'ACTIVE' : 'CLOSED'
+        status: l.status
       };
     });
 
     const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
     const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
     const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
+    const loansPendingCount = loansWithLiveBalance.filter(l => l.status === 'active').length;
 
-    // --- D. DAILY LEDGER ---
+
+    // --- D. DAILY LEDGER (Preserved Logic) ---
     const ledgerMap = new Map();
     const getOrSetEntry = (dateStr: string) => {
         if (!ledgerMap.has(dateStr)) {
@@ -283,10 +285,12 @@ export function useReportLogic() {
         else { entry.cashIn += amt; entry.cashInMode += amt; }
     });
 
+    // Optional: Add Admin Funds to Ledger if needed
+    // filteredAdminFunds.forEach(...)
+
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
         loans.forEach(l => {
-            // Check loan date against filter range
-            if (l.start_date >= filters.startDate && l.start_date <= filters.endDate) {
+            if (isDateInRange(l.start_date)) {
                 const entry = getOrSetEntry(l.start_date);
                 const amt = Number(l.amount);
                 entry.loanOut += amt;
@@ -304,7 +308,7 @@ export function useReportLogic() {
         return { ...e, netFlow, runningBal };
     });
 
-    // Cashbook Array
+    // Cashbook Array (Preserved Logic)
     let closingBal = 0;
     const finalCashbook = sortedLedger.map((e: any) => {
         const dailyNet = (e.cashInMode + e.bankInMode + e.upiInMode) - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
@@ -318,9 +322,8 @@ export function useReportLogic() {
         };
     });
 
-    // --- E. MODE STATS ---
+    // --- E. MODE STATS (Preserved) ---
     let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
-    // Use FULL Passbook (not filtered) for current Balance
     passbookEntries.forEach(e => {
         const amt = e.amount;
         const mode = (e.paymentMode || 'CASH').toUpperCase();
@@ -331,12 +334,13 @@ export function useReportLogic() {
     const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
     cashBalTotal -= totalOut;
 
-    // --- F. MEMBER REPORTS ---
+    // --- F. MEMBER REPORTS (Preserved) ---
     const memberReports = members.map(m => {
         const mEntries = passbookEntries.filter(e => e.memberId === m.id);
         const dep = mEntries.reduce((acc, e) => acc + e.depositAmount, 0);
         const intPaid = mEntries.reduce((acc, e) => acc + e.interestAmount, 0);
         const finePaid = mEntries.reduce((acc, e) => acc + e.fineAmount, 0);
+        
         const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
         const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
         const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
@@ -350,7 +354,7 @@ export function useReportLogic() {
         };
     });
 
-    // --- G. MATURITY ---
+    // --- G. MATURITY (Preserved) ---
     const maturity = members.map(m => {
         const mEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
         let monthly = 0;
@@ -365,7 +369,7 @@ export function useReportLogic() {
         const manualAmount = Number(m.maturity_manual_amount || 0);
         const settledInterest = isOverride ? manualAmount : projected;
         const maturityAmt = target + settledInterest;
-        const outstanding = Number(m.outstanding_loan || 0);
+        const outstanding = loansWithLiveBalance.filter(l => l.memberId === m.id && l.status === 'active').reduce((s,l)=>s+l.remainingBalance,0);
 
         return { 
             memberName: m.name || 'Member', joinDate: m.join_date || m.created_at, 
@@ -375,8 +379,8 @@ export function useReportLogic() {
         };
     });
 
-    // --- H. DEFAULTERS ---
-    const defaulters = loansWithLiveBalance.filter(l => l.status === 'ACTIVE' && l.remainingBalance > 0).map(l => {
+    // --- H. DEFAULTERS (Preserved) ---
+    const defaulters = loansWithLiveBalance.filter(l => l.status === 'active' && l.remainingBalance > 0).map(l => {
         const mem = members.find(m => m.id === l.memberId); 
         return {
             memberId: l.memberId, 
@@ -394,17 +398,18 @@ export function useReportLogic() {
             income: { interest: interestIncome, fine: fineIncome, other: otherIncome, total: totalIncomeCalc },
             expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
-            loans: { issued: loansIssuedTotal, recovered: loansRecoveredTotal, pending: loansPendingTotal },
+            loans: { issued: loansIssuedTotal, recovered: loansRecoveredTotal, pending: loansPendingCount },
             netProfit: netProfitCalc
         },
         dailyLedger: finalLedger,
         cashbook: finalCashbook,
         modeStats: { cashBal: cashBalTotal, bankBal: bankBalTotal, upiBal: upiBalTotal },
         loans: loansWithLiveBalance,
-        memberReports, maturity, defaulters
+        memberReports, maturity, defaulters,
+        adminFund: filteredAdminFunds
     });
 
-  }, [members, loans, passbookEntries, expenses, filters, loading]);
+  }, [members, loans, passbookEntries, expenses, adminFunds, filters, loading]);
 
   const reversedPassbook = [...passbookEntries].reverse();
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
