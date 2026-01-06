@@ -24,7 +24,7 @@ export function useReportLogic() {
     transactionType: 'all'
   });
 
-  // Calculated Data
+  // Calculated Data Structure
   const [auditData, setAuditData] = useState<any>({
     summary: { 
         income: { interest: 0, fine: 0, other: 0, total: 0 }, 
@@ -128,9 +128,11 @@ export function useReportLogic() {
                     paymentMode: e.payment_mode || 'CASH', 
                     description: e.note || 'Passbook Entry',
                     type: Number(e.installment_amount) > 0 ? 'LOAN_REPAYMENT' : 'DEPOSIT',
+                    // RAW DB VALUES PRESERVED
                     depositAmount: Number(e.deposit_amount || 0),
                     installmentAmount: Number(e.installment_amount || 0),
-                    interestAmount: Number(e.interest_amount || 0),
+                    interestAmount: Number(e.interest_amount || 0), // CamelCase
+                    interest_amount: Number(e.interest_amount || 0), // Snake_Case (Backup)
                     fineAmount: Number(e.fine_amount || 0),
                     balance: runningBalance
                 };
@@ -214,24 +216,24 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (FIXED: ROBUST INTEREST CALCULATION) ---
+    // --- C. LOAN STATS (STRICT FIX: ONLY INTEREST) ---
     const loansWithLiveBalance = loans.map(l => {
-      // 1. Calculate Interest Collected (Using both possible property names for safety)
+      // 1. Calculate Interest Collected (Strictly checking only Interest Amount)
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
         .reduce((sum, p) => {
-            // Check mapped property OR raw db property to be safe
-            const intVal = Number(p.interestAmount ?? p.interest_amount ?? 0);
+            // Hum sirf 'interestAmount' le rahe hain. 'fineAmount' ko ignore kar rahe hain.
+            // Hum snake_case aur camelCase dono check kar rahe hain safety ke liye.
+            const intVal = Number(p.interestAmount || p.interest_amount || 0);
             return sum + intVal;
         }, 0); 
 
-      // 2. Count Loans for Distribution
+      // 2. Count Member's Total Loans (To distribute sum correctly)
       const memberLoanCount = loans.filter(ln => ln.member_id === l.member_id).length || 1;
       
-      // 3. Distributed Interest per loan
+      // 3. Distributed Interest
       const distributedInterest = memberTotalInterest / memberLoanCount;
 
-      // 4. DB Values
       const loanAmount = Number(l.amount) || 0;
       const currentBalance = Number(l.remaining_balance) || 0;
       
@@ -247,7 +249,7 @@ export function useReportLogic() {
         principalPaid: principalPaid,
         remainingBalance: currentBalance,
         interestRate: interestAmount, 
-        totalInterestCollected: distributedInterest, // ✅ Correctly Summed Interest Only
+        totalInterestCollected: distributedInterest, // ✅ Only Interest (No Fine)
         status: l.status
       };
     });
@@ -348,14 +350,14 @@ export function useReportLogic() {
         
         const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
         const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
-        const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
-        const lPaid = lTaken - lPend;
+        const lActiveBal = mLoans.filter(l => l.status === 'active').reduce((acc, l) => acc + l.remainingBalance, 0);
+        const lPaid = lTaken - lActiveBal;
 
         return { 
             id: m.id, name: m.name || m.member_name || 'Member', phone: m.phone || '', 
             totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
-            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
-            netWorth: dep - lPend, status: m.status || 'active' 
+            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lActiveBal, 
+            netWorth: dep - lActiveBal, status: m.status || 'active' 
         };
     });
 
