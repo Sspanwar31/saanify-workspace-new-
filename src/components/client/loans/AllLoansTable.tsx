@@ -25,22 +25,28 @@ const getNextEMI = (startDate: string) => {
 export function AllLoansTable({ loans }: { loans: any[] }) {
   const [viewingMember, setViewingMember] = useState<{name: string, loans: any[]} | null>(null);
 
-  // --- LOGIC: GROUPING & SUMMING (ROBUST VERSION) ---
+  // --- LOGIC: GROUPING & SUMMING (FIXED FOR ACCURACY) ---
   const groupedLoans = loans.reduce((acc: any, loan) => {
     const key = loan.memberId; 
     
-    // 1. Force Convert to Number (Safety)
-    const amount = parseFloat(loan.amount) || 0;
-    const balance = parseFloat(loan.remainingBalance || loan.remaining_balance) || 0;
-    const interestCollected = parseFloat(loan.totalInterestCollected) || 0;
+    // 1. Data Cleaning (Database Priority)
+    // Hum pehle 'remaining_balance' (DB column) check karenge.
+    // Agar wo nahi mila, tabhi 'remainingBalance' (Frontend prop) lenge.
+    let rawAmount = loan.amount;
+    let rawBalance = loan.remaining_balance !== undefined ? loan.remaining_balance : loan.remainingBalance;
+    
+    const amount = Number(rawAmount) || 0;
+    const balance = Number(rawBalance) || 0;
+    const interestCollected = Number(loan.totalInterestCollected || 0);
 
     if (!acc[key]) {
+      // First entry initialization
       acc[key] = {
-        ...loan,
+        ...loan, // Keep basic meta data
         count: 1, 
-        rawLoans: [loan], // Store list
+        rawLoans: [loan], // Store for modal
         
-        // Initialize Totals
+        // RESET TOTALS (Zero se shuru karein)
         totalAmountTaken: amount,      
         totalCurrentBalance: balance,  
         totalInterestPaid: interestCollected,
@@ -48,15 +54,16 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         startDate: loan.start_date || loan.created_at
       };
     } else {
+      // Subsequent entries aggregation
       acc[key].count += 1;
       acc[key].rawLoans.push(loan);
       
-      // Accumulate Totals
+      // ✅ SUMMING (Jodna)
       acc[key].totalAmountTaken += amount;
       acc[key].totalCurrentBalance += balance;
       acc[key].totalInterestPaid += interestCollected;
       
-      // Earliest Date Logic
+      // Date Logic (Earliest Start Date)
       const currentStart = new Date(acc[key].startDate);
       const newStart = new Date(loan.start_date || loan.created_at);
       if (newStart < currentStart) {
@@ -88,7 +95,9 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
           <TableBody>
             {displayRows.length > 0 ? (
               displayRows.map((row: any) => {
+                // Monthly Interest calculation on CURRENT Outstanding only
                 const monthlyInterest = row.totalCurrentBalance * 0.01;
+                
                 // Loan Closed tabhi manenge jab Balance 0 ho
                 const isClosed = row.totalCurrentBalance <= 0;
 
@@ -113,10 +122,12 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                       {isClosed ? 'Cleared' : formatCurrency(row.totalCurrentBalance)}
                     </TableCell>
                     
+                    {/* Monthly Interest */}
                     <TableCell className="text-blue-600">
                       {isClosed ? '-' : formatCurrency(monthlyInterest)}
                     </TableCell>
                     
+                    {/* Total Interest Earned */}
                     <TableCell className="text-green-700 font-medium bg-green-50 rounded-md px-2 py-1 w-fit">
                       {formatCurrency(row.totalInterestPaid)}
                     </TableCell>
@@ -131,6 +142,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                     </TableCell>
                     
                     <TableCell>
+                      {/* View Button */}
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -150,6 +162,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         </Table>
       </div>
 
+      {/* Detail Modal */}
       {viewingMember && (
         <MemberLoansModal 
           isOpen={!!viewingMember} 
