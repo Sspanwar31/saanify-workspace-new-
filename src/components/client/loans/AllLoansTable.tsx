@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase'; // ✅ Correct Import
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, CheckCircle2 } from 'lucide-react';
-import { EditLoanModal } from './EditLoanModal';
+import { Eye, Layers } from 'lucide-react';
+import { MemberLoansModal } from './MemberLoansModal';
 
 const formatCurrency = (val: number) => 
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
@@ -26,9 +25,10 @@ const getNextEMI = (startDate: string) => {
 };
 
 export function AllLoansTable({ loans }: { loans: any[] }) {
-  const [editingLoan, setEditingLoan] = useState<any>(null);
+  // State for opening the list modal
+  const [viewingMember, setViewingMember] = useState<{name: string, loans: any[]} | null>(null);
 
-  // --- LOGIC: GROUPING & MERGING (As Requested: UNCHANGED) ---
+  // --- LOGIC: GROUPING & MERGING (Updated to store rawLoans) ---
   const groupedLoans = loans.reduce((acc: any, loan) => {
     const key = loan.memberId; 
 
@@ -36,32 +36,29 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
       acc[key] = {
         ...loan,
         count: 1, 
-        totalAmount: loan.amount,
-        totalOutstanding: loan.remainingBalance, 
+        rawLoans: [loan], // ✅ Store individual loans for the modal
+        totalAmount: Number(loan.amount),
+        totalOutstanding: Number(loan.remainingBalance),
         totalInterestCollected: loan.totalInterestCollected || 0,
-        startDate: loan.startDate || loan.created_at
+        startDate: loan.start_date || loan.created_at
       };
     } else {
       acc[key].count += 1;
-      acc[key].totalAmount += loan.amount;
+      acc[key].rawLoans.push(loan); // ✅ Add to list
+      acc[key].totalAmount += Number(loan.amount);
+      acc[key].totalOutstanding += Number(loan.remainingBalance);
       
+      // Update start date to earliest
       const currentStart = new Date(acc[key].startDate);
-      const newStart = new Date(loan.startDate || loan.created_at);
+      const newStart = new Date(loan.start_date || loan.created_at);
       if (newStart < currentStart) {
-        acc[key].startDate = loan.startDate;
+        acc[key].startDate = loan.start_date || loan.created_at;
       }
     }
     return acc;
   }, {});
 
   const displayRows = Object.values(groupedLoans);
-
-  const handleDeleteLoan = async (loanId: string) => {
-    if(confirm("Are you sure you want to delete this loan record? This cannot be undone.")) {
-        const { error } = await supabase.from('loans').delete().eq('id', loanId);
-        if(!error) window.location.reload();
-    }
-  }
 
   return (
     <>
@@ -90,9 +87,11 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                   <TableRow key={row.id} className={isClosed ? "bg-gray-50 opacity-70" : ""}>
                     <TableCell>
                       <div className="font-medium text-gray-900">{row.memberName}</div>
-                      <div className="text-xs text-blue-600 font-medium">
-                        {row.count > 1 ? `${row.count} Loans Merged` : 'Single Loan'}
-                      </div>
+                      {row.count > 1 && (
+                        <div className="text-xs text-blue-600 font-medium flex items-center gap-1">
+                           <Layers className="w-3 h-3"/> {row.count} Loans Merged
+                        </div>
+                      )}
                     </TableCell>
                     
                     <TableCell className="font-medium">
@@ -124,21 +123,15 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                     </TableCell>
                     
                     <TableCell>
-                      <div className="flex gap-2">
-                        {!isClosed && (
-                          <>
-                            <Button size="icon" variant="ghost" onClick={() => setEditingLoan(row)}>
-                              <Edit className="h-4 w-4 text-blue-500" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => handleDeleteLoan(row.id)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </>
-                        )}
-                        {isClosed && (
-                           <CheckCircle2 className="h-5 w-5 text-green-500 ml-2" />
-                        )}
-                      </div>
+                      {/* ✅ Action: View / Manage Button */}
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => setViewingMember({ name: row.memberName, loans: row.rawLoans })}
+                        className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                      >
+                        <Eye className="h-4 w-4 mr-1" /> View / Manage
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
@@ -154,11 +147,13 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         </Table>
       </div>
 
-      {editingLoan && (
-        <EditLoanModal 
-          isOpen={!!editingLoan} 
-          onClose={() => setEditingLoan(null)} 
-          loanData={editingLoan} 
+      {/* ✅ Modal that shows individual loans */}
+      {viewingMember && (
+        <MemberLoansModal 
+          isOpen={!!viewingMember} 
+          onClose={() => setViewingMember(null)} 
+          memberName={viewingMember.name}
+          loans={viewingMember.loans}
         />
       )}
     </>
