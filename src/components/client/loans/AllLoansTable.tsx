@@ -25,40 +25,38 @@ const getNextEMI = (startDate: string) => {
 export function AllLoansTable({ loans }: { loans: any[] }) {
   const [viewingMember, setViewingMember] = useState<{name: string, loans: any[]} | null>(null);
 
-  // --- FIXED LOGIC: GROUPING & SUMMING ---
+  // --- LOGIC: GROUPING & SUMMING (ROBUST VERSION) ---
   const groupedLoans = loans.reduce((acc: any, loan) => {
     const key = loan.memberId; 
     
-    // 1. Data Cleaning (Supabase se kabhi snake_case aata hai, kabhi camelCase)
-    const amount = Number(loan.amount || 0);
-    const balance = Number(loan.remaining_balance || loan.remainingBalance || 0);
-    const interestCollected = Number(loan.totalInterestCollected || 0);
+    // 1. Force Convert to Number (Safety)
+    const amount = parseFloat(loan.amount) || 0;
+    const balance = parseFloat(loan.remainingBalance || loan.remaining_balance) || 0;
+    const interestCollected = parseFloat(loan.totalInterestCollected) || 0;
 
     if (!acc[key]) {
-      // First entry for this member
       acc[key] = {
         ...loan,
         count: 1, 
-        rawLoans: [loan], // Store individual loan for Modal
+        rawLoans: [loan], // Store list
         
-        // Totals start here
-        totalAmountTaken: amount,      // Total Loan Taken
-        totalCurrentBalance: balance,  // Total Abhi Baki Hai
+        // Initialize Totals
+        totalAmountTaken: amount,      
+        totalCurrentBalance: balance,  
         totalInterestPaid: interestCollected,
         
         startDate: loan.start_date || loan.created_at
       };
     } else {
-      // Add subsequent entries
       acc[key].count += 1;
       acc[key].rawLoans.push(loan);
       
-      // ✅ Correct Summing Logic
+      // Accumulate Totals
       acc[key].totalAmountTaken += amount;
       acc[key].totalCurrentBalance += balance;
       acc[key].totalInterestPaid += interestCollected;
       
-      // Update start date to earliest
+      // Earliest Date Logic
       const currentStart = new Date(acc[key].startDate);
       const newStart = new Date(loan.start_date || loan.created_at);
       if (newStart < currentStart) {
@@ -90,10 +88,8 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
           <TableBody>
             {displayRows.length > 0 ? (
               displayRows.map((row: any) => {
-                // Monthly Interest calculation on CURRENT Outstanding only
                 const monthlyInterest = row.totalCurrentBalance * 0.01;
-                
-                // Agar total balance 0 ya minus hai, to loan closed maano
+                // Loan Closed tabhi manenge jab Balance 0 ho
                 const isClosed = row.totalCurrentBalance <= 0;
 
                 return (
@@ -117,12 +113,10 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                       {isClosed ? 'Cleared' : formatCurrency(row.totalCurrentBalance)}
                     </TableCell>
                     
-                    {/* Monthly Interest */}
                     <TableCell className="text-blue-600">
                       {isClosed ? '-' : formatCurrency(monthlyInterest)}
                     </TableCell>
                     
-                    {/* Total Interest Earned */}
                     <TableCell className="text-green-700 font-medium bg-green-50 rounded-md px-2 py-1 w-fit">
                       {formatCurrency(row.totalInterestPaid)}
                     </TableCell>
@@ -156,7 +150,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         </Table>
       </div>
 
-      {/* Detail Modal */}
       {viewingMember && (
         <MemberLoansModal 
           isOpen={!!viewingMember} 
