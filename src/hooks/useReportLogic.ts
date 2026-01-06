@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // Updated import to standard
+import { supabase } from '@/lib/supabase';
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -13,7 +13,7 @@ export function useReportLogic() {
   const [loans, setLoans] = useState<any[]>([]);
   const [passbookEntries, setPassbookEntries] = useState<any[]>([]); 
   const [expenses, setExpenses] = useState<any[]>([]);
-  const [adminFunds, setAdminFunds] = useState<any[]>([]); // Added to maintain consistency
+  const [adminFunds, setAdminFunds] = useState<any[]>([]);
 
   // Filter States
   const [filters, setFilters] = useState({
@@ -40,14 +40,13 @@ export function useReportLogic() {
     memberReports: [],
     maturity: [],
     defaulters: [],
-    adminFund: [] // Added back
+    adminFund: []
   });
 
   // 1. Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      
       let cid = clientId;
       if (!cid) {
         const storedUser = localStorage.getItem('current_user');
@@ -55,7 +54,6 @@ export function useReportLogic() {
             cid = JSON.parse(storedUser).id;
             setClientId(cid);
         } else {
-            // Fallback (Optional, kept for safety)
             const { data: clients } = await supabase.from('clients').select('id').limit(1);
             if (clients && clients.length > 0) {
               cid = clients[0].id;
@@ -92,7 +90,7 @@ export function useReportLogic() {
 
           } else {
              const [mRes, lRes, pRes, eRes, afRes] = await Promise.all([
-               supabase.from('members').select('*').eq('client_id', cid), // Corrected to members table
+               supabase.from('members').select('*').eq('client_id', cid),
                supabase.from('loans').select('*').eq('client_id', cid),
                supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
                supabase.from('expenses_ledger').select('*').eq('client_id', cid),
@@ -112,7 +110,6 @@ export function useReportLogic() {
           setAdminFunds(adminFundData);
 
           if (passbookData) {
-            // Member ID Filter Logic (Preserved)
             const memberIds = new Set(membersData.map((m: any) => m.id));
             const validEntries = isAdminView ? passbookData : passbookData.filter((e: any) => memberIds.has(e.member_id));
 
@@ -151,18 +148,11 @@ export function useReportLogic() {
 
   // 2. Calculation Engine
   useEffect(() => {
-    if (loading) return; 
+    if (loading || !members.length) return;
 
-    // Date Filter Logic (Preserved)
     const start = new Date(filters.startDate);
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
-
-    const isDateInRange = (dateStr: string) => {
-        if(!dateStr) return false;
-        const d = new Date(dateStr);
-        return d >= start && d <= end;
-    };
 
     const filteredPassbook = passbookEntries.filter(e => {
         const inDate = isDateInRange(e.date);
@@ -177,10 +167,15 @@ export function useReportLogic() {
         return inDate && memberMatch && modeMatch && typeMatch;
     });
 
+    const isDateInRange = (dateStr: string) => {
+        if(!dateStr) return false;
+        const d = new Date(dateStr);
+        return d >= start && d <= end;
+    };
+
     const filteredExpenses = expenses.filter(e => isDateInRange(e.date || e.created_at));
     const filteredAdminFunds = adminFunds.filter(a => isDateInRange(a.date || a.created_at));
 
-    // Summary Logic (Preserved)
     let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0, totalExpense = 0;
     
     filteredPassbook.forEach(e => {
@@ -196,7 +191,6 @@ export function useReportLogic() {
         if (e.type === 'EXPENSE') opsExpense += amt;
     });
 
-    // Maturity Logic (Preserved)
     let totalMaturityLiability = 0;
     members.forEach(m => {
         const mDepositEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
@@ -219,17 +213,24 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (FIXED LOGIC) ---
-    // Ab hum calculation nahi karenge, Database value use karenge
+   // --- C. LOAN STATS (FIXED: ONLY INTEREST, NO FINE) ---
     const loansWithLiveBalance = loans.map(l => {
-      // Direct Values from DB
+      // 1. Member ke saare loans count karo
+      const memberLoanCount = loans.filter(ln => ln.member_id === l.member_id).length || 1;
+
+      // 2. Member ka TOTAL INTEREST (without Fine) calculate karo
+      const memberTotalInterest = passbookEntries
+        .filter(p => p.memberId === l.member_id)
+        .reduce((sum, p) => sum + Number(p.interestAmount || 0), 0); // ✅ Fine Ignore kiya
+
+      // 3. Interest ko barabar baato (Distribute) taaki Table Sum sahi aaye
+      const distributedInterest = memberTotalInterest / memberLoanCount;
+
       const loanAmount = Number(l.amount) || 0;
-      const currentBalance = Number(l.remaining_balance) || 0; // ✅ Sahi DB Value
+      const currentBalance = Number(l.remaining_balance) || 0;
       
       const isActive = l.status === 'active' && currentBalance > 0;
       const interestAmount = Math.round(currentBalance * 0.01);
-      
-      // Calculate Principal Paid (Derived)
       const principalPaid = loanAmount - currentBalance;
 
       return {
@@ -238,8 +239,9 @@ export function useReportLogic() {
         start_date: l.start_date || l.created_at,
         amount: loanAmount,
         principalPaid: principalPaid,
-        remainingBalance: currentBalance, // ✅ Trust DB Value
+        remainingBalance: currentBalance,
         interestRate: interestAmount, 
+        totalInterestCollected: distributedInterest, // ✅ Updated (Only Interest)
         status: l.status
       };
     });
@@ -249,8 +251,7 @@ export function useReportLogic() {
     const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
     const loansPendingCount = loansWithLiveBalance.filter(l => l.status === 'active').length;
 
-
-    // --- D. DAILY LEDGER (Preserved Logic) ---
+    // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
     const getOrSetEntry = (dateStr: string) => {
         if (!ledgerMap.has(dateStr)) {
@@ -285,9 +286,6 @@ export function useReportLogic() {
         else { entry.cashIn += amt; entry.cashInMode += amt; }
     });
 
-    // Optional: Add Admin Funds to Ledger if needed
-    // filteredAdminFunds.forEach(...)
-
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
         loans.forEach(l => {
             if (isDateInRange(l.start_date)) {
@@ -308,7 +306,7 @@ export function useReportLogic() {
         return { ...e, netFlow, runningBal };
     });
 
-    // Cashbook Array (Preserved Logic)
+    // Cashbook Array
     let closingBal = 0;
     const finalCashbook = sortedLedger.map((e: any) => {
         const dailyNet = (e.cashInMode + e.bankInMode + e.upiInMode) - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
@@ -322,7 +320,7 @@ export function useReportLogic() {
         };
     });
 
-    // --- E. MODE STATS (Preserved) ---
+    // --- E. MODE STATS ---
     let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
     passbookEntries.forEach(e => {
         const amt = e.amount;
@@ -334,7 +332,7 @@ export function useReportLogic() {
     const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
     cashBalTotal -= totalOut;
 
-    // --- F. MEMBER REPORTS (Preserved) ---
+    // --- F. MEMBER REPORTS ---
     const memberReports = members.map(m => {
         const mEntries = passbookEntries.filter(e => e.memberId === m.id);
         const dep = mEntries.reduce((acc, e) => acc + e.depositAmount, 0);
@@ -354,7 +352,7 @@ export function useReportLogic() {
         };
     });
 
-    // --- G. MATURITY (Preserved) ---
+    // --- G. MATURITY ---
     const maturity = members.map(m => {
         const mEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
         let monthly = 0;
@@ -379,7 +377,7 @@ export function useReportLogic() {
         };
     });
 
-    // --- H. DEFAULTERS (Preserved) ---
+    // --- H. DEFAULTERS ---
     const defaulters = loansWithLiveBalance.filter(l => l.status === 'active' && l.remainingBalance > 0).map(l => {
         const mem = members.find(m => m.id === l.memberId); 
         return {
