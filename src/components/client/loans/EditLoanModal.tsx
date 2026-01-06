@@ -44,6 +44,21 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
     }
   }, [loanData]);
 
+  // --- Auto-Sync Logic: Handle Total Amount Change ---
+  const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    setTotalAmount(newVal);
+
+    const newTotal = Number(newVal);
+    const currentOutstanding = Number(outstanding);
+
+    // Agar Naya Total, Current Outstanding se KAM hai
+    // To Outstanding ko bhi Total ke barabar kar do (Auto-fix)
+    if (newTotal < currentOutstanding) {
+        setOutstanding(newVal);
+    }
+  };
+
   // --- Handle Save Logic (Using API) ---
   const handleSave = async () => {
     setLoading(true);
@@ -53,7 +68,7 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
 
       // 1. Validation: Outstanding Total se jyada nahi ho sakta
       if (newOutstanding > newTotal) {
-        toast.error("Error: Outstanding balance cannot differ from Total Loan Amount");
+        toast.error("Error: Outstanding balance cannot be greater than Total Loan Amount");
         setLoading(false);
         return;
       }
@@ -163,7 +178,7 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
                   id="total"
                   type="number"
                   value={totalAmount}
-                  onChange={(e) => setTotalAmount(e.target.value)}
+                  onChange={handleTotalChange} // ✅ Using Auto-Sync Handler here
                   className="pl-7 h-11 text-lg font-bold border-blue-200 focus:border-blue-500 bg-white"
                 />
               </div>
