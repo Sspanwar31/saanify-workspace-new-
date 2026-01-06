@@ -25,36 +25,40 @@ const getNextEMI = (startDate: string) => {
 export function AllLoansTable({ loans }: { loans: any[] }) {
   const [viewingMember, setViewingMember] = useState<{name: string, loans: any[]} | null>(null);
 
-  // --- LOGIC: AUTO-CALCULATE TOTALS ---
+  // --- FIXED LOGIC: GROUPING & SUMMING ---
   const groupedLoans = loans.reduce((acc: any, loan) => {
     const key = loan.memberId; 
     
-    // Safety Check: Database se value kabhi string aati hai, usse Number banao
-    const currentAmount = Number(loan.amount || 0);
-    const currentBalance = Number(loan.remainingBalance || loan.remaining_balance || 0);
+    // 1. Data Cleaning (Supabase se kabhi snake_case aata hai, kabhi camelCase)
+    const amount = Number(loan.amount || 0);
+    const balance = Number(loan.remaining_balance || loan.remainingBalance || 0);
+    const interestCollected = Number(loan.totalInterestCollected || 0);
 
     if (!acc[key]) {
+      // First entry for this member
       acc[key] = {
         ...loan,
         count: 1, 
-        rawLoans: [loan], // List for Modal
+        rawLoans: [loan], // Store individual loan for Modal
         
-        // Initial Totals
-        totalAmount: currentAmount,
-        totalOutstanding: currentBalance,
-        totalInterestCollected: Number(loan.totalInterestCollected || 0),
+        // Totals start here
+        totalAmountTaken: amount,      // Total Loan Taken
+        totalCurrentBalance: balance,  // Total Abhi Baki Hai
+        totalInterestPaid: interestCollected,
         
         startDate: loan.start_date || loan.created_at
       };
     } else {
+      // Add subsequent entries
       acc[key].count += 1;
       acc[key].rawLoans.push(loan);
       
-      // ✅ SUMMING UP (Jodna)
-      acc[key].totalAmount += currentAmount;
-      acc[key].totalOutstanding += currentBalance;
+      // ✅ Correct Summing Logic
+      acc[key].totalAmountTaken += amount;
+      acc[key].totalCurrentBalance += balance;
+      acc[key].totalInterestPaid += interestCollected;
       
-      // Date Logic
+      // Update start date to earliest
       const currentStart = new Date(acc[key].startDate);
       const newStart = new Date(loan.start_date || loan.created_at);
       if (newStart < currentStart) {
@@ -73,7 +77,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
           <TableHeader>
             <TableRow className="bg-gray-50">
               <TableHead>Member</TableHead>
-              <TableHead>Total Loan Taken</TableHead> {/* Label Updated for Clarity */}
+              <TableHead>Total Loan Taken</TableHead>
               <TableHead>Current Outstanding</TableHead>
               <TableHead>Interest (1%)</TableHead>
               <TableHead>Total Interest Earned</TableHead>
@@ -86,11 +90,11 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
           <TableBody>
             {displayRows.length > 0 ? (
               displayRows.map((row: any) => {
-                // Monthly Interest on CURRENT Outstanding
-                const monthlyInterest = row.totalOutstanding * 0.01;
+                // Monthly Interest calculation on CURRENT Outstanding only
+                const monthlyInterest = row.totalCurrentBalance * 0.01;
                 
-                // Agar Outstanding 0 hai, matlab loan poora clear hai
-                const isClosed = row.totalOutstanding <= 0;
+                // Agar total balance 0 ya minus hai, to loan closed maano
+                const isClosed = row.totalCurrentBalance <= 0;
 
                 return (
                   <TableRow key={row.id} className={isClosed ? "bg-gray-50 opacity-70" : ""}>
@@ -98,25 +102,29 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                       <div className="font-medium text-gray-900">{row.memberName}</div>
                       {row.count > 1 && (
                         <div className="text-xs text-blue-600 font-medium flex items-center gap-1 mt-1">
-                           <Layers className="w-3 h-3"/> {row.count} Records
+                           <Layers className="w-3 h-3"/> {row.count} Loans Merged
                         </div>
                       )}
                     </TableCell>
                     
+                    {/* Total Loan Taken */}
                     <TableCell className="font-medium text-blue-800">
-                      {formatCurrency(row.totalAmount)}
+                      {formatCurrency(row.totalAmountTaken)}
                     </TableCell>
                     
+                    {/* Current Outstanding */}
                     <TableCell className={`font-bold ${isClosed ? 'text-green-600' : 'text-red-600'}`}>
-                      {isClosed ? 'Cleared' : formatCurrency(row.totalOutstanding)}
+                      {isClosed ? 'Cleared' : formatCurrency(row.totalCurrentBalance)}
                     </TableCell>
                     
+                    {/* Monthly Interest */}
                     <TableCell className="text-blue-600">
                       {isClosed ? '-' : formatCurrency(monthlyInterest)}
                     </TableCell>
                     
+                    {/* Total Interest Earned */}
                     <TableCell className="text-green-700 font-medium bg-green-50 rounded-md px-2 py-1 w-fit">
-                      {formatCurrency(row.totalInterestCollected)}
+                      {formatCurrency(row.totalInterestPaid)}
                     </TableCell>
                     
                     <TableCell>{formatDate(row.startDate)}</TableCell>
@@ -148,7 +156,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         </Table>
       </div>
 
-      {/* Modal - Individual Loans List */}
+      {/* Detail Modal */}
       {viewingMember && (
         <MemberLoansModal 
           isOpen={!!viewingMember} 
