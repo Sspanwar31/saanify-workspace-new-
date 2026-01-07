@@ -1,7 +1,16 @@
+
+
+Ye error isliye aa raha hai kyunki aapne `useEffect` ke andar **`isDateInRange` function ko define karne se pehle use** kar liya hai. JavaScript mein `const` variables ko define hone se pehle access nahi kiya ja sakta (Temporal Dead Zone).
+
+Isko fix karne ke liye maine `const isDateInRange = ...` wali line ko upar shift kar di hai taaki wo `filteredPassbook` se pehle define ho jaye.
+
+Ye raha aapka fixed code:
+
+```tsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // Standard import
+import { supabase } from '@/lib/supabase';
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -155,8 +164,15 @@ export function useReportLogic() {
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
+    // ✅ FIXED: Moved function definition BEFORE usage
+    const isDateInRange = (dateStr: string) => {
+        if(!dateStr) return false;
+        const d = new Date(dateStr);
+        return d >= start && d <= end;
+    };
+
     const filteredPassbook = passbookEntries.filter(e => {
-        const inDate = isDateInRange(e.date);
+        const inDate = isDateInRange(e.date); // Now this works
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
         const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase() === filters.transactionMode;
         
@@ -167,12 +183,6 @@ export function useReportLogic() {
 
         return inDate && memberMatch && modeMatch && typeMatch;
     });
-
-    const isDateInRange = (dateStr: string) => {
-        if(!dateStr) return false;
-        const d = new Date(dateStr);
-        return d >= start && d <= end;
-    };
 
     const filteredExpenses = expenses.filter(e => isDateInRange(e.date || e.created_at));
     const filteredAdminFunds = adminFunds.filter(a => isDateInRange(a.date || a.created_at));
@@ -215,12 +225,12 @@ export function useReportLogic() {
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
     // --- C. LOAN STATS (STRICT CALCULATION) ---
-    const loansWithLiveBalance = loans.map(l => {
+    const loansWithLiveBalance = loans.map((l: any) => { // Renamed variable slightly for clarity
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
         .reduce((sum, p) => sum + Number(p.interestAmount || p.interest_amount || 0), 0); 
 
-      const memberLoanCount = loans.filter(ln => ln.member_id === l.member_id).length || 1;
+      const memberLoanCount = loans.filter((ln: any) => ln.member_id === l.member_id).length || 1;
       const distributedInterest = memberTotalInterest / memberLoanCount;
 
       const loanAmount = Number(l.amount) || 0;
@@ -239,25 +249,19 @@ export function useReportLogic() {
         remainingBalance: currentBalance,
         interestRate: interestAmount, 
         totalInterestCollected: distributedInterest, 
-        status: (l.status || '').toLowerCase() // Normalize status
+        status: (l.status || '').toLowerCase() 
       };
     });
 
     // 🛑 ULTRA-STRICT FILTERING FOR CARDS 🛑
-    // 1. Total Disbursed (Sirf Active aur Closed loans)
-    const validLoans = loansWithLiveBalance.filter(l => l.status === 'active' || l.status === 'closed');
-    const loansIssuedTotal = validLoans.reduce((acc, l) => acc + l.amount, 0);
+    const validLoans = loansWithLiveBalance.filter((l: any) => l.status === 'active' || l.status === 'closed');
+    const loansIssuedTotal = validLoans.reduce((acc: number, l: any) => acc + l.amount, 0);
     
-    // 2. Total Outstanding (Sirf 'active' aur > 0 balance)
-    // IMPORTANT: pending requests, deleted, rejected, closed sab ignore
     const loansOutstandingTotal = loansWithLiveBalance
-        .filter(l => l.status === 'active' && l.remainingBalance > 0) 
-        .reduce((acc, l) => acc + l.remainingBalance, 0);
+        .filter((l: any) => l.status === 'active' && l.remainingBalance > 0) 
+        .reduce((acc: number, l: any) => acc + l.remainingBalance, 0);
 
-    // 3. Count of Active Loans
-    const loansPendingCount = loansWithLiveBalance.filter(l => l.status === 'active' && l.remainingBalance > 0).length;
-
-    // "Recovered" = Issued - Outstanding
+    const loansPendingCount = loansWithLiveBalance.filter((l: any) => l.status === 'active' && l.remainingBalance > 0).length;
     const loansRecoveredTotal = loansIssuedTotal - loansOutstandingTotal;
 
 
@@ -297,7 +301,7 @@ export function useReportLogic() {
     });
 
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
-        loans.forEach(l => {
+        loans.forEach((l: any) => {
             if (isDateInRange(l.start_date)) {
                 const entry = getOrSetEntry(l.start_date);
                 const amt = Number(l.amount);
@@ -343,15 +347,15 @@ export function useReportLogic() {
     cashBalTotal -= totalOut;
 
     // --- F. MEMBER REPORTS ---
-    const memberReports = members.map(m => {
+    const memberReports = members.map((m: any) => {
         const mEntries = passbookEntries.filter(e => e.memberId === m.id);
-        const dep = mEntries.reduce((acc, e) => acc + e.depositAmount, 0);
-        const intPaid = mEntries.reduce((acc, e) => acc + e.interestAmount, 0);
-        const finePaid = mEntries.reduce((acc, e) => acc + e.fineAmount, 0);
+        const dep = mEntries.reduce((acc: number, e: any) => acc + e.depositAmount, 0);
+        const intPaid = mEntries.reduce((acc: number, e: any) => acc + e.interestAmount, 0);
+        const finePaid = mEntries.reduce((acc: number, e: any) => acc + e.fineAmount, 0);
         
-        const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
-        const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
-        const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
+        const mLoans = loansWithLiveBalance.filter((l: any) => l.memberId === m.id);
+        const lTaken = mLoans.reduce((acc: number, l: any) => acc + l.amount, 0);
+        const lPend = mLoans.reduce((acc: number, l: any) => acc + l.remainingBalance, 0);
         const lPaid = lTaken - lPend;
 
         return { 
@@ -363,7 +367,7 @@ export function useReportLogic() {
     });
 
     // --- G. MATURITY ---
-    const maturity = members.map(m => {
+    const maturity = members.map((m: any) => {
         const mEntries = passbookEntries.filter(e => e.memberId === m.id && e.depositAmount > 0);
         let monthly = 0;
         if(mEntries.length > 0) {
@@ -377,7 +381,7 @@ export function useReportLogic() {
         const manualAmount = Number(m.maturity_manual_amount || 0);
         const settledInterest = isOverride ? manualAmount : projected;
         const maturityAmt = target + settledInterest;
-        const outstanding = loansWithLiveBalance.filter(l => l.memberId === m.id && l.status === 'active').reduce((s,l)=>s+l.remainingBalance,0);
+        const outstanding = loansWithLiveBalance.filter((l: any) => l.memberId === m.id && l.status === 'active').reduce((s,l)=>s+l.remainingBalance,0);
 
         return { 
             memberName: m.name || 'Member', joinDate: m.join_date || m.created_at, 
@@ -388,8 +392,8 @@ export function useReportLogic() {
     });
 
     // --- H. DEFAULTERS ---
-    const defaulters = loansWithLiveBalance.filter(l => l.status === 'active' && l.remainingBalance > 0).map(l => {
-        const mem = members.find(m => m.id === l.memberId); 
+    const defaulters = loansWithLiveBalance.filter((l: any) => l.status === 'active' && l.remainingBalance > 0).map((l: any) => {
+        const mem = members.find((m: any) => m.id === l.memberId); 
         return {
             memberId: l.memberId, 
             memberName: mem?.name || 'Unknown', 
@@ -407,9 +411,9 @@ export function useReportLogic() {
             expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
             loans: { 
-                issued: loansIssuedTotal,      // ✅ Corrected Total
-                recovered: loansRecoveredTotal, // Corrected Recovered
-                pending: loansOutstandingTotal  // ✅ Corrected Outstanding Amount
+                issued: loansIssuedTotal,      
+                recovered: loansRecoveredTotal, 
+                pending: loansOutstandingTotal  
             },
             netProfit: netProfitCalc
         },
@@ -426,3 +430,4 @@ export function useReportLogic() {
   const reversedPassbook = [...passbookEntries].reverse();
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
 }
+```
