@@ -12,7 +12,7 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Wallet, TrendingDown, Percent, List } from 'lucide-react';
+import { Loader2, Wallet, TrendingDown, List, Calendar } from 'lucide-react';
 
 export default function MemberPassbook() {
   const [entries, setEntries] = useState<any[]>([]);
@@ -51,7 +51,7 @@ export default function MemberPassbook() {
       minimumFractionDigits: 0
     }).format(n);
 
-  /** 🔢 SUMMARY CALCULATIONS (UI ONLY) */
+  /** 🔢 SUMMARY CALCULATIONS */
   const summary = useMemo(() => {
     return {
       deposits: entries.reduce((s, e) => s + Number(e.deposit_amount || 0), 0),
@@ -59,13 +59,17 @@ export default function MemberPassbook() {
         (s, e) => s + Number(e.installment_amount || 0),
         0
       ),
-      interestFine: entries.reduce(
-        (s, e) => s + Number(e.interest_amount || 0) + Number(e.fine_amount || 0),
-        0
-      ),
       totalTxns: entries.length
     };
   }, [entries]);
+
+  // ✅ LOGIC: Next Due Date (Next Month 10th)
+  const getNextDueDate = () => {
+    const today = new Date();
+    // Agar aaj 10 se pehle hai, to isi mahine ki 10, nahi to agle mahine ki 10
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 10);
+    return nextMonth.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   if (loading) {
     return (
@@ -111,15 +115,16 @@ export default function MemberPassbook() {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* ✅ CHANGED: Next Due Date Card */}
+        <Card className="bg-orange-50 border-orange-100">
           <CardHeader className="flex justify-between pb-2">
-            <CardTitle className="text-sm text-slate-500">
-              Interest + Fine
+            <CardTitle className="text-sm text-orange-800">
+              Next Due Date
             </CardTitle>
-            <Percent className="h-4 w-4 text-orange-600" />
+            <Calendar className="h-4 w-4 text-orange-600" />
           </CardHeader>
-          <CardContent className="text-xl font-bold">
-            {fmt(summary.interestFine)}
+          <CardContent className="text-xl font-bold text-orange-700">
+            {getNextDueDate()}
           </CardContent>
         </Card>
 
