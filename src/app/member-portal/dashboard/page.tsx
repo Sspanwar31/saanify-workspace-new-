@@ -37,6 +37,7 @@ export default function MemberDashboard() {
       if (!memberData) return;
       setMember(memberData);
 
+      // 1. Passbook
       const { data: passbookData } = await supabase
         .from('passbook_entries')
         .select('*')
@@ -52,25 +53,27 @@ export default function MemberDashboard() {
           0
         ) || 0;
 
+      // 2. Loans (FIX: Sum ALL active loans)
       const { data: loans } = await supabase
         .from('loans')
         .select('*')
         .eq('member_id', memberData.id)
         .eq('status', 'active');
 
-      const activeLoan = loans?.[0];
-      const loanPrincipal = activeLoan
-        ? Number(activeLoan.remaining_balance)
-        : 0;
+      // ✅ FIX: Reduce use kiya taaki saare loans jud jayein
+      const totalOutstanding = loans?.reduce(
+        (sum, loan) => sum + (Number(loan.remaining_balance) || 0), 
+        0
+      ) || 0;
 
       const currentInterest =
-        loanPrincipal > 0 ? Math.round(loanPrincipal * 0.01) : 0;
+        totalOutstanding > 0 ? Math.round(totalOutstanding * 0.01) : 0;
 
       setStats({
         savings: totalSavings,
-        loanPrincipal,
+        loanPrincipal: totalOutstanding, // Ab ye Sahi Total dikhayega
         activeLoanInterest: currentInterest,
-        hasActiveLoan: !!activeLoan
+        hasActiveLoan: totalOutstanding > 0 // Agar total 0 se jyada hai tabhi active mano
       });
 
       setLoading(false);
@@ -87,9 +90,9 @@ export default function MemberDashboard() {
     }).format(n);
 
   const getTxnType = (t: any) => {
-    if (t.deposit_amount > 0) return 'Deposit';
-    if (t.installment_amount > 0) return 'Installment';
-    if (t.interest_amount > 0 || t.fine_amount > 0) return 'Interest / Fine';
+    if (Number(t.deposit_amount) > 0) return 'Deposit';
+    if (Number(t.installment_amount) > 0) return 'Installment';
+    if (Number(t.interest_amount) > 0 || Number(t.fine_amount) > 0) return 'Interest / Fine';
     return 'Transaction';
   };
 
@@ -191,9 +194,10 @@ export default function MemberDashboard() {
               <>
                 <div className="text-xl font-bold">
                   {fmt(
-                    lastTxn.deposit_amount ||
-                      lastTxn.installment_amount ||
-                      lastTxn.total_amount
+                    Number(lastTxn.deposit_amount) +
+                    Number(lastTxn.installment_amount) +
+                    Number(lastTxn.interest_amount) +
+                    Number(lastTxn.fine_amount)
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
@@ -231,9 +235,10 @@ export default function MemberDashboard() {
               </div>
               <div className="font-semibold">
                 {fmt(
-                  p.deposit_amount ||
-                    p.installment_amount ||
-                    p.total_amount
+                  Number(p.deposit_amount) +
+                  Number(p.installment_amount) +
+                  Number(p.interest_amount) +
+                  Number(p.fine_amount)
                 )}
               </div>
             </div>
