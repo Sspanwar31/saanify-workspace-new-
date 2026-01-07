@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // Standard import
+import { supabase } from '@/lib/supabase'; // Updated import to standard
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -214,21 +214,20 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (FIXED FOR CARDS & TABLE) ---
+    // --- C. LOAN STATS (STRICT CALCULATION FOR CARDS) ---
     const loansWithLiveBalance = loans.map(l => {
-      // 1. Calculate Interest Collected (Only Interest)
+      // 1. Interest Calc
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
         .reduce((sum, p) => sum + Number(p.interestAmount || p.interest_amount || 0), 0); 
 
-      // 2. Distribute Interest
+      // 2. Distribute
       const memberLoanCount = loans.filter(ln => ln.member_id === l.member_id).length || 1;
       const distributedInterest = memberTotalInterest / memberLoanCount;
 
-      // 3. Robust Number Parsing
+      // 3. Values
       const loanAmount = Number(l.amount) || 0;
-      // ✅ Check for both snake_case (DB) and camelCase (State) to avoid 0 balance error
-      const currentBalance = l.remaining_balance !== undefined ? Number(l.remaining_balance) : Number(l.remainingBalance || 0);
+      const currentBalance = Number(l.remaining_balance) || 0;
       
       const isActive = l.status === 'active' && currentBalance > 0;
       const interestAmount = Math.round(currentBalance * 0.01);
@@ -240,22 +239,32 @@ export function useReportLogic() {
         start_date: l.start_date || l.created_at,
         amount: loanAmount,
         principalPaid: principalPaid,
-        remainingBalance: currentBalance, // ✅ Correct Value passed
+        remainingBalance: currentBalance,
         interestRate: interestAmount, 
         totalInterestCollected: distributedInterest, 
         status: l.status
       };
     });
 
-    // ✅ Summary Cards Calculation (Using fixed values)
-    const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
-    // "Pending" here refers to "Outstanding Balance Amount" for the card
-    const loansOutstandingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
+    // 🛑 STRICT FIX FOR SUMMARY CARDS 🛑
+    // Hum sirf 'Active' ya 'Closed' loans ko count karenge (Deleted/Pending/Rejected nahi)
+    
+    // 1. Total Disbursed (Sirf Active aur Closed loans ka total)
+    const loansIssuedTotal = loansWithLiveBalance
+        .filter(l => l.status === 'active' || l.status === 'closed') 
+        .reduce((acc, l) => acc + l.amount, 0);
+    
+    // 2. Total Outstanding (Sirf Active loans ka balance)
+    const loansOutstandingTotal = loansWithLiveBalance
+        .filter(l => l.status === 'active') 
+        .reduce((acc, l) => acc + l.remainingBalance, 0);
+
+    // 3. Count of Active Loans
+    const loansPendingCount = loansWithLiveBalance.filter(l => l.status === 'active').length;
+
     // "Recovered" = Issued - Outstanding
     const loansRecoveredTotal = loansIssuedTotal - loansOutstandingTotal;
-    
-    // Count of Active Loans
-    const activeLoanCount = loansWithLiveBalance.filter(l => l.status === 'active').length;
+
 
     // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
@@ -347,14 +356,14 @@ export function useReportLogic() {
         
         const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
         const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
-        const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
-        const lPaid = lTaken - lPend;
+        const lActiveBal = mLoans.filter(l => l.status === 'active').reduce((acc, l) => acc + l.remainingBalance, 0);
+        const lPaid = lTaken - lActiveBal;
 
         return { 
             id: m.id, name: m.name || m.member_name || 'Member', phone: m.phone || '', 
             totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
-            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
-            netWorth: dep - lPend, status: m.status || 'active' 
+            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lActiveBal, 
+            netWorth: dep - lActiveBal, status: m.status || 'active' 
         };
     });
 
@@ -403,9 +412,9 @@ export function useReportLogic() {
             expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
             loans: { 
-                issued: loansIssuedTotal,      // Total Disbursed (Correct)
-                recovered: loansRecoveredTotal, // Principal Paid
-                pending: loansOutstandingTotal  // ✅ FIX: This is now Outstanding Balance (Amount)
+                issued: loansIssuedTotal,      // ✅ Corrected Total
+                recovered: loansRecoveredTotal, // Corrected Recovered
+                pending: loansOutstandingTotal  // ✅ Corrected Outstanding Amount
             },
             netProfit: netProfitCalc
         },
