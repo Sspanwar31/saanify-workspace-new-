@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // Updated import to standard
+import { supabase } from '@/lib/supabase'; // Standard import
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -214,18 +214,15 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (STRICT CALCULATION FOR CARDS) ---
+    // --- C. LOAN STATS (STRICT CALC FOR CARDS) ---
     const loansWithLiveBalance = loans.map(l => {
-      // 1. Interest Calc
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
         .reduce((sum, p) => sum + Number(p.interestAmount || p.interest_amount || 0), 0); 
 
-      // 2. Distribute
       const memberLoanCount = loans.filter(ln => ln.member_id === l.member_id).length || 1;
       const distributedInterest = memberTotalInterest / memberLoanCount;
 
-      // 3. Values
       const loanAmount = Number(l.amount) || 0;
       const currentBalance = Number(l.remaining_balance) || 0;
       
@@ -246,24 +243,17 @@ export function useReportLogic() {
       };
     });
 
-    // 🛑 STRICT FIX FOR SUMMARY CARDS 🛑
-    // Hum sirf 'Active' ya 'Closed' loans ko count karenge (Deleted/Pending/Rejected nahi)
-    
-    // 1. Total Disbursed (Sirf Active aur Closed loans ka total)
-    const loansIssuedTotal = loansWithLiveBalance
-        .filter(l => l.status === 'active' || l.status === 'closed') 
-        .reduce((acc, l) => acc + l.amount, 0);
-    
-    // 2. Total Outstanding (Sirf Active loans ka balance)
-    const loansOutstandingTotal = loansWithLiveBalance
-        .filter(l => l.status === 'active') 
+    // 🛑 STRICT FIX: Filter ONLY Active/Closed loans for Cards 🛑
+    // Ignore deleted or pending loans for Total
+    const validLoans = loansWithLiveBalance.filter(l => l.status === 'active' || l.status === 'closed');
+
+    const loansIssuedTotal = validLoans.reduce((acc, l) => acc + l.amount, 0);
+    const loansOutstandingTotal = validLoans
+        .filter(l => l.status === 'active') // Outstanding only from active
         .reduce((acc, l) => acc + l.remainingBalance, 0);
-
-    // 3. Count of Active Loans
-    const loansPendingCount = loansWithLiveBalance.filter(l => l.status === 'active').length;
-
-    // "Recovered" = Issued - Outstanding
+    
     const loansRecoveredTotal = loansIssuedTotal - loansOutstandingTotal;
+    const loansPendingCount = validLoans.filter(l => l.status === 'active').length;
 
 
     // --- D. DAILY LEDGER ---
@@ -356,14 +346,14 @@ export function useReportLogic() {
         
         const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
         const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
-        const lActiveBal = mLoans.filter(l => l.status === 'active').reduce((acc, l) => acc + l.remainingBalance, 0);
-        const lPaid = lTaken - lActiveBal;
+        const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
+        const lPaid = lTaken - lPend;
 
         return { 
             id: m.id, name: m.name || m.member_name || 'Member', phone: m.phone || '', 
             totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
-            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lActiveBal, 
-            netWorth: dep - lActiveBal, status: m.status || 'active' 
+            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
+            netWorth: dep - lPend, status: m.status || 'active' 
         };
     });
 
@@ -412,9 +402,9 @@ export function useReportLogic() {
             expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
             loans: { 
-                issued: loansIssuedTotal,      // ✅ Corrected Total
-                recovered: loansRecoveredTotal, // Corrected Recovered
-                pending: loansOutstandingTotal  // ✅ Corrected Outstanding Amount
+                issued: loansIssuedTotal,      // Now Strictly Filtered
+                recovered: loansRecoveredTotal, 
+                pending: loansOutstandingTotal 
             },
             netProfit: netProfitCalc
         },
