@@ -25,13 +25,11 @@ const getNextEMI = (startDate: string) => {
 export function AllLoansTable({ loans }: { loans: any[] }) {
   const [viewingMember, setViewingMember] = useState<{name: string, loans: any[]} | null>(null);
 
-  // --- LOGIC: GROUPING & SUMMING (FIXED FOR ACCURACY) ---
+  // --- LOGIC: GROUPING & SUMMING (FIXED FOR INTEREST) ---
   const groupedLoans = loans.reduce((acc: any, loan) => {
     const key = loan.memberId; 
     
-    // 1. Data Cleaning (Database Priority)
-    // Hum pehle 'remaining_balance' (DB column) check karenge.
-    // Agar wo nahi mila, tabhi 'remainingBalance' (Frontend prop) lenge.
+    // Data Cleaning
     let rawAmount = loan.amount;
     let rawBalance = loan.remaining_balance !== undefined ? loan.remaining_balance : loan.remainingBalance;
     
@@ -42,14 +40,14 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
     if (!acc[key]) {
       // First entry initialization
       acc[key] = {
-        ...loan, // Keep basic meta data
+        ...loan, 
         count: 1, 
-        rawLoans: [loan], // Store for modal
+        rawLoans: [loan],
         
-        // RESET TOTALS (Zero se shuru karein)
+        // Initialize Totals
         totalAmountTaken: amount,      
         totalCurrentBalance: balance,  
-        totalInterestPaid: interestCollected,
+        totalInterestPaid: interestCollected, // ✅ Set Initial Value
         
         startDate: loan.start_date || loan.created_at
       };
@@ -58,12 +56,16 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
       acc[key].count += 1;
       acc[key].rawLoans.push(loan);
       
-      // ✅ SUMMING (Jodna)
+      // ✅ SUMMING Only Loan Amounts
       acc[key].totalAmountTaken += amount;
       acc[key].totalCurrentBalance += balance;
-      acc[key].totalInterestPaid += interestCollected;
       
-      // Date Logic (Earliest Start Date)
+      // 🛑 FIX: Interest ko yahan wapas nahi jodna hai.
+      // Kyunki backend se jo value aa rahi hai wo already 'Total' hai ya distributed hai.
+      // Agar distributed hai to hook sambhal lega, agar total hai to ye logic rok dega.
+      // acc[key].totalInterestPaid += interestCollected; <--- REMOVED THIS LINE
+      
+      // Date Logic
       const currentStart = new Date(acc[key].startDate);
       const newStart = new Date(loan.start_date || loan.created_at);
       if (newStart < currentStart) {
@@ -95,10 +97,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
           <TableBody>
             {displayRows.length > 0 ? (
               displayRows.map((row: any) => {
-                // Monthly Interest calculation on CURRENT Outstanding only
                 const monthlyInterest = row.totalCurrentBalance * 0.01;
-                
-                // Loan Closed tabhi manenge jab Balance 0 ho
                 const isClosed = row.totalCurrentBalance <= 0;
 
                 return (
@@ -112,22 +111,18 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                       )}
                     </TableCell>
                     
-                    {/* Total Loan Taken */}
                     <TableCell className="font-medium text-blue-800">
                       {formatCurrency(row.totalAmountTaken)}
                     </TableCell>
                     
-                    {/* Current Outstanding */}
                     <TableCell className={`font-bold ${isClosed ? 'text-green-600' : 'text-red-600'}`}>
                       {isClosed ? 'Cleared' : formatCurrency(row.totalCurrentBalance)}
                     </TableCell>
                     
-                    {/* Monthly Interest */}
                     <TableCell className="text-blue-600">
                       {isClosed ? '-' : formatCurrency(monthlyInterest)}
                     </TableCell>
                     
-                    {/* Total Interest Earned */}
                     <TableCell className="text-green-700 font-medium bg-green-50 rounded-md px-2 py-1 w-fit">
                       {formatCurrency(row.totalInterestPaid)}
                     </TableCell>
@@ -142,7 +137,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                     </TableCell>
                     
                     <TableCell>
-                      {/* View Button */}
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -162,7 +156,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
         </Table>
       </div>
 
-      {/* Detail Modal */}
       {viewingMember && (
         <MemberLoansModal 
           isOpen={!!viewingMember} 
