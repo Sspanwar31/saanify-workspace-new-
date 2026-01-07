@@ -20,13 +20,15 @@ import {
   Wallet,
   AlertCircle,
   TrendingUp,
-  Clock,
-  Bell // Icon for notification
+  Clock
 } from 'lucide-react';
 
 export default function MemberLoans() {
   const [loading, setLoading] = useState(true);
   const [member, setMember] = useState<any>(null);
+  
+  // Data States
+  const [allLoans, setAllLoans] = useState<any[]>([]);
   const [activeLoan, setActiveLoan] = useState<any>(null);
   const [pendingRequest, setPendingRequest] = useState<any>(null);
 
@@ -34,71 +36,49 @@ export default function MemberLoans() {
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // 1. Fetch Data & Member ID
-  useEffect(() => {
-    const fetchLoans = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  // 1. Fetch Loans Function (Reusable)
+  const fetchLoans = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const { data: memberData } = await supabase
-        .from('members')
+    // Get Member ID first (if not stored)
+    let memberId = member?.id;
+    if(!memberId) {
+        const { data: mem } = await supabase.from('members').select('*').eq('auth_user_id', user.id).single();
+        if(mem) {
+            setMember(mem);
+            memberId = mem.id;
+        }
+    }
+
+    if (memberId) {
+      const { data: loans } = await supabase
+        .from('loans')
         .select('*')
-        .eq('auth_user_id', user.id)
-        .single();
+        .eq('member_id', memberId);
 
-      if (memberData) {
-        setMember(memberData);
-
-        const { data: loans } = await supabase
-          .from('loans')
-          .select('*')
-          .eq('member_id', memberData.id);
-
-        setActiveLoan(loans?.find(l => l.status === 'active') || null);
-        setPendingRequest(loans?.find(l => l.status === 'pending') || null);
+      if (loans) {
+        setAllLoans(loans); // Store all loans for summing
+        setActiveLoan(loans.find(l => l.status === 'active') || null);
+        setPendingRequest(loans.find(l => l.status === 'pending') || null);
       }
-      setLoading(false);
-    };
+    }
+    setLoading(false);
+  };
 
-    fetchLoans();
-  }, []);
-
-  // 2. ✅ NEW: Real-time Notification Listener
-  // Ye code background me wait karega ki kab Admin notification table me entry karega
+  // 2. Initial Load + Realtime Subscription
   useEffect(() => {
-    if (!member?.id) return;
+    fetchLoans();
 
-    console.log("🔔 Listening for notifications for Member:", member.id);
-
+    // ✅ REALTIME UPDATE: Jab Admin Approve karega, ye update hoga
     const channel = supabase
-      .channel('realtime-notifications')
+      .channel('member-loans-update')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT', // Jab bhi nayi row add hogi
-          schema: 'public',
-          table: 'notifications',
-          filter: `member_id=eq.${member.id}` // Sirf is member ke liye
-        },
-        (payload) => {
-          console.log("New Notification:", payload);
-          
-          // Toast Notification Dikhana
-          const newNotif = payload.new;
-          toast(newNotif.title, {
-            description: newNotif.message,
-            action: {
-              label: 'View',
-              onClick: () => console.log('Notification clicked')
-            },
-            duration: 5000, // 5 seconds tak dikhega
-            icon: <Bell className="w-5 h-5 text-blue-500" />
-          });
-
-          // Agar Loan status change hua hai to page refresh kar do (UI update ke liye)
-          if (newNotif.title.toLowerCase().includes('loan')) {
-             window.location.reload(); 
-          }
+        { event: '*', schema: 'public', table: 'loans' },
+        () => {
+          console.log("Loan Data Changed - Refreshing...");
+          fetchLoans(); // Re-fetch data instantly
         }
       )
       .subscribe();
@@ -106,20 +86,29 @@ export default function MemberLoans() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [member]);
+  }, []);
+
+  // ✅ LOGIC FIX: Sum of ALL loans (Active + Closed)
+  const totalLoanTaken = useMemo(() => {
+    return allLoans.reduce((sum, loan) => sum + Number(loan.amount || 0), 0);
+  }, [allLoans]);
+
+  const totalOutstanding = useMemo(() => {
+    return allLoans
+        .filter(l => l.status === 'active') // Only active count for outstanding
+        .reduce((sum, loan) => sum + Number(loan.remaining_balance || 0), 0);
+  }, [allLoans]);
 
   const currentInterest = useMemo(() => {
-    if (!activeLoan) return 0;
-    return Math.round(Number(activeLoan.remaining_balance) * 0.01);
-  }, [activeLoan]);
+    // Interest on Total Outstanding
+    return Math.round(totalOutstanding * 0.01);
+  }, [totalOutstanding]);
 
-  // Handle Request (Same as before)
   const handleRequest = async () => {
     if (!amount) return;
     setSubmitting(true);
     try {
-      // 1. Insert Loan
-      const { error: loanError } = await supabase.from('loans').insert([{
+      const { error } = await supabase.from('loans').insert([{
         client_id: member.client_id,
         member_id: member.id,
         amount: Number(amount),
@@ -128,15 +117,13 @@ export default function MemberLoans() {
         created_at: new Date().toISOString()
       }]);
 
-      if (loanError) throw loanError;
-
-      // 2. Create Notification for Admin (Optional but good practice)
-      // (Admin side notification logic admin panel me hona chahiye, ye member side hai)
+      if (error) throw error;
 
       toast.success('Loan request sent successfully');
       setPendingRequest({ amount: Number(amount), status: 'pending' });
       setIsRequestOpen(false);
       setAmount('');
+      // fetchLoans() will be triggered by realtime automatically
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -182,7 +169,8 @@ export default function MemberLoans() {
             <Wallet className="h-4 w-4 text-slate-600" />
           </CardHeader>
           <CardContent className="text-xl font-bold">
-            ₹{activeLoan ? Number(activeLoan.remaining_balance).toLocaleString() : '0'}
+            {/* Show Total Outstanding of ALL Active Loans */}
+            ₹{totalOutstanding.toLocaleString()}
           </CardContent>
         </Card>
 
@@ -194,7 +182,8 @@ export default function MemberLoans() {
             <TrendingUp className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent className="text-xl font-bold">
-            ₹{activeLoan ? Number(activeLoan.amount).toLocaleString() : '0'}
+            {/* Show Sum of ALL Loans (History) */}
+            ₹{totalLoanTaken.toLocaleString()}
           </CardContent>
         </Card>
 
@@ -211,11 +200,11 @@ export default function MemberLoans() {
         </Card>
       </div>
 
-      {/* 🔹 SECTION 2: MY LOAN */}
+      {/* 🔹 SECTION 2: ACTIVE LOAN DETAILS */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-700">My Loan</h2>
+        <h2 className="text-lg font-semibold text-slate-700">Active Loan Details</h2>
 
-        {activeLoan && (
+        {activeLoan ? (
           <Card className="border-l-4 border-l-red-500">
             <CardContent className="p-5 space-y-3">
               <div className="flex justify-between items-center">
@@ -235,12 +224,18 @@ export default function MemberLoans() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-slate-500">Total</p>
+                  <p className="text-sm text-slate-500">Original Amount</p>
                   <p className="font-medium">
                     ₹{Number(activeLoan.amount).toLocaleString()}
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        ) : !pendingRequest && (
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="p-4 text-center text-green-700 font-medium">
+              You don’t have any active loans.
             </CardContent>
           </Card>
         )}
@@ -262,17 +257,9 @@ export default function MemberLoans() {
             </CardContent>
           </Card>
         )}
-
-        {!activeLoan && !pendingRequest && (
-          <Card className="bg-green-50 border-green-200">
-            <CardContent className="p-4 text-center text-green-700 font-medium">
-              You don’t have any active loans.
-            </CardContent>
-          </Card>
-        )}
       </div>
 
-      {/* 🔹 SECTION 3: REQUEST LOAN (ALWAYS VISIBLE) */}
+      {/* 🔹 SECTION 3: REQUEST LOAN */}
       <div className="pt-4">
         <Button
           onClick={() => setIsRequestOpen(true)}
@@ -280,12 +267,6 @@ export default function MemberLoans() {
         >
           Request New Loan
         </Button>
-
-        {(activeLoan || pendingRequest) && (
-          <p className="mt-2 text-xs text-slate-500 text-center">
-            You can request another loan even if one is active or under review.
-          </p>
-        )}
       </div>
 
       {/* MODAL */}
