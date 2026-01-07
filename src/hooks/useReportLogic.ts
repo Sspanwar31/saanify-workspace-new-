@@ -1,12 +1,3 @@
-
-
-Ye error isliye aa raha hai kyunki aapne `useEffect` ke andar **`isDateInRange` function ko define karne se pehle use** kar liya hai. JavaScript mein `const` variables ko define hone se pehle access nahi kiya ja sakta (Temporal Dead Zone).
-
-Isko fix karne ke liye maine `const isDateInRange = ...` wali line ko upar shift kar di hai taaki wo `filteredPassbook` se pehle define ho jaye.
-
-Ye raha aapka fixed code:
-
-```tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -430,4 +421,3 @@ export function useReportLogic() {
   const reversedPassbook = [...passbookEntries].reverse();
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
 }
-```
