@@ -155,12 +155,6 @@ export function useReportLogic() {
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
-    const isDateInRange = (dateStr: string) => {
-        if(!dateStr) return false;
-        const d = new Date(dateStr);
-        return d >= start && d <= end;
-    };
-
     const filteredPassbook = passbookEntries.filter(e => {
         const inDate = isDateInRange(e.date);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
@@ -173,6 +167,12 @@ export function useReportLogic() {
 
         return inDate && memberMatch && modeMatch && typeMatch;
     });
+
+    const isDateInRange = (dateStr: string) => {
+        if(!dateStr) return false;
+        const d = new Date(dateStr);
+        return d >= start && d <= end;
+    };
 
     const filteredExpenses = expenses.filter(e => isDateInRange(e.date || e.created_at));
     const filteredAdminFunds = adminFunds.filter(a => isDateInRange(a.date || a.created_at));
@@ -214,7 +214,7 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (STRICT & CASE-INSENSITIVE) ---
+    // --- C. LOAN STATS (STRICT CALCULATION) ---
     const loansWithLiveBalance = loans.map(l => {
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
@@ -226,9 +226,7 @@ export function useReportLogic() {
       const loanAmount = Number(l.amount) || 0;
       const currentBalance = Number(l.remaining_balance) || 0;
       
-      // Case-Insensitive Status Check
-      const status = (l.status || '').toLowerCase();
-      const isActive = status === 'active' && currentBalance > 0;
+      const isActive = l.status === 'active' && currentBalance > 0;
       const interestAmount = Math.round(currentBalance * 0.01);
       const principalPaid = loanAmount - currentBalance;
 
@@ -241,7 +239,7 @@ export function useReportLogic() {
         remainingBalance: currentBalance,
         interestRate: interestAmount, 
         totalInterestCollected: distributedInterest, 
-        status: status // Normalized status
+        status: (l.status || '').toLowerCase() // Normalize status
       };
     });
 
@@ -251,17 +249,18 @@ export function useReportLogic() {
     const loansIssuedTotal = validLoans.reduce((acc, l) => acc + l.amount, 0);
     
     // 2. Total Outstanding (Sirf 'active' aur > 0 balance)
-    const loansOutstandingTotal = validLoans
+    // IMPORTANT: pending requests, deleted, rejected, closed sab ignore
+    const loansOutstandingTotal = loansWithLiveBalance
         .filter(l => l.status === 'active' && l.remainingBalance > 0) 
         .reduce((acc, l) => acc + l.remainingBalance, 0);
 
     // 3. Count of Active Loans
-    const loansPendingCount = validLoans.filter(l => l.status === 'active' && l.remainingBalance > 0).length;
+    const loansPendingCount = loansWithLiveBalance.filter(l => l.status === 'active' && l.remainingBalance > 0).length;
 
     // "Recovered" = Issued - Outstanding
     const loansRecoveredTotal = loansIssuedTotal - loansOutstandingTotal;
 
-    // ... (Daily Ledger, Cashbook, Mode Stats code remains same) ...
+
     // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
     const getOrSetEntry = (dateStr: string) => {
@@ -408,9 +407,9 @@ export function useReportLogic() {
             expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
             loans: { 
-                issued: loansIssuedTotal,
-                recovered: loansRecoveredTotal, 
-                pending: loansOutstandingTotal 
+                issued: loansIssuedTotal,      // ✅ Corrected Total
+                recovered: loansRecoveredTotal, // Corrected Recovered
+                pending: loansOutstandingTotal  // ✅ Corrected Outstanding Amount
             },
             netProfit: netProfitCalc
         },
