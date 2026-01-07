@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // Updated import
+import { supabase } from '@/lib/supabase'; 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,16 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner'; // ✅ Toast Import
+import { toast } from 'sonner'; 
 import { 
-  User, 
-  DollarSign, 
-  TrendingUp, 
-  Shield, 
-  AlertTriangle, 
-  Percent,
-  Calendar,
-  Loader2 // ✅ Loader Icon
+  User, DollarSign, TrendingUp, Shield, AlertTriangle, Percent, Calendar, Loader2 
 } from 'lucide-react';
 
 interface ApproveLoanModalProps {
@@ -53,7 +46,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           setRequest({
             id: loanData.id,
             memberId: loanData.member_id,
-            clientId: loanData.client_id, // ✅ Client ID capture kiya notification ke liye
+            clientId: loanData.client_id, // ✅ Client ID for notification
             memberName: loanData.members?.name || 'Unknown',
             amount: loanData.amount,
             status: loanData.status
@@ -80,7 +73,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
   const isOverLimit = loanAmount > maxLimit;
   const canApprove = !isOverLimit || isOverride;
 
-  // --- Submit Handler (Updated) ---
+  // --- Submit Handler (Fixed: Removed Double Update) ---
   const handleSubmit = async () => {
     if (!request || !canApprove) return;
 
@@ -89,7 +82,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
       const approvedAmount = loanAmount;
       const today = new Date().toISOString();
 
-      // 1. Update Loan Status to Active
+      // 1. Update Loan Status (Trigger will auto-update Member Outstanding)
       const { error: loanError } = await supabase
         .from('loans')
         .update({
@@ -106,22 +99,10 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
       if (loanError) throw loanError;
 
-      // 2. Update Member's Outstanding Loan Balance
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('outstanding_loan')
-        .eq('id', request.memberId)
-        .single();
-      
-      const currentOutstanding = memberData?.outstanding_loan || 0;
-      const newOutstanding = currentOutstanding + approvedAmount;
+      // 🛑 REMOVED: Manual Member Update (Kyunki SQL Trigger ye kaam kar raha hai)
+      // Agar hum yahan bhi update karenge to amount double ho jayega.
 
-      await supabase
-        .from('members')
-        .update({ outstanding_loan: newOutstanding })
-        .eq('id', request.memberId);
-
-      // 3. ✅ NEW: Insert Notification for Member
+      // 2. Insert Notification for Member
       const { error: notifError } = await supabase.from('notifications').insert([{
           client_id: request.clientId,
           member_id: request.memberId,
@@ -141,7 +122,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
       setAmount('');
       setIsOverride(false);
       
-      // Page refresh to reflect changes immediately
+      // Page refresh to reflect changes
       window.location.reload(); 
 
     } catch (error: any) {
