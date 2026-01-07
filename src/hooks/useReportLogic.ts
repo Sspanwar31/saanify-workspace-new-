@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // Updated import to standard
+import { supabase } from '@/lib/supabase'; // Standard import
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -128,11 +128,9 @@ export function useReportLogic() {
                     paymentMode: e.payment_mode || 'CASH', 
                     description: e.note || 'Passbook Entry',
                     type: Number(e.installment_amount) > 0 ? 'LOAN_REPAYMENT' : 'DEPOSIT',
-                    // RAW DB VALUES PRESERVED
                     depositAmount: Number(e.deposit_amount || 0),
                     installmentAmount: Number(e.installment_amount || 0),
-                    interestAmount: Number(e.interest_amount || 0), // CamelCase
-                    interest_amount: Number(e.interest_amount || 0), // Snake_Case (Backup)
+                    interestAmount: Number(e.interest_amount || 0),
                     fineAmount: Number(e.fine_amount || 0),
                     balance: runningBalance
                 };
@@ -216,26 +214,21 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (STRICT FIX: ONLY INTEREST) ---
+    // --- C. LOAN STATS (FIXED FOR CARDS & TABLE) ---
     const loansWithLiveBalance = loans.map(l => {
-      // 1. Calculate Interest Collected (Strictly checking only Interest Amount)
+      // 1. Calculate Interest Collected (Only Interest)
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
-        .reduce((sum, p) => {
-            // Hum sirf 'interestAmount' le rahe hain. 'fineAmount' ko ignore kar rahe hain.
-            // Hum snake_case aur camelCase dono check kar rahe hain safety ke liye.
-            const intVal = Number(p.interestAmount || p.interest_amount || 0);
-            return sum + intVal;
-        }, 0); 
+        .reduce((sum, p) => sum + Number(p.interestAmount || p.interest_amount || 0), 0); 
 
-      // 2. Count Member's Total Loans (To distribute sum correctly)
+      // 2. Distribute Interest
       const memberLoanCount = loans.filter(ln => ln.member_id === l.member_id).length || 1;
-      
-      // 3. Distributed Interest
       const distributedInterest = memberTotalInterest / memberLoanCount;
 
+      // 3. Robust Number Parsing
       const loanAmount = Number(l.amount) || 0;
-      const currentBalance = Number(l.remaining_balance) || 0;
+      // ✅ Check for both snake_case (DB) and camelCase (State) to avoid 0 balance error
+      const currentBalance = l.remaining_balance !== undefined ? Number(l.remaining_balance) : Number(l.remainingBalance || 0);
       
       const isActive = l.status === 'active' && currentBalance > 0;
       const interestAmount = Math.round(currentBalance * 0.01);
@@ -247,18 +240,22 @@ export function useReportLogic() {
         start_date: l.start_date || l.created_at,
         amount: loanAmount,
         principalPaid: principalPaid,
-        remainingBalance: currentBalance,
+        remainingBalance: currentBalance, // ✅ Correct Value passed
         interestRate: interestAmount, 
-        totalInterestCollected: distributedInterest, // ✅ Only Interest (No Fine)
+        totalInterestCollected: distributedInterest, 
         status: l.status
       };
     });
 
+    // ✅ Summary Cards Calculation (Using fixed values)
     const loansIssuedTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.amount, 0);
-    const loansPendingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
-    const loansRecoveredTotal = loansIssuedTotal - loansPendingTotal;
-    const loansPendingCount = loansWithLiveBalance.filter(l => l.status === 'active').length;
-
+    // "Pending" here refers to "Outstanding Balance Amount" for the card
+    const loansOutstandingTotal = loansWithLiveBalance.reduce((acc, l) => acc + l.remainingBalance, 0);
+    // "Recovered" = Issued - Outstanding
+    const loansRecoveredTotal = loansIssuedTotal - loansOutstandingTotal;
+    
+    // Count of Active Loans
+    const activeLoanCount = loansWithLiveBalance.filter(l => l.status === 'active').length;
 
     // --- D. DAILY LEDGER ---
     const ledgerMap = new Map();
@@ -350,14 +347,14 @@ export function useReportLogic() {
         
         const mLoans = loansWithLiveBalance.filter(l => l.memberId === m.id);
         const lTaken = mLoans.reduce((acc, l) => acc + l.amount, 0);
-        const lActiveBal = mLoans.filter(l => l.status === 'active').reduce((acc, l) => acc + l.remainingBalance, 0);
-        const lPaid = lTaken - lActiveBal;
+        const lPend = mLoans.reduce((acc, l) => acc + l.remainingBalance, 0);
+        const lPaid = lTaken - lPend;
 
         return { 
             id: m.id, name: m.name || m.member_name || 'Member', phone: m.phone || '', 
             totalDeposits: dep, loanTaken: lTaken, principalPaid: lPaid, 
-            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lActiveBal, 
-            netWorth: dep - lActiveBal, status: m.status || 'active' 
+            interestPaid: intPaid, finePaid: finePaid, activeLoanBal: lPend, 
+            netWorth: dep - lPend, status: m.status || 'active' 
         };
     });
 
@@ -405,7 +402,11 @@ export function useReportLogic() {
             income: { interest: interestIncome, fine: fineIncome, other: otherIncome, total: totalIncomeCalc },
             expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
-            loans: { issued: loansIssuedTotal, recovered: loansRecoveredTotal, pending: loansPendingCount },
+            loans: { 
+                issued: loansIssuedTotal,      // Total Disbursed (Correct)
+                recovered: loansRecoveredTotal, // Principal Paid
+                pending: loansOutstandingTotal  // ✅ FIX: This is now Outstanding Balance (Amount)
+            },
             netProfit: netProfitCalc
         },
         dailyLedger: finalLedger,
