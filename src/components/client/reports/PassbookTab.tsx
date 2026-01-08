@@ -23,9 +23,9 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
     }).format(amount || 0);
   };
 
-  // ✅ NEW: Handle Delete Logic (Smart Reverse Calculation)
+  // ✅ IMPROVED: Smart Reverse Logic
   const handleDelete = async (entry: any) => {
-    if(!confirm("Are you sure? Deleting this entry will reverse the transaction balance.")) return;
+    if(!confirm("Are you sure? This will reverse the transaction.")) return;
     setDeletingId(entry.id);
 
     try {
@@ -37,48 +37,56 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
         const { error } = await supabase.from('passbook_entries').delete().eq('id', entry.id);
         if(error) throw error;
 
-        // 2. Reverse Member Balance (Sync)
-        const { data: member } = await supabase.from('members').select('outstanding_loan, total_deposits').eq('id', memberId).single();
-        
-        if(member) {
-            // Deposit delete kiya to balance kam karo
-            const newDeposit = Number(member.total_deposits) - depositAmt;
-            // Installment delete ki to loan wapas badhao (Reverse)
-            const newLoan = Number(member.outstanding_loan) + instAmt;
+        // 2. Reverse Logic
+        // Agar installment thi, to Loan wapas badhao
+        if(instAmt > 0) {
+            // Find active loans or recently closed loans
+            const { data: loans } = await supabase
+                .from('loans')
+                .select('*')
+                .eq('member_id', memberId)
+                .order('created_at', { ascending: false }); // Latest first
 
-            await supabase.from('members').update({
-                total_deposits: newDeposit,
-                outstanding_loan: newLoan
-            }).eq('id', memberId);
-            
-            // 3. Reverse Specific Loan Balance (If Installment was paid)
-            if(instAmt > 0) {
-                // Find active or recently closed loans to revert balance
-                const { data: loans } = await supabase
-                    .from('loans')
-                    .select('*')
-                    .eq('member_id', memberId)
-                    .order('created_at', { ascending: false }); // Latest first
-
-                // Logic: Add amount back to latest loan
-                if(loans && loans.length > 0) {
-                    // Hum latest loan me wapas add kar rahe hain (Assumption: Last paid was for this)
-                    // Agar precise tracking chahiye to transaction ID link karna padega future me
-                    const loan = loans[0];
-                    const newBal = Number(loan.remaining_balance) + instAmt;
-                    
-                    // Agar balance 0 se upar gaya to wapas active karo
+            if(loans && loans.length > 0) {
+                // Hum latest loan me wapas add kar rahe hain (Most logical approach)
+                // Agar multiple active hain, to sabse latest wale me wapas jod do
+                // Kyunki payment usually latest due ke liye hoti hai
+                
+                // Find first loan that is active OR was closed recently
+                const targetLoan = loans.find(l => l.status === 'active') || loans[0];
+                
+                if (targetLoan) {
+                    const newBal = Number(targetLoan.remaining_balance) + instAmt;
                     const status = newBal > 0 ? 'active' : 'closed';
                     
                     await supabase.from('loans').update({
                         remaining_balance: newBal,
                         status: status
-                    }).eq('id', loan.id);
+                    }).eq('id', targetLoan.id);
                 }
             }
         }
 
-        toast.success("Entry Deleted & Balances Reversed");
+        // 3. FINAL SYNC: Update Member Totals from Scratch (Best way to fix mismatch)
+        // Hum database se wapas ginti karenge taaki koi galti na ho
+        const { data: updatedLoans } = await supabase
+            .from('loans')
+            .select('remaining_balance')
+            .eq('member_id', memberId)
+            .eq('status', 'active');
+            
+        const realOutstanding = updatedLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
+        
+        // Deposit calculation manual reverse karni padegi kyunki passbook entry delete ho gayi hai
+        const { data: currentMember } = await supabase.from('members').select('total_deposits').eq('id', memberId).single();
+        const realDeposit = Number(currentMember?.total_deposits || 0) - depositAmt;
+
+        await supabase.from('members').update({
+            outstanding_loan: realOutstanding, // ✅ Synced with Loans Table
+            total_deposits: realDeposit
+        }).eq('id', memberId);
+
+        toast.success("Entry Deleted & Balances Re-Synced");
         window.location.reload();
 
     } catch(e: any) {
@@ -106,7 +114,7 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
                   <TableHead>Amount</TableHead>
                   <TableHead>Payment Mode</TableHead>
                   <TableHead>Balance</TableHead>
-                  <TableHead className="text-right">Action</TableHead> {/* New Action Column */}
+                  <TableHead className="text-right">Action</TableHead> 
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -121,7 +129,6 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
                     const member = members.find(m => m.id === entry.memberId);
                     const dateStr = entry.date || entry.created_at;
                     
-                    // Helper to get raw type for badge
                     const type = entry.type || (Number(entry.deposit_amount) > 0 ? 'DEPOSIT' : 'LOAN_REPAYMENT');
 
                     return (
@@ -155,7 +162,6 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
                           {formatCurrency(entry.balance)}
                         </TableCell>
                         
-                        {/* ✅ Delete Button */}
                         <TableCell className="text-right">
                             <Button 
                                 size="icon" 
