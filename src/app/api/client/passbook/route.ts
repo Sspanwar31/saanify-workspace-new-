@@ -1,69 +1,113 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
-
-export const runtime = 'nodejs';
-
-// 🔐 Secure B64 Decoder Helper
-const getServiceRoleKey = () => {
-  const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  if (!b64) return process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  try {
-    return Buffer.from(b64, 'base64').toString('utf-8').trim();
-  } catch (e) { return ''; }
-};
-
-const getAdminClient = () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = getServiceRoleKey();
-    return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-};
-
-// GET: Fetch Transactions
-export async function GET(req: Request) {
-    try {
-        const { searchParams } = new URL(req.url);
-        const clientId = searchParams.get('client_id');
-        if (!clientId) return NextResponse.json({ error: "Client ID required" }, { status: 400 });
-
-        const supabase = getAdminClient();
-        
-        // Fetch transactions with Member names
-        const { data, error } = await supabase
-            .from('transactions')
-            .select('*, members(name)')
-            .eq('client_id', clientId)
-            .order('date', { ascending: false });
-
-        if (error) throw error;
-        return NextResponse.json(data);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-}
-
-// POST: Add Transaction
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-        const supabase = getAdminClient();
-        const { error } = await supabase.from('transactions').insert([body]);
-        if (error) throw error;
-        return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-}
-
-// DELETE: Remove Transaction
+// DELETE: Remove Transaction (Passbook + Loan + Member Sync)
 export async function DELETE(req: Request) {
-    try {
-        const { searchParams } = new URL(req.url);
-        const id = searchParams.get('id');
-        const supabase = getAdminClient();
-        const { error } = await supabase.from('transactions').delete().eq('id', id);
-        if (error) throw error;
-        return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'ID required' }, { status: 400 });
     }
+
+    const supabase = getAdminClient();
+
+    /* 1️⃣ Fetch transaction first */
+    const { data: entry, error: fetchErr } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !entry) {
+      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+    }
+
+    const memberId = entry.member_id;
+    const loanId = entry.loan_id || null;
+
+    const depositAmt = Number(entry.deposit_amount || 0);
+    const installmentAmt = Number(entry.installment_amount || 0);
+
+    /* 2️⃣ Delete transaction */
+    const { error: delErr } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id);
+
+    if (delErr) throw delErr;
+
+    /* 3️⃣ Reverse loan if installment was there */
+    if (installmentAmt > 0) {
+      let targetLoanId = loanId;
+
+      // fallback: latest loan
+      if (!targetLoanId) {
+        const { data: loans } = await supabase
+          .from('loans')
+          .select('id')
+          .eq('member_id', memberId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (loans && loans.length > 0) {
+          targetLoanId = loans[0].id;
+        }
+      }
+
+      if (targetLoanId) {
+        const { data: loan } = await supabase
+          .from('loans')
+          .select('remaining_balance')
+          .eq('id', targetLoanId)
+          .single();
+
+        if (loan) {
+          const newBalance =
+            Number(loan.remaining_balance) + installmentAmt;
+
+          await supabase.from('loans').update({
+            remaining_balance: newBalance,
+            status: newBalance > 0 ? 'active' : 'closed',
+          }).eq('id', targetLoanId);
+        }
+      }
+    }
+
+    /* 4️⃣ Recalculate member totals */
+    // Outstanding loan = sum of all active loans
+    const { data: activeLoans } = await supabase
+      .from('loans')
+      .select('remaining_balance')
+      .eq('member_id', memberId)
+      .eq('status', 'active');
+
+    const realOutstanding =
+      activeLoans?.reduce(
+        (sum, l) => sum + Number(l.remaining_balance),
+        0
+      ) || 0;
+
+    // Deposits
+    const { data: member } = await supabase
+      .from('members')
+      .select('total_deposits')
+      .eq('id', memberId)
+      .single();
+
+    const realDeposit = Math.max(
+      0,
+      Number(member?.total_deposits || 0) - depositAmt
+    );
+
+    await supabase.from('members').update({
+      outstanding_loan: realOutstanding,
+      total_deposits: realDeposit,
+    }).eq('id', memberId);
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('DELETE TRANSACTION ERROR:', error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
 }
