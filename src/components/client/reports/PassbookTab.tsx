@@ -23,9 +23,9 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
     }).format(amount || 0);
   };
 
-  // ✅ FIXED: Handle Delete Logic with Precise Loan Sync
+  // ✅ FINAL FIX: Robust Delete Logic
   const handleDelete = async (entry: any) => {
-    if(!confirm("Are you sure? Deleting this entry will reverse the transaction balance and update the Loan Section.")) return;
+    if(!confirm("Are you sure? Deleting this will reverse the loan balance immediately.")) return;
     setDeletingId(entry.id);
 
     try {
@@ -37,50 +37,48 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
         const { error } = await supabase.from('passbook_entries').delete().eq('id', entry.id);
         if(error) throw error;
 
-        let loanUpdated = false;
+        let targetLoanId: string | null = entry.loan_id || null;
 
-        // 2. Reverse Loan Balance (If Installment was paid)
-        if(instAmt > 0) {
-            let targetLoanId: string | null = entry.loan_id || null; // Check if entry has explicit loan_id
+        // 2. FIND THE LOAN TO UPDATE (Robust Strategy)
+        if (!targetLoanId && instAmt > 0) {
+            // Strategy: Fetch ALL loans for this member and pick the LATEST one
+            // We don't filter by status here because we want to update the loan even if status is wrong/null
+            const { data: memberLoans } = await supabase
+                .from('loans')
+                .select('*')
+                .eq('member_id', memberId)
+                .order('created_at', { ascending: false }); // Latest First
 
-            // Strategy: If no loan_id in entry, find the ACTIVE loan for this member
-            if (!targetLoanId) {
-                const { data: activeLoans } = await supabase
-                    .from('loans')
-                    .select('id')
-                    .eq('member_id', memberId)
-                    .eq('status', 'active'); // ONLY target active loans
-                
-                if (activeLoans && activeLoans.length > 0) {
-                    targetLoanId = activeLoans[0].id;
-                }
-            }
-
-            // If we found a loan ID (either from entry or by finding active one), update it
-            if (targetLoanId) {
-                // Fetch current balance of this specific loan
-                const { data: currentLoan } = await supabase
-                    .from('loans')
-                    .select('remaining_balance')
-                    .eq('id', targetLoanId)
-                    .single();
-
-                if (currentLoan) {
-                    const newBalance = Number(currentLoan.remaining_balance) + instAmt;
-                    
-                    // Update that specific loan
-                    await supabase.from('loans').update({
-                        remaining_balance: newBalance,
-                        status: 'active' // Ensure it is marked active if we added balance back
-                    }).eq('id', targetLoanId);
-                    
-                    loanUpdated = true;
-                }
+            if (memberLoans && memberLoans.length > 0) {
+                // Pick the most recent loan
+                targetLoanId = memberLoans[0].id;
             }
         }
 
-        // 3. FINAL SYNC: Update Member Totals
-        // We calculate outstanding based on what is NOW in the DB (Fresh calculation)
+        // 3. UPDATE LOAN BALANCE (If loan found)
+        if (targetLoanId && instAmt > 0) {
+            // Fetch CURRENT balance of this specific loan
+            const { data: currentLoan } = await supabase
+                .from('loans')
+                .select('remaining_balance')
+                .eq('id', targetLoanId)
+                .single();
+
+            if (currentLoan) {
+                const newBalance = Number(currentLoan.remaining_balance) + instAmt;
+                
+                // Update Logic
+                await supabase.from('loans').update({
+                    remaining_balance: newBalance,
+                    status: newBalance > 0 ? 'active' : 'closed' // Auto-correct status
+                }).eq('id', targetLoanId);
+                
+                console.log("Loan Updated successfully. New Balance:", newBalance);
+            }
+        }
+
+        // 4. SYNC MEMBER TOTALS
+        // A. Calculate Outstanding from ALL active loans
         const { data: allActiveLoans } = await supabase
             .from('loans')
             .select('remaining_balance')
@@ -89,7 +87,7 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
             
         const realOutstanding = allActiveLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
         
-        // Calculate Deposits
+        // B. Update Deposits
         const { data: currentMember } = await supabase.from('members').select('total_deposits').eq('id', memberId).single();
         const currentDep = Number(currentMember?.total_deposits || 0);
         const realDeposit = Math.max(0, currentDep - depositAmt);
@@ -99,10 +97,11 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
             total_deposits: realDeposit
         }).eq('id', memberId);
 
-        toast.success("Entry Deleted & Loan Section Synced");
+        toast.success("Entry Deleted. Loan Balance Reversed to ₹" + realOutstanding);
         window.location.reload();
 
     } catch(e: any) {
+        console.error("Delete Error:", e);
         toast.error("Delete Failed: " + e.message);
     } finally {
         setDeletingId(null);
