@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -10,101 +9,40 @@ import { Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PassbookTabProps {
-  data: any[];    
-  members: any[]; 
+  data: any[];
+  members: any[];
 }
 
 export default function PassbookTab({ data, members }: PassbookTabProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency', currency: 'INR', minimumFractionDigits: 0
-    }).format(amount || 0);
-  };
 
-  // ✅ FINAL FIX: Robust Delete Logic
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(amount || 0);
+
+  // ✅ ONLY DELETE LOGIC UPDATED (API CALL)
   const handleDelete = async (entry: any) => {
-    if(!confirm("Are you sure? Deleting this will reverse the loan balance immediately.")) return;
+    if (!confirm('Are you sure? Deleting this will reverse the loan balance immediately.')) return;
     setDeletingId(entry.id);
 
     try {
-        const depositAmt = Number(entry.depositAmount || entry.deposit_amount || 0);
-        const instAmt = Number(entry.installmentAmount || entry.installment_amount || 0);
-        const memberId = entry.memberId || entry.member_id;
+      const res = await fetch(`/api/client/passbook?id=${entry.id}`, {
+        method: 'DELETE',
+      });
 
-        // 1. Delete Passbook Entry First
-        const { error } = await supabase.from('passbook_entries').delete().eq('id', entry.id);
-        if(error) throw error;
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Delete failed');
 
-        let targetLoanId: string | null = entry.loan_id || null;
-
-        // 2. FIND THE LOAN TO UPDATE (Robust Strategy)
-        if (!targetLoanId && instAmt > 0) {
-            // Strategy: Fetch ALL loans for this member and pick the LATEST one
-            // We don't filter by status here because we want to update the loan even if status is wrong/null
-            const { data: memberLoans } = await supabase
-                .from('loans')
-                .select('*')
-                .eq('member_id', memberId)
-                .order('created_at', { ascending: false }); // Latest First
-
-            if (memberLoans && memberLoans.length > 0) {
-                // Pick the most recent loan
-                targetLoanId = memberLoans[0].id;
-            }
-        }
-
-        // 3. UPDATE LOAN BALANCE (If loan found)
-        if (targetLoanId && instAmt > 0) {
-            // Fetch CURRENT balance of this specific loan
-            const { data: currentLoan } = await supabase
-                .from('loans')
-                .select('remaining_balance')
-                .eq('id', targetLoanId)
-                .single();
-
-            if (currentLoan) {
-                const newBalance = Number(currentLoan.remaining_balance) + instAmt;
-                
-                // Update Logic
-                await supabase.from('loans').update({
-                    remaining_balance: newBalance,
-                    status: newBalance > 0 ? 'active' : 'closed' // Auto-correct status
-                }).eq('id', targetLoanId);
-                
-                console.log("Loan Updated successfully. New Balance:", newBalance);
-            }
-        }
-
-        // 4. SYNC MEMBER TOTALS
-        // A. Calculate Outstanding from ALL active loans
-        const { data: allActiveLoans } = await supabase
-            .from('loans')
-            .select('remaining_balance')
-            .eq('member_id', memberId)
-            .eq('status', 'active');
-            
-        const realOutstanding = allActiveLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
-        
-        // B. Update Deposits
-        const { data: currentMember } = await supabase.from('members').select('total_deposits').eq('id', memberId).single();
-        const currentDep = Number(currentMember?.total_deposits || 0);
-        const realDeposit = Math.max(0, currentDep - depositAmt);
-
-        await supabase.from('members').update({
-            outstanding_loan: realOutstanding,
-            total_deposits: realDeposit
-        }).eq('id', memberId);
-
-        toast.success("Entry Deleted. Loan Balance Reversed to ₹" + realOutstanding);
-        window.location.reload();
-
-    } catch(e: any) {
-        console.error("Delete Error:", e);
-        toast.error("Delete Failed: " + e.message);
+      toast.success('Entry deleted & loan synced successfully');
+      window.location.reload();
+    } catch (e: any) {
+      console.error('Delete Error:', e);
+      toast.error('Delete Failed: ' + e.message);
     } finally {
-        setDeletingId(null);
+      setDeletingId(null);
     }
   };
 
@@ -126,9 +64,10 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
                   <TableHead>Amount</TableHead>
                   <TableHead>Payment Mode</TableHead>
                   <TableHead>Balance</TableHead>
-                  <TableHead className="text-right">Action</TableHead> 
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {data.length === 0 ? (
                   <TableRow>
@@ -138,52 +77,70 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
                   </TableRow>
                 ) : (
                   data.map((entry: any, i: number) => {
-                    const member = members.find(m => m.id === entry.memberId);
+                    const member = members.find((m) => m.id === entry.memberId);
                     const dateStr = entry.date || entry.created_at;
-                    
-                    const type = entry.type || (Number(entry.deposit_amount) > 0 ? 'DEPOSIT' : 'LOAN_REPAYMENT');
+                    const type =
+                      entry.type || (Number(entry.deposit_amount) > 0 ? 'DEPOSIT' : 'LOAN_REPAYMENT');
 
                     return (
                       <TableRow key={i} className="hover:bg-gray-50 transition-colors">
                         <TableCell className="font-medium text-gray-700">
                           {dateStr ? new Date(dateStr).toLocaleDateString('en-IN') : '-'}
                         </TableCell>
+
                         <TableCell className="font-semibold text-gray-800">
                           {member?.name || entry.memberName || 'Unknown'}
                         </TableCell>
+
                         <TableCell>
-                          <Badge 
+                          <Badge
                             variant={type === 'DEPOSIT' ? 'default' : 'secondary'}
-                            className={type === 'DEPOSIT' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                            className={
+                              type === 'DEPOSIT'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }
                           >
                             {type}
                           </Badge>
                         </TableCell>
+
                         <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
                           {entry.description || entry.note}
                         </TableCell>
-                        <TableCell className={`font-bold ${type === 'DEPOSIT' ? 'text-green-600' : 'text-red-600'}`}>
+
+                        <TableCell
+                          className={`font-bold ${
+                            type === 'DEPOSIT' ? 'text-green-600' : 'text-red-600'
+                          }`}
+                        >
                           {formatCurrency(Math.abs(entry.amount))}
                         </TableCell>
+
                         <TableCell>
                           <Badge variant="outline" className="uppercase text-[10px]">
                             {entry.paymentMode || entry.payment_mode || 'CASH'}
                           </Badge>
                         </TableCell>
+
                         <TableCell className="text-blue-600 font-bold bg-blue-50/30">
                           {formatCurrency(entry.balance)}
                         </TableCell>
-                        
+
                         <TableCell className="text-right">
-                            <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8"
-                                onClick={() => handleDelete(entry)}
-                                disabled={!!deletingId}
-                            >
-                                {deletingId === entry.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
-                            </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8"
+                            onClick={() => handleDelete(entry)}
+                            disabled={!!deletingId}
+                          >
+                            {deletingId === entry.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
