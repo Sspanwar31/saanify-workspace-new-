@@ -23,7 +23,7 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
     }).format(amount || 0);
   };
 
-  // ✅ IMPROVED: Sequential Updates to Prevent Mismatch
+  // ✅ IMPROVED: Handle Delete Logic (Smart Reverse Calculation)
   const handleDelete = async (entry: any) => {
     if(!confirm("Are you sure? Deleting this entry will reverse the transaction balance.")) return;
     setDeletingId(entry.id);
