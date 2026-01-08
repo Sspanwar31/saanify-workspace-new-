@@ -23,9 +23,9 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
     }).format(amount || 0);
   };
 
-  // ✅ IMPROVED: Smart Reverse Logic
+  // ✅ IMPROVED: Sequential Updates to Prevent Mismatch
   const handleDelete = async (entry: any) => {
-    if(!confirm("Are you sure? This will reverse the transaction.")) return;
+    if(!confirm("Are you sure? Deleting this entry will reverse the transaction balance.")) return;
     setDeletingId(entry.id);
 
     try {
@@ -33,12 +33,12 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
         const instAmt = Number(entry.installmentAmount || entry.installment_amount || 0);
         const memberId = entry.memberId || entry.member_id;
 
-        // 1. Delete Passbook Entry
+        // 1. Delete Passbook Entry First
         const { error } = await supabase.from('passbook_entries').delete().eq('id', entry.id);
         if(error) throw error;
 
-        // 2. Reverse Logic
-        // Agar installment thi, to Loan wapas badhao
+        // 2. Reverse Loan Balance (If Installment was paid)
+        // Note: Hum pehle Loan update karenge, taaki baad me Member sync sahi data uthaye
         if(instAmt > 0) {
             // Find active loans or recently closed loans
             const { data: loans } = await supabase
@@ -48,17 +48,14 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
                 .order('created_at', { ascending: false }); // Latest first
 
             if(loans && loans.length > 0) {
-                // Hum latest loan me wapas add kar rahe hain (Most logical approach)
-                // Agar multiple active hain, to sabse latest wale me wapas jod do
-                // Kyunki payment usually latest due ke liye hoti hai
-                
-                // Find first loan that is active OR was closed recently
+                // Latest loan par reverse karo
                 const targetLoan = loans.find(l => l.status === 'active') || loans[0];
                 
                 if (targetLoan) {
                     const newBal = Number(targetLoan.remaining_balance) + instAmt;
                     const status = newBal > 0 ? 'active' : 'closed';
                     
+                    // Update and Wait
                     await supabase.from('loans').update({
                         remaining_balance: newBal,
                         status: status
@@ -67,8 +64,10 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
             }
         }
 
-        // 3. FINAL SYNC: Update Member Totals from Scratch (Best way to fix mismatch)
-        // Hum database se wapas ginti karenge taaki koi galti na ho
+        // 3. FINAL SYNC: Update Member Totals from Scratch
+        // Ab Loan table update ho chuki hai, ab total sahi aayega
+        
+        // A. Calculate Total Active Loans
         const { data: updatedLoans } = await supabase
             .from('loans')
             .select('remaining_balance')
@@ -77,12 +76,16 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
             
         const realOutstanding = updatedLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
         
-        // Deposit calculation manual reverse karni padegi kyunki passbook entry delete ho gayi hai
+        // B. Calculate Deposit (Directly Subtract)
+        // Member table ko read karo aur minus karke update karo
         const { data: currentMember } = await supabase.from('members').select('total_deposits').eq('id', memberId).single();
-        const realDeposit = Number(currentMember?.total_deposits || 0) - depositAmt;
+        
+        // Safety check: Deposit negative na ho
+        const currentDep = Number(currentMember?.total_deposits || 0);
+        const realDeposit = Math.max(0, currentDep - depositAmt);
 
         await supabase.from('members').update({
-            outstanding_loan: realOutstanding, // ✅ Synced with Loans Table
+            outstanding_loan: realOutstanding, // ✅ Synced with updated Loan Table
             total_deposits: realDeposit
         }).eq('id', memberId);
 
