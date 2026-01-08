@@ -93,19 +93,29 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       const depositBalance = Number(selectedMember.total_deposits || 0);
       const outstanding = Number(selectedMember.outstanding_loan || 0);
       
-      setCurrentDepositBalance(depositBalance);
-      setOutstandingLoan(outstanding);
+      // If Editing: We need to show what balance would be if we undo the old entry
+      let baseDeposit = depositBalance;
+      let baseLoan = outstanding;
 
-      if (!entryToEdit && outstanding > 0) {
-          const calculatedInterest = Math.round(outstanding * 0.01);
+      if (entryToEdit) {
+          // Temporarily reverse old values to show accurate 'Current' state before edit
+          baseDeposit -= Number(entryToEdit.deposit_amount || 0);
+          baseLoan += Number(entryToEdit.installment_amount || 0);
+      }
+      
+      setCurrentDepositBalance(baseDeposit);
+      setOutstandingLoan(baseLoan);
+
+      if (!entryToEdit && baseLoan > 0) {
+          const calculatedInterest = Math.round(baseLoan * 0.01);
           setInterestAmount(calculatedInterest.toString());
       }
 
       const dep = parseFloat(depositAmount) || 0;
       const inst = parseFloat(installmentAmount) || 0;
       
-      setProjectedLoan(Math.max(0, outstanding - inst));
-      setProjectedDeposit(depositBalance + dep);
+      setProjectedLoan(Math.max(0, baseLoan - inst));
+      setProjectedDeposit(baseDeposit + dep);
     } else {
       setCurrentDepositBalance(0);
       setOutstandingLoan(0);
@@ -116,7 +126,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
     }
   }, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
 
-  // ✅ 4. SUBMIT HANDLER (Updated to support Edit)
+  // ✅ 4. SUBMIT HANDLER (Updated Logic for Edit)
   const handleSubmit = async () => {
     if (!selectedMemberId) return toast.error('Please select a member');
     setLoading(true);
@@ -130,15 +140,14 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
     try {
         if (entryToEdit) {
             // --- EDIT MODE ---
-            // 1. Revert Old Amounts
+            // 1. Calculate Difference (New - Old)
             const oldDep = Number(entryToEdit.deposit_amount || 0);
             const oldInst = Number(entryToEdit.installment_amount || 0);
             
-            // 2. Calculate Difference
-            const depositDiff = newDepAmt - oldDep;
-            const installmentDiff = newInstAmt - oldInst;
+            const depositDiff = newDepAmt - oldDep; // e.g. 500 - 400 = +100
+            const installmentDiff = newInstAmt - oldInst; // e.g. 1000 - 800 = +200
 
-            // 3. Update Passbook Entry
+            // 2. Update Passbook
             const { error: updateError } = await supabase
                 .from('passbook_entries')
                 .update({
@@ -155,8 +164,8 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
             if (updateError) throw updateError;
 
-            // 4. Update Member Totals (Adjust Balance)
-            // Hum direct difference add/subtract karenge taaki balance sahi rahe
+            // 3. Update Member Balance
+            // Logic: Deposit me difference Jodo, Loan me difference Ghatao
             const { data: currentMember } = await supabase
                 .from('members')
                 .select('outstanding_loan, total_deposits')
@@ -164,19 +173,29 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                 .single();
 
             if (currentMember) {
-                const newLoanBal = (currentMember.outstanding_loan || 0) - installmentDiff; // Loan kam hoga
-                const newDepositTotal = (currentMember.total_deposits || 0) + depositDiff; // Deposit badhega
+                const newLoanBal = Number(currentMember.outstanding_loan) - installmentDiff;
+                const newDepositTotal = Number(currentMember.total_deposits) + depositDiff;
 
                 await supabase.from('members').update({
                     outstanding_loan: newLoanBal,
                     total_deposits: newDepositTotal
                 }).eq('id', selectedMemberId);
+                
+                // 4. Update Loan Table (If Installment Changed)
+                if (installmentDiff !== 0) {
+                     // Find active loan and adjust
+                     const { data: loans } = await supabase.from('loans').select('*').eq('member_id', selectedMemberId).eq('status', 'active');
+                     if(loans && loans.length > 0) {
+                         const loan = loans[0]; // Simplest FIFO logic
+                         const newBal = Number(loan.remaining_balance) - installmentDiff;
+                         await supabase.from('loans').update({ remaining_balance: newBal }).eq('id', loan.id);
+                     }
+                }
             }
-            
             toast.success("Entry Updated Successfully!");
 
         } else {
-            // --- CREATE MODE ---
+            // --- CREATE MODE (Existing Logic) ---
             const { data: currentMember } = await supabase.from('members').select('name').eq('id', selectedMemberId).single();
 
             const { error: insertError } = await supabase.from('passbook_entries').insert([{
@@ -195,22 +214,31 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
             if (insertError) throw insertError;
 
-            // Update Member Balance
             if (newDepAmt > 0 || newInstAmt > 0) {
-                const { data: memData } = await supabase
-                  .from('members')
-                  .select('outstanding_loan, total_deposits')
-                  .eq('id', selectedMemberId)
-                  .single();
-                
+                const { data: memData } = await supabase.from('members').select('outstanding_loan, total_deposits').eq('id', selectedMemberId).single();
                 if(memData) {
                     const newLoanBal = (memData.outstanding_loan || 0) - newInstAmt;
                     const newDepositTotal = (memData.total_deposits || 0) + newDepAmt;
-
-                    await supabase.from('members').update({
-                        outstanding_loan: newLoanBal,
-                        total_deposits: newDepositTotal
-                    }).eq('id', selectedMemberId);
+                    await supabase.from('members').update({ outstanding_loan: newLoanBal, total_deposits: newDepositTotal }).eq('id', selectedMemberId);
+                    
+                    // Deduct from Loan Table
+                    if(newInstAmt > 0) {
+                        const { data: activeLoans } = await supabase.from('loans').select('*').eq('member_id', selectedMemberId).eq('status', 'active').gt('remaining_balance', 0).order('created_at', { ascending: true });
+                        let amtLeft = newInstAmt;
+                        if(activeLoans) {
+                            for (const loan of activeLoans) {
+                                if (amtLeft <= 0) break;
+                                const bal = Number(loan.remaining_balance);
+                                if (amtLeft >= bal) {
+                                    await supabase.from('loans').update({ remaining_balance: 0, status: 'closed' }).eq('id', loan.id);
+                                    amtLeft -= bal;
+                                } else {
+                                    await supabase.from('loans').update({ remaining_balance: bal - amtLeft }).eq('id', loan.id);
+                                    amtLeft = 0;
+                                }
+                            }
+                        }
+                    }
                 }
             }
             toast.success("Entry Added Successfully!");
