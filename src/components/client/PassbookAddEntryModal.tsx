@@ -198,19 +198,37 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
             // --- CREATE MODE (Existing Logic) ---
             const { data: currentMember } = await supabase.from('members').select('name').eq('id', selectedMemberId).single();
 
-            const { error: insertError } = await supabase.from('passbook_entries').insert([{
-                client_id: clientId,
-                member_id: selectedMemberId,
-                member_name: currentMember?.name,
-                date: format(date, 'yyyy-MM-dd'),
-                payment_mode: paymentMode,
-                deposit_amount: newDepAmt,
-                installment_amount: newInstAmt,
-                interest_amount: newIntAmt,
-                fine_amount: newFineAmt,
-                total_amount: total,
-                note: 'Passbook Entry'
-            }]);
+           let attachedLoanId: string | null = null;
+
+if (newInstAmt > 0) {
+  const { data: activeLoans } = await supabase
+    .from('loans')
+    .select('id, remaining_balance')
+    .eq('member_id', selectedMemberId)
+    .eq('status', 'active')
+    .gt('remaining_balance', 0)
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  if (activeLoans && activeLoans.length > 0) {
+    attachedLoanId = activeLoans[0].id;
+  }
+}
+
+const { error: insertError } = await supabase.from('passbook_entries').insert([{
+  client_id: clientId,
+  member_id: selectedMemberId,
+  member_name: currentMember?.name,
+  loan_id: attachedLoanId, // ✅ AUTO ATTACHED
+  date: format(date, 'yyyy-MM-dd'),
+  payment_mode: paymentMode,
+  deposit_amount: newDepAmt,
+  installment_amount: newInstAmt,
+  interest_amount: newIntAmt,
+  fine_amount: newFineAmt,
+  total_amount: total,
+  note: 'Passbook Entry'
+}]);;
 
             if (insertError) throw insertError;
 
