@@ -1,4 +1,4 @@
-src/components/layout/ClientSidebar.tsx='use client';
+'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -58,14 +58,14 @@ export default function ClientSidebar() {
               <Link 
                 key={item.href} 
                 href={item.href} 
-                className={`
+                className={
                   flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
                   ${isActive 
                     ? 'bg-orange-50 text-orange-700 font-semibold' 
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
-                `}
+                }
               >
-                <item.icon className={`h-5 w-5 ${isActive ? 'text-orange-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                <item.icon className={h-5 w-5 ${isActive ? 'text-orange-600' : 'text-slate-400 group-hover:text-slate-600'}} />
                 <span className="text-sm">{item.label}</span>
               </Link>
             );
@@ -86,7 +86,6 @@ export default function ClientSidebar() {
     </aside>
   );
 } 
-
 src/components/client/users/RolesPermissionsTab.tsx='use client'
 
 import { Role, Permission } from '@/lib/client/store'
@@ -274,7 +273,7 @@ export default function RolesPermissionsTab({ roles, canManageUsers, togglePermi
                     const percentage = (roleCategoryPermissions.length / categoryPermissions.length) * 100
                     
                     return (
-                      <div key={`${role.id}-${category}`} className="space-y-1">
+                      <div key={${role.id}-${category}} className="space-y-1">
                         <div className="flex items-center justify-between text-xs">
                           <span>{category}</span>
                           <span>{roleCategoryPermissions.length}/{categoryPermissions.length}</span>
@@ -282,7 +281,7 @@ export default function RolesPermissionsTab({ roles, canManageUsers, togglePermi
                         <div className="w-full bg-gray-200 rounded-full h-1.5">
                           <div 
                             className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                            style={{ width: `${percentage}%` }}
+                            style={{ width: ${percentage}% }}
                           />
                         </div>
                       </div>
@@ -340,7 +339,6 @@ export default function RolesPermissionsTab({ roles, canManageUsers, togglePermi
     </div>
   )
 }
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -506,7 +504,7 @@ export default function UserManagementPage() {
         if (!response.ok) throw new Error(result.error);
 
         toast.success(editingUser ? "User Updated Successfully" : "User Created Successfully");
-        await logActivity(editingUser ? 'Update User' : 'Create User', `${editingUser ? 'Updated' : 'Created'} user: ${formData.name}`);
+        await logActivity(editingUser ? 'Update User' : 'Create User', ${editingUser ? 'Updated' : 'Created'} user: ${formData.name});
         
         setIsModalOpen(false);
         window.location.reload(); // Refresh list
@@ -527,7 +525,7 @@ export default function UserManagementPage() {
         const { error } = await supabase.from('members').delete().eq('id', userId);
         if (!error) { 
             setUsers(users.filter(u => u.id !== userId)); 
-            await logActivity('Delete User', `Deleted user ID: ${userId}`); 
+            await logActivity('Delete User', Deleted user ID: ${userId}); 
             toast.success("User Deleted");
         } else {
             toast.error("Delete Failed: " + error.message);
@@ -541,8 +539,8 @@ export default function UserManagementPage() {
     const { error } = await supabase.from('members').update({ status: newStatus }).eq('id', user.id);
     if (!error) { 
         setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u)); 
-        await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`); 
-        toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
+        await logActivity('Status Change', Changed status of ${user.name} to ${newStatus}); 
+        toast.success(User ${newStatus === 'active' ? 'Activated' : 'Blocked'});
     }
   };
 
@@ -639,14 +637,14 @@ export default function UserManagementPage() {
             <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader className="bg-gray-50"><TableRow><TableHead className="py-4 pl-6 w-[300px]">User Info</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Phone</TableHead><TableHead>Linked</TableHead><TableHead className="text-right pr-6">Actions</TableHead></TableRow></TableHeader><TableBody>
                 {loading ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">Loading users...</TableCell></TableRow> : filteredUsers.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">No users found matching filters.</TableCell></TableRow> : filteredUsers.map((user) => (
                     <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                        <TableCell className="pl-6 py-4"><div className="flex items-center gap-3"><Avatar className="h-10 w-10 border-2 border-white shadow-sm"><AvatarImage src={`/avatars/${user.id}.jpg`} /><AvatarFallback className="bg-gray-100 text-gray-600 font-bold">{user.name.charAt(0)}</AvatarFallback></Avatar><div><p className="font-semibold text-gray-900">{user.name}</p><p className="text-xs text-gray-500">{user.email}</p></div></div></TableCell>
-                        <TableCell><Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1 font-medium`}>{user.role.replace('_', ' ').toUpperCase()}</Badge></TableCell>
+                        <TableCell className="pl-6 py-4"><div className="flex items-center gap-3"><Avatar className="h-10 w-10 border-2 border-white shadow-sm"><AvatarImage src={/avatars/${user.id}.jpg} /><AvatarFallback className="bg-gray-100 text-gray-600 font-bold">{user.name.charAt(0)}</AvatarFallback></Avatar><div><p className="font-semibold text-gray-900">{user.name}</p><p className="text-xs text-gray-500">{user.email}</p></div></div></TableCell>
+                        <TableCell><Badge className={${getRoleBadgeColor(user.role)} border-0 px-3 py-1 font-medium}>{user.role.replace('_', ' ').toUpperCase()}</Badge></TableCell>
                         <TableCell><Badge variant={user.status === 'active' ? 'default' : 'destructive'} className="uppercase text-[10px] px-2">{user.status}</Badge></TableCell>
                         <TableCell className="text-gray-600 font-medium text-sm">{user.phone}</TableCell>
                         <TableCell>{user.role === 'member' ? <div className="flex items-center text-blue-600 text-xs font-medium bg-blue-50 px-2 py-1 rounded w-fit"><LinkIcon className="h-3 w-3 mr-1"/> Linked</div> : <span className="text-gray-400 text-xs italic">System User</span>}</TableCell>
                         <TableCell className="text-right pr-6"><div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} className="text-blue-600 hover:bg-blue-50 h-8 w-8"><Edit className="h-4 w-4" /></Button>
-                            {user.role !== 'client_admin' && <Button variant="ghost" size="icon" onClick={() => handleToggleBlock(user)} className={`h-8 w-8 ${user.status === 'active' ? "text-orange-500 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"}`}>{user.status === 'active' ? <Lock className="h-4 w-4"/> : <Unlock className="h-4 w-4"/>}</Button>}
+                            {user.role !== 'client_admin' && <Button variant="ghost" size="icon" onClick={() => handleToggleBlock(user)} className={h-8 w-8 ${user.status === 'active' ? "text-orange-500 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"}}>{user.status === 'active' ? <Lock className="h-4 w-4"/> : <Unlock className="h-4 w-4"/>}</Button>}
                             {user.role !== 'client_admin' && <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-8 w-8" onClick={() => handleDelete(user.id, user.role)}><Trash2 className="h-4 w-4" /></Button>}
                         </div></TableCell>
                     </TableRow>
@@ -662,7 +660,7 @@ export default function UserManagementPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {['client_admin', 'treasurer', 'member'].map(role => (
-                    <Card key={role} className={`border-t-4 ${role === 'client_admin' ? 'border-t-purple-600' : role === 'treasurer' ? 'border-t-green-600' : 'border-t-blue-600'}`}>
+                    <Card key={role} className={border-t-4 ${role === 'client_admin' ? 'border-t-purple-600' : role === 'treasurer' ? 'border-t-green-600' : 'border-t-blue-600'}}>
                         <CardHeader className="pb-2"><div className="flex justify-between items-start"><Badge className={getRoleBadgeColor(role)}>{role.replace('_', ' ').toUpperCase()}</Badge><span className="text-xs font-bold text-gray-400">{roleConfig[role].length} total</span></div></CardHeader>
                         <CardContent><div className="space-y-2 text-sm"><div className="flex justify-between"><span>General</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[0].items)}/7</span></div><div className="flex justify-between"><span>Financial</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[2].items)}/6</span></div></div></CardContent>
                     </Card>
