@@ -6,7 +6,7 @@ import {
   Users, Shield, UserCheck, Ban, Plus, Search, 
   Download, RefreshCw, Edit, Trash2, Crown, Activity, 
   Lock, Unlock, Link as LinkIcon, Save, X, Filter as FilterIcon,
-  Eye, EyeOff // New Icons for Password
+  Eye, EyeOff 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,7 +56,7 @@ export default function UserManagementPage() {
   const [showPassword, setShowPassword] = useState(false); // Toggle Password Visibility
   const [editingUser, setEditingUser] = useState<any>(null);
   
-  // ✅ Updated Form Data to include Password
+  // Form Data including Password
   const [formData, setFormData] = useState({
     name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active', password: ''
   });
@@ -76,6 +76,15 @@ export default function UserManagementPage() {
         const user = JSON.parse(storedUser);
         cid = user.id;
         setClientId(cid);
+
+        // Fetch Saved Permissions
+        const { data: clientData } = await supabase.from('clients').select('role_permissions').eq('id', cid).single();
+        if (clientData?.role_permissions) {
+             setRoleConfig((prev: any) => ({
+                 ...prev,
+                 ...clientData.role_permissions
+             }));
+        }
       }
 
       if (cid) {
@@ -131,7 +140,7 @@ export default function UserManagementPage() {
       setIsModalOpen(true); 
   };
   
-  // ✅ NEW: Handle Submit using API (Create/Update Login + DB)
+  // Handle Submit using API (Create/Update Login + DB)
   const handleSubmit = async () => {
     if(!clientId || !formData.name || !formData.email) {
         toast.error("Name and Email are required");
@@ -142,14 +151,14 @@ export default function UserManagementPage() {
 
     try {
         const payload = {
-            id: editingUser ? editingUser.id : null, // ID only if editing
+            id: editingUser ? editingUser.id : null, 
             clientId: clientId,
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
             role: formData.role,
             status: formData.status,
-            password: formData.password // Optional for edit, Required for new
+            password: formData.password 
         };
 
         const response = await fetch('/api/users/manage', {
@@ -166,21 +175,19 @@ export default function UserManagementPage() {
         await logActivity(editingUser ? 'Update User' : 'Create User', `${editingUser ? 'Updated' : 'Created'} user: ${formData.name}`);
         
         setIsModalOpen(false);
-        window.location.reload(); // Refresh list
+        window.location.reload(); 
 
     } catch (error: any) { 
         console.error(error);
         toast.error(error.message || "Operation failed"); 
     } finally {
-        setIsSaving(false); // Stop loading
+        setIsSaving(false); 
     }
   };
 
   const handleDelete = async (userId: string, role: string) => {
     if (role === 'client_admin') { alert("Action Denied: Cannot delete Main Admin."); return; }
     if (confirm("Delete this user? This will also remove their login access.")) {
-        // Note: For full cleanup, API should handle deletion too.
-        // For now, removing from DB prevents login due to logic checks.
         const { error } = await supabase.from('members').delete().eq('id', userId);
         if (!error) { 
             setUsers(users.filter(u => u.id !== userId)); 
@@ -203,15 +210,46 @@ export default function UserManagementPage() {
     }
   };
 
+  // ✅ UPDATED: Toggle Permission with Auto-Save Logic
   const togglePermission = (role: string, permission: string) => {
     if (!isEditingRoles || role === 'client_admin') return; 
+    
     setRoleConfig((prev: any) => {
       const currentPerms = prev[role];
-      return currentPerms.includes(permission) ? { ...prev, [role]: currentPerms.filter((p: string) => p !== permission) } : { ...prev, [role]: [...currentPerms, permission] };
+      const newPerms = currentPerms.includes(permission) 
+        ? currentPerms.filter((p: string) => p !== permission) 
+        : [...currentPerms, permission];
+      
+      const updatedConfig = { ...prev, [role]: newPerms };
+      
+      // Background Save
+      saveToDatabase(updatedConfig);
+      
+      return updatedConfig;
     });
   };
 
-  const savePermissions = async () => { setIsEditingRoles(false); await logActivity('Permissions Update', 'Updated role permissions matrix'); toast.success("Permissions updated successfully!"); };
+  // ✅ NEW: Helper to Save Permissions to DB
+  const saveToDatabase = async (config: any) => {
+      if(!clientId) return;
+      try {
+          await supabase.from('clients').update({ 
+              role_permissions: {
+                  treasurer: config.treasurer,
+                  member: config.member
+              }
+          }).eq('id', clientId);
+          console.log("Permissions Synced");
+      } catch (e) {
+          console.error("Sync Failed", e);
+      }
+  };
+
+  const savePermissions = async () => { 
+      setIsEditingRoles(false); 
+      await logActivity('Permissions Update', 'Updated role permissions matrix'); 
+      toast.success("Permissions updated successfully!"); 
+  };
 
   const getRoleBadgeColor = (role: string) => {
     switch(role) { case 'client_admin': return 'bg-purple-100 text-purple-800'; case 'treasurer': return 'bg-green-100 text-green-800'; default: return 'bg-blue-100 text-blue-800'; }
@@ -221,7 +259,7 @@ export default function UserManagementPage() {
   return (
     <div className="p-6 space-y-6">
       
-      {/* 1. Header */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
@@ -233,7 +271,7 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      {/* ✅ 2. TABS */}
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex justify-center mb-6">
             <TabsList className="grid w-full max-w-2xl grid-cols-3 h-12 bg-white rounded-full p-1 shadow-sm border">
@@ -249,7 +287,7 @@ export default function UserManagementPage() {
             </TabsList>
         </div>
 
-        {/* 3. Stats Cards */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <Card className="border-none shadow-md hover:shadow-lg transition-shadow">
                 <CardContent className="p-6 flex justify-between items-center">
@@ -277,7 +315,7 @@ export default function UserManagementPage() {
             </Card>
         </div>
 
-        {/* 4. Tab Contents */}
+        {/* Tab Contents */}
         <TabsContent value="all-users" className="space-y-6">
             <div className="bg-white p-4 rounded-lg border flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
                 <div className="flex flex-col md:flex-row gap-4 w-full items-center">
@@ -311,7 +349,7 @@ export default function UserManagementPage() {
             </TableBody></Table></div></CardContent></Card>
         </TabsContent>
 
-        {/* Roles & Activity Tabs (Unchanged) */}
+        {/* Roles Tab (Updated with Toggle Logic) */}
         <TabsContent value="roles" className="space-y-6">
             <div className="flex justify-between items-center bg-white p-6 rounded-xl border shadow-sm">
                 <div><h2 className="text-lg font-bold text-gray-900">Role Capabilities</h2><p className="text-sm text-gray-500 mt-1">Configure what each role can access and perform.</p></div>
@@ -339,7 +377,7 @@ export default function UserManagementPage() {
         </TabsContent>
       </Tabs>
 
-      {/* ✅ MODAL WITH PASSWORD INPUT */}
+      {/* Modal - Unchanged but with Password */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader><DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle></DialogHeader>
@@ -349,21 +387,13 @@ export default function UserManagementPage() {
                 <div className="grid gap-2"><Label>Email</Label><Input value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="user@example.com"/></div>
                 <div className="grid gap-2"><Label>Phone</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+91..."/></div>
                 
-                {/* ✅ PASSWORD FIELD ADDED */}
+                {/* Password Field */}
                 <div className="grid gap-2">
                     <Label>Password</Label>
                     <div className="relative">
-                        <Input 
-                            type={showPassword ? "text" : "password"} 
-                            placeholder={editingUser ? "Enter new to reset (Optional)" : "Set Password"} 
-                            value={formData.password} 
-                            onChange={(e) => setFormData({...formData, password: e.target.value})}
-                        />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+                        <Input type={showPassword ? "text" : "password"} placeholder={editingUser ? "Enter new to reset (Optional)" : "Set Password"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
                     </div>
-                    {editingUser && <p className="text-[10px] text-gray-400">Only enter if you want to change the password.</p>}
                 </div>
 
                 {formData.role === 'member' && <div className="grid gap-2"><Label>Link Member</Label><Select value={formData.linked_member_id} onValueChange={(val) => setFormData({...formData, linked_member_id: val})}><SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger><SelectContent><SelectItem value="not_linked">Not Linked</SelectItem>{ledgerMembers.map(m => (<SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>))}</SelectContent></Select></div>}
@@ -371,9 +401,7 @@ export default function UserManagementPage() {
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={isSaving} className="bg-blue-600 text-white">
-                    {isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}
-                </Button>
+                <Button onClick={handleSubmit} disabled={isSaving} className="bg-blue-600 text-white">{isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Save Changes"}</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
