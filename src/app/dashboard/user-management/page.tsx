@@ -1,13 +1,3 @@
-
-
-Ye error tab aata hai jab code mein **syntax errors** hoti hain jaise incomplete string literals ya random words.
-
-Maine code mein jo **`code Code`** words aapke paste mein beech mein aa gaye the, unhe remove kar diya hai.
-Saath hi, jahan string ke beech mein backticks (`` ` ``) missing the (jaise `Deleted user ID: ${userId}`), unhe fix kar diya hai.
-
-Ye raha aapka **Clean & Fixed Code**:
-
-```tsx
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase'; 
