@@ -49,7 +49,7 @@ export async function DELETE(req: Request) {
 
       // Agar direct link nahi hai, to sabse pehle ACTIVE loan dhundo
       if (!targetLoanId) {
-        const { data: loans } = await supabase
+        const { data: activeLoans } = await supabase
           .from('loans')
           .select('id')
           .eq('member_id', member_id)
@@ -57,10 +57,10 @@ export async function DELETE(req: Request) {
           .order('created_at', { ascending: false }) // Latest Active
           .limit(1);
 
-        if (loans && loans.length > 0) {
-             targetLoanId = loans[0].id;
+        if (activeLoans && activeLoans.length > 0) {
+             targetLoanId = activeLoans[0].id;
         } else {
-             // Agar koi active nahi hai, to Latest Closed dhundo (Jo shayad abhi band hua ho)
+             // Agar Active nahi mila (matlab loan band ho gaya tha), to Latest Closed dhundo
              const { data: closedLoans } = await supabase
                 .from('loans')
                 .select('id')
@@ -77,6 +77,8 @@ export async function DELETE(req: Request) {
 
         if (loan) {
           const newBalance = Number(loan.remaining_balance) + instAmt;
+          
+          // Agar balance > 0 hai to Active, nahi to Closed
           const newStatus = newBalance > 0 ? 'active' : 'closed';
 
           await supabase.from('loans').update({
@@ -87,14 +89,15 @@ export async function DELETE(req: Request) {
       }
     }
 
-    // 4. Final Sync Member
-    const { data: activeLoans } = await supabase
+    // 4. Final Sync: Member Totals Refresh (Correct Source of Truth)
+    // Hum Loan table se ginti karke Member table update karenge
+    const { data: allMemberLoans } = await supabase
       .from('loans')
       .select('remaining_balance')
       .eq('member_id', member_id)
       .eq('status', 'active'); 
 
-    const realOutstanding = activeLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
+    const realOutstanding = allMemberLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
 
     const { data: allDeposits } = await supabase
       .from('passbook_entries')
