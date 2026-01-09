@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase'; // Updated import path
+import { supabase } from '@/lib/supabase'; // Standard import
 import { 
   Users, Shield, UserCheck, Ban, Plus, Search, 
   Download, RefreshCw, Edit, Trash2, Crown, Activity, 
@@ -22,7 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
-// --- CONFIGURATION CONSTANTS (UNCHANGED) ---
+// --- CONFIGURATION CONSTANTS ---
 const PERMISSION_CATEGORIES = [
   { name: 'General Permissions', items: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data'] },
   { name: 'User Management Permissions', items: ['User Management Access', 'Manage Users', 'Manage Members'] },
@@ -52,11 +52,10 @@ export default function UserManagementPage() {
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // Loading state for save
-  const [showPassword, setShowPassword] = useState(false); // Toggle Password Visibility
+  const [isSaving, setIsSaving] = useState(false); 
+  const [showPassword, setShowPassword] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   
-  // Form Data including Password
   const [formData, setFormData] = useState({
     name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active', password: ''
   });
@@ -88,7 +87,7 @@ export default function UserManagementPage() {
       }
 
       if (cid) {
-        // Users
+        // Users List Fetch (Yahan list aani chahiye)
         const { data: userData } = await supabase.from('members').select('*').eq('client_id', cid).order('role', { ascending: true });
         if (userData) {
             setUsers(userData);
@@ -135,19 +134,18 @@ export default function UserManagementPage() {
       setFormData({ 
           name: user.name, role: user.role || 'member', email: user.email || '', 
           phone: user.phone || '', linked_member_id: user.id, status: user.status || 'active',
-          password: '' // Don't show old password
+          password: '' 
       }); 
       setIsModalOpen(true); 
   };
   
-  // Handle Submit using API (Create/Update Login + DB)
   const handleSubmit = async () => {
     if(!clientId || !formData.name || !formData.email) {
         toast.error("Name and Email are required");
         return;
     }
 
-    setIsSaving(true); // Start loading
+    setIsSaving(true); 
 
     try {
         const payload = {
@@ -210,7 +208,6 @@ export default function UserManagementPage() {
     }
   };
 
-  // ✅ UPDATED: Toggle Permission with Auto-Save Logic
   const togglePermission = (role: string, permission: string) => {
     if (!isEditingRoles || role === 'client_admin') return; 
     
@@ -221,15 +218,11 @@ export default function UserManagementPage() {
         : [...currentPerms, permission];
       
       const updatedConfig = { ...prev, [role]: newPerms };
-      
-      // Background Save
       saveToDatabase(updatedConfig);
-      
       return updatedConfig;
     });
   };
 
-  // ✅ NEW: Helper to Save Permissions to DB
   const saveToDatabase = async (config: any) => {
       if(!clientId) return;
       try {
@@ -315,7 +308,7 @@ export default function UserManagementPage() {
             </Card>
         </div>
 
-        {/* Tab Contents */}
+        {/* 4. Users Table (Restored) */}
         <TabsContent value="all-users" className="space-y-6">
             <div className="bg-white p-4 rounded-lg border flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
                 <div className="flex flex-col md:flex-row gap-4 w-full items-center">
@@ -334,8 +327,8 @@ export default function UserManagementPage() {
             <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader className="bg-gray-50"><TableRow><TableHead className="py-4 pl-6 w-[300px]">User Info</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Phone</TableHead><TableHead>Linked</TableHead><TableHead className="text-right pr-6">Actions</TableHead></TableRow></TableHeader><TableBody>
                 {loading ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">Loading users...</TableCell></TableRow> : filteredUsers.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">No users found matching filters.</TableCell></TableRow> : filteredUsers.map((user) => (
                     <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                        <TableCell className="pl-6 py-4"><div className="flex items-center gap-3"><Avatar className="h-10 w-10 border-2 border-white shadow-sm"><AvatarImage src={`/avatars/${user.id}.jpg`} /><AvatarFallback className="bg-gray-100 text-gray-600 font-bold">{user.name.charAt(0)}</AvatarFallback></Avatar><div><p className="font-semibold text-gray-900">{user.name}</p><p className="text-xs text-gray-500">{user.email}</p></div></div></TableCell>
-                        <TableCell><Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1 font-medium`}>{user.role.replace('_', ' ').toUpperCase()}</Badge></TableCell>
+                        <TableCell className="pl-6 py-4"><div className="flex items-center gap-3"><Avatar className="h-10 w-10 border-2 border-white shadow-sm"><AvatarImage src={`/avatars/${user.id}.jpg`} /><AvatarFallback className="bg-gray-100 text-gray-600 font-bold">{user.name?.charAt(0) || 'U'}</AvatarFallback></Avatar><div><p className="font-semibold text-gray-900">{user.name}</p><p className="text-xs text-gray-500">{user.email}</p></div></div></TableCell>
+                        <TableCell><Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1 font-medium`}>{user.role?.replace('_', ' ').toUpperCase()}</Badge></TableCell>
                         <TableCell><Badge variant={user.status === 'active' ? 'default' : 'destructive'} className="uppercase text-[10px] px-2">{user.status}</Badge></TableCell>
                         <TableCell className="text-gray-600 font-medium text-sm">{user.phone}</TableCell>
                         <TableCell>{user.role === 'member' ? <div className="flex items-center text-blue-600 text-xs font-medium bg-blue-50 px-2 py-1 rounded w-fit"><LinkIcon className="h-3 w-3 mr-1"/> Linked</div> : <span className="text-gray-400 text-xs italic">System User</span>}</TableCell>
@@ -349,7 +342,6 @@ export default function UserManagementPage() {
             </TableBody></Table></div></CardContent></Card>
         </TabsContent>
 
-        {/* Roles Tab (Updated with Toggle Logic) */}
         <TabsContent value="roles" className="space-y-6">
             <div className="flex justify-between items-center bg-white p-6 rounded-xl border shadow-sm">
                 <div><h2 className="text-lg font-bold text-gray-900">Role Capabilities</h2><p className="text-sm text-gray-500 mt-1">Configure what each role can access and perform.</p></div>
