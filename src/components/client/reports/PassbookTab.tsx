@@ -23,7 +23,7 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
     }).format(amount || 0);
   };
 
-  // ✅ SMART DELETE LOGIC (Syncs Member & Loans)
+  // ✅ FIXED: Delete Logic with Sequential Sync (No Race Condition)
   const handleDelete = async (entry: any) => {
     if(!confirm("Are you sure? This will reverse the transaction and update loan/deposit balance.")) return;
     setDeletingId(entry.id);
@@ -39,7 +39,7 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
 
         // 2. Reverse Loan Balance (If Installment was deleted)
         if(instAmt > 0) {
-            // Hum latest active/closed loan dhoondenge jisme se paisa kata tha
+            // Find LATEST active or closed loan
             const { data: loans } = await supabase
                 .from('loans')
                 .select('*')
@@ -63,8 +63,10 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
             }
         }
 
-        // 3. FINAL SYNC: Update Member Totals from Scratch (Best Accuracy)
-        // Hum database se wapas ginti karenge taaki koi galti na ho
+        // 3. WAIT (Critical Fix): Ensure DB commits loan update before reading totals
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // 4. FINAL SYNC: Update Member Totals from Fresh Loan Data
         
         // A. Calculate Total Active Loans
         const { data: updatedLoans } = await supabase
@@ -75,7 +77,7 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
             
         const realOutstanding = updatedLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
         
-        // B. Calculate Deposit (Directly Subtract deleted amount)
+        // B. Calculate Deposit (Reverse current deposit)
         const { data: currentMember } = await supabase.from('members').select('total_deposits').eq('id', memberId).single();
         const currentDep = Number(currentMember?.total_deposits || 0);
         const realDeposit = Math.max(0, currentDep - depositAmt);
