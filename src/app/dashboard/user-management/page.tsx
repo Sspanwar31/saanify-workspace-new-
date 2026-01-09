@@ -1,11 +1,21 @@
+
+
+Ye error tab aata hai jab code mein **syntax errors** hoti hain jaise incomplete string literals ya random words.
+
+Maine code mein jo **`code Code`** words aapke paste mein beech mein aa gaye the, unhe remove kar diya hai.
+Saath hi, jahan string ke beech mein backticks (`` ` ``) missing the (jaise `Deleted user ID: ${userId}`), unhe fix kar diya hai.
+
+Ye raha aapka **Clean & Fixed Code**:
+
+```tsx
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase'; // Updated import path
+import { supabase } from '@/lib/supabase'; 
 import {
 Users, Shield, UserCheck, Ban, Plus, Search,
 Download, RefreshCw, Edit, Trash2, Crown, Activity,
 Lock, Unlock, Link as LinkIcon, Save, X, Filter as FilterIcon,
-Eye, EyeOff // New Icons for Password
+Eye, EyeOff 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +30,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-// --- CONFIGURATION CONSTANTS (UNCHANGED) ---
+
+// --- CONFIGURATION CONSTANTS ---
 const PERMISSION_CATEGORIES = [
 { name: 'General Permissions', items: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data'] },
 { name: 'User Management Permissions', items: ['User Management Access', 'Manage Users', 'Manage Members'] },
@@ -28,11 +39,13 @@ const PERMISSION_CATEGORIES = [
 { name: 'System Permissions', items: ['Manage System', 'Manage Subscription'] },
 { name: 'Security Permissions', items: ['View Activity Logs', 'Manage Roles', 'Ghost Mode'] }
 ];
+
 const DEFAULT_PERMISSIONS = {
 client_admin: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'View Reports', 'View Settings', 'Export Data', 'User Management Access', 'Manage Users', 'Manage Members', 'Manage Finance', 'Manage Loans', 'Manage Expenses', 'Approve Loans', 'Manage Passbook', 'Manage Admin Fund', 'Manage System', 'Manage Subscription', 'View Activity Logs', 'Manage Roles', 'Ghost Mode'],
 treasurer: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'Manage Finance', 'Manage Expenses', 'Manage Passbook'],
 member: ['View Dashboard']
 };
+
 export default function UserManagementPage() {
 const [users, setUsers] = useState<any[]>([]);
 const [ledgerMembers, setLedgerMembers] = useState<any[]>([]);
@@ -40,36 +53,40 @@ const [activityLogs, setActivityLogs] = useState<any[]>([]);
 const [loading, setLoading] = useState(true);
 const [activeTab, setActiveTab] = useState('all-users');
 const [clientId, setClientId] = useState<string | null>(null);
+
 // Filters
 const [searchTerm, setSearchTerm] = useState('');
 const [filterRole, setFilterRole] = useState('all');
 const [filterStatus, setFilterStatus] = useState('all');
+
 // Modal States
 const [isModalOpen, setIsModalOpen] = useState(false);
-const [isSaving, setIsSaving] = useState(false); // Loading state for save
-const [showPassword, setShowPassword] = useState(false); // Toggle Password Visibility
+const [isSaving, setIsSaving] = useState(false); 
+const [showPassword, setShowPassword] = useState(false); 
 const [editingUser, setEditingUser] = useState<any>(null);
-// ✅ Updated Form Data to include Password
+
 const [formData, setFormData] = useState({
 name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active', password: ''
 });
+
 // Roles State
 const [roleConfig, setRoleConfig] = useState<any>(DEFAULT_PERMISSIONS);
 const [isEditingRoles, setIsEditingRoles] = useState(false);
+
 // 1. Fetch Data
 useEffect(() => {
 const fetchData = async () => {
 setLoading(true);
 const storedUser = localStorage.getItem('current_user');
 let cid = clientId;
-code
-Code
+
 if (!cid && storedUser) {
     const user = JSON.parse(storedUser);
     cid = user.id;
     setClientId(cid);
   }
 
+  // Removed "code Code" artifacts
   if (cid) {
     // Users
     const { data: userData } = await supabase.from('members').select('*').eq('client_id', cid).order('role', { ascending: true });
@@ -85,6 +102,7 @@ if (!cid && storedUser) {
 };
 fetchData();
 }, [clientId]);
+
 const stats = useMemo(() => {
 return {
 total: users.length,
@@ -93,50 +111,54 @@ blocked: users.filter(u => u.status === 'blocked').length,
 admins: users.filter(u => u.role === 'client_admin').length
 };
 }, [users]);
+
 const filteredUsers = users.filter(user => {
 const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
 const matchesRole = filterRole === 'all' || user.role === filterRole;
 const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
 return matchesSearch && matchesRole && matchesStatus;
 });
+
 const logActivity = async (action: string, details: string) => {
 if (!clientId) return;
 await supabase.from('activity_logs').insert([{ client_id: clientId, user_name: 'Current User', action: action, details: details }]);
 };
+
 const handleOpenAdd = () => {
 setEditingUser(null);
 setFormData({ name: '', role: 'member', email: '', phone: '', linked_member_id: '', status: 'active', password: '' });
 setIsModalOpen(true);
 };
+
 const handleOpenEdit = (user: any) => {
 setEditingUser(user);
 setFormData({
 name: user.name, role: user.role || 'member', email: user.email || '',
 phone: user.phone || '', linked_member_id: user.id, status: user.status || 'active',
-password: '' // Don't show old password
+password: '' 
 });
 setIsModalOpen(true);
 };
-// ✅ NEW: Handle Submit using API (Create/Update Login + DB)
+
 const handleSubmit = async () => {
 if(!clientId || !formData.name || !formData.email) {
 toast.error("Name and Email are required");
 return;
 }
-code
-Code
-setIsSaving(true); // Start loading
+
+// Removed "code Code" artifacts
+setIsSaving(true); 
 
 try {
     const payload = {
-        id: editingUser ? editingUser.id : null, // ID only if editing
+        id: editingUser ? editingUser.id : null, 
         clientId: clientId,
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
         status: formData.status,
-        password: formData.password // Optional for edit, Required for new
+        password: formData.password 
     };
 
     const response = await fetch('/api/users/manage', {
@@ -153,40 +175,44 @@ try {
     await logActivity(editingUser ? 'Update User' : 'Create User', `${editingUser ? 'Updated' : 'Created'} user: ${formData.name}`);
     
     setIsModalOpen(false);
-    window.location.reload(); // Refresh list
+    window.location.reload(); 
 
 } catch (error: any) { 
     console.error(error);
     toast.error(error.message || "Operation failed"); 
 } finally {
-    setIsSaving(false); // Stop loading
+    setIsSaving(false); 
 }
 };
+
 const handleDelete = async (userId: string, role: string) => {
 if (role === 'client_admin') { alert("Action Denied: Cannot delete Main Admin."); return; }
 if (confirm("Delete this user? This will also remove their login access.")) {
-// Note: For full cleanup, API should handle deletion too.
-// For now, removing from DB prevents login due to logic checks.
+// Fixed string literal syntax
 const { error } = await supabase.from('members').delete().eq('id', userId);
 if (!error) {
 setUsers(users.filter(u => u.id !== userId));
-await logActivity('Delete User', Deleted user ID: ${userId});
+await logActivity('Delete User', `Deleted user ID: ${userId}`);
 toast.success("User Deleted");
 } else {
 toast.error("Delete Failed: " + error.message);
 }
 }
 };
+
 const handleToggleBlock = async (user: any) => {
 if (user.role === 'client_admin') return;
 const newStatus = user.status === 'active' ? 'blocked' : 'active';
 const { error } = await supabase.from('members').update({ status: newStatus }).eq('id', user.id);
 if (!error) {
 setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
-await logActivity('Status Change', Changed status of ${user.name} to ${newStatus});
-toast.success(User ${newStatus === 'active' ? 'Activated' : 'Blocked'});
+// Fixed string literal syntax
+await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
+// Fixed string literal syntax
+toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
 }
 };
+
 const togglePermission = (role: string, permission: string) => {
 if (!isEditingRoles || role === 'client_admin') return;
 setRoleConfig((prev: any) => {
@@ -194,15 +220,17 @@ const currentPerms = prev[role];
 return currentPerms.includes(permission) ? { ...prev, [role]: currentPerms.filter((p: string) => p !== permission) } : { ...prev, [role]: [...currentPerms, permission] };
 });
 };
+
 const savePermissions = async () => { setIsEditingRoles(false); await logActivity('Permissions Update', 'Updated role permissions matrix'); toast.success("Permissions updated successfully!"); };
+
 const getRoleBadgeColor = (role: string) => {
 switch(role) { case 'client_admin': return 'bg-purple-100 text-purple-800'; case 'treasurer': return 'bg-green-100 text-green-800'; default: return 'bg-blue-100 text-blue-800'; }
 };
+
 const getPermissionCount = (role: string, categoryItems: string[]) => { return roleConfig[role].filter((p: string) => categoryItems.includes(p)).length; };
+
 return (
 <div className="p-6 space-y-6">
-code
-Code
 {/* 1. Header */}
   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
@@ -215,7 +243,7 @@ Code
     </div>
   </div>
 
-  {/* ✅ 2. TABS */}
+  {/* 2. TABS */}
   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
     <div className="flex justify-center mb-6">
         <TabsList className="grid w-full max-w-2xl grid-cols-3 h-12 bg-white rounded-full p-1 shadow-sm border">
@@ -293,7 +321,7 @@ Code
         </TableBody></Table></div></CardContent></Card>
     </TabsContent>
 
-    {/* Roles & Activity Tabs (Unchanged) */}
+    {/* Roles & Activity Tabs */}
     <TabsContent value="roles" className="space-y-6">
         <div className="flex justify-between items-center bg-white p-6 rounded-xl border shadow-sm">
             <div><h2 className="text-lg font-bold text-gray-900">Role Capabilities</h2><p className="text-sm text-gray-500 mt-1">Configure what each role can access and perform.</p></div>
@@ -321,7 +349,7 @@ Code
     </TabsContent>
   </Tabs>
 
-  {/* ✅ MODAL WITH PASSWORD INPUT */}
+  {/* MODAL WITH PASSWORD INPUT */}
   <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
     <DialogContent className="sm:max-w-[425px]">
         <DialogHeader><DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle></DialogHeader>
@@ -331,7 +359,7 @@ Code
             <div className="grid gap-2"><Label>Email</Label><Input value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="user@example.com"/></div>
             <div className="grid gap-2"><Label>Phone</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+91..."/></div>
             
-            {/* ✅ PASSWORD FIELD ADDED */}
+            {/* PASSWORD FIELD */}
             <div className="grid gap-2">
                 <Label>Password</Label>
                 <div className="relative">
@@ -361,3 +389,5 @@ Code
   </Dialog>
 </div>
 );
+}
+```
