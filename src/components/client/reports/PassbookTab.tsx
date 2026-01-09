@@ -23,9 +23,9 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
     }).format(amount || 0);
   };
 
-  // ✅ SAME LOGIC AS ADD/EDIT (Direct Frontend Control)
+  // ✅ SMART DELETE LOGIC (Syncs Member & Loans)
   const handleDelete = async (entry: any) => {
-    if(!confirm("Are you sure? This will reverse the transaction.")) return;
+    if(!confirm("Are you sure? This will reverse the transaction and update loan/deposit balance.")) return;
     setDeletingId(entry.id);
 
     try {
@@ -37,9 +37,9 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
         const { error } = await supabase.from('passbook_entries').delete().eq('id', entry.id);
         if(error) throw error;
 
-        // 2. Reverse Loan Balance (If Installment was paid)
+        // 2. Reverse Loan Balance (If Installment was deleted)
         if(instAmt > 0) {
-            // Find LATEST loan (Active or Closed) to refund money to
+            // Hum latest active/closed loan dhoondenge jisme se paisa kata tha
             const { data: loans } = await supabase
                 .from('loans')
                 .select('*')
@@ -47,7 +47,7 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
                 .order('created_at', { ascending: false }); // Latest first
 
             if(loans && loans.length > 0) {
-                // Try finding active first, else take latest
+                // Try finding active first, else take latest (closed)
                 const targetLoan = loans.find(l => l.status === 'active') || loans[0];
                 
                 if (targetLoan) {
@@ -63,8 +63,8 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
             }
         }
 
-        // 3. FINAL SYNC: Update Member Totals from Scratch
-        // Ab Loan table update ho chuki hai, ab total sahi aayega
+        // 3. FINAL SYNC: Update Member Totals from Scratch (Best Accuracy)
+        // Hum database se wapas ginti karenge taaki koi galti na ho
         
         // A. Calculate Total Active Loans
         const { data: updatedLoans } = await supabase
@@ -75,7 +75,7 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
             
         const realOutstanding = updatedLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
         
-        // B. Calculate Deposit (Reverse current)
+        // B. Calculate Deposit (Directly Subtract deleted amount)
         const { data: currentMember } = await supabase.from('members').select('total_deposits').eq('id', memberId).single();
         const currentDep = Number(currentMember?.total_deposits || 0);
         const realDeposit = Math.max(0, currentDep - depositAmt);
@@ -87,6 +87,8 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
         }).eq('id', memberId);
 
         toast.success("Entry Deleted & Balances Re-Synced");
+        
+        // Reload to show updates
         window.location.reload();
 
     } catch(e: any) {
