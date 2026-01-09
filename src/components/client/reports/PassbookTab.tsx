@@ -23,75 +23,41 @@ export default function PassbookTab({ data, members }: PassbookTabProps) {
     }).format(amount || 0);
   };
 
-  // ✅ FIXED: Delete Logic with Sequential Sync (No Race Condition)
+  // ✅ SIMPLIFIED DELETE LOGIC (Let Trigger Handle Loan)
   const handleDelete = async (entry: any) => {
-    if(!confirm("Are you sure? This will reverse the transaction and update loan/deposit balance.")) return;
+    if(!confirm("Are you sure? This will delete the transaction.")) return;
     setDeletingId(entry.id);
 
     try {
         const depositAmt = Number(entry.depositAmount || entry.deposit_amount || 0);
-        const instAmt = Number(entry.installmentAmount || entry.installment_amount || 0);
+        // Note: Installment logic hata diya hai, Database Trigger khud sambhal lega
         const memberId = entry.memberId || entry.member_id;
 
         // 1. Delete Passbook Entry First
         const { error } = await supabase.from('passbook_entries').delete().eq('id', entry.id);
         if(error) throw error;
 
-        // 2. Reverse Loan Balance (If Installment was deleted)
-        if(instAmt > 0) {
-            // Find LATEST active or closed loan
-            const { data: loans } = await supabase
-                .from('loans')
-                .select('*')
-                .eq('member_id', memberId)
-                .order('created_at', { ascending: false }); // Latest first
-
-            if(loans && loans.length > 0) {
-                // Try finding active first, else take latest (closed)
-                const targetLoan = loans.find(l => l.status === 'active') || loans[0];
+        // 2. Reverse Deposit Balance (Only Deposit needs manual sync here)
+        // Kyunki loan trigger se sync ho raha hai, hum sirf deposit ko manually adjust karenge
+        if(depositAmt > 0) {
+            const { data: currentMember } = await supabase
+                .from('members')
+                .select('total_deposits')
+                .eq('id', memberId)
+                .single();
                 
-                if (targetLoan) {
-                    const newBal = Number(targetLoan.remaining_balance) + instAmt;
-                    const status = newBal > 0 ? 'active' : 'closed';
-                    
-                    // Update Loan Table Directly
-                    await supabase.from('loans').update({
-                        remaining_balance: newBal,
-                        status: status
-                    }).eq('id', targetLoan.id);
-                }
-            }
+            const currentDep = Number(currentMember?.total_deposits || 0);
+            const realDeposit = Math.max(0, currentDep - depositAmt);
+
+            await supabase.from('members').update({
+                total_deposits: realDeposit
+            }).eq('id', memberId);
         }
 
-        // 3. WAIT (Critical Fix): Ensure DB commits loan update before reading totals
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // 4. FINAL SYNC: Update Member Totals from Fresh Loan Data
+        toast.success("Entry Deleted Successfully");
         
-        // A. Calculate Total Active Loans
-        const { data: updatedLoans } = await supabase
-            .from('loans')
-            .select('remaining_balance')
-            .eq('member_id', memberId)
-            .eq('status', 'active');
-            
-        const realOutstanding = updatedLoans?.reduce((sum, l) => sum + Number(l.remaining_balance), 0) || 0;
-        
-        // B. Calculate Deposit (Reverse current deposit)
-        const { data: currentMember } = await supabase.from('members').select('total_deposits').eq('id', memberId).single();
-        const currentDep = Number(currentMember?.total_deposits || 0);
-        const realDeposit = Math.max(0, currentDep - depositAmt);
-
-        // Update Member Table
-        await supabase.from('members').update({
-            outstanding_loan: realOutstanding, 
-            total_deposits: realDeposit
-        }).eq('id', memberId);
-
-        toast.success("Entry Deleted & Balances Re-Synced");
-        
-        // Reload to show updates
-        window.location.reload();
+        // Reload to fetch updated data from trigger
+        setTimeout(() => window.location.reload(), 800);
 
     } catch(e: any) {
         toast.error("Delete Failed: " + e.message);
