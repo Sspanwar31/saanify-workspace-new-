@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; // Added usePathname
-import { supabase } from '@/lib/supabase-simple';
+import { useRouter, usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabase'; // Updated import
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { Loader2 } from 'lucide-react';
 
@@ -14,32 +14,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const checkAccess = async () => {
-        // 1. Check Session (Basic)
+        // 1. Check User (Client Admin OR Treasurer)
         const storedUser = localStorage.getItem('current_user');
+        const storedMember = localStorage.getItem('current_member');
+
+        // ✅ NEW: Agar Treasurer hai, to allow karo
+        if (storedMember) {
+            const member = JSON.parse(storedMember);
+            if (member.role === 'treasurer') {
+                setIsAuthorized(true);
+                setIsChecking(false);
+                return; // Treasurer ko subscription check ki zaroorat nahi (Owner handle karega)
+            } else {
+                // Agar normal Member dashboard kholne ki koshish kare
+                router.push('/member-portal/dashboard');
+                return;
+            }
+        }
+
+        // 2. Check Client Admin
         if (!storedUser) {
             router.push('/login');
             return;
         }
 
-        // 2. Check Subscription Status from Supabase
-        const { data: clients } = await supabase.from('clients').select('plan_end_date, subscription_status').limit(1);
+        // 3. Subscription Check (Sirf Owner ke liye)
+        const user = JSON.parse(storedUser);
+        const { data: clients } = await supabase.from('clients').select('plan_end_date, subscription_status').eq('id', user.id).single();
         
-        if (clients && clients.length > 0) {
-            const client = clients[0];
-            const expiry = new Date(client.plan_end_date || new Date());
+        if (clients) {
+            const expiry = new Date(clients.plan_end_date || new Date());
             const today = new Date();
 
             const isExpired = today > expiry;
-            const isInactive = client.subscription_status !== 'active';
+            const isInactive = clients.subscription_status !== 'active';
 
-            // Guard Logic: If expired AND not on subscription page -> Redirect
             if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
-                router.push('/dashboard/subscription'); // Force Redirect
+                router.push('/dashboard/subscription');
             } else {
                 setIsAuthorized(true);
             }
         } else {
-             // Fallback if no client found (New user case)
              setIsAuthorized(true);
         }
         setIsChecking(false);
@@ -58,12 +73,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      {/* SIDEBAR - Always visible so user can go to subscription page */}
       <div className="w-64 shrink-0 hidden md:block h-full">
         <ClientSidebar />
       </div>
-
-      {/* CONTENT */}
       <main className="flex-1 overflow-y-auto h-full">
          {children}
       </main>
