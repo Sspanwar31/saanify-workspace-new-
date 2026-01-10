@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'; // Standard import
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>('member'); // Track role
 
   // Raw Data States
   const [members, setMembers] = useState<any[]>([]);
@@ -49,19 +50,26 @@ export function useReportLogic() {
       setLoading(true);
       
       let cid = clientId;
-      if (!cid) {
-        const storedUser = localStorage.getItem('current_user');
-        if (storedUser) {
-            cid = JSON.parse(storedUser).id;
-            setClientId(cid);
-        } else {
-            const { data: clients } = await supabase.from('clients').select('id').limit(1);
-            if (clients && clients.length > 0) {
-              cid = clients[0].id;
-              setClientId(cid);
-            }
-        }
+      let role = 'member';
+
+      // 1. Get User & Role
+      const storedUser = localStorage.getItem('current_user');
+      const storedMember = localStorage.getItem('current_member');
+
+      if (storedUser) {
+          // Client Admin Login
+          const user = JSON.parse(storedUser);
+          cid = user.id;
+          role = 'client_admin';
+      } else if (storedMember) {
+          // Member / Treasurer Login
+          const member = JSON.parse(storedMember);
+          cid = member.client_id;
+          role = member.role;
       }
+      
+      setClientId(cid);
+      setUserRole(role);
 
       const isAdminView = localStorage.getItem('admin_session') === 'true';
 
@@ -69,7 +77,12 @@ export function useReportLogic() {
         try {
           let membersData, loansData, passbookData, expensesData, adminFundData;
 
-          if (isAdminView) {
+          // Decide Fetch Method based on Role/View
+          // Admin View (Access Panel) OR Client Admin -> Use API (Full Access)
+          // Treasurer/Member -> Use Direct (RLS Protected)
+          
+          if (isAdminView || role === 'client_admin') {
+             // API CALL (Bypasses RLS for Admins)
              const fetchFromApi = async (table: string) => {
                 const res = await fetch('/api/admin/get-data', {
                     method: 'POST',
@@ -90,6 +103,7 @@ export function useReportLogic() {
              membersData = m; loansData = l; passbookData = p; expensesData = e; adminFundData = af;
 
           } else {
+             // DIRECT SUPABASE (Respects RLS for Treasurer/Member)
              const [mRes, lRes, pRes, eRes, afRes] = await Promise.all([
                supabase.from('members').select('*').eq('client_id', cid),
                supabase.from('loans').select('*').eq('client_id', cid),
@@ -112,7 +126,8 @@ export function useReportLogic() {
 
           if (passbookData) {
             const memberIds = new Set(membersData.map((m: any) => m.id));
-            const validEntries = isAdminView ? passbookData : passbookData.filter((e: any) => memberIds.has(e.member_id));
+            // Filter logic for safety
+            const validEntries = (isAdminView || role === 'client_admin') ? passbookData : passbookData.filter((e: any) => memberIds.has(e.member_id));
 
             let runningBalance = 0;
             const mappedPassbook = validEntries.map((e: any) => {
@@ -149,13 +164,12 @@ export function useReportLogic() {
 
   // 2. Calculation Engine
   useEffect(() => {
-    if (loading || !members.length) return; 
+    if (loading) return; 
 
     const start = new Date(filters.startDate);
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
-    // ✅ FIXED: Moved function definition BEFORE usage
     const isDateInRange = (dateStr: string) => {
         if(!dateStr) return false;
         const d = new Date(dateStr);
@@ -163,7 +177,7 @@ export function useReportLogic() {
     };
 
     const filteredPassbook = passbookEntries.filter(e => {
-        const inDate = isDateInRange(e.date); // Now this works
+        const inDate = isDateInRange(e.date);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
         const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase() === filters.transactionMode;
         
@@ -215,8 +229,8 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (STRICT CALCULATION) ---
-    const loansWithLiveBalance = loans.map((l: any) => { // Renamed variable slightly for clarity
+    // --- C. LOAN STATS ---
+    const loansWithLiveBalance = loans.map((l: any) => {
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
         .reduce((sum, p) => sum + Number(p.interestAmount || p.interest_amount || 0), 0); 
@@ -244,16 +258,16 @@ export function useReportLogic() {
       };
     });
 
-    // 🛑 ULTRA-STRICT FILTERING FOR CARDS 🛑
+    // 🛑 STRICT FIX FOR CARDS 🛑
     const validLoans = loansWithLiveBalance.filter((l: any) => l.status === 'active' || l.status === 'closed');
     const loansIssuedTotal = validLoans.reduce((acc: number, l: any) => acc + l.amount, 0);
     
-    const loansOutstandingTotal = loansWithLiveBalance
+    const loansOutstandingTotal = validLoans
         .filter((l: any) => l.status === 'active' && l.remainingBalance > 0) 
         .reduce((acc: number, l: any) => acc + l.remainingBalance, 0);
-
-    const loansPendingCount = loansWithLiveBalance.filter((l: any) => l.status === 'active' && l.remainingBalance > 0).length;
+    
     const loansRecoveredTotal = loansIssuedTotal - loansOutstandingTotal;
+    const loansPendingCount = validLoans.filter((l: any) => l.status === 'active' && l.remainingBalance > 0).length;
 
 
     // --- D. DAILY LEDGER ---
@@ -402,9 +416,9 @@ export function useReportLogic() {
             expenses: { ops: opsExpense, maturityInt: totalMaturityLiability, total: totalExpensesCalc },
             assets: { deposits: depositTotal },
             loans: { 
-                issued: loansIssuedTotal,      
+                issued: loansIssuedTotal,
                 recovered: loansRecoveredTotal, 
-                pending: loansOutstandingTotal  
+                pending: loansOutstandingTotal 
             },
             netProfit: netProfitCalc
         },
