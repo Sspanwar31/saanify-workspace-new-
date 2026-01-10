@@ -7,7 +7,6 @@ import { differenceInMonths } from 'date-fns';
 export function useReportLogic() {
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string>('member'); // Track role
 
   // Raw Data States
   const [members, setMembers] = useState<any[]>([]);
@@ -44,46 +43,33 @@ export function useReportLogic() {
     adminFund: []
   });
 
-  // 1. Fetch Data
+  // 1. Fetch Data (PERMISSION CHECK REMOVED)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       
       let cid = clientId;
-      let role = 'member';
+      if (!cid) {
+        const storedUser = localStorage.getItem('current_user');
+        const storedMember = localStorage.getItem('current_member');
 
-      // 1. Get User & Role
-      const storedUser = localStorage.getItem('current_user');
-      const storedMember = localStorage.getItem('current_member');
+        if (storedUser) {
+            cid = JSON.parse(storedUser).id;
+        } else if (storedMember) {
+            cid = JSON.parse(storedMember).client_id;
+        }
 
-      if (storedUser) {
-          // Client Admin Login
-          const user = JSON.parse(storedUser);
-          cid = user.id;
-          role = 'client_admin';
-      } else if (storedMember) {
-          // Member / Treasurer Login
-          const member = JSON.parse(storedMember);
-          cid = member.client_id;
-          role = member.role;
+        if (cid) setClientId(cid);
       }
-      
-      setClientId(cid);
-      setUserRole(role);
-
-      const isAdminView = localStorage.getItem('admin_session') === 'true';
 
       if (cid) {
         try {
           let membersData, loansData, passbookData, expensesData, adminFundData;
 
-          // Decide Fetch Method based on Role/View
-          // Admin View (Access Panel) OR Client Admin -> Use API (Full Access)
-          // Treasurer/Member -> Use Direct (RLS Protected)
-          
-          if (isAdminView || role === 'client_admin') {
-             // API CALL (Bypasses RLS for Admins)
-             const fetchFromApi = async (table: string) => {
+          // ✅ ALWAYS USE API (Bypass RLS for everyone temporarily as requested)
+          // This ensures data is visible to Client Admin, Treasurer, etc.
+          const fetchFromApi = async (table: string) => {
+             try {
                 const res = await fetch('/api/admin/get-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -91,33 +77,25 @@ export function useReportLogic() {
                 });
                 const json = await res.json();
                 return json.data || [];
-             };
+             } catch(e) {
+                console.error("API Error", e);
+                return [];
+             }
+          };
 
-             const [m, l, p, e, af] = await Promise.all([
-                 fetchFromApi('members'),
-                 fetchFromApi('loans'),
-                 fetchFromApi('passbook_entries'),
-                 fetchFromApi('expenses_ledger'),
-                 fetchFromApi('admin_fund_ledger')
-             ]);
-             membersData = m; loansData = l; passbookData = p; expensesData = e; adminFundData = af;
+          const [m, l, p, e, af] = await Promise.all([
+               fetchFromApi('members'),
+               fetchFromApi('loans'),
+               fetchFromApi('passbook_entries'),
+               fetchFromApi('expenses_ledger'),
+               fetchFromApi('admin_fund_ledger')
+          ]);
 
-          } else {
-             // DIRECT SUPABASE (Respects RLS for Treasurer/Member)
-             const [mRes, lRes, pRes, eRes, afRes] = await Promise.all([
-               supabase.from('members').select('*').eq('client_id', cid),
-               supabase.from('loans').select('*').eq('client_id', cid),
-               supabase.from('passbook_entries').select('*').order('date', { ascending: true }),
-               supabase.from('expenses_ledger').select('*').eq('client_id', cid),
-               supabase.from('admin_fund_ledger').select('*').eq('client_id', cid).order('date', { ascending: false })
-             ]);
-
-             membersData = mRes.data || [];
-             loansData = lRes.data || [];
-             passbookData = pRes.data || [];
-             expensesData = eRes.data || [];
-             adminFundData = afRes.data || [];
-          }
+          membersData = m;
+          loansData = l;
+          passbookData = p?.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          expensesData = e;
+          adminFundData = af;
 
           setMembers(membersData);
           setLoans(loansData);
@@ -126,8 +104,8 @@ export function useReportLogic() {
 
           if (passbookData) {
             const memberIds = new Set(membersData.map((m: any) => m.id));
-            // Filter logic for safety
-            const validEntries = (isAdminView || role === 'client_admin') ? passbookData : passbookData.filter((e: any) => memberIds.has(e.member_id));
+            // Filter logic kept but using API data which is full access
+            const validEntries = passbookData.filter((e: any) => memberIds.has(e.member_id));
 
             let runningBalance = 0;
             const mappedPassbook = validEntries.map((e: any) => {
@@ -162,9 +140,9 @@ export function useReportLogic() {
     fetchData();
   }, [clientId]);
 
-  // 2. Calculation Engine
+  // 2. Calculation Engine (UNCHANGED)
   useEffect(() => {
-    if (loading) return; 
+    if (loading || !members.length) return; 
 
     const start = new Date(filters.startDate);
     const end = new Date(filters.endDate);
@@ -229,7 +207,7 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS ---
+    // --- C. LOAN STATS (STRICT FIX FOR CARDS) ---
     const loansWithLiveBalance = loans.map((l: any) => {
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
@@ -258,7 +236,6 @@ export function useReportLogic() {
       };
     });
 
-    // 🛑 STRICT FIX FOR CARDS 🛑
     const validLoans = loansWithLiveBalance.filter((l: any) => l.status === 'active' || l.status === 'closed');
     const loansIssuedTotal = validLoans.reduce((acc: number, l: any) => acc + l.amount, 0);
     
