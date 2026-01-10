@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
-
+console.log("Checking Access:", { storedUser, storedMember });
   useEffect(() => {
     const checkAccess = async () => {
         const storedUser = localStorage.getItem('current_user');
