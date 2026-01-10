@@ -11,14 +11,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
-console.log("Checking Access:", { storedUser, storedMember });
+
   useEffect(() => {
     const checkAccess = async () => {
         const storedUser = localStorage.getItem('current_user');
         const storedMember = localStorage.getItem('current_member');
 
+        // 🔍 DEBUGGING LOG: Dekhte hain kya data mil raha hai
+        console.log("Checking Access - Layout:", { 
+            storedUser: storedUser ? "Exists" : "Null", 
+            storedMember: storedMember ? "Exists" : "Null",
+            memberData: storedMember ? JSON.parse(storedMember) : null
+        });
+
         // Case 1: Agar koi bhi login nahi hai -> Bhagao
         if (!storedUser && !storedMember) {
+            console.log("❌ No User Found - Redirecting to Login");
             router.push('/login');
             return;
         }
@@ -26,11 +34,15 @@ console.log("Checking Access:", { storedUser, storedMember });
         // Case 2: Agar Treasurer hai -> Aane do
         if (storedMember) {
             const member = JSON.parse(storedMember);
+            console.log("👤 Member Role:", member.role);
+            
             if (member.role === 'treasurer') {
+                console.log("✅ Treasurer Allowed");
                 setIsAuthorized(true);
                 setIsChecking(false);
                 return; 
             } else {
+                console.log("🚫 Member Redirecting to Portal");
                 router.push('/member-portal/dashboard');
                 return;
             }
