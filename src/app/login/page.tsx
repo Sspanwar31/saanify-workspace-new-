@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
-  /* ================= AUTH LOGIC (NO CHANGES) ================= */
+  /* ================= AUTH LOGIC ================= */
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,8 +91,15 @@ export default function LoginPage() {
 
       if (member) {
         localStorage.setItem('current_member', JSON.stringify(member));
-        // Agar Treasurer hai to '/treasurer', agar Member hai to '/member-portal'
-        router.push(member.role === 'treasurer' ? '/treasurer' : '/member-portal/dashboard');
+        
+        // ✅ FIXED REDIRECT LOGIC
+        // Treasurer -> Main Dashboard (Restricted View)
+        // Member -> Member Portal (App View)
+        if (member.role === 'treasurer') {
+            router.push('/dashboard'); 
+        } else {
+            router.push('/member-portal/dashboard');
+        }
         return;
       }
 
@@ -105,7 +112,7 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ FIXED: Forgot Password Logic
+  // Forgot Password Logic
   const handleForgotPassword = async () => {
     if (!formData.email) {
       toast.error('Email Required', { description: 'Please enter your email.' });
@@ -115,7 +122,6 @@ export default function LoginPage() {
     
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        // Yahan user click karne par '/update-password' page par jayega
         redirectTo: `${window.location.origin}/update-password`,
       });
 
@@ -141,14 +147,14 @@ export default function LoginPage() {
     }
   };
 
-  /* ================= UI START (MODERNIZED) ================= */
+  /* ================= UI START ================= */
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 overflow-hidden">
 
       {/* LEFT HERO (MODERN & VIBRANT) */}
       <div className="hidden lg:flex relative bg-slate-900 text-white overflow-hidden">
-        {/* Abstract Background Shapes for Modern Look */}
+        {/* Abstract Background Shapes */}
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-40" />
         <div className="absolute top-[40%] left-[40%] w-[300px] h-[300px] bg-purple-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-30" />
@@ -198,18 +204,15 @@ export default function LoginPage() {
 
       {/* RIGHT LOGIN (CLEAN & FOCUSED) */}
       <div className="flex items-center justify-center p-6 lg:p-12 relative bg-slate-50">
-        {/* Subtle Dot Pattern Background */}
         <div className="absolute inset-0 opacity-[0.4]" 
              style={{ backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
         </div>
 
         <Card className="w-full max-w-[440px] bg-white/80 backdrop-blur-xl border-slate-200 shadow-2xl shadow-blue-900/5 relative z-10 rounded-2xl overflow-hidden">
-          {/* Top Accent Line */}
           <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600" />
 
           <CardContent className="p-8 space-y-8">
             
-            {/* Header Section */}
             <div className="text-center space-y-3">
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 mb-2 border border-blue-100 shadow-sm">
                 <ShieldCheck className="w-7 h-7" />
@@ -224,7 +227,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Form Section */}
             <form onSubmit={handleAuth} className="space-y-5">
               <div className="space-y-2.5">
                 <Label className="text-slate-700 font-semibold text-sm px-1">Email Address</Label>
@@ -287,7 +289,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Footer Actions */}
             <div className="flex items-center justify-between text-sm pt-4 border-t border-slate-100">
               <button
                 onClick={handleForgotPassword}
@@ -301,7 +302,6 @@ export default function LoginPage() {
               </span>
             </div>
 
-            {/* Security Badge */}
             <div className="flex items-center justify-center gap-2 text-xs text-slate-400 pt-2">
               <Lock className="w-3 h-3 text-emerald-500" />
               <span>Secured by 256-bit SSL Encryption</span>
