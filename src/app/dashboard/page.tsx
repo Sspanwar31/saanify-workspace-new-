@@ -67,10 +67,14 @@ export default function ClientDashboard() {
                 }
             }
 
-            // --- FETCH DATA FOR DASHBOARD ---
-            // Treasurer Logic: Sirf Tabhi Fetch Karo Agar Permission Hai
-            // Agar permission nahi hai, toh empty array pass karo
+            // --- DEBUG LOG START ---
+            console.log("[DEBUG] Fetching Data for User ID:", userId);
+            console.log("[DEBUG] User Role:", userRole);
+            console.log("[DEBUG] Permissions:", permissions);
+            // --- DEBUG LOG END ---
 
+            // --- FETCH DATA FOR DASHBOARD ---
+            
             const canViewPassbook = userRole === 'client_admin' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
             const canViewLoans = userRole === 'client_admin' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
             const canViewExpenses = userRole === 'client_admin' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
@@ -100,6 +104,13 @@ export default function ClientDashboard() {
             const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
                 passbookReq, expenseReq, loansReq, membersReq
             ]);
+
+            // --- DEBUG LOG RESULT ---
+            console.log("[DEBUG] Passbook Data:", passbookRes.data);
+            console.log("[DEBUG] Expense Data:", expenseRes.data);
+            console.log("[DEBUG] Loans Data:", loansRes.data);
+            console.log("[DEBUG] Members Data:", membersRes.data);
+            // ------------------------
 
             calculateFinancials(
                 passbookRes.data || [], 
