@@ -48,23 +48,39 @@ export function useReportLogic() {
     const fetchData = async () => {
       setLoading(true);
       
-      let cid = clientId;
-      if (!cid) {
-        const storedUser = localStorage.getItem('current_user');
-        const storedMember = localStorage.getItem('current_member');
+     let cid = clientId;
 
-        if (storedUser) {
-            cid = JSON.parse(storedUser).id;
-        } else if (storedMember) {
-            cid = JSON.parse(storedMember).client_id;
-        }
+// 🔑 STEP 1: Resolve clientId safely (CLIENT + TREASURER)
+if (!cid) {
+  const storedUser = localStorage.getItem('current_user');
+  const storedMember = localStorage.getItem('current_member');
 
-        if (cid) setClientId(cid);
-      }
+  if (storedUser) {
+    const user = JSON.parse(storedUser);
 
-      if (cid) {
-        try {
-          let membersData, loansData, passbookData, expensesData, adminFundData;
+    // ✅ client admin vs treasurer (same dashboard)
+    cid = user.role === 'treasurer'
+      ? user.client_id
+      : user.id;
+  } 
+  else if (storedMember) {
+    cid = JSON.parse(storedMember).client_id;
+  }
+
+  if (cid) setClientId(cid); // state sync only
+}
+
+// 🧪 DEBUG (optional – can remove later)
+console.log('Resolved Client ID:', cid);
+
+// 🔑 STEP 2: ONLY proceed if cid exists
+if (!cid) {
+  setLoading(false);
+  return;
+}
+
+try {
+  let membersData, loansData, passbookData, expensesData, adminFundData;
 
           // ✅ ALWAYS USE API (Bypass RLS for everyone temporarily as requested)
           // This ensures data is visible to Client Admin, Treasurer, etc.
