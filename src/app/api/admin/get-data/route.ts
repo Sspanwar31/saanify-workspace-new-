@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 // Service Role Key (Super Admin Access)
+// (Aapka original key logic same rakha hai)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY_B64 
@@ -18,13 +19,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Table & ClientID required' }, { status: 400 });
     }
 
+    // ✅ FIX: Determine correct ID column
+    // Agar 'clients' table hai to 'id' use karo, warna 'client_id'
+    const idColumn = table === 'clients' ? 'id' : 'client_id';
+
     // Admin Power: Fetch data without RLS
     const { data, error } = await supabaseAdmin
       .from(table)
       .select('*')
-      .eq('client_id', clientId);
+      .eq(idColumn, clientId); // Smart Column Selection
 
-    if (error) throw error;
+    if (error) {
+        console.error(`Error fetching ${table}:`, error); // Log error for debugging
+        throw error;
+    }
 
     return NextResponse.json({ data });
 
