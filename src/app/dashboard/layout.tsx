@@ -14,63 +14,73 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const checkAccess = async () => {
-        const storedUser = localStorage.getItem('current_user');
-        const storedMember = localStorage.getItem('current_member');
+      const storedUser = localStorage.getItem('current_user');
+      const storedMember = localStorage.getItem('current_member');
 
-        // 🔍 DEBUGGING LOG: Dekhte hain kya data mil raha hai
-        console.log("Checking Access - Layout:", { 
-            storedUser: storedUser ? "Exists" : "Null", 
-            storedMember: storedMember ? "Exists" : "Null",
-            memberData: storedMember ? JSON.parse(storedMember) : null
-        });
+      // 🔍 Debug
+      console.log("Checking Access - Layout:", {
+        storedUser: storedUser ? 'Exists' : 'Null',
+        storedMember: storedMember ? 'Exists' : 'Null'
+      });
 
-        // Case 1: Agar koi bhi login nahi hai -> Bhagao
-        if (!storedUser && !storedMember) {
-            console.log("❌ No User Found - Redirecting to Login");
-            router.push('/login');
+      /* ---------------------------------------------------
+         ❌ MEMBER NEVER ALLOWED IN CLIENT DASHBOARD
+      --------------------------------------------------- */
+      if (storedMember && !storedUser) {
+        console.log("🚫 Member detected → Redirecting to Member Portal");
+        router.push('/member-portal/dashboard');
+        return;
+      }
+
+      /* ---------------------------------------------------
+         ❌ NO LOGIN
+      --------------------------------------------------- */
+      if (!storedUser) {
+        console.log("❌ No User Found → Redirecting to Login");
+        router.push('/login');
+        return;
+      }
+
+      /* ---------------------------------------------------
+         ✅ CLIENT / TREASURER (SAME DASHBOARD)
+      --------------------------------------------------- */
+      try {
+        const user = JSON.parse(storedUser);
+
+        const { data: client, error } = await supabase
+          .from('clients')
+          .select('plan_end_date, subscription_status')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.warn("⚠️ Client fetch failed, allowing access");
+          setIsAuthorized(true);
+          setIsChecking(false);
+          return;
+        }
+
+        if (client) {
+          const expiry = new Date(client.plan_end_date || new Date());
+          const today = new Date();
+          const isExpired = today > expiry;
+          const isInactive = client.subscription_status !== 'active';
+
+          if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
+            console.log("⛔ Subscription expired → Redirect");
+            router.push('/dashboard/subscription');
             return;
+          }
         }
 
-        // Case 2: Agar Treasurer hai -> Aane do
-        if (storedMember) {
-            const member = JSON.parse(storedMember);
-            console.log("👤 Member Role:", member.role);
-            
-            if (member.role === 'treasurer') {
-                console.log("✅ Treasurer Allowed");
-                setIsAuthorized(true);
-                setIsChecking(false);
-                return; 
-            } else {
-                console.log("🚫 Member Redirecting to Portal");
-                router.push('/member-portal/dashboard');
-                return;
-            }
-        }
+        // ✅ Client OR Treasurer both allowed
+        setIsAuthorized(true);
+      } catch (err) {
+        console.error("Access Check Error:", err);
+        router.push('/login');
+      }
 
-        // Case 3: Agar Client Admin hai -> Subscription Check karo
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            const { data: clients } = await supabase.from('clients').select('plan_end_date, subscription_status').eq('id', user.id).single();
-            
-            if (clients) {
-                const expiry = new Date(clients.plan_end_date || new Date());
-                const today = new Date();
-                const isExpired = today > expiry;
-                const isInactive = clients.subscription_status !== 'active';
-
-                if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
-                    router.push('/dashboard/subscription');
-                } else {
-                    setIsAuthorized(true);
-                }
-            } else {
-                 // New user without DB record yet
-                 setIsAuthorized(true);
-            }
-        }
-        
-        setIsChecking(false);
+      setIsChecking(false);
     };
 
     checkAccess();
@@ -84,13 +94,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
+  if (!isAuthorized) return null;
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       <div className="w-64 shrink-0 hidden md:block h-full">
         <ClientSidebar />
       </div>
       <main className="flex-1 overflow-y-auto h-full">
-         {children}
+        {children}
       </main>
     </div>
   );
