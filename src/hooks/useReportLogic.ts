@@ -93,11 +93,11 @@ try {
                 });
                 const json = await res.json();
                 return json.data || [];
-             } catch(e) {
-                console.error("API Error", e);
-                return [];
-             }
-          };
+           } catch (error) {
+            console.error("Data Fetch Error:", error);
+        }
+
+      setLoading(false);
 
           const [m, l, p, e, af] = await Promise.all([
                fetchFromApi('members'),
