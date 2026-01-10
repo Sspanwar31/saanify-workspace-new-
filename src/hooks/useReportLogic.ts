@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // Standard import
+import { supabase } from '@/lib/supabase'; 
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -43,120 +43,112 @@ export function useReportLogic() {
     adminFund: []
   });
 
-  // 1. Fetch Data (PERMISSION CHECK REMOVED)
+  // 1. Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       
-     let cid = clientId;
+      let cid = clientId;
 
-// 🔑 STEP 1: Resolve clientId safely (CLIENT + TREASURER)
-if (!cid) {
-  const storedUser = localStorage.getItem('current_user');
-  const storedMember = localStorage.getItem('current_member');
+      // 🔑 STEP 1: Resolve clientId safely
+      if (!cid) {
+        const storedUser = localStorage.getItem('current_user');
+        const storedMember = localStorage.getItem('current_member');
 
-  if (storedUser) {
-    const user = JSON.parse(storedUser);
-
-    // ✅ client admin vs treasurer (same dashboard)
-    cid = user.role === 'treasurer'
-      ? user.client_id
-      : user.id;
-  } 
-  else if (storedMember) {
-    cid = JSON.parse(storedMember).client_id;
-  }
-
-  if (cid) setClientId(cid); // state sync only
-}
-
-// 🧪 DEBUG (optional – can remove later)
-console.log('Resolved Client ID:', cid);
-
-// 🔑 STEP 2: ONLY proceed if cid exists
-if (!cid) {
-  setLoading(false);
-  return;
-}
-
-try {
-  let membersData, loansData, passbookData, expensesData, adminFundData;
-
-          // ✅ ALWAYS USE API (Bypass RLS for everyone temporarily as requested)
-          // This ensures data is visible to Client Admin, Treasurer, etc.
-          const fetchFromApi = async (table: string) => {
-             try {
-                const res = await fetch('/api/admin/get-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ table, clientId: cid })
-                });
-                const json = await res.json();
-                return json.data || [];
-           } catch (error) {
-            console.error("Data Fetch Error:", error);
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          // ✅ client admin vs treasurer (same dashboard)
+          cid = user.role === 'treasurer'
+            ? user.client_id
+            : user.id;
+        } 
+        else if (storedMember) {
+          cid = JSON.parse(storedMember).client_id;
         }
 
-      setLoading(false);
-
-          const [m, l, p, e, af] = await Promise.all([
-               fetchFromApi('members'),
-               fetchFromApi('loans'),
-               fetchFromApi('passbook_entries'),
-               fetchFromApi('expenses_ledger'),
-               fetchFromApi('admin_fund_ledger')
-          ]);
-
-          membersData = m;
-          loansData = l;
-          passbookData = p?.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          expensesData = e;
-          adminFundData = af;
-
-          setMembers(membersData);
-          setLoans(loansData);
-          setExpenses(expensesData);
-          setAdminFunds(adminFundData);
-
-          if (passbookData) {
-            const memberIds = new Set(membersData.map((m: any) => m.id));
-            // Filter logic kept but using API data which is full access
-            const validEntries = passbookData.filter((e: any) => memberIds.has(e.member_id));
-
-            let runningBalance = 0;
-            const mappedPassbook = validEntries.map((e: any) => {
-                const total = Number(e.total_amount || 0);
-                runningBalance += total;
-
-                return {
-                    id: e.id,
-                    date: e.date || e.created_at,
-                    memberId: e.member_id, 
-                    memberName: e.member_name, 
-                    amount: total,
-                    paymentMode: e.payment_mode || 'CASH', 
-                    description: e.note || 'Passbook Entry',
-                    type: Number(e.installment_amount) > 0 ? 'LOAN_REPAYMENT' : 'DEPOSIT',
-                    depositAmount: Number(e.deposit_amount || 0),
-                    installmentAmount: Number(e.installment_amount || 0),
-                    interestAmount: Number(e.interest_amount || 0),
-                    fineAmount: Number(e.fine_amount || 0),
-                    balance: runningBalance
-                };
-            });
-            setPassbookEntries(mappedPassbook); 
-          }
-
-        } catch (error) {
-            console.error("Data Fetch Error:", error);
-        }
+        if (cid) setClientId(cid); // state sync only
       }
-      setLoading(false);
+
+      // 🔑 STEP 2: ONLY proceed if cid exists
+      if (!cid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // ✅ ALWAYS USE API
+        const fetchFromApi = async (table: string) => {
+           try {
+              const res = await fetch('/api/admin/get-data', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ table, clientId: cid })
+              });
+              const json = await res.json();
+              return json.data || [];
+          } catch (error) {
+              console.error(`Error fetching ${table}:`, error);
+              return [];
+          }
+        };
+
+        const [m, l, p, e, af] = await Promise.all([
+             fetchFromApi('members'),
+             fetchFromApi('loans'),
+             fetchFromApi('passbook_entries'),
+             fetchFromApi('expenses_ledger'),
+             fetchFromApi('admin_fund_ledger')
+        ]);
+
+        const membersData = m;
+        const loansData = l;
+        const passbookData = p?.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const expensesData = e;
+        const adminFundData = af;
+
+        setMembers(membersData);
+        setLoans(loansData);
+        setExpenses(expensesData);
+        setAdminFunds(adminFundData);
+
+        if (passbookData) {
+          const memberIds = new Set(membersData.map((m: any) => m.id));
+          const validEntries = passbookData.filter((e: any) => memberIds.has(e.member_id));
+
+          let runningBalance = 0;
+          const mappedPassbook = validEntries.map((e: any) => {
+              const total = Number(e.total_amount || 0);
+              runningBalance += total;
+
+              return {
+                  id: e.id,
+                  date: e.date || e.created_at,
+                  memberId: e.member_id, 
+                  memberName: e.member_name, 
+                  amount: total,
+                  paymentMode: e.payment_mode || 'CASH', 
+                  description: e.note || 'Passbook Entry',
+                  type: Number(e.installment_amount) > 0 ? 'LOAN_REPAYMENT' : 'DEPOSIT',
+                  depositAmount: Number(e.deposit_amount || 0),
+                  installmentAmount: Number(e.installment_amount || 0),
+                  interestAmount: Number(e.interest_amount || 0),
+                  fineAmount: Number(e.fine_amount || 0),
+                  balance: runningBalance
+              };
+          });
+          setPassbookEntries(mappedPassbook); 
+        }
+
+      } catch (error) {
+          console.error("Critical Data Fetch Error:", error);
+      } finally {
+          setLoading(false);
+      }
     };
     fetchData();
   }, [clientId]);
 
-  // 2. Calculation Engine (UNCHANGED)
+  // 2. Calculation Engine
   useEffect(() => {
     if (loading || !members.length) return; 
 
