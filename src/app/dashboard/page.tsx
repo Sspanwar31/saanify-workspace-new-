@@ -36,54 +36,77 @@ export default function ClientDashboard() {
   useEffect(() => {
     const init = async () => {
         const storedUser = localStorage.getItem('current_user');
-        if (!storedUser) { router.push('/login'); return; }
+        const storedMember = localStorage.getItem('current_member');
+
+        if (!storedUser && !storedMember) { router.push('/login'); return; }
         
         try {
-            const user = JSON.parse(storedUser);
-            
-            // 1. Client Fetch
-            const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
-            if (client) setClientData(client);
-            else setClientData(user);
+            let userId = '';
+            let userRole = 'client_admin';
+            let permissions: string[] = [];
+
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                userId = user.id;
+                // Client Fetch
+                const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
+                if (client) setClientData(client);
+                else setClientData(user);
+            } else if (storedMember) {
+                const member = JSON.parse(storedMember);
+                userId = member.client_id;
+                userRole = member.role;
+
+                // Fetch Client Info & Permissions
+                const { data: client } = await supabase.from('clients').select('*').eq('id', member.client_id).single();
+                setClientData(client);
+                
+                // Get Permissions if Treasurer
+                if (member.role === 'treasurer') {
+                    permissions = client?.role_permissions?.['treasurer'] || [];
+                }
+            }
 
             // --- FETCH DATA FOR DASHBOARD ---
-            
-            // A. Passbook (Income + Liquidity)
-            const passbookReq = supabase
-                .from('passbook_entries')
-                .select('*'); 
+            // Treasurer Logic: Sirf Tabhi Fetch Karo Agar Permission Hai
+            // Agar permission nahi hai, toh empty array pass karo
 
-            // B. Expenses (Cash Expense)
-            const expenseReq = supabase
-                .from('expenses_ledger') 
-                .select('*')
-                .eq('client_id', user.id);
+            const canViewPassbook = userRole === 'client_admin' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
+            const canViewLoans = userRole === 'client_admin' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
+            const canViewExpenses = userRole === 'client_admin' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
+            const canViewMembers = userRole === 'client_admin' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
 
-            // C. Loans (Status)
-            const loansReq = supabase
-                .from('loans')
-                .select('*')
-                .eq('client_id', user.id);
+            // A. Passbook
+            const passbookReq = canViewPassbook 
+                ? supabase.from('passbook_entries').select('*') 
+                : Promise.resolve({ data: [] });
 
-            // D. Members (Zaroori hai Maturity Calculation ke liye)
-            const membersReq = supabase
-                .from('members')
-                .select('*')
-                .eq('client_id', user.id);
+            // B. Expenses
+            const expenseReq = canViewExpenses 
+                ? supabase.from('expenses_ledger').select('*').eq('client_id', userId)
+                : Promise.resolve({ data: [] });
+
+            // C. Loans
+            const loansReq = canViewLoans 
+                ? supabase.from('loans').select('*').eq('client_id', userId)
+                : Promise.resolve({ data: [] });
+
+            // D. Members
+            const membersReq = canViewMembers 
+                ? supabase.from('members').select('*').eq('client_id', userId)
+                : Promise.resolve({ data: [] });
 
             // Run Queries
             const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
                 passbookReq, expenseReq, loansReq, membersReq
             ]);
 
-            if (passbookRes.data) {
-                calculateFinancials(
-                    passbookRes.data || [], 
-                    expenseRes.data || [], 
-                    loansRes.data || [],
-                    membersRes.data || [] // Members Data bhi pass kiya
-                );
-            }
+            calculateFinancials(
+                passbookRes.data || [], 
+                expenseRes.data || [], 
+                loansRes.data || [],
+                membersRes.data || []
+            );
 
         } catch(e) {
             console.error("Error fetching dashboard data:", e);
@@ -160,8 +183,7 @@ export default function ClientDashboard() {
         // cash -= Number(l.amount); 
     });
 
-    // --- 4. MATURITY LIABILITY CALCULATION (The Real Fix) ---
-    // Formula: (Monthly Share * Deposit Count)
+    // --- 4. MATURITY LIABILITY CALCULATION ---
     
     let maturityLiability = 0;
 
@@ -240,10 +262,11 @@ export default function ClientDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('current_user');
+    localStorage.removeItem('current_member'); // Clear member session too
     router.push('/login');
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading Financial Cockpit...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading Dashboard...</div>;
   if (!clientData) return null;
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
@@ -286,7 +309,7 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Total Income */}
+        {/* Total Income Card */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Income</CardTitle></CardHeader>
           <CardContent>
@@ -295,7 +318,7 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Total Expense - Updated with Maturity */}
+        {/* Total Expense Card (Updated with Maturity) */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Expense</CardTitle></CardHeader>
           <CardContent>
@@ -304,7 +327,7 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Margin */}
+        {/* Margin Card */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Margin</CardTitle></CardHeader>
           <CardContent>
