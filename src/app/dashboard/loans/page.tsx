@@ -16,52 +16,65 @@ export default function LoansPage() {
   useEffect(() => {
     const fetchLoanData = async () => {
       setLoading(true)
-      
-      const { data: clients } = await supabase.from('clients').select('id').limit(1)
-      
-      if (clients && clients.length > 0) {
-        const clientId = clients[0].id
 
-        // 1. Fetch Loans
-        const { data: loansData } = await supabase
-          .from('loans')
-          .select('*, members(id, name, phone, total_deposits, outstanding_loan)')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false })
+      // ✅ FIX: Resolve client_id from localStorage (NOT random client)
+      const currentUser = JSON.parse(localStorage.getItem('current_user') || 'null')
+      const currentMember = JSON.parse(localStorage.getItem('current_member') || 'null')
 
-        // 2. Fetch ALL Passbook entries to calculate interest
-        const { data: allPassbook } = await supabase
-          .from('passbook_entries')
-          .select('member_id, interest_amount'); // ✅ Only fetching interest
+      const clientId =
+        currentMember?.client_id ||
+        currentUser?.id
 
-        if (loansData) {
-          const formattedData = loansData.map((item: any) => {
-            
-            // ✅ FIX: Calculate ONLY Interest (Removed Fine)
-            const memberEntries = allPassbook?.filter((e: any) => e.member_id === item.member_id) || [];
-            const totalInterestEarned = memberEntries.reduce((sum: number, e: any) => 
-              sum + (Number(e.interest_amount) || 0), 0); // Only Interest
-
-            return {
-              ...item,
-              id: item.id,
-              amount: item.amount,
-              status: item.status,
-              remainingBalance: item.members?.outstanding_loan || 0,
-              memberId: item.member_id,
-              memberName: item.members?.name || 'Unknown',
-              memberPhone: item.members?.phone,
-              memberTotalDeposits: item.members?.total_deposits || 0,
-              totalInterestCollected: totalInterestEarned, // This is Member's Total Interest
-              requestedDate: item.start_date || item.created_at,
-              startDate: item.start_date
-            }
-          })
-
-          setLoanRequests(formattedData.filter(l => l.status === 'pending'))
-          setLoans(formattedData.filter(l => ['active', 'completed', 'closed'].includes(l.status)))
-        }
+      if (!clientId) {
+        console.error('Client ID not found')
+        setLoading(false)
+        return
       }
+
+      // 1. Fetch Loans
+      const { data: loansData } = await supabase
+        .from('loans')
+        .select('*, members(id, name, phone, total_deposits, outstanding_loan)')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+
+      // 2. Fetch ALL Passbook entries to calculate interest
+      const { data: allPassbook } = await supabase
+        .from('passbook_entries')
+        .select('member_id, interest_amount')
+
+      if (loansData) {
+        const formattedData = loansData.map((item: any) => {
+
+          // ✅ Interest calculation (UNCHANGED)
+          const memberEntries =
+            allPassbook?.filter((e: any) => e.member_id === item.member_id) || []
+
+          const totalInterestEarned = memberEntries.reduce(
+            (sum: number, e: any) => sum + (Number(e.interest_amount) || 0),
+            0
+          )
+
+          return {
+            ...item,
+            id: item.id,
+            amount: item.amount,
+            status: item.status,
+            remainingBalance: item.members?.outstanding_loan || 0,
+            memberId: item.member_id,
+            memberName: item.members?.name || 'Unknown',
+            memberPhone: item.members?.phone,
+            memberTotalDeposits: item.members?.total_deposits || 0,
+            totalInterestCollected: totalInterestEarned,
+            requestedDate: item.start_date || item.created_at,
+            startDate: item.start_date
+          }
+        })
+
+        setLoanRequests(formattedData.filter(l => l.status === 'pending'))
+        setLoans(formattedData.filter(l => ['active', 'completed', 'closed'].includes(l.status)))
+      }
+
       setLoading(false)
     }
 
