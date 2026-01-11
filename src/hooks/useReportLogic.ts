@@ -149,19 +149,26 @@ export function useReportLogic() {
 
   // 2. Calculation Engine
   useEffect(() => {
-    if (loading || !members.length) return; 
+    // ✅ OPTIONAL: Added check for passbookEntries length (Safety)
+    if (loading || !passbookEntries.length) return; 
 
     const start = new Date(filters.startDate);
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
+    // ✅ FIX-1: Updated isDateInRange logic (App dir safe)
     const isDateInRange = (dateStr: string) => {
-      if(!dateStr) return false;
+      if (!dateStr) {
+        // 🔒 App dir rule:
+        // no date + no filter = allow data
+        if (!filters.startDate || !filters.endDate) return true;
+        return false;
+      }
       const d = new Date(dateStr);
       return d >= start && d <= end;
     };
     
-    // ✅ DIFF-4: Normalize Mode Helper (from previous context)
+    // ✅ DIFF-4: Normalize Mode Helper
     const normalizeMode = (mode: string) => {
       const m = mode.toLowerCase();
       if (m.includes('cash')) return 'cash';
@@ -171,7 +178,8 @@ export function useReportLogic() {
     };
 
     const filteredPassbook = passbookEntries.filter(e => {
-        const inDate = isDateInRange(e.date);
+        // ✅ FIX-2: Passbook filter fallback to created_at
+        const inDate = isDateInRange(e.date || e.created_at);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
         
         // ✅ DIFF-4: Updated modeMatch logic
@@ -308,7 +316,7 @@ export function useReportLogic() {
     });
 
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
-        // ✅ DIFF-4: Use filteredLoans for ledger
+        // ✅ DIFF-4: Use filteredLoans
         filteredLoans.forEach((l: any) => {
             if (isDateInRange(l.start_date)) {
                 const entry = getOrSetEntry(l.start_date);
@@ -384,12 +392,12 @@ export function useReportLogic() {
         };
     });
 
-    // ✅ DIFF-2: Define filteredMembers for Maturity
+    // ✅ DIFF-2: Define filteredMembers for Maturity (kept for safety)
     const filteredMembers = visibleMembers;
 
     // --- G. MATURITY ---
-    // ✅ DIFF-2: Use filteredMembers
-    const maturity = filteredMembers.map((m: any) => {
+    // ✅ FIX-3: Maturity use visibleMembers
+    const maturity = visibleMembers.map((m: any) => {
         // ✅ DIFF-3: Use filteredPassbook
         const mEntries = filteredPassbook.filter(e => e.memberId === m.id && e.depositAmount > 0);
         let monthly = 0;
