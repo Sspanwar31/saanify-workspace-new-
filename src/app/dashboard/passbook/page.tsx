@@ -1,10 +1,3 @@
-
-
-Thik hai, maine `fetchPassbook` function ko update kar diya hai. Maine aapki batayi gayi **Auto Fine Logic** (15th ke baad ₹10 per day) aur **Override Logic** (agar manual fine hai to wo use karo) ko add kar diya hai. Baki UI, imports, aur code length bilkul same rakha hai.
-
-Ye raha aapka **Updated `src/app/dashboard/passbook/page.tsx`** code:
-
-```tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -451,4 +444,3 @@ export default function PassbookPage() {
     </div>
   );
 }
-```
