@@ -171,7 +171,9 @@ export function useReportLogic() {
     const filteredPassbook = passbookEntries.filter(e => {
         const inDate = isDateInRange(e.date);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
-        const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase() === filters.transactionMode;
+        
+        // ✅ FIX: Updated modeMatch logic (includes check)
+        const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase().includes(filters.transactionMode);
         
         let typeMatch = true;
         if(filters.transactionType === 'deposit') typeMatch = (e.depositAmount > 0);
