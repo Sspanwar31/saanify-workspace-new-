@@ -57,7 +57,7 @@ export default function ReportsPage() {
     ]
   };
 
-  // --- TAB SPECIFIC CARD CALCULATIONS ---
+  // --- TAB SPECIFIC CARD CALCULATIONS --- 
   
   // 1. Daily Ledger Cards
   const dailyTotalIn = auditData.dailyLedger.reduce((acc: number, row: any) => acc + (row.cashIn || 0), 0);
@@ -162,7 +162,8 @@ export default function ReportsPage() {
             <SelectContent>
                 <SelectItem value="all">All Modes</SelectItem>
                 <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="online">Online</SelectItem>
+                <SelectItem value="upi">Online (UPI)</SelectItem>
+                <SelectItem value="bank">Bank</SelectItem>
             </SelectContent>
           </Select>
 
