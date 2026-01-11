@@ -114,7 +114,7 @@ export default function ReportsPage() {
         endDate: new Date().toISOString().split('T')[0],
         selectedMember: 'ALL',
         transactionMode: 'all',
-        transactionType: 'all'
+        transactionNature: 'all' // ✅ CHANGE: Updated reset value
     }));
   };
 
@@ -167,13 +167,13 @@ export default function ReportsPage() {
             </SelectContent>
           </Select>
 
-          <Select value={filters.transactionType} onValueChange={(v) => setFilters({...filters, transactionType: v})}>
-            <SelectTrigger className="w-32"><SelectValue placeholder="Type" /></SelectTrigger>
+          {/* ✅ CHANGE: Transaction Nature Filter */}
+          <Select value={filters.transactionNature} onValueChange={(v) => setFilters({...filters, transactionNature: v})}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Transaction Nature" /></SelectTrigger>
             <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="deposit">Deposit</SelectItem>
-                <SelectItem value="loan">Loan</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="all">All Transactions</SelectItem>
+                <SelectItem value="inflow">Inflow (Money In)</SelectItem>
+                <SelectItem value="outflow">Outflow (Money Out)</SelectItem>
             </SelectContent>
           </Select>
 
