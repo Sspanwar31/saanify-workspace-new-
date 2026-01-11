@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase-simple' // Supabase Connection
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
 import { 
   Plus, 
   Trash2, 
@@ -51,10 +51,10 @@ export default function ExpensesPage() {
   // --- 1. Fetch Client ID ---
   useEffect(() => {
     const initData = async () => {
-      const { data: clients } = await supabase.from('clients').select('id').limit(1)
-      if (clients && clients.length > 0) {
-        setClientId(clients[0].id)
-      }
+      // ✅ FIX: Client ID Fetch (MAIN ISSUE) - Logic Updated Here
+      const user = JSON.parse(localStorage.getItem('current_user') || '{}');
+      const cid = user?.id;
+      if (cid) setClientId(cid);
     }
     initData()
   }, [])
@@ -106,10 +106,10 @@ export default function ExpensesPage() {
       }
 
       formattedLedger.forEach((entry: any) => {
-        if (entry.type === 'INCOME') {
+        if (entry.type === 'INCOME') { // Assuming type is 'INCOME' in DB
           netBal += Number(entry.amount)
           feesColl += Number(entry.amount)
-        } else {
+        } else { // Assuming 'EXPENSE' type
           netBal -= Number(entry.amount)
           expenses += Number(entry.amount)
         }
@@ -136,7 +136,7 @@ export default function ExpensesPage() {
         client_id: clientId,
         date: new Date().toISOString().split('T')[0],
         amount: 200, // Fixed Fee
-        type: 'INCOME',
+        type: 'INCOME', // Assuming correct type
         category: 'MAINTENANCE_FEE',
         description: 'Monthly Maintenance Fee Collected',
         member_id: selectedMember
@@ -248,7 +248,6 @@ export default function ExpensesPage() {
   }
 
   return (
-    // ✅ FIX: Added 'p-6' for proper spacing
     <div className="p-6 space-y-6">
       
       {/* Header */}
@@ -300,9 +299,11 @@ export default function ExpensesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              ₹{stats.totalFeesCollected.toLocaleString()}
-            </div>
+            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
+              <div className="text-3xl font-bold text-green-600">
+                ₹{stats.totalFeesCollected.toLocaleString()}
+              </div>
+            )}
             <p className="text-sm text-gray-600 mt-1">
               {stats.membersPaidCount} members × ₹200
             </p>
@@ -318,9 +319,11 @@ export default function ExpensesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">
-              ₹{stats.totalExpenses.toLocaleString()}
-            </div>
+            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
+              <div className="text-3xl font-bold text-red-600">
+                ₹{stats.totalExpenses.toLocaleString()}
+              </div>
+            )}
             <p className="text-sm text-gray-600 mt-1">
               Operational costs
             </p>
@@ -360,8 +363,7 @@ export default function ExpensesPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              
+              </div>              
               <div className="bg-gray-50 p-3 rounded-lg">
                 <div className="text-sm text-gray-600">
                   <p><strong>Amount:</strong> ₹200 (Fixed)</p>
@@ -413,8 +415,7 @@ export default function ExpensesPage() {
                   value={expenseData.amount}
                   onChange={(e) => setExpenseData({ ...expenseData, amount: e.target.value })}
                 />
-              </div>
-              
+              </div>              
               <div>
                 <Label htmlFor="expense-category">Category</Label>
                 <Select value={expenseData.category} onValueChange={(value) => setExpenseData({ ...expenseData, category: value })}>
@@ -552,5 +553,5 @@ export default function ExpensesPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
