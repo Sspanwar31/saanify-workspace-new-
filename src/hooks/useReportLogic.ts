@@ -149,25 +149,29 @@ export function useReportLogic() {
 
   // 2. Calculation Engine
   useEffect(() => {
-    // ✅ OPTIONAL: Added check for passbookEntries length (Safety)
-    if (loading || !passbookEntries.length) return; 
+    // ✅ DIFF-1: Global guard (Changed from !passbookEntries.length to just loading)
+    if (loading) return;
 
-    const start = new Date(filters.startDate);
-    const end = new Date(filters.endDate);
-    end.setHours(23, 59, 59, 999);
+    // ✅ DIFF-2: Date filter (Summary = 0 fix) - Updated Logic
+    const isDateInRange = (dateStr?: string) => {
+      // no date filter → allow all
+      if (!filters.startDate && !filters.endDate) return true;
 
-    // ✅ FIX-1: Updated isDateInRange logic (App dir safe)
-    const isDateInRange = (dateStr: string) => {
-      if (!dateStr) {
-        // 🔒 App dir rule:
-        // no date + no filter = allow data
-        if (!filters.startDate || !filters.endDate) return true;
-        return false;
-      }
+      if (!dateStr) return false;
+
       const d = new Date(dateStr);
-      return d >= start && d <= end;
+      if (isNaN(d.getTime())) return false;
+
+      const start = filters.startDate ? new Date(filters.startDate) : null;
+      const end = filters.endDate ? new Date(filters.endDate) : null;
+      if (end) end.setHours(23, 59, 59, 999);
+
+      if (start && d < start) return false;
+      if (end && d > end) return false;
+
+      return true;
     };
-    
+
     // ✅ DIFF-4: Normalize Mode Helper
     const normalizeMode = (mode: string) => {
       const m = mode.toLowerCase();
@@ -178,7 +182,6 @@ export function useReportLogic() {
     };
 
     const filteredPassbook = passbookEntries.filter(e => {
-        // ✅ FIX-2: Passbook filter fallback to created_at
         const inDate = isDateInRange(e.date || e.created_at);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
         
@@ -193,7 +196,16 @@ export function useReportLogic() {
         return inDate && memberMatch && modeMatch && typeMatch;
     });
 
-    const filteredExpenses = expenses.filter(e => isDateInRange(e.date || e.created_at));
+    // ✅ DIFF-3: Expenses member filter (Income/Expense mismatch fix)
+    const filteredExpenses = expenses.filter(e => {
+      const inDate = isDateInRange(e.date || e.created_at);
+      const memberMatch =
+        filters.selectedMember === 'ALL' ||
+        e.member_id === filters.selectedMember;
+
+      return inDate && memberMatch;
+    });
+
     const filteredAdminFunds = adminFunds.filter(a => isDateInRange(a.date || a.created_at));
 
     let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0, totalExpense = 0;
@@ -316,7 +328,7 @@ export function useReportLogic() {
     });
 
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
-        // ✅ DIFF-4: Use filteredLoans
+        // ✅ DIFF-4: Use filteredLoans for ledger
         filteredLoans.forEach((l: any) => {
             if (isDateInRange(l.start_date)) {
                 const entry = getOrSetEntry(l.start_date);
@@ -392,12 +404,12 @@ export function useReportLogic() {
         };
     });
 
-    // ✅ DIFF-2: Define filteredMembers for Maturity (kept for safety)
+    // ✅ DIFF-2: Define filteredMembers for Maturity
     const filteredMembers = visibleMembers;
 
     // --- G. MATURITY ---
-    // ✅ FIX-3: Maturity use visibleMembers
-    const maturity = visibleMembers.map((m: any) => {
+    // ✅ DIFF-4: Maturity (sirf row level fix) - Using filteredMembers
+    const maturity = filteredMembers.map((m: any) => {
         // ✅ DIFF-3: Use filteredPassbook
         const mEntries = filteredPassbook.filter(e => e.memberId === m.id && e.depositAmount > 0);
         let monthly = 0;
