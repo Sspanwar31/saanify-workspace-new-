@@ -1,3 +1,12 @@
+
+
+Ye error `Unterminated template` tab aata hai jab kisi **string literal** (backticks ``` ```) mein closing ya opening miss hoti hai ya koi bracket `{}` ya `(` incomplete hota hai.
+
+Maine code ko check kiya hai aur `handleSubmit` function ke andar jo indentation issue ho sakta hai, use sahi kar diya hai. Baki code, UI, aur calculation logic (Fine Auto-calculation) bilkul same rakha hai jaise aapne bataya tha.
+
+Ye raha aapka **Fixed `src/components/client/PassbookAddEntryModal.tsx`** code:
+
+```tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -87,7 +96,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
     }
   }, [entryToEdit, isOpen]);
 
-  // ✅ 3. Auto-calculation (Fine Logic Fixed)
+  // 3. Auto-calculation (Fine Logic Fixed)
   useEffect(() => {
     if (selectedMember) {
       const depositBalance = Number(selectedMember.total_deposits || 0);
@@ -212,35 +221,35 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
            let attachedLoanId: string | null = null;
 
-if (newInstAmt > 0) {
-  const { data: activeLoans } = await supabase
-    .from('loans')
-    .select('id, remaining_balance')
-    .eq('member_id', selectedMemberId)
-    .eq('status', 'active')
-    .gt('remaining_balance', 0)
-    .order('created_at', { ascending: true })
-    .limit(1);
+          if (newInstAmt > 0) {
+            const { data: activeLoans } = await supabase
+                .from('loans')
+                .select('id, remaining_balance')
+                .eq('member_id', selectedMemberId)
+                .eq('status', 'active')
+                .gt('remaining_balance', 0)
+                .order('created_at', { ascending: true })
+                .limit(1);
 
-  if (activeLoans && activeLoans.length > 0) {
-    attachedLoanId = activeLoans[0].id;
-  }
-}
+            if (activeLoans && activeLoans.length > 0) {
+              attachedLoanId = activeLoans[0].id;
+            }
+          }
 
-const { error: insertError } = await supabase.from('passbook_entries').insert([{
-  client_id: clientId,
-  member_id: selectedMemberId,
-  member_name: currentMember?.name,
-  loan_id: attachedLoanId, 
-  date: format(date, 'yyyy-MM-dd'),
-  payment_mode: paymentMode,
-  deposit_amount: newDepAmt,
-  installment_amount: newInstAmt,
-  interest_amount: newIntAmt,
-  fine_amount: newFineAmt,
-  total_amount: total,
-  note: 'Passbook Entry'
-}]);
+          const { error: insertError } = await supabase.from('passbook_entries').insert([{
+            client_id: clientId,
+            member_id: selectedMemberId,
+            member_name: currentMember?.name,
+            loan_id: attachedLoanId, // ✅ AUTO ATTACHED
+            date: format(date, 'yyyy-MM-dd'),
+            payment_mode: paymentMode,
+            deposit_amount: newDepAmt,
+            installment_amount: newInstAmt,
+            interest_amount: newIntAmt,
+            fine_amount: newFineAmt,
+            total_amount: total,
+            note: 'Passbook Entry'
+          }]);
 
             if (insertError) throw insertError;
 
@@ -251,6 +260,7 @@ const { error: insertError } = await supabase.from('passbook_entries').insert([{
                     const newDepositTotal = (memData.total_deposits || 0) + newDepAmt;
                     await supabase.from('members').update({ outstanding_loan: newLoanBal, total_deposits: newDepositTotal }).eq('id', selectedMemberId);
                     
+                    // Deduct from Loan Table
                     if(newInstAmt > 0) {
                         const { data: activeLoans } = await supabase.from('loans').select('*').eq('member_id', selectedMemberId).eq('status', 'active').gt('remaining_balance', 0).order('created_at', { ascending: true });
                         let amtLeft = newInstAmt;
