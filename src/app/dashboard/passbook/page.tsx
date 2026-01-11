@@ -400,7 +400,7 @@ export default function PassbookPage() {
         </CardContent>
       </Card>
 
-      {/* Modals (No changes to logic/UI as requested) */}
+      {/* Modals */}
       <PassbookAddEntryModal 
         isOpen={isAddEntryOpen} 
         onClose={() => {
@@ -411,7 +411,7 @@ export default function PassbookPage() {
         entryToEdit={entryToEdit} 
       />
       
-      {/* ✅ CHANGE #1: Members aur ClientId pass kar diye */}
+      {/* CHANGE #1: Pass members and clientId to LoanRequestModal */}
       <LoanRequestModal 
         isOpen={isLoanModalOpen} 
         onClose={() => setIsLoanModalOpen(false)} 
