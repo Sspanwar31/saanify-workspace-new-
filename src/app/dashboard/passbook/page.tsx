@@ -1,3 +1,10 @@
+
+
+Thik hai, maine `fetchPassbook` function ko update kar diya hai. Maine aapki batayi gayi **Auto Fine Logic** (15th ke baad ₹10 per day) aur **Override Logic** (agar manual fine hai to wo use karo) ko add kar diya hai. Baki UI, imports, aur code length bilkul same rakha hai.
+
+Ye raha aapka **Updated `src/app/dashboard/passbook/page.tsx`** code:
+
+```tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -80,6 +87,7 @@ export default function PassbookPage() {
     if (data) setMembers(data);
   };
 
+  // ✅ UPDATED: fetchPassbook with Fine Calculation Logic
   const fetchPassbook = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -88,16 +96,38 @@ export default function PassbookPage() {
       .order('date', { ascending: false });
 
     if (data) {
-      setPassbook(data);
-      // Calculate Stats
-      const newStats = data.reduce((acc: any, curr: any) => ({
+      const enhancedData = data.map(entry => {
+        const depositDate = new Date(entry.date);
+        const dayOfMonth = depositDate.getDate();
+
+        // Auto fine logic: 15th se aage ka fine, 10 Rs per day
+        const autoFine = dayOfMonth > 15 ? (dayOfMonth - 15) * 10 : 0;
+
+        // Fine override: agar DB me manually set hai, use use karo, nahi toh autoFine
+        const fineAmount = entry.fine_amount !== null && entry.fine_amount !== undefined
+          ? entry.fine_amount
+          : autoFine;
+
+        return {
+          ...entry,
+          fine_amount: fineAmount,
+          total_amount: (entry.deposit_amount || 0) + (entry.installment_amount || 0) + (entry.interest_amount || 0) + fineAmount
+        };
+      });
+
+      setPassbook(enhancedData);
+
+      // Stats calculation
+      const newStats = enhancedData.reduce((acc: any, curr: any) => ({
         totalDeposit: acc.totalDeposit + (curr.deposit_amount || 0),
         totalInstallment: acc.totalInstallment + (curr.installment_amount || 0),
         totalInterest: acc.totalInterest + (curr.interest_amount || 0),
         totalFine: acc.totalFine + (curr.fine_amount || 0),
       }), { totalDeposit: 0, totalInstallment: 0, totalInterest: 0, totalFine: 0 });
+
       setStats(newStats);
     }
+
     setLoading(false);
   };
 
@@ -421,3 +451,4 @@ export default function PassbookPage() {
     </div>
   );
 }
+```
