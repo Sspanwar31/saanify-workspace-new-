@@ -157,10 +157,15 @@ export function useReportLogic() {
     const end = new Date(filters.endDate);
     end.setHours(23, 59, 59, 999);
 
+    // ✅ FIX: Updated isDateInRange logic (Empty string check)
     const isDateInRange = (dateStr: string) => {
-        if(!dateStr) return false;
-        const d = new Date(dateStr);
-        return d >= start && d <= end;
+      if (!dateStr) return false;
+
+      // ✅ NO FILTER SELECTED → ALLOW ALL
+      if (!filters.startDate || !filters.endDate) return true;
+
+      const d = new Date(dateStr);
+      return d >= start && d <= end;
     };
 
     const filteredPassbook = passbookEntries.filter(e => {
