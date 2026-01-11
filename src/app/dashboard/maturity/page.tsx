@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase-simple' 
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase-simple'; 
 import { 
   Calculator, 
   Users,
@@ -55,13 +55,12 @@ export default function MaturityPage() {
   const fetchData = async () => {
     setLoading(true)
     
+    // ✅ FIX #1: Client ID Fetch (MAIN BUG) - Logic Updated Here
     let cid = clientId
     if (!cid) {
-        const { data: clients } = await supabase.from('clients').select('id').limit(1)
-        if (clients && clients.length > 0) {
-            cid = clients[0].id
-            setClientId(cid)
-        }
+      const user = JSON.parse(localStorage.getItem('current_user') || '{}');
+      cid = user?.id;
+      if (cid) setClientId(cid);
     }
 
     if (cid) {
@@ -73,10 +72,12 @@ export default function MaturityPage() {
             .order('name', { ascending: true })
 
         // 2. Fetch ALL Passbook Entries (To calculate First Deposit & Count)
+        // ✅ FIX #2: Passbook Filter (silent dropdown bug) - .eq('client_id', cid) Added
         const { data: allEntries } = await supabase
             .from('passbook_entries')
             .select('member_id, deposit_amount, date')
-            .gt('deposit_amount', 0) // Only fetch deposits
+            .eq('client_id', cid)
+            .gt('deposit_amount', 0)
             .order('date', { ascending: true }) // Oldest first
 
         if (members && allEntries) {
@@ -86,10 +87,12 @@ export default function MaturityPage() {
                 // Filter deposits for this member
                 const memberDeposits = allEntries.filter((e: any) => e.member_id === m.id);
                 
-                // 1. Monthly Deposit = First Deposit Amount
+                // ✅ FIX #3: Safe Fallback for Monthly Deposit
                 let monthlyDeposit = 0;
                 if (memberDeposits.length > 0) {
-                    monthlyDeposit = Number(memberDeposits[0].deposit_amount); // First entry amount
+                    monthlyDeposit = Number(memberDeposits[0].deposit_amount);
+                } else {
+                    monthlyDeposit = 0; // explicit, safe
                 }
 
                 // 2. Months Completed = Total Count of Deposits
@@ -153,7 +156,7 @@ export default function MaturityPage() {
   // --- Handlers ---
   const handleToggleOverride = async (memberId: string, currentValue: number, isOverride: boolean) => {
     const newOverrideState = !isOverride;
-    setMaturityData(prev => prev.map(d => d.memberId === memberId ? { ...d, isOverride: newOverrideState } : d))
+    setMaturityData(prev => prev.map(d => d.memberId === memberId ? { ...d, isOverride: newOverrideState } : d)))
 
     await supabase.from('members').update({
       maturity_is_override: newOverrideState,
@@ -354,5 +357,5 @@ export default function MaturityPage() {
         }
       `}</style>
     </div>
-  )
+  );
 }
