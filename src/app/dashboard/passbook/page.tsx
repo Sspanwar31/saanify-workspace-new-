@@ -411,7 +411,7 @@ export default function PassbookPage() {
         entryToEdit={entryToEdit} 
       />
       
-      {/* CHANGE #1: Pass members and clientId to LoanRequestModal */}
+      {/* ✅ CHANGE: Pass members and clientId props to LoanRequestModal */}
       <LoanRequestModal 
         isOpen={isLoanModalOpen} 
         onClose={() => setIsLoanModalOpen(false)} 
