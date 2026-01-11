@@ -103,7 +103,7 @@ export default function PassbookPage() {
 
   // --- Logic: Delete Entry ---
   const handleDeleteEntry = async (entry: any) => {
-    if (!confirm(`Are you sure you want to delete this entry? This will reverse the balance.`)) return;
+    if (!confirm(`Are you sure you want to delete this entry? This will reverse balance.`)) return;
     try {
       const { data: memberData } = await supabase
         .from('members')
@@ -192,7 +192,6 @@ export default function PassbookPage() {
   };
 
   return (
-    // ✅ FIX 1: Spacing Fix (p-8 ensures content is not stuck to sidebar)
     <div className="p-8 space-y-8 w-full max-w-[1600px] mx-auto"> 
       
       {/* Header & Actions */}
@@ -240,7 +239,7 @@ export default function PassbookPage() {
         ))}
       </div>
 
-      {/* ✅ FIX 2: Modern Filter Bar */}
+      {/* Modern Filter Bar */}
       <div className="flex flex-col xl:flex-row gap-4 items-end xl:items-center bg-white p-4 rounded-lg border shadow-sm">
         
         {/* Search */}
@@ -367,7 +366,7 @@ export default function PassbookPage() {
             </TableBody>
           </Table>
 
-          {/* ✅ FIX 3: Modern Pagination Footer */}
+          {/* Modern Pagination Footer */}
           {filteredEntries.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t bg-gray-50/30 gap-4">
               <div className="text-sm text-gray-500">
@@ -412,9 +411,12 @@ export default function PassbookPage() {
         entryToEdit={entryToEdit} 
       />
       
+      {/* ✅ CHANGE #1: Members aur ClientId pass kar diye */}
       <LoanRequestModal 
         isOpen={isLoanModalOpen} 
         onClose={() => setIsLoanModalOpen(false)} 
+        members={members}
+        clientId={clientId}
       />
     </div>
   );
