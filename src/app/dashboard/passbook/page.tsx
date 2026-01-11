@@ -80,7 +80,7 @@ export default function PassbookPage() {
     if (data) setMembers(data);
   };
 
-  // ✅ UPDATED: fetchPassbook with Fine Calculation Logic
+  // ✅ UPDATED: fetchPassbook (Trust DB Logic)
   const fetchPassbook = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -89,33 +89,16 @@ export default function PassbookPage() {
       .order('date', { ascending: false });
 
     if (data) {
-      const enhancedData = data.map(entry => {
-        const depositDate = new Date(entry.date);
-        const dayOfMonth = depositDate.getDate();
+      // ✅ NO AUTO CALCULATION HERE. TRUST DATABASE.
+      // Database me jo save hua hai, wahi final hai.
+      setPassbook(data);
 
-        // Auto fine logic: 15th se aage ka fine, 10 Rs per day
-        const autoFine = dayOfMonth > 15 ? (dayOfMonth - 15) * 10 : 0;
-
-        // Fine override: agar DB me manually set hai, use use karo, nahi toh autoFine
-        const fineAmount = entry.fine_amount !== null && entry.fine_amount !== undefined
-          ? entry.fine_amount
-          : autoFine;
-
-        return {
-          ...entry,
-          fine_amount: fineAmount,
-          total_amount: (entry.deposit_amount || 0) + (entry.installment_amount || 0) + (entry.interest_amount || 0) + fineAmount
-        };
-      });
-
-      setPassbook(enhancedData);
-
-      // Stats calculation
-      const newStats = enhancedData.reduce((acc: any, curr: any) => ({
-        totalDeposit: acc.totalDeposit + (curr.deposit_amount || 0),
-        totalInstallment: acc.totalInstallment + (curr.installment_amount || 0),
-        totalInterest: acc.totalInterest + (curr.interest_amount || 0),
-        totalFine: acc.totalFine + (curr.fine_amount || 0),
+      // Stats Calculation (Simple Sum)
+      const newStats = data.reduce((acc: any, curr: any) => ({
+        totalDeposit: acc.totalDeposit + (Number(curr.deposit_amount) || 0),
+        totalInstallment: acc.totalInstallment + (Number(curr.installment_amount) || 0),
+        totalInterest: acc.totalInterest + (Number(curr.interest_amount) || 0),
+        totalFine: acc.totalFine + (Number(curr.fine_amount) || 0),
       }), { totalDeposit: 0, totalInstallment: 0, totalInterest: 0, totalFine: 0 });
 
       setStats(newStats);
@@ -434,7 +417,7 @@ export default function PassbookPage() {
         entryToEdit={entryToEdit} 
       />
       
-      {/* ✅ CHANGE: Pass members and clientId props to LoanRequestModal */}
+      {/* CHANGE: Pass members and clientId props to LoanRequestModal */}
       <LoanRequestModal 
         isOpen={isLoanModalOpen} 
         onClose={() => setIsLoanModalOpen(false)} 
