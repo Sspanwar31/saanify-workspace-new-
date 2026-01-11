@@ -14,6 +14,9 @@ export function useReportLogic() {
   const [passbookEntries, setPassbookEntries] = useState<any[]>([]); 
   const [expenses, setExpenses] = useState<any[]>([]);
   const [adminFunds, setAdminFunds] = useState<any[]>([]);
+  
+  // ✅ CHANGE: Added state for filtered passbook (DIFF-1)
+  const [filteredPassbookState, setFilteredPassbookState] = useState<any[]>([]);
 
   // Filter States
   const [filters, setFilters] = useState({
@@ -167,13 +170,22 @@ export function useReportLogic() {
       const d = new Date(dateStr);
       return d >= start && d <= end;
     };
+    
+    // ✅ CHANGE: Normalize Mode Helper (DIFF-4)
+    const normalizeMode = (mode: string) => {
+      const m = mode.toLowerCase();
+      if (m.includes('cash')) return 'cash';
+      if (m.includes('bank') || m.includes('cheque')) return 'bank';
+      if (m.includes('upi')) return 'upi';
+      return 'other';
+    };
 
     const filteredPassbook = passbookEntries.filter(e => {
         const inDate = isDateInRange(e.date);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
         
-        // ✅ FIX: Updated modeMatch logic (includes check)
-        const modeMatch = filters.transactionMode === 'all' || (e.paymentMode || '').toLowerCase().includes(filters.transactionMode);
+        // ✅ CHANGE: Updated modeMatch logic (DIFF-4)
+        const modeMatch = filters.transactionMode === 'all' || normalizeMode(e.paymentMode) === filters.transactionMode;
         
         let typeMatch = true;
         if(filters.transactionType === 'deposit') typeMatch = (e.depositAmount > 0);
@@ -203,7 +215,7 @@ export function useReportLogic() {
 
     let totalMaturityLiability = 0;
     members.forEach(m => {
-        // ✅ FIX: Use filteredPassbook for maturity calculation
+        // ✅ CHANGE: Use filteredPassbook (DIFF-3)
         const mDepositEntries = filteredPassbook.filter(e => e.memberId === m.id && e.depositAmount > 0);
         if (mDepositEntries.length > 0) {
              const sorted = [...mDepositEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -253,7 +265,7 @@ export function useReportLogic() {
       };
     });
 
-    // ✅ FIX: Create filteredLoans based on selectedMember
+    // ✅ CHANGE: Filter loans by member (DIFF-4)
     const filteredLoans = loansWithLiveBalance.filter(l =>
       filters.selectedMember === 'ALL' || l.memberId === filters.selectedMember
     );
@@ -305,7 +317,7 @@ export function useReportLogic() {
     });
 
     if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
-        // ✅ FIX: Use filteredLoans for ledger logic
+        // ✅ CHANGE: Use filteredLoans (DIFF-4)
         filteredLoans.forEach((l: any) => {
             if (isDateInRange(l.start_date)) {
                 const entry = getOrSetEntry(l.start_date);
@@ -340,7 +352,7 @@ export function useReportLogic() {
     });
 
     // --- E. MODE STATS ---
-    // ✅ FIX: Use filteredPassbook instead of passbookEntries
+    // ✅ CHANGE: Use filteredPassbook (DIFF-4)
     let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
     filteredPassbook.forEach(e => {
         const amt = e.amount;
@@ -353,13 +365,21 @@ export function useReportLogic() {
     cashBalTotal -= totalOut;
 
     // --- F. MEMBER REPORTS ---
-    const memberReports = members.map((m: any) => {
-        // ✅ FIX: Use filteredPassbook and filteredLoans
+    // ✅ CHANGE: Create visibleMembers (DIFF-2)
+    const visibleMembers =
+      filters.selectedMember === 'ALL'
+        ? members
+        : members.filter(m => m.id === filters.selectedMember);
+
+    // ✅ CHANGE: Map visibleMembers (DIFF-2)
+    const memberReports = visibleMembers.map((m: any) => {
+        // ✅ CHANGE: Use filteredPassbook (DIFF-2)
         const mEntries = filteredPassbook.filter(e => e.memberId === m.id);
         const dep = mEntries.reduce((acc: number, e: any) => acc + e.depositAmount, 0);
         const intPaid = mEntries.reduce((acc: number, e: any) => acc + e.interestAmount, 0);
         const finePaid = mEntries.reduce((acc: number, e: any) => acc + e.fineAmount, 0);
         
+        // ✅ CHANGE: Use filteredLoans (DIFF-2)
         const mLoans = filteredLoans.filter((l: any) => l.memberId === m.id);
         const lTaken = mLoans.reduce((acc: number, l: any) => acc + l.amount, 0);
         const lPend = mLoans.reduce((acc: number, l: any) => acc + l.remainingBalance, 0);
@@ -375,7 +395,7 @@ export function useReportLogic() {
 
     // --- G. MATURITY ---
     const maturity = members.map((m: any) => {
-        // ✅ FIX: Use filteredPassbook and filteredLoans
+        // ✅ CHANGE: Use filteredPassbook (DIFF-3)
         const mEntries = filteredPassbook.filter(e => e.memberId === m.id && e.depositAmount > 0);
         let monthly = 0;
         if(mEntries.length > 0) {
@@ -389,6 +409,7 @@ export function useReportLogic() {
         const manualAmount = Number(m.maturity_manual_amount || 0);
         const settledInterest = isOverride ? manualAmount : projected;
         const maturityAmt = target + settledInterest;
+        // ✅ CHANGE: Use filteredLoans (DIFF-3)
         const outstanding = filteredLoans.filter((l: any) => l.memberId === m.id && l.status === 'active').reduce((s,l)=>s+l.remainingBalance,0);
 
         return { 
@@ -400,7 +421,7 @@ export function useReportLogic() {
     });
 
     // --- H. DEFAULTERS ---
-    // ✅ FIX: Use filteredLoans
+    // ✅ CHANGE: Use filteredLoans (DIFF-4)
     const defaulters = filteredLoans.filter((l: any) => l.status === 'active' && l.remainingBalance > 0).map((l: any) => {
         const mem = members.find((m: any) => m.id === l.memberId); 
         return {
@@ -413,6 +434,9 @@ export function useReportLogic() {
             status: l.status 
         };
     });
+    
+    // ✅ CHANGE: Set state for passbook (DIFF-1)
+    setFilteredPassbookState(filteredPassbook);
 
     setAuditData({
         summary: {
@@ -429,6 +453,7 @@ export function useReportLogic() {
         dailyLedger: finalLedger,
         cashbook: finalCashbook,
         modeStats: { cashBal: cashBalTotal, bankBal: bankBalTotal, upiBal: upiBalTotal },
+        // ✅ CHANGE: Use filteredLoans (DIFF-4)
         loans: filteredLoans,
         memberReports, maturity, defaulters,
         adminFund: filteredAdminFunds
@@ -436,6 +461,8 @@ export function useReportLogic() {
 
   }, [members, loans, passbookEntries, expenses, adminFunds, filters, loading]);
 
-  const reversedPassbook = [...passbookEntries].reverse();
+  // ✅ CHANGE: Update reversedPassbook (DIFF-1)
+  const reversedPassbook = [...filteredPassbookState].reverse();
+  
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
 }
