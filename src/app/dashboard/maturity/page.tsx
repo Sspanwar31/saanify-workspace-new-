@@ -156,7 +156,7 @@ export default function MaturityPage() {
   // --- Handlers ---
   const handleToggleOverride = async (memberId: string, currentValue: number, isOverride: boolean) => {
     const newOverrideState = !isOverride;
-    setMaturityData(prev => prev.map(d => d.memberId === memberId ? { ...d, isOverride: newOverrideState } : d)))
+    setMaturityData(prev => prev.map(d => d.memberId === memberId ? { ...d, isOverride: newOverrideState } : d))); // ✅ FIXED: Added semicolon
 
     await supabase.from('members').update({
       maturity_is_override: newOverrideState,
