@@ -156,7 +156,16 @@ export default function MaturityPage() {
   // --- Handlers ---
   const handleToggleOverride = async (memberId: string, currentValue: number, isOverride: boolean) => {
     const newOverrideState = !isOverride;
-    setMaturityData(prev => prev.map(d => d.memberId === memberId ? { ...d, isOverride: newOverrideState } : d))); // ✅ FIXED: Added semicolon
+    
+    // ✅ SAFE UPDATE: Rewrote to avoid parsing ambiguity
+    setMaturityData((prev) => {
+        return prev.map((d) => {
+            if (d.memberId === memberId) {
+                return { ...d, isOverride: newOverrideState };
+            }
+            return d;
+        });
+    });
 
     await supabase.from('members').update({
       maturity_is_override: newOverrideState,
@@ -186,9 +195,10 @@ export default function MaturityPage() {
     }
   }
 
+  // ✅ FIX: Added Semicolons to fix "Parsing failed" error
   const handleCancelEdit = () => {
-    setEditingMember(null)
-    setTempManualInterest('')
+    setEditingMember(null);
+    setTempManualInterest('');
   }
 
   if (!isMounted || loading) {
