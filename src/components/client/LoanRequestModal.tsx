@@ -26,32 +26,32 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeLoanWarning, setActiveLoanWarning] = useState<string>('');
 
+  const selectedMember = members.find(m => m.id === selectedMemberId);
+
   // 1. ✅ Fetch Client & Members Data from Supabase
   useEffect(() => {
     if (isOpen) {
       const fetchData = async () => {
-        // Get Client ID
-        const { data: clients } = await supabase.from('clients').select('id').limit(1);
+        // ✅ CHANGE #1: Client ID fetch (MAIN BUG) - Logic Updated Here
+        const user = JSON.parse(localStorage.getItem('current_user') || '{}');
+        const cid = user?.id;
         
-        if (clients && clients.length > 0) {
-          const cid = clients[0].id;
-          setClientId(cid);
+        if (!cid) return;
 
-          // Get Members linked to this client
-          const { data: membersData } = await supabase
-            .from('members')
-            .select('*')
-            .eq('client_id', cid)
-            .order('name', { ascending: true });
-          
-          if (membersData) setMembers(membersData);
-        }
+        setClientId(cid);
+
+        // Get Members linked to this client
+        const { data: membersData } = await supabase
+          .from('members')
+          .select('*')
+          .eq('client_id', cid)
+          .order('name', { ascending: true });
+        
+        if (membersData) setMembers(membersData);
       };
       fetchData();
     }
   }, [isOpen]);
-
-  const selectedMember = members.find(m => m.id === selectedMemberId);
 
   // 2. ✅ Check Active Loan (Converted Store Logic to Supabase Query)
   useEffect(() => {
@@ -65,7 +65,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
           .eq('status', 'active')
           // Fix: Check if balance is actually greater than 0
           .gt('remaining_balance', 0); 
-        
+      
         if (activeLoans && activeLoans.length > 0) {
           const loan = activeLoans[0];
           const balance = loan.remaining_balance || loan.amount; // Fallback to amount if balance is null
@@ -135,14 +135,16 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
       }
     } catch (error) {
       console.error('Error submitting loan request:', error);
-      alert('An error occurred while submitting the loan request');
+      alert('An error occurred while submitting loan request');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Filter active members for selection (Local filtering on fetched data)
-  const activeMembers = members.filter(member => member.status === 'active');
+  // ✅ CHANGE #3: Active members filter (silent dropdown bug) - Logic Updated Here
+  const activeMembers = members.filter(
+    member => !member.status || member.status === 'active'
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -191,7 +193,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
               onChange={(e) => setLoanAmount(e.target.value)}
             />
             <p className="text-sm text-muted-foreground">
-              If not specified, admin will determine the loan amount based on member's profile and deposit history.
+              If not specified, admin will determine loan amount based on member's profile and deposit history.
             </p>
           </div>
 
@@ -226,7 +228,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Loan requests will be reviewed by the administrator. The final approved amount and terms are subject to admin discretion.
+              Loan requests will be reviewed by administrator. The final approved amount and terms are subject to admin discretion.
             </AlertDescription>
           </Alert>
 
