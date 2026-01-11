@@ -1,12 +1,3 @@
-
-
-Samajh gaya. Mainne aapki requirement ke hisaab sirf **Step 3 (Auto-calculation)** ke `useEffect` ko aapke naye logic (Fine Calculation) se replace kar diya hai.
-
-Baki code, UI, aur Submit Logic exactly same rakha hai jaise aapne original code mein diya tha.
-
-Ye raha aapka **Updated `PassbookAddEntryModal.tsx`**:
-
-```tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
