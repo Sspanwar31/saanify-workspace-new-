@@ -19,12 +19,13 @@ export function useReportLogic() {
   const [filteredPassbookState, setFilteredPassbookState] = useState<any[]>([]);
 
   // Filter States
+  // ✅ CHANGE A: Added transactionNature
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
     selectedMember: 'ALL',
     transactionMode: 'all',
-    transactionType: 'all'
+    transactionNature: 'all'
   });
 
   // Calculated Data Structure
@@ -195,12 +196,24 @@ export function useReportLogic() {
         // ✅ DIFF-2: Passbook filter (Uses updated normalizeMode)
         const modeMatch = filters.transactionMode === 'all' || normalizeMode(e.paymentMode) === filters.transactionMode;
         
-        let typeMatch = true;
-        if(filters.transactionType === 'deposit') typeMatch = (e.depositAmount > 0);
-        if(filters.transactionType === 'loan') typeMatch = (e.installmentAmount > 0);
-        if(filters.transactionType === 'expense') typeMatch = false; 
+        // ✅ CHANGE B: NEW Transaction Nature Logic (Replaced old transactionType)
+        let natureMatch = true;
 
-        return inDate && memberMatch && modeMatch && typeMatch;
+        if (filters.transactionNature === 'inflow') {
+          natureMatch =
+            (e.depositAmount || 0) > 0 ||
+            (e.installmentAmount || 0) > 0 ||
+            (e.interestAmount || 0) > 0 ||
+            (e.fineAmount || 0) > 0;
+        }
+
+        if (filters.transactionNature === 'outflow') {
+          natureMatch =
+            (e.loanDisbursedAmount || 0) > 0 ||
+            (e.expenseAmount || 0) > 0;
+        }
+
+        return inDate && memberMatch && modeMatch && natureMatch;
     });
 
     // ✅ DIFF-3: Expenses member filter (Income/Expense mismatch fix)
@@ -334,7 +347,7 @@ export function useReportLogic() {
         else { entry.cashIn += amt; entry.cashInMode += amt; }
     });
 
-    if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
+    if(filters.transactionType === 'all' || filters.transactionType === 'loan') { // NOTE: transactionType still used here
         // ✅ DIFF-4: Use filteredLoans
         filteredLoans.forEach((l: any) => {
             if (isDateInRange(l.start_date)) {
