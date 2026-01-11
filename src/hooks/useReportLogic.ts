@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; 
+import { supabase } from '@/lib/supabase-simple'; 
 import { differenceInMonths } from 'date-fns';
 
 export function useReportLogic() {
@@ -17,8 +17,9 @@ export function useReportLogic() {
 
   // Filter States
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    // ✅ EXACT CHANGE: Default dates set to empty strings
+    startDate: '',
+    endDate: '',
     selectedMember: 'ALL',
     transactionMode: 'all',
     transactionType: 'all'
