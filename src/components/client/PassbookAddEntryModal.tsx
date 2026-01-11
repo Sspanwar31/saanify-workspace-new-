@@ -1,12 +1,3 @@
-
-
-Ye error `Unterminated template` tab aata hai jab kisi **string literal** (backticks ``` ```) mein closing ya opening miss hoti hai ya koi bracket `{}` ya `(` incomplete hota hai.
-
-Maine code ko check kiya hai aur `handleSubmit` function ke andar jo indentation issue ho sakta hai, use sahi kar diya hai. Baki code, UI, aur calculation logic (Fine Auto-calculation) bilkul same rakha hai jaise aapne bataya tha.
-
-Ye raha aapka **Fixed `src/components/client/PassbookAddEntryModal.tsx`** code:
-
-```tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
