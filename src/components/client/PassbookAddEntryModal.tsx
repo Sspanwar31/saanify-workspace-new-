@@ -1,3 +1,12 @@
+
+
+Samajh gaya. Mainne aapki requirement ke hisaab sirf **Step 3 (Auto-calculation)** ke `useEffect` ko aapke naye logic (Fine Calculation) se replace kar diya hai.
+
+Baki code, UI, aur Submit Logic exactly same rakha hai jaise aapne original code mein diya tha.
+
+Ye raha aapka **Updated `PassbookAddEntryModal.tsx`**:
+
+```tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -87,18 +96,16 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
     }
   }, [entryToEdit, isOpen]);
 
-  // 3. Auto-calculation
+  // ✅ 3. Auto-calculation (Fine Logic Fixed)
   useEffect(() => {
     if (selectedMember) {
       const depositBalance = Number(selectedMember.total_deposits || 0);
       const outstanding = Number(selectedMember.outstanding_loan || 0);
       
-      // If Editing: We need to show what balance would be if we undo the old entry
       let baseDeposit = depositBalance;
       let baseLoan = outstanding;
 
       if (entryToEdit) {
-          // Temporarily reverse old values to show accurate 'Current' state before edit
           baseDeposit -= Number(entryToEdit.deposit_amount || 0);
           baseLoan += Number(entryToEdit.installment_amount || 0);
       }
@@ -106,9 +113,24 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       setCurrentDepositBalance(baseDeposit);
       setOutstandingLoan(baseLoan);
 
-      if (!entryToEdit && baseLoan > 0) {
-          const calculatedInterest = Math.round(baseLoan * 0.01);
-          setInterestAmount(calculatedInterest.toString());
+      // --- AUTO CALCULATION LOGIC ---
+      if (!entryToEdit) {
+          // A. Interest (1% of Loan)
+          if (baseLoan > 0) {
+            const calculatedInterest = Math.round(baseLoan * 0.01);
+            setInterestAmount(calculatedInterest.toString());
+          } else {
+            setInterestAmount('');
+          }
+
+          // B. Fine (After 15th)
+          const dayOfMonth = date.getDate(); // Uses selected date
+          if (dayOfMonth > 15) {
+             const fine = (dayOfMonth - 15) * 10;
+             setFineAmount(fine.toString()); // Auto set fine
+          } else {
+             setFineAmount(''); // Reset fine if date is early
+          }
       }
 
       const dep = parseFloat(depositAmount) || 0;
@@ -117,6 +139,7 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
       setProjectedLoan(Math.max(0, baseLoan - inst));
       setProjectedDeposit(baseDeposit + dep);
     } else {
+      // Reset if no member
       setCurrentDepositBalance(0);
       setOutstandingLoan(0);
       if (!entryToEdit) {
@@ -124,9 +147,9 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
         setFineAmount('');
       }
     }
-  }, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
+}, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
 
-  // ✅ 4. SUBMIT HANDLER (Updated Logic for Edit)
+  // 4. SUBMIT HANDLER (Updated Logic for Edit)
   const handleSubmit = async () => {
     if (!selectedMemberId) return toast.error('Please select a member');
     setLoading(true);
@@ -144,8 +167,8 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
             const oldDep = Number(entryToEdit.deposit_amount || 0);
             const oldInst = Number(entryToEdit.installment_amount || 0);
             
-            const depositDiff = newDepAmt - oldDep; // e.g. 500 - 400 = +100
-            const installmentDiff = newInstAmt - oldInst; // e.g. 1000 - 800 = +200
+            const depositDiff = newDepAmt - oldDep; 
+            const installmentDiff = newInstAmt - oldInst; 
 
             // 2. Update Passbook
             const { error: updateError } = await supabase
@@ -165,7 +188,6 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
             if (updateError) throw updateError;
 
             // 3. Update Member Balance
-            // Logic: Deposit me difference Jodo, Loan me difference Ghatao
             const { data: currentMember } = await supabase
                 .from('members')
                 .select('outstanding_loan, total_deposits')
@@ -183,10 +205,9 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
                 
                 // 4. Update Loan Table (If Installment Changed)
                 if (installmentDiff !== 0) {
-                     // Find active loan and adjust
                      const { data: loans } = await supabase.from('loans').select('*').eq('member_id', selectedMemberId).eq('status', 'active');
                      if(loans && loans.length > 0) {
-                         const loan = loans[0]; // Simplest FIFO logic
+                         const loan = loans[0]; 
                          const newBal = Number(loan.remaining_balance) - installmentDiff;
                          await supabase.from('loans').update({ remaining_balance: newBal }).eq('id', loan.id);
                      }
@@ -219,7 +240,7 @@ const { error: insertError } = await supabase.from('passbook_entries').insert([{
   client_id: clientId,
   member_id: selectedMemberId,
   member_name: currentMember?.name,
-  loan_id: attachedLoanId, // ✅ AUTO ATTACHED
+  loan_id: attachedLoanId, 
   date: format(date, 'yyyy-MM-dd'),
   payment_mode: paymentMode,
   deposit_amount: newDepAmt,
@@ -228,7 +249,7 @@ const { error: insertError } = await supabase.from('passbook_entries').insert([{
   fine_amount: newFineAmt,
   total_amount: total,
   note: 'Passbook Entry'
-}]);;
+}]);
 
             if (insertError) throw insertError;
 
@@ -239,7 +260,6 @@ const { error: insertError } = await supabase.from('passbook_entries').insert([{
                     const newDepositTotal = (memData.total_deposits || 0) + newDepAmt;
                     await supabase.from('members').update({ outstanding_loan: newLoanBal, total_deposits: newDepositTotal }).eq('id', selectedMemberId);
                     
-                    // Deduct from Loan Table
                     if(newInstAmt > 0) {
                         const { data: activeLoans } = await supabase.from('loans').select('*').eq('member_id', selectedMemberId).eq('status', 'active').gt('remaining_balance', 0).order('created_at', { ascending: true });
                         let amtLeft = newInstAmt;
@@ -408,3 +428,4 @@ const { error: insertError } = await supabase.from('passbook_entries').insert([{
     </Dialog>
   );
 }
+```
