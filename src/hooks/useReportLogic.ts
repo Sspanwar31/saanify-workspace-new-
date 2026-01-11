@@ -1,10 +1,3 @@
-
-
-Maine aapke code mein sirf **DIFF-1** ke hisaab se `normalizeMode` function ko update kiya hai. Isse ab Online, GPay, PhonePe, NEFT, RTGS wale entries bhi sahi filter mein capture honge. Baaki code exactly same rakha hai jaise aapne provide kiya tha.
-
-Ye raha aapka **Fixed `src/app/dashboard/report/useReportLogic.tsx`** code:
-
-```tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -495,4 +488,3 @@ export function useReportLogic() {
   
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
 }
-```
