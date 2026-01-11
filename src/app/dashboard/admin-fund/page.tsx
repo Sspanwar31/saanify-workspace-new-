@@ -1,12 +1,3 @@
-
-
-Maine aapke instructions ke hisaab **AdminFundPage** ko check kiya hai. Aapne jo code provide kiya hai, usme **Members** ka dropdown ya Select component hai hi nahi (Ye page Admin Ledger ke liye hai, Member selection ka nahi). Isliye **Step 3 (Active Members Filter)** aur **Step 4 (Select Component Fix)** is code mein apply nahi ho sakte.
-
-Maine sirf **STEP 1** apply kiya hai jo Client ID ko fix karta hai. Baki UI, calculations, aur logic bilkul same rakhi hai.
-
-Ye raha aapka **Fixed `src/app/dashboard/adminfund/page.tsx`** code:
-
-```tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -557,4 +548,3 @@ export default function AdminFundPage() {
     </div>
   );
 }
-```
