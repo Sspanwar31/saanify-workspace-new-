@@ -14,72 +14,117 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { id, email, password, name, phone, role, clientId, status } = body;
 
-    // --- CASE 1: EDIT EXISTING USER ---
-    if (id) {
-        // 1. Update Profile Data in Table
-        const { error: dbError } = await supabaseAdmin
-            .from('members')
-            .update({ name, phone, role, status })
-            .eq('id', id);
-
-        if (dbError) throw dbError;
-
-        // 2. Update Password/Email in Auth (Agar password diya hai tabhi)
-        if (password && password.trim() !== "") {
-            // Hume auth_user_id chahiye password badalne ke liye
-            const { data: memberData } = await supabaseAdmin.from('members').select('auth_user_id').eq('id', id).single();
-            
-            if (memberData?.auth_user_id) {
-                const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
-                    memberData.auth_user_id,
-                    { password: password, email: email }
-                );
-                if (authError) throw authError;
-            }
-        }
-        
-        return NextResponse.json({ success: true, message: 'User updated successfully' });
-    } 
-    
-    // --- CASE 2: CREATE NEW USER ---
-    else {
-        if (!email || !password || !clientId) {
-            return NextResponse.json({ error: 'Email, Password and Client ID required' }, { status: 400 });
-        }
-
-        // 1. Create Auth User (Login ID)
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: email,
-            password: password,
-            email_confirm: true,
-            user_metadata: { name, role }
-        });
-
-        if (authError) throw authError;
-
-        // 2. Insert into Members Table
-        const { error: dbError } = await supabaseAdmin
-            .from('members')
-            .insert([{
-                client_id: clientId,
-                auth_user_id: authData.user.id,
-                name,
-                email,
-                phone,
-                role, // 'member' or 'treasurer'
-                status: 'active',
-                join_date: new Date().toISOString()
-            }]);
-
-        if (dbError) {
-            // Rollback: Delete Auth user if DB fails
-            await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-            throw dbError;
-        }
-
-        return NextResponse.json({ success: true, message: 'User created successfully' });
+    if (!role || !['member', 'treasurer'].includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
     }
 
+    // --- EDIT EXISTING USER ---
+    if (id) {
+      if (role === 'member') {
+        const { error: dbError } = await supabaseAdmin
+          .from('members')
+          .update({ name, phone, status })
+          .eq('id', id);
+        if (dbError) throw dbError;
+      } else if (role === 'treasurer') {
+        const { error: dbError } = await supabaseAdmin
+          .from('clients')
+          .update({ name, phone, status })
+          .eq('id', id);
+        if (dbError) throw dbError;
+      }
+
+      if (password && password.trim() !== "") {
+        const table = role === 'member' ? 'members' : 'clients';
+        const { data: userData } = await supabaseAdmin.from(table).select('auth_user_id').eq('id', id).single();
+        if (userData?.auth_user_id) {
+          const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+            userData.auth_user_id,
+            { password, email }
+          );
+          if (authError) throw authError;
+        }
+      }
+
+      return NextResponse.json({ success: true, message: 'User updated successfully' });
+    }
+
+    // --- CREATE NEW USER ---
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email and Password required' }, { status: 400 });
+    }
+
+    // 1. Create Auth User
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name, role }
+    });
+    if (authError) throw authError;
+
+    // 2. Insert into appropriate table
+    if (role === 'member') {
+      const { error: dbError } = await supabaseAdmin
+        .from('members')
+        .insert([{
+          client_id: clientId,
+          auth_user_id: authData.user.id,
+          name,
+          email,
+          phone,
+          role: 'member',
+          status: 'active',
+          join_date: new Date().toISOString()
+        }]);
+      if (dbError) {
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        throw dbError;
+      }
+    } else if (role === 'treasurer') {
+      const { error: dbError } = await supabaseAdmin
+        .from('clients')
+        .insert([{
+          id: authData.user.id,
+          email,
+          name,
+          society_name: 'Default Society',
+          phone,
+          plan: 'BASIC',
+          status: 'active',
+          is_lifetime: false,
+          subscription_expiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+          created_at: new Date().toISOString(),
+          plan_name: 'Free',
+          plan_start_date: new Date().toISOString(),
+          plan_end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+          subscription_status: 'active',
+          currency: 'INR',
+          interest_rate: 12,
+          loan_limit_percent: 80,
+          fine_amount: 10,
+          grace_period_day: 10,
+          theme: 'light',
+          auto_backup: true,
+          email_notifications: true,
+          sms_notifications: false,
+          role_permissions: {
+            treasurer: [
+              "View Dashboard", "View Passbook", "View Loans", "View Members",
+              "Manage Finance", "Manage Expenses", "Manage Passbook"
+            ]
+          },
+          role: 'treasurer',
+          client_id: clientId
+        }]);
+      if (dbError) {
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        throw dbError;
+      }
+    }
+
+    return NextResponse.json({ success: true, message: 'User created successfully' });
+    
   } catch (error: any) {
     console.error("User Manage Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
