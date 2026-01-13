@@ -1,10 +1,3 @@
-
-
-Thik hai. Maine aapke code mein sirf **Avatar** wala part jo table ke andar hai wo fix kiya hai. Baaki code, logic aur lines bilkul same rakhi hain.
-
-Ye raha aapka **Fixed `src/app/dashboard/user-management/page.tsx`** code:
-
-```tsx
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase'; 
@@ -433,4 +426,3 @@ export default function UserManagementPage() {
     </div>
   );
 }
-```
