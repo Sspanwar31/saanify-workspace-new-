@@ -1,3 +1,10 @@
+
+
+Thik hai. Maine aapke code mein sirf **Avatar** wala part jo table ke andar hai wo fix kiya hai. Baaki code, logic aur lines bilkul same rakhi hain.
+
+Ye raha aapka **Fixed `src/app/dashboard/user-management/page.tsx`** code:
+
+```tsx
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase'; 
@@ -325,9 +332,11 @@ export default function UserManagementPage() {
               <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors">
                 <TableCell className="pl-6 py-4">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                      <AvatarImage src={`/avatars/${user.id}.jpg`} />
-                      <AvatarFallback className="bg-gray-100 text-gray-600 font-bold">{user.name.charAt(0)}</AvatarFallback>
+                    {/* ✅ Avatar Safe Fix */}
+                    <Avatar>
+                      <AvatarFallback className="bg-gray-100 text-gray-600 font-bold">
+                        {user.name?.charAt(0) || 'U'}
+                      </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-semibold text-gray-900">{user.name}</p>
@@ -358,7 +367,7 @@ export default function UserManagementPage() {
             <div className="flex gap-3">{isEditingRoles ? <><Button variant="outline" onClick={() => setIsEditingRoles(false)} className="text-red-600 border-red-200 bg-red-50 hover:bg-red-100"><X className="h-4 w-4 mr-2"/> Cancel</Button><Button onClick={savePermissions} className="bg-green-600 text-white hover:bg-green-700 shadow-md"><Save className="h-4 w-4 mr-2"/> Save Changes</Button></> : <Button onClick={() => setIsEditingRoles(true)} className="bg-blue-600 text-white hover:bg-blue-700 shadow-md"><Edit className="h-4 w-4 mr-2"/> Edit Permissions</Button>}</div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {['treasurer', 'member'].map(role => (
+            {['treasurer', 'member'].map(role => ( // ✅ PROBLEM-1 FIX: Removed client_admin from mapping
               <Card key={role} className={`border-t-4 ${role === 'treasurer' ? 'border-t-green-600' : 'border-t-blue-600'}`}>
                 <CardHeader className="pb-2"><div className="flex justify-between items-start"><Badge className={getRoleBadgeColor(role)}>{role.replace('_', ' ').toUpperCase()}</Badge><span className="text-xs font-bold text-gray-400">{roleConfig[role].length} total</span></div></CardHeader>
                 <CardContent><div className="space-y-2 text-sm"><div className="flex justify-between"><span>General</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[0].items)}/7</span></div><div className="flex justify-between"><span>Financial</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[2].items)}/6</span></div></div></CardContent>
@@ -424,3 +433,4 @@ export default function UserManagementPage() {
     </div>
   );
 }
+```
