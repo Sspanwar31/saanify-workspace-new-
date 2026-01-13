@@ -31,7 +31,8 @@ export default function ClientSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userRole, setUserRole] = useState('client_admin');
-  const [allowedItems, setAllowedItems] = useState<any[]>([]); // Dynamic Menu
+  // ✅ DIFF-1: allowedItems default value changed to null
+  const [allowedItems, setAllowedItems] = useState<any[] | null>(null); // Dynamic Menu
 
   useEffect(() => {
     const checkPermissions = async () => {
@@ -57,36 +58,29 @@ export default function ClientSidebar() {
               .single();
 
           // Get Permissions Array
-          // Note: Mapping key names to Permission Strings
-          // Aapko ensure karna hoga ki Database me stored keys aur yahan 'perm' keys match karein
-          // Example: 'View Dashboard' vs 'VIEW_DASHBOARD'
-          
-          // Simple Hack: Agar DB me 'View Dashboard' hai, to hum usse match karenge
           const perms = data?.role_permissions?.['treasurer'] || [];
           
+          // ✅ DIFF-3: Permission fetch fail ho to fallback
+          if (!perms.length) {
+            setAllowedItems(navItems);
+            return;
+          }
+          
           // Map DB string to Key
-          // (Aapke RolesPermissionsTab me Strings use ho rahi hain jaise 'View Dashboard')
-          // Hum navItems me bhi wahi string use karenge
+          const map: any = {
+             'VIEW_DASHBOARD': 'View Dashboard',
+             'VIEW_MEMBERS': 'View Members',
+             'VIEW_PASSBOOK': 'View Passbook',
+             'VIEW_LOANS': 'View Loans',
+             'VIEW_REPORTS': 'View Reports',
+             'MANAGE_EXPENSES': 'Manage Expenses',
+             'VIEW_USERS': 'User Management Access',
+             'VIEW_SETTINGS': 'View Settings',
+             'MANAGE_ADMIN_FUND': 'Manage Admin Fund',
+             'MANAGE_SYSTEM': 'Manage System'
+          };
 
           const filtered = navItems.filter(item => {
-             // Mapping logic: Item Label aur Permission Name match hona chahiye
-             // Ya fir ek mapping object banayein
-             // Simple approach: Assume perm key is stored as readable string in DB
-             
-             // Mapping Table based on your provided code:
-             const map: any = {
-                'VIEW_DASHBOARD': 'View Dashboard',
-                'VIEW_MEMBERS': 'View Members',
-                'VIEW_PASSBOOK': 'View Passbook',
-                'VIEW_LOANS': 'View Loans',
-                'VIEW_REPORTS': 'View Reports',
-                'MANAGE_EXPENSES': 'Manage Expenses',
-                'VIEW_USERS': 'User Management Access',
-                'VIEW_SETTINGS': 'View Settings',
-                'MANAGE_ADMIN_FUND': 'Manage Admin Fund',
-                'MANAGE_SYSTEM': 'Manage System'
-             };
-
              const dbKey = map[item.perm];
              return perms.includes(dbKey);
           });
@@ -122,7 +116,8 @@ export default function ClientSidebar() {
         
         {/* MENU */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {allowedItems.map((item) => {
+          {/* ✅ DIFF-2: Render guard added */}
+          {(allowedItems ?? navItems).map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link 
