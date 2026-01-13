@@ -86,12 +86,16 @@ export default function UserManagementPage() {
           .eq('client_id', cid)
           .eq('role', 'member');
 
+        // ✅ CHANGE-1: client_users -> clients
         // Treasurer
         const { data: treasurerData } = await supabase
-          .from('client_users') // Assuming client_users based on context
+          .from('clients') // Changed table name
           .select('*')
           .eq('client_id', cid)
           .eq('role', 'treasurer');
+
+        // ✅ CHANGE-3: Safety Guard
+        if (!treasurerData || treasurerData.length === 0) return;
 
         // Combine for UI
         const userData = [...(treasurerData || []), ...(memberData || [])];
@@ -166,7 +170,8 @@ export default function UserManagementPage() {
         phone: formData.phone,
         role: formData.role,
         status: formData.status,
-        targetTable: formData.role === 'treasurer' ? 'client_users' : 'members',
+        // ✅ CHANGE-2: Updated targetTable to 'clients'
+        targetTable: formData.role === 'treasurer' ? 'clients' : 'members',
         password: formData.password 
       };
 
@@ -213,6 +218,7 @@ export default function UserManagementPage() {
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
     const newStatus = user.status === 'active' ? 'blocked' : 'active';
+    // Note: Updating treasurers might need different table logic
     const { error } = await supabase.from('members').update({ status: newStatus }).eq('id', user.id);
     if (!error) {
       setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
