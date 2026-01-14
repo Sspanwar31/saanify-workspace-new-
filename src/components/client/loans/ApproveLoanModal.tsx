@@ -35,9 +35,9 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
     if (isOpen && requestId) {
       const fetchData = async () => {
         // A. Fetch Loan Request Details
+        // ✅ DRIF-1: Loan Fetch (BLANK MODAL FIX)
         const { data: loanData, error } = await supabase
           .from('loans')
-          // ✅ DRIF-1: Loan fetch SELECT FIX (MOST IMPORTANT) - Member basic data only
           .select(`
             *,
             members (
@@ -49,7 +49,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           .single();
 
         if (loanData && !error) {
-          // ✅ DRIF-2: Requested amount fallback (BLANK AMOUNT FIX)
+          // ✅ DRIF-2: Requested Amount Fallback (BLANK AMOUNT FIX)
           const requestedAmount =
             loanData.approved_amount ??
             loanData.amount ??
@@ -58,19 +58,19 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           setRequest({
             id: loanData.id,
             memberId: loanData.member_id,
-            clientId: loanData.client_id, // ✅ Client ID for notification
+            clientId: loanData.client_id,
             memberName: loanData.members?.name || 'Unknown',
             amount: requestedAmount,
             status: loanData.status
           });
 
-          // ✅ DRIF-6: Total Deposit fetch FIX (Passbook Sum Query)
-          // 🔥 Step 2: AFTER loan fetch, add this
+          // ✅ DRIF-3: Total Deposit Calculation (MAIN BLANK ISSUE)
           // 🔥 REAL deposit calculation
           const { data: passbookData } = await supabase
             .from('passbook_entries')
-            .select('deposit_amount, type')
-            .eq('member_id', loanData.member_id);
+            .select('deposit_amount, type') // Select 'type' to filter correctly
+            .eq('member_id', loanData.member_id)
+            .eq('client_id', loanData.client_id); // Safety filter
 
           // Calculate total deposits
           const totalDeposits = (passbookData || [])
@@ -79,7 +79,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
           setTotalDeposit(totalDeposits);
           
-          // ✅ DRIF-3: Input default value fix
+          // ✅ DRIF-3 (Input Default): Auto-fill only if requested amount exists
           setAmount(
             requestedAmount > 0
               ? requestedAmount.toString()
@@ -95,13 +95,13 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
   // --- Logic: Limits Calculation ---
   const maxLimit = totalDeposit * 0.8;
   const requestedAmount = request?.amount || 0;
-  const loanAmount = parseFloat(amount) || 0;
+  const loanAmount = parseFloat(amount) || requestedAmount; // Fallback to requestedAmount if input empty
 
   // Validation
   const isOverLimit = loanAmount > maxLimit;
   const canApprove = !isOverLimit || isOverride;
 
-  // --- Submit Handler (Fixed: Removed Double Update) ---
+  // --- Submit Handler ---
   const handleSubmit = async () => {
     if (!request || !canApprove) return;
 
@@ -110,7 +110,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
       const approvedAmount = loanAmount;
       const today = new Date().toISOString();
 
-      // 1. Update Loan Status (Trigger will auto-update Member Outstanding)
+      // 1. Update Loan Status (✅ DRIF-6: Loan Update)
       const { error: loanError } = await supabase
         .from('loans')
         .update({
@@ -140,14 +140,12 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
       if (notifError) console.error("Notification Error:", notifError);
 
-      // Success Toast
       toast.success("Loan Approved Successfully!");
       
       onClose();
       setAmount('');
       setIsOverride(false);
       
-      // Page refresh to reflect changes
       window.location.reload(); 
 
     } catch (error: any) {
@@ -254,7 +252,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
               </div>
               
               <div className="text-sm text-muted-foreground">
-                {/* ✅ DRIF-5: Requested Amount display safety */}
+                {/* ✅ DRIF-5: Requested Amount UI Safety */}
                 Requested: {requestedAmount > 0
                   ? formatCurrency(requestedAmount)
                   : 'Not specified by member'}
@@ -339,19 +337,20 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           <Button
             variant="outline"
             onClick={onClose}
+            className="flex-1"
             disabled={isSubmitting}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            // ✅ DRIF-4: Approve button disable logic (BUG)
+            // ✅ DRIF-4: 80% Logic + Approve Button Enable
             disabled={!canApprove || isSubmitting || loanAmount <= 0}
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-green-600 hover:bg-green-700 flex-1"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Approving...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approving...
               </>
             ) : (
               'Approve Loan'
