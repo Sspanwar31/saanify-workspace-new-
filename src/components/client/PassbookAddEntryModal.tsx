@@ -17,15 +17,26 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+// ✅ STEP 1: Props change करो
 interface PassbookAddEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entryToEdit?: any | null; 
+  entryToEdit?: any | null;
+  members: any[];          // ✅ ADD
+  clientId: string | null; // ✅ ADD
 }
 
-export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: PassbookAddEntryModalProps) {
-  const [members, setMembers] = useState<any[]>([]);
-  const [clientId, setClientId] = useState<string | null>(null);
+export default function PassbookAddEntryModal({
+  isOpen,
+  onClose,
+  entryToEdit,
+  members,
+  clientId
+}: PassbookAddEntryModalProps) {
+
+  // ✅ STEP 2: Local state हटाओ
+  // const [members, setMembers] = useState<any[]>([]); 
+  // const [clientId, setClientId] = useState<string | null>(null);
 
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [date, setDate] = useState<Date>(new Date());
@@ -43,107 +54,89 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
 
   const selectedMember = members.find(m => m.id === selectedMemberId);
 
-  // 1. Fetch Logic
-  useEffect(() => {
-    if (isOpen) {
-      const fetchData = async () => {
-        const storedUser = localStorage.getItem('current_user');
-        if (storedUser) {
-            const user = JSON.parse(storedUser);
-            setClientId(user.id);
-
-            const { data: membersData } = await supabase
-                .from('members')
-                .select('*')
-                .eq('client_id', user.id);
-            
-            if (membersData) setMembers(membersData);
-        }
-      };
-      fetchData();
-    }
-  }, [isOpen]);
+  // ✅ STEP 3: Fetch वाला useEffect हटाओ
+  // useEffect(() => { ... }, [isOpen]);
 
   // 2. Populate Edit Logic
   useEffect(() => {
-    if (isOpen) {
-        if (entryToEdit) {
-            setSelectedMemberId(entryToEdit.member_id || entryToEdit.memberId);
-            setDepositAmount(entryToEdit.deposit_amount?.toString() || '0');
-            setInstallmentAmount(entryToEdit.installment_amount?.toString() || '0');
-            setInterestAmount(entryToEdit.interest_amount?.toString() || '0'); 
-            setFineAmount(entryToEdit.fine_amount?.toString() || '0');         
-            setPaymentMode(entryToEdit.payment_mode || 'cash');
-            if (entryToEdit.date) setDate(new Date(entryToEdit.date));
-        } else {
-            setSelectedMemberId('');
-            setDepositAmount('');
-            setInstallmentAmount('');
-            setInterestAmount(''); 
-            setFineAmount('');     
-            setPaymentMode('cash');
-            setDate(new Date());
-        }
-    }
+      if (isOpen) {
+          if (entryToEdit) {
+              setSelectedMemberId(entryToEdit.member_id || entryToEdit.memberId);
+              setDepositAmount(entryToEdit.deposit_amount?.toString() || '0');
+              setInstallmentAmount(entryToEdit.installment_amount?.toString() || '0');
+              setInterestAmount(entryToEdit.interest_amount?.toString() || '0'); 
+              setFineAmount(entryToEdit.fine_amount?.toString() || '0');         
+              setPaymentMode(entryToEdit.payment_mode || 'cash');
+              if (entryToEdit.date) setDate(new Date(entryToEdit.date));
+          } else {
+              setSelectedMemberId('');
+              setDepositAmount('');
+              setInstallmentAmount('');
+              setInterestAmount(''); 
+              setFineAmount('');     
+              setPaymentMode('cash');
+              setDate(new Date());
+          }
+      }
   }, [entryToEdit, isOpen]);
 
   // 3. Auto-calculation (Fine Logic Fixed)
   useEffect(() => {
-    if (selectedMember) {
-      const depositBalance = Number(selectedMember.total_deposits || 0);
-      const outstanding = Number(selectedMember.outstanding_loan || 0);
-      
-      let baseDeposit = depositBalance;
-      let baseLoan = outstanding;
+      if (selectedMember) {
+        const depositBalance = Number(selectedMember.total_deposits || 0);
+        const outstanding = Number(selectedMember.outstanding_loan || 0);
+        
+        let baseDeposit = depositBalance;
+        let baseLoan = outstanding;
 
-      if (entryToEdit) {
-          baseDeposit -= Number(entryToEdit.deposit_amount || 0);
-          baseLoan += Number(entryToEdit.installment_amount || 0);
+        if (entryToEdit) {
+            baseDeposit -= Number(entryToEdit.deposit_amount || 0);
+            baseLoan += Number(entryToEdit.installment_amount || 0);
+        }
+        
+        setCurrentDepositBalance(baseDeposit);
+        setOutstandingLoan(baseLoan);
+
+        // --- AUTO CALCULATION LOGIC ---
+        if (!entryToEdit) {
+            // A. Interest (1% of Loan)
+            if (baseLoan > 0) {
+              const calculatedInterest = Math.round(baseLoan * 0.01);
+              setInterestAmount(calculatedInterest.toString());
+            } else {
+              setInterestAmount('');
+            }
+
+            // B. Fine (After 15th)
+            const dayOfMonth = date.getDate(); // Uses selected date
+            if (dayOfMonth > 15) {
+               const fine = (dayOfMonth - 15) * 10;
+               setFineAmount(fine.toString()); // Auto set fine
+            } else {
+               setFineAmount(''); // Reset fine if date is early
+            }
+        }
+
+        const dep = parseFloat(depositAmount) || 0;
+        const inst = parseFloat(installmentAmount) || 0;
+        
+        setProjectedLoan(Math.max(0, baseLoan - inst));
+        setProjectedDeposit(baseDeposit + dep);
+      } else {
+        // Reset if no member
+        setCurrentDepositBalance(0);
+        setOutstandingLoan(0);
+        if (!entryToEdit) {
+          setInterestAmount('');
+          setFineAmount('');
+        }
       }
-      
-      setCurrentDepositBalance(baseDeposit);
-      setOutstandingLoan(baseLoan);
-
-      // --- AUTO CALCULATION LOGIC ---
-      if (!entryToEdit) {
-          // A. Interest (1% of Loan)
-          if (baseLoan > 0) {
-            const calculatedInterest = Math.round(baseLoan * 0.01);
-            setInterestAmount(calculatedInterest.toString());
-          } else {
-            setInterestAmount('');
-          }
-
-          // B. Fine (After 15th)
-          const dayOfMonth = date.getDate(); // Uses selected date
-          if (dayOfMonth > 15) {
-             const fine = (dayOfMonth - 15) * 10;
-             setFineAmount(fine.toString()); // Auto set fine
-          } else {
-             setFineAmount(''); // Reset fine if date is early
-          }
-      }
-
-      const dep = parseFloat(depositAmount) || 0;
-      const inst = parseFloat(installmentAmount) || 0;
-      
-      setProjectedLoan(Math.max(0, baseLoan - inst));
-      setProjectedDeposit(baseDeposit + dep);
-    } else {
-      // Reset if no member
-      setCurrentDepositBalance(0);
-      setOutstandingLoan(0);
-      if (!entryToEdit) {
-        setInterestAmount('');
-        setFineAmount('');
-      }
-    }
-}, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
+  }, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
 
   // 4. SUBMIT HANDLER (Updated Logic for Edit)
   const handleSubmit = async () => {
-    if (!selectedMemberId) return toast.error('Please select a member');
-    setLoading(true);
+      if (!selectedMemberId) return toast.error('Please select a member');
+      setLoading(true);
 
     const newDepAmt = parseFloat(depositAmount) || 0;
     const newInstAmt = parseFloat(installmentAmount) || 0;
@@ -285,9 +278,9 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
   };
 
   const totalToCollect = (parseFloat(depositAmount) || 0) + 
-                        (parseFloat(installmentAmount) || 0) + 
-                        (parseFloat(interestAmount) || 0) + 
-                        (parseFloat(fineAmount) || 0);
+                      (parseFloat(installmentAmount) || 0) + 
+                      (parseFloat(interestAmount) || 0) + 
+                      (parseFloat(fineAmount) || 0);
 
   const loanProgressPercentage = outstandingLoan > 0 ? ((outstandingLoan - projectedLoan) / outstandingLoan) * 100 : 0;
 
@@ -385,9 +378,9 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
               <CardContent className="space-y-3">
                 {selectedMember ? (
                   <>
-                    <div className="flex justify-between items-center"><span className="font-medium">Name:</span><span>{selectedMember.name}</span></div>
-                    <div className="flex justify-between items-center"><span className="font-medium">Current Deposit:</span><div className="flex items-center gap-2"><span>₹{currentDepositBalance.toLocaleString()}</span>{depositAmount && parseFloat(depositAmount) > 0 && <Badge variant="default" className="bg-green-100 text-green-800">+₹{parseFloat(depositAmount).toLocaleString()}</Badge>}</div></div>
-                    <div className="flex justify-between items-center"><span className="font-medium">Outstanding Loan:</span><div className="flex items-center gap-2"><span>₹{outstandingLoan.toLocaleString()}</span>{installmentAmount && parseFloat(installmentAmount) > 0 && <Badge variant="default" className="bg-red-100 text-red-800">-₹{parseFloat(installmentAmount).toLocaleString()}</Badge>}</div></div>
+                      <div className="flex justify-between items-center"><span className="font-medium">Name:</span><span>{selectedMember.name}</span></div>
+                      <div className="flex justify-between items-center"><span className="font-medium">Current Deposit:</span><div className="flex items-center gap-2"><span>₹{currentDepositBalance.toLocaleString()}</span>{depositAmount && parseFloat(depositAmount) > 0 && <Badge variant="default" className="bg-green-100 text-green-800">+₹{parseFloat(depositAmount).toLocaleString()}</Badge>}</div></div>
+                      <div className="flex justify-between items-center"><span className="font-medium">Outstanding Loan:</span><div className="flex items-center gap-2"><span>₹{outstandingLoan.toLocaleString()}</span>{installmentAmount && parseFloat(installmentAmount) > 0 && <Badge variant="default" className="bg-red-100 text-red-800">-₹{parseFloat(installmentAmount).toLocaleString()}</Badge>}</div></div>
                   </>
                 ) : <p className="text-muted-foreground">Please select a member</p>}
               </CardContent>
@@ -400,14 +393,14 @@ export default function PassbookAddEntryModal({ isOpen, onClose, entryToEdit }: 
               <CardContent className="space-y-4">
                 {selectedMember ? (
                   <>
-                    <div className="space-y-2">
-                      <div className="flex justify-between"><span>Deposit:</span><span>₹{(parseFloat(depositAmount) || 0).toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Installment:</span><span>₹{(parseFloat(installmentAmount) || 0).toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Interest/Fine:</span><span>₹{((parseFloat(interestAmount)||0) + (parseFloat(fineAmount)||0)).toLocaleString()}</span></div>
-                      <div className="border-t pt-2"><div className="flex justify-between font-bold"><span>Total to Collect:</span><span className="text-blue-600">₹{totalToCollect.toLocaleString()}</span></div></div>
-                    </div>
-                    {outstandingLoan > 0 && <div className="space-y-2"><div className="flex justify-between"><span>Final Loan Balance:</span><span className="font-medium">₹{projectedLoan.toLocaleString()}</span></div><div className="space-y-1"><div className="flex justify-between text-sm text-muted-foreground"><span>Progress:</span><span>{loanProgressPercentage.toFixed(1)}%</span></div><Progress value={loanProgressPercentage} className="h-2" /></div></div>}
-                    <div className="flex justify-between"><span>Final Deposit Balance:</span><span className="font-medium text-green-600">₹{projectedDeposit.toLocaleString()}</span></div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between"><span>Deposit:</span><span>₹{(parseFloat(depositAmount) || 0).toLocaleString()}</span></div>
+                        <div className="flex justify-between"><span>Installment:</span><span>₹{(parseFloat(installmentAmount) || 0).toLocaleString()}</span></div>
+                        <div className="flex justify-between"><span>Interest/Fine:</span><span>₹{((parseFloat(interestAmount)||0) + (parseFloat(fineAmount)||0)).toLocaleString()}</span></div>
+                        <div className="border-t pt-2"><div className="flex justify-between font-bold"><span>Total to Collect:</span><span className="text-blue-600">₹{totalToCollect.toLocaleString()}</span></div></div>
+                      </div>
+                      {outstandingLoan > 0 && <div className="space-y-2"><div className="flex justify-between"><span>Final Loan Balance:</span><span className="font-medium">₹{projectedLoan.toLocaleString()}</span></div><div className="space-y-1"><div className="flex justify-between text-sm text-muted-foreground"><span>Progress:</span><span>{loanProgressPercentage.toFixed(1)}%</span></div><Progress value={loanProgressPercentage} className="h-2" /></div></div>}
+                      <div className="flex justify-between"><span>Final Deposit Balance:</span><span className="font-medium text-green-600">₹{projectedDeposit.toLocaleString()}</span></div>
                   </>
                 ) : <p className="text-muted-foreground">Select a member to see preview</p>}
               </CardContent>
