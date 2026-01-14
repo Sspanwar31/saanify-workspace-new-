@@ -57,7 +57,7 @@ export default function PassbookPage() {
   });
 
   // --- 1. Fetch Client ID (REPLACED) ---
-  // ✅ STEP 2: इसकी जगह ये डालो (या पूरा logic हटाओ और नया डालो)
+  // ✅ STEP 2: इसकी जगह ये डालो
   useEffect(() => {
     const userStr = localStorage.getItem('current_user');
     if (!userStr) return;
@@ -84,9 +84,20 @@ export default function PassbookPage() {
     }
   }, [clientId]);
 
+  // ✅ DIFF–1 → Members fetch fix
   const fetchMembers = async () => {
-    const { data } = await supabase.from('members').select('id, name').eq('client_id', clientId);
-    if (data) setMembers(data);
+    const { data, error } = await supabase
+      .from('members')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('name');
+
+    if (error) {
+      console.error('MEMBER FETCH ERROR', error);
+      return;
+    }
+
+    setMembers(data || []);
   };
 
   // ✅ UPDATED: fetchPassbook (Trust DB Logic)
@@ -391,11 +402,11 @@ export default function PassbookPage() {
               </div>
               <div className="flex gap-2">
                 <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="bg-white min-w-[80px]"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="bg-white min-w-[80px]"
                 >
                   Previous
                 </Button>
@@ -403,11 +414,11 @@ export default function PassbookPage() {
                   Page {currentPage} of {totalPages}
                 </div>
                 <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="bg-white min-w-[80px]"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="bg-white min-w-[80px]"
                 >
                   Next
                 </Button>
@@ -425,7 +436,9 @@ export default function PassbookPage() {
             setEntryToEdit(null);
             fetchPassbook();
         }}
-        entryToEdit={entryToEdit} 
+        entryToEdit={entryToEdit}
+        members={members}     // ✅ DIFF–2: REQUIRED
+        clientId={clientId}   // ✅ DIFF–2: REQUIRED
       />
       
       {/* CHANGE: Pass members and clientId props to LoanRequestModal */}
