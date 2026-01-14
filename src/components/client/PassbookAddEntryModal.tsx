@@ -123,7 +123,7 @@ export default function PassbookAddEntryModal({
         
         setProjectedLoan(Math.max(0, baseLoan - inst));
         setProjectedDeposit(baseDeposit + dep);
-    } else {
+      } else {
         // Reset if no member
         setCurrentDepositBalance(0);
         setOutstandingLoan(0);
@@ -131,7 +131,7 @@ export default function PassbookAddEntryModal({
           setInterestAmount('');
           setFineAmount('');
         }
-    }
+      }
   }, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
 
   // 4. SUBMIT HANDLER (Updated Logic for Edit)
@@ -309,7 +309,8 @@ export default function PassbookAddEntryModal({
                       <SelectValue placeholder="Search and select a member" />
                     </SelectTrigger>
                     <SelectContent>
-                      {members.map((member) => (
+                      {/* ✅ FIX: Added (members || []) to prevent crash if members is undefined */}
+                      {(members || []).map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name} - {member.phone}
                         </SelectItem>
