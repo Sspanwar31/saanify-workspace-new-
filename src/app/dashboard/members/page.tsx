@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 export default function MembersPage() {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientId, setClientId] = useState('');
+  const [clientId, setClientId] = useState('');  
   
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -41,11 +41,20 @@ export default function MembersPage() {
 
   useEffect(() => {
     const userStr = localStorage.getItem('current_user');
-    if(userStr) {
-       const user = JSON.parse(userStr);
-       setClientId(user.id);
-       fetchMembers(user.id);
+    if (!userStr) return;
+
+    const user = JSON.parse(userStr);
+
+    // ✅ UNIVERSAL CLIENT ID RESOLVER
+    const resolvedClientId = user.client_id ?? user.id;
+
+    if (!resolvedClientId) {
+        console.error('CLIENT ID NOT FOUND', user);
+        return;
     }
+
+    setClientId(resolvedClientId);
+    fetchMembers(resolvedClientId);
   }, []);
 
   // ACTIONS
@@ -135,33 +144,33 @@ export default function MembersPage() {
          <CardContent className="p-0">
            <div className="rounded-md border">
             <Table>
-                <TableHeader className="bg-slate-50">
-                    <TableRow>
-                    <TableHead>Name</TableHead><TableHead>Father Name</TableHead><TableHead>Phone</TableHead>
-                    <TableHead>Join Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {members.map(m => (
-                    <TableRow key={m.id}>
-                        <TableCell className="font-medium">{m.name}</TableCell>
-                        <TableCell>{m.father_name}</TableCell>
-                        <TableCell>{m.phone}</TableCell>
-                        <TableCell>{m.join_date}</TableCell>
-                        <TableCell><Badge variant={m.status === 'active' ? 'default' : 'destructive'}>{m.status}</Badge></TableCell>
-                        <TableCell className="text-right">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal className="w-4 h-4"/></Button></DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => openEdit(m)}><Edit className="w-4 h-4 mr-2"/> Edit</DropdownMenuItem>
-                                    <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(m.id)}><Trash2 className="w-4 h-4 mr-2"/> Delete</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableCell>
-                    </TableRow>
-                    ))}
-                    {members.length === 0 && <TableRow><TableCell colSpan={6} className="text-center p-8 text-slate-500">No members found</TableCell></TableRow>}
-                </TableBody>
+                 <TableHeader className="bg-slate-50">
+                      <TableRow>
+                          <TableHead>Name</TableHead><TableHead>Father Name</TableHead><TableHead>Phone</TableHead>
+                          <TableHead>Join Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {members.map(m => (
+                          <TableRow key={m.id}>
+                              <TableCell className="font-medium">{m.name}</TableCell>
+                              <TableCell>{m.father_name}</TableCell>
+                              <TableCell>{m.phone}</TableCell>
+                              <TableCell>{m.join_date}</TableCell>
+                              <TableCell><Badge variant={m.status === 'active' ? 'default' : 'destructive'}>{m.status}</Badge></TableCell>
+                              <TableCell className="text-right">
+                                  <DropdownMenu>
+                                          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal className="w-4 h-4"/></Button></DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                              <DropdownMenuItem onClick={() => openEdit(m)}><Edit className="w-4 h-4 mr-2"/> Edit</DropdownMenuItem>
+                                              <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(m.id)}><Trash2 className="w-4 h-4 mr-2"/> Delete</DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                  </DropdownMenu>
+                              </TableCell>
+                          </TableRow>
+                      ))}
+                      {members.length === 0 && <TableRow><TableCell colSpan={6} className="text-center p-8 text-slate-500">No members found</TableCell></TableRow>}
+                  </TableBody>
             </Table>
            </div>
          </CardContent>
