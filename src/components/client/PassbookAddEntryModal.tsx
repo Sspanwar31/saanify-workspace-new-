@@ -1,3 +1,9 @@
+useEffect(() => {
+  console.log('PASSBOOK MODAL OPEN');
+  console.log('members received:', members);
+  console.log('members length:', members?.length);
+  console.log('clientId received:', clientId);
+}, [isOpen]);
 'use client';
 
 import React, { useState, useEffect } from 'react';
