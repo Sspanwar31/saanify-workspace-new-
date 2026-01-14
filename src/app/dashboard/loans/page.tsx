@@ -23,12 +23,13 @@ export default function LoansPage() {
 
       // ✅ FIX: Resolve client_id from localStorage (NOT random client)
       const currentUser = JSON.parse(localStorage.getItem('current_user') || 'null')
-      const currentMember = JSON.parse(localStorage.getItem('current_member') || 'null')
 
-      const resolvedClientId = currentMember?.client_id || currentUser?.id
+      // ✅ NEW (SAFE FOR CLIENT + TREASURER)
+      const resolvedClientId =
+        currentUser?.client_id ?? currentUser?.id
 
       if (!resolvedClientId) {
-        console.error('CLIENT ID NOT FOUND');
+        console.error('CLIENT ID NOT FOUND', currentUser)
         setLoading(false)
         return
       }
