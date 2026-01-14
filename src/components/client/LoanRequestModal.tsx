@@ -32,19 +32,26 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
   useEffect(() => {
     if (isOpen) {
       const fetchData = async () => {
-        // ✅ CHANGE #1: Client ID fetch (MAIN BUG) - Logic Updated Here
-        const user = JSON.parse(localStorage.getItem('current_user') || '{}');
-        const cid = user?.id;
-        
-        if (!cid) return;
+        // ✅ CHANGE #1: Client ID fetch (MAIN BUG)
+        const userStr = localStorage.getItem('current_user');
+        if (!userStr) return;
 
-        setClientId(cid);
+        const user = JSON.parse(userStr);
+        const resolvedClientId = user.client_id ?? user.id;
+
+        if (!resolvedClientId) {
+          console.error('CLIENT ID NOT FOUND', user);
+          return;
+        }
+
+        setClientId(resolvedClientId);
 
         // Get Members linked to this client
         const { data: membersData } = await supabase
           .from('members')
           .select('*')
-          .eq('client_id', cid)
+          // ✅ CHANGE #2: Members fetch fix (Use resolvedClientId)
+          .eq('client_id', resolvedClientId)
           .order('name', { ascending: true });
         
         if (membersData) setMembers(membersData);
@@ -61,9 +68,10 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
         const { data: activeLoans } = await supabase
           .from('loans')
           .select('amount, remaining_balance')
+          // ✅ CHANGE #3: Added client_id filter & pending status check
+          .eq('client_id', clientId)          // 🔴 MISSING FILTER
           .eq('member_id', selectedMemberId)
-          .eq('status', 'active')
-          // Fix: Check if balance is actually greater than 0
+          .in('status', ['active', 'pending']) // 🔴 pending bhi check karo
           .gt('remaining_balance', 0); 
       
         if (activeLoans && activeLoans.length > 0) {
