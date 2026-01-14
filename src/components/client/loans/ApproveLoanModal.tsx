@@ -37,26 +37,43 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
         // A. Fetch Loan Request Details
         const { data: loanData, error } = await supabase
           .from('loans')
-          .select('*, members(name, total_deposits, outstanding_loan)')
+          // ✅ DRIF-1: Loan fetch SELECT FIX (MOST IMPORTANT)
+          .select(`
+            *,
+            members (
+              name,
+              total_deposits,
+              outstanding_loan
+            )
+          `)
           .eq('id', requestId)
           .single();
 
         if (loanData && !error) {
-          // Set Request Data
+          // ✅ DRIF-2: Requested amount fallback (BLANK AMOUNT FIX)
+          const requestedAmount =
+            loanData.approved_amount ??
+            loanData.amount ??
+            0;
+
           setRequest({
             id: loanData.id,
             memberId: loanData.member_id,
             clientId: loanData.client_id, // ✅ Client ID for notification
             memberName: loanData.members?.name || 'Unknown',
-            amount: loanData.amount,
+            amount: requestedAmount,
             status: loanData.status
           });
 
           // Set Live Deposit Balance
           setTotalDeposit(loanData.members?.total_deposits || 0);
           
-          // Set Initial Amount
-          setAmount(loanData.amount?.toString() || '0');
+          // ✅ DRIF-3: Input default value fix
+          setAmount(
+            requestedAmount > 0
+              ? requestedAmount.toString()
+              : ''
+          );
           setIsOverride(false);
         }
       };
@@ -67,7 +84,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
   // --- Logic: Limits Calculation ---
   const maxLimit = totalDeposit * 0.8;
   const requestedAmount = request?.amount || 0;
-  const loanAmount = parseFloat(amount) || requestedAmount;
+  const loanAmount = parseFloat(amount) || 0;
 
   // Validation
   const isOverLimit = loanAmount > maxLimit;
@@ -98,9 +115,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
         .eq('id', request.id);
 
       if (loanError) throw loanError;
-
-      // 🛑 REMOVED: Manual Member Update (Kyunki SQL Trigger ye kaam kar raha hai)
-      // Agar hum yahan bhi update karenge to amount double ho jayega.
 
       // 2. Insert Notification for Member
       const { error: notifError } = await supabase.from('notifications').insert([{
@@ -224,12 +238,15 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="text-lg font-semibold"
-                  placeholder="Enter loan amount"
+                  placeholder="Enter amount or leave empty"
                 />
               </div>
               
               <div className="text-sm text-muted-foreground">
-                Requested: {formatCurrency(requestedAmount)}
+                {/* ✅ DRIF-5: Requested Amount display safety */}
+                Requested: {requestedAmount > 0
+                  ? formatCurrency(requestedAmount)
+                  : 'Not specified by member'}
               </div>
             </CardContent>
           </Card>
@@ -308,17 +325,23 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
         {/* Actions */}
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="flex-1"
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!canApprove || isSubmitting || !amount}
-            className="bg-green-600 hover:bg-green-700"
+            // ✅ DRIF-4: Approve button disable logic (BUG)
+            disabled={!canApprove || isSubmitting || loanAmount <= 0}
+            className="flex-1 bg-green-600 hover:bg-green-700"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approving...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Approving...
               </>
             ) : (
               'Approve Loan'
