@@ -1,10 +1,3 @@
-
-
-Thik hai. Maine aapke code mein sirf **CHANGE-1** (Save function logic) aur **CHANGE-2** (Load Permissions Effect) ko apply kiya hai. `DEFAULT_PERMISSIONS` ko delete nahi kiya hai jaisa aapne kaha. Baaki code bilkul same rakhi hai.
-
-Ye raha aapka **Fixed `src/app/dashboard/user-management/page.tsx`** code:
-
-```tsx
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase'; 
@@ -482,4 +475,3 @@ export default function UserManagementPage() {
     </div>
   );
 }
-```
