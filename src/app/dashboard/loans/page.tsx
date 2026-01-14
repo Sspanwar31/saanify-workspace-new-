@@ -12,30 +12,35 @@ export default function LoansPage() {
   const [loans, setLoans] = useState<any[]>([])
   const [loanRequests, setLoanRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // 1️⃣ clientId state
+  const [clientId, setClientId] = useState(''); 
 
+  // 2️⃣ useEffect में SAFE CLIENT ID
   useEffect(() => {
     const fetchLoanData = async () => {
-      setLoading(true)
+      setLoading(true);
 
       // ✅ FIX: Resolve client_id from localStorage (NOT random client)
       const currentUser = JSON.parse(localStorage.getItem('current_user') || 'null')
       const currentMember = JSON.parse(localStorage.getItem('current_member') || 'null')
 
-      const clientId =
-        currentMember?.client_id ||
-        currentUser?.id
+      const resolvedClientId = currentMember?.client_id || currentUser?.id
 
-      if (!clientId) {
-        console.error('Client ID not found')
+      if (!resolvedClientId) {
+        console.error('CLIENT ID NOT FOUND');
         setLoading(false)
         return
       }
 
-      // 1. Fetch Loans
+      // ✅ IMPORTANT: Update State so UI components can use it
+      setClientId(resolvedClientId);
+
+      // 1. Fetch Loans (3️⃣ Fetch में clientId use hua)
       const { data: loansData } = await supabase
         .from('loans')
         .select('*, members(id, name, phone, total_deposits, outstanding_loan)')
-        .eq('client_id', clientId)
+        .eq('client_id', resolvedClientId)
         .order('created_at', { ascending: false })
 
       // 2. Fetch ALL Passbook entries to calculate interest
