@@ -52,7 +52,8 @@ export default function PassbookAddEntryModal({
   const [projectedDeposit, setProjectedDeposit] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
-  const selectedMember = members.find(m => m.id === selectedMemberId);
+  // ✅ FIX: Added optional chaining to prevent crash if members is undefined
+  const selectedMember = members?.find(m => m.id === selectedMemberId);
 
   // ✅ STEP 3: Fetch वाला useEffect हटाओ
   // useEffect(() => { ... }, [isOpen]);
@@ -122,7 +123,7 @@ export default function PassbookAddEntryModal({
         
         setProjectedLoan(Math.max(0, baseLoan - inst));
         setProjectedDeposit(baseDeposit + dep);
-      } else {
+    } else {
         // Reset if no member
         setCurrentDepositBalance(0);
         setOutstandingLoan(0);
@@ -130,7 +131,7 @@ export default function PassbookAddEntryModal({
           setInterestAmount('');
           setFineAmount('');
         }
-      }
+    }
   }, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
 
   // 4. SUBMIT HANDLER (Updated Logic for Edit)
