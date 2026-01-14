@@ -56,16 +56,25 @@ export default function PassbookPage() {
     totalFine: 0
   });
 
-  // --- 1. Fetch Client ID ---
+  // --- 1. Fetch Client ID (REPLACED) ---
+  // ✅ STEP 2: इसकी जगह ये डालो (या पूरा logic हटाओ और नया डालो)
   useEffect(() => {
-    const initData = async () => {
-      const { data: clients } = await supabase.from('clients').select('id').limit(1);
-      if (clients && clients.length > 0) {
-        setClientId(clients[0].id);
-      }
-    };
-    initData();
+    const userStr = localStorage.getItem('current_user');
+    if (!userStr) return;
+
+    const user = JSON.parse(userStr);
+
+    // ✅ SAFE: works for Client + Treasurer
+    const resolvedClientId = user.client_id ?? user.id;
+
+    if (!resolvedClientId) {
+      console.error('CLIENT ID NOT FOUND', user);
+      return;
+    }
+
+    setClientId(resolvedClientId);
   }, []);
+
 
   // --- 2. Fetch Data ---
   useEffect(() => {
@@ -86,6 +95,8 @@ export default function PassbookPage() {
     const { data } = await supabase
       .from('passbook_entries')
       .select('*')
+      // ✅ STEP 3: Added client_id filter
+      .eq('client_id', clientId)
       .order('date', { ascending: false });
 
     if (data) {
@@ -167,7 +178,7 @@ export default function PassbookPage() {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount || 0);
   };
 
-  // --- FILTERS & PAGINATION LOGIC ---
+  // --- FILTERS & PAGINATION LOGIC --- 
   
   // 1. Filter Data
   const filteredEntries = passbook.filter(entry => {
@@ -380,11 +391,11 @@ export default function PassbookPage() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="bg-white min-w-[80px]"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="bg-white min-w-[80px]"
                 >
                   Previous
                 </Button>
@@ -392,11 +403,11 @@ export default function PassbookPage() {
                   Page {currentPage} of {totalPages}
                 </div>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="bg-white min-w-[80px]"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="bg-white min-w-[80px]"
                 >
                   Next
                 </Button>
