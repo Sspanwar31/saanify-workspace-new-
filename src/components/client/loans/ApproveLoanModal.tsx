@@ -65,28 +65,19 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           });
 
           // ✅ DRIF-6: Total Deposit fetch FIX (Passbook Sum Query)
+          // 🔥 Step 2: AFTER loan fetch, add this
           // 🔥 REAL deposit calculation
           const { data: passbookData } = await supabase
             .from('passbook_entries')
-            .select('deposit_amount') // Assuming this is the column for deposit amount. Prompt said 'amount, type' but usually it's 'deposit_amount'
-            // Note: Prompt code used '.select('amount, type')', I will use 'deposit_amount' as it is the standard for this app based on previous context. 
-            // However, to strictly follow the "ADD passbook SUM query" text provided:
-            // const { data: passbookData } = await supabase.from('passbook_entries').select('amount, type').eq('member_id', loanData.member_id);
-            // const totalDeposits = (passbookData || []).filter(e => e.type === 'deposit').reduce((sum, e) => sum + Number(e.amount || 0), 0);
-            
-            // Let's implement strictly what was asked in "DRIF-6" using 'deposit_amount' for accuracy, 
-            // but if 'type' column exists, I will use the filter. Assuming standard schema:
-            const { data: passbookData } = await supabase
-              .from('passbook_entries')
-              .select('deposit_amount, type') // Using specific columns as per instruction
-              .eq('member_id', loanData.member_id);
+            .select('deposit_amount, type')
+            .eq('member_id', loanData.member_id);
 
-            // Calculate total deposits (using type filter as per instruction)
-            const totalDeposits = (passbookData || [])
-              .filter(e => e.type === 'deposit')
-              .reduce((sum, e) => sum + Number(e.deposit_amount || 0), 0);
+          // Calculate total deposits
+          const totalDeposits = (passbookData || [])
+            .filter(e => e.type === 'deposit')
+            .reduce((sum, e) => sum + Number(e.deposit_amount || 0), 0);
 
-            setTotalDeposit(totalDeposits);
+          setTotalDeposit(totalDeposits);
           
           // ✅ DRIF-3: Input default value fix
           setAmount(
@@ -258,12 +249,12 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="text-lg font-semibold"
-                  placeholder="Enter loan amount"
+                  placeholder="Enter amount or leave empty"
                 />
               </div>
               
-              {/* ✅ DRIF-5: Requested Amount display safety */}
               <div className="text-sm text-muted-foreground">
+                {/* ✅ DRIF-5: Requested Amount display safety */}
                 Requested: {requestedAmount > 0
                   ? formatCurrency(requestedAmount)
                   : 'Not specified by member'}
@@ -345,7 +336,11 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
         {/* Actions */}
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button
@@ -356,7 +351,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           >
             {isSubmitting ? (
               <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approving...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Approving...
               </>
             ) : (
               'Approve Loan'
