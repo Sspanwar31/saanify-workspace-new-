@@ -1,9 +1,3 @@
-useEffect(() => {
-  console.log('PASSBOOK MODAL OPEN');
-  console.log('members received:', members);
-  console.log('members length:', members?.length);
-  console.log('clientId received:', clientId);
-}, [isOpen]);
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -58,11 +52,17 @@ export default function PassbookAddEntryModal({
   const [projectedDeposit, setProjectedDeposit] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
-  // ✅ FIX: Added optional chaining to prevent crash if members is undefined
   const selectedMember = members?.find(m => m.id === selectedMemberId);
 
-  // ✅ STEP 3: Fetch वाला useEffect हटाओ
-  // useEffect(() => { ... }, [isOpen]);
+  // ✅ DIFF–5 (DEBUG only)
+  useEffect(() => {
+    if (isOpen) {
+      console.log('PASSBOOK MODAL OPEN');
+      console.log('members received:', members);
+      console.log('members length:', members?.length);
+      console.log('clientId received:', clientId);
+    }
+  }, [isOpen]);
 
   // 2. Populate Edit Logic
   useEffect(() => {
