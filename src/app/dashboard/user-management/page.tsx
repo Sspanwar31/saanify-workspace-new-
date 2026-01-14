@@ -1,3 +1,10 @@
+
+
+Thik hai. Maine aapke code mein sirf **CHANGE-1** (Save function logic) aur **CHANGE-2** (Load Permissions Effect) ko apply kiya hai. `DEFAULT_PERMISSIONS` ko delete nahi kiya hai jaisa aapne kaha. Baaki code bilkul same rakhi hai.
+
+Ye raha aapka **Fixed `src/app/dashboard/user-management/page.tsx`** code:
+
+```tsx
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase'; 
@@ -30,7 +37,7 @@ const PERMISSION_CATEGORIES = [
   { name: 'Security Permissions', items: ['View Activity Logs', 'Manage Roles', 'Ghost Mode'] }
 ];
 
-// ✅ PROBLEM-1 FIX: Removed client_admin from defaults
+// ✅ CHANGE-3: Kept DEFAULT_PERMISSIONS (Fallback logic)
 const DEFAULT_PERMISSIONS = {
   treasurer: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'Manage Finance', 'Manage Expenses', 'Manage Passbook'],
   member: ['View Dashboard']
@@ -111,6 +118,28 @@ export default function UserManagementPage() {
       setLoading(false);
     };
     fetchData();
+  }, [clientId]);
+
+  // ✅ CHANGE 2: Load Permissions Effect
+  useEffect(() => {
+    if (!clientId) return;
+
+    const loadPermissions = async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('role_permissions')
+        .eq('id', clientId)
+        .single();
+
+      if (!error && data?.role_permissions) {
+        setRoleConfig((prev: any) => ({
+          ...prev,
+          ...data.role_permissions
+        }));
+      }
+    };
+
+    loadPermissions();
   }, [clientId]);
 
   const stats = useMemo(() => {
@@ -237,7 +266,34 @@ export default function UserManagementPage() {
     });
   };
 
-  const savePermissions = async () => { setIsEditingRoles(false); await logActivity('Permissions Update', 'Updated role permissions matrix'); toast.success("Permissions updated successfully!"); };
+  // ✅ CHANGE 1: Save button logic (MAIN FIX)
+  const savePermissions = async () => {
+    if (!clientId) return;
+
+    try {
+      const res = await fetch('/api/roles/update-permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          role: 'treasurer',
+          permissions: roleConfig.treasurer
+        })
+      });
+
+      if (!res.ok) throw new Error('Permission save failed');
+
+      await logActivity(
+        'Permissions Update',
+        'Updated role permissions matrix'
+      );
+
+      toast.success("Permissions updated successfully");
+      setIsEditingRoles(false);
+    } catch (err) {
+      toast.error("Failed to save permissions");
+    }
+  };
 
   const getRoleBadgeColor = (role: string) => {
     switch(role) { case 'client_admin': return 'bg-purple-100 text-purple-800'; case 'treasurer': return 'bg-green-100 text-green-800'; default: return 'bg-blue-100 text-blue-800'; }
@@ -360,7 +416,7 @@ export default function UserManagementPage() {
             <div className="flex gap-3">{isEditingRoles ? <><Button variant="outline" onClick={() => setIsEditingRoles(false)} className="text-red-600 border-red-200 bg-red-50 hover:bg-red-100"><X className="h-4 w-4 mr-2"/> Cancel</Button><Button onClick={savePermissions} className="bg-green-600 text-white hover:bg-green-700 shadow-md"><Save className="h-4 w-4 mr-2"/> Save Changes</Button></> : <Button onClick={() => setIsEditingRoles(true)} className="bg-blue-600 text-white hover:bg-blue-700 shadow-md"><Edit className="h-4 w-4 mr-2"/> Edit Permissions</Button>}</div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {['treasurer', 'member'].map(role => ( // ✅ PROBLEM-1 FIX: Removed client_admin from mapping
+            {['treasurer', 'member'].map(role => (
               <Card key={role} className={`border-t-4 ${role === 'treasurer' ? 'border-t-green-600' : 'border-t-blue-600'}`}>
                 <CardHeader className="pb-2"><div className="flex justify-between items-start"><Badge className={getRoleBadgeColor(role)}>{role.replace('_', ' ').toUpperCase()}</Badge><span className="text-xs font-bold text-gray-400">{roleConfig[role].length} total</span></div></CardHeader>
                 <CardContent><div className="space-y-2 text-sm"><div className="flex justify-between"><span>General</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[0].items)}/7</span></div><div className="flex justify-between"><span>Financial</span><span className="font-medium">{getPermissionCount(role, PERMISSION_CATEGORIES[2].items)}/6</span></div></div></CardContent>
@@ -426,3 +482,4 @@ export default function UserManagementPage() {
     </div>
   );
 }
+```
