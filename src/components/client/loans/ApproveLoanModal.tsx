@@ -35,7 +35,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
     if (isOpen && requestId) {
       const fetchData = async () => {
         // A. Fetch Loan Request Details
-        // ✅ DRIF-1: Loan Fetch (BLANK MODAL FIX)
+        // ✅ DRIF-1: Loan Fetch (SELECT FIX)
         const { data: loanData, error } = await supabase
           .from('loans')
           .select(`
@@ -49,10 +49,11 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           .single();
 
         if (loanData && !error) {
-          // ✅ DRIF-2: Requested Amount Fallback (BLANK AMOUNT FIX)
+          // ✅ DRIF-D: Requested Amount ₹0 issue (requested_amount fallback)
           const requestedAmount =
-            loanData.approved_amount ??
-            loanData.amount ??
+            Number(loanData.approved_amount) ||
+            Number(loanData.amount) ||
+            Number(loanData.requested_amount) || // ✅ ADD THIS
             0;
 
           setRequest({
@@ -64,22 +65,24 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             status: loanData.status
           });
 
-          // ✅ DRIF-3: Total Deposit Calculation (MAIN BLANK ISSUE)
+          // ✅ DRIF-2: Total Deposit Calculation (Passbook Query)
           // 🔥 REAL deposit calculation
           const { data: passbookData } = await supabase
             .from('passbook_entries')
-            .select('deposit_amount, type') // Select 'type' to filter correctly
-            .eq('member_id', loanData.member_id)
-            .eq('client_id', loanData.client_id); // Safety filter
+            .select('deposit_amount, type')
+            .eq('member_id', loanData.member_id);
 
-          // Calculate total deposits
+          // ✅ DRIF-B: Log Raw Data
+          console.log('PASSBOOK RAW', passbookData);
+
+          // ✅ DRIF-C: DEPOSIT TYPE CONFIRMATION (Filter change to 'credit')
           const totalDeposits = (passbookData || [])
-            .filter(e => e.type === 'deposit')
+            .filter(e => e.type === 'credit') // Changed from 'deposit' to 'credit'
             .reduce((sum, e) => sum + Number(e.deposit_amount || 0), 0);
 
           setTotalDeposit(totalDeposits);
           
-          // ✅ DRIF-3 (Input Default): Auto-fill only if requested amount exists
+          // Auto-fill Amount
           setAmount(
             requestedAmount > 0
               ? requestedAmount.toString()
@@ -95,7 +98,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
   // --- Logic: Limits Calculation ---
   const maxLimit = totalDeposit * 0.8;
   const requestedAmount = request?.amount || 0;
-  const loanAmount = parseFloat(amount) || requestedAmount; // Fallback to requestedAmount if input empty
+  const loanAmount = parseFloat(amount) || 0;
 
   // Validation
   const isOverLimit = loanAmount > maxLimit;
@@ -110,7 +113,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
       const approvedAmount = loanAmount;
       const today = new Date().toISOString();
 
-      // 1. Update Loan Status (✅ DRIF-6: Loan Update)
+      // 1. Update Loan Status
       const { error: loanError } = await supabase
         .from('loans')
         .update({
@@ -334,17 +337,12 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
         {/* Actions */}
         <div className="flex justify-end gap-3 mt-6">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1"
-            disabled={isSubmitting}
-          >
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="flex-1">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            // ✅ DRIF-4: 80% Logic + Approve Button Enable
+            // ✅ DRIF-4: Approve button disable logic
             disabled={!canApprove || isSubmitting || loanAmount <= 0}
             className="bg-green-600 hover:bg-green-700 flex-1"
           >
