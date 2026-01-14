@@ -32,7 +32,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
   useEffect(() => {
     if (isOpen) {
       const fetchData = async () => {
-        // ✅ CHANGE #1: Client ID fetch (MAIN BUG)
+        // ✅ CHANGE #1: Client ID fetch (MAIN BUG) - Logic Updated Here
         const userStr = localStorage.getItem('current_user');
         if (!userStr) return;
 
@@ -50,7 +50,6 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
         const { data: membersData } = await supabase
           .from('members')
           .select('*')
-          // ✅ CHANGE #2: Members fetch fix (Use resolvedClientId)
           .eq('client_id', resolvedClientId)
           .order('name', { ascending: true });
         
@@ -108,26 +107,36 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
     try {
       const amountVal = loanAmount ? parseFloat(loanAmount) : 0;
       
-      // Calculations (Kept your exact logic)
+      // ✅ DIFF–4: Pending loan guard (IMPORTANT)
+      const { data: activeLoans } = await supabase
+        .from('loans')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('member_id', selectedMemberId)
+        .in('status', ['active', 'pending']);
+
+      if (activeLoans && activeLoans.length > 0) {
+        alert('This member already has an active or pending loan.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Calculations (Frontend Safe - Kept for logic but NOT inserted)
       const interestRate = 12;
       const tenure = 12;
       const startDate = new Date().toISOString().split('T')[0];
       const maturityDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const emiAmount = amountVal ? (amountVal * 1.12) / 12 : 0;
 
+      // ✅ DIFF–5: Loan insert (SAFE MINIMUM)
       // Insert into Supabase
       const { error } = await supabase.from('loans').insert([{
         client_id: clientId,
         member_id: selectedMemberId,
         amount: amountVal,
-        status: 'pending', // Default status
+        status: 'pending',
         start_date: startDate,
-        
-        // Optional Fields (Supabase columns need to exist for these)
-        // If your DB doesn't have these columns, comment them out
-        // interest_rate: interestRate,
-        // end_date: maturityDate,
-        // purpose: 'Loan request via super client' 
+        remaining_balance: amountVal
       }]);
 
       if (!error) {
@@ -224,7 +233,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
                 <div><strong>Phone:</strong> {selectedMember.phone}</div>
                 {/* <div><strong>Join Date:</strong> {selectedMember.join_date}</div> */}
                 <div><strong>Status:</strong> 
-                  <span className={`ml-2 px-2 py-1 rounded-full text-xs bg-green-100 text-green-800`}>
+                  <span className="ml-2 px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
                     Active
                   </span>
                 </div>
