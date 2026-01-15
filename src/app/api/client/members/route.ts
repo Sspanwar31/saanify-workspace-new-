@@ -52,7 +52,7 @@ export async function PUT(req: Request) {
   }
 }
 
-// DELETE: Remove Member & All Related Data
+// DELETE: Remove Member (SAFE)
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -64,38 +64,40 @@ export async function DELETE(req: Request) {
 
     const supabase = getAdminClient();
 
-    // 1️⃣ Get auth user id
-    const { data: member, error: memberErr } = await supabase
+    // 1️⃣ Get auth user id (DO NOT FAIL API if not found)
+    const { data: member } = await supabase
       .from('members')
       .select('auth_user_id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
-    if (memberErr) throw memberErr;
-
-    // 2️⃣ Delete passbook entries
+    // 2️⃣ Delete passbook entries (SAFE)
     await supabase
       .from('passbook_entries')
       .delete()
       .eq('member_id', id);
 
-    // 3️⃣ Delete loans
+    // 3️⃣ Delete loans (SAFE)
     await supabase
       .from('loans')
       .delete()
       .eq('member_id', id);
 
-    // 4️⃣ Delete member
-    const { error } = await supabase
+    // 4️⃣ Delete member (MAIN)
+    const { error: memberDeleteError } = await supabase
       .from('members')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (memberDeleteError) throw memberDeleteError;
 
-    // 5️⃣ Delete auth user
+    // 5️⃣ Delete auth user (OPTIONAL – NEVER FAIL API)
     if (member?.auth_user_id) {
-      await supabase.auth.admin.deleteUser(member.auth_user_id);
+      try {
+        await supabase.auth.admin.deleteUser(member.auth_user_id);
+      } catch (authErr) {
+        console.warn('Auth delete skipped:', authErr);
+      }
     }
 
     return NextResponse.json({ success: true });
