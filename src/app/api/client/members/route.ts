@@ -52,30 +52,56 @@ export async function PUT(req: Request) {
   }
 }
 
-// DELETE: Remove Member & Auth User
+// DELETE: Remove Member & All Related Data
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
-    
-    if (!id) return NextResponse.json({ error: "Member ID required" }, { status: 400 });
+
+    if (!id) {
+      return NextResponse.json({ error: "Member ID required" }, { status: 400 });
+    }
 
     const supabase = getAdminClient();
 
-    // 1. Get Auth ID before deleting
-    const { data: member } = await supabase.from('members').select('auth_user_id').eq('id', id).single();
+    // 1️⃣ Get auth user id
+    const { data: member, error: memberErr } = await supabase
+      .from('members')
+      .select('auth_user_id')
+      .eq('id', id)
+      .single();
 
-    // 2. Delete from DB
-    const { error } = await supabase.from('members').delete().eq('id', id);
+    if (memberErr) throw memberErr;
+
+    // 2️⃣ Delete passbook entries
+    await supabase
+      .from('passbook_entries')
+      .delete()
+      .eq('member_id', id);
+
+    // 3️⃣ Delete loans
+    await supabase
+      .from('loans')
+      .delete()
+      .eq('member_id', id);
+
+    // 4️⃣ Delete member
+    const { error } = await supabase
+      .from('members')
+      .delete()
+      .eq('id', id);
+
     if (error) throw error;
 
-    // 3. Delete from Auth (Cleanup)
+    // 5️⃣ Delete auth user
     if (member?.auth_user_id) {
-        await supabase.auth.admin.deleteUser(member.auth_user_id);
+      await supabase.auth.admin.deleteUser(member.auth_user_id);
     }
 
     return NextResponse.json({ success: true });
+
   } catch (error: any) {
+    console.error('DELETE MEMBER ERROR:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
