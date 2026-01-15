@@ -52,7 +52,7 @@ export async function PUT(req: Request) {
   }
 }
 
-// DELETE: Remove Member (SAFE)
+// DELETE: Remove Member & All Related Data (FIXED)
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -64,26 +64,28 @@ export async function DELETE(req: Request) {
 
     const supabase = getAdminClient();
 
-    // 1️⃣ Get auth user id (DO NOT FAIL API if not found)
+    // 1️⃣ Get auth user id (Safe Check)
     const { data: member } = await supabase
       .from('members')
       .select('auth_user_id')
       .eq('id', id)
       .maybeSingle();
 
-    // 2️⃣ Delete passbook entries (SAFE)
-    await supabase
-      .from('passbook_entries')
-      .delete()
-      .eq('member_id', id);
+    // 2️⃣ Delete Related Data (Foreign Key Constraints Fix)
+    
+    // Notifications (Ye missing tha)
+    await supabase.from('notifications').delete().eq('member_id', id);
 
-    // 3️⃣ Delete loans (SAFE)
-    await supabase
-      .from('loans')
-      .delete()
-      .eq('member_id', id);
+    // Passbook
+    await supabase.from('passbook_entries').delete().eq('member_id', id);
 
-    // 4️⃣ Delete member (MAIN)
+    // Loans
+    await supabase.from('loans').delete().eq('member_id', id);
+
+    // Expenses (Agar linked hai)
+    await supabase.from('expenses_ledger').delete().eq('member_id', id);
+
+    // 3️⃣ Delete Member (Main)
     const { error: memberDeleteError } = await supabase
       .from('members')
       .delete()
@@ -91,7 +93,7 @@ export async function DELETE(req: Request) {
 
     if (memberDeleteError) throw memberDeleteError;
 
-    // 5️⃣ Delete auth user (OPTIONAL – NEVER FAIL API)
+    // 4️⃣ Delete Auth User (Cleanup)
     if (member?.auth_user_id) {
       try {
         await supabase.auth.admin.deleteUser(member.auth_user_id);
