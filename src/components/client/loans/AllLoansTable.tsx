@@ -60,10 +60,9 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
       acc[key].totalAmountTaken += amount;
       acc[key].totalCurrentBalance += balance;
       
-      // 🛑 FIX: Interest ko yahan wapas nahi jodna hai.
+      // 🛑 FIX (Diff-2 Verified): Interest ko yahan wapas nahi jodna hai.
       // Kyunki backend se jo value aa rahi hai wo already 'Total' hai ya distributed hai.
-      // Agar distributed hai to hook sambhal lega, agar total hai to ye logic rok dega.
-      // acc[key].totalInterestPaid += interestCollected; <--- REMOVED THIS LINE
+      // acc[key].totalInterestPaid += interestCollected; <--- REMOVED THIS LINE (NOT PRESENT)
       
       // Date Logic
       const currentStart = new Date(acc[key].startDate);
@@ -87,7 +86,8 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
               <TableHead>Total Loan Taken</TableHead>
               <TableHead>Current Outstanding</TableHead>
               <TableHead>Interest (1%)</TableHead>
-              <TableHead>Total Interest Earned</TableHead>
+              {/* ✅ DIFF-1: Label Updated */}
+              <TableHead>Interest Collected Till Date</TableHead>
               <TableHead>Start Date</TableHead>
               <TableHead>Next EMI</TableHead>
               <TableHead>Status</TableHead>
