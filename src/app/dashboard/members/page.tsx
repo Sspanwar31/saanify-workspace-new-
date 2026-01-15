@@ -135,7 +135,26 @@ export default function MembersPage() {
           <div><h1 className="text-2xl font-bold">Members Ledger</h1><p className="text-gray-500">Manage society members</p></div>
           <div className="flex gap-2">
              <Button variant="outline" onClick={() => fetchMembers(clientId)}><RefreshCcw className="w-4 h-4 mr-2"/> Refresh</Button>
-             <Button onClick={() => {setEditingId(null); setIsDialogOpen(true);}} className="bg-orange-500 hover:bg-orange-600"><Plus className="w-4 h-4 mr-2"/> Add New Member</Button>
+             
+             {/* ✅ FIXED (IMPORTANT): Button onClick logic updated */}
+             <Button
+              onClick={() => {
+                setEditingId(null);
+                setFormData({
+                  name: '',
+                  father_name: '',
+                  phone: '',
+                  email: '',
+                  address: '',
+                  join_date: new Date().toISOString().split('T')[0],
+                  status: 'active'
+                });
+                setIsDialogOpen(true);
+              }}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              <Plus className="w-4 h-4 mr-2"/> Add New Member
+            </Button>
           </div>
        </div>
 
