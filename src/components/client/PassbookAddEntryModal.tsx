@@ -91,11 +91,15 @@ export default function PassbookAddEntryModal({
   useEffect(() => {
       if (selectedMember) {
         const depositBalance = Number(selectedMember.total_deposits || 0);
-        // ✅ DIFF–3: outstanding_loan से active_loan_balance में change kiya
-        const outstanding = Number(selectedMember.active_loan_balance || 0);
+        
+        // ✅ DIFF-2: selectedMember se active loan nikalo (MANDATORY)
+        const activeLoan = selectedMember.loans?.find(
+          (l: any) => l.status === 'active'
+        );
+        const outstanding = Number(activeLoan?.remaining_balance || 0);
         
         let baseDeposit = depositBalance;
-        let baseLoan = outstanding;
+        let baseLoan = outstanding; // ✅ DIFF-3: Correct
 
         if (entryToEdit) {
             baseDeposit -= Number(entryToEdit.deposit_amount || 0);
@@ -180,19 +184,19 @@ export default function PassbookAddEntryModal({
             if (updateError) throw updateError;
 
             // 3. Update Member Balance
+            // ✅ DIFF-4: ❌ members.outstanding_loan UPDATE हटाओ (IMPORTANT)
             const { data: currentMember } = await supabase
                 .from('members')
-                .select('outstanding_loan, total_deposits')
+                .select('total_deposits') // Removed outstanding_loan from select
                 .eq('id', selectedMemberId)
                 .single();
 
             if (currentMember) {
-                const newLoanBal = Number(currentMember.outstanding_loan) - installmentDiff;
                 const newDepositTotal = Number(currentMember.total_deposits) + depositDiff;
 
                 await supabase.from('members').update({
-                    outstanding_loan: newLoanBal,
                     total_deposits: newDepositTotal
+                    // outstanding_loan: ... REMOVED
                 }).eq('id', selectedMemberId);
                 
                 // 4. Update Loan Table (If Installment Changed)
@@ -246,13 +250,18 @@ export default function PassbookAddEntryModal({
             if (insertError) throw insertError;
 
             if (newDepAmt > 0 || newInstAmt > 0) {
-                const { data: memData } = await supabase.from('members').select('outstanding_loan, total_deposits').eq('id', selectedMemberId).single();
+                // ✅ DIFF-5: CREATE MODE — members loan update REMOVE
+                const { data: memData } = await supabase.from('members').select('total_deposits').eq('id', selectedMemberId).single();
                 if(memData) {
-                    const newLoanBal = (memData.outstanding_loan || 0) - newInstAmt;
+                    // const newLoanBal = ... REMOVED
                     const newDepositTotal = (memData.total_deposits || 0) + newDepAmt;
-                    await supabase.from('members').update({ outstanding_loan: newLoanBal, total_deposits: newDepositTotal }).eq('id', selectedMemberId);
                     
-                    // Deduct from Loan Table
+                    await supabase.from('members').update({
+                        total_deposits: newDepositTotal
+                        // outstanding_loan: ... REMOVED
+                    }).eq('id', selectedMemberId);
+                    
+                    // Deduct from Loan Table (Loop remains correct)
                     if(newInstAmt > 0) {
                         const { data: activeLoans } = await supabase.from('loans').select('*').eq('member_id', selectedMemberId).eq('status', 'active').gt('remaining_balance', 0).order('created_at', { ascending: true });
                         let amtLeft = newInstAmt;
