@@ -35,7 +35,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
     if (isOpen && requestId) {
       const fetchData = async () => {
         // A. Fetch Loan Request Details
-        // ✅ DRIF-1: Loan Fetch (SELECT FIX)
         const { data: loanData, error } = await supabase
           .from('loans')
           .select(`
@@ -49,11 +48,11 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           .single();
 
         if (loanData && !error) {
-          // ✅ DRIF-D: Requested Amount ₹0 issue (requested_amount fallback)
+          // Logic for requested amount fallback
           const requestedAmount =
             Number(loanData.approved_amount) ||
             Number(loanData.amount) ||
-            Number(loanData.requested_amount) || // ✅ ADD THIS
+            Number(loanData.requested_amount) || 
             0;
 
           setRequest({
@@ -65,22 +64,27 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             status: loanData.status
           });
 
-          // ✅ DRIF-2: Total Deposit Calculation (Passbook Query)
-          // 🔥 REAL deposit calculation
-          const { data: passbookData } = await supabase
+          // ✅ FIX 1: Column Name Change ('deposit_amount' -> 'amount')
+          // ✅ FIX 2: Added client_id filter for security and to ensure query works
+          const { data: passbookData, error: passbookError } = await supabase
             .from('passbook_entries')
-            .select('deposit_amount, type')
-            .eq('member_id', loanData.member_id);
+            .select('amount, type') // ✅ CHECK: Is column name 'amount' in your DB?
+            .eq('member_id', loanData.member_id)
+            .eq('client_id', loanData.client_id); // ✅ Added Client Filter
 
-          // ✅ DRIF-B: Log Raw Data
-          console.log('PASSBOOK RAW', passbookData);
+          if (passbookError) {
+            console.error("PASSBOOK ERROR:", passbookError); // Log error to check column names
+            // toast.error("Failed to fetch deposit details"); // Optional: Show toast to user
+          } else {
+            console.log('PASSBOOK RAW', passbookData);
 
-          // ✅ DRIF-C: DEPOSIT TYPE CONFIRMATION (Filter change to 'credit')
-          const totalDeposits = (passbookData || [])
-            .filter(e => e.type === 'credit') // Changed from 'deposit' to 'credit'
-            .reduce((sum, e) => sum + Number(e.deposit_amount || 0), 0);
+            // ✅ FIX 3: Updated reducer to use 'amount'
+            const totalDeposits = (passbookData || [])
+              .filter(e => e.type === 'credit')
+              .reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
-          setTotalDeposit(totalDeposits);
+            setTotalDeposit(totalDeposits);
+          }
           
           // Auto-fill Amount
           setAmount(
@@ -190,9 +194,13 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             <CardContent>
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={`/avatars/${request.memberId}.jpg`} />
+                  {/* ✅ FIX 4: Added onLoadingError to prevent 404 console spam for missing avatars */}
+                  <AvatarImage 
+                    src={`/avatars/${request.memberId}.jpg`} 
+                    onLoadingError={(e) => e.currentTarget.style.display = 'none'}
+                  />
                   <AvatarFallback className="bg-blue-100 text-blue-800 text-lg font-semibold">
-                    {request.memberName.split(' ').map((n: string) => n[0]).join('')}
+                    {request.memberName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -255,7 +263,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
               </div>
               
               <div className="text-sm text-muted-foreground">
-                {/* ✅ DRIF-5: Requested Amount UI Safety */}
                 Requested: {requestedAmount > 0
                   ? formatCurrency(requestedAmount)
                   : 'Not specified by member'}
@@ -342,7 +349,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           </Button>
           <Button
             onClick={handleSubmit}
-            // ✅ DRIF-4: Approve button disable logic
             disabled={!canApprove || isSubmitting || loanAmount <= 0}
             className="bg-green-600 hover:bg-green-700 flex-1"
           >
