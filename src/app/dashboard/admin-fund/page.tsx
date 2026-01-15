@@ -51,10 +51,10 @@ export default function AdminFundPage() {
   // 1. Fetch Client ID & Initial Data
   useEffect(() => {
     const initData = async () => {
-      // ✅ FIX #1: Client ID Fetch (MAIN BUG) - Logic Updated Here
-      const member = JSON.parse(localStorage.getItem('current_member') || 'null')
-      if (member?.client_id) {
-        setClientId(member.client_id)
+      // ✅ FIX #1: Client ID Fetch (ADMIN CONTEXT)
+      const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
+      if (admin?.id) {
+        setClientId(admin.id)
       }
     }
     initData()
@@ -68,88 +68,93 @@ export default function AdminFundPage() {
 
   // 2. Fetch Admin Fund Ledger & Calculate Summaries
   const fetchAdminFundData = async () => {
+    // ✅ FIX #2: Wrap in try/catch/finally to ensure loading stops
     setLoading(true)
-    if (!clientId) {
+    
+    try {
+      if (!clientId) {
+        return;
+      }
+
+      // A. Fetch Ledger (Admin Transactions)
+      // ✅ FIX #4: Order by date (ascending: false) instead of created_at
+      const { data: ledger, error: ledgerError } = await supabase
+        .from('admin_fund_ledger')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('date', { ascending: false })
+
+      if (ledgerError) throw ledgerError;
+
+      // ✅ FIX #3: Removed the intermediate setAdminFundLedger call
+      // setAdminFundLedger(ledger || []); <--- REMOVED
+
+      // Calculate Admin Fund Summary & Running Balance
+      let currentRunningBalance = 0;
+      let totalInjected = 0;
+      let totalWithdrawn = 0;
+
+      // Note: We sort by created_at specifically for running balance calculation accuracy
+      const sortedLedger = (ledger || []).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      
+      const processedLedger = sortedLedger.map((transaction: any) => {
+          if (transaction.type === 'INJECT') {
+              currentRunningBalance += Number(transaction.amount);
+              totalInjected += Number(transaction.amount);
+          } else if (transaction.type === 'WITHDRAW') {
+              currentRunningBalance -= Number(transaction.amount);
+              totalWithdrawn += Number(transaction.amount);
+          }
+          return { ...transaction, runningBalance: currentRunningBalance };
+      });
+
+      // Only set the processed data (reverse for display)
+      setAdminFundLedger(processedLedger.reverse());
+
+      setSummary({
+        netBalance: currentRunningBalance, 
+        totalInjected: totalInjected,
+        totalWithdrawn: totalWithdrawn
+      });
+      setCashInHand(currentRunningBalance); 
+
+      // B. Calculate Society's Total Cash (Passbook + Admin Fund - Loans)
+      
+      // 1. Get Passbook Total (Inflow)
+      const { data: passbookEntries } = await supabase
+        .from('passbook_entries')
+        .select('deposit_amount, installment_amount, interest_amount, fine_amount')
+        .eq('client_id', clientId);
+      
+      let totalPassbookCollection = 0;
+      if (passbookEntries) {
+          totalPassbookCollection = passbookEntries.reduce((sum, entry) => 
+              sum + (Number(entry.deposit_amount)||0) + (Number(entry.installment_amount)||0) + (Number(entry.interest_amount)||0) + (Number(entry.fine_amount)||0)
+          , 0);
+      }
+
+      // 2. Get Total Loans Disbursed (Outflow)
+      const { data: loans } = await supabase
+          .from('loans')
+          .select('amount')
+          .in('status', ['active', 'completed', 'approved']) 
+          .eq('client_id', clientId); 
+
+      let totalLoansDisbursed = 0;
+      if (loans) {
+          totalLoansDisbursed = loans.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0);
+      }
+
+      // 3. Final Calculation
+      const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
+      setSocietyCashInHand(finalSocietyCash); 
+
+    } catch (error) {
+      console.error("Error fetching admin fund data:", error);
+    } finally {
+      // ✅ FIX #2: Ensure loading turns off in all cases
       setLoading(false);
-      return;
     }
-
-    // A. Fetch Ledger (Admin Transactions)
-    const { data: ledger, error: ledgerError } = await supabase
-      .from('admin_fund_ledger')
-      .select('*')
-      .eq('client_id', clientId)
-      .order('created_at', { ascending: false })
-
-    if (ledgerError) {
-      console.error("Error fetching admin fund ledger:", ledgerError);
-      setLoading(false);
-      return;
-    }
-    setAdminFundLedger(ledger || []);
-
-  // Calculate Admin Fund Summary & Running Balance
-    let currentRunningBalance = 0;
-    let totalInjected = 0;
-    let totalWithdrawn = 0;
-
-    const sortedLedger = (ledger || []).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    const processedLedger = sortedLedger.map((transaction: any) => {
-        if (transaction.type === 'INJECT') {
-            currentRunningBalance += Number(transaction.amount);
-            totalInjected += Number(transaction.amount);
-        } else if (transaction.type === 'WITHDRAW') {
-            currentRunningBalance -= Number(transaction.amount);
-            totalWithdrawn += Number(transaction.amount);
-        }
-        return { ...transaction, runningBalance: currentRunningBalance };
-    });
-    setAdminFundLedger(processedLedger.reverse());
-
-    setSummary({
-      netBalance: currentRunningBalance, 
-      totalInjected: totalInjected,
-      totalWithdrawn: totalWithdrawn
-    });
-    setCashInHand(currentRunningBalance); 
-
-    // B. Calculate Society's Total Cash (Passbook + Admin Fund - Loans)
-    
-    // 1. Get Passbook Total (Inflow)
-    const { data: passbookEntries } = await supabase
-      .from('passbook_entries')
-      .select('deposit_amount, installment_amount, interest_amount, fine_amount')
-      .eq('client_id', clientId); // ✅ ADDED: Added client_id filter to ensure correct passbook data
-    
-    let totalPassbookCollection = 0;
-    if (passbookEntries) {
-        totalPassbookCollection = passbookEntries.reduce((sum, entry) => 
-            sum + (Number(entry.deposit_amount)||0) + (Number(entry.installment_amount)||0) + (Number(entry.interest_amount)||0) + (Number(entry.fine_amount)||0)
-        , 0);
-    }
-
-    // 2. Get Total Loans Disbursed (Outflow)
-    const { data: loans } = await supabase
-        .from('loans')
-        .select('amount')
-        .in('status', ['active', 'completed', 'approved']) // Only count money that actually left
-        .eq('client_id', clientId); // ✅ ADDED: Added client_id filter
-
-    let totalLoansDisbursed = 0;
-    if (loans) {
-        totalLoansDisbursed = loans.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0);
-    }
-
-    // 3. Final Calculation
-    // Logic: (Passbook Collection) + (Admin Net Injection) - (Loan Out)
-    // Note: Admin Net Balance is already (Injected - Withdrawn), so it represents cash admin holds or put into society
-    // If Admin 'Injects', it adds to society cash. If 'Withdraws', it removes.
-    // So: Society Cash = (Passbook In) + (Admin Net Balance) - (Loan Out)
-    
-    const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
-    setSocietyCashInHand(finalSocietyCash); 
-
-    setLoading(false);
   }
 
 
