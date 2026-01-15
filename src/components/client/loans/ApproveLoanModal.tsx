@@ -128,6 +128,16 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
       if (loanError) throw loanError;
 
+      // ✅ DRIFT: UPDATE MEMBER OUTSTANDING LOAN (MANDATORY)
+      const { error: memberError } = await supabase
+        .from('members')
+        .update({
+          outstanding_loan: approvedAmount
+        })
+        .eq('id', request.memberId);
+
+      if (memberError) throw memberError;
+
       // 2. Insert Notification for Member
       const { error: notifError } = await supabase.from('notifications').insert([{
           client_id: request.clientId,
