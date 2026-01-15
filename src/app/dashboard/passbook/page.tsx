@@ -88,7 +88,14 @@ export default function PassbookPage() {
   const fetchMembers = async () => {
     const { data, error } = await supabase
       .from('members')
-      .select('*')
+      .select(`
+        *,
+        loans (
+          id,
+          remaining_balance,
+          status
+        )
+      `)
       .eq('client_id', clientId)
       .order('name');
 
@@ -97,7 +104,18 @@ export default function PassbookPage() {
       return;
     }
 
-    setMembers(data || []);
+    // ✅ STEP 3 — MEMBERS MAP (OUTSTANDING FIX)
+    const membersWithLoan = (data || []).map(m => {
+      const activeLoan = m.loans?.find(l => l.status === 'active');
+
+      return {
+        ...m,
+        outstanding_loan:
+          activeLoan?.remaining_balance ?? m.outstanding_loan ?? 0
+      };
+    });
+
+    setMembers(membersWithLoan);
   };
 
   // ✅ UPDATED: fetchPassbook (Trust DB Logic)
