@@ -55,11 +55,11 @@ export default function MaturityPage() {
   const fetchData = async () => {
     setLoading(true)
     
-    // ✅ FIX #1: Client ID Fetch (MAIN BUG) - Logic Updated Here
-    let cid = clientId
+    // ✅ FIX #1: Client ID Fetch (FINAL – SAME AS MEMBERS PAGE)
+    let cid = clientId;
     if (!cid) {
       const user = JSON.parse(localStorage.getItem('current_user') || '{}');
-      cid = user?.id;
+      cid = user?.client_id ?? user?.id;
       if (cid) setClientId(cid);
     }
 
