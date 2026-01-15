@@ -91,7 +91,8 @@ export default function PassbookAddEntryModal({
   useEffect(() => {
       if (selectedMember) {
         const depositBalance = Number(selectedMember.total_deposits || 0);
-        const outstanding = Number(selectedMember.outstanding_loan || 0);
+        // ✅ DIFF–3: outstanding_loan से active_loan_balance में change kiya
+        const outstanding = Number(selectedMember.active_loan_balance || 0);
         
         let baseDeposit = depositBalance;
         let baseLoan = outstanding;
