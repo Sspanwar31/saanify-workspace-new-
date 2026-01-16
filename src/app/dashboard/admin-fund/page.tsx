@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
+import { supabase } from '@/lib/supabase-simple'; 
 import { 
   ArrowDownCircle, 
   ArrowUpCircle, 
@@ -61,14 +61,14 @@ export default function AdminFundPage() {
     setClientId(user.id)
   }, [])
 
-  // ✅ UPDATED CODE: UseEffect Dependency (Change 2)
+  // ✅ UPDATED: UseEffect Dependency (Just clientId)
   useEffect(() => {
     if (clientId) {
       fetchAdminFundData();
     }
   }, [clientId])
 
-  // ✅ CHANGE 2: fetchAdminFundData Function (Replaced with full logic including calc)
+  // ✅ CHANGE 2: fetchAdminFundData Function (With Safe Guard)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -78,70 +78,74 @@ export default function AdminFundPage() {
       return;
     }
 
-    // A. Fetch Ledger (Sorted by Date - Descending for Display)
-    const { data: ledger, error: ledgerError } = await supabase
-      .from('admin_fund_ledger')
-      .select('*')
-      .eq('client_id', clientId)
-      .order('date', { ascending: false }); // ✅ CHANGE: 'date' se 'created_at' ho gaya
+    // ❌ REMOVED MANUAL SORT
+    // ✅ UPDATED: Added proper Try/Catch/Finally wrapping
+    try {
+      // A. Fetch Ledger (Ascending order zaroori hai calculation ke liye)
+      const { data: ledger, error: ledgerError } = await supabase
+        .from('admin_fund_ledger')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('date', { ascending: true }); 
 
-    if (ledgerError) throw ledgerError;
+      if (ledgerError) throw ledgerError;
 
-    // B. Calculate Running Balance
-    let currentRunningBalance = 0;
-    let totalInjected = 0;
-    let totalWithdrawn = 0;
+      // B. Calculate Running Balance
+      let currentRunningBalance = 0;
+      let totalInjected = 0;
+      let totalWithdrawn = 0;
 
-    const processedLedger = (ledger || []).map((transaction: any) => {
-        const amt = Number(transaction.amount);
-        if (transaction.type === 'INJECT') {
-            currentRunningBalance += amt;
-            totalInjected += amt;
-        } else if (transaction.type === 'WITHDRAW') {
-            currentRunningBalance -= amt;
-            totalWithdrawn += amt;
-        }
-        return { ...transaction, runningBalance: currentRunningBalance };
-    });
+      const processedLedger = (ledger || []).map((transaction: any) => {
+          const amt = Number(transaction.amount);
+          if (transaction.type === 'INJECT') {
+              currentRunningBalance += amt;
+              totalInjected += amt;
+          } else if (transaction.type === 'WITHDRAW') {
+              currentRunningBalance -= amt;
+              totalWithdrawn += amt;
+          }
+          return { ...transaction, runningBalance: currentRunningBalance };
+      });
 
-    // C. Set State (Display ke liye Reverse kar rahe hain - Latest First)
-    setAdminFundLedger([...processedLedger].reverse());
+      // C. Set State Once (Reverse for Display)
+      setAdminFundLedger([...processedLedger].reverse());
 
-    setSummary({
-      netBalance: currentRunningBalance, 
-      totalInjected: totalInjected,
-      totalWithdrawn: totalWithdrawn
-    });
-    setCashInHand(currentRunningBalance); 
+      setSummary({
+        netBalance: currentRunningBalance, 
+        totalInjected: totalInjected,
+        totalWithdrawn: totalWithdrawn
+      });
+      setCashInHand(currentRunningBalance); 
 
-    // D. Society Cash Calc
-    // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
-    const { data: passbookEntries } = await supabase
-      .from('passbook_entries')
-      .select('deposit_amount')
-      .eq('client_id', clientId);
-    
-    const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
+      // D. Society Cash Calc (Safe Check)
+      
+      // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
+      const { data: passbookEntries } = await supabase
+        .from('passbook_entries')
+        .select('deposit_amount')
+        .eq('client_id', clientId);
+      
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
 
-    // 2. Get Total Loans Disbursed (Outflow)
-    const { data: loans } = await supabase
-      .from('loans')
-      .select('amount')
-      .neq('status', 'rejected') // CHANGE: neq instead of in
-      .eq('client_id', clientId); 
+      // 2. Get Total Loans Disbursed (Outflow)
+      const { data: loans } = await supabase
+          .from('loans')
+          .select('amount')
+          .neq('status', 'rejected') // CHANGE: neq instead of in
+          .eq('client_id', clientId); 
 
-    const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
+      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
 
-    // 3. Final Calculation
-    const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
-    setSocietyCashInHand(finalSocietyCash); 
+      // 3. Final Calculation
+      const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
+      setSocietyCashInHand(finalSocietyCash); 
 
-  } catch (error) {
-    console.error("Error fetching admin fund data:", error);
-  } finally {
-    setLoading(false); // ✅ FIX: Ye line hamesha chalegi aur spinner band karegi
-  }
-  }
+    } catch (error) {
+      console.error("Error fetching admin fund data:", error);
+    } finally {
+      setLoading(false); // ✅ FIX: Ye line hamesha chalegi aur spinner band karegi
+    }
+  } // <--- fetchAdminFundData Closing Brace
 
   // --- Handlers ---
   const handleAddTransaction = async (type: 'INJECT' | 'WITHDRAW') => {
@@ -455,7 +459,7 @@ export default function AdminFundPage() {
                   <Button 
                     variant="outline" 
                     onClick={() => setIsWithdrawModalOpen(false)}
-                  >
+                    >
                     Cancel
                   </Button>
                 </div>
