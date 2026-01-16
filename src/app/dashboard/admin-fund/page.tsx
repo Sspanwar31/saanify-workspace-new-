@@ -72,27 +72,26 @@ export default function AdminFundPage() {
     initData()
   }, [])
 
-  // ✅ NEW CODE: UseEffect Dependency (Change 2)
+  // ✅ FIXED CODE: UseEffect Dependency (Change 2)
   useEffect(() => {
     if (clientId) {
       fetchAdminFundData();
     }
   }, [clientId])
 
-  // 2. Fetch Admin Fund Ledger & Calculate Summaries
-  // ✅ NEW CODE: Correct Logic (Change 1)
+  // ✅ NEW CODE: fetchAdminFundData Function (Change 1)
   const fetchAdminFundData = async () => {
     setLoading(true);
     
     try {
       if (!clientId) return;
 
-      // A. Fetch Ledger (Sorted by Date - Ascending)
+      // A. Fetch Ledger (Ascending order zaroori hai calculation ke liye)
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
         .eq('client_id', clientId)
-        .order('date', { ascending: true }); // Ascending for calculation
+        .order('date', { ascending: true }); 
 
       if (ledgerError) throw ledgerError;
 
@@ -101,7 +100,6 @@ export default function AdminFundPage() {
       let totalInjected = 0;
       let totalWithdrawn = 0;
 
-      // ❌ REMOVED MANUAL SORT: Directly mapping over DB result
       const processedLedger = (ledger || []).map((transaction: any) => {
           const amt = Number(transaction.amount);
           if (transaction.type === 'INJECT') {
@@ -126,24 +124,22 @@ export default function AdminFundPage() {
 
       // D. Society Cash Calc (Safe Check)
       
-      // 1. Get Passbook Total (Inflow)
+      // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
-        .select('deposit_amount, installment_amount, interest_amount, fine_amount')
+        .select('deposit_amount')
         .eq('client_id', clientId);
       
       let totalPassbookCollection = 0;
       if (passbookEntries) {
-          totalPassbookCollection = passbookEntries.reduce((sum, entry) => 
-              sum + (Number(entry.deposit_amount)||0) + (Number(entry.installment_amount)||0) + (Number(entry.interest_amount)||0) + (Number(entry.fine_amount)||0)
-          , 0);
+          totalPassbookCollection = passbookEntries.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
       }
 
       // 2. Get Total Loans Disbursed (Outflow)
       const { data: loans } = await supabase
           .from('loans')
           .select('amount')
-          .in('status', ['active', 'completed', 'approved']) 
+          .neq('status', 'rejected') // CHANGE: neq instead of in
           .eq('client_id', clientId); 
 
       let totalLoansDisbursed = 0;
@@ -158,10 +154,9 @@ export default function AdminFundPage() {
     } catch (error) {
       console.error("Error fetching admin fund data:", error);
     } finally {
-      setLoading(false); // ✅ Ensure loading turns off
+      setLoading(false); // ✅ FIX: Ye line hamesha chalegi aur spinner band karegi
     }
   }
-
 
   // --- Handlers ---
   const handleAddTransaction = async (type: 'INJECT' | 'WITHDRAW') => {
