@@ -48,44 +48,37 @@ export default function AdminFundPage() {
   const [cashInHand, setCashInHand] = useState(0) 
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
-  // 1. Fetch Client ID & Initial Data
+  // ✅ CHANGE 1: Simplified Init Logic (Direct user.id)
   useEffect(() => {
-    const initData = async () => {
-      // ✅ CORRECT CODE: Get client_id from admins table
-      const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
-      if (!admin?.id) return
+    const user = JSON.parse(localStorage.getItem('current_user') || 'null')
 
-      // 🔥 REAL FIX: get client_id from admins table
-      const { data, error } = await supabase
-        .from('admins')
-        .select('client_id')
-        .eq('id', admin.id)
-        .single()
-
-      if (error) {
-        console.error('Failed to resolve client_id', error)
-        return
-      }
-
-      setClientId(data.client_id)
+    if (!user?.id) {
+      console.error('Client not found in localStorage')
+      return
     }
-    initData()
+
+    // 🔥 CLIENT HI OWNER HAI
+    setClientId(user.id)
   }, [])
 
-  // ✅ FIXED CODE: UseEffect Dependency (Change 2)
+  // ✅ UPDATED: UseEffect Dependency (Safe Guard)
   useEffect(() => {
     if (clientId) {
       fetchAdminFundData();
     }
   }, [clientId])
 
-  // ✅ NEW CODE: fetchAdminFundData Function (Change 1)
+  // ✅ CHANGE 2: fetchAdminFundData Function with Safe Guard
   const fetchAdminFundData = async () => {
     setLoading(true);
     
-    try {
-      if (!clientId) return;
+    // ✅ SAFE GUARD ADD KARO
+    if (!clientId) {
+      setLoading(false); 
+      return;
+    }
 
+    try {
       // A. Fetch Ledger (Ascending order zaroori hai calculation ke liye)
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
@@ -130,10 +123,7 @@ export default function AdminFundPage() {
         .select('deposit_amount')
         .eq('client_id', clientId);
       
-      let totalPassbookCollection = 0;
-      if (passbookEntries) {
-          totalPassbookCollection = passbookEntries.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
-      }
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
 
       // 2. Get Total Loans Disbursed (Outflow)
       const { data: loans } = await supabase
@@ -142,10 +132,7 @@ export default function AdminFundPage() {
           .neq('status', 'rejected') // CHANGE: neq instead of in
           .eq('client_id', clientId); 
 
-      let totalLoansDisbursed = 0;
-      if (loans) {
-          totalLoansDisbursed = loans.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0);
-      }
+      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
 
       // 3. Final Calculation
       const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
