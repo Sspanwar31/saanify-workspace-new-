@@ -72,54 +72,49 @@ export default function AdminFundPage() {
     initData()
   }, [])
 
+  // ✅ NEW CODE: UseEffect Dependency (Just clientId)
   useEffect(() => {
     if (clientId) {
-      fetchAdminFundData()
+      fetchAdminFundData();
     }
   }, [clientId])
 
   // 2. Fetch Admin Fund Ledger & Calculate Summaries
+  // ✅ NEW CODE: Correct Logic
   const fetchAdminFundData = async () => {
-    // ✅ FIX #2: Wrap in try/catch/finally to ensure loading stops
-    setLoading(true)
+    setLoading(true);
     
     try {
-      if (!clientId) {
-        return;
-      }
+      if (!clientId) return;
 
-      // A. Fetch Ledger (Admin Transactions)
-      // ✅ FIX #4: Order by date (ascending: false) instead of created_at
+      // A. Fetch Ledger (Sorted by Date)
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
         .eq('client_id', clientId)
-        .order('date', { ascending: false })
+        .order('date', { ascending: true }); // Ascending zaroori hai calculation ke liye
 
       if (ledgerError) throw ledgerError;
 
-      // ✅ FIX #3: Removed the intermediate setAdminFundLedger call
-      // Calculate Admin Fund Summary & Running Balance
+      // B. Calculate Running Balance
       let currentRunningBalance = 0;
       let totalInjected = 0;
       let totalWithdrawn = 0;
 
-      // Note: We sort by created_at specifically for running balance calculation accuracy
-      const sortedLedger = (ledger || []).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      
-      const processedLedger = sortedLedger.map((transaction: any) => {
+      const processedLedger = (ledger || []).map((transaction: any) => {
+          const amt = Number(transaction.amount);
           if (transaction.type === 'INJECT') {
-              currentRunningBalance += Number(transaction.amount);
-              totalInjected += Number(transaction.amount);
+              currentRunningBalance += amt;
+              totalInjected += amt;
           } else if (transaction.type === 'WITHDRAW') {
-              currentRunningBalance -= Number(transaction.amount);
-              totalWithdrawn += Number(transaction.amount);
+              currentRunningBalance -= amt;
+              totalWithdrawn += amt;
           }
           return { ...transaction, runningBalance: currentRunningBalance };
       });
 
-      // Only set processed data (reverse for display)
-      setAdminFundLedger(processedLedger.reverse());
+      // C. Set State Once (Reverse for Display)
+      setAdminFundLedger([...processedLedger].reverse());
 
       setSummary({
         netBalance: currentRunningBalance, 
@@ -128,7 +123,7 @@ export default function AdminFundPage() {
       });
       setCashInHand(currentRunningBalance); 
 
-      // B. Calculate Society's Total Cash (Passbook + Admin Fund - Loans)
+      // D. Society Cash Calc (Safe Check) - (Baaki Society Cash logic same rahega)
       
       // 1. Get Passbook Total (Inflow)
       const { data: passbookEntries } = await supabase
@@ -162,8 +157,7 @@ export default function AdminFundPage() {
     } catch (error) {
       console.error("Error fetching admin fund data:", error);
     } finally {
-      // ✅ FIX #2: Ensure loading turns off in all cases
-      setLoading(false);
+      setLoading(false); // ✅ Ye sabse zaroori hai taaki spinner ruke
     }
   }
 
