@@ -51,7 +51,7 @@ export default function AdminFundPage() {
   // 1. Fetch Client ID & Initial Data
   useEffect(() => {
     const initData = async () => {
-      // ✅ CORRECT CODE (DO THIS): Get client_id from admins table
+      // ✅ CORRECT CODE: Get client_id from admins table
       const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
       if (!admin?.id) return
 
@@ -72,7 +72,7 @@ export default function AdminFundPage() {
     initData()
   }, [])
 
-  // ✅ NEW CODE: UseEffect Dependency (Just clientId)
+  // ✅ NEW CODE: UseEffect Dependency (Change 2)
   useEffect(() => {
     if (clientId) {
       fetchAdminFundData();
@@ -80,19 +80,19 @@ export default function AdminFundPage() {
   }, [clientId])
 
   // 2. Fetch Admin Fund Ledger & Calculate Summaries
-  // ✅ NEW CODE: Correct Logic
+  // ✅ NEW CODE: Correct Logic (Change 1)
   const fetchAdminFundData = async () => {
     setLoading(true);
     
     try {
       if (!clientId) return;
 
-      // A. Fetch Ledger (Sorted by Date)
+      // A. Fetch Ledger (Sorted by Date - Ascending)
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
         .eq('client_id', clientId)
-        .order('date', { ascending: true }); // Ascending zaroori hai calculation ke liye
+        .order('date', { ascending: true }); // Ascending for calculation
 
       if (ledgerError) throw ledgerError;
 
@@ -101,6 +101,7 @@ export default function AdminFundPage() {
       let totalInjected = 0;
       let totalWithdrawn = 0;
 
+      // ❌ REMOVED MANUAL SORT: Directly mapping over DB result
       const processedLedger = (ledger || []).map((transaction: any) => {
           const amt = Number(transaction.amount);
           if (transaction.type === 'INJECT') {
@@ -123,7 +124,7 @@ export default function AdminFundPage() {
       });
       setCashInHand(currentRunningBalance); 
 
-      // D. Society Cash Calc (Safe Check) - (Baaki Society Cash logic same rahega)
+      // D. Society Cash Calc (Safe Check)
       
       // 1. Get Passbook Total (Inflow)
       const { data: passbookEntries } = await supabase
@@ -157,7 +158,7 @@ export default function AdminFundPage() {
     } catch (error) {
       console.error("Error fetching admin fund data:", error);
     } finally {
-      setLoading(false); // ✅ Ye sabse zaroori hai taaki spinner ruke
+      setLoading(false); // ✅ Ensure loading turns off
     }
   }
 
