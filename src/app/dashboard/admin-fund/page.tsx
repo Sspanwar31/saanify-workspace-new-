@@ -48,6 +48,7 @@ export default function AdminFundPage() {
   const [cashInHand, setCashInHand] = useState(0) 
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
+  // 1. Fetch Client ID & Initial Data
   // ✅ CHANGE 1: Simplified Init Logic (Direct user.id)
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
@@ -61,89 +62,42 @@ export default function AdminFundPage() {
     setClientId(user.id)
   }, [])
 
-  // ✅ UPDATED: UseEffect Dependency (Safe Guard)
+  // ✅ UPDATED: UseEffect Dependency (Just clientId)
   useEffect(() => {
     if (clientId) {
       fetchAdminFundData();
     }
   }, [clientId])
 
-  // ✅ CHANGE 2: fetchAdminFundData Function with Safe Guard
+  // ✅ CHANGED: fetchAdminFundData Function (Replaced with simple logic)
   const fetchAdminFundData = async () => {
     setLoading(true);
-    
-    // ✅ SAFE GUARD ADD KARO
-    if (!clientId) {
-      setLoading(false); 
+
+    if (!clientId) return;
+
+    const { data: ledger, error } = await supabase
+      .from('admin_fund_ledger')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+
+    console.log('ADMIN FUND RESPONSE:', data, error);
+
+    if (error) {
+      console.error(error);
+      setLoading(false);
       return;
     }
 
-    try {
-      // A. Fetch Ledger (Ascending order zaroori hai calculation ke liye)
-      const { data: ledger, error: ledgerError } = await supabase
-        .from('admin_fund_ledger')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('date', { ascending: true }); 
+    // Simple fetch - no calculation
+    setAdminFundLedger(data ?? []);
 
-      if (ledgerError) throw ledgerError;
-
-      // B. Calculate Running Balance
-      let currentRunningBalance = 0;
-      let totalInjected = 0;
-      let totalWithdrawn = 0;
-
-      const processedLedger = (ledger || []).map((transaction: any) => {
-          const amt = Number(transaction.amount);
-          if (transaction.type === 'INJECT') {
-              currentRunningBalance += amt;
-              totalInjected += amt;
-          } else if (transaction.type === 'WITHDRAW') {
-              currentRunningBalance -= amt;
-              totalWithdrawn += amt;
-          }
-          return { ...transaction, runningBalance: currentRunningBalance };
-      });
-
-      // C. Set State Once (Reverse for Display)
-      setAdminFundLedger([...processedLedger].reverse());
-
-      setSummary({
-        netBalance: currentRunningBalance, 
-        totalInjected: totalInjected,
-        totalWithdrawn: totalWithdrawn
-      });
-      setCashInHand(currentRunningBalance); 
-
-      // D. Society Cash Calc (Safe Check)
-      
-      // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
-      const { data: passbookEntries } = await supabase
-        .from('passbook_entries')
-        .select('deposit_amount')
-        .eq('client_id', clientId);
-      
-      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
-
-      // 2. Get Total Loans Disbursed (Outflow)
-      const { data: loans } = await supabase
-          .from('loans')
-          .select('amount')
-          .neq('status', 'rejected') // CHANGE: neq instead of in
-          .eq('client_id', clientId); 
-
-      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
-
-      // 3. Final Calculation
-      const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
-      setSocietyCashInHand(finalSocietyCash); 
-
-    } catch (error) {
-      console.error("Error fetching admin fund data:", error);
-    } finally {
-      setLoading(false); // ✅ FIX: Ye line hamesha chalegi aur spinner band karegi
-    }
+    // ❌ SOCIETY CALC COMMENTED OUT (Because currentRunningBalance is no longer calculated here)
+    // const totalPassbookCollection = ...
+    // const finalSocietyCash = ...
+    // setSocietyCashInHand(finalSocietyCash); 
   }
+
 
   // --- Handlers ---
   const handleAddTransaction = async (type: 'INJECT' | 'WITHDRAW') => {
@@ -271,7 +225,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Society Cash Available Card (NOW DYNAMIC) */}
+        {/* Society Cash Available Card */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
@@ -512,12 +466,16 @@ export default function AdminFundPage() {
                             {transaction.type === 'INJECT' ? '+' : '-'}₹{Number(transaction.amount).toLocaleString()}
                           </span>
                         </TableCell>
+                        {/* 
+                           ⚠️ NOTE: transaction.runningBalance will be undefined 
+                           because we switched to simple fetch.
+                        */}
                         <TableCell className={`text-right font-medium ${
                           transaction.runningBalance > 0 ? 'text-orange-600' : 
                           transaction.runningBalance < 0 ? 'text-red-600' : 
                           'text-gray-600'
                         }`}>
-                          ₹{Math.abs(transaction.runningBalance).toLocaleString()}
+                          {transaction.runningBalance ? `₹${Math.abs(transaction.runningBalance).toLocaleString()}` : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
