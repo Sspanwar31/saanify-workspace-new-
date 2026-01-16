@@ -67,7 +67,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // ✅ CHANGE 2: fetchAdminFundData Function (Original Logic)
+  // ✅ CHANGE 2: fetchAdminFundData Function (Updated Logic for Accurate Report Match)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -114,7 +114,8 @@ export default function AdminFundPage() {
       });
       setCashInHand(currentRunningBalance);
 
-      // D. Society Cash Calc (Safe Check)
+      // D. Society Cash Calc (UPDATED TO MATCH REPORT PAGE)
+      // Formula: (Passbook + Repayments + AdminFund) - (Loans Given + Expenses)
 
       // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
       const { data: passbookEntries } = await supabase
@@ -133,8 +134,28 @@ export default function AdminFundPage() {
 
       const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount) || 0), 0) || 0;
 
-      // 3. Final Calculation
-      const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
+      // 3. Get Total Expenses (Outflow) - 🔥 NEW ADDITION
+      const { data: expenses } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('client_id', clientId);
+
+      const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0) || 0;
+
+      // 4. Get Total Loan Repayments (Inflow) - 🔥 NEW ADDITION
+      const { data: loanPayments } = await supabase
+        .from('loan_payments')
+        .select('amount')
+        .eq('client_id', clientId);
+
+      const totalRepayments = loanPayments?.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0) || 0;
+
+      // 5. Final Calculation (Matching Total Liquidity)
+      const totalInflow = totalPassbookCollection + totalRepayments + currentRunningBalance;
+      const totalOutflow = totalLoansDisbursed + totalExpenses;
+      
+      const finalSocietyCash = totalInflow - totalOutflow;
+      
       setSocietyCashInHand(finalSocietyCash);
 
     } catch (error) {
