@@ -51,11 +51,23 @@ export default function AdminFundPage() {
   // 1. Fetch Client ID & Initial Data
   useEffect(() => {
     const initData = async () => {
-      // ✅ FIX #1: Client ID Fetch (ADMIN CONTEXT)
+      // ✅ CORRECT CODE (DO THIS): Get client_id from admins table
       const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
-      if (admin?.id) {
-        setClientId(admin.id)
+      if (!admin?.id) return
+
+      // 🔥 REAL FIX: get client_id from admins table
+      const { data, error } = await supabase
+        .from('admins')
+        .select('client_id')
+        .eq('id', admin.id)
+        .single()
+
+      if (error) {
+        console.error('Failed to resolve client_id', error)
+        return
       }
+
+      setClientId(data.client_id)
     }
     initData()
   }, [])
@@ -87,8 +99,6 @@ export default function AdminFundPage() {
       if (ledgerError) throw ledgerError;
 
       // ✅ FIX #3: Removed the intermediate setAdminFundLedger call
-      // setAdminFundLedger(ledger || []); <--- REMOVED
-
       // Calculate Admin Fund Summary & Running Balance
       let currentRunningBalance = 0;
       let totalInjected = 0;
@@ -108,7 +118,7 @@ export default function AdminFundPage() {
           return { ...transaction, runningBalance: currentRunningBalance };
       });
 
-      // Only set the processed data (reverse for display)
+      // Only set processed data (reverse for display)
       setAdminFundLedger(processedLedger.reverse());
 
       setSummary({
