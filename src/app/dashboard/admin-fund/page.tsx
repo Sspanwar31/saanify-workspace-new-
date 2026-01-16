@@ -14,19 +14,19 @@ import {
   Wallet,
   RefreshCw 
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminFundPage() {
   // --- States ---
-  const [adminFundLedger, setAdminFundLedger] = useState<any[]>([])
+  const [adminFundLedger, setAdminFundLedger] = useState<any[]>([]);
   const [clientId, setClientId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -49,53 +49,64 @@ export default function AdminFundPage() {
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
   // 1. Fetch Client ID & Initial Data
-  // ✅ CHANGE 1: Simplified Init Logic (Direct user.id)
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('current_user') || 'null')
+    const initData = async () => {
+      // ✅ CORRECT CODE: Get client_id from admins table
+      const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
+      if (!admin?.id) return
 
-    if (!user?.id) {
-      console.error('Client not found in localStorage')
-      return
+      // 🔥 REAL FIX: get client_id from admins table
+      const { data, error } = await supabase
+        .from('admins')
+        .select('client_id')
+        .eq('id', admin.id)
+        .single()
+
+      if (error) {
+        console.error('Failed to resolve client_id', error)
+        return
+      }
+
+      setClientId(data.client_id)
     }
-
-    // 🔥 CLIENT HI OWNER HAI
-    setClientId(user.id)
+    initData()
   }, [])
 
-  // ✅ UPDATED: UseEffect Dependency (Just clientId)
+  // ✅ FIXED CODE: UseEffect Dependency (Change 2)
   useEffect(() => {
     if (clientId) {
       fetchAdminFundData();
     }
   }, [clientId])
 
-  // ✅ CHANGED: fetchAdminFundData Function (Replaced with simple logic)
+  // ✅ UPDATED CODE: fetchAdminFundData Function (Change 1)
   const fetchAdminFundData = async () => {
     setLoading(true);
+    
+    // ✅ SAFE GUARD ADD KARO
+    if (!clientId) {
+      setLoading(false); 
+      return;
+    }
 
-    if (!clientId) return;
-
+    // A. Fetch Ledger (Sorted by Date - Descending for Display)
     const { data: ledger, error } = await supabase
       .from('admin_fund_ledger')
       .select('*')
       .eq('client_id', clientId)
-      .order('created_at', { ascending: false });
+      .order('date', { ascending: false }); // ✅ CHANGE: 'created_at' se 'date' ho gaya
 
-    console.log('ADMIN FUND RESPONSE:', data, error);
+    console.log('ADMIN FUND RESPONSE:', ledger, error);
 
     if (error) {
-      console.error(error);
-      setLoading(false);
+      console.error("Error fetching admin fund data:", error);
+      setLoading(false); // ✅ Ensure loading stops
       return;
     }
 
     // Simple fetch - no calculation
-    setAdminFundLedger(data ?? []);
-
-    // ❌ SOCIETY CALC COMMENTED OUT (Because currentRunningBalance is no longer calculated here)
-    // const totalPassbookCollection = ...
-    // const finalSocietyCash = ...
-    // setSocietyCashInHand(finalSocietyCash); 
+    setAdminFundLedger(ledger ?? []);
+    setLoading(false); 
   }
 
 
@@ -225,7 +236,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Society Cash Available Card */}
+        {/* Society Cash Available Card (NOW DYNAMIC) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
@@ -466,16 +477,12 @@ export default function AdminFundPage() {
                             {transaction.type === 'INJECT' ? '+' : '-'}₹{Number(transaction.amount).toLocaleString()}
                           </span>
                         </TableCell>
-                        {/* 
-                           ⚠️ NOTE: transaction.runningBalance will be undefined 
-                           because we switched to simple fetch.
-                        */}
                         <TableCell className={`text-right font-medium ${
                           transaction.runningBalance > 0 ? 'text-orange-600' : 
                           transaction.runningBalance < 0 ? 'text-red-600' : 
                           'text-gray-600'
                         }`}>
-                          {transaction.runningBalance ? `₹${Math.abs(transaction.runningBalance).toLocaleString()}` : '-'}
+                          ₹{Math.abs(transaction.runningBalance).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
