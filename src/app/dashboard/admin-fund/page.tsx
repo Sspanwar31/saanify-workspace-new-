@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase-simple';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  Plus,
   Trash2,
   AlertTriangle,
   DollarSign,
@@ -45,28 +46,39 @@ export default function AdminFundPage() {
   const [cashInHand, setCashInHand] = useState(0)
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
-  // 1. Init Logic
+  // ✅ CHANGE 1: Fixed ID Logic (Staff vs Admin)
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
-    if (user?.id) {
-      setClientId(user.id)
+
+    if (!user?.id) {
+      console.error('Client not found in localStorage')
+      return
     }
+
+    // 🔥 FIX HERE: Agar user staff/treasurer hai to 'client_id' le, nahi to khud ka 'id'
+    const finalId = user.client_id || user.id;
+    setClientId(finalId)
   }, [])
 
-  // 2. Fetch Trigger
+  // ✅ UPDATED: UseEffect Dependency (Just clientId)
   useEffect(() => {
     if (clientId) {
       fetchAdminFundData();
     }
   }, [clientId])
 
-  // 3. Main Calculation Logic (Old Way - Manual Calculation)
+  // ✅ CHANGE 2: fetchAdminFundData Function (Original Logic)
   const fetchAdminFundData = async () => {
-    if (!clientId) return;
     setLoading(true);
 
+    // ✅ SAFE GUARD
+    if (!clientId) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      // A. Fetch Ledger (Sorted by Date for running balance)
+      // A. Fetch Ledger (Ascending order zaroori hai calculation ke liye)
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
@@ -75,7 +87,7 @@ export default function AdminFundPage() {
 
       if (ledgerError) throw ledgerError;
 
-      // B. Calculate Running Balance (Frontend Logic)
+      // B. Calculate Running Balance (Original Logic)
       let currentRunningBalance = 0;
       let totalInjected = 0;
       let totalWithdrawn = 0;
@@ -92,8 +104,9 @@ export default function AdminFundPage() {
         return { ...transaction, runningBalance: currentRunningBalance };
       });
 
-      // C. Update Admin Fund States
-      setAdminFundLedger([...processedLedger].reverse()); // Show latest first
+      // C. Set State Once (Reverse for Display)
+      setAdminFundLedger([...processedLedger].reverse());
+
       setSummary({
         netBalance: currentRunningBalance,
         totalInjected: totalInjected,
@@ -101,9 +114,9 @@ export default function AdminFundPage() {
       });
       setCashInHand(currentRunningBalance);
 
-      // D. Calculate Society Cash (Old Logic: Deposits + AdminFund - Loans)
-      
-      // Fetch Total Deposits (Passbook)
+      // D. Society Cash Calc (Safe Check)
+
+      // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount')
@@ -111,25 +124,25 @@ export default function AdminFundPage() {
 
       const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount) || 0), 0) || 0;
 
-      // Fetch Total Loans Disbursed
+      // 2. Get Total Loans Disbursed (Outflow)
       const { data: loans } = await supabase
         .from('loans')
         .select('amount')
-        .neq('status', 'rejected')
+        .neq('status', 'rejected') 
         .eq('client_id', clientId);
 
       const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount) || 0), 0) || 0;
 
-      // Final Formula
+      // 3. Final Calculation
       const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
       setSocietyCashInHand(finalSocietyCash);
 
     } catch (error) {
       console.error("Error fetching admin fund data:", error);
     } finally {
-      setLoading(false);
+      setLoading(false); 
     }
-  }
+  } 
 
   // --- Handlers ---
   const handleAddTransaction = async (type: 'INJECT' | 'WITHDRAW') => {
@@ -144,16 +157,13 @@ export default function AdminFundPage() {
     }
 
     try {
-      const { error } = await supabase.from('admin_fund_ledger').insert([{
+      await supabase.from('admin_fund_ledger').insert([{
         client_id: clientId,
         date: formData.date,
         amount: amount,
         type: type,
         description: formData.description
       }]);
-
-      if (error) throw error;
-
       fetchAdminFundData();
       setFormData({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
       setIsInjectModalOpen(false);
@@ -181,64 +191,84 @@ export default function AdminFundPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Fund Ledger</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Track funds exchanged between Admin and Society</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Admin Fund Ledger
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Track funds exchanged between Admin and Society
+          </p>
         </div>
         <Button variant="outline" onClick={fetchAdminFundData}><RefreshCw className="h-4 w-4 mr-2" /> Refresh</Button>
       </div>
 
       {/* SECTION A: SUMMARY CARDS */}
       <div className="grid gap-4 md:grid-cols-4">
-        {/* Net Balance */}
+        {/* Net Balance Card */}
         <Card className="md:col-span-1">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Net Balance</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Net Balance
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <>
-                <div className={`text-3xl font-bold ${summary.netBalance > 0 ? 'text-orange-600' : summary.netBalance < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                <div className={`text-3xl font-bold ${summary.netBalance > 0 ? 'text-orange-600' :
+                    summary.netBalance < 0 ? 'text-red-600' :
+                      'text-gray-600'
+                  }`}>
                   ₹{Math.abs(summary.netBalance).toLocaleString()}
                 </div>
-                <p className="text-sm mt-1 text-gray-500">
-                  {summary.netBalance > 0 ? 'Society owes Admin' : summary.netBalance < 0 ? 'Admin owes Society' : 'Balanced'}
+                <p className={`text-sm mt-1 ${summary.netBalance > 0 ? 'text-orange-600' :
+                    summary.netBalance < 0 ? 'text-red-600' :
+                      'text-gray-600'
+                  }`}>
+                  {summary.netBalance > 0 ? 'Society owes Admin' :
+                    summary.netBalance < 0 ? 'Admin owes Society' :
+                      'Balanced'}
                 </p>
               </>
             )}
           </CardContent>
         </Card>
 
-        {/* Total Injected */}
+        {/* Total Injected Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" /> Total Injected
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              Total Injected
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-              <div className="text-3xl font-bold text-green-600">₹{summary.totalInjected.toLocaleString()}</div>
+              <div className="text-3xl font-bold text-green-600">
+                ₹{summary.totalInjected.toLocaleString()}
+              </div>
             )}
             <p className="text-sm text-gray-600 mt-1">Admin gave to Society</p>
           </CardContent>
         </Card>
 
-        {/* Total Withdrawn */}
+        {/* Total Withdrawn Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-600" /> Total Withdrawn
+              <TrendingDown className="h-4 w-4 text-red-600" />
+              Total Withdrawn
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-              <div className="text-3xl font-bold text-red-600">₹{summary.totalWithdrawn.toLocaleString()}</div>
+              <div className="text-3xl font-bold text-red-600">
+                ₹{summary.totalWithdrawn.toLocaleString()}
+              </div>
             )}
             <p className="text-sm text-gray-600 mt-1">Admin took from Society</p>
           </CardContent>
         </Card>
 
-        {/* Society Cash Available */}
+        {/* Society Cash Available Card (NOW DYNAMIC) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
@@ -258,88 +288,175 @@ export default function AdminFundPage() {
       {/* Cash in Hand Info */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> Cash in Hand (Admin Fund)</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Cash in Hand (Admin Fund)
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-            <div className="text-2xl font-bold text-blue-600">₹{cashInHand.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              ₹{cashInHand.toLocaleString()}
+            </div>
           )}
-          <p className="text-sm text-gray-600 mt-1">Available for withdrawals and expenses (from Admin Fund only)</p>
+          <p className="text-sm text-gray-600 mt-1">
+            Available for withdrawals and expenses (from Admin Fund only)
+          </p>
         </CardContent>
       </Card>
 
       {/* SECTION B: ACTION BUTTONS */}
       <div className="flex gap-4">
-        {/* Inject Modal */}
+        {/* Inject Fund Button */}
         <Dialog open={isInjectModalOpen} onOpenChange={setIsInjectModalOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
-              <ArrowDownCircle className="h-4 w-4" /> Inject Fund
+              <ArrowDownCircle className="h-4 w-4" />
+              Inject Fund
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-green-600"><ArrowDownCircle className="h-5 w-5" /> Inject Fund</DialogTitle>
+              <DialogTitle className="flex items-center gap-2 text-green-600">
+                <ArrowDownCircle className="h-5 w-5" />
+                Inject Fund
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Amount</Label>
-                <Input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} />
+                <Label htmlFor="inject-amount">Amount</Label>
+                <Input
+                  id="inject-amount"
+                  type="number"
+                  placeholder="Enter amount"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                />
               </div>
               <div>
-                <Label>Date</Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                <Label htmlFor="inject-date">Date</Label>
+                <Input
+                  id="inject-date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
               </div>
               <div>
-                <Label>Description</Label>
-                <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                <Label htmlFor="inject-description">Description</Label>
+                <Textarea
+                  id="inject-description"
+                  placeholder="Enter description for this transaction"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
               </div>
               <div className="flex gap-2">
-                <Button onClick={() => handleAddTransaction('INJECT')} className="flex-1 bg-green-600 hover:bg-green-700" disabled={!formData.amount || !formData.description}>Inject</Button>
-                <Button variant="outline" onClick={() => setIsInjectModalOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={() => handleAddTransaction('INJECT')} // Pass type
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  disabled={!formData.amount || !formData.description}
+                >
+                  Inject Fund
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsInjectModalOpen(false)}
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Withdraw Modal */}
+        {/* Withdraw Fund Button */}
         <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
           <DialogTrigger asChild>
-            <Button variant="destructive" className="flex items-center gap-2"><ArrowUpCircle className="h-4 w-4" /> Withdraw Fund</Button>
+            <Button variant="destructive" className="flex items-center gap-2">
+              <ArrowUpCircle className="h-4 w-4" />
+              Withdraw Fund
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-600"><ArrowUpCircle className="h-5 w-5" /> Withdraw Fund</DialogTitle>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <ArrowUpCircle className="h-5 w-5" />
+                Withdraw Fund
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {showWarning && (
                 <Alert className="border-orange-200 bg-orange-50">
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
                   <AlertDescription className="text-orange-800">
-                    Warning: Withdrawal exceeds Cash in Hand. Continue?
-                    <div className="flex gap-2 mt-2">
-                      <Button size="sm" variant="outline" onClick={() => setShowWarning(false)}>Cancel</Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleAddTransaction('WITHDRAW')}>Force Withdraw</Button>
+                    <div className="space-y-2">
+                      <p><strong>Warning:</strong> Withdrawal amount (₹{parseFloat(formData.amount).toLocaleString()}) exceeds available Cash in Hand (₹{cashInHand.toLocaleString()}).</p>
+                      <p>This may result in negative cash balance. Do you want to continue?</p>
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowWarning(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleAddTransaction('WITHDRAW')} // Force withdraw
+                        >
+                          Force Withdraw
+                        </Button>
+                      </div>
                     </div>
                   </AlertDescription>
                 </Alert>
               )}
               <div>
-                <Label>Amount</Label>
-                <Input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} />
+                <Label htmlFor="withdraw-amount">Amount</Label>
+                <Input
+                  id="withdraw-amount"
+                  type="number"
+                  placeholder="Enter amount"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                />
               </div>
               <div>
-                <Label>Date</Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                <Label htmlFor="withdraw-date">Date</Label>
+                <Input
+                  id="withdraw-date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
               </div>
               <div>
-                <Label>Description</Label>
-                <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                <Label htmlFor="withdraw-description">Description</Label>
+                <Textarea
+                  id="withdraw-description"
+                  placeholder="Enter description for this transaction"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
               </div>
               {!showWarning && (
                 <div className="flex gap-2">
-                  <Button variant="destructive" onClick={() => handleAddTransaction('WITHDRAW')} className="flex-1" disabled={!formData.amount || !formData.description}>Withdraw</Button>
-                  <Button variant="outline" onClick={() => setIsWithdrawModalOpen(false)}>Cancel</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type
+                    className="flex-1"
+                    disabled={!formData.amount || !formData.description}
+                  >
+                    Withdraw Fund
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsWithdrawModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               )}
             </div>
@@ -347,52 +464,73 @@ export default function AdminFundPage() {
         </Dialog>
       </div>
 
-      {/* SECTION C: LEDGER TABLE */}
+      {/* SECTION C: THE LEDGER TABLE */}
       <Card>
-        <CardHeader><CardTitle>Transaction Ledger</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Transaction Ledger</CardTitle>
+        </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8">Loading...</TableCell></TableRow>
-              ) : adminFundLedger.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No transactions yet.</TableCell></TableRow>
-              ) : (
-                adminFundLedger.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>{new Date(tx.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="max-w-xs truncate">{tx.description}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={tx.type === 'INJECT' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                        {tx.type === 'INJECT' ? 'Received' : 'Given'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className={`text-right font-medium ${tx.type === 'INJECT' ? 'text-green-600' : 'text-red-600'}`}>
-                      {tx.type === 'INJECT' ? '+' : '-'}₹{Number(tx.amount).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-gray-700">
-                      ₹{Math.abs(tx.runningBalance).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteAdminTransaction(tx.id)} className="text-red-600 hover:bg-red-50">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description/Note</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Running Balance</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8">Loading...</TableCell></TableRow>
+                ) : adminFundLedger.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      No transactions yet. Add your first transaction to get started.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  adminFundLedger.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                      <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={transaction.type === 'INJECT' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                        >
+                          {transaction.type === 'INJECT' ? 'Received' : 'Given'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        <span className={transaction.type === 'INJECT' ? 'text-green-600' : 'text-red-600'}>
+                          {transaction.type === 'INJECT' ? '+' : '-'}₹{Number(transaction.amount).toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${transaction.runningBalance > 0 ? 'text-orange-600' :
+                          transaction.runningBalance < 0 ? 'text-red-600' :
+                            'text-gray-600'
+                        }`}>
+                        ₹{Math.abs(transaction.runningBalance).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteAdminTransaction(transaction.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
