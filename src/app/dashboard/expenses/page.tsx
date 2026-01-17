@@ -12,33 +12,35 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  RefreshCw 
+  RefreshCw,
+  Receipt // ✅ Added missing import to prevent next error
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminFundPage() {
   // --- States ---
   const [adminFundLedger, setAdminFundLedger] = useState<any[]>([]);
-  const [clientId, setClientId] = useState<string | null>(null)
+  const [clientId, setClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true)
 
   const [isInjectModalOpen, setIsInjectModalOpen] = useState(false)
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
   
-  // ✅ FIXED: Removed extra closing brace from formData initialization
+  // ✅ FIXED: Removed the extra '})' that was causing the error here
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0]
   })
+  
   const [showWarning, setShowWarning] = useState(false)
 
   // --- Summary Calculations ---
@@ -46,7 +48,7 @@ export default function AdminFundPage() {
     netBalance: 0,
     totalInjected: 0,
     totalWithdrawn: 0,
-    totalExpenses: 0
+    totalExpenses: 0 
   })
   const [cashInHand, setCashInHand] = useState(0) 
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
@@ -54,18 +56,14 @@ export default function AdminFundPage() {
   // 1. Fetch Client ID & Initial Data
   useEffect(() => {
     const initData = async () => {
-      // ✅ FIX: Client ID Fetch (MAIN ISSUE)
-      const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
-      if (!admin?.id) {
-        console.error('Client not found in localStorage')
-        return
-      }
+      const user = JSON.parse(localStorage.getItem('current_user') || 'null')
+      if (!user?.id) return
 
-      // 🔥 REAL FIX: get client_id from admins table
+      // 🔥 CLIENT HI OWNER HAI
       const { data, error } = await supabase
         .from('admins')
         .select('client_id')
-        .eq('id', admin.id)
+        .eq('id', user.id)
         .single()
 
       if (error) {
@@ -85,7 +83,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // ✅ UPDATED: fetchAdminFundData Function (Added Expenses Logic)
+  // ✅ FINAL: fetchAdminFundData Function (Full Logic including Expenses)
   const fetchAdminFundData = async () => {
     setLoading(true);
     
@@ -96,12 +94,12 @@ export default function AdminFundPage() {
     }
 
     try {
-      // A. Fetch Ledger
+      // A. Fetch Admin Fund Ledger
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
         .eq('client_id', clientId)
-        .order('date', { ascending: true }); 
+        .order('date', { ascending: true }); // Ascending zaroori hai calculation ke liye
 
       if (ledgerError) throw ledgerError;
 
@@ -125,44 +123,46 @@ export default function AdminFundPage() {
       // C. Set State (Reverse for Display)
       setAdminFundLedger([...processedLedger].reverse());
 
+      // D. Update Summary State (Now includes totalExpenses)
       setSummary({
         netBalance: currentRunningBalance, 
         totalInjected: totalInjected,
         totalWithdrawn: totalWithdrawn,
-        totalExpenses: 0 // Init to 0
+        totalExpenses: 0 // ✅ Reset inside here, will be set below
       });
       setCashInHand(currentRunningBalance); 
 
-      // D. Society Cash Calc
+      // E. Society Cash Calc (UPDATED TO MATCH REPORT PAGE)
       
-      // 1. Get Passbook Total
+      // 1. Get Passbook Total (Inflow)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount')
         .eq('client_id', clientId);
       
-      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0, 0) || 0;
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
 
-      // 2. Get Total Loans Disbursed
+      // 2. Get Total Loans Disbursed (Outflow)
       const { data: loans } = await supabase
           .from('loans')
           .select('amount')
           .neq('status', 'rejected') 
           .eq('client_id', clientId); 
 
-      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0, 0) || 0;
+      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
 
-      // 3. Get Total Expenses
+      // 3. Get Total Expenses (Outflow)
       const { data: expenses } = await supabase
           .from('expenses')
           .select('amount')
           .eq('client_id', clientId);
 
-      const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount)||0, 0) || 0;
+      const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount)||0), 0) || 0;
 
-      // 4. Final Calculation
-      const totalInflow = totalPassbookCollection + currentRunningBalance;
+      // 4. Final Calculation (Matching Total Liquidity)
+      const totalInflow = totalPassbookCollection + currentRunningBalance; 
       const totalOutflow = totalLoansDisbursed + totalExpenses;
+
       const finalSocietyCash = totalInflow - totalOutflow;
       setSocietyCashInHand(finalSocietyCash); 
 
@@ -316,6 +316,22 @@ export default function AdminFundPage() {
         </Card>
       </div>
 
+      {/* Total Expenses Card - ✅ NEW */}
+      <Card className="bg-orange-50 border-orange-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-orange-800">Total Expenses</CardTitle>
+          <Wallet className="h-4 w-4 text-orange-600" />
+        </CardHeader>
+        <CardContent>
+          {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
+            <div className="text-3xl font-bold text-orange-700">
+                ₹{summary.totalExpenses.toLocaleString()}
+            </div>
+            )}
+            <p className="text-xs text-orange-600 mt-1">Monthly outflows from Expenses table</p>
+          </CardContent>
+        </Card>
+
       {/* Cash in Hand Info */}
       <Card>
         <CardHeader>
@@ -384,7 +400,7 @@ export default function AdminFundPage() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => handleAddTransaction('INJECT')} 
+                  onClick={() => handleAddTransaction('INJECT')} // Pass type
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!formData.amount || !formData.description}
                 >
