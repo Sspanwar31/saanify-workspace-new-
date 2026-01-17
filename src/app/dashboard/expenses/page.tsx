@@ -48,13 +48,28 @@ export default function ExpensesPage() {
     membersPaidCount: 0
   })
 
-  // 1. Init: Get Client ID
+  // 1. Init: Get Client ID (UPDATED)
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('current_user') || 'null')
-    if (user?.id) {
-        // Fallback for client_id if table lookup fails or using simple auth
-        setClientId(user.client_id || user.id)
+    const initClient = async () => {
+      const user = JSON.parse(localStorage.getItem('current_user') || 'null')
+      if (!user?.id) return
+
+      // 🔥 FIX: client_id ko DB se lao
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single()
+
+      if (error) {
+        console.error('Client resolve error:', error)
+        return
+      }
+
+      setClientId(data.id)
     }
+
+    initClient()
   }, [])
 
   // 2. Fetch Data Trigger
@@ -69,6 +84,9 @@ export default function ExpensesPage() {
   const fetchData = async () => {
     setLoading(true)
     if (!clientId) return
+
+    // 🔧 CHANGE 2 — safety log (debug ke liye)
+    console.log('FETCH EXPENSES FOR CLIENT:', clientId)
 
     try {
         // A. Fetch All Members First (For mapping names)
