@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase-simple' // ✅ Using simple client
+import { supabase } from '@/lib/supabase-simple' 
 import { 
   Plus, 
   Trash2, 
@@ -23,7 +23,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function ExpensesPage() {
-  // --- States ---
   const [expenseLedger, setExpenseLedger] = useState<any[]>([])
   const [members, setMembers] = useState<any[]>([])
   const [clientId, setClientId] = useState<string | null>(null)
@@ -40,7 +39,6 @@ export default function ExpensesPage() {
     date: new Date().toISOString().split('T')[0]
   })
 
-  // --- Stats Calculation State ---
   const [stats, setStats] = useState({
     netBalance: 0,
     totalFeesCollected: 0,
@@ -52,8 +50,10 @@ export default function ExpensesPage() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
     if (user?.id) {
-        // Fallback for client_id if table lookup fails or using simple auth
-        setClientId(user.client_id || user.id)
+        // Correct logic to get ID
+        const finalId = user.client_id || user.id;
+        console.log("🔹 Active Client ID:", finalId); // Debugging
+        setClientId(finalId)
     }
   }, [])
 
@@ -64,13 +64,15 @@ export default function ExpensesPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching (Replaces Store)
+  // 3. Main Data Fetching (FIXED QUERY)
   const fetchData = async () => {
     setLoading(true)
     if (!clientId) return
 
     try {
-        // A. Fetch Members (Active Only) for Dropdown
+        console.log("🔄 Fetching Data from Supabase...");
+
+        // A. Fetch Members
         const { data: membersData } = await supabase
             .from('members')
             .select('id, name, phone, status')
@@ -79,21 +81,31 @@ export default function ExpensesPage() {
 
         setMembers(membersData || [])
 
-        // B. Fetch Expenses Ledger (with Member Names)
+        // B. Fetch Expenses Ledger (Simplified Query for Safety)
+        // 🔥 FIX: Using 'members(name)' instead of 'member:members(name)' to avoid alias errors
         const { data: ledgerData, error } = await supabase
-            .from('expenses_ledger')
+            .from('expenses_ledger') 
             .select(`
                 *,
-                member:members(name)
+                members (
+                    name
+                )
             `)
             .eq('client_id', clientId)
-            .order('date', { ascending: false }) // Newest first
+            .order('date', { ascending: false })
 
-        if (error) throw error
+        if (error) {
+            console.error("❌ Error fetching expenses_ledger:", error);
+            throw error;
+        }
 
+        console.log("✅ Data Received:", ledgerData); // Debugging
+
+        // Format data safely
         const formattedLedger = (ledgerData || []).map((item: any) => ({
             ...item,
-            memberName: item.member?.name || null
+            // Handle array or object response from join
+            memberName: Array.isArray(item.members) ? item.members[0]?.name : item.members?.name || null
         }))
 
         setExpenseLedger(formattedLedger)
@@ -106,7 +118,7 @@ export default function ExpensesPage() {
     }
   }
 
-  // 4. Calculate Stats (Logic preserved)
+  // 4. Calculate Stats
   const calculateStats = (ledger: any[]) => {
     let income = 0
     let expenses = 0
@@ -132,7 +144,6 @@ export default function ExpensesPage() {
 
   // --- Handlers ---
 
-  // 5. Collect Fee (Save to DB)
   const handleCollectFee = async () => {
     if (!selectedMember || !clientId) return
 
@@ -140,23 +151,21 @@ export default function ExpensesPage() {
         await supabase.from('expenses_ledger').insert([{
             client_id: clientId,
             member_id: selectedMember,
-            amount: 200, // Fixed Fee
+            amount: 200,
             type: 'INCOME',
             category: 'MAINTENANCE_FEE',
             description: 'Monthly Maintenance Fee',
             date: new Date().toISOString().split('T')[0]
         }])
 
-        fetchData() // Refresh
+        fetchData()
         setSelectedMember('')
         setIsCollectFeeOpen(false)
     } catch (error) {
-        console.error('Error collecting fee:', error)
         alert('Failed to collect fee')
     }
   }
 
-  // 6. Record Expense (Save to DB)
   const handleRecordExpense = async () => {
     if (!expenseData.amount || !expenseData.category || !expenseData.description || !clientId) return
     
@@ -173,7 +182,7 @@ export default function ExpensesPage() {
             date: expenseData.date
         }])
 
-        fetchData() // Refresh
+        fetchData()
         setExpenseData({
             amount: '',
             category: '',
@@ -182,12 +191,10 @@ export default function ExpensesPage() {
         })
         setIsRecordExpenseOpen(false)
     } catch (error) {
-        console.error('Error recording expense:', error)
         alert('Failed to record expense')
     }
   }
 
-  // 7. Delete Entry
   const handleDeleteEntry = async (id: string) => {
       if(!confirm("Are you sure?")) return;
       try {
@@ -239,7 +246,6 @@ export default function ExpensesPage() {
 
       {/* SECTION A: SUMMARY CARDS */}
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Maintenance Fund Balance */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
@@ -264,7 +270,6 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
 
-        {/* Fees Collected */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -286,7 +291,6 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
 
-        {/* Total Expenses */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -311,7 +315,6 @@ export default function ExpensesPage() {
 
       {/* SECTION B: ACTION BUTTONS */}
       <div className="flex gap-4">
-        {/* Collect Member Fee Button */}
         <Dialog open={isCollectFeeOpen} onOpenChange={setIsCollectFeeOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
@@ -320,56 +323,20 @@ export default function ExpensesPage() {
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-blue-600">
-                <Users className="h-5 w-5" />
-                Collect Maintenance Fee
-              </DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Collect Fee</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="member-select">Select Member</Label>
-                <Select value={selectedMember} onValueChange={setSelectedMember}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select member..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {members.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.phone})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <div className="text-sm text-gray-600">
-                  <p><strong>Amount:</strong> ₹200 (Fixed)</p>
-                  <p><strong>Type:</strong> One-Time Maintenance Fee</p>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleCollectFee}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  disabled={!selectedMember}
-                >
-                  Collect Fee
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsCollectFeeOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
+              <Label>Select Member</Label>
+              <Select value={selectedMember} onValueChange={setSelectedMember}>
+                <SelectTrigger><SelectValue placeholder="Select member..." /></SelectTrigger>
+                <SelectContent>
+                  {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleCollectFee} className="w-full bg-blue-600">Save</Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Record Expense Button */}
         <Dialog open={isRecordExpenseOpen} onOpenChange={setIsRecordExpenseOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700">
@@ -378,76 +345,20 @@ export default function ExpensesPage() {
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-orange-600">
-                <Plus className="h-5 w-5" />
-                Record New Expense
-              </DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Record Expense</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="expense-amount">Amount</Label>
-                <Input
-                  id="expense-amount"
-                  type="number"
-                  placeholder="Enter amount"
-                  value={expenseData.amount}
-                  onChange={(e) => setExpenseData({ ...expenseData, amount: e.target.value })}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="expense-category">Category</Label>
-                <Select value={expenseData.category} onValueChange={(value) => setExpenseData({ ...expenseData, category: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="STATIONERY">Stationery</SelectItem>
-                    <SelectItem value="PRINTING">Printing</SelectItem>
-                    <SelectItem value="LOAN_FORMS">Loan Forms</SelectItem>
-                    <SelectItem value="REFRESHMENTS">Refreshments</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="expense-date">Date</Label>
-                <Input
-                  id="expense-date"
-                  type="date"
-                  value={expenseData.date}
-                  onChange={(e) => setExpenseData({ ...expenseData, date: e.target.value })}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="expense-description">Description</Label>
-                <Textarea
-                  id="expense-description"
-                  placeholder="Enter expense description..."
-                  value={expenseData.description}
-                  onChange={(e) => setExpenseData({ ...expenseData, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleRecordExpense}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700"
-                  disabled={!expenseData.amount || !expenseData.category || !expenseData.description}
-                >
-                  Record Expense
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsRecordExpenseOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
+              <Input type="number" placeholder="Amount" value={expenseData.amount} onChange={e => setExpenseData({...expenseData, amount: e.target.value})} />
+              <Select value={expenseData.category} onValueChange={v => setExpenseData({...expenseData, category: v})}>
+                <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="STATIONERY">Stationery</SelectItem>
+                  <SelectItem value="PRINTING">Printing</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input type="date" value={expenseData.date} onChange={e => setExpenseData({...expenseData, date: e.target.value})} />
+              <Textarea placeholder="Description" value={expenseData.description} onChange={e => setExpenseData({...expenseData, description: e.target.value})} />
+              <Button onClick={handleRecordExpense} className="w-full bg-orange-600">Save</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -455,82 +366,40 @@ export default function ExpensesPage() {
 
       {/* SECTION C: THE LEDGER TABLE */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Maintenance & Expenses Ledger
-          </CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="flex gap-2"><Receipt className="h-5 w-5"/> Ledger</CardTitle></CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Member</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? <TableRow><TableCell colSpan={7} className="text-center">Loading...</TableCell></TableRow> :
+               expenseLedger.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-gray-500">No Data found.</TableCell></TableRow> :
+               expenseLedger.map(entry => (
+                <TableRow key={entry.id}>
+                  <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
+                  <TableCell>{entry.description}</TableCell>
+                  <TableCell>{entry.memberName || '-'}</TableCell>
+                  <TableCell><Badge className={getCategoryColor(entry.category)}>{getCategoryLabel(entry.category)}</Badge></TableCell>
+                  <TableCell><Badge variant={entry.type === 'INCOME' ? 'default' : 'destructive'}>{entry.type}</Badge></TableCell>
+                  <TableCell className={`text-right font-bold ${entry.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
+                    {entry.type === 'INCOME' ? '+' : '-'}₹{Number(entry.amount).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteEntry(entry.id)}><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8">Loading...</TableCell></TableRow>
-                ) : expenseLedger.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                      No transactions yet. Add your first transaction to get started.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  expenseLedger
-                    .map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
-                        <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
-                        <TableCell>
-                          {entry.memberName ? (
-                            <span className="text-blue-600 font-medium">{entry.memberName}</span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getCategoryColor(entry.category)}>
-                            {getCategoryLabel(entry.category)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={entry.type === 'INCOME' ? 'default' : 'destructive'}
-                            className={entry.type === 'INCOME' ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}
-                          >
-                            {entry.type === 'INCOME' ? 'Income' : 'Expense'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          <span className={entry.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}>
-                            {entry.type === 'INCOME' ? '+' : '-'}₹{Number(entry.amount).toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteEntry(entry.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
