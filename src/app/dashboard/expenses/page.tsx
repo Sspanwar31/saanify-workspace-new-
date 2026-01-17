@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Supabase Connection
+import { supabase } from '@/lib/supabase-simple'; 
 import { 
   Plus, 
   Trash2, 
-  Users,
   DollarSign,
   TrendingUp,
   TrendingDown,
@@ -19,20 +18,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ExpensesPage() {
   // --- States ---
   const [isCollectFeeOpen, setIsCollectFeeOpen] = useState(false)
   const [isRecordExpenseOpen, setIsRecordExpenseOpen] = useState(false)
-  const [selectedMember, setSelectedMember] = useState('')
+  const [selectedMember, setSelectedMember] = useState<string>('')
   const [expenseData, setExpenseData] = useState({
     amount: '',
     category: '',
-    description: '',
     date: new Date().toISOString().split('T')[0]
   })
+  const [showWarning, setShowWarning] = useState(false)
 
   // Data States
   const [members, setMembers] = useState<any[]>([])
@@ -40,7 +39,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true)
   const [clientId, setClientId] = useState<string | null>(null)
 
-  // Stats State
+  // --- Stats States ---
   const [stats, setStats] = useState({
     netBalance: 0,
     totalFeesCollected: 0,
@@ -48,18 +47,31 @@ export default function ExpensesPage() {
     totalExpenses: 0
   })
 
-  // --- 1. Fetch Client ID ---
+  // 1. Fetch Client ID & Initial Data
   useEffect(() => {
     const initData = async () => {
       // ✅ FIX: Client ID Fetch (MAIN ISSUE) - Logic Updated Here
-      const user = JSON.parse(localStorage.getItem('current_user') || '{}');
-      const cid = user?.id;
-      if (cid) setClientId(cid);
+      const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
+      if (!admin?.id) return
+
+      // 🔥 REAL FIX: get client_id from admins table
+      const { data, error } = await supabase
+        .from('admins')
+        .select('client_id')
+        .eq('id', admin.id)
+        .single()
+
+      if (error) {
+        console.error('Failed to resolve client_id', error)
+        return
+      }
+
+      setClientId(data.client_id)
     }
     initData()
   }, [])
 
-  // --- 2. Fetch Data ---
+  // 2. Fetch Data
   useEffect(() => {
     if (clientId) {
       fetchData()
@@ -67,160 +79,174 @@ export default function ExpensesPage() {
   }, [clientId])
 
   const fetchData = async () => {
-    setLoading(true)
-    
-    // A. Fetch Members
-    const { data: membersData } = await supabase
-      .from('members')
-      .select('*')
-      .eq('client_id', clientId)
-      .order('name', { ascending: true })
-    
-    if (membersData) setMembers(membersData)
+    setLoading(true);
 
-    // B. Fetch Expense Ledger
-    const { data: ledgerData } = await supabase
-      .from('expenses_ledger')
-      .select('*, members(name)') // Join to get member name
-      .eq('client_id', clientId)
-      .order('created_at', { ascending: false })
-
-    if (ledgerData) {
-      // Map for UI
-      const formattedLedger = ledgerData.map((item: any) => ({
-        ...item,
-        createdAt: item.created_at, // Mapping for sort compatibility if needed
-        memberName: item.members?.name
-      }))
-      setExpenseLedger(formattedLedger)
-
-      // C. Calculate Stats
-      let netBal = 0
-      let feesColl = 0
-      let expenses = 0
-      let paidMembers = 0
-
-      // Count members who paid (from Members table status)
-      if (membersData) {
-        paidMembers = membersData.filter((m: any) => m.has_paid_maintenance).length
+    try {
+      if (!clientId) {
+        setLoading(false);
+        return;
       }
 
+      // A. Fetch Members (For Dropdown)
+      const { data: membersData } = await supabase
+        .from('members')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('name', { ascending: true });
+
+      setMembers(membersData || []);
+
+      // B. Fetch Ledger (With Relational Join for Member Name)
+      // ✅ CHANGE 1: Updated Select to use Foreign Key
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('expenses_ledger')
+        .select(`
+          *,
+          member:members!expenses_ledger_member_id_fkey(name)
+        `)
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false }); // Latest first
+
+      if (ledgerError) throw ledgerError;
+
+      // C. Map for UI (Using Relational Data)
+      const formattedLedger = (ledgerData || []).map((item: any) => ({
+        ...item,
+        createdAt: item.created_at,
+        // ✅ CHANGE 2: Mapping fix
+        memberName: item.member?.name || 'Unknown' // Join returns an object, access .name safely
+      }));
+
+      setExpenseLedger([...formattedLedger]);
+
+      // D. Calculate Stats
+      let netBal = 0;
+      let feesColl = 0;
+      let expenses = 0;
+      let paidMembers = 0;
+
+      // Calculate stats logic based on processedLedger
       formattedLedger.forEach((entry: any) => {
-        if (entry.type === 'INCOME') { // Assuming type is 'INCOME' in DB
-          netBal += Number(entry.amount)
-          feesColl += Number(entry.amount)
-        } else { // Assuming 'EXPENSE' type
-          netBal -= Number(entry.amount)
-          expenses += Number(entry.amount)
+        const amt = Number(entry.amount);
+        if (entry.type === 'INCOME') { // Assuming 'INCOME' is Maintenance Fee
+          netBal += amt;
+          feesColl += amt;
+        } else if (entry.type === 'EXPENSE') {
+          netBal -= amt;
+          expenses += amt;
         }
-      })
+      });
+
+      // Count paid members (using local state 'members' for better performance)
+      if (members.length > 0) {
+        paidMembers = members.filter((m: any) => m.has_paid_maintenance).length;
+      }
 
       setStats({
         netBalance: netBal,
         totalFeesCollected: feesColl,
         membersPaidCount: paidMembers,
         totalExpenses: expenses
-      })
+      });
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false); // ✅ FIX: Ensure loading turns off
     }
-    setLoading(false)
   }
 
   // --- Handlers ---
-
   const handleCollectFee = async () => {
-    if (!selectedMember || !clientId) return
+    if (!selectedMember || !clientId) return;
 
     try {
-      // 1. Insert Income Entry
+      // Insert Income Entry
       await supabase.from('expenses_ledger').insert([{
         client_id: clientId,
-        date: new Date().toISOString().split('T')[0],
+        member_id: selectedMember,
         amount: 200, // Fixed Fee
-        type: 'INCOME', // Assuming correct type
+        type: 'INCOME', // Assuming 'INCOME' type for Maintenance
         category: 'MAINTENANCE_FEE',
         description: 'Monthly Maintenance Fee Collected',
-        member_id: selectedMember
-      }])
+        date: new Date().toISOString().split('T')[0]
+      }]);
 
-      // 2. Update Member Status
-      await supabase.from('members').update({ has_paid_maintenance: true }).eq('id', selectedMember)
+      // Update Member Status to Paid
+      await supabase.from('members').update({ has_paid_maintenance: true }).eq('id', selectedMember);
 
       // Reset & Refresh
-      setSelectedMember('')
-      setIsCollectFeeOpen(false)
-      fetchData()
+      setSelectedMember('');
+      fetchData();
+      setIsCollectFeeOpen(false);
 
     } catch (error) {
-      console.error(error)
-      alert('Failed to collect fee')
+        console.error("Error collecting fee:", error);
+        alert("Failed to collect fee.");
     }
   }
 
   const handleRecordExpense = async () => {
-    if (!expenseData.amount || !expenseData.category || !expenseData.description || !clientId) return
-    
-    const amount = parseFloat(expenseData.amount)
-    if (isNaN(amount) || amount <= 0) return
+    if (!expenseData.amount || !expenseData.category || !clientId) return;
 
     try {
+      // Insert Expense Entry
       await supabase.from('expenses_ledger').insert([{
         client_id: clientId,
-        date: expenseData.date,
-        amount: amount,
-        type: 'EXPENSE',
+        amount: parseFloat(expenseData.amount),
         category: expenseData.category,
-        description: expenseData.description
-      }])
+        description: expenseData.description,
+        date: expenseData.date,
+        type: 'EXPENSE',
+        member_id: selectedMember || null // Optional linking
+      }]);
 
+      // Reset & Refresh
       setExpenseData({
         amount: '',
         category: '',
         description: '',
         date: new Date().toISOString().split('T')[0]
       })
-      setIsRecordExpenseOpen(false)
-      fetchData()
+      setIsRecordExpenseOpen(false);
+      fetchData();
 
     } catch (error) {
-      console.error(error)
-      alert('Failed to record expense')
+      console.error("Error recording expense:", error);
+      alert("Failed to record expense.");
     }
   }
 
   const deleteExpenseEntry = async (id: string, memberId?: string, category?: string) => {
-    if (!confirm("Are you sure you want to delete this transaction?")) return
+    if (!confirm("Are you sure you want to delete this transaction?")) return;
 
     try {
-      // 1. Delete Entry
-      await supabase.from('expenses_ledger').delete().eq('id', id)
+      // Delete Entry
+      await supabase.from('expenses_ledger').delete().eq('id', id);
 
-      // 2. If it was a Fee, revert member status
+      // If it was a Fee, revert member status
       if (category === 'MAINTENANCE_FEE' && memberId) {
-        await supabase.from('members').update({ has_paid_maintenance: false }).eq('id', memberId)
+        await supabase.from('members').update({ has_paid_maintenance: false }).eq('id', memberId);
       }
 
-      fetchData()
+      fetchData();
     } catch (error) {
-      console.error(error)
-      alert('Failed to delete')
+      console.error("Error deleting transaction:", error);
+      alert("Failed to delete transaction.");
     }
   }
 
-  const getMembersWhoHaventPaid = () => {
-    return members.filter(m => !m.has_paid_maintenance && m.status === 'active')
-  }
-
-  // --- UI Helpers (Kept Same) ---
+  // --- Helpers ---
   const getCategoryIcon = (category: string) => {
     const icons: any = {
-      'MAINTENANCE_FEE': <DollarSign className="h-4 w-4" />,
-      'STATIONERY': <Receipt className="h-4 w-4" />,
-      'PRINTING': <Receipt className="h-4 w-4" />,
-      'LOAN_FORMS': <Receipt className="h-4 w-4" />,
-      'REFRESHMENTS': <Receipt className="h-4 w-4" />,
-      'OTHER': <Receipt className="h-4 w-4" />
+      'MAINTENANCE_FEE': <DollarSign className="h-4 w-4 text-green-600" />,
+      'STATIONERY': <Receipt className="h-4 w-4 text-blue-600" />,
+      'PRINTING': <Receipt className="h-4 w-4 text-purple-600" />,
+      'LOAN_FORMS': <Receipt className="h-4 w-4 text-orange-600" />,
+      'REFRESHMENTS': <Receipt className="h-4 w-4 text-teal-600" />,
+      'OTHER': <Receipt className="h-4 w-4 text-gray-600" />
     }
-    return icons[category] || <Receipt className="h-4 w-4" />
+    return icons[category] || <Receipt className="h-4 w-4 text-gray-600" />
   }
 
   const getCategoryColor = (category: string) => {
@@ -229,7 +255,7 @@ export default function ExpensesPage() {
       'STATIONERY': 'bg-blue-100 text-blue-800',
       'PRINTING': 'bg-purple-100 text-purple-800',
       'LOAN_FORMS': 'bg-orange-100 text-orange-800',
-      'REFRESHMENTS': 'bg-pink-100 text-pink-800',
+      'REFRESHMENTS': 'bg-teal-100 text-teal-800',
       'OTHER': 'bg-gray-100 text-gray-800'
     }
     return colors[category] || 'bg-gray-100 text-gray-800'
@@ -249,9 +275,8 @@ export default function ExpensesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Expenses & Maintenance
@@ -265,7 +290,7 @@ export default function ExpensesPage() {
 
       {/* SECTION A: SUMMARY CARDS */}
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Maintenance Fund Balance */}
+        {/* Maintenance Fund Balance Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
@@ -276,21 +301,27 @@ export default function ExpensesPage() {
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <>
                 <div className={`text-3xl font-bold ${
-                  stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                  stats.netBalance > 0 ? 'text-green-600' : 
+                  stats.netBalance < 0 ? 'text-red-600' : 
+                  'text-gray-600'
                 }`}>
                   ₹{Math.abs(stats.netBalance).toLocaleString()}
                 </div>
                 <p className={`text-sm mt-1 ${
-                  stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                  stats.netBalance > 0 ? 'text-green-600' : 
+                  stats.netBalance < 0 ? 'text-red-600' : 
+                  'text-gray-600'
                 }`}>
-                  {stats.netBalance >= 0 ? 'Positive Balance' : 'Negative Balance'}
+                  {stats.netBalance > 0 ? 'Positive Balance' : 
+                   stats.netBalance < 0 ? 'Negative Balance' : 
+                   'Balanced'}
                 </p>
               </>
             )}
           </CardContent>
         </Card>
 
-        {/* Fees Collected */}
+        {/* Fees Collected Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -310,7 +341,7 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
 
-        {/* Total Expenses */}
+        {/* Total Expenses Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -345,7 +376,7 @@ export default function ExpensesPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-blue-600">
                 <Users className="h-5 w-5" />
-                Collect Maintenance Fee
+                Collect Member Fee
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -356,18 +387,18 @@ export default function ExpensesPage() {
                     <SelectValue placeholder="Select member who hasn't paid..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {getMembersWhoHaventPaid().map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.phone})
+                    {members.filter((m: any) => !m.has_paid_maintenance).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name} ({m.phone})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>              
+              </div>
               <div className="bg-gray-50 p-3 rounded-lg">
                 <div className="text-sm text-gray-600">
-                  <p><strong>Amount:</strong> ₹200 (Fixed)</p>
-                  <p><strong>Type:</strong> One-Time Maintenance Fee</p>
+                  <p><strong>Amount:</strong> ₹200</p>
+                  <p><strong>Type:</strong> Maintenance Fee</p>
                 </div>
               </div>
 
@@ -402,7 +433,7 @@ export default function ExpensesPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-orange-600">
                 <Plus className="h-5 w-5" />
-                Record New Expense
+                Record Expense
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -415,7 +446,7 @@ export default function ExpensesPage() {
                   value={expenseData.amount}
                   onChange={(e) => setExpenseData({ ...expenseData, amount: e.target.value })}
                 />
-              </div>              
+              </div>
               <div>
                 <Label htmlFor="expense-category">Category</Label>
                 <Select value={expenseData.category} onValueChange={(value) => setExpenseData({ ...expenseData, category: value })}>
@@ -423,6 +454,7 @@ export default function ExpensesPage() {
                     <SelectValue placeholder="Select category..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="MAINTENANCE_FEE">Maintenance Fee</SelectItem>
                     <SelectItem value="STATIONERY">Stationery</SelectItem>
                     <SelectItem value="PRINTING">Printing</SelectItem>
                     <SelectItem value="LOAN_FORMS">Loan Forms</SelectItem>
@@ -431,7 +463,6 @@ export default function ExpensesPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
                 <Label htmlFor="expense-date">Date</Label>
                 <Input
@@ -441,12 +472,11 @@ export default function ExpensesPage() {
                   onChange={(e) => setExpenseData({ ...expenseData, date: e.target.value })}
                 />
               </div>
-              
               <div>
                 <Label htmlFor="expense-description">Description</Label>
                 <Textarea
                   id="expense-description"
-                  placeholder="Enter expense description..."
+                  placeholder="Enter expense description"
                   value={expenseData.description}
                   onChange={(e) => setExpenseData({ ...expenseData, description: e.target.value })}
                   rows={3}
@@ -487,7 +517,6 @@ export default function ExpensesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
                   <TableHead>Member</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Type</TableHead>
@@ -497,10 +526,10 @@ export default function ExpensesPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8">Loading...</TableCell></TableRow>
                 ) : expenseLedger.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                       No transactions yet. Add your first transaction to get started.
                     </TableCell>
                   </TableRow>
@@ -508,12 +537,12 @@ export default function ExpensesPage() {
                   expenseLedger.map((entry) => (
                       <TableRow key={entry.id}>
                         <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
-                        <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
+                        {/* ✅ UPDATE: Display Member Name using Relational Join */}
                         <TableCell>
                           {entry.memberName ? (
                             <span className="text-blue-600 font-medium">{entry.memberName}</span>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-gray-400">Unknown</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -523,8 +552,8 @@ export default function ExpensesPage() {
                         </TableCell>
                         <TableCell>
                           <Badge 
-                            variant={entry.type === 'INCOME' ? 'default' : 'destructive'}
-                            className={entry.type === 'INCOME' ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}
+                            variant="outline"
+                            className={entry.type === 'INCOME' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
                           >
                             {entry.type === 'INCOME' ? 'Income' : 'Expense'}
                           </Badge>
