@@ -14,12 +14,12 @@ import {
   Wallet,
   RefreshCw 
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -33,20 +33,20 @@ export default function AdminFundPage() {
   const [isInjectModalOpen, setIsInjectModalOpen] = useState(false)
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
   
+  // ✅ FIXED: Removed extra closing brace from formData initialization
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0]
   })
-  })
   const [showWarning, setShowWarning] = useState(false)
 
-  // ✅ UPDATED: Summary Calculations (Added totalExpenses)
+  // --- Summary Calculations ---
   const [summary, setSummary] = useState({
     netBalance: 0,
     totalInjected: 0,
     totalWithdrawn: 0,
-    totalExpenses: 0 // ✅ NEW STATE
+    totalExpenses: 0
   })
   const [cashInHand, setCashInHand] = useState(0) 
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
@@ -54,14 +54,26 @@ export default function AdminFundPage() {
   // 1. Fetch Client ID & Initial Data
   useEffect(() => {
     const initData = async () => {
-      // ✅ CORRECT CODE: Direct user.id
+      // ✅ FIX: Client ID Fetch (MAIN ISSUE)
       const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
       if (!admin?.id) {
         console.error('Client not found in localStorage')
         return
       }
-      // 🔥 CLIENT HI OWNER HAI
-      setClientId(admin.id)
+
+      // 🔥 REAL FIX: get client_id from admins table
+      const { data, error } = await supabase
+        .from('admins')
+        .select('client_id')
+        .eq('id', admin.id)
+        .single()
+
+      if (error) {
+        console.error('Failed to resolve client_id', error)
+        return
+      }
+
+      setClientId(data.client_id)
     }
     initData()
   }, [])
@@ -76,7 +88,7 @@ export default function AdminFundPage() {
   // ✅ UPDATED: fetchAdminFundData Function (Added Expenses Logic)
   const fetchAdminFundData = async () => {
     setLoading(true);
-
+    
     // ✅ SAFE GUARD ADD KARO
     if (!clientId) {
       setLoading(false); 
@@ -84,7 +96,7 @@ export default function AdminFundPage() {
     }
 
     try {
-      // A. Fetch Ledger (Sorted by Date - Ascending order zaroori hai calculation ke liye)
+      // A. Fetch Ledger
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
@@ -117,30 +129,30 @@ export default function AdminFundPage() {
         netBalance: currentRunningBalance, 
         totalInjected: totalInjected,
         totalWithdrawn: totalWithdrawn,
-        totalExpenses: 0 // Reset locally before calculation below
+        totalExpenses: 0 // Init to 0
       });
       setCashInHand(currentRunningBalance); 
 
-      // D. Society Cash Calc (UPDATED TO MATCH REPORT PAGE - WITH EXPENSES)
+      // D. Society Cash Calc
       
-      // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
+      // 1. Get Passbook Total
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount')
         .eq('client_id', clientId);
       
-      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0, 0) || 0;
 
-      // 2. Get Total Loans Disbursed (Outflow)
+      // 2. Get Total Loans Disbursed
       const { data: loans } = await supabase
           .from('loans')
           .select('amount')
-          .neq('status', 'rejected') // CHANGE: neq instead of in
+          .neq('status', 'rejected') 
           .eq('client_id', clientId); 
 
       const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0, 0) || 0;
 
-      // 3. Get Total Expenses (Outflow) - 🔥 NEW ADDITION
+      // 3. Get Total Expenses
       const { data: expenses } = await supabase
           .from('expenses')
           .select('amount')
@@ -148,17 +160,16 @@ export default function AdminFundPage() {
 
       const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount)||0, 0) || 0;
 
-      // 4. Final Calculation (Matching Total Liquidity)
+      // 4. Final Calculation
       const totalInflow = totalPassbookCollection + currentRunningBalance;
       const totalOutflow = totalLoansDisbursed + totalExpenses;
-
       const finalSocietyCash = totalInflow - totalOutflow;
       setSocietyCashInHand(finalSocietyCash); 
 
     } catch (error) {
       console.error("Error fetching admin fund data:", error);
     } finally {
-      setLoading(false); // ✅ FIX: Ensure loading turns off
+      setLoading(false); 
     }
   }
 
@@ -301,23 +312,6 @@ export default function AdminFundPage() {
               </div>
             )}
             <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (All Sources)</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Total Expenses Card - ✅ NEW */}
-      <Card className="bg-orange-50 border-orange-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-800">Total Expenses</CardTitle>
-            <Wallet className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-              <div className="text-3xl font-bold text-orange-700">
-                ₹{summary.totalExpenses.toLocaleString()}
-              </div>
-            )}
-            <p className="text-xs text-orange-600 mt-1">Monthly outflows from Expenses table</p>
           </CardContent>
         </Card>
       </div>
@@ -504,7 +498,10 @@ export default function AdminFundPage() {
       {/* SECTION C: THE LEDGER TABLE */}
       <Card>
         <CardHeader>
-          <CardTitle>Transaction Ledger</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="h-5 w-5" />
+            Maintenance & Expenses Ledger
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
