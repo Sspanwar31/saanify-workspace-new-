@@ -33,12 +33,11 @@ export default function AdminFundPage() {
   const [isInjectModalOpen, setIsInjectModalOpen] = useState(false)
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
   
-  // ✅ FIXED: Removed extra closing brace from formData initialization
+  // ✅ FIXED: Removed extra '})' from here
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0]
-  })
   })
   
   const [showWarning, setShowWarning] = useState(false)
@@ -48,7 +47,7 @@ export default function AdminFundPage() {
     netBalance: 0,
     totalInjected: 0,
     totalWithdrawn: 0,
-    totalExpenses: 0 // ✅ Added new field
+    totalExpenses: 0 
   })
   const [cashInHand, setCashInHand] = useState(0) 
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
@@ -140,7 +139,7 @@ export default function AdminFundPage() {
         .select('deposit_amount')
         .eq('client_id', clientId);
       
-      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0, 0) || 0;
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
 
       // 2. Get Total Loans Disbursed (Outflow)
       const { data: loans } = await supabase
@@ -149,7 +148,7 @@ export default function AdminFundPage() {
           .neq('status', 'rejected') 
           .eq('client_id', clientId); 
 
-      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0, 0) || 0;
+      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
 
       // 3. Get Total Expenses (Outflow) - 🔥 NEW ADDITION
       const { data: expenses } = await supabase
@@ -331,7 +330,6 @@ export default function AdminFundPage() {
             <p className="text-xs text-orange-600 mt-1">Monthly outflows from Expenses table</p>
           </CardContent>
         </Card>
-      </div>
 
       {/* Cash in Hand Info */}
       <Card>
@@ -401,7 +399,7 @@ export default function AdminFundPage() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => handleAddTransaction('INJECT')} 
+                  onClick={() => handleAddTransaction('INJECT')} // Pass type
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!formData.amount || !formData.description}
                 >
@@ -493,7 +491,7 @@ export default function AdminFundPage() {
                 <div className="flex gap-2">
                   <Button 
                     variant="destructive"
-                    onClick={() => handleAddTransaction('WITHDRAW')} 
+                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type
                     className="flex-1"
                     disabled={!formData.amount || !formData.description}
                   >
