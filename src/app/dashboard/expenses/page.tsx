@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase-simple' 
+import { supabase } from '@/lib/supabase-simple' // ✅ Using simple client
 import { 
   Plus, 
   Trash2, 
@@ -52,6 +52,7 @@ export default function ExpensesPage() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
     if (user?.id) {
+        // Fallback for client_id if table lookup fails or using simple auth
         setClientId(user.client_id || user.id)
     }
   }, [])
@@ -63,41 +64,48 @@ export default function ExpensesPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching (UPDATED: Manual Join Logic)
+  // 3. Main Data Fetching (UPDATED: Manual Mapping Logic)
+  // This fixes the BLANK DATA issue by removing complex joins
   const fetchData = async () => {
     setLoading(true)
     if (!clientId) return
 
     try {
-        // A. Fetch All Members First (Mapping ke liye)
-        const { data: membersData } = await supabase
+        // A. Fetch All Members First (For mapping names)
+        const { data: membersData, error: memError } = await supabase
             .from('members')
             .select('id, name, phone, status')
             .eq('client_id', clientId)
 
+        if (memError) console.error("Member fetch error:", memError);
+
+        // Filter active members for dropdown
         const activeMembers = membersData?.filter(m => m.status === 'active') || []
         setMembers(activeMembers)
 
-        // Create a map for fast lookup: { member_id: member_name }
-        const memberMap = (membersData || []).reduce((acc: any, member: any) => {
-            acc[member.id] = member.name;
-            return acc;
-        }, {});
+        // Create a fast lookup map: { member_id: "John Doe" }
+        const memberMap: any = {};
+        membersData?.forEach((m: any) => {
+            memberMap[m.id] = m.name;
+        });
 
-        // B. Fetch Expenses Ledger (Simple Select - No Complex Join)
-        // This ensures we get data even if relations are broken in Supabase
+        // B. Fetch Expenses Ledger (SIMPLE SELECT)
+        // 🔥 FIX: Removed 'members(name)' join. We fetch raw data to ensure it works.
         const { data: ledgerData, error } = await supabase
             .from('expenses_ledger')
             .select('*') 
             .eq('client_id', clientId)
-            .order('date', { ascending: false })
+            .order('date', { ascending: false }) // Newest first
 
-        if (error) throw error
+        if (error) {
+            console.error("Supabase Ledger Error:", error);
+            throw error;
+        }
 
-        // C. Manual Join in Javascript
+        // C. Combine Data manually
         const formattedLedger = (ledgerData || []).map((item: any) => ({
             ...item,
-            // Agar member_id hai to map se name uthao, nahi to null
+            // If member_id exists, look it up in our map. Otherwise null.
             memberName: item.member_id ? memberMap[item.member_id] : null
         }))
 
@@ -324,7 +332,7 @@ export default function ExpensesPage() {
               Collect Member Fee
             </Button>
           </DialogTrigger>
-          {/* ✅ FIX: Dialog warning fix */}
+          {/* ✅ FIX: Added aria-describedby for Dialog warning fix */}
           <DialogContent aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-blue-600">
@@ -383,7 +391,7 @@ export default function ExpensesPage() {
               Record Expense
             </Button>
           </DialogTrigger>
-          {/* ✅ FIX: Dialog warning fix */}
+          {/* ✅ FIX: Added aria-describedby for Dialog warning fix */}
           <DialogContent aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-orange-600">
