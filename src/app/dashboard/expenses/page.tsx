@@ -3,14 +3,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple'; 
 import { 
+  ArrowDownCircle, 
+  ArrowUpCircle, 
   Plus, 
-  Trash2, 
+  Trash2,
+  AlertTriangle,
   DollarSign,
   TrendingUp,
   TrendingDown,
-  Receipt,
-  RefreshCw,
-  Users // ✅ ADDED
+  Wallet,
+  RefreshCw 
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,46 +20,46 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-export default function ExpensesPage() {
+export default function AdminFundPage() {
   // --- States ---
-  const [isCollectFeeOpen, setIsCollectFeeOpen] = useState(false)
-  const [isRecordExpenseOpen, setIsRecordExpenseOpen] = useState(false)
-  const [selectedMember, setSelectedMember] = useState<string>('')
-  const [expenseData, setExpenseData] = useState({
+  const [adminFundLedger, setAdminFundLedger] = useState<any[]>([])
+  const [clientId, setClientId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const [isInjectModalOpen, setIsInjectModalOpen] = useState(false)
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
+  
+  const [formData, setFormData] = useState({
     amount: '',
-    category: '',
+    description: '',
     date: new Date().toISOString().split('T')[0]
-  })
   })
   const [showWarning, setShowWarning] = useState(false)
 
-  // Data States
-  const [members, setMembers] = useState<any[]>([])
-  const [expenseLedger, setExpenseLedger] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [clientId, setClientId] = useState<string | null>(null)
-
-  // Stats States
-  const [stats, setStats] = useState({
+  // --- Summary Calculations ---
+  const [summary, setSummary] = useState({
     netBalance: 0,
-    totalFeesCollected: 0,
-    membersPaidCount: 0,
+    totalInjected: 0,
+    totalWithdrawn: 0,
     totalExpenses: 0
   })
+  const [cashInHand, setCashInHand] = useState(0) 
+  const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
   // 1. Fetch Client ID & Initial Data
   useEffect(() => {
     const initData = async () => {
-      // ✅ FIX: Client ID Fetch (MAIN ISSUE)
-      const admin = JSON.parse(localStorage.getItem('current_user') || 'null'
-      if (!admin?.id) return
+      const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
+      if (!admin?.id) {
+        console.error('Client not found in localStorage')
+        return
+      }
 
-      // 🔥 REAL FIX: get client_id from admins table
+      // 🔥 CLIENT HI OWNER HAI
       const { data, error } = await supabase
         .from('admins')
         .select('client_id')
@@ -74,346 +76,319 @@ export default function ExpensesPage() {
     initData()
   }, [])
 
-  // 2. Fetch Data
+  // ✅ UPDATED: UseEffect Dependency (Just clientId)
   useEffect(() => {
     if (clientId) {
-      fetchData()
+      fetchAdminFundData();
     }
   }, [clientId])
 
-  const fetchData = async () => {
+  // ✅ UPDATED: fetchAdminFundData Function (Full Logic including Expenses)
+  const fetchAdminFundData = async () => {
     setLoading(true);
-    
-    try {
-      if (!clientId) {
-        setLoading(false)
-        return
-      }
 
-      // A. Fetch Members
-      const { data: membersData } = await supabase
-        .from('members')
+    // ✅ SAFE GUARD
+    if (!clientId) {
+      setLoading(false); 
+      return;
+    }
+
+    try {
+      // A. Fetch Ledger (Ascending order for calculation)
+      const { data: ledger, error: ledgerError } = await supabase
+        .from('admin_fund_ledger')
         .select('*')
         .eq('client_id', clientId)
-        .order('name', { ascending: true })
-      
-      setMembers(membersData || [])
-
-      // B. Fetch Ledger (With Relational Join for Member Name)
-      // ✅ FIX 1: Updated Select with Join (Direct Copy-Paste of your provided snippet)
-      const { data: ledgerData, error: ledgerError } = await supabase
-        .from('expenses_ledger')
-        .select(`
-          *,
-          member:members!expenses_ledger_member_id_fkey(name)
-        `)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
+        .order('date', { ascending: true }); 
 
       if (ledgerError) throw ledgerError;
 
-      // C. Map for UI (Using Relational Data)
-      const formattedLedger = (ledgerData || []).map((item: any) => ({
-        ...item,
-        createdAt: item.created_at,
-        // ✅ FIX 2: Mapping fix (Direct Copy-Paste of your provided snippet)
-        memberName: item.member?.name || 'Unknown'
-      }))
-      setExpenseLedger([...formattedLedger.reverse()]);
+      // B. Calculate Running Balance
+      let currentRunningBalance = 0;
+      let totalInjected = 0;
+      let totalWithdrawn = 0;
 
-      // D. Calculate Stats
-      let netBal = 0;
-      let feesColl = 0;
-      let expenses = 0;
-      let paidMembers = 0;
+      const processedLedger = (ledger || []).map((transaction: any) => {
+          const amt = Number(transaction.amount);
+          if (transaction.type === 'INJECT') {
+              currentRunningBalance += amt;
+              totalInjected += amt;
+          } else if (transaction.type === 'WITHDRAW') {
+              currentRunningBalance -= amt;
+              totalWithdrawn += amt;
+          }
+          return { ...transaction, runningBalance: currentRunningBalance };
+      });
 
-      // Count members who paid (using local state 'members' for better performance)
-      if (members.length > 0) {
-        paidMembers = members.filter((m: any) => m.has_paid_maintenance).length
-      }
+      // C. Set State (Reverse for Display)
+      setAdminFundLedger([...processedLedger].reverse());
 
-      formattedLedger.forEach((entry: any) => {
-        const amt = Number(entry.amount);
-        if (entry.type === 'INCOME') { // Assuming type is 'INCOME' in DB
-          netBal += amt;
-          feesColl += amt;
-        } else { // Assuming 'EXPENSE' type
-          netBal -= amt;
-          expenses += amt;
-        }
-      })
+      // D. Update Summary State
+      setSummary({
+        netBalance: currentRunningBalance, 
+        totalInjected: totalInjected,
+        totalWithdrawn: totalWithdrawn,
+        totalExpenses: 0 // Init to 0
+      });
+      setCashInHand(currentRunningBalance); 
 
-      setStats({
-        netBalance: netBal,
-        totalFeesCollected: feesColl,
-        membersPaidCount: paidMembers,
-        totalExpenses: expenses
-      })
+      // E. Society Cash Calc
+      // 1. Get Passbook Total
+      const { data: passbookEntries } = await supabase
+        .from('passbook_entries')
+        .select('deposit_amount')
+        .eq('client_id', clientId);
+      
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0, 0) || 0;
+
+      // 2. Get Total Loans Disbursed
+      const { data: loans } = await supabase
+          .from('loans')
+          .select('amount')
+          .neq('status', 'rejected') 
+          .eq('client_id', clientId); 
+
+      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0, 0) || 0;
+
+      // 3. Get Total Expenses
+      const { data: expenses } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('client_id', clientId);
+
+      const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount)||0, 0) || 0;
+
+      // 4. Final Calculation
+      const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed - totalExpenses;
+      setSocietyCashInHand(finalSocietyCash); 
 
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching admin fund data:", error);
     } finally {
-      setLoading(false); // ✅ FIX: Ensure loading turns off
+      setLoading(false); 
     }
   }
 
   // --- Handlers ---
-  const handleCollectFee = async () => {
-    if (!selectedMember || !clientId) return
-
-    try {
-      // 1. Insert Income Entry
-      await supabase.from('expenses_ledger').insert([{
-        client_id: clientId,
-        date: new Date().toISOString().split('T')[0],
-        amount: 200, // Fixed Fee
-        type: 'INCOME', // Assuming correct type
-        category: 'MAINTENANCE_FEE',
-        description: 'Monthly Maintenance Fee Collected',
-        member_id: selectedMember
-      }]);
-
-      // 2. Update Member Status
-      await supabase.from('members').update({ has_paid_maintenance: true }).eq('id', selectedMember)
-
-      // Reset & Refresh
-      setSelectedMember('')
-      setIsCollectFeeOpen(false)
-      fetchData()
-
-    } catch (error) {
-      console.error(error)
-      alert("Failed to collect fee")
-    }
-  }
-
-  const handleRecordExpense = async () => {
-    if (!expenseData.amount || !expenseData.category || !clientId) return
+  const handleAddTransaction = async (type: 'INJECT' | 'WITHDRAW') => {
+    if (!formData.amount || !formData.description || !clientId) return;
     
-    const amount = parseFloat(expenseData.amount);
+    const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) return;
 
-    try {
-      // Insert Expense Entry
-      await supabase.from('expenses_ledger').insert([{
-        client_id: clientId,
-        date: expenseData.date,
-        amount: amount,
-        type: 'EXPENSE',
-        category: expenseData.category,
-        description: expenseData.description
-      }])
-
-      setExpenseData({
-        amount: '',
-        category: '',
-        description: '',
-        date: new Date().toISOString().split('T')[0]
-      })
-      setIsRecordExpenseOpen(false)
-      fetchData()
-
-    } catch (error) {
-      console.error(error)
-      alert("Failed to record expense")
+    if (type === 'WITHDRAW' && amount > cashInHand && !showWarning) {
+        setShowWarning(true);
+        return;
     }
-  }
-
-  const deleteExpenseEntry = async (id: string, memberId?: string, category?: string) => {
-    if (!confirm("Are you sure you want to delete this transaction?")) return
 
     try {
-      // 1. Delete Entry
-      await supabase.from('expenses_ledger').delete().eq('id', id)
-
-      // 2. If it was a Fee, revert member status
-      if (category === 'MAINTENANCE_FEE' && memberId) {
-        await supabase.from('members').update({ has_paid_maintenance: false }).eq('id', memberId)
-      }
-
-      fetchData()
+        await supabase.from('admin_fund_ledger').insert([{
+            client_id: clientId,
+            date: formData.date,
+            amount: amount,
+            type: type,
+            description: formData.description
+        }]);
+        fetchAdminFundData(); 
+        setFormData({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
+        setIsInjectModalOpen(false);
+        setIsWithdrawModalOpen(false);
+        setShowWarning(false);
     } catch (error) {
-      console.error(error)
-      alert("Failed to delete transaction.")
+        console.error("Error adding transaction:", error);
+        alert("Failed to add transaction.");
     }
   }
 
-  const getMembersWhoHavePaid = () => {
-    return members.filter(m => !m.has_paid_maintenance && m.status === 'active')
-  }
-
-  // --- UI Helpers (Same) ---
-  const getCategoryIcon = (category: string) => {
-    const icons: any = {
-      'MAINTENANCE_FEE': <DollarSign className="h-4 w-4" />,
-      'STATIONERY': <Receipt className="h-4 w-4" />,
-      'PRINTING': <Receipt className="h-4 w-4" />,
-      'LOAN_FORMS': <Receipt className="h-4 w-4" />,
-      'REFRESHMENTS': <Receipt className="h-4 w-4" />,
-      'OTHER': <Receipt className="h-4 w-4" />
+  const handleDeleteAdminTransaction = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this transaction? This will affect balances.")) return;
+    try {
+        await supabase.from('admin_fund_ledger').delete().eq('id', id);
+        fetchAdminFundData(); 
+    } catch (error) {
+        console.error("Error deleting transaction:", error);
+        alert("Failed to delete transaction.");
     }
-    return icons[category] || <Receipt className="h-4 w-4" />
-  }
-
-  const getCategoryColor = (category: string) => {
-    const colors: any = {
-      'MAINTENANCE_FEE': 'bg-green-100 text-green-800',
-      'STATIONERY': 'bg-blue-100 text-blue-800',
-      'PRINTING': 'bg-purple-100 text-purple-800',
-      'LOAN_FORMS': 'bg-orange-100 text-orange-800',
-      'REFRESHMENTS': 'bg-teal-100 text-teal-800',
-      'OTHER': 'bg-gray-100 text-gray-800'
-    }
-    return colors[category] || 'bg-gray-100 text-gray-800'
-  }
-
-  const getCategoryLabel = (category: string) => {
-    const labels: any = {
-      'MAINTENANCE_FEE': 'Maintenance Fee',
-      'STATIONERY': 'Stationery',
-      'PRINTING': 'Printing',
-      'LOAN_FORMS': 'Loan Forms',
-      'REFRESHMENTS': 'Refreshments',
-      'OTHER': 'Other'
-    }
-    return labels[category] || category
   }
 
   return (
     <div className="p-6 space-y-6">
-      
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Expenses & Maintenance
+            Admin Fund Ledger
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Track maintenance fees and operational expenses
+            Track funds exchanged between Admin and Society
           </p>
         </div>
-        <Button variant="outline" onClick={fetchData}><RefreshCw className="h-4 w-4 mr-2"/> Refresh</Button>
+        <Button variant="outline" onClick={fetchAdminFundData}><RefreshCw className="h-4 w-4 mr-2"/> Refresh</Button>
       </div>
 
       {/* SECTION A: SUMMARY CARDS */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Maintenance Fund Balance */}
-        <Card>
+      <div className="grid gap-4 md:grid-cols-4">
+        {/* Net Balance Card */}
+        <Card className="md:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Maintenance Fund Balance
+              Net Balance
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <>
                 <div className={`text-3xl font-bold ${
-                  stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                  summary.netBalance > 0 ? 'text-orange-600' : 
+                  summary.netBalance < 0 ? 'text-red-600' : 
+                  'text-gray-600'
                 }`}>
-                  ₹{Math.abs(stats.netBalance).toLocaleString()}
+                  ₹{Math.abs(summary.netBalance).toLocaleString()}
                 </div>
                 <p className={`text-sm mt-1 ${
-                  stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                  summary.netBalance > 0 ? 'text-orange-600' : 
+                  summary.netBalance < 0 ? 'text-red-600' : 
+                  'text-gray-600'
                 }`}>
-                  {stats.netBalance >= 0 ? 'Positive Balance' : 'Negative Balance'}
+                  {summary.netBalance > 0 ? 'Society owes Admin' : 
+                   summary.netBalance < 0 ? 'Admin owes Society' : 
+                   'Balanced'}
                 </p>
               </>
             )}
           </CardContent>
         </Card>
 
-        {/* Fees Collected */}
+        {/* Total Injected Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-600" />
-              Fees Collected
+              Total Injected
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <div className="text-3xl font-bold text-green-600">
-                ₹{stats.totalFeesCollected.toLocaleString()}
+                ₹{summary.totalInjected.toLocaleString()}
               </div>
             )}
-            <p className="text-sm text-gray-600 mt-1">
-              {stats.membersPaidCount} members × ₹200
-            </p>
+            <p className="text-sm text-gray-600 mt-1">Admin gave to Society</p>
           </CardContent>
         </Card>
 
-        {/* Total Expenses Card */}
+        {/* Total Withdrawn Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-red-600" />
-              Total Expenses
+              Total Withdrawn
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <div className="text-3xl font-bold text-red-600">
-                ₹{stats.totalExpenses.toLocaleString()}
+                ₹{summary.totalWithdrawn.toLocaleString()}
               </div>
             )}
-            <p className="text-sm text-gray-600 mt-1">
-              Operational costs
-            </p>
+            <p className="text-sm text-gray-600 mt-1">Admin took from Society</p>
+          </CardContent>
+        </Card>
+
+        {/* Society Cash Available Card (NOW DYNAMIC) */}
+        <Card className="bg-purple-50 border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
+            <Wallet className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
+              <div className="text-2xl font-bold text-purple-700">
+                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(societyCashInHand)}
+              </div>
+            )}
+            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (All Sources)</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Cash in Hand Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Cash in Hand (Admin Fund)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
+            <div className="text-2xl font-bold text-blue-600">
+              ₹{cashInHand.toLocaleString()}
+            </div>
+          )}
+          <p className="text-sm text-gray-600 mt-1">
+            Available for withdrawals and expenses (from Admin Fund only)
+          </p>
+        </CardContent>
+      </Card>
+
       {/* SECTION B: ACTION BUTTONS */}
       <div className="flex gap-4">
-        {/* Collect Member Fee Button */}
-        <Dialog open={isCollectFeeOpen} onOpenChange={setIsCollectFeeOpen}>
+        {/* Inject Fund Button */}
+        <Dialog open={isInjectModalOpen} onOpenChange={setIsInjectModalOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
-              <Users className="h-4 w-4" />
-              Collect Member Fee
+            <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
+              <ArrowDownCircle className="h-4 w-4" />
+              Inject Fund
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-blue-600">
-                <Users className="h-5 w-5" />
-                Collect Maintenance Fee
+              <DialogTitle className="flex items-center gap-2 text-green-600">
+                <ArrowDownCircle className="h-5 w-5" />
+                Inject Fund
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="member-select">Select Member</Label>
-                <Select value={selectedMember} onValueChange={setSelectedMember}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select member who hasn't paid..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getMembersWhoHavePaid().map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.phone})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="inject-amount">Amount</Label>
+                <Input
+                  id="inject-amount"
+                  type="number"
+                  placeholder="Enter amount"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                />
               </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <div className="text-sm text-gray-600">
-                  <p><strong>Amount:</strong> ₹200 (Fixed)</p>
-                  <p><strong>Type:</strong> One-Time Maintenance Fee</p>
-                </div>
+              <div>
+                <Label htmlFor="inject-date">Date</Label>
+                <Input
+                  id="inject-date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
               </div>
-
+              <div>
+                <Label htmlFor="inject-description">Description</Label>
+                <Textarea
+                  id="inject-description"
+                  placeholder="Enter description for this transaction"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={handleCollectFee}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  disabled={!selectedMember}
+                  onClick={() => handleAddTransaction('INJECT')} 
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  disabled={!formData.amount || !formData.description}
                 >
-                  Collect Fee
+                  Inject Fund
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => setIsCollectFeeOpen(false)}
+                  onClick={() => setIsInjectModalOpen(false)}
                 >
                   Cancel
                 </Button>
@@ -422,83 +397,95 @@ export default function ExpensesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Record Expense Button */}
-        <Dialog open={isRecordExpenseOpen} onOpenChange={setIsRecordExpenseOpen}>
+        {/* Withdraw Fund Button */}
+        <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700">
-              <Plus className="h-4 w-4" />
-              Record Expense
+            <Button variant="destructive" className="flex items-center gap-2">
+              <ArrowUpCircle className="h-4 w-4" />
+              Withdraw Fund
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-orange-600">
-                <Plus className="h-5 w-5" />
-                Record New Expense
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <ArrowUpCircle className="h-5 w-5" />
+                Withdraw Fund
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {showWarning && (
+                <Alert className="border-orange-200 bg-orange-50">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-800">
+                    <div className="space-y-2">
+                      <p><strong>Warning:</strong> Withdrawal amount (₹{parseFloat(formData.amount).toLocaleString()}) exceeds available Cash in Hand (₹{cashInHand.toLocaleString()}).</p>
+                      <p>This may result in negative cash balance. Do you want to continue?</p>
+                      <div className="flex gap-2 mt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setShowWarning(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => handleAddTransaction('WITHDRAW')} // Force withdraw
+                        >
+                          Force Withdraw
+                        </Button>
+                      </div>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}              
               <div>
-                <Label htmlFor="expense-amount">Amount</Label>
+                <Label htmlFor="withdraw-amount">Amount</Label>
                 <Input
-                  id="expense-amount"
+                  id="withdraw-amount"
                   type="number"
                   placeholder="Enter amount"
-                  value={expenseData.amount}
-                  onChange={(e) => setExpenseData({ ...expenseData, amount: e.target.value })}
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 />
-              </div>              
-              <div>
-                <Label htmlFor="expense-category">Category</Label>
-                <Select value={expenseData.category} onValueChange={(value) => setExpenseData({ ...expenseData, category: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="STATIONERY">Stationery</SelectItem>
-                    <SelectItem value="PRINTING">Printing</SelectItem>
-                    <SelectItem value="LOAN_FORMS">Loan Forms</SelectItem>
-                    <SelectItem value="REFRESHMENTS">Refreshments</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
-
               <div>
-                <Label htmlFor="expense-date">Date</Label>
+                <Label htmlFor="withdraw-date">Date</Label>
                 <Input
-                  id="expense-date"
+                  id="withdraw-date"
                   type="date"
-                  value={expenseData.date}
-                  onChange={(e) => setExpenseData({ ...expenseData, date: e.target.value })}
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="expense-description">Description</Label>
+                <Label htmlFor="withdraw-description">Description</Label>
                 <Textarea
-                  id="expense-description"
-                  placeholder="Enter expense description..."
-                  value={expenseData.description}
-                  onChange={(e) => setExpenseData({ ...expenseData, description: e.target.value })}
-                  rows={3}
+                  id="withdraw-description"
+                  placeholder="Enter description for this transaction"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleRecordExpense}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700"
-                  disabled={!expenseData.amount || !expenseData.category || !expenseData.description}
-                >
-                  Record Expense
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsRecordExpenseOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
+              {!showWarning && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="destructive"
+                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type
+                    className="flex-1"
+                    disabled={!formData.amount || !formData.description}
+                  >
+                    Withdraw Fund
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsWithdrawModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>
@@ -507,10 +494,7 @@ export default function ExpensesPage() {
       {/* SECTION C: THE LEDGER TABLE */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Maintenance & Expenses Ledger
-          </CardTitle>
+          <CardTitle>Transaction Ledger</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -518,59 +502,52 @@ export default function ExpensesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>Description/Note</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Running Balance</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8">Loading...</TableCell></TableRow>
-                ) : expenseLedger.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8">Loading...</TableCell></TableRow>
+                ) : adminFundLedger.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                       No transactions yet. Add your first transaction to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  expenseLedger.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
-                        <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
-                        <TableCell>
-                          {/* Display Member Name using Relational Join */}
-                          {entry.memberName ? (
-                            <span className="text-blue-600 font-medium">{entry.memberName}</span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getCategoryColor(entry.category)}>
-                            {getCategoryLabel(entry.category)}
-                          </Badge>
-                        </TableCell>
+                  adminFundLedger.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                        <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
                         <TableCell>
                           <Badge 
                             variant="outline"
-                            className={entry.type === 'INCOME' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                            className={transaction.type === 'INJECT' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
                           >
-                            {entry.type === 'INCOME' ? 'Income' : 'Expense'}
+                            {transaction.type === 'INJECT' ? 'Received' : 'Given'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          <span className={entry.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}>
-                            {entry.type === 'INCOME' ? '+' : '-'}₹{Number(entry.amount).toLocaleString()}
+                          <span className={transaction.type === 'INJECT' ? 'text-green-600' : 'text-red-600'}>
+                            {transaction.type === 'INJECT' ? '+' : '-'}₹{Number(transaction.amount).toLocaleString()}
                           </span>
+                        </TableCell>
+                        <TableCell className={`text-right font-medium ${
+                          transaction.runningBalance > 0 ? 'text-orange-600' : 
+                          transaction.runningBalance < 0 ? 'text-red-600' : 
+                          'text-gray-600'
+                        }`}>
+                          ₹{Math.abs(transaction.runningBalance).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => deleteExpenseEntry(entry.id, entry.member_id, entry.category)}
+                            onClick={() => handleDeleteAdminTransaction(transaction.id)}
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
