@@ -48,28 +48,17 @@ export default function ExpensesPage() {
     membersPaidCount: 0
   })
 
-  // 1. Init: Get Client ID (UPDATED)
+  // 1. Init: Get Client ID (UPDATED - Direct LocalStorage)
   useEffect(() => {
-    const initClient = async () => {
-      const user = JSON.parse(localStorage.getItem('current_user') || 'null')
-      if (!user?.id) return
+    const user = JSON.parse(localStorage.getItem('current_user') || 'null')
 
-      // 🔥 FIX: client_id ko DB se lao
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single()
-
-      if (error) {
-        console.error('Client resolve error:', error)
-        return
-      }
-
-      setClientId(data.id)
+    if (!user?.client_id) {
+      console.error('client_id missing in current_user')
+      return
     }
 
-    initClient()
+    // 🔥 FINAL FIX: direct client_id
+    setClientId(user.client_id)
   }, [])
 
   // 2. Fetch Data Trigger
