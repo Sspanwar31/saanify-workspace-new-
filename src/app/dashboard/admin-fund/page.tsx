@@ -14,15 +14,15 @@ import {
   Wallet,
   RefreshCw 
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminFundPage() {
   // --- States ---
@@ -32,32 +32,46 @@ export default function AdminFundPage() {
 
   const [isInjectModalOpen, setIsInjectModalOpen] = useState(false)
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
+  
+  // ✅ FIXED: Removed extra closing brace here
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0]
   })
-  })
+  
   const [showWarning, setShowWarning] = useState(false)
 
-  // --- Summary Calculations ---
+  // ✅ FIXED: Moved Summary State to top level
   const [summary, setSummary] = useState({
     netBalance: 0,
     totalInjected: 0,
     totalWithdrawn: 0,
-    totalExpenses: 0
+    totalExpenses: 0 // ✅ Added new field
+  })
   const [cashInHand, setCashInHand] = useState(0) 
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
   // 1. Fetch Client ID & Initial Data
   useEffect(() => {
     const initData = async () => {
-      const user = JSON.parse(localStorage.getItem('current_user') || 'null')
-      if (!user?.id) {
-        console.error('Client not found in localStorage')
+      // ✅ CORRECT CODE: Get client_id from admins table
+      const admin = JSON.parse(localStorage.getItem('current_user') || 'null')
+      if (!admin?.id) return
+
+      // 🔥 REAL FIX: get client_id from admins table
+      const { data, error } = await supabase
+        .from('admins')
+        .select('client_id')
+        .eq('id', admin.id)
+        .single()
+
+      if (error) {
+        console.error('Failed to resolve client_id', error)
         return
       }
-      setClientId(user.id)
+
+      setClientId(data.client_id)
     }
     initData()
   }, [])
@@ -69,81 +83,95 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // ✅ CHANGE 2: fetchAdminFundData Function (Replaced with full logic including calc)
+  // ✅ SAFE VERSION: fetchAdminFundData Function (Wrapped in try/catch/finally)
   const fetchAdminFundData = async () => {
     setLoading(true);
-    
+
     // ✅ SAFE GUARD ADD KARO
     if (!clientId) {
       setLoading(false); 
       return;
     }
 
-    // A. Fetch Ledger (Sorted by Date - Ascending order zaroori hai calculation ke liye)
-    const { data: ledger, error: ledgerError } = await supabase
-      .from('admin_fund_ledger')
-      .select('*')
-      .eq('client_id', clientId)
-      .order('date', { ascending: false }); 
+    try {
+      // A. Fetch Admin Fund Ledger
+      const { data: ledger, error: ledgerError } = await supabase
+        .from('admin_fund_ledger')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('date', { ascending: true }); // Ascending zaroori hai calculation ke liye
 
-    if (ledgerError) throw ledgerError;
+      if (ledgerError) throw ledgerError;
 
-    // B. Calculate Running Balance
-    let currentRunningBalance = 0;
-    let totalInjected = 0;
-    let totalWithdrawn = 0;
+      // B. Calculate Running Balance
+      let currentRunningBalance = 0;
+      let totalInjected = 0;
+      let totalWithdrawn = 0;
 
-    const processedLedger = (ledger || []).map((transaction: any) => {
-        const amt = Number(transaction.amount);
-        if (transaction.type === 'INJECT') {
-            currentRunningBalance += amt;
-            totalInjected += amt;
-        } else if (transaction.type === 'WITHDRAW') {
-            currentRunningBalance -= amt;
-            totalWithdrawn += amt;
-        }
-        return { ...transaction, runningBalance: currentRunningBalance };
-    });
+      const processedLedger = (ledger || []).map((transaction: any) => {
+          const amt = Number(transaction.amount);
+          if (transaction.type === 'INJECT') {
+              currentRunningBalance += amt;
+              totalInjected += amt;
+          } else if (transaction.type === 'WITHDRAW') {
+              currentRunningBalance -= amt;
+              totalWithdrawn += amt;
+          }
+          return { ...transaction, runningBalance: currentRunningBalance };
+      });
 
-    // C. Set State (Reverse for Display)
-    setAdminFundLedger([...processedLedger].reverse());
+      // C. Set State (Reverse for Display)
+      setAdminFundLedger([...processedLedger].reverse());
 
-    setSummary({
-      netBalance: currentRunningBalance, 
-      totalInjected: totalInjected,
-      totalWithdrawn: totalWithdrawn,
-      totalExpenses: totalExpenses // ✅ Added to object initialization
-    });
-    setCashInHand(currentRunningBalance); 
+      // D. Update Summary State
+      setSummary({
+        netBalance: currentRunningBalance, 
+        totalInjected: totalInjected,
+        totalWithdrawn: totalWithdrawn,
+        totalExpenses: 0 // ✅ Added new state, logic updated below
+      });
+      setCashInHand(currentRunningBalance); 
 
-    // D. Society Cash Calc (Safe Check)
-    
-    // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
-    const { data: passbookEntries } = await supabase
-      .from('passbook_entries')
-      .select('deposit_amount')
-      .eq('client_id', clientId);
-    
-    const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
+      // E. Society Cash Calc (UPDATED TO MATCH REPORT PAGE)
+      // Formula: (Passbook + Repayments + AdminFund) - (Loans Given + Expenses)
 
-    // 2. Get Total Loans Disbursed (Outflow)
-    const { data: loans } = await supabase
-      .from('loans')
-      .select('amount')
-      .neq('status', 'rejected') // CHANGE: neq instead of in
-      .eq('client_id', clientId); 
+      // 1. Get Passbook Total (Inflow) - ONLY DEPOSIT
+      const { data: passbookEntries } = await supabase
+        .from('passbook_entries')
+        .select('deposit_amount')
+        .eq('client_id', clientId);
+      
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
 
-    const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
+      // 2. Get Total Loans Disbursed (Outflow)
+      const { data: loans } = await supabase
+          .from('loans')
+          .select('amount')
+          .neq('status', 'rejected') // CHANGE: neq instead of in
+          .eq('client_id', clientId); 
 
-    // 3. Final Calculation
-    const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed;
-    setSocietyCashInHand(finalSocietyCash); 
+      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
 
-  } catch (error) {
-    console.error("Error fetching admin fund data:", error);
-  } finally {
-    setLoading(false); // ✅ FIX: Ye line hamesha chalegi aur spinner band karegi
-  }
+      // 3. Get Total Expenses (Outflow) - 🔥 NEW ADDITION
+      const { data: expenses } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('client_id', clientId);
+
+      const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount)||0), 0) || 0;
+
+      // 4. Final Calculation (Matching Total Liquidity)
+      const totalInflow = totalPassbookCollection + totalInjected; 
+      const totalOutflow = totalLoansDisbursed + totalExpenses;
+
+      const finalSocietyCash = totalInflow - totalOutflow;
+      setSocietyCashInHand(finalSocietyCash); 
+
+    } catch (error) {
+      console.error("Error fetching admin fund data:", error);
+    } finally {
+      setLoading(false); // ✅ FIX: Ensure loading turns off
+    }
   }
 
   // --- Handlers ---
@@ -289,6 +317,23 @@ export default function AdminFundPage() {
         </Card>
       </div>
 
+      {/* Total Expenses Card - ✅ NEW */}
+      <Card className="bg-orange-50 border-orange-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-orange-800">Total Expenses</CardTitle>
+          <Wallet className="h-4 w-4 text-orange-600" />
+        </CardHeader>
+        <CardContent>
+          {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
+            <div className="text-3xl font-bold text-orange-700">
+                ₹{summary.totalExpenses.toLocaleString()}
+            </div>
+            )}
+            <p className="text-xs text-orange-600 mt-1">Monthly outflows from Expenses table</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Cash in Hand Info */}
       <Card>
         <CardHeader>
@@ -357,7 +402,7 @@ export default function AdminFundPage() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => handleAddTransaction('INJECT')} // Pass type
+                  onClick={() => handleAddTransaction('INJECT')} 
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!formData.amount || !formData.description}
                 >
