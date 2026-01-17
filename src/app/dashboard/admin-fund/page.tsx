@@ -1,53 +1,56 @@
 'use client';
+
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple';
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  Plus,
+import { supabase } from '@/lib/supabase-simple'; 
+import { 
+  ArrowDownCircle, 
+  ArrowUpCircle, 
+  Plus, 
   Trash2,
   AlertTriangle,
   DollarSign,
   TrendingUp,
   TrendingDown,
   Wallet,
-  RefreshCw
+  RefreshCw 
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminFundPage() {
   // --- States ---
-  const [adminFundLedger, setAdminFundLedger] = useState<any[]>([])
+  const [adminFundLedger, setAdminFundLedger] = useState<any[]>([]);
   const [clientId, setClientId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
   const [isInjectModalOpen, setIsInjectModalOpen] = useState(false)
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
+  
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0]
   })
+  
   const [showWarning, setShowWarning] = useState(false)
 
   // --- Summary Calculations ---
   const [summary, setSummary] = useState({
     netBalance: 0,
     totalInjected: 0,
-    totalWithdrawn: 0,
-    totalExpenses: 0
+    totalWithdrawn: 0
   })
-  const [cashInHand, setCashInHand] = useState(0)
+  const [cashInHand, setCashInHand] = useState(0) 
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
-  // ✅ CHANGE 1: REVERTED TO SAFE ID LOGIC (Fixes the 400 Bad Request Error)
+  // 1. Initial Logic (Safe LocalStorage)
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
 
@@ -56,174 +59,154 @@ export default function AdminFundPage() {
       return
     }
 
-    // 🔥 FIX: Database call hata diya jo error de raha tha. Direct user se ID lo.
+    // 🔥 FIX: Direct ID access to prevent 400 Bad Request on admins table
     const finalId = user.client_id || user.id;
     setClientId(finalId)
   }, [])
 
-  // ✅ UPDATED: UseEffect Dependency (Just clientId)
+  // 2. Fetch Data Trigger
   useEffect(() => {
     if (clientId) {
       fetchAdminFundData();
     }
   }, [clientId])
 
-  // ✅ CHANGE 2: SAFE DATA FETCHING (Handles 404 Errors Gracefully)
+  // 3. Main Data Fetching Function (Fixed & Optimized)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
-    // ✅ SAFE GUARD
     if (!clientId) {
-      setLoading(false);
+      setLoading(false); 
       return;
     }
 
     try {
-      // A. Fetch Ledger (Ascending order zaroori hai calculation ke liye)
+      // A. Fetch Ledger
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
         .eq('client_id', clientId)
-        .order('date', { ascending: true }); // Calculation ke liye Ascending chahiye
+        .order('date', { ascending: true }); // Calculation needs ascending
 
       if (ledgerError) throw ledgerError;
 
-      // B. Calculate Running Balance (Original Logic)
+      // B. Calculate Running Balance
       let currentRunningBalance = 0;
       let totalInjected = 0;
       let totalWithdrawn = 0;
 
       const processedLedger = (ledger || []).map((transaction: any) => {
-        const amt = Number(transaction.amount);
-        if (transaction.type === 'INJECT') {
-          currentRunningBalance += amt;
-          totalInjected += amt;
-        } else if (transaction.type === 'WITHDRAW') {
-          currentRunningBalance -= amt;
-          totalWithdrawn += amt;
-        }
-        return { ...transaction, runningBalance: currentRunningBalance };
+          const amt = Number(transaction.amount);
+          if (transaction.type === 'INJECT') {
+              currentRunningBalance += amt;
+              totalInjected += amt;
+          } else if (transaction.type === 'WITHDRAW') {
+              currentRunningBalance -= amt;
+              totalWithdrawn += amt;
+          }
+          return { ...transaction, runningBalance: currentRunningBalance };
       });
 
-      // C. Set State Once (Reverse for Display)
-      setAdminFundLedger([...processedLedger].reverse());
+      // C. Set State
+      setAdminFundLedger([...processedLedger].reverse()); // Display latest first
 
-      setCashInHand(currentRunningBalance);
+      setSummary({
+        netBalance: currentRunningBalance, 
+        totalInjected: totalInjected,
+        totalWithdrawn: totalWithdrawn
+      });
+      setCashInHand(currentRunningBalance); 
 
-      // --- D. SOCIETY CASH CALCULATION (SAFE MODE) ---
-
+      // D. Society Cash Calc (FIXED LOGIC)
+      
       // 1. Get Passbook Total (Inflow)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount')
         .eq('client_id', clientId);
-
-      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount) || 0), 0) || 0;
+      
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
 
       // 2. Get Total Loans Disbursed (Outflow)
+      // 🔥 FIX: Exclude 'pending' loans because cash hasn't left the locker yet
       const { data: loans } = await supabase
-        .from('loans')
-        .select('amount')
-        .neq('status', 'rejected') 
-        .neq('status', 'pending') // 🔥 FIX: Pending loan paisa abhi gaya nahi hai
-        .eq('client_id', clientId);
-
-      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount) || 0), 0) || 0;
-
-      // 3. Get Total Expenses (SAFE FETCH - Fixes 404 Error)
-      let totalExpenses = 0;
-      try {
-        const { data: expenses, error: expError } = await supabase
-          .from('expenses')
+          .from('loans')
           .select('amount')
-          .eq('client_id', clientId);
-        
-        if (!expError && expenses) {
-          totalExpenses = expenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
-        }
-      } catch (e) {
-        console.warn("Expenses table not found or empty, skipping.");
-      }
+          .neq('status', 'rejected') 
+          .neq('status', 'pending') 
+          .eq('client_id', clientId); 
 
-      // 4. Get Total Loan Repayments (SAFE FETCH - Fixes 404 Error)
+      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
+
+      // 3. Get Repayments (Inflow) - Wrapped in Try/Catch to ignore 404 if table missing
       let totalRepayments = 0;
       try {
         const { data: loanPayments, error: lpError } = await supabase
-          .from('loan_payments')
-          .select('amount')
-          .eq('client_id', clientId);
-
+            .from('loan_payments')
+            .select('amount')
+            .eq('client_id', clientId);
+        
         if (!lpError && loanPayments) {
-          totalRepayments = loanPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+            totalRepayments = loanPayments.reduce((sum, payment) => sum + (Number(payment.amount)||0), 0);
         }
       } catch (e) {
-        console.warn("Loan Payments table not found or empty, skipping.");
+        // Table doesn't exist, ignore silently
       }
 
-      // 5. Update Summary
-      setSummary({
-        netBalance: currentRunningBalance,
-        totalInjected: totalInjected,
-        totalWithdrawn: totalWithdrawn,
-        totalExpenses: totalExpenses
-      });
-
-      // 6. Final Calculation (Total Liquidity Logic)
-      // Inflow: Passbook + Repayments + AdminFund
-      // Outflow: Loans Given + Expenses
+      // 4. Final Calculation (Matching Liquidity Logic)
+      // Note: Expenses removed as per request to fix error
       const totalInflow = totalPassbookCollection + totalRepayments + currentRunningBalance;
-      const totalOutflow = totalLoansDisbursed + totalExpenses;
+      const totalOutflow = totalLoansDisbursed;
       
       const finalSocietyCash = totalInflow - totalOutflow;
-      
-      setSocietyCashInHand(finalSocietyCash);
+      setSocietyCashInHand(finalSocietyCash); 
 
     } catch (error) {
       console.error("Error fetching admin fund data:", error);
     } finally {
-      setLoading(false); // ✅ FIX: Ye line hamesha chalegi aur spinner band karegi
+      setLoading(false);
     }
-  } 
+  }
 
   // --- Handlers ---
   const handleAddTransaction = async (type: 'INJECT' | 'WITHDRAW') => {
     if (!formData.amount || !formData.description || !clientId) return;
-
+    
     const amount = parseFloat(formData.amount);
     if (isNaN(amount) || amount <= 0) return;
 
     if (type === 'WITHDRAW' && amount > cashInHand && !showWarning) {
-      setShowWarning(true);
-      return;
+        setShowWarning(true);
+        return;
     }
 
     try {
-      await supabase.from('admin_fund_ledger').insert([{
-        client_id: clientId,
-        date: formData.date,
-        amount: amount,
-        type: type,
-        description: formData.description
-      }]);
-      fetchAdminFundData();
-      setFormData({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
-      setIsInjectModalOpen(false);
-      setIsWithdrawModalOpen(false);
-      setShowWarning(false);
+        await supabase.from('admin_fund_ledger').insert([{
+            client_id: clientId,
+            date: formData.date,
+            amount: amount,
+            type: type,
+            description: formData.description
+        }]);
+        fetchAdminFundData(); 
+        setFormData({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
+        setIsInjectModalOpen(false);
+        setIsWithdrawModalOpen(false);
+        setShowWarning(false);
     } catch (error) {
-      console.error("Error adding transaction:", error);
-      alert("Failed to add transaction.");
+        console.error("Error adding transaction:", error);
+        alert("Failed to add transaction.");
     }
   }
 
   const handleDeleteAdminTransaction = async (id: string) => {
     if (!confirm("Are you sure you want to delete this transaction? This will affect balances.")) return;
     try {
-      await supabase.from('admin_fund_ledger').delete().eq('id', id);
-      fetchAdminFundData();
+        await supabase.from('admin_fund_ledger').delete().eq('id', id);
+        fetchAdminFundData(); 
     } catch (error) {
-      console.error("Error deleting transaction:", error);
-      alert("Failed to delete transaction.");
+        console.error("Error deleting transaction:", error);
+        alert("Failed to delete transaction.");
     }
   }
 
@@ -239,7 +222,7 @@ export default function AdminFundPage() {
             Track funds exchanged between Admin and Society
           </p>
         </div>
-        <Button variant="outline" onClick={fetchAdminFundData}><RefreshCw className="h-4 w-4 mr-2" /> Refresh</Button>
+        <Button variant="outline" onClick={fetchAdminFundData}><RefreshCw className="h-4 w-4 mr-2"/> Refresh</Button>
       </div>
 
       {/* SECTION A: SUMMARY CARDS */}
@@ -254,19 +237,21 @@ export default function AdminFundPage() {
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <>
-                <div className={`text-3xl font-bold ${summary.netBalance > 0 ? 'text-orange-600' :
-                    summary.netBalance < 0 ? 'text-red-600' :
-                      'text-gray-600'
-                  }`}>
+                <div className={`text-3xl font-bold ${
+                  summary.netBalance > 0 ? 'text-orange-600' : 
+                  summary.netBalance < 0 ? 'text-red-600' : 
+                  'text-gray-600'
+                }`}>
                   ₹{Math.abs(summary.netBalance).toLocaleString()}
                 </div>
-                <p className={`text-sm mt-1 ${summary.netBalance > 0 ? 'text-orange-600' :
-                    summary.netBalance < 0 ? 'text-red-600' :
-                      'text-gray-600'
-                  }`}>
-                  {summary.netBalance > 0 ? 'Society owes Admin' :
-                    summary.netBalance < 0 ? 'Admin owes Society' :
-                      'Balanced'}
+                <p className={`text-sm mt-1 ${
+                  summary.netBalance > 0 ? 'text-orange-600' : 
+                  summary.netBalance < 0 ? 'text-red-600' : 
+                  'text-gray-600'
+                }`}>
+                  {summary.netBalance > 0 ? 'Society owes Admin' : 
+                   summary.netBalance < 0 ? 'Admin owes Society' : 
+                   'Balanced'}
                 </p>
               </>
             )}
@@ -306,22 +291,6 @@ export default function AdminFundPage() {
               </div>
             )}
             <p className="text-sm text-gray-600 mt-1">Admin took from Society</p>
-          </CardContent>
-        </Card>
-
-        {/* Total Expenses Card */}
-        <Card className="bg-orange-50 border-orange-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-800">Total Expenses</CardTitle>
-            <Wallet className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-              <div className="text-3xl font-bold text-orange-700">
-                ₹{summary.totalExpenses.toLocaleString()}
-              </div>
-            )}
-            <p className="text-xs text-orange-600 mt-1">Included in calculation</p>
           </CardContent>
         </Card>
 
