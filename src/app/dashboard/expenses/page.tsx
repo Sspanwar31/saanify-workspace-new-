@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase-simple' // ✅ Using simple client
+import { supabase } from '@/lib/supabase-simple' 
 import { 
   Plus, 
   Trash2, 
@@ -52,7 +52,6 @@ export default function ExpensesPage() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
     if (user?.id) {
-        // Fallback for client_id if table lookup fails or using simple auth
         setClientId(user.client_id || user.id)
     }
   }, [])
@@ -64,47 +63,42 @@ export default function ExpensesPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching (Replaces Store)
+  // 3. Main Data Fetching (UPDATED: Manual Join Logic)
   const fetchData = async () => {
     setLoading(true)
     if (!clientId) return
 
     try {
-        // A. Fetch Members (Active Only) for Dropdown
+        // A. Fetch All Members First (Mapping ke liye)
         const { data: membersData } = await supabase
             .from('members')
             .select('id, name, phone, status')
             .eq('client_id', clientId)
-            .eq('status', 'active')
 
-        setMembers(membersData || [])
+        const activeMembers = membersData?.filter(m => m.status === 'active') || []
+        setMembers(activeMembers)
 
-        // B. Fetch Expenses Ledger (FIXED QUERY)
-        // 🔥 Change: Use 'members(name)' strictly to ensure Left Join works correctly
+        // Create a map for fast lookup: { member_id: member_name }
+        const memberMap = (membersData || []).reduce((acc: any, member: any) => {
+            acc[member.id] = member.name;
+            return acc;
+        }, {});
+
+        // B. Fetch Expenses Ledger (Simple Select - No Complex Join)
+        // This ensures we get data even if relations are broken in Supabase
         const { data: ledgerData, error } = await supabase
             .from('expenses_ledger')
-            .select(`
-                *,
-                members (
-                    name
-                )
-            `)
+            .select('*') 
             .eq('client_id', clientId)
-            .order('date', { ascending: false }) // Newest first
+            .order('date', { ascending: false })
 
-        if (error) {
-            console.error("Supabase Error:", error);
-            throw error;
-        }
+        if (error) throw error
 
-        // console.log("Fetched Ledger:", ledgerData); // Uncomment to debug
-
+        // C. Manual Join in Javascript
         const formattedLedger = (ledgerData || []).map((item: any) => ({
             ...item,
-            // 🔥 Fix: Handle array or object response from members relation
-            memberName: Array.isArray(item.members) 
-                ? item.members[0]?.name 
-                : item.members?.name || null
+            // Agar member_id hai to map se name uthao, nahi to null
+            memberName: item.member_id ? memberMap[item.member_id] : null
         }))
 
         setExpenseLedger(formattedLedger)
@@ -330,7 +324,7 @@ export default function ExpensesPage() {
               Collect Member Fee
             </Button>
           </DialogTrigger>
-          {/* ✅ FIX: Added aria-describedby for Dialog warning fix */}
+          {/* ✅ FIX: Dialog warning fix */}
           <DialogContent aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-blue-600">
@@ -389,7 +383,7 @@ export default function ExpensesPage() {
               Record Expense
             </Button>
           </DialogTrigger>
-          {/* ✅ FIX: Added aria-describedby for Dialog warning fix */}
+          {/* ✅ FIX: Dialog warning fix */}
           <DialogContent aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-orange-600">
