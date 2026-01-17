@@ -68,6 +68,8 @@ export default function AdminFundPage() {
 
       if (error) {
         console.error('Failed to resolve client_id', error)
+        // Fallback to user.id if admins table fails
+        setClientId(admin.client_id || admin.id) 
         return
       }
 
@@ -139,7 +141,8 @@ export default function AdminFundPage() {
         .select('deposit_amount')
         .eq('client_id', clientId);
       
-      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0, 0) || 0;
+      // ✅ FIX: Syntax Error Corrected Here
+      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount) || 0), 0) || 0;
 
       // 2. Get Total Loans Disbursed
       const { data: loans } = await supabase
@@ -148,7 +151,8 @@ export default function AdminFundPage() {
           .neq('status', 'rejected') 
           .eq('client_id', clientId); 
 
-      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0, 0) || 0;
+      // ✅ FIX: Syntax Error Corrected Here
+      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount) || 0), 0) || 0;
 
       // 3. Get Total Expenses
       const { data: expenses } = await supabase
@@ -156,7 +160,8 @@ export default function AdminFundPage() {
         .select('amount')
         .eq('client_id', clientId);
 
-      const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount)||0, 0) || 0;
+      // ✅ FIX: Syntax Error Corrected Here
+      const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0) || 0;
 
       // 4. Final Calculation
       const finalSocietyCash = totalPassbookCollection + currentRunningBalance - totalLoansDisbursed - totalExpenses;
@@ -380,7 +385,7 @@ export default function AdminFundPage() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => handleAddTransaction('INJECT')} 
+                  onClick={() => handleAddTransaction('INJECT')} // Pass type
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!formData.amount || !formData.description}
                 >
