@@ -1,585 +1,249 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; 
-import { 
-  ArrowDownCircle, 
-  ArrowUpCircle, 
-  Plus, 
-  Trash2,
-  AlertTriangle,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  RefreshCw 
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { Plus, DollarSign, TrendingUp, Calendar, CreditCard, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
-export default function AdminFundPage() {
-  // --- States ---
-  const [adminFundLedger, setAdminFundLedger] = useState<any[]>([]);
-  const [clientId, setClientId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true)
+export default function ExpensesPage() {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedType, setSelectedType] = useState('all')
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
-  const [isInjectModalOpen, setIsInjectModalOpen] = useState(false)
-  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
-  
-  // ✅ FIXED: Removed extra '})' from here
-  const [formData, setFormData] = useState({
-    amount: '',
-    description: '',
-    date: new Date().toISOString().split('T')[0]
+  // Mock data
+  const expenses = [
+    { id: 1, description: 'Maintenance Cost', amount: 5000, type: 'MAINTENANCE', date: '2024-01-15', status: 'COMPLETED' },
+    { id: 2, description: 'Electricity Bill', amount: 3000, type: 'UTILITY', date: '2024-01-14', status: 'COMPLETED' },
+    { id: 3, description: 'Water Supply', amount: 2000, type: 'UTILITY', date: '2024-01-13', status: 'PENDING' },
+    { id: 4, description: 'Security Services', amount: 4000, type: 'SECURITY', date: '2024-01-12', status: 'COMPLETED' },
+    { id: 5, description: 'Garden Maintenance', amount: 1500, type: 'MAINTENANCE', date: '2024-01-11', status: 'PENDING' }
+  ]
+
+  const stats = {
+    totalExpenses: expenses.reduce((sum, exp) => sum + exp.amount, 0),
+    thisMonthExpenses: 15500,
+    lastMonthExpenses: 12000,
+    pendingExpenses: expenses.filter(exp => exp.status === 'PENDING').length
+  }
+
+  const filteredExpenses = expenses.filter(expense => {
+    const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType = selectedType === 'all' || expense.type === selectedType
+    return matchesSearch && matchesType
   })
-  
-  const [showWarning, setShowWarning] = useState(false)
-
-  // --- Summary Calculations ---
-  const [summary, setSummary] = useState({
-    netBalance: 0,
-    totalInjected: 0,
-    totalWithdrawn: 0,
-    totalExpenses: 0 
-  })
-  const [cashInHand, setCashInHand] = useState(0) 
-  const [societyCashInHand, setSocietyCashInHand] = useState(0)
-
-  // 1. Fetch Client ID & Initial Data
-  useEffect(() => {
-    const initData = async () => {
-      const user = JSON.parse(localStorage.getItem('current_user') || 'null')
-      if (!user?.id) return
-
-      // 🔥 CLIENT HI OWNER HAI
-      const { data, error } = await supabase
-        .from('admins')
-        .select('client_id')
-        .eq('id', user.id)
-        .single()
-
-      if (error) {
-        console.error('Failed to resolve client_id', error)
-        return
-      }
-
-      setClientId(data.client_id)
-    }
-    initData()
-  }, [])
-
-  // ✅ UPDATED: UseEffect Dependency (Just clientId)
-  useEffect(() => {
-    if (clientId) {
-      fetchAdminFundData();
-    }
-  }, [clientId])
-
-  // ✅ FINAL: fetchAdminFundData Function (Full Logic including Expenses)
-  const fetchAdminFundData = async () => {
-    setLoading(true);
-    
-    // ✅ SAFE GUARD ADD KARO
-    if (!clientId) {
-      setLoading(false); 
-      return;
-    }
-
-    try {
-      // A. Fetch Admin Fund Ledger
-      const { data: ledger, error: ledgerError } = await supabase
-        .from('admin_fund_ledger')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('date', { ascending: true }); // Ascending zaroori hai calculation ke liye
-
-      if (ledgerError) throw ledgerError;
-
-      // B. Calculate Running Balance
-      let currentRunningBalance = 0;
-      let totalInjected = 0;
-      let totalWithdrawn = 0;
-
-      const processedLedger = (ledger || []).map((transaction: any) => {
-          const amt = Number(transaction.amount);
-          if (transaction.type === 'INJECT') {
-              currentRunningBalance += amt;
-              totalInjected += amt;
-          } else if (transaction.type === 'WITHDRAW') {
-              currentRunningBalance -= amt;
-              totalWithdrawn += amt;
-          }
-          return { ...transaction, runningBalance: currentRunningBalance };
-      });
-
-      // C. Set State (Reverse for Display)
-      setAdminFundLedger([...processedLedger].reverse());
-
-      // D. Update Summary State (Now includes totalExpenses)
-      setSummary({
-        netBalance: currentRunningBalance, 
-        totalInjected: totalInjected,
-        totalWithdrawn: totalWithdrawn,
-        totalExpenses: 0 // ✅ Reset inside here, will be set below
-      });
-      setCashInHand(currentRunningBalance); 
-
-      // E. Society Cash Calc (UPDATED TO MATCH REPORT PAGE)
-      
-      // 1. Get Passbook Total (Inflow)
-      const { data: passbookEntries } = await supabase
-        .from('passbook_entries')
-        .select('deposit_amount')
-        .eq('client_id', clientId);
-      
-      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
-
-      // 2. Get Total Loans Disbursed (Outflow)
-      const { data: loans } = await supabase
-          .from('loans')
-          .select('amount')
-          .neq('status', 'rejected') 
-          .eq('client_id', clientId); 
-
-      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
-
-      // 3. Get Total Expenses (Outflow) - 🔥 NEW ADDITION
-      const { data: expenses } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('client_id', clientId);
-
-      const totalExpenses = expenses?.reduce((sum, expense) => sum + (Number(expense.amount)||0), 0) || 0;
-
-      // 4. Final Calculation (Matching Total Liquidity)
-      const totalInflow = totalPassbookCollection + currentRunningBalance; 
-      const totalOutflow = totalLoansDisbursed + totalExpenses;
-
-      const finalSocietyCash = totalInflow - totalOutflow;
-      setSocietyCashInHand(finalSocietyCash); 
-
-    } catch (error) {
-      console.error("Error fetching admin fund data:", error);
-    } finally {
-      setLoading(false); // ✅ FIX: Ensure loading turns off
-    }
-  }
-
-  // --- Handlers ---
-  const handleAddTransaction = async (type: 'INJECT' | 'WITHDRAW') => {
-    if (!formData.amount || !formData.description || !clientId) return;
-    
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount <= 0) return;
-
-    if (type === 'WITHDRAW' && amount > cashInHand && !showWarning) {
-        setShowWarning(true);
-        return;
-    }
-
-    try {
-        await supabase.from('admin_fund_ledger').insert([{
-            client_id: clientId,
-            date: formData.date,
-            amount: amount,
-            type: type,
-            description: formData.description
-        }]);
-        fetchAdminFundData(); 
-        setFormData({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
-        setIsInjectModalOpen(false);
-        setIsWithdrawModalOpen(false);
-        setShowWarning(false);
-    } catch (error) {
-        console.error("Error adding transaction:", error);
-        alert("Failed to add transaction.");
-    }
-  }
-
-  const handleDeleteAdminTransaction = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this transaction? This will affect balances.")) return;
-    try {
-        await supabase.from('admin_fund_ledger').delete().eq('id', id);
-        fetchAdminFundData(); 
-    } catch (error) {
-        console.error("Error deleting transaction:", error);
-        alert("Failed to delete transaction.");
-    }
-  }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
+      >
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Admin Fund Ledger
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Expenses Management</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Track funds exchanged between Admin and Society
+            Track and manage all society expenses
           </p>
         </div>
-        <Button variant="outline" onClick={fetchAdminFundData}><RefreshCw className="h-4 w-4 mr-2"/> Refresh</Button>
+        
+        <Button onClick={() => setIsAddModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Expense
+        </Button>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+              <DollarSign className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹{stats.totalExpenses.toLocaleString()}</div>
+              <p className="text-xs text-blue-100">All time expenses</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 to-green-600 text-white">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">This Month</CardTitle>
+              <Calendar className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₹{stats.thisMonthExpenses.toLocaleString()}</div>
+              <p className="text-xs text-green-100">+29% from last month</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <Card className="border-0 shadow-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <CreditCard className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pendingExpenses}</div>
+              <p className="text-xs text-purple-100">Awaiting approval</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <Card className="border-0 shadow-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
+              <TrendingUp className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">+18%</div>
+              <p className="text-xs text-orange-100">Monthly increase</p>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
-      {/* SECTION A: SUMMARY CARDS */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {/* Net Balance Card */}
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Net Balance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-              <>
-                <div className={`text-3xl font-bold ${
-                  summary.netBalance > 0 ? 'text-orange-600' : 
-                  summary.netBalance < 0 ? 'text-red-600' : 
-                  'text-gray-600'
-                }`}>
-                  ₹{Math.abs(summary.netBalance).toLocaleString()}
-                </div>
-                <p className={`text-sm mt-1 ${
-                  summary.netBalance > 0 ? 'text-orange-600' : 
-                  summary.netBalance < 0 ? 'text-red-600' : 
-                  'text-gray-600'
-                }`}>
-                  {summary.netBalance > 0 ? 'Society owes Admin' : 
-                   summary.netBalance < 0 ? 'Admin owes Society' : 
-                   'Balanced'}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Total Injected Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              Total Injected
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-              <div className="text-3xl font-bold text-green-600">
-                ₹{summary.totalInjected.toLocaleString()}
-              </div>
-            )}
-            <p className="text-sm text-gray-600 mt-1">Admin gave to Society</p>
-          </CardContent>
-        </Card>
-
-        {/* Total Withdrawn Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-              Total Withdrawn
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-              <div className="text-3xl font-bold text-red-600">
-                ₹{summary.totalWithdrawn.toLocaleString()}
-              </div>
-            )}
-            <p className="text-sm text-gray-600 mt-1">Admin took from Society</p>
-          </CardContent>
-        </Card>
-
-        {/* Society Cash Available Card (NOW DYNAMIC) */}
-        <Card className="bg-purple-50 border-purple-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
-            <Wallet className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-              <div className="text-2xl font-bold text-purple-700">
-                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(societyCashInHand)}
-              </div>
-            )}
-            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (All Sources)</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Total Expenses Card - ✅ NEW */}
-      <Card className="bg-orange-50 border-orange-200">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-orange-800">Total Expenses</CardTitle>
-          <Wallet className="h-4 w-4 text-orange-600" />
-        </CardHeader>
-        <CardContent>
-          {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-            <div className="text-3xl font-bold text-orange-700">
-                ₹{summary.totalExpenses.toLocaleString()}
-            </div>
-            )}
-            <p className="text-xs text-orange-600 mt-1">Monthly outflows from Expenses table</p>
-          </CardContent>
-        </Card>
-
-      {/* Cash in Hand Info */}
+      {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Cash in Hand (Admin Fund)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
-            <div className="text-2xl font-bold text-blue-600">
-              ₹{cashInHand.toLocaleString()}
+          <div className="flex items-center justify-between">
+            <CardTitle>Recent Expenses</CardTitle>
+            <div className="flex items-center gap-4">
+              <Input
+                placeholder="Search expenses..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64"
+              />
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="all">All Types</option>
+                <option value="MAINTENANCE">Maintenance</option>
+                <option value="UTILITY">Utility</option>
+                <option value="SECURITY">Security</option>
+              </select>
+              <Button variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
             </div>
-          )}
-          <p className="text-sm text-gray-600 mt-1">
-            Available for withdrawals and expenses (from Admin Fund only)
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* SECTION B: ACTION BUTTONS */}
-      <div className="flex gap-4">
-        {/* Inject Fund Button */}
-        <Dialog open={isInjectModalOpen} onOpenChange={setIsInjectModalOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
-              <ArrowDownCircle className="h-4 w-4" />
-              Inject Fund
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-green-600">
-                <ArrowDownCircle className="h-5 w-5" />
-                Inject Fund
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="inject-amount">Amount</Label>
-                <Input
-                  id="inject-amount"
-                  type="number"
-                  placeholder="Enter amount"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="inject-date">Date</Label>
-                <Input
-                  id="inject-date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="inject-description">Description</Label>
-                <Textarea
-                  id="inject-description"
-                  placeholder="Enter description for this transaction"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={() => handleAddTransaction('INJECT')} // Pass type
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                  disabled={!formData.amount || !formData.description}
-                >
-                  Inject Fund
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsInjectModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Withdraw Fund Button */}
-        <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
-          <DialogTrigger asChild>
-            <Button variant="destructive" className="flex items-center gap-2">
-              <ArrowUpCircle className="h-4 w-4" />
-              Withdraw Fund
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-600">
-                <ArrowUpCircle className="h-5 w-5" />
-                Withdraw Fund
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {showWarning && (
-                <Alert className="border-orange-200 bg-orange-50">
-                  <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  <AlertDescription className="text-orange-800">
-                    <div className="space-y-2">
-                      <p><strong>Warning:</strong> Withdrawal amount (₹{parseFloat(formData.amount).toLocaleString()}) exceeds available Cash in Hand (₹{cashInHand.toLocaleString()}).</p>
-                      <p>This may result in negative cash balance. Do you want to continue?</p>
-                      <div className="flex gap-2 mt-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => setShowWarning(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive"
-                          onClick={() => handleAddTransaction('WITHDRAW')} // Force withdraw
-                        >
-                          Force Withdraw
-                        </Button>
-                      </div>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}              
-              <div>
-                <Label htmlFor="withdraw-amount">Amount</Label>
-                <Input
-                  id="withdraw-amount"
-                  type="number"
-                  placeholder="Enter amount"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="withdraw-date">Date</Label>
-                <Input
-                  id="withdraw-date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="withdraw-description">Description</Label>
-                <Textarea
-                  id="withdraw-description"
-                  placeholder="Enter description for this transaction"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              {!showWarning && (
-                <div className="flex gap-2">
-                  <Button 
-                    variant="destructive"
-                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type
-                    className="flex-1"
-                    disabled={!formData.amount || !formData.description}
-                  >
-                    Withdraw Fund
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsWithdrawModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* SECTION C: THE LEDGER TABLE */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Transaction Ledger</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description/Note</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Running Balance</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8">Loading...</TableCell></TableRow>
-                ) : adminFundLedger.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                      No transactions yet. Add your first transaction to get started.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  adminFundLedger.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                        <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant="outline"
-                            className={transaction.type === 'INJECT' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-                          >
-                            {transaction.type === 'INJECT' ? 'Received' : 'Given'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          <span className={transaction.type === 'INJECT' ? 'text-green-600' : 'text-red-600'}>
-                            {transaction.type === 'INJECT' ? '+' : '-'}₹{Number(transaction.amount).toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell className={`text-right font-medium ${
-                          transaction.runningBalance > 0 ? 'text-orange-600' : 
-                          transaction.runningBalance < 0 ? 'text-red-600' : 
-                          'text-gray-600'
-                        }`}>
-                          ₹{Math.abs(transaction.runningBalance).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteAdminTransaction(transaction.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                )}
-              </TableBody>
-            </Table>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Description</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Amount</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Type</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Date</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Status</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExpenses.map((expense) => (
+                  <tr key={expense.id} className="border-b border-gray-100 dark:border-gray-800">
+                    <td className="py-3 px-4">
+                      <div className="font-medium text-gray-900 dark:text-white">{expense.description}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">₹{expense.amount.toLocaleString()}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge className={
+                        expense.type === 'MAINTENANCE' ? 'bg-blue-100 text-blue-800' :
+                        expense.type === 'UTILITY' ? 'bg-green-100 text-green-800' :
+                        'bg-purple-100 text-purple-800'
+                      }>
+                        {expense.type}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{expense.date}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge className={
+                        expense.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }>
+                        {expense.status}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Button variant="ghost" size="sm">View</Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Expense Modal (Simple) */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Add New Expense</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <Input placeholder="Enter description" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Amount</label>
+                <Input type="number" placeholder="Enter amount" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Type</label>
+                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                  <option value="MAINTENANCE">Maintenance</option>
+                  <option value="UTILITY">Utility</option>
+                  <option value="SECURITY">Security</option>
+                </select>
+              </div>
+              <div className="flex gap-2 pt-4">
+                <Button onClick={() => setIsAddModalOpen(false)} variant="outline" className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={() => setIsAddModalOpen(false)} className="flex-1">
+                  Add Expense
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }
