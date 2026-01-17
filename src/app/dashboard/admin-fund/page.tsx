@@ -42,6 +42,7 @@ export default function AdminFundPage() {
   const [showWarning, setShowWarning] = useState(false)
 
   // --- Summary Calculations ---
+  // Expenses hata diya gaya hai kyoki table exist nahi karti
   const [summary, setSummary] = useState({
     netBalance: 0,
     totalInjected: 0,
@@ -52,6 +53,7 @@ export default function AdminFundPage() {
 
   // 1. Initial Logic (Safe LocalStorage)
   useEffect(() => {
+    // Local storage se user uthana
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
 
     if (!user?.id) {
@@ -60,6 +62,7 @@ export default function AdminFundPage() {
     }
 
     // 🔥 FIX: Direct ID access to prevent 400 Bad Request on admins table
+    // Hum seedha user object se ID le rahe hain taaki database call ki zaroorat na pade
     const finalId = user.client_id || user.id;
     setClientId(finalId)
   }, [])
@@ -81,22 +84,27 @@ export default function AdminFundPage() {
     }
 
     try {
-      // A. Fetch Ledger
+      // ---------------------------------------------------------
+      // A. Fetch Ledger (Admin Fund Transactions)
+      // ---------------------------------------------------------
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
         .eq('client_id', clientId)
-        .order('date', { ascending: true }); // Calculation needs ascending
+        .order('date', { ascending: true }); // Calculation needs ascending order first
 
       if (ledgerError) throw ledgerError;
 
-      // B. Calculate Running Balance
+      // ---------------------------------------------------------
+      // B. Calculate Running Balance for Admin Fund
+      // ---------------------------------------------------------
       let currentRunningBalance = 0;
       let totalInjected = 0;
       let totalWithdrawn = 0;
 
       const processedLedger = (ledger || []).map((transaction: any) => {
           const amt = Number(transaction.amount);
+          
           if (transaction.type === 'INJECT') {
               currentRunningBalance += amt;
               totalInjected += amt;
@@ -104,11 +112,12 @@ export default function AdminFundPage() {
               currentRunningBalance -= amt;
               totalWithdrawn += amt;
           }
+          
           return { ...transaction, runningBalance: currentRunningBalance };
       });
 
-      // C. Set State
-      setAdminFundLedger([...processedLedger].reverse()); // Display latest first
+      // C. Set State (Reverse for Display - Newest First)
+      setAdminFundLedger([...processedLedger].reverse()); 
 
       setSummary({
         netBalance: currentRunningBalance, 
@@ -117,9 +126,12 @@ export default function AdminFundPage() {
       });
       setCashInHand(currentRunningBalance); 
 
-      // D. Society Cash Calc (FIXED LOGIC)
+      // ---------------------------------------------------------
+      // D. Society Cash Calc (FIXED LOGIC USING LOANS TABLE)
+      // ---------------------------------------------------------
       
       // 1. Get Passbook Total (Inflow)
+      // Ye wo paisa hai jo members ne jama kiya hai
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount')
@@ -127,38 +139,38 @@ export default function AdminFundPage() {
       
       const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
 
-      // 2. Get Total Loans Disbursed (Outflow)
-      // 🔥 FIX: Exclude 'pending' loans because cash hasn't left the locker yet
+      // 2. Get Loans Data (Used for Repayment Calculation)
+      // Hum 'remaining_balance' aur 'total_interest_collected' use karenge
+      // Kyoki 'loan_payments' table exist nahi karti
       const { data: loans } = await supabase
           .from('loans')
-          .select('amount')
+          .select('amount, remaining_balance, total_interest_collected')
           .neq('status', 'rejected') 
-          .neq('status', 'pending') 
+          .neq('status', 'pending') // Pending loan ka paisa abhi locker se bahar nahi gaya
           .eq('client_id', clientId); 
 
-      const totalLoansDisbursed = loans?.reduce((sum, loan) => sum + (Number(loan.amount)||0), 0) || 0;
-
-      // 3. Get Repayments (Inflow) - Wrapped in Try/Catch to ignore 404 if table missing
-      let totalRepayments = 0;
-      try {
-        const { data: loanPayments, error: lpError } = await supabase
-            .from('loan_payments')
-            .select('amount')
-            .eq('client_id', clientId);
-        
-        if (!lpError && loanPayments) {
-            totalRepayments = loanPayments.reduce((sum, payment) => sum + (Number(payment.amount)||0), 0);
-        }
-      } catch (e) {
-        // Table doesn't exist, ignore silently
-      }
-
-      // 4. Final Calculation (Matching Liquidity Logic)
-      // Note: Expenses removed as per request to fix error
-      const totalInflow = totalPassbookCollection + totalRepayments + currentRunningBalance;
-      const totalOutflow = totalLoansDisbursed;
+      // Calculation Breakdown:
+      // Cash In Hand = (Passbook) + (AdminFund) + (Money Back from Loans) - (Money Given in Loans)
+      //
+      // Simplified Formula:
+      // Cash In Hand = (Passbook) + (AdminFund) + (Total Interest) - (Remaining Balance)
       
-      const finalSocietyCash = totalInflow - totalOutflow;
+      const totalRemainingLoanAmount = loans?.reduce((sum, loan) => sum + (Number(loan.remaining_balance)||0), 0) || 0;
+      const totalInterestCollected = loans?.reduce((sum, loan) => sum + (Number(loan.total_interest_collected)||0), 0) || 0;
+
+      // Note: Expenses table hata di gayi hai error fix karne ke liye.
+      
+      // 4. Final Calculation
+      // Logic:
+      // Humare paas Cash tha (Passbook + Admin).
+      // Usme se kuch paisa loan me fasa hua hai (Remaining Balance).
+      // Aur kuch paisa interest ke roop me extra aaya hai.
+      
+      const liquiditySources = totalPassbookCollection + currentRunningBalance + totalInterestCollected;
+      const stuckInLoans = totalRemainingLoanAmount;
+      
+      const finalSocietyCash = liquiditySources - stuckInLoans;
+      
       setSocietyCashInHand(finalSocietyCash); 
 
     } catch (error) {
@@ -188,8 +200,15 @@ export default function AdminFundPage() {
             type: type,
             description: formData.description
         }]);
+        
         fetchAdminFundData(); 
-        setFormData({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
+        
+        setFormData({ 
+            amount: '', 
+            description: '', 
+            date: new Date().toISOString().split('T')[0] 
+        });
+        
         setIsInjectModalOpen(false);
         setIsWithdrawModalOpen(false);
         setShowWarning(false);
@@ -212,7 +231,7 @@ export default function AdminFundPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
+      {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -222,12 +241,15 @@ export default function AdminFundPage() {
             Track funds exchanged between Admin and Society
           </p>
         </div>
-        <Button variant="outline" onClick={fetchAdminFundData}><RefreshCw className="h-4 w-4 mr-2"/> Refresh</Button>
+        <Button variant="outline" onClick={fetchAdminFundData}>
+            <RefreshCw className="h-4 w-4 mr-2"/> Refresh
+        </Button>
       </div>
 
       {/* SECTION A: SUMMARY CARDS */}
       <div className="grid gap-4 md:grid-cols-4">
-        {/* Net Balance Card */}
+        
+        {/* Card 1: Net Balance */}
         <Card className="md:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
@@ -258,7 +280,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Total Injected Card */}
+        {/* Card 2: Total Injected */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -276,7 +298,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Total Withdrawn Card */}
+        {/* Card 3: Total Withdrawn */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -294,7 +316,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Society Cash Available Card (NOW DYNAMIC) */}
+        {/* Card 4: Society Cash Available (FIXED) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
@@ -311,7 +333,7 @@ export default function AdminFundPage() {
         </Card>
       </div>
 
-      {/* Cash in Hand Info */}
+      {/* Cash in Hand Info (Admin Fund Specific) */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -331,9 +353,9 @@ export default function AdminFundPage() {
         </CardContent>
       </Card>
 
-      {/* SECTION B: ACTION BUTTONS */}
+      {/* SECTION B: ACTION BUTTONS (Inject / Withdraw) */}
       <div className="flex gap-4">
-        {/* Inject Fund Button */}
+        {/* Inject Fund Modal */}
         <Dialog open={isInjectModalOpen} onOpenChange={setIsInjectModalOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
@@ -379,7 +401,7 @@ export default function AdminFundPage() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => handleAddTransaction('INJECT')} // Pass type
+                  onClick={() => handleAddTransaction('INJECT')} // Pass type INJECT
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!formData.amount || !formData.description}
                 >
@@ -396,7 +418,7 @@ export default function AdminFundPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Withdraw Fund Button */}
+        {/* Withdraw Fund Modal */}
         <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
           <DialogTrigger asChild>
             <Button variant="destructive" className="flex items-center gap-2">
@@ -471,7 +493,7 @@ export default function AdminFundPage() {
                 <div className="flex gap-2">
                   <Button 
                     variant="destructive"
-                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type
+                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type WITHDRAW
                     className="flex-1"
                     disabled={!formData.amount || !formData.description}
                   >
