@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase-simple' // ✅ Using simple client
 import { 
   Plus, 
   Trash2, 
@@ -8,7 +9,8 @@ import {
   DollarSign,
   TrendingUp,
   TrendingDown,
-  Receipt
+  Receipt,
+  RefreshCw
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,12 +21,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useClientStore } from '@/lib/client/store'
 
 export default function ExpensesPage() {
+  // --- States ---
+  const [expenseLedger, setExpenseLedger] = useState<any[]>([])
+  const [members, setMembers] = useState<any[]>([])
+  const [clientId, setClientId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
   const [isCollectFeeOpen, setIsCollectFeeOpen] = useState(false)
   const [isRecordExpenseOpen, setIsRecordExpenseOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState('')
+  
   const [expenseData, setExpenseData] = useState({
     amount: '',
     category: '',
@@ -32,58 +40,166 @@ export default function ExpensesPage() {
     date: new Date().toISOString().split('T')[0]
   })
 
-  const { 
-    members,
-    expenseLedger,
-    collectMaintenanceFee,
-    addExpense,
-    deleteExpenseEntry,
-    getMaintenanceStats
-  } = useClientStore()
+  // --- Stats Calculation State ---
+  const [stats, setStats] = useState({
+    netBalance: 0,
+    totalFeesCollected: 0,
+    totalExpenses: 0,
+    membersPaidCount: 0
+  })
 
-  const stats = getMaintenanceStats()
+  // 1. Init: Get Client ID
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('current_user') || 'null')
+    if (user?.id) {
+        // Fallback for client_id if table lookup fails or using simple auth
+        setClientId(user.client_id || user.id)
+    }
+  }, [])
 
-  const handleCollectFee = () => {
-    if (!selectedMember) return
-    collectMaintenanceFee(selectedMember)
-    setSelectedMember('')
-    setIsCollectFeeOpen(false)
+  // 2. Fetch Data Trigger
+  useEffect(() => {
+    if (clientId) {
+      fetchData()
+    }
+  }, [clientId])
+
+  // 3. Main Data Fetching (Replaces Store)
+  const fetchData = async () => {
+    setLoading(true)
+    if (!clientId) return
+
+    try {
+        // A. Fetch Members (Active Only) for Dropdown
+        const { data: membersData } = await supabase
+            .from('members')
+            .select('id, name, phone, status')
+            .eq('client_id', clientId)
+            .eq('status', 'active')
+
+        setMembers(membersData || [])
+
+        // B. Fetch Expenses Ledger (with Member Names)
+        const { data: ledgerData, error } = await supabase
+            .from('expenses_ledger')
+            .select(`
+                *,
+                member:members(name)
+            `)
+            .eq('client_id', clientId)
+            .order('date', { ascending: false }) // Newest first
+
+        if (error) throw error
+
+        const formattedLedger = (ledgerData || []).map((item: any) => ({
+            ...item,
+            memberName: item.member?.name || null
+        }))
+
+        setExpenseLedger(formattedLedger)
+        calculateStats(formattedLedger)
+
+    } catch (error) {
+        console.error('Error fetching expenses:', error)
+    } finally {
+        setLoading(false)
+    }
   }
 
-  const handleRecordExpense = () => {
-    if (!expenseData.amount || !expenseData.category || !expenseData.description) return
+  // 4. Calculate Stats (Logic preserved)
+  const calculateStats = (ledger: any[]) => {
+    let income = 0
+    let expenses = 0
+    let paidCount = 0
+
+    ledger.forEach(entry => {
+        const amt = Number(entry.amount) || 0
+        if (entry.type === 'INCOME' || entry.category === 'MAINTENANCE_FEE') {
+            income += amt
+            paidCount++
+        } else {
+            expenses += amt
+        }
+    })
+
+    setStats({
+        netBalance: income - expenses,
+        totalFeesCollected: income,
+        totalExpenses: expenses,
+        membersPaidCount: paidCount
+    })
+  }
+
+  // --- Handlers ---
+
+  // 5. Collect Fee (Save to DB)
+  const handleCollectFee = async () => {
+    if (!selectedMember || !clientId) return
+
+    try {
+        await supabase.from('expenses_ledger').insert([{
+            client_id: clientId,
+            member_id: selectedMember,
+            amount: 200, // Fixed Fee
+            type: 'INCOME',
+            category: 'MAINTENANCE_FEE',
+            description: 'Monthly Maintenance Fee',
+            date: new Date().toISOString().split('T')[0]
+        }])
+
+        fetchData() // Refresh
+        setSelectedMember('')
+        setIsCollectFeeOpen(false)
+    } catch (error) {
+        console.error('Error collecting fee:', error)
+        alert('Failed to collect fee')
+    }
+  }
+
+  // 6. Record Expense (Save to DB)
+  const handleRecordExpense = async () => {
+    if (!expenseData.amount || !expenseData.category || !expenseData.description || !clientId) return
     
     const amount = parseFloat(expenseData.amount)
     if (isNaN(amount) || amount <= 0) return
 
-    addExpense(amount, expenseData.category as any, expenseData.description)
-    setExpenseData({
-      amount: '',
-      category: '',
-      description: '',
-      date: new Date().toISOString().split('T')[0]
-    })
-    setIsRecordExpenseOpen(false)
-  }
+    try {
+        await supabase.from('expenses_ledger').insert([{
+            client_id: clientId,
+            amount: amount,
+            type: 'EXPENSE',
+            category: expenseData.category,
+            description: expenseData.description,
+            date: expenseData.date
+        }])
 
-  const getMembersWhoHaventPaid = () => {
-    return members.filter(m => !m.hasPaidMaintenance && m.status === 'active')
-  }
-
-  const getCategoryIcon = (category: string) => {
-    const icons = {
-      'MAINTENANCE_FEE': <DollarSign className="h-4 w-4" />,
-      'STATIONERY': <Receipt className="h-4 w-4" />,
-      'PRINTING': <Receipt className="h-4 w-4" />,
-      'LOAN_FORMS': <Receipt className="h-4 w-4" />,
-      'REFRESHMENTS': <Receipt className="h-4 w-4" />,
-      'OTHER': <Receipt className="h-4 w-4" />
+        fetchData() // Refresh
+        setExpenseData({
+            amount: '',
+            category: '',
+            description: '',
+            date: new Date().toISOString().split('T')[0]
+        })
+        setIsRecordExpenseOpen(false)
+    } catch (error) {
+        console.error('Error recording expense:', error)
+        alert('Failed to record expense')
     }
-    return icons[category as keyof typeof icons] || <Receipt className="h-4 w-4" />
+  }
+
+  // 7. Delete Entry
+  const handleDeleteEntry = async (id: string) => {
+      if(!confirm("Are you sure?")) return;
+      try {
+          await supabase.from('expenses_ledger').delete().eq('id', id);
+          fetchData();
+      } catch (error) {
+          console.error("Error deleting:", error);
+      }
   }
 
   const getCategoryColor = (category: string) => {
-    const colors = {
+    const colors: any = {
       'MAINTENANCE_FEE': 'bg-green-100 text-green-800',
       'STATIONERY': 'bg-blue-100 text-blue-800',
       'PRINTING': 'bg-purple-100 text-purple-800',
@@ -91,11 +207,11 @@ export default function ExpensesPage() {
       'REFRESHMENTS': 'bg-pink-100 text-pink-800',
       'OTHER': 'bg-gray-100 text-gray-800'
     }
-    return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[category] || 'bg-gray-100 text-gray-800'
   }
 
   const getCategoryLabel = (category: string) => {
-    const labels = {
+    const labels: any = {
       'MAINTENANCE_FEE': 'Maintenance Fee',
       'STATIONERY': 'Stationery',
       'PRINTING': 'Printing',
@@ -103,19 +219,22 @@ export default function ExpensesPage() {
       'REFRESHMENTS': 'Refreshments',
       'OTHER': 'Other'
     }
-    return labels[category as keyof typeof labels] || category
+    return labels[category] || category
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Expenses & Maintenance
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Track maintenance fees and operational expenses
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Expenses & Maintenance
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Track maintenance fees and operational expenses
+            </p>
+        </div>
+        <Button variant="outline" onClick={fetchData}><RefreshCw className="h-4 w-4 mr-2"/> Refresh</Button>
       </div>
 
       {/* SECTION A: SUMMARY CARDS */}
@@ -128,16 +247,20 @@ export default function ExpensesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${
-              stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              ₹{Math.abs(stats.netBalance).toLocaleString()}
-            </div>
-            <p className={`text-sm mt-1 ${
-              stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {stats.netBalance >= 0 ? 'Positive Balance' : 'Negative Balance'}
-            </p>
+            {loading ? <div className="h-8 bg-gray-200 animate-pulse rounded"></div> : (
+                <>
+                    <div className={`text-3xl font-bold ${
+                    stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                    ₹{Math.abs(stats.netBalance).toLocaleString()}
+                    </div>
+                    <p className={`text-sm mt-1 ${
+                    stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                    {stats.netBalance >= 0 ? 'Positive Balance' : 'Negative Balance'}
+                    </p>
+                </>
+            )}
           </CardContent>
         </Card>
 
@@ -150,12 +273,16 @@ export default function ExpensesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              ₹{stats.totalFeesCollected.toLocaleString()}
-            </div>
-            <p className="text-sm text-gray-600 mt-1">
-              {stats.membersPaidCount} members × ₹200
-            </p>
+            {loading ? <div className="h-8 bg-gray-200 animate-pulse rounded"></div> : (
+                <>
+                    <div className="text-3xl font-bold text-green-600">
+                    ₹{stats.totalFeesCollected.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                    {stats.membersPaidCount} payments recorded
+                    </p>
+                </>
+            )}
           </CardContent>
         </Card>
 
@@ -168,12 +295,16 @@ export default function ExpensesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">
-              ₹{stats.totalExpenses.toLocaleString()}
-            </div>
-            <p className="text-sm text-gray-600 mt-1">
-              Operational costs
-            </p>
+            {loading ? <div className="h-8 bg-gray-200 animate-pulse rounded"></div> : (
+                <>
+                    <div className="text-3xl font-bold text-red-600">
+                    ₹{stats.totalExpenses.toLocaleString()}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                    Operational costs
+                    </p>
+                </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -200,10 +331,10 @@ export default function ExpensesPage() {
                 <Label htmlFor="member-select">Select Member</Label>
                 <Select value={selectedMember} onValueChange={setSelectedMember}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select member who hasn't paid..." />
+                    <SelectValue placeholder="Select member..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {getMembersWhoHaventPaid().map((member) => (
+                    {members.map((member) => (
                       <SelectItem key={member.id} value={member.id}>
                         {member.name} ({member.phone})
                       </SelectItem>
@@ -345,19 +476,19 @@ export default function ExpensesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {expenseLedger.length === 0 ? (
+                {loading ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-8">Loading...</TableCell></TableRow>
+                ) : expenseLedger.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                       No transactions yet. Add your first transaction to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
                   expenseLedger
-                    .slice()
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                     .map((entry) => (
                       <TableRow key={entry.id}>
-                        <TableCell>{entry.date}</TableCell>
+                        <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
                         <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
                         <TableCell>
                           {entry.memberName ? (
@@ -381,14 +512,14 @@ export default function ExpensesPage() {
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           <span className={entry.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}>
-                            {entry.type === 'INCOME' ? '+' : '-'}₹{entry.amount.toLocaleString()}
+                            {entry.type === 'INCOME' ? '+' : '-'}₹{Number(entry.amount).toLocaleString()}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => deleteExpenseEntry(entry.id)}
+                            onClick={() => handleDeleteEntry(entry.id)}
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4" />
