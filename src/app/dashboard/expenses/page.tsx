@@ -68,8 +68,7 @@ export default function ExpensesPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching (UPDATED: Manual Mapping Logic)
-  // This fixes the BLANK DATA issue by removing complex joins
+  // 3. Main Data Fetching (UPDATED: Manual Mapping Logic & Paid Member Filtering)
   const fetchData = async () => {
     setLoading(true)
     if (!clientId) return
@@ -86,17 +85,31 @@ export default function ExpensesPage() {
 
         if (memError) console.error("Member fetch error:", memError);
 
-        // Filter active members for dropdown
-        const activeMembers = membersData?.filter(m => m.status === 'active') || []
+        // B. Fetch maintenance paid members (Check ledger to see who has paid)
+        const { data: paidData } = await supabase
+            .from('expenses_ledger')
+            .select('member_id')
+            .eq('client_id', clientId)
+            .eq('category', 'MAINTENANCE_FEE')
+
+        // Create set for fast lookup
+        const paidMemberSet = new Set(
+            (paidData || []).map((p: any) => p.member_id)
+        )
+
+        // Only active + unpaid members
+        const activeMembers = (membersData || [])
+            .filter(m => m.status === 'active' && !paidMemberSet.has(m.id))
+
         setMembers(activeMembers)
 
-        // Create a fast lookup map: { member_id: "John Doe" }
+        // Create a fast lookup map: { member_id: "John Doe" } (Using all members for name mapping)
         const memberMap: any = {};
         membersData?.forEach((m: any) => {
             memberMap[m.id] = m.name;
         });
 
-        // B. Fetch Expenses Ledger (SIMPLE SELECT)
+        // C. Fetch Expenses Ledger (SIMPLE SELECT)
         // 🔥 FIX: Removed 'members(name)' join. We fetch raw data to ensure it works.
         const { data: ledgerData, error } = await supabase
             .from('expenses_ledger')
@@ -109,7 +122,7 @@ export default function ExpensesPage() {
             throw error;
         }
 
-        // C. Combine Data manually
+        // D. Combine Data manually
         const formattedLedger = (ledgerData || []).map((item: any) => ({
             ...item,
             // If member_id exists, look it up in our map. Otherwise null.
