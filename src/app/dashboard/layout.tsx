@@ -49,6 +49,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         // ✅ IMPORTANT FIX
         const resolvedClientId = user.client_id ?? user.id;
+        
+        console.log('Resolved Client ID:', resolvedClientId); // <--- DEBUG LINE ADDED
 
         const { data: client, error } = await supabase
           .from('clients')
