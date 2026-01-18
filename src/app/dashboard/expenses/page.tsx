@@ -48,7 +48,7 @@ export default function ExpensesPage() {
     membersPaidCount: 0
   })
 
-  // 1. Init: Get Correct Client ID (FIXED FOR TREASURER 400 ERROR)
+  // 1. Init: Get Correct Client ID
   useEffect(() => {
     const resolveClientId = async () => {
       const user = JSON.parse(localStorage.getItem('current_user') || 'null')
@@ -59,30 +59,25 @@ export default function ExpensesPage() {
         return;
       }
 
-      // ✅ FIX: Try to get data from admins table with simple query to avoid 400
+      // ✅ FIX: Try to get data from admins table
       try {
         const { data, error } = await supabase
           .from('admins')
-          .select('*') // Changed to wildcard to prevent column syntax error
+          .select('*') 
           .eq('id', user.id)
           .maybeSingle()
 
         if (!error && data) {
-            // Logic: 
-            // 1. Agar 'client_id' field bhara hua hai, to ye Treasurer hai -> Use client_id
-            // 2. Agar 'client_id' khali hai, to ye khud Owner hai -> Use user.id
+            // Logic: Treasurer -> Owner ID, Owner -> Own ID
             const targetId = data.client_id ? data.client_id : user.id;
-            
-            console.log("✅ Identity Resolved:", targetId);
             setClientId(targetId);
         } else {
-            // Fallback: Agar DB fail ho jaye to LocalStorage use karo
+            // Fallback
             console.warn("DB Fetch failed, using LocalStorage fallback");
             setClientId(user.client_id || user.id);
         }
       } catch (err) {
         console.error("Critical ID Resolution Error:", err)
-        // Ultimate Fallback
         setClientId(user.id)
       }
     }
@@ -97,13 +92,13 @@ export default function ExpensesPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching (Manual Join - 100% Data Guarantee)
+  // 3. Main Data Fetching (Manual Join)
   const fetchData = async () => {
     setLoading(true)
     if (!clientId) return
 
     try {
-        // A. Fetch All Members First (Mapping ke liye)
+        // A. Fetch All Members First
         const { data: membersData, error: memError } = await supabase
             .from('members')
             .select('id, name, phone, status')
@@ -116,13 +111,13 @@ export default function ExpensesPage() {
         const activeMembers = membersData?.filter(m => m.status === 'active') || []
         setMembers(activeMembers)
 
-        // Create Map: { member_id: member_name }
+        // Create Map
         const memberMap: any = {}
         membersData?.forEach((m: any) => { 
             memberMap[m.id] = m.name 
         })
 
-        // B. Fetch Ledger (Simple Select - No Join Error)
+        // B. Fetch Ledger
         const { data: ledgerData, error } = await supabase
             .from('expenses_ledger')
             .select('*') 
@@ -150,7 +145,7 @@ export default function ExpensesPage() {
     }
   }
 
-  // 4. Calculate Stats (Logic preserved)
+  // 4. Calculate Stats
   const calculateStats = (ledger: any[]) => {
     let income = 0
     let expenses = 0
@@ -176,7 +171,7 @@ export default function ExpensesPage() {
 
   // --- Handlers ---
 
-  // 5. Collect Fee (Save to DB)
+  // 5. Collect Fee
   const handleCollectFee = async () => {
     if (!selectedMember || !clientId) return
 
@@ -191,7 +186,7 @@ export default function ExpensesPage() {
             date: new Date().toISOString().split('T')[0]
         }])
 
-        fetchData() // Refresh
+        fetchData() 
         setSelectedMember('')
         setIsCollectFeeOpen(false)
     } catch (error) {
@@ -200,7 +195,7 @@ export default function ExpensesPage() {
     }
   }
 
-  // 6. Record Expense (Save to DB)
+  // 6. Record Expense
   const handleRecordExpense = async () => {
     if (!expenseData.amount || !expenseData.category || !expenseData.description || !clientId) return
     
@@ -217,7 +212,7 @@ export default function ExpensesPage() {
             date: expenseData.date
         }])
 
-        fetchData() // Refresh
+        fetchData() 
         setExpenseData({
             amount: '',
             category: '',
@@ -242,20 +237,15 @@ export default function ExpensesPage() {
       }
   }
 
-  // ✅ LOGIC ADDED: Filter members who haven't paid this month
+  // ✅ UPDATED LOGIC: Filter members who have NEVER paid Maintenance Fee
+  // (Assuming Maintenance Fee is One-Time for Lifetime)
   const getUnpaidMembers = () => {
-    // Current month string (e.g., "2026-01")
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    
-    // Find IDs of members who have an entry in ledger for this month
+    // 1. Find all Member IDs who have paid 'MAINTENANCE_FEE' at ANY time
     const paidMemberIds = expenseLedger
-        .filter(entry => 
-            entry.category === 'MAINTENANCE_FEE' && 
-            entry.date.startsWith(currentMonth)
-        )
+        .filter(entry => entry.category === 'MAINTENANCE_FEE')
         .map(entry => entry.member_id);
 
-    // Return only those members whose ID is NOT in paidMemberIds
+    // 2. Return members who are NOT in the paid list
     return members.filter(member => !paidMemberIds.includes(member.id));
   }
 
@@ -394,7 +384,7 @@ export default function ExpensesPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select member..." />
                   </SelectTrigger>
-                  {/* ✅ UPDATED: Only showing members who HAVEN'T paid this month */}
+                  {/* ✅ LOGIC: Shows only members who haven't paid (Lifetime) */}
                   <SelectContent>
                     {getUnpaidMembers().length > 0 ? (
                         getUnpaidMembers().map((member) => (
@@ -403,7 +393,7 @@ export default function ExpensesPage() {
                         </SelectItem>
                         ))
                     ) : (
-                        <div className="p-2 text-sm text-gray-500 text-center">All members paid for this month!</div>
+                        <div className="p-2 text-sm text-gray-500 text-center">All members have paid!</div>
                     )}
                   </SelectContent>
                 </Select>
