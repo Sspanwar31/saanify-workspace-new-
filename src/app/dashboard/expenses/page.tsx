@@ -48,34 +48,35 @@ export default function ExpensesPage() {
     membersPaidCount: 0
   })
 
-  // 1. Init: Get Correct Client ID (Fix for Treasurer)
+  // 1. Init: Get Correct Client ID (FIXED FOR TREASURER)
   useEffect(() => {
     const resolveClientId = async () => {
       const user = JSON.parse(localStorage.getItem('current_user') || 'null')
-      if (!user?.id) return
-
-      // Step 1: अगर LocalStorage में client_id है, तो उसे use करो
-      if (user.client_id) {
-        setClientId(user.client_id)
-        return
+      if (!user?.id) {
+        setLoading(false);
+        return;
       }
 
-      // Step 2: अगर Treasurer है, तो Database से मालिक (Admin) का ID ढूंढो
       try {
+        // 🔥 Database check: Pata karo ye user Client hai ya Treasurer
         const { data, error } = await supabase
           .from('admins')
-          .select('client_id')
+          .select('client_id, role')
           .eq('id', user.id)
-          .maybeSingle() // Error nahi dega agar data nahi mila
+          .maybeSingle()
 
-        if (data && data.client_id) {
-          setClientId(data.client_id) // Treasurer ke liye Owner ki ID
+        if (data) {
+            // Logic: Agar client_id hai (matlab ye Treasurer hai), to Owner ki ID use karo
+            // Agar client_id nahi hai (matlab ye khud Owner hai), to apni ID use karo
+            const finalId = data.client_id ? data.client_id : user.id;
+            console.log("✅ Set Client ID:", finalId); // Debugging
+            setClientId(finalId);
         } else {
-          setClientId(user.id) // Client khud Owner hai
+            // Fallback
+            setClientId(user.client_id || user.id);
         }
       } catch (err) {
-        // Agar koi error aaye to fallback user.id par jao
-        console.warn("ID Resolution failed, using user.id")
+        console.error("ID Resolution Failed:", err)
         setClientId(user.id)
       }
     }
@@ -90,42 +91,37 @@ export default function ExpensesPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching (Simplified Manual Logic)
+  // 3. Main Data Fetching (Manual Join - 100% Data Guarantee)
   const fetchData = async () => {
     setLoading(true)
     if (!clientId) return
 
     try {
-        // A. Fetch Members First (For manual mapping)
-        const { data: membersData, error: memError } = await supabase
+        // A. Fetch All Members First (Mapping ke liye)
+        const { data: membersData } = await supabase
             .from('members')
             .select('id, name, phone, status')
             .eq('client_id', clientId)
 
-        if (memError) console.error("Member fetch error:", memError);
-
         const activeMembers = membersData?.filter(m => m.status === 'active') || []
         setMembers(activeMembers)
 
-        // Create Map: { id: name }
+        // Create Map: { member_id: member_name }
         const memberMap: any = {}
         membersData?.forEach((m: any) => { 
             memberMap[m.id] = m.name 
         })
 
-        // B. Fetch Ledger (Simple Select - No Join)
+        // B. Fetch Ledger (Simple Select - No Join Error)
         const { data: ledgerData, error } = await supabase
             .from('expenses_ledger')
             .select('*') 
             .eq('client_id', clientId)
             .order('date', { ascending: false })
 
-        if (error) {
-            console.error("Supabase Ledger Error:", error);
-            throw error;
-        }
+        if (error) throw error
 
-        // C. Manual Join
+        // C. Combine Data Manually
         const formattedLedger = (ledgerData || []).map((item: any) => ({
             ...item,
             memberName: item.member_id ? memberMap[item.member_id] : null
@@ -354,7 +350,6 @@ export default function ExpensesPage() {
               Collect Member Fee
             </Button>
           </DialogTrigger>
-          {/* ✅ FIX: Added aria-describedby for Dialog warning fix */}
           <DialogContent aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-blue-600">
@@ -413,7 +408,6 @@ export default function ExpensesPage() {
               Record Expense
             </Button>
           </DialogTrigger>
-          {/* ✅ FIX: Added aria-describedby for Dialog warning fix */}
           <DialogContent aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-orange-600">
