@@ -42,7 +42,6 @@ export default function AdminFundPage() {
   const [showWarning, setShowWarning] = useState(false)
 
   // --- Summary Calculations ---
-  // Expenses hata diya gaya hai kyoki table exist nahi karti
   const [summary, setSummary] = useState({
     netBalance: 0,
     totalInjected: 0,
@@ -51,9 +50,8 @@ export default function AdminFundPage() {
   const [cashInHand, setCashInHand] = useState(0) 
   const [societyCashInHand, setSocietyCashInHand] = useState(0)
 
-  // 1. Initial Logic (Safe LocalStorage)
+  // 1. Initial Logic
   useEffect(() => {
-    // Local storage se user uthana
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
 
     if (!user?.id) {
@@ -61,8 +59,7 @@ export default function AdminFundPage() {
       return
     }
 
-    // 🔥 FIX: Direct ID access to prevent 400 Bad Request on admins table
-    // Hum seedha user object se ID le rahe hain taaki database call ki zaroorat na pade
+    // Direct ID access
     const finalId = user.client_id || user.id;
     setClientId(finalId)
   }, [])
@@ -74,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (Fixed & Optimized)
+  // 3. Main Data Fetching Function (CALCULATION FIXED)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -85,18 +82,18 @@ export default function AdminFundPage() {
 
     try {
       // ---------------------------------------------------------
-      // A. Fetch Ledger (Admin Fund Transactions)
+      // A. Fetch Ledger
       // ---------------------------------------------------------
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
         .select('*')
         .eq('client_id', clientId)
-        .order('date', { ascending: true }); // Calculation needs ascending order first
+        .order('date', { ascending: true }); 
 
       if (ledgerError) throw ledgerError;
 
       // ---------------------------------------------------------
-      // B. Calculate Running Balance for Admin Fund
+      // B. Calculate Admin Fund Balance
       // ---------------------------------------------------------
       let currentRunningBalance = 0;
       let totalInjected = 0;
@@ -116,9 +113,8 @@ export default function AdminFundPage() {
           return { ...transaction, runningBalance: currentRunningBalance };
       });
 
-      // C. Set State (Reverse for Display - Newest First)
+      // Set Admin Fund States
       setAdminFundLedger([...processedLedger].reverse()); 
-
       setSummary({
         netBalance: currentRunningBalance, 
         totalInjected: totalInjected,
@@ -127,49 +123,52 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // D. Society Cash Calc (FIXED LOGIC USING LOANS TABLE)
+      // D. Society Cash Calc (UPDATED FORMULA)
       // ---------------------------------------------------------
       
-      // 1. Get Passbook Total (Inflow)
-      // Ye wo paisa hai jo members ne jama kiya hai
+      // 1. Passbook (Total Deposits)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount')
         .eq('client_id', clientId);
       
-      const totalPassbookCollection = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
+      const totalPassbook = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
 
-      // 2. Get Loans Data (Used for Repayment Calculation)
-      // Hum 'remaining_balance' aur 'total_interest_collected' use karenge
-      // Kyoki 'loan_payments' table exist nahi karti
+      // 2. Loans (Issued, Recovered, Interest)
       const { data: loans } = await supabase
           .from('loans')
           .select('amount, remaining_balance, total_interest_collected')
           .neq('status', 'rejected') 
-          .neq('status', 'pending') // Pending loan ka paisa abhi locker se bahar nahi gaya
           .eq('client_id', clientId); 
 
-      // Calculation Breakdown:
-      // Cash In Hand = (Passbook) + (AdminFund) + (Money Back from Loans) - (Money Given in Loans)
-      //
-      // Simplified Formula:
-      // Cash In Hand = (Passbook) + (AdminFund) + (Total Interest) - (Remaining Balance)
-      
-      const totalRemainingLoanAmount = loans?.reduce((sum, loan) => sum + (Number(loan.remaining_balance)||0), 0) || 0;
-      const totalInterestCollected = loans?.reduce((sum, loan) => sum + (Number(loan.total_interest_collected)||0), 0) || 0;
+      const loanIssued = loans?.reduce((sum, l) => sum + (Number(l.amount)||0), 0) || 0;
+      // Recovered = Issued - Remaining
+      const loanRecovered = loans?.reduce((sum, l) => sum + ((Number(l.amount)||0) - (Number(l.remaining_balance)||0)), 0) || 0;
+      const loanInterest = loans?.reduce((sum, l) => sum + (Number(l.total_interest_collected)||0), 0) || 0;
 
-      // Note: Expenses table hata di gayi hai error fix karne ke liye.
-      
+      // 3. Expenses & Maintenance (New Addition)
+      let maintenanceNet = 0;
+      try {
+        const { data: expenses } = await supabase
+            .from('expenses_ledger')
+            .select('amount, type')
+            .eq('client_id', clientId);
+        
+        if (expenses) {
+            const income = expenses.filter(e => e.type === 'INCOME').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+            const expense = expenses.filter(e => e.type === 'EXPENSE').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+            maintenanceNet = income - expense;
+        }
+      } catch (e) {
+          // Ignore if table missing
+      }
+
       // 4. Final Calculation
-      // Logic:
-      // Humare paas Cash tha (Passbook + Admin).
-      // Usme se kuch paisa loan me fasa hua hai (Remaining Balance).
-      // Aur kuch paisa interest ke roop me extra aaya hai.
+      // Formula: (Passbook + AdminFund + MaintNet + Recovered + Interest) - Issued
       
-      const liquiditySources = totalPassbookCollection + currentRunningBalance + totalInterestCollected;
-      const stuckInLoans = totalRemainingLoanAmount;
+      const totalSources = totalPassbook + currentRunningBalance + maintenanceNet + loanRecovered + loanInterest;
       
-      const finalSocietyCash = liquiditySources - stuckInLoans;
+      const finalSocietyCash = totalSources - loanIssued;
       
       setSocietyCashInHand(finalSocietyCash); 
 
