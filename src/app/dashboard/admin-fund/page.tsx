@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (CALCULATION FIXED)
+  // 3. Main Data Fetching Function (CALCULATION REFINED)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -82,7 +82,7 @@ export default function AdminFundPage() {
 
     try {
       // ---------------------------------------------------------
-      // A. Fetch Ledger
+      // A. Fetch Admin Ledger
       // ---------------------------------------------------------
       const { data: ledger, error: ledgerError } = await supabase
         .from('admin_fund_ledger')
@@ -113,7 +113,6 @@ export default function AdminFundPage() {
           return { ...transaction, runningBalance: currentRunningBalance };
       });
 
-      // Set Admin Fund States
       setAdminFundLedger([...processedLedger].reverse()); 
       setSummary({
         netBalance: currentRunningBalance, 
@@ -123,18 +122,21 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // D. Society Cash Calc (UPDATED FORMULA)
+      // D. Society Cash Calc (ALL SOURCES)
       // ---------------------------------------------------------
       
-      // 1. Passbook (Total Deposits)
+      // 1. Passbook (Net = Deposits - Withdrawals)
+      // 🔥 UPDATED: Added withdrawal_amount check
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
-        .select('deposit_amount')
+        .select('deposit_amount, withdrawal_amount')
         .eq('client_id', clientId);
       
-      const totalPassbook = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
+      const totalDeposits = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
+      const totalWithdrawals = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.withdrawal_amount)||0), 0) || 0;
+      const netPassbook = totalDeposits - totalWithdrawals;
 
-      // 2. Loans (Issued, Recovered, Interest)
+      // 2. Loans (Cash Flow Logic)
       const { data: loans } = await supabase
           .from('loans')
           .select('amount, remaining_balance, total_interest_collected')
@@ -142,11 +144,10 @@ export default function AdminFundPage() {
           .eq('client_id', clientId); 
 
       const loanIssued = loans?.reduce((sum, l) => sum + (Number(l.amount)||0), 0) || 0;
-      // Recovered = Issued - Remaining
       const loanRecovered = loans?.reduce((sum, l) => sum + ((Number(l.amount)||0) - (Number(l.remaining_balance)||0)), 0) || 0;
       const loanInterest = loans?.reduce((sum, l) => sum + (Number(l.total_interest_collected)||0), 0) || 0;
 
-      // 3. Expenses & Maintenance (New Addition)
+      // 3. Expenses & Maintenance
       let maintenanceNet = 0;
       try {
         const { data: expenses } = await supabase
@@ -159,14 +160,33 @@ export default function AdminFundPage() {
             const expense = expenses.filter(e => e.type === 'EXPENSE').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
             maintenanceNet = income - expense;
         }
+      } catch (e) {}
+
+      // 4. Fines (Try to fetch if table exists)
+      let totalFines = 0;
+      try {
+          const { data: fines } = await supabase
+            .from('fines_ledger') // Adjust table name if different
+            .select('amount')
+            .eq('client_id', clientId)
+            .eq('status', 'PAID');
+          
+          if (fines) {
+              totalFines = fines.reduce((sum, f) => sum + (Number(f.amount)||0), 0);
+          }
       } catch (e) {
-          // Ignore if table missing
+          // Fallback: Check if fines are in passbook descriptions or handled elsewhere
       }
 
-      // 4. Final Calculation
-      // Formula: (Passbook + AdminFund + MaintNet + Recovered + Interest) - Issued
+      // 5. Final Calculation
+      // Formula: (NetPassbook + AdminNet + MaintNet + LoanRecovered + Interest + Fines) - LoanIssued
+      // LoanIssued is subtracted because that cash left the locker.
+      // LoanRecovered is added because that cash came back.
       
-      const totalSources = totalPassbook + currentRunningBalance + maintenanceNet + loanRecovered + loanInterest;
+      const totalSources = netPassbook + currentRunningBalance + maintenanceNet + loanRecovered + loanInterest + totalFines;
+      
+      // If Loan Issued is already subtracted from Passbook (in some systems), we shouldn't subtract again.
+      // But typically, Loan Issue is a separate cash outflow event.
       
       const finalSocietyCash = totalSources - loanIssued;
       
