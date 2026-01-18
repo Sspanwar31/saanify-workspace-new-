@@ -48,14 +48,39 @@ export default function ExpensesPage() {
     membersPaidCount: 0
   })
 
-  // 1. Init: Get Client ID (Fixed for RLS - Direct ID access)
+  // 1. Init: Get Correct Client ID (Fix for Treasurer)
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('current_user') || 'null')
-    
-    // Direct ID access (Safe & Fast)
-    if (user?.id) {
-        setClientId(user.client_id || user.id)
+    const resolveClientId = async () => {
+      const user = JSON.parse(localStorage.getItem('current_user') || 'null')
+      if (!user?.id) return
+
+      // Step 1: अगर LocalStorage में client_id है, तो उसे use करो
+      if (user.client_id) {
+        setClientId(user.client_id)
+        return
+      }
+
+      // Step 2: अगर Treasurer है, तो Database से मालिक (Admin) का ID ढूंढो
+      try {
+        const { data, error } = await supabase
+          .from('admins')
+          .select('client_id')
+          .eq('id', user.id)
+          .maybeSingle() // Error nahi dega agar data nahi mila
+
+        if (data && data.client_id) {
+          setClientId(data.client_id) // Treasurer ke liye Owner ki ID
+        } else {
+          setClientId(user.id) // Client khud Owner hai
+        }
+      } catch (err) {
+        // Agar koi error aaye to fallback user.id par jao
+        console.warn("ID Resolution failed, using user.id")
+        setClientId(user.id)
+      }
     }
+
+    resolveClientId()
   }, [])
 
   // 2. Fetch Data Trigger
