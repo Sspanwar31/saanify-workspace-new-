@@ -141,7 +141,7 @@ export default function AdminFundPage() {
           .neq('status', 'rejected') 
           .eq('client_id', clientId); 
 
-      // 3. Expenses Data
+      // 3. Expenses Data (Fetched but NOT used in final formula as per logic)
       let income = 0;
       let expense = 0;
       try {
@@ -174,7 +174,7 @@ export default function AdminFundPage() {
       // SOCIETY CASH – FINAL CORRECT LOGIC
       // ===============================
 
-      //1. Passbook
+      //1. Passbook (Includes Income/Expenses/Maintenance payments via withdrawals/deposits)
       const netPassbook = totalDeposits - totalWithdrawals;
 
       // 2. Loans
@@ -194,15 +194,17 @@ export default function AdminFundPage() {
         0
       ) || 0;
 
-      // 3. Expenses / Maintenance
-      const maintenanceNet = income - expense;
+      // ❌ 3. Expenses / Maintenance (REMOVED FROM CALCULATION)
+      // We calculate it below for reference, but we do NOT add it to finalSocietyCash
+      // because expenses and income are already accounted for in netPassbook.
+      const maintenanceNet = income - expense; 
 
-      // 4. Final Society Cash
+      // 4. Final Society Cash Formula (Option A)
+      // We do not add 'maintenanceNet' here to avoid double counting with Passbook.
       const finalSocietyCash =
         netPassbook +
         loanRecovered +
         loanInterest +
-        maintenanceNet +
         totalFines -
         loanIssued;
 
@@ -436,7 +438,7 @@ export default function AdminFundPage() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => handleAddTransaction('INJECT')} // Pass type INJECT
+                  onClick={() => handleAddTransaction('INJECT')} 
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!formData.amount || !formData.description}
                 >
@@ -487,7 +489,7 @@ export default function AdminFundPage() {
                         <Button 
                           size="sm" 
                           variant="destructive"
-                          onClick={() => handleAddTransaction('WITHDRAW')} // Force withdraw
+                          onClick={() => handleAddTransaction('WITHDRAW')} 
                         >
                           Force Withdraw
                         </Button>
@@ -528,7 +530,7 @@ export default function AdminFundPage() {
                 <div className="flex gap-2">
                   <Button 
                     variant="destructive"
-                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type WITHDRAW
+                    onClick={() => handleAddTransaction('WITHDRAW')} 
                     className="flex-1"
                     disabled={!formData.amount || !formData.description}
                   >
