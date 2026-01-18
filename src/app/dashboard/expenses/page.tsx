@@ -242,6 +242,23 @@ export default function ExpensesPage() {
       }
   }
 
+  // ✅ LOGIC ADDED: Filter members who haven't paid this month
+  const getUnpaidMembers = () => {
+    // Current month string (e.g., "2026-01")
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    // Find IDs of members who have an entry in ledger for this month
+    const paidMemberIds = expenseLedger
+        .filter(entry => 
+            entry.category === 'MAINTENANCE_FEE' && 
+            entry.date.startsWith(currentMonth)
+        )
+        .map(entry => entry.member_id);
+
+    // Return only those members whose ID is NOT in paidMemberIds
+    return members.filter(member => !paidMemberIds.includes(member.id));
+  }
+
   const getCategoryColor = (category: string) => {
     const colors: any = {
       'MAINTENANCE_FEE': 'bg-green-100 text-green-800',
@@ -377,12 +394,17 @@ export default function ExpensesPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select member..." />
                   </SelectTrigger>
+                  {/* ✅ UPDATED: Only showing members who HAVEN'T paid this month */}
                   <SelectContent>
-                    {members.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.phone})
-                      </SelectItem>
-                    ))}
+                    {getUnpaidMembers().length > 0 ? (
+                        getUnpaidMembers().map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                            {member.name} ({member.phone})
+                        </SelectItem>
+                        ))
+                    ) : (
+                        <div className="p-2 text-sm text-gray-500 text-center">All members paid for this month!</div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
