@@ -205,8 +205,8 @@ export default function AdminFundPage() {
         netPassbook +
         loanRecovered +
         loanInterest +
-        totalFines -
-        loanIssued;
+        totalFines +
+        loanIssued - ; 
 
       setSocietyCashInHand(finalSocietyCash); 
 
