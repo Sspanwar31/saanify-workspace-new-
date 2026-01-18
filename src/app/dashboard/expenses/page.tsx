@@ -48,17 +48,14 @@ export default function ExpensesPage() {
     membersPaidCount: 0
   })
 
-  // 1. Init: Get Client ID (UPDATED - Direct LocalStorage)
+  // 1. Init: Get Client ID (Fixed for RLS - Direct ID access)
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('current_user') || 'null')
-
-    if (!user?.client_id) {
-      console.error('client_id missing in current_user')
-      return
+    
+    // Direct ID access (Safe & Fast)
+    if (user?.id) {
+        setClientId(user.client_id || user.id)
     }
-
-    // 🔥 FINAL FIX: direct client_id
-    setClientId(user.client_id)
   }, [])
 
   // 2. Fetch Data Trigger
@@ -68,16 +65,13 @@ export default function ExpensesPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching (UPDATED: Manual Mapping Logic & Paid Member Filtering)
+  // 3. Main Data Fetching (Simplified Manual Logic)
   const fetchData = async () => {
     setLoading(true)
     if (!clientId) return
 
-    // 🔧 CHANGE 2 — safety log (debug ke liye)
-    console.log('FETCH EXPENSES FOR CLIENT:', clientId)
-
     try {
-        // A. Fetch All Members First (For mapping names)
+        // A. Fetch Members First (For manual mapping)
         const { data: membersData, error: memError } = await supabase
             .from('members')
             .select('id, name, phone, status')
@@ -85,47 +79,30 @@ export default function ExpensesPage() {
 
         if (memError) console.error("Member fetch error:", memError);
 
-        // B. Fetch maintenance paid members (Check ledger to see who has paid)
-        const { data: paidData } = await supabase
-            .from('expenses_ledger')
-            .select('member_id')
-            .eq('client_id', clientId)
-            .eq('category', 'MAINTENANCE_FEE')
-
-        // Create set for fast lookup
-        const paidMemberSet = new Set(
-            (paidData || []).map((p: any) => p.member_id)
-        )
-
-        // Only active + unpaid members
-        const activeMembers = (membersData || [])
-            .filter(m => m.status === 'active' && !paidMemberSet.has(m.id))
-
+        const activeMembers = membersData?.filter(m => m.status === 'active') || []
         setMembers(activeMembers)
 
-        // Create a fast lookup map: { member_id: "John Doe" } (Using all members for name mapping)
-        const memberMap: any = {};
-        membersData?.forEach((m: any) => {
-            memberMap[m.id] = m.name;
-        });
+        // Create Map: { id: name }
+        const memberMap: any = {}
+        membersData?.forEach((m: any) => { 
+            memberMap[m.id] = m.name 
+        })
 
-        // C. Fetch Expenses Ledger (SIMPLE SELECT)
-        // 🔥 FIX: Removed 'members(name)' join. We fetch raw data to ensure it works.
+        // B. Fetch Ledger (Simple Select - No Join)
         const { data: ledgerData, error } = await supabase
             .from('expenses_ledger')
             .select('*') 
             .eq('client_id', clientId)
-            .order('date', { ascending: false }) // Newest first
+            .order('date', { ascending: false })
 
         if (error) {
             console.error("Supabase Ledger Error:", error);
             throw error;
         }
 
-        // D. Combine Data manually
+        // C. Manual Join
         const formattedLedger = (ledgerData || []).map((item: any) => ({
             ...item,
-            // If member_id exists, look it up in our map. Otherwise null.
             memberName: item.member_id ? memberMap[item.member_id] : null
         }))
 
