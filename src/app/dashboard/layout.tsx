@@ -47,10 +47,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       try {
         const user = JSON.parse(storedUser);
 
+        // ✅ IMPORTANT FIX
+        const resolvedClientId = user.client_id ?? user.id;
+
         const { data: client, error } = await supabase
           .from('clients')
           .select('plan_end_date, subscription_status')
-          .eq('id', user.id)
+          .eq('id', resolvedClientId)
           .single();
 
         if (error) {
