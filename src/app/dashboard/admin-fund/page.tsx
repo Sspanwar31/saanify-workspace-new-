@@ -125,7 +125,7 @@ export default function AdminFundPage() {
       // D. Society Cash Calc (ALL SOURCES) - DATA FETCHING PART
       // ---------------------------------------------------------
       
-      // 1. Passbook Data
+      //1. Passbook Data
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount, withdrawal_amount')
@@ -199,14 +199,13 @@ export default function AdminFundPage() {
       // because expenses and income are already accounted for in netPassbook.
       const maintenanceNet = income - expense; 
 
-      // 4. Final Society Cash Formula (Option A)
-      // We do not add 'maintenanceNet' here to avoid double counting with Passbook.
+      // 4. Final Society Cash Formula (Option A) - SYNTAX FIXED
       const finalSocietyCash =
         netPassbook +
         loanRecovered +
         loanInterest +
-        totalFines +
-        loanIssued - ; 
+        totalFines -
+        loanIssued;
 
       setSocietyCashInHand(finalSocietyCash); 
 
