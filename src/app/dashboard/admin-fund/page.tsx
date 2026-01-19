@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (WITH DEBUGGING)
+  // 3. Main Data Fetching Function (ERRORS FIXED & LOGIC UPDATED)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -81,8 +81,6 @@ export default function AdminFundPage() {
     }
 
     try {
-      console.log("🔍 STARTING CALCULATION DEBUG...");
-
       // ---------------------------------------------------------
       // A. Fetch Admin Ledger
       // ---------------------------------------------------------
@@ -103,6 +101,7 @@ export default function AdminFundPage() {
 
       const processedLedger = (ledger || []).map((transaction: any) => {
           const amt = Number(transaction.amount);
+          
           if (transaction.type === 'INJECT') {
               currentRunningBalance += amt;
               totalInjected += amt;
@@ -110,6 +109,7 @@ export default function AdminFundPage() {
               currentRunningBalance -= amt;
               totalWithdrawn += amt;
           }
+          
           return { ...transaction, runningBalance: currentRunningBalance };
       });
 
@@ -120,43 +120,34 @@ export default function AdminFundPage() {
         totalWithdrawn: totalWithdrawn
       });
       setCashInHand(currentRunningBalance); 
-      
-      console.log("1. Admin Fund Net Balance:", currentRunningBalance);
 
       // ---------------------------------------------------------
-      // C. Society Cash Calc (STEP BY STEP DEBUG)
+      // C. Society Cash Calc (FIXED: Added Interest + Fines + Maintenance)
       // ---------------------------------------------------------
       
-      // 1. Passbook (Total Deposits Only)
+      // 1. Passbook (Total Deposits Only - to fix 400 Bad Request)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
-        .select('deposit_amount')
+        .select('deposit_amount') // Removed 'withdrawal_amount' as it doesn't exist
         .eq('client_id', clientId);
       
       const totalDeposits = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
-      console.log("2. Passbook Total Deposits:", totalDeposits);
+      const netPassbook = totalDeposits;
 
-      // 2. Loans (Cash Flow Logic)
+      // 2. Loans (Cash Flow + Interest Logic)
       const { data: loans } = await supabase
           .from('loans')
           .select('amount, remaining_balance, total_interest_collected')
           .neq('status', 'rejected') 
           .eq('client_id', clientId); 
 
-      // Raw Loan Data for Debug
-      // console.log("   -> Loans Raw Data:", loans);
-
+      // Loan Logic:
+      // - Issued: Money went out (-)
+      // - Recovered: Principal came back (+)
+      // - Interest: Profit came back (+)
       const loanIssued = loans?.reduce((sum, l) => sum + (Number(l.amount)||0), 0) || 0;
-      
-      // Recovered = Issued - Remaining
       const loanRecovered = loans?.reduce((sum, l) => sum + ((Number(l.amount)||0) - (Number(l.remaining_balance)||0)), 0) || 0;
-      
-      // Interest Collected
       const loanInterest = loans?.reduce((sum, l) => sum + (Number(l.total_interest_collected)||0), 0) || 0;
-
-      console.log("3. Loan Issued (Outflow):", loanIssued);
-      console.log("4. Loan Recovered (Inflow):", loanRecovered);
-      console.log("5. Loan Interest (Profit):", loanInterest);
 
       // 3. Expenses & Maintenance
       let maintenanceNet = 0;
@@ -170,36 +161,34 @@ export default function AdminFundPage() {
             const income = expenses.filter(e => e.type === 'INCOME').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
             const expense = expenses.filter(e => e.type === 'EXPENSE').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
             maintenanceNet = income - expense;
-            console.log("6. Maintenance Net (Income - Exp):", maintenanceNet, `(Inc: ${income}, Exp: ${expense})`);
         }
+      } catch (e) {}
+
+      // 4. Fines (Handled gracefully if table missing)
+      // Assuming 'fines_ledger' might exist or will exist later
+      let totalFines = 0;
+      try {
+          const { data: fines, error: fErr } = await supabase
+            .from('fines_ledger')
+            .select('amount')
+            .eq('client_id', clientId)
+            .eq('status', 'PAID');
+          
+          if (!fErr && fines) {
+              totalFines = fines.reduce((sum, f) => sum + (Number(f.amount)||0), 0);
+          }
       } catch (e) {
-          console.log("   -> Expenses table error (ignoring):", e);
+          // Ignore error (404) if table doesn't exist
       }
 
-      // 4. Fines (DISABLED 404 Call)
-      // Humne is call ko rok diya hai taki console error na aaye jab tak table na bane
-      // Agar 'Total Fine' passbook ya loans me included nahi hai, to ye 0 rahega
-      let totalFines = 0; 
-      console.log("7. Fines (Currently 0 - Table missing):", totalFines);
-
-      // ---------------------------------------------------------
-      // 5. FINAL CALCULATION
-      // ---------------------------------------------------------
+      // 5. Final Calculation
       // Formula: (Passbook + AdminFund + MaintNet + LoanRecovered + Interest + Fines) - LoanIssued
       
-      const totalInflow = totalDeposits + currentRunningBalance + maintenanceNet + loanRecovered + loanInterest + totalFines;
+      const totalInflow = netPassbook + currentRunningBalance + maintenanceNet + loanRecovered + loanInterest + totalFines;
       const totalOutflow = loanIssued;
       
       const finalSocietyCash = totalInflow - totalOutflow;
       
-      console.log("------------------------------------------");
-      console.log("FORMULA: (Passbook + Admin + Maint + Recovered + Interest + Fines) - LoanIssued");
-      console.log(`VALUES: (${totalDeposits} + ${currentRunningBalance} + ${maintenanceNet} + ${loanRecovered} + ${loanInterest} + ${totalFines}) - ${loanIssued}`);
-      console.log("TOTAL INFLOW:", totalInflow);
-      console.log("TOTAL OUTFLOW:", totalOutflow);
-      console.log("✅ FINAL SOCIETY CASH:", finalSocietyCash);
-      console.log("------------------------------------------");
-
       setSocietyCashInHand(finalSocietyCash); 
 
     } catch (error) {
@@ -345,7 +334,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Card 4: Society Cash Available (FIXED) */}
+        {/* Card 4: Society Cash Available (FIXED CALCULATION) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
