@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (UPDATED: Correct Logic)
+  // 3. Main Data Fetching Function (WITH INTEREST FROM PASSBOOK)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -122,33 +122,31 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // C. Society Cash Calc (PASSBOOK IS SOURCE OF TRUTH)
+      // C. Society Cash Calc (USING PASSBOOK FOR INTEREST & FINE)
       // ---------------------------------------------------------
-
-      const { data: passbookEntries, error: passErr } = await supabase
+      
+      // 1. Passbook (Total Deposits + Interest + Fine)
+      // 🔥 FIX: Now fetching interest_amount and fine_amount from passbook
+      const { data: passbookEntries } = await supabase
         .from('passbook_entries')
-        .select('deposit_amount, interest_amount, fine_amount') // Only existing columns
+        .select('deposit_amount, interest_amount, fine_amount') 
         .eq('client_id', clientId);
+      
+      const totalDeposits = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
+      const totalInterest = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.interest_amount)||0), 0) || 0;
+      const totalFines = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.fine_amount)||0), 0) || 0;
 
-      if (passErr) throw passErr;
+      // 2. Loans (Cash Flow Logic)
+      const { data: loans } = await supabase
+          .from('loans')
+          .select('amount, remaining_balance')
+          .neq('status', 'rejected') 
+          .eq('client_id', clientId); 
 
-      // 1. Calculate Totals from Passbook
-      const totalDeposits = passbookEntries?.reduce(
-        (sum, e) => sum + (Number(e.deposit_amount) || 0),
-        0
-      ) || 0;
-
-      const totalInterest = passbookEntries?.reduce(
-        (sum, e) => sum + (Number(e.interest_amount) || 0),
-        0
-      ) || 0;
-
-      const totalFines = passbookEntries?.reduce(
-        (sum, e) => sum + (Number(e.fine_amount) || 0),
-        0
-      ) || 0;
-
-      // 2. Calculate Maintenance Net (Income - Expense)
+      const loanIssued = loans?.reduce((sum, l) => sum + (Number(l.amount)||0), 0) || 0;
+      const loanRecovered = loans?.reduce((sum, l) => sum + ((Number(l.amount)||0) - (Number(l.remaining_balance)||0)), 0) || 0;
+      
+      // 3. Expenses & Maintenance
       let maintenanceNet = 0;
       try {
         const { data: expenses } = await supabase
@@ -163,25 +161,14 @@ export default function AdminFundPage() {
         }
       } catch (e) {}
 
-      // 3. Calculate Loans Issued (Outflow)
-      const { data: loans } = await supabase
-          .from('loans')
-          .select('amount')
-          .neq('status', 'rejected') 
-          .eq('client_id', clientId); 
-
-      const totalLoansIssued = loans?.reduce((sum, l) => sum + (Number(l.amount)||0), 0) || 0;
-
-      // ---------------------------------------------------------
-      // 4. FINAL CALCULATION FORMULA
-      // ---------------------------------------------------------
-      // Cash = (Deposits + Interest + Fines + AdminBalance + MaintenanceNet) - LoanIssued
+      // 5. Final Calculation
+      // Formula: (PassbookTotal + Interest + Fine + AdminFund + MaintNet + LoanRecovered) - LoanIssued
       
-      const totalInflow = totalDeposits + totalInterest + totalFines + currentRunningBalance + maintenanceNet;
-      const totalOutflow = totalLoansIssued;
-
+      const totalInflow = totalDeposits + totalInterest + totalFines + currentRunningBalance + maintenanceNet + loanRecovered;
+      const totalOutflow = loanIssued;
+      
       const finalSocietyCash = totalInflow - totalOutflow;
-
+      
       setSocietyCashInHand(finalSocietyCash); 
 
     } catch (error) {
@@ -327,7 +314,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Card 4: Society Cash Available (FINAL CORRECTED) */}
+        {/* Card 4: Society Cash Available (FIXED CALCULATION) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
