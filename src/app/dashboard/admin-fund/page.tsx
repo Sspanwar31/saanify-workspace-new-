@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (ERRORS FIXED & CALCULATION UPDATED)
+  // 3. Main Data Fetching Function (ERRORS FIXED & LOGIC UPDATED)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
