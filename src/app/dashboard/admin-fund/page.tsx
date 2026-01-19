@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (FINAL LOGIC)
+  // 3. Main Data Fetching Function (RLS OPTIMIZED)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -122,34 +122,33 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // C. Society Cash Calculation (PASSBOOK IS THE TRUTH)
+      // C. Society Cash Calculation (RLS DEPENDENT)
       // ---------------------------------------------------------
       
-      // 1. Passbook Data (Only source of truth for Society Cash)
+      // 1. Passbook Data (RLS handles filtering - No explicit client_id check)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
-        .select('deposit_amount, withdrawal_amount')
-        .eq('client_id', clientId);
+        .select('deposit_amount, withdrawal_amount');
       
       const totalDeposits = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
       const totalWithdrawals = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.withdrawal_amount)||0), 0) || 0;
       const netPassbook = totalDeposits - totalWithdrawals;
 
-      // 2. Reference Only Data (Fetched for potential UI reference, but NOT used in Cash Formula)
-      // Keeping these as per "REFERENCE ONLY" rule, but ensuring they don't impact finalSocietyCash
+      // 2. Reference Only Data (Loans - Kept as is, filters might apply based on policy)
       const { data: loans } = await supabase
           .from('loans')
           .select('amount, remaining_balance, total_interest_collected')
           .neq('status', 'rejected') 
-          .eq('client_id', clientId); 
+          .eq('client_id', clientId); // Keeping filter here as it wasn't flagged for change
 
+      // 3. Expenses Data (Reference Only)
       let income = 0;
       let expense = 0;
       try {
         const { data: expenses } = await supabase
             .from('expenses_ledger')
             .select('amount, type')
-            .eq('client_id', clientId);
+            .eq('client_id', clientId); // Keeping filter here
         
         if (expenses) {
             income = expenses.filter(e => e.type === 'INCOME').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
@@ -157,12 +156,12 @@ export default function AdminFundPage() {
         }
       } catch (e) {}
 
+      // 4. Fines Data (RLS handles filtering - No explicit client_id check)
       let totalFines = 0;
       try {
           const { data: fines } = await supabase
             .from('fines_ledger')
             .select('amount')
-            .eq('client_id', clientId)
             .eq('status', 'PAID');
           
           if (fines) {
