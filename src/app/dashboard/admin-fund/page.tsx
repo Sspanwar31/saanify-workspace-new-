@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (ERRORS FIXED & LOGIC UPDATED)
+  // 3. Main Data Fetching Function (ERRORS FIXED & CALCULATION UPDATED)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -122,19 +122,17 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // C. Society Cash Calc (FIXED: 400 Bad Request & 404 Not Found)
+      // C. Society Cash Calc (FIXED: Added Interest + Fines + Maintenance)
       // ---------------------------------------------------------
       
-      // 1. Passbook (Total Deposits)
-      // ✅ FIX: Removed 'withdrawal_amount' because column doesn't exist (Fixes 400 Error)
+      // 1. Passbook (Total Deposits Only - to fix 400 Bad Request)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
-        .select('deposit_amount')
+        .select('deposit_amount') // Removed 'withdrawal_amount' as it doesn't exist
         .eq('client_id', clientId);
       
       const totalDeposits = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
-      // Note: Withdrawals are treated as 0 until column exists in DB
-      const netPassbook = totalDeposits; 
+      const netPassbook = totalDeposits;
 
       // 2. Loans (Cash Flow + Interest Logic)
       const { data: loans } = await supabase
@@ -166,27 +164,27 @@ export default function AdminFundPage() {
         }
       } catch (e) {}
 
-      // 4. Fines (✅ FIX: Handled 404 Error gracefully)
-      // Added Logic: If fines table exists in future, it will add up. Currently defaults to 0 safely.
+      // 4. Fines (Handled gracefully if table missing)
+      // Assuming 'fines_ledger' might exist or will exist later
       let totalFines = 0;
       try {
-          const { data: fines, error: finesError } = await supabase
+          // Note: If you have a different way to track fines (e.g. inside passbook), 
+          // you would add that logic here instead.
+          // For now, we try to fetch from table, but default to 0 on error.
+          const { data: fines, error: fErr } = await supabase
             .from('fines_ledger')
             .select('amount')
             .eq('client_id', clientId)
             .eq('status', 'PAID');
           
-          if (!finesError && fines) {
+          if (!fErr && fines) {
               totalFines = fines.reduce((sum, f) => sum + (Number(f.amount)||0), 0);
           }
       } catch (e) {
-          // Table doesn't exist yet, so we ignore the error
-          console.log("Fines table not active yet");
+          // Ignore error (404) if table doesn't exist
       }
 
-      // ---------------------------------------------------------
-      // 5. FINAL CALCULATION (Including Interest & Fines)
-      // ---------------------------------------------------------
+      // 5. Final Calculation
       // Formula: (Passbook + AdminFund + MaintNet + LoanRecovered + Interest + Fines) - LoanIssued
       
       const totalInflow = netPassbook + currentRunningBalance + maintenanceNet + loanRecovered + loanInterest + totalFines;
