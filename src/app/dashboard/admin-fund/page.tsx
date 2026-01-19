@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (CALCULATION REFINED)
+  // 3. Main Data Fetching Function (FINAL LOGIC)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -122,10 +122,10 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // C. Society Cash Calc (PASSBOOK IS CASH TRUTH)
+      // C. Society Cash Calculation (PASSBOOK IS THE TRUTH)
       // ---------------------------------------------------------
       
-      // 1. Passbook Data (Only source of truth)
+      // 1. Passbook Data (Only source of truth for Society Cash)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount, withdrawal_amount')
@@ -135,10 +135,46 @@ export default function AdminFundPage() {
       const totalWithdrawals = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.withdrawal_amount)||0), 0) || 0;
       const netPassbook = totalDeposits - totalWithdrawals;
 
-      // 2. Removed Loans, Expenses, and Fines fetching/calculation
-      // because they are reporting tables only. Passbook reflects their cash impact.
-      
-      // 3. Final Society Cash Formula (UPDATED)
+      // 2. Reference Only Data (Fetched for potential UI reference, but NOT used in Cash Formula)
+      // Keeping these as per "REFERENCE ONLY" rule, but ensuring they don't impact finalSocietyCash
+      const { data: loans } = await supabase
+          .from('loans')
+          .select('amount, remaining_balance, total_interest_collected')
+          .neq('status', 'rejected') 
+          .eq('client_id', clientId); 
+
+      let income = 0;
+      let expense = 0;
+      try {
+        const { data: expenses } = await supabase
+            .from('expenses_ledger')
+            .select('amount, type')
+            .eq('client_id', clientId);
+        
+        if (expenses) {
+            income = expenses.filter(e => e.type === 'INCOME').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+            expense = expenses.filter(e => e.type === 'EXPENSE').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+        }
+      } catch (e) {}
+
+      let totalFines = 0;
+      try {
+          const { data: fines } = await supabase
+            .from('fines_ledger')
+            .select('amount')
+            .eq('client_id', clientId)
+            .eq('status', 'PAID');
+          
+          if (fines) {
+              totalFines = fines.reduce((sum, f) => sum + (Number(f.amount)||0), 0);
+          }
+      } catch (e) {}
+
+      // ---------------------------------------------------------
+      // FINAL SOCIETY CASH FORMULA (LOCKED)
+      // ---------------------------------------------------------
+      // RULE #1: Society Cash = Passbook Deposits - Passbook Withdrawals
+      // RULE #2: Loans / Fines / Maintenance have ZERO role in this formula
       const finalSocietyCash = netPassbook;
 
       setSocietyCashInHand(finalSocietyCash); 
@@ -298,7 +334,7 @@ export default function AdminFundPage() {
                 {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(societyCashInHand)}
               </div>
             )}
-            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (Passbook Source)</p>
+            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (Passbook Only)</p>
           </CardContent>
         </Card>
       </div>
