@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (UPDATED SECTION C)
+  // 3. Main Data Fetching Function (UPDATED: Correct Logic)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -127,19 +127,14 @@ export default function AdminFundPage() {
 
       const { data: passbookEntries, error: passErr } = await supabase
         .from('passbook_entries')
-        .select('deposit_amount, withdrawal_amount, interest_amount, fine_amount')
+        .select('deposit_amount, interest_amount, fine_amount') // Only existing columns
         .eq('client_id', clientId);
 
       if (passErr) throw passErr;
 
-      // totals from passbook
+      // 1. Calculate Totals from Passbook
       const totalDeposits = passbookEntries?.reduce(
         (sum, e) => sum + (Number(e.deposit_amount) || 0),
-        0
-      ) || 0;
-
-      const totalWithdrawals = passbookEntries?.reduce(
-        (sum, e) => sum + (Number(e.withdrawal_amount) || 0),
         0
       ) || 0;
 
@@ -148,22 +143,44 @@ export default function AdminFundPage() {
         0
       ) || 0;
 
-      const totalFine = passbookEntries?.reduce(
+      const totalFines = passbookEntries?.reduce(
         (sum, e) => sum + (Number(e.fine_amount) || 0),
         0
       ) || 0;
 
-      // net passbook cash
-      const netPassbook =
-        totalDeposits +
-        totalInterest +
-        totalFine -
-        totalWithdrawals;
+      // 2. Calculate Maintenance Net (Income - Expense)
+      let maintenanceNet = 0;
+      try {
+        const { data: expenses } = await supabase
+            .from('expenses_ledger')
+            .select('amount, type')
+            .eq('client_id', clientId);
+        
+        if (expenses) {
+            const income = expenses.filter(e => e.type === 'INCOME').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+            const expense = expenses.filter(e => e.type === 'EXPENSE').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+            maintenanceNet = income - expense;
+        }
+      } catch (e) {}
+
+      // 3. Calculate Loans Issued (Outflow)
+      const { data: loans } = await supabase
+          .from('loans')
+          .select('amount')
+          .neq('status', 'rejected') 
+          .eq('client_id', clientId); 
+
+      const totalLoansIssued = loans?.reduce((sum, l) => sum + (Number(l.amount)||0), 0) || 0;
 
       // ---------------------------------------------------------
-      // FINAL SOCIETY CASH
+      // 4. FINAL CALCULATION FORMULA
       // ---------------------------------------------------------
-      const finalSocietyCash = netPassbook;
+      // Cash = (Deposits + Interest + Fines + AdminBalance + MaintenanceNet) - LoanIssued
+      
+      const totalInflow = totalDeposits + totalInterest + totalFines + currentRunningBalance + maintenanceNet;
+      const totalOutflow = totalLoansIssued;
+
+      const finalSocietyCash = totalInflow - totalOutflow;
 
       setSocietyCashInHand(finalSocietyCash); 
 
@@ -310,7 +327,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Card 4: Society Cash Available (UPDATED CALCULATION) */}
+        {/* Card 4: Society Cash Available (FINAL CORRECTED) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
@@ -322,7 +339,7 @@ export default function AdminFundPage() {
                 {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(societyCashInHand)}
               </div>
             )}
-            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (Passbook Only)</p>
+            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (All Sources)</p>
           </CardContent>
         </Card>
       </div>
@@ -395,7 +412,7 @@ export default function AdminFundPage() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => handleAddTransaction('INJECT')} 
+                  onClick={() => handleAddTransaction('INJECT')} // Pass type INJECT
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!formData.amount || !formData.description}
                 >
@@ -446,7 +463,7 @@ export default function AdminFundPage() {
                         <Button 
                           size="sm" 
                           variant="destructive"
-                          onClick={() => handleAddTransaction('WITHDRAW')} 
+                          onClick={() => handleAddTransaction('WITHDRAW')} // Force withdraw
                         >
                           Force Withdraw
                         </Button>
@@ -487,7 +504,7 @@ export default function AdminFundPage() {
                 <div className="flex gap-2">
                   <Button 
                     variant="destructive"
-                    onClick={() => handleAddTransaction('WITHDRAW')} 
+                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type WITHDRAW
                     className="flex-1"
                     disabled={!formData.amount || !formData.description}
                   >
