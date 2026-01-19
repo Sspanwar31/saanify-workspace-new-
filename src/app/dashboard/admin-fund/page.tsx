@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (ERRORS FIXED)
+  // 3. Main Data Fetching Function (ERRORS FIXED & LOGIC UPDATED)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -122,32 +122,33 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // C. Society Cash Calc (FIXED: Removed broken columns)
+      // C. Society Cash Calc (FIXED: 400 Bad Request & 404 Not Found)
       // ---------------------------------------------------------
       
       // 1. Passbook (Total Deposits)
-      // 🔥 FIX: Removed 'withdrawal_amount' to fix 400 Bad Request
+      // ✅ FIX: Removed 'withdrawal_amount' because column doesn't exist (Fixes 400 Error)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount')
         .eq('client_id', clientId);
       
       const totalDeposits = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
-      const netPassbook = totalDeposits; // Since withdrawals column doesn't exist yet
+      // Note: Withdrawals are treated as 0 until column exists in DB
+      const netPassbook = totalDeposits; 
 
-      // 2. Loans (Cash Flow Logic)
+      // 2. Loans (Cash Flow + Interest Logic)
       const { data: loans } = await supabase
           .from('loans')
           .select('amount, remaining_balance, total_interest_collected')
           .neq('status', 'rejected') 
           .eq('client_id', clientId); 
 
+      // Loan Logic:
+      // - Issued: Money went out (-)
+      // - Recovered: Principal came back (+)
+      // - Interest: Profit came back (+)
       const loanIssued = loans?.reduce((sum, l) => sum + (Number(l.amount)||0), 0) || 0;
-      
-      // Recovered = Issued - Remaining
       const loanRecovered = loans?.reduce((sum, l) => sum + ((Number(l.amount)||0) - (Number(l.remaining_balance)||0)), 0) || 0;
-      
-      // Interest Collected (Profit)
       const loanInterest = loans?.reduce((sum, l) => sum + (Number(l.total_interest_collected)||0), 0) || 0;
 
       // 3. Expenses & Maintenance
@@ -165,13 +166,28 @@ export default function AdminFundPage() {
         }
       } catch (e) {}
 
-      // 4. Fines (Logic Removed to fix 404 Error)
-      // Note: If you add 'fines_ledger' table later, add the logic back here.
-      const totalFines = 0; 
+      // 4. Fines (✅ FIX: Handled 404 Error gracefully)
+      // Added Logic: If fines table exists in future, it will add up. Currently defaults to 0 safely.
+      let totalFines = 0;
+      try {
+          const { data: fines, error: finesError } = await supabase
+            .from('fines_ledger')
+            .select('amount')
+            .eq('client_id', clientId)
+            .eq('status', 'PAID');
+          
+          if (!finesError && fines) {
+              totalFines = fines.reduce((sum, f) => sum + (Number(f.amount)||0), 0);
+          }
+      } catch (e) {
+          // Table doesn't exist yet, so we ignore the error
+          console.log("Fines table not active yet");
+      }
 
-      // 5. Final Calculation
-      // Formula: (Passbook + AdminFund + MaintNet + LoanRecovered + Interest) - LoanIssued
-      // This represents exactly the cash flow in and out of the physical locker.
+      // ---------------------------------------------------------
+      // 5. FINAL CALCULATION (Including Interest & Fines)
+      // ---------------------------------------------------------
+      // Formula: (Passbook + AdminFund + MaintNet + LoanRecovered + Interest + Fines) - LoanIssued
       
       const totalInflow = netPassbook + currentRunningBalance + maintenanceNet + loanRecovered + loanInterest + totalFines;
       const totalOutflow = loanIssued;
@@ -323,7 +339,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Card 4: Society Cash Available (FIXED) */}
+        {/* Card 4: Society Cash Available (FIXED CALCULATION) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
