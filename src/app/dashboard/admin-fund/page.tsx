@@ -71,7 +71,7 @@ export default function AdminFundPage() {
     }
   }, [clientId])
 
-  // 3. Main Data Fetching Function (RLS OPTIMIZED)
+  // 3. Main Data Fetching Function (ERRORS FIXED)
   const fetchAdminFundData = async () => {
     setLoading(true);
 
@@ -122,60 +122,62 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // C. Society Cash Calculation (RLS DEPENDENT)
+      // C. Society Cash Calc (FIXED: Removed broken columns)
       // ---------------------------------------------------------
       
-      // 1. Passbook Data (RLS handles filtering - No explicit client_id check)
+      // 1. Passbook (Total Deposits)
+      // 🔥 FIX: Removed 'withdrawal_amount' to fix 400 Bad Request
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
-        .select('deposit_amount, withdrawal_amount');
+        .select('deposit_amount')
+        .eq('client_id', clientId);
       
       const totalDeposits = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
-      const totalWithdrawals = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.withdrawal_amount)||0), 0) || 0;
-      const netPassbook = totalDeposits - totalWithdrawals;
+      const netPassbook = totalDeposits; // Since withdrawals column doesn't exist yet
 
-      // 2. Reference Only Data (Loans - Kept as is, filters might apply based on policy)
+      // 2. Loans (Cash Flow Logic)
       const { data: loans } = await supabase
           .from('loans')
           .select('amount, remaining_balance, total_interest_collected')
           .neq('status', 'rejected') 
-          .eq('client_id', clientId); // Keeping filter here as it wasn't flagged for change
+          .eq('client_id', clientId); 
 
-      // 3. Expenses Data (Reference Only)
-      let income = 0;
-      let expense = 0;
+      const loanIssued = loans?.reduce((sum, l) => sum + (Number(l.amount)||0), 0) || 0;
+      
+      // Recovered = Issued - Remaining
+      const loanRecovered = loans?.reduce((sum, l) => sum + ((Number(l.amount)||0) - (Number(l.remaining_balance)||0)), 0) || 0;
+      
+      // Interest Collected (Profit)
+      const loanInterest = loans?.reduce((sum, l) => sum + (Number(l.total_interest_collected)||0), 0) || 0;
+
+      // 3. Expenses & Maintenance
+      let maintenanceNet = 0;
       try {
         const { data: expenses } = await supabase
             .from('expenses_ledger')
             .select('amount, type')
-            .eq('client_id', clientId); // Keeping filter here
+            .eq('client_id', clientId);
         
         if (expenses) {
-            income = expenses.filter(e => e.type === 'INCOME').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
-            expense = expenses.filter(e => e.type === 'EXPENSE').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+            const income = expenses.filter(e => e.type === 'INCOME').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+            const expense = expenses.filter(e => e.type === 'EXPENSE').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
+            maintenanceNet = income - expense;
         }
       } catch (e) {}
 
-      // 4. Fines Data (RLS handles filtering - No explicit client_id check)
-      let totalFines = 0;
-      try {
-          const { data: fines } = await supabase
-            .from('fines_ledger')
-            .select('amount')
-            .eq('status', 'PAID');
-          
-          if (fines) {
-              totalFines = fines.reduce((sum, f) => sum + (Number(f.amount)||0), 0);
-          }
-      } catch (e) {}
+      // 4. Fines (Logic Removed to fix 404 Error)
+      // Note: If you add 'fines_ledger' table later, add the logic back here.
+      const totalFines = 0; 
 
-      // ---------------------------------------------------------
-      // FINAL SOCIETY CASH FORMULA (LOCKED)
-      // ---------------------------------------------------------
-      // RULE #1: Society Cash = Passbook Deposits - Passbook Withdrawals
-      // RULE #2: Loans / Fines / Maintenance have ZERO role in this formula
-      const finalSocietyCash = netPassbook;
-
+      // 5. Final Calculation
+      // Formula: (Passbook + AdminFund + MaintNet + LoanRecovered + Interest) - LoanIssued
+      // This represents exactly the cash flow in and out of the physical locker.
+      
+      const totalInflow = netPassbook + currentRunningBalance + maintenanceNet + loanRecovered + loanInterest + totalFines;
+      const totalOutflow = loanIssued;
+      
+      const finalSocietyCash = totalInflow - totalOutflow;
+      
       setSocietyCashInHand(finalSocietyCash); 
 
     } catch (error) {
@@ -321,7 +323,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Card 4: Society Cash Available (PASSBOOK TRUTH) */}
+        {/* Card 4: Society Cash Available (FIXED) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
@@ -333,7 +335,7 @@ export default function AdminFundPage() {
                 {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(societyCashInHand)}
               </div>
             )}
-            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (Passbook Only)</p>
+            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (All Sources)</p>
           </CardContent>
         </Card>
       </div>
@@ -406,7 +408,7 @@ export default function AdminFundPage() {
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => handleAddTransaction('INJECT')} 
+                  onClick={() => handleAddTransaction('INJECT')} // Pass type INJECT
                   className="flex-1 bg-green-600 hover:bg-green-700"
                   disabled={!formData.amount || !formData.description}
                 >
@@ -457,7 +459,7 @@ export default function AdminFundPage() {
                         <Button 
                           size="sm" 
                           variant="destructive"
-                          onClick={() => handleAddTransaction('WITHDRAW')} 
+                          onClick={() => handleAddTransaction('WITHDRAW')} // Force withdraw
                         >
                           Force Withdraw
                         </Button>
@@ -498,7 +500,7 @@ export default function AdminFundPage() {
                 <div className="flex gap-2">
                   <Button 
                     variant="destructive"
-                    onClick={() => handleAddTransaction('WITHDRAW')} 
+                    onClick={() => handleAddTransaction('WITHDRAW')} // Pass type WITHDRAW
                     className="flex-1"
                     disabled={!formData.amount || !formData.description}
                   >
