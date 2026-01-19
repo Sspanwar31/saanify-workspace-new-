@@ -122,10 +122,10 @@ export default function AdminFundPage() {
       setCashInHand(currentRunningBalance); 
 
       // ---------------------------------------------------------
-      // D. Society Cash Calc (ALL SOURCES) - DATA FETCHING PART
+      // C. Society Cash Calc (PASSBOOK IS CASH TRUTH)
       // ---------------------------------------------------------
       
-      //1. Passbook Data
+      // 1. Passbook Data (Only source of truth)
       const { data: passbookEntries } = await supabase
         .from('passbook_entries')
         .select('deposit_amount, withdrawal_amount')
@@ -133,79 +133,13 @@ export default function AdminFundPage() {
       
       const totalDeposits = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.deposit_amount)||0), 0) || 0;
       const totalWithdrawals = passbookEntries?.reduce((sum, entry) => sum + (Number(entry.withdrawal_amount)||0), 0) || 0;
-
-      // 2. Loans Data
-      const { data: loans } = await supabase
-          .from('loans')
-          .select('amount, remaining_balance, total_interest_collected')
-          .neq('status', 'rejected') 
-          .eq('client_id', clientId); 
-
-      // 3. Expenses Data (Fetched but NOT used in final formula as per logic)
-      let income = 0;
-      let expense = 0;
-      try {
-        const { data: expenses } = await supabase
-            .from('expenses_ledger')
-            .select('amount, type')
-            .eq('client_id', clientId);
-        
-        if (expenses) {
-            income = expenses.filter(e => e.type === 'INCOME').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
-            expense = expenses.filter(e => e.type === 'EXPENSE').reduce((sum, e) => sum + (Number(e.amount)||0), 0);
-        }
-      } catch (e) {}
-
-      // 4. Fines Data
-      let totalFines = 0;
-      try {
-          const { data: fines } = await supabase
-            .from('fines_ledger')
-            .select('amount')
-            .eq('client_id', clientId)
-            .eq('status', 'PAID');
-          
-          if (fines) {
-              totalFines = fines.reduce((sum, f) => sum + (Number(f.amount)||0), 0);
-          }
-      } catch (e) {}
-
-      // ===============================
-      // SOCIETY CASH – FINAL CORRECT LOGIC
-      // ===============================
-
-      //1. Passbook (Includes Income/Expenses/Maintenance payments via withdrawals/deposits)
       const netPassbook = totalDeposits - totalWithdrawals;
 
-      // 2. Loans
-      const loanIssued = loans?.reduce(
-        (sum, l) => sum + (Number(l.amount) || 0),
-        0
-      ) || 0;
-
-      const loanRecovered = loans?.reduce(
-        (sum, l) =>
-          sum + ((Number(l.amount) || 0) - (Number(l.remaining_balance) || 0)),
-        0
-      ) || 0;
-
-      const loanInterest = loans?.reduce(
-        (sum, l) => sum + (Number(l.total_interest_collected) || 0),
-        0
-      ) || 0;
-
-      // ❌ 3. Expenses / Maintenance (REMOVED FROM CALCULATION)
-      // We calculate it below for reference, but we do NOT add it to finalSocietyCash
-      // because expenses and income are already accounted for in netPassbook.
-      const maintenanceNet = income - expense; 
-
-      // 4. Final Society Cash Formula (Option A) - SYNTAX FIXED
-      const finalSocietyCash =
-        netPassbook +
-        loanRecovered +
-        loanInterest +
-        totalFines -
-        loanIssued;
+      // 2. Removed Loans, Expenses, and Fines fetching/calculation
+      // because they are reporting tables only. Passbook reflects their cash impact.
+      
+      // 3. Final Society Cash Formula (UPDATED)
+      const finalSocietyCash = netPassbook;
 
       setSocietyCashInHand(finalSocietyCash); 
 
@@ -352,7 +286,7 @@ export default function AdminFundPage() {
           </CardContent>
         </Card>
 
-        {/* Card 4: Society Cash Available (FIXED) */}
+        {/* Card 4: Society Cash Available (PASSBOOK TRUTH) */}
         <Card className="bg-purple-50 border-purple-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-800">Society Cash Available</CardTitle>
@@ -364,7 +298,7 @@ export default function AdminFundPage() {
                 {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(societyCashInHand)}
               </div>
             )}
-            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (All Sources)</p>
+            <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (Passbook Source)</p>
           </CardContent>
         </Card>
       </div>
