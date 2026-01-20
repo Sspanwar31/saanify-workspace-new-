@@ -73,26 +73,26 @@ export function useReportLogic() {
 
       try {
         const fetchFromApi = async (table: string) => {
-           try {
-              const res = await fetch('/api/admin/get-data', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ table, clientId: cid })
-              });
-              const json = await res.json();
-              return json.data || [];
-          } catch (error) {
-              console.error(`Error fetching ${table}:`, error);
-              return [];
-          }
+             try {
+                const res = await fetch('/api/admin/get-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ table, clientId: cid })
+                });
+                const json = await res.json();
+                return json.data || [];
+            } catch (error) {
+                console.error(`Error fetching ${table}:`, error);
+                return [];
+            }
         };
 
         const [m, l, p, e, af] = await Promise.all([
-             fetchFromApi('members'),
-             fetchFromApi('loans'),
-             fetchFromApi('passbook_entries'),
-             fetchFromApi('expenses_ledger'),
-             fetchFromApi('admin_fund_ledger')
+           fetchFromApi('members'),
+           fetchFromApi('loans'),
+           fetchFromApi('passbook_entries'),
+           fetchFromApi('expenses_ledger'),
+           fetchFromApi('admin_fund_ledger')
         ]);
 
         const membersData = m;
@@ -173,7 +173,7 @@ export function useReportLogic() {
         const inDate = isDateInRange(e.date || e.created_at);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
         const modeMatch = filters.transactionMode === 'all' || normalizeMode(e.paymentMode) === filters.transactionMode;
-        
+      
         let natureMatch = true;
         if (filters.transactionNature === 'inflow') {
           natureMatch = (e.depositAmount || 0) > 0 || (e.installmentAmount || 0) > 0 || (e.interestAmount || 0) > 0 || (e.fineAmount || 0) > 0;
@@ -347,7 +347,7 @@ export function useReportLogic() {
 
     // --- E. MODE STATS (UPDATED & DEBUGGED) ---
     // Formula: (Passbook Deposits+Int+Fine) + AdminNet + MaintIncome + LoanRecovered - LoanIssued - Expenses
-    
+
     // 1. Passbook Sources
     let passbookCash = 0, passbookBank = 0, passbookUpi = 0;
     filteredPassbook.forEach(e => {
@@ -384,19 +384,6 @@ export function useReportLogic() {
     // 6. Expenses
     const operationalExpenses = opsExpense;
 
-    // --- 🔍 DEBUGGING BLOCK ---
-    console.group("📊 REPORT CASHBOOK DEBUG");
-    console.log("1. Passbook (Dep+Int+Fine):", totalPassbook, `(Cash: ${passbookCash}, Bank: ${passbookBank})`);
-    console.log("2. Admin Fund Net:", adminNet);
-    console.log("3. Maintenance Income:", maintenanceIncome);
-    console.log("4. Loan Recovered (Principal):", recoveredPrincipal);
-    console.log("--------------------------------");
-    console.log("5. (-) Loan Issued:", loansIssuedTotal);
-    console.log("6. (-) Operational Expenses:", operationalExpenses);
-    console.log("--------------------------------");
-    const calculatedCash = (totalPassbook + adminNet + maintenanceIncome + recoveredPrincipal) - (loansIssuedTotal + operationalExpenses);
-    console.log("✅ FINAL CALCULATED TOTAL:", calculatedCash);
-    console.groupEnd();
     // -------------------------
 
     // Update Mode Stats specifically for the Cash Balance card to match Admin Fund
@@ -481,7 +468,7 @@ export function useReportLogic() {
         },
         dailyLedger: finalLedger,
         cashbook: finalCashbook,
-        // ✅ Updated modeStats with debugged calculation
+        // Updated modeStats with debugged calculation
         modeStats: { cashBal: finalCashBal, bankBal: passbookBank, upiBal: passbookUpi },
         loans: filteredLoans,
         memberReports, maturity, defaulters,
@@ -492,5 +479,5 @@ export function useReportLogic() {
 
   const reversedPassbook = [...filteredPassbookState].reverse();
   
-  return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
+  return { loading, auditData, members, passbookEntries, reversedPassbook, filters, setFilters };
 }
