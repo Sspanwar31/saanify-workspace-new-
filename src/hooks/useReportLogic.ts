@@ -15,11 +15,9 @@ export function useReportLogic() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [adminFunds, setAdminFunds] = useState<any[]>([]);
   
-  // ✅ DIFF-1: Added state for filtered passbook (from previous context)
   const [filteredPassbookState, setFilteredPassbookState] = useState<any[]>([]);
 
   // Filter States
-  // ✅ CHANGE A: Added transactionNature
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -28,7 +26,6 @@ export function useReportLogic() {
     transactionNature: 'all'
   });
 
-  // Calculated Data Structure
   const [auditData, setAuditData] = useState<any>({
     summary: { 
         income: { interest: 0, fine: 0, other: 0, total: 0 }, 
@@ -54,7 +51,6 @@ export function useReportLogic() {
       
       let cid = clientId;
 
-      // 🔑 STEP 1: Resolve clientId safely
       if (!cid) {
         const storedUser = localStorage.getItem('current_user');
         const storedMember = localStorage.getItem('current_member');
@@ -70,7 +66,6 @@ export function useReportLogic() {
         if (cid) setClientId(cid);
       }
 
-      // 🔑 STEP 2: ONLY proceed if cid exists
       if (!cid) {
         setLoading(false);
         return;
@@ -150,79 +145,49 @@ export function useReportLogic() {
 
   // 2. Calculation Engine
   useEffect(() => {
-    // ✅ DIFF-1: Global guard (Changed from !passbookEntries.length to just loading)
     if (loading) return;
 
-    // ✅ DIFF-2: Date filter (Summary = 0 fix) - Updated Logic
     const isDateInRange = (dateStr?: string) => {
-      // no date filter → allow all
       if (!filters.startDate && !filters.endDate) return true;
-
       if (!dateStr) return false;
-
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return false;
-
       const start = filters.startDate ? new Date(filters.startDate) : null;
       const end = filters.endDate ? new Date(filters.endDate) : null;
       if (end) end.setHours(23, 59, 59, 999);
-
       if (start && d < start) return false;
       if (end && d > end) return false;
-
       return true;
     };
 
-    // ✅ DIFF-1: Normalize Mode Helper (FINAL VERSION - Online + Cash Fix)
     const normalizeMode = (mode: string) => {
       if (!mode) return 'cash';
-
       const m = mode.toLowerCase();
-
       if (m.includes('cash')) return 'cash';
-      if (m.includes('upi') || m.includes('online') || m.includes('gpay') || m.includes('phonepe'))
-        return 'upi';
-      if (m.includes('bank') || m.includes('cheque') || m.includes('neft') || m.includes('rtgs'))
-        return 'bank';
-
-      return 'cash'; // SAFE default
+      if (m.includes('upi') || m.includes('online') || m.includes('gpay') || m.includes('phonepe')) return 'upi';
+      if (m.includes('bank') || m.includes('cheque') || m.includes('neft') || m.includes('rtgs')) return 'bank';
+      return 'cash';
     };
 
     const filteredPassbook = passbookEntries.filter(e => {
-        // ✅ FIX-2: Passbook filter fallback to created_at
         const inDate = isDateInRange(e.date || e.created_at);
         const memberMatch = filters.selectedMember === 'ALL' || e.memberId === filters.selectedMember;
-        
-        // ✅ DIFF-2: Passbook filter (Uses updated normalizeMode)
         const modeMatch = filters.transactionMode === 'all' || normalizeMode(e.paymentMode) === filters.transactionMode;
         
-        // ✅ CHANGE B: NEW Transaction Nature Logic (Replaced old transactionType)
         let natureMatch = true;
-
         if (filters.transactionNature === 'inflow') {
-          natureMatch =
-            (e.depositAmount || 0) > 0 ||
-            (e.installmentAmount || 0) > 0 ||
-            (e.interestAmount || 0) > 0 ||
-            (e.fineAmount || 0) > 0;
+          natureMatch = (e.depositAmount || 0) > 0 || (e.installmentAmount || 0) > 0 || (e.interestAmount || 0) > 0 || (e.fineAmount || 0) > 0;
         }
-
         if (filters.transactionNature === 'outflow') {
-          natureMatch =
-            (e.loanDisbursedAmount || 0) > 0 ||
-            (e.expenseAmount || 0) > 0;
+          natureMatch = (e.loanDisbursedAmount || 0) > 0 || (e.expenseAmount || 0) > 0;
         }
 
         return inDate && memberMatch && modeMatch && natureMatch;
     });
 
-    // ✅ DIFF-3: Expenses member filter (Income/Expense mismatch fix)
     const filteredExpenses = expenses.filter(e => {
       const inDate = isDateInRange(e.date || e.created_at);
-      const memberMatch =
-        filters.selectedMember === 'ALL' ||
-        e.member_id === filters.selectedMember;
-
+      const memberMatch = filters.selectedMember === 'ALL' || e.member_id === filters.selectedMember;
       return inDate && memberMatch;
     });
 
@@ -230,7 +195,6 @@ export function useReportLogic() {
 
     let interestIncome = 0, fineIncome = 0, depositTotal = 0, otherIncome = 0, opsExpense = 0, totalExpense = 0;
     
-    // ✅ DIFF-4: Use filteredPassbook for summaries
     filteredPassbook.forEach(e => {
         interestIncome += e.interestAmount;
         fineIncome += e.fineAmount;
@@ -245,7 +209,6 @@ export function useReportLogic() {
     });
 
     let totalMaturityLiability = 0;
-    // ✅ DIFF-3: Use filteredPassbook for maturity calculation totals
     members.forEach(m => {
         const mDepositEntries = filteredPassbook.filter(e => e.memberId === m.id && e.depositAmount > 0);
         if (mDepositEntries.length > 0) {
@@ -267,7 +230,7 @@ export function useReportLogic() {
     const totalExpensesCalc = opsExpense + totalMaturityLiability; 
     const netProfitCalc = totalIncomeCalc - totalExpensesCalc;
 
-    // --- C. LOAN STATS (STRICT FIX FOR CARDS) ---
+    // --- C. LOAN STATS ---
     const loansWithLiveBalance = loans.map((l: any) => {
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
@@ -278,8 +241,6 @@ export function useReportLogic() {
 
       const loanAmount = Number(l.amount) || 0;
       const currentBalance = Number(l.remaining_balance) || 0;
-      
-      const isActive = l.status === 'active' && currentBalance > 0;
       const interestAmount = Math.round(currentBalance * 0.01);
       const principalPaid = loanAmount - currentBalance;
 
@@ -296,7 +257,6 @@ export function useReportLogic() {
       };
     });
 
-    // ✅ DIFF-4: Filter loans by member
     const filteredLoans = loansWithLiveBalance.filter(l =>
       filters.selectedMember === 'ALL' || l.memberId === filters.selectedMember
     );
@@ -308,7 +268,12 @@ export function useReportLogic() {
         .filter((l: any) => l.status === 'active' && l.remainingBalance > 0) 
         .reduce((acc: number, l: any) => acc + l.remainingBalance, 0);
     
+    // Loan Recovered (Principal Only)
     const loansRecoveredTotal = loansIssuedTotal - loansOutstandingTotal;
+    
+    // Loan Interest from Loans Table
+    const loansInterestFromTable = validLoans.reduce((acc: number, l: any) => acc + (l.totalInterestCollected || 0), 0);
+
     const loansPendingCount = validLoans.filter((l: any) => l.status === 'active' && l.remainingBalance > 0).length;
 
 
@@ -347,8 +312,7 @@ export function useReportLogic() {
         else { entry.cashIn += amt; entry.cashInMode += amt; }
     });
 
-    if(filters.transactionType === 'all' || filters.transactionType === 'loan') { // NOTE: transactionType still used here
-        // ✅ DIFF-4: Use filteredLoans
+    if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
         filteredLoans.forEach((l: any) => {
             if (isDateInRange(l.start_date)) {
                 const entry = getOrSetEntry(l.start_date);
@@ -368,7 +332,6 @@ export function useReportLogic() {
         return { ...e, netFlow, runningBal };
     });
 
-    // Cashbook Array
     let closingBal = 0;
     const finalCashbook = sortedLedger.map((e: any) => {
         const dailyNet = (e.cashInMode + e.bankInMode + e.upiInMode) - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
@@ -382,35 +345,72 @@ export function useReportLogic() {
         };
     });
 
-    // --- E. MODE STATS ---
-    // ✅ DIFF-4: Use filteredPassbook
-    let cashBalTotal = 0, bankBalTotal = 0, upiBalTotal = 0;
+    // --- E. MODE STATS (UPDATED & DEBUGGED) ---
+    // Formula: (Passbook Deposits+Int+Fine) + AdminNet + MaintIncome + LoanRecovered - LoanIssued - Expenses
+    
+    // 1. Passbook Sources
+    let passbookCash = 0, passbookBank = 0, passbookUpi = 0;
     filteredPassbook.forEach(e => {
-        const amt = e.amount;
+        const amt = (e.depositAmount || 0) + (e.interestAmount || 0) + (e.fineAmount || 0);
         const mode = (e.paymentMode || 'CASH').toUpperCase();
-        if (mode.includes('CASH')) cashBalTotal += amt;
-        else if (mode.includes('BANK')) bankBalTotal += amt;
-        else upiBalTotal += amt;
+        if (mode.includes('CASH')) passbookCash += amt;
+        else if (mode.includes('BANK')) passbookBank += amt;
+        else passbookUpi += amt;
     });
-    const totalOut = expenses.filter(e => e.type === 'EXPENSE').reduce((a,b)=>a+Number(b.amount),0) + loans.reduce((a,b)=>a+Number(b.amount),0);
-    cashBalTotal -= totalOut;
+    const totalPassbook = passbookCash + passbookBank + passbookUpi;
 
+    // 2. Admin Fund Net
+    let adminNet = 0;
+    filteredAdminFunds.forEach(af => {
+       const amt = Number(af.amount || 0);
+       if(af.type === 'INJECT') adminNet += amt;
+       else adminNet -= amt;
+    });
+    
+    // 3. Maintenance Income
+    const maintenanceIncome = filteredExpenses
+       .filter(e => e.type === 'INCOME')
+       .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+    // 4. Loan Principal Recovered (User requested addition)
+    const recoveredPrincipal = loansRecoveredTotal;
+    
+    // 5. Loan Interest (User requested addition)
+    // Note: Interest is often in passbook. Avoid double counting if it's there.
+    // If not in passbook, add 'loansInterestFromTable'.
+    // Assuming Passbook tracks Interest too (based on 'interestIncome' variable above),
+    // we use passbook interest (interestIncome).
+    
+    // 6. Expenses
+    const operationalExpenses = opsExpense;
+
+    // --- 🔍 DEBUGGING BLOCK ---
+    console.group("📊 REPORT CASHBOOK DEBUG");
+    console.log("1. Passbook (Dep+Int+Fine):", totalPassbook, `(Cash: ${passbookCash}, Bank: ${passbookBank})`);
+    console.log("2. Admin Fund Net:", adminNet);
+    console.log("3. Maintenance Income:", maintenanceIncome);
+    console.log("4. Loan Recovered (Principal):", recoveredPrincipal);
+    console.log("--------------------------------");
+    console.log("5. (-) Loan Issued:", loansIssuedTotal);
+    console.log("6. (-) Operational Expenses:", operationalExpenses);
+    console.log("--------------------------------");
+    const calculatedCash = (totalPassbook + adminNet + maintenanceIncome + recoveredPrincipal) - (loansIssuedTotal + operationalExpenses);
+    console.log("✅ FINAL CALCULATED TOTAL:", calculatedCash);
+    console.groupEnd();
+    // -------------------------
+
+    // Update Mode Stats specifically for the Cash Balance card to match Admin Fund
+    // Assuming most extra liquidity (Admin, Loans) is CASH for now
+    const finalCashBal = passbookCash + adminNet + maintenanceIncome + recoveredPrincipal - (loansIssuedTotal + operationalExpenses);
+    
     // --- F. MEMBER REPORTS ---
-    // ✅ DIFF-2: Create visibleMembers
-    const visibleMembers =
-      filters.selectedMember === 'ALL'
-        ? members
-        : members.filter(m => m.id === filters.selectedMember);
-
-    // ✅ DIFF-2: Map visibleMembers
+    const visibleMembers = filters.selectedMember === 'ALL' ? members : members.filter(m => m.id === filters.selectedMember);
     const memberReports = visibleMembers.map((m: any) => {
-        // ✅ DIFF-2: Use filteredPassbook
         const mEntries = filteredPassbook.filter(e => e.memberId === m.id);
         const dep = mEntries.reduce((acc: number, e: any) => acc + e.depositAmount, 0);
         const intPaid = mEntries.reduce((acc: number, e: any) => acc + e.interestAmount, 0);
         const finePaid = mEntries.reduce((acc: number, e: any) => acc + e.fineAmount, 0);
         
-        // ✅ DIFF-2: Use filteredLoans
         const mLoans = filteredLoans.filter((l: any) => l.memberId === m.id);
         const lTaken = mLoans.reduce((acc: number, l: any) => acc + l.amount, 0);
         const lPend = mLoans.reduce((acc: number, l: any) => acc + l.remainingBalance, 0);
@@ -424,13 +424,10 @@ export function useReportLogic() {
         };
     });
 
-    // ✅ DIFF-2: Define filteredMembers for Maturity
     const filteredMembers = visibleMembers;
 
     // --- G. MATURITY ---
-    // ✅ DIFF-2: Use filteredMembers
     const maturity = filteredMembers.map((m: any) => {
-        // ✅ DIFF-3: Use filteredPassbook
         const mEntries = filteredPassbook.filter(e => e.memberId === m.id && e.depositAmount > 0);
         let monthly = 0;
         if(mEntries.length > 0) {
@@ -444,7 +441,6 @@ export function useReportLogic() {
         const manualAmount = Number(m.maturity_manual_amount || 0);
         const settledInterest = isOverride ? manualAmount : projected;
         const maturityAmt = target + settledInterest;
-        // ✅ DIFF-3: Use filteredLoans
         const outstanding = filteredLoans.filter((l: any) => l.memberId === m.id && l.status === 'active').reduce((s,l)=>s+l.remainingBalance,0);
 
         return { 
@@ -456,7 +452,6 @@ export function useReportLogic() {
     });
 
     // --- H. DEFAULTERS ---
-    // ✅ DIFF-4: Use filteredLoans
     const defaulters = filteredLoans.filter((l: any) => l.status === 'active' && l.remainingBalance > 0).map((l: any) => {
         const mem = members.find((m: any) => m.id === l.memberId); 
         return {
@@ -470,7 +465,6 @@ export function useReportLogic() {
         };
     });
     
-    // ✅ DIFF-1: Set state for passbook
     setFilteredPassbookState(filteredPassbook);
 
     setAuditData({
@@ -487,8 +481,8 @@ export function useReportLogic() {
         },
         dailyLedger: finalLedger,
         cashbook: finalCashbook,
-        modeStats: { cashBal: cashBalTotal, bankBal: bankBalTotal, upiBal: upiBalTotal },
-        // ✅ DIFF-4: Use filteredLoans
+        // ✅ Updated modeStats with debugged calculation
+        modeStats: { cashBal: finalCashBal, bankBal: passbookBank, upiBal: passbookUpi },
         loans: filteredLoans,
         memberReports, maturity, defaulters,
         adminFund: filteredAdminFunds
@@ -496,7 +490,6 @@ export function useReportLogic() {
 
   }, [members, loans, passbookEntries, expenses, adminFunds, filters, loading]);
 
-  // ✅ DIFF-1: Update reversedPassbook (Safety check)
   const reversedPassbook = [...filteredPassbookState].reverse();
   
   return { loading, auditData, members, passbookEntries: reversedPassbook, filters, setFilters };
