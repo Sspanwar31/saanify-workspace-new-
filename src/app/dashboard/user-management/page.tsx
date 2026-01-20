@@ -141,12 +141,20 @@ export default function UserManagementPage() {
     };
   }, [users]);
 
+  // ✅ DEBUG MODE ADDED HERE
+  // Debugging: Isse pata chalega ki data aa raha hai ya nahi
+  console.log("🔥 Raw Users Data:", users);
+
+  const filteredUsers = users; // ❌ Filters hata diye (Direct data dikhao)
+
+  /* PURANA CODE (COMMENTED OUT)
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesRole = filterRole === 'all' || user.role === filterRole;
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
     return matchesSearch && matchesRole && matchesStatus;
   });
+  */
 
   const logActivity = async (action: string, details: string) => {
     if (!clientId) return;
