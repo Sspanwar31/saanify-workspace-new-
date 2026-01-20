@@ -39,7 +39,7 @@ const DEFAULT_PERMISSIONS = {
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<any[]>([]);
-  const [ledgerMembers, setLedgerMembers] = useState<any[]>([]); // Renamed for clarity
+  const [ledgerMembers, setLedgerMembers] = useState<any[]>([]); 
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all-users');
@@ -85,16 +85,13 @@ export default function UserManagementPage() {
           .eq('client_id', cid)
           .eq('role', 'member');
 
-        // ✅ CHANGE-1: client_users -> clients
         // Treasurers
         const { data: treasurerData } = await supabase
-          .from('clients') // Changed table name
+          .from('clients') 
           .select('*')
           .eq('client_id', cid)
           .eq('role', 'treasurer');
 
-        // ✅ CHANGE-3: Safety Guard
-        // ✅ NAYA CODE: const treasurers = treasurerData || []; const members = memberData || []; const userData = [...treasurers, ...members]; setUsers(userData); setLedgerMembers(members);
         const treasurers = treasurerData || [];
         const members = memberData || [];
 
@@ -102,7 +99,7 @@ export default function UserManagementPage() {
         const userData = [...treasurers, ...members];
         
         setUsers(userData);
-        setLedgerMembers(members); // sirf members hi link honge
+        setLedgerMembers(members); 
 
         // Logs
         const { data: logsData } = await supabase.from('activity_logs').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(50);
@@ -140,7 +137,6 @@ export default function UserManagementPage() {
       total: users.length,
       active: users.filter(u => u.status === 'active').length,
       blocked: users.filter(u => u.status === 'blocked').length,
-      // ✅ CHANGE-5 FIX: Changed admins to treasurers
       treasurers: users.filter(u => u.role === 'treasurer').length
     };
   }, [users]);
@@ -182,8 +178,6 @@ export default function UserManagementPage() {
     setIsSaving(true); 
 
     try {
-      // ✅ CHANGE-2: Updated targetTable to 'clients'
-      // ✅ CHANGE-3: Added targetTable to payload
       const payload = {
         id: editingUser ? editingUser.id : null, 
         clientId: clientId,
@@ -192,7 +186,6 @@ export default function UserManagementPage() {
         phone: formData.phone,
         role: formData.role,
         status: formData.status,
-        // ✅ CHANGE-2
         targetTable: formData.role === 'treasurer' ? 'clients' : 'members',
         password: formData.password 
       };
@@ -207,12 +200,10 @@ export default function UserManagementPage() {
 
       if (!response.ok) throw new Error(result.error);
 
-      // ✅ CHANGE: Log Activity Added
       await logActivity(editingUser ? 'Update User' : 'Create User', `${editingUser ? 'Updated' : 'Created'} user: ${formData.name}`);
       toast.success(editingUser ? "User Updated Successfully" : "User Created Successfully");
       
       setIsModalOpen(false);
-      // window.location.reload(); // Optional, but reloading to reflect permission changes immediately is good for 'treasurer' role
 
     } catch (error: any) { 
       console.error(error);
@@ -225,11 +216,9 @@ export default function UserManagementPage() {
   const handleDelete = async (userId: string, role: string) => {
     if (role === 'client_admin') { alert("Action Denied: Cannot delete Main Admin."); return; }
     if (confirm("Delete this user? This will also remove their login access.")) {
-      // Note: Deleting treasurers might need different table logic, but keeping original logic for now as per instruction "baki kuch nahi karna"
       const { error } = await supabase.from('members').delete().eq('id', userId);
       if (!error) {
         setUsers(users.filter(u => u.id !== userId));
-        // ✅ CHANGE: Added Log Activity
         await logActivity('Delete User', `Deleted user ID: ${userId}`);
         toast.success("User Deleted");
       } else {
@@ -241,13 +230,10 @@ export default function UserManagementPage() {
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
     const newStatus = user.status === 'active' ? 'blocked' : 'active';
-    // Note: Updating treasurers might need different table logic
     const { error } = await supabase.from('members').update({ status: newStatus }).eq('id', user.id);
     if (!error) {
       setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
-      // ✅ CHANGE: Added Log Activity
       await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
-      // ✅ CHANGE: Added Toast
       toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
     }
   };
@@ -260,7 +246,6 @@ export default function UserManagementPage() {
     });
   };
 
-  // ✅ CHANGE 1: Save button logic (MAIN FIX)
   const savePermissions = async () => {
     if (!clientId) return;
 
@@ -277,12 +262,7 @@ export default function UserManagementPage() {
 
       if (!res.ok) throw new Error('Permission save failed');
 
-      // ✅ CHANGE: Added Log Activity
-      await logActivity(
-        'Permissions Update',
-        'Updated role permissions matrix'
-      );
-
+      await logActivity('Permissions Update', 'Updated role permissions matrix');
       toast.success("Permissions updated successfully");
       setIsEditingRoles(false);
     } catch (err) {
@@ -352,7 +332,6 @@ export default function UserManagementPage() {
           </Card>
           <Card className="border-none shadow-md hover:shadow-lg transition-shadow">
             <CardContent className="p-6 flex justify-between items-center">
-              {/* ✅ UPDATED TEXT AND COUNT */}
               <div><p className="text-sm font-medium text-gray-500">Total Treasurers</p><h3 className="text-3xl font-bold text-purple-600 mt-1">{stats.treasurers}</h3><p className="text-xs text-gray-400 mt-1">Active treasurers</p></div>
               <div className="p-4 bg-purple-50 rounded-xl"><Crown className="h-6 w-6 text-purple-600"/></div>
             </CardContent>
@@ -375,67 +354,41 @@ export default function UserManagementPage() {
               <Button variant="outline" className="h-10 px-4 w-full md:w-auto"><Download className="h-4 w-4 mr-2"/> Export</Button>
             </div>
           </div>
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-gray-50">
-                    <TableRow>
-                      <TableHead className="py-4 pl-6 w-[300px]">User Info</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Linked</TableHead>
-                      <TableHead className="text-right pr-6">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">Loading users...</TableCell></TableRow>
-                    ) : filteredUsers.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">No users found matching filters.</TableCell></TableRow>
-                    ) : (
-                      filteredUsers.map((user) => (
-                        <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                          <TableCell className="pl-6 py-4">
-                            <div className="flex items-center gap-3">
-                              {/* ✅ Avatar Safe Fix */}
-                              <Avatar>
-                                <AvatarFallback className="bg-gray-100 text-gray-600 font-bold">
-                                  {user.name?.charAt(0) || 'U'}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-semibold text-gray-900">{user.name}</p>
-                                <p className="text-xs text-gray-500">{user.email}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell><Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1 font-medium`}>{user.role.replace('_', ' ').toUpperCase()}</Badge></TableCell>
-                          <TableCell><Badge variant={user.status === 'active' ? 'default' : 'destructive'} className="uppercase text-[10px] px-2">{user.status}</Badge></TableCell>
-                          <TableCell className="text-gray-600 font-medium text-sm">{user.phone}</TableCell>
-                          <TableCell>
-                            {user.role === 'member' ? <div className="flex items-center text-blue-600 text-xs font-medium bg-blue-50 px-2 py-1 rounded w-fit"><LinkIcon className="h-3 w-3 mr-1"/> Linked</div> : <span className="text-gray-400 text-xs italic">System User</span>}
-                          </TableCell>
-                          <TableCell className="text-right pr-6">
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} className="text-blue-600 hover:bg-blue-50 h-8 w-8"><Edit className="h-4 w-4" /></Button>
-                              {/* ✅ CHANGE: Toggle/Block Logic Added */}
-                              {user.role !== 'client_admin' && <Button variant="ghost" size="icon" onClick={() => handleToggleBlock(user)} className={`h-8 w-8 ${user.status === 'active' ? "text-orange-500 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"}`}>{user.status === 'active' ? <Lock className="h-4 w-4"/> : <Unlock className="h-4 w-4" />}</Button>}
-                              {user.role !== 'client_admin' && <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-8 w-8" onClick={() => handleDelete(user.id, user.role)}><Trash2 className="h-4 w-4" /></Button>}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+          <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader className="bg-gray-50"><TableRow><TableHead className="py-4 pl-6 w-[300px]">User Info</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Phone</TableHead><TableHead>Linked</TableHead><TableHead className="text-right pr-6">Actions</TableHead></TableRow></TableHeader><TableBody>
+            {loading ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">Loading users...</TableCell></TableRow> : filteredUsers.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">No users found matching filters.</TableCell></TableRow> : filteredUsers.map((user) => (
+              <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                <TableCell className="pl-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarFallback className="bg-gray-100 text-gray-600 font-bold">
+                        {user.name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-gray-900">{user.name}</p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell><Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1 font-medium`}>{user.role.replace('_', ' ').toUpperCase()}</Badge></TableCell>
+                <TableCell><Badge variant={user.status === 'active' ? 'default' : 'destructive'} className="uppercase text-[10px] px-2">{user.status}</Badge></TableCell>
+                <TableCell className="text-gray-600 font-medium text-sm">{user.phone}</TableCell>
+                <TableCell>
+                  {user.role === 'member' ? <div className="flex items-center text-blue-600 text-xs font-medium bg-blue-50 px-2 py-1 rounded w-fit"><LinkIcon className="h-3 w-3 mr-1"/> Linked</div> : <span className="text-gray-400 text-xs italic">System User</span>}
+                </TableCell>
+                <TableCell className="text-right pr-6">
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} className="text-blue-600 hover:bg-blue-50 h-8 w-8"><Edit className="h-4 w-4" /></Button>
+                    {user.role !== 'client_admin' && <Button variant="ghost" size="icon" onClick={() => handleToggleBlock(user)} className={`h-8 w-8 ${user.status === 'active' ? "text-orange-500 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"}`}>{user.status === 'active' ? <Lock className="h-4 w-4"/> : <Unlock className="h-4 w-4" />}</Button>}
+                    {user.role !== 'client_admin' && <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-8 w-8" onClick={() => handleDelete(user.id, user.role)}><Trash2 className="h-4 w-4" /></Button>}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody></Table></div></CardContent></Card>
         </TabsContent>
 
-        {/* Roles & Activity Tabs */}
+        {/* Roles & Activity Tabs (Fixed Table Structure) */}
         <TabsContent value="roles" className="space-y-6">
           <div className="flex justify-between items-center bg-white p-6 rounded-xl border shadow-sm">
             <div><h2 className="text-lg font-bold text-gray-900">Role Capabilities</h2><p className="text-sm text-gray-500 mt-1">Configure what each role can access and perform.</p></div>
@@ -449,9 +402,43 @@ export default function UserManagementPage() {
               </Card>
             ))}
           </div>
-          <Card><CardContent className="p-0"><Table><TableHeader><TableRow className="bg-gray-100"><TableHead className="w-[300px]">Permission</TableHead><TableHead className="text-center bg-green-50">Treasurer</TableHead><TableHead className="text-center bg-blue-50">Member</TableHead></TableRow></TableHeader><TableBody>
-            {PERMISSION_CATEGORIES.map((cat) => (<><TableRow key={cat.name} className="bg-gray-50/50 hover:bg-gray-50"><TableCell colSpan={4} className="font-bold text-gray-700 py-3">{cat.name}</TableCell></TableRow>{cat.items.map(perm => (<TableRow key={perm}><TableCell className="text-gray-600 pl-6">{perm}</TableCell><TableCell className="text-center"><div className="flex justify-center"><Checkbox checked={roleConfig.treasurer.includes(perm)} disabled={!isEditingRoles} onCheckedChange={() => togglePermission('treasurer', perm)} className="data-[state=checked]:bg-green-600"/></div></TableCell><TableCell className="text-center"><div className="flex justify-center"><Checkbox checked={roleConfig.member.includes(perm)} disabled={!isEditingRoles} className="data-[state=checked]:bg-blue-600"/></div></TableCell></TableRow>))}</>))}
-          </TableBody></Table></CardContent></Card>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-100">
+                    <TableHead className="w-[300px]">Permission</TableHead>
+                    <TableHead className="text-center bg-green-50">Treasurer</TableHead>
+                    <TableHead className="text-center bg-blue-50">Member</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {PERMISSION_CATEGORIES.map((cat) => (
+                    <>
+                      <TableRow key={cat.name} className="bg-gray-50/50 hover:bg-gray-50">
+                        <TableCell colSpan={4} className="font-bold text-gray-700 py-3">{cat.name}</TableCell>
+                      </TableRow>
+                      {cat.items.map(perm => (
+                        <TableRow key={perm}>
+                          <TableCell className="text-gray-600 pl-6">{perm}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center">
+                              <Checkbox checked={roleConfig.treasurer.includes(perm)} disabled={!isEditingRoles} onCheckedChange={() => togglePermission('treasurer', perm)} className="data-[state=checked]:bg-green-600"/>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center">
+                              <Checkbox checked={roleConfig.member.includes(perm)} disabled={!isEditingRoles} className="data-[state=checked]:bg-blue-600"/>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="activity">
