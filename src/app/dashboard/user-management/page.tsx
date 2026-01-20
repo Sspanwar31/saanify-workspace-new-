@@ -64,7 +64,7 @@ export default function UserManagementPage() {
   const [roleConfig, setRoleConfig] = useState<any>(DEFAULT_PERMISSIONS);
   const [isEditingRoles, setIsEditingRoles] = useState(false);
 
-  // ✅ UPDATED FETCH DATA LOGIC (Treasurer Fix & Debugging)
+  // ✅ UPDATED FETCH DATA LOGIC (Treasurer Fix & Debugging Removed)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -72,13 +72,11 @@ export default function UserManagementPage() {
       // Step A: Get User from LocalStorage
       const storedUser = localStorage.getItem('current_user');
       if (!storedUser) {
-        console.error("🔴 No user found in LocalStorage");
         setLoading(false);
         return;
       }
 
       const user = JSON.parse(storedUser);
-      console.log("👤 Logged In User:", user.id, user.role);
 
       // Step B: Resolve Correct Client ID (Owner ID)
       let targetClientId = clientId;
@@ -87,48 +85,37 @@ export default function UserManagementPage() {
         if (user.role === 'treasurer') {
           // If treasurer, try to find owner's ID from DB
           const { data, error } = await supabase
-            .from('clients') // or 'admins' depending on your table
+            .from('clients')
             .select('client_id')
             .eq('id', user.id)
             .maybeSingle();
             
           if (data?.client_id) {
             targetClientId = data.client_id;
-            console.log("🎯 Treasurer Detected! Using Owner ID:", targetClientId);
           } else {
-            console.warn("⚠️ Treasurer has NO client_id linked! Using own ID.");
             targetClientId = user.id;
           }
         } else {
           // If Owner/Client
           targetClientId = user.id;
-          console.log("👑 Owner Detected. Using Own ID:", targetClientId);
         }
         setClientId(targetClientId);
       }
 
       // Step C: Fetch Data using Resolved ID
       if (targetClientId) {
-        console.log("🚀 Fetching Data for ID:", targetClientId);
-
         // Members
-        const { data: memberData, error: memErr } = await supabase
+        const { data: memberData } = await supabase
           .from('members')
           .select('*')
           .eq('client_id', targetClientId);
 
-        if (memErr) console.error("❌ Member Fetch Error:", memErr);
-        console.log(`✅ Members Found: ${memberData?.length || 0}`);
-
         // Treasurers
-        const { data: treasurerData, error: trErr } = await supabase
+        const { data: treasurerData } = await supabase
           .from('clients')
           .select('*')
           .eq('client_id', targetClientId)
           .eq('role', 'treasurer');
-
-        if (trErr) console.error("❌ Treasurer Fetch Error:", trErr);
-        console.log(`✅ Treasurers Found: ${treasurerData?.length || 0}`);
 
         // Combine
         const allUsers = [...(treasurerData || []), ...(memberData || [])];
@@ -144,7 +131,7 @@ export default function UserManagementPage() {
     };
 
     fetchData();
-  }, []); // ✅ Dependency array empty to run only once on mount
+  }, []); // Dependency array empty to run only once on mount
 
   // 2. Load Permissions Effect
   useEffect(() => {
@@ -177,20 +164,13 @@ export default function UserManagementPage() {
     };
   }, [users]);
 
-  // ✅ DEBUG MODE ADDED HERE
-  // Debugging: Isse pata chalega ki data aa raha hai ya nahi
-  console.log("🔥 Raw Users Data:", users);
-
-  const filteredUsers = users; // ❌ Filters hata diye (Direct data dikhao)
-
-  /* PURANA CODE (COMMENTED OUT)
+  // ✅ RESTORED ORIGINAL FILTER LOGIC (Debugging Removed)
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesRole = filterRole === 'all' || user.role === filterRole;
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
     return matchesSearch && matchesRole && matchesStatus;
   });
-  */
 
   const logActivity = async (action: string, details: string) => {
     if (!clientId) return;
@@ -494,12 +474,12 @@ export default function UserManagementPage() {
               <div className="max-h-96 overflow-y-auto">
                 <Table>
                   <TableHeader className="sticky top-0 bg-white">
-                    <TableRow> {/* ✅ FIX: Added Missing TableRow here */}
+                    <TableRow>
                       <TableHead>User</TableHead>
                       <TableHead>Action</TableHead>
                       <TableHead>Details</TableHead>
                       <TableHead className="text-right">Date</TableHead>
-                    </TableRow> {/* ✅ FIX: Closed TableRow correctly */}
+                    </TableRow>
                   </TableHeader>
                   <TableBody>
                     {activityLogs.length === 0 ? (
