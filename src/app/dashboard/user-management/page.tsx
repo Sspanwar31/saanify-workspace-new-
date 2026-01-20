@@ -64,51 +64,87 @@ export default function UserManagementPage() {
   const [roleConfig, setRoleConfig] = useState<any>(DEFAULT_PERMISSIONS);
   const [isEditingRoles, setIsEditingRoles] = useState(false);
 
-  // 1. Fetch Data
+  // ✅ UPDATED FETCH DATA LOGIC (Treasurer Fix & Debugging)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      
+      // Step A: Get User from LocalStorage
       const storedUser = localStorage.getItem('current_user');
-      let cid = clientId;
-
-      if (!cid && storedUser) {
-        const user = JSON.parse(storedUser);
-        cid = user.id;
-        setClientId(cid);
+      if (!storedUser) {
+        console.error("🔴 No user found in LocalStorage");
+        setLoading(false);
+        return;
       }
 
-      if (cid) {
+      const user = JSON.parse(storedUser);
+      console.log("👤 Logged In User:", user.id, user.role);
+
+      // Step B: Resolve Correct Client ID (Owner ID)
+      let targetClientId = clientId;
+
+      if (!targetClientId) {
+        if (user.role === 'treasurer') {
+          // If treasurer, try to find owner's ID from DB
+          const { data, error } = await supabase
+            .from('clients') // or 'admins' depending on your table
+            .select('client_id')
+            .eq('id', user.id)
+            .maybeSingle();
+            
+          if (data?.client_id) {
+            targetClientId = data.client_id;
+            console.log("🎯 Treasurer Detected! Using Owner ID:", targetClientId);
+          } else {
+            console.warn("⚠️ Treasurer has NO client_id linked! Using own ID.");
+            targetClientId = user.id;
+          }
+        } else {
+          // If Owner/Client
+          targetClientId = user.id;
+          console.log("👑 Owner Detected. Using Own ID:", targetClientId);
+        }
+        setClientId(targetClientId);
+      }
+
+      // Step C: Fetch Data using Resolved ID
+      if (targetClientId) {
+        console.log("🚀 Fetching Data for ID:", targetClientId);
+
         // Members
-        const { data: memberData } = await supabase
+        const { data: memberData, error: memErr } = await supabase
           .from('members')
           .select('*')
-          .eq('client_id', cid)
-          .eq('role', 'member');
+          .eq('client_id', targetClientId);
+
+        if (memErr) console.error("❌ Member Fetch Error:", memErr);
+        console.log(`✅ Members Found: ${memberData?.length || 0}`);
 
         // Treasurers
-        const { data: treasurerData } = await supabase
-          .from('clients') 
+        const { data: treasurerData, error: trErr } = await supabase
+          .from('clients')
           .select('*')
-          .eq('client_id', cid)
+          .eq('client_id', targetClientId)
           .eq('role', 'treasurer');
 
-        const treasurers = treasurerData || [];
-        const members = memberData || [];
+        if (trErr) console.error("❌ Treasurer Fetch Error:", trErr);
+        console.log(`✅ Treasurers Found: ${treasurerData?.length || 0}`);
 
-        // Combine for UI
-        const userData = [...treasurers, ...members];
+        // Combine
+        const allUsers = [...(treasurerData || []), ...(memberData || [])];
+        setUsers(allUsers);
+        setLedgerMembers(memberData || []);
         
-        setUsers(userData);
-        setLedgerMembers(members); 
-
         // Logs
-        const { data: logsData } = await supabase.from('activity_logs').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(50);
+        const { data: logsData } = await supabase.from('activity_logs').select('*').eq('client_id', targetClientId).order('created_at', { ascending: false }).limit(50);
         if (logsData) setActivityLogs(logsData);
       }
+      
       setLoading(false);
     };
+
     fetchData();
-  }, [clientId]);
+  }, []); // ✅ Dependency array empty to run only once on mount
 
   // 2. Load Permissions Effect
   useEffect(() => {
@@ -200,7 +236,7 @@ export default function UserManagementPage() {
 
       const response = await fetch('/api/users/manage', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, // Fixed Header Name
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
