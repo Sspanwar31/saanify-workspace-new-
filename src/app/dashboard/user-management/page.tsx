@@ -192,7 +192,7 @@ export default function UserManagementPage() {
 
       const response = await fetch('/api/users/manage', {
         method: 'POST',
-        headers: { 'Content Logic': 'application/json' },
+        headers: { 'Content-Type': 'application/json' }, // Fixed Header Name
         body: JSON.stringify(payload)
       });
 
@@ -442,11 +442,41 @@ export default function UserManagementPage() {
         </TabsContent>
 
         <TabsContent value="activity">
-          <Card className="border-none shadow-md"><CardHeader><CardTitle>System Activity Logs</CardTitle></CardHeader><CardContent><div className="max-h-96 overflow-y-auto"><Table><TableHeader className="sticky top-0 bg-white"><TableHead>User</TableHead><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Date</TableHead></TableRow></TableHeader><TableBody>
-            {activityLogs.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-12 text-gray-500">No activity logs recorded yet.</TableCell></TableRow> : activityLogs.map(log => (
-              <TableRow key={log.id} className="hover:bg-gray-50"><TableCell className="font-medium text-gray-900">{log.user_name}</TableCell><TableCell><Badge variant="outline" className="bg-white">{log.action}</Badge></TableCell><TableCell className="text-gray-500 text-sm max-w-xs truncate" title={log.details}>{log.details}</TableCell><TableCell className="text-right text-gray-500">{new Date(log.created_at).toLocaleString()}</TableCell></TableRow>
-            ))}
-          </TableBody></Table></div></CardContent></Card>
+          <Card className="border-none shadow-md">
+            <CardHeader>
+              <CardTitle>System Activity Logs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-96 overflow-y-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-white">
+                    <TableRow> {/* ✅ FIX: Added Missing TableRow here */}
+                      <TableHead>User</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead className="text-right">Date</TableHead>
+                    </TableRow> {/* ✅ FIX: Closed TableRow correctly */}
+                  </TableHeader>
+                  <TableBody>
+                    {activityLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-12 text-gray-500">No activity logs recorded yet.</TableCell>
+                      </TableRow>
+                    ) : (
+                      activityLogs.map(log => (
+                        <TableRow key={log.id} className="hover:bg-gray-50">
+                          <TableCell className="font-medium text-gray-900">{log.user_name}</TableCell>
+                          <TableCell><Badge variant="outline" className="bg-white">{log.action}</Badge></TableCell>
+                          <TableCell className="text-gray-500 text-sm max-w-xs truncate" title={log.details}>{log.details}</TableCell>
+                          <TableCell className="text-right text-gray-500">{new Date(log.created_at).toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
