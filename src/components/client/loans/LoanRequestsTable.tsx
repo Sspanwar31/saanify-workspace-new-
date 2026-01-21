@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserAvatar } from '@/components/ui/UserAvatar'; // ✅ NEW: Importing Universal Avatar
+import { UserAvatar } from '@/components/ui/UserAvatar'; // ✅ Correct Import
 import { Calendar, DollarSign, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { ApproveLoanModal } from './ApproveLoanModal';
 import { toast } from 'sonner';
@@ -25,21 +25,30 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
 
     setProcessingId(request.id);
     try {
-        try {
-          const notifPayload: any = {
-            client_id: request.client_id || request.clientId,
-            member_id: request.memberId,
-            title: 'Loan Rejected ❌',
-            message: `Your loan request for ₹${request.amount.toLocaleString()} has been rejected by admin.`,
-            is_read: false,
-            created_at: new Date().toISOString()
-          };
-          await supabase.from('notifications').insert([notifPayload]);
-        } catch (nErr) {
-          console.warn("Notification skipped:", nErr);
+        // 1. Notify Member (Only if IDs exist)
+        const clientId = request.client_id || request.clientId;
+        const memberId = request.member_id || request.memberId;
+
+        if (clientId && memberId) {
+            try {
+              const notifPayload: any = {
+                client_id: clientId,
+                member_id: memberId,
+                title: 'Loan Rejected ❌',
+                message: `Your loan request for ₹${request.amount.toLocaleString()} has been rejected by admin.`,
+                is_read: false,
+                created_at: new Date().toISOString()
+                // Type column removed to avoid schema error
+              };
+              await supabase.from('notifications').insert([notifPayload]);
+            } catch (nErr) {
+              console.warn("Notification skipped:", nErr);
+            }
         }
 
+        // 2. Delete Loan Request (Main Operation)
         const { error } = await supabase.from('loans').delete().eq('id', request.id);
+        
         if (error) throw error;
 
         toast.success("Loan Rejected & Member Notified");
@@ -103,7 +112,7 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       
-                      {/* ✅ FIX: Using UserAvatar Component (No 404 Errors) */}
+                      {/* ✅ FIX: Using UserAvatar Component */}
                       <UserAvatar 
                         name={request.memberName} 
                         url={request.avatar_url} 
