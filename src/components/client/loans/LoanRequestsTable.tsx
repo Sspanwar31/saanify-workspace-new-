@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/ui/UserAvatar'; // ✅ NEW: Importing Universal Avatar
 import { Calendar, DollarSign, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { ApproveLoanModal } from './ApproveLoanModal';
 import { toast } from 'sonner';
@@ -102,20 +102,14 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                 <TableRow key={request.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        {/* ✅ FIX: No more hardcoded path. Only DB URL or nothing. */}
-                        {request.avatar_url ? (
-                          <AvatarImage
-                            src={request.avatar_url}
-                            alt={request.memberName}
-                            className="object-cover"
-                          />
-                        ) : null}
+                      
+                      {/* ✅ FIX: Using UserAvatar Component (No 404 Errors) */}
+                      <UserAvatar 
+                        name={request.memberName} 
+                        url={request.avatar_url} 
+                        size="h-8 w-8"
+                      />
 
-                        <AvatarFallback className="bg-slate-200 font-bold text-slate-700 uppercase">
-                          {request.memberName ? request.memberName.charAt(0) : 'U'}
-                        </AvatarFallback>
-                      </Avatar>
                       <div className="flex flex-col justify-center">
                         <div className="font-medium">{request.memberName}</div>
                       </div>
