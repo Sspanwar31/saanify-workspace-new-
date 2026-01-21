@@ -41,7 +41,8 @@ export default function LoansPage() {
       // 🔥 FIX 1: Fetch all loans including 'rejected' or 'deleted' but we will filter them in JS to ensure clean calculation
       const { data: loansData } = await supabase
         .from('loans')
-        .select('*, members(id, name, phone, total_deposits, outstanding_loan)')
+        // ✅ FIX: Added avatar_url to selection
+        .select('*, members(id, name, phone, avatar_url, total_deposits, outstanding_loan)')
         .eq('client_id', resolvedClientId)
         // .neq('status', 'rejected') // Removed to fetch all and filter manually for safety
         .order('created_at', { ascending: false })
@@ -73,6 +74,8 @@ export default function LoansPage() {
             memberId: item.member_id,
             memberName: item.members?.name || 'Unknown',
             memberPhone: item.members?.phone,
+            // ✅ NEW: Map avatar_url
+            avatar_url: item.members?.avatar_url || null, 
             memberTotalDeposits: item.members?.total_deposits || 0,
             totalInterestCollected: totalInterestEarned,
             requestedDate: item.start_date || item.created_at,
