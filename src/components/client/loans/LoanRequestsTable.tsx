@@ -1,60 +1,47 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase'; // ✅ Updated to standard import
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar, DollarSign, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { ApproveLoanModal } from './ApproveLoanModal';
-import { toast } from 'sonner'; // ✅ Toast added for Admin feedback
+import { toast } from 'sonner';
 
-// Accept Data as Prop
 export function LoanRequestsTable({ requests }: { requests: any[] }) {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [processingId, setProcessingId] = useState<string | null>(null); // To show loading on button
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // --- Handlers ---
   const handleApprove = (requestId: string) => {
     setSelectedRequest(requestId);
     setIsModalOpen(true);
   };
 
-  // ✅ FIX: Reject Logic + Member Notification
   const handleReject = async (request: any) => {
     if(!confirm(`Are you sure you want to REJECT this loan for ${request.memberName}?`)) return;
 
     setProcessingId(request.id);
     try {
-        // 1. Send Notification to Member (With Safety)
         try {
           const notifPayload: any = {
-            client_id: request.client_id || request.clientId, // Handle casing
+            client_id: request.client_id || request.clientId,
             member_id: request.memberId,
             title: 'Loan Rejected ❌',
             message: `Your loan request for ₹${request.amount.toLocaleString()} has been rejected by admin.`,
             is_read: false,
             created_at: new Date().toISOString()
           };
-          
-          // Safe insert (ignoring type if column missing)
           await supabase.from('notifications').insert([notifPayload]);
         } catch (nErr) {
           console.warn("Notification skipped:", nErr);
         }
 
-        // 2. Delete Loan Request (Ya status update karein 'rejected')
-        // Aapke purane code ke hisab se DELETE kar rahe hain
-        const { error } = await supabase
-            .from('loans')
-            .delete() // Ya .update({ status: 'rejected' }) agar record rakhna ho
-            .eq('id', request.id);
-        
+        const { error } = await supabase.from('loans').delete().eq('id', request.id);
         if (error) throw error;
 
-        // 3. Admin Toast & Refresh
         toast.success("Loan Rejected & Member Notified");
         window.location.reload(); 
 
@@ -116,11 +103,12 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        {/* ✅ FIX: Avatar 404-proof (Conditional Rendering) */}
+                        {/* ✅ FIX: No more hardcoded path. Only DB URL or nothing. */}
                         {request.avatar_url ? (
                           <AvatarImage
                             src={request.avatar_url}
                             alt={request.memberName}
+                            className="object-cover"
                           />
                         ) : null}
 
@@ -183,7 +171,6 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
         </CardContent>
       </Card>
 
-      {/* APPROVE MODAL - Handled separately in ApproveLoanModal.tsx */}
       {isModalOpen && (
         <ApproveLoanModal
             isOpen={isModalOpen}
