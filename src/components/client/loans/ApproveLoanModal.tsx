@@ -35,14 +35,15 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
     if (isOpen && requestId) {
       const fetchData = async () => {
         // A. Fetch Loan Request Details
-        // ✅ DRIF-1: Loan Fetch (SELECT FIX)
+        // ✅ DRIF-1: Loan Fetch (Updated to include avatar_url)
         const { data: loanData, error } = await supabase
           .from('loans')
           .select(`
             *,
             members (
               id,
-              name
+              name,
+              avatar_url
             )
           `)
           .eq('id', requestId)
@@ -61,6 +62,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             memberId: loanData.member_id,
             clientId: loanData.client_id,
             memberName: loanData.members?.name || 'Unknown',
+            memberAvatar: loanData.members?.avatar_url || null, // ✅ Capture Avatar URL
             amount: requestedAmount,
             status: loanData.status
           });
@@ -69,13 +71,12 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           // 🔥 REAL deposit calculation
           const { data: passbookData } = await supabase
             .from('passbook_entries')
-            .select('deposit_amount, payment_mode') // 'type' ki jagah safe column lo
+            .select('deposit_amount, payment_mode') 
             .eq('member_id', loanData.member_id);
 
-          // ❌ Debug Log Removed as requested
-          // console.log('PASSBOOK RAW', passbookData);
+          // ❌ Removed Debug Log as requested
 
-          // Calculate Total (Filter removed as per instructions)
+          // Calculate Total
           const totalDeposits = (passbookData || [])
             .reduce((sum, e) => sum + Number(e.deposit_amount || 0), 0);
 
@@ -129,9 +130,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
       if (loanError) throw loanError;
 
-      // ❌ DRIFT: UPDATE MEMBER OUTSTANDING LOAN BLOCK REMOVED
-      // Loan balance is now handled solely in the loans table via remaining_balance.
-
       // 2. Insert Notification for Member
       const { error: notifError } = await supabase.from('notifications').insert([{
           client_id: request.clientId,
@@ -172,7 +170,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* ✅ FIX 1: Added aria-describedby */}
+      {/* ✅ FIX: Added aria-describedby to fix warning */}
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -193,8 +191,10 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             <CardContent>
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  {/* ✅ FIX 2: Added Fallback for Avatar */}
-                  <AvatarImage src={`/avatars/${request.memberId}.jpg`} />
+                  {/* ✅ FIX: 404 Error Fix - Conditional Rendering */}
+                  {request.memberAvatar ? (
+                    <AvatarImage src={request.memberAvatar} />
+                  ) : null}
                   <AvatarFallback className="bg-blue-100 text-blue-800 text-lg font-semibold">
                     {request.memberName ? request.memberName.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
@@ -259,7 +259,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
               </div>
               
               <div className="text-sm text-muted-foreground">
-                {/* ✅ DRIF-5: Requested Amount UI Safety */}
                 Requested: {requestedAmount > 0
                   ? formatCurrency(requestedAmount)
                   : 'Not specified by member'}
@@ -346,7 +345,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           </Button>
           <Button
             onClick={handleSubmit}
-            // ✅ DRIF-4: Approve button disable logic
             disabled={!canApprove || isSubmitting || loanAmount <= 0}
             className="bg-green-600 hover:bg-green-700 flex-1"
           >
