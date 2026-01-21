@@ -116,11 +116,14 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        {/* ✅ FIX: Avatar 404 Permanent Fix */}
-                        <AvatarImage 
-                          src={request.avatar_url || undefined} 
-                          alt={request.memberName}
-                        />
+                        {/* ✅ FIX: Avatar 404-proof (Conditional Rendering) */}
+                        {request.avatar_url ? (
+                          <AvatarImage
+                            src={request.avatar_url}
+                            alt={request.memberName}
+                          />
+                        ) : null}
+
                         <AvatarFallback className="bg-slate-200 font-bold text-slate-700 uppercase">
                           {request.memberName ? request.memberName.charAt(0) : 'U'}
                         </AvatarFallback>
