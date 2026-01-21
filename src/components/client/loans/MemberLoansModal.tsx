@@ -76,7 +76,8 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        {/* ✅ FIX: Added aria-describedby to solve console warning */}
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl border-b pb-4">
               <div className="bg-blue-100 p-2 rounded-full"><User className="h-5 w-5 text-blue-600"/></div>
