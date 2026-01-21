@@ -59,27 +59,36 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
     }
   }, [isOpen]);
 
-  // 2. ✅ Check Active Loan (Converted Store Logic to Supabase Query)
+  // 2. ✅ Check Active Loan (UPDATED LOGIC: Allow < 2 loans)
   useEffect(() => {
     const checkActiveLoan = async () => {
       if (selectedMemberId && clientId) {
         // Query loans table
-        const { data: activeLoans } = await supabase
+        const { data: loans } = await supabase
           .from('loans')
-          .select('amount, remaining_balance')
-          // ✅ CHANGE #3: Added client_id filter & pending status check
-          .eq('client_id', clientId)          // 🔴 MISSING FILTER
+          .select('status, remaining_balance, amount')
+          .eq('client_id', clientId)        
           .eq('member_id', selectedMemberId)
-          .in('status', ['active', 'pending']) // 🔴 pending bhi check karo
-          .gt('remaining_balance', 0); 
+          .in('status', ['active', 'pending']); // Check both active and pending
       
-        if (activeLoans && activeLoans.length > 0) {
-          const loan = activeLoans[0];
-          const balance = loan.remaining_balance || loan.amount; // Fallback to amount if balance is null
-          
-          setActiveLoanWarning(`This member already has an active loan of ₹${balance.toLocaleString()}. New loan requests may be subject to additional review.`);
-        } else {
-          setActiveLoanWarning('');
+        if (loans) {
+            // Count active and pending separately
+            const activeCount = loans.filter(l => l.status === 'active').length;
+            const pendingCount = loans.filter(l => l.status === 'pending').length;
+
+            // Logic: Warn only if limit reached
+            if (activeCount >= 2) {
+                setActiveLoanWarning(`This member has reached the limit of 2 active loans.`);
+            } else if (pendingCount > 0) {
+                setActiveLoanWarning(`This member already has a pending loan request.`);
+            } else if (activeCount === 1) {
+                 // Informative warning (allowed but inform)
+                 const loan = loans.find(l => l.status === 'active');
+                 const balance = loan?.remaining_balance || loan?.amount || 0;
+                 setActiveLoanWarning(`Note: Member has 1 active loan (₹${balance.toLocaleString()}). Request allowed (Max 2).`);
+            } else {
+                setActiveLoanWarning('');
+            }
         }
       } else {
         setActiveLoanWarning('');
@@ -95,7 +104,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
     }
   }, [preSelectedMemberId, isOpen]);
 
-  // 3. ✅ Submit Handler (Converted to Supabase Insert)
+  // 3. ✅ Submit Handler (UPDATED LOGIC: Enforce 2 Loan Limit)
   const handleSubmit = async () => {
     if (!selectedMemberId || !clientId) {
       alert('Please select a member');
@@ -107,18 +116,29 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
     try {
       const amountVal = loanAmount ? parseFloat(loanAmount) : 0;
       
-      // ✅ DIFF–4: Pending loan guard (IMPORTANT)
-      const { data: activeLoans } = await supabase
+      // ✅ DIFF–4: Updated Pending/Active guard (CRITICAL FIX)
+      const { data: loans } = await supabase
         .from('loans')
-        .select('id')
+        .select('status')
         .eq('client_id', clientId)
         .eq('member_id', selectedMemberId)
         .in('status', ['active', 'pending']);
 
-      if (activeLoans && activeLoans.length > 0) {
-        alert('This member already has an active or pending loan.');
-        setIsSubmitting(false);
-        return;
+      if (loans) {
+          const activeCount = loans.filter(l => l.status === 'active').length;
+          const pendingCount = loans.filter(l => l.status === 'pending').length;
+
+          // RULE: Stop if 2+ Active OR 1+ Pending
+          if (activeCount >= 2) {
+              alert('Loan Limit Reached: This member already has 2 active loans.');
+              setIsSubmitting(false);
+              return;
+          }
+          if (pendingCount > 0) {
+              alert('Pending Request Exists: Please wait for the existing request to be approved or rejected.');
+              setIsSubmitting(false);
+              return;
+          }
       }
       
       // Calculations (Frontend Safe - Kept for logic but NOT inserted)
@@ -150,7 +170,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
       } else {
         alert(`Error: ${error.message}`);
       }
-    } catch (error) {
+    } catch (error: any) { // Type check added
       console.error('Error submitting loan request:', error);
       alert('An error occurred while submitting loan request');
     } finally {
@@ -216,8 +236,8 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
 
           {/* Warning for Active Loans */}
           {activeLoanWarning && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
+            <Alert className={activeLoanWarning.includes('allowed') ? "border-blue-200 bg-blue-50 text-blue-800" : "border-red-200 bg-red-50 text-red-800"}>
+              <AlertTriangle className={`h-4 w-4 ${activeLoanWarning.includes('allowed') ? "text-blue-600" : "text-red-600"}`} />
               <AlertDescription>
                 {activeLoanWarning}
               </AlertDescription>
@@ -262,7 +282,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
             <Button
               onClick={handleSubmit}
               className="flex-1 bg-orange-600 hover:bg-orange-700"
-              disabled={isSubmitting || !selectedMemberId}
+              disabled={isSubmitting || !selectedMemberId || activeLoanWarning.includes('limit')}
             >
               {isSubmitting ? 'Submitting...' : 'Send Request'}
             </Button>
