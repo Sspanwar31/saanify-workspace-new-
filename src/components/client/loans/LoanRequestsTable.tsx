@@ -116,10 +116,11 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        {/* ✅ FIX: Added Safe Avatar with Fallback */}
-                        <AvatarImage src={`/avatars/${request.memberId}.jpg`} />
-                        <AvatarFallback className="bg-slate-200 font-bold text-slate-700">
-                          {request.memberName ? request.memberName.charAt(0).toUpperCase() : 'U'}
+                        {/* ✅ FIX: Improved Avatar Logic */}
+                        {/* Note: Browser will still try to fetch image and might show 404 in console if missing, but UI will fallback correctly */}
+                        <AvatarImage src={`/avatars/${request.memberId}.jpg`} alt={request.memberName} />
+                        <AvatarFallback className="bg-slate-200 font-bold text-slate-700 uppercase">
+                          {request.memberName ? request.memberName.charAt(0) : 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col justify-center">
