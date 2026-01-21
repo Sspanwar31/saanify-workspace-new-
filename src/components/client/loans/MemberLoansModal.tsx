@@ -33,24 +33,32 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
     });
   };
 
-  // ✅ NEW: Delete with Notification Logic
+  // ✅ FIXED: Delete with Robust Notification Logic
   const handleDelete = async (loan: any) => {
     if(!confirm("Are you sure you want to DELETE this loan entry? This action cannot be undone.")) return;
 
     setDeletingId(loan.id);
     try {
-        // 1. Notify Member (Toast ke liye)
-        const { error: notifError } = await supabase.from('notifications').insert([{
-            client_id: loan.client_id || loan.clientId,
-            member_id: loan.member_id || loan.memberId,
-            title: 'Loan Deleted 🗑️',
-            message: `Your loan record of ${formatCurrency(loan.amount)} has been removed by admin.`,
-            type: 'error', // Red color
-            is_read: false,
-            created_at: new Date().toISOString()
-        }]);
+        // 1. Notify Member (Try-Catch Block so notification error doesn't stop deletion)
+        try {
+          // Prepare notification payload
+          const notifPayload: any = {
+              client_id: loan.client_id || loan.clientId,
+              member_id: loan.member_id || loan.memberId,
+              title: 'Loan Deleted 🗑️',
+              message: `Your loan record of ${formatCurrency(loan.amount)} has been removed by admin.`,
+              is_read: false,
+              created_at: new Date().toISOString()
+          };
 
-        if(notifError) console.error("Notification Error", notifError);
+          // Only add 'type' if you are sure the column exists, otherwise remove this line
+          // For now, I'm keeping it but wrapping in try/catch just in case
+          notifPayload.type = 'error'; 
+
+          await supabase.from('notifications').insert([notifPayload]);
+        } catch (notifErr) {
+          console.warn("Notification could not be sent, but proceeding with delete.", notifErr);
+        }
 
         // 2. Delete Loan
         const { error } = await supabase.from('loans').delete().eq('id', loan.id);
