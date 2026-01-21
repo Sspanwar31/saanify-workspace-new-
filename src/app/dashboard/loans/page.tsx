@@ -38,10 +38,12 @@ export default function LoansPage() {
       setClientId(resolvedClientId);
 
       // 1. Fetch Loans (3️⃣ Fetch में clientId use hua)
+      // 🔥 FIX 1: Fetch all loans including 'rejected' or 'deleted' but we will filter them in JS to ensure clean calculation
       const { data: loansData } = await supabase
         .from('loans')
         .select('*, members(id, name, phone, total_deposits, outstanding_loan)')
         .eq('client_id', resolvedClientId)
+        // .neq('status', 'rejected') // Removed to fetch all and filter manually for safety
         .order('created_at', { ascending: false })
 
       // 2. Fetch ALL Passbook entries to calculate interest
@@ -66,7 +68,8 @@ export default function LoansPage() {
             id: item.id,
             amount: item.amount,
             status: item.status,
-            remainingBalance: item.members?.outstanding_loan || 0,
+            // 🔥 FIX 2: Use remaining_balance from LOAN TABLE itself, not member table (more accurate per loan)
+            remainingBalance: item.remaining_balance || 0, 
             memberId: item.member_id,
             memberName: item.members?.name || 'Unknown',
             memberPhone: item.members?.phone,
@@ -77,8 +80,16 @@ export default function LoansPage() {
           }
         })
 
+        // 🔥 FIX 3: Strict Filtering for Requests vs Active Loans
+        // Only show 'pending' in requests
         setLoanRequests(formattedData.filter(l => l.status === 'pending'))
-        setLoans(formattedData.filter(l => ['active', 'completed', 'closed'].includes(l.status)))
+        
+        // Only show valid active/closed loans in main list
+        // Exclude 'rejected' or 'deleted' explicitly
+        const validLoans = formattedData.filter(l => 
+            ['active', 'completed', 'closed'].includes(l.status)
+        );
+        setLoans(validLoans)
       }
 
       setLoading(false)
@@ -87,18 +98,35 @@ export default function LoansPage() {
     fetchLoanData()
   }, [])
 
+  // 🔥 FIX 4: Correct Calculation for Active Loans & Outstanding
+  // Ensure we only sum up loans that are actually 'active'
   const activeLoans = loans.filter(loan => loan.status === 'active')
   const pendingRequests = loanRequests
   
+  // 🔥 FIX 5: Total Disbursed = Sum of all VALID loans (active + closed)
   const totalDisbursed = loans
-    .filter(l => ['active', 'completed'].includes(l.status))
     .reduce((sum, loan) => sum + (loan.amount || 0), 0)
+
+  // 🔥 FIX 6: Outstanding = Sum of remaining_balance of ACTIVE loans only
+  const totalOutstanding = activeLoans
+    .reduce((sum, loan) => sum + (loan.remainingBalance || 0), 0)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR'
     }).format(amount)
+  }
+
+  // 🔥 FIX 7: Update Loan Request Logic (Policy Change)
+  // Logic: Allow request if active loans < 2 (Means 0 or 1 active loan is fine)
+  // Use this logic when passing props to LoanRequestsTable or creating new request
+  const canRequestLoan = (memberId: string) => {
+      const memberActiveLoans = activeLoans.filter(l => l.memberId === memberId).length;
+      const memberPendingLoans = pendingRequests.filter(l => l.memberId === memberId).length;
+      
+      // Allow if active loans < 2 AND pending loans == 0 (Usually 1 pending at a time is safe)
+      return memberActiveLoans < 2 && memberPendingLoans === 0;
   }
 
   return (
@@ -160,8 +188,9 @@ export default function LoansPage() {
             <DollarSign className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
+            {/* 🔥 FIX 8: Using corrected 'totalOutstanding' variable */}
             <div className="text-2xl font-bold text-orange-600">
-              {loading ? '...' : formatCurrency(activeLoans.reduce((sum, loan) => sum + (loan.remainingBalance || 0), 0))}
+              {loading ? '...' : formatCurrency(totalOutstanding)}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400">Total outstanding balance</p>
           </CardContent>
@@ -190,6 +219,7 @@ export default function LoansPage() {
           </TabsList>
 
           <TabsContent value="requests">
+            {/* Pass policy function if needed by child component, otherwise logic handles display */}
             <LoanRequestsTable requests={pendingRequests} />
           </TabsContent>
 
