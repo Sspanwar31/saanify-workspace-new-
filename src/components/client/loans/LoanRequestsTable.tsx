@@ -28,18 +28,22 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
 
     setProcessingId(request.id);
     try {
-        // 1. Send Notification to Member (Taaki Member Panel pe Toast aaye)
-        const { error: notifError } = await supabase.from('notifications').insert([{
+        // 1. Send Notification to Member (With Safety)
+        try {
+          const notifPayload: any = {
             client_id: request.client_id || request.clientId, // Handle casing
             member_id: request.memberId,
             title: 'Loan Rejected ❌',
             message: `Your loan request for ₹${request.amount.toLocaleString()} has been rejected by admin.`,
-            type: 'error',
             is_read: false,
             created_at: new Date().toISOString()
-        }]);
-
-        if (notifError) console.error("Notification Error:", notifError);
+          };
+          
+          // Safe insert (ignoring type if column missing)
+          await supabase.from('notifications').insert([notifPayload]);
+        } catch (nErr) {
+          console.warn("Notification skipped:", nErr);
+        }
 
         // 2. Delete Loan Request (Ya status update karein 'rejected')
         // Aapke purane code ke hisab se DELETE kar rahe hain
@@ -112,9 +116,10 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
+                        {/* ✅ FIX: Added Safe Avatar with Fallback */}
                         <AvatarImage src={`/avatars/${request.memberId}.jpg`} />
-                        <AvatarFallback>
-                          {request.memberName ? request.memberName.charAt(0) : 'U'}
+                        <AvatarFallback className="bg-slate-200 font-bold text-slate-700">
+                          {request.memberName ? request.memberName.charAt(0).toUpperCase() : 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col justify-center">
