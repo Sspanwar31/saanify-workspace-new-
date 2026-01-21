@@ -72,7 +72,8 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             .select('deposit_amount, payment_mode') // 'type' ki jagah safe column lo
             .eq('member_id', loanData.member_id);
 
-          console.log('PASSBOOK RAW', passbookData);
+          // ❌ Debug Log Removed as requested
+          // console.log('PASSBOOK RAW', passbookData);
 
           // Calculate Total (Filter removed as per instructions)
           const totalDeposits = (passbookData || [])
@@ -171,7 +172,8 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      {/* ✅ FIX 1: Added aria-describedby */}
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -191,9 +193,10 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
             <CardContent>
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
+                  {/* ✅ FIX 2: Added Fallback for Avatar */}
                   <AvatarImage src={`/avatars/${request.memberId}.jpg`} />
                   <AvatarFallback className="bg-blue-100 text-blue-800 text-lg font-semibold">
-                    {request.memberName.split(' ').map((n: string) => n[0]).join('')}
+                    {request.memberName ? request.memberName.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
