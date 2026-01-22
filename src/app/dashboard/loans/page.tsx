@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase-simple' 
+import { useCurrency } from '@/hooks/useCurrency' // ✅ Import karo
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoanRequestsTable } from '@/components/client/loans/LoanRequestsTable'
 import { AllLoansTable } from '@/components/client/loans/AllLoansTable'
@@ -15,6 +16,9 @@ export default function LoansPage() {
   
   // 1️⃣ clientId state
   const [clientId, setClientId] = useState(''); 
+
+  // ✅ Hook call karo
+  const { formatCurrency, symbol } = useCurrency(); 
 
   // 2️⃣ useEffect में SAFE CLIENT ID
   useEffect(() => {
@@ -114,12 +118,7 @@ export default function LoansPage() {
   const totalOutstanding = activeLoans
     .reduce((sum, loan) => sum + (loan.remainingBalance || 0), 0)
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount)
-  }
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   // 🔥 FIX 7: Update Loan Request Logic (Policy Change)
   // Logic: Allow request if active loans < 2 (Means 0 or 1 active loan is fine)
