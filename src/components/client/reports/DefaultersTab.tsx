@@ -4,20 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 interface DefaultersTabProps {
   data: any[]; // Array of defaulters with member details
 }
 
 export default function DefaultersTab({ data }: DefaultersTabProps) {
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    }).format(amount || 0);
-  };
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   return (
     <div className="mt-6">
@@ -45,7 +42,7 @@ export default function DefaultersTab({ data }: DefaultersTabProps) {
                 {data.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-green-600 font-medium">
-                      Great news! No defaulters found.
+                        Great news! No defaulters found.
                     </TableCell>
                   </TableRow>
                 ) : (
