@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Layers } from 'lucide-react';
 import { MemberLoansModal } from './MemberLoansModal';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
-const formatCurrency = (val: number) => 
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
+// ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-';
@@ -23,6 +23,10 @@ const getNextEMI = (startDate: string) => {
 };
 
 export function AllLoansTable({ loans }: { loans: any[] }) {
+  
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
   const [viewingMember, setViewingMember] = useState<{name: string, loans: any[]} | null>(null);
 
   // --- LOGIC: GROUPING & SUMMING (FIXED FOR INTEREST) ---
@@ -41,7 +45,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
       // First entry initialization
       acc[key] = {
         ...loan, 
-        count: 1, 
+        count:1, 
         rawLoans: [loan],
         
         // Initialize Totals
