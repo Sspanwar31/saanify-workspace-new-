@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 // Modals
 import PassbookAddEntryModal from '@/components/client/PassbookAddEntryModal';
@@ -35,6 +36,9 @@ export default function PassbookPage() {
   const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<any>(null);
   
+  // ✅ Hook call karo
+  const { formatCurrency, symbol } = useCurrency(); 
+
   // Data States
   const [members, setMembers] = useState<any[]>([]);
   const [passbook, setPassbook] = useState<any[]>([]);
@@ -203,9 +207,7 @@ export default function PassbookPage() {
     return member?.name || 'Unknown';
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount || 0);
-  };
+  // ✅ Purana formatCurrency remove kar diya (Hook use ho raha hai)
 
   // --- FILTERS & PAGINATION LOGIC --- 
   
