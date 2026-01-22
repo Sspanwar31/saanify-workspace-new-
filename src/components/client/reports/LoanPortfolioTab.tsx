@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, TrendingUp, AlertTriangle, Percent } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 interface LoanPortfolioTabProps {
   loans: any[]; // List of loans
@@ -16,14 +17,10 @@ interface LoanPortfolioTabProps {
 }
 
 export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfolioTabProps) {
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    }).format(amount || 0);
-  };
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   return (
     <div className="space-y-6 mt-6">
@@ -103,7 +100,7 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
               <TableBody>
                 {loans.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-8">
                       No loans found matching filters.
                     </TableCell>
                   </TableRow>
@@ -138,7 +135,7 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
                         <TableCell className="text-right">
                           <Badge 
                             variant={loan.status === 'ACTIVE' ? 'destructive' : 
-                                     loan.status === 'COMPLETED' ? 'default' : 'secondary'}
+                                             loan.status === 'COMPLETED' ? 'default' : 'secondary'}
                             className={loan.status === 'ACTIVE' ? 'bg-red-100 text-red-800 hover:bg-red-200' : ''}
                           >
                             {loan.status}
