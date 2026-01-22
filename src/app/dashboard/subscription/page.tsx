@@ -72,17 +72,18 @@ export default function SubscriptionPage() {
         const client = clients[0];
         setClientId(client.id);
 
-        // 2. Check for Pending Orders (Verification Pending Screen Logic)
-        const { data: pending } = await supabase
+        // 2. Check for Pending Orders (FIXED: Removing .single() to avoid 406 Error)
+        const { data: pendingData, error } = await supabase
           .from('subscription_orders')
           .select('*')
           .eq('client_id', client.id)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
 
-        if (pending) setPendingOrder(pending);
+        if (!error && pendingData && pendingData.length > 0) {
+           setPendingOrder(pendingData[0]);
+        }
 
         // 3. Calculate Subscription Details
         const today = new Date();
