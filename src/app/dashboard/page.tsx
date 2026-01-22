@@ -67,12 +67,6 @@ export default function ClientDashboard() {
                 }
             }
 
-            // --- DEBUG LOG START ---
-            console.log("[DEBUG] Fetching Data for User ID:", userId);
-            console.log("[DEBUG] User Role:", userRole);
-            console.log("[DEBUG] Permissions:", permissions);
-            // --- DEBUG LOG END ---
-
             // --- FETCH DATA FOR DASHBOARD ---
             
             const canViewPassbook = userRole === 'client_admin' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
@@ -105,13 +99,6 @@ export default function ClientDashboard() {
                 passbookReq, expenseReq, loansReq, membersReq
             ]);
 
-            // --- DEBUG LOG RESULT ---
-            console.log("[DEBUG] Passbook Data:", passbookRes.data);
-            console.log("[DEBUG] Expense Data:", expenseRes.data);
-            console.log("[DEBUG] Loans Data:", loansRes.data);
-            console.log("[DEBUG] Members Data:", membersRes.data);
-            // ------------------------
-
             calculateFinancials(
                 passbookRes.data || [], 
                 expenseRes.data || [], 
@@ -120,7 +107,7 @@ export default function ClientDashboard() {
             );
 
         } catch(e) {
-            console.error("Error fetching dashboard data:", e);
+            // console.error("Error fetching dashboard data:", e);
         } finally {
             setLoading(false);
         }
