@@ -61,7 +61,6 @@ export default function PassbookPage() {
   });
 
   // --- 1. Fetch Client ID (REPLACED) ---
-  // ✅ STEP 2: इसकी जगह ये डालो
   useEffect(() => {
     const userStr = localStorage.getItem('current_user');
     if (!userStr) return;
@@ -134,7 +133,6 @@ export default function PassbookPage() {
 
     if (data) {
       // ✅ NO AUTO CALCULATION HERE. TRUST DATABASE.
-      // Database me jo save hua hai, wahi final hai.
       setPassbook(data);
 
       // Stats Calculation (Simple Sum)
@@ -207,8 +205,6 @@ export default function PassbookPage() {
     return member?.name || 'Unknown';
   };
 
-  // ✅ Purana formatCurrency remove kar diya (Hook use ho raha hai)
-
   // --- FILTERS & PAGINATION LOGIC --- 
   
   // 1. Filter Data
@@ -250,10 +246,10 @@ export default function PassbookPage() {
         </div>
         
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Button variant="outline" onClick={fetchPassbook} className="bg-white">
+          <Button variant="outline" onClick={fetchPassbook} className="bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700">
             <RefreshCw className="h-4 w-4 mr-2" /> Refresh
           </Button>
-          <Button variant="outline" onClick={handleExport} className="bg-white">
+          <Button variant="outline" onClick={handleExport} className="bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700">
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
           <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={() => setIsLoanModalOpen(true)}>
@@ -273,14 +269,14 @@ export default function PassbookPage() {
           { label: 'Total Interest', val: stats.totalInterest, icon: DollarSign, color: 'purple' },
           { label: 'Total Fine', val: stats.totalFine, icon: FileText, color: 'red' },
         ].map((stat, i) => (
-          <Card key={i}>
+          <Card key={i} className="dark:bg-slate-900 dark:border-slate-800">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                <h3 className={`text-2xl font-bold text-${stat.color}-600`}>{formatCurrency(stat.val)}</h3>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
+                <h3 className={`text-2xl font-bold text-${stat.color}-600 dark:text-${stat.color}-400`}>{formatCurrency(stat.val)}</h3>
               </div>
-              <div className={`p-3 bg-${stat.color}-100 rounded-full`}>
-                <stat.icon className={`h-6 w-6 text-${stat.color}-600`}/>
+              <div className={`p-3 bg-${stat.color}-100 dark:bg-${stat.color}-900/20 rounded-full`}>
+                <stat.icon className={`h-6 w-6 text-${stat.color}-600 dark:text-${stat.color}-400`}/>
               </div>
             </CardContent>
           </Card>
@@ -288,14 +284,14 @@ export default function PassbookPage() {
       </div>
 
       {/* Modern Filter Bar */}
-      <div className="flex flex-col xl:flex-row gap-4 items-end xl:items-center bg-white p-4 rounded-lg border shadow-sm">
+      <div className="flex flex-col xl:flex-row gap-4 items-end xl:items-center bg-white dark:bg-slate-900 p-4 rounded-lg border dark:border-slate-800 shadow-sm">
         
         {/* Search */}
         <div className="relative w-full xl:w-96">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input 
             placeholder="Search by member name or payment mode..." 
-            className="pl-10"
+            className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -304,65 +300,65 @@ export default function PassbookPage() {
         {/* Date Range */}
         <div className="flex items-center gap-2 w-full xl:w-auto">
           <div className="grid gap-1">
-            <span className="text-[10px] uppercase font-bold text-gray-500 ml-1">From</span>
-            <Input type="date" className="w-full xl:w-40" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <span className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 ml-1">From</span>
+            <Input type="date" className="w-full xl:w-40 dark:bg-slate-800 dark:border-slate-700 dark:text-white" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div className="grid gap-1">
-            <span className="text-[10px] uppercase font-bold text-gray-500 ml-1">To</span>
-            <Input type="date" className="w-full xl:w-40" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <span className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 ml-1">To</span>
+            <Input type="date" className="w-full xl:w-40 dark:bg-slate-800 dark:border-slate-700 dark:text-white" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
         </div>
 
         {/* Rows Per Page */}
         <div className="grid gap-1 min-w-[100px]">
-           <span className="text-[10px] uppercase font-bold text-gray-500 ml-1">Rows</span>
+           <span className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 ml-1">Rows</span>
            <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-            <SelectTrigger>
+            <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700 dark:text-white">
               <SelectValue placeholder="10" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10 Rows</SelectItem>
-              <SelectItem value="25">25 Rows</SelectItem>
-              <SelectItem value="50">50 Rows</SelectItem>
-              <SelectItem value="100">100 Rows</SelectItem>
+            <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+              <SelectItem value="10" className="dark:text-white dark:focus:bg-slate-700">10 Rows</SelectItem>
+              <SelectItem value="25" className="dark:text-white dark:focus:bg-slate-700">25 Rows</SelectItem>
+              <SelectItem value="50" className="dark:text-white dark:focus:bg-slate-700">50 Rows</SelectItem>
+              <SelectItem value="100" className="dark:text-white dark:focus:bg-slate-700">100 Rows</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Reset Filter Button */}
         {(searchTerm || startDate || endDate) && (
-          <Button variant="ghost" onClick={resetFilters} className="text-red-500 hover:text-red-700 hover:bg-red-50 h-10 mt-6 xl:mt-0">
+          <Button variant="ghost" onClick={resetFilters} className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-10 mt-6 xl:mt-0">
             <X className="h-4 w-4 mr-1" /> Clear
           </Button>
         )}
       </div>
 
       {/* Passbook Table */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-gray-50/80">
-              <TableRow>
-                <TableHead className="w-[140px]">Date</TableHead>
-                <TableHead>Member</TableHead>
-                <TableHead>Mode</TableHead>
-                <TableHead className="text-green-600 font-semibold">Deposit</TableHead>
-                <TableHead className="text-blue-600 font-semibold">Installment</TableHead>
-                <TableHead className="text-purple-600 font-semibold">Int. + Fine</TableHead>
-                <TableHead className="text-right font-bold bg-gray-100/50">Total Amount</TableHead>
-                <TableHead className="text-right w-[100px]">Actions</TableHead>
+            <TableHeader className="bg-gray-50/80 dark:bg-slate-800">
+              <TableRow className="dark:border-slate-700">
+                <TableHead className="w-[140px] dark:text-gray-300">Date</TableHead>
+                <TableHead className="dark:text-gray-300">Member</TableHead>
+                <TableHead className="dark:text-gray-300">Mode</TableHead>
+                <TableHead className="text-green-600 font-semibold dark:text-green-400">Deposit</TableHead>
+                <TableHead className="text-blue-600 font-semibold dark:text-blue-400">Installment</TableHead>
+                <TableHead className="text-purple-600 font-semibold dark:text-purple-400">Int. + Fine</TableHead>
+                <TableHead className="text-right font-bold bg-gray-100/50 dark:bg-slate-800/50 dark:text-white">Total Amount</TableHead>
+                <TableHead className="text-right w-[100px] dark:text-gray-300">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-12 text-gray-500 dark:text-gray-400">
                     <div className="flex justify-center items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin"/> Loading records...</div>
                   </TableCell>
                 </TableRow>
               ) : paginatedEntries.length === 0 ? (
                 <TableRow>
-                   <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                   <TableCell colSpan={8} className="text-center py-12 text-gray-500 dark:text-gray-400">
                      No records found matching your filters.
                    </TableCell>
                 </TableRow>
@@ -371,38 +367,38 @@ export default function PassbookPage() {
                   const intFine = (entry.interest_amount || 0) + (entry.fine_amount || 0);
                   
                   return (
-                    <TableRow key={entry.id} className="hover:bg-gray-50 transition-colors">
-                      <TableCell className="text-gray-600 font-medium">
+                    <TableRow key={entry.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors dark:border-slate-700">
+                      <TableCell className="text-gray-600 font-medium dark:text-gray-300">
                         {new Date(entry.date).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'})}
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-gray-900 dark:text-white">
                           {entry.member_name || getMemberName(entry.member_id)}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="uppercase text-[10px] tracking-wide font-normal bg-white">
+                        <Badge variant="outline" className="uppercase text-[10px] tracking-wide font-normal bg-white dark:bg-slate-800 dark:text-gray-300 dark:border-slate-700">
                           {entry.payment_mode}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-medium text-green-600">
+                      <TableCell className="font-medium text-green-600 dark:text-green-400">
                         {entry.deposit_amount > 0 ? `+${formatCurrency(entry.deposit_amount)}` : '-'}
                       </TableCell>
-                      <TableCell className="font-medium text-blue-600">
+                      <TableCell className="font-medium text-blue-600 dark:text-blue-400">
                         {entry.installment_amount > 0 ? formatCurrency(entry.installment_amount) : '-'}
                       </TableCell>
-                      <TableCell className="font-medium text-purple-600">
+                      <TableCell className="font-medium text-purple-600 dark:text-purple-400">
                         {intFine > 0 ? formatCurrency(intFine) : '-'}
                       </TableCell>
-                      <TableCell className="text-right font-bold text-gray-800 bg-gray-50/30">
+                      <TableCell className="text-right font-bold text-gray-800 bg-gray-50/30 dark:bg-slate-800/30 dark:text-white">
                         {formatCurrency(entry.total_amount)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50" onClick={() => handleEditEntry(entry)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20" onClick={() => handleEditEntry(entry)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => handleDeleteEntry(entry)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => handleDeleteEntry(entry)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -416,9 +412,9 @@ export default function PassbookPage() {
 
           {/* Modern Pagination Footer */}
           {filteredEntries.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t bg-gray-50/30 gap-4">
-              <div className="text-sm text-gray-500">
-                Showing <span className="font-medium text-gray-900">{startIndex + 1}</span> to <span className="font-medium text-gray-900">{Math.min(startIndex + limit, filteredEntries.length)}</span> of <span className="font-medium text-gray-900">{filteredEntries.length}</span> entries
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t bg-gray-50/30 dark:bg-slate-900 dark:border-slate-800 gap-4">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Showing <span className="font-medium text-gray-900 dark:text-white">{startIndex + 1}</span> to <span className="font-medium text-gray-900 dark:text-white">{Math.min(startIndex + limit, filteredEntries.length)}</span> of <span className="font-medium text-gray-900 dark:text-white">{filteredEntries.length}</span> entries
               </div>
               <div className="flex gap-2">
                 <Button
@@ -426,11 +422,11 @@ export default function PassbookPage() {
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="bg-white min-w-[80px]"
+                  className="bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white min-w-[80px]"
                 >
                   Previous
                 </Button>
-                <div className="flex items-center justify-center px-4 font-medium text-sm text-gray-600">
+                <div className="flex items-center justify-center px-4 font-medium text-sm text-gray-600 dark:text-gray-300">
                   Page {currentPage} of {totalPages}
                 </div>
                 <Button
@@ -438,7 +434,7 @@ export default function PassbookPage() {
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="bg-white min-w-[80px]"
+                  className="bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white min-w-[80px]"
                 >
                   Next
                 </Button>
