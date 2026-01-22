@@ -4,23 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, TrendingUp, AlertTriangle, Percent } from 'lucide-react';
-import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
+import { useCurrency } from '@/hooks/useCurrency'; 
 
 interface LoanPortfolioTabProps {
-  loans: any[]; // List of loans
-  summary: {    // Summary stats
+  loans: any[]; 
+  summary: {    
     issued: number;
     recovered: number;
     pending: number;
   };
-  members: any[]; // Member list for name lookup
+  members: any[]; 
 }
 
 export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfolioTabProps) {
-  // ✅ Hook call karo
   const { formatCurrency } = useCurrency();
-
-  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   return (
     <div className="space-y-6 mt-6">
@@ -88,11 +85,12 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
             <Table>
               <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
                 <TableRow>
+                  {/* ✅ Fixed Sequence: Date Added Here */}
+                  <TableHead className="w-[100px]">Start Date</TableHead>
                   <TableHead className="w-[180px]">Member</TableHead>
                   <TableHead>Loan Amount</TableHead>
                   <TableHead>Principal Paid</TableHead>
                   <TableHead>Balance</TableHead>
-                  {/* ✅ Fixed: Header changed to Interest Amount */}
                   <TableHead>Interest Amount</TableHead>
                   <TableHead className="text-right">Status</TableHead>
                 </TableRow>
@@ -100,20 +98,21 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
               <TableBody>
                 {loans.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       No loans found matching filters.
                     </TableCell>
                   </TableRow>
                 ) : (
                   loans.map((loan: any, i: number) => {
                     const member = members.find(m => m.id === loan.memberId);
-                    
-                    // Note: loan.principalPaid is already calculated in useReportLogic
-                    // But keeping this fallback for safety as per your request
                     const principalPaid = (loan.amount || 0) - (loan.remainingBalance || 0);
 
                     return (
                       <TableRow key={i} className="hover:bg-gray-50 transition-colors">
+                        {/* ✅ Added Date Cell */}
+                        <TableCell className="text-gray-500 font-medium">
+                            {new Date(loan.start_date || loan.createdAt).toLocaleDateString()}
+                        </TableCell>
                         <TableCell className="font-medium text-gray-900">
                           {member?.name || 'Unknown Member'}
                         </TableCell>
@@ -127,7 +126,6 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
                           {formatCurrency(loan.remainingBalance)}
                         </TableCell>
                         
-                        {/* ✅ Fixed: Now shows Currency Amount instead of % */}
                         <TableCell className="text-purple-600 font-medium">
                            {formatCurrency(loan.interestRate)}
                         </TableCell>
