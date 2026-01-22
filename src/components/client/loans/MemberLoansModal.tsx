@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, User, Lock, Loader2 } from 'lucide-react';
 import { EditLoanModal } from './EditLoanModal';
 import { toast } from 'sonner';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 interface MemberLoansModalProps {
   isOpen: boolean;
@@ -20,11 +21,12 @@ interface MemberLoansModalProps {
 }
 
 export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberLoansModalProps) {
+  const { formatCurrency } = useCurrency(); // ✅ Hook call karo
+
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
@@ -51,7 +53,7 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
               created_at: new Date().toISOString()
           };
 
-          // Only add 'type' if you are sure the column exists, otherwise remove this line
+          // Only add 'type' if you are sure column exists, otherwise remove this line
           // For now, I'm keeping it but wrapping in try/catch just in case
           notifPayload.type = 'error'; 
 
