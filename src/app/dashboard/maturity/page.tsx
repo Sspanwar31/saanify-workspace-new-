@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { format } from 'date-fns'
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 export interface MaturityData {
   memberId: string
@@ -39,6 +40,8 @@ export interface MaturityData {
 }
 
 export default function MaturityPage() {
+  const { formatCurrency } = useCurrency(); // ✅ Hook call karo
+
   const [isMounted, setIsMounted] = useState(false)
   
   const [maturityData, setMaturityData] = useState<MaturityData[]>([])
@@ -245,7 +248,7 @@ export default function MaturityPage() {
             <CardTitle className="text-sm font-medium text-green-900">Current Deposits</CardTitle>
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-green-600">₹{totalCurrentDeposit.toLocaleString()}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold text-green-600">{formatCurrency(totalCurrentDeposit)}</div></CardContent>
         </Card>
 
         <Card className="border-purple-100">
@@ -253,7 +256,7 @@ export default function MaturityPage() {
             <CardTitle className="text-sm font-medium text-purple-900">Interest Liability</CardTitle>
             <Percent className="h-4 w-4 text-purple-600" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-purple-600">₹{totalMonthlyInterestLiability.toFixed(0).toLocaleString()}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold text-purple-600">{formatCurrency(totalMonthlyInterestLiability)}</div></CardContent>
         </Card>
 
         <Card className="border-red-100">
@@ -261,7 +264,7 @@ export default function MaturityPage() {
             <CardTitle className="text-sm font-medium text-red-900">Net Payable</CardTitle>
             <Calculator className="h-4 w-4 text-red-600" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-green-600">₹{totalNetPayable.toLocaleString()}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold text-green-600">{formatCurrency(totalNetPayable)}</div></CardContent>
         </Card>
       </div>
 
@@ -312,10 +315,10 @@ export default function MaturityPage() {
                         <span>{data.tenure}</span>
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-medium text-green-600">₹{data.monthlyDeposit.toLocaleString()}</TableCell>
-                    <TableCell className="font-medium text-green-600">₹{data.currentDeposit.toLocaleString()}</TableCell>
-                    <TableCell className="font-medium text-green-700">₹{data.targetDeposit.toLocaleString()}</TableCell>
-                    <TableCell className="font-medium text-purple-700">₹{data.projectedInterest.toLocaleString()}</TableCell>
+                    <TableCell className="font-medium text-green-600">{formatCurrency(data.monthlyDeposit)}</TableCell>
+                    <TableCell className="font-medium text-green-600">{formatCurrency(data.currentDeposit)}</TableCell>
+                    <TableCell className="font-medium text-green-700">{formatCurrency(data.targetDeposit)}</TableCell>
+                    <TableCell className="font-medium text-purple-700">{formatCurrency(data.projectedInterest)}</TableCell>
                     
                     {/* Toggle Logic */}
                     <TableCell>
@@ -329,17 +332,17 @@ export default function MaturityPage() {
                           </div>
                         ) : (
                           <span className={`text-sm ${data.isOverride ? 'text-orange-600' : 'text-gray-500'}`}>
-                            ₹{data.settledInterest.toLocaleString()}
+                            {formatCurrency(data.settledInterest)}
                           </span>
                         )}
                       </div>
                     </TableCell>
 
-                    <TableCell className="font-medium text-purple-600">₹{data.monthlyInterestShare.toFixed(0).toLocaleString()}</TableCell>
-                    <TableCell className="font-medium text-purple-600">₹{data.currentAccruedInterest.toFixed(0).toLocaleString()}</TableCell>
-                    <TableCell className="font-medium text-orange-600">₹{data.maturityAmount.toLocaleString()}</TableCell>
-                    <TableCell className="font-medium text-red-600">₹{data.outstandingLoan.toLocaleString()}</TableCell>
-                    <TableCell className="font-bold text-green-600">₹{data.netPayable.toLocaleString()}</TableCell>
+                    <TableCell className="font-medium text-purple-600">{formatCurrency(data.monthlyInterestShare)}</TableCell>
+                    <TableCell className="font-medium text-purple-600">{formatCurrency(data.currentAccruedInterest)}</TableCell>
+                    <TableCell className="font-medium text-orange-600">{formatCurrency(data.maturityAmount)}</TableCell>
+                    <TableCell className="font-medium text-red-600">{formatCurrency(data.outstandingLoan)}</TableCell>
+                    <TableCell className="font-bold text-green-600">{formatCurrency(data.netPayable)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
