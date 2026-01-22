@@ -267,7 +267,7 @@ export default function ClientDashboard() {
     router.push('/login');
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading Dashboard...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950">Loading Dashboard...</div>;
   if (!clientData) return null;
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
@@ -276,99 +276,108 @@ export default function ClientDashboard() {
   const profitMargin = financials.totalIncome > 0 
     ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
     : "0";
+    
+  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-8 space-y-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
       
       {/* HEADER */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{clientData.society_name || 'My Society'}</h1>
-          <p className="text-slate-500 text-sm">Financial Overview • {clientData.name}</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{clientData.society_name || 'My Society'}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
         </div>
         <div className="flex items-center gap-4">
             <div className="text-right hidden md:block">
-            <p className="text-xs text-slate-400 font-mono uppercase">SYSTEM DATE</p>
-            <p className="font-bold text-slate-700">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-mono uppercase">SYSTEM DATE</p>
+            <p className="font-bold text-slate-700 dark:text-slate-200">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500 hover:bg-red-50"><LogOut className="w-5 h-5"/></Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><LogOut className="w-5 h-5"/></Button>
         </div>
       </div>
 
       {/* SECTION 1: FINANCIAL HEALTH */}
       <div className="grid gap-4 md:grid-cols-4">
-        {/* Net Profit Card - Color Changes dynamically */}
-        <Card className={`border-l-4 ${financials.netProfit >= 0 ? 'border-l-green-500 bg-green-50/50' : 'border-l-red-500 bg-red-50/50'}`}>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Net Profit</CardTitle></CardHeader>
+        {/* Net Profit Card */}
+        <Card className={`border-l-4 dark:bg-slate-900 dark:border-slate-800 ${financials.netProfit >= 0 ? 'border-l-green-500 bg-green-50/50 dark:bg-green-900/10' : 'border-l-red-500 bg-red-50/50 dark:bg-red-900/10'}`}>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-300">Net Profit</CardTitle></CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${financials.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <div className={`text-3xl font-bold ${financials.netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                 {formatCurrency(financials.netProfit)}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Actual Earnings</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Actual Earnings</p>
           </CardContent>
         </Card>
 
         {/* Total Income Card */}
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Income</CardTitle></CardHeader>
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Total Income</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(financials.totalIncome)}</div>
-            <div className="flex items-center text-xs text-green-600 mt-1"><TrendingUp className="w-3 h-3 mr-1"/> Interest + Fines</div>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(financials.totalIncome)}</div>
+            <div className="flex items-center text-xs text-green-600 dark:text-green-400 mt-1"><TrendingUp className="w-3 h-3 mr-1"/> Interest + Fines</div>
           </CardContent>
         </Card>
 
-        {/* Total Expense Card (Updated with Maturity) */}
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Expense</CardTitle></CardHeader>
+        {/* Total Expense Card */}
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Total Expense</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(financials.totalExpense)}</div>
-            <div className="flex items-center text-xs text-red-600 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Liability</div>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(financials.totalExpense)}</div>
+            <div className="flex items-center text-xs text-red-600 dark:text-red-400 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Liability</div>
           </CardContent>
         </Card>
 
         {/* Margin Card */}
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Margin</CardTitle></CardHeader>
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Margin</CardTitle></CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${Number(profitMargin) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{profitMargin}%</div>
-            <p className="text-xs text-slate-500 mt-1">Health Indicator</p>
+            <div className={`text-2xl font-bold ${Number(profitMargin) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>{profitMargin}%</div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Health Indicator</p>
           </CardContent>
         </Card>
       </div>
 
       {/* SECTION 2: LIQUIDITY */}
-      <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mt-4">
-        <Landmark className="w-5 h-5 text-orange-600" /> Liquidity Position
+      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mt-4">
+        <Landmark className="w-5 h-5 text-orange-600 dark:text-orange-400" /> Liquidity Position
       </h3>
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-emerald-50 border-emerald-200">
+        {/* Cash Card */}
+        <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900">
            <CardContent className="p-4">
               <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs font-bold text-emerald-700 uppercase">Cash In Hand</span>
-                 <Wallet className="w-4 h-4 text-emerald-600" />
+                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">Cash In Hand</span>
+                 <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="text-2xl font-bold text-emerald-800">{formatCurrency(financials.cashBal)}</div>
+              <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300">{formatCurrency(financials.cashBal)}</div>
            </CardContent>
         </Card>
-        <Card className="bg-blue-50 border-blue-200">
+
+        {/* Bank Card */}
+        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
            <CardContent className="p-4">
               <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs font-bold text-blue-700 uppercase">Bank</span>
-                 <Building2 className="w-4 h-4 text-blue-600" />
+                 <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase">Bank</span>
+                 <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="text-2xl font-bold text-blue-800">{formatCurrency(financials.bankBal)}</div>
+              <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">{formatCurrency(financials.bankBal)}</div>
            </CardContent>
         </Card>
-        <Card className="bg-purple-50 border-purple-200">
+
+        {/* UPI Card */}
+        <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900">
            <CardContent className="p-4">
               <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs font-bold text-purple-700 uppercase">UPI</span>
-                 <Smartphone className="w-4 h-4 text-purple-600" />
+                 <span className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase">UPI</span>
+                 <Smartphone className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               </div>
-              <div className="text-2xl font-bold text-purple-800">{formatCurrency(financials.upiBal)}</div>
+              <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">{formatCurrency(financials.upiBal)}</div>
            </CardContent>
         </Card>
-        <Card className="bg-slate-900 text-white">
+
+        {/* Total Liquidity */}
+        <Card className="bg-slate-900 dark:bg-black text-white border border-slate-700 dark:border-slate-800">
            <CardContent className="p-4">
               <div className="flex justify-between items-center mb-2">
                  <span className="text-xs font-bold text-slate-300 uppercase">Total Liquidity</span>
@@ -382,31 +391,35 @@ export default function ClientDashboard() {
       {/* SECTION 3: ALERTS & CHARTS */}
       <div className="grid gap-6 md:grid-cols-3">
          <div className="space-y-4">
-            <Alert className="bg-yellow-50 border-yellow-200">
-               <AlertCircle className="h-4 w-4 text-yellow-600" />
-               <AlertTitle className="text-yellow-800">System Status</AlertTitle>
-               <AlertDescription className="text-yellow-700">
+            <Alert className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900">
+               <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+               <AlertTitle className="text-yellow-800 dark:text-yellow-400">System Status</AlertTitle>
+               <AlertDescription className="text-yellow-700 dark:text-yellow-500">
                  {financials.pendingLoans > 0 
                    ? `${financials.pendingLoans} active loans.` 
                    : "System updated live from Supabase."}
                </AlertDescription>
             </Alert>
-            <Card>
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                <CardContent className="p-4 flex justify-between items-center">
-                  <div><p className="text-xs text-gray-500">Total Deposits</p><h4 className="text-xl font-bold">{formatCurrency(financials.depositTotal)}</h4></div>
+                  <div><p className="text-xs text-gray-500 dark:text-gray-400">Total Deposits</p><h4 className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(financials.depositTotal)}</h4></div>
                   <Users className="text-orange-500" />
                </CardContent>
             </Card>
          </div>
 
-         <Card className="col-span-2">
-            <CardHeader><CardTitle>Monthly Performance</CardTitle></CardHeader>
+         {/* Chart Card */}
+         <Card className="col-span-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardHeader><CardTitle className="text-slate-900 dark:text-white">Monthly Performance</CardTitle></CardHeader>
             <CardContent className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData.length > 0 ? chartData : [{month: 'No Data', amount: 0}]}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="month" stroke="#94a3b8" />
+                  <Tooltip 
+                    formatter={(value) => formatCurrency(Number(value))}
+                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
+                  />
                   <Bar dataKey="amount" fill="#10B981" radius={[4,4,0,0]} name="Income" />
                 </BarChart>
               </ResponsiveContainer>
