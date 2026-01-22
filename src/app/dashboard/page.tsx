@@ -13,9 +13,12 @@ import {
   BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { supabase } from '@/lib/supabase';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 export default function ClientDashboard() {
   const router = useRouter();
+  const { formatCurrency, symbol } = useCurrency(); // ✅ Hook call karo
+  
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<any>(null);
 
@@ -273,8 +276,6 @@ export default function ClientDashboard() {
   const profitMargin = financials.totalIncome > 0 
     ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
     : "0";
-    
-  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-8 space-y-6">
@@ -301,7 +302,7 @@ export default function ClientDashboard() {
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Net Profit</CardTitle></CardHeader>
           <CardContent>
             <div className={`text-3xl font-bold ${financials.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                {fmt(financials.netProfit)}
+                {formatCurrency(financials.netProfit)}
             </div>
             <p className="text-xs text-slate-500 mt-1">Actual Earnings</p>
           </CardContent>
@@ -311,7 +312,7 @@ export default function ClientDashboard() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Income</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{fmt(financials.totalIncome)}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(financials.totalIncome)}</div>
             <div className="flex items-center text-xs text-green-600 mt-1"><TrendingUp className="w-3 h-3 mr-1"/> Interest + Fines</div>
           </CardContent>
         </Card>
@@ -320,7 +321,7 @@ export default function ClientDashboard() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600">Total Expense</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{fmt(financials.totalExpense)}</div>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(financials.totalExpense)}</div>
             <div className="flex items-center text-xs text-red-600 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Liability</div>
           </CardContent>
         </Card>
@@ -346,7 +347,7 @@ export default function ClientDashboard() {
                  <span className="text-xs font-bold text-emerald-700 uppercase">Cash In Hand</span>
                  <Wallet className="w-4 h-4 text-emerald-600" />
               </div>
-              <div className="text-2xl font-bold text-emerald-800">{fmt(financials.cashBal)}</div>
+              <div className="text-2xl font-bold text-emerald-800">{formatCurrency(financials.cashBal)}</div>
            </CardContent>
         </Card>
         <Card className="bg-blue-50 border-blue-200">
@@ -355,7 +356,7 @@ export default function ClientDashboard() {
                  <span className="text-xs font-bold text-blue-700 uppercase">Bank</span>
                  <Building2 className="w-4 h-4 text-blue-600" />
               </div>
-              <div className="text-2xl font-bold text-blue-800">{fmt(financials.bankBal)}</div>
+              <div className="text-2xl font-bold text-blue-800">{formatCurrency(financials.bankBal)}</div>
            </CardContent>
         </Card>
         <Card className="bg-purple-50 border-purple-200">
@@ -364,7 +365,7 @@ export default function ClientDashboard() {
                  <span className="text-xs font-bold text-purple-700 uppercase">UPI</span>
                  <Smartphone className="w-4 h-4 text-purple-600" />
               </div>
-              <div className="text-2xl font-bold text-purple-800">{fmt(financials.upiBal)}</div>
+              <div className="text-2xl font-bold text-purple-800">{formatCurrency(financials.upiBal)}</div>
            </CardContent>
         </Card>
         <Card className="bg-slate-900 text-white">
@@ -373,7 +374,7 @@ export default function ClientDashboard() {
                  <span className="text-xs font-bold text-slate-300 uppercase">Total Liquidity</span>
                  <CheckCircle className="w-4 h-4 text-green-400" />
               </div>
-              <div className="text-2xl font-bold">{fmt(totalLiquidity)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totalLiquidity)}</div>
            </CardContent>
         </Card>
       </div>
@@ -392,7 +393,7 @@ export default function ClientDashboard() {
             </Alert>
             <Card>
                <CardContent className="p-4 flex justify-between items-center">
-                  <div><p className="text-xs text-gray-500">Total Deposits</p><h4 className="text-xl font-bold">{fmt(financials.depositTotal)}</h4></div>
+                  <div><p className="text-xs text-gray-500">Total Deposits</p><h4 className="text-xl font-bold">{formatCurrency(financials.depositTotal)}</h4></div>
                   <Users className="text-orange-500" />
                </CardContent>
             </Card>
@@ -405,7 +406,7 @@ export default function ClientDashboard() {
                 <BarChart data={chartData.length > 0 ? chartData : [{month: 'No Data', amount: 0}]}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <Tooltip formatter={(value) => fmt(Number(value))} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Bar dataKey="amount" fill="#10B981" radius={[4,4,0,0]} name="Income" />
                 </BarChart>
               </ResponsiveContainer>
