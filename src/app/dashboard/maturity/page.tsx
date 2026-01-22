@@ -208,8 +208,8 @@ export default function MaturityPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Maturity Analysis...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading Maturity Analysis...</p>
         </div>
       </div>
     )
@@ -228,97 +228,97 @@ export default function MaturityPage() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Maturity Module</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">Comprehensive maturity calculations</p>
         </div>
-        <Button variant="outline" onClick={fetchData}>
+        <Button variant="outline" onClick={fetchData} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white">
             <RefreshCw className="h-4 w-4 mr-2" /> Refresh
         </Button>
       </div>
 
       {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-gray-100">
+        <Card className="border-gray-100 dark:border-slate-800 dark:bg-slate-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900">Total Members</CardTitle>
-            <Users className="h-4 w-4 text-gray-600" />
+            <CardTitle className="text-sm font-medium text-gray-900 dark:text-gray-200">Total Members</CardTitle>
+            <Users className="h-4 w-4 text-gray-600 dark:text-gray-400" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-gray-900">{maturityData.length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold text-gray-900 dark:text-white">{maturityData.length}</div></CardContent>
         </Card>
 
-        <Card className="border-green-100">
+        <Card className="border-green-100 dark:border-green-900 dark:bg-slate-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-900">Current Deposits</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium text-green-900 dark:text-green-300">Current Deposits</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-green-600">{formatCurrency(totalCurrentDeposit)}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalCurrentDeposit)}</div></CardContent>
         </Card>
 
-        <Card className="border-purple-100">
+        <Card className="border-purple-100 dark:border-purple-900 dark:bg-slate-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-900">Interest Liability</CardTitle>
-            <Percent className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-purple-900 dark:text-purple-300">Interest Liability</CardTitle>
+            <Percent className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-purple-600">{formatCurrency(totalMonthlyInterestLiability)}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(totalMonthlyInterestLiability)}</div></CardContent>
         </Card>
 
-        <Card className="border-red-100">
+        <Card className="border-red-100 dark:border-red-900 dark:bg-slate-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-red-900">Net Payable</CardTitle>
-            <Calculator className="h-4 w-4 text-red-600" />
+            <CardTitle className="text-sm font-medium text-red-900 dark:text-red-300">Net Payable</CardTitle>
+            <Calculator className="h-4 w-4 text-red-600 dark:text-red-400" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold text-green-600">{formatCurrency(totalNetPayable)}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalNetPayable)}</div></CardContent>
         </Card>
       </div>
 
       {/* Final Maturity Table */}
-      <Card>
+      <Card className="dark:bg-slate-900 dark:border-slate-800">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Calculator className="h-5 w-5 text-orange-600" />
             Final Maturity Table
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-4">
-          <div className="w-full overflow-x-auto border rounded-lg custom-scrollbar pb-4">
+          <div className="w-full overflow-x-auto border rounded-lg custom-scrollbar pb-4 dark:border-slate-700">
             <Table className="min-w-[2600px]">
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px] bg-gray-100 font-bold border-r-2">Member Name</TableHead>
-                  <TableHead className="w-[140px] bg-gray-100 font-bold">Start Date</TableHead>
-                  <TableHead className="w-[140px] bg-gray-100 font-bold">Tenure (Paid)</TableHead>
-                  <TableHead className="w-[140px] bg-green-100 font-bold border-l-2 border-green-300">Monthly Deposit</TableHead>
-                  <TableHead className="w-[140px] bg-green-100 font-bold">Current Deposit</TableHead>
-                  <TableHead className="w-[140px] bg-green-100 font-bold">Target Deposit</TableHead>
-                  <TableHead className="w-[160px] bg-purple-100 font-bold border-l-2 border-purple-300">Projected Int. (12%)</TableHead>
-                  <TableHead className="w-[180px] bg-purple-100 font-bold">Settled Interest</TableHead>
-                  <TableHead className="w-[160px] bg-purple-100 font-bold">Monthly Share</TableHead>
-                  <TableHead className="w-[160px] bg-purple-100 font-bold">Current Accrued</TableHead>
-                  <TableHead className="w-[160px] bg-orange-100 font-bold border-l-2 border-orange-300">Maturity Amount</TableHead>
-                  <TableHead className="w-[140px] bg-red-100 font-bold">Outstanding Loan</TableHead>
-                  <TableHead className="w-[140px] bg-green-100 font-bold">Net Payable</TableHead>
+                <TableRow className="dark:border-slate-700">
+                  <TableHead className="w-[200px] bg-gray-100 dark:bg-slate-800 font-bold border-r-2 dark:border-slate-700 dark:text-gray-300">Member Name</TableHead>
+                  <TableHead className="w-[140px] bg-gray-100 dark:bg-slate-800 font-bold dark:text-gray-300">Start Date</TableHead>
+                  <TableHead className="w-[140px] bg-gray-100 dark:bg-slate-800 font-bold dark:text-gray-300">Tenure (Paid)</TableHead>
+                  <TableHead className="w-[140px] bg-green-100 dark:bg-green-900/30 font-bold border-l-2 border-green-300 dark:border-green-800 dark:text-green-300">Monthly Deposit</TableHead>
+                  <TableHead className="w-[140px] bg-green-100 dark:bg-green-900/30 font-bold dark:text-green-300">Current Deposit</TableHead>
+                  <TableHead className="w-[140px] bg-green-100 dark:bg-green-900/30 font-bold dark:text-green-300">Target Deposit</TableHead>
+                  <TableHead className="w-[160px] bg-purple-100 dark:bg-purple-900/30 font-bold border-l-2 border-purple-300 dark:border-purple-800 dark:text-purple-300">Projected Int. (12%)</TableHead>
+                  <TableHead className="w-[180px] bg-purple-100 dark:bg-purple-900/30 font-bold dark:text-purple-300">Settled Interest</TableHead>
+                  <TableHead className="w-[160px] bg-purple-100 dark:bg-purple-900/30 font-bold dark:text-purple-300">Monthly Share</TableHead>
+                  <TableHead className="w-[160px] bg-purple-100 dark:bg-purple-900/30 font-bold dark:text-purple-300">Current Accrued</TableHead>
+                  <TableHead className="w-[160px] bg-orange-100 dark:bg-orange-900/30 font-bold border-l-2 border-orange-300 dark:border-orange-800 dark:text-orange-300">Maturity Amount</TableHead>
+                  <TableHead className="w-[140px] bg-red-100 dark:bg-red-900/30 font-bold dark:text-red-300">Outstanding Loan</TableHead>
+                  <TableHead className="w-[140px] bg-green-100 dark:bg-green-900/30 font-bold dark:text-green-300">Net Payable</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {maturityData.map((data) => (
-                  <TableRow key={data.memberId} className="hover:bg-gray-50 whitespace-nowrap">
-                    <TableCell className="border-r-2 border-gray-200">
+                  <TableRow key={data.memberId} className="hover:bg-gray-50 dark:hover:bg-slate-800 whitespace-nowrap dark:border-slate-700">
+                    <TableCell className="border-r-2 border-gray-200 dark:border-slate-700">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                           <span className="text-white font-bold text-sm">{data.memberName.charAt(0)}</span>
                         </div>
-                        <p className="font-medium text-gray-900">{data.memberName}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{data.memberName}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{data.joinDate ? format(new Date(data.joinDate), 'dd-MMM-yyyy') : '-'}</TableCell>
+                    <TableCell className="dark:text-gray-300">{data.joinDate ? format(new Date(data.joinDate), 'dd-MMM-yyyy') : '-'}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-700 px-3 py-1">
+                      <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-3 py-1">
                         <span className="font-bold">{data.monthsCompleted}</span>
                         <span className="mx-1">/</span>
                         <span>{data.tenure}</span>
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-medium text-green-600">{formatCurrency(data.monthlyDeposit)}</TableCell>
-                    <TableCell className="font-medium text-green-600">{formatCurrency(data.currentDeposit)}</TableCell>
-                    <TableCell className="font-medium text-green-700">{formatCurrency(data.targetDeposit)}</TableCell>
-                    <TableCell className="font-medium text-purple-700">{formatCurrency(data.projectedInterest)}</TableCell>
+                    <TableCell className="font-medium text-green-600 dark:text-green-400">{formatCurrency(data.monthlyDeposit)}</TableCell>
+                    <TableCell className="font-medium text-green-600 dark:text-green-400">{formatCurrency(data.currentDeposit)}</TableCell>
+                    <TableCell className="font-medium text-green-700 dark:text-green-500">{formatCurrency(data.targetDeposit)}</TableCell>
+                    <TableCell className="font-medium text-purple-700 dark:text-purple-400">{formatCurrency(data.projectedInterest)}</TableCell>
                     
                     {/* Toggle Logic */}
                     <TableCell>
@@ -326,23 +326,23 @@ export default function MaturityPage() {
                         <Switch checked={data.isOverride} onCheckedChange={() => handleToggleOverride(data.memberId, data.settledInterest, data.isOverride)} />
                         {editingMember === data.memberId ? (
                           <div className="flex gap-1">
-                            <Input type="number" value={tempManualInterest} onChange={(e) => setTempManualInterest(e.target.value)} className="h-8 w-20 text-sm" />
+                            <Input type="number" value={tempManualInterest} onChange={(e) => setTempManualInterest(e.target.value)} className="h-8 w-20 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                             <Button size="sm" onClick={() => handleSaveManualInterest(data.memberId)} className="h-8 px-2">✓</Button>
-                            <Button variant="outline" size="sm" onClick={handleCancelEdit} className="h-8 px-2">✕</Button>
+                            <Button variant="outline" size="sm" onClick={handleCancelEdit} className="h-8 px-2 dark:bg-slate-800 dark:text-white">✕</Button>
                           </div>
                         ) : (
-                          <span className={`text-sm ${data.isOverride ? 'text-orange-600' : 'text-gray-500'}`}>
+                          <span className={`text-sm ${data.isOverride ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'}`}>
                             {formatCurrency(data.settledInterest)}
                           </span>
                         )}
                       </div>
                     </TableCell>
 
-                    <TableCell className="font-medium text-purple-600">{formatCurrency(data.monthlyInterestShare)}</TableCell>
-                    <TableCell className="font-medium text-purple-600">{formatCurrency(data.currentAccruedInterest)}</TableCell>
-                    <TableCell className="font-medium text-orange-600">{formatCurrency(data.maturityAmount)}</TableCell>
-                    <TableCell className="font-medium text-red-600">{formatCurrency(data.outstandingLoan)}</TableCell>
-                    <TableCell className="font-bold text-green-600">{formatCurrency(data.netPayable)}</TableCell>
+                    <TableCell className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(data.monthlyInterestShare)}</TableCell>
+                    <TableCell className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(data.currentAccruedInterest)}</TableCell>
+                    <TableCell className="font-medium text-orange-600 dark:text-orange-400">{formatCurrency(data.maturityAmount)}</TableCell>
+                    <TableCell className="font-medium text-red-600 dark:text-red-400">{formatCurrency(data.outstandingLoan)}</TableCell>
+                    <TableCell className="font-bold text-green-600 dark:text-green-400">{formatCurrency(data.netPayable)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
