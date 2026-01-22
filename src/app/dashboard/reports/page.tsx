@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useReportLogic } from '@/hooks/useReportLogic'; // Importing Logic Hook
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,6 +21,9 @@ import MaturityTab from '@/components/client/reports/MaturityTab';
 import DefaultersTab from '@/components/client/reports/DefaultersTab';
 
 export default function ReportsPage() {
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
   // 1. Get Data & Logic from Custom Hook
   const { 
     loading, 
@@ -32,9 +36,7 @@ export default function ReportsPage() {
 
   const [activeTab, setActiveTab] = useState('summary');
 
-  // --- HELPER: FORMAT CURRENCY ---
-  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(n);
-  const formatCurrency = (value: number) => fmt(value || 0);
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   // --- PREPARE DATA & CALCULATE CARD TOTALS ---
   const { summary } = auditData;
