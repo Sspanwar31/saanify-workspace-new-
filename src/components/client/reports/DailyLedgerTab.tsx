@@ -2,20 +2,17 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 interface DailyLedgerTabProps {
   data: any[];
 }
 
 export default function DailyLedgerTab({ data }: DailyLedgerTabProps) {
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    }).format(amount || 0);
-  };
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   return (
     <div className="mt-6">
@@ -24,7 +21,7 @@ export default function DailyLedgerTab({ data }: DailyLedgerTabProps) {
           <CardTitle>Daily Ledger - The Operational Audit</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* h-[600px] ensures the table has a fixed height with scroll */}
+          {/* h-[600px] ensures table has a fixed height with scroll */}
           <div className="h-[600px] overflow-y-auto">
             <Table>
               <TableHeader className="sticky top-0 bg-white shadow-sm z-10">
@@ -38,7 +35,7 @@ export default function DailyLedgerTab({ data }: DailyLedgerTabProps) {
                   <TableHead className="text-green-600 font-bold bg-green-50">Cash IN</TableHead>
                   <TableHead className="text-red-600 font-bold bg-red-50">Cash OUT</TableHead>
                   <TableHead className="font-semibold">Net Flow</TableHead>
-                  <TableHead className="text-blue-700 font-bold bg-blue-50">Running Bal</TableHead>
+                  <TableHead className="font-bold text-blue-700 bg-blue-50">Running Bal</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -52,7 +49,7 @@ export default function DailyLedgerTab({ data }: DailyLedgerTabProps) {
                   data.map((entry: any, i: number) => (
                     <TableRow key={i} className="hover:bg-gray-50 transition-colors">
                       <TableCell className="font-medium text-gray-700">
-                        {new Date(entry.date).toLocaleDateString('en-IN')}
+                        {new Date(entry.date).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-green-600">
                         {entry.deposit > 0 ? formatCurrency(entry.deposit) : '-'}
@@ -81,7 +78,6 @@ export default function DailyLedgerTab({ data }: DailyLedgerTabProps) {
                       <TableCell className={`font-medium ${entry.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {formatCurrency(entry.netFlow)}
                       </TableCell>
-                      
                       <TableCell className="font-bold text-blue-700 bg-blue-50/50">
                         {formatCurrency(entry.runningBal)}
                       </TableCell>
