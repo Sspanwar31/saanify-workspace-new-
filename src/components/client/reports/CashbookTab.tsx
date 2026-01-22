@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, CreditCard, TrendingUp } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 interface CashbookTabProps {
   data: any[]; // Cashbook Array
@@ -14,14 +15,10 @@ interface CashbookTabProps {
 }
 
 export default function CashbookTab({ data, stats }: CashbookTabProps) {
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    }).format(amount || 0);
-  };
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   return (
     <div className="space-y-6 mt-6">
@@ -81,7 +78,7 @@ export default function CashbookTab({ data, stats }: CashbookTabProps) {
         </Card>
       </div>
 
-      {/* 2. CASHBOOK TABLE (Tally Style) */}
+      {/* 2. CASHBOOK TABLE (TALLY STYLE) */}
       <Card className="rounded-xl border-orange-100 shadow-sm">
         <CardHeader>
           <CardTitle>Cashbook - The Tally View</CardTitle>
@@ -103,8 +100,8 @@ export default function CashbookTab({ data, stats }: CashbookTabProps) {
                   <TableHead className="text-right px-2 text-red-700 bg-red-50/40 border-r w-[12%] border-r-2 border-gray-300">Bank OUT</TableHead>
                   
                   {/* UPI Group */}
-                  <TableHead className="text-right px-2 text-purple-700 bg-purple-50/40 border-r w-[12%]">UPI IN</TableHead>
-                  <TableHead className="text-right px-2 text-red-700 bg-red-50/40 border-r w-[12%] border-r-2 border-gray-300">UPI OUT</TableHead>
+                  <TableHead className="text-right px-2 text-purple-700 bg-purple-50/40 border-r w-[12%">UPI IN</TableHead>
+                  <TableHead className="text-right px-2 text-red-700 bg-red-50/40 border-r w-[12%">UPI OUT</TableHead>
                   
                   {/* Closing Balance */}
                   <TableHead className="text-right px-4 font-bold bg-gray-50 text-gray-900 w-[16%]">Closing Bal</TableHead>
@@ -122,10 +119,11 @@ export default function CashbookTab({ data, stats }: CashbookTabProps) {
                     <TableRow key={i} className="hover:bg-gray-50 transition-colors border-b">
                       <TableCell className="font-medium text-gray-700 text-left px-2 border-r">
                         {new Date(entry.date).toLocaleDateString('en-IN', {
-                            day: 'numeric', month: 'short', year: 'numeric'
+                          day: 'numeric', month: 'short', year: 'numeric'
                         })}
                       </TableCell>
                       
+                      {/* Cash Column */}
                       <TableCell className="text-right px-2 text-green-600 bg-green-50/10 border-r">
                         {entry.cashIn > 0 ? formatCurrency(entry.cashIn) : '-'}
                       </TableCell>
@@ -133,6 +131,7 @@ export default function CashbookTab({ data, stats }: CashbookTabProps) {
                         {entry.cashOut > 0 ? formatCurrency(entry.cashOut) : '-'}
                       </TableCell>
                       
+                      {/* Bank Column */}
                       <TableCell className="text-right px-2 text-blue-600 bg-blue-50/10 border-r">
                         {entry.bankIn > 0 ? formatCurrency(entry.bankIn) : '-'}
                       </TableCell>
@@ -140,6 +139,7 @@ export default function CashbookTab({ data, stats }: CashbookTabProps) {
                         {entry.bankOut > 0 ? formatCurrency(entry.bankOut) : '-'}
                       </TableCell>
                       
+                      {/* UPI Column */}
                       <TableCell className="text-right px-2 text-purple-600 bg-purple-50/10 border-r">
                         {entry.upiIn > 0 ? formatCurrency(entry.upiIn) : '-'}
                       </TableCell>
