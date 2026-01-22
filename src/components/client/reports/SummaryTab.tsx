@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 interface SummaryTabProps {
   summary: any;
@@ -11,9 +12,10 @@ interface SummaryTabProps {
 }
 
 export default function SummaryTab({ summary, activeMembersCount, graphData }: SummaryTabProps) {
-  
-  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(n);
-  const formatCurrency = (value: number) => fmt(value || 0);
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   return (
     <div className="space-y-8 mt-6">
