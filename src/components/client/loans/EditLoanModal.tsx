@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 import { 
   Loader2, 
   AlertTriangle, 
@@ -28,6 +29,8 @@ interface EditLoanModalProps {
 }
 
 export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps) {
+  const { formatCurrency } = useCurrency(); // ✅ Hook call karo
+
   const [totalAmount, setTotalAmount] = useState('');
   const [outstanding, setOutstanding] = useState('');
   const [status, setStatus] = useState('active'); 
@@ -197,7 +200,7 @@ export function EditLoanModal({ isOpen, onClose, loanData }: EditLoanModalProps)
             <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-amber-800 leading-relaxed">
               <p className="font-bold mb-1">⚠️ Admin Correction Mode</p>
-              <p>You are editing the specific loan record. To remove a wrong entry, set amounts to 0.</p>
+              <p>You are editing specific loan record. To remove a wrong entry, set amounts to 0.</p>
             </div>
           </div>
 
