@@ -1,8 +1,3 @@
-
-
-Haan, maine `MembersReportTab.tsx` mein bhi `useCurrency` hook ko integrate kar diya hai. Maine manual `formatCurrency` function ko remove kar diya hai aur jagah-jagah hook wala function use kar liya hai.
-
-```tsx
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
