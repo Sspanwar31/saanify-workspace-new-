@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { 
   User, DollarSign, TrendingUp, Shield, AlertTriangle, Percent, Calendar, Loader2 
 } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 interface ApproveLoanModalProps {
   isOpen: boolean;
@@ -23,6 +24,9 @@ interface ApproveLoanModalProps {
 }
 
 export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModalProps) {
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
   // --- Local States ---
   const [request, setRequest] = useState<any>(null);
   const [amount, setAmount] = useState<string>('');
@@ -135,7 +139,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           client_id: request.clientId,
           member_id: request.memberId,
           title: "Loan Approved ✅",
-          message: `Your loan of ₹${approvedAmount.toLocaleString('en-IN')} has been approved.`,
+          message: `Your loan of ${formatCurrency(approvedAmount)} has been approved.`,
           type: "success",
           is_read: false,
           created_at: new Date().toISOString()
@@ -159,12 +163,7 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(amount);
-  };
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   if (!request) return null;
 
