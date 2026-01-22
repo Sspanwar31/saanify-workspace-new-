@@ -16,10 +16,12 @@ export default function MembersReportTab({ data }: MembersReportTabProps) {
   // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   return (
-    <div className="mt-6">
+    <div className="space-y-6 mt-6">
       <Card className="rounded-xl border-orange-100 shadow-sm">
         <CardHeader>
-          <CardTitle>Members Report - Financial Health</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            Members Report - Financial Health
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[600px] overflow-y-auto">
@@ -31,23 +33,22 @@ export default function MembersReportTab({ data }: MembersReportTabProps) {
                   <TableHead className="text-blue-600 font-semibold">Loan Taken</TableHead>
                   <TableHead className="text-purple-600 font-semibold">Principal Paid</TableHead>
                   <TableHead className="text-orange-600 font-semibold">Interest Paid</TableHead>
-                  <TableHead className="text-orange-600 font-semibold">Fine Paid</TableHead>
-                  <TableHead className="text-orange-600 font-semibold">Pending Loan</TableHead>
-                  <TableHead className="text-orange-600 font-bold">Net Worth</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Active Loan Bal</TableHead>
+                  <TableHead className="font-bold">Net Worth</TableHead>
+                  <TableHead className="w-[100px]">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-gray-500">
-                      No members found.
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      No members found matching filters.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  data.map((member: any, i: number) => (
-                    <TableRow key={i} className="hover:bg-gray-50 transition-colors">
-                      <TableCell className="font-medium">
+                  data.map((member) => (
+                    <TableRow key={member.id} className="hover:bg-gray-50 transition-colors">
+                      <TableCell className="font-medium text-gray-900">
                         <div>
                           <div className="font-semibold text-gray-900">{member.name}</div>
                           <div className="text-xs text-muted-foreground">{member.fatherName || 'Self'}</div>
@@ -59,27 +60,24 @@ export default function MembersReportTab({ data }: MembersReportTabProps) {
                       <TableCell className="text-blue-600 font-medium bg-blue-50/30">
                         {formatCurrency(member.loanTaken)}
                       </TableCell>
-                      <TableCell className="text-purple-600 font-medium bg-purple-50/30">
+                      <TableCell className="text-purple-600 font-medium">
                         {formatCurrency(member.principalPaid)}
                       </TableCell>
-                      <TableCell className="text-orange-600 font-medium bg-orange-50/30">
+                      <TableCell className="text-orange-600 font-medium">
                         {formatCurrency(member.interestPaid)}
                       </TableCell>
-                      <TableCell className="text-orange-600 font-medium bg-orange-50/30">
-                        {formatCurrency(member.finePaid)}
-                      </TableCell>
-                      <TableCell className="text-orange-600 font-medium bg-orange-50/30">
+                      <TableCell className="text-red-600 font-bold bg-red-50/30">
                         {formatCurrency(member.activeLoanBal)}
                       </TableCell>
-                      <TableCell className={`text-orange-600 font-bold bg-orange-100/50 ${member.netWorth >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      <TableCell className={`font-bold ${member.netWorth >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         {formatCurrency(member.netWorth)}
                       </TableCell>
                       <TableCell>
                         <Badge 
-                          variant={member.status === 'active' ? 'default' : 'secondary'}
-                          className={member.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-800'}
+                          variant="outline" 
+                          className={member.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
                         >
-                          {member.status?.toUpperCase()}
+                          {member.status?.toUpperCase() || 'UNKNOWN'}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -87,7 +85,8 @@ export default function MembersReportTab({ data }: MembersReportTabProps) {
                 )}
               </TableBody>
             </Table>
-          </CardContent>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );
