@@ -17,17 +17,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const storedUser = localStorage.getItem('current_user');
       const storedMember = localStorage.getItem('current_member');
 
-      // 🔍 Debug
-      console.log("Checking Access - Layout:", {
-        storedUser: storedUser ? 'Exists' : 'Null',
-        storedMember: storedMember ? 'Exists' : 'Null'
-      });
-
       /* ---------------------------------------------------
          ❌ MEMBER NEVER ALLOWED IN CLIENT DASHBOARD
       --------------------------------------------------- */
       if (storedMember && !storedUser) {
-        console.log("🚫 Member detected → Redirecting to Member Portal");
         router.push('/member-portal/dashboard');
         return;
       }
@@ -36,7 +29,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
          ❌ NO LOGIN
       --------------------------------------------------- */
       if (!storedUser) {
-        console.log("❌ No User Found → Redirecting to Login");
         router.push('/login');
         return;
       }
@@ -49,8 +41,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         // ✅ IMPORTANT FIX
         const resolvedClientId = user.client_id ?? user.id;
-        
-        console.log('Resolved Client ID:', resolvedClientId); // <--- DEBUG LINE ADDED
 
         const { data: client, error } = await supabase
           .from('clients')
@@ -59,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .single();
 
         if (error) {
-          console.warn("⚠️ Client fetch failed, allowing access");
+          // If fetch fails, we allow access safely to avoid lockout
           setIsAuthorized(true);
           setIsChecking(false);
           return;
@@ -72,7 +62,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           const isInactive = client.subscription_status !== 'active';
 
           if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
-            console.log("⛔ Subscription expired → Redirect");
             router.push('/dashboard/subscription');
             return;
           }
@@ -81,7 +70,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         // ✅ Client OR Treasurer both allowed
         setIsAuthorized(true);
       } catch (err) {
-        console.error("Access Check Error:", err);
         router.push('/login');
       }
 
