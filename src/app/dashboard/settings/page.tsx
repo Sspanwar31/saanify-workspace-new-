@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
 import { 
   Save, RotateCcw, Building2, Calculator, Shield, Database, 
-  Trash2, AlertTriangle, Moon, Sun, Upload, Download, Check
+  Trash2, AlertTriangle, Moon, Sun, Upload, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,8 +13,16 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+
+// Extended Currency List
+const CURRENCIES = [
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
+];
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -32,30 +40,50 @@ export default function SettingsPage() {
   // 1. Fetch Settings
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data: clients } = await supabase.from('clients').select('*').limit(1);
-      if (clients && clients.length > 0) {
-        const c = clients[0];
-        setClientId(c.id);
+      const user = JSON.parse(localStorage.getItem('current_user') || 'null');
+      if (!user?.id) return;
+
+      // Safe Client ID Logic
+      const finalId = user.client_id || user.id;
+      setClientId(finalId);
+
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', finalId)
+        .single();
+
+      if (data && !error) {
         setSettings({
-            societyName: c.society_name || '',
-            registrationNumber: c.registration_number || '',
-            societyAddress: c.society_address || '',
-            contactEmail: c.contact_email || '',
-            currency: c.currency || 'INR',
-            interestRate: c.interest_rate || 12,
-            loanLimitPercent: c.loan_limit_percent || 80,
-            fineAmount: c.fine_amount || 10,
-            gracePeriodDay: c.grace_period_day || 10,
-            theme: c.theme || 'light',
-            autoBackup: c.auto_backup ?? true,
-            emailNotifications: c.email_notifications ?? true,
-            smsNotifications: c.sms_notifications ?? false
+            societyName: data.society_name || '',
+            registrationNumber: data.registration_number || '',
+            societyAddress: data.society_address || '',
+            contactEmail: data.contact_email || '',
+            currency: data.currency || 'INR',
+            interestRate: data.interest_rate || 12,
+            loanLimitPercent: data.loan_limit_percent || 80,
+            fineAmount: data.fine_amount || 10,
+            gracePeriodDay: data.grace_period_day || 10,
+            theme: data.theme || 'light',
+            autoBackup: data.auto_backup ?? true,
+            emailNotifications: data.email_notifications ?? true,
+            smsNotifications: data.sms_notifications ?? false
         });
+
+        // ✅ FIX: Apply Theme on Load
+        applyTheme(data.theme || 'light');
       }
       setLoading(false);
     };
     fetchSettings();
   }, []);
+
+  // ✅ Helper: Apply Theme Logic
+  const applyTheme = (theme: string) => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+  };
 
   // 2. Save Handler
   const handleSave = async () => {
@@ -79,6 +107,10 @@ export default function SettingsPage() {
         }).eq('id', clientId);
 
         if (error) throw error;
+        
+        // ✅ FIX: Apply Theme on Save
+        applyTheme(settings.theme);
+        
         toast.success("Settings saved successfully!");
     } catch (err: any) {
         toast.error("Failed to save settings: " + err.message);
@@ -89,6 +121,8 @@ export default function SettingsPage() {
 
   const handleChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+    // Live Theme Preview (Optional)
+    if (key === 'theme') applyTheme(value);
   };
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading settings...</div>;
@@ -147,7 +181,14 @@ export default function SettingsPage() {
                         <div className="space-y-2"><Label>Address</Label><Input value={settings.societyAddress} onChange={(e) => handleChange('societyAddress', e.target.value)} placeholder="Full Address"/></div>
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2"><Label>Contact Email</Label><Input value={settings.contactEmail} onChange={(e) => handleChange('contactEmail', e.target.value)} placeholder="admin@society.com"/></div>
-                            <div className="space-y-2"><Label>Currency</Label><Select value={settings.currency} onValueChange={(v) => handleChange('currency', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="INR">Indian Rupee (₹)</SelectItem><SelectItem value="USD">US Dollar ($)</SelectItem></SelectContent></Select></div>
+                            <div className="space-y-2"><Label>Currency</Label>
+                              <Select value={settings.currency} onValueChange={(v) => handleChange('currency', v)}>
+                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                <SelectContent>
+                                  {CURRENCIES.map(c => <SelectItem key={c.code} value={c.code}>{c.name} ({c.symbol})</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -169,10 +210,10 @@ export default function SettingsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Late Fine Amount (Daily)</Label>
-                                <div className="relative"><Input type="number" value={settings.fineAmount} onChange={(e) => handleChange('fineAmount', e.target.value)} className="pl-10"/><span className="absolute left-3 top-2.5 text-gray-500 font-bold">₹</span></div>
+                                <div className="relative"><Input type="number" value={settings.fineAmount} onChange={(e) => handleChange('fineAmount', e.target.value)} className="pl-10"/><span className="absolute left-3 top-2.5 text-gray-500 font-bold">{CURRENCIES.find(c => c.code === settings.currency)?.symbol}</span></div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Fine Applies After (Day of Month)</Label>
+                                <Label>Grace Period (Days)</Label>
                                 <Select value={String(settings.gracePeriodDay)} onValueChange={(v) => handleChange('gracePeriodDay', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{Array.from({length: 28}, (_, i) => i + 1).map(d => <SelectItem key={d} value={String(d)}>{d}th of month</SelectItem>)}</SelectContent></Select>
                             </div>
                         </div>
@@ -201,7 +242,7 @@ export default function SettingsPage() {
                 </Card>
             )}
 
-            {/* 4. DATA TAB (Backup/Reset) */}
+            {/* 4. DATA TAB */}
             {activeTab === 'data' && (
                 <div className="space-y-6">
                     <Card>
