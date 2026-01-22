@@ -119,22 +119,36 @@ export default function MembersPage() {
 
   const activeCount = members.filter(m => m.status === 'active').length;
 
-  if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-blue-600"/></div>;
+  if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-blue-600 dark:text-blue-400"/></div>;
 
   return (
     <div className="p-8 space-y-6">
        {/* STATS */}
        <div className="grid gap-4 md:grid-cols-4">
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500">Total Members</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-600">{members.length}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500">Active</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{activeCount}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500">Inactive</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{members.length - activeCount}</div></CardContent></Card>
+          <Card className="dark:bg-slate-900 dark:border-slate-800">
+              <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total Members</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{members.length}</div></CardContent>
+          </Card>
+          <Card className="dark:bg-slate-900 dark:border-slate-800">
+              <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Active</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">{activeCount}</div></CardContent>
+          </Card>
+          <Card className="dark:bg-slate-900 dark:border-slate-800">
+              <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Inactive</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-red-600 dark:text-red-400">{members.length - activeCount}</div></CardContent>
+          </Card>
        </div>
 
        {/* HEADER */}
-       <div className="flex justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
-          <div><h1 className="text-2xl font-bold">Members Ledger</h1><p className="text-gray-500">Manage society members</p></div>
+       <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-lg border dark:border-slate-800 shadow-sm">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Members Ledger</h1>
+            <p className="text-gray-500 dark:text-gray-400">Manage society members</p>
+          </div>
           <div className="flex gap-2">
-             <Button variant="outline" onClick={() => fetchMembers(clientId)}><RefreshCcw className="w-4 h-4 mr-2"/> Refresh</Button>
+             <Button variant="outline" onClick={() => fetchMembers(clientId)} className="dark:bg-slate-800 dark:text-white dark:border-slate-700">
+                <RefreshCcw className="w-4 h-4 mr-2"/> Refresh
+             </Button>
              
              {/* ✅ FIXED (IMPORTANT): Button onClick logic updated */}
              <Button
@@ -151,7 +165,7 @@ export default function MembersPage() {
                 });
                 setIsDialogOpen(true);
               }}
-              className="bg-orange-500 hover:bg-orange-600"
+              className="bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-600 dark:hover:bg-orange-700"
             >
               <Plus className="w-4 h-4 mr-2"/> Add New Member
             </Button>
@@ -159,36 +173,54 @@ export default function MembersPage() {
        </div>
 
        {/* TABLE */}
-       <Card>
+       <Card className="dark:bg-slate-900 dark:border-slate-800">
          <CardContent className="p-0">
-           <div className="rounded-md border">
+           <div className="rounded-md border dark:border-slate-700">
             <Table>
-                 <TableHeader className="bg-slate-50">
-                      <TableRow>
-                          <TableHead>Name</TableHead><TableHead>Father Name</TableHead><TableHead>Phone</TableHead>
-                          <TableHead>Join Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
+                 <TableHeader className="bg-slate-50 dark:bg-slate-800">
+                      <TableRow className="dark:border-slate-700">
+                          <TableHead className="dark:text-gray-300">Name</TableHead>
+                          <TableHead className="dark:text-gray-300">Father Name</TableHead>
+                          <TableHead className="dark:text-gray-300">Phone</TableHead>
+                          <TableHead className="dark:text-gray-300">Join Date</TableHead>
+                          <TableHead className="dark:text-gray-300">Status</TableHead>
+                          <TableHead className="text-right dark:text-gray-300">Actions</TableHead>
+                      </TableRow>
                   </TableHeader>
                   <TableBody>
                       {members.map(m => (
-                          <TableRow key={m.id}>
-                              <TableCell className="font-medium">{m.name}</TableCell>
-                              <TableCell>{m.father_name}</TableCell>
-                              <TableCell>{m.phone}</TableCell>
-                              <TableCell>{m.join_date}</TableCell>
+                          <TableRow key={m.id} className="dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                              <TableCell className="font-medium dark:text-white">{m.name}</TableCell>
+                              <TableCell className="dark:text-gray-300">{m.father_name}</TableCell>
+                              <TableCell className="dark:text-gray-300">{m.phone}</TableCell>
+                              <TableCell className="dark:text-gray-300">{m.join_date}</TableCell>
                               <TableCell><Badge variant={m.status === 'active' ? 'default' : 'destructive'}>{m.status}</Badge></TableCell>
                               <TableCell className="text-right">
                                   <DropdownMenu>
-                                          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal className="w-4 h-4"/></Button></DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end">
-                                              <DropdownMenuItem onClick={() => openEdit(m)}><Edit className="w-4 h-4 mr-2"/> Edit</DropdownMenuItem>
-                                              <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(m.id)}><Trash2 className="w-4 h-4 mr-2"/> Delete</DropdownMenuItem>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button size="icon" variant="ghost" className="dark:text-gray-300 dark:hover:bg-slate-700">
+                                                <MoreHorizontal className="w-4 h-4"/>
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="dark:bg-slate-800 dark:border-slate-700">
+                                              <DropdownMenuItem onClick={() => openEdit(m)} className="dark:text-white dark:focus:bg-slate-700">
+                                                <Edit className="w-4 h-4 mr-2"/> Edit
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem className="text-red-600 dark:text-red-400 dark:focus:bg-slate-700" onClick={() => handleDelete(m.id)}>
+                                                <Trash2 className="w-4 h-4 mr-2"/> Delete
+                                              </DropdownMenuItem>
                                           </DropdownMenuContent>
                                   </DropdownMenu>
                               </TableCell>
                           </TableRow>
                       ))}
-                      {members.length === 0 && <TableRow><TableCell colSpan={6} className="text-center p-8 text-slate-500">No members found</TableCell></TableRow>}
+                      {members.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={6} className="text-center p-8 text-slate-500 dark:text-gray-400">
+                                No members found
+                            </TableCell>
+                        </TableRow>
+                      )}
                   </TableBody>
             </Table>
            </div>
@@ -197,20 +229,23 @@ export default function MembersPage() {
 
        {/* DIALOG */}
        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
-             <DialogHeader><DialogTitle>{editingId ? 'Edit' : 'Add'} Member</DialogTitle></DialogHeader>
+          <DialogContent className="dark:bg-slate-900 dark:border-slate-800">
+             <DialogHeader><DialogTitle className="dark:text-white">{editingId ? 'Edit' : 'Add'} Member</DialogTitle></DialogHeader>
              <div className="space-y-3 py-2">
-                <Input placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                <Input placeholder="Father Name" value={formData.father_name} onChange={e => setFormData({...formData, father_name: e.target.value})} />
-                <Input placeholder="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-                <Input placeholder="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                <Input placeholder="Address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-                <Input type="date" value={formData.join_date} onChange={e => setFormData({...formData, join_date: e.target.value})} />
+                <Input placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                <Input placeholder="Father Name" value={formData.father_name} onChange={e => setFormData({...formData, father_name: e.target.value})} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                <Input placeholder="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                <Input placeholder="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                <Input placeholder="Address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                <Input type="date" value={formData.join_date} onChange={e => setFormData({...formData, join_date: e.target.value})} className="dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                 <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
-                   <SelectTrigger><SelectValue/></SelectTrigger>
-                   <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent>
+                   <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"><SelectValue/></SelectTrigger>
+                   <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+                       <SelectItem value="active" className="dark:text-white dark:focus:bg-slate-700">Active</SelectItem>
+                       <SelectItem value="inactive" className="dark:text-white dark:focus:bg-slate-700">Inactive</SelectItem>
+                   </SelectContent>
                 </Select>
-                <Button onClick={handleSave} disabled={isSaving} className="w-full bg-orange-500 hover:bg-orange-600">
+                <Button onClick={handleSave} disabled={isSaving} className="w-full bg-orange-500 hover:bg-orange-600 text-white dark:bg-orange-600 dark:hover:bg-orange-700">
                     {isSaving ? <Loader2 className="animate-spin"/> : (editingId ? 'Update' : 'Add Member')}
                 </Button>
              </div>
