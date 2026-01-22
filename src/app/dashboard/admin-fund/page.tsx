@@ -23,16 +23,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 export default function AdminFundPage() {
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
   // --- States ---
   const [adminFundLedger, setAdminFundLedger] = useState<any[]>([]);
   const [clientId, setClientId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [isInjectModalOpen, setIsInjectModalOpen] = useState(false)
-  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
-  
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)  
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
@@ -262,7 +265,7 @@ export default function AdminFundPage() {
                   summary.netBalance < 0 ? 'text-red-600' : 
                   'text-gray-600'
                 }`}>
-                  ₹{Math.abs(summary.netBalance).toLocaleString()}
+                  {formatCurrency(Math.abs(summary.netBalance))}
                 </div>
                 <p className={`text-sm mt-1 ${
                   summary.netBalance > 0 ? 'text-orange-600' : 
@@ -289,7 +292,7 @@ export default function AdminFundPage() {
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <div className="text-3xl font-bold text-green-600">
-                ₹{summary.totalInjected.toLocaleString()}
+                {formatCurrency(summary.totalInjected)}
               </div>
             )}
             <p className="text-sm text-gray-600 mt-1">Admin gave to Society</p>
@@ -307,7 +310,7 @@ export default function AdminFundPage() {
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <div className="text-3xl font-bold text-red-600">
-                ₹{summary.totalWithdrawn.toLocaleString()}
+                {formatCurrency(summary.totalWithdrawn)}
               </div>
             )}
             <p className="text-sm text-gray-600 mt-1">Admin took from Society</p>
@@ -323,7 +326,7 @@ export default function AdminFundPage() {
           <CardContent>
             {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
               <div className="text-2xl font-bold text-purple-700">
-                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(societyCashInHand)}
+                {formatCurrency(societyCashInHand)}
               </div>
             )}
             <p className="text-xs text-purple-600 mt-1">Real-time cash in locker (All Sources)</p>
@@ -342,7 +345,7 @@ export default function AdminFundPage() {
         <CardContent>
           {loading ? <div className="animate-pulse h-8 w-24 bg-gray-200 rounded"></div> : (
             <div className="text-2xl font-bold text-blue-600">
-              ₹{cashInHand.toLocaleString()}
+              {formatCurrency(cashInHand)}
             </div>
           )}
           <p className="text-sm text-gray-600 mt-1">
@@ -437,20 +440,20 @@ export default function AdminFundPage() {
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
                   <AlertDescription className="text-orange-800">
                     <div className="space-y-2">
-                      <p><strong>Warning:</strong> Withdrawal amount (₹{parseFloat(formData.amount).toLocaleString()}) exceeds available Cash in Hand (₹{cashInHand.toLocaleString()}).</p>
+                      <p><strong>Warning:</strong> Withdrawal amount ({formatCurrency(parseFloat(formData.amount))}) exceeds available Cash in Hand ({formatCurrency(cashInHand)}).</p>
                       <p>This may result in negative cash balance. Do you want to continue?</p>
                       <div className="flex gap-2 mt-2">
                         <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => setShowWarning(false)}
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setShowWarning(false)}
                         >
                           Cancel
                         </Button>
                         <Button 
-                          size="sm" 
-                          variant="destructive"
-                          onClick={() => handleAddTransaction('WITHDRAW')} // Force withdraw
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => handleAddTransaction('WITHDRAW')} // Force withdraw
                         >
                           Force Withdraw
                         </Button>
@@ -513,7 +516,7 @@ export default function AdminFundPage() {
       {/* SECTION C: THE LEDGER TABLE */}
       <Card>
         <CardHeader>
-          <CardTitle>Transaction Ledger</CardTitle>
+            <CardTitle>Transaction Ledger</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -552,7 +555,7 @@ export default function AdminFundPage() {
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           <span className={transaction.type === 'INJECT' ? 'text-green-600' : 'text-red-600'}>
-                            {transaction.type === 'INJECT' ? '+' : '-'}₹{Number(transaction.amount).toLocaleString()}
+                            {transaction.type === 'INJECT' ? '+' : '-'}{formatCurrency(Number(transaction.amount))}
                           </span>
                         </TableCell>
                         <TableCell className={`text-right font-medium ${
@@ -560,7 +563,7 @@ export default function AdminFundPage() {
                           transaction.runningBalance < 0 ? 'text-red-600' : 
                           'text-gray-600'
                         }`}>
-                          ₹{Math.abs(transaction.runningBalance).toLocaleString()}
+                          {formatCurrency(Math.abs(transaction.runningBalance))}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
