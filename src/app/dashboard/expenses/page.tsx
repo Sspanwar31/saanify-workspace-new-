@@ -21,8 +21,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useCurrency } from '@/hooks/useCurrency' // ✅ Import karo
 
 export default function ExpensesPage() {
+  // ✅ Hook call karo
+  const { formatCurrency } = useCurrency();
+
   // --- States ---
   const [expenseLedger, setExpenseLedger] = useState<any[]>([])
   const [members, setMembers] = useState<any[]>([])
@@ -31,7 +35,7 @@ export default function ExpensesPage() {
 
   const [isCollectFeeOpen, setIsCollectFeeOpen] = useState(false)
   const [isRecordExpenseOpen, setIsRecordExpenseOpen] = useState(false)
-  const [selectedMember, setSelectedMember] = useState('')
+  const [selectedMember, setSelectedMember] = useState('') 
   
   const [expenseData, setExpenseData] = useState({
     amount: '',
@@ -68,9 +72,9 @@ export default function ExpensesPage() {
           .maybeSingle()
 
         if (!error && data) {
-            // Logic: Treasurer -> Owner ID, Owner -> Own ID
-            const targetId = data.client_id ? data.client_id : user.id;
-            setClientId(targetId);
+          // Logic: Treasurer -> Owner ID, Owner -> Own ID
+          const targetId = data.client_id ? data.client_id : user.id;
+          setClientId(targetId);
         } else {
             // Fallback
             console.warn("DB Fetch failed, using LocalStorage fallback");
@@ -139,7 +143,7 @@ export default function ExpensesPage() {
         calculateStats(formattedLedger)
 
     } catch (error) {
-        console.error('Final Fetch Error:', error)
+        console.error("Final Fetch Error:", error)
     } finally {
         setLoading(false)
     }
@@ -190,7 +194,7 @@ export default function ExpensesPage() {
         setSelectedMember('')
         setIsCollectFeeOpen(false)
     } catch (error) {
-        console.error('Error collecting fee:', error)
+        console.error("Error collecting fee:", error)
         alert('Failed to collect fee')
     }
   }
@@ -221,7 +225,7 @@ export default function ExpensesPage() {
         })
         setIsRecordExpenseOpen(false)
     } catch (error) {
-        console.error('Error recording expense:', error)
+        console.error("Error recording expense:", error)
         alert('Failed to record expense')
     }
   }
@@ -301,14 +305,14 @@ export default function ExpensesPage() {
             {loading ? <div className="h-8 bg-gray-200 animate-pulse rounded"></div> : (
                 <>
                     <div className={`text-3xl font-bold ${
-                    stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                    ₹{Math.abs(stats.netBalance).toLocaleString()}
+                        stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                        {formatCurrency(Math.abs(stats.netBalance))}
                     </div>
                     <p className={`text-sm mt-1 ${
-                    stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                    {stats.netBalance >= 0 ? 'Positive Balance' : 'Negative Balance'}
+                        stats.netBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                        {stats.netBalance >= 0 ? 'Positive Balance' : 'Negative Balance'}
                     </p>
                 </>
             )}
@@ -327,10 +331,10 @@ export default function ExpensesPage() {
             {loading ? <div className="h-8 bg-gray-200 animate-pulse rounded"></div> : (
                 <>
                     <div className="text-3xl font-bold text-green-600">
-                    ₹{stats.totalFeesCollected.toLocaleString()}
+                        {formatCurrency(stats.totalFeesCollected)}
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                    {stats.membersPaidCount} payments recorded
+                        {stats.membersPaidCount} payments recorded
                     </p>
                 </>
             )}
@@ -349,10 +353,10 @@ export default function ExpensesPage() {
             {loading ? <div className="h-8 bg-gray-200 animate-pulse rounded"></div> : (
                 <>
                     <div className="text-3xl font-bold text-red-600">
-                    ₹{stats.totalExpenses.toLocaleString()}
+                        {formatCurrency(stats.totalExpenses)}
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                    Operational costs
+                        Operational costs
                     </p>
                 </>
             )}
@@ -388,17 +392,16 @@ export default function ExpensesPage() {
                   <SelectContent>
                     {getUnpaidMembers().length > 0 ? (
                         getUnpaidMembers().map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
-                            {member.name} ({member.phone})
-                        </SelectItem>
+                            <SelectItem key={member.id} value={member.id}>
+                                {member.name} ({member.phone})
+                            </SelectItem>
                         ))
                     ) : (
                         <div className="p-2 text-sm text-gray-500 text-center">All members have paid!</div>
                     )}
                   </SelectContent>
                 </Select>
-              </div>
-              
+              </div>              
               <div className="bg-gray-50 p-3 rounded-lg">
                 <div className="text-sm text-gray-600">
                   <p><strong>Amount:</strong> ₹200 (Fixed)</p>
@@ -450,8 +453,7 @@ export default function ExpensesPage() {
                   value={expenseData.amount}
                   onChange={(e) => setExpenseData({ ...expenseData, amount: e.target.value })}
                 />
-              </div>
-              
+              </div>              
               <div>
                 <Label htmlFor="expense-category">Category</Label>
                 <Select value={expenseData.category} onValueChange={(value) => setExpenseData({ ...expenseData, category: value })}>
@@ -476,8 +478,7 @@ export default function ExpensesPage() {
                   value={expenseData.date}
                   onChange={(e) => setExpenseData({ ...expenseData, date: e.target.value })}
                 />
-              </div>
-              
+              </div>              
               <div>
                 <Label htmlFor="expense-description">Description</Label>
                 <Textarea
@@ -512,10 +513,10 @@ export default function ExpensesPage() {
       {/* SECTION C: THE LEDGER TABLE */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Maintenance & Expenses Ledger
-          </CardTitle>
+            <CardTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                Maintenance & Expenses Ledger
+            </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -568,7 +569,7 @@ export default function ExpensesPage() {
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           <span className={entry.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}>
-                            {entry.type === 'INCOME' ? '+' : '-'}₹{Number(entry.amount).toLocaleString()}
+                            {entry.type === 'INCOME' ? '+' : '-'}{formatCurrency(Number(entry.amount))}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
