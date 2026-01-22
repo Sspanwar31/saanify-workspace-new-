@@ -9,11 +9,15 @@ import { UserAvatar } from '@/components/ui/UserAvatar'; // ✅ Correct Import
 import { Calendar, DollarSign, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { ApproveLoanModal } from './ApproveLoanModal';
 import { toast } from 'sonner';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
 export function LoanRequestsTable({ requests }: { requests: any[] }) {
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  // ✅ Hook call karo
+  const { formatCurrency, symbol } = useCurrency();
 
   const handleApprove = (requestId: string) => {
     setSelectedRequest(requestId);
@@ -35,7 +39,7 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
                 client_id: clientId,
                 member_id: memberId,
                 title: 'Loan Rejected ❌',
-                message: `Your loan request for ₹${request.amount.toLocaleString()} has been rejected by admin.`,
+                message: `Your loan request for ${formatCurrency(request.amount)} has been rejected by admin.`,
                 is_read: false,
                 created_at: new Date().toISOString()
                 // Type column removed to avoid schema error
@@ -69,11 +73,7 @@ export function LoanRequestsTable({ requests }: { requests: any[] }) {
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency', currency: 'INR'
-    }).format(amount || 0);
-  };
+  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
 
   if (requests.length === 0) {
     return (
