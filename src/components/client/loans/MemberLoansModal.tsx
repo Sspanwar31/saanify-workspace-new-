@@ -53,7 +53,7 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
               created_at: new Date().toISOString()
           };
 
-          // Only add 'type' if you are sure column exists, otherwise remove this line
+          // Only add 'type' if you are sure the column exists, otherwise remove this line
           // For now, I'm keeping it but wrapping in try/catch just in case
           notifPayload.type = 'error'; 
 
@@ -79,24 +79,24 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         {/* ✅ FIX: Added aria-describedby to solve console warning */}
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby={undefined}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto dark:bg-slate-900 dark:border-slate-800" aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl border-b pb-4">
-              <div className="bg-blue-100 p-2 rounded-full"><User className="h-5 w-5 text-blue-600"/></div>
-              Loan History: <span className="text-blue-700 font-bold">{memberName}</span>
+            <DialogTitle className="flex items-center gap-2 text-xl border-b dark:border-slate-800 pb-4 dark:text-white">
+              <div className="bg-blue-100 dark:bg-blue-900/20 p-2 rounded-full"><User className="h-5 w-5 text-blue-600 dark:text-blue-400"/></div>
+              Loan History: <span className="text-blue-700 dark:text-blue-300 font-bold">{memberName}</span>
             </DialogTitle>
           </DialogHeader>
 
           <div className="mt-2">
             <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Original Amount</TableHead>
-                  <TableHead>Current Balance</TableHead>
-                  <TableHead>Interest (1%)</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+              <TableHeader className="bg-slate-50 dark:bg-slate-800">
+                <TableRow className="dark:border-slate-700">
+                  <TableHead className="dark:text-gray-300">Date</TableHead>
+                  <TableHead className="dark:text-gray-300">Original Amount</TableHead>
+                  <TableHead className="dark:text-gray-300">Current Balance</TableHead>
+                  <TableHead className="dark:text-gray-300">Interest (1%)</TableHead>
+                  <TableHead className="dark:text-gray-300">Status</TableHead>
+                  <TableHead className="text-right dark:text-gray-300">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,27 +108,27 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
                   const isClosed = balance <= 0 || loan.status === 'closed';
                   
                   return (
-                    <TableRow key={loan.id} className={`hover:bg-slate-50 ${isClosed ? 'opacity-70 bg-slate-50/50' : ''}`}>
-                      <TableCell className="font-medium text-slate-600">
+                    <TableRow key={loan.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800 dark:border-slate-700 ${isClosed ? 'opacity-70 bg-slate-50/50 dark:bg-slate-800/50' : ''}`}>
+                      <TableCell className="font-medium text-slate-600 dark:text-slate-300">
                         {formatDate(loan.start_date || loan.created_at)}
                       </TableCell>
                       
-                      <TableCell className="font-bold text-blue-600">
+                      <TableCell className="font-bold text-blue-600 dark:text-blue-400">
                         {formatCurrency(amount)}
                       </TableCell>
                       
                       {/* ✅ Correct Balance Display */}
-                      <TableCell className={isClosed ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+                      <TableCell className={isClosed ? "text-green-600 dark:text-green-400 font-bold" : "text-red-600 dark:text-red-400 font-bold"}>
                         {isClosed ? 'Cleared' : formatCurrency(balance)}
                       </TableCell>
                       
-                      <TableCell className="text-purple-600">
+                      <TableCell className="text-purple-600 dark:text-purple-400">
                         {isClosed ? '-' : formatCurrency(Math.round(balance * 0.01))}
                       </TableCell>
                       
                       <TableCell>
                         <Badge variant={isClosed ? 'outline' : 'destructive'} 
-                          className={isClosed ? 'bg-slate-100 text-slate-600' : 'bg-red-100 text-red-800'}>
+                          className={isClosed ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}>
                           {isClosed ? 'CLOSED' : 'ACTIVE'}
                         </Badge>
                       </TableCell>
@@ -136,7 +136,7 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {isClosed ? (
-                            <Button size="sm" variant="ghost" disabled className="text-gray-400 cursor-not-allowed">
+                            <Button size="sm" variant="ghost" disabled className="text-gray-400 dark:text-gray-600 cursor-not-allowed">
                                <Lock className="w-4 h-4 mr-1"/> Locked
                             </Button>
                           ) : (
@@ -144,6 +144,7 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
+                                    className="dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:hover:bg-slate-700"
                                     onClick={() => setSelectedLoan({
                                         ...loan, 
                                         memberName,
@@ -157,7 +158,7 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
                                 <Button 
                                     size="sm" 
                                     variant="ghost" 
-                                    className="text-red-500 hover:bg-red-50" 
+                                    className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" 
                                     onClick={() => handleDelete(loan)}
                                     disabled={deletingId === loan.id}
                                 >
@@ -175,7 +176,7 @@ export function MemberLoansModal({ isOpen, onClose, memberName, loans }: MemberL
           </div>
 
           <DialogFooter>
-            <Button onClick={onClose} variant="secondary">Close Viewer</Button>
+            <Button onClick={onClose} variant="secondary" className="dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700">Close Viewer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
