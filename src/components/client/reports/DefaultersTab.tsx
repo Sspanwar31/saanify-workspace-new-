@@ -18,9 +18,9 @@ export default function DefaultersTab({ data }: DefaultersTabProps) {
 
   return (
     <div className="mt-6">
-      <Card className="rounded-xl border-orange-100 shadow-sm">
+      <Card className="rounded-xl border-gray-800 shadow-sm bg-gray-900">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-700">
+          <CardTitle className="flex items-center gap-2 text-red-400">
             <AlertTriangle className="h-5 w-5" />
             Defaulters List (Overdue {'>'} 60 Days)
           </CardTitle>
@@ -28,45 +28,45 @@ export default function DefaultersTab({ data }: DefaultersTabProps) {
         <CardContent>
           <div className="h-[600px] overflow-y-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+              <TableHeader className="sticky top-0 bg-gray-950 z-10 shadow-sm border-b border-gray-800">
                 <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Loan Amount</TableHead>
-                  <TableHead className="text-red-600 font-bold">Balance</TableHead>
-                  <TableHead>Overdue Days</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-gray-300">Member</TableHead>
+                  <TableHead className="text-gray-300">Phone</TableHead>
+                  <TableHead className="text-gray-300">Loan Amount</TableHead>
+                  <TableHead className="text-red-400 font-bold">Balance</TableHead>
+                  <TableHead className="text-gray-300">Overdue Days</TableHead>
+                  <TableHead className="text-gray-300">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-green-600 font-medium">
+                    <TableCell colSpan={6} className="text-center py-8 text-green-400 font-medium">
                         Great news! No defaulters found.
                     </TableCell>
                   </TableRow>
                 ) : (
                   data.map((defaulter: any, i: number) => (
-                    <TableRow key={i} className="hover:bg-red-50/30 transition-colors">
-                      <TableCell className="font-medium text-gray-900">
+                    <TableRow key={i} className="hover:bg-red-950/30 transition-colors border-b border-gray-800">
+                      <TableCell className="font-medium text-gray-200">
                         {defaulter.memberName}
                       </TableCell>
-                      <TableCell className="text-gray-500">
+                      <TableCell className="text-gray-400">
                         {defaulter.memberPhone}
                       </TableCell>
-                      <TableCell className="text-blue-600">
+                      <TableCell className="text-blue-400">
                         {formatCurrency(defaulter.amount)}
                       </TableCell>
-                      <TableCell className="text-red-600 font-bold bg-red-50/50">
+                      <TableCell className="text-red-400 font-bold bg-red-950/20">
                         {formatCurrency(defaulter.remainingBalance)}
                       </TableCell>
-                      <TableCell className="text-orange-700 font-medium">
+                      <TableCell className="text-orange-400 font-medium">
                         {defaulter.daysOverdue} Days
                       </TableCell>
                       <TableCell>
                         <Badge 
                           variant={defaulter.status === 'Critical' ? 'destructive' : 'secondary'}
-                          className={defaulter.status === 'Critical' ? 'bg-red-600' : 'bg-orange-100 text-orange-800'}
+                          className={defaulter.status === 'Critical' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-orange-900/50 text-orange-300 hover:bg-orange-900/80 border border-orange-700'}
                         >
                           {defaulter.status}
                         </Badge>
