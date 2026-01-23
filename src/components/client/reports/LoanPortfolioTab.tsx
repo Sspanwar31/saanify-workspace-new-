@@ -24,81 +24,81 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
       
       {/* 1. LOAN STATS CARDS */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="rounded-xl border-blue-100 shadow-sm bg-blue-50/50">
+        <Card className="rounded-xl border-blue-900/50 shadow-sm bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800">Issued</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-400">Issued</CardTitle>
             <DollarSign className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-blue-300">
               {formatCurrency(summary.issued)}
             </div>
             <p className="text-xs text-blue-600/80">Total loans disbursed</p>
           </CardContent>
         </Card>
         
-        <Card className="rounded-xl border-green-100 shadow-sm bg-green-50/50">
+        <Card className="rounded-xl border-green-900/50 shadow-sm bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-800">Recovered</CardTitle>
+            <CardTitle className="text-sm font-medium text-green-400">Recovered</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-green-300">
               {formatCurrency(summary.recovered)}
             </div>
             <p className="text-xs text-green-600/80">Principal collected</p>
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl border-yellow-100 shadow-sm bg-yellow-50/50">
+        <Card className="rounded-xl border-yellow-900/50 shadow-sm bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-800">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-yellow-400">Pending</CardTitle>
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
+            <div className="text-2xl font-bold text-yellow-300">
               {formatCurrency(summary.pending)}
             </div>
             <p className="text-xs text-yellow-600/80">Outstanding principal</p>
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl border-purple-100 shadow-sm bg-purple-50/50">
+        <Card className="rounded-xl border-purple-900/50 shadow-sm bg-gray-900">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-800">Rate %</CardTitle>
+            <CardTitle className="text-sm font-medium text-purple-400">Rate %</CardTitle>
             <Percent className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">12%</div>
+            <div className="text-2xl font-bold text-purple-300">12%</div>
             <p className="text-xs text-purple-600/80">Standard Annual Rate</p>
           </CardContent>
         </Card>
       </div>
 
       {/* 2. LOANS TABLE */}
-      <Card className="rounded-xl border-orange-100 shadow-sm">
+      <Card className="rounded-xl border-gray-800 shadow-sm bg-gray-900">
         <CardHeader>
-          <CardTitle>Loan Portfolio Details</CardTitle>
+          <CardTitle className="text-gray-200">Loan Portfolio Details</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[600px] overflow-y-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+              <TableHeader className="sticky top-0 bg-gray-950 z-10 shadow-sm border-b border-gray-800">
                 <TableRow>
                   {/* ✅ Fixed Sequence: Date Added Here */}
-                  <TableHead className="w-[100px]">Start Date</TableHead>
-                  <TableHead className="w-[180px]">Member</TableHead>
-                  <TableHead>Loan Amount</TableHead>
-                  <TableHead>Principal Paid</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Interest Amount</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
+                  <TableHead className="w-[100px] text-gray-300">Start Date</TableHead>
+                  <TableHead className="w-[180px] text-gray-300">Member</TableHead>
+                  <TableHead className="text-gray-300">Loan Amount</TableHead>
+                  <TableHead className="text-gray-300">Principal Paid</TableHead>
+                  <TableHead className="text-gray-300">Balance</TableHead>
+                  <TableHead className="text-gray-300">Interest Amount</TableHead>
+                  <TableHead className="text-right text-gray-300">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loans.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                       No loans found matching filters.
                     </TableCell>
                   </TableRow>
@@ -108,25 +108,25 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
                     const principalPaid = (loan.amount || 0) - (loan.remainingBalance || 0);
 
                     return (
-                      <TableRow key={i} className="hover:bg-gray-50 transition-colors">
+                      <TableRow key={i} className="hover:bg-gray-800 transition-colors border-b border-gray-800">
                         {/* ✅ Added Date Cell */}
-                        <TableCell className="text-gray-500 font-medium">
+                        <TableCell className="text-gray-400 font-medium">
                             {new Date(loan.start_date || loan.createdAt).toLocaleDateString()}
                         </TableCell>
-                        <TableCell className="font-medium text-gray-900">
+                        <TableCell className="font-medium text-gray-200">
                           {member?.name || 'Unknown Member'}
                         </TableCell>
-                        <TableCell className="text-blue-600 font-semibold">
+                        <TableCell className="text-blue-400 font-semibold">
                           {formatCurrency(loan.amount)}
                         </TableCell>
-                        <TableCell className="text-green-600 font-medium">
+                        <TableCell className="text-green-400 font-medium">
                           {formatCurrency(principalPaid)}
                         </TableCell>
-                        <TableCell className="text-red-600 font-bold bg-red-50/30">
+                        <TableCell className="text-red-400 font-bold bg-red-950/20">
                           {formatCurrency(loan.remainingBalance)}
                         </TableCell>
                         
-                        <TableCell className="text-purple-600 font-medium">
+                        <TableCell className="text-purple-400 font-medium">
                            {formatCurrency(loan.interestRate)}
                         </TableCell>
                         
@@ -134,7 +134,9 @@ export default function LoanPortfolioTab({ loans, summary, members }: LoanPortfo
                           <Badge 
                             variant={loan.status === 'ACTIVE' ? 'destructive' : 
                                              loan.status === 'COMPLETED' ? 'default' : 'secondary'}
-                            className={loan.status === 'ACTIVE' ? 'bg-red-100 text-red-800 hover:bg-red-200' : ''}
+                            className={loan.status === 'ACTIVE' ? 'bg-red-600 text-white hover:bg-red-700' : 
+                                       loan.status === 'COMPLETED' ? 'bg-green-900/50 text-green-300 hover:bg-green-900/80 border border-green-700' : 
+                                       'bg-gray-800 text-gray-300 hover:bg-gray-700'}
                           >
                             {loan.status}
                           </Badge>
