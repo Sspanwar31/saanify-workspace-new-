@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
 import {
   Save, RotateCcw, Building2, Calculator, Shield, Database,
-  Trash2, AlertTriangle, Moon, Sun, Upload, Download, Copy, Lock
+  Trash2, AlertTriangle, Moon, Sun, Upload, Download, CheckCircle, Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,7 @@ export default function SettingsPage() {
   // Factory Reset State
   const [resetTokenInput, setResetTokenInput] = useState('');
   const [isResetAllowed, setIsResetAllowed] = useState(false);
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
 
   // 1. Fetch Settings
   useEffect(() => {
@@ -49,6 +50,10 @@ export default function SettingsPage() {
 
       const finalId = user.client_id || user.id;
       setClientId(finalId);
+      
+      // Load saved token if exists
+      const savedToken = localStorage.getItem('factory_reset_token');
+      if(savedToken) setGeneratedToken(savedToken);
 
       const { data, error } = await supabase
         .from('clients')
@@ -128,7 +133,6 @@ export default function SettingsPage() {
       const user = JSON.parse(localStorage.getItem('current_user') || 'null');
       if (!user?.id) return;
 
-      // A. Fetch All Data (Snapshot)
       const [membersRes, loansRes, passbookRes] = await Promise.all([
         supabase.from('members').select('*').eq('client_id', user.client_id || user.id),
         supabase.from('loans').select('*').eq('client_id', user.client_id || user.id),
@@ -144,16 +148,13 @@ export default function SettingsPage() {
         version: '1.0'
       };
 
-      // B. Generate Security Token (The Key)
-      const securityToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const securityToken = Math.random().toString(36).substring(2, 10).toUpperCase();
       
-      // C. Add Token to Backup
       const finalPayload = {
         ...backupData,
-        __security_token: securityToken // Ye token user ko milega
+        __security_token: securityToken
       };
 
-      // D. Download JSON
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(finalPayload, null, 2));
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute("href", dataStr);
@@ -162,12 +163,11 @@ export default function SettingsPage() {
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
 
-      // E. Save Token in Browser (For Verification)
       localStorage.setItem('factory_reset_token', securityToken);
+      setGeneratedToken(securityToken);
       
-      // F. Copy Token to Clipboard
       navigator.clipboard.writeText(securityToken);
-      toast.success("Backup Downloaded! Security Token copied to clipboard. Save it safely.");
+      toast.success(`Backup Saved! Token: ${securityToken} (Copied to clipboard)`);
 
     } catch (error) {
       console.error(error);
@@ -177,7 +177,6 @@ export default function SettingsPage() {
     }
   };
 
-  // ✅ 4. Restore Logic
   const handleRestore = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -186,23 +185,11 @@ export default function SettingsPage() {
     reader.onload = async (e) => {
       try {
         const content = JSON.parse(e.target.result as string);
-        
-        // Basic Validation
-        if (!content.members || !content.__security_token) {
-          toast.error("Invalid backup file structure.");
+        if (!content.members) {
+          toast.error("Invalid backup file.");
           return;
         }
-
-        // Token Validation
-        const storedToken = localStorage.getItem('factory_reset_token');
-        if (!storedToken || storedToken !== content.__security_token) {
-          toast.error("Security Token Mismatch! Cannot restore data from this file.");
-          return;
-        }
-
-        // If Valid -> Restore Logic (Placeholder)
-        toast.success("File verified! Ready to restore (API integration required).");
-        // NOTE: Actual Supabase restoration needs complex upsert logic which requires backend API usually.
+        toast.success("File verified! Restore functionality coming soon.");
       } catch (err) {
         toast.error("Error reading file");
       }
@@ -212,42 +199,27 @@ export default function SettingsPage() {
 
   // ✅ 5. Factory Reset Logic
   const handleFactoryReset = async () => {
-    // 1. Get Token
-    const userToken = resetTokenInput.trim();
-    const storedToken = localStorage.getItem('factory_reset_token');
+    if (!resetTokenInput || !isResetAllowed) return;
 
-    // 2. Verify Token
-    if (!userToken) {
-        toast.error("Please enter your Security Token first.");
-        return;
-    }
-
-    if (userToken !== storedToken) {
-        toast.error("Invalid Security Token! You are not authorized to reset this data.");
-        setIsResetAllowed(false);
-        return;
-    }
-
-    // 3. Execute Reset
     if (!confirm("DANGER: This will wipe ALL data. Are you 100% sure?")) return;
 
     setLoading(true);
     try {
-      const user = JSON.parse(localStorage.getItem('current_user'));
+      const user = JSON.parse(localStorage.getItem('current_user') || '{}');
       const finalId = user?.client_id || user?.id;
 
-      // Delete everything for this client
       const { error: mError } = await supabase.from('members').delete().eq('client_id', finalId);
       const { error: lError } = await supabase.from('loans').delete().eq('client_id', finalId);
       const { error: pError } = await supabase.from('passbook_entries').delete().eq('client_id', finalId);
-      const { error: tError } = await supabase.from('transactions').delete().eq('client_id', finalId); // Assuming transactions table
+      const { error: eError } = await supabase.from('expenses_ledger').delete().eq('client_id', finalId);
 
-      if (mError || lError || pError || tError) throw new Error("Some data deletion failed");
+      if (mError || lError || pError || eError) throw new Error("Some data deletion failed");
 
-      // Clear Local Token
       localStorage.removeItem('factory_reset_token');
+      setGeneratedToken(null);
+      setResetTokenInput('');
       
-      toast.success("Factory Reset Successful! Reloading...");
+      toast.success("Factory Reset Successful! Data Wiped.");
       setTimeout(() => window.location.reload(), 1500);
 
     } catch (err: any) {
@@ -258,21 +230,28 @@ export default function SettingsPage() {
     }
   };
 
+  // ✅ Token Checker
   const checkTokenValidity = (val: string) => {
+      setResetTokenInput(val);
       const storedToken = localStorage.getItem('factory_reset_token');
-      setIsResetAllowed(!!storedToken && val === storedToken);
+      
+      // Allow if token matches OR user types 'DELETE-ALL' as master override
+      if ((storedToken && val === storedToken) || val === 'DELETE-ALL') {
+          setIsResetAllowed(true);
+      } else {
+          setIsResetAllowed(false);
+      }
   }
 
-  if (loading) return <div className="p-8 text-center">Loading settings...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading settings...</div>;
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 p-6 space-y-6 w-full max-w-6xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
       
-      {/* Sticky Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sticky top-0 z-10 bg-white/60 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings & Configuration</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">Manage your society preferences and rules.</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Manage your society preferences and rules.</p>
         </div>
         <div className="flex gap-2">
             <Button variant="outline" onClick={() => window.location.reload()} className="dark:bg-slate-800 dark:text-white dark:border-slate-700"><RotateCcw className="h-4 w-4 mr-2"/> Reset</Button>
@@ -283,33 +262,20 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        
-        {/* LEFT SIDEBAR */}
         <div className="w-full lg:w-64 shrink-0">
             <Tabs orientation="vertical" value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="flex flex-row lg:flex-col h-auto bg-transparent gap-1 p-0">
-                    <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-blue-600 rounded-none lg:rounded-r-lg text-gray-600 dark:text-gray-400 dark:data-[state=active]:text-white">
-                        <Building2 className="h-4 w-4 mr-3"/> Society Profile
-                    </TabsTrigger>
-                    <TabsTrigger value="financial" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-green-600 rounded-none lg:rounded-r-lg text-gray-600 dark:text-gray-400 dark:data-[state=active]:text-white">
-                        <Calculator className="h-4 w-4 mr-3"/> Financial Rules
-                    </TabsTrigger>
-                    <TabsTrigger value="system" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-purple-600 rounded-none lg:rounded-r-lg text-gray-600 dark:text-gray-400 dark:data-[state=active]:text-white">
-                        <Shield className="h-4 w-4 mr-3"/> Security & System
-                    </TabsTrigger>
-                    <TabsTrigger value="data" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-orange-600 rounded-none lg:rounded-r-lg text-gray-600 dark:text-gray-400 dark:data-[state=active]:text-white">
-                        <Database className="h-4 w-4 mr-3"/> Data & Backup
-                    </TabsTrigger>
+                    <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-blue-600 rounded-none lg:rounded-r-lg text-gray-600 dark:text-gray-400 dark:data-[state=active]:text-white"><Building2 className="h-4 w-4 mr-3"/> Society Profile</TabsTrigger>
+                    <TabsTrigger value="financial" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-green-600 rounded-none lg:rounded-r-lg text-gray-600 dark:text-gray-400 dark:data-[state=active]:text-white"><Calculator className="h-4 w-4 mr-3"/> Financial Rules</TabsTrigger>
+                    <TabsTrigger value="system" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-purple-600 rounded-none lg:rounded-r-lg text-gray-600 dark:text-gray-400 dark:data-[state=active]:text-white"><Shield className="h-4 w-4 mr-3"/> Security & System</TabsTrigger>
+                    <TabsTrigger value="data" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-orange-600 rounded-none lg:rounded-r-lg text-gray-600 dark:text-gray-400 dark:data-[state=active]:text-white"><Database className="h-4 w-4 mr-3"/> Data & Backup</TabsTrigger>
                 </TabsList>
             </Tabs>
         </div>
 
-        {/* RIGHT CONTENT */}
         <div className="flex-1 space-y-6">
-            
-            {/* 1. PROFILE */}
             {activeTab === 'profile' && (
-                <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 shadow-sm">
+                <Card className="dark:bg-slate-900 dark:border-slate-800">
                     <CardHeader><CardTitle className="dark:text-white">Society Profile</CardTitle><CardDescription className="dark:text-gray-400">Basic information for reports and invoices.</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
@@ -332,9 +298,8 @@ export default function SettingsPage() {
                 </Card>
             )}
 
-            {/* 2. FINANCIAL */}
             {activeTab === 'financial' && (
-                <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 shadow-sm">
+                <Card className="dark:bg-slate-900 dark:border-slate-800">
                     <CardHeader><CardTitle className="dark:text-white">Financial Configuration</CardTitle><CardDescription className="dark:text-gray-400">Set interest rates and penalty rules.</CardDescription></CardHeader>
                     <CardContent className="space-y-6">
                         <div className="grid gap-6 md:grid-cols-2">
@@ -359,9 +324,8 @@ export default function SettingsPage() {
                 </Card>
             )}
 
-            {/* 3. SYSTEM */}
             {activeTab === 'system' && (
-                <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 shadow-sm">
+                <Card className="dark:bg-slate-900 dark:border-slate-800">
                     <CardHeader><CardTitle className="dark:text-white">System Preferences</CardTitle><CardDescription className="dark:text-gray-400">Manage notifications and theme.</CardDescription></CardHeader>
                     <CardContent className="space-y-6">
                         <div className="flex items-center justify-between border-b pb-4 dark:border-slate-700">
@@ -380,78 +344,56 @@ export default function SettingsPage() {
                 </Card>
             )}
 
-            {/* 4. DATA (Fixed Layout & Dark Mode) */}
             {activeTab === 'data' && (
                 <div className="space-y-6">
-                    
-                    {/* ✅ BACKUP CARD */}
-                    <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 shadow-sm">
+                    <Card className="dark:bg-slate-900 dark:border-slate-800">
                         <CardHeader><CardTitle className="dark:text-white">Data Backup</CardTitle><CardDescription className="dark:text-gray-400">Download or restore your society data.</CardDescription></CardHeader>
                         <CardContent className="space-y-4">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Downloading a backup generates a <strong>Security Token</strong>. 
-                                This token is required to perform a Factory Reset.
-                            </p>
-                            
-                            {/* ✅ FIXED: Grid Layout for Buttons */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Button variant="outline" className="h-24 flex flex-col gap-2 border-dashed border-2 hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-900/20 dark:border-slate-700 dark:text-white" onClick={handleBackup}>
-                                    <Download className="h-6 w-6 text-blue-600 dark:text-blue-400" /> 
-                                    <span>Download Backup JSON</span>
-                                    {loading && <div className="absolute top-2 right-2"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div></div>}
+                                    <Download className="h-6 w-6 text-blue-600 dark:text-blue-400"/> <span>Download Backup JSON</span>
                                 </Button>
-                                <div className="relative">
-                                    <input type="file" onChange={handleRestore} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                    <Button variant="outline" className="w-full h-24 flex flex-col gap-2 border-dashed border-2 hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-900/20 dark:border-slate-700 dark:text-white">
-                                        <Upload className="h-6 w-6 text-green-600 dark:text-green-400"/> 
-                                        <span>Restore from File</span>
-                                    </Button>
-                                </div>
+                                <Button variant="outline" className="h-24 flex flex-col gap-2 border-dashed border-2 hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-900/20 dark:border-slate-700 dark:text-white">
+                                    <Upload className="h-6 w-6 text-green-600 dark:text-green-400"/> <span>Restore from File</span>
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* ✅ DANGER ZONE CARD */}
                     <Card className="border-red-100 bg-red-50/30 dark:bg-red-950/10 dark:border-red-900">
-                        <CardHeader><CardTitle className="text-red-700 dark:text-red-400 flex items-center gap-2"><Lock className="h-5 w-5"/> Danger Zone</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="text-red-700 dark:text-red-400 flex items-center gap-2"><AlertTriangle className="h-5 w-5"/> Danger Zone</CardTitle></CardHeader>
                         <CardContent>
-                            <p className="text-sm text-red-700 dark:text-red-300 mb-6">
-                                Factory reset will wipe all members, loans, and transaction history. This action cannot be undone. To enable, enter your <span className="font-bold">Security Token</span>.
+                            <p className="text-sm text-red-600 dark:text-red-300 mb-4">
+                                Factory reset will wipe all members, loans, and transaction history.
+                                <br/>
+                                {generatedToken ? 
+                                    <span className="font-bold">Token generated: {generatedToken}</span> : 
+                                    "Download backup to get reset token."
+                                }
                             </p>
                             
-                            {/* ✅ FIXED: Token Input & Logic */}
-                            <div className="flex flex-col md:flex-row gap-4 mb-6">
-                                <div className="flex-1">
-                                    <Label className="dark:text-gray-300 mb-2">Security Token</Label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-3 top-2.5 text-gray-500 h-4 w-4" />
-                                        <Input 
-                                            type="password" 
-                                            value={resetTokenInput} 
-                                            onChange={(e) => {
-                                                setResetTokenInput(e.target.value);
-                                                checkTokenValidity(e.target.value);
-                                            }} 
-                                            placeholder="Paste token here..."
-                                            className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                                        />
-                                    </div>
-                                    {isResetAllowed && <span className="absolute right-3 top-3 text-green-600 dark:text-green-400"><CheckCircle className="h-4 w-4" /></span>}
-                                </div>
+                            <div className="flex gap-2 mb-4">
+                                <Input 
+                                    placeholder="Enter Token or DELETE-ALL" 
+                                    value={resetTokenInput} 
+                                    onChange={(e) => checkTokenValidity(e.target.value)}
+                                    className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                />
                             </div>
 
                             <Button 
                                 variant="destructive" 
-                                onClick={handleFactoryReset} 
+                                onClick={handleFactoryReset}
                                 disabled={!isResetAllowed}
-                                className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full md:w-auto"
                             >
-                                <Trash2 className="h-4 w-4 mr-2" /> Factory Reset
+                                <Trash2 className="h-4 w-4 mr-2"/> Factory Reset
                             </Button>
                         </CardContent>
                     </Card>
                 </div>
             )}
+
         </div>
       </div>
     </div>
