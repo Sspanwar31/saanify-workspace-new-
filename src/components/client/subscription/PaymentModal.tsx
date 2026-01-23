@@ -167,26 +167,26 @@ export default function PaymentModal({
         className="
           max-w-5xl w-full
           p-0
-          bg-gray-900
+          bg-white dark:bg-slate-950
           rounded-2xl
           shadow-2xl
           overflow-hidden
           max-h-[90vh]
           flex flex-col md:flex-row
-          border-gray-800
+          border-gray-200 dark:border-gray-800
         "
       >
 
         {/* LEFT – PAYMENT METHODS */}
-        <div className="w-full md:w-2/3 p-8 overflow-y-auto bg-gray-900/50">
+        <div className="w-full md:w-2/3 p-8 overflow-y-auto bg-slate-50 dark:bg-slate-900">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-100">Choose Payment Method</h2>
-              <p className="text-sm text-gray-400">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Choose Payment Method</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Secure and encrypted payments
               </p>
             </div>
-            <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-white">
+            <Button variant="ghost" onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
               <X className="w-5 h-5" />
             </Button>
           </div>
@@ -196,15 +196,15 @@ export default function PaymentModal({
             onClick={() => setMethod('ONLINE')}
             className={`mb-4 p-5 rounded-xl border-2 cursor-pointer transition
               ${method === 'ONLINE'
-                ? 'border-blue-600 bg-gray-800 shadow'
-                : 'border-gray-700 bg-gray-800'
+                ? 'border-blue-600 bg-white dark:bg-gray-800 shadow'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
               }`}
           >
             <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center gap-3 font-semibold text-gray-200">
-                <Zap className="text-blue-500" /> Instant Payment
+              <div className="flex items-center gap-3 font-semibold text-gray-900 dark:text-gray-200">
+                <Zap className="text-blue-600 dark:text-blue-500" /> Instant Payment
               </div>
-              <Badge className="bg-blue-900 text-blue-200 hover:bg-blue-900">Fastest</Badge>
+              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800">Fastest</Badge>
             </div>
 
             <AnimatePresence>
@@ -213,18 +213,18 @@ export default function PaymentModal({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                 >
-                  <p className="text-sm text-gray-400 mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     UPI / Card / NetBanking – Instant activation
                   </p>
                   <Button
                     onClick={handleOnlinePay}
                     disabled={loading}
-                    className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700 shadow-md"
+                    className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700 shadow-md text-white"
                   >
                     {loading ? <Loader2 className="animate-spin" /> : `Pay ₹${plan.price.toLocaleString()}`}
                   </Button>
 
-                  <div className="flex justify-center gap-4 mt-3 opacity-60 text-gray-400">
+                  <div className="flex justify-center gap-4 mt-3 opacity-60 text-gray-500 dark:text-gray-500">
                     <CreditCard /> <Smartphone />
                   </div>
                 </motion.div>
@@ -237,12 +237,12 @@ export default function PaymentModal({
             onClick={() => setMethod('MANUAL')}
             className={`p-5 rounded-xl border-2 cursor-pointer transition
               ${method === 'MANUAL'
-                ? 'border-orange-500 bg-gray-800 shadow'
-                : 'border-gray-700 bg-gray-800'
+                ? 'border-orange-500 bg-white dark:bg-gray-800 shadow'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
               }`}
           >
-            <div className="flex items-center gap-3 font-semibold mb-2 text-gray-200">
-              <Landmark className="text-orange-500" />
+            <div className="flex items-center gap-3 font-semibold mb-2 text-gray-900 dark:text-gray-200">
+              <Landmark className="text-orange-600 dark:text-orange-500" />
               Bank Transfer / UPI
             </div>
 
@@ -252,11 +252,11 @@ export default function PaymentModal({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                 >
-                  <div className="bg-orange-950/20 border border-orange-900/50 p-4 rounded mb-4 text-sm text-gray-300">
+                  <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/50 p-4 rounded mb-4 text-sm text-gray-800 dark:text-gray-200">
                     <div className="flex justify-between">
-                      <span className="text-gray-400">UPI ID</span>
+                      <span className="text-gray-600 dark:text-gray-400">UPI ID</span>
                       <span
-                        className="font-mono cursor-pointer text-orange-300"
+                        className="font-mono cursor-pointer text-orange-700 dark:text-orange-300"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopy('saanify@hdfc');
@@ -266,20 +266,20 @@ export default function PaymentModal({
                       </span>
                     </div>
                     <div className="flex justify-between mt-1">
-                      <span className="text-gray-400">Account</span>
+                      <span className="text-gray-600 dark:text-gray-400">Account</span>
                       <span className="font-mono">502000348291</span>
                     </div>
                     <div className="flex justify-between mt-1">
-                      <span className="text-gray-400">IFSC</span>
+                      <span className="text-gray-600 dark:text-gray-400">IFSC</span>
                       <span className="font-mono">HDFC000123</span>
                     </div>
                   </div>
 
-                  <Label className="text-gray-300">Transaction ID (UTR)</Label>
+                  <Label className="text-gray-900 dark:text-gray-200">Transaction ID (UTR)</Label>
                   <Input
                     value={txnId}
                     onChange={(e) => setTxnId(e.target.value)}
-                    className="mb-3 bg-gray-950 border-gray-700 text-gray-100"
+                    className="mb-3 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                   />
 
                   <Button
@@ -293,7 +293,7 @@ export default function PaymentModal({
                     {loading ? <Loader2 className="animate-spin" /> : 'Verify Transaction'}
                   </Button>
 
-                  <p className="text-xs text-center text-orange-400 mt-2">
+                  <p className="text-xs text-center text-orange-700 dark:text-orange-400 mt-2">
                     Activation within 2–4 hours
                   </p>
                 </motion.div>
@@ -301,45 +301,45 @@ export default function PaymentModal({
             </AnimatePresence>
           </div>
 
-          <div className="mt-6 flex justify-center text-xs text-gray-500 gap-1">
+          <div className="mt-6 flex justify-center text-xs text-gray-500 dark:text-gray-500 gap-1">
             <ShieldCheck className="w-4 h-4" /> Secure SSL Payment
           </div>
         </div>
 
         {/* RIGHT – ORDER SUMMARY (FIXED, NO CUT) */}
-        <div className="w-full md:w-1/3 border-l border-gray-800 bg-gray-800 p-8 flex flex-col justify-between">
+        <div className="w-full md:w-1/3 border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 flex flex-col justify-between">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-bold mb-6 text-gray-100">
-              <FileCheck className="text-green-500" /> Order Summary
+            <h3 className="flex items-center gap-2 text-lg font-bold mb-6 text-gray-900 dark:text-gray-100">
+              <FileCheck className="text-green-600 dark:text-green-500" /> Order Summary
             </h3>
 
             <div className="space-y-4 text-sm">
               <div>
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-200">{plan.name}</span>
-                  <Badge variant="outline" className="text-gray-300 border-gray-600">{plan.durationDays} Days</Badge>
+                  <span className="font-semibold text-gray-900 dark:text-gray-200">{plan.name}</span>
+                  <Badge variant="outline" className="text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600">{plan.durationDays} Days</Badge>
                 </div>
               </div>
 
-              <div className="border-t border-gray-700 pt-3 space-y-2">
-                <div className="flex justify-between text-gray-400">
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>Base Price</span>
                   <span>₹{(plan.price / 1.18).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-gray-400">
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>GST (18%)</span>
                   <span>₹{(plan.price - plan.price / 1.18).toFixed(2)}</span>
                 </div>
               </div>
 
-              <div className="border-t border-gray-700 pt-4 flex justify-between text-lg font-bold text-white">
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 flex justify-between text-lg font-bold text-gray-900 dark:text-white">
                 <span>Total</span>
                 <span>₹{plan.price.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 text-center mt-6">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-6">
             By proceeding you agree to Terms & Privacy Policy
           </p>
         </div>
