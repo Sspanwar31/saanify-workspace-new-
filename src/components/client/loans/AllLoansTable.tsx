@@ -45,7 +45,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
       // First entry initialization
       acc[key] = {
         ...loan, 
-        count:1, 
+        count: 1, 
         rawLoans: [loan],
         
         // Initialize Totals
@@ -65,8 +65,6 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
       acc[key].totalCurrentBalance += balance;
       
       // 🛑 FIX (Diff-2 Verified): Interest ko yahan wapas nahi jodna hai.
-      // Kyunki backend se jo value aa rahi hai wo already 'Total' hai ya distributed hai.
-      // acc[key].totalInterestPaid += interestCollected; <--- REMOVED THIS LINE (NOT PRESENT)
       
       // Date Logic
       const currentStart = new Date(acc[key].startDate);
@@ -82,20 +80,20 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
 
   return (
     <>
-      <div className="border rounded-lg bg-white overflow-x-auto">
+      <div className="border rounded-lg bg-white dark:bg-slate-900 dark:border-slate-800 overflow-x-auto">
         <Table className="min-w-[1000px]">
           <TableHeader>
-            <TableRow className="bg-gray-50">
-              <TableHead>Member</TableHead>
-              <TableHead>Total Loan Taken</TableHead>
-              <TableHead>Current Outstanding</TableHead>
-              <TableHead>Interest (1%)</TableHead>
+            <TableRow className="bg-gray-50 dark:bg-slate-800 dark:border-slate-700">
+              <TableHead className="dark:text-gray-300">Member</TableHead>
+              <TableHead className="dark:text-gray-300">Total Loan Taken</TableHead>
+              <TableHead className="dark:text-gray-300">Current Outstanding</TableHead>
+              <TableHead className="dark:text-gray-300">Interest (1%)</TableHead>
               {/* ✅ DIFF-1: Label Updated */}
-              <TableHead>Interest Collected Till Date</TableHead>
-              <TableHead>Start Date</TableHead>
-              <TableHead>Next EMI</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="dark:text-gray-300">Interest Collected Till Date</TableHead>
+              <TableHead className="dark:text-gray-300">Start Date</TableHead>
+              <TableHead className="dark:text-gray-300">Next EMI</TableHead>
+              <TableHead className="dark:text-gray-300">Status</TableHead>
+              <TableHead className="dark:text-gray-300">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -105,37 +103,39 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                 const isClosed = row.totalCurrentBalance <= 0;
 
                 return (
-                  <TableRow key={row.id} className={isClosed ? "bg-gray-50 opacity-70" : ""}>
+                  <TableRow key={row.id} className={`${isClosed ? "bg-gray-50 dark:bg-slate-800 opacity-70" : "hover:bg-slate-50 dark:hover:bg-slate-800"} dark:border-slate-700`}>
                     <TableCell>
-                      <div className="font-medium text-gray-900">{row.memberName}</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{row.memberName}</div>
                       {row.count > 1 && (
-                        <div className="text-xs text-blue-600 font-medium flex items-center gap-1 mt-1">
+                        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1 mt-1">
                            <Layers className="w-3 h-3"/> {row.count} Loans Merged
                         </div>
                       )}
                     </TableCell>
                     
-                    <TableCell className="font-medium text-blue-800">
+                    <TableCell className="font-medium text-blue-800 dark:text-blue-300">
                       {formatCurrency(row.totalAmountTaken)}
                     </TableCell>
                     
-                    <TableCell className={`font-bold ${isClosed ? 'text-green-600' : 'text-red-600'}`}>
+                    <TableCell className={`font-bold ${isClosed ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {isClosed ? 'Cleared' : formatCurrency(row.totalCurrentBalance)}
                     </TableCell>
                     
-                    <TableCell className="text-blue-600">
+                    <TableCell className="text-blue-600 dark:text-blue-400">
                       {isClosed ? '-' : formatCurrency(monthlyInterest)}
                     </TableCell>
                     
-                    <TableCell className="text-green-700 font-medium bg-green-50 rounded-md px-2 py-1 w-fit">
-                      {formatCurrency(row.totalInterestPaid)}
+                    <TableCell>
+                      <span className="text-green-700 dark:text-green-300 font-medium bg-green-50 dark:bg-green-900/30 rounded-md px-2 py-1 w-fit">
+                        {formatCurrency(row.totalInterestPaid)}
+                      </span>
                     </TableCell>
                     
-                    <TableCell>{formatDate(row.startDate)}</TableCell>
-                    <TableCell>{isClosed ? '-' : getNextEMI(row.startDate)}</TableCell>
+                    <TableCell className="dark:text-gray-300">{formatDate(row.startDate)}</TableCell>
+                    <TableCell className="dark:text-gray-300">{isClosed ? '-' : getNextEMI(row.startDate)}</TableCell>
                     
                     <TableCell>
-                      <Badge className={isClosed ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
+                      <Badge className={isClosed ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"}>
                         {isClosed ? 'Closed' : 'Active'}
                       </Badge>
                     </TableCell>
@@ -144,7 +144,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                        className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
                         onClick={() => setViewingMember({ name: row.memberName, loans: row.rawLoans })}
                       >
                         <Eye className="h-4 w-4 mr-1" /> View / Manage
@@ -154,7 +154,7 @@ export function AllLoansTable({ loans }: { loans: any[] }) {
                 );
               })
             ) : (
-              <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500">No active loans found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500 dark:text-gray-400">No active loans found</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
