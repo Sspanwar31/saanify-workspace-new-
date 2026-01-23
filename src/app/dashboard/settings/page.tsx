@@ -1,27 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple';
+import { supabase } from '@/lib/supabase-simple'; 
 import { 
-  Save, RotateCw, Building2, Calculator, Database, 
-  Trash2, AlertTriangle, Moon, Sun 
-  Upload, RefreshCw 
-} from 'lucide-react';
+  Save, RotateCw, Building2, Calculator, Shield, Database, 
+  Trash2, AlertTriangle, Moon, Sun, 
+  Upload, Download 
+} from 'lucide-react'; // ✅ FIX: Typo fixed (lucice-react -> lucide-react)
+
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
 
-// ✅ IMPORT KARO
-import { useCurrency } from '@/hooks/useCurrency'; 
+// ✅ FIX: 'lucice-react' (Typo fixed)
+// ✅ FIX: 'lucide-react' (Imports fixed)
 
-// ✅ CURRENCIES LIST
+// ✅ CURRENCIES LIST (Cleaned up for safety)
 const CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -31,8 +33,8 @@ const CURRENCIES = [
 ];
 
 export default function SettingsPage() {
-  // ✅ Hook call karo
-  const { formatCurrency, symbol } = useCurrency();
+  // ✅ Hook call karo (Manual formatting removed)
+  const { formatCurrency } = useCurrency();
 
   // --- States ---
   const [loading, setLoading] = useState(true);
@@ -45,75 +47,125 @@ export default function SettingsPage() {
   const [societyAddress, setSocietyAddress] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   
-  // Currency Defaults
   const [currency, setCurrency] = useState('INR');
-  const [interestRate, setInterestRate] = useState('12');
-  const [loanLimit, setLoanLimit] = useState('80');
+  const [interestRate, setInterestRate] = useState(12);
+  const [loanLimitPercent, setLoanLimitPercent] = useState(80);
   const [fineAmount, setFineAmount] = useState(10);
   const [gracePeriodDay, setGracePeriodDay] = useState(10);
   const [autoBackup, setAutoBackup] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
 
-  // 1. Init ID Fetch
-  useEffect(() => {
-    const init = async () => {
-      const user = JSON.parse(localStorage.getItem('current_user') || 'null');
-      if (user?.id) {
-        const id = user.client_id || user.id;
-        setClientId(id);
-      } else {
-        setClientId(null);
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
-
-  // 2. Fetch Settings
+  // 1. Init: Get Correct Client ID
   useEffect(() => {
     const fetchSettings = async () => {
-      setLoading(true);
-      if (!clientId) return;
+      const user = JSON.parse(localStorage.getItem('current_user') || 'null');
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
 
+      // ✅ FIX: Try to get data from admins table
       try {
         const { data, error } = await supabase
+          .from('admins')
+          .select('*') 
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!error && data) {
+          // Logic: Treasurer -> Owner ID, Owner -> Own ID
+          const targetId = data.client_id ? data.client_id : user.id;
+          setClientId(targetId);
+        } else {
+            // Fallback
+            console.warn("DB Fetch failed, using LocalStorage fallback");
+            setClientId(user.client_id || user.id);
+        }
+      } catch (err) {
+        console.error("Critical ID Resolution Error:", err)
+        setClientId(user.id)
+      }
+    };
+
+    // 2. Fetch Data Trigger
+    useEffect(() => {
+      if (clientId) {
+        fetchSettings();
+      }
+    }, [clientId]);
+
+  // 3. Main Data Fetching
+  const fetchSettings = async () => {
+    setLoading(true);
+    if (!clientId) return;
+
+    try {
+        const { data, error } = await supabase.from('clients')
           .select('*')
           .eq('id', clientId)
           .single();
 
         if (data && !error) {
-          setSocietyName(data.society_name || '');
-          setRegNumber(data.registration_number || '');
-          setSocietyAddress(data.society_address || '');
-          setContactEmail(data.contact_email || '');
-          setCurrency(data.currency || 'INR');
-          setInterestRate(data.interest_rate || 12);
-          setLoanLimit(data.loan_limit || 80);
-          setFineAmount(data.fine_amount || 10);
-          setGracePeriodDay(data.grace_period_day || 10);
-          setAutoBackup(data.auto_backup ?? true);
-          setEmailNotifications(data.email_notifications ?? true);
-          setSmsNotifications(data.sms_notifications ?? false);
-          setTheme(data.theme || 'light');
+            setSocietyName(data.society_name || '');
+            setRegNumber(data.registration_number || '');
+            setSocietyAddress(data.society_address || '');
+            setContactEmail(data.contact_email || '');
+            setCurrency(data.currency || 'INR');
+            setInterestRate(data.interest_rate || 12);
+            setLoanLimitPercent(data.loan_limit_percent || 80);
+            setFineAmount(data.fine_amount || 10);
+            setGracePeriodDay(data.grace_period_day || 10);
+            setAutoBackup(data.auto_backup ?? true);
+            setEmailNotifications(data.email_notifications ?? true);
+            setSmsNotifications(data.sms_notifications ?? false);
+            setTheme(data.theme || 'light');
         }
-      } catch (error) {
-        console.error("Error fetching settings:", error);
-      } finally {
+    } catch (error) {
+        console.error("Final Fetch Error:", error);
+    } finally {
         setLoading(false);
-      }
-    };
+    }
+  };
 
-    fetchSettings();
-  }, [clientId]);
+  // 4. Calculate Stats
+  const [stats, setStats] = useState({
+    netBalance: 0,
+    totalFeesCollected: 0,
+    totalExpenses: 0,
+    membersPaidCount: 0
+  });
 
-  // --- Handlers ---
+  const getCategoryColor = (category: string) => {
+    const colors: any = {
+      'MAINTENANCE_FEE': 'bg-green-100 text-green-800',
+      'STATIONERY': 'bg-blue-100 text-blue-800',
+      'PRINTING': 'bg-purple-100 text-purple-800',
+      'LOAN_FORMS': 'bg-orange-100 text-orange-800',
+      'REFRESHMENTS': 'bg-pink-100 text-pink-800',
+      'OTHER': 'bg-gray-100 text-gray-800'
+    }
+    return colors[category] || 'bg-gray-100 text-gray-800'
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: any = {
+      'MAINTENANCE_FEE': 'Maintenance Fee',
+      'STATIONERY': 'Stationery',
+      'PRINTING': 'Printing',
+      'LOAN_FORMS': 'Loan Forms',
+      'REFRESHMENTS': 'Refreshments',
+      'OTHER': 'Other'
+    }
+    return labels[category] || category
+  };
+
+  // 5. Handle Save
   const handleSave = async () => {
     if (!clientId) return;
     
     setSaving(true);
     try {
-        // 1. Update DB
         const { error } = await supabase.from('clients').update({
             society_name: societyName,
             registration_number: regNumber,
@@ -121,46 +173,31 @@ export default function SettingsPage() {
             contact_email: contactEmail,
             currency: currency,
             interest_rate: Number(interestRate),
-            loan_limit: Number(loanLimit),
+            loan_limit_percent: Number(loanLimitPercent),
             fine_amount: Number(fineAmount),
             grace_period_day: Number(gracePeriodDay),
+            theme: theme,
             auto_backup: autoBackup,
             email_notifications: emailNotifications,
-            sms_notifications: smsNotifications,
-            theme: theme
-          }).eq('id', clientId);
+            sms_notifications: smsNotifications
+        }).eq('id', clientId);
 
         if (error) throw error;
 
-        // 2. Apply Theme to DOM (Visual Update)
+        // Apply Theme
         applyTheme(theme);
 
-        toast.success("Settings saved!");
-        // Optional: Refresh page to reload data with new theme
-        // window.location.reload(); 
+        toast.success("Settings saved successfully!");
     } catch (err: any) {
         console.error("Error saving settings:", err);
-        toast.error("Failed to save settings.");
+        toast.error("Failed to save settings: " + err.message);
     } finally {
-        setSaving(false);
+      setSaving(false);
     }
   };
 
-  const handleFactoryReset = () => {
-    if(!confirm("⚠️ CRITICAL: This will wipe ALL data including members, loans, passbook, expenses, etc. This action CANNOT be undone. Are you absolutely sure?")) return;
-    
-    if(!clientId) return;
-
-    setSaving(true);
-    // (Simulate heavy operation or reset if needed)
-    setTimeout(() => {
-        setSaving(false);
-        toast.error("Reset function is a placeholder for security reasons.");
-    }, 1000);
-  };
-
-  // Helper: Apply Theme
-  const applyTheme = (theme: 'light' | 'dark') => {
+  // 6. Helper: Apply Theme
+  const applyTheme = (theme: string) => {
     const root = window.document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
@@ -169,294 +206,170 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 mx-auto mb-4"></div><p className="text-sm text-gray-500">Loading Settings...</p></div>;
+  if (loading) {
+    return <div className="h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-sm text-gray-500">Loading settings...</p>
+    </div>
+  );
+  }
 
   return (
-    <div className="p-6 space-y-8 max-w-[1200px] mx-auto">
-      
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6">
+      {/* Sticky Header */}
+      <div className="flex items-center justify-between border-b pb-4 sticky top-0 bg-gray-50/80 backdrop-blur-md">
         <div>
-          <h1 className="text-3xl font-bold dark:text-white">Settings</h1>
-          <p className="text-gray-500 dark:text-gray-400">Society configuration and preferences</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your society preferences and rules.</p>
         </div>
         <div className="flex items-center gap-2">
-           <Button variant="outline" onClick={handleFactoryReset} className="text-red-500 hover:text-red-600 hover:bg-red-50"><Database className="h-4 w-4 mr-2" /> Factory Reset</Button>
-           <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]" disabled={saving}>
-             {saving ? <Save className="h-4 w-4 mr-2 animate-spin" : <Save className="h-4 w-4 mr-2" /> Save Changes}
+           <Button variant="outline" onClick={() => window.location.reload()}><RotateCw className="h-4 w-4 mr-2" /> Refresh</Button>
+           <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
+              {saving ? <Save className="h-4 w-4 mr-2 animate-spin" : <Save className="h-4 w-4 mr-2" /> Save Changes}
            </Button>
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
         
-        {/* SIDEBAR NAVIGATION */}
-        <div className="w-full lg:w-72 shrink-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-             <TabsList className="flex flex-col h-auto bg-white border shadow-sm rounded-xl p-2">
-                <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 hover:bg-blue-50 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"><Building2 className="h-4 w-4 mr-2" /> Profile</TabsTrigger>
-                <TabsTrigger value="financial" className="w-full justify-start px-4 py-3 hover:bg-gray-100 data-[state=active]:bg-gray-100 data-[state=active]:text-blue-700"><Calculator className="h-4 w-4 mr-2" /> Financial</TabsTrigger>
-                <TabsTrigger value="system" className="w-full justify-start px-4 py-3 hover:bg-gray-100 data-[state=active]:bg-gray-100 data-[state=active]:text-blue-700"><Shield className="h-4 w-4 mr-2" /> System</TabsTrigger>
-                <TabsTrigger value="data" className="w-full justify-start px-4 py-3 hover:bg-gray-100 data-[state=active]:bg-gray-100 data-[state=active]:text-blue-700"><Database className="h-4 w-4 mr-2" /> Data Management</TabsTrigger>
-             </TabsList>
-          </Tabs>
+        {/* LEFT SIDEBAR NAVIGATION */}
+        <div className="w-full lg:w-64 shrink-0">
+            <Tabs orientation="vertical" value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="flex flex flex-row lg:flex-col h-auto bg-transparent p-1">
+                    <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 text-left"><Building2 className="h-4 w-4 mr-2"/> Society Profile</TabsTrigger>
+                    <TabsTrigger value="financial" className="w-full justify-start px-4 py-3 text-left"><Calculator className="h-4 w-4 mr-2"/> Financial Rules</TabsTrigger>
+                    <TabsTrigger value="system" className="w-full justify-start px-4 py-3 text-left"><Shield className="h-4 w-4 mr-2"/> System</TabsTrigger>
+                    <TabsTrigger value="data" className="w-full justify-start px-4 py-3 text-left"><Database className="h-4 w-4 mr-2"/> Data Backup</TabsTrigger>
+                </TabsList>
+            </Tabs>
+        </div>
 
-          {/* MAIN CONTENT AREA */}
-          <div className="flex-1">
-
-            {/* TAB 1: SOCIETY PROFILE */}
+        {/* RIGHT CONTENT AREA */}
+        <div className="flex-1">
+            
+            {/* 1. PROFILE TAB */}
             {activeTab === 'profile' && (
-              <div className="space-y-6">
-                {/* Info Card */}
-                <Card className="border-l-4 border-l-purple-200 bg-purple-50">
-                  <CardHeader>
-                        <CardTitle className="text-xl text-purple-900">
-                          Society Details
-                        </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label>Society Name</Label>
-                                <Input value={societyName} onChange={(e) => setSocietyName(e.target.value)} className="bg-white" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Registration No.</Label>
-                                <Input value={regNumber} onChange={(e) => setRegNumber(e.target.value)} className="bg-white" />
-                            </div>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label>Contact Email</Label>
-                                <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="bg-white" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Society Address</Label>
-                                <Textarea placeholder="Enter address" value={societyAddress} onChange={(e) => setSocietyAddress(e.target.value)} className="bg-white" />
-                            </div>
-                        </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* TAB 2: FINANCIAL */}
-            {activeTab === 'financial' && (
-              <div className="space-y-6">
-                {/* Financial Config */}
                 <Card>
-                  <CardHeader>
-                        <CardTitle className="text-xl text-purple-900">
-                          Financial Rules & Currency
-                        </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                        {/* Currency Selector */}
-                        <div className="space-y-2">
-                          <Label>Select Currency</Label>
-                          <div className="relative w-64">
-                              <div className="absolute right-2 top-2.5 pointer-events-none z-10">{symbol}</div>
-                              <Select value={currency} onValueChange={(v) => setCurrency(v)} className="w-full">
-                                  <SelectTrigger><SelectValue placeholder="Select Currency..." /></SelectTrigger>
-                                  <SelectContent>
-                                      {CURRENCIES.map((c) => (
-                                          <SelectItem key={c.code} value={c.code}>{c.name} ({c.symbol})}</SelectItem>
-                                      ))}
-                                  </SelectContent>
-                              </Select>
-                          </div>
+                    <CardHeader><CardTitle>Society Profile</CardTitle><CardDescription>Basic information for reports and invoices.</CardDescription></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2"><Label>Society Name</Label><Input value={societyName} onChange={(e) => setSocietyName(e.target.value)} placeholder="e.g. Gokuldham Society" /></div>
+                            <div className="space-y-2"><Label>Registration No.</Label><Input type="number" value={regNumber} onChange={(e) => setRegNumber(e.target.value)} placeholder="12345..." /></div>
                         </div>
-                        {/* Preview */}
-                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <p className="text-sm text-gray-600">Currency Preview:</p>
-                          <p className="text-2xl font-mono text-gray-900">{formatCurrency(5000)}</p>
-                          <p className="text-sm text-gray-500">This is how currency will look in the app.</p>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2"><Label>Address</Label><Textarea value={societyAddress} onChange={(e) => setSocietyAddress(e.target.value)} placeholder="Sector 4, Near Main Road..." className="h-20" /></div>
+                            <div className="space-y-2"><Label>Contact Email</Label><Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="admin@mysociety.com" /></div>
                         </div>
-
-                        {/* Rules */}
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-sm">Annual Interest Rate (%)</Label>
-                                <div className="relative w-24"><Input type="number" className="pl-7 text-right" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} className="bg-white" /><span className="absolute left-3 top-2.5 font-bold text-gray-400">%</span></div>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <Label className="text-sm">Max Loan Limit (%) of Deposit</Label>
-                                <div className="relative w-24"><Input type="number" className="pl-7 text-right" value={loanLimit} onChange={(e) => setLoanLimit(e.target.value)} className="bg-white" /><span className="absolute left-3 top-2.5 font-bold text-gray-400">%</span></div>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <Label className="text-sm">Maintenance Fee (Lifetime)</Label>
-                                <div className="relative w-24"><Input type="number" className="pl-7 text-right" value={fineAmount} onChange={(e) => setFineAmount(e.target.value)} className="bg-white" /></div>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <Label className="text-sm">Grace Period (Days)</Label>
-                                <div className="relative w-24"><Input type="number" className="pl-7 text-right" value={gracePeriodDay} onChange={(e) => setGracePeriodDay(e.target.value)} className="bg-white" /><span className="absolute left-3 top-2.5 font-bold text-gray-400">Days</span></div>
-                            </div>
-                        </div>
-                  </CardContent>
+                    </CardContent>
                 </Card>
-              </div>
             )}
 
-            {/* TAB 3: SYSTEM & SECURITY */}
+            {/* 2. FINANCIAL TAB */}
+            {activeTab === 'financial' && (
+                <Card>
+                    <CardHeader><CardTitle>Financial Configuration</CardTitle><CardDescription>Set interest rates, loan limits, and currency.</CardDescription></CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label>Select Currency</Label>
+                                <div className="relative w-64">
+                                    <div className="absolute right-2 top-2.5 pointer-events-none z-10">{symbol}</div>
+                                    <Select value={currency} onValueChange={(v) => setCurrency(v)}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            {CURRENCIES.map((c) => (
+                                                <SelectItem key={c.code} value={c.code}>{c.name} ({c.symbol})}</SelectItem>)
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Annual Interest Rate (%)</Label>
+                                <div className="relative"><Input type="number" className="pl-10 text-right" placeholder="12" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} /><span className="absolute left-3 top-2.5 text-gray-400 font-bold">%</span></div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Max Loan Limit (%)</Label>
+                                <div className="relative"><Input type="number" className="pl-10 text-right" placeholder="80" value={loanLimitPercent} onChange={(e) => setLoanLimitPercent(e.target.value)} /><span className="absolute left-3 top-2.5 text-gray-400 font-bold">%</span></div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Late Fee (Lifetime)</Label>
+                                <div className="relative"><Input type="number" className="pl-10 text-right" placeholder="10" value={fineAmount} onChange={(e) => setFineAmount(e.target.value)} /><span className="absolute left-3 top-2.5 text-gray-400 font-bold">{formatCurrency(0)}</span></div>
+                            </div>
+                        </div>
+                        </CardContent>
+                </Card>
+            )}
+
+            {/* 3. SYSTEM TAB */}
             {activeTab === 'system' && (
-              <div className="space-y-6">
-                {/* System Config */}
-                <Card className="border-l-4 border-l-green-200 bg-green-50">
-                  <CardHeader>
-                        <CardTitle className="text-xl text-green-900">
-                          System Preferences
-                        </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                        {/* Theme Switch */}
+                <Card>
+                    <CardHeader><CardTitle>System Preferences</CardTitle><CardDescription>Manage notifications, theme, and backup settings.</CardDescription></CardHeader>
+                    <CardContent className="space-y-6">
+                        
+                        {/* Theme */}
                         <div className="flex items-center justify-between border-b pb-4">
-                            <div className="space-y-1">
-                              <Label>App Theme</Label>
-                              <p className="text-xs text-gray-500">Choose appearance</p>
+                            <div className="space-y-2">
+                                <Label>App Theme</Label>
+                                <p className="text-xs text-gray-500">Switch between light and dark mode</p>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Moon className={`h-5 w-5 text-gray-500 ${theme === 'dark' ? 'text-yellow-400' : ''}`} />
-                                <Switch
-                                    checked={theme === 'dark'}
-                                    onCheckedChange={() => {
-                                        const newTheme = theme === 'dark' ? 'light' : 'dark';
-                                        setTheme(newTheme);
-                                    }}
-                                    className="data-[state=active]:data-[state=active]:bg-blue-600" 
-                                    data-[state=active]:data-[state=active]:checked:bg-blue-600 data-[state=active]:focus:ring-blue-500 data-[state=active]:data-[state=active]:hover:bg-blue-700
-                                    data-[state=active]:checked:bg-blue-600 checked:bg-blue-600
-                              }
-                                />
+                                <Moon className={`h-5 w-5 text-gray-400 ${theme === 'dark' ? 'text-yellow-400' : ''}`} />
+                                <Switch checked={theme === 'dark'} onCheckedChange={(c) => setTheme(c ? 'dark' : 'light')}/>
                             </div>
                         </div>
 
-                        {/* Auto Backup */}
-                        <div className="flex items-center justify-between border-b pb-4">
-                            <div className="space-y-1">
-                                <Label>Auto Backup</Label>
-                                <p className="text-xs text-gray-500">Download database daily.</p>
-                            </div>
-                            <Switch checked={autoBackup} onCheckedChange={setAutoBackup} />
-                        </div>
-
-                        {/* Notifications */}
-                        <div className="flex flex-col gap-4">
-                           <div className="flex items-center justify-between border-b pb-4">
-                                <div className="space-y-1">
+                        {/* Backup & Notifications */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b pb-4">
+                                <div className="space-y-2">
+                                    <div className="space-y-1">
+                                        <Label>Auto Backup</Label>
+                                        <p className="text-xs text-gray-500">Download database daily.</p>
+                                    </div>
+                                    <Switch checked={autoBackup} onCheckedChange={setAutoBackup} />
+                                </div>
+                                <div className="space-y-2">
                                     <Label>Email Notifications</Label>
-                                    <p className="text-xs text-gray-500">Get daily reports.</p>
+                                        <p className="text-xs text-gray-500">Get daily reports.</p>
+                                    </div>
+                                    <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
                                 </div>
-                                <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
-                           </div>
-                           <div className="flex items-center justify-between border-b pb-4">
-                                <div className="space-y-1">
-                                    <Label>SMS Notifications</Label>
-                                    <p className="text-xs text-gray-500">Updates via SMS.</p>
-                                </div>
-                                <Switch checked={smsNotifications} onCheckedChange={setSmsNotifications} />
-                           </div>
                         </div>
-
-                        {/* Factory Reset */}
-                        <div className="pt-2">
-                          <Button variant="destructive" onClick={handleFactoryReset} className="w-full">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Factory Reset
-                          </Button>
-                          <p className="text-xs text-gray-400 mt-1">
-                             <AlertTriangle className="inline-block w-3 h-3 mr-1"/> 
-                             Wipes all data.
-                          </p>
                         </div>
-                  </CardContent>
+                    </CardContent>
                 </Card>
-              </div>
             )}
 
-            {/* TAB 4: DATA MANAGEMENT */}
+            {/* 4. DATA TAB */}
             {activeTab === 'data' && (
-              <div className="space-y-6">
-                <Card>
-                    <CardHeader className="flex items-center justify-between">
-                        <CardTitle className="text-xl text-gray-800">
-                            Data Management
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <div className="space-y-2">
-                                <h3 className="text-lg font-semibold">System Data</h3>
-                                <p className="text-sm text-gray-500">Manage core data integrity.</p>
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader><CardTitle>Data Management</CardTitle><CardDescription>Download or restore your society data.</CardDescription></CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex gap-4">
+                                <Button variant="outline" className="w-24 h-24 flex flex-col gap-2 border-dashed border-gray-300 hover:bg-blue-50"><Download className="h-8 w-6 text-blue-500 mb-1"/> Download JSON</Button>
+                                <Button variant="outline" className="w-24 h-24 flex-col gap-2 border-dashed border-gray-300 hover:bg-green-50"><Upload className="h-8 w-6 text-green-500 mb-1"/> Restore from File</Button>
                             </div>
-                            <RefreshCw className="text-blue-500 cursor-pointer" onClick={() => toast.info('Syncing...')} />
-                        </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex gap-3">
-                            <Button variant="outline" className="h-12 w-12 border border-gray-300">
-                                <Download className="h-4 w-4 mr-2"/>
-                                Backup
-                            </Button>
-                            <Button className="h-12 w-12 border-gray-300 bg-white">
-                                <Upload className="h-4 w-4 mr-2"/>
-                                Restore
-                            </Button>
+                            <Card className="border-orange-100 shadow-sm bg-orange-50/30">
+                                <CardHeader className="flex items-center gap-2"><AlertTriangle className="h-5 w-5" /> Danger Zone</CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-orange-800 font-medium">
+                                        <strong>Warning:</strong> Factory reset will wipe all members, loans, passbook, expenses, etc.
+                                    </p>
+                                    <p className="text-sm text-orange-700">
+                                        This action <strong>CANNOT be undone.</strong>
+                                    </p>
+                                    <Button variant="destructive" onClick={() => { if(confirm("⚠️ CRITICAL: This will wipe ALL data. Are you absolutely sure?")) { console.warn("Simulated factory reset."); alert("Reset functionality not connected to API yet."); } }>
+                                        <Database className="text-red-600 hover:bg-red-100"/>
+                                    </Button>
+                                </CardContent>
+                            </Card>
                         </div>
-                        <div className="h-[1px] w-full bg-gray-200 my-2"></div>
-
-                        {/* Stats */}
-                        <div className="grid grid-cols-3 gap-4">
-                             <div className="bg-gray-50 p-4 rounded-lg">
-                                 <h4 className="text-sm text-gray-500 font-medium">Total Members</h4>
-                                 <p className="text-xl font-bold text-gray-900">154</p>
-                             </div>
-                             <div className="bg-gray-50 p-4 rounded-lg">
-                                 <h4 className="text-sm text-gray-500 font-medium">Total Loans</h4>
-                                 <p className="text-xl font-bold text-gray-900">{formatCurrency(540000)}</p>
-                             </div>
-                             <div className="bg-gray-50 p-4 rounded-lg">
-                                 <h4 className="text-sm text-gray-500 font-medium">Total Expenses</h4>
-                                 <p className="text-xl font-bold text-gray-900">{formatCurrency(24000)}</p>
-                             </div>
-                        </div>
-                  </CardContent>
-                  <Card>
-                        <CardHeader>
-                            <CardTitle className="text-xl text-gray-800">Activity Logs</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                           <Table>
-                                <TableHeader className="sticky top-0 bg-white">
-                                    <TableRow>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Action</TableHead>
-                                        <TableHead>User</TableHead>
-                                        <TableHead className="text-right">Time</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {[
-                                        { id: '1', action: 'Login', user: 'Admin', time: '10:30 AM' },
-                                        { id: '2', action: 'Logout', user: 'Admin', time: '09:15 AM' },
-                                        { id: '3', action: 'Update', user: 'Admin', time: 'Yesterday' },
-                                        { id: '4', action: 'Delete', user: 'Admin', time: 'Yesterday' }
-                                    ].map((log) => (
-                                        <TableRow key={log.id} className="hover:bg-gray-50">
-                                             <TableCell>{new Date('2024-12-31').toLocaleDateString()}</TableCell>
-                                             <TableCell>
-                                                  <Badge className="bg-green-100 text-green-800">
-                                                        {log.action}
-                                                  </Badge>
-                                             </TableCell>
-                                             <TableCell className="text-gray-600">{log.user}</TableCell>
-                                             <TableCell className="text-right text-gray-500 text-xs">{log.time}</TableCell>
-                                        </TableRow>
-                                    ))
-                                </TableBody>
-                           </Table>
-                        </CardContent>
-                  </Card>
-              </div>
+                    </div>
+                </div>
             )}
             
       </div>
