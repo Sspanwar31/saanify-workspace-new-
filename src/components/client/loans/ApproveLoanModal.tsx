@@ -39,7 +39,6 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
     if (isOpen && requestId) {
       const fetchData = async () => {
         // A. Fetch Loan Request Details
-        // ✅ DRIF-1: Loan Fetch (Updated to include avatar_url)
         const { data: loanData, error } = await supabase
           .from('loans')
           .select(`
@@ -72,13 +71,10 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           });
 
           // ✅ DRIF-2: Total Deposit Calculation (Passbook Query)
-          // 🔥 REAL deposit calculation
           const { data: passbookData } = await supabase
             .from('passbook_entries')
             .select('deposit_amount, payment_mode') 
             .eq('member_id', loanData.member_id);
-
-          // ❌ Removed Debug Log as requested
 
           // Calculate Total
           const totalDeposits = (passbookData || [])
@@ -163,16 +159,14 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
     }
   };
 
-  // ❌ Manual formatCurrency function removed (Hook use ho raha hai)
-
   if (!request) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* ✅ FIX: Added aria-describedby to fix warning */}
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+      {/* ✅ FIX: Dark Mode & Warning Fix */}
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-slate-900 dark:border-slate-800" aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 dark:text-white">
             <Shield className="h-5 w-5" />
             Approve Loan Request
           </DialogTitle>
@@ -180,9 +174,9 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Member Card */}
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-900">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
                 <User className="h-5 w-5" />
                 Member Details
               </CardTitle>
@@ -194,12 +188,12 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
                   {request.memberAvatar ? (
                     <AvatarImage src={request.memberAvatar} />
                   ) : null}
-                  <AvatarFallback className="bg-blue-100 text-blue-800 text-lg font-semibold">
+                  <AvatarFallback className="bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 text-lg font-semibold">
                     {request.memberName ? request.memberName.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold text-lg">{request.memberName}</h3>
+                  <h3 className="font-semibold text-lg dark:text-white">{request.memberName}</h3>
                   <Badge variant="secondary" className="mt-1">
                     Pending Approval
                   </Badge>
@@ -209,9 +203,9 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           </Card>
 
           {/* Total Deposit Card */}
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-700">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white border-blue-700">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-white">
                 <DollarSign className="h-5 w-5" />
                 Total Deposit
               </CardTitle>
@@ -223,9 +217,9 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           </Card>
 
           {/* 80% Limit Card */}
-          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-green-700">
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white border-green-700">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-white">
                 <TrendingUp className="h-5 w-5" />
                 80% Limit
               </CardTitle>
@@ -237,27 +231,27 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           </Card>
 
           {/* Input Card */}
-          <Card className="border-2 border-gray-200">
+          <Card className="border-2 border-gray-200 dark:border-slate-700 dark:bg-slate-900">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 dark:text-white">
                 <DollarSign className="h-5 w-5" />
                 Loan Amount
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="loan-amount">Loan Amount (₹)</Label>
+                <Label htmlFor="loan-amount" className="dark:text-gray-300">Loan Amount ({formatCurrency(0).charAt(0)})</Label>
                 <Input
                   id="loan-amount"
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="text-lg font-semibold"
+                  className="text-lg font-semibold dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                   placeholder="Enter amount or leave empty"
                 />
               </div>
               
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground dark:text-gray-400">
                 Requested: {requestedAmount > 0
                   ? formatCurrency(requestedAmount)
                   : 'Not specified by member'}
@@ -266,16 +260,16 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
           </Card>
 
           {/* Override Card */}
-          <Card className={`${isOverride ? 'border-orange-300 bg-orange-50' : 'border-gray-200'}`}>
+          <Card className={`${isOverride ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800' : 'border-gray-200 dark:border-slate-700 dark:bg-slate-900'}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 dark:text-white">
                 <Shield className="h-5 w-5" />
                 Override Control
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label htmlFor="override-toggle" className="text-sm font-medium">
+                <Label htmlFor="override-toggle" className="text-sm font-medium dark:text-gray-300">
                   Enable Override
                 </Label>
                 <Switch
@@ -284,37 +278,37 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
                   onCheckedChange={setIsOverride}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground dark:text-gray-400">
                 Allow loan amount up to 100% of deposits
               </p>
             </CardContent>
           </Card>
 
           {/* Interest Rate Card */}
-          <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+          <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-purple-800">
+              <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
                 <Percent className="h-5 w-5" />
                 Interest Rate
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-800">1% / month</div>
-              <p className="text-purple-600 text-sm mt-1">Fixed rate</p>
+              <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">1% / month</div>
+              <p className="text-purple-600 dark:text-purple-400 text-sm mt-1">Fixed rate</p>
             </CardContent>
           </Card>
 
           {/* Loan Date Card */}
-          <Card className="bg-gradient-to-r from-gray-50 to-slate-50 border-gray-300">
+          <Card className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-slate-800 dark:to-slate-900 border-gray-300 dark:border-slate-700">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 dark:text-white">
                 <Calendar className="h-5 w-5" />
                 Loan Date
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-lg font-semibold">Current Month</div>
-              <p className="text-muted-foreground text-sm mt-1">
+              <div className="text-lg font-semibold dark:text-white">Current Month</div>
+              <p className="text-muted-foreground dark:text-gray-400 text-sm mt-1">
                 {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
               </p>
             </CardContent>
@@ -323,9 +317,9 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
         {/* Validation Feedback */}
         {isOverLimit && (
-          <Alert className={`mt-6 ${isOverride ? 'border-orange-200 bg-orange-50' : 'border-red-200 bg-red-50'}`}>
-            <AlertTriangle className={`h-4 w-4 ${isOverride ? 'text-orange-600' : 'text-red-600'}`} />
-            <AlertDescription className={isOverride ? 'text-orange-800' : 'text-red-800'}>
+          <Alert className={`mt-6 ${isOverride ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800' : 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800'}`}>
+            <AlertTriangle className={`h-4 w-4 ${isOverride ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'}`} />
+            <AlertDescription className={isOverride ? 'text-orange-800 dark:text-orange-300' : 'text-red-800 dark:text-red-300'}>
               {isOverride ? (
                 <span className="font-medium">Override Active - Loan approval enabled up to 100% of deposits</span>
               ) : (
@@ -339,13 +333,13 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
 
         {/* Actions */}
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="flex-1">
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="flex-1 dark:bg-slate-800 dark:text-white dark:border-slate-700">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!canApprove || isSubmitting || loanAmount <= 0}
-            className="bg-green-600 hover:bg-green-700 flex-1"
+            className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white flex-1"
           >
             {isSubmitting ? (
               <>
