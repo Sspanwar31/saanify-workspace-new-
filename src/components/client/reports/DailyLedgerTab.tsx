@@ -16,26 +16,26 @@ export default function DailyLedgerTab({ data }: DailyLedgerTabProps) {
 
   return (
     <div className="mt-6">
-      <Card className="rounded-xl border-orange-100 shadow-sm">
+      <Card className="rounded-xl border-gray-800 shadow-sm bg-gray-900">
         <CardHeader>
-          <CardTitle>Daily Ledger - The Operational Audit</CardTitle>
+          <CardTitle className="text-gray-200">Daily Ledger - The Operational Audit</CardTitle>
         </CardHeader>
         <CardContent>
           {/* h-[600px] ensures table has a fixed height with scroll */}
           <div className="h-[600px] overflow-y-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-white shadow-sm z-10">
+              <TableHeader className="sticky top-0 bg-gray-950 shadow-sm z-10 border-b border-gray-800">
                 <TableRow>
-                  <TableHead className="w-[100px]">Date</TableHead>
-                  <TableHead className="text-green-600 font-semibold">Deposit</TableHead>
-                  <TableHead className="text-green-600 font-semibold">EMI</TableHead>
-                  <TableHead className="text-red-600 font-semibold">Loan Out</TableHead>
-                  <TableHead className="text-green-600 font-semibold">Interest</TableHead>
-                  <TableHead className="text-green-600 font-semibold">Fine</TableHead>
-                  <TableHead className="text-green-600 font-bold bg-green-50">Cash IN</TableHead>
-                  <TableHead className="text-red-600 font-bold bg-red-50">Cash OUT</TableHead>
-                  <TableHead className="font-semibold">Net Flow</TableHead>
-                  <TableHead className="font-bold text-blue-700 bg-blue-50">Running Bal</TableHead>
+                  <TableHead className="w-[100px] text-gray-300">Date</TableHead>
+                  <TableHead className="text-green-400 font-semibold">Deposit</TableHead>
+                  <TableHead className="text-green-400 font-semibold">EMI</TableHead>
+                  <TableHead className="text-red-400 font-semibold">Loan Out</TableHead>
+                  <TableHead className="text-green-400 font-semibold">Interest</TableHead>
+                  <TableHead className="text-green-400 font-semibold">Fine</TableHead>
+                  <TableHead className="text-green-400 font-bold bg-green-950/30">Cash IN</TableHead>
+                  <TableHead className="text-red-400 font-bold bg-red-950/30">Cash OUT</TableHead>
+                  <TableHead className="font-semibold text-gray-300">Net Flow</TableHead>
+                  <TableHead className="font-bold text-blue-400 bg-blue-950/30">Running Bal</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -47,38 +47,38 @@ export default function DailyLedgerTab({ data }: DailyLedgerTabProps) {
                   </TableRow>
                 ) : (
                   data.map((entry: any, i: number) => (
-                    <TableRow key={i} className="hover:bg-gray-50 transition-colors">
-                      <TableCell className="font-medium text-gray-700">
+                    <TableRow key={i} className="hover:bg-gray-800 transition-colors border-b border-gray-800">
+                      <TableCell className="font-medium text-gray-300">
                         {new Date(entry.date).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="text-green-600">
+                      <TableCell className="text-green-400">
                         {entry.deposit > 0 ? formatCurrency(entry.deposit) : '-'}
                       </TableCell>
-                      <TableCell className="text-green-600">
+                      <TableCell className="text-green-400">
                         {entry.emi > 0 ? formatCurrency(entry.emi) : '-'}
                       </TableCell>
-                      <TableCell className="text-red-600">
+                      <TableCell className="text-red-400">
                         {entry.loanOut > 0 ? formatCurrency(entry.loanOut) : '-'}
                       </TableCell>
-                      <TableCell className="text-green-600">
+                      <TableCell className="text-green-400">
                         {entry.interest > 0 ? formatCurrency(entry.interest) : '-'}
                       </TableCell>
-                      <TableCell className="text-green-600">
+                      <TableCell className="text-green-400">
                         {entry.fine > 0 ? formatCurrency(entry.fine) : '-'}
                       </TableCell>
                       
                       {/* Summary Columns */}
-                      <TableCell className="font-bold text-green-700 bg-green-50/50">
+                      <TableCell className="font-bold text-green-400 bg-green-950/10">
                         {formatCurrency(entry.cashIn)}
                       </TableCell>
-                      <TableCell className="font-bold text-red-700 bg-red-50/50">
+                      <TableCell className="font-bold text-red-400 bg-red-950/10">
                         {formatCurrency(entry.cashOut)}
                       </TableCell>
                       
-                      <TableCell className={`font-medium ${entry.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <TableCell className={`font-medium ${entry.netFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {formatCurrency(entry.netFlow)}
                       </TableCell>
-                      <TableCell className="font-bold text-blue-700 bg-blue-50/50">
+                      <TableCell className="font-bold text-blue-400 bg-blue-950/10">
                         {formatCurrency(entry.runningBal)}
                       </TableCell>
                     </TableRow>
