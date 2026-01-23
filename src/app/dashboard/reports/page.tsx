@@ -120,39 +120,39 @@ export default function ReportsPage() {
     }));
   };
 
-  if (loading) return <div className="text-center py-20 text-gray-400">Loading reports data...</div>;
+  if (loading) return <div className="text-center py-20 text-gray-500">Loading reports data...</div>;
 
   return (
-    <div className="p-8 space-y-8 w-full max-w-[1600px] mx-auto">
+    <div className="bg-slate-50 dark:bg-slate-900 p-8 space-y-8 w-full max-w-[1600px] mx-auto">
       {/* HEADER */}
-      <div className="flex items-center justify-between border-b border-gray-800 pb-4">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-4">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
           REPORTS
         </h1>
         <Select onValueChange={handleExport}>
-            <SelectTrigger className="w-40 bg-emerald-700 text-white border-emerald-600"><div className="flex gap-2"><Download className="h-4 w-4"/><span>Export All</span></div></SelectTrigger>
+            <SelectTrigger className="w-40 bg-emerald-600 text-white border-emerald-600"><div className="flex gap-2"><Download className="h-4 w-4"/><span>Export All</span></div></SelectTrigger>
             <SelectContent className="bg-gray-900 border-gray-700 text-gray-200"><SelectItem value="csv">CSV</SelectItem><SelectItem value="print">Print</SelectItem></SelectContent>
         </Select>
       </div>
 
       {/* FILTERS */}
-      <div className="bg-gray-900 p-4 rounded-lg border border-gray-800 shadow-sm flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-lg border border-gray-700 px-3">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <span className="text-sm font-medium text-gray-300">Filters</span>
+      <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3">
+            <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Filters</span>
           </div>
 
           <div className="relative">
              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-             <Input type="date" value={filters.startDate} onChange={(e) => setFilters({...filters, startDate: e.target.value})} className="pl-10 w-36 bg-gray-800 border-gray-700 text-gray-200" />
+             <Input type="date" value={filters.startDate} onChange={(e) => setFilters({...filters, startDate: e.target.value})} className="pl-10 w-36 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-200" />
           </div>
           <div className="relative">
              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-             <Input type="date" value={filters.endDate} onChange={(e) => setFilters({...filters, endDate: e.target.value})} className="pl-10 w-36 bg-gray-800 border-gray-700 text-gray-200" />
+             <Input type="date" value={filters.endDate} onChange={(e) => setFilters({...filters, endDate: e.target.value})} className="pl-10 w-36 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-200" />
           </div>
 
           <Select value={filters.selectedMember} onValueChange={(v) => setFilters({...filters, selectedMember: v})}>
-            <SelectTrigger className="w-40 bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="All Members" /></SelectTrigger>
+            <SelectTrigger className="w-40 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-200"><SelectValue placeholder="All Members" /></SelectTrigger>
             <SelectContent className="bg-gray-900 border-gray-700 text-gray-200">
                 <SelectItem value="ALL">All Members</SelectItem>
                 {members.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
@@ -160,7 +160,7 @@ export default function ReportsPage() {
           </Select>
 
           <Select value={filters.transactionMode} onValueChange={(v) => setFilters({...filters, transactionMode: v})}>
-            <SelectTrigger className="w-40 bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Mode" /></SelectTrigger>
+            <SelectTrigger className="w-40 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-200"><SelectValue placeholder="Mode" /></SelectTrigger>
             <SelectContent className="bg-gray-900 border-gray-700 text-gray-200">
                 <SelectItem value="all">All Modes</SelectItem>
                 <SelectItem value="cash">Cash</SelectItem>
@@ -171,7 +171,7 @@ export default function ReportsPage() {
 
           {/* ✅ CHANGE: Transaction Nature Filter */}
           <Select value={filters.transactionNature} onValueChange={(v) => setFilters({...filters, transactionNature: v})}>
-            <SelectTrigger className="w-44 bg-gray-800 border-gray-700 text-gray-200"><SelectValue placeholder="Transaction Nature" /></SelectTrigger>
+            <SelectTrigger className="w-44 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-200"><SelectValue placeholder="Transaction Nature" /></SelectTrigger>
             <SelectContent className="bg-gray-900 border-gray-700 text-gray-200">
                 <SelectItem value="all">All Transactions</SelectItem>
                 <SelectItem value="inflow">Inflow (Money In)</SelectItem>
@@ -179,13 +179,13 @@ export default function ReportsPage() {
             </SelectContent>
           </Select>
 
-          <Button variant="ghost" size="icon" onClick={resetFilters}><X className="h-5 w-5 text-red-400 hover:text-red-300" /></Button>
+          <Button variant="ghost" size="icon" onClick={resetFilters}><X className="h-5 w-5 text-red-500 hover:text-red-400" /></Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-         <TabsList className="grid w-full grid-cols-8 h-auto gap-1 bg-gray-800 p-1 rounded-xl mb-6 border border-gray-700">
+         <TabsList className="grid w-full grid-cols-8 h-auto gap-1 bg-gray-200 dark:bg-gray-800 p-1 rounded-xl mb-6">
             {['Summary', 'Daily', 'Cashbook', 'Passbook', 'Loans', 'Members', 'Maturity', 'Defaulters'].map(t => (
-                <TabsTrigger key={t.toLowerCase()} value={t.toLowerCase()} className="text-xs font-medium py-2 text-gray-300 data-[state=active]:bg-gray-900 data-[state=active]:text-white">{t}</TabsTrigger>
+                <TabsTrigger key={t.toLowerCase()} value={t.toLowerCase()} className="text-xs font-medium py-2 text-gray-900 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white">{t}</TabsTrigger>
             ))}
          </TabsList>
 
@@ -196,9 +196,9 @@ export default function ReportsPage() {
          <TabsContent value="daily">
             {/* Added Cards */}
             <div className="grid gap-4 md:grid-cols-3 mb-6">
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Total Cash IN</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-400">{formatCurrency(dailyTotalIn)}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Total Cash OUT</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-400">{formatCurrency(dailyTotalOut)}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Net Flow</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${dailyNet>=0?'text-blue-400':'text-orange-400'}`}>{formatCurrency(dailyNet)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total Cash IN</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(dailyTotalIn)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total Cash OUT</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(dailyTotalOut)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Net Flow</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${dailyNet>=0?'text-blue-600 dark:text-blue-400':'text-orange-600 dark:text-orange-400'}`}>{formatCurrency(dailyNet)}</div></CardContent></Card>
             </div>
             <DailyLedgerTab data={auditData.dailyLedger} />
          </TabsContent>
@@ -210,9 +210,9 @@ export default function ReportsPage() {
          <TabsContent value="passbook">
             {/* Added Cards */}
             <div className="grid gap-4 md:grid-cols-3 mb-6">
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Total Deposits</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-400">{formatCurrency(passbookDep)}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Installments Rec.</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-400">{formatCurrency(passbookInst)}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Interest + Fine</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-purple-400">{formatCurrency(passbookInt)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total Deposits</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(passbookDep)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Installments Rec.</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(passbookInst)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Interest + Fine</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(passbookInt)}</div></CardContent></Card>
             </div>
             <PassbookTab data={passbookEntries} members={members} />
          </TabsContent>
@@ -224,9 +224,9 @@ export default function ReportsPage() {
          <TabsContent value="members">
             {/* Added Cards */}
             <div className="grid gap-4 md:grid-cols-3 mb-6">
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Total Members</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-gray-200">{activeMembersCount}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Total Deposits</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-400">{formatCurrency(memTotalDeposits)}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Active Loans Value</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-400">{formatCurrency(memTotalLoans)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total Members</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-gray-800 dark:text-gray-200">{activeMembersCount}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total Deposits</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(memTotalDeposits)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Active Loans Value</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(memTotalLoans)}</div></CardContent></Card>
             </div>
             <MembersReportTab data={auditData.memberReports} />
          </TabsContent>
@@ -234,9 +234,9 @@ export default function ReportsPage() {
          <TabsContent value="maturity">
             {/* Added Cards */}
             <div className="grid gap-4 md:grid-cols-3 mb-6">
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Total Maturity Val</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-orange-400">{formatCurrency(matTotalMaturity)}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Loans to Deduct</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-400">{formatCurrency(matTotalLoan)}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Net Payable</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-400">{formatCurrency(matNetPayable)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total Maturity Val</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(matTotalMaturity)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Loans to Deduct</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(matTotalLoan)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Net Payable</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(matNetPayable)}</div></CardContent></Card>
             </div>
             <MaturityTab data={auditData.maturity} />
          </TabsContent>
@@ -244,9 +244,9 @@ export default function ReportsPage() {
          <TabsContent value="defaulters">
             {/* Added Cards */}
             <div className="grid gap-4 md:grid-cols-3 mb-6">
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Total Defaulters</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-400">{enhancedDefaulters.length}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Amount at Risk</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-orange-400">{formatCurrency(defTotalAmount)}</div></CardContent></Card>
-                <Card className="bg-gray-900 border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-400">Critical Cases</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-500">{defCriticalCount}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Total Defaulters</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600 dark:text-red-400">{enhancedDefaulters.length}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Amount at Risk</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(defTotalAmount)}</div></CardContent></Card>
+                <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500 dark:text-gray-400">Critical Cases</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-800 dark:text-red-500">{defCriticalCount}</div></CardContent></Card>
             </div>
             <DefaultersTab data={enhancedDefaulters} />
          </TabsContent>
