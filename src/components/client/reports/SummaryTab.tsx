@@ -22,78 +22,78 @@ export default function SummaryTab({ summary, activeMembersCount, graphData }: S
       
       {/* 1. TOP CARDS */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-gray-900 border-green-900/50 shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-green-800 flex items-center gap-2">
+            <CardTitle className="text-green-400 flex items-center gap-2">
               <DollarSign className="h-4 w-4"/> Total Income
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-700">{formatCurrency(summary.income.total)}</div>
-            <p className="text-sm text-muted-foreground">All income sources</p>
+            <div className="text-3xl font-bold text-green-300">{formatCurrency(summary.income.total)}</div>
+            <p className="text-sm text-gray-400">All income sources</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-gray-900 border-red-900/50 shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-red-800 flex items-center gap-2">
+            <CardTitle className="text-red-400 flex items-center gap-2">
               <TrendingDown className="h-4 w-4"/> Total Expenses
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-700">{formatCurrency(summary.expenses.total)}</div>
-            <p className="text-sm text-muted-foreground">Operating expenses</p>
+            <div className="text-3xl font-bold text-red-300">{formatCurrency(summary.expenses.total)}</div>
+            <p className="text-sm text-gray-400">Operating expenses</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-gray-900 border-blue-900/50 shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-blue-800 flex items-center gap-2">
+            <CardTitle className="text-blue-400 flex items-center gap-2">
               <TrendingUp className="h-4 w-4"/> Net Profit
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-700">{formatCurrency(summary.netProfit)}</div>
-            <p className="text-sm text-muted-foreground">Income - Expenses</p>
+            <div className="text-3xl font-bold text-blue-300">{formatCurrency(summary.netProfit)}</div>
+            <p className="text-sm text-gray-400">Income - Expenses</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-purple-50 border-purple-200">
+        <Card className="bg-gray-900 border-purple-900/50 shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="text-purple-800 flex items-center gap-2">
+            <CardTitle className="text-purple-400 flex items-center gap-2">
               <Users className="h-4 w-4"/> Active Members
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-700">{activeMembersCount}</div>
-            <p className="text-sm text-muted-foreground">Current members</p>
+            <div className="text-3xl font-bold text-purple-300">{activeMembersCount}</div>
+            <p className="text-sm text-gray-400">Current members</p>
           </CardContent>
         </Card>
       </div>
       
       {/* 2. PROFIT & LOSS STATEMENT */}
-      <Card className="border-l-4 border-l-blue-500 shadow-md">
+      <Card className="bg-gray-900 border-l-4 border-l-blue-500 shadow-md border-gray-800">
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-gray-800">Profit & Loss Statement</CardTitle>
+          <CardTitle className="text-xl font-bold text-gray-200">Profit & Loss Statement</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 gap-8">
             {/* INCOME SIDE */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-green-700 border-b pb-2 text-lg">INCOME (Credits)</h4>
+              <h4 className="font-semibold text-green-400 border-b border-gray-700 pb-2 text-lg">INCOME (Credits)</h4>
               <div className="flex justify-between py-2">
-                <span className="text-gray-600">Interest Income</span>
-                <span className="font-medium">{formatCurrency(summary.income.interest)}</span>
+                <span className="text-gray-300">Interest Income</span>
+                <span className="font-medium text-gray-200">{formatCurrency(summary.income.interest)}</span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-gray-600">Fine Income</span>
-                <span className="font-medium">{formatCurrency(summary.income.fine)}</span>
+                <span className="text-gray-300">Fine Income</span>
+                <span className="font-medium text-gray-200">{formatCurrency(summary.income.fine)}</span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-gray-600">Other Fees</span>
-                <span className="font-medium">{formatCurrency(summary.income.other)}</span>
+                <span className="text-gray-300">Other Fees</span>
+                <span className="font-medium text-gray-200">{formatCurrency(summary.income.other)}</span>
               </div>
-              <div className="flex justify-between font-bold border-t pt-2 text-lg text-green-700">
+              <div className="flex justify-between font-bold border-t border-gray-700 pt-2 text-lg text-green-400">
                 <span>Total Income</span>
                 <span>{formatCurrency(summary.income.total)}</span>
               </div>
@@ -101,16 +101,16 @@ export default function SummaryTab({ summary, activeMembersCount, graphData }: S
 
             {/* EXPENSE SIDE */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-red-700 border-b pb-2 text-lg">EXPENSES (Debits)</h4>
+              <h4 className="font-semibold text-red-400 border-b border-gray-700 pb-2 text-lg">EXPENSES (Debits)</h4>
               <div className="flex justify-between py-2">
-                <span className="text-gray-600">Operational Cost</span>
-                <span className="font-medium">{formatCurrency(summary.expenses.ops)}</span>
+                <span className="text-gray-300">Operational Cost</span>
+                <span className="font-medium text-gray-200">{formatCurrency(summary.expenses.ops)}</span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-gray-600">Maturity Liability</span>
-                <span className="font-medium">{formatCurrency(summary.expenses.maturityInt)}</span>
+                <span className="text-gray-300">Maturity Liability</span>
+                <span className="font-medium text-gray-200">{formatCurrency(summary.expenses.maturityInt)}</span>
               </div>
-              <div className="flex justify-between font-bold border-t pt-2 text-lg text-red-700">
+              <div className="flex justify-between font-bold border-t border-gray-700 pt-2 text-lg text-red-400">
                 <span>Total Expenses</span>
                 <span>{formatCurrency(summary.expenses.total)}</span>
               </div>
@@ -118,9 +118,9 @@ export default function SummaryTab({ summary, activeMembersCount, graphData }: S
           </div>
           
           {/* NET PROFIT ROW */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg flex justify-between items-center border">
-            <span className="text-xl font-bold text-gray-700">NET PROFIT</span>
-            <span className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className="mt-6 p-4 bg-gray-800 rounded-lg flex justify-between items-center border border-gray-700">
+            <span className="text-xl font-bold text-gray-200">NET PROFIT</span>
+            <span className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {formatCurrency(summary.netProfit)}
             </span>
           </div>
@@ -130,13 +130,13 @@ export default function SummaryTab({ summary, activeMembersCount, graphData }: S
       {/* 3. GRAPHS */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 h-[350px]">
          {/* Graph 1: Income vs Expense */}
-         <Card className="p-4">
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Income vs Expense</CardTitle></CardHeader>
+         <Card className="p-4 bg-gray-900 border-gray-800 shadow-lg">
+            <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-200">Income vs Expense</CardTitle></CardHeader>
             <CardContent className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={graphData.incomeVsExpense}>
-                        <CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/>
-                        <Tooltip formatter={(value: number) => formatCurrency(value)}/>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" /><XAxis dataKey="name" stroke="#9ca3af"/><YAxis stroke="#9ca3af"/>
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.5rem' }} itemStyle={{ color: '#e5e7eb' }}/>
                         <Bar dataKey="value">
                           {graphData.incomeVsExpense.map((entry: any, index: number) => (
                             <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -148,13 +148,13 @@ export default function SummaryTab({ summary, activeMembersCount, graphData }: S
          </Card>
 
          {/* Graph 2: Loan Portfolio */}
-         <Card className="p-4">
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Loan Portfolio</CardTitle></CardHeader>
+         <Card className="p-4 bg-gray-900 border-gray-800 shadow-lg">
+            <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-200">Loan Portfolio</CardTitle></CardHeader>
             <CardContent className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={graphData.loanTrends}>
-                        <CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/>
-                        <Tooltip formatter={(value: number) => formatCurrency(value)}/>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" /><XAxis dataKey="name" stroke="#9ca3af"/><YAxis stroke="#9ca3af"/>
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.5rem' }} itemStyle={{ color: '#e5e7eb' }}/>
                         <Bar dataKey="value" fill="#3b82f6"/>
                     </BarChart>
                 </ResponsiveContainer>
@@ -162,8 +162,8 @@ export default function SummaryTab({ summary, activeMembersCount, graphData }: S
          </Card>
 
          {/* Graph 3: Payment Modes */}
-         <Card className="p-4">
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Payment Modes</CardTitle></CardHeader>
+         <Card className="p-4 bg-gray-900 border-gray-800 shadow-lg">
+            <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-200">Payment Modes</CardTitle></CardHeader>
             <CardContent className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -180,7 +180,7 @@ export default function SummaryTab({ summary, activeMembersCount, graphData }: S
                                 <Cell key={`cell-${index}`} fill={entry.fill}/>
                             ))}
                         </Pie>
-                        <Tooltip formatter={(value: number) => formatCurrency(value)}/>
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.5rem' }} itemStyle={{ color: '#e5e7eb' }}/>
                     </PieChart>
                 </ResponsiveContainer>
             </CardContent>
