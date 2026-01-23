@@ -3,19 +3,25 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
 import { 
-  Save, RotateCcw, Building2, Calculator, Shield, Database, 
-  Trash2, AlertTriangle, Moon, Sun, Upload, Download
+  Save, RotateCw, Building2, Calculator, Database, 
+  Trash2, AlertTriangle, Moon, Sun 
+  Upload, RefreshCw 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
-// Extended Currency List
+// ✅ IMPORT KARO
+import { useCurrency } from '@/hooks/useCurrency'; 
+
+// ✅ CURRENCIES LIST
 const CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -25,251 +31,434 @@ const CURRENCIES = [
 ];
 
 export default function SettingsPage() {
+  // ✅ Hook call karo
+  const { formatCurrency, symbol } = useCurrency();
+
+  // --- States ---
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light'); // Local state
 
-  // Settings State
-  const [settings, setSettings] = useState({
-    societyName: '', registrationNumber: '', societyAddress: '', contactEmail: '',
-    currency: 'INR', interestRate: 12, loanLimitPercent: 80, fineAmount: 10, gracePeriodDay: 10,
-    theme: 'light', autoBackup: true, emailNotifications: true, smsNotifications: false
-  });
+  const [societyName, setSocietyName] = useState('');
+  const [regNumber, setRegNumber] = useState('');
+  const [societyAddress, setSocietyAddress] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  
+  // Currency Defaults
+  const [currency, setCurrency] = useState('INR');
+  const [interestRate, setInterestRate] = useState('12');
+  const [loanLimit, setLoanLimit] = useState('80');
+  const [fineAmount, setFineAmount] = useState(10);
+  const [gracePeriodDay, setGracePeriodDay] = useState(10);
+  const [autoBackup, setAutoBackup] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [smsNotifications, setSmsNotifications] = useState(false);
 
-  // 1. Fetch Settings
+  // 1. Init ID Fetch
   useEffect(() => {
-    const fetchSettings = async () => {
+    const init = async () => {
       const user = JSON.parse(localStorage.getItem('current_user') || 'null');
-      if (!user?.id) return;
-
-      // Safe Client ID Logic
-      const finalId = user.client_id || user.id;
-      setClientId(finalId);
-
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', finalId)
-        .single();
-
-      if (data && !error) {
-        setSettings({
-            societyName: data.society_name || '',
-            registrationNumber: data.registration_number || '',
-            societyAddress: data.society_address || '',
-            contactEmail: data.contact_email || '',
-            currency: data.currency || 'INR',
-            interestRate: data.interest_rate || 12,
-            loanLimitPercent: data.loan_limit_percent || 80,
-            fineAmount: data.fine_amount || 10,
-            gracePeriodDay: data.grace_period_day || 10,
-            theme: data.theme || 'light',
-            autoBackup: data.auto_backup ?? true,
-            emailNotifications: data.email_notifications ?? true,
-            smsNotifications: data.sms_notifications ?? false
-        });
-
-        // ✅ FIX: Apply Theme on Load
-        applyTheme(data.theme || 'light');
+      if (user?.id) {
+        const id = user.client_id || user.id;
+        setClientId(id);
+      } else {
+        setClientId(null);
+        setLoading(false);
       }
-      setLoading(false);
     };
-    fetchSettings();
+    init();
   }, []);
 
-  // ✅ Helper: Apply Theme Logic
-  const applyTheme = (theme: string) => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-  };
+  // 2. Fetch Settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      setLoading(true);
+      if (!clientId) return;
 
-  // 2. Save Handler
+      try {
+        const { data, error } = await supabase
+          .select('*')
+          .eq('id', clientId)
+          .single();
+
+        if (data && !error) {
+          setSocietyName(data.society_name || '');
+          setRegNumber(data.registration_number || '');
+          setSocietyAddress(data.society_address || '');
+          setContactEmail(data.contact_email || '');
+          setCurrency(data.currency || 'INR');
+          setInterestRate(data.interest_rate || 12);
+          setLoanLimit(data.loan_limit || 80);
+          setFineAmount(data.fine_amount || 10);
+          setGracePeriodDay(data.grace_period_day || 10);
+          setAutoBackup(data.auto_backup ?? true);
+          setEmailNotifications(data.email_notifications ?? true);
+          setSmsNotifications(data.sms_notifications ?? false);
+          setTheme(data.theme || 'light');
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, [clientId]);
+
+  // --- Handlers ---
   const handleSave = async () => {
     if (!clientId) return;
+    
     setSaving(true);
     try {
+        // 1. Update DB
         const { error } = await supabase.from('clients').update({
-            society_name: settings.societyName,
-            registration_number: settings.registrationNumber,
-            society_address: settings.societyAddress,
-            contact_email: settings.contactEmail,
-            currency: settings.currency,
-            interest_rate: settings.interestRate,
-            loan_limit_percent: settings.loanLimitPercent,
-            fine_amount: settings.fineAmount,
-            grace_period_day: settings.gracePeriodDay,
-            theme: settings.theme,
-            auto_backup: settings.autoBackup,
-            email_notifications: settings.emailNotifications,
-            sms_notifications: settings.smsNotifications
-        }).eq('id', clientId);
+            society_name: societyName,
+            registration_number: regNumber,
+            society_address: societyAddress,
+            contact_email: contactEmail,
+            currency: currency,
+            interest_rate: Number(interestRate),
+            loan_limit: Number(loanLimit),
+            fine_amount: Number(fineAmount),
+            grace_period_day: Number(gracePeriodDay),
+            auto_backup: autoBackup,
+            email_notifications: emailNotifications,
+            sms_notifications: smsNotifications,
+            theme: theme
+          }).eq('id', clientId);
 
         if (error) throw error;
-        
-        // ✅ FIX: Apply Theme on Save
-        applyTheme(settings.theme);
-        
-        toast.success("Settings saved successfully!");
+
+        // 2. Apply Theme to DOM (Visual Update)
+        applyTheme(theme);
+
+        toast.success("Settings saved!");
+        // Optional: Refresh page to reload data with new theme
+        // window.location.reload(); 
     } catch (err: any) {
-        toast.error("Failed to save settings: " + err.message);
+        console.error("Error saving settings:", err);
+        toast.error("Failed to save settings.");
     } finally {
         setSaving(false);
     }
   };
 
-  const handleChange = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-    // Live Theme Preview (Optional)
-    if (key === 'theme') applyTheme(value);
+  const handleFactoryReset = () => {
+    if(!confirm("⚠️ CRITICAL: This will wipe ALL data including members, loans, passbook, expenses, etc. This action CANNOT be undone. Are you absolutely sure?")) return;
+    
+    if(!clientId) return;
+
+    setSaving(true);
+    // (Simulate heavy operation or reset if needed)
+    setTimeout(() => {
+        setSaving(false);
+        toast.error("Reset function is a placeholder for security reasons.");
+    }, 1000);
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading settings...</div>;
+  // Helper: Apply Theme
+  const applyTheme = (theme: 'light' | 'dark') => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 mx-auto mb-4"></div><p className="text-sm text-gray-500">Loading Settings...</p></div>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 space-y-8 max-w-[1200px] mx-auto">
       
-      {/* Sticky Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sticky top-0 z-10 bg-gray-50/80 backdrop-blur-md p-4 rounded-xl border border-gray-200 shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings & Configuration</h1>
-          <p className="text-gray-500 text-sm">Manage your society preferences and rules.</p>
+          <h1 className="text-3xl font-bold dark:text-white">Settings</h1>
+          <p className="text-gray-500 dark:text-gray-400">Society configuration and preferences</p>
         </div>
-        <div className="flex gap-2">
-            <Button variant="outline" onClick={() => window.location.reload()}><RotateCcw className="h-4 w-4 mr-2"/> Reset</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
-                {saving ? 'Saving...' : <><Save className="h-4 w-4 mr-2"/> Save Changes</>}
-            </Button>
+        <div className="flex items-center gap-2">
+           <Button variant="outline" onClick={handleFactoryReset} className="text-red-500 hover:text-red-600 hover:bg-red-50"><Database className="h-4 w-4 mr-2" /> Factory Reset</Button>
+           <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]" disabled={saving}>
+             {saving ? <Save className="h-4 w-4 mr-2 animate-spin" : <Save className="h-4 w-4 mr-2" /> Save Changes}
+           </Button>
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
         
-        {/* LEFT SIDEBAR NAVIGATION */}
-        <div className="w-full lg:w-64 shrink-0">
-            <Tabs orientation="vertical" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="flex flex-row lg:flex-col h-auto bg-transparent gap-1 p-0">
-                    <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-blue-600 rounded-none lg:rounded-r-lg text-gray-600">
-                        <Building2 className="h-4 w-4 mr-3"/> Society Profile
-                    </TabsTrigger>
-                    <TabsTrigger value="financial" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-green-600 rounded-none lg:rounded-r-lg text-gray-600">
-                        <Calculator className="h-4 w-4 mr-3"/> Financial Rules
-                    </TabsTrigger>
-                    <TabsTrigger value="system" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-purple-600 rounded-none lg:rounded-r-lg text-gray-600">
-                        <Shield className="h-4 w-4 mr-3"/> Security & System
-                    </TabsTrigger>
-                    <TabsTrigger value="data" className="w-full justify-start px-4 py-3 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:border-l-4 data-[state=active]:border-orange-600 rounded-none lg:rounded-r-lg text-gray-600">
-                        <Database className="h-4 w-4 mr-3"/> Data & Backup
-                    </TabsTrigger>
-                </TabsList>
-            </Tabs>
-        </div>
+        {/* SIDEBAR NAVIGATION */}
+        <div className="w-full lg:w-72 shrink-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+             <TabsList className="flex flex-col h-auto bg-white border shadow-sm rounded-xl p-2">
+                <TabsTrigger value="profile" className="w-full justify-start px-4 py-3 hover:bg-blue-50 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"><Building2 className="h-4 w-4 mr-2" /> Profile</TabsTrigger>
+                <TabsTrigger value="financial" className="w-full justify-start px-4 py-3 hover:bg-gray-100 data-[state=active]:bg-gray-100 data-[state=active]:text-blue-700"><Calculator className="h-4 w-4 mr-2" /> Financial</TabsTrigger>
+                <TabsTrigger value="system" className="w-full justify-start px-4 py-3 hover:bg-gray-100 data-[state=active]:bg-gray-100 data-[state=active]:text-blue-700"><Shield className="h-4 w-4 mr-2" /> System</TabsTrigger>
+                <TabsTrigger value="data" className="w-full justify-start px-4 py-3 hover:bg-gray-100 data-[state=active]:bg-gray-100 data-[state=active]:text-blue-700"><Database className="h-4 w-4 mr-2" /> Data Management</TabsTrigger>
+             </TabsList>
+          </Tabs>
 
-        {/* RIGHT CONTENT AREA */}
-        <div className="flex-1 space-y-6">
-            
-            {/* 1. PROFILE TAB */}
+          {/* MAIN CONTENT AREA */}
+          <div className="flex-1">
+
+            {/* TAB 1: SOCIETY PROFILE */}
             {activeTab === 'profile' && (
-                <Card>
-                    <CardHeader><CardTitle>Society Profile</CardTitle><CardDescription>Basic information for reports and invoices.</CardDescription></CardHeader>
-                    <CardContent className="space-y-4">
+              <div className="space-y-6">
+                {/* Info Card */}
+                <Card className="border-l-4 border-l-purple-200 bg-purple-50">
+                  <CardHeader>
+                        <CardTitle className="text-xl text-purple-900">
+                          Society Details
+                        </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2"><Label>Society Name</Label><Input value={settings.societyName} onChange={(e) => handleChange('societyName', e.target.value)} placeholder="e.g. Gokuldham Society"/></div>
-                            <div className="space-y-2"><Label>Registration No.</Label><Input value={settings.registrationNumber} onChange={(e) => handleChange('registrationNumber', e.target.value)} placeholder="Reg. No."/></div>
-                        </div>
-                        <div className="space-y-2"><Label>Address</Label><Input value={settings.societyAddress} onChange={(e) => handleChange('societyAddress', e.target.value)} placeholder="Full Address"/></div>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2"><Label>Contact Email</Label><Input value={settings.contactEmail} onChange={(e) => handleChange('contactEmail', e.target.value)} placeholder="admin@society.com"/></div>
-                            <div className="space-y-2"><Label>Currency</Label>
-                              <Select value={settings.currency} onValueChange={(v) => handleChange('currency', v)}>
-                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                <SelectContent>
-                                  {CURRENCIES.map(c => <SelectItem key={c.code} value={c.code}>{c.name} ({c.symbol})</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                            <div className="space-y-2">
+                                <Label>Society Name</Label>
+                                <Input value={societyName} onChange={(e) => setSocietyName(e.target.value)} className="bg-white" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Registration No.</Label>
+                                <Input value={regNumber} onChange={(e) => setRegNumber(e.target.value)} className="bg-white" />
                             </div>
                         </div>
-                    </CardContent>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label>Contact Email</Label>
+                                <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="bg-white" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Society Address</Label>
+                                <Textarea placeholder="Enter address" value={societyAddress} onChange={(e) => setSocietyAddress(e.target.value)} className="bg-white" />
+                            </div>
+                        </div>
+                  </CardContent>
                 </Card>
+              </div>
             )}
 
-            {/* 2. FINANCIAL TAB */}
+            {/* TAB 2: FINANCIAL */}
             {activeTab === 'financial' && (
+              <div className="space-y-6">
+                {/* Financial Config */}
                 <Card>
-                    <CardHeader><CardTitle>Financial Configuration</CardTitle><CardDescription>Set interest rates and penalty rules.</CardDescription></CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label>Annual Interest Rate (%)</Label>
-                                <div className="relative"><Input type="number" value={settings.interestRate} onChange={(e) => handleChange('interestRate', e.target.value)} className="pl-10"/><span className="absolute left-3 top-2.5 text-gray-500 font-bold">%</span></div>
+                  <CardHeader>
+                        <CardTitle className="text-xl text-purple-900">
+                          Financial Rules & Currency
+                        </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                        {/* Currency Selector */}
+                        <div className="space-y-2">
+                          <Label>Select Currency</Label>
+                          <div className="relative w-64">
+                              <div className="absolute right-2 top-2.5 pointer-events-none z-10">{symbol}</div>
+                              <Select value={currency} onValueChange={(v) => setCurrency(v)} className="w-full">
+                                  <SelectTrigger><SelectValue placeholder="Select Currency..." /></SelectTrigger>
+                                  <SelectContent>
+                                      {CURRENCIES.map((c) => (
+                                          <SelectItem key={c.code} value={c.code}>{c.name} ({c.symbol})}</SelectItem>
+                                      ))}
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                        </div>
+                        {/* Preview */}
+                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-sm text-gray-600">Currency Preview:</p>
+                          <p className="text-2xl font-mono text-gray-900">{formatCurrency(5000)}</p>
+                          <p className="text-sm text-gray-500">This is how currency will look in the app.</p>
+                        </div>
+
+                        {/* Rules */}
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-sm">Annual Interest Rate (%)</Label>
+                                <div className="relative w-24"><Input type="number" className="pl-7 text-right" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} className="bg-white" /><span className="absolute left-3 top-2.5 font-bold text-gray-400">%</span></div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Max Loan Limit (% of Deposit)</Label>
-                                <div className="relative"><Input type="number" value={settings.loanLimitPercent} onChange={(e) => handleChange('loanLimitPercent', e.target.value)} className="pl-10"/><span className="absolute left-3 top-2.5 text-gray-500 font-bold">%</span></div>
+                            <div className="flex justify-between items-center">
+                                <Label className="text-sm">Max Loan Limit (%) of Deposit</Label>
+                                <div className="relative w-24"><Input type="number" className="pl-7 text-right" value={loanLimit} onChange={(e) => setLoanLimit(e.target.value)} className="bg-white" /><span className="absolute left-3 top-2.5 font-bold text-gray-400">%</span></div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Late Fine Amount (Daily)</Label>
-                                <div className="relative"><Input type="number" value={settings.fineAmount} onChange={(e) => handleChange('fineAmount', e.target.value)} className="pl-10"/><span className="absolute left-3 top-2.5 text-gray-500 font-bold">{CURRENCIES.find(c => c.code === settings.currency)?.symbol}</span></div>
+                            <div className="flex justify-between items-center">
+                                <Label className="text-sm">Maintenance Fee (Lifetime)</Label>
+                                <div className="relative w-24"><Input type="number" className="pl-7 text-right" value={fineAmount} onChange={(e) => setFineAmount(e.target.value)} className="bg-white" /></div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Grace Period (Days)</Label>
-                                <Select value={String(settings.gracePeriodDay)} onValueChange={(v) => handleChange('gracePeriodDay', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{Array.from({length: 28}, (_, i) => i + 1).map(d => <SelectItem key={d} value={String(d)}>{d}th of month</SelectItem>)}</SelectContent></Select>
+                            <div className="flex justify-between items-center">
+                                <Label className="text-sm">Grace Period (Days)</Label>
+                                <div className="relative w-24"><Input type="number" className="pl-7 text-right" value={gracePeriodDay} onChange={(e) => setGracePeriodDay(e.target.value)} className="bg-white" /><span className="absolute left-3 top-2.5 font-bold text-gray-400">Days</span></div>
                             </div>
                         </div>
-                    </CardContent>
+                  </CardContent>
                 </Card>
+              </div>
             )}
 
-            {/* 3. SECURITY TAB */}
+            {/* TAB 3: SYSTEM & SECURITY */}
             {activeTab === 'system' && (
-                <Card>
-                    <CardHeader><CardTitle>System Preferences</CardTitle><CardDescription>Manage notifications and theme.</CardDescription></CardHeader>
-                    <CardContent className="space-y-6">
+              <div className="space-y-6">
+                {/* System Config */}
+                <Card className="border-l-4 border-l-green-200 bg-green-50">
+                  <CardHeader>
+                        <CardTitle className="text-xl text-green-900">
+                          System Preferences
+                        </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                        {/* Theme Switch */}
                         <div className="flex items-center justify-between border-b pb-4">
-                            <div className="space-y-0.5"><Label>Theme</Label><p className="text-xs text-gray-500">Switch between light and dark mode</p></div>
-                            <div className="flex items-center gap-2"><Sun className="h-4 w-4 text-gray-400"/><Switch checked={settings.theme === 'dark'} onCheckedChange={(c) => handleChange('theme', c ? 'dark' : 'light')}/><Moon className="h-4 w-4 text-blue-600"/></div>
-                        </div>
-                        <div className="flex items-center justify-between border-b pb-4">
-                            <div className="space-y-0.5"><Label>Auto Backup</Label><p className="text-xs text-gray-500">Daily automated data backup</p></div>
-                            <Switch checked={settings.autoBackup} onCheckedChange={(c) => handleChange('autoBackup', c)}/>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5"><Label>Email Alerts</Label><p className="text-xs text-gray-500">Receive transactional updates via email</p></div>
-                            <Switch checked={settings.emailNotifications} onCheckedChange={(c) => handleChange('emailNotifications', c)}/>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* 4. DATA TAB */}
-            {activeTab === 'data' && (
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader><CardTitle>Data Backup</CardTitle><CardDescription>Download or restore your society data.</CardDescription></CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex gap-4">
-                                <Button variant="outline" className="w-full h-24 flex flex-col gap-2 border-dashed border-2 hover:bg-blue-50 hover:border-blue-200" onClick={() => toast.info("Backup Started...")}>
-                                    <Download className="h-6 w-6 text-blue-600"/> <span>Download Backup JSON</span>
-                                </Button>
-                                <Button variant="outline" className="w-full h-24 flex flex-col gap-2 border-dashed border-2 hover:bg-green-50 hover:border-green-200">
-                                    <Upload className="h-6 w-6 text-green-600"/> <span>Restore from File</span>
-                                </Button>
+                            <div className="space-y-1">
+                              <Label>App Theme</Label>
+                              <p className="text-xs text-gray-500">Choose appearance</p>
                             </div>
-                        </CardContent>
-                    </Card>
+                            <div className="flex items-center gap-3">
+                                <Moon className={`h-5 w-5 text-gray-500 ${theme === 'dark' ? 'text-yellow-400' : ''}`} />
+                                <Switch
+                                    checked={theme === 'dark'}
+                                    onCheckedChange={() => {
+                                        const newTheme = theme === 'dark' ? 'light' : 'dark';
+                                        setTheme(newTheme);
+                                    }}
+                                    className="data-[state=active]:data-[state=active]:bg-blue-600" 
+                                    data-[state=active]:data-[state=active]:checked:bg-blue-600 data-[state=active]:focus:ring-blue-500 data-[state=active]:data-[state=active]:hover:bg-blue-700
+                                    data-[state=active]:checked:bg-blue-600 checked:bg-blue-600
+                              }
+                                />
+                            </div>
+                        </div>
 
-                    <Card className="border-red-100 bg-red-50/30">
-                        <CardHeader><CardTitle className="text-red-700 flex items-center gap-2"><AlertTriangle className="h-5 w-5"/> Danger Zone</CardTitle></CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-red-600 mb-4">Factory reset will wipe all members, loans, and transaction history. This action cannot be undone.</p>
-                            <Button variant="destructive" onClick={() => { if(confirm("Type DELETE to confirm")) toast.error("Reset functionality locked for safety."); }}>Factory Reset</Button>
-                        </CardContent>
-                    </Card>
-                </div>
+                        {/* Auto Backup */}
+                        <div className="flex items-center justify-between border-b pb-4">
+                            <div className="space-y-1">
+                                <Label>Auto Backup</Label>
+                                <p className="text-xs text-gray-500">Download database daily.</p>
+                            </div>
+                            <Switch checked={autoBackup} onCheckedChange={setAutoBackup} />
+                        </div>
+
+                        {/* Notifications */}
+                        <div className="flex flex-col gap-4">
+                           <div className="flex items-center justify-between border-b pb-4">
+                                <div className="space-y-1">
+                                    <Label>Email Notifications</Label>
+                                    <p className="text-xs text-gray-500">Get daily reports.</p>
+                                </div>
+                                <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
+                           </div>
+                           <div className="flex items-center justify-between border-b pb-4">
+                                <div className="space-y-1">
+                                    <Label>SMS Notifications</Label>
+                                    <p className="text-xs text-gray-500">Updates via SMS.</p>
+                                </div>
+                                <Switch checked={smsNotifications} onCheckedChange={setSmsNotifications} />
+                           </div>
+                        </div>
+
+                        {/* Factory Reset */}
+                        <div className="pt-2">
+                          <Button variant="destructive" onClick={handleFactoryReset} className="w-full">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Factory Reset
+                          </Button>
+                          <p className="text-xs text-gray-400 mt-1">
+                             <AlertTriangle className="inline-block w-3 h-3 mr-1"/> 
+                             Wipes all data.
+                          </p>
+                        </div>
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
-        </div>
+            {/* TAB 4: DATA MANAGEMENT */}
+            {activeTab === 'data' && (
+              <div className="space-y-6">
+                <Card>
+                    <CardHeader className="flex items-center justify-between">
+                        <CardTitle className="text-xl text-gray-800">
+                            Data Management
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <div className="space-y-2">
+                                <h3 className="text-lg font-semibold">System Data</h3>
+                                <p className="text-sm text-gray-500">Manage core data integrity.</p>
+                            </div>
+                            <RefreshCw className="text-blue-500 cursor-pointer" onClick={() => toast.info('Syncing...')} />
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3">
+                            <Button variant="outline" className="h-12 w-12 border border-gray-300">
+                                <Download className="h-4 w-4 mr-2"/>
+                                Backup
+                            </Button>
+                            <Button className="h-12 w-12 border-gray-300 bg-white">
+                                <Upload className="h-4 w-4 mr-2"/>
+                                Restore
+                            </Button>
+                        </div>
+                        <div className="h-[1px] w-full bg-gray-200 my-2"></div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-3 gap-4">
+                             <div className="bg-gray-50 p-4 rounded-lg">
+                                 <h4 className="text-sm text-gray-500 font-medium">Total Members</h4>
+                                 <p className="text-xl font-bold text-gray-900">154</p>
+                             </div>
+                             <div className="bg-gray-50 p-4 rounded-lg">
+                                 <h4 className="text-sm text-gray-500 font-medium">Total Loans</h4>
+                                 <p className="text-xl font-bold text-gray-900">{formatCurrency(540000)}</p>
+                             </div>
+                             <div className="bg-gray-50 p-4 rounded-lg">
+                                 <h4 className="text-sm text-gray-500 font-medium">Total Expenses</h4>
+                                 <p className="text-xl font-bold text-gray-900">{formatCurrency(24000)}</p>
+                             </div>
+                        </div>
+                  </CardContent>
+                  <Card>
+                        <CardHeader>
+                            <CardTitle className="text-xl text-gray-800">Activity Logs</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                           <Table>
+                                <TableHeader className="sticky top-0 bg-white">
+                                    <TableRow>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Action</TableHead>
+                                        <TableHead>User</TableHead>
+                                        <TableHead className="text-right">Time</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {[
+                                        { id: '1', action: 'Login', user: 'Admin', time: '10:30 AM' },
+                                        { id: '2', action: 'Logout', user: 'Admin', time: '09:15 AM' },
+                                        { id: '3', action: 'Update', user: 'Admin', time: 'Yesterday' },
+                                        { id: '4', action: 'Delete', user: 'Admin', time: 'Yesterday' }
+                                    ].map((log) => (
+                                        <TableRow key={log.id} className="hover:bg-gray-50">
+                                             <TableCell>{new Date('2024-12-31').toLocaleDateString()}</TableCell>
+                                             <TableCell>
+                                                  <Badge className="bg-green-100 text-green-800">
+                                                        {log.action}
+                                                  </Badge>
+                                             </TableCell>
+                                             <TableCell className="text-gray-600">{log.user}</TableCell>
+                                             <TableCell className="text-right text-gray-500 text-xs">{log.time}</TableCell>
+                                        </TableRow>
+                                    ))
+                                </TableBody>
+                           </Table>
+                        </CardContent>
+                  </Card>
+              </div>
+            )}
+            
       </div>
     </div>
   );
