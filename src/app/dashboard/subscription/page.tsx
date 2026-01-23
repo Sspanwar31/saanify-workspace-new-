@@ -138,8 +138,27 @@ export default function SubscriptionPage() {
   const handleCancelRequest = async () => {
     if (!pendingOrder) return;
     if (confirm('Are you sure you want to cancel this request?')) {
-      await supabase.from('subscription_orders').delete().eq('id', pendingOrder.id);
-      window.location.reload();
+      setLoading(true); // Show loading state
+      
+      try {
+        const { error } = await supabase
+          .from('subscription_orders')
+          .delete()
+          .eq('id', pendingOrder.id);
+          
+        if (error) throw error;
+        
+        toast.success("Request cancelled successfully");
+        setPendingOrder(null); // UI update immediately
+        
+        // Optional: Reload to refresh state fully
+        window.location.reload(); 
+        
+      } catch (err: any) {
+        console.error("Cancel Error:", err);
+        toast.error("Failed to cancel request: " + err.message);
+        setLoading(false);
+      }
     }
   };
 
@@ -260,7 +279,7 @@ export default function SubscriptionPage() {
                   <CardTitle className="text-2xl text-gray-900 dark:text-gray-100">{plan.name}</CardTitle>
                   <div className="mt-4 flex items-baseline justify-center gap-1">
                     <span className="text-4xl font-extrabold text-gray-900 dark:text-white">₹{plan.price.toLocaleString()}</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">/ 30 days</span>
+                    <span className="text-sm text-gray-400 dark:text-gray-400 font-medium">/ 30 days</span>
                   </div>
                 </CardHeader>
 
