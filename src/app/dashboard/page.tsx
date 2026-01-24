@@ -109,32 +109,41 @@ export default function ClientDashboard() {
                 if (client) setClientData(client);
                 else setClientData(user);
             } else if (storedMember) {
+                // 1️⃣ TREASURER ke liye userId galat set ho raha - FIXED
                 const member = JSON.parse(storedMember);
-                userId = member.client_id;
                 userRole = member.role;
 
-                // Fetch Client Info & Permissions
-                const { data: client } = await supabase.from('clients').select('*').eq('id', member.client_id).single();
+                const { data: client } = await supabase
+                    .from('clients')
+                    .select('*')
+                    .eq('id', member.client_id)
+                    .single();
+
                 setClientData(client);
                 
                 // Get Permissions if Treasurer
                 if (member.role === 'treasurer') {
                     permissions = client?.role_permissions?.['treasurer'] || [];
                 }
+
+                // 🔥 IMPORTANT: Ensure userId is set from fetched client data
+                if (client) {
+                    userId = client.id;
+                }
             }
 
             // --- FETCH DATA FOR DASHBOARD ---
             
             // 🔥 TREASURER FIX: Added "|| userRole === 'treasurer'"
-            // Ab Treasurer bina permission check ke data dekh payega
             const canViewPassbook = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
             const canViewLoans = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
             const canViewExpenses = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
             const canViewMembers = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
 
             // A. Passbook (Transactions)
+            // 2️⃣ PASSBOOK QUERY – Treasurer ko ALL client data nahi mil raha - FIXED
             const passbookReq = canViewPassbook 
-                ? supabase.from('passbook_entries').select('*') 
+                ? supabase.from('passbook_entries').select('*').eq('client_id', userId) 
                 : Promise.resolve({ data: [] });
 
             // B. Expenses
@@ -143,6 +152,7 @@ export default function ClientDashboard() {
                 : Promise.resolve({ data: [] });
 
             // C. Loans
+            // 3️⃣ LOANS QUERY – Active Loans = 0 issue - FIXED (context was userId)
             const loansReq = canViewLoans 
                 ? supabase.from('loans').select('*').eq('client_id', userId)
                 : Promise.resolve({ data: [] });
@@ -204,11 +214,13 @@ export default function ClientDashboard() {
     if (localStorage.getItem(monthlyKey)) return
 
     // 📊 calculations
-    // 🔴 PROBLEM 2 FIX: Monthly Summary → Deposits galat add ho rahe
-    const totalDeposits = transactionsData
-      .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
+    // Monthly Banner Deposit Calculation FIX
+    const totalDeposits = transactionsData.reduce(
+      (sum, t) => sum + Number(t.deposit_amount || 0),
+      0
+    );
 
-    // ✅ FIXED: Active Loan Logic (Banner) - Checks outstanding amount too
+    // 4️⃣ ACTIVE LOAN LOGIC (EVERYWHERE same)
     const activeLoans = loansData.filter(l => 
         l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
     );
@@ -323,8 +335,7 @@ export default function ClientDashboard() {
     });
 
     // 2. Expenses Ledger Processing
-    // 🔥 NET PROFIT FIX 1: Handle Case Sensitivity (Income vs INCOME)
-    // Isse ₹400 wala mismatch theek hoga (520 -> 920)
+    // 🔥 NET PROFIT FIX: Handle Case Sensitivity
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
         const type = (e.type || '').toUpperCase().trim();
@@ -342,14 +353,11 @@ export default function ClientDashboard() {
     });
 
     // 3. Loans Count Logic
+    // ✅ FIXED: Logic consistent with banner
     loans.forEach(l => {
-        // 🔥 FIXED: Logic consistent with banner
         if (l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')) {
              pendingLoanCount++;
         }
-        // Loan diya hai toh cash kam hua hoga
-        // (Agar expenses me entry nahi hai toh yahan minus karein)
-        // cash -= Number(l.amount); 
     });
 
     // --- 4. MATURITY LIABILITY CALCULATION ---
@@ -396,7 +404,6 @@ export default function ClientDashboard() {
              
              // C. Monthly Interest Share
              // 🔥 NET PROFIT FIX 2: REMOVED ROUNDING INSIDE LOOP
-             // P&L report exact calculation use karta hai, yahan bhi wahi karenge
              const monthlyInterestShare = settledInterest / tenureMonths;
 
              // D. Count payments made
@@ -450,10 +457,12 @@ export default function ClientDashboard() {
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   // 📊 Prepare data for banner
-  const totalDeposits = transactionsData
-    .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
+  const totalDeposits = transactionsData.reduce(
+    (sum, t) => sum + Number(t.deposit_amount || 0),
+    0
+  );
   
-  // ✅ FIXED 1 (UI Display): Active Loans consistent with logic
+  // ✅ FIXED: Logic consistent everywhere
   const activeLoans = loansData.filter(l => 
     l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
   );
