@@ -25,6 +25,12 @@ function getMonthlyKey() {
   return `monthly_summary_${now.getFullYear()}_${now.getMonth() + 1}`;
 }
 
+// 🆕 STEP 3.1 – Monthly key reuse karo (Banner Key)
+function getMonthlyBannerKey() {
+  const now = new Date()
+  return `monthly_banner_closed_${now.getFullYear()}_${now.getMonth() + 1}`
+}
+
 // 🔴 Check overdue members
 function getOverdueMembers(members: any[], gracePeriod: number) {
   const today = new Date();
@@ -65,6 +71,9 @@ export default function ClientDashboard() {
   const [loansData, setLoansData] = useState<any[]>([]);
   // Store transactions for Monthly Summary Logic
   const [transactionsData, setTransactionsData] = useState<any[]>([]);
+
+  // 🆕 STEP 3.2 – State add karo (dashboard file)
+  const [showMonthlyBanner, setShowMonthlyBanner] = useState(false);
 
   // Initial Financial State
   const [financials, setFinancials] = useState({
@@ -143,7 +152,7 @@ export default function ClientDashboard() {
 
             // Run Queries
             const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
-                passbookReq, expenseReq, loansReq, membersReq
+                passbookReq, expenseReq, loansReq, membersRes
             ]);
 
             // Save raw data for Toast logic
@@ -166,6 +175,22 @@ export default function ClientDashboard() {
     };
     init();
   }, [router]);
+
+  // 🆕 STEP 3.3 – Banner visibility logic (useEffect)
+  useEffect(() => {
+    const key = getMonthlyBannerKey()
+
+    if (!localStorage.getItem(key)) {
+      setShowMonthlyBanner(true)
+    }
+  }, [])
+
+  // 🆕 STEP 3.4 – Close handler
+  function closeMonthlyBanner() {
+    const key = getMonthlyBannerKey()
+    localStorage.setItem(key, 'closed')
+    setShowMonthlyBanner(false)
+  }
 
   // 🆕 4️⃣ MONTHLY SUMMARY LOGIC
   useEffect(() => {
@@ -407,8 +432,42 @@ export default function ClientDashboard() {
     
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
+  // 📊 Prepare data for banner
+  const totalDeposits = transactionsData
+    .filter(t => t.type === 'deposit')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const activeLoans = loansData.filter(l => l.outstanding_amount > 0);
+  const overdueMembers = getOverdueMembers(membersData, 10);
+  const riskyLoans = getRiskyLoans(loansData);
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
+      
+      {/* 🆕 STEP 3.5 – Dashboard TOP pe Banner UI (JSX) */}
+      {showMonthlyBanner && (
+        <Card className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-blue-800 dark:text-blue-200 text-lg">
+              📅 This Month Summary
+            </CardTitle>
+
+            <button
+              onClick={closeMonthlyBanner}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </CardHeader>
+
+          <CardContent className="text-sm space-y-1">
+            <div className="text-slate-700 dark:text-slate-300">💰 Deposits: ₹{totalDeposits}</div>
+            <div className="text-slate-700 dark:text-slate-300">🏦 Active Loans: {activeLoans.length}</div>
+            <div className="text-slate-700 dark:text-slate-300">⚠️ Overdue Members: {overdueMembers.length}</div>
+            <div className="text-slate-700 dark:text-slate-300">🚨 Risky Loans: {riskyLoans.length}</div>
+          </CardContent>
+        </Card>
+      )}
       
       {/* HEADER */}
       <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
