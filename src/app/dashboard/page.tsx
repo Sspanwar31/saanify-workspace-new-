@@ -132,6 +132,12 @@ export default function ClientDashboard() {
                 }
             }
 
+            // 🧪 STEP 1 — userId & role confirm karo (MOST IMPORTANT)
+            console.log('🧪 DASHBOARD DEBUG');
+            console.log('Role:', userRole);
+            console.log('UserId used for queries:', userId);
+            console.log('Permissions:', permissions);
+
             // --- FETCH DATA FOR DASHBOARD ---
             
             // 🔥 TREASURER FIX: Added "|| userRole === 'treasurer'"
@@ -166,6 +172,25 @@ export default function ClientDashboard() {
             const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
                 passbookReq, expenseReq, loansReq, membersReq
             ]);
+
+            // 🧪 STEP 2 — Queries se raw response check karo
+            console.log('📦 RAW QUERY RESULTS');
+            console.log('Passbook:', passbookRes);
+            console.log('Expenses:', expenseRes);
+            console.log('Loans:', loansRes);
+            console.log('Members:', membersRes);
+
+            // 🧪 STEP 3 — client_id match ho raha hai ya nahi
+            // Temporary test query
+            const test = await supabase
+              .from('passbook_entries')
+              .select('id, client_id')
+              .limit(5);
+            
+            console.log('🧪 TEST PASSBOOK CLIENT IDS:', test.data);
+            if (test.data && test.data.length > 0) {
+                console.log('Comparing DB Client ID:', test.data[0].client_id, 'vs Query UserId:', userId);
+            }
 
             // Save raw data for Toast logic
             setMembersData(membersRes.data || []);
@@ -206,6 +231,13 @@ export default function ClientDashboard() {
 
   // 🆕 4️⃣ MONTHLY SUMMARY LOGIC
   useEffect(() => {
+    // 🧪 STEP 4 — Monthly Summary ke andar confirm karo
+    console.log('📊 MONTHLY SUMMARY DEBUG');
+    console.log('loading:', loading);
+    console.log('transactions:', transactionsData.length);
+    console.log('loans:', loansData.length);
+    console.log('members:', membersData.length);
+
     if (!membersData || !loansData || !transactionsData) return
 
     const monthlyKey = getMonthlyKey()
