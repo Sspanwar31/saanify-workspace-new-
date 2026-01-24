@@ -103,13 +103,21 @@ export default function ClientDashboard() {
 
             if (storedUser) {
                 const user = JSON.parse(storedUser);
-                userId = user.id;
-                // Client Fetch
+                
+                // ✅ STEP 2 — storedUser case FIX
+                // Pehle clients se record lao
                 const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
                 if (client) setClientData(client);
                 else setClientData(user);
+
+                // ✅ IMPORTANT: Ensure userId is set from fetched client data
+                if (client) {
+                    userId = client.id;
+                } else {
+                    // Fallback if client fetch fails (should not happen usually)
+                    userId = user.id;
+                }
             } else if (storedMember) {
-                // 1️⃣ TREASURER ke liye userId galat set ho raha - FIXED
                 const member = JSON.parse(storedMember);
                 userRole = member.role;
 
@@ -126,7 +134,7 @@ export default function ClientDashboard() {
                     permissions = client?.role_permissions?.['treasurer'] || [];
                 }
 
-                // 🔥 IMPORTANT: Ensure userId is set from fetched client data
+                // ✅ STEP 3 — Treasurer already CORRECT hai
                 if (client) {
                     userId = client.id;
                 }
@@ -147,7 +155,7 @@ export default function ClientDashboard() {
             const canViewMembers = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
 
             // A. Passbook (Transactions)
-            // 2️⃣ PASSBOOK QUERY – Treasurer ko ALL client data nahi mil raha - FIXED
+            // ✅ PASSBOOK QUERY – Treasurer ko ALL client data nahi mil raha - FIXED
             const passbookReq = canViewPassbook 
                 ? supabase.from('passbook_entries').select('*').eq('client_id', userId) 
                 : Promise.resolve({ data: [] });
@@ -158,7 +166,6 @@ export default function ClientDashboard() {
                 : Promise.resolve({ data: [] });
 
             // C. Loans
-            // 3️⃣ LOANS QUERY – Active Loans = 0 issue - FIXED (context was userId)
             const loansReq = canViewLoans 
                 ? supabase.from('loans').select('*').eq('client_id', userId)
                 : Promise.resolve({ data: [] });
