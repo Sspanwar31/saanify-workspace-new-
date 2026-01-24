@@ -13,14 +13,49 @@ import {
   BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { supabase } from '@/lib/supabase';
-import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
+import { useCurrency } from '@/hooks/useCurrency';
+// 1️⃣ IMPORT TOAST
+import { toast } from 'sonner';
+
+// 2️⃣ HELPER FUNCTIONS (Outside Component)
+// 🔴 Check overdue members
+function getOverdueMembers(members: any[], gracePeriod: number) {
+  const today = new Date();
+
+  return members.filter(m => {
+    if (!m.last_payment_date) return false;
+
+    const lastPaid = new Date(m.last_payment_date);
+    const dueDate = new Date(lastPaid);
+    dueDate.setDate(dueDate.getDate() + gracePeriod);
+
+    return today > dueDate;
+  });
+}
+
+// 🔴 Check risky loans
+function getRiskyLoans(loans: any[]) {
+  return loans.filter(l => {
+    if (!l.outstanding_amount) return false;
+
+    // simple rule (safe + understandable)
+    return (
+      l.missed_installments >= 2 ||
+      l.outstanding_amount > (l.loan_amount * 0.8)
+    );
+  });
+}
 
 export default function ClientDashboard() {
   const router = useRouter();
-  const { formatCurrency, symbol } = useCurrency(); // ✅ Hook call karo
+  const { formatCurrency, symbol } = useCurrency();
   
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<any>(null);
+
+  // Store raw data for Toast Logic
+  const [membersData, setMembersData] = useState<any[]>([]);
+  const [loansData, setLoansData] = useState<any[]>([]);
 
   // Initial Financial State
   const [financials, setFinancials] = useState({
@@ -102,6 +137,10 @@ export default function ClientDashboard() {
                 passbookReq, expenseReq, loansReq, membersReq
             ]);
 
+            // Save raw data for Toast logic
+            setMembersData(membersRes.data || []);
+            setLoansData(loansRes.data || []);
+
             calculateFinancials(
                 passbookRes.data || [], 
                 expenseRes.data || [], 
@@ -117,6 +156,52 @@ export default function ClientDashboard() {
     };
     init();
   }, [router]);
+
+  // 3️⃣ TOAST LOGIC (Alerts)
+  useEffect(() => {
+    // Wait until data is loaded
+    if (!membersData.length && !loansData.length) return;
+    if (!clientData) return;
+
+    // 🔐 avoid repeat alerts
+    const alreadyShown = sessionStorage.getItem('dashboard_alerts_shown');
+    if (alreadyShown) return;
+
+    // Get grace period from client settings (default 10)
+    const gracePeriod = clientData.grace_period_day || 10;
+
+    const overdueMembers = getOverdueMembers(membersData, gracePeriod);
+    const riskyLoans = getRiskyLoans(loansData);
+
+    let hasAlert = false;
+
+    if (overdueMembers.length > 0) {
+      toast.warning(
+        `⚠️ ${overdueMembers.length} member(s) have overdue dues`,
+        {
+          description: 'Please review pending installments',
+          duration: 6000,
+        }
+      );
+      hasAlert = true;
+    }
+
+    if (riskyLoans.length > 0) {
+      toast.error(
+        `🚨 ${riskyLoans.length} loan(s) at risk of default`,
+        {
+          description: 'Immediate attention required',
+          duration: 7000,
+        }
+      );
+      hasAlert = true;
+    }
+
+    // mark alerts as shown (even if no alerts, to prevent re-check spam)
+    sessionStorage.setItem('dashboard_alerts_shown', 'true');
+
+  }, [membersData, loansData, clientData]);
+
 
   // ✅ LOGIC: Real Profit & Maturity Liability Logic (Matches Report)
   const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[]) => {
