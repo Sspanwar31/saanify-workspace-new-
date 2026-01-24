@@ -206,9 +206,9 @@ export default function ClientDashboard() {
     const totalDeposits = transactionsData
       .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
 
-    // 🟢 FIX 1: Active Loans Logic Corrected (Banner)
+    // ✅ FIXED 1: Active Loan Logic (Banner) - Checks outstanding amount too
     const activeLoans = loansData.filter(l => 
-      l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
+        l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
     );
     
     const riskyLoans = getRiskyLoans(loansData)
@@ -318,9 +318,9 @@ export default function ClientDashboard() {
     });
 
     // 2. Expenses Ledger Processing
-    // 🟢 FIX 2: Case Insensitive Check (handles 'Income' and 'INCOME')
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
+        // ✅ FIXED 2: Handle Case Sensitivity (Income vs INCOME)
         const type = (e.type || '').toUpperCase().trim();
         
         if (type === 'EXPENSE') {
@@ -337,7 +337,7 @@ export default function ClientDashboard() {
 
     // 3. Loans Count Logic
     loans.forEach(l => {
-        // 🟢 FIX 1 (Repeated): Logic consistent with banner
+        // ✅ FIXED 1 (Consistency): Active Loan means status active OR money pending
         if (l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')) {
              pendingLoanCount++;
         }
@@ -389,13 +389,13 @@ export default function ClientDashboard() {
              }
              
              // C. Monthly Interest Share
-             // 🟢 FIX 3: Removed early rounding to match P&L report accuracy
+             // ✅ FIXED 3: REMOVED ROUNDING INSIDE LOOP (Precision Fix)
              const monthlyInterestShare = settledInterest / tenureMonths;
 
              // D. Count payments made
              const depositCount = deposits.length;
 
-             // E. Current Liability (No rounding here)
+             // E. Current Liability (Rounding removed here)
              maturityLiability += (monthlyInterestShare * depositCount);
         }
     });
@@ -446,7 +446,7 @@ export default function ClientDashboard() {
   const totalDeposits = transactionsData
     .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
   
-  // 🟢 FIX 1 (Final UI): Active Loans Logic Consistent
+  // ✅ FIXED 1 (UI Display): Active Loans consistent with logic
   const activeLoans = loansData.filter(l => 
     l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
   );
