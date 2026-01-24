@@ -150,7 +150,6 @@ export default function ClientDashboard() {
                 ? supabase.from('members').select('*').eq('client_id', userId)
                 : Promise.resolve({ data: [] });
 
-            // ✅ CHANGE #1 (MOST IMPORTANT – DATA 0 KA ROOT CAUSE)
             // Run Queries
             const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
                 passbookReq, expenseReq, loansReq, membersReq
@@ -203,11 +202,13 @@ export default function ClientDashboard() {
     if (localStorage.getItem(monthlyKey)) return
 
     // 📊 calculations
+    // 🔴 PROBLEM 2 FIX: Monthly Summary → Deposits galat add ho rahe
     const totalDeposits = transactionsData
-      .filter(t => t.type === 'deposit')
-      .reduce((sum, t) => sum + t.amount, 0)
+      .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
 
-    const activeLoans = loansData.filter(l => l.outstanding_amount > 0)
+    // 🔴 PROBLEM 1 FIX: Banner me Active Loans = 0 aa raha hai (galat)
+    const activeLoans = loansData.filter(l => l.status === 'active');
+    
     const riskyLoans = getRiskyLoans(loansData)
     const overdueMembers = getOverdueMembers(membersData, 10)
 
@@ -315,6 +316,7 @@ export default function ClientDashboard() {
     });
 
     // 2. Expenses Ledger Processing
+    // 🔴 PROBLEM 3 FIX: Total Income mismatch (Expenses Ledger 'INCOME' add ho raha)
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
         
@@ -381,13 +383,16 @@ export default function ClientDashboard() {
              }
              
              // C. Monthly Interest Share
-             const monthlyInterestShare = settledInterest / tenureMonths;
+             // 🔴 PROBLEM 4 FIX: financial-grade rounding
+             const monthlyInterestShare =
+              Math.round((settledInterest / tenureMonths) * 100) / 100;
 
              // D. Count payments made
              const depositCount = deposits.length;
 
-             // E. Current Liability
-             maturityLiability += (monthlyInterestShare * depositCount);
+             // E. Current Liability (Rounding applied)
+             maturityLiability +=
+              Math.round((monthlyInterestShare * depositCount) * 100) / 100;
         }
     });
 
@@ -434,11 +439,12 @@ export default function ClientDashboard() {
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   // 📊 Prepare data for banner
-  // ✅ CHANGE #2 (Monthly Banner deposits galat aa rahe the)
+  // ✅ FIX APPLIED HERE TOO
   const totalDeposits = transactionsData
     .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
   
-  const activeLoans = loansData.filter(l => l.outstanding_amount > 0);
+  // ✅ FIX APPLIED HERE TOO (status check)
+  const activeLoans = loansData.filter(l => l.status === 'active');
   const overdueMembers = getOverdueMembers(membersData, 10);
   const riskyLoans = getRiskyLoans(loansData);
 
