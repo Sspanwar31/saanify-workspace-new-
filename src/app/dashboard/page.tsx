@@ -206,8 +206,10 @@ export default function ClientDashboard() {
     const totalDeposits = transactionsData
       .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
 
-    // 🔴 PROBLEM 1 FIX: Banner me Active Loans = 0 aa raha hai (galat)
-    const activeLoans = loansData.filter(l => l.status === 'active');
+    // 🟢 FIX 1: Active Loans Logic Corrected (Banner)
+    const activeLoans = loansData.filter(l => 
+      l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
+    );
     
     const riskyLoans = getRiskyLoans(loansData)
     const overdueMembers = getOverdueMembers(membersData, 10)
@@ -316,16 +318,17 @@ export default function ClientDashboard() {
     });
 
     // 2. Expenses Ledger Processing
-    // 🔴 PROBLEM 3 FIX: Total Income mismatch (Expenses Ledger 'INCOME' add ho raha)
+    // 🟢 FIX 2: Case Insensitive Check (handles 'Income' and 'INCOME')
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
+        const type = (e.type || '').toUpperCase().trim();
         
-        if (e.type === 'EXPENSE') {
+        if (type === 'EXPENSE') {
             cashExpense += amt;
             // Subtract from Liquidity (Default Cash)
             cash -= amt; 
         } 
-        else if (e.type === 'INCOME') {
+        else if (type === 'INCOME') {
             // Agar koi aur income hai (Form Fees etc.)
             realIncome += amt;
             cash += amt; 
@@ -334,7 +337,10 @@ export default function ClientDashboard() {
 
     // 3. Loans Count Logic
     loans.forEach(l => {
-        if (l.status === 'active') pendingLoanCount++;
+        // 🟢 FIX 1 (Repeated): Logic consistent with banner
+        if (l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')) {
+             pendingLoanCount++;
+        }
         // Loan diya hai toh cash kam hua hoga
         // (Agar expenses me entry nahi hai toh yahan minus karein)
         // cash -= Number(l.amount); 
@@ -383,23 +389,21 @@ export default function ClientDashboard() {
              }
              
              // C. Monthly Interest Share
-             // 🔴 PROBLEM 4 FIX: financial-grade rounding
-             const monthlyInterestShare =
-              Math.round((settledInterest / tenureMonths) * 100) / 100;
+             // 🟢 FIX 3: Removed early rounding to match P&L report accuracy
+             const monthlyInterestShare = settledInterest / tenureMonths;
 
              // D. Count payments made
              const depositCount = deposits.length;
 
-             // E. Current Liability (Rounding applied)
-             maturityLiability +=
-              Math.round((monthlyInterestShare * depositCount) * 100) / 100;
+             // E. Current Liability (No rounding here)
+             maturityLiability += (monthlyInterestShare * depositCount);
         }
     });
 
     // --- FINAL TOTALS ---
     
-    // Total Expense = Ops Cost + Maturity Liability
-    const totalExpenseFinal = cashExpense + maturityLiability;
+    // Total Expense = Ops Cost + Maturity Liability (Round ONLY at end)
+    const totalExpenseFinal = cashExpense + Number(maturityLiability.toFixed(2));
     
     // Real Net Profit = Actual Income - All Expenses
     const netProfitFinal = realIncome - totalExpenseFinal;
@@ -439,12 +443,14 @@ export default function ClientDashboard() {
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   // 📊 Prepare data for banner
-  // ✅ FIX APPLIED HERE TOO
   const totalDeposits = transactionsData
     .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
   
-  // ✅ FIX APPLIED HERE TOO (status check)
-  const activeLoans = loansData.filter(l => l.status === 'active');
+  // 🟢 FIX 1 (Final UI): Active Loans Logic Consistent
+  const activeLoans = loansData.filter(l => 
+    l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
+  );
+  
   const overdueMembers = getOverdueMembers(membersData, 10);
   const riskyLoans = getRiskyLoans(loansData);
 
