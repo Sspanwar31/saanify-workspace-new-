@@ -18,6 +18,13 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 
 // 2️⃣ HELPER FUNCTIONS (Outside Component)
+
+// 🆕 Helper function for Monthly Key
+function getMonthlyKey() {
+  const now = new Date();
+  return `monthly_summary_${now.getFullYear()}_${now.getMonth() + 1}`;
+}
+
 // 🔴 Check overdue members
 function getOverdueMembers(members: any[], gracePeriod: number) {
   const today = new Date();
@@ -56,6 +63,8 @@ export default function ClientDashboard() {
   // Store raw data for Toast Logic
   const [membersData, setMembersData] = useState<any[]>([]);
   const [loansData, setLoansData] = useState<any[]>([]);
+  // Store transactions for Monthly Summary Logic
+  const [transactionsData, setTransactionsData] = useState<any[]>([]);
 
   // Initial Financial State
   const [financials, setFinancials] = useState({
@@ -112,7 +121,7 @@ export default function ClientDashboard() {
             const canViewExpenses = userRole === 'client_admin' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
             const canViewMembers = userRole === 'client_admin' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
 
-            // A. Passbook
+            // A. Passbook (Transactions)
             const passbookReq = canViewPassbook 
                 ? supabase.from('passbook_entries').select('*') 
                 : Promise.resolve({ data: [] });
@@ -140,6 +149,7 @@ export default function ClientDashboard() {
             // Save raw data for Toast logic
             setMembersData(membersRes.data || []);
             setLoansData(loansRes.data || []);
+            setTransactionsData(passbookRes.data || []); // Saving transactions for Monthly Summary
 
             calculateFinancials(
                 passbookRes.data || [], 
@@ -156,6 +166,39 @@ export default function ClientDashboard() {
     };
     init();
   }, [router]);
+
+  // 🆕 4️⃣ MONTHLY SUMMARY LOGIC
+  useEffect(() => {
+    if (!membersData || !loansData || !transactionsData) return
+
+    const monthlyKey = getMonthlyKey()
+
+    // agar already dikh chuka hai → skip
+    if (localStorage.getItem(monthlyKey)) return
+
+    // 📊 calculations
+    const totalDeposits = transactionsData
+      .filter(t => t.type === 'deposit')
+      .reduce((sum, t) => sum + t.amount, 0)
+
+    const activeLoans = loansData.filter(l => l.outstanding_amount > 0)
+    const riskyLoans = getRiskyLoans(loansData)
+    const overdueMembers = getOverdueMembers(membersData, 10)
+
+    toast.info('📅 Monthly Summary', {
+      description: `
+💰 Deposits: ₹${totalDeposits}
+🏦 Active Loans: ${activeLoans.length}
+⚠️ Overdue Members: ${overdueMembers.length}
+🚨 Risky Loans: ${riskyLoans.length}
+      `,
+      duration: 8000,
+    })
+
+    // mark as shown for this month
+    localStorage.setItem(monthlyKey, 'shown')
+
+  }, [membersData, loansData, transactionsData])
 
   // 3️⃣ TOAST LOGIC (Alerts)
   useEffect(() => {
