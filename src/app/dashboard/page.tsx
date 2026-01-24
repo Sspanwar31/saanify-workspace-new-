@@ -214,11 +214,13 @@ export default function ClientDashboard() {
     if (localStorage.getItem(monthlyKey)) return
 
     // 📊 calculations
-    // Monthly Banner Deposit Calculation FIX
-    const totalDeposits = transactionsData.reduce(
-      (sum, t) => sum + Number(t.deposit_amount || 0),
-      0
-    );
+    // ✅ FIX 2 — Banner deposit calculation (TREASURER SAFE)
+    const totalDeposits = Array.isArray(transactionsData)
+      ? transactionsData.reduce(
+          (sum, t) => sum + Number(t?.deposit_amount ?? 0),
+          0
+        )
+      : 0;
 
     // 4️⃣ ACTIVE LOAN LOGIC (EVERYWHERE same)
     const activeLoans = loansData.filter(l => 
@@ -228,8 +230,9 @@ export default function ClientDashboard() {
     const riskyLoans = getRiskyLoans(loansData)
     const overdueMembers = getOverdueMembers(membersData, 10)
 
+    // ✅ FIX 1 — Monthly Summary useEffect (MOST IMPORTANT)
     // Show toast only if data is actually loaded
-    if(loading === false && transactionsData.length > 0) {
+    if (loading === false) {
         toast.info('📅 Monthly Summary', {
         description: `
     💰 Deposits: ₹${totalDeposits}
@@ -244,7 +247,8 @@ export default function ClientDashboard() {
         localStorage.setItem(monthlyKey, 'shown')
     }
 
-  }, [membersData, loansData, transactionsData, loading])
+  // ✅ FIX 3 — useEffect dependency (CRITICAL)
+  }, [loading, membersData.length, loansData.length, transactionsData.length])
 
   // 3️⃣ TOAST LOGIC (Alerts)
   useEffect(() => {
@@ -457,10 +461,12 @@ export default function ClientDashboard() {
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   // 📊 Prepare data for banner
-  const totalDeposits = transactionsData.reduce(
-    (sum, t) => sum + Number(t.deposit_amount || 0),
-    0
-  );
+  const totalDeposits = Array.isArray(transactionsData)
+    ? transactionsData.reduce(
+        (sum, t) => sum + Number(t?.deposit_amount ?? 0),
+        0
+      )
+    : 0;
   
   // ✅ FIXED: Logic consistent everywhere
   const activeLoans = loansData.filter(l => 
@@ -474,7 +480,8 @@ export default function ClientDashboard() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
       
       {/* 🆕 STEP 3.5 – Dashboard TOP pe Banner UI (JSX) */}
-      {showMonthlyBanner && (
+      {/* ✅ FIX 4 — Banner rendering guard */}
+      {showMonthlyBanner && !loading && (
         <Card className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-blue-800 dark:text-blue-200 text-lg">
