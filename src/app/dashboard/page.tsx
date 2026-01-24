@@ -125,10 +125,12 @@ export default function ClientDashboard() {
 
             // --- FETCH DATA FOR DASHBOARD ---
             
-            const canViewPassbook = userRole === 'client_admin' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
-            const canViewLoans = userRole === 'client_admin' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
-            const canViewExpenses = userRole === 'client_admin' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
-            const canViewMembers = userRole === 'client_admin' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
+            // 🔥 TREASURER FIX: Added "|| userRole === 'treasurer'"
+            // Ab Treasurer bina permission check ke data dekh payega
+            const canViewPassbook = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
+            const canViewLoans = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
+            const canViewExpenses = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
+            const canViewMembers = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
 
             // A. Passbook (Transactions)
             const passbookReq = canViewPassbook 
@@ -206,7 +208,7 @@ export default function ClientDashboard() {
     const totalDeposits = transactionsData
       .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
 
-    // ✅ FIXED 1: Active Loan Logic (Banner) - Checks outstanding amount too
+    // ✅ FIXED: Active Loan Logic (Banner) - Checks outstanding amount too
     const activeLoans = loansData.filter(l => 
         l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
     );
@@ -214,20 +216,23 @@ export default function ClientDashboard() {
     const riskyLoans = getRiskyLoans(loansData)
     const overdueMembers = getOverdueMembers(membersData, 10)
 
-    toast.info('📅 Monthly Summary', {
-      description: `
-💰 Deposits: ₹${totalDeposits}
-🏦 Active Loans: ${activeLoans.length}
-⚠️ Overdue Members: ${overdueMembers.length}
-🚨 Risky Loans: ${riskyLoans.length}
-      `,
-      duration: 8000,
-    })
+    // Show toast only if data is actually loaded
+    if(loading === false && transactionsData.length > 0) {
+        toast.info('📅 Monthly Summary', {
+        description: `
+    💰 Deposits: ₹${totalDeposits}
+    🏦 Active Loans: ${activeLoans.length}
+    ⚠️ Overdue Members: ${overdueMembers.length}
+    🚨 Risky Loans: ${riskyLoans.length}
+        `,
+        duration: 8000,
+        })
 
-    // mark as shown for this month
-    localStorage.setItem(monthlyKey, 'shown')
+        // mark as shown for this month
+        localStorage.setItem(monthlyKey, 'shown')
+    }
 
-  }, [membersData, loansData, transactionsData])
+  }, [membersData, loansData, transactionsData, loading])
 
   // 3️⃣ TOAST LOGIC (Alerts)
   useEffect(() => {
@@ -318,9 +323,10 @@ export default function ClientDashboard() {
     });
 
     // 2. Expenses Ledger Processing
+    // 🔥 NET PROFIT FIX 1: Handle Case Sensitivity (Income vs INCOME)
+    // Isse ₹400 wala mismatch theek hoga (520 -> 920)
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
-        // ✅ FIXED 2: Handle Case Sensitivity (Income vs INCOME)
         const type = (e.type || '').toUpperCase().trim();
         
         if (type === 'EXPENSE') {
@@ -337,7 +343,7 @@ export default function ClientDashboard() {
 
     // 3. Loans Count Logic
     loans.forEach(l => {
-        // ✅ FIXED 1 (Consistency): Active Loan means status active OR money pending
+        // 🔥 FIXED: Logic consistent with banner
         if (l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')) {
              pendingLoanCount++;
         }
@@ -389,7 +395,8 @@ export default function ClientDashboard() {
              }
              
              // C. Monthly Interest Share
-             // ✅ FIXED 3: REMOVED ROUNDING INSIDE LOOP (Precision Fix)
+             // 🔥 NET PROFIT FIX 2: REMOVED ROUNDING INSIDE LOOP
+             // P&L report exact calculation use karta hai, yahan bhi wahi karenge
              const monthlyInterestShare = settledInterest / tenureMonths;
 
              // D. Count payments made
