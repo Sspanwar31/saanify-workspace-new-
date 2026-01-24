@@ -150,9 +150,10 @@ export default function ClientDashboard() {
                 ? supabase.from('members').select('*').eq('client_id', userId)
                 : Promise.resolve({ data: [] });
 
+            // ✅ CHANGE #1 (MOST IMPORTANT – DATA 0 KA ROOT CAUSE)
             // Run Queries
             const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
-                passbookReq, expenseReq, loansReq, membersRes
+                passbookReq, expenseReq, loansReq, membersReq
             ]);
 
             // Save raw data for Toast logic
@@ -433,9 +434,9 @@ export default function ClientDashboard() {
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   // 📊 Prepare data for banner
+  // ✅ CHANGE #2 (Monthly Banner deposits galat aa rahe the)
   const totalDeposits = transactionsData
-    .filter(t => t.type === 'deposit')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
   
   const activeLoans = loansData.filter(l => l.outstanding_amount > 0);
   const overdueMembers = getOverdueMembers(membersData, 10);
