@@ -12,6 +12,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
+  // ✅ Helper Function: Perform Backup
+  const performAutoBackup = async (clientId: string) => {
+    try {
+      console.log("⏳ Starting Auto Backup...");
+      
+      // Fetch All Critical Data
+      const [members, loans, passbook, expenses] = await Promise.all([
+        supabase.from('members').select('*').eq('client_id', clientId),
+        supabase.from('loans').select('*').eq('client_id', clientId),
+        supabase.from('passbook_entries').select('*').eq('client_id', clientId),
+        supabase.from('expenses_ledger').select('*').eq('client_id', clientId),
+      ]);
+
+      const backupData = {
+        timestamp: new Date().toISOString(),
+        clientId,
+        members: members.data || [],
+        loans: loans.data || [],
+        passbook: passbook.data || [],
+        expenses: expenses.data || [],
+      };
+
+      const fileBody = JSON.stringify(backupData);
+      const fileName = `${clientId}/latest_backup.json`; // Always overwrite this file
+
+      // Upload to Supabase Storage
+      const { error } = await supabase.storage
+        .from('client_backups')
+        .upload(fileName, fileBody, {
+          contentType: 'application/json',
+          upsert: true // Overwrite mode
+        });
+
+      if (error) throw error;
+      console.log("✅ Auto Backup Successful!");
+
+    } catch (err) {
+      console.error("Backup Failed (Silent):", err);
+    }
+  };
+
   useEffect(() => {
     const checkAccess = async () => {
       const storedUser = localStorage.getItem('current_user');
@@ -42,10 +83,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         // ✅ IMPORTANT FIX
         const resolvedClientId = user.client_id ?? user.id;
 
-        // ✅ FIX: Added 'theme' to select query
+        // ✅ FIX: Added 'auto_backup' to select query
         const { data: client, error } = await supabase
           .from('clients')
-          .select('plan_end_date, subscription_status, theme')
+          .select('plan_end_date, subscription_status, theme, auto_backup')
           .eq('id', resolvedClientId)
           .single();
 
@@ -65,6 +106,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           } else {
             root.classList.remove('dark');
             root.style.colorScheme = 'light';
+          }
+
+          // ✅ NEW: Auto Backup Logic (Runs if Toggle is ON)
+          if (client.auto_backup === true) {
+             const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+             const lastBackup = localStorage.getItem(`last_backup_${resolvedClientId}`);
+
+             // Agar aaj backup nahi hua hai
+             if (lastBackup !== today) {
+                performAutoBackup(resolvedClientId).then(() => {
+                    localStorage.setItem(`last_backup_${resolvedClientId}`, today);
+                });
+             }
           }
 
           const expiry = new Date(client.plan_end_date || new Date());
