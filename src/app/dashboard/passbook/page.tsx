@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
+import { useCurrency } from '@/hooks/useCurrency'; 
 
 // Modals
 import PassbookAddEntryModal from '@/components/client/PassbookAddEntryModal';
@@ -36,7 +36,6 @@ export default function PassbookPage() {
   const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<any>(null);
   
-  // ✅ Hook call karo
   const { formatCurrency, symbol } = useCurrency(); 
 
   // Data States
@@ -45,7 +44,7 @@ export default function PassbookPage() {
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
 
-  // --- FILTER & PAGINATION STATES (New) ---
+  // --- FILTER & PAGINATION STATES ---
   const [searchTerm, setSearchTerm] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState('10');
   const [startDate, setStartDate] = useState('');
@@ -60,14 +59,12 @@ export default function PassbookPage() {
     totalFine: 0
   });
 
-  // --- 1. Fetch Client ID (REPLACED) ---
+  // --- 1. Fetch Client ID ---
   useEffect(() => {
     const userStr = localStorage.getItem('current_user');
     if (!userStr) return;
 
     const user = JSON.parse(userStr);
-
-    // ✅ SAFE: works for Client + Treasurer
     const resolvedClientId = user.client_id ?? user.id;
 
     if (!resolvedClientId) {
@@ -87,7 +84,7 @@ export default function PassbookPage() {
     }
   }, [clientId]);
 
-  // ✅ DIFF–1 → Members fetch fix
+  // ✅ UPDATED: Fetch Members with Total Outstanding Loan Logic
   const fetchMembers = async () => {
     const { data, error } = await supabase
       .from('members')
@@ -107,14 +104,20 @@ export default function PassbookPage() {
       return;
     }
 
-    // ✅ STEP 3 — MEMBERS MAP (OUTSTANDING FIX)
+    // ✅ FIX: Calculate SUM of all active loans, not just one
     const membersWithLoan = (data || []).map(m => {
-      const activeLoan = m.loans?.find(l => l.status === 'active');
+      // Filter only active loans
+      const activeLoans = m.loans?.filter((l: any) => l.status === 'active') || [];
+      
+      // Sum their remaining balances
+      const totalOutstanding = activeLoans.reduce((sum: number, loan: any) => {
+        return sum + (Number(loan.remaining_balance) || 0);
+      }, 0);
 
       return {
         ...m,
-        outstanding_loan:
-          activeLoan?.remaining_balance ?? m.outstanding_loan ?? 0
+        // Use calculated total, fallback to 0
+        outstanding_loan: totalOutstanding
       };
     });
 
@@ -127,15 +130,12 @@ export default function PassbookPage() {
     const { data } = await supabase
       .from('passbook_entries')
       .select('*')
-      // ✅ STEP 3: Added client_id filter
       .eq('client_id', clientId)
       .order('date', { ascending: false });
 
     if (data) {
-      // ✅ NO AUTO CALCULATION HERE. TRUST DATABASE.
       setPassbook(data);
 
-      // Stats Calculation (Simple Sum)
       const newStats = data.reduce((acc: any, curr: any) => ({
         totalDeposit: acc.totalDeposit + (Number(curr.deposit_amount) || 0),
         totalInstallment: acc.totalInstallment + (Number(curr.installment_amount) || 0),
