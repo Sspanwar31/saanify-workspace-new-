@@ -107,7 +107,7 @@ export default function ClientDashboard() {
                 setClientData(userData);
                 userRole = userData.role || 'client';
 
-                // ID Logic: Client uses own ID, Treasurer uses client_id
+                // ID Logic
                 if (userRole === 'client') {
                     userId = userData.id; 
                 } else {
@@ -141,7 +141,7 @@ export default function ClientDashboard() {
             const canViewExpenses = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES');
             const canViewMembers = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS');
 
-            // Fetch All Tables (Including Admin Fund)
+            // Fetch All Tables
             const [passbookRes, expenseRes, loansRes, membersRes, adminFundRes] = await Promise.all([
                 canViewPassbook ? supabase.from('passbook_entries').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
                 canViewExpenses ? supabase.from('expenses_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
@@ -230,7 +230,7 @@ export default function ClientDashboard() {
   }, [membersData, loansData, clientData]);
 
 
-  // ✅ FINANCIAL LOGIC (Corrected Liquidity)
+  // ✅ FINANCIAL LOGIC (Corrected Payment Modes for Loans)
   const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[], adminFunds: any[]) => {
     
     let realIncome = 0; 
@@ -287,18 +287,28 @@ export default function ClientDashboard() {
         }
     });
 
-    // 4. Loans (Subtract Principal Disbursed)
+    // 4. Loans (Subtract Principal from Correct Mode)
     loans.forEach(l => {
         const outstanding = Number(l.remaining_balance) || 0;
-        const principal = Number(l.amount) || 0; // Total Loan Amount
+        const principal = Number(l.amount) || 0; 
+        const mode = (l.payment_mode || 'cash').toLowerCase(); // ✅ Use Payment Mode
 
         if (l.status === 'active' || (outstanding > 0 && l.status !== 'closed')) {
              pendingLoanCount++;
         }
 
-        // 🔥 FIX: Subtract PRINCIPAL, not Outstanding
-        // Recovery comes back via Passbook. Disbursement goes out via this logic.
-        cash -= principal; 
+        // 🔥 FIX: Subtract Principal from Specific Mode
+        // Logic: Agar Bank se loan diya hai, to Bank balance kam hoga.
+        
+        if (mode.includes('cash')) {
+            cash -= principal;
+        } else if (mode.includes('bank') || mode.includes('cheque')) {
+            bank -= principal;
+        } else if (mode.includes('upi') || mode.includes('online')) {
+            upi -= principal;
+        } else {
+            cash -= principal; // Default fallback
+        }
     });
 
     // 5. Maturity Liability
