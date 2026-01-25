@@ -30,7 +30,14 @@ export default function ClientManagement() {
   useEffect(() => { fetchClients(); }, []);
 
   const fetchClients = async () => {
-    const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+    // ✅ FIX: Only fetch roles that are 'client' (Owners)
+    // This hides treasurers and prevents duplicate revenue calculation
+    const { data } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('role', 'client') // <-- Added Filter
+      .order('created_at', { ascending: false });
+      
     if (data) setClients(data);
     setLoading(false);
   };
@@ -185,6 +192,7 @@ export default function ClientManagement() {
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4"/></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuLabel>Manage Client</DropdownMenuLabel>
+                            {/* Drill Down Feature: View Profile will now act as a gateway to see Treasurers later if needed */}
                             <DropdownMenuItem onClick={() => router.push(`/admin/clients/${c.id}`)}><Eye className="mr-2 h-4 w-4 text-blue-500"/> View Profile</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openEditModal(c)}><Edit className="mr-2 h-4 w-4 text-slate-500"/> Edit Details</DropdownMenuItem>
                             <DropdownMenuSeparator />
