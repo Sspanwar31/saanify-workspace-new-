@@ -104,19 +104,18 @@ export default function ClientDashboard() {
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 
-                // ✅ STEP 2 — storedUser case FIX
-                // Pehle clients se record lao
-                const { data: client } = await supabase.from('clients').select('*').eq('id', user.id).single();
-                if (client) setClientData(client);
-                else setClientData(user);
+                // ✅ STEP 2 — storedUser case FIX (EXACT DIFF)
+                // Pehle clients se record lao using admin_id
+                const { data: client } = await supabase.from('clients').select('*').eq('admin_id', user.id).single();
 
-                // ✅ IMPORTANT: Ensure userId is set from fetched client data
-                if (client) {
-                    userId = client.id;
-                } else {
-                    // Fallback if client fetch fails (should not happen usually)
-                    userId = user.id;
+                if (!client) {
+                  console.error('❌ Client not found for admin:', user.id);
+                  return;
                 }
+
+                setClientData(client);
+                userId = client.id; // ✅ ONLY THIS GOES TO DASHBOARD
+
             } else if (storedMember) {
                 const member = JSON.parse(storedMember);
                 userRole = member.role;
@@ -155,7 +154,6 @@ export default function ClientDashboard() {
             const canViewMembers = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
 
             // A. Passbook (Transactions)
-            // ✅ PASSBOOK QUERY – Treasurer ko ALL client data nahi mil raha - FIXED
             const passbookReq = canViewPassbook 
                 ? supabase.from('passbook_entries').select('*').eq('client_id', userId) 
                 : Promise.resolve({ data: [] });
