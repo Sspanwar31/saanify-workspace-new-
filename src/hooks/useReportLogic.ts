@@ -253,7 +253,8 @@ export function useReportLogic() {
         remainingBalance: currentBalance,
         interestRate: interestAmount, 
         totalInterestCollected: distributedInterest, 
-        status: (l.status || '').toLowerCase() 
+        status: (l.status || '').toLowerCase(),
+        paymentMode: l.payment_mode || 'cash' // ✅ Added for Cashbook
       };
     });
 
@@ -268,16 +269,11 @@ export function useReportLogic() {
         .filter((l: any) => l.status === 'active' && l.remainingBalance > 0) 
         .reduce((acc: number, l: any) => acc + l.remainingBalance, 0);
     
-    // Loan Recovered (Principal Only)
     const loansRecoveredTotal = loansIssuedTotal - loansOutstandingTotal;
-    
-    // Loan Interest from Loans Table
-    const loansInterestFromTable = validLoans.reduce((acc: number, l: any) => acc + (l.totalInterestCollected || 0), 0);
-
     const loansPendingCount = validLoans.filter((l: any) => l.status === 'active' && l.remainingBalance > 0).length;
 
 
-    // --- D. DAILY LEDGER ---
+    // --- D. DAILY LEDGER & CASHBOOK (MERGED) ---
     const ledgerMap = new Map();
     const getOrSetEntry = (dateStr: string) => {
         if (!ledgerMap.has(dateStr)) {
@@ -291,6 +287,7 @@ export function useReportLogic() {
         return ledgerMap.get(dateStr);
     };
 
+    // 1. Passbook (IN)
     filteredPassbook.forEach(e => {
         const entry = getOrSetEntry(e.date);
         const total = e.amount;
@@ -299,30 +296,46 @@ export function useReportLogic() {
         entry.interest += e.interestAmount;
         entry.fine += e.fineAmount;
         entry.cashIn += total;
-        const mode = (e.paymentMode || 'CASH').toUpperCase();
-        if (mode.includes('CASH')) entry.cashInMode += total;
-        else if (mode.includes('BANK')) entry.bankInMode += total;
+        const mode = normalizeMode(e.paymentMode);
+        if (mode === 'cash') entry.cashInMode += total;
+        else if (mode === 'bank') entry.bankInMode += total;
         else entry.upiInMode += total;
     });
 
+    // 2. Expenses (IN/OUT)
     filteredExpenses.forEach(e => {
-        const entry = getOrSetEntry(e.date || new Date().toISOString());
+        const entry = getOrSetEntry(e.date || new Date().toISOString().split('T')[0]);
         const amt = Number(e.amount);
         if (e.type === 'EXPENSE') { entry.cashOut += amt; entry.cashOutMode += amt; }
         else { entry.cashIn += amt; entry.cashInMode += amt; }
     });
 
-    if(filters.transactionType === 'all' || filters.transactionType === 'loan') {
-        filteredLoans.forEach((l: any) => {
-            if (isDateInRange(l.start_date)) {
-                const entry = getOrSetEntry(l.start_date);
-                const amt = Number(l.amount);
-                entry.loanOut += amt;
-                entry.cashOut += amt;
-                entry.cashOutMode += amt; 
-            }
-        });
-    }
+    // 3. Loans (OUT) - ✅ FIXED
+    filteredLoans.forEach((l: any) => {
+        const d = (l.start_date || '').split('T')[0];
+        if (isDateInRange(d) && (l.status === 'active' || l.status === 'closed')) {
+            const entry = getOrSetEntry(d);
+            const amt = Number(l.amount); // Principal Out
+            entry.loanOut += amt;
+            entry.cashOut += amt;
+            
+            const mode = normalizeMode(l.paymentMode);
+            if (mode === 'cash') entry.cashOutMode += amt;
+            else if (mode === 'bank') entry.bankOutMode += amt;
+            else entry.upiOutMode += amt;
+        }
+    });
+
+    // 4. Admin Fund (IN/OUT) - ✅ FIXED
+    filteredAdminFunds.forEach((a: any) => {
+        const d = (a.date || a.created_at || '').split('T')[0];
+        if(isDateInRange(d)) {
+            const entry = getOrSetEntry(d);
+            const amt = Number(a.amount);
+            if(a.type === 'INJECT') entry.cashInMode += amt; // Default Cash
+            else entry.cashOutMode += amt;
+        }
+    });
 
     const sortedLedger = Array.from(ledgerMap.values()).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
     let runningBal = 0;
@@ -345,51 +358,15 @@ export function useReportLogic() {
         };
     });
 
-    // --- E. MODE STATS (UPDATED & DEBUGGED) ---
-    // Formula: (Passbook Deposits+Int+Fine) + AdminNet + MaintIncome + LoanRecovered - LoanIssued - Expenses
-
-    // 1. Passbook Sources
-    let passbookCash = 0, passbookBank = 0, passbookUpi = 0;
-    filteredPassbook.forEach(e => {
-        const amt = (e.depositAmount || 0) + (e.interestAmount || 0) + (e.fineAmount || 0);
-        const mode = (e.paymentMode || 'CASH').toUpperCase();
-        if (mode.includes('CASH')) passbookCash += amt;
-        else if (mode.includes('BANK')) passbookBank += amt;
-        else passbookUpi += amt;
+    // --- E. MODE STATS (FINAL CALCULATION) ---
+    // Summing directly from Cashbook to match report table
+    let totalCash = 0, totalBank = 0, totalUpi = 0;
+    finalCashbook.forEach((e: any) => {
+        totalCash += (e.cashIn - e.cashOut);
+        totalBank += (e.bankIn - e.bankOut);
+        totalUpi += (e.upiIn - e.upiOut);
     });
-    const totalPassbook = passbookCash + passbookBank + passbookUpi;
 
-    // 2. Admin Fund Net
-    let adminNet = 0;
-    filteredAdminFunds.forEach(af => {
-       const amt = Number(af.amount || 0);
-       if(af.type === 'INJECT') adminNet += amt;
-       else adminNet -= amt;
-    });
-    
-    // 3. Maintenance Income
-    const maintenanceIncome = filteredExpenses
-       .filter(e => e.type === 'INCOME')
-       .reduce((sum, e) => sum + Number(e.amount || 0), 0);
-
-    // 4. Loan Principal Recovered (User requested addition)
-    const recoveredPrincipal = loansRecoveredTotal;
-    
-    // 5. Loan Interest (User requested addition)
-    // Note: Interest is often in passbook. Avoid double counting if it's there.
-    // If not in passbook, add 'loansInterestFromTable'.
-    // Assuming Passbook tracks Interest too (based on 'interestIncome' variable above),
-    // we use passbook interest (interestIncome).
-    
-    // 6. Expenses
-    const operationalExpenses = opsExpense;
-
-    // -------------------------
-
-    // Update Mode Stats specifically for the Cash Balance card to match Admin Fund
-    // Assuming most extra liquidity (Admin, Loans) is CASH for now
-    const finalCashBal = passbookCash + adminNet + maintenanceIncome + recoveredPrincipal - (loansIssuedTotal + operationalExpenses);
-    
     // --- F. MEMBER REPORTS ---
     const visibleMembers = filters.selectedMember === 'ALL' ? members : members.filter(m => m.id === filters.selectedMember);
     const memberReports = visibleMembers.map((m: any) => {
@@ -468,8 +445,7 @@ export function useReportLogic() {
         },
         dailyLedger: finalLedger,
         cashbook: finalCashbook,
-        // Updated modeStats with debugged calculation
-        modeStats: { cashBal: finalCashBal, bankBal: passbookBank, upiBal: passbookUpi },
+        modeStats: { cashBal: totalCash, bankBal: totalBank, upiBal: totalUpi }, // ✅ MATCHES TABLE
         loans: filteredLoans,
         memberReports, maturity, defaulters,
         adminFund: filteredAdminFunds
@@ -478,6 +454,5 @@ export function useReportLogic() {
   }, [members, loans, passbookEntries, expenses, adminFunds, filters, loading]);
 
   const reversedPassbook = [...filteredPassbookState].reverse();
-  
   return { loading, auditData, members, passbookEntries, reversedPassbook, filters, setFilters };
 }
