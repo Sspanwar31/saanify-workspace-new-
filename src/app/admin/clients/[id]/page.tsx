@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, ExternalLink, Mail, Phone, MoreVertical, CreditCard, ShieldCheck, 
-  Users, TrendingUp, AlertTriangle, CheckCircle, Trash2, Bell, FileText, Lock, Unlock, RefreshCw, Calendar, Activity, Plus
+  Users, TrendingUp, AlertTriangle, CheckCircle, Trash2, Bell, FileText, Lock, Unlock, RefreshCw, Calendar, Activity, Plus, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -31,18 +31,17 @@ export default function ClientProfile() {
   const [newPlan, setNewPlan] = useState('');
   
   // Add Staff Form
-  const [staffForm, setStaffForm] = useState({ name: '', email: '', phone: '' });
+  const [staffForm, setStaffForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
 
   // 1. Fetch Client & Staff
   const fetchClient = async () => {
-    // A. Client Data
     const { data, error } = await supabase.from('clients').select('*').eq('id', id).single();
     if (data) {
         setClient(data);
         setNewPlan(data.plan);
     }
 
-    // B. Staff Data (Fetch users linked to this client with role treasurer)
     const { data: staffData } = await supabase
         .from('clients') 
         .select('*')
@@ -84,25 +83,49 @@ export default function ClientProfile() {
       router.push('/admin/clients');
   };
 
-  // ✅ NEW: Delete Staff Function
   const handleDeleteStaff = async (staffId: string) => {
       if(!confirm("Are you sure you want to remove this staff member?")) return;
       
+      // Delete from DB (Auth delete requires Admin API, usually handled by trigger or manually)
       const { error } = await supabase.from('clients').delete().eq('id', staffId);
       
       if (error) {
           toast.error("Failed to delete staff: " + error.message);
       } else {
           toast.success("Staff Member Removed");
-          // Remove from local state instantly
           setStaffList(prev => prev.filter(s => s.id !== staffId));
       }
   };
 
+  // ✅ NEW: Add Staff Logic (Calls API)
   const handleAddStaff = async () => {
-      if(!staffForm.name || !staffForm.email) return toast.error("Name and Email required");
-      toast.info("To add staff, use the Signup page or API. (This is a view-only demo)");
-      setIsStaffModalOpen(false);
+      if(!staffForm.name || !staffForm.email || !staffForm.password) return toast.error("Name, Email and Password required");
+      
+      setIsAddingStaff(true);
+      try {
+          const res = await fetch('/api/admin/create-staff', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  ...staffForm,
+                  clientId: id // Link to this client
+              })
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) throw new Error(data.error || "Failed to create staff");
+
+          toast.success("Staff Account Created Successfully! 🎉");
+          setIsStaffModalOpen(false);
+          setStaffForm({ name: '', email: '', phone: '', password: '' }); // Reset form
+          fetchClient(); // Refresh list
+
+      } catch (error: any) {
+          toast.error(error.message);
+      } finally {
+          setIsAddingStaff(false);
+      }
   };
 
   const handleAccess = () => {
@@ -217,12 +240,11 @@ export default function ClientProfile() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <Badge variant="outline">{staff.role}</Badge>
-                                {/* ✅ CLICKABLE DELETE BUTTON */}
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
                                     className="h-8 w-8 text-slate-400 hover:text-red-600"
-                                    onClick={() => handleDeleteStaff(staff.id)} // Added Handler
+                                    onClick={() => handleDeleteStaff(staff.id)}
                                 >
                                     <Trash2 className="w-4 h-4"/>
                                 </Button>
@@ -254,16 +276,22 @@ export default function ClientProfile() {
         </DialogContent>
       </Dialog>
 
-      {/* ADD STAFF DIALOG */}
+      {/* ADD STAFF DIALOG (UPDATED) */}
       <Dialog open={isStaffModalOpen} onOpenChange={setIsStaffModalOpen}>
         <DialogContent>
-            <DialogHeader><DialogTitle>Add New Staff</DialogTitle><DialogDescription>Create a new treasurer account under this client.</DialogDescription></DialogHeader>
+            <DialogHeader><DialogTitle>Add New Staff</DialogTitle><DialogDescription>Create a new treasurer account.</DialogDescription></DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="space-y-2"><Input placeholder="Staff Name" value={staffForm.name} onChange={e=>setStaffForm({...staffForm, name:e.target.value})}/></div>
                 <div className="space-y-2"><Input placeholder="Email Address" type="email" value={staffForm.email} onChange={e=>setStaffForm({...staffForm, email:e.target.value})}/></div>
+                {/* NEW PASSWORD FIELD */}
+                <div className="space-y-2"><Input placeholder="Set Password" type="password" value={staffForm.password} onChange={e=>setStaffForm({...staffForm, password:e.target.value})}/></div>
                 <div className="space-y-2"><Input placeholder="Phone Number (Optional)" value={staffForm.phone} onChange={e=>setStaffForm({...staffForm, phone:e.target.value})}/></div>
             </div>
-            <DialogFooter><Button onClick={handleAddStaff} className="w-full bg-green-600">Create Staff Account</Button></DialogFooter>
+            <DialogFooter>
+                <Button onClick={handleAddStaff} disabled={isAddingStaff} className="w-full bg-green-600">
+                    {isAddingStaff ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Create Staff Account'}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
