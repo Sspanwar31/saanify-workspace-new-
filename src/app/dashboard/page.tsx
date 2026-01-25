@@ -97,116 +97,85 @@ export default function ClientDashboard() {
         if (!storedUser && !storedMember) { router.push('/login'); return; }
         
         try {
-            let userId = '';
+            let userId = ''; // Ye society Owner ki ID hogi
             let userRole = 'client_admin';
             let permissions: string[] = [];
 
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 
-                // ✅ FULL FIXED BLOCK (COPY–PASTE SAFE)
-                // Pehle clients se record lao using client_id
-                const { data: client, error } = await supabase
+                // ✅ FIXED: Search by 'id' (Primary Key) instead of 'client_id'
+                // This finds the logged-in user's record specifically
+                const { data: userData, error } = await supabase
                     .from('clients')
                     .select('*')
-                    .eq('client_id', user.id) // 🔥 AUTH USER ↔ CLIENT LINK
+                    .eq('id', user.id) // 🔥 Corrected Logic Here
                     .single();
 
-                if (error || !client) {
-                    console.error('❌ Client not found for auth user:', user.id);
+                if (error || !userData) {
+                    console.error('❌ User record not found:', user.id);
                     return;
                 }
 
-                setClientData(client);
+                setClientData(userData);
+                userRole = userData.role || 'client';
 
-                // 🔥 MOST IMPORTANT LINE
-                userId = client.id; // ← ye actual client_id hai jo sab tables me use hota hai
+                // 🔥 LOGIC TO DETERMINE DATA SOURCE
+                if (userRole === 'client') {
+                    // I am the boss, show my data
+                    userId = userData.id; 
+                } else {
+                    // I am treasurer/member, show my Boss's data (client_id)
+                    userId = userData.client_id;
+                }
+
+                // Load permissions if treasurer
+                if (userRole === 'treasurer') {
+                    // JSON parsing safety for permission string
+                    try {
+                        const perms = typeof userData.role_permissions === 'string' 
+                            ? JSON.parse(userData.role_permissions) 
+                            : userData.role_permissions;
+                        permissions = perms?.treasurer || [];
+                    } catch (e) { console.log('Permission parse error', e); }
+                }
 
             } else if (storedMember) {
+                // Fallback for old member login flow (if used)
                 const member = JSON.parse(storedMember);
                 userRole = member.role;
-
-                const { data: client } = await supabase
-                    .from('clients')
-                    .select('*')
-                    .eq('id', member.client_id)
-                    .single();
-
+                // Fetch owner data
+                const { data: client } = await supabase.from('clients').select('*').eq('id', member.client_id).single();
                 setClientData(client);
+                userId = member.client_id;
                 
-                // Get Permissions if Treasurer
                 if (member.role === 'treasurer') {
                     permissions = client?.role_permissions?.['treasurer'] || [];
                 }
-
-                // ✅ STEP 3 — Treasurer already CORRECT hai
-                if (client) {
-                    userId = client.id;
-                }
             }
 
-            // 🧪 STEP 1 — userId & role confirm karo (MOST IMPORTANT)
-            console.log('🧪 DASHBOARD DEBUG');
-            console.log('Role:', userRole);
-            console.log('UserId used for queries:', userId);
-            console.log('Permissions:', permissions);
+            console.log("✅ USER ID RESOLVED:", userId); // Debugging check
 
             // --- FETCH DATA FOR DASHBOARD ---
             
-            // 🔥 TREASURER FIX: Added "|| userRole === 'treasurer'"
+            // 🔥 TREASURER FIX: Added "|| userRole === 'treasurer'" logic
             const canViewPassbook = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
             const canViewLoans = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
             const canViewExpenses = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
             const canViewMembers = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
 
-            // A. Passbook (Transactions)
-            const passbookReq = canViewPassbook 
-                ? supabase.from('passbook_entries').select('*').eq('client_id', userId) 
-                : Promise.resolve({ data: [] });
-
-            // B. Expenses
-            const expenseReq = canViewExpenses 
-                ? supabase.from('expenses_ledger').select('*').eq('client_id', userId)
-                : Promise.resolve({ data: [] });
-
-            // C. Loans
-            const loansReq = canViewLoans 
-                ? supabase.from('loans').select('*').eq('client_id', userId)
-                : Promise.resolve({ data: [] });
-
-            // D. Members
-            const membersReq = canViewMembers 
-                ? supabase.from('members').select('*').eq('client_id', userId)
-                : Promise.resolve({ data: [] });
-
-            // Run Queries
+            // Pass resolved userId to all queries
             const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
-                passbookReq, expenseReq, loansReq, membersReq
+                canViewPassbook ? supabase.from('passbook_entries').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+                canViewExpenses ? supabase.from('expenses_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+                canViewLoans ? supabase.from('loans').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+                canViewMembers ? supabase.from('members').select('*').eq('client_id', userId) : Promise.resolve({ data: [] })
             ]);
-
-            // 🧪 STEP 2 — Queries se raw response check karo
-            console.log('📦 RAW QUERY RESULTS');
-            console.log('Passbook:', passbookRes);
-            console.log('Expenses:', expenseRes);
-            console.log('Loans:', loansRes);
-            console.log('Members:', membersRes);
-
-            // 🧪 STEP 3 — client_id match ho raha hai ya nahi
-            // Temporary test query
-            const test = await supabase
-              .from('passbook_entries')
-              .select('id, client_id')
-              .limit(5);
-            
-            console.log('🧪 TEST PASSBOOK CLIENT IDS:', test.data);
-            if (test.data && test.data.length > 0) {
-                console.log('Comparing DB Client ID:', test.data[0].client_id, 'vs Query UserId:', userId);
-            }
 
             // Save raw data for Toast logic
             setMembersData(membersRes.data || []);
             setLoansData(loansRes.data || []);
-            setTransactionsData(passbookRes.data || []); // Saving transactions for Monthly Summary
+            setTransactionsData(passbookRes.data || []); 
 
             calculateFinancials(
                 passbookRes.data || [], 
@@ -216,7 +185,7 @@ export default function ClientDashboard() {
             );
 
         } catch(e) {
-            // console.error("Error fetching dashboard data:", e);
+            console.error("Error fetching dashboard data:", e);
         } finally {
             setLoading(false);
         }
@@ -224,10 +193,9 @@ export default function ClientDashboard() {
     init();
   }, [router]);
 
-  // 🆕 STEP 3.3 – Banner visibility logic (useEffect)
+  // 🆕 STEP 3.3 – Banner visibility logic
   useEffect(() => {
     const key = getMonthlyBannerKey()
-
     if (!localStorage.getItem(key)) {
       setShowMonthlyBanner(true)
     }
@@ -242,30 +210,18 @@ export default function ClientDashboard() {
 
   // 🆕 4️⃣ MONTHLY SUMMARY LOGIC
   useEffect(() => {
-    // 🧪 STEP 4 — Monthly Summary ke andar confirm karo
-    console.log('📊 MONTHLY SUMMARY DEBUG');
-    console.log('loading:', loading);
-    console.log('transactions:', transactionsData.length);
-    console.log('loans:', loansData.length);
-    console.log('members:', membersData.length);
-
     if (!membersData || !loansData || !transactionsData) return
 
     const monthlyKey = getMonthlyKey()
 
-    // agar already dikh chuka hai → skip
     if (localStorage.getItem(monthlyKey)) return
 
     // 📊 calculations
-    // ✅ FIX 2 — Banner deposit calculation (TREASURER SAFE)
-    const totalDeposits = Array.isArray(transactionsData)
-      ? transactionsData.reduce(
-          (sum, t) => sum + Number(t?.deposit_amount ?? 0),
-          0
-        )
-      : 0;
+    // 🔴 PROBLEM 2 FIX: Monthly Summary → Deposits galat add ho rahe
+    const totalDeposits = transactionsData
+      .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
 
-    // 4️⃣ ACTIVE LOAN LOGIC (EVERYWHERE same)
+    // ✅ FIXED: Active Loan Logic (Banner) - Checks outstanding amount too
     const activeLoans = loansData.filter(l => 
         l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
     );
@@ -273,9 +229,8 @@ export default function ClientDashboard() {
     const riskyLoans = getRiskyLoans(loansData)
     const overdueMembers = getOverdueMembers(membersData, 10)
 
-    // ✅ FIX 1 — Monthly Summary useEffect (MOST IMPORTANT)
     // Show toast only if data is actually loaded
-    if (loading === false) {
+    if(loading === false && transactionsData.length > 0) {
         toast.info('📅 Monthly Summary', {
         description: `
     💰 Deposits: ₹${totalDeposits}
@@ -285,13 +240,10 @@ export default function ClientDashboard() {
         `,
         duration: 8000,
         })
-
-        // mark as shown for this month
         localStorage.setItem(monthlyKey, 'shown')
     }
 
-  // ✅ FIX 3 — useEffect dependency (CRITICAL)
-  }, [loading, membersData.length, loansData.length, transactionsData.length])
+  }, [membersData, loansData, transactionsData, loading])
 
   // 3️⃣ TOAST LOGIC (Alerts)
   useEffect(() => {
@@ -312,28 +264,13 @@ export default function ClientDashboard() {
     let hasAlert = false;
 
     if (overdueMembers.length > 0) {
-      toast.warning(
-        `⚠️ ${overdueMembers.length} member(s) have overdue dues`,
-        {
-          description: 'Please review pending installments',
-          duration: 6000,
-        }
-      );
-      hasAlert = true;
+      toast.warning(`⚠️ ${overdueMembers.length} member(s) have overdue dues`, { description: 'Please review pending installments', duration: 6000 });
     }
 
     if (riskyLoans.length > 0) {
-      toast.error(
-        `🚨 ${riskyLoans.length} loan(s) at risk of default`,
-        {
-          description: 'Immediate attention required',
-          duration: 7000,
-        }
-      );
-      hasAlert = true;
+      toast.error(`🚨 ${riskyLoans.length} loan(s) at risk of default`, { description: 'Immediate attention required', duration: 7000 });
     }
 
-    // mark alerts as shown (even if no alerts, to prevent re-check spam)
     sessionStorage.setItem('dashboard_alerts_shown', 'true');
 
   }, [membersData, loansData, clientData]);
@@ -347,10 +284,7 @@ export default function ClientDashboard() {
     let cashExpense = 0;
     
     // Liquidity (Cash Flow)
-    let cash = 0;
-    let bank = 0;
-    let upi = 0;
-    
+    let cash = 0, bank = 0, upi = 0;
     let pendingLoanCount = 0;
     let totalDepositsCollected = 0; // For Deposits Card
 
@@ -360,8 +294,6 @@ export default function ClientDashboard() {
     passbook.forEach(t => {
         const totalAmt = Number(t.total_amount) || 0; // Cash Flow
         
-        // Income Logic: Sirf Interest aur Fine hi profit hai
-        // Deposit ko income me nahi jodna chahiye (wo liability hai)
         const interest = Number(t.interest_amount) || 0;
         const fine = Number(t.fine_amount) || 0;
         const deposit = Number(t.deposit_amount) || 0;
@@ -375,33 +307,30 @@ export default function ClientDashboard() {
         else if (mode.includes('bank') || mode.includes('cheque')) bank += totalAmt;
         else if (mode.includes('upi') || mode.includes('online')) upi += totalAmt;
 
-        // Chart Data (Cash Flow ke hisab se)
         const date = t.date ? new Date(t.date) : new Date(t.created_at);
         const month = date.toLocaleString('default', { month: 'short' });
         monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
     });
 
     // 2. Expenses Ledger Processing
-    // 🔥 NET PROFIT FIX: Handle Case Sensitivity
+    // 🔥 NET PROFIT FIX 1: Handle Case Sensitivity (Income vs INCOME)
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
         const type = (e.type || '').toUpperCase().trim();
         
         if (type === 'EXPENSE') {
             cashExpense += amt;
-            // Subtract from Liquidity (Default Cash)
             cash -= amt; 
         } 
         else if (type === 'INCOME') {
-            // Agar koi aur income hai (Form Fees etc.)
             realIncome += amt;
             cash += amt; 
         }
     });
 
     // 3. Loans Count Logic
-    // ✅ FIXED: Logic consistent with banner
     loans.forEach(l => {
+        // 🔥 FIXED: Logic consistent with banner
         if (l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')) {
              pendingLoanCount++;
         }
@@ -430,9 +359,7 @@ export default function ClientDashboard() {
              // A. Monthly Amount (First deposit se)
              const sorted = deposits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
              const monthlyDeposit = Number(sorted[0].deposit_amount || 0);
-             
-             // B. Constants
-             const tenureMonths = 36; // 3 Years
+             const tenureMonths = 36;
              
              // --- CRITICAL CHECK: Manual Override ---
              const isOverride = memberInfo?.maturity_is_override || false;
@@ -441,10 +368,8 @@ export default function ClientDashboard() {
              let settledInterest = 0;
 
              if (isOverride && manualAmount > 0) {
-                 // Agar Manual Amount set hai
                  settledInterest = manualAmount;
              } else {
-                 // Standard 12% Calculation
                  const totalPrincipal = monthlyDeposit * tenureMonths;
                  settledInterest = totalPrincipal * 0.12; 
              }
@@ -474,8 +399,8 @@ export default function ClientDashboard() {
 
     setFinancials({
         netProfit: netProfitFinal,
-        totalIncome: realIncome, // Interest + Fine + Other
-        totalExpense: totalExpenseFinal, // Includes Ops + Maturity
+        totalIncome: realIncome,
+        totalExpense: totalExpenseFinal,
         cashBal: cash, 
         bankBal: bank,
         upiBal: upi,
@@ -504,14 +429,9 @@ export default function ClientDashboard() {
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   // 📊 Prepare data for banner
-  const totalDeposits = Array.isArray(transactionsData)
-    ? transactionsData.reduce(
-        (sum, t) => sum + Number(t?.deposit_amount ?? 0),
-        0
-      )
-    : 0;
+  const totalDeposits = transactionsData.reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
   
-  // ✅ FIXED: Logic consistent everywhere
+  // ✅ FIXED 1 (UI Display): Active Loans consistent with logic
   const activeLoans = loansData.filter(l => 
     l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
   );
@@ -523,7 +443,6 @@ export default function ClientDashboard() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
       
       {/* 🆕 STEP 3.5 – Dashboard TOP pe Banner UI (JSX) */}
-      {/* ✅ FIX 4 — Banner rendering guard */}
       {showMonthlyBanner && !loading && (
         <Card className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
