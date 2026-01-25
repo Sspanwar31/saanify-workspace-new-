@@ -104,17 +104,23 @@ export default function ClientDashboard() {
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 
-                // ✅ STEP 2 — storedUser case FIX (EXACT DIFF)
-                // Pehle clients se record lao using admin_id
-                const { data: client } = await supabase.from('clients').select('*').eq('admin_id', user.id).single();
+                // ✅ FULL FIXED BLOCK (COPY–PASTE SAFE)
+                // Pehle clients se record lao using client_id
+                const { data: client, error } = await supabase
+                    .from('clients')
+                    .select('*')
+                    .eq('client_id', user.id) // 🔥 AUTH USER ↔ CLIENT LINK
+                    .single();
 
-                if (!client) {
-                  console.error('❌ Client not found for admin:', user.id);
-                  return;
+                if (error || !client) {
+                    console.error('❌ Client not found for auth user:', user.id);
+                    return;
                 }
 
                 setClientData(client);
-                userId = client.id; // ✅ ONLY THIS GOES TO DASHBOARD
+
+                // 🔥 MOST IMPORTANT LINE
+                userId = client.id; // ← ye actual client_id hai jo sab tables me use hota hai
 
             } else if (storedMember) {
                 const member = JSON.parse(storedMember);
