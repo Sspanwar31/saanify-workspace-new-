@@ -22,12 +22,12 @@ export default function ClientProfile() {
   const { id } = useParams();
   const router = useRouter();
   const [client, setClient] = useState<any>(null);
-  const [staffList, setStaffList] = useState<any[]>([]); // New State for Staff
+  const [staffList, setStaffList] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   
   // Modal State
   const [isRenewOpen, setIsRenewOpen] = useState(false);
-  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); // New Staff Modal
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); 
   const [newPlan, setNewPlan] = useState('');
   
   // Add Staff Form
@@ -44,7 +44,7 @@ export default function ClientProfile() {
 
     // B. Staff Data (Fetch users linked to this client with role treasurer)
     const { data: staffData } = await supabase
-        .from('clients') // Using same table as per your structure
+        .from('clients') 
         .select('*')
         .eq('client_id', id)
         .eq('role', 'treasurer');
@@ -84,13 +84,23 @@ export default function ClientProfile() {
       router.push('/admin/clients');
   };
 
+  // ✅ NEW: Delete Staff Function
+  const handleDeleteStaff = async (staffId: string) => {
+      if(!confirm("Are you sure you want to remove this staff member?")) return;
+      
+      const { error } = await supabase.from('clients').delete().eq('id', staffId);
+      
+      if (error) {
+          toast.error("Failed to delete staff: " + error.message);
+      } else {
+          toast.success("Staff Member Removed");
+          // Remove from local state instantly
+          setStaffList(prev => prev.filter(s => s.id !== staffId));
+      }
+  };
+
   const handleAddStaff = async () => {
       if(!staffForm.name || !staffForm.email) return toast.error("Name and Email required");
-      
-      // Note: Real implementation needs auth signup API. This just adds DB entry for demo.
-      // Assuming you have an API route or trigger for this.
-      
-      // Temporary: Just show toast as we don't have direct auth create access here
       toast.info("To add staff, use the Signup page or API. (This is a view-only demo)");
       setIsStaffModalOpen(false);
   };
@@ -181,7 +191,7 @@ export default function ClientProfile() {
          </Card>
       </div>
 
-      {/* ✅ NEW SECTION: ASSOCIATED STAFF */}
+      {/* ASSOCIATED STAFF */}
       <Card className="shadow-sm border-slate-200">
         <CardHeader className="border-b border-slate-50 py-4 px-6 flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base font-bold">
@@ -207,7 +217,15 @@ export default function ClientProfile() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <Badge variant="outline">{staff.role}</Badge>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4"/></Button>
+                                {/* ✅ CLICKABLE DELETE BUTTON */}
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-slate-400 hover:text-red-600"
+                                    onClick={() => handleDeleteStaff(staff.id)} // Added Handler
+                                >
+                                    <Trash2 className="w-4 h-4"/>
+                                </Button>
                             </div>
                         </div>
                     ))}
