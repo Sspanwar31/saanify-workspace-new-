@@ -17,7 +17,9 @@ import { useCurrency } from '@/hooks/useCurrency';
 // 1️⃣ IMPORT TOAST
 import { toast } from 'sonner';
 
+// ------------------------------------------------------------------
 // 2️⃣ HELPER FUNCTIONS (Outside Component)
+// ------------------------------------------------------------------
 
 // 🆕 Helper function for Monthly Key
 function getMonthlyKey() {
@@ -59,6 +61,10 @@ function getRiskyLoans(loans: any[]) {
   });
 }
 
+// ------------------------------------------------------------------
+// MAIN COMPONENT
+// ------------------------------------------------------------------
+
 export default function ClientDashboard() {
   const router = useRouter();
   const { formatCurrency, symbol } = useCurrency();
@@ -97,51 +103,48 @@ export default function ClientDashboard() {
         if (!storedUser && !storedMember) { router.push('/login'); return; }
         
         try {
-            let userId = ''; // Ye society Owner ki ID hogi
+            let userId = ''; // Target Client ID
             let userRole = 'client_admin';
             let permissions: string[] = [];
 
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 
-                // ✅ Search by 'id' (Primary Key) instead of 'client_id'
-                const { data: userData, error } = await supabase
+                // ✅ CLIENT FIX: Agar user login hai, to wo khud client hai.
+                // Uski ID hi use hogi.
+                
+                // Pehle check karo kya ye user 'clients' table me hai?
+                const { data: clientSelf, error } = await supabase
                     .from('clients')
                     .select('*')
-                    .eq('id', user.id)
+                    .eq('id', user.id) // Direct ID match
                     .single();
 
-                if (error || !userData) {
-                    return;
-                }
-
-                setClientData(userData);
-                userRole = userData.role || 'client';
-
-                // 🔥 LOGIC TO DETERMINE DATA SOURCE
-                if (userRole === 'client') {
-                    // I am the boss, show my data
-                    userId = userData.id; 
+                if (clientSelf) {
+                    // Ye Banda Owner Hai
+                    setClientData(clientSelf);
+                    userId = clientSelf.id;
+                    userRole = 'client_admin';
                 } else {
-                    // I am treasurer/member, show my Boss's data (client_id)
-                    userId = userData.client_id;
-                }
-
-                // Load permissions if treasurer
-                if (userRole === 'treasurer') {
-                    try {
-                        const perms = typeof userData.role_permissions === 'string' 
-                            ? JSON.parse(userData.role_permissions) 
-                            : userData.role_permissions;
-                        permissions = perms?.treasurer || [];
-                    } catch (e) { }
+                    // Agar ye 'id' se nahi mila, to shayad 'client_id' (Auth ID) se mile
+                    const { data: clientAuth } = await supabase
+                        .from('clients')
+                        .select('*')
+                        .eq('client_id', user.id)
+                        .single();
+                    
+                    if(clientAuth) {
+                        setClientData(clientAuth);
+                        userId = clientAuth.id;
+                        userRole = 'client_admin';
+                    }
                 }
 
             } else if (storedMember) {
-                // Fallback for old member login flow
+                // TREASURER LOGIC (Already working fine)
                 const member = JSON.parse(storedMember);
                 userRole = member.role;
-                // Fetch owner data
+                
                 const { data: client } = await supabase.from('clients').select('*').eq('id', member.client_id).single();
                 setClientData(client);
                 userId = member.client_id;
@@ -153,7 +156,7 @@ export default function ClientDashboard() {
 
             // --- FETCH DATA FOR DASHBOARD ---
             
-            // 🔥 TREASURER FIX: Added "|| userRole === 'treasurer'" logic
+            // ✅ Permissions Fix for Both
             const canViewPassbook = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
             const canViewLoans = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
             const canViewExpenses = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
@@ -329,15 +332,18 @@ export default function ClientDashboard() {
              pendingLoanCount++;
         }
 
-        // 🔥🔥🔥 LIQUIDITY FIX (USER LOGIC) 🔥🔥🔥
-        // Actual Cash = (Total Inflow from Passbook & Ledger) - (Total Outflow) - (Outstanding Loan)
-        // Passbook se Recovery (+6000) already add ho gayi hai.
-        // Outstanding (30000) minus karenge to net effect sahi aayega.
+        // 🔥🔥🔥 CASH CALCULATION FIX 🔥🔥🔥
+        // Logic: Jo paisa loan me bahar hai (Outstanding), wo cash me nahi ho sakta.
+        // Recovery already Passbook se add ho chuki hai.
         
         const outstanding = Number(l.outstanding_amount) || 0;
-        
-        // Subtract outstanding because that money is NOT in hand.
-        cash -= outstanding; 
+        const status = l.status || '';
+
+        // Only subtract if loan is active or closed with pending dues
+        // Note: Closed loans with 0 outstanding wont affect this.
+        if(outstanding > 0) {
+            cash -= outstanding; 
+        }
     });
 
     // --- 4. MATURITY LIABILITY CALCULATION ---
@@ -415,6 +421,7 @@ export default function ClientDashboard() {
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
   
+  // Profit Margin Calculation (Safe Divide)
   const profitMargin = financials.totalIncome > 0 
     ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
     : "0";
@@ -440,6 +447,7 @@ export default function ClientDashboard() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
       
       {/* 🆕 STEP 3.5 – Dashboard TOP pe Banner UI (JSX) */}
+      {/* ✅ FIX 4 — Banner rendering guard */}
       {showMonthlyBanner && !loading && (
         <Card className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
