@@ -104,16 +104,14 @@ export default function ClientDashboard() {
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 
-                // ✅ FIXED: Search by 'id' (Primary Key) instead of 'client_id'
-                // This finds the logged-in user's record specifically
+                // ✅ Search by 'id' (Primary Key) instead of 'client_id'
                 const { data: userData, error } = await supabase
                     .from('clients')
                     .select('*')
-                    .eq('id', user.id) // 🔥 Corrected Logic Here
+                    .eq('id', user.id)
                     .single();
 
                 if (error || !userData) {
-                    console.error('❌ User record not found:', user.id);
                     return;
                 }
 
@@ -131,17 +129,16 @@ export default function ClientDashboard() {
 
                 // Load permissions if treasurer
                 if (userRole === 'treasurer') {
-                    // JSON parsing safety for permission string
                     try {
                         const perms = typeof userData.role_permissions === 'string' 
                             ? JSON.parse(userData.role_permissions) 
                             : userData.role_permissions;
                         permissions = perms?.treasurer || [];
-                    } catch (e) { console.log('Permission parse error', e); }
+                    } catch (e) { }
                 }
 
             } else if (storedMember) {
-                // Fallback for old member login flow (if used)
+                // Fallback for old member login flow
                 const member = JSON.parse(storedMember);
                 userRole = member.role;
                 // Fetch owner data
@@ -153,8 +150,6 @@ export default function ClientDashboard() {
                     permissions = client?.role_permissions?.['treasurer'] || [];
                 }
             }
-
-            console.log("✅ USER ID RESOLVED:", userId); // Debugging check
 
             // --- FETCH DATA FOR DASHBOARD ---
             
@@ -185,7 +180,7 @@ export default function ClientDashboard() {
             );
 
         } catch(e) {
-            console.error("Error fetching dashboard data:", e);
+            // Error handling quietly
         } finally {
             setLoading(false);
         }
@@ -217,11 +212,10 @@ export default function ClientDashboard() {
     if (localStorage.getItem(monthlyKey)) return
 
     // 📊 calculations
-    // 🔴 PROBLEM 2 FIX: Monthly Summary → Deposits galat add ho rahe
     const totalDeposits = transactionsData
       .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
 
-    // ✅ FIXED: Active Loan Logic (Banner) - Checks outstanding amount too
+    // ✅ FIXED: Active Loan Logic (Banner)
     const activeLoans = loansData.filter(l => 
         l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
     );
@@ -247,17 +241,13 @@ export default function ClientDashboard() {
 
   // 3️⃣ TOAST LOGIC (Alerts)
   useEffect(() => {
-    // Wait until data is loaded
     if (!membersData.length && !loansData.length) return;
     if (!clientData) return;
 
-    // 🔐 avoid repeat alerts
     const alreadyShown = sessionStorage.getItem('dashboard_alerts_shown');
     if (alreadyShown) return;
 
-    // Get grace period from client settings (default 10)
     const gracePeriod = clientData.grace_period_day || 10;
-
     const overdueMembers = getOverdueMembers(membersData, gracePeriod);
     const riskyLoans = getRiskyLoans(loansData);
 
@@ -276,7 +266,7 @@ export default function ClientDashboard() {
   }, [membersData, loansData, clientData]);
 
 
-  // ✅ LOGIC: Real Profit & Maturity Liability Logic (Matches Report)
+  // ✅ LOGIC: Real Profit & Correct Cash Logic
   const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[]) => {
     
     // Variables for Calculation
@@ -286,13 +276,14 @@ export default function ClientDashboard() {
     // Liquidity (Cash Flow)
     let cash = 0, bank = 0, upi = 0;
     let pendingLoanCount = 0;
-    let totalDepositsCollected = 0; // For Deposits Card
+    let totalDepositsCollected = 0; 
 
     const monthlyMap: {[key: string]: number} = {};
 
-    // 1. Passbook Processing
+    // 1. Passbook Processing (INFLOW)
+    // Includes: Deposits + Loan Recovery + Fines
     passbook.forEach(t => {
-        const totalAmt = Number(t.total_amount) || 0; // Cash Flow
+        const totalAmt = Number(t.total_amount) || 0; 
         
         const interest = Number(t.interest_amount) || 0;
         const fine = Number(t.fine_amount) || 0;
@@ -307,33 +298,46 @@ export default function ClientDashboard() {
         else if (mode.includes('bank') || mode.includes('cheque')) bank += totalAmt;
         else if (mode.includes('upi') || mode.includes('online')) upi += totalAmt;
 
+        // Chart Data
         const date = t.date ? new Date(t.date) : new Date(t.created_at);
         const month = date.toLocaleString('default', { month: 'short' });
         monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
     });
 
-    // 2. Expenses Ledger Processing
-    // 🔥 NET PROFIT FIX 1: Handle Case Sensitivity (Income vs INCOME)
+    // 2. Expenses Ledger Processing (OUTFLOW + ADMIN FUND INFLOW)
+    // 🔥 Handles Admin Fund (Income) and Expenses (Expense)
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
         const type = (e.type || '').toUpperCase().trim();
         
         if (type === 'EXPENSE') {
             cashExpense += amt;
+            // Subtract from Liquidity (Default Cash)
             cash -= amt; 
         } 
         else if (type === 'INCOME') {
+            // Agar koi aur income hai (Admin Fund, Form Fees etc.)
             realIncome += amt;
             cash += amt; 
         }
     });
 
-    // 3. Loans Count Logic
+    // 3. Loans Count Logic & Outstanding Subtraction
     loans.forEach(l => {
-        // 🔥 FIXED: Logic consistent with banner
+        // Count Active Loans
         if (l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')) {
              pendingLoanCount++;
         }
+
+        // 🔥🔥🔥 LIQUIDITY FIX (USER LOGIC) 🔥🔥🔥
+        // Actual Cash = (Total Inflow from Passbook & Ledger) - (Total Outflow) - (Outstanding Loan)
+        // Passbook se Recovery (+6000) already add ho gayi hai.
+        // Outstanding (30000) minus karenge to net effect sahi aayega.
+        
+        const outstanding = Number(l.outstanding_amount) || 0;
+        
+        // Subtract outstanding because that money is NOT in hand.
+        cash -= outstanding; 
     });
 
     // --- 4. MATURITY LIABILITY CALCULATION ---
@@ -349,19 +353,16 @@ export default function ClientDashboard() {
         }
     });
 
-    // Calculate Liability per member (Using Member Settings)
+    // Calculate Liability per member
     Object.keys(memberDeposits).forEach(memberId => {
         const deposits = memberDeposits[memberId];
-        // Member ki details nikalo (taaki manual override check kar sakein)
         const memberInfo = membersList.find(m => m.id === memberId);
 
         if (deposits.length > 0) {
-             // A. Monthly Amount (First deposit se)
              const sorted = deposits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
              const monthlyDeposit = Number(sorted[0].deposit_amount || 0);
              const tenureMonths = 36;
              
-             // --- CRITICAL CHECK: Manual Override ---
              const isOverride = memberInfo?.maturity_is_override || false;
              const manualAmount = Number(memberInfo?.maturity_manual_amount || 0);
 
@@ -374,24 +375,17 @@ export default function ClientDashboard() {
                  settledInterest = totalPrincipal * 0.12; 
              }
              
-             // C. Monthly Interest Share
-             // 🔥 NET PROFIT FIX 2: REMOVED ROUNDING INSIDE LOOP
              const monthlyInterestShare = settledInterest / tenureMonths;
-
-             // D. Count payments made
              const depositCount = deposits.length;
 
-             // E. Current Liability (Rounding removed here)
+             // E. Current Liability (No rounding here for precision)
              maturityLiability += (monthlyInterestShare * depositCount);
         }
     });
 
     // --- FINAL TOTALS ---
     
-    // Total Expense = Ops Cost + Maturity Liability (Round ONLY at end)
     const totalExpenseFinal = cashExpense + Number(maturityLiability.toFixed(2));
-    
-    // Real Net Profit = Actual Income - All Expenses
     const netProfitFinal = realIncome - totalExpenseFinal;
 
     // Chart formatting
@@ -399,7 +393,7 @@ export default function ClientDashboard() {
 
     setFinancials({
         netProfit: netProfitFinal,
-        totalIncome: realIncome,
+        totalIncome: realIncome, 
         totalExpense: totalExpenseFinal,
         cashBal: cash, 
         bankBal: bank,
@@ -421,7 +415,6 @@ export default function ClientDashboard() {
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
   
-  // Profit Margin Calculation (Safe Divide)
   const profitMargin = financials.totalIncome > 0 
     ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
     : "0";
@@ -429,9 +422,13 @@ export default function ClientDashboard() {
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   // 📊 Prepare data for banner
-  const totalDeposits = transactionsData.reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
+  const totalDeposits = Array.isArray(transactionsData)
+    ? transactionsData.reduce(
+        (sum, t) => sum + Number(t?.deposit_amount ?? 0),
+        0
+      )
+    : 0;
   
-  // ✅ FIXED 1 (UI Display): Active Loans consistent with logic
   const activeLoans = loansData.filter(l => 
     l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
   );
