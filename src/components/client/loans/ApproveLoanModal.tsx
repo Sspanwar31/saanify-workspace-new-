@@ -112,8 +112,9 @@ export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModa
       const approvedAmount = loanAmount;
       const today = new Date().toISOString();
 
-      // 1. Update Loan Status
-      // ✅ CHANGE 3: Save payment_mode to DB
+      // 1. Update Loan Status ONLY (NO PASSBOOK INSERT)
+      // ✅ Removed passbook_entries insert to fix 0 amount issue
+      // ✅ Added payment_mode to loan record
       const { error: loanError } = await supabase
         .from('loans')
         .update({
