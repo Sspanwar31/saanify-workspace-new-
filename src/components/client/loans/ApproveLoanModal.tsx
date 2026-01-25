@@ -1,356 +1,697 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner'; 
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
-  User, DollarSign, TrendingUp, Shield, AlertTriangle, Percent, Calendar, Loader2 
+  TrendingUp, TrendingDown, Wallet, Building2, Smartphone, 
+  CheckCircle, Users, Landmark, AlertCircle, LogOut 
 } from 'lucide-react';
-import { useCurrency } from '@/hooks/useCurrency'; // ✅ Import karo
+import {
+  BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
+import { supabase } from '@/lib/supabase';
+import { useCurrency } from '@/hooks/useCurrency';
+// 1️⃣ IMPORT TOAST
+import { toast } from 'sonner';
 
-interface ApproveLoanModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  requestId: string | null;
+// 2️⃣ HELPER FUNCTIONS (Outside Component)
+
+// 🆕 Helper function for Monthly Key
+function getMonthlyKey() {
+  const now = new Date();
+  return `monthly_summary_${now.getFullYear()}_${now.getMonth() + 1}`;
 }
 
-export function ApproveLoanModal({ isOpen, onClose, requestId }: ApproveLoanModalProps) {
-  // ✅ Hook call karo
-  const { formatCurrency } = useCurrency();
+// 🆕 STEP 3.1 – Monthly key reuse karo (Banner Key)
+function getMonthlyBannerKey() {
+  const now = new Date()
+  return `monthly_banner_closed_${now.getFullYear()}_${now.getMonth() + 1}`
+}
 
-  // --- Local States ---
-  const [request, setRequest] = useState<any>(null);
-  const [amount, setAmount] = useState<string>('');
-  const [isOverride, setIsOverride] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [totalDeposit, setTotalDeposit] = useState(0);
+// 🔴 Check overdue members
+function getOverdueMembers(members: any[], gracePeriod: number) {
+  const today = new Date();
 
-  // 1. Fetch Loan Request & Live Deposit Balance
+  return members.filter(m => {
+    if (!m.last_payment_date) return false;
+
+    const lastPaid = new Date(m.last_payment_date_date);
+    const dueDate = new Date(lastPaid);
+    dueDate.setDate(dueDate.getDate() + gracePeriod);
+
+    return today > dueDate;
+  });
+}
+
+// 🔴 Check risky loans
+function getRiskyLoans(loans: any[]) {
+  return loans.filter(l => {
+    if (!l.outstanding_amount) return false;
+
+    // simple rule (safe + understandable)
+    return (
+      l.missed_installments >= 2 ||
+      l.outstanding_amount > (l.loan_amount * 0.8)
+    );
+  });
+}
+
+export default function ClientDashboard() {
+  const router = useRouter();
+  const { formatCurrency, symbol } = useCurrency();
+  
+  const [loading, setLoading] = useState(true);
+  const [clientData, setClientData] = useState<any>(null);
+
+  // Store raw data for Toast Logic
+  const [membersData, setMembersData] = useState<any[]>([]);
+  const [loansData, setLoansData] = useState<any[]>([]);
+  // Store transactions for Monthly Summary Logic
+  const [transactionsData, setTransactionsData] = useState<any[]>([]);
+
+  // 🆕 STEP 3.2 – State add karo (dashboard file)
+  const [showMonthlyBanner, setShowMonthlyBanner] = useState(false);
+
+  // Initial Financial State
+  const [financials, setFinancials] = useState({
+    netProfit: 0,
+    totalIncome: 0,
+    totalExpense: 0,
+    cashBal: 0,
+    bankBal: 0,
+    upiBal: 0,
+    depositTotal: 0,
+    pendingLoans: 0
+  });
+
+  const [chartData, setChartData] = useState<any[]>([]);
+
   useEffect(() => {
-    if (isOpen && requestId) {
-      const fetchData = async () => {
-        // A. Fetch Loan Request Details
-        const { data: loanData, error } = await supabase
-          .from('loans')
-          .select(`
-            *,
-            members (
-              id,
-              name,
-              avatar_url
-            )
-          `)
-          .eq('id', requestId)
-          .single();
+    const init = async () => {
+        const storedUser = localStorage.getItem('current_user');
+        const storedMember = localStorage.getItem('current_member');
 
-        if (loanData && !error) {
-          // ✅ DRIF-D: Requested Amount ₹0 issue (requested_amount fallback)
-          const requestedAmount =
-            Number(loanData.approved_amount) ||
-            Number(loanData.amount) ||
-            Number(loanData.requested_amount) || 
-            0;
+        if (!storedUser && !storedMember) { router.push('/login'); return; }
+        
+        try {
+            let userId = '';
+            let userRole = 'client_admin';
+            let permissions: string[] = [];
 
-          setRequest({
-            id: loanData.id,
-            memberId: loanData.member_id,
-            clientId: loanData.client_id,
-            memberName: loanData.members?.name || 'Unknown',
-            memberAvatar: loanData.members?.avatar_url || null, // ✅ Capture Avatar URL
-            amount: requestedAmount,
-            status: loanData.status
-          });
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                
+                // ✅ FULL FIXED BLOCK (COPY–PASTE SAFE)
+                // Pehle clients se record lao using client_id
+                const { data: client, error } = await supabase
+                    .from('clients')
+                    .select('*')
+                    .eq('client_id', user.id) // 🔥 AUTH USER ↔ CLIENT LINK
+                    .single();
 
-          // ✅ DRIF-2: Total Deposit Calculation (Passbook Query)
-          const { data: passbookData } = await supabase
-            .from('passbook_entries')
-            .select('deposit_amount, payment_mode') 
-            .eq('member_id', loanData.member_id);
+                if (error || !client) {
+                    console.error('❌ Client not found for auth user:', user.id);
+                    return;
+                }
 
-          // Calculate Total
-          const totalDeposits = (passbookData || [])
-            .reduce((sum, e) => sum + Number(e.deposit_amount || 0), 0);
+                setClientData(client);
 
-          setTotalDeposit(totalDeposits);
-          
-          // Auto-fill Amount
-          setAmount(
-            requestedAmount > 0
-              ? requestedAmount.toString()
-              : ''
-          );
-          setIsOverride(false);
+                // 🔥 MOST IMPORTANT LINE
+                userId = client.id; // ← ye actual client_id hai jo sab tables me use hota hai
+
+            } else if (storedMember) {
+                const member = JSON.parse(storedMember);
+                userRole = member.role;
+
+                const { data: client } = await supabase
+                    .from('clients')
+                    .select('*')
+                    .eq('id', member.client_id)
+                    .single();
+
+                setClientData(client);
+                
+                // Get Permissions if Treasurer
+                if (member.role === 'treasurer') {
+                    permissions = client?.role_permissions?.['treasurer'] || [];
+                }
+
+                // ✅ STEP 3 — Treasurer already CORRECT hai
+                if (client) {
+                    userId = client.id;
+                }
+            }
+
+            // 🧪 STEP 1 — userId & role confirm karo (MOST IMPORTANT)
+            console.log('🧪 DASHBOARD DEBUG');
+            console.log('Role:', userRole);
+            console.log('UserId used for queries:', userId);
+            console.log('Permissions:', permissions);
+
+            // --- FETCH DATA FOR DASHBOARD ---
+            
+            // 🔥 TREASURER FIX: Added "|| userRole === 'treasurer'"
+            const canViewPassbook = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
+            const canViewLoans = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
+            const canViewExpenses = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
+            const canViewMembers = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
+
+            // A. Passbook (Transactions)
+            const passbookReq = canViewPassbook 
+                ? supabase.from('passbook_entries').select('*').eq('client_id', userId) 
+                : Promise.resolve({ data: [] });
+
+            // B. Expenses
+            const expenseReq = canViewExpenses 
+                ? supabase.from('expenses_ledger').select('*').eq('client_id', userId)
+                : Promise.resolve({ data: [] });
+
+            // C. Loans
+            const loansReq = canViewLoans 
+                ? supabase.from('loans').select('*').eq('client_id', userId)
+                : Promise.resolve({ data: [] });
+
+            // D. Members
+            const membersReq = canViewMembers 
+                ? supabase.from('members').select('*').eq('client_id', userId)
+                : Promise.resolve({ data: [] });
+
+            // Run Queries
+            const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
+                passbookReq, expenseReq, loansReq, membersReq
+            ]);
+
+            // 🧪 STEP 2 — Queries se raw response check karo
+            console.log('📦 RAW QUERY RESULTS');
+            console.log('Passbook:', passbookRes);
+            console.log('Expenses:', expenseRes);
+            console.log('Loans:', loansRes);
+            console.log('Members:', membersRes);
+
+            // 🧪 STEP 3 — client_id match ho raha hai ya nahi
+            // Temporary test query
+            const test = await supabase
+              .from('passbook_entries')
+              .select('id, client_id')
+              .limit(5);
+            
+            console.log('🧪 TEST PASSBOOK CLIENT IDS:', test.data);
+            if (test.data && test.data.length > 0) {
+                console.log('Comparing DB Client ID:', test.data[0].client_id, 'vs Query UserId:', userId);
+            }
+
+            // Save raw data for Toast logic
+            setMembersData(membersRes.data || []);
+            setLoansData(loansRes.data || []);
+            setTransactionsData(passbookRes.data || []); // Saving transactions for Monthly Summary
+
+            calculateFinancials(
+                passbookRes.data || [], 
+                expenseRes.data || [], 
+                loansRes.data || [],
+                membersRes.data || []
+            );
+
+        } catch(e) {
+            // console.error("Error fetching dashboard data:", e);
+        } finally {
+            setLoading(false);
         }
-      };
-      fetchData();
+    };
+    init();
+  }, [router]);
+
+  // 🆕 STEP 3.3 – Banner visibility logic (useEffect)
+  useEffect(() => {
+    const key = getMonthlyBannerKey()
+
+    if (!localStorage.getItem(key)) {
+      setShowMonthlyBanner(true)
     }
-  }, [isOpen, requestId]);
+  }, [])
 
-  // --- Logic: Limits Calculation ---
-  const maxLimit = totalDeposit * 0.8;
-  const requestedAmount = request?.amount || 0;
-  const loanAmount = parseFloat(amount) || 0;
+  // 🆕 STEP 3.4 – Close handler
+  function closeMonthlyBanner() {
+    const key = getMonthlyBannerKey()
+    localStorage.setItem(key, 'closed')
+    setShowMonthlyBanner(false)
+  }
 
-  // Validation
-  const isOverLimit = loanAmount > maxLimit;
-  const canApprove = !isOverLimit || isOverride;
+  // 🆕 4️⃣ MONTHLY SUMMARY LOGIC
+  useEffect(() => {
+    // 🧪 STEP 4 — Monthly Summary ke andar confirm karo
+    console.log('📊 MONTHLY SUMMARY DEBUG');
+    console.log('loading:', loading);
+    console.log('transactions:', transactionsData.length);
+    console.log('loans:', loansData.length);
+    console.log('members:', membersData.length);
 
-  // --- Submit Handler ---
-  const handleSubmit = async () => {
-    if (!request || !canApprove) return;
+    if (!membersData || !loansData || !transactionsData) return
 
-    setIsSubmitting(true);
-    try {
-      const approvedAmount = loanAmount;
-      const today = new Date().toISOString();
+    const monthlyKey = getMonthlyKey()
 
-      // 1. Update Loan Status
-      const { error: loanError } = await supabase
-        .from('loans')
-        .update({
-          status: 'active',
-          amount: approvedAmount,
-          approved_amount: approvedAmount,
-          approved_at: today,
-          start_date: today.split('T')[0],
-          override_limit: isOverride,
-          interest_rate: 1, // Fixed 1%
-          remaining_balance: approvedAmount
+    // agar already dikh chuka hai → skip
+    if (localStorage.getItem(monthlyKey)) return
+
+    // 📊 calculations
+    // ✅ FIX 2 — Banner deposit calculation (TREASURER SAFE)
+    const totalDeposits = Array.isArray(transactionsData)
+      ? transactionsData.reduce(
+          (sum, t) => sum + Number(t?.deposit_amount ?? 0),
+          0
+        )
+      : 0;
+
+    // 4️⃣ ACTIVE LOAN LOGIC (EVERYWHERE same)
+    const activeLoans = loansData.filter(l => 
+        l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
+    );
+    
+    const riskyLoans = getRiskyLoans(loansData)
+    const overdueMembers = getOverdueMembers(membersData, 10)
+
+    // ✅ FIX 1 — Monthly Summary useEffect (MOST IMPORTANT)
+    // Show toast only if data is actually loaded
+    if (loading === false) {
+        toast.info('📅 Monthly Summary', {
+        description: `
+    💰 Deposits: ₹${totalDeposits}
+    🏦 Active Loans: ${activeLoans.length}
+    ⚠️ Overdue Members: {overdueMembers.length}
+    🚨 Risky Loans: ${riskyLoans.length}
+        `,
+        duration: 8000,
         })
-        .eq('id', request.id);
 
-      if (loanError) throw loanError;
-
-      // 2. Insert Notification for Member
-      const { error: notifError } = await supabase.from('notifications').insert([{
-          client_id: request.clientId,
-          member_id: request.memberId,
-          title: "Loan Approved ✅",
-          message: `Your loan of ${formatCurrency(approvedAmount)} has been approved.`,
-          type: "success",
-          is_read: false,
-          created_at: new Date().toISOString()
-      }]);
-
-      if (notifError) console.error("Notification Error:", notifError);
-
-      toast.success("Loan Approved Successfully!");
-      
-      onClose();
-      setAmount('');
-      setIsOverride(false);
-      
-      window.location.reload(); 
-
-    } catch (error: any) {
-      console.error('Error approving loan:', error);
-      toast.error('Error approving loan: ' + error.message);
-    } finally {
-      setIsSubmitting(false);
+        // mark as shown for this month
+        localStorage.setItem(monthlyKey, 'shown')
     }
+
+  // ✅ FIX 3 — useEffect dependency (CRITICAL)
+  }, [loading, membersData.length, loansData.length, transactionsData.length])
+
+  // 3️⃣ TOAST LOGIC (Alerts)
+  useEffect(() => {
+    // Wait until data is loaded
+    if (!membersData.length && !loansData.length) return;
+    if (!clientData) return;
+
+    // 🔐 avoid repeat alerts
+    const alreadyShown = sessionStorage.getItem('dashboard_alerts_shown');
+    if (alreadyShown) return;
+
+    // Get grace period from client settings (default 10)
+    const gracePeriod = clientData.grace_period_day || 10;
+
+    const overdueMembers = getOverdueMembers(membersData, gracePeriod);
+    const riskyLoans = getRiskyLoans(loansData);
+
+    let hasAlert = false;
+
+    if (overdueMembers.length > 0) {
+      toast.warning(
+        `⚠️ ${overdueMembers.length} member(s) have overdue dues`,
+        {
+          description: 'Please review pending installments',
+          duration: 6000,
+        }
+      );
+      hasAlert = true;
+    }
+
+    if (riskyLoans.length > 0) {
+      toast.error(
+        `🚨 ${riskyLoans.length} loan(s) at risk of default`,
+        {
+          description: 'Immediate attention required',
+          duration: 7000,
+        }
+      );
+      hasAlert = true;
+    }
+
+    // mark alerts as shown (even if no alerts, to prevent re-check spam)
+    sessionStorage.setItem('dashboard_alerts_shown', 'true');
+
+  }, [membersData, loansData, clientData]);
+
+
+  // ✅ LOGIC: Real Profit & Maturity Liability Logic (Matches Report)
+  const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[]) => {
+    
+    // Variables for Calculation
+    let realIncome = 0; // Interest + Fine Only
+    let cashExpense = 0;
+    
+    // Liquidity (Cash Flow)
+    let cash = 0;
+    let bank = 0;
+    let upi = 0;
+    
+    let pendingLoanCount = 0;
+    let totalDepositsCollected = 0; // For Deposits Card
+
+    const monthlyMap: {[key: string]: number} = {};
+
+    // 1. Passbook Processing
+    passbook.forEach(t => {
+        const totalAmt = Number(t.total_amount) || 0; // Cash Flow
+        
+        // Income Logic: Sirf Interest aur Fine hi profit hai
+        // Deposit ko income me nahi jodna chahiye (wo liability hai)
+        const interest = Number(t.interest_amount) || 0;
+        const fine = Number(t.fine_amount) || 0;
+        const deposit = Number(t.deposit_amount) || 0;
+
+        realIncome += (interest + fine);
+        totalDepositsCollected += deposit;
+
+        // Liquidity Logic (Cash Flow based on Total Amount)
+        const mode = (t.payment_mode || '').toLowerCase().trim();
+        if (mode.includes('cash')) cash += totalAmt;
+        else if (mode.includes('bank') || mode.includes('cheque')) bank += totalAmt;
+        else if (mode.includes('upi') || mode.includes('online')) upi += totalAmt;
+
+        // Chart Data (Cash Flow ke hisab se)
+        const date = t.date ? new Date(t.date) : new Date(t.created_at);
+        const month = date.toLocaleString('default', { month: 'short' });
+        monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
+    });
+
+    // 2. Expenses Ledger Processing
+    // 🔥 NET PROFIT FIX: Handle Case Sensitivity
+    expenses.forEach(e => {
+        const amt = Number(e.amount) || 0;
+        const type = (e.type || '').toUpperCase().trim();
+        
+        if (type === 'EXPENSE') {
+            cashExpense += amt;
+            // Subtract from Liquidity (Default Cash)
+            cash -= amt; 
+        } 
+        else if (type === 'INCOME') {
+            // Agar koi aur income hai (Form Fees etc.)
+            realIncome += amt;
+            cash += amt; 
+        }
+    });
+
+    // 3. Loans Count Logic
+    // ✅ FIXED: Logic consistent with banner
+    loans.forEach(l => {
+        if (l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')) {
+             pendingLoanCount++;
+        }
+    });
+
+    // --- 4. MATURITY LIABILITY CALCULATION ---
+    
+    let maturityLiability = 0;
+
+    // Group deposits by Member
+    const memberDeposits: {[key: string]: any[]} = {};
+    passbook.forEach(p => {
+        if(p.member_id && Number(p.deposit_amount) > 0) {
+            if(!memberDeposits[p.member_id]) memberDeposits[p.member_id] = [];
+            memberDeposits[p.member_id].push(p);
+        }
+    });
+
+    // Calculate Liability per member (Using Member Settings)
+    Object.keys(memberDeposits).forEach(memberId => {
+        const deposits = memberDeposits[memberId];
+        // Member ki details nikalo (taaki manual override check kar sakein)
+        const memberInfo = membersList.find(m => m.id === memberId);
+
+        if (deposits.length > 0) {
+             // A. Monthly Amount (First deposit se)
+             const sorted = deposits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+             const monthlyDeposit = Number(sorted[0].deposit_amount || 0);
+             
+             // B. Constants
+             const tenureMonths = 36; // 3 Years
+             
+             // --- CRITICAL CHECK: Manual Override ---
+             const isOverride = memberInfo?.maturity_is_override || false;
+             const manualAmount = Number(memberInfo?.maturity_manual_amount || 0);
+
+             let settledInterest = 0;
+
+             if (isOverride && manualAmount > 0) {
+                 // Agar Manual Amount set hai
+                 settledInterest = manualAmount;
+             } else {
+                 // Standard 12% Calculation
+                 const totalPrincipal = monthlyDeposit * tenureMonths;
+                 settledInterest = totalPrincipal * 0.12; 
+             }
+             
+             // C. Monthly Interest Share
+             // 🔥 NET PROFIT FIX 2: REMOVED ROUNDING INSIDE LOOP
+             const monthlyInterestShare = settledInterest / tenureMonths;
+
+             // D. Count payments made
+             const depositCount = deposits.length;
+
+             // E. Current Liability (Rounding removed here)
+             maturityLiability += (monthlyInterestShare * depositCount);
+        }
+    });
+
+    // --- FINAL TOTALS ---
+    
+    // Total Expense = Ops Cost + Maturity Liability (Round ONLY at end)
+    const totalExpenseFinal = cashExpense + Number(maturityLiability.toFixed(2));
+    
+    // Real Net Profit = Actual Income - All Expenses
+    const netProfitFinal = realIncome - totalExpenseFinal;
+
+    // Chart formatting
+    const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
+
+    setFinancials({
+        netProfit: netProfitFinal,
+        totalIncome: realIncome, // Interest + Fine + Other
+        totalExpense: totalExpenseFinal, // Includes Ops + Maturity
+        cashBal: cash, 
+        bankBal: bank,
+        upiBal: upi,
+        depositTotal: totalDepositsCollected,
+        pendingLoans: pendingLoanCount
+    });
+    setChartData(chart);
   };
 
-  if (!request) return null;
+  const handleLogout = () => {
+    localStorage.removeItem('current_user');
+    localStorage.removeItem('current_member'); // Clear member session too
+    router.push('/login');
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950">Loading Dashboard...</div>;
+  if (!clientData) return null;
+
+  const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
+  
+  // Profit Margin Calculation (Safe Divide)
+  const profitMargin = financials.totalIncome > 0 
+    ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
+    : "0";
+    
+  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
+  // 📊 Prepare data for banner
+  const totalDeposits = Array.isArray(transactionsData)
+    ? transactionsData.reduce(
+        (sum, t) => sum + Number(t?.deposit_amount ?? 0),
+        0
+      )
+    : 0;
+  
+  // ✅ FIXED: Logic consistent everywhere
+  const activeLoans = loansData.filter(l => 
+    l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
+  );
+  
+  const overdueMembers = getOverdueMembers(membersData, 10);
+  const riskyLoans = getRiskyLoans(loansData);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* ✅ FIX: Dark Mode & Warning Fix */}
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto dark:bg-slate-900 dark:border-slate-800" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 dark:text-white">
-            <Shield className="h-5 w-5" />
-            Approve Loan Request
-          </DialogTitle>
-        </DialogHeader>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
+      
+      {/* 🆕 STEP 3.5 – Dashboard TOP pe Banner UI (JSX) */}
+      {/* ✅ FIX 4 — Banner rendering guard */}
+      {showMonthlyBanner && !loading && (
+        <Card className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-blue-800 dark:text-blue-200 text-lg">
+              📅 This Month Summary
+            </CardTitle>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Member Card */}
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-900">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
-                <User className="h-5 w-5" />
-                Member Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  {/* ✅ FIX: 404 Error Fix - Conditional Rendering */}
-                  {request.memberAvatar ? (
-                    <AvatarImage src={request.memberAvatar} />
-                  ) : null}
-                  <AvatarFallback className="bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 text-lg font-semibold">
-                    {request.memberName ? request.memberName.charAt(0).toUpperCase() : 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-lg dark:text-white">{request.memberName}</h3>
-                  <Badge variant="secondary" className="mt-1">
-                    Pending Approval
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            <button
+              onClick={closeMonthlyBanner}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </CardHeader>
 
-          {/* Total Deposit Card */}
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white border-blue-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-white">
-                <DollarSign className="h-5 w-5" />
-                Total Deposit
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{formatCurrency(totalDeposit)}</div>
-              <p className="text-blue-100 text-sm mt-1">Live balance from passbook</p>
-            </CardContent>
-          </Card>
-
-          {/* 80% Limit Card */}
-          <Card className="bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white border-green-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-white">
-                <TrendingUp className="h-5 w-5" />
-                80% Limit
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{formatCurrency(maxLimit)}</div>
-              <p className="text-green-100 text-sm mt-1">Maximum without override</p>
-            </CardContent>
-          </Card>
-
-          {/* Input Card */}
-          <Card className="border-2 border-gray-200 dark:border-slate-700 dark:bg-slate-900">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 dark:text-white">
-                <DollarSign className="h-5 w-5" />
-                Loan Amount
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="loan-amount" className="dark:text-gray-300">Loan Amount ({formatCurrency(0).charAt(0)})</Label>
-                <Input
-                  id="loan-amount"
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="text-lg font-semibold dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                  placeholder="Enter amount or leave empty"
-                />
-              </div>
-              
-              <div className="text-sm text-muted-foreground dark:text-gray-400">
-                Requested: {requestedAmount > 0
-                  ? formatCurrency(requestedAmount)
-                  : 'Not specified by member'}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Override Card */}
-          <Card className={`${isOverride ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800' : 'border-gray-200 dark:border-slate-700 dark:bg-slate-900'}`}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 dark:text-white">
-                <Shield className="h-5 w-5" />
-                Override Control
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="override-toggle" className="text-sm font-medium dark:text-gray-300">
-                  Enable Override
-                </Label>
-                <Switch
-                  id="override-toggle"
-                  checked={isOverride}
-                  onCheckedChange={setIsOverride}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground dark:text-gray-400">
-                Allow loan amount up to 100% of deposits
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Interest Rate Card */}
-          <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
-                <Percent className="h-5 w-5" />
-                Interest Rate
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">1% / month</div>
-              <p className="text-purple-600 dark:text-purple-400 text-sm mt-1">Fixed rate</p>
-            </CardContent>
-          </Card>
-
-          {/* Loan Date Card */}
-          <Card className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-slate-800 dark:to-slate-900 border-gray-300 dark:border-slate-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 dark:text-white">
-                <Calendar className="h-5 w-5" />
-                Loan Date
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-semibold dark:text-white">Current Month</div>
-              <p className="text-muted-foreground dark:text-gray-400 text-sm mt-1">
-                {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-              </p>
-            </CardContent>
-          </Card>
+          <CardContent className="text-sm space-y-1">
+            <div className="text-slate-700 dark:text-slate-300">💰 Deposits: ₹{totalDeposits}</div>
+            <div className="text-slate-700 dark:text-slate-300">🏦 Active Loans: {activeLoans.length}</div>
+            <div className="text-slate-700 dark:text-slate-300">⚠️ Overdue Members: {overdueMembers.length}</div>
+            <div className="text-slate-700 dark:text-slate-300">🚨 Risky Loans: {riskyLoans.length}</div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* HEADER */}
+      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{clientData.society_name || 'My Society'}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
         </div>
-
-        {/* Validation Feedback */}
-        {isOverLimit && (
-          <Alert className={`mt-6 ${isOverride ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800' : 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800'}`}>
-            <AlertTriangle className={`h-4 w-4 ${isOverride ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'}`} />
-            <AlertDescription className={isOverride ? 'text-orange-800 dark:text-orange-300' : 'text-red-800 dark:text-red-300'}>
-              {isOverride ? (
-                <span className="font-medium">Override Active - Loan approval enabled up to 100% of deposits</span>
-              ) : (
-                <span className="font-medium">
-                  Amount exceeds 80% limit ({formatCurrency(maxLimit)}). Enable override to approve.
-                </span>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="flex-1 dark:bg-slate-800 dark:text-white dark:border-slate-700">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!canApprove || isSubmitting || loanAmount <= 0}
-            className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white flex-1"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approving...
-              </>
-            ) : (
-              'Approve Loan'
-            )}
-          </Button>
+        <div className="flex items-center gap-4">
+            <div className="text-right hidden md:block">
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-mono uppercase">SYSTEM DATE</p>
+            <p className="font-bold text-slate-700 dark:text-slate-200">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><LogOut className="w-5 h-5"/></Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      {/* SECTION 1: FINANCIAL HEALTH */}
+      <div className="grid gap-4 md:grid-cols-4">
+        {/* Net Profit Card */}
+        <Card className={`border-l-4 dark:bg-slate-900 dark:border-slate-800 ${financials.netProfit >= 0 ? 'border-l-green-500 bg-green-50/50 dark:bg-green-900/10' : 'border-l-red-500 bg-red-50/50 dark:bg-red-900/10'}`}>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-300">Net Profit</CardTitle></CardHeader>
+          <CardContent>
+            <div className={`text-3xl font-bold ${financials.netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                {formatCurrency(financials.netProfit)}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Actual Earnings</p>
+          </CardContent>
+        </Card>
+
+        {/* Total Income Card */}
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Total Income</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(financials.totalIncome)}</div>
+            <div className="flex items-center text-xs text-green-600 dark:text-green-400 mt-1"><TrendingUp className="w-3 h-3 mr-1"/> Interest + Fines</div>
+          </CardContent>
+        </Card>
+
+        {/* Total Expense Card */}
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Total Expense</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(financials.totalExpense)}</div>
+            <div className="flex items-center text-xs text-red-600 dark:text-red-400 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Liability</div>
+          </CardContent>
+        </Card>
+
+        {/* Margin Card */}
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Margin</CardTitle></CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${Number(profitMargin) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>{profitMargin}%</div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Health Indicator</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* SECTION 2: LIQUIDITY */}
+      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mt-4">
+        <Landmark className="w-5 h-5 text-orange-600 dark:text-orange-400" /> Liquidity Position
+      </h3>
+      <div className="grid gap-4 md:grid-cols-4">
+        {/* Cash Card */}
+        <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900">
+           <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">Cash In Hand</span>
+                 <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300">{formatCurrency(financials.cashBal)}</div>
+           </CardContent>
+        </Card>
+
+        {/* Bank Card */}
+        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+           <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase">Bank</span>
+                 <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">{formatCurrency(financials.bankBal)}</div>
+           </CardContent>
+        </Card>
+
+        {/* UPI Card */}
+        <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900">
+           <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase">UPI</span>
+                 <Smartphone className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">{formatCurrency(financials.upiBal)}</div>
+           </CardContent>
+        </Card>
+
+        {/* Total Liquidity */}
+        <Card className="bg-slate-900 dark:bg-black text-white border border-slate-700 dark:border-slate-800">
+           <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                 <span className="text-xs font-bold text-slate-300 uppercase">Total Liquidity</span>
+                 <CheckCircle className="w-4 h-4 text-green-400" />
+              </div>
+              <div className="text-2xl font-bold">{formatCurrency(totalLiquidity)}</div>
+           </CardContent>
+        </Card>
+      </div>
+
+      {/* SECTION 3: ALERTS & CHARTS */}
+      <div className="grid gap-6 md:grid-cols-3">
+         <div className="space-y-4">
+            <Alert className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900">
+               <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+               <AlertTitle className="text-yellow-800 dark:text-yellow-400">System Status</AlertTitle>
+               <AlertDescription className="text-yellow-700 dark:text-yellow-500">
+                 {financials.pendingLoans > 0 
+                   ? `${financials.pendingLoans} active loans.` 
+                   : "System updated live from Supabase."}
+               </AlertDescription>
+            </Alert>
+            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+               <CardContent className="p-4 flex justify-between items-center">
+                  <div><p className="text-xs text-gray-500 dark:text-gray-400">Total Deposits</p><h4 className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(financials.depositTotal)}</h4></div>
+                  <Users className="text-orange-500" />
+               </CardContent>
+            </Card>
+         </div>
+
+         {/* Chart Card */}
+         <Card className="col-span-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <CardHeader><CardTitle className="text-slate-900 dark:text-white">Monthly Performance</CardTitle></CardHeader>
+            <CardContent className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData.length > 0 ? chartData : [{month: 'No Data', amount: 0}]}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="month" stroke="#94a3b8" />
+                  <Tooltip 
+                    formatter={(value) => formatCurrency(Number(value))}
+                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
+                  />
+                  <Bar dataKey="amount" fill="#10B981" radius={[4,4,0,0]} name="Income" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+         </Card>
+      </div>
+    </div>
   );
 }
