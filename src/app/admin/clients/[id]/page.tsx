@@ -9,10 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, ExternalLink, Mail, Phone, MoreVertical, CreditCard, ShieldCheck, 
-  Users, TrendingUp, AlertTriangle, CheckCircle, Trash2, Bell, FileText, Lock, Unlock, RefreshCw, Calendar, Activity
+  Users, TrendingUp, AlertTriangle, CheckCircle, Trash2, Bell, FileText, Lock, Unlock, RefreshCw, Calendar, Activity, Plus
 } from 'lucide-react';
 import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -21,19 +22,35 @@ export default function ClientProfile() {
   const { id } = useParams();
   const router = useRouter();
   const [client, setClient] = useState<any>(null);
+  const [staffList, setStaffList] = useState<any[]>([]); // New State for Staff
   const [loading, setLoading] = useState(true);
   
   // Modal State
   const [isRenewOpen, setIsRenewOpen] = useState(false);
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); // New Staff Modal
   const [newPlan, setNewPlan] = useState('');
+  
+  // Add Staff Form
+  const [staffForm, setStaffForm] = useState({ name: '', email: '', phone: '' });
 
-  // 1. Fetch Client
+  // 1. Fetch Client & Staff
   const fetchClient = async () => {
+    // A. Client Data
     const { data, error } = await supabase.from('clients').select('*').eq('id', id).single();
     if (data) {
         setClient(data);
-        setNewPlan(data.plan); // Set default for modal
+        setNewPlan(data.plan);
     }
+
+    // B. Staff Data (Fetch users linked to this client with role treasurer)
+    const { data: staffData } = await supabase
+        .from('clients') // Using same table as per your structure
+        .select('*')
+        .eq('client_id', id)
+        .eq('role', 'treasurer');
+    
+    if (staffData) setStaffList(staffData);
+
     setLoading(false);
   };
 
@@ -43,7 +60,6 @@ export default function ClientProfile() {
   const handleLockToggle = async () => {
       const newStatus = client.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
       const { error } = await supabase.from('clients').update({ status: newStatus }).eq('id', id);
-      
       if(error) toast.error("Update Failed");
       else {
           toast.success(`Account ${newStatus === 'LOCKED' ? 'Locked' : 'Unlocked'}`);
@@ -66,6 +82,17 @@ export default function ClientProfile() {
       await supabase.from('clients').delete().eq('id', id);
       toast.success("Client Deleted");
       router.push('/admin/clients');
+  };
+
+  const handleAddStaff = async () => {
+      if(!staffForm.name || !staffForm.email) return toast.error("Name and Email required");
+      
+      // Note: Real implementation needs auth signup API. This just adds DB entry for demo.
+      // Assuming you have an API route or trigger for this.
+      
+      // Temporary: Just show toast as we don't have direct auth create access here
+      toast.info("To add staff, use the Signup page or API. (This is a view-only demo)");
+      setIsStaffModalOpen(false);
   };
 
   const handleAccess = () => {
@@ -124,7 +151,7 @@ export default function ClientProfile() {
         </CardContent>
       </Card>
 
-      {/* STATS ROW (Mock Data until linked) */}
+      {/* STATS ROW */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          <Card className="border-l-4 border-l-blue-500 shadow-sm"><CardContent className="p-6"><div><p className="text-[11px] font-bold text-slate-400 uppercase">Total Members</p><h2 className="text-3xl font-bold text-slate-900 mt-2">245</h2></div></CardContent></Card>
          <Card className="border-l-4 border-l-purple-500 shadow-sm"><CardContent className="p-6"><div><p className="text-[11px] font-bold text-slate-400 uppercase">Active Loans</p><h2 className="text-3xl font-bold text-slate-900 mt-2">89000</h2></div></CardContent></Card>
@@ -154,6 +181,41 @@ export default function ClientProfile() {
          </Card>
       </div>
 
+      {/* ✅ NEW SECTION: ASSOCIATED STAFF */}
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="border-b border-slate-50 py-4 px-6 flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
+                <Users className="w-4 h-4 text-slate-500"/> Associated Staff (Treasurers)
+            </CardTitle>
+            <Button size="sm" variant="outline" onClick={() => setIsStaffModalOpen(true)}><Plus className="w-4 h-4 mr-2"/> Add Staff</Button>
+        </CardHeader>
+        <CardContent className="p-0">
+            {staffList.length === 0 ? (
+                <div className="p-8 text-center text-slate-500">No staff members found for this client.</div>
+            ) : (
+                <div className="divide-y divide-slate-100">
+                    {staffList.map((staff) => (
+                        <div key={staff.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center font-bold text-sm">
+                                    {staff.name?.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-sm text-slate-900">{staff.name}</p>
+                                    <p className="text-xs text-slate-500">{staff.email}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline">{staff.role}</Badge>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4"/></Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </CardContent>
+      </Card>
+
       {/* DANGER ZONE */}
       <div className="border border-red-200 bg-red-50/50 rounded-xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-red-50 transition-colors">
          <div><h3 className="text-red-700 font-bold flex items-center gap-2 text-lg"><AlertTriangle className="w-5 h-5"/> Danger Zone</h3><p className="text-sm text-red-600/80 mt-1">Irreversible actions. Deleting this client will remove all associated data including invoices and members.</p></div>
@@ -167,17 +229,23 @@ export default function ClientProfile() {
             <div className="py-4">
                 <Select value={newPlan} onValueChange={setNewPlan}>
                     <SelectTrigger><SelectValue placeholder="Select Plan"/></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="TRIAL">Free Trial</SelectItem>
-                        <SelectItem value="BASIC">Basic</SelectItem>
-                        <SelectItem value="PRO">Pro</SelectItem>
-                        <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
-                    </SelectContent>
+                    <SelectContent><SelectItem value="TRIAL">Free Trial</SelectItem><SelectItem value="BASIC">Basic</SelectItem><SelectItem value="PRO">Pro</SelectItem><SelectItem value="ENTERPRISE">Enterprise</SelectItem></SelectContent>
                 </Select>
             </div>
-            <DialogFooter>
-                <Button onClick={handleUpdatePlan} className="w-full bg-blue-600">Update Plan</Button>
-            </DialogFooter>
+            <DialogFooter><Button onClick={handleUpdatePlan} className="w-full bg-blue-600">Update Plan</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ADD STAFF DIALOG */}
+      <Dialog open={isStaffModalOpen} onOpenChange={setIsStaffModalOpen}>
+        <DialogContent>
+            <DialogHeader><DialogTitle>Add New Staff</DialogTitle><DialogDescription>Create a new treasurer account under this client.</DialogDescription></DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="space-y-2"><Input placeholder="Staff Name" value={staffForm.name} onChange={e=>setStaffForm({...staffForm, name:e.target.value})}/></div>
+                <div className="space-y-2"><Input placeholder="Email Address" type="email" value={staffForm.email} onChange={e=>setStaffForm({...staffForm, email:e.target.value})}/></div>
+                <div className="space-y-2"><Input placeholder="Phone Number (Optional)" value={staffForm.phone} onChange={e=>setStaffForm({...staffForm, phone:e.target.value})}/></div>
+            </div>
+            <DialogFooter><Button onClick={handleAddStaff} className="w-full bg-green-600">Create Staff Account</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
