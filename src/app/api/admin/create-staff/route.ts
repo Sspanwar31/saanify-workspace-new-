@@ -1,10 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { Buffer } from 'buffer';
 
-// Admin Client (Bypasses RLS)
+// ✅ Admin Client (Bypasses RLS) — FIXED
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  Buffer.from(
+    process.env.SUPABASE_SERVICE_ROLE_KEY_B64!, // 👈 tumhari actual key
+    'base64'
+  ).toString('utf-8')
 );
 
 export async function POST(req: Request) {
@@ -12,12 +16,13 @@ export async function POST(req: Request) {
     const { email, password, name, phone, clientId } = await req.json();
 
     // 1. Create Auth User
-    const { data: user, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { name, role: 'treasurer' }
-    });
+    const { data: user, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { name, role: 'treasurer' }
+      });
 
     if (authError) throw authError;
 
@@ -30,10 +35,12 @@ export async function POST(req: Request) {
         name,
         phone,
         role: 'treasurer',
-        client_id: clientId, // Link to Parent Client
+        client_id: clientId,
         status: 'ACTIVE',
-        plan: 'BASIC', // Inherits plan logic usually
-        role_permissions: { treasurer: ["View Dashboard", "View Passbook", "Manage Passbook"] } // Default permissions
+        plan: 'BASIC',
+        role_permissions: {
+          treasurer: ["View Dashboard", "View Passbook", "Manage Passbook"]
+        }
       }]);
 
     if (dbError) throw dbError;
@@ -41,6 +48,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json(
+      { error: error.message },
+      { status: 400 }
+    );
   }
 }
