@@ -21,30 +21,39 @@ import { toast } from 'sonner';
 // 2️⃣ HELPER FUNCTIONS (Outside Component)
 // ------------------------------------------------------------------
 
+// 🆕 Helper function for Monthly Key
 function getMonthlyKey() {
   const now = new Date();
   return `monthly_summary_${now.getFullYear()}_${now.getMonth() + 1}`;
 }
 
+// 🆕 STEP 3.1 – Monthly key reuse karo (Banner Key)
 function getMonthlyBannerKey() {
   const now = new Date()
   return `monthly_banner_closed_${now.getFullYear()}_${now.getMonth() + 1}`
 }
 
+// 🔴 Check overdue members
 function getOverdueMembers(members: any[], gracePeriod: number) {
   const today = new Date();
+
   return members.filter(m => {
     if (!m.last_payment_date) return false;
+
     const lastPaid = new Date(m.last_payment_date);
     const dueDate = new Date(lastPaid);
     dueDate.setDate(dueDate.getDate() + gracePeriod);
+
     return today > dueDate;
   });
 }
 
+// 🔴 Check risky loans
 function getRiskyLoans(loans: any[]) {
   return loans.filter(l => {
     if (!l.outstanding_amount) return false;
+
+    // simple rule (safe + understandable)
     return (
       l.missed_installments >= 2 ||
       l.outstanding_amount > (l.loan_amount * 0.8)
@@ -63,11 +72,16 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<any>(null);
 
+  // Store raw data for Toast Logic
   const [membersData, setMembersData] = useState<any[]>([]);
   const [loansData, setLoansData] = useState<any[]>([]);
+  // Store transactions for Monthly Summary Logic
   const [transactionsData, setTransactionsData] = useState<any[]>([]);
+
+  // 🆕 STEP 3.2 – State add karo (dashboard file)
   const [showMonthlyBanner, setShowMonthlyBanner] = useState(false);
 
+  // Initial Financial State
   const [financials, setFinancials] = useState({
     netProfit: 0,
     totalIncome: 0,
@@ -89,32 +103,38 @@ export default function ClientDashboard() {
         if (!storedUser && !storedMember) { router.push('/login'); return; }
         
         try {
-            let targetClientId = ''; // Ye society Owner ki ID hogi
+            let userId = ''; // Target Client ID (Boss ki ID)
             let userRole = 'client_admin';
             let permissions: string[] = [];
 
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 
-                // ✅ FINAL FIXED LOGIC FOR ID DETECTION
-                // 1. Pehle user ki row nikalo 'id' se
+                // ✅ FINAL FIXED LOGIC: Search by 'id' (Primary Key)
+                // Hum seedha user ki row nikalenge.
                 const { data: userData, error } = await supabase
                     .from('clients')
                     .select('*')
-                    .eq('id', user.id)
+                    .eq('id', user.id) 
                     .single();
 
-                if (error || !userData) return;
+                if (error || !userData) {
+                    console.error("User not found via ID lookup");
+                    return;
+                }
 
                 setClientData(userData);
                 userRole = userData.role || 'client';
 
-                // 🔥 LOGIC: Agar client_id khali hai, to ye khud boss hai (Client).
-                // Agar client_id bhara hai, to ye staff hai (Treasurer).
-                if (!userData.client_id) {
-                    targetClientId = userData.id; // Virendra Case
+                // 🔥 CRITICAL FIX FOR CLIENT DATA:
+                // Agar role 'client' hai, to uska 'client_id' null hota hai (CSV dekho).
+                // Isliye hume uski khud ki 'id' use karni hai.
+                // Agar role 'treasurer' hai, to uska 'client_id' bhara hua hai, wo use karo.
+                
+                if (userRole === 'client') {
+                    userId = userData.id; // Virendra (Owner)
                 } else {
-                    targetClientId = userData.client_id; // Reena Case
+                    userId = userData.client_id; // Reena (Staff) -> Virendra
                 }
 
                 // Load permissions if treasurer
@@ -130,30 +150,36 @@ export default function ClientDashboard() {
             } else if (storedMember) {
                 const member = JSON.parse(storedMember);
                 userRole = member.role;
+                // Fetch owner data
                 const { data: client } = await supabase.from('clients').select('*').eq('id', member.client_id).single();
                 setClientData(client);
-                targetClientId = member.client_id;
+                userId = member.client_id;
                 
                 if (member.role === 'treasurer') {
                     permissions = client?.role_permissions?.['treasurer'] || [];
                 }
             }
 
-            // --- FETCH DATA (Using targetClientId) ---
+            // --- FETCH DATA FOR DASHBOARD ---
+            // Permission Logic: Client Owner OR Treasurer OR Permission Holder
             
-            const canViewPassbook = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_PASSBOOK') || permissions.includes('View Passbook');
-            const canViewLoans = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_LOANS') || permissions.includes('View Loans');
-            const canViewExpenses = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES') || permissions.includes('Manage Expenses');
-            const canViewMembers = userRole === 'client_admin' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS') || permissions.includes('View Members');
+            const canViewPassbook = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('VIEW_PASSBOOK');
+            const canViewLoans = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('VIEW_LOANS');
+            const canViewExpenses = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES');
+            const canViewMembers = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS');
 
-            // Pass targetClientId to all queries
-            const [passbookRes, expenseRes, loansRes, membersRes] = await Promise.all([
-                canViewPassbook ? supabase.from('passbook_entries').select('*').eq('client_id', targetClientId) : Promise.resolve({ data: [] }),
-                canViewExpenses ? supabase.from('expenses_ledger').select('*').eq('client_id', targetClientId) : Promise.resolve({ data: [] }),
-                canViewLoans ? supabase.from('loans').select('*').eq('client_id', targetClientId) : Promise.resolve({ data: [] }),
-                canViewMembers ? supabase.from('members').select('*').eq('client_id', targetClientId) : Promise.resolve({ data: [] })
+            // ✅ NEW: Admin Fund Table bhi fetch karni hai
+            // Pass resolved userId (Owner ID) to all queries
+            const [passbookRes, expenseRes, loansRes, membersRes, adminFundRes] = await Promise.all([
+                canViewPassbook ? supabase.from('passbook_entries').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+                canViewExpenses ? supabase.from('expenses_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+                canViewLoans ? supabase.from('loans').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+                canViewMembers ? supabase.from('members').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+                // Fetching Admin Fund Table
+                canViewExpenses ? supabase.from('admin_fund_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] })
             ]);
 
+            // Save raw data for Toast logic
             setMembersData(membersRes.data || []);
             setLoansData(loansRes.data || []);
             setTransactionsData(passbookRes.data || []); 
@@ -162,17 +188,20 @@ export default function ClientDashboard() {
                 passbookRes.data || [], 
                 expenseRes.data || [], 
                 loansRes.data || [],
-                membersRes.data || []
+                membersRes.data || [],
+                adminFundRes.data || [] // Passing new table data
             );
 
-        } catch(e) { } finally {
+        } catch(e) {
+            // Error handling quietly
+        } finally {
             setLoading(false);
         }
     };
     init();
   }, [router]);
 
-  // Banner visibility
+  // 🆕 STEP 3.3 – Banner visibility logic
   useEffect(() => {
     const key = getMonthlyBannerKey()
     if (!localStorage.getItem(key)) {
@@ -180,23 +209,34 @@ export default function ClientDashboard() {
     }
   }, [])
 
+  // 🆕 STEP 3.4 – Close handler
   function closeMonthlyBanner() {
     const key = getMonthlyBannerKey()
     localStorage.setItem(key, 'closed')
     setShowMonthlyBanner(false)
   }
 
-  // Monthly Summary
+  // 🆕 4️⃣ MONTHLY SUMMARY LOGIC
   useEffect(() => {
     if (!membersData || !loansData || !transactionsData) return
+
     const monthlyKey = getMonthlyKey()
+
     if (localStorage.getItem(monthlyKey)) return
 
-    const totalDeposits = transactionsData.reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
-    const activeLoans = loansData.filter(l => l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed'));
+    // 📊 calculations
+    const totalDeposits = transactionsData
+      .reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
+
+    // ✅ FIXED: Active Loan Logic (Banner)
+    const activeLoans = loansData.filter(l => 
+        l.status === 'active' || (l.remaining_balance > 0 && l.status !== 'closed')
+    );
+    
     const riskyLoans = getRiskyLoans(loansData)
     const overdueMembers = getOverdueMembers(membersData, 10)
 
+    // Show toast only if data is actually loaded
     if(loading === false && transactionsData.length > 0) {
         toast.info('📅 Monthly Summary', {
         description: `
@@ -209,12 +249,14 @@ export default function ClientDashboard() {
         })
         localStorage.setItem(monthlyKey, 'shown')
     }
+
   }, [membersData, loansData, transactionsData, loading])
 
-  // Alerts
+  // 3️⃣ TOAST LOGIC (Alerts)
   useEffect(() => {
     if (!membersData.length && !loansData.length) return;
     if (!clientData) return;
+
     const alreadyShown = sessionStorage.getItem('dashboard_alerts_shown');
     if (alreadyShown) return;
 
@@ -223,29 +265,36 @@ export default function ClientDashboard() {
     const riskyLoans = getRiskyLoans(loansData);
 
     let hasAlert = false;
+
     if (overdueMembers.length > 0) {
       toast.warning(`⚠️ ${overdueMembers.length} member(s) have overdue dues`, { description: 'Please review pending installments', duration: 6000 });
     }
+
     if (riskyLoans.length > 0) {
       toast.error(`🚨 ${riskyLoans.length} loan(s) at risk of default`, { description: 'Immediate attention required', duration: 7000 });
     }
+
     sessionStorage.setItem('dashboard_alerts_shown', 'true');
+
   }, [membersData, loansData, clientData]);
 
 
-  // ✅ FINANCIAL CALCULATION LOGIC (FIXED)
-  const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[]) => {
+  // ✅ LOGIC: Real Profit & Correct Cash Logic (Admin Fund Included)
+  const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[], adminFunds: any[]) => {
     
-    let realIncome = 0; 
+    // Variables for Calculation
+    let realIncome = 0; // Interest + Fine Only
     let cashExpense = 0;
     
+    // Liquidity (Cash Flow)
     let cash = 0, bank = 0, upi = 0;
     let pendingLoanCount = 0;
     let totalDepositsCollected = 0; 
 
     const monthlyMap: {[key: string]: number} = {};
 
-    // 1. Passbook Processing (INFLOW - Deposits, EMI, Fines)
+    // 1. Passbook Processing (INFLOW)
+    // Includes: Deposits + Loan Recovery + Fines
     passbook.forEach(t => {
         const totalAmt = Number(t.total_amount) || 0; 
         
@@ -256,54 +305,70 @@ export default function ClientDashboard() {
         realIncome += (interest + fine);
         totalDepositsCollected += deposit;
 
+        // Liquidity Logic (Cash Flow based on Total Amount)
         const mode = (t.payment_mode || '').toLowerCase().trim();
         if (mode.includes('cash')) cash += totalAmt;
         else if (mode.includes('bank') || mode.includes('cheque')) bank += totalAmt;
         else if (mode.includes('upi') || mode.includes('online')) upi += totalAmt;
 
+        // Chart Data
         const date = t.date ? new Date(t.date) : new Date(t.created_at);
         const month = date.toLocaleString('default', { month: 'short' });
         monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
     });
 
-    // 2. Expenses Ledger (OUTFLOW - Expenses, INFLOW - Admin Fund)
+    // 2. Expenses Ledger Processing (OUTFLOW Only)
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
         const type = (e.type || '').toUpperCase().trim();
         
         if (type === 'EXPENSE') {
-            // Money Going Out (Kharcha + Withdrawal)
             cashExpense += amt;
+            // Subtract from Liquidity (Default Cash)
             cash -= amt; 
         } 
         else if (type === 'INCOME') {
-            // Money Coming In (Admin Fund, Fees)
-            // Note: Admin Fund "INCOME" hai ledger me
+            // General Income (Forms etc)
             realIncome += amt;
             cash += amt; 
         }
     });
 
-    // 3. Loans Logic (OUTSTANDING SUBTRACTION)
+    // 🔥 3. ADMIN FUND LOGIC (NEW TABLE)
+    // Table: admin_fund_ledger (INJECT = Add, WITHDRAW = Minus)
+    adminFunds.forEach(f => {
+        const amt = Number(f.amount) || 0;
+        const type = (f.type || '').toUpperCase().trim();
+
+        if (type === 'INJECT') {
+            // Admin added money -> Cash Badhao
+            cash += amt;
+            // Admin Fund is usually Liability or Capital, not 'Income', 
+            // but for Liquidity it adds up.
+        } else if (type === 'WITHDRAW') {
+            // Admin took money back -> Cash Ghatao
+            cash -= amt;
+        }
+    });
+
+    // 4. Loans Logic (OUTSTANDING SUBTRACTION)
     loans.forEach(l => {
-        if (l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')) {
+        // Count Active Loans (Using remaining_balance from CSV)
+        // remaining_balance check is better than status 'active' alone
+        const outstanding = Number(l.remaining_balance) || 0;
+
+        if (l.status === 'active' || (outstanding > 0 && l.status !== 'closed')) {
              pendingLoanCount++;
         }
 
-        // 🔥 LOGIC CORRECTION: Subtract Outstanding Loan from Cash
-        // Kyunki ye paisa market me hai, jeb me nahi.
-        // Recovery already Passbook se add ho gayi hai.
-        
-        const outstanding = Number(l.outstanding_amount) || 0;
-        
-        // Agar outstanding hai, to ye paisa hamare paas nahi hai
-        // (Sirf disbursed amount minus nahi karna, bacha hua minus karna hai)
+        // 🔥 CASH LOGIC: Subtract Outstanding Loan
+        // Logic: Jo paisa outstanding hai, wo market me hai (Not in Hand).
         if(outstanding > 0) {
             cash -= outstanding; 
         }
     });
 
-    // 4. Maturity Liability
+    // 5. Maturity Liability
     let maturityLiability = 0;
     const memberDeposits: {[key: string]: any[]} = {};
     passbook.forEach(p => {
@@ -313,6 +378,7 @@ export default function ClientDashboard() {
         }
     });
 
+    // Calculate Liability per member
     Object.keys(memberDeposits).forEach(memberId => {
         const deposits = memberDeposits[memberId];
         const memberInfo = membersList.find(m => m.id === memberId);
@@ -326,6 +392,7 @@ export default function ClientDashboard() {
              const manualAmount = Number(memberInfo?.maturity_manual_amount || 0);
 
              let settledInterest = 0;
+
              if (isOverride && manualAmount > 0) {
                  settledInterest = manualAmount;
              } else {
@@ -335,12 +402,18 @@ export default function ClientDashboard() {
              
              const monthlyInterestShare = settledInterest / tenureMonths;
              const depositCount = deposits.length;
+
+             // E. Current Liability (No rounding here for precision)
              maturityLiability += (monthlyInterestShare * depositCount);
         }
     });
 
+    // --- FINAL TOTALS ---
+    
     const totalExpenseFinal = cashExpense + Number(maturityLiability.toFixed(2));
     const netProfitFinal = realIncome - totalExpenseFinal;
+
+    // Chart formatting
     const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
 
     setFinancials({
@@ -358,7 +431,7 @@ export default function ClientDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('current_user');
-    localStorage.removeItem('current_member'); 
+    localStorage.removeItem('current_member'); // Clear member session too
     router.push('/login');
   };
 
@@ -366,18 +439,24 @@ export default function ClientDashboard() {
   if (!clientData) return null;
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
+  
+  // Profit Margin Calculation (Safe Divide)
   const profitMargin = financials.totalIncome > 0 
     ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
     : "0";
     
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
+  // 📊 Prepare data for banner
   const totalDeposits = Array.isArray(transactionsData)
-    ? transactionsData.reduce((sum, t) => sum + Number(t?.deposit_amount ?? 0), 0)
+    ? transactionsData.reduce(
+        (sum, t) => sum + Number(t?.deposit_amount ?? 0),
+        0
+      )
     : 0;
   
   const activeLoans = loansData.filter(l => 
-    l.status === 'active' || (l.outstanding_amount > 0 && l.status !== 'closed')
+    l.status === 'active' || (l.remaining_balance > 0 && l.status !== 'closed')
   );
   
   const overdueMembers = getOverdueMembers(membersData, 10);
@@ -387,6 +466,7 @@ export default function ClientDashboard() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
       
       {/* 🆕 STEP 3.5 – Dashboard TOP pe Banner UI (JSX) */}
+      {/* ✅ FIX 4 — Banner rendering guard */}
       {showMonthlyBanner && !loading && (
         <Card className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
