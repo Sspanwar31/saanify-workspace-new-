@@ -17,13 +17,12 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-// ✅ STEP 1: Props change करो
 interface PassbookAddEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   entryToEdit?: any | null;
-  members: any[];          // ✅ ADD
-  clientId: string | null; // ✅ ADD
+  members: any[];
+  clientId: string | null;
 }
 
 export default function PassbookAddEntryModal({
@@ -33,10 +32,6 @@ export default function PassbookAddEntryModal({
   members,
   clientId
 }: PassbookAddEntryModalProps) {
-
-  // ✅ STEP 2: Local state हटाओ
-  // const [members, setMembers] = useState<any[]>([]); 
-  // const [clientId, setClientId] = useState<string | null>(null);
 
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [date, setDate] = useState<Date>(new Date());
@@ -54,13 +49,11 @@ export default function PassbookAddEntryModal({
 
   const selectedMember = members?.find(m => m.id === selectedMemberId);
 
-  // ✅ DIFF–5 (DEBUG only)
+  // DEBUG LOGS
   useEffect(() => {
     if (isOpen) {
       console.log('PASSBOOK MODAL OPEN');
       console.log('members received:', members);
-      console.log('members length:', members?.length);
-      console.log('clientId received:', clientId);
     }
   }, [isOpen]);
 
@@ -87,19 +80,17 @@ export default function PassbookAddEntryModal({
       }
   }, [entryToEdit, isOpen]);
 
-  // 3. Auto-calculation (Fine Logic Fixed)
+  // 3. Auto-calculation (Loan Sum Fix Here)
   useEffect(() => {
       if (selectedMember) {
         const depositBalance = Number(selectedMember.total_deposits || 0);
         
-        // ✅ DIFF-2: selectedMember se active loan nikalo (MANDATORY)
-        const activeLoan = selectedMember.loans?.find(
-          (l: any) => l.status === 'active'
-        );
-        const outstanding = Number(activeLoan?.remaining_balance || 0);
+        // ✅ FIX: Use 'outstanding_loan' directly from parent (It has the SUM)
+        // Previously we were finding only one active loan. Now we trust the parent.
+        const outstanding = Number(selectedMember.outstanding_loan || 0);
         
         let baseDeposit = depositBalance;
-        let baseLoan = outstanding; // ✅ DIFF-3: Correct
+        let baseLoan = outstanding; 
 
         if (entryToEdit) {
             baseDeposit -= Number(entryToEdit.deposit_amount || 0);
@@ -111,7 +102,7 @@ export default function PassbookAddEntryModal({
 
         // --- AUTO CALCULATION LOGIC ---
         if (!entryToEdit) {
-            // A. Interest (1% of Loan)
+            // A. Interest (1% of Total Loan)
             if (baseLoan > 0) {
               const calculatedInterest = Math.round(baseLoan * 0.01);
               setInterestAmount(calculatedInterest.toString());
@@ -120,12 +111,12 @@ export default function PassbookAddEntryModal({
             }
 
             // B. Fine (After 15th)
-            const dayOfMonth = date.getDate(); // Uses selected date
+            const dayOfMonth = date.getDate(); 
             if (dayOfMonth > 15) {
                const fine = (dayOfMonth - 15) * 10;
-               setFineAmount(fine.toString()); // Auto set fine
+               setFineAmount(fine.toString()); 
             } else {
-               setFineAmount(''); // Reset fine if date is early
+               setFineAmount(''); 
             }
         }
 
@@ -145,7 +136,7 @@ export default function PassbookAddEntryModal({
       }
   }, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
 
-  // 4. SUBMIT HANDLER (Updated Logic for Edit)
+  // 4. SUBMIT HANDLER
   const handleSubmit = async () => {
       if (!selectedMemberId) return toast.error('Please select a member');
       setLoading(true);
@@ -159,14 +150,13 @@ export default function PassbookAddEntryModal({
     try {
         if (entryToEdit) {
             // --- EDIT MODE ---
-            // 1. Calculate Difference (New - Old)
             const oldDep = Number(entryToEdit.deposit_amount || 0);
             const oldInst = Number(entryToEdit.installment_amount || 0);
             
             const depositDiff = newDepAmt - oldDep; 
             const installmentDiff = newInstAmt - oldInst; 
 
-            // 2. Update Passbook
+            // Update Passbook
             const { error: updateError } = await supabase
                 .from('passbook_entries')
                 .update({
@@ -183,11 +173,10 @@ export default function PassbookAddEntryModal({
 
             if (updateError) throw updateError;
 
-            // 3. Update Member Balance
-            // ✅ DIFF-4: ❌ members.outstanding_loan UPDATE हटाओ (IMPORTANT)
+            // Update Member
             const { data: currentMember } = await supabase
                 .from('members')
-                .select('total_deposits') // Removed outstanding_loan from select
+                .select('total_deposits') 
                 .eq('id', selectedMemberId)
                 .single();
 
@@ -196,10 +185,10 @@ export default function PassbookAddEntryModal({
 
                 await supabase.from('members').update({
                     total_deposits: newDepositTotal
-                    // outstanding_loan: ... REMOVED
                 }).eq('id', selectedMemberId);
                 
-                // 4. Update Loan Table (If Installment Changed)
+                // Update Loan (Simple logic for edit: subtract diff from first active loan)
+                // Note: Editing multiple loans is complex, usually we target the main active one.
                 if (installmentDiff !== 0) {
                      const { data: loans } = await supabase.from('loans').select('*').eq('member_id', selectedMemberId).eq('status', 'active');
                      if(loans && loans.length > 0) {
@@ -212,11 +201,12 @@ export default function PassbookAddEntryModal({
             toast.success("Entry Updated Successfully!");
 
         } else {
-            // --- CREATE MODE (Existing Logic) ---
+            // --- CREATE MODE ---
             const { data: currentMember } = await supabase.from('members').select('name').eq('id', selectedMemberId).single();
 
            let attachedLoanId: string | null = null;
 
+          // Find which loan to attach (The one with earliest date)
           if (newInstAmt > 0) {
             const { data: activeLoans } = await supabase
                 .from('loans')
@@ -236,7 +226,7 @@ export default function PassbookAddEntryModal({
             client_id: clientId,
             member_id: selectedMemberId,
             member_name: currentMember?.name,
-            loan_id: attachedLoanId, // ✅ AUTO ATTACHED
+            loan_id: attachedLoanId,
             date: format(date, 'yyyy-MM-dd'),
             payment_mode: paymentMode,
             deposit_amount: newDepAmt,
@@ -250,18 +240,15 @@ export default function PassbookAddEntryModal({
             if (insertError) throw insertError;
 
             if (newDepAmt > 0 || newInstAmt > 0) {
-                // ✅ DIFF-5: CREATE MODE — members loan update REMOVE
                 const { data: memData } = await supabase.from('members').select('total_deposits').eq('id', selectedMemberId).single();
                 if(memData) {
-                    // const newLoanBal = ... REMOVED
                     const newDepositTotal = (memData.total_deposits || 0) + newDepAmt;
                     
                     await supabase.from('members').update({
                         total_deposits: newDepositTotal
-                        // outstanding_loan: ... REMOVED
                     }).eq('id', selectedMemberId);
                     
-                    // Deduct from Loan Table (Loop remains correct)
+                    // ✅ LOAN DEDUCTION LOOP (Handles Multiple Loans)
                     if(newInstAmt > 0) {
                         const { data: activeLoans } = await supabase.from('loans').select('*').eq('member_id', selectedMemberId).eq('status', 'active').gt('remaining_balance', 0).order('created_at', { ascending: true });
                         let amtLeft = newInstAmt;
@@ -270,9 +257,11 @@ export default function PassbookAddEntryModal({
                                 if (amtLeft <= 0) break;
                                 const bal = Number(loan.remaining_balance);
                                 if (amtLeft >= bal) {
+                                    // Loan fully paid
                                     await supabase.from('loans').update({ remaining_balance: 0, status: 'closed' }).eq('id', loan.id);
                                     amtLeft -= bal;
                                 } else {
+                                    // Partial payment
                                     await supabase.from('loans').update({ remaining_balance: bal - amtLeft }).eq('id', loan.id);
                                     amtLeft = 0;
                                 }
@@ -325,7 +314,6 @@ export default function PassbookAddEntryModal({
                       <SelectValue placeholder="Search and select a member" />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* ✅ FIX: Added (members || []) to prevent crash if members is undefined */}
                       {(members || []).map((member) => (
                         <SelectItem key={member.id} value={member.id}>
                           {member.name} - {member.phone}
