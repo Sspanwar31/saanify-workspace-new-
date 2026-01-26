@@ -57,11 +57,12 @@ export default function ClientProfile() {
 
   // 2. Handle Actions
   
-  // ✅ LOCK / UNLOCK (Direct DB Update - No API Call needed due to Global Listener)
+  // ✅ LOCK / UNLOCK (Hybrid: DB First + API Background)
   const handleLockToggle = async () => {
     const newStatus = client.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
     
-    // 1. Update DB Directly
+    // 1. Direct DB Update (Fast Action)
+    // Isse UI update hoga aur Client ka GlobalListener usse logout kar dega
     const { error } = await supabase
         .from('clients')
         .update({ status: newStatus })
@@ -71,20 +72,27 @@ export default function ClientProfile() {
         return toast.error('Action failed: ' + error.message);
     }
 
-    // Success Message
     toast.success(`Client ${newStatus === 'LOCKED' ? 'Locked' : 'Unlocked'}`);
-    
-    // Update Local State immediately for UI update
     setClient({ ...client, status: newStatus });
-    
-    // NOTE: No API call needed. GlobalAuthListener will detect this change 
-    // and logout the user automatically in real-time.
+
+    // 2. Background API Call (Security Action)
+    // Ye line zaroori hai Server Session kill karne ke liye
+    if (newStatus === 'LOCKED') {
+        fetch(`/api/admin/clients/${id}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'LOCK' })
+        }).catch(err => console.error("Background logout failed:", err));
+        // .catch lagaya hai taaki agar ye fail bhi ho, to user ko error na dikhe
+        // kyunki Step 1 se uska kaam already ho chuka hai.
+    }
   };
 
-  // ✅ EXPIRE ACCOUNT (Direct DB Update)
+  // ✅ EXPIRE ACCOUNT (Hybrid)
   const handleExpireClient = async () => {
     if (!confirm('Are you sure you want to expire this account?')) return;
     
+    // 1. Direct DB Update
     const { error } = await supabase
         .from('clients')
         .update({ status: 'EXPIRED' })
@@ -97,7 +105,12 @@ export default function ClientProfile() {
     toast.success('Account Expired');
     setClient({ ...client, status: 'EXPIRED' });
     
-    // NOTE: No API call needed. GlobalAuthListener handles logout.
+    // 2. Background API Call
+    fetch(`/api/admin/clients/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'EXPIRE' })
+    }).catch(err => console.error("Background logout failed:", err));
   };
 
   // ✅ NOTIFY CLIENT (Mock API for now)
