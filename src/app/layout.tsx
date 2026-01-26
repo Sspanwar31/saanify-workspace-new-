@@ -11,6 +11,8 @@ import PerformanceFix from "@/components/PerformanceFix";
 import RazorpayLoader from "@/components/RazorpayLoader";
 import ClientOnly from "@/components/ClientOnly";
 import * as React from "react";
+// ✅ IMPORT ADDED
+import GlobalAuthListener from '@/components/auth/GlobalAuthListener';
 
 // Initialize performance fixes on client side
 if (typeof window !== 'undefined') {
@@ -97,6 +99,9 @@ export default function RootLayout({
       >
         <RazorpayLoader />
         <Providers>
+          {/* ✅ LISTENER ADDED HERE INSIDE PROVIDERS */}
+          <GlobalAuthListener />
+          
           <ErrorBoundary>
             {children}
           </ErrorBoundary>
