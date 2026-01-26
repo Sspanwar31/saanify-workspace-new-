@@ -1,6 +1,3 @@
-Here is the updated code. I have replaced the initialization logic to use the **Base64 decoding method** for the Service Role Key, while keeping the rest of your logic (status mapping, global sign-out, and response handling) exactly the same.
-
-```typescript
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
@@ -53,4 +50,3 @@ export async function POST(
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
-```
