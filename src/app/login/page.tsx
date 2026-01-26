@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react'; // useEffect added for Remember Me
+import { useState, useEffect } from 'react'; 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,12 +25,10 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // CHANGE 2: State for Remember Me
   const [rememberMe, setRememberMe] = useState(false);
   
   const [formData, setFormData] = useState({ email: '', password: '' });
 
-  // CHANGE 2: Auto-fill email on page load
   useEffect(() => {
     const savedEmail = localStorage.getItem('remember_email');
     if (savedEmail) {
@@ -50,7 +48,6 @@ export default function LoginPage() {
       });
 
       if (error) {
-        // CHANGE: Logout ke time password clear karo (on error)
         setFormData((p) => ({ ...p, password: '' }));
 
         if (
@@ -64,7 +61,6 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // CHANGE 2: Handle Remember Me logic on success
         if (rememberMe) {
           localStorage.setItem('remember_email', formData.email);
         } else {
@@ -81,10 +77,10 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ UPDATED: Role Redirection Logic with STATUS GUARDS
+  // ✅ UPDATED: Role Redirection Logic with PARENT CLIENT GUARD
   const checkRoleAndRedirect = async (userId: string) => {
     try {
-      // 1. Check Admin (Safe Check)
+      // 1. Check Admin
       const { data: admin } = await supabase.from('admins').select('*').eq('id', userId).maybeSingle();
       if (admin) {
         localStorage.setItem('admin_session', 'true');
@@ -92,10 +88,9 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. Check Client (Safe Check + STATUS GUARD)
+      // 2. Check Client (Owner)
       const { data: client } = await supabase.from('clients').select('*').eq('id', userId).maybeSingle();
       if (client) {
-        // 🚫 BLOCKED CLIENTS
         if (client.status !== 'ACTIVE') {
           toast.error('Account Locked', {
             description: 'Your account is locked or expired. Please contact support.',
@@ -105,16 +100,35 @@ export default function LoginPage() {
           return;
         }
 
+        // --- 🛡️ TREASURER GUARD LOGIC ---
+        // If this user is actually a TREASURER (role='treasurer'), check their BOSS
+        if (client.role === 'treasurer' && client.client_id) {
+            const { data: bossClient } = await supabase
+                .from('clients')
+                .select('status')
+                .eq('id', client.client_id)
+                .single();
+            
+            if (bossClient && bossClient.status !== 'ACTIVE') {
+                toast.error('Organization Locked', {
+                    description: 'The main organization account is locked/expired. Access denied.',
+                });
+                await supabase.auth.signOut();
+                setLoading(false);
+                return;
+            }
+        }
+        // ---------------------------------
+
         localStorage.setItem('current_user', JSON.stringify(client));
         router.push('/dashboard');
         return;
       }
 
-      // 3. Check Member/Treasurer (Safe Check + STATUS GUARD)
+      // 3. Check Member (End User)
       const { data: member } = await supabase.from('members').select('*').eq('auth_user_id', userId).maybeSingle();
 
       if (member) {
-        // 🚫 BLOCKED MEMBERS
         if (member.status && member.status !== 'ACTIVE') {
           toast.error('Access Disabled', {
             description: 'Your access has been disabled by admin.',
@@ -124,11 +138,17 @@ export default function LoginPage() {
           return;
         }
 
+        // Check if Parent Client is Locked
+        const { data: parentClient } = await supabase.from('clients').select('status').eq('id', member.client_id).single();
+        if(parentClient && parentClient.status !== 'ACTIVE') {
+             toast.error('Organization Suspended', { description: 'Contact admin.' });
+             await supabase.auth.signOut();
+             setLoading(false);
+             return;
+        }
+
         localStorage.setItem('current_member', JSON.stringify(member));
 
-        // Redirect Logic:
-        // Treasurer -> Main Dashboard (Restricted View)
-        // Member -> Member Portal (App View)
         if (member.role === 'treasurer') {
             toast.success("Welcome Treasurer");
             router.push('/dashboard'); 
