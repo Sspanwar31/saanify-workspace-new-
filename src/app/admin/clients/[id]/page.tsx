@@ -57,57 +57,46 @@ export default function ClientProfile() {
 
   // 2. Handle Actions
   
-  // ✅ LOCK / UNLOCK (Direct DB Update - Fast & Reliable)
+  // ✅ LOCK / UNLOCK (API ONLY - No Direct DB)
   const handleLockToggle = async () => {
-    const newStatus = client.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
-    
-    // 1. Update DB Directly
-    const { error } = await supabase
-        .from('clients')
-        .update({ status: newStatus })
-        .eq('id', id);
+    const action = client.status === 'LOCKED' ? 'UNLOCK' : 'LOCK';
 
-    if (error) {
-        return toast.error('Action failed: ' + error.message);
-    }
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
 
-    toast.success(`Client ${newStatus === 'LOCKED' ? 'Locked' : 'Unlocked'}`);
-    
-    // Refresh UI
-    setClient({ ...client, status: newStatus });
-
-    // 2. Call API for Force Logout (Background)
-    if (newStatus === 'LOCKED') {
-        fetch(`/api/admin/clients/${id}/status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'LOCK' })
-        }).catch(err => console.error("Logout API failed (harmless if DB updated)", err));
+      if (!res.ok) throw new Error('Action failed');
+      
+      toast.success(`Client ${action === 'LOCK' ? 'Locked' : 'Unlocked'}`);
+      fetchClient(); // Refresh UI data
+    } catch (err) {
+      console.error('Client Action Failed:', err);
+      toast.error('Action failed. Check logs.');
     }
   };
 
-  // ✅ EXPIRE ACCOUNT (Direct DB Update)
+  // ✅ EXPIRE ACCOUNT (API ONLY - No Direct DB)
   const handleExpireClient = async () => {
     if (!confirm('Are you sure you want to expire this account?')) return;
-    
-    const { error } = await supabase
-        .from('clients')
-        .update({ status: 'EXPIRED' })
-        .eq('id', id);
 
-    if (error) {
-        return toast.error('Failed to expire account');
-    }
-
-    toast.success('Account Expired');
-    setClient({ ...client, status: 'EXPIRED' });
-    
-    // Background Logout
-    fetch(`/api/admin/clients/${id}/status`, {
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'EXPIRE' })
-    }).catch(err => console.error("Logout API failed", err));
+      });
+
+      if (!res.ok) throw new Error('Failed to expire account');
+
+      toast.success('Account Expired');
+      fetchClient(); // Refresh UI data
+    } catch (err) {
+      console.error('Client Action Failed:', err);
+      toast.error('Action failed. Check logs.');
+    }
   };
 
   // ✅ NOTIFY CLIENT (Mock API for now)
