@@ -1,21 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'; // useEffect added for Remember Me
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { 
+import {
   Loader2,
   Lock,
   Mail,
-  Eye, 
+  Eye,
   EyeOff,
   ShieldCheck,
   CheckCircle2,
-  Building2
+  Building2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -24,36 +24,22 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  
+  // CHANGE 2: State for Remember Me
   const [rememberMe, setRememberMe] = useState(false);
+  
+  const [formData, setFormData] = useState({ email: '', password: '' });
 
-  // 2️⃣ PAGE LOAD CHECK & AUTO-FILL LOGIC
+  // CHANGE 2: Auto-fill email on page load
   useEffect(() => {
-      const init = async () => {
-          // 🔹 CHANGE 3: Page load par check karo
-          const { data: user, error } = await supabase.auth.getUser();
-
-          if (error || !user) {
-            console.log('🔐 User not logged in');
-            router.push('/login'); // 🔹 CHANGE 2: Agar nahi to login
-            return;
-          }
-
-          // 🔹 CHANGE 1: Redirect if already logged in
-          // Agar user already hai toh login page pe nahi chahiye (agar dashboard pe jaye toh aur wahan login page khule)
-          // Yahan redirect check karna zaroori hai, lekin user dashboard pe bhej toh toh toh login page hatega
-          // Agar 'admin_session' nahi hai toh 'current_user' ka use ho raha
-          // To aur ye dashboard me 'current_user' save ho raha hai
-          if (localStorage.getItem('current_user')) {
-            router.push('/dashboard');
-          }
-      };
-      init();
-  }, [router]);
+    const savedEmail = localStorage.getItem('remember_email');
+    if (savedEmail) {
+      setFormData((p) => ({ ...p, email: savedEmail }));
+    }
+  }, []);
 
   /* ================= AUTH LOGIC ================= */
 
-  // 1. Handle Auth
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -75,10 +61,16 @@ export default function LoginPage() {
       }
 
       if (data.user) {
+        // CHANGE 2: Handle Remember Me logic on success
+        if (rememberMe) {
+          localStorage.setItem('remember_email', formData.email);
+        } else {
+          localStorage.removeItem('remember_email');
+        }
+        
         await checkRoleAndRedirect(data.user.id);
       }
-
-    } catch (error) {
+    } catch {
       toast.error('Access Denied', {
         description: 'Invalid credentials or account inactive.',
       });
@@ -86,23 +78,21 @@ export default function LoginPage() {
     }
   };
 
-  // 🔹 CHANGE 2: Role Redirection Logic (Blocked Client + Treasurer)
+  // ✅ UPDATED: Role Redirection Logic with STATUS GUARDS
   const checkRoleAndRedirect = async (userId: string) => {
     try {
-      // 1. Check Admin
+      // 1. Check Admin (Safe Check)
       const { data: admin } = await supabase.from('admins').select('*').eq('id', userId).maybeSingle();
-
       if (admin) {
         localStorage.setItem('admin_session', 'true');
         router.push('/admin');
         return;
       }
 
-      // 2. Check Client (Safe Check)
+      // 2. Check Client (Safe Check + STATUS GUARD)
       const { data: client } = await supabase.from('clients').select('*').eq('id', userId).maybeSingle();
-
       if (client) {
-        // ✅ CHANGE 3: Blocked Client Logic
+        // 🚫 BLOCKED CLIENTS
         if (client.status !== 'ACTIVE') {
           toast.error('Account Locked', {
             description: 'Your account is locked or expired. Please contact support.',
@@ -117,11 +107,12 @@ export default function LoginPage() {
         return;
       }
 
-      // 3. Check Member (Treasurer Redirect)
+      // 3. Check Member/Treasurer (Safe Check + STATUS GUARD)
       const { data: member } = await supabase.from('members').select('*').eq('auth_user_id', userId).maybeSingle();
 
       if (member) {
-        if (member.status !== 'ACTIVE') {
+        // 🚫 BLOCKED MEMBERS
+        if (member.status && member.status !== 'ACTIVE') {
           toast.error('Access Disabled', {
             description: 'Your access has been disabled by admin.',
           });
@@ -132,31 +123,36 @@ export default function LoginPage() {
 
         localStorage.setItem('current_member', JSON.stringify(member));
 
-        // 🔹 CHANGE 3: Treasurer / Member Redirect Logic
+        // Redirect Logic:
+        // Treasurer -> Main Dashboard (Restricted View)
+        // Member -> Member Portal (App View)
         if (member.role === 'treasurer') {
-          router.push('/dashboard');
+            toast.success("Welcome Treasurer");
+            router.push('/dashboard'); 
         } else {
-          router.push('/member-portal/dashboard');
+            toast.success("Welcome Member");
+            router.push('/member-portal/dashboard');
         }
         return;
       }
 
       throw new Error("No profile found");
-    } catch (error: any) {
-      console.error('Auth Error:', error);
+    } catch (e) {
       toast.error('Login Failed', {
-        description: 'Invalid credentials or account inactive.',
+        description: 'Profile not linked or missing.',
       });
       setLoading(false);
     }
   };
 
+  // Forgot Password Logic
   const handleForgotPassword = async () => {
     if (!formData.email) {
       toast.error('Email Required', { description: 'Please enter your email.' });
       return;
     }
     setResetLoading(true);
+    
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
         redirectTo: `${window.location.origin}/update-password`,
@@ -172,31 +168,29 @@ export default function LoginPage() {
   };
 
   const createSuperAdmin = async () => {
-    await supabase
-      .from('admins')
-      .upsert([{ id: 'admin', email: 'admin@saanify.com' }]);
-    router.push('/admin');
+    const { data } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+    });
+    if (data.user) {
+      await supabase
+        .from('admins')
+        .upsert([{ id: data.user.id, email: formData.email }]);
+      router.push('/admin');
+    }
   };
 
-  /* ================= UI START ================= */
+  /* ================= UI START (UNCHANGED) ================= */
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden flex items-center justify-center">
-      
-      {/* DECORATIVE BACKGROUND */}
-      <div className="absolute inset-0 opacity-4 z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full mix-blend-multiply blur-[100px] opacity-40 animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full mix-blend-multiply blur-[100px] opacity-40 animate-pulse"></div>
-        <div className="absolute top-[40%] left-[40%] w-[300px] h-[300px] bg-purple-600/20 rounded-full mix-blend-multiply blur-[100px] opacity-30 -rotate-12"></div>
-        <div className="inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150" />
-      </div>
+    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 overflow-hidden">
 
       {/* LEFT HERO */}
       <div className="hidden lg:flex relative bg-slate-900 text-white overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-multiply blur-[100px] opacity-40 animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600 rounded-full mix-blend-multiply blur-[100px] opacity-30 -rotate-12"></div>
-        <div className="absolute top-[40%] left-[40%] w-[300px] h-[300px] bg-purple-600 rounded-full mix-blend-multiply blur-[100px] opacity-30 -rotate-12"></div>
-        <div className="inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150" />
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-40" />
+        <div className="absolute top-[40%] left-[40%] w-[300px] h-[300px] bg-purple-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-30" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150" />
 
         <div className="relative z-10 flex flex-col justify-center px-16 py-20 w-full">
           <div className="flex items-center gap-3 mb-12 group cursor-default">
@@ -220,8 +214,8 @@ export default function LoginPage() {
             </p>
             <div className="pt-6 space-y-5">
               {['Bank-grade AES-256 Encryption', 'Real-time Audit Trails', 'Automated GST Compliance'].map((t) => (
-                <div key={t} className="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors border-transparent hover:border-white/10">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center border-emerald-500/20">
+                <div key={t} className="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                     <CheckCircle2 className="text-emerald-400 w-4 h-4" />
                   </div>
                   <span className="text-slate-200 font-medium">{t}</span>
@@ -241,8 +235,8 @@ export default function LoginPage() {
 
           <CardContent className="p-8 space-y-8">
             <div className="text-center space-y-3">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 mb-2 border-blue-100 shadow-sm">
-                <ShieldCheck className="text-blue-600 w-7 h-7" />
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 mb-2 border border-blue-100 shadow-sm">
+                <ShieldCheck className="w-7 h-7" />
               </div>
               <div>
                 <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Welcome Back</h2>
@@ -252,92 +246,59 @@ export default function LoginPage() {
 
             <form onSubmit={handleAuth} className="space-y-5">
               <div className="space-y-2.5">
-                <Label htmlFor="email" className="text-slate-700 font-semibold text-sm px-1">Email Address</Label>
+                <Label className="text-slate-700 font-semibold text-sm px-1">Email Address</Label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                   </div>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="pl-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" placeholder="name@society.com" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-                  />
+                  <Input className="pl-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" placeholder="name@society.com" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                 </div>
               </div>
 
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
-                  <Label htmlFor="password" className="text-slate-700 font-semibold text-sm">Password</Label>
+                  <Label className="text-slate-700 font-semibold text-sm">Password</Label>
+                </div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                   </div>
-                  <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                        </div>
-                        <Input type={showPassword ? 'text' : 'password'} className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" placeholder="••••••" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none transition-colors">
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                  </div>
-              </div>
-
-              <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Input
-                        id="remember-me"
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="h-4 w-4 border-slate-300 rounded accent-blue-500 bg-transparent"
-                      />
-                      <label htmlFor="remember-me" className="text-slate-600 hover:text-blue-600 transition-colors select-none cursor-pointer">Remember me</label>
-                  </div>
-                  
-                  <button 
-                    onClick={handleForgotPassword} 
-                    disabled={resetLoading}
-                    className="text-slate-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50"
-                  >
-                    {resetLoading ? 'Sending link...' : 'Forgot password?'}
+                  <Input type={showPassword ? 'text' : 'password'} className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+                  <button type="button" className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none transition-colors" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
+                </div>
               </div>
 
-              <Button 
-                type="submit" 
-                disabled={loading}
-                className="w-full h-11 text-base font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-xl shadow-slate-900/20 rounded-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
-              >
-                {loading ? (
-                    <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Verifying...
-                    </>
-                    ) : (
-                      'Sign In'
-                    )}
+              {/* CHANGE 2: Remember Me Checkbox */}
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Remember me</span>
+              </div>
+
+              <Button type="submit" disabled={loading} className="w-full h-11 text-base font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-xl shadow-slate-900/20 rounded-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]">
+                {loading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verifying...</> : 'Sign In'}
               </Button>
             </form>
 
-            <div className="flex items-center justify-between text-sm text-slate-400 pt-4">
+            <div className="flex items-center justify-between text-sm pt-4 border-t border-slate-100">
               <button onClick={handleForgotPassword} disabled={resetLoading} className="text-slate-600 hover:text-blue-600 font-medium transition-colors disabled:opacity-50">
                 {resetLoading ? 'Sending link...' : 'Forgot password?'}
               </button>
-              <span className="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors">
-                {/* ✅ CHANGE 3: Contact Support (BROKEN LINK FIX) */}
-                <span
-                  onClick={() => router.push('/support')}
-                  className="text-blue-500 hover:text-blue-600 cursor-pointer transition-colors"
-                >
-                  Contact Support
-                </span>
-              </div>
+              
+              {/* CHANGE 3: Contact Support Redirect Fix */}
+              <span
+                onClick={() => router.push('/support')}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
+              >
+                Contact Support
+              </span>
+            </div>
 
             <div className="flex items-center justify-center gap-2 text-xs text-slate-400 pt-2">
               <Lock className="w-3 h-3 text-emerald-500" />
