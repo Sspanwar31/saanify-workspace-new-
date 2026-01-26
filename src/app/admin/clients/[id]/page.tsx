@@ -57,46 +57,47 @@ export default function ClientProfile() {
 
   // 2. Handle Actions
   
-  // ✅ LOCK / UNLOCK (API ONLY - No Direct DB)
+  // ✅ LOCK / UNLOCK (Direct DB Update - No API Call needed due to Global Listener)
   const handleLockToggle = async () => {
-    const action = client.status === 'LOCKED' ? 'UNLOCK' : 'LOCK';
+    const newStatus = client.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
+    
+    // 1. Update DB Directly
+    const { error } = await supabase
+        .from('clients')
+        .update({ status: newStatus })
+        .eq('id', id);
 
-    try {
-      const res = await fetch(`/api/admin/clients/${id}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
-      });
-
-      if (!res.ok) throw new Error('Action failed');
-      
-      toast.success(`Client ${action === 'LOCK' ? 'Locked' : 'Unlocked'}`);
-      fetchClient(); // Refresh UI data
-    } catch (err) {
-      console.error('Client Action Failed:', err);
-      toast.error('Action failed. Check logs.');
+    if (error) {
+        return toast.error('Action failed: ' + error.message);
     }
+
+    // Success Message
+    toast.success(`Client ${newStatus === 'LOCKED' ? 'Locked' : 'Unlocked'}`);
+    
+    // Update Local State immediately for UI update
+    setClient({ ...client, status: newStatus });
+    
+    // NOTE: No API call needed. GlobalAuthListener will detect this change 
+    // and logout the user automatically in real-time.
   };
 
-  // ✅ EXPIRE ACCOUNT (API ONLY - No Direct DB)
+  // ✅ EXPIRE ACCOUNT (Direct DB Update)
   const handleExpireClient = async () => {
     if (!confirm('Are you sure you want to expire this account?')) return;
+    
+    const { error } = await supabase
+        .from('clients')
+        .update({ status: 'EXPIRED' })
+        .eq('id', id);
 
-    try {
-      const res = await fetch(`/api/admin/clients/${id}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'EXPIRE' })
-      });
-
-      if (!res.ok) throw new Error('Failed to expire account');
-
-      toast.success('Account Expired');
-      fetchClient(); // Refresh UI data
-    } catch (err) {
-      console.error('Client Action Failed:', err);
-      toast.error('Action failed. Check logs.');
+    if (error) {
+        return toast.error('Failed to expire account');
     }
+
+    toast.success('Account Expired');
+    setClient({ ...client, status: 'EXPIRED' });
+    
+    // NOTE: No API call needed. GlobalAuthListener handles logout.
   };
 
   // ✅ NOTIFY CLIENT (Mock API for now)
@@ -144,7 +145,7 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ Add Staff Logic (Calls API)
+  // ✅ Add Staff Logic (Still Uses API because Creating User requires Admin Privileges)
   const handleAddStaff = async () => {
       if(!staffForm.name || !staffForm.email || !staffForm.password) return toast.error("Name, Email and Password required");
       
