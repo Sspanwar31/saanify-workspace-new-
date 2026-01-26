@@ -72,6 +72,22 @@ export default function ClientProfile() {
     fetchClient()
   };
 
+  // ✅ NEW: Expire Client
+  const handleExpireClient = async () => {
+    if (!confirm('Are you sure you want to expire this account?')) return;
+
+    const res = await fetch(`/api/admin/clients/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'EXPIRE' })
+    })
+
+    if (!res.ok) return toast.error('Failed to expire account')
+
+    toast.success('Account Expired')
+    fetchClient()
+  };
+
   const handleUpdatePlan = async () => {
       const { error } = await supabase.from('clients').update({ plan: newPlan }).eq('id', id);
       if(error) toast.error("Failed to update plan");
@@ -183,6 +199,10 @@ export default function ClientProfile() {
                   <DropdownMenuSeparator/>
                   <DropdownMenuItem onClick={handleLockToggle} className={client.status === 'LOCKED' ? "text-green-600" : "text-orange-600"}>
                      {client.status === 'LOCKED' ? <><Unlock className="mr-2 w-4 h-4"/> Unlock Account</> : <><Lock className="mr-2 w-4 h-4"/> Lock Account</>}
+                  </DropdownMenuItem>
+                  {/* ✅ NEW: Expire Action */}
+                  <DropdownMenuItem onClick={handleExpireClient} className="text-red-600">
+                     <AlertTriangle className="mr-2 w-4 h-4"/> Expire Account
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
