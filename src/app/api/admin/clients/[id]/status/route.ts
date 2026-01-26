@@ -8,15 +8,16 @@ export async function POST(
   try {
     // 1. Get the Base64 Key from Env
     const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-
+    
     if (!b64Key) {
       console.error("❌ Missing Env: SUPABASE_SERVICE_ROLE_KEY_B64");
       return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
     }
 
     // 2. DECODE KEY (Base64 -> UTF-8 String)
-    // .trim() lagaya hai taaki koi space issue na kare
-    const serviceRoleKey = Buffer.from(b64Key, 'base64').toString('utf-8').trim();
+    const serviceRoleKey = Buffer.from(b64Key, 'base64')
+      .toString('utf-8')
+      .trim();
 
     // 3. Initialize Admin Client
     const supabaseAdmin = createClient(
