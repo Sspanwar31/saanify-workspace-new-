@@ -56,14 +56,20 @@ export default function ClientProfile() {
   useEffect(() => { fetchClient(); }, [id]);
 
   // 2. Handle Actions
+  // ✅ UPDATED: API CALL for Lock Toggle
   const handleLockToggle = async () => {
-      const newStatus = client.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
-      const { error } = await supabase.from('clients').update({ status: newStatus }).eq('id', id);
-      if(error) toast.error("Update Failed");
-      else {
-          toast.success(`Account ${newStatus === 'LOCKED' ? 'Locked' : 'Unlocked'}`);
-          fetchClient();
-      }
+    const action = client.status === 'LOCKED' ? 'UNLOCK' : 'LOCK'
+
+    const res = await fetch(`/api/admin/clients/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    })
+
+    if (!res.ok) return toast.error('Action failed')
+
+    toast.success(`Client ${action === 'LOCK' ? 'Locked' : 'Unlocked'}`)
+    fetchClient()
   };
 
   const handleUpdatePlan = async () => {
