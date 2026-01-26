@@ -11,29 +11,38 @@ export default function GlobalAuthListener() {
   const { user, logout } = useAuth();
 
   useEffect(() => {
-    // Sirf tab chalao jab user login ho
     if (!user?.id) return;
 
-    // Realtime Listener for Client Status
+    // 1. Determine Target ID to Watch
+    // Agar main Client hu -> Watch My ID
+    // Agar main Treasurer hu -> Watch My Boss's ID (client_id)
+    const targetId = user.role === 'treasurer' ? user.client_id : user.id;
+
+    if (!targetId) return;
+
+    // 2. Realtime Listener
     const channel = supabase
-      .channel(`global_client_status:${user.id}`)
+      .channel(`global_status_watch:${user.id}`) // Unique Channel Name
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'clients',
-          filter: `id=eq.${user.id}` // Meri row suno
+          filter: `id=eq.${targetId}` // 🔥 Watch Boss or Self
         },
         async (payload: any) => {
           const newStatus = payload.new.status;
           
           if (newStatus === 'LOCKED' || newStatus === 'EXPIRED') {
-            console.log(`🔒 Account ${newStatus}. Logging out...`);
+            console.log(`🔒 Parent Account ${newStatus}. Logging out staff/user...`);
             
-            toast.error(`Your account has been ${newStatus}. Logging out...`);
+            toast.error(
+              user.role === 'treasurer' 
+                ? `Organization account has been ${newStatus}. Logging out...`
+                : `Your account has been ${newStatus}. Logging out...`
+            );
             
-            // Logout and Force Redirect
             await logout();
             router.replace('/login');
           }
@@ -41,12 +50,10 @@ export default function GlobalAuthListener() {
       )
       .subscribe();
 
-    // Cleanup
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, router, logout]);
+  }, [user, router, logout]);
 
-  // Ye component kuch render nahi karta, bas chupchap kaam karta hai
   return null;
 }
