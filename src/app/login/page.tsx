@@ -50,6 +50,9 @@ export default function LoginPage() {
       });
 
       if (error) {
+        // CHANGE: Logout ke time password clear karo (on error)
+        setFormData((p) => ({ ...p, password: '' }));
+
         if (
           formData.email === 'admin@saanify.com' &&
           error.message.includes('Invalid')
@@ -251,7 +254,16 @@ export default function LoginPage() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                   </div>
-                  <Input className="pl-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" placeholder="name@society.com" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                  <Input 
+                    className="pl-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" 
+                    placeholder="name@society.com" 
+                    type="email" 
+                    autoComplete="email"
+                    name="email"
+                    id="email"
+                    value={formData.email} 
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+                  />
                 </div>
               </div>
 
@@ -263,7 +275,16 @@ export default function LoginPage() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                   </div>
-                  <Input type={showPassword ? 'text' : 'password'} className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+                  <Input 
+                    type={showPassword ? 'text' : 'password'} 
+                    className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" 
+                    placeholder="••••••••" 
+                    autoComplete="current-password"
+                    name="password"
+                    id="password"
+                    value={formData.password} 
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+                  />
                   <button type="button" className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none transition-colors" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
