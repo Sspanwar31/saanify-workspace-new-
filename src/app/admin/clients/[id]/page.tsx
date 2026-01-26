@@ -56,36 +56,48 @@ export default function ClientProfile() {
   useEffect(() => { fetchClient(); }, [id]);
 
   // 2. Handle Actions
-  // ✅ UPDATED: API CALL for Lock Toggle
+  
+  // ✅ LOCK / UNLOCK
   const handleLockToggle = async () => {
     const action = client.status === 'LOCKED' ? 'UNLOCK' : 'LOCK'
-
     const res = await fetch(`/api/admin/clients/${id}/status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
     })
-
     if (!res.ok) return toast.error('Action failed')
-
     toast.success(`Client ${action === 'LOCK' ? 'Locked' : 'Unlocked'}`)
     fetchClient()
   };
 
-  // ✅ NEW: Expire Client
+  // ✅ EXPIRE ACCOUNT
   const handleExpireClient = async () => {
     if (!confirm('Are you sure you want to expire this account?')) return;
-
     const res = await fetch(`/api/admin/clients/${id}/status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'EXPIRE' })
     })
-
     if (!res.ok) return toast.error('Failed to expire account')
-
     toast.success('Account Expired')
     fetchClient()
+  };
+
+  // ✅ NOTIFY CLIENT (Mock API for now)
+  const handleNotifyClient = async () => {
+    toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
+        loading: 'Sending Notification...',
+        success: 'Notification Sent Successfully!',
+        error: 'Failed to send'
+    });
+    // Future: Call /api/admin/notify endpoint
+  };
+
+  // ✅ GENERATE LEDGER (Mock)
+  const handleGenerateLedger = () => {
+      toast.info("Generating Ledger PDF...");
+      setTimeout(() => toast.success("Ledger Downloaded"), 1500);
+      // Future: Generate PDF Logic
   };
 
   const handleUpdatePlan = async () => {
@@ -108,7 +120,6 @@ export default function ClientProfile() {
   const handleDeleteStaff = async (staffId: string) => {
       if(!confirm("Are you sure you want to remove this staff member?")) return;
       
-      // Delete from DB (Auth delete requires Admin API, usually handled by trigger or manually)
       const { error } = await supabase.from('clients').delete().eq('id', staffId);
       
       if (error) {
@@ -119,7 +130,7 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ NEW: Add Staff Logic (Calls API)
+  // ✅ Add Staff Logic (Calls API)
   const handleAddStaff = async () => {
       if(!staffForm.name || !staffForm.email || !staffForm.password) return toast.error("Name, Email and Password required");
       
@@ -135,13 +146,12 @@ export default function ClientProfile() {
           });
 
           const data = await res.json();
-
           if (!res.ok) throw new Error(data.error || "Failed to create staff");
 
           toast.success("Staff Account Created Successfully! 🎉");
           setIsStaffModalOpen(false);
-          setStaffForm({ name: '', email: '', phone: '', password: '' }); // Reset form
-          fetchClient(); // Refresh list
+          setStaffForm({ name: '', email: '', phone: '', password: '' }); 
+          fetchClient(); 
 
       } catch (error: any) {
           toast.error(error.message);
@@ -193,8 +203,8 @@ export default function ClientProfile() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Smart Actions</DropdownMenuLabel>
                   <DropdownMenuSeparator/>
-                  <DropdownMenuItem onClick={() => toast.info("Notification Sent!")}><Bell className="mr-2 w-4 h-4 text-blue-500"/> Notify Client</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => toast.info("Generating Ledger...")}><FileText className="mr-2 w-4 h-4 text-purple-500"/> Statement & Ledger</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleNotifyClient}><Bell className="mr-2 w-4 h-4 text-blue-500"/> Notify Client</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleGenerateLedger}><FileText className="mr-2 w-4 h-4 text-purple-500"/> Statement & Ledger</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsRenewOpen(true)}><RefreshCw className="mr-2 w-4 h-4 text-green-500"/> Renew / Change Plan</DropdownMenuItem>
                   <DropdownMenuSeparator/>
                   <DropdownMenuItem onClick={handleLockToggle} className={client.status === 'LOCKED' ? "text-green-600" : "text-orange-600"}>
