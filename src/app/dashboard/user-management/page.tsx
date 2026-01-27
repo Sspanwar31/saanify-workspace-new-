@@ -250,31 +250,26 @@ export default function UserManagementPage() {
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
 
-    // Current Status (Handle null/undefined)
+    //1. Current status check (Case Insensitive)
     const currentStatus = (user.status || 'active').toLowerCase();
+    
+    // 2. Logic: If active -> block, If blocked -> active
+    // Note: Hum 'blocked' small case hi bhejenge DB me consistency ke liye
     const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
     
-    // Determine Correct Table & Update
-    let error = null;
+    console.log(`Toggling ${user.name}: ${currentStatus} -> ${newStatus}`);
 
-    if (user.role === 'treasurer') {
-        // Update Clients Table for Treasurer
-        const { error: err } = await supabase
-            .from('clients')
-            .update({ status: newStatus })
-            .eq('id', user.id);
-        error = err;
-    } else {
-        // Update Members Table for Member
-        const { error: err } = await supabase
-            .from('members')
-            .update({ status: newStatus })
-            .eq('id', user.id);
-        error = err;
-    }
+    //3. Determine Correct Table
+    const table = user.role === 'treasurer' ? 'clients' : 'members';
+
+    //4. Update Database
+    const { error } = await supabase
+      .from(table)
+      .update({ status: newStatus })
+      .eq('id', user.id);
 
     if (!error) {
-      // Update local state immediately
+      //5. Update UI immediately
       setUsers(prevUsers => prevUsers.map(u => 
           u.id === user.id ? { ...u, status: newStatus } : u
       ));
@@ -282,7 +277,7 @@ export default function UserManagementPage() {
       await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
       toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
     } else {
-      console.error("Block Error:", error);
+      console.error("Update Error:", error);
       toast.error("Update Failed: " + error.message);
     }
   };
