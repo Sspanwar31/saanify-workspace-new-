@@ -63,7 +63,7 @@ export default function UserManagementPage() {
   const [roleConfig, setRoleConfig] = useState<any>(DEFAULT_PERMISSIONS);
   const [isEditingRoles, setIsEditingRoles] = useState(false);
 
-  //1. Fetch Data Logic
+  // 1. Fetch Data Logic
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -165,7 +165,10 @@ export default function UserManagementPage() {
 
   const logActivity = async (action: string, details: string) => {
     if (!clientId) return;
-    await supabase.from('activity_logs').insert([{ client_id: clientId, user_name: 'Current User', action: action, details: details }]);
+    // Silent fail if log insert fails
+    supabase.from('activity_logs').insert([{ client_id: clientId, user_name: 'Current User', action: action, details: details }]).then(({ error }) => {
+        if (error) console.warn("Log failed:", error.message);
+    });
   };
 
   const handleOpenAdd = () => {
@@ -246,30 +249,29 @@ export default function UserManagementPage() {
     }
   };
 
-  // ✅ FIXED: Toggle Block Logic for BOTH Members & Treasurers
+  // ✅ FIXED: Toggle Block Logic (Safe Lowercase)
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
 
-    //1. Current status check (Case Insensitive)
+    // 1. Current status check (Case Insensitive)
     const currentStatus = (user.status || 'active').toLowerCase();
     
     // 2. Logic: If active -> block, If blocked -> active
-    // Note: Hum 'blocked' small case hi bhejenge DB me consistency ke liye
     const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
     
     console.log(`Toggling ${user.name}: ${currentStatus} -> ${newStatus}`);
 
-    //3. Determine Correct Table
+    // 3. Determine Correct Table
     const table = user.role === 'treasurer' ? 'clients' : 'members';
 
-    //4. Update Database
+    // 4. Update Database
     const { error } = await supabase
       .from(table)
       .update({ status: newStatus })
       .eq('id', user.id);
 
     if (!error) {
-      //5. Update UI immediately
+      // 5. Update UI immediately
       setUsers(prevUsers => prevUsers.map(u => 
           u.id === user.id ? { ...u, status: newStatus } : u
       ));
