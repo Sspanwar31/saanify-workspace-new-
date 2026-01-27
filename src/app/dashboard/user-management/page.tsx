@@ -31,7 +31,6 @@ const PERMISSION_CATEGORIES = [
   { name: 'Security Permissions', items: ['View Activity Logs', 'Manage Roles', 'Ghost Mode'] }
 ];
 
-// ✅ CHANGE-3: Kept DEFAULT_PERMISSIONS (Fallback logic)
 const DEFAULT_PERMISSIONS = {
   treasurer: ['View Dashboard', 'View Passbook', 'View Loans', 'View Members', 'Manage Finance', 'Manage Expenses', 'Manage Passbook'],
   member: ['View Dashboard']
@@ -64,12 +63,11 @@ export default function UserManagementPage() {
   const [roleConfig, setRoleConfig] = useState<any>(DEFAULT_PERMISSIONS);
   const [isEditingRoles, setIsEditingRoles] = useState(false);
 
-  // ✅ UPDATED FETCH DATA LOGIC (Treasurer Fix & Debugging Removed)
+  // 1. Fetch Data Logic
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       
-      // Step A: Get User from LocalStorage
       const storedUser = localStorage.getItem('current_user');
       if (!storedUser) {
         setLoading(false);
@@ -77,13 +75,10 @@ export default function UserManagementPage() {
       }
 
       const user = JSON.parse(storedUser);
-
-      // Step B: Resolve Correct Client ID (Owner ID)
       let targetClientId = clientId;
 
       if (!targetClientId) {
         if (user.role === 'treasurer') {
-          // If treasurer, try to find owner's ID from DB
           const { data, error } = await supabase
             .from('clients')
             .select('client_id')
@@ -96,13 +91,11 @@ export default function UserManagementPage() {
             targetClientId = user.id;
           }
         } else {
-          // If Owner/Client
           targetClientId = user.id;
         }
         setClientId(targetClientId);
       }
 
-      // Step C: Fetch Data using Resolved ID
       if (targetClientId) {
         // Members
         const { data: memberData } = await supabase
@@ -117,7 +110,6 @@ export default function UserManagementPage() {
           .eq('client_id', targetClientId)
           .eq('role', 'treasurer');
 
-        // Combine
         const allUsers = [...(treasurerData || []), ...(memberData || [])];
         setUsers(allUsers);
         setLedgerMembers(memberData || []);
@@ -131,7 +123,7 @@ export default function UserManagementPage() {
     };
 
     fetchData();
-  }, []); // Dependency array empty to run only once on mount
+  }, []); 
 
   // 2. Load Permissions Effect
   useEffect(() => {
@@ -164,7 +156,6 @@ export default function UserManagementPage() {
     };
   }, [users]);
 
-  // ✅ RESTORED ORIGINAL FILTER LOGIC (Debugging Removed)
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesRole = filterRole === 'all' || user.role === filterRole;
@@ -228,6 +219,7 @@ export default function UserManagementPage() {
       toast.success(editingUser ? "User Updated Successfully" : "User Created Successfully");
       
       setIsModalOpen(false);
+      window.location.reload();
 
     } catch (error: any) { 
       console.error(error);
@@ -240,7 +232,10 @@ export default function UserManagementPage() {
   const handleDelete = async (userId: string, role: string) => {
     if (role === 'client_admin') { alert("Action Denied: Cannot delete Main Admin."); return; }
     if (confirm("Delete this user? This will also remove their login access.")) {
-      const { error } = await supabase.from('members').delete().eq('id', userId);
+      // Correct Table Logic for Delete
+      const table = role === 'treasurer' ? 'clients' : 'members';
+      const { error } = await supabase.from(table).delete().eq('id', userId);
+      
       if (!error) {
         setUsers(users.filter(u => u.id !== userId));
         await logActivity('Delete User', `Deleted user ID: ${userId}`);
@@ -251,14 +246,26 @@ export default function UserManagementPage() {
     }
   };
 
+  // ✅ FIXED: Toggle Block Logic (Correct Table Selection)
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
+    
     const newStatus = user.status === 'active' ? 'blocked' : 'active';
-    const { error } = await supabase.from('members').update({ status: newStatus }).eq('id', user.id);
+    
+    // Determine Correct Table
+    const table = user.role === 'treasurer' ? 'clients' : 'members';
+
+    const { error } = await supabase
+      .from(table)
+      .update({ status: newStatus })
+      .eq('id', user.id);
+
     if (!error) {
       setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
       await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
       toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
+    } else {
+      toast.error("Update Failed: " + error.message);
     }
   };
 
@@ -511,7 +518,6 @@ export default function UserManagementPage() {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2"><Label>Name</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Enter name"/></div>
             <div className="grid gap-2"><Label>Role</Label><Select value={formData.role} onValueChange={(val) => setFormData({ ...formData, role: val })}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>
-              {/* ✅ PROBLEM-4 FIX: Removed Client Admin from options */}
               <SelectItem value="treasurer">Treasurer</SelectItem>
               <SelectItem value="member">Member</SelectItem>
             </SelectContent></Select></div>
