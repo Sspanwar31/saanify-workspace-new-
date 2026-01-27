@@ -63,7 +63,7 @@ export default function UserManagementPage() {
   const [roleConfig, setRoleConfig] = useState<any>(DEFAULT_PERMISSIONS);
   const [isEditingRoles, setIsEditingRoles] = useState(false);
 
-  // 1. Fetch Data Logic
+  //1. Fetch Data Logic
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -246,22 +246,29 @@ export default function UserManagementPage() {
     }
   };
 
-  // ✅ FIXED: Toggle Block Logic (Correct Table Selection)
+  // ✅ FIXED: Toggle Block Logic (Case Insensitive & Correct Table)
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
+
+    // Normalize current status to lowercase for checking
+    const currentStatus = (user.status || '').toLowerCase();
     
-    const newStatus = user.status === 'active' ? 'blocked' : 'active';
+    // Toggle logic: active -> blocked, blocked -> active
+    // Always save as lowercase 'active' or 'blocked'
+    const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
     
     // Determine Correct Table
     const table = user.role === 'treasurer' ? 'clients' : 'members';
 
     const { error } = await supabase
       .from(table)
-      .update({ status: newStatus })
+      .update({ status: newStatus }) // Saving as lowercase
       .eq('id', user.id);
 
     if (!error) {
+      // Update local state immediately
       setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      
       await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
       toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
     } else {
@@ -459,7 +466,7 @@ export default function UserManagementPage() {
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox checked={roleConfig.member.includes(perm)} disabled={!isEditingRoles} className="data-[state=checked]:bg-blue-600"/>
+                              <Checkbox checked={roleConfig.member.includes(perm)} disabled={!isEditingRoles} onCheckedChange={() => togglePermission('member', perm)} className="data-[state=checked]:bg-blue-600"/>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -538,7 +545,7 @@ export default function UserManagementPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {editingUser && <p className="text-[10px] text-gray-400">Only enter if you want to change the password.</p>}
+              {editingUser && <p className="text-[10px] text-gray-400">Only enter if you want to change password.</p>}
             </div>
 
             {formData.role === 'member' && <div className="grid gap-2"><Label>Link Member</Label><Select value={formData.linked_member_id} onValueChange={(val) => setFormData({ ...formData, linked_member_id: val })}><SelectTrigger><SelectValue placeholder="Select..."/></SelectTrigger><SelectContent><SelectItem value="not_linked">Not Linked</SelectItem>{ledgerMembers.map((m: any) => (<SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>))}</SelectContent></Select></div>}
