@@ -21,46 +21,66 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
         return;
       }
 
-      // Fetch Member Profile & Role
+      // Fetch Member Profile & Role & Status
+      // ✅ Added 'status' to check if blocked
       const { data: member } = await supabase
         .from('members')
-        .select('id, role') // ✅ Role bhi fetch kiya
+        .select('id, role, status') 
         .eq('auth_user_id', session.user.id)
         .single();
 
       if (member) {
-        // 🛑 SECURITY CHECK: Agar Treasurer hai, to yahan mat aane do
-        if (member.role === 'treasurer') {
-            toast.info("Redirecting to Treasurer Dashboard...");
-            router.push('/dashboard'); // Sahi jagah bhejo
+        // 🛑 SECURITY CHECK 1: Agar blocked hai to bhaga do
+        if ((member.status || 'active').toLowerCase() !== 'active') {
+            toast.error("Your account has been blocked.");
+            await supabase.auth.signOut();
+            router.push('/login');
             return;
         }
 
-        // Agar Member hai, to allow karo
+        // 🛑 SECURITY CHECK 2: Agar Treasurer hai, to yahan mat aane do
+        if (member.role === 'treasurer') {
+            toast.info("Redirecting to Treasurer Dashboard...");
+            router.push('/dashboard'); 
+            return;
+        }
+
         setMemberId(member.id);
         setAuthorized(true);
       } else {
-        // Agar profile nahi mili, wapas login
         router.push('/login');
       }
     };
     checkAuth();
   }, [router]);
 
-  // Global Notification Listener (Same as before)
+  // 🔥 NEW: Realtime Status & Notification Listener
   useEffect(() => {
     if (!memberId) return;
 
-    const channel = supabase
+    // Listen for Status Change (Live Block)
+    const statusChannel = supabase
+      .channel(`member_status_guard:${memberId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'members', filter: `id=eq.${memberId}` },
+        async (payload) => {
+            const newStatus = (payload.new.status || 'active').toLowerCase();
+            if (newStatus !== 'active') {
+                toast.error("Account Blocked by Admin. Logging out...");
+                await supabase.auth.signOut();
+                router.replace('/login');
+            }
+        }
+      )
+      .subscribe();
+
+    // Listen for Notifications (Existing Logic)
+    const notifChannel = supabase
       .channel('global-notifications')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `member_id=eq.${memberId}`
-        },
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `member_id=eq.${memberId}` },
         (payload) => {
           toast(payload.new.title, {
             description: payload.new.message,
@@ -72,9 +92,10 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(statusChannel);
+      supabase.removeChannel(notifChannel);
     };
-  }, [memberId]);
+  }, [memberId, router]);
 
   if (!authorized) {
     return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" /></div>;
