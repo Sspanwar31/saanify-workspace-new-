@@ -125,13 +125,14 @@ export default function LoginPage() {
         return;
       }
 
-      // 3. Check Member (End User)
+      // 3. Check Member/Treasurer (Safe Check + STATUS GUARD)
       const { data: member } = await supabase.from('members').select('*').eq('auth_user_id', userId).maybeSingle();
 
       if (member) {
-        if (member.status && member.status !== 'ACTIVE') {
-          toast.error('Access Disabled', {
-            description: 'Your access has been disabled by admin.',
+        // 🚫 BLOCKED MEMBERS CHECK (Ye line ensure karein)
+        if (member.status === 'blocked' || member.status === 'inactive') {
+          toast.error('Access Denied', {
+            description: 'Your account has been blocked by administrator.',
           });
           await supabase.auth.signOut();
           setLoading(false);
@@ -298,7 +299,7 @@ export default function LoginPage() {
                   <Input 
                     type={showPassword ? 'text' : 'password'} 
                     className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" 
-                    placeholder="••••••••" 
+                    placeholder="•••••••" 
                     autoComplete="current-password"
                     name="password"
                     id="password"
