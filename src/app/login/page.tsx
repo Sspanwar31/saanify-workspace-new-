@@ -23,10 +23,8 @@ export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  
-  const [rememberMe, setRememberMe] = useState(false);
-  
+  const [showPassword, setShowPassword] = useState(false);  
+  const [rememberMe, setRememberMe] = useState(false);  
   const [formData, setFormData] = useState({ email: '', password: '' });
 
   useEffect(() => {
@@ -137,7 +135,7 @@ export default function LoginPage() {
       const { data: member } = await supabase.from('members').select('*').eq('auth_user_id', userId).maybeSingle();
 
       if (member) {
-        // 🔥 FIX 3: Member status check
+        // 🔥 FIX 3: Member status check (Case Insensitive)
         const memberStatus = (member.status || '').toUpperCase();
         
         if (memberStatus !== 'ACTIVE') {
@@ -313,7 +311,7 @@ export default function LoginPage() {
                   <Input 
                     type={showPassword ? 'text' : 'password'} 
                     className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" 
-                    placeholder="••••••••" 
+                    placeholder="••••••" 
                     autoComplete="current-password"
                     name="password"
                     id="password"
