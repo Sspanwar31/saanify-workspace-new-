@@ -77,7 +77,7 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ UPDATED: Role Redirection Logic with PARENT CLIENT GUARD
+  // ✅ UPDATED: Role Redirection with CASE INSENSITIVE CHECK
   const checkRoleAndRedirect = async (userId: string) => {
     try {
       // 1. Check Admin
@@ -88,12 +88,16 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. Check Client (Owner)
+      // 2. Check Client (Owner or Treasurer)
       const { data: client } = await supabase.from('clients').select('*').eq('id', userId).maybeSingle();
+      
       if (client) {
-        if (client.status !== 'ACTIVE') {
+        // 🔥 FIX 1: Convert status to Uppercase before checking
+        const currentStatus = (client.status || '').toUpperCase();
+
+        if (currentStatus !== 'ACTIVE') {
           toast.error('Account Locked', {
-            description: 'Your account is locked or expired. Please contact support.',
+            description: 'Your account is locked, blocked, or expired.',
           });
           await supabase.auth.signOut();
           setLoading(false);
@@ -101,7 +105,6 @@ export default function LoginPage() {
         }
 
         // --- 🛡️ TREASURER GUARD LOGIC ---
-        // If this user is actually a TREASURER (role='treasurer'), check their BOSS
         if (client.role === 'treasurer' && client.client_id) {
             const { data: bossClient } = await supabase
                 .from('clients')
@@ -109,13 +112,18 @@ export default function LoginPage() {
                 .eq('id', client.client_id)
                 .single();
             
-            if (bossClient && bossClient.status !== 'ACTIVE') {
-                toast.error('Organization Locked', {
-                    description: 'The main organization account is locked/expired. Access denied.',
-                });
-                await supabase.auth.signOut();
-                setLoading(false);
-                return;
+            // 🔥 FIX 2: Check Boss status case-insensitively too
+            if (bossClient) {
+                const bossStatus = (bossClient.status || '').toUpperCase();
+                
+                if (bossStatus !== 'ACTIVE') {
+                    toast.error('Organization Locked', {
+                        description: 'The main organization account is locked/expired. Access denied.',
+                    });
+                    await supabase.auth.signOut();
+                    setLoading(false);
+                    return;
+                }
             }
         }
         // ---------------------------------
@@ -125,12 +133,14 @@ export default function LoginPage() {
         return;
       }
 
-      // 3. Check Member/Treasurer (Safe Check + STATUS GUARD)
+      // 3. Check Member (End User)
       const { data: member } = await supabase.from('members').select('*').eq('auth_user_id', userId).maybeSingle();
 
       if (member) {
-        // 🚫 BLOCKED MEMBERS CHECK (Ye line ensure karein)
-        if (member.status === 'blocked' || member.status === 'inactive') {
+        // 🔥 FIX 3: Member status check
+        const memberStatus = (member.status || '').toUpperCase();
+        
+        if (memberStatus !== 'ACTIVE') {
           toast.error('Access Denied', {
             description: 'Your account has been blocked by administrator.',
           });
@@ -141,11 +151,15 @@ export default function LoginPage() {
 
         // Check if Parent Client is Locked
         const { data: parentClient } = await supabase.from('clients').select('status').eq('id', member.client_id).single();
-        if(parentClient && parentClient.status !== 'ACTIVE') {
-             toast.error('Organization Suspended', { description: 'Contact admin.' });
-             await supabase.auth.signOut();
-             setLoading(false);
-             return;
+        
+        if(parentClient) {
+            const parentStatus = (parentClient.status || '').toUpperCase();
+            if(parentStatus !== 'ACTIVE') {
+                toast.error('Organization Suspended', { description: 'Contact admin.' });
+                await supabase.auth.signOut();
+                setLoading(false);
+                return;
+            }
         }
 
         localStorage.setItem('current_member', JSON.stringify(member));
@@ -299,7 +313,7 @@ export default function LoginPage() {
                   <Input 
                     type={showPassword ? 'text' : 'password'} 
                     className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl" 
-                    placeholder="•••••••" 
+                    placeholder="••••••••" 
                     autoComplete="current-password"
                     name="password"
                     id="password"
