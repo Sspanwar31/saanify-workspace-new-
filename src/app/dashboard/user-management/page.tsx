@@ -246,32 +246,43 @@ export default function UserManagementPage() {
     }
   };
 
-  // ✅ FIXED: Toggle Block Logic (Case Insensitive & Correct Table)
+  // ✅ FIXED: Toggle Block Logic for BOTH Members & Treasurers
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
 
-    // Normalize current status to lowercase for checking
-    const currentStatus = (user.status || '').toLowerCase();
-    
-    // Toggle logic: active -> blocked, blocked -> active
-    // Always save as lowercase 'active' or 'blocked'
+    // Current Status (Handle null/undefined)
+    const currentStatus = (user.status || 'active').toLowerCase();
     const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
     
-    // Determine Correct Table
-    const table = user.role === 'treasurer' ? 'clients' : 'members';
+    // Determine Correct Table & Update
+    let error = null;
 
-    const { error } = await supabase
-      .from(table)
-      .update({ status: newStatus }) // Saving as lowercase
-      .eq('id', user.id);
+    if (user.role === 'treasurer') {
+        // Update Clients Table for Treasurer
+        const { error: err } = await supabase
+            .from('clients')
+            .update({ status: newStatus })
+            .eq('id', user.id);
+        error = err;
+    } else {
+        // Update Members Table for Member
+        const { error: err } = await supabase
+            .from('members')
+            .update({ status: newStatus })
+            .eq('id', user.id);
+        error = err;
+    }
 
     if (!error) {
       // Update local state immediately
-      setUsers(users.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      setUsers(prevUsers => prevUsers.map(u => 
+          u.id === user.id ? { ...u, status: newStatus } : u
+      ));
       
       await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
       toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
     } else {
+      console.error("Block Error:", error);
       toast.error("Update Failed: " + error.message);
     }
   };
