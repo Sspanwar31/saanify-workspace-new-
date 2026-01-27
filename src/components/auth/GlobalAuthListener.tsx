@@ -14,7 +14,6 @@ export default function GlobalAuthListener() {
     if (!user?.id) return;
 
     // --- LOGIC 1: AGAR MAIN CLIENT (OWNER) HU ---
-    // (Ye already chal raha hai, isse waise hi rehne dein)
     const targetId = user.role === 'treasurer' ? user.client_id : user.id;
 
     if (targetId) {
@@ -24,8 +23,10 @@ export default function GlobalAuthListener() {
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'clients', filter: `id=eq.${targetId}` },
           async (payload: any) => {
-            const newStatus = payload.new.status;
-            if (newStatus === 'LOCKED' || newStatus === 'EXPIRED') {
+            const newStatus = (payload.new.status || '').toUpperCase(); // Force Uppercase check
+            
+            // Checks for: LOCKED, EXPIRED, BLOCKED (Any case)
+            if (['LOCKED', 'EXPIRED', 'BLOCKED'].includes(newStatus)) {
               toast.error("Organization account suspended. Logging out...");
               await logout();
               router.replace('/login');
@@ -34,36 +35,32 @@ export default function GlobalAuthListener() {
         )
         .subscribe();
         
-      // Cleanup for client listener
       return () => { supabase.removeChannel(clientChannel); };
     }
 
   }, [user, router, logout]);
 
 
-  // --- LOGIC 2: AGAR MAIN MEMBER / TREASURER HU (New Logic) ---
+  // --- LOGIC 2: AGAR MAIN TREASURER HU (Watch My Own Status) ---
   useEffect(() => {
-    if (!user?.id || user.role === 'client' || user.role === 'ADMIN') return;
+    if (!user?.id || user.role !== 'treasurer') return;
 
-    // Is member ki ID nikalo (auth_user_id se link hoti hai members table me)
-    // Note: Hum user.id (Auth ID) use kar rahe hain status check karne ke liye
-    
-    const memberChannel = supabase
-      .channel(`global_member_watch:${user.id}`)
+    const selfChannel = supabase
+      .channel(`global_self_watch:${user.id}`)
       .on(
         'postgres_changes',
         { 
             event: 'UPDATE', 
             schema: 'public', 
-            table: 'members', 
-            filter: `auth_user_id=eq.${user.id}` // 🔥 Listen My Row in Members Table
+            table: 'clients', // Treasurer is in clients table
+            filter: `id=eq.${user.id}` 
         },
         async (payload: any) => {
-          const newStatus = payload.new.status; // 'active' or 'blocked'
+          const newStatus = (payload.new.status || '').toUpperCase(); // Force Uppercase check
           
-          if (newStatus === 'blocked' || newStatus === 'inactive') {
-            console.log("🔒 Member/Treasurer Blocked by Client. Logging out...");
-            toast.error("Your account has been blocked by the admin.");
+          if (['BLOCKED', 'LOCKED', 'INACTIVE'].includes(newStatus)) {
+            console.log("🔒 Account Blocked. Logging out...");
+            toast.error("Your account has been blocked by admin.");
             
             await logout();
             router.replace('/login');
@@ -73,7 +70,7 @@ export default function GlobalAuthListener() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(memberChannel);
+      supabase.removeChannel(selfChannel);
     };
   }, [user, router, logout]);
 
