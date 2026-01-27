@@ -249,40 +249,43 @@ export default function UserManagementPage() {
     }
   };
 
-  // ✅ FIXED: Toggle Block Logic (100% Reliable for Members & Treasurers)
+  // ✅ API BASED TOGGLE (100% Reliable)
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
 
-    // 1. Get current status carefully (lowercase)
+    // 1. Determine New Status
     const currentStatus = (user.status || 'active').toLowerCase();
-    
-    // 2. Decide New Status: Toggle logic
-    // If active -> block it. If blocked (or anything else) -> activate it.
     const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
     
-    console.log(`Toggling ${user.name}: ${currentStatus} -> ${newStatus}`);
+    // 2. Call API
+    const toastId = toast.loading("Updating status...");
 
-    // 3. Determine Correct Table based on role
-    const table = user.role === 'treasurer' ? 'clients' : 'members';
+    try {
+        const res = await fetch('/api/users/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: user.id,
+                role: user.role, // 'member' or 'treasurer'
+                newStatus: newStatus
+            })
+        });
 
-    // 4. Update Database
-    const { error } = await supabase
-      .from(table)
-      .update({ status: newStatus })
-      .eq('id', user.id)
-      .select(); // Ensure update is confirmed
+        const result = await res.json();
 
-    if (!error) {
-      // 5. Update UI immediately
-      setUsers(prevUsers => prevUsers.map(u => 
-          u.id === user.id ? { ...u, status: newStatus } : u
-      ));
-      
-      await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
-      toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`);
-    } else {
-      console.error("Update Error:", error);
-      toast.error("Update Failed: " + error.message);
+        if (!res.ok) throw new Error(result.error || "Update failed");
+
+        // 3. Success - Update UI
+        setUsers(prevUsers => prevUsers.map(u => 
+            u.id === user.id ? { ...u, status: newStatus } : u
+        ));
+        
+        await logActivity('Status Change', `Changed status of ${user.name} to ${newStatus}`);
+        toast.success(`User ${newStatus === 'active' ? 'Activated' : 'Blocked'}`, { id: toastId });
+
+    } catch (error: any) {
+        console.error(error);
+        toast.error("Failed: " + error.message, { id: toastId });
     }
   };
 
@@ -428,7 +431,7 @@ export default function UserManagementPage() {
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} className="text-blue-600 hover:bg-blue-50 h-8 w-8"><Edit className="h-4 w-4" /></Button>
                     {user.role !== 'client_admin' && <Button variant="ghost" size="icon" onClick={() => handleToggleBlock(user)} className={`h-8 w-8 ${user.status === 'active' ? "text-orange-500 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"}`}>{user.status === 'active' ? <Lock className="h-4 w-4"/> : <Unlock className="h-4 w-4" />}</Button>}
-                    {user.role !== 'client_admin' && <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 h-8 w-8" onClick={() => handleDelete(user.id, user.role)}><Trash2 className="h-4 w-4" /></Button>}
+                    {user.role !== 'client_admin' && <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-50 h-8 w-8" onClick={() => handleDelete(user.id, user.role)}><Trash2 className="h-4 w-4" /></Button>}
                   </div>
                 </TableCell>
               </TableRow>
