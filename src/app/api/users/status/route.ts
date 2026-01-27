@@ -1,10 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Admin Client (Bypasses RLS)
+// 1. Get Key & Decode Safely
+const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
+let serviceRoleKey = b64Key || '';
+
+if (b64Key && !b64Key.startsWith('ey')) {
+  try {
+    serviceRoleKey = Buffer.from(b64Key, 'base64').toString('utf-8').trim();
+  } catch (e) {
+    console.error("Failed to decode service key:", e);
+  }
+}
+
+// 2. Admin Client (Bypasses RLS)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  serviceRoleKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -26,10 +38,10 @@ export async function POST(req: Request) {
     // Determine Table
     const table = role === 'treasurer' ? 'clients' : 'members';
 
-    // 1. Update Database (With Admin Privileges)
+    // 3. Update Database (With Admin Privileges)
     const { error: dbError } = await supabaseAdmin
       .from(table)
-      .update({ status: newStatus }) // e.g. 'active' or 'blocked'
+      .update({ status: newStatus }) // 'active' or 'blocked'
       .eq('id', userId);
 
     if (dbError) {
@@ -37,17 +49,21 @@ export async function POST(req: Request) {
       throw new Error(dbError.message);
     }
 
-    // 2. Force Logout if Blocked (Optional but good)
+    // 4. Force Logout if Blocked
     if (newStatus === 'blocked') {
-        // If user is linked to auth, try to sign them out
-        // Note: For members, we need their auth_user_id. 
-        // This is a "nice to have", main job is DB update.
         if (role === 'treasurer') {
             await supabaseAdmin.auth.admin.signOut(userId);
         } else {
-            // Fetch auth_id for member
-            const { data: mem } = await supabaseAdmin.from('members').select('auth_user_id').eq('id', userId).single();
-            if(mem?.auth_user_id) await supabaseAdmin.auth.admin.signOut(mem.auth_user_id);
+            // For member, find auth_user_id first
+            const { data: mem } = await supabaseAdmin
+                .from('members')
+                .select('auth_user_id')
+                .eq('id', userId)
+                .single();
+                
+            if(mem?.auth_user_id) {
+                await supabaseAdmin.auth.admin.signOut(mem.auth_user_id);
+            }
         }
     }
 
