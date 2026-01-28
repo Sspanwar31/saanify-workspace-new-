@@ -280,13 +280,15 @@ export default function SubscriptionPage() {
             </CardContent>
           </Card>
 
-          {/* Plans Grid - DYNAMIC & RESPONSIVE */}
+          {/* Plans Grid - UPDATED FOR AUTO CENTERING */}
           {plans.length > 0 ? (
-            <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
+            // Changed from GRID to FLEX to handle auto-centering perfectly
+            <div className="flex flex-wrap justify-center gap-8 items-stretch">
               {plans.map(plan => (
                 <Card
                   key={plan.id}
-                  className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between ${plan.color}`}
+                  // Added w-full and max-w logic to behave like a responsive grid card
+                  className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between w-full md:max-w-[360px] lg:max-w-[380px] ${plan.color}`}
                 >
                   {/* Badge for Popular Plan */}
                   {plan.isPopular && (
