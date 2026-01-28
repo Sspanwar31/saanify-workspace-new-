@@ -30,11 +30,10 @@ export default function SubscriptionPage() {
   // MODAL STATES
   const [viewProof, setViewProof] = useState<any>(null);
 
-  // --- 1. FETCH REAL DATA (SMART PARENT CHECK) ---
+  // --- 1. FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch Orders
       const { data: orders, error } = await supabase
         .from('subscription_orders')
         .select('*')
@@ -42,22 +41,17 @@ export default function SubscriptionPage() {
 
       if (error) throw error;
 
-      // Fetch ALL Clients to map relationships
       const { data: clients } = await supabase.from('clients').select('id, name, email, society_name, client_id');
 
-      // Combine Data with Parent Check
       const formattedInvoices = orders?.map(order => {
-        // Find the user who made the request
         const requestUser = clients?.find(c => c.id === order.client_id);
         
-        // Check if this user is a sub-user (has a parent client_id)
+        // Smart Logic for Society Name
         let societyName = 'Unknown Society';
-        
         if (requestUser) {
            if (requestUser.society_name) {
              societyName = requestUser.society_name;
            } else if (requestUser.client_id) {
-             // If user has no society name (e.g. Treasurer), find the Parent Owner
              const parentUser = clients?.find(c => c.id === requestUser.client_id);
              if (parentUser?.society_name) {
                societyName = `${parentUser.society_name} (via ${requestUser.name})`;
@@ -67,14 +61,13 @@ export default function SubscriptionPage() {
 
         return {
           id: order.id,
-          clientId: order.client_id, // Who made the payment
+          clientId: order.client_id,
           client: societyName,
           adminName: requestUser?.name || 'Unknown User',
           adminEmail: requestUser?.email || 'N/A',
           plan: order.plan_name,
           amount: order.amount,
-          // Normalize status to lowercase for filtering
-          status: (order.status || 'pending').toLowerCase(),
+          status: (order.status || 'pending').toLowerCase(), // Normalize status
           date: order.created_at,
           transactionId: order.transaction_id,
           durationDays: order.duration_days || 30
@@ -82,9 +75,8 @@ export default function SubscriptionPage() {
       }) || [];
 
       setInvoices(formattedInvoices);
-
     } catch (err: any) {
-      console.error("Error fetching subs:", err);
+      console.error("Fetch Error:", err);
       toast.error("Failed to load data");
     } finally {
       setLoading(false);
@@ -95,37 +87,36 @@ export default function SubscriptionPage() {
     fetchData();
   }, []);
 
-  // --- 2. VERIFY PAYMENT (UPDATES OWNER, NOT SUB-USER) ---
+  // --- 2. VERIFY PAYMENT ---
   const verifyPayment = async (invoiceId: string, action: 'APPROVE' | 'REJECT') => {
     try {
-      // 1. Get Order
-      const { data: orderData, error: fetchError } = await supabase
-        .from('subscription_orders')
-        .select('*')
-        .eq('id', invoiceId)
-        .single();
+      // Step A: Update Subscription Order Status
+      const statusToSet = action === 'APPROVE' ? 'approved' : 'rejected';
 
-      if (fetchError) throw new Error("Order not found");
+      const { error: orderError } = await supabase
+        .from('subscription_orders')
+        .update({ status: statusToSet }) 
+        .eq('id', invoiceId);
+      
+      if (orderError) throw new Error("Database Update Failed: " + orderError.message);
 
       if (action === 'APPROVE') {
-        // 2. Find who is the ACTUAL OWNER (Target ID)
-        // Check if the person who ordered is a sub-user
-        const { data: userProfile } = await supabase
-          .from('clients')
-          .select('id, client_id')
-          .eq('id', orderData.client_id)
-          .single();
+        // Step B: Update Client Plan (Only if Approved)
+        
+        // 1. Get original order details to find client_id
+        const { data: orderData } = await supabase.from('subscription_orders').select('*').eq('id', invoiceId).single();
+        if(!orderData) throw new Error("Order data missing");
 
-        // Determine who gets the plan update
-        // If user has a client_id (Parent), update Parent. Otherwise update User.
+        // 2. Find real owner (Handle sub-users)
+        const { data: userProfile } = await supabase.from('clients').select('id, client_id').eq('id', orderData.client_id).single();
         const targetClientId = userProfile?.client_id ? userProfile.client_id : orderData.client_id;
 
-        // 3. Update Client Table (The Main Owner)
+        // 3. Calc Dates
         const startDate = new Date();
-        const duration = orderData.duration_days || 30;
         const endDate = new Date();
-        endDate.setDate(startDate.getDate() + duration);
+        endDate.setDate(startDate.getDate() + (orderData.duration_days || 30));
 
+        // 4. Update Client
         const { error: clientError } = await supabase
           .from('clients')
           .update({
@@ -135,38 +126,24 @@ export default function SubscriptionPage() {
             plan_end_date: endDate.toISOString(),
             subscription_status: 'active'
           })
-          .eq('id', targetClientId); // <--- CRITICAL FIX: Updates Parent ID
+          .eq('id', targetClientId);
 
-        if (clientError) throw new Error("Failed to update Plan: " + clientError.message);
-
-        // 4. Update Order Status
-        const { error: orderError } = await supabase
-          .from('subscription_orders')
-          .update({ status: 'approved' }) 
-          .eq('id', invoiceId);
+        if (clientError) throw new Error("Client Plan Update Failed: " + clientError.message);
         
-        if (orderError) throw orderError;
-        
-        toast.success(`Plan Approved & Updated for Owner ID: ${targetClientId}`);
-
+        toast.success("Plan Approved & Updated Successfully");
       } else {
-        // Reject Logic
-        const { error } = await supabase
-          .from('subscription_orders')
-          .update({ status: 'rejected' })
-          .eq('id', invoiceId);
-        
-        if (error) throw error;
         toast.info("Request Rejected");
       }
 
-      // 5. Refresh Data
-      await fetchData();
+      // Step C: Update UI immediately
+      setInvoices(prev => prev.map(inv => 
+        inv.id === invoiceId ? { ...inv, status: action === 'APPROVE' ? 'approved' : 'rejected' } : inv
+      ));
       setViewProof(null);
 
     } catch (err: any) {
       console.error("Verification Error:", err);
-      toast.error("Action failed: " + err.message);
+      toast.error(err.message);
     }
   };
 
@@ -174,10 +151,12 @@ export default function SubscriptionPage() {
     if(!confirm("Are you sure?")) return;
     const { error } = await supabase.from('subscription_orders').delete().eq('id', id);
     if(error) toast.error("Delete failed");
-    else { toast.success("Deleted"); fetchData(); }
+    else { 
+        toast.success("Deleted"); 
+        setInvoices(prev => prev.filter(i => i.id !== id));
+    }
   };
 
-  // --- FILTERS (CASE INSENSITIVE) ---
   const pendingInvoices = invoices.filter(inv => inv.status === 'pending');
   const historyInvoices = invoices.filter(inv => inv.status !== 'pending');
 
