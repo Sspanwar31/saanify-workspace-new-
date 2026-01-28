@@ -3,17 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
 import {
-  Crown,
-  CheckCircle,
-  RefreshCw,
   Loader2,
-  Calendar,
-  Users,
-  AlertTriangle,
-  ShieldCheck,
-  Clock // Added Clock icon
 } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -94,21 +85,12 @@ export default function SubscriptionPage() {
                 : 100 // Default fallback
           });
 
-          // 4. Get Member Count
-          const { count } = await supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('client_id', client.id);
-
-          setMemberCount(count || 0);
-        }
-
-        // 5. FETCH ACTIVE PLANS FROM DATABASE (Dynamic Logic)
+          // 4. Fetch ACTIVE PLANS FROM DATABASE (Dynamic Logic)
         const { data: dbPlans, error: plansError } = await supabase
           .from('plans')
           .select('*')
           .eq('active', true) // Only show plans enabled by Admin
-          .order('price', { ascending: true });
+          .order('price', { ascending: true }); // <--- YE NAYA HAI: Sirf wo plan jinka price 0 se jyada hai unhe pehle dikhana hai
 
         if (!plansError && dbPlans) {
           // Map DB structure to UI structure if needed
@@ -208,7 +190,7 @@ export default function SubscriptionPage() {
             <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
                 <div className="bg-orange-100 dark:bg-orange-950/30 p-6 flex justify-center border-b border-orange-200 dark:border-orange-900/50">
                     <div className="h-24 w-24 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm animate-pulse border border-orange-200 dark:border-orange-700">
-                        <Clock className="h-12 w-12 text-orange-600 dark:text-orange-500" />
+                        <Loader2 className="h-12 w-12 text-orange-600 dark:text-orange-500" />
                     </div>
                 </div>
                 <CardContent className="p-8 text-center space-y-6">
@@ -228,13 +210,13 @@ export default function SubscriptionPage() {
                         <Row label="Date" value={new Date(pendingOrder.created_at).toLocaleDateString()} />
                         <div className="flex justify-between items-center pt-2">
                             <span className="text-gray-500 dark:text-gray-400 text-sm">Status</span>
-                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600 px-3 py-1">Pending Approval</Badge>
+                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-200 dark:hover:bg-orange-900/60 px-3 py-1">Pending Approval</Badge>
                         </div>
                     </div>
 
                     <div className="flex gap-4 justify-center pt-2">
                         <Button variant="outline" onClick={() => window.location.reload()} className="border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-950/30">
-                            <RefreshCw className="h-4 w-4 mr-2" /> Check Status
+                            <Loader2 className="h-4 w-4 mr-2" /> Check Status
                         </Button>
                         <Button variant="ghost" onClick={handleCancelRequest} className="text-red-500 hover:text-red-400 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
                             Cancel Request
@@ -255,7 +237,7 @@ export default function SubscriptionPage() {
           <Card className="border-l-4 border-l-blue-600 shadow-sm overflow-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
             <CardHeader className="pb-4 bg-gray-50/50 dark:bg-gray-800/50">
               <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-400">
-                <Crown className="h-5 w-5" />
+                {/* Removed Crown to fix imports, using Loader2 logic if needed or just text */}
                 Current Subscription
               </CardTitle>
             </CardHeader>
@@ -290,9 +272,9 @@ export default function SubscriptionPage() {
                   {/* Badge for Popular Plan */}
                   {plan.isPopular && (
                     <div className="absolute top-0 right-0 z-20">
-                        <Badge className="rounded-none rounded-bl-xl bg-yellow-500 text-black px-4 py-1 text-xs font-bold border-none shadow-sm">
-                          Most Popular
-                        </Badge>
+                          <Badge className="rounded-none rounded-bl-xl bg-yellow-500 text-black px-4 py-1 text-xs font-bold border-none shadow-sm">
+                            Most Popular
+                          </Badge>
                     </div>
                   )}
 
@@ -302,7 +284,7 @@ export default function SubscriptionPage() {
                         {plan.name}
                       </CardTitle>
                       <div className="mt-4 flex items-baseline justify-center gap-1">
-                        <span className={`text-4xl font-extrabold ${plan.name === 'Professional' ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                        <span className={`text-4xl font-extrabold ${plan.name === 'Professional' ? 'text-white' : 'text-gray-900 dark:text-gray-200'}`}>
                           ₹{plan.price.toLocaleString()}
                         </span>
                         <span className={`text-sm font-medium ${plan.name === 'Professional' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
@@ -315,8 +297,10 @@ export default function SubscriptionPage() {
                       <ul className="space-y-4 px-2">
                         {plan.features.map((f: string, i: number) => (
                           <li key={i} className={`flex gap-3 text-sm ${plan.name === 'Professional' ? 'text-blue-50' : 'text-gray-600 dark:text-gray-300'}`}>
-                            <div className={`mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${plan.name === 'Professional' ? 'bg-blue-600 text-white' : 'bg-green-100 dark:bg-green-900/40'}`}>
-                                <CheckCircle className={`h-3 w-3 ${plan.name === 'Professional' ? 'text-white' : 'text-green-600 dark:text-green-400'}`} />
+                            <div className={`mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${plan.name === 'Professional' ? 'bg-blue-600 text-white' : 'bg-green-600 dark:bg-green-900/40 dark:text-green-100'}`}>
+                                <div className="h-2 w-2 rounded-full bg-white dark:bg-gray-900 opacity-20"></div>
+                                {/* Replaced CheckCircle with inline check */}
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-current" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" /></svg>
                             </div>
                             {f}
                           </li>
@@ -349,8 +333,8 @@ export default function SubscriptionPage() {
           ) : (
             // Fallback if no plans are active
             <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-xl border border-dashed border-gray-300 dark:border-gray-800">
-                <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">No Active Plans Available</h3>
+                <Loader2 className="h-10 w-10 text-yellow-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">No Active Plans Available</h3>
                 <p className="text-gray-500 mt-2">Please contact support or check back later.</p>
             </div>
           )}
@@ -368,7 +352,6 @@ export default function SubscriptionPage() {
       )}
     </div>
   );
-}
 
 /* -------------------- UI HELPERS -------------------- */
 function InfoBlock({ title, value, children, highlight }: any) {
