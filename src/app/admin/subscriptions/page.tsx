@@ -16,7 +16,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-// --- YE IMPORT MISSING THA, ADD KAR DIYA HAI ---
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -84,39 +83,48 @@ export default function SubscriptionPage() {
     fetchData();
   }, []);
 
-  // --- 2. VERIFY PAYMENT (APPROVE/REJECT LOGIC) ---
+  // --- 2. VERIFY PAYMENT (APPROVE/REJECT LOGIC - FIXED) ---
   const verifyPayment = async (invoiceId: string, action: 'APPROVE' | 'REJECT') => {
     try {
-      const invoice = invoices.find(inv => inv.id === invoiceId);
-      if (!invoice) return;
+      // Step 1: Fetch FRESH data directly from DB to avoid state mismatches
+      const { data: orderData, error: fetchError } = await supabase
+        .from('subscription_orders')
+        .select('*')
+        .eq('id', invoiceId)
+        .single();
+
+      if (fetchError || !orderData) throw new Error("Order not found in database");
 
       if (action === 'APPROVE') {
-        // A. Update Order Status -> success (or approved)
+        // Step 2: Calculate Expiry
+        const startDate = new Date();
+        const duration = orderData.duration_days || 30; // Use duration from order or default
+        const endDate = new Date();
+        endDate.setDate(startDate.getDate() + duration);
+
+        // Step 3: Update Client Table (CRITICAL FIX: Updating Correct Columns)
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update({
+            plan_name: orderData.plan_name,      // Set Correct Plan Name
+            plan: orderData.plan_name.toUpperCase(), // Sync Plan ID (e.g. BASIC)
+            plan_start_date: startDate.toISOString(),
+            plan_end_date: endDate.toISOString(),
+            subscription_status: 'active'
+          })
+          .eq('id', orderData.client_id); // Ensure we target correct client
+
+        if (clientError) throw new Error("Failed to update Client Plan: " + clientError.message);
+
+        // Step 4: Update Order Status to 'approved'
         const { error: orderError } = await supabase
           .from('subscription_orders')
           .update({ status: 'approved' }) 
           .eq('id', invoiceId);
         
         if (orderError) throw orderError;
-
-        // B. Update Client Table -> Activate Plan
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(startDate.getDate() + (invoice.durationDays || 30));
-
-        const { error: clientError } = await supabase
-          .from('clients')
-          .update({
-            plan_name: invoice.plan,
-            plan_start_date: startDate.toISOString(),
-            plan_end_date: endDate.toISOString(),
-            subscription_status: 'active'
-          })
-          .eq('id', invoice.clientId);
-
-        if (clientError) throw clientError;
         
-        toast.success(`Plan Approved for ${invoice.client}`);
+        toast.success(`Plan upgraded to ${orderData.plan_name} successfully`);
 
       } else {
         // Reject Logic
@@ -126,11 +134,11 @@ export default function SubscriptionPage() {
           .eq('id', invoiceId);
         
         if (error) throw error;
-        toast.error("Request Rejected");
+        toast.info("Request Rejected");
       }
 
-      // Refresh Data
-      fetchData();
+      // Step 5: Force Refresh Data
+      await fetchData();
       setViewProof(null);
 
     } catch (err: any) {
