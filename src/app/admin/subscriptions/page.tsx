@@ -15,6 +15,10 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+// Added these imports for the Plan Form
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -24,14 +28,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
-
-// --- STATIC PLAN DATA (For UI Restore) ---
-const INITIAL_PLANS = [
-  { id: 'trial', name: 'Trial', price: 0, limit: '100 Members', features: ['15 Days Access', 'Basic Reports'], active: true, color: 'border-gray-200' },
-  { id: 'basic', name: 'Basic', price: 4000, limit: '200 Members', features: ['Daily Ledger', 'Excel Export', 'Email Support'], active: true, color: 'border-blue-200' },
-  { id: 'pro', name: 'Professional', price: 7000, limit: '2000 Members', features: ['Audit Reports', 'Loan Management', 'Priority Support'], active: true, color: 'border-purple-200' },
-  { id: 'ent', name: 'Enterprise', price: 10000, limit: 'Unlimited Members', features: ['API Access', 'White Label', '24/7 Support'], active: true, color: 'border-orange-200' }
-];
 
 export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
@@ -43,19 +39,36 @@ export default function SubscriptionPage() {
   
   // Modal & Plans State
   const [viewProof, setViewProof] = useState<any>(null);
-  const [planConfig, setPlanConfig] = useState(INITIAL_PLANS);
+  const [planConfig, setPlanConfig] = useState<any[]>([]); // Now Dynamic
+
+  // Plan Edit/Create Modal State
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<any>({
+      name: '', price: '', limit_members: '', features: '', color: 'border-gray-200'
+  });
 
   // --- 1. FETCH DATA & CALCULATE CHARTS ---
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: orders, error } = await supabase
+      // A. Fetch Orders
+      const { data: orders, error: orderError } = await supabase
         .from('subscription_orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (orderError) throw orderError;
 
+      // B. Fetch Plans from Database (NEW)
+      const { data: dbPlans, error: planError } = await supabase
+        .from('plans')
+        .select('*')
+        .order('price', { ascending: true });
+
+      if (planError) throw planError;
+      setPlanConfig(dbPlans || []);
+
+      // C. Fetch Clients
       const { data: clients } = await supabase.from('clients').select('id, name, email, society_name, client_id');
 
       // Process Invoices
@@ -217,10 +230,85 @@ export default function SubscriptionPage() {
     }
   };
 
-  // Toggle Plan Logic (Mock for now, can be connected to DB table 'plans')
-  const togglePlan = (id: string) => {
-      setPlanConfig(prev => prev.map(p => p.id === id ? { ...p, active: !p.active } : p));
-      toast.success("Plan Status Updated");
+  // --- NEW PLAN MANAGEMENT FUNCTIONS ---
+
+  // A. Toggle Active Status
+  const togglePlanActive = async (id: string, currentStatus: boolean) => {
+    try {
+        const { error } = await supabase.from('plans').update({ active: !currentStatus }).eq('id', id);
+        if(error) throw error;
+        toast.success(`Plan ${!currentStatus ? 'Activated' : 'Deactivated'}`);
+        fetchData(); // Reload to reflect changes
+    } catch(err: any) {
+        toast.error("Update failed: " + err.message);
+    }
+  };
+
+  // B. Delete Plan
+  const deletePlan = async (id: string) => {
+    if(!confirm("Are you sure? This will hide the plan from clients but keep history.")) return;
+    try {
+        const { error } = await supabase.from('plans').delete().eq('id', id);
+        if(error) throw error;
+        toast.success("Plan Deleted Successfully");
+        fetchData();
+    } catch(err: any) {
+        toast.error("Delete failed: " + err.message);
+    }
+  };
+
+  // C. Open Modal (Create or Edit)
+  const openPlanModal = (plan: any = null) => {
+      if (plan) {
+          // Editing existing plan
+          setCurrentPlan({
+              id: plan.id,
+              name: plan.name,
+              price: plan.price,
+              limit_members: plan.limit_members,
+              features: Array.isArray(plan.features) ? plan.features.join(', ') : plan.features,
+              color: plan.color
+          });
+      } else {
+          // Creating New
+          setCurrentPlan({ name: '', price: '', limit_members: '', features: '', color: 'border-blue-200' });
+      }
+      setIsPlanModalOpen(true);
+  };
+
+  // D. Save Plan (Insert or Update)
+  const handleSavePlan = async () => {
+      if(!currentPlan.name || !currentPlan.price) return toast.error("Name and Price are required");
+
+      // Convert comma string back to array
+      const featureArray = currentPlan.features.split(',').map((f:string) => f.trim()).filter((f:string) => f !== '');
+      
+      const payload = {
+          name: currentPlan.name,
+          price: Number(currentPlan.price),
+          limit_members: currentPlan.limit_members,
+          features: featureArray,
+          color: currentPlan.color,
+          active: true
+      };
+
+      try {
+          if(currentPlan.id) {
+              // Update
+              const { error } = await supabase.from('plans').update(payload).eq('id', currentPlan.id);
+              if(error) throw error;
+              toast.success("Plan Updated");
+          } else {
+              // Create
+              const { error } = await supabase.from('plans').insert([payload]);
+              if(error) throw error;
+              toast.success("New Plan Created");
+          }
+          setIsPlanModalOpen(false);
+          fetchData();
+      } catch(err: any) {
+          toast.error("Save failed: " + err.message);
+      }
   };
 
   const pendingInvoices = invoices.filter(inv => inv.status === 'pending');
@@ -365,46 +453,91 @@ export default function SubscriptionPage() {
            </Card>
         </TabsContent>
 
-        {/* --- PLAN CONFIG TAB (RESTORED UI) --- */}
+        {/* --- PLAN CONFIG TAB (DYNAMIC & INTERACTIVE) --- */}
         <TabsContent value="plans" className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Manage Plans</h2>
-                <Button className="bg-blue-600"><Plus className="h-4 w-4 mr-2"/> Create New Plan</Button>
+                <Button className="bg-blue-600" onClick={() => openPlanModal(null)}><Plus className="h-4 w-4 mr-2"/> Create New Plan</Button>
             </div>
             
             <div className="grid md:grid-cols-4 gap-6">
                 {planConfig.map((plan) => (
-                    <Card key={plan.id} className={`relative border-2 ${plan.color} ${!plan.active ? 'opacity-70 grayscale' : ''}`}>
-                        <div className="absolute top-2 right-2 flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600"><Edit className="h-3 w-3"/></Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"><Trash2 className="h-3 w-3"/></Button>
+                    <Card key={plan.id} className={`relative border-2 ${plan.color} transition-all ${!plan.active ? 'opacity-70 grayscale' : 'shadow-sm hover:shadow-md'}`}>
+                        <div className="absolute top-2 right-2 flex gap-1 z-10">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-blue-600 bg-white/50 rounded-full" onClick={() => openPlanModal(plan)}><Edit className="h-3.5 w-3.5"/></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-600 bg-white/50 rounded-full" onClick={() => deletePlan(plan.id)}><Trash2 className="h-3.5 w-3.5"/></Button>
                         </div>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-lg">{plan.name}</CardTitle>
+                            <CardTitle className="text-lg flex justify-between items-center">
+                                {plan.name}
+                                {!plan.active && <Badge variant="destructive" className="text-[10px] h-5 ml-2">Inactive</Badge>}
+                            </CardTitle>
                             <div className="mt-2">
                                 <span className="text-3xl font-bold">₹{plan.price}</span>
                                 <span className="text-xs text-gray-500">/mo</span>
                             </div>
-                            <p className="text-xs text-gray-500">{plan.limit}</p>
+                            <p className="text-xs text-gray-500 font-medium">{plan.limit_members}</p>
                         </CardHeader>
                         <CardContent>
-                            <ul className="space-y-2 text-sm">
-                                {plan.features.map((f:any, i:number) => (
+                            <ul className="space-y-2 text-sm min-h-[80px]">
+                                {(Array.isArray(plan.features) ? plan.features : []).map((f:any, i:number) => (
                                     <li key={i} className="flex items-center gap-2 text-gray-600">
-                                        <CheckCircle className="h-3 w-3 text-green-500"/> {f}
+                                        <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0"/> <span className="truncate">{f}</span>
                                     </li>
                                 ))}
                             </ul>
                         </CardContent>
-                        <CardFooter className="bg-gray-50/50 flex justify-between items-center py-3">
-                            <span className="text-xs font-medium text-gray-600">Active Status</span>
-                            <Switch checked={plan.active} onCheckedChange={() => togglePlan(plan.id)} />
+                        <CardFooter className="bg-gray-50/50 flex justify-between items-center py-3 border-t">
+                            <span className="text-xs font-medium text-gray-600">{plan.active ? 'Publicly Visible' : 'Hidden from Client'}</span>
+                            <Switch checked={plan.active} onCheckedChange={() => togglePlanActive(plan.id, plan.active)} />
                         </CardFooter>
                     </Card>
                 ))}
             </div>
         </TabsContent>
       </Tabs>
+
+      {/* PLAN CREATE/EDIT MODAL */}
+      <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                  <DialogTitle>{currentPlan.id ? 'Edit Plan' : 'Create New Plan'}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Name</Label>
+                      <Input id="name" value={currentPlan.name} onChange={(e) => setCurrentPlan({...currentPlan, name: e.target.value})} className="col-span-3" placeholder="e.g. Gold Plan" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Price (₹)</Label>
+                      <Input id="price" type="number" value={currentPlan.price} onChange={(e) => setCurrentPlan({...currentPlan, price: e.target.value})} className="col-span-3" placeholder="4000" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Members</Label>
+                      <Input id="limit" value={currentPlan.limit_members} onChange={(e) => setCurrentPlan({...currentPlan, limit_members: e.target.value})} className="col-span-3" placeholder="e.g. 500 Members" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Features</Label>
+                      <Textarea id="features" value={currentPlan.features} onChange={(e) => setCurrentPlan({...currentPlan, features: e.target.value})} className="col-span-3" placeholder="Feature 1, Feature 2, Feature 3" />
+                      <p className="text-[10px] text-gray-400 col-start-2 col-span-3">Separate features with commas</p>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Theme</Label>
+                      <select className="col-span-3 border rounded p-2 text-sm" value={currentPlan.color} onChange={(e) => setCurrentPlan({...currentPlan, color: e.target.value})}>
+                          <option value="border-gray-200">Gray (Default)</option>
+                          <option value="border-blue-200">Blue (Basic)</option>
+                          <option value="border-purple-200">Purple (Pro)</option>
+                          <option value="border-orange-200">Orange (Enterprise)</option>
+                          <option value="border-green-200">Green (Special)</option>
+                          <option value="border-red-200">Red (Hot)</option>
+                      </select>
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button type="submit" onClick={handleSavePlan}>Save Plan</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
       {/* PROOF MODAL */}
       <Dialog open={!!viewProof} onOpenChange={() => setViewProof(null)}>
