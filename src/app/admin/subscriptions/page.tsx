@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase-simple'; // Ensure this path is correct
+import { supabase } from '@/lib/supabase-simple'; 
 import { 
   CreditCard, TrendingUp, AlertCircle, Check, X, CheckCircle, 
   Clock, Plus, Edit, Trash2, Eye, FileText, MoreVertical, 
@@ -16,13 +16,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+// --- YE IMPORT MISSING THA, ADD KAR DIYA HAI ---
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
 export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [plans, setPlans] = useState<any[]>([]); // You can fetch plans from DB if needed, or keep static
+  const [plans, setPlans] = useState<any[]>([]); 
 
   // MODAL STATES
   const [viewProof, setViewProof] = useState<any>(null);
@@ -86,7 +94,7 @@ export default function SubscriptionPage() {
         // A. Update Order Status -> success (or approved)
         const { error: orderError } = await supabase
           .from('subscription_orders')
-          .update({ status: 'approved' }) // or 'success' depending on your schema preference
+          .update({ status: 'approved' }) 
           .eq('id', invoiceId);
         
         if (orderError) throw orderError;
@@ -269,7 +277,6 @@ export default function SubscriptionPage() {
         {/* TAB 3: PLAN CONFIG */}
         <TabsContent value="plans">
             <div className="p-4 text-center text-gray-500">Plan Configuration (Static or DB Connected)</div>
-            {/* You can keep existing Plan UI here */}
         </TabsContent>
       </Tabs>
 
