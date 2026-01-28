@@ -132,25 +132,34 @@ export default function PaymentModal({
     }
   };
 
-  // ---------------- MANUAL PAYMENT (UNCHANGED) ----------------
+  // ---------------- MANUAL PAYMENT (CONNECTED TO SUPABASE) ----------------
   const handleManualSubmit = async () => {
     if (!txnId) return toast.error('Enter Transaction ID');
     setLoading(true);
+    
     try {
+      // Logic: Insert pending request into subscription_orders
       const { error } = await supabase.from('subscription_orders').insert([{
         client_id: clientId,
         plan_name: plan.name,
         amount: plan.price,
-        payment_method: 'MANUAL',
-        status: 'pending',
+        payment_method: 'MANUAL', // Important for Admin Filter
+        status: 'pending',        // Important for "Verification Pending" screen
         transaction_id: txnId
+        // Note: duration_days agar DB me column hai to add kar sakte hain:
+        // duration_days: plan.durationDays 
       }]);
+
       if (error) throw error;
+      
       toast.success('Request submitted for verification');
       onClose();
-      window.location.reload(); // Reload to show pending screen
+      // Page reload is necessary to update parent state to "Pending"
+      window.location.reload(); 
+      
     } catch (err: any) {
-      toast.error(err.message);
+      console.error('Manual Payment Error:', err);
+      toast.error(err.message || "Failed to submit request");
     } finally {
       setLoading(false);
     }
