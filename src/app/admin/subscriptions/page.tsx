@@ -10,12 +10,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -29,18 +26,15 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieC
 export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [plans, setPlans] = useState<any[]>([]); 
-
+  
   // MODAL STATES
   const [viewProof, setViewProof] = useState<any>(null);
-  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<any>(null);
 
-  // --- 1. FETCH REAL DATA FROM SUPABASE ---
+  // --- 1. FETCH REAL DATA (SMART PARENT CHECK) ---
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch Orders (Both Manual and Online)
+      // Fetch Orders
       const { data: orders, error } = await supabase
         .from('subscription_orders')
         .select('*')
@@ -48,24 +42,42 @@ export default function SubscriptionPage() {
 
       if (error) throw error;
 
-      // Fetch Clients to map names (Manual Join)
-      const { data: clients } = await supabase.from('clients').select('id, name, email, society_name');
+      // Fetch ALL Clients to map relationships
+      const { data: clients } = await supabase.from('clients').select('id, name, email, society_name, client_id');
 
-      // Combine Data
+      // Combine Data with Parent Check
       const formattedInvoices = orders?.map(order => {
-        const client = clients?.find(c => c.id === order.client_id);
+        // Find the user who made the request
+        const requestUser = clients?.find(c => c.id === order.client_id);
+        
+        // Check if this user is a sub-user (has a parent client_id)
+        let societyName = 'Unknown Society';
+        
+        if (requestUser) {
+           if (requestUser.society_name) {
+             societyName = requestUser.society_name;
+           } else if (requestUser.client_id) {
+             // If user has no society name (e.g. Treasurer), find the Parent Owner
+             const parentUser = clients?.find(c => c.id === requestUser.client_id);
+             if (parentUser?.society_name) {
+               societyName = `${parentUser.society_name} (via ${requestUser.name})`;
+             }
+           }
+        }
+
         return {
           id: order.id,
-          clientId: order.client_id,
-          client: client?.society_name || 'Unknown Society',
-          adminName: client?.name || 'Unknown User',
-          adminEmail: client?.email || 'N/A',
+          clientId: order.client_id, // Who made the payment
+          client: societyName,
+          adminName: requestUser?.name || 'Unknown User',
+          adminEmail: requestUser?.email || 'N/A',
           plan: order.plan_name,
           amount: order.amount,
-          status: order.status === 'success' ? 'PAID' : (order.status === 'pending' ? 'PENDING' : order.status.toUpperCase()),
+          // Normalize status to lowercase for filtering
+          status: (order.status || 'pending').toLowerCase(),
           date: order.created_at,
           transactionId: order.transaction_id,
-          durationDays: order.duration_days || 30 // Default 30 if null
+          durationDays: order.duration_days || 30
         };
       }) || [];
 
@@ -73,7 +85,7 @@ export default function SubscriptionPage() {
 
     } catch (err: any) {
       console.error("Error fetching subs:", err);
-      toast.error("Failed to load subscription data");
+      toast.error("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -83,40 +95,51 @@ export default function SubscriptionPage() {
     fetchData();
   }, []);
 
-  // --- 2. VERIFY PAYMENT (APPROVE/REJECT LOGIC - FIXED) ---
+  // --- 2. VERIFY PAYMENT (UPDATES OWNER, NOT SUB-USER) ---
   const verifyPayment = async (invoiceId: string, action: 'APPROVE' | 'REJECT') => {
     try {
-      // Step 1: Fetch FRESH data directly from DB to avoid state mismatches
+      // 1. Get Order
       const { data: orderData, error: fetchError } = await supabase
         .from('subscription_orders')
         .select('*')
         .eq('id', invoiceId)
         .single();
 
-      if (fetchError || !orderData) throw new Error("Order not found in database");
+      if (fetchError) throw new Error("Order not found");
 
       if (action === 'APPROVE') {
-        // Step 2: Calculate Expiry
+        // 2. Find who is the ACTUAL OWNER (Target ID)
+        // Check if the person who ordered is a sub-user
+        const { data: userProfile } = await supabase
+          .from('clients')
+          .select('id, client_id')
+          .eq('id', orderData.client_id)
+          .single();
+
+        // Determine who gets the plan update
+        // If user has a client_id (Parent), update Parent. Otherwise update User.
+        const targetClientId = userProfile?.client_id ? userProfile.client_id : orderData.client_id;
+
+        // 3. Update Client Table (The Main Owner)
         const startDate = new Date();
-        const duration = orderData.duration_days || 30; // Use duration from order or default
+        const duration = orderData.duration_days || 30;
         const endDate = new Date();
         endDate.setDate(startDate.getDate() + duration);
 
-        // Step 3: Update Client Table (CRITICAL FIX: Updating Correct Columns)
         const { error: clientError } = await supabase
           .from('clients')
           .update({
-            plan_name: orderData.plan_name,      // Set Correct Plan Name
-            plan: orderData.plan_name.toUpperCase(), // Sync Plan ID (e.g. BASIC)
+            plan_name: orderData.plan_name,
+            plan: orderData.plan_name === 'Professional' ? 'PRO' : (orderData.plan_name === 'Basic' ? 'BASIC' : 'ENTERPRISE'),
             plan_start_date: startDate.toISOString(),
             plan_end_date: endDate.toISOString(),
             subscription_status: 'active'
           })
-          .eq('id', orderData.client_id); // Ensure we target correct client
+          .eq('id', targetClientId); // <--- CRITICAL FIX: Updates Parent ID
 
-        if (clientError) throw new Error("Failed to update Client Plan: " + clientError.message);
+        if (clientError) throw new Error("Failed to update Plan: " + clientError.message);
 
-        // Step 4: Update Order Status to 'approved'
+        // 4. Update Order Status
         const { error: orderError } = await supabase
           .from('subscription_orders')
           .update({ status: 'approved' }) 
@@ -124,7 +147,7 @@ export default function SubscriptionPage() {
         
         if (orderError) throw orderError;
         
-        toast.success(`Plan upgraded to ${orderData.plan_name} successfully`);
+        toast.success(`Plan Approved & Updated for Owner ID: ${targetClientId}`);
 
       } else {
         // Reject Logic
@@ -137,7 +160,7 @@ export default function SubscriptionPage() {
         toast.info("Request Rejected");
       }
 
-      // Step 5: Force Refresh Data
+      // 5. Refresh Data
       await fetchData();
       setViewProof(null);
 
@@ -154,13 +177,12 @@ export default function SubscriptionPage() {
     else { toast.success("Deleted"); fetchData(); }
   };
 
-  // SEPARATE LISTS
-  const pendingInvoices = invoices.filter(inv => inv.status === 'PENDING');
-  const historyInvoices = invoices.filter(inv => inv.status !== 'PENDING');
+  // --- FILTERS (CASE INSENSITIVE) ---
+  const pendingInvoices = invoices.filter(inv => inv.status === 'pending');
+  const historyInvoices = invoices.filter(inv => inv.status !== 'pending');
 
-  // MOCK DATA FOR CHARTS (Can be connected to DB later)
   const revenueData = [{name:'Aug', total:15000}, {name:'Sep', total:22000}, {name:'Oct', total:18000}, {name:'Nov', total:35000}, {name:'Dec', total:45000}];
-  const pieData = [{name:'Paid', value: historyInvoices.filter(i => i.status === 'PAID' || i.status === 'APPROVED').length, color:'#10B981'}, {name:'Pending', value: pendingInvoices.length, color:'#F59E0B'}, {name:'Failed', value: historyInvoices.filter(i => i.status === 'REJECTED').length, color:'#EF4444'}];
+  const pieData = [{name:'Paid', value: historyInvoices.filter(i => i.status === 'approved' || i.status === 'paid').length, color:'#10B981'}, {name:'Pending', value: pendingInvoices.length, color:'#F59E0B'}, {name:'Failed', value: historyInvoices.filter(i => i.status === 'rejected').length, color:'#EF4444'}];
 
   if (loading) return <div className="p-20 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600"/></div>;
 
@@ -174,14 +196,13 @@ export default function SubscriptionPage() {
         <Button onClick={fetchData} variant="outline"><RefreshCw className="h-4 w-4 mr-2"/> Refresh Data</Button>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue="billing" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="billing">Billing & Verification</TabsTrigger>
           <TabsTrigger value="plans">Plan Config</TabsTrigger>
         </TabsList>
 
-        {/* TAB 1: OVERVIEW */}
         <TabsContent value="overview" className="space-y-6">
            <div className="grid gap-6 md:grid-cols-2">
               <Card>
@@ -199,10 +220,8 @@ export default function SubscriptionPage() {
            </div>
         </TabsContent>
 
-        {/* TAB 2: BILLING & VERIFICATION */}
         <TabsContent value="billing" className="space-y-8">
-           
-           {/* A. PENDING REQUESTS */}
+           {/* PENDING REQUESTS */}
            <Card className="border-orange-200 bg-orange-50/30">
              <CardHeader><CardTitle className="text-orange-800 flex items-center gap-2"><AlertCircle className="h-5 w-5"/> Pending Manual Payments</CardTitle></CardHeader>
              <CardContent>
@@ -236,9 +255,9 @@ export default function SubscriptionPage() {
              </CardContent>
            </Card>
 
-           {/* B. DETAILED HISTORY LOG */}
+           {/* HISTORY LOG */}
            <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-slate-500"/> Verification History (Audit Log)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-slate-500"/> Verification History</CardTitle></CardHeader>
               <CardContent>
                  <Table>
                    <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Society / Admin</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Proof</TableHead><TableHead className="text-right">Manage</TableHead></TableRow></TableHeader>
@@ -253,8 +272,8 @@ export default function SubscriptionPage() {
                           <TableCell><Badge variant="secondary" className="text-[10px]">{inv.plan}</Badge></TableCell>
                           <TableCell className="font-mono text-sm">₹{inv.amount}</TableCell>
                           <TableCell>
-                             <Badge className={inv.status === 'PAID' || inv.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-                                {inv.status}
+                             <Badge className={inv.status === 'approved' || inv.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                                {inv.status.toUpperCase()}
                              </Badge>
                           </TableCell>
                           <TableCell>
@@ -282,13 +301,12 @@ export default function SubscriptionPage() {
            </Card>
         </TabsContent>
 
-        {/* TAB 3: PLAN CONFIG */}
         <TabsContent value="plans">
-            <div className="p-4 text-center text-gray-500">Plan Configuration (Static or DB Connected)</div>
+            <div className="p-4 text-center text-gray-500">Plan Configuration</div>
         </TabsContent>
       </Tabs>
 
-      {/* --- PROOF MODAL --- */}
+      {/* PROOF MODAL */}
       <Dialog open={!!viewProof} onOpenChange={() => setViewProof(null)}>
          <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Payment Details</DialogTitle></DialogHeader>
@@ -297,14 +315,15 @@ export default function SubscriptionPage() {
                <p className="text-slate-500 font-medium">Transaction ID: {viewProof?.transactionId || 'N/A'}</p>
                <div className="bg-white p-4 rounded-md shadow-sm mt-4 text-xs text-left w-64 space-y-2">
                   <p><strong>Society:</strong> {viewProof?.client}</p>
+                  <p><strong>Payer:</strong> {viewProof?.adminName} ({viewProof?.adminEmail})</p>
                   <p><strong>Amount:</strong> ₹{viewProof?.amount}</p>
                   <p><strong>Date:</strong> {viewProof ? new Date(viewProof.date).toLocaleDateString() : '-'}</p>
                </div>
             </div>
             <DialogFooter className="gap-2 sm:justify-center">
                <Button variant="outline" onClick={() => setViewProof(null)}>Close</Button>
-               {viewProof?.status === 'PENDING' && (
-                 <Button className="bg-green-600" onClick={() => { verifyPayment(viewProof.id, 'APPROVE'); }}>Approve Now</Button>
+               {viewProof?.status === 'pending' && (
+                 <Button className="bg-green-600" onClick={() => { verifyPayment(viewProof.id, 'APPROVE'); }}>Approve & Activate</Button>
                )}
             </DialogFooter>
          </DialogContent>
