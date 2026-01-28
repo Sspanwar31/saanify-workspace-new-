@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase-simple' // Added Supabase Import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -39,8 +40,10 @@ interface PaymentProof {
   adminNotes?: string
   rejectionReason?: string
   approvedDate?: string
+  durationDays?: number // Added for calculation
 }
 
+// Mock data kept for reference but not used in logic
 const mockPaymentProofs: PaymentProof[] = [
   {
     id: '1',
@@ -55,22 +58,6 @@ const mockPaymentProofs: PaymentProof[] = [
     proofFile: '/uploads/payment-proofs/proof1.jpg',
     status: 'pending',
     submittedAt: '2025-11-29T10:30:00Z'
-  },
-  {
-    id: '2',
-    userId: 'user2',
-    userName: 'Jane Smith',
-    userEmail: 'jane@example.com',
-    societyName: 'Sunshine Apartments',
-    planName: 'Basic',
-    amount: 4000,
-    transactionId: 'TXN987654321',
-    paymentDate: '2025-11-27',
-    proofFile: '/uploads/payment-proofs/proof2.jpg',
-    status: 'approved',
-    submittedAt: '2025-11-28T15:45:00Z',
-    approvedDate: '2025-11-29T09:15:00Z',
-    adminNotes: 'Payment verified successfully. Bank transfer confirmed.'
   }
 ]
 
@@ -102,21 +89,56 @@ export default function AdminSubscriptionVerification() {
         proof.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
         proof.planName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         proof.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        proof.societyName?.toLowerCase().includes(searchTerm.toLowerCase())
+        (proof.societyName && proof.societyName.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
 
     setFilteredProofs(filtered)
   }, [paymentProofs, searchTerm, statusFilter])
 
+  // --- 1. FETCH REAL DATA FROM SUPABASE ---
   const fetchPaymentProofs = async () => {
+    setLoading(true)
     try {
-      // In a real implementation, fetch from API
-      // const response = await fetch('/api/admin/subscriptions/payment-proofs')
-      // const data = await response.json()
+      // Fetch Orders
+      const { data: orders, error } = await supabase
+        .from('subscription_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch Clients for Names
+      const { data: clients } = await supabase
+        .from('clients')
+        .select('id, name, email, society_name');
+
+      if (!orders) {
+         setPaymentProofs([]);
+         return;
+      }
+
+      // Map Data
+      const formattedData: PaymentProof[] = orders.map(order => {
+        const client = clients?.find(c => c.id === order.client_id);
+        return {
+          id: order.id,
+          userId: order.client_id,
+          userName: client?.name || 'Unknown User',
+          userEmail: client?.email || 'N/A',
+          societyName: client?.society_name || 'N/A',
+          planName: order.plan_name,
+          amount: order.amount,
+          transactionId: order.transaction_id || 'N/A',
+          paymentDate: new Date(order.created_at).toLocaleDateString(),
+          proofFile: order.screenshot_url || '', // Assuming this column exists
+          status: order.status === 'success' ? 'approved' : order.status, 
+          submittedAt: order.created_at,
+          durationDays: order.duration_days || 30 // Default 30 days
+        };
+      });
       
-      // For now, use mock data
-      setPaymentProofs(mockPaymentProofs)
+      setPaymentProofs(formattedData)
     } catch (error) {
       console.error('Failed to fetch payment proofs:', error)
     } finally {
@@ -124,50 +146,67 @@ export default function AdminSubscriptionVerification() {
     }
   }
 
+  // --- 2. APPROVE LOGIC (REAL DATABASE UPDATE) ---
   const handleApprove = async () => {
-    if (!selectedProof || !adminNotes.trim()) {
+    if (!selectedProof) {
       return
     }
 
     setIsProcessing(true)
     
     try {
-      const response = await fetch('/api/admin/subscriptions/approve-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          proofId: selectedProof.id,
-          userId: selectedProof.userId,
-          planName: selectedProof.planName,
-          adminNotes: adminNotes.trim()
+      // Step A: Update Subscription Order Status
+      const { error: orderError } = await supabase
+        .from('subscription_orders')
+        .update({ status: 'approved' }) // or 'success'
+        .eq('id', selectedProof.id);
+
+      if (orderError) throw orderError;
+
+      // Step B: Update Client Plan (Activation)
+      const startDate = new Date();
+      const endDate = new Date();
+      const duration = selectedProof.durationDays || 30;
+      endDate.setDate(startDate.getDate() + duration);
+
+      const { error: clientError } = await supabase
+        .from('clients')
+        .update({
+          plan_name: selectedProof.planName,
+          plan_start_date: startDate.toISOString(),
+          plan_end_date: endDate.toISOString(),
+          subscription_status: 'active'
         })
-      })
+        .eq('id', selectedProof.userId);
 
-      if (response.ok) {
-        // Update local state
-        setPaymentProofs(prev => 
-          prev.map(p => 
-            p.id === selectedProof.id 
-              ? { 
-                  ...p, 
-                  status: 'approved', 
-                  adminNotes: adminNotes.trim(),
-                  approvedDate: new Date().toISOString()
-                }
-              : p
-          )
+      if (clientError) throw clientError;
+
+      // Update Local State UI
+      setPaymentProofs(prev => 
+        prev.map(p => 
+          p.id === selectedProof.id 
+            ? { 
+                ...p, 
+                status: 'approved', 
+                adminNotes: adminNotes.trim(),
+                approvedDate: new Date().toISOString()
+              }
+            : p
         )
+      )
 
-        setSelectedProof(null)
-        setAdminNotes('')
-      }
+      setSelectedProof(null)
+      setAdminNotes('')
+      
     } catch (error) {
       console.error('Failed to approve payment:', error)
+      alert("Failed to approve. Check console for details.");
     } finally {
       setIsProcessing(false)
     }
   }
 
+  // --- 3. REJECT LOGIC (REAL DATABASE UPDATE) ---
   const handleReject = async () => {
     if (!selectedProof || !rejectionReason.trim()) {
       return
@@ -176,38 +215,35 @@ export default function AdminSubscriptionVerification() {
     setIsProcessing(true)
     
     try {
-      const response = await fetch('/api/admin/subscriptions/reject-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          proofId: selectedProof.id,
-          userId: selectedProof.userId,
-          reason: rejectionReason.trim(),
-          adminNotes: adminNotes.trim()
-        })
-      })
+      // Only Update Subscription Order Status
+      const { error } = await supabase
+        .from('subscription_orders')
+        .update({ status: 'rejected' })
+        .eq('id', selectedProof.id);
 
-      if (response.ok) {
-        // Update local state
-        setPaymentProofs(prev => 
-          prev.map(p => 
-            p.id === selectedProof.id 
-              ? { 
-                  ...p, 
-                  status: 'rejected', 
-                  rejectionReason: rejectionReason.trim(),
-                  adminNotes: adminNotes.trim()
-                }
-              : p
-          )
+      if (error) throw error;
+
+      // Update Local State UI
+      setPaymentProofs(prev => 
+        prev.map(p => 
+          p.id === selectedProof.id 
+            ? { 
+                ...p, 
+                status: 'rejected', 
+                rejectionReason: rejectionReason.trim(),
+                adminNotes: adminNotes.trim()
+              }
+            : p
         )
+      )
 
-        setSelectedProof(null)
-        setAdminNotes('')
-        setRejectionReason('')
-      }
+      setSelectedProof(null)
+      setAdminNotes('')
+      setRejectionReason('')
+      
     } catch (error) {
       console.error('Failed to reject payment:', error)
+      alert("Failed to reject. Check console.");
     } finally {
       setIsProcessing(false)
     }
@@ -250,7 +286,11 @@ export default function AdminSubscriptionVerification() {
   }
 
   const viewProof = (proofFile: string) => {
-    window.open(proofFile, '_blank')
+    if (proofFile) {
+        window.open(proofFile, '_blank')
+    } else {
+        alert("No proof file attached");
+    }
   }
 
   const stats = {
