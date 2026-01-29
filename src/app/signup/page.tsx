@@ -15,7 +15,7 @@ import Link from 'next/link';
 // IMPORT CONFIG & STORE
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
 import { useAdminStore } from '@/lib/admin/store';
-import { supabase } from '@/lib/supabase'; 
+import { supabase } from '@/lib/supabase-simple'; // Ensure this matches your lib file name
 
 function SignupForm() {
   const router = useRouter();
@@ -30,7 +30,7 @@ function SignupForm() {
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
 
-  // Check if trial was already used
+  // Check if trial was already used (Local Check)
   useEffect(() => {
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
     if (hasUsedTrial && initialPlanId === 'TRIAL') {
@@ -58,23 +58,23 @@ function SignupForm() {
     e.preventDefault();
     setLoading(true);
 
-    // 1. DUPLICATE CHECK (The Security Gate)
+    // 1. SUPABASE CONFIG CHECK
     if (!supabase) {
-      toast.error("Supabase is not configured. Please check environment variables.");
+      toast.error("Supabase is not configured. Connection failed.");
       setLoading(false);
       return;
     }
 
     try {
       // 0. FETCH SYSTEM SETTINGS FOR TRIAL DAYS
-      const { data: settings, error: settingsError } = await supabase
+      const { data: settings } = await supabase
         .from('system_settings')
         .select('trial_days')
-        .eq('id', 1)
         .single();
 
-      const trialDays = settings?.trial_days || 15; // Default to 15 days if not set
+      const trialDays = settings?.trial_days || 15; // Default 15 days
 
+      // --- DUPLICATE CHECK (Database Level) ---
       const { data: existingClients, error: fetchError } = await supabase
         .from('clients')
         .select('email, phone')
@@ -82,74 +82,106 @@ function SignupForm() {
 
       if (fetchError) {
         console.error('Error checking duplicates:', fetchError);
-        toast.error("Database error. Please try again.");
-        setLoading(false);
-        return;
       }
 
-      // Check if Email or Phone already exists in the system
       const isDuplicate = existingClients && existingClients.length > 0;
 
       if (isDuplicate) {
-        // If user exists AND tries to take TRIAL again -> BLOCK
         if (selectedPlanId === 'TRIAL') {
           toast.error("This email/phone has already used the Free Trial. Please choose a paid plan.");
-          // Redirect to pricing to force upgrade
-          setTimeout(() => router.push('/pricing'), 2000);
+          setTimeout(() => router.push('/dashboard/subscription'), 2000); // Redirect to pricing
           setLoading(false);
           return;
         }
-        // If existing user buys PAID plan -> Allow (This would be a "Renewal" in real logic, but for signup flow we block to prevent duplicate accounts)
-        toast.error("Account already exists. Please Login to renew/upgrade.");
-        setLoading(false);
-        return;
+        // NOTE: For paid plans, we allow duplicates but warn (or you can block if strict)
+        // toast.warning("Email exists. Ensure you want to create a NEW separate society.");
       }
 
-      // 2. CALCULATE SUBSCRIPTION EXPIRY FOR TRIAL
+      // --- STEP A: CREATE AUTH USER (Login Credentials) ---
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+            phone: formData.phone,
+            society_name: formData.societyName
+          }
+        }
+      });
+
+      if (authError) {
+        throw new Error("User Signup Failed: " + authError.message);
+      }
+
+      if (!authData.user) {
+        throw new Error("Signup successful but no user ID returned.");
+      }
+
+      // --- STEP B: PREPARE CLIENT DATA ---
       let subscriptionExpiry = null;
+      let subStatus = 'inactive';
+
+      // Trial Logic
       if (selectedPlanId === 'TRIAL') {
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + trialDays);
         subscriptionExpiry = expiryDate.toISOString();
+        subStatus = 'active'; // Trial is immediately active
+      } 
+      // Paid Logic (If coming from approved payment or direct)
+      else {
+        // If payment verified by admin or online, activate immediately
+        if (paymentStatus === 'APPROVED' || paymentStatus === 'ACTIVE') {
+           const expiryDate = new Date();
+           expiryDate.setDate(expiryDate.getDate() + 30); // Default 30 days or based on plan
+           subscriptionExpiry = expiryDate.toISOString();
+           subStatus = 'active';
+        } else {
+           subStatus = 'pending'; // Waiting for payment
+        }
       }
 
-      // 3. IF SAFE -> PROCEED WITH SUPABASE INSERT
-      const { data, error } = await supabase
+      // --- STEP C: CREATE NEW CLIENT ROW (Linked to Auth User) ---
+      const { error: clientError } = await supabase
         .from('clients')
         .insert({
+          owner_id: authData.user.id, // <--- CRITICAL LINKING
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
-          password: formData.password, // Store as plain text for now
-          plan: selectedPlanId === 'TRIAL' ? 'TRIAL' : selectedPlanId,
-          status: paymentStatus === 'PENDING_APPROVAL' ? 'LOCKED' : 'ACTIVE',
-          subscription_expiry: subscriptionExpiry,
+          plan_name: selectedPlanId === 'TRIAL' ? 'Trial' : currentPlan.name,
+          status: 'active', // Account status
+          subscription_status: subStatus, // Plan status
+          plan_end_date: subscriptionExpiry,
+          plan_start_date: new Date().toISOString(),
+          has_used_trial: selectedPlanId === 'TRIAL', // Mark trial used
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+        });
 
-      if (error) {
-        console.error('Supabase insert error:', error);
-        toast.error(`Signup failed: ${error.message}`);
-        setLoading(false);
-        return;
+      if (clientError) {
+        // Fallback: If client creation fails, we might want to cleanup auth user (optional)
+        throw new Error("Client Profile Creation Failed: " + clientError.message);
       }
 
-      // 4. SET LOCAL FLAG (To block future button clicks)
+      // 4. SET LOCAL FLAG
       if (selectedPlanId === 'TRIAL') {
         localStorage.setItem('saanify_trial_used', 'true');
       }
 
-      // 5. SUCCESS
-      toast.success(paymentStatus === 'PENDING_APPROVAL' ? "Request Submitted!" : "Account Created Successfully!");
-      router.push('/login');
+      // 5. SUCCESS & REDIRECT
+      toast.success("Account Created Successfully! Redirecting to Dashboard...");
+      
+      // Force a session refresh or slight delay to ensure RLS kicks in
+      setTimeout(() => {
+         router.push('/dashboard'); // Direct to Client Panel
+      }, 1500);
 
     } catch (err: any) {
       console.error('Signup error:', err);
-      toast.error("Signup failed. Please try again.");
+      toast.error(err.message || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -247,7 +279,7 @@ function SignupForm() {
                <CardDescription>
                   {paymentStatus === 'PENDING_APPROVAL' 
                     ? <span className="text-orange-600 font-medium">Payment Verification Pending (Ref: {refId})</span> 
-                    : "Enter details to setup your admin panel."}
+                    : "Enter details to setup your new admin panel."}
                </CardDescription>
             </CardHeader>
             <CardContent>
@@ -273,7 +305,7 @@ function SignupForm() {
                      <Input type="password" placeholder="••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
                   </div>
                   
-                  {/* FIXED BUTTON SYNTAX */}
+                  {/* BUTTON LOGIC */}
                   <Button 
                     type="submit" 
                     className={`w-full h-11 text-base mt-2 ${
@@ -285,12 +317,12 @@ function SignupForm() {
                   >
                      {loading ? (
                         <div className="flex items-center justify-center">
-                           <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Creating Account...
+                           <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Setting up Dashboard...
                         </div>
                      ) : selectedPlanId === 'TRIAL' && trialUsed ? (
                         'Trial Already Used - Choose Paid Plan'
                      ) : (
-                        'Complete Registration'
+                        'Complete Registration & Access Panel'
                      )}
                   </Button>
                </form>
