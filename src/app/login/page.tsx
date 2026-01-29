@@ -75,7 +75,7 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ UPDATED: Role Redirection with CASE INSENSITIVE CHECK
+  // ✅ UPDATED: Role Redirection with DUAL CHECK (ID or OWNER_ID)
   const checkRoleAndRedirect = async (userId: string) => {
     try {
       // 1. Check Admin
@@ -87,7 +87,12 @@ export default function LoginPage() {
       }
 
       // 2. Check Client (Owner or Treasurer)
-      const { data: client } = await supabase.from('clients').select('*').eq('id', userId).maybeSingle();
+      // 🔥 CRITICAL FIX: Check BOTH 'id' (Old Clients) AND 'owner_id' (New Clients)
+      const { data: client } = await supabase
+        .from('clients')
+        .select('*')
+        .or(`id.eq.${userId},owner_id.eq.${userId}`) // This handles both cases perfectly
+        .maybeSingle();
       
       if (client) {
         // 🔥 FIX 1: Convert status to Uppercase before checking
@@ -174,9 +179,8 @@ export default function LoginPage() {
 
       throw new Error("No profile found");
     } catch (e) {
-      toast.error('Login Failed', {
-        description: 'Profile not linked or missing.',
-      });
+      // toast.error('Login Failed', { description: 'Profile not linked or missing.' }); // Optional Log
+      console.error("Redirect Error:", e);
       setLoading(false);
     }
   };
