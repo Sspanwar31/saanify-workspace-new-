@@ -2,6 +2,7 @@
 
 import { useState, Suspense, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase-simple'; // Ensure this import exists
 import { 
   Zap, Landmark, CheckCircle, UploadCloud, Copy, ShieldCheck, 
   Loader2, AlertCircle, CreditCard, Smartphone, FileCheck, Clock, RefreshCw, XCircle 
@@ -13,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { useAdminStore } from '@/lib/admin/store'; 
+// import { useAdminStore } from '@/lib/admin/store'; // Removed local store
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -30,6 +31,13 @@ function PaymentContent() {
   const searchParams = useSearchParams();
   const planId = searchParams.get('plan') || 'PRO';
   
+  // Try to get user details from URL or LocalStorage if available (For creating client)
+  // Assuming these are passed via URL from previous signup step
+  const userName = searchParams.get('name') || '';
+  const userEmail = searchParams.get('email') || '';
+  const userPhone = searchParams.get('phone') || '';
+  const societyName = searchParams.get('society') || '';
+
   const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.PRO;
   
   const [method, setMethod] = useState<'ONLINE' | 'MANUAL'>('ONLINE');
@@ -40,7 +48,7 @@ function PaymentContent() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- NEW: PERSISTENCE STATE ---
+  // --- PERSISTENCE STATE ---
   const [pendingPayment, setPendingPayment] = useState<PendingPaymentState | null>(null);
 
   // 1. ON LOAD: Check if user has a pending payment in LocalStorage
@@ -58,11 +66,10 @@ function PaymentContent() {
     toast.success(`${label} Copied to clipboard`);
   };
 
-  // --- NEW: FILE SELECTION HANDLER ---
+  // --- FILE SELECTION HANDLER ---
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Optional: Check file size (e.g., max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error("File size should be less than 5MB");
         return;
@@ -72,9 +79,9 @@ function PaymentContent() {
     }
   };
 
-  // --- NEW: TRIGGER FILE INPUT ---
+  // --- TRIGGER FILE INPUT ---
   const triggerFileUpload = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent accordion from closing/toggling
+    e.stopPropagation();
     fileInputRef.current?.click();
   };
 
@@ -87,91 +94,151 @@ function PaymentContent() {
     }, 2500);
   };
 
-  const handleManualSubmit = () => {
+  // --- REAL BACKEND SUBMISSION LOGIC ---
+  const handleManualSubmit = async () => {
     if (!txnId) return toast.error("Please enter Transaction ID");
     if (!proofFile) return toast.error("Please upload payment screenshot");
+    
+    // Check if we have minimal user details (Need email at least)
+    // If user came directly here without previous step, we might need to ask inputs
+    // But assuming flow is Signup -> Payment, details should be in URL or Context
+    if(!userEmail && !pendingPayment) {
+       // Fallback: Prompt user if email missing (Logic dependent on your flow)
+       // For now, proceeding assuming email is present or we use a placeholder to debug
+       console.warn("User email missing from params");
+    }
 
     setLoading(true);
 
-    const newInvoiceId = `INV-${Date.now()}`;
-    
-    // 1. Create Invoice in Admin Store (Global State)
-    const newInvoice = {
-      id: newInvoiceId,
-      client: "New Society (Signup Pending)", 
-      adminName: "Pending...", 
-      adminEmail: "pending@verify.com",
-      plan: planId,
-      amount: plan.price,
-      date: new Date().toISOString().split('T')[0],
-      status: 'PENDING',
-      method: 'MANUAL_UPI',
-      transactionId: txnId,
-      proofUrl: URL.createObjectURL(proofFile) 
-    };
-    
-    // Push to Admin Store
-    useAdminStore.setState((state) => ({
-      invoices: [newInvoice, ...state.invoices]
-    }));
+    try {
+        let clientId = null;
 
-    // 2. SAVE TO LOCAL STORAGE (Persistence Logic)
-    const paymentState = {
-      invoiceId: newInvoiceId,
-      planId: planId,
-      txnId: txnId,
-      timestamp: Date.now()
-    };
-    localStorage.setItem('user_pending_payment', JSON.stringify(paymentState));
-    setPendingPayment(paymentState);
+        // A. CREATE OR FIND CLIENT (Crucial Step)
+        // If we have an email, check if client exists
+        if (userEmail) {
+            const { data: existing } = await supabase.from('clients').select('id').eq('email', userEmail).single();
+            if (existing) clientId = existing.id;
+        }
 
-    setLoading(false);
-    toast.success("Request Submitted! Waiting for approval.");
-    
-    // NOTE: We do NOT redirect here anymore. We stay on the page.
+        // If no client found, Create New Client
+        if (!clientId) {
+            const { data: newClient, error: createError } = await supabase
+                .from('clients')
+                .insert([{
+                    name: userName || 'New User',
+                    email: userEmail || `user-${Date.now()}@temp.com`, // Fallback
+                    phone: userPhone,
+                    society_name: societyName || 'New Society',
+                    plan_name: plan.name,
+                    status: 'pending',
+                    has_used_trial: planId === 'TRIAL' // Logic for one-time trial
+                }])
+                .select()
+                .single();
+            
+            if (createError) throw new Error("Client Creation Failed: " + createError.message);
+            clientId = newClient.id;
+        }
+
+        // B. UPLOAD PROOF
+        const fileExt = proofFile.name.split('.').pop();
+        const fileName = `${clientId}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('payment_proofs')
+            .upload(fileName, proofFile);
+
+        if (uploadError) throw new Error("Upload Failed: " + uploadError.message);
+
+        const { data: { publicUrl } } = supabase.storage.from('payment_proofs').getPublicUrl(fileName);
+
+        // C. INSERT ORDER
+        const { data: orderData, error: orderError } = await supabase
+            .from('subscription_orders')
+            .insert([{
+                client_id: clientId,
+                plan_name: plan.name,
+                amount: plan.price,
+                status: 'pending',
+                payment_method: 'manual',
+                transaction_id: txnId,
+                screenshot_url: publicUrl,
+                duration_days: plan.duration || 30
+            }])
+            .select()
+            .single();
+
+        if (orderError) throw new Error("Order Failed: " + orderError.message);
+
+        // D. SAVE STATE (Success)
+        const paymentState = {
+            invoiceId: orderData.id,
+            planId: planId,
+            txnId: txnId,
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem('user_pending_payment', JSON.stringify(paymentState));
+        setPendingPayment(paymentState);
+        toast.success("Request Sent to Admin Successfully!");
+
+    } catch (err: any) {
+        console.error("Payment Error:", err);
+        toast.error(err.message || "Something went wrong");
+    } finally {
+        setLoading(false);
+    }
   };
 
-  // --- CHECK STATUS FUNCTION ---
-  const checkStatus = () => {
+  // --- CHECK STATUS FUNCTION (UPDATED TO CHECK DB) ---
+  const checkStatus = async () => {
     if (!pendingPayment) return;
     setLoading(true);
 
-    // Simulate checking Admin Store
-    const invoices = useAdminStore.getState().invoices;
-    const myInvoice = invoices.find(inv => inv.id === pendingPayment.invoiceId);
+    try {
+        const { data: order, error } = await supabase
+            .from('subscription_orders')
+            .select('status')
+            .eq('id', pendingPayment.invoiceId)
+            .single();
 
-    setTimeout(() => {
-      setLoading(false);
-      
-      if (!myInvoice) {
-        // Invoice not found (maybe admin deleted it)
-        toast.error("Invoice not found. Please contact support.");
-        return;
-      }
+        if (error || !order) {
+            toast.error("Order not found in system.");
+            return;
+        }
 
-      if (myInvoice.status === 'APPROVED') {
-        // SUCCESS: Clear local storage and Redirect
-        localStorage.removeItem('user_pending_payment');
-        toast.success("Payment Approved! Redirecting...");
-        router.push(`/signup?plan=${pendingPayment.planId}&status=APPROVED&ref=${pendingPayment.invoiceId}`);
-      } else if (myInvoice.status === 'REJECTED') {
-        // REJECTED: User needs to try again
-        localStorage.removeItem('user_pending_payment');
-        setPendingPayment(null);
-        toast.error("Payment Rejected by Admin. Please try again.");
-      } else {
-        // STILL PENDING
-        toast.info("Still Verification Pending. Please wait.");
-      }
-    }, 1000);
+        if (order.status === 'approved') {
+            localStorage.removeItem('user_pending_payment');
+            toast.success("Payment Approved! Redirecting...");
+            // Redirect to Dashboard or Success page
+            router.push(`/dashboard?status=approved`); 
+        } else if (order.status === 'rejected') {
+            localStorage.removeItem('user_pending_payment');
+            setPendingPayment(null);
+            toast.error("Payment Rejected by Admin. Please try again.");
+        } else {
+            toast.info("Still Verification Pending. Please wait.");
+        }
+
+    } catch (err) {
+        console.error(err);
+    } finally {
+        setLoading(false);
+    }
   };
 
-  const handleCancelRequest = () => {
-     if(confirm("Are you sure you want to cancel this request?")) {
-        localStorage.removeItem('user_pending_payment');
-        setPendingPayment(null);
-        toast.info("Request Cancelled");
+  const handleCancelRequest = async () => {
+     if(!confirm("Are you sure you want to cancel this request?")) return;
+     
+     if (pendingPayment?.invoiceId) {
+         setLoading(true);
+         await supabase.from('subscription_orders').delete().eq('id', pendingPayment.invoiceId);
+         setLoading(false);
      }
+     
+     localStorage.removeItem('user_pending_payment');
+     setPendingPayment(null);
+     toast.info("Request Cancelled");
   };
 
   // --- RENDER 1: PENDING STATE VIEW (If user has submitted) ---
@@ -194,8 +261,8 @@ function PaymentContent() {
 
             <div className="bg-slate-100 rounded-lg p-4 text-left space-y-2 text-sm">
                <div className="flex justify-between">
-                  <span className="text-slate-500">Ref ID:</span>
-                  <span className="font-mono font-bold text-slate-700">{pendingPayment.invoiceId}</span>
+                  <span className="text-slate-500">Order ID:</span>
+                  <span className="font-mono font-bold text-slate-700 truncate w-32">{pendingPayment.invoiceId.substring(0, 8)}...</span>
                </div>
                <div className="flex justify-between">
                   <span className="text-slate-500">Transaction ID:</span>
