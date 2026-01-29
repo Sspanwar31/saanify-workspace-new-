@@ -75,7 +75,7 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ UPDATED: Role Redirection with DUAL CHECK (ID or OWNER_ID)
+  // ✅ UPDATED: Safer Role Check (No 500 Errors)
   const checkRoleAndRedirect = async (userId: string) => {
     try {
       // 1. Check Admin
@@ -86,13 +86,24 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. Check Client (Owner or Treasurer)
-      // 🔥 CRITICAL FIX: Check BOTH 'id' (Old Clients) AND 'owner_id' (New Clients)
-      const { data: client } = await supabase
+      // 2. Check Client (Strategy: Try New System first, then Old)
+      
+      // Attempt A: Check by owner_id (New Clients)
+      let { data: client } = await supabase
         .from('clients')
         .select('*')
-        .or(`id.eq.${userId},owner_id.eq.${userId}`) // This handles both cases perfectly
+        .eq('owner_id', userId)
         .maybeSingle();
+
+      // Attempt B: If not found, check by id (Old Clients)
+      if (!client) {
+         const { data: oldClient } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+         client = oldClient;
+      }
       
       if (client) {
         // 🔥 FIX 1: Convert status to Uppercase before checking
