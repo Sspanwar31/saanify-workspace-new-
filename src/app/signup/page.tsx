@@ -135,6 +135,18 @@ function SignupForm() {
       let subStatus = 'inactive';
       let accountStatus = 'PENDING'; // Default
 
+      // ✅ FIX #1 — AUTO detection ko STRONG banao (Defined here for global scope in function)
+      const isAutoPaid =
+        paymentMode === 'AUTO' ||
+        paymentStatus === 'SUCCESS';
+
+      // 🧪 QUICK DEBUG CHECK
+      console.log({
+        paymentMode,
+        paymentStatus,
+        isAutoPaid
+      });
+
       if (selectedPlanId === 'TRIAL') {
         // TRIAL = ACTIVE IMMEDIATELY
         const expiryDate = new Date();
@@ -144,13 +156,11 @@ function SignupForm() {
         accountStatus = 'ACTIVE'; // Unlock Account
       } 
       else {
-        // ✅ STEP 2 — 🔥 CRITICAL LOGIC FIX (FINAL, CORRECT)
-        if (paymentMode === 'AUTO') {
-          // ✅ AUTO PAYMENT → DIRECT ACCESS
+        // ✅ NEW (FINAL) Logic using isAutoPaid
+        if (isAutoPaid) {
           subStatus = 'active';
           accountStatus = 'ACTIVE';
         } else {
-          // ❌ MANUAL PAYMENT → ADMIN APPROVAL
           subStatus = 'pending';
           accountStatus = 'PENDING';
         }
@@ -179,7 +189,6 @@ function SignupForm() {
       if (clientError) throw new Error("Client Profile Creation Failed: " + clientError.message);
 
       // --- STEP D: INSERT SUBSCRIPTION ORDER (ONLY IF PAID) ---
-      // ✅ FIX 3 — STEP-D ko BULLETPROOF banao
       if (selectedPlanId !== 'TRIAL' && currentPlan.price > 0) {
           const { error: payError } = await supabase
             .from('subscription_orders')
@@ -187,9 +196,9 @@ function SignupForm() {
                 client_id: authData.user.id, 
                 plan_name: currentPlan.name, 
                 amount: currentPlan.price,
-                // ✅ STEP 4 — subscription_orders me mode sahi save karo
                 payment_method: paymentMode === 'AUTO' ? 'AUTO' : 'MANUAL', 
-                status: 'pending',        
+                // ✅ FIX #3 — subscription_orders me status bhi AUTO ke liye active
+                status: isAutoPaid ? 'paid' : 'pending', 
                 transaction_id: refId || `SIGNUP-${Date.now()}`,
                 duration_days: 30,        
                 created_at: new Date().toISOString()
@@ -201,8 +210,8 @@ function SignupForm() {
       }
 
       // --- SUCCESS & REDIRECT ---
-      // ✅ STEP 3 — Redirect bhi fix karo
-      if (selectedPlanId === 'TRIAL' || paymentMode === 'AUTO') {
+      // ✅ FIX #2 — Redirect logic bhi same rule use kare
+      if (selectedPlanId === 'TRIAL' || isAutoPaid) {
         toast.success("Account Created! Entering Dashboard...");
         // Delay to allow auth session to set
         setTimeout(() => router.push('/dashboard'), 1500);
