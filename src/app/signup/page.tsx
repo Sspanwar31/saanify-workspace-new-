@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
@@ -13,14 +12,14 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
 import { useAdminStore } from '@/lib/admin/store';
-import { supabase } from '@/lib/supabase-simple';
+import { supabase } from '@/lib/supabase-simple'; 
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPlanId = searchParams.get('plan') || 'TRIAL';
-  const paymentStatus = searchParams.get('status') || 'ACTIVE';
-  const refId = searchParams.get('ref') || '';
+  const paymentStatus = searchParams.get('status') || 'ACTIVE'; // This is misleading for Trial, we fix logic below
+  const refId = searchParams.get('ref') || ''; 
 
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
   const [loading, setLoading] = useState(false);
@@ -39,6 +38,7 @@ function SignupForm() {
   }, [initialPlanId]);
 
   useEffect(() => {
+    // Rely on DB check, reset local state on mount
     setTrialUsed(false);
   }, []);
 
@@ -55,8 +55,6 @@ function SignupForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // --- FIXED: Removed the stray 'code' and 'Code' lines that were causing the error ---
 
     if (!supabase) {
       toast.error("Supabase is not configured. Connection failed.");
@@ -73,7 +71,7 @@ function SignupForm() {
 
       const trialDays = settings?.trial_days || 15; 
 
-      // 2. Check if Trial Already Used (DB Check)
+      // 2. DB Check: Trial Used?
       const { data: existingTrialClient } = await supabase
         .from('clients')
         .select('id')
@@ -123,31 +121,36 @@ function SignupForm() {
       if (!authData.user) throw new Error("Signup successful but no user ID returned.");
 
       // --- STEP B: PREPARE CLIENT DATA ---
+      // 🔥 CRITICAL LOGIC FIX 🔥
       let subscriptionExpiry = null;
       let subStatus = 'inactive';
+      let accountStatus = 'PENDING'; // Default
 
       if (selectedPlanId === 'TRIAL') {
+        // TRIAL = ACTIVE IMMEDIATELY
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + trialDays);
         subscriptionExpiry = expiryDate.toISOString();
         subStatus = 'active'; 
+        accountStatus = 'ACTIVE'; // Unlock Account
       } 
       else {
-        subStatus = 'pending'; // Paid plan requires approval
+        // PAID = PENDING (Wait for Admin)
+        subStatus = 'pending'; 
+        accountStatus = 'PENDING'; // Lock Account
       }
 
       // --- STEP C: CREATE CLIENT ---
-      // FIX: Using 'id' as Primary Key (Removed owner_id)
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
-          id: authData.user.id, // Links Auth User
+          id: authData.user.id, // Primary Key
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
           plan_name: selectedPlanId === 'TRIAL' ? 'Trial' : currentPlan.name,
-          status: subStatus === 'active' ? 'ACTIVE' : 'PENDING',
+          status: accountStatus, // 🔥 Uses correct variable
           subscription_status: subStatus, 
           plan_end_date: subscriptionExpiry,
           plan_start_date: new Date().toISOString(),
@@ -159,8 +162,7 @@ function SignupForm() {
 
       if (clientError) throw new Error("Client Profile Creation Failed: " + clientError.message);
 
-      // --- STEP D: INSERT SUBSCRIPTION ORDER (IF PAID PLAN) ---
-      // FIX: Correctly inserting into 'subscription_orders'
+      // --- STEP D: INSERT SUBSCRIPTION ORDER (ONLY IF PAID) ---
       if (selectedPlanId !== 'TRIAL') {
           const { error: payError } = await supabase
             .from('subscription_orders')
@@ -180,13 +182,14 @@ function SignupForm() {
           }
       }
 
+      // --- SUCCESS & REDIRECT ---
       if (selectedPlanId === 'TRIAL') {
         localStorage.setItem('saanify_trial_used', 'true');
-        toast.success("Account Created Successfully! Redirecting to Dashboard...");
+        toast.success("Account Created! Entering Dashboard...");
+        // Delay to allow auth session to set
         setTimeout(() => router.push('/dashboard'), 1500);
       } else {
-        // Paid Plan Message
-        toast.success("Account Created! Pending Admin Approval for Payment.");
+        toast.success("Account Created! Pending Admin Approval.");
         setTimeout(() => router.push('/login'), 2500); 
       }
 
@@ -203,8 +206,6 @@ function SignupForm() {
       {/* LEFT SIDE */}
       <div className="lg:w-1/3 bg-slate-900 text-white p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
-        
-        {/* --- FIXED: Removed stray 'code' and 'Code' lines here --- */}
         
         <div>
           <Link href="/" className="flex items-center text-slate-300 hover:text-white mb-8">
