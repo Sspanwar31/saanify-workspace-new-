@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
@@ -11,7 +10,6 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, ArrowLeft, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-
 // IMPORT CONFIG & STORE
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
 import { useAdminStore } from '@/lib/admin/store';
@@ -20,17 +18,15 @@ import { supabase } from '@/lib/supabase-simple'; // Ensure this matches your li
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
   const initialPlanId = searchParams.get('plan') || 'TRIAL';
   const paymentStatus = searchParams.get('status') || 'ACTIVE';
   const refId = searchParams.get('ref') || '';
-  
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
   const [loading, setLoading] = useState(false);
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
 
-  // Check if trial was already used (Local Check)
+  // Check if trial was already used (Local Check) - OLD LOGIC (Unchanged but bypassed below)
   useEffect(() => {
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
     if (hasUsedTrial && initialPlanId === 'TRIAL') {
@@ -42,7 +38,13 @@ function SignupForm() {
       setTrialUsed(true);
     }
   }, [initialPlanId]);
-  
+
+  // ✅ CHANGE 1: DISABLE localStorage enforcement (Reset flag)
+  useEffect(() => {
+    // Trial decision will be enforced from DB, not localStorage
+    setTrialUsed(false);
+  }, []);
+
   const [formData, setFormData] = useState({
     name: '',
     societyName: '',
@@ -73,6 +75,21 @@ function SignupForm() {
         .single();
 
       const trialDays = settings?.trial_days || 15; // Default 15 days
+
+      // ✅ CHANGE 2: DB-based trial check (CRITICAL FIX)
+      // ADD: CHECK IF TRIAL ALREADY USED FROM DB
+      const { data: existingTrialClient } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', formData.email)
+        .eq('has_used_trial', true)
+        .maybeSingle();
+
+      if (existingTrialClient && selectedPlanId === 'TRIAL') {
+        toast.error("Free trial already used. Please choose a paid plan.");
+        setLoading(false);
+        return;
+      }
 
       // --- DUPLICATE CHECK (Database Level) ---
       const { data: existingClients, error: fetchError } = await supabase
@@ -122,27 +139,21 @@ function SignupForm() {
       let subscriptionExpiry = null;
       let subStatus = 'inactive';
 
-      // Trial Logic
+      // ✅ CHANGE 4: Paid plan = ALWAYS pending at signup
       if (selectedPlanId === 'TRIAL') {
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + trialDays);
         subscriptionExpiry = expiryDate.toISOString();
         subStatus = 'active'; // Trial is immediately active
       } 
-      // Paid Logic (If coming from approved payment or direct)
+      // Paid Logic
       else {
-        // If payment verified by admin or online, activate immediately
-        if (paymentStatus === 'APPROVED' || paymentStatus === 'ACTIVE') {
-           const expiryDate = new Date();
-           expiryDate.setDate(expiryDate.getDate() + 30); // Default 30 days or based on plan
-           subscriptionExpiry = expiryDate.toISOString();
-           subStatus = 'active';
-        } else {
-           subStatus = 'pending'; // Waiting for payment
-        }
+        // Force pending status for all paid plans until admin approves
+        subStatus = 'pending'; // 🔒 admin approval required
       }
 
       // --- STEP C: CREATE NEW CLIENT ROW (Linked to Auth User) ---
+      // ✅ CHANGE 3 CONFIRMATION: No client_id set here (Correct)
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
@@ -189,7 +200,6 @@ function SignupForm() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
-      
       {/* LEFT SIDE */}
       <div className="lg:w-1/3 bg-slate-900 text-white p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
