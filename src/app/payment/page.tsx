@@ -85,13 +85,45 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  const handleOnlinePay = () => {
+  // ✅ STEP 1: handleOnlinePay() KO FIX KARO
+  const handleOnlinePay = async () => {
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not logged in");
+
+      // 1️⃣ CREATE PENDING ORDER (VERY IMPORTANT)
+      const razorpayOrderId = `order_${Date.now()}`; // abhi dummy, real Razorpay se aayega
+
+      const { error } = await supabase
+        .from('subscription_orders')
+        .insert({
+          client_id: user.id,
+          plan_name: plan.name,
+          amount: plan.price,
+          payment_method: 'AUTO',
+          status: 'pending',
+          transaction_id: razorpayOrderId,
+          duration_days: plan.duration || 30,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      // 2️⃣ RAZORPAY OPEN (abhi simulate)
+      toast.success("Redirecting to payment...");
+
+      // 3️⃣ AFTER SUCCESS (simulation)
+      router.push(
+        `/signup?plan=${planId}&mode=AUTO&orderId=${razorpayOrderId}`
+      );
+
+    } catch (err: any) {
+      toast.error(err.message || "Payment init failed");
+    } finally {
       setLoading(false);
-      toast.success("Payment Successful! Creating Account...", { duration: 3000 });
-      router.push(`/signup?plan=${planId}&status=ACTIVE&method=RAZORPAY`);
-    }, 2500);
+    }
   };
 
   // --- REAL BACKEND SUBMISSION LOGIC ---
