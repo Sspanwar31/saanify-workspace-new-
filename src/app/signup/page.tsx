@@ -130,39 +130,41 @@ function SignupForm() {
       }
 
       // --- STEP C: CREATE CLIENT ---
+      // ✅ FIX: 'owner_id' hataya, 'id' use kiya (Primary Key)
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
-          owner_id: authData.user.id, 
+          id: authData.user.id, // ✅ Correctly linking Auth ID to Client Table
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
           plan_name: selectedPlanId === 'TRIAL' ? 'Trial' : currentPlan.name,
-          status: subStatus === 'active' ? 'active' : 'inactive', // Active only if Trial
+          status: subStatus === 'active' ? 'ACTIVE' : 'PENDING', // Matches schema enum if any
           subscription_status: subStatus, 
           plan_end_date: subscriptionExpiry,
           plan_start_date: new Date().toISOString(),
           has_used_trial: selectedPlanId === 'TRIAL',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          role: 'client' // Explicitly setting role
         });
 
       if (clientError) throw new Error("Client Profile Creation Failed: " + clientError.message);
 
-      // --- STEP D: INSERT PAYMENT REQUEST (IF PAID PLAN) ---
-      // ✅ FIX: Use 'subscription_orders' table instead of 'payment_requests'
+      // --- STEP D: INSERT SUBSCRIPTION ORDER (IF PAID PLAN) ---
+      // ✅ FIX: Use 'subscription_orders' table
       if (selectedPlanId !== 'TRIAL') {
           const { error: payError } = await supabase
             .from('subscription_orders')
             .insert([{
-                client_id: authData.user.id, // Using Auth ID to link (since client_id is same)
+                client_id: authData.user.id, // Linking correctly
                 plan_name: currentPlan.name,
                 amount: currentPlan.price,
-                payment_method: 'MANUAL', // Matches your schema
-                status: 'pending',        // Matches your schema (admin will change to approved)
+                payment_method: 'MANUAL',
+                status: 'pending',
                 transaction_id: refId || `SIGNUP-${Date.now()}`,
-                duration_days: 30,        // Standard monthly duration
+                duration_days: 30,
                 created_at: new Date().toISOString()
             }]);
           
