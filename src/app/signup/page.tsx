@@ -26,6 +26,9 @@ function SignupForm() {
   const paymentStatus = searchParams.get('status') || 'ACTIVE'; // This is misleading for Trial, we fix logic below
   const refId = searchParams.get('ref') || ''; 
 
+  // ✅ STEP 1 — URL se payment_mode nikalo
+  const paymentMode = searchParams.get('mode'); // AUTO | MANUAL | null
+
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
   const [loading, setLoading] = useState(false);
   const [showPlanSelector, setShowPlanSelector] = useState(false);
@@ -141,9 +144,16 @@ function SignupForm() {
         accountStatus = 'ACTIVE'; // Unlock Account
       } 
       else {
-        // PAID = PENDING (Wait for Admin)
-        subStatus = 'pending'; 
-        accountStatus = 'PENDING'; // Lock Account
+        // ✅ STEP 2 — 🔥 CRITICAL LOGIC FIX (FINAL, CORRECT)
+        if (paymentMode === 'AUTO') {
+          // ✅ AUTO PAYMENT → DIRECT ACCESS
+          subStatus = 'active';
+          accountStatus = 'ACTIVE';
+        } else {
+          // ❌ MANUAL PAYMENT → ADMIN APPROVAL
+          subStatus = 'pending';
+          accountStatus = 'PENDING';
+        }
       }
 
       // --- STEP C: CREATE CLIENT ---
@@ -177,7 +187,8 @@ function SignupForm() {
                 client_id: authData.user.id, 
                 plan_name: currentPlan.name, 
                 amount: currentPlan.price,
-                payment_method: 'MANUAL', 
+                // ✅ STEP 4 — subscription_orders me mode sahi save karo
+                payment_method: paymentMode === 'AUTO' ? 'AUTO' : 'MANUAL', 
                 status: 'pending',        
                 transaction_id: refId || `SIGNUP-${Date.now()}`,
                 duration_days: 30,        
@@ -190,8 +201,8 @@ function SignupForm() {
       }
 
       // --- SUCCESS & REDIRECT ---
-      if (selectedPlanId === 'TRIAL') {
-        localStorage.setItem('saanify_trial_used', 'true');
+      // ✅ STEP 3 — Redirect bhi fix karo
+      if (selectedPlanId === 'TRIAL' || paymentMode === 'AUTO') {
         toast.success("Account Created! Entering Dashboard...");
         // Delay to allow auth session to set
         setTimeout(() => router.push('/dashboard'), 1500);
