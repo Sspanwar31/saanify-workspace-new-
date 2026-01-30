@@ -10,27 +10,24 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, ArrowLeft, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-// IMPORT CONFIG & STORE
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
 import { useAdminStore } from '@/lib/admin/store';
-import { supabase } from '@/lib/supabase-simple'; // Ensure this matches your lib file name
+import { supabase } from '@/lib/supabase-simple'; 
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPlanId = searchParams.get('plan') || 'TRIAL';
   const paymentStatus = searchParams.get('status') || 'ACTIVE';
-  const refId = searchParams.get('ref') || '';
+  const refId = searchParams.get('ref') || ''; 
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
   const [loading, setLoading] = useState(false);
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
 
-  // Check if trial was already used (Local Check) - OLD LOGIC (Unchanged but bypassed below)
   useEffect(() => {
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
     if (hasUsedTrial && initialPlanId === 'TRIAL') {
-      // If trial was used and user is trying to signup for trial, switch to BASIC
       setSelectedPlanId('BASIC');
       setTrialUsed(true);
       toast.info("Free Trial already used. Selected Basic plan instead.");
@@ -39,9 +36,7 @@ function SignupForm() {
     }
   }, [initialPlanId]);
 
-  // ✅ CHANGE 1: DISABLE localStorage enforcement (Reset flag)
   useEffect(() => {
-    // Trial decision will be enforced from DB, not localStorage
     setTrialUsed(false);
   }, []);
 
@@ -53,14 +48,12 @@ function SignupForm() {
     password: ''
   });
 
-  // Safe Plan Access
   const currentPlan = SUBSCRIPTION_PLANS[selectedPlanId as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.TRIAL;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // 1. SUPABASE CONFIG CHECK
     if (!supabase) {
       toast.error("Supabase is not configured. Connection failed.");
       setLoading(false);
@@ -68,16 +61,13 @@ function SignupForm() {
     }
 
     try {
-      // 0. FETCH SYSTEM SETTINGS FOR TRIAL DAYS
       const { data: settings } = await supabase
         .from('system_settings')
         .select('trial_days')
         .single();
 
-      const trialDays = settings?.trial_days || 15; // Default 15 days
+      const trialDays = settings?.trial_days || 15; 
 
-      // ✅ CHANGE 2: DB-based trial check (CRITICAL FIX)
-      // ADD: CHECK IF TRIAL ALREADY USED FROM DB
       const { data: existingTrialClient } = await supabase
         .from('clients')
         .select('id')
@@ -91,30 +81,25 @@ function SignupForm() {
         return;
       }
 
-      // --- DUPLICATE CHECK (Database Level) ---
       const { data: existingClients, error: fetchError } = await supabase
         .from('clients')
         .select('email, phone')
         .or(`email.eq.${formData.email},phone.eq.${formData.phone}`);
 
-      if (fetchError) {
-        console.error('Error checking duplicates:', fetchError);
-      }
+      if (fetchError) console.error('Error checking duplicates:', fetchError);
 
       const isDuplicate = existingClients && existingClients.length > 0;
 
       if (isDuplicate) {
         if (selectedPlanId === 'TRIAL') {
           toast.error("This email/phone has already used the Free Trial. Please choose a paid plan.");
-          setTimeout(() => router.push('/dashboard/subscription'), 2000); // Redirect to pricing
+          setTimeout(() => router.push('/dashboard/subscription'), 2000); 
           setLoading(false);
           return;
         }
-        // NOTE: For paid plans, we allow duplicates but warn (or you can block if strict)
-        // toast.warning("Email exists. Ensure you want to create a NEW separate society.");
       }
 
-      // --- STEP A: CREATE AUTH USER (Login Credentials) ---
+      // --- STEP A: CREATE AUTH USER ---
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -127,68 +112,72 @@ function SignupForm() {
         }
       });
 
-      if (authError) {
-        throw new Error("User Signup Failed: " + authError.message);
-      }
-
-      if (!authData.user) {
-        throw new Error("Signup successful but no user ID returned.");
-      }
+      if (authError) throw new Error("User Signup Failed: " + authError.message);
+      if (!authData.user) throw new Error("Signup successful but no user ID returned.");
 
       // --- STEP B: PREPARE CLIENT DATA ---
       let subscriptionExpiry = null;
       let subStatus = 'inactive';
 
-      // ✅ CHANGE 4: Paid plan = ALWAYS pending at signup
       if (selectedPlanId === 'TRIAL') {
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + trialDays);
         subscriptionExpiry = expiryDate.toISOString();
-        subStatus = 'active'; // Trial is immediately active
+        subStatus = 'active'; 
       } 
-      // Paid Logic
       else {
-        // Force pending status for all paid plans until admin approves
-        subStatus = 'pending'; // 🔒 admin approval required
+        subStatus = 'pending'; // 🔒 Paid plan requires approval
       }
 
-      // --- STEP C: CREATE NEW CLIENT ROW (Linked to Auth User) ---
-      // ✅ CHANGE 3 CONFIRMATION: No client_id set here (Correct)
+      // --- STEP C: CREATE CLIENT ---
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
-          owner_id: authData.user.id, // <--- CRITICAL LINKING
+          owner_id: authData.user.id, 
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
           plan_name: selectedPlanId === 'TRIAL' ? 'Trial' : currentPlan.name,
-          status: 'active', // Account status
-          subscription_status: subStatus, // Plan status
+          status: subStatus === 'active' ? 'active' : 'inactive', // Active only if Trial
+          subscription_status: subStatus, 
           plan_end_date: subscriptionExpiry,
           plan_start_date: new Date().toISOString(),
-          has_used_trial: selectedPlanId === 'TRIAL', // Mark trial used
+          has_used_trial: selectedPlanId === 'TRIAL',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
 
-      if (clientError) {
-        // Fallback: If client creation fails, we might want to cleanup auth user (optional)
-        throw new Error("Client Profile Creation Failed: " + clientError.message);
+      if (clientError) throw new Error("Client Profile Creation Failed: " + clientError.message);
+
+      // --- STEP D: INSERT PAYMENT REQUEST (IF PAID PLAN) ---
+      // ✅ FIX: Use 'subscription_orders' table instead of 'payment_requests'
+      if (selectedPlanId !== 'TRIAL') {
+          const { error: payError } = await supabase
+            .from('subscription_orders')
+            .insert([{
+                client_id: authData.user.id, // Using Auth ID to link (since client_id is same)
+                plan_name: currentPlan.name,
+                amount: currentPlan.price,
+                payment_method: 'MANUAL', // Matches your schema
+                status: 'pending',        // Matches your schema (admin will change to approved)
+                transaction_id: refId || `SIGNUP-${Date.now()}`,
+                duration_days: 30,        // Standard monthly duration
+                created_at: new Date().toISOString()
+            }]);
+          
+          if (payError) console.error("Subscription Order Error:", payError);
       }
 
-      // 4. SET LOCAL FLAG
       if (selectedPlanId === 'TRIAL') {
         localStorage.setItem('saanify_trial_used', 'true');
+        toast.success("Account Created Successfully! Redirecting to Dashboard...");
+        setTimeout(() => router.push('/dashboard'), 1500);
+      } else {
+        // Paid Plan Message
+        toast.success("Account Created! Pending Admin Approval for Payment.");
+        setTimeout(() => router.push('/login'), 2500); 
       }
-
-      // 5. SUCCESS & REDIRECT
-      toast.success("Account Created Successfully! Redirecting to Dashboard...");
-      
-      // Force a session refresh or slight delay to ensure RLS kicks in
-      setTimeout(() => {
-         router.push('/dashboard'); // Direct to Client Panel
-      }, 1500);
 
     } catch (err: any) {
       console.error('Signup error:', err);
@@ -224,7 +213,6 @@ function SignupForm() {
               </Badge>
            </div>
            
-           {/* Trial Used Warning */}
            {trialUsed && selectedPlanId === 'TRIAL' && (
              <div className="bg-orange-500/20 border border-orange-500/50 text-orange-300 px-3 py-2 rounded-lg text-sm mb-4 flex items-center gap-2">
                <AlertCircle className="w-4 h-4" />
@@ -327,12 +315,12 @@ function SignupForm() {
                   >
                      {loading ? (
                         <div className="flex items-center justify-center">
-                           <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Setting up Dashboard...
+                           <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Processing...
                         </div>
-                     ) : selectedPlanId === 'TRIAL' && trialUsed ? (
-                        'Trial Already Used - Choose Paid Plan'
+                     ) : selectedPlanId === 'TRIAL' ? (
+                        'Start Free Trial'
                      ) : (
-                        'Complete Registration & Access Panel'
+                        'Register & Request Approval'
                      )}
                   </Button>
                </form>
