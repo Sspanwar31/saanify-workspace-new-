@@ -1,4 +1,5 @@
 'use client';
+
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,11 @@ import { supabase } from '@/lib/supabase-simple';
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialPlanId = searchParams.get('plan') || 'TRIAL';
+  
+  // ✅ FIX 1 — Trial ke liye plan hard lock karo
+  const urlPlan = searchParams.get('plan');
+  const initialPlanId = urlPlan === 'TRIAL' ? 'TRIAL' : urlPlan || 'TRIAL';
+
   const paymentStatus = searchParams.get('status') || 'ACTIVE'; // This is misleading for Trial, we fix logic below
   const refId = searchParams.get('ref') || ''; 
 
@@ -28,10 +33,11 @@ function SignupForm() {
 
   useEffect(() => {
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
+    
+    // ✅ FIX 2 — localStorage effect ko TRIAL submit pe ignore karo
     if (hasUsedTrial && initialPlanId === 'TRIAL') {
-      setSelectedPlanId('BASIC');
       setTrialUsed(true);
-      toast.info("Free Trial already used. Selected Basic plan instead.");
+      // ❌ DO NOT auto-switch plan here
     } else if (hasUsedTrial) {
       setTrialUsed(true);
     }
@@ -163,7 +169,8 @@ function SignupForm() {
       if (clientError) throw new Error("Client Profile Creation Failed: " + clientError.message);
 
       // --- STEP D: INSERT SUBSCRIPTION ORDER (ONLY IF PAID) ---
-      if (selectedPlanId !== 'TRIAL') {
+      // ✅ FIX 3 — STEP-D ko BULLETPROOF banao
+      if (selectedPlanId !== 'TRIAL' && currentPlan.price > 0) {
           const { error: payError } = await supabase
             .from('subscription_orders')
             .insert([{
