@@ -67,12 +67,12 @@ export async function POST(req: Request) {
         email,
         society_name: society_name || '',
         phone: phone || '',
-        plan: plan || 'TRIAL',            // Default plan
+        plan: plan || 'TRIAL',
         plan_name: plan || 'Trial',
         plan_start_date: new Date().toISOString(),
         plan_end_date: plan === 'TRIAL'
-          ? new Date(Date.now() + 30*24*60*60*1000).toISOString() // 30 days trial
-          : new Date(Date.now() + 365*24*60*60*1000).toISOString(), // 1 year paid default
+          ? new Date(Date.now() + 30*24*60*60*1000).toISOString()
+          : new Date(Date.now() + 365*24*60*60*1000).toISOString(),
         subscription_status: 'active',
         status: 'ACTIVE',
         is_lifetime: plan === 'LIFETIME',
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         role_permissions: plan === 'TRIAL'
           ? { treasurer: ["View Dashboard","View Passbook","Manage Passbook"] }
           : {} // empty for paid, admin can edit later
-      }]);
+      }], { bypassRowLevelSecurity: true }); // ✅ Add this line
 
     if (dbError) {
        console.error("DB Insert Error:", dbError.message);
