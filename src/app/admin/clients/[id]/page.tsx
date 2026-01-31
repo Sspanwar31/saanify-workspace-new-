@@ -138,11 +138,23 @@ export default function ClientProfile() {
       }
   };
 
+  // ✅ UPDATED HANDLE DELETE (API Call)
   const handleDelete = async () => {
-      if(!confirm("IRREVERSIBLE ACTION: Delete this client and ALL associated data?")) return;
-      await supabase.from('clients').delete().eq('id', id);
-      toast.success("Client Deleted");
-      router.push('/admin/clients');
+      if(!confirm("⚠️ WARNING: This will permanently delete client, all members, and all financial data. This cannot be undone.\n\nAre you sure?")) return;
+      
+      // Call the API endpoint instead of direct Supabase call
+      const res = await fetch(`/api/admin/clients/${id}/delete`, {
+          method: 'DELETE'
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+          toast.error("Delete Failed: " + (data.error || "Unknown error"));
+      } else {
+          toast.success("Client Hard Deleted Successfully");
+          router.push('/admin/clients'); // Redirect back to list
+      }
   };
 
   const handleDeleteStaff = async (staffId: string) => {
