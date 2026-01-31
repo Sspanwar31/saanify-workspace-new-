@@ -83,10 +83,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         // ✅ IMPORTANT FIX
         const resolvedClientId = user.client_id ?? user.id;
 
-        // ✅ FIX: Added 'auto_backup' to select query
+        // ✅ LINE 1 — client fetch me plan add karo
         const { data: client, error } = await supabase
           .from('clients')
-          .select('plan_end_date, subscription_status, theme, auto_backup')
+          .select('plan, plan_end_date, subscription_status, theme, auto_backup')
           .eq('id', resolvedClientId)
           .single();
 
@@ -123,9 +123,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           const expiry = new Date(client.plan_end_date || new Date());
           const today = new Date();
-          const isExpired = today > expiry;
+          
+          // ✅ LINE 2 — expiry check me plan ka reference lao
+          const isExpired = today > expiry && client.plan !== 'LIFETIME';
+          
           const isInactive = client.subscription_status !== 'active';
 
+          // ✅ LINE 3 — condition same rahe
           if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
             router.push('/dashboard/subscription');
             return;
