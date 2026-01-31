@@ -210,14 +210,22 @@ function SignupForm() {
       }
 
       // --- SUCCESS & REDIRECT ---
-      // ✅ FIX #2 — Redirect logic bhi same rule use kare
+      // ✅ FIX #1 (RECOMMENDED – CLEAN & SAFE)
       if (selectedPlanId === 'TRIAL' || isAutoPaid) {
         toast.success("Account Created! Entering Dashboard...");
-        // Delay to allow auth session to set
-        setTimeout(() => router.push('/dashboard'), 1500);
+        
+        // 🔥 IMPORTANT: wait for auth session
+        const { data: sessionData } = await supabase.auth.getSession();
+
+        if (sessionData.session) {
+          router.replace('/dashboard');
+        } else {
+          // fallback (rare case)
+          router.replace('/login');
+        }
       } else {
         toast.success("Account Created! Pending Admin Approval.");
-        setTimeout(() => router.push('/login'), 2500); 
+        router.replace('/login'); 
       }
 
     } catch (err: any) {
