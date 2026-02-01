@@ -68,6 +68,14 @@ export default function ClientManagement() {
      } else {
         toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked");
         setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
+        
+        // Background Logout Trigger
+        if(newStatus === 'LOCKED') {
+            fetch(`/api/admin/clients/${client.id}/status`, {
+                method: 'POST', 
+                body: JSON.stringify({ action: 'LOCK' })
+            }).catch(console.error);
+        }
      }
   };
 
@@ -86,26 +94,19 @@ export default function ClientManagement() {
      } else {
         toast.success("Client marked as Expired");
         fetchClients();
+        // Background Logout Trigger
+        fetch(`/api/admin/clients/${id}/status`, {
+            method: 'POST', 
+            body: JSON.stringify({ action: 'EXPIRE' })
+        }).catch(console.error);
      }
   };
 
-  // ✅ UPDATED HANDLE DELETE (API Call)
   const handleDelete = async (id: string) => {
-    if(!confirm("⚠️ WARNING: This will permanently delete client, all members, and all financial data. This cannot be undone.\n\nAre you sure?")) return;
-    
-    // Call API endpoint instead of direct Supabase call
-    const res = await fetch(`/api/admin/clients/${id}/delete`, {
-        method: 'DELETE'
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-        toast.error("Delete Failed: " + (data.error || "Unknown error"));
-    } else {
-        toast.success("Client Hard Deleted Successfully");
-        fetchClients(); // Refresh list
-    }
+    if(!confirm("Are you sure? This will delete the client.")) return;
+    await supabase.from('clients').delete().eq('id', id);
+    toast.success("Client Profile Deleted");
+    fetchClients();
   };
 
   const openAddModal = () => { 
@@ -124,13 +125,14 @@ export default function ClientManagement() {
     setIsDialogOpen(true);
   };
 
-  // SAVE LOGIC
+  // ✅ UPDATED SAVE LOGIC (API Connected)
   const handleSave = async () => {
     if(!formData.email || !formData.name) return toast.error("Required fields missing");
     setIsSaving(true);
 
     try {
         if (editingId) {
+            // EDIT LOGIC (Direct DB)
             const updates: any = { 
                 name: formData.name,
                 society_name: formData.society_name,
@@ -140,22 +142,27 @@ export default function ClientManagement() {
             
             const { error } = await supabase.from('clients').update(updates).eq('id', editingId);
             if(error) throw error;
-
-            if (formData.password && formData.password.trim() !== "") {
-                const res = await fetch('/api/auth/admin-update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: editingId, newPassword: formData.password })
-                });
-                const passData = await res.json();
-                if(!res.ok) throw new Error(passData.error || "Password update failed");
-                toast.success("Details & Password Updated");
-            } else {
-                toast.success("Details Updated");
-            }
-
+            toast.success("Details Updated");
         } else {
-            toast.error("Create function requires Backend API. Please use Signup page for now.");
+            // 🔥 CREATE LOGIC (API Call)
+            // Ye wala part update karna hai
+            const res = await fetch('/api/admin/create-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password || '123456',
+                    society_name: formData.society_name,
+                    phone: formData.phone,
+                    plan: formData.plan
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to create client");
+            
+            toast.success("Client Created Successfully! 🎉");
         }
         
         setIsDialogOpen(false);
