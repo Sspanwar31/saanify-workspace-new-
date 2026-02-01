@@ -113,16 +113,48 @@ export default function MemberLoans() {
         <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm text-slate-500">Loan Status</CardTitle><AlertCircle className="h-4 w-4 text-red-600" /></CardHeader><CardContent className="text-xl font-bold">{activeLoan ? 'Active' : pendingRequest ? 'Pending' : 'None'}</CardContent></Card>
         <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm text-slate-500">Remaining Balance</CardTitle><Wallet className="h-4 w-4 text-slate-600" /></CardHeader><CardContent className="text-xl font-bold">₹{totalOutstanding.toLocaleString()}</CardContent></Card>
         <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm text-slate-500">Total Loan Taken</CardTitle><TrendingUp className="h-4 w-4 text-blue-600" /></CardHeader><CardContent className="text-xl font-bold">₹{totalLoanTaken.toLocaleString()}</CardContent></Card>
+        
+        {/* ✅ DIFF-1: Total Recovered Card ADD */}
+        <Card>
+          <CardHeader className="flex justify-between pb-2">
+            <CardTitle className="text-sm text-slate-500">Total Recovered</CardTitle>
+            <Wallet className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent className="text-xl font-bold text-green-700">
+            ₹{(totalLoanTaken - totalOutstanding).toLocaleString()}
+          </CardContent>
+        </Card>
+        
         <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm text-slate-500">Current Interest (1%)</CardTitle><Clock className="h-4 w-4 text-orange-600" /></CardHeader><CardContent className="text-xl font-bold">₹{currentInterest.toLocaleString()}</CardContent></Card>
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-700">Latest Active Loan Details</h2>
+        {/* ✅ DIFF-2: Replace “Latest Active Loan Details” → “EMI Details” */}
+        <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
         {activeLoan ? (
-          <Card className="border-l-4 border-l-red-500">
-            <CardContent className="p-5 space-y-3">
-              <div className="flex justify-between items-center"><Badge variant="outline" className="text-red-600 bg-red-50">Active Loan</Badge><span className="text-xs text-slate-500">{new Date(activeLoan.created_at).toLocaleDateString()}</span></div>
-              <div className="flex justify-between"><div><p className="text-sm text-slate-500">Remaining</p><p className="text-2xl font-bold">₹{Number(activeLoan.remaining_balance).toLocaleString()}</p></div><div className="text-right"><p className="text-sm text-slate-500">Original Amount</p><p className="font-medium">₹{Number(activeLoan.amount).toLocaleString()}</p></div></div>
+          <Card className="border-l-4 border-l-blue-500">
+            <CardContent className="p-5 space-y-4">
+              <div className="flex justify-between items-center">
+                <Badge variant="outline" className="text-blue-600 bg-blue-50">
+                  Active Loan
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-slate-500">Remaining Loan</p>
+                  <p className="text-2xl font-bold">
+                    ₹{totalOutstanding.toLocaleString()}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-slate-500">Next EMI Date</p>
+                  <p className="text-lg font-medium">
+                    {new Date(activeLoan.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         ) : !pendingRequest && <Card className="bg-green-50 border-green-200"><CardContent className="p-4 text-center text-green-700 font-medium">You don’t have any active loans.</CardContent></Card>}
