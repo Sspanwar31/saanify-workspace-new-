@@ -63,10 +63,15 @@ export default function MemberLoans() {
     }
 
     if (memberId) {
-      // ✅ FIX: Order by Latest First
+      // ✅ DIFF-1: SUPABASE QUERY CHANGE (EXACT REPLACE)
       const { data: loans } = await supabase
         .from('loans')
-        .select('*')
+        .select(`
+            *,
+            last_loan_installment (
+              last_installment_date
+            )
+          `)
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
@@ -108,6 +113,14 @@ export default function MemberLoans() {
   const currentInterest = useMemo(() => {
     return Math.round(totalOutstanding * 0.01);
   }, [totalOutstanding]);
+
+  // ✅ DIFF-2: ACTIVE LOAN DERIVED DATE (TOP of component)
+  // ✅ REAL backend driven installment date (from passbook)
+  const lastInstallmentDate = useMemo(() => {
+    if (!activeLoan) return undefined;
+
+    return activeLoan.last_loan_installment?.last_installment_date;
+  }, [activeLoan]);
 
   const handleRequest = async () => {
     if (!amount) return;
@@ -157,7 +170,7 @@ export default function MemberLoans() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
         
-        {/* ✅ DIFF-2: NEW CLEAN EMI DETAILS CARD */}
+        {/* ✅ DIFF-3: EMI DETAILS UI (Using lastInstallmentDate) */}
         {activeLoan ? (
           <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-5 space-y-4">
@@ -176,15 +189,15 @@ export default function MemberLoans() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="pt-2 space-y-1 text-sm text-slate-600">
                 <p>
                   <span className="font-medium">Last Installment Paid On:</span>{' '}
-                  {formatInstallmentDate(activeLoan.last_installment_date)}
+                  {formatInstallmentDate(lastInstallmentDate)}
                 </p>
                 <p>
                   <span className="font-medium">Next EMI Cycle:</span>{' '}
-                  {getNextEmiCycle(activeLoan.last_installment_date)}
+                  {getNextEmiCycle(lastInstallmentDate)}
                 </p>
               </div>
             </CardContent>
