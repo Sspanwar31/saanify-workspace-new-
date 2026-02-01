@@ -57,7 +57,7 @@ export default function PassbookAddEntryModal({
     }
   }, [isOpen]);
 
-  // 2. Populate Edit Logic
+  //2. Populate Edit Logic
   useEffect(() => {
       if (isOpen) {
           if (entryToEdit) {
@@ -80,7 +80,7 @@ export default function PassbookAddEntryModal({
       }
   }, [entryToEdit, isOpen]);
 
-  // 3. Auto-calculation (Loan Sum Fix Here)
+  //3. Auto-calculation (Loan Sum Fix Here)
   useEffect(() => {
       if (selectedMember) {
         const depositBalance = Number(selectedMember.total_deposits || 0);
@@ -136,7 +136,7 @@ export default function PassbookAddEntryModal({
       }
   }, [selectedMember, date, depositAmount, installmentAmount, entryToEdit]); 
 
-  // 4. SUBMIT HANDLER
+  //4. SUBMIT HANDLER
   const handleSubmit = async () => {
       if (!selectedMemberId) return toast.error('Please select a member');
       setLoading(true);
@@ -288,7 +288,7 @@ export default function PassbookAddEntryModal({
                       (parseFloat(interestAmount) || 0) + 
                       (parseFloat(fineAmount) || 0);
 
-  const loanProgressPercentage = outstandingLoan > 0 ? ((outstandingLoan - projectedLoan) / outstandingLoan) * 100 : 0;
+  const loanProgressPercentage = outstandingLoan > 0 ? ((outstandingLoan - projectedLoan) / outstandingLoan) * 100 :0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -316,7 +316,7 @@ export default function PassbookAddEntryModal({
                     <SelectContent>
                       {(members || []).map((member) => (
                         <SelectItem key={member.id} value={member.id}>
-                          {member.name} - {member.phone}
+                          {member.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
