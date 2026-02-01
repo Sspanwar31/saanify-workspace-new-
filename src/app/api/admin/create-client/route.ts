@@ -90,7 +90,12 @@ export async function POST(req: Request) {
         email,
         society_name: society_name || '',
         phone: phone || '',
-        plan: plan || 'BASIC',
+        
+        // ✅ FIX IS HERE:
+        plan: plan || 'TRIAL',  // System Code (TRIAL)
+        plan_name: (plan === 'TRIAL' || !plan) ? 'Trial Plan' : plan, // Display Name (Trial Plan) - NOT 'Free'
+        
+        // ... (Baaki sab same rahega) ...
         status: 'ACTIVE',
         created_at: new Date().toISOString(),
         role: 'client'
