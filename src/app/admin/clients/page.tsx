@@ -18,14 +18,13 @@ import { supabase } from '@/lib/supabase';
 export default function ClientManagement() {
   const router = useRouter();
   const [clients, setClients] = useState<any[]>([]);
-  const [treasurers, setTreasurers] = useState<any[]>([]); // New State
+  const [treasurers, setTreasurers] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); // New Modal
-  const [selectedStaff, setSelectedStaff] = useState<any[]>([]); // Selected Staff
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); 
+  const [selectedStaff, setSelectedStaff] = useState<any[]>([]); 
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', society_name: '', phone: '', plan: 'BASIC', status: 'ACTIVE' });
@@ -33,14 +32,12 @@ export default function ClientManagement() {
   useEffect(() => { fetchClients(); }, []);
 
   const fetchClients = async () => {
-    // 1. Fetch Clients
     const { data: clientData } = await supabase
       .from('clients')
       .select('*')
       .eq('role', 'client') 
       .order('created_at', { ascending: false });
 
-    // 2. Fetch Treasurers (All)
     const { data: staffData } = await supabase
       .from('clients')
       .select('*')
@@ -51,7 +48,6 @@ export default function ClientManagement() {
     setLoading(false);
   };
 
-  // View Staff Logic
   const handleViewStaff = (clientId: string) => {
       const staff = treasurers.filter(t => t.client_id === clientId);
       setSelectedStaff(staff);
@@ -69,7 +65,6 @@ export default function ClientManagement() {
         toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked");
         setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
         
-        // Background Logout Trigger
         if(newStatus === 'LOCKED') {
             fetch(`/api/admin/clients/${client.id}/status`, {
                 method: 'POST', 
@@ -94,7 +89,6 @@ export default function ClientManagement() {
      } else {
         toast.success("Client marked as Expired");
         fetchClients();
-        // Background Logout Trigger
         fetch(`/api/admin/clients/${id}/status`, {
             method: 'POST', 
             body: JSON.stringify({ action: 'EXPIRE' })
@@ -104,13 +98,21 @@ export default function ClientManagement() {
 
   const handleDelete = async (id: string) => {
     if(!confirm("Are you sure? This will delete the client.")) return;
-    await supabase.from('clients').delete().eq('id', id);
-    toast.success("Client Profile Deleted");
-    fetchClients();
+    
+    // Call API for Hard Delete (Clean up everything)
+    const res = await fetch(`/api/admin/clients/${id}/delete`, { method: 'DELETE' });
+    
+    if (res.ok) {
+        toast.success("Client Profile Deleted");
+        fetchClients();
+    } else {
+        toast.error("Delete Failed");
+    }
   };
 
   const openAddModal = () => { 
       setEditingId(null); 
+      // Default Plan BASIC set hai, chahe to TRIAL kar sakte hain
       setFormData({ name: '', email: '', password: '', society_name: '', phone: '', plan: 'BASIC', status: 'ACTIVE' }); 
       setIsDialogOpen(true); 
   };
@@ -125,27 +127,23 @@ export default function ClientManagement() {
     setIsDialogOpen(true);
   };
 
-  // ✅ UPDATED SAVE LOGIC (API Connected)
+  // SAVE LOGIC
   const handleSave = async () => {
     if(!formData.email || !formData.name) return toast.error("Required fields missing");
     setIsSaving(true);
 
     try {
         if (editingId) {
-            // EDIT LOGIC (Direct DB)
             const updates: any = { 
                 name: formData.name,
                 society_name: formData.society_name,
                 phone: formData.phone,
                 plan: formData.plan
             };
-            
             const { error } = await supabase.from('clients').update(updates).eq('id', editingId);
             if(error) throw error;
             toast.success("Details Updated");
         } else {
-            // 🔥 CREATE LOGIC (API Call)
-            // Ye wala part update karna hai
             const res = await fetch('/api/admin/create-client', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -155,7 +153,7 @@ export default function ClientManagement() {
                     password: formData.password || '123456',
                     society_name: formData.society_name,
                     phone: formData.phone,
-                    plan: formData.plan
+                    plan: formData.plan // Ye ab sahi value (TRIAL) bhejega
                 })
             });
 
@@ -254,7 +252,13 @@ export default function ClientManagement() {
                   <Input placeholder="Phone Number" value={formData.phone} onChange={e=>setFormData({...formData, phone:e.target.value})}/>
                   <Select value={formData.plan} onValueChange={v=>setFormData({...formData, plan:v})}>
                      <SelectTrigger><SelectValue placeholder="Plan"/></SelectTrigger>
-                     <SelectContent><SelectItem value="FREE_TRIAL">Free Trial (15 Days)</SelectItem><SelectItem value="BASIC">Basic</SelectItem><SelectItem value="PRO">Pro</SelectItem><SelectItem value="ENTERPRISE">Enterprise</SelectItem></SelectContent>
+                     <SelectContent>
+                        {/* ✅ FIX: Value updated to TRIAL */}
+                        <SelectItem value="TRIAL">Free Trial (15 Days)</SelectItem>
+                        <SelectItem value="BASIC">Basic</SelectItem>
+                        <SelectItem value="PRO">Pro</SelectItem>
+                        <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                     </SelectContent>
                   </Select>
                </div>
             </div>
