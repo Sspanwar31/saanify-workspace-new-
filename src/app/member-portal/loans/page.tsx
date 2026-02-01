@@ -11,6 +11,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner';
 import { Loader2, Wallet, AlertCircle, TrendingUp, Clock, Bell } from 'lucide-react';
 
+// ✅ STEP 1: Helper function add karo (TOP of file)
+const getNextEmiDate = (createdAt: string) => {
+  const date = new Date(createdAt);
+  date.setMonth(date.getMonth() + 1);
+
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
 export default function MemberLoans() {
   const [loading, setLoading] = useState(true);
   const [member, setMember] = useState<any>(null);
@@ -129,13 +141,15 @@ export default function MemberLoans() {
       </div>
 
       <div className="space-y-4">
-        {/* ✅ DIFF-2: Replace “Latest Active Loan Details” → “EMI Details” */}
         <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
+        
+        {/* ✅ STEP 2: NEW CLEAN EMI DETAILS CARD */}
         {activeLoan ? (
-          <Card className="border-l-4 border-l-blue-500">
+          <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-5 space-y-4">
+              
               <div className="flex justify-between items-center">
-                <Badge variant="outline" className="text-blue-600 bg-blue-50">
+                <Badge className="bg-orange-100 text-orange-700">
                   Active Loan
                 </Badge>
               </div>
@@ -148,16 +162,23 @@ export default function MemberLoans() {
                   </p>
                 </div>
 
-                <div>
+                <div className="text-right">
                   <p className="text-sm text-slate-500">Next EMI Date</p>
                   <p className="text-lg font-medium">
-                    {new Date(activeLoan.created_at).toLocaleDateString()}
+                    {getNextEmiDate(activeLoan.created_at)}
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-        ) : !pendingRequest && <Card className="bg-green-50 border-green-200"><CardContent className="p-4 text-center text-green-700 font-medium">You don’t have any active loans.</CardContent></Card>}
+        ) : (
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="p-4 text-center text-green-700 font-medium">
+              You don’t have any active loans.
+            </CardContent>
+          </Card>
+        )}
+        
         {pendingRequest && <Card className="bg-yellow-50 border-yellow-200"><CardContent className="p-4 flex justify-between items-center"><div><p className="font-semibold text-yellow-800">Loan Request Pending</p><p className="text-xs text-yellow-600">₹{Number(pendingRequest.amount).toLocaleString()}</p></div><Badge className="bg-yellow-200 text-yellow-800">Pending</Badge></CardContent></Card>}
       </div>
 
