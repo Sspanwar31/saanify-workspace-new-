@@ -72,21 +72,21 @@ export default function MemberLoans() {
 
       if (loans) {
         // ✅ DIFF-B: Last installment data fetch karo
-        const loanIds = loans?.map(l => l.id) || [];
+        const loanIds = loans.map(l => l.id) || [];
 
         const { data: installments } = await supabase
           .from('last_loan_installment')
           .select('*')
           .in('loan_id', loanIds);
 
-        // ✅ DIFF-C: JS level join (SAFE & FAST)
+        // ✅ DIFF-C FIXED: JS level join with UUID string casting
         const installmentMap = new Map(
-          installments?.map(i => [i.loan_id, i.last_installment_date])
+          installments?.map(i => [String(i.loan_id), i.last_installment_date])
         );
 
         const mergedLoans = loans.map(loan => ({
           ...loan,
-          last_installment_date: installmentMap.get(loan.id) || null,
+          last_installment_date: installmentMap.get(String(loan.id)) || null,
         }));
 
         // ✅ DIFF-D: State update
@@ -188,6 +188,7 @@ export default function MemberLoans() {
         {activeLoan ? (
           <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-5 space-y-4">
+              
               <div className="flex justify-between items-center">
                 <Badge className="bg-orange-100 text-orange-700">
                   Active Loan
@@ -209,7 +210,7 @@ export default function MemberLoans() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="pt-2 space-y-1 text-sm text-slate-600">
                 <p>
                   <span className="font-medium">Last Installment Paid On:</span>{' '}
