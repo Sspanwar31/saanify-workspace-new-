@@ -234,7 +234,7 @@ export function useReportLogic() {
     const loansWithLiveBalance = loans.map((l: any) => {
       const memberTotalInterest = passbookEntries
         .filter(p => p.memberId === l.member_id)
-        .reduce((sum, p) => sum + Number(p.interestAmount || p.interest_amount || 0), 0); 
+        .reduce((sum, p) => sum + Number(p.interestAmount || 0), 0); 
 
       const memberLoanCount = loans.filter((ln: any) => ln.member_id === l.member_id).length || 1;
       const distributedInterest = memberTotalInterest / memberLoanCount;
@@ -339,10 +339,29 @@ export function useReportLogic() {
 
     const sortedLedger = Array.from(ledgerMap.values()).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
     let runningBal = 0;
+    
     const finalLedger = sortedLedger.map((e: any) => {
-        const netFlow = e.cashIn - e.cashOut;
+        // ✅ STEP 1: Daily Ledger ka netFlow change karo
+        const netFlow =
+          (e.cashInMode + e.bankInMode + e.upiInMode)
+        - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
+        
         runningBal += netFlow;
-        return { ...e, netFlow, runningBal };
+
+        // ✅ STEP 2: Daily Ledger ka cashIn / cashOut bhi derived banao
+        const derivedCashIn =
+          e.cashInMode + e.bankInMode + e.upiInMode;
+
+        const derivedCashOut =
+          e.cashOutMode + e.bankOutMode + e.upiOutMode;
+
+        return {
+          ...e,
+          cashIn: derivedCashIn,
+          cashOut: derivedCashOut,
+          netFlow,
+          runningBal
+        };
     });
 
     let closingBal = 0;
