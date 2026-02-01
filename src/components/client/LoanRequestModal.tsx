@@ -135,7 +135,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
               return;
           }
           if (pendingCount > 0) {
-              alert('Pending Request Exists: Please wait for the existing request to be approved or rejected.');
+              alert('Pending Request Exists: Please wait for existing request to be approved or rejected.');
               setIsSubmitting(false);
               return;
           }
@@ -202,7 +202,7 @@ export default function LoanRequestModal({ isOpen, onClose, preSelectedMemberId 
                 <SelectContent>
                   {activeMembers.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
-                      {member.name} - {member.phone}
+                      {member.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
