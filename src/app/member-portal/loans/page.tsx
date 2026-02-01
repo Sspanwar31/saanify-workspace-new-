@@ -63,24 +63,38 @@ export default function MemberLoans() {
     }
 
     if (memberId) {
-      // ✅ DIFF-1: SUPABASE QUERY CHANGE (EXACT REPLACE)
+      // ✅ DIFF-A: fetchLoans() ke andar replace query (Join hata diya)
       const { data: loans } = await supabase
         .from('loans')
-        .select(`
-            *,
-            last_loan_installment (
-              last_installment_date
-            )
-          `)
+        .select('*')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
       if (loans) {
-        setAllLoans(loans);
+        // ✅ DIFF-B: Last installment data fetch karo
+        const loanIds = loans?.map(l => l.id) || [];
+
+        const { data: installments } = await supabase
+          .from('last_loan_installment')
+          .select('*')
+          .in('loan_id', loanIds);
+
+        // ✅ DIFF-C: JS level join (SAFE & FAST)
+        const installmentMap = new Map(
+          installments?.map(i => [i.loan_id, i.last_installment_date])
+        );
+
+        const mergedLoans = loans.map(loan => ({
+          ...loan,
+          last_installment_date: installmentMap.get(loan.id) || null,
+        }));
+
+        // ✅ DIFF-D: State update
+        setAllLoans(mergedLoans);
         
         // Find LATEST active loan (Since list is sorted by date desc)
-        setActiveLoan(loans.find(l => l.status === 'active') || null);
-        setPendingRequest(loans.find(l => l.status === 'pending') || null);
+        setActiveLoan(mergedLoans.find(l => l.status === 'active') || null);
+        setPendingRequest(mergedLoans.find(l => l.status === 'pending') || null);
       }
     }
     setLoading(false);
@@ -114,12 +128,12 @@ export default function MemberLoans() {
     return Math.round(totalOutstanding * 0.01);
   }, [totalOutstanding]);
 
-  // ✅ DIFF-2: ACTIVE LOAN DERIVED DATE (TOP of component)
+  // ✅ DIFF-E: useMemo change (IMPORTANT)
   // ✅ REAL backend driven installment date (from passbook)
   const lastInstallmentDate = useMemo(() => {
     if (!activeLoan) return undefined;
 
-    return activeLoan.last_loan_installment?.last_installment_date;
+    return activeLoan.last_installment_date;
   }, [activeLoan]);
 
   const handleRequest = async () => {
@@ -170,11 +184,10 @@ export default function MemberLoans() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
         
-        {/* ✅ DIFF-3: EMI DETAILS UI (Using lastInstallmentDate) */}
+        {/* ✅ DIFF-3: NEW CLEAN EMI DETAILS CARD */}
         {activeLoan ? (
           <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-5 space-y-4">
-              
               <div className="flex justify-between items-center">
                 <Badge className="bg-orange-100 text-orange-700">
                   Active Loan
@@ -188,16 +201,19 @@ export default function MemberLoans() {
                     ₹{totalOutstanding.toLocaleString()}
                   </p>
                 </div>
-              </div>
 
+                <div className="text-right">
+                  <p className="text-sm text-slate-500">Next EMI Date</p>
+                  <p className="text-lg font-medium">
+                    {getNextEmiCycle(lastInstallmentDate)}
+                  </p>
+                </div>
+              </div>
+              
               <div className="pt-2 space-y-1 text-sm text-slate-600">
                 <p>
                   <span className="font-medium">Last Installment Paid On:</span>{' '}
                   {formatInstallmentDate(lastInstallmentDate)}
-                </p>
-                <p>
-                  <span className="font-medium">Next EMI Cycle:</span>{' '}
-                  {getNextEmiCycle(lastInstallmentDate)}
                 </p>
               </div>
             </CardContent>
