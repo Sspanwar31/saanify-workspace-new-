@@ -11,14 +11,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner';
 import { Loader2, Wallet, AlertCircle, TrendingUp, Clock, Bell } from 'lucide-react';
 
-// ✅ STEP 1: Helper function add karo (TOP of file)
-const getNextEmiDate = (createdAt: string) => {
-  const date = new Date(createdAt);
-  date.setMonth(date.getMonth() + 1);
+// ✅ DIFF-1: Helper functions (TOP of file)
+// Last installment date (backend driven – audit safe)
+const formatInstallmentDate = (dateStr?: string) => {
+  if (!dateStr) return '—';
 
+  const date = new Date(dateStr);
   return date.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
+    year: 'numeric',
+  });
+};
+
+// Next EMI cycle (auto derived from last installment)
+const getNextEmiCycle = (dateStr?: string) => {
+  if (!dateStr) return '—';
+
+  const date = new Date(dateStr);
+  date.setMonth(date.getMonth() + 1);
+
+  return date.toLocaleDateString('en-IN', {
+    month: 'long',
     year: 'numeric',
   });
 };
@@ -143,7 +157,7 @@ export default function MemberLoans() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
         
-        {/* ✅ STEP 2: NEW CLEAN EMI DETAILS CARD */}
+        {/* ✅ DIFF-2: NEW CLEAN EMI DETAILS CARD */}
         {activeLoan ? (
           <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-5 space-y-4">
@@ -161,13 +175,17 @@ export default function MemberLoans() {
                     ₹{totalOutstanding.toLocaleString()}
                   </p>
                 </div>
-
-                <div className="text-right">
-                  <p className="text-sm text-slate-500">Next EMI Date</p>
-                  <p className="text-lg font-medium">
-                    {getNextEmiDate(activeLoan.created_at)}
-                  </p>
-                </div>
+              </div>
+              
+              <div className="pt-2 space-y-1 text-sm text-slate-600">
+                <p>
+                  <span className="font-medium">Last Installment Paid On:</span>{' '}
+                  {formatInstallmentDate(activeLoan.last_installment_date)}
+                </p>
+                <p>
+                  <span className="font-medium">Next EMI Cycle:</span>{' '}
+                  {getNextEmiCycle(activeLoan.last_installment_date)}
+                </p>
               </div>
             </CardContent>
           </Card>
