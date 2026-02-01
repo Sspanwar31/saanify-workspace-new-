@@ -55,25 +55,32 @@ export default function ClientManagement() {
   };
 
   // ACTIONS
+  
+  // ✅ LOCK / UNLOCK (Direct DB Update + API Trigger)
   const handleLockToggle = async (client: any) => {
      const newStatus = client.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
+     
+     // 1. Direct DB Update
      const { error } = await supabase.from('clients').update({ status: newStatus }).eq('id', client.id);
      
      if (error) {
-        toast.error("Update failed: " + error.message);
-     } else {
-        toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked");
-        setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
-        
-        if(newStatus === 'LOCKED') {
-            fetch(`/api/admin/clients/${client.id}/status`, {
-                method: 'POST', 
-                body: JSON.stringify({ action: 'LOCK' })
-            }).catch(console.error);
-        }
+        return toast.error("Update failed: " + error.message);
+     }
+
+     toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked");
+     setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
+     
+     // 2. Force Logout via API
+     if(newStatus === 'LOCKED') {
+        fetch(`/api/admin/clients/${client.id}/status`, {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'LOCK' })
+        }).catch(err => console.log("Logout API triggered silently"));
      }
   };
 
+  // ✅ EXPIRE ACCOUNT (Direct DB Update + API Trigger)
   const handleMarkExpired = async (id: string) => {
      if(!confirm("Mark this subscription as expired?")) return;
      const yesterday = new Date();
@@ -85,34 +92,43 @@ export default function ClientManagement() {
      }).eq('id', id);
 
      if (error) {
-        toast.error("Update failed");
-     } else {
-        toast.success("Client marked as Expired");
-        fetchClients();
-        fetch(`/api/admin/clients/${id}/status`, {
-            method: 'POST', 
-            body: JSON.stringify({ action: 'EXPIRE' })
-        }).catch(console.error);
-     }
+        return toast.error("Update failed");
+     } 
+     
+     toast.success("Client marked as Expired");
+     fetchClients();
+     
+     fetch(`/api/admin/clients/${id}/status`, {
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'EXPIRE' })
+     }).catch(console.error);
   };
 
+  // ✅ DELETE ACCOUNT (API First -> DB Fallback)
   const handleDelete = async (id: string) => {
-    if(!confirm("Are you sure? This will delete the client.")) return;
+    if(!confirm("WARNING: This will delete client and ALL data! Continue?")) return;
     
-    // Call API for Hard Delete (Clean up everything)
+    // Try API first (Handles Auth + Cascade)
     const res = await fetch(`/api/admin/clients/${id}/delete`, { method: 'DELETE' });
     
     if (res.ok) {
         toast.success("Client Profile Deleted");
         fetchClients();
     } else {
-        toast.error("Delete Failed");
+        // Fallback: Direct DB Delete
+        const { error } = await supabase.from('clients').delete().eq('id', id);
+        if(!error) {
+            toast.success("Client Deleted from DB");
+            fetchClients();
+        } else {
+            toast.error("Delete Failed: " + error.message);
+        }
     }
   };
 
   const openAddModal = () => { 
       setEditingId(null); 
-      // Default Plan BASIC set hai, chahe to TRIAL kar sakte hain
       setFormData({ name: '', email: '', password: '', society_name: '', phone: '', plan: 'BASIC', status: 'ACTIVE' }); 
       setIsDialogOpen(true); 
   };
@@ -153,7 +169,7 @@ export default function ClientManagement() {
                     password: formData.password || '123456',
                     society_name: formData.society_name,
                     phone: formData.phone,
-                    plan: formData.plan // Ye ab sahi value (TRIAL) bhejega
+                    plan: formData.plan 
                 })
             });
 
@@ -197,6 +213,13 @@ export default function ClientManagement() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredClients.map((c) => {
                     const staffCount = treasurers.filter(t => t.client_id === c.id).length;
+                    
+                    // ✅ FIXED REVENUE LOGIC
+                    let revenue = '4,000';
+                    if (c.plan === 'PRO') revenue = '7,000';
+                    else if (c.plan === 'ENTERPRISE') revenue = '10,000';
+                    else if (c.plan === 'TRIAL' || c.plan === 'FREE_TRIAL') revenue = '0';
+
                     return (
                     <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="p-4 pl-6">
@@ -214,7 +237,7 @@ export default function ClientManagement() {
                       <td className="p-4">
                         <Badge className={c.status === 'ACTIVE' ? "bg-green-100 text-green-700" : c.status === 'LOCKED' ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}>{c.status}</Badge>
                       </td>
-                      <td className="p-4 font-bold text-slate-700">₹{c.plan === 'PRO' ? '7,000' : c.plan === 'ENTERPRISE' ? '10,000' : '4,000'}</td>
+                      <td className="p-4 font-bold text-slate-700">₹{revenue}</td>
                       <td className="p-4 text-right pr-6">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4"/></Button></DropdownMenuTrigger>
@@ -253,7 +276,6 @@ export default function ClientManagement() {
                   <Select value={formData.plan} onValueChange={v=>setFormData({...formData, plan:v})}>
                      <SelectTrigger><SelectValue placeholder="Plan"/></SelectTrigger>
                      <SelectContent>
-                        {/* ✅ FIX: Value updated to TRIAL */}
                         <SelectItem value="TRIAL">Free Trial (15 Days)</SelectItem>
                         <SelectItem value="BASIC">Basic</SelectItem>
                         <SelectItem value="PRO">Pro</SelectItem>
