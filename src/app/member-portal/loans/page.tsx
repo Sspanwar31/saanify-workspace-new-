@@ -63,7 +63,7 @@ export default function MemberLoans() {
     }
 
     if (memberId) {
-      // ✅ DIFF-A: fetchLoans() ke andar replace query (Join hata diya)
+      // ✅ Fetch Loans
       const { data: loans } = await supabase
         .from('loans')
         .select('*')
@@ -71,28 +71,32 @@ export default function MemberLoans() {
         .order('created_at', { ascending: false });
 
       if (loans) {
-        // ✅ DIFF-B: Last installment data fetch karo
         const loanIds = loans.map(l => l.id) || [];
 
-        const { data: installments } = await supabase
-          .from('last_loan_installment')
-          .select('*')
-          .in('loan_id', loanIds);
+        // ✅ FIX 1: Fetch directly from 'passbook' instead of 'last_loan_installment'
+        // Passbook se latest entry nikal rahe hai date ke hisab se
+        const { data: passbookEntries } = await supabase
+          .from('passbook')
+          .select('loan_id, date')
+          .in('loan_id', loanIds)
+          .order('date', { ascending: false }); // Latest date upar aayegi
 
-        // ✅ DIFF-C FIXED: JS level join with UUID string casting
-        const installmentMap = new Map(
-          installments?.map(i => [String(i.loan_id), i.last_installment_date])
-        );
+        // Map banaya taaki har loan id ke liye latest date mil jaye
+        const installmentMap = new Map();
+        passbookEntries?.forEach((entry: any) => {
+          // Sirf pehli entry (latest) ko save karenge agar map me nahi hai to
+          if (entry.loan_id && !installmentMap.has(entry.loan_id)) {
+            installmentMap.set(entry.loan_id, entry.date);
+          }
+        });
 
         const mergedLoans = loans.map(loan => ({
           ...loan,
-          last_installment_date: installmentMap.get(String(loan.id)) || null,
+          last_installment_date: installmentMap.get(loan.id) || null,
         }));
 
-        // ✅ DIFF-D: State update
         setAllLoans(mergedLoans);
         
-        // Find LATEST active loan (Since list is sorted by date desc)
         setActiveLoan(mergedLoans.find(l => l.status === 'active') || null);
         setPendingRequest(mergedLoans.find(l => l.status === 'pending') || null);
       }
@@ -113,7 +117,7 @@ export default function MemberLoans() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // --- CALCULATION LOGIC (UNCHANGED) ---
+  // --- CALCULATION LOGIC ---
   const totalLoanTaken = useMemo(() => {
     return allLoans.reduce((sum, loan) => sum + Number(loan.amount || 0), 0);
   }, [allLoans]);
@@ -128,11 +132,9 @@ export default function MemberLoans() {
     return Math.round(totalOutstanding * 0.01);
   }, [totalOutstanding]);
 
-  // ✅ DIFF-E: useMemo change (IMPORTANT)
-  // ✅ REAL backend driven installment date (from passbook)
+  // ✅ REAL backend driven installment date (from passbook logic)
   const lastInstallmentDate = useMemo(() => {
     if (!activeLoan) return undefined;
-
     return activeLoan.last_installment_date;
   }, [activeLoan]);
 
@@ -167,7 +169,6 @@ export default function MemberLoans() {
         <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm text-slate-500">Remaining Balance</CardTitle><Wallet className="h-4 w-4 text-slate-600" /></CardHeader><CardContent className="text-xl font-bold">₹{totalOutstanding.toLocaleString()}</CardContent></Card>
         <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm text-slate-500">Total Loan Taken</CardTitle><TrendingUp className="h-4 w-4 text-blue-600" /></CardHeader><CardContent className="text-xl font-bold">₹{totalLoanTaken.toLocaleString()}</CardContent></Card>
         
-        {/* ✅ DIFF-1: Total Recovered Card ADD */}
         <Card>
           <CardHeader className="flex justify-between pb-2">
             <CardTitle className="text-sm text-slate-500">Total Recovered</CardTitle>
@@ -184,18 +185,19 @@ export default function MemberLoans() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
         
-        {/* ✅ DIFF-3: NEW CLEAN EMI DETAILS CARD */}
+        {/* ✅ FIX 2: IMPROVED UI LAYOUT (3 Column Grid) */}
         {activeLoan ? (
           <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-5 space-y-4">
               
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center mb-2">
                 <Badge className="bg-orange-100 text-orange-700">
                   Active Loan
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Grid Layout fix: 3 Columns for better alignment */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
                 <div>
                   <p className="text-sm text-slate-500">Remaining Loan</p>
                   <p className="text-2xl font-bold">
@@ -203,20 +205,21 @@ export default function MemberLoans() {
                   </p>
                 </div>
 
-                <div className="text-right">
+                <div className="sm:text-center">
+                   <p className="text-sm text-slate-500">Last Paid On</p>
+                   <p className="text-lg font-medium text-slate-800">
+                     {formatInstallmentDate(lastInstallmentDate)}
+                   </p>
+                </div>
+
+                <div className="sm:text-right">
                   <p className="text-sm text-slate-500">Next EMI Date</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-lg font-medium text-orange-600">
                     {getNextEmiCycle(lastInstallmentDate)}
                   </p>
                 </div>
               </div>
 
-              <div className="pt-2 space-y-1 text-sm text-slate-600">
-                <p>
-                  <span className="font-medium">Last Installment Paid On:</span>{' '}
-                  {formatInstallmentDate(lastInstallmentDate)}
-                </p>
-              </div>
             </CardContent>
           </Card>
         ) : (
