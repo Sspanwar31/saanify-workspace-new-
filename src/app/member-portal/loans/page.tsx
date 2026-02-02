@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner';
 import { Loader2, Wallet, AlertCircle, TrendingUp, Clock, Bell } from 'lucide-react';
 
-// ✅ DIFF-1: Helper functions (TOP of file)
+// ✅ Helper functions
 const formatInstallmentDate = (dateStr?: string) => {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
@@ -45,85 +45,54 @@ export default function MemberLoans() {
 
   // 1. Fetch Logic
   const fetchLoans = async () => {
-    console.log("🚀 DEBUG START: Fetching Loans...");
-    
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        console.error("❌ DEBUG: User not logged in");
-        return;
-    }
-    console.log("✅ DEBUG: User ID found:", user.id);
+    if (!user) return;
 
     let memberId = member?.id;
     if(!memberId) {
-        const { data: mem, error: memError } = await supabase.from('members').select('*').eq('auth_user_id', user.id).single();
-        if(memError) console.error("❌ DEBUG: Member fetch error:", memError);
-        
+        const { data: mem } = await supabase.from('members').select('*').eq('auth_user_id', user.id).single();
         if(mem) {
             setMember(mem);
             memberId = mem.id;
-            console.log("✅ DEBUG: Member ID found:", memberId);
         }
     }
 
     if (memberId) {
       // ✅ Fetch Loans
-      const { data: loans, error: loansError } = await supabase
+      const { data: loans } = await supabase
         .from('loans')
         .select('*')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
-      if (loansError) console.error("❌ DEBUG: Error fetching loans:", loansError);
-      console.log("✅ DEBUG: Loans fetched:", loans?.length, loans);
-
       if (loans) {
         const loanIds = loans.map(l => l.id) || [];
-        console.log("🔍 DEBUG: Searching Passbook for Loan IDs:", loanIds);
 
-        if (loanIds.length > 0) {
-            // ✅ FIX: Fetch directly from 'passbook_entries' (Updated Table Name)
-            // Added 'error' capture for debugging
-            const { data: passbookEntries, error: pbError } = await supabase
-              .from('passbook_entries')
-              .select('loan_id, date')
-              .in('loan_id', loanIds)
-              .order('date', { ascending: false });
+        // ✅ FIX: Using 'last_loan_installment' table as requested
+        // Ab hum direct processed table se data le rahe hain
+        const { data: installments } = await supabase
+          .from('last_loan_installment')
+          .select('loan_id, last_installment_date')
+          .in('loan_id', loanIds);
 
-            // 🛑 DEBUGGING BLOCK (Important)
-            if (pbError) {
-                console.error("❌ DEBUG: Error fetching passbook_entries:", pbError);
-                toast.error("Error loading EMI details");
-            } else {
-                console.log("✅ DEBUG: Passbook Entries found:", passbookEntries);
-                if (passbookEntries?.length === 0) {
-                    console.warn("⚠️ DEBUG: Query succeeded but returned 0 rows. Check RLS or IDs.");
-                }
-            }
-
-            // Map banaya taaki har loan id ke liye latest date mil jaye
-            const installmentMap = new Map();
-            passbookEntries?.forEach((entry: any) => {
-              if (entry.loan_id && !installmentMap.has(entry.loan_id)) {
-                installmentMap.set(entry.loan_id, entry.date);
-              }
+        // Map banaya taaki matching fast ho
+        const installmentMap = new Map();
+        if (installments) {
+            installments.forEach((item: any) => {
+                installmentMap.set(item.loan_id, item.last_installment_date);
             });
-            console.log("✅ DEBUG: Installment Map created:", Object.fromEntries(installmentMap));
-
-            const mergedLoans = loans.map(loan => ({
-              ...loan,
-              last_installment_date: installmentMap.get(loan.id) || null,
-            }));
-            
-            console.log("✅ DEBUG: Final Merged Loans Data:", mergedLoans);
-
-            setAllLoans(mergedLoans);
-            setActiveLoan(mergedLoans.find(l => l.status === 'active') || null);
-            setPendingRequest(mergedLoans.find(l => l.status === 'pending') || null);
-        } else {
-            console.log("ℹ️ DEBUG: No loans found, skipping passbook fetch.");
-            setAllLoans(loans);
         }
+
+        const mergedLoans = loans.map(loan => ({
+          ...loan,
+          last_installment_date: installmentMap.get(loan.id) || null,
+        }));
+
+        setAllLoans(mergedLoans);
+        
+        // Find LATEST active loan
+        setActiveLoan(mergedLoans.find(l => l.status === 'active') || null);
+        setPendingRequest(mergedLoans.find(l => l.status === 'pending') || null);
       }
     }
     setLoading(false);
@@ -132,9 +101,9 @@ export default function MemberLoans() {
   useEffect(() => {
     fetchLoans();
 
+    // Realtime Listener
     const channel = supabase.channel('member-loans-update')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'loans' }, () => {
-          console.log("🔄 DEBUG: Realtime update detected");
           fetchLoans();
       })
       .subscribe();
@@ -157,10 +126,9 @@ export default function MemberLoans() {
     return Math.round(totalOutstanding * 0.01);
   }, [totalOutstanding]);
 
-  // ✅ REAL backend driven installment date (from passbook logic)
+  // ✅ Get Date from the merged data
   const lastInstallmentDate = useMemo(() => {
     if (!activeLoan) return undefined;
-    console.log("DEBUG: Active Loan Last Installment Date:", activeLoan.last_installment_date);
     return activeLoan.last_installment_date;
   }, [activeLoan]);
 
@@ -217,15 +185,19 @@ export default function MemberLoans() {
               <div className="flex justify-between items-center mb-2">
                 <Badge className="bg-orange-100 text-orange-700">Active Loan</Badge>
               </div>
+
+              {/* Grid Layout fix: 3 Columns for better alignment */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
                 <div>
                   <p className="text-sm text-slate-500">Remaining Loan</p>
                   <p className="text-2xl font-bold">₹{totalOutstanding.toLocaleString()}</p>
                 </div>
+
                 <div className="sm:text-center">
                    <p className="text-sm text-slate-500">Last Paid On</p>
                    <p className="text-lg font-medium text-slate-800">{formatInstallmentDate(lastInstallmentDate)}</p>
                 </div>
+
                 <div className="sm:text-right">
                   <p className="text-sm text-slate-500">Next EMI Date</p>
                   <p className="text-lg font-medium text-orange-600">{getNextEmiCycle(lastInstallmentDate)}</p>
