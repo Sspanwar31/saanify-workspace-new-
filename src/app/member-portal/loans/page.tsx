@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner';
 import { Loader2, Wallet, AlertCircle, TrendingUp, Clock, Bell } from 'lucide-react';
 
-// ✅ Helper functions
+// ✅ Helper functions (TOP of file)
 const formatInstallmentDate = (dateStr?: string) => {
   if (!dateStr) return '—';
   const date = new Date(dateStr);
@@ -38,6 +38,9 @@ export default function MemberLoans() {
   const [allLoans, setAllLoans] = useState<any[]>([]);
   const [activeLoan, setActiveLoan] = useState<any>(null);
   const [pendingRequest, setPendingRequest] = useState<any>(null);
+  
+  // ✅ NEW: State for last payment date (Member level)
+  const [lastPaymentDate, setLastPaymentDate] = useState<string | undefined>(undefined);
 
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [amount, setAmount] = useState('');
@@ -58,46 +61,36 @@ export default function MemberLoans() {
     }
 
     if (memberId) {
-      // ✅ Fetch Loans
-      const { data: loans, error: loanErr } = await supabase
+      // Fetch Loans (Existing Logic)
+      const { data: loans } = await supabase
         .from('loans')
         .select('*')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
       console.log('🟢 LOANS RESULT:', loans);
-      console.log('🔴 LOANS ERROR:', loanErr);
 
       if (loans) {
-        // ✅ Fetch Last Installment Data
-        const loanIds = loans.map(l => l.id);
-
-        const { data: installments, error: instErr } = await supabase
-          .from('last_loan_installment')
-          .select('loan_id, last_installment_date')
-          .in('loan_id', loanIds);
-
-        console.log('🟣 INSTALLMENTS RESULT:', installments);
-        console.log('🔴 INSTALLMENTS ERROR:', instErr);
-
-        // Map banaya taaki matching fast ho
-        const installmentMap = new Map();
-        if (installments) {
-            installments.forEach((item: any) => {
-                installmentMap.set(item.loan_id, item.last_installment_date);
-            });
-        }
-
-        const mergedLoans = loans.map(loan => ({
-          ...loan,
-          last_installment_date: installmentMap.get(loan.id) || null,
-        }));
-
-        setAllLoans(mergedLoans);
+        setAllLoans(loans);
         
         // Find LATEST active loan (Since list is sorted by date desc)
-        setActiveLoan(mergedLoans.find(l => l.status === 'active') ?? null);
-        setPendingRequest(mergedLoans.find(l => l.status === 'pending') || null);
+        setActiveLoan(loans.find(l => l.status === 'active') || null);
+        setPendingRequest(loans.find(l => l.status === 'pending') || null);
+      }
+
+      // ✅ DATA SOURCE CHANGE: member_last_payment
+      const { data: lastPayment, error: payError } = await supabase
+        .from('member_last_payment')
+        .select('last_payment_date')
+        .eq('member_id', memberId)
+        .single();
+
+      if (payError) {
+        console.log('🔴 LAST PAYMENT ERROR:', payError);
+      } else {
+        console.log('🟣 LAST PAYMENT RESULT:', lastPayment);
+        // ✅ STATE SET: SIMPLE
+        setLastPaymentDate(lastPayment?.last_payment_date);
       }
     }
     setLoading(false);
@@ -130,12 +123,6 @@ export default function MemberLoans() {
   const currentInterest = useMemo(() => {
     return Math.round(totalOutstanding * 0.01);
   }, [totalOutstanding]);
-
-  // ✅ Get Date from merged data
-  const lastInstallmentDate = useMemo(() => {
-    if (!activeLoan) return undefined;
-    return activeLoan.last_installment_date;
-  }, [activeLoan]);
 
   const handleRequest = async () => {
     if (!amount) return;
@@ -185,7 +172,7 @@ export default function MemberLoans() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
         
-        {/* UI UPDATE: 3-Column Grid Layout */}
+        {/* UI UPDATE: Using lastPaymentDate state */}
         {activeLoan ? (
           <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-5 space-y-4">              
@@ -195,7 +182,7 @@ export default function MemberLoans() {
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-slate-500">Remaining Loan</p>
                   <p className="text-2xl font-bold">
@@ -203,15 +190,19 @@ export default function MemberLoans() {
                   </p>
                 </div>
 
-                <div className="sm:text-center">
-                   <p className="text-sm text-slate-500">Last Paid On</p>
-                   <p className="text-lg font-medium text-slate-800">{formatInstallmentDate(lastInstallmentDate)}</p>
-                </div>
-
-                <div className="sm:text-right">
+                <div className="text-right">
                   <p className="text-sm text-slate-500">Next EMI Date</p>
-                  <p className="text-lg font-medium text-orange-600">{getNextEmiCycle(lastInstallmentDate)}</p>
+                  <p className="text-lg font-medium">
+                    {getNextEmiCycle(lastPaymentDate)}
+                  </p>
                 </div>
+              </div>
+              
+              <div className="pt-2 space-y-1 text-sm text-slate-600">
+                <p>
+                  <span className="font-medium">Last Installment Paid On:</span>{' '}
+                  {formatInstallmentDate(lastPaymentDate)}
+                </p>
               </div>
             </CardContent>
           </Card>
