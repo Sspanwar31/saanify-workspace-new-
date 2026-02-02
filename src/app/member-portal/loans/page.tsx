@@ -12,10 +12,8 @@ import { toast } from 'sonner';
 import { Loader2, Wallet, AlertCircle, TrendingUp, Clock, Bell } from 'lucide-react';
 
 // ✅ DIFF-1: Helper functions (TOP of file)
-// Last installment date (backend driven – audit safe)
 const formatInstallmentDate = (dateStr?: string) => {
   if (!dateStr) return '—';
-
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -24,13 +22,10 @@ const formatInstallmentDate = (dateStr?: string) => {
   });
 };
 
-// Next EMI cycle (auto derived from last installment)
 const getNextEmiCycle = (dateStr?: string) => {
   if (!dateStr) return '—';
-
   const date = new Date(dateStr);
   date.setMonth(date.getMonth() + 1);
-
   return date.toLocaleDateString('en-IN', {
     month: 'long',
     year: 'numeric',
@@ -50,55 +45,85 @@ export default function MemberLoans() {
 
   // 1. Fetch Logic
   const fetchLoans = async () => {
+    console.log("🚀 DEBUG START: Fetching Loans...");
+    
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+        console.error("❌ DEBUG: User not logged in");
+        return;
+    }
+    console.log("✅ DEBUG: User ID found:", user.id);
 
     let memberId = member?.id;
     if(!memberId) {
-        const { data: mem } = await supabase.from('members').select('*').eq('auth_user_id', user.id).single();
+        const { data: mem, error: memError } = await supabase.from('members').select('*').eq('auth_user_id', user.id).single();
+        if(memError) console.error("❌ DEBUG: Member fetch error:", memError);
+        
         if(mem) {
             setMember(mem);
             memberId = mem.id;
+            console.log("✅ DEBUG: Member ID found:", memberId);
         }
     }
 
     if (memberId) {
       // ✅ Fetch Loans
-      const { data: loans } = await supabase
+      const { data: loans, error: loansError } = await supabase
         .from('loans')
         .select('*')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
+      if (loansError) console.error("❌ DEBUG: Error fetching loans:", loansError);
+      console.log("✅ DEBUG: Loans fetched:", loans?.length, loans);
+
       if (loans) {
         const loanIds = loans.map(l => l.id) || [];
+        console.log("🔍 DEBUG: Searching Passbook for Loan IDs:", loanIds);
 
-        // ✅ FIX 1: Fetch directly from 'passbook' instead of 'last_loan_installment'
-        // Passbook se latest entry nikal rahe hai date ke hisab se
-        const { data: passbookEntries } = await supabase
-          .from('passbook')
-          .select('loan_id, date')
-          .in('loan_id', loanIds)
-          .order('date', { ascending: false }); // Latest date upar aayegi
+        if (loanIds.length > 0) {
+            // ✅ FIX: Fetch directly from 'passbook_entries' (Updated Table Name)
+            // Added 'error' capture for debugging
+            const { data: passbookEntries, error: pbError } = await supabase
+              .from('passbook_entries')
+              .select('loan_id, date')
+              .in('loan_id', loanIds)
+              .order('date', { ascending: false });
 
-        // Map banaya taaki har loan id ke liye latest date mil jaye
-        const installmentMap = new Map();
-        passbookEntries?.forEach((entry: any) => {
-          // Sirf pehli entry (latest) ko save karenge agar map me nahi hai to
-          if (entry.loan_id && !installmentMap.has(entry.loan_id)) {
-            installmentMap.set(entry.loan_id, entry.date);
-          }
-        });
+            // 🛑 DEBUGGING BLOCK (Important)
+            if (pbError) {
+                console.error("❌ DEBUG: Error fetching passbook_entries:", pbError);
+                toast.error("Error loading EMI details");
+            } else {
+                console.log("✅ DEBUG: Passbook Entries found:", passbookEntries);
+                if (passbookEntries?.length === 0) {
+                    console.warn("⚠️ DEBUG: Query succeeded but returned 0 rows. Check RLS or IDs.");
+                }
+            }
 
-        const mergedLoans = loans.map(loan => ({
-          ...loan,
-          last_installment_date: installmentMap.get(loan.id) || null,
-        }));
+            // Map banaya taaki har loan id ke liye latest date mil jaye
+            const installmentMap = new Map();
+            passbookEntries?.forEach((entry: any) => {
+              if (entry.loan_id && !installmentMap.has(entry.loan_id)) {
+                installmentMap.set(entry.loan_id, entry.date);
+              }
+            });
+            console.log("✅ DEBUG: Installment Map created:", Object.fromEntries(installmentMap));
 
-        setAllLoans(mergedLoans);
-        
-        setActiveLoan(mergedLoans.find(l => l.status === 'active') || null);
-        setPendingRequest(mergedLoans.find(l => l.status === 'pending') || null);
+            const mergedLoans = loans.map(loan => ({
+              ...loan,
+              last_installment_date: installmentMap.get(loan.id) || null,
+            }));
+            
+            console.log("✅ DEBUG: Final Merged Loans Data:", mergedLoans);
+
+            setAllLoans(mergedLoans);
+            setActiveLoan(mergedLoans.find(l => l.status === 'active') || null);
+            setPendingRequest(mergedLoans.find(l => l.status === 'pending') || null);
+        } else {
+            console.log("ℹ️ DEBUG: No loans found, skipping passbook fetch.");
+            setAllLoans(loans);
+        }
       }
     }
     setLoading(false);
@@ -107,9 +132,9 @@ export default function MemberLoans() {
   useEffect(() => {
     fetchLoans();
 
-    // Realtime Listener
     const channel = supabase.channel('member-loans-update')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'loans' }, () => {
+          console.log("🔄 DEBUG: Realtime update detected");
           fetchLoans();
       })
       .subscribe();
@@ -135,6 +160,7 @@ export default function MemberLoans() {
   // ✅ REAL backend driven installment date (from passbook logic)
   const lastInstallmentDate = useMemo(() => {
     if (!activeLoan) return undefined;
+    console.log("DEBUG: Active Loan Last Installment Date:", activeLoan.last_installment_date);
     return activeLoan.last_installment_date;
   }, [activeLoan]);
 
@@ -185,48 +211,31 @@ export default function MemberLoans() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
         
-        {/* ✅ FIX 2: IMPROVED UI LAYOUT (3 Column Grid) */}
         {activeLoan ? (
           <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-5 space-y-4">
-              
               <div className="flex justify-between items-center mb-2">
-                <Badge className="bg-orange-100 text-orange-700">
-                  Active Loan
-                </Badge>
+                <Badge className="bg-orange-100 text-orange-700">Active Loan</Badge>
               </div>
-
-              {/* Grid Layout fix: 3 Columns for better alignment */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
                 <div>
                   <p className="text-sm text-slate-500">Remaining Loan</p>
-                  <p className="text-2xl font-bold">
-                    ₹{totalOutstanding.toLocaleString()}
-                  </p>
+                  <p className="text-2xl font-bold">₹{totalOutstanding.toLocaleString()}</p>
                 </div>
-
                 <div className="sm:text-center">
                    <p className="text-sm text-slate-500">Last Paid On</p>
-                   <p className="text-lg font-medium text-slate-800">
-                     {formatInstallmentDate(lastInstallmentDate)}
-                   </p>
+                   <p className="text-lg font-medium text-slate-800">{formatInstallmentDate(lastInstallmentDate)}</p>
                 </div>
-
                 <div className="sm:text-right">
                   <p className="text-sm text-slate-500">Next EMI Date</p>
-                  <p className="text-lg font-medium text-orange-600">
-                    {getNextEmiCycle(lastInstallmentDate)}
-                  </p>
+                  <p className="text-lg font-medium text-orange-600">{getNextEmiCycle(lastInstallmentDate)}</p>
                 </div>
               </div>
-
             </CardContent>
           </Card>
         ) : (
           <Card className="bg-green-50 border-green-200">
-            <CardContent className="p-4 text-center text-green-700 font-medium">
-              You don’t have any active loans.
-            </CardContent>
+            <CardContent className="p-4 text-center text-green-700 font-medium">You don’t have any active loans.</CardContent>
           </Card>
         )}
         
