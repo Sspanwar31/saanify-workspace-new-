@@ -66,32 +66,28 @@ export default function MemberLoans() {
         .order('created_at', { ascending: false });
 
       if (loans) {
-        const loanIds = loans.map(l => l.id) || [];
+        // ✅ Fetch Last Installment Data
+        const loanIds = loans.map(l => l.id);
 
-        // ✅ FIX: Using 'last_loan_installment' table as requested
-        // Ab hum direct processed table se data le rahe hain
         const { data: installments } = await supabase
           .from('last_loan_installment')
           .select('loan_id, last_installment_date')
           .in('loan_id', loanIds);
 
-        // Map banaya taaki matching fast ho
-        const installmentMap = new Map();
-        if (installments) {
-            installments.forEach((item: any) => {
-                installmentMap.set(item.loan_id, item.last_installment_date);
-            });
-        }
+        // ✅ FIX-1 & FIX-2: JS level join with UUID string casting
+        const installmentMap = new Map(
+          installments?.map(i => [String(i.loan_id), i.last_installment_date])
+        );
 
         const mergedLoans = loans.map(loan => ({
           ...loan,
-          last_installment_date: installmentMap.get(loan.id) || null,
+          last_installment_date: installmentMap.get(String(loan.id)) || null,
         }));
 
         setAllLoans(mergedLoans);
         
-        // Find LATEST active loan
-        setActiveLoan(mergedLoans.find(l => l.status === 'active') || null);
+        // ✅ FIX-3: Safety (using ??)
+        setActiveLoan(mergedLoans.find(l => l.status === 'active') ?? null);
         setPendingRequest(mergedLoans.find(l => l.status === 'pending') || null);
       }
     }
@@ -111,7 +107,7 @@ export default function MemberLoans() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // --- CALCULATION LOGIC ---
+  // --- CALCULATION LOGIC (UNCHANGED) ---
   const totalLoanTaken = useMemo(() => {
     return allLoans.reduce((sum, loan) => sum + Number(loan.amount || 0), 0);
   }, [allLoans]);
@@ -126,7 +122,7 @@ export default function MemberLoans() {
     return Math.round(totalOutstanding * 0.01);
   }, [totalOutstanding]);
 
-  // ✅ Get Date from the merged data
+  // ✅ Get Date from merged data
   const lastInstallmentDate = useMemo(() => {
     if (!activeLoan) return undefined;
     return activeLoan.last_installment_date;
@@ -163,6 +159,7 @@ export default function MemberLoans() {
         <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm text-slate-500">Remaining Balance</CardTitle><Wallet className="h-4 w-4 text-slate-600" /></CardHeader><CardContent className="text-xl font-bold">₹{totalOutstanding.toLocaleString()}</CardContent></Card>
         <Card><CardHeader className="flex justify-between pb-2"><CardTitle className="text-sm text-slate-500">Total Loan Taken</CardTitle><TrendingUp className="h-4 w-4 text-blue-600" /></CardHeader><CardContent className="text-xl font-bold">₹{totalLoanTaken.toLocaleString()}</CardContent></Card>
         
+        {/* ✅ Total Recovered Card */}
         <Card>
           <CardHeader className="flex justify-between pb-2">
             <CardTitle className="text-sm text-slate-500">Total Recovered</CardTitle>
@@ -179,18 +176,23 @@ export default function MemberLoans() {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-slate-700">EMI Details</h2>
         
+        {/* ✅ UI UPDATE: 3-Column Grid Layout */}
         {activeLoan ? (
           <Card className="border-l-4 border-l-orange-500">
-            <CardContent className="p-5 space-y-4">
+            <CardContent className="p-5 space-y-4">              
               <div className="flex justify-between items-center mb-2">
-                <Badge className="bg-orange-100 text-orange-700">Active Loan</Badge>
+                <Badge className="bg-orange-100 text-orange-700">
+                  Active Loan
+                </Badge>
               </div>
 
               {/* Grid Layout fix: 3 Columns for better alignment */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
                 <div>
                   <p className="text-sm text-slate-500">Remaining Loan</p>
-                  <p className="text-2xl font-bold">₹{totalOutstanding.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">
+                    ₹{totalOutstanding.toLocaleString()}
+                  </p>
                 </div>
 
                 <div className="sm:text-center">
@@ -207,7 +209,9 @@ export default function MemberLoans() {
           </Card>
         ) : (
           <Card className="bg-green-50 border-green-200">
-            <CardContent className="p-4 text-center text-green-700 font-medium">You don’t have any active loans.</CardContent>
+            <CardContent className="p-4 text-center text-green-700 font-medium">
+              You don’t have any active loans.
+            </CardContent>
           </Card>
         )}
         
