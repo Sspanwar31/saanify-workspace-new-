@@ -225,7 +225,20 @@ function SignupForm() {
         (client?.subscription_status === 'active' || client?.plan === 'TRIAL')
       ) {
         toast.success("Account Created! Entering Dashboard...");
-        router.replace('/dashboard');
+        
+        // 🔥 FIX: Set LocalStorage MANUALLY & Force Reload
+        // This ensures DashboardLayout finds the user immediately.
+        const userObj = { 
+            id: authData.user.id, 
+            email: formData.email, 
+            role: 'client',
+            ...client 
+        };
+        localStorage.setItem('current_user', JSON.stringify(userObj));
+        
+        // Force full reload to bypass stale state
+        window.location.href = '/dashboard'; 
+        
       } else {
         // Agar Manual Payment hai ya Pending hai
         toast.success("Account Created! Pending Admin Approval.");
@@ -353,7 +366,7 @@ function SignupForm() {
                   </div>
                   <div className="grid gap-2">
                      <Label>Password</Label>
-                     <Input type="password" placeholder="•••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
+                     <Input type="password" placeholder="••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
                   </div>
                   
                   {/* BUTTON LOGIC */}
