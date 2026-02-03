@@ -214,22 +214,22 @@ function SignupForm() {
       }
 
       // --- SUCCESS & REDIRECT ---
-      // ✅ FIX #1 (RECOMMENDED – CLEAN & SAFE)
-      if (selectedPlanId === 'TRIAL' || isAutoPaid) {
-        toast.success("Account Created! Entering Dashboard...");
-        
-        // 🔥 IMPORTANT: wait for auth session
-        const { data: sessionData } = await supabase.auth.getSession();
+      // 🔑 FINAL REDIRECT — DB IS SOURCE OF TRUTH
+      const { data: client } = await supabase
+        .from('clients')
+        .select('plan, status, subscription_status')
+        .eq('id', authData.user.id)
+        .single();
 
-        if (sessionData.session) {
-          router.replace('/dashboard');
-        } else {
-          // fallback (rare case)
-          router.replace('/login');
-        }
+      if (
+        client?.status === 'ACTIVE' &&
+        (client?.subscription_status === 'active' || client?.plan === 'TRIAL')
+      ) {
+        toast.success("Account Created! Entering Dashboard...");
+        router.replace('/dashboard');
       } else {
         toast.success("Account Created! Pending Admin Approval.");
-        router.replace('/login'); 
+        router.replace('/login');
       }
 
     } catch (err: any) {
