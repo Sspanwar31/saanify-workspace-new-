@@ -364,18 +364,21 @@ Contact Support
 </CardContent>
 </Card>
 
-{/* FLOATING BACK TO LANDING */}
+{/* BACK TO LANDING – CARD ANCHORED */}
+<div className="relative w-full max-w-[440px]">
 <button
 type="button"
 onClick={() => router.push('/')}
-className="fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full
-bg-white/80 backdrop-blur-md border border-slate-200 shadow-lg
-text-slate-600 hover:text-slate-900 hover:shadow-xl
-transition-all duration-300 hover:scale-105"
+className="absolute -bottom-14 left-0 flex items-center gap-2
+text-sm font-medium text-slate-700
+border border-slate-300 rounded-full px-4 py-2
+hover:bg-slate-100 hover:text-slate-900
+transition-all"
 >
 <ArrowLeft className="w-4 h-4" />
-<span className="text-sm font-medium">Back</span>
+Back to Home
 </button>
+</div>
 
 </div>
 </div>
