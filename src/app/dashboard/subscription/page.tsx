@@ -75,14 +75,17 @@ export default function SubscriptionPage() {
           // --- DATE CALCULATION LOGIC (FIXED) ---
           const today = new Date();
           let expiryDate = new Date(); // Default to now
-          let isTrial = (client.plan_name || '').toLowerCase().includes('trial') || (client.plan_name || '').toLowerCase().includes('free');
+          
+          // 🟢 FIX #1: Use direct 'plan' comparison
+          let isTrial = client.plan === 'TRIAL';
 
           // Date Selection Priority:
           // 1. plan_end_date (Agar DB me hai)
           // 2. subscription_expiry (Backup column)
           // 3. Agar Trial hai aur koi date nahi -> created_at + 15 Days
           
-          if (client.plan_end_date) {
+          // 🟢 FIX #2: Prioritize plan_end_date only if it's a TRIAL plan
+          if (client.plan === 'TRIAL' && client.plan_end_date) {
             expiryDate = new Date(client.plan_end_date);
           } else if (client.subscription_expiry) {
             expiryDate = new Date(client.subscription_expiry);
@@ -99,9 +102,12 @@ export default function SubscriptionPage() {
             Math.ceil(diffTime / (1000 * 60 * 60 * 24))
           );
 
+          // 🟢 FIX #3: Use explicit status for TRIAL
+          const finalStatus = isTrial ? 'active' : (client.subscription_status || 'inactive');
+
           setSubscription({
             planName: client.plan_name || 'Trial Plan',
-            status: client.subscription_status || (daysRemaining > 0 ? 'active' : 'expired'),
+            status: finalStatus,
             startStr: client.plan_start_date
               ? new Date(client.plan_start_date).toLocaleDateString('en-IN')
               : new Date(client.created_at).toLocaleDateString('en-IN'), // Fallback to join date
