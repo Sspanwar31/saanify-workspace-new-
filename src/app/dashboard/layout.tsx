@@ -12,12 +12,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
-  // ✅ Helper Function: Perform Backup
+  // Auto Backup Function
   const performAutoBackup = async (clientId: string) => {
     try {
-      console.log("⏳ Starting Auto Backup...");
-      
-      // Fetch All Critical Data
       const [members, loans, passbook, expenses] = await Promise.all([
         supabase.from('members').select('*').eq('client_id', clientId),
         supabase.from('loans').select('*').eq('client_id', clientId),
@@ -35,79 +32,60 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       };
 
       const fileBody = JSON.stringify(backupData);
-      const fileName = `${clientId}/latest_backup.json`; // Always overwrite this file
+      const fileName = `${clientId}/latest_backup.json`;
 
-      // Upload to Supabase Storage
-      const { error } = await supabase.storage
+      await supabase.storage
         .from('client_backups')
-        .upload(fileName, fileBody, {
-          contentType: 'application/json',
-          upsert: true // Overwrite mode
-        });
+        .upload(fileName, fileBody, { contentType: 'application/json', upsert: true });
 
-      if (error) throw error;
-      console.log("✅ Auto Backup Successful!");
-
-    } catch (err) {
-      console.error("Backup Failed (Silent):", err);
-    }
+    } catch (err) { console.error("Backup Failed (Silent):", err); }
   };
 
   useEffect(() => {
+    let attempts = 0;
+
     const checkAccess = async () => {
-      console.log("🔍 Checking Dashboard Access...");
       const storedUser = localStorage.getItem('current_user');
+      
+      // Retry Logic: Wait for Signup to set localStorage
+      if (!storedUser && attempts < 2) {
+         attempts++;
+         setTimeout(checkAccess, 200); // Retry after 200ms
+         return;
+      }
+
       const storedMember = localStorage.getItem('current_member');
 
-      /* ---------------------------------------------------
-         ❌ MEMBER NEVER ALLOWED IN CLIENT DASHBOARD
-      --------------------------------------------------- */
+      // Security Checks
       if (storedMember && !storedUser) {
-        console.warn("🚫 Blocked: Member trying to access Client Dashboard");
         router.push('/member-portal/dashboard');
         return;
       }
 
-      /* ---------------------------------------------------
-         ❌ NO LOGIN
-      --------------------------------------------------- */
       if (!storedUser) {
-        console.warn("🚫 Blocked: No User Found in LocalStorage");
         router.push('/login');
         return;
       }
 
-      /* ---------------------------------------------------
-         ✅ CLIENT / TREASURER (SAME DASHBOARD)
-      --------------------------------------------------- */
       try {
         const user = JSON.parse(storedUser);
-
-        // ✅ IMPORTANT FIX
         const resolvedClientId = user.client_id ?? user.id;
 
-        console.log("👤 User ID:", user.id);
-        console.log("🏢 Resolved Client ID:", resolvedClientId);
-
-        // ✅ LINE 1 — client fetch me plan add karo
+        // Fetch Client Data
         const { data: client, error } = await supabase
           .from('clients')
-          .select('plan, plan_end_date, subscription_status, theme, auto_backup')
+          .select('plan, plan_end_date, subscription_status, theme, auto_backup, status')
           .eq('id', resolvedClientId)
           .single();
 
         if (error) {
-          console.error("❌ DB Fetch Error:", error);
-          // If fetch fails, we allow access safely to avoid lockout
           setIsAuthorized(true);
           setIsChecking(false);
           return;
         }
 
         if (client) {
-          console.log("📋 Client Data Found:", client);
-          
-          // ✅ FIX: Apply Global Theme Logic
+          // Theme Logic
           const root = document.documentElement;
           if (client.theme === 'dark') {
             root.classList.add('dark');
@@ -117,12 +95,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             root.style.colorScheme = 'light';
           }
 
-          // ✅ NEW: Auto Backup Logic (Runs if Toggle is ON)
+          // Backup Logic
           if (client.auto_backup === true) {
-             const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+             const today = new Date().toISOString().split('T')[0]; 
              const lastBackup = localStorage.getItem(`last_backup_${resolvedClientId}`);
-
-             // Agar aaj backup nahi hua hai
              if (lastBackup !== today) {
                 performAutoBackup(resolvedClientId).then(() => {
                     localStorage.setItem(`last_backup_${resolvedClientId}`, today);
@@ -130,40 +106,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
              }
           }
 
+          // Validation Logic
           const expiry = new Date(client.plan_end_date || new Date());
           const today = new Date();
           
-          // ✅ FIX 1: Allow TRIAL plans to bypass strict checks
           const isTrial = client.plan === 'TRIAL' || client.plan === 'FREE_TRIAL';
-          
-          // ✅ FIX 2: Check expiration only if NOT lifetime
-          // Trial expires normally based on date
           const isExpired = today > expiry && client.plan !== 'LIFETIME';
-          
-          // ✅ FIX 3: Inactive check should allow TRIAL
-          // Agar Trial hai to 'subscription_status' ignore karo (kyunki wo payment status hai)
           const isInactive = client.subscription_status !== 'active' && !isTrial;
+          const isLocked = client.status === 'LOCKED' || client.status === 'EXPIRED';
 
-          console.log("🛑 Access Checks:", { 
-              isTrial, 
-              isExpired, 
-              isInactive, 
-              plan: client.plan,
-              subStatus: client.subscription_status 
-          });
+          if (isLocked) {
+             localStorage.clear();
+             router.push('/login');
+             return;
+          }
 
           if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
-            console.warn("⚠️ Redirecting to Subscription Page due to Expiry/Inactivity");
             router.push('/dashboard/subscription');
             return;
           }
         }
 
-        // ✅ Client OR Treasurer both allowed
-        console.log("✅ Access Granted!");
         setIsAuthorized(true);
       } catch (err) {
-        console.error("🔥 Crash in Check Access:", err);
         router.push('/login');
       }
 
