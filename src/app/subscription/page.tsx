@@ -22,7 +22,7 @@ interface SubscriptionData {
     storage: string
     societies: number
   }
-  isTrialUsed: boolean // New field for logic
+  isTrialUsed: boolean
 }
 
 export default function SubscriptionManagement() {
@@ -50,41 +50,52 @@ export default function SubscriptionManagement() {
         if (clients && clients.length > 0 && isMounted) {
           const client = clients[0];
           
-          // 2. Get Plan Details (Features, Limits)
-          // We fetch the plan details based on what is assigned to the client
+          // 2. Get Plan Details
           const planNameQuery = client.plan_name || 'Trial';
           
           const { data: planDetails } = await supabase
             .from('plans')
             .select('*')
-            .ilike('name', planNameQuery) // Case insensitive match
+            .ilike('name', planNameQuery) 
             .single();
 
           // 3. Logic to determine if it is a Trial Plan
-          // Checks if name implies trial OR if price is 0
           const isTrial = 
             planNameQuery.toLowerCase().includes('trial') || 
             planNameQuery.toLowerCase().includes('free') ||
             (planDetails && planDetails.price === 0);
 
-          // 4. Calculate End Date / Trial End
-          const endDate = client.plan_end_date 
-            ? new Date(client.plan_end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-            : new Date().toLocaleDateString();
+          // ✅ FIX START: Date Calculation Logic
+          let targetEndDate = new Date(); 
 
           if (client.plan_end_date) {
-            calculateDaysRemaining(client.plan_end_date);
+            // Case A: Paid Plan OR Trial with fixed date in DB
+            targetEndDate = new Date(client.plan_end_date);
+          } else if (isTrial && client.created_at) {
+            // Case B: Trial Plan with NO end date in DB -> Calculate (Joined + 15 Days)
+            const joinDate = new Date(client.created_at);
+            targetEndDate = new Date(joinDate);
+            targetEndDate.setDate(joinDate.getDate() + 15); // Add 15 days
           }
+          
+          // Calculate Days Remaining
+          const now = new Date();
+          const timeDiff = targetEndDate.getTime() - now.getTime();
+          const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+          const calculatedDays = Math.max(0, daysDiff); // Minus me na jaye
+          setDaysRemaining(calculatedDays);
 
-          // 5. Map Limits based on Plan Type (Hybrid: DB + Static Fallback to keep UI intact)
-          // We try to parse "200 Members" from DB to number "200", else fallback
+          // Format Date for Display
+          const endDateString = targetEndDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          // ✅ FIX END
+
+          // 5. Map Limits based on Plan Type (Fallback Logic)
           let userLimit: string | number = 'Unlimited';
           if (planDetails?.limit_members) {
              const parsed = parseInt(planDetails.limit_members);
              userLimit = isNaN(parsed) ? 'Unlimited' : parsed;
           }
 
-          // Mapping Storage/Societies based on plan hierarchy to maintain UI
           const planKey = planNameQuery.toUpperCase();
           let storageLimit = '1 GB';
           let societyLimit = 1;
@@ -95,11 +106,11 @@ export default function SubscriptionManagement() {
 
           // 6. Construct Data Object
           const subData: SubscriptionData = {
-            planType: planNameQuery.toUpperCase(), // BASIC, PRO, TRIAL
-            status: (client.subscription_status || 'ACTIVE').toUpperCase(),
-            trialEnds: endDate,
-            currentPeriodEnd: endDate,
-            features: planDetails?.features || ['Basic Access', 'Dashboard'], // From DB or fallback
+            planType: planNameQuery.toUpperCase(), 
+            status: (client.subscription_status || (calculatedDays > 0 ? 'ACTIVE' : 'EXPIRED')).toUpperCase(),
+            trialEnds: endDateString,
+            currentPeriodEnd: endDateString,
+            features: planDetails?.features || ['Basic Access', 'Dashboard'],
             limits: {
               users: userLimit,
               storage: storageLimit,
@@ -127,16 +138,7 @@ export default function SubscriptionManagement() {
     };
   }, [])
 
-  const calculateDaysRemaining = (dateString: string) => {
-    const targetDate = new Date(dateString)
-    const currentDate = new Date()
-    const timeDiff = targetDate.getTime() - currentDate.getTime()
-    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24))
-    setDaysRemaining(Math.max(0, daysDiff))
-  }
-
   const getPlanIcon = (planType: string) => {
-    // Dynamic match for plan types including DB values
     if (planType.includes('TRIAL') || planType.includes('FREE')) return <Clock className="h-5 w-5" />
     if (planType.includes('BASIC')) return <Users className="h-5 w-5" />
     if (planType.includes('PRO') || planType.includes('PROFESSIONAL')) return <Zap className="h-5 w-5" />
@@ -162,7 +164,6 @@ export default function SubscriptionManagement() {
     // Only show progress for Trial
     if (!subscription?.planType.includes('TRIAL') && !subscription?.planType.includes('FREE')) return 100
     const totalTrialDays = 15 // Default trial length
-    // Avoid division by zero or negative
     const days = daysRemaining > totalTrialDays ? totalTrialDays : daysRemaining;
     return ((totalTrialDays - days) / totalTrialDays) * 100
   }
@@ -186,7 +187,7 @@ export default function SubscriptionManagement() {
         </div>
         {isTrialPlan && (
           <Button 
-            onClick={() => router.push('/dashboard/subscription')} // Redirect to main pricing page
+            onClick={() => router.push('/dashboard/subscription')} 
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             Upgrade Now
@@ -314,7 +315,7 @@ export default function SubscriptionManagement() {
           <div className="grid gap-4 md:grid-cols-3">
             <Button 
               variant="outline" 
-              onClick={() => router.push('/dashboard/subscription')} // Route to Pricing
+              onClick={() => router.push('/dashboard/subscription')} 
               className="justify-start"
             >
               <Calendar className="h-4 w-4 mr-2" />
@@ -323,7 +324,7 @@ export default function SubscriptionManagement() {
             
             <Button 
               variant="outline" 
-              onClick={() => router.push('/dashboard/subscription')} // Route to history if exists or same
+              onClick={() => router.push('/dashboard/subscription')} 
               className="justify-start"
             >
               <Clock className="h-4 w-4 mr-2" />
