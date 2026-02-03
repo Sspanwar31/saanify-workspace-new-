@@ -364,21 +364,23 @@ Contact Support
 </CardContent>
 </Card>
 
-{/* BACK TO LANDING – CARD ANCHORED */}
-<div className="relative w-full max-w-[440px]">
+{/* BACK TO LANDING (DESKTOP ONLY) */}
 <button
 type="button"
 onClick={() => router.push('/')}
-className="absolute -bottom-14 left-0 flex items-center gap-2
-text-sm font-medium text-slate-700
-border border-slate-300 rounded-full px-4 py-2
-hover:bg-slate-100 hover:text-slate-900
-transition-all"
+className="
+absolute bottom-6 left-6
+flex items-center justify-center
+w-9 h-9 rounded-full
+border border-slate-400
+text-slate-700
+hover:bg-slate-200 hover:text-slate-900
+transition
+hidden lg:flex
+"
 >
 <ArrowLeft className="w-4 h-4" />
-Back to Home
 </button>
-</div>
 
 </div>
 </div>
