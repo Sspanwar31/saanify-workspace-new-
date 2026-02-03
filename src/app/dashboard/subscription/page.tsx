@@ -11,7 +11,7 @@ import {
   Users,
   AlertTriangle,
   ShieldCheck,
-  Clock // Added Clock icon
+  Clock 
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -27,31 +27,40 @@ export default function SubscriptionPage() {
   const [memberCount, setMemberCount] = useState(0);
   const [clientId, setClientId] = useState<string | null>(null);
   
-  // Pending Order State
   const [pendingOrder, setPendingOrder] = useState<any>(null);
-  
-  // Dynamic Plans State (Replaces Static List)
   const [plans, setPlans] = useState<any[]>([]);
-  
-  // Modal State
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
-  /* -------------------- FETCH DATA (BACKEND CONNECTED) -------------------- */
+  /* -------------------- FETCH DATA (FIXED LOGIC) -------------------- */
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // 1. Get Client Info
-        const { data: clients } = await supabase.from('clients').select('*').limit(1);
+        // 1. Pehle Logged In User nikalo (Safety)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            console.error("User not logged in");
+            return;
+        }
 
-        if (clients && clients.length > 0) {
-          const client = clients[0];
+        // 2. Client Info nikalo (Jo User se match kare)
+        // Hum 'maybeSingle()' use karenge taaki agar row na mile to error na aye
+        let query = supabase.from('clients').select('*');
+        
+        // Koshish karein email se match karne ki (Best Practice)
+        if(user.email) {
+            query = query.eq('email', user.email);
+        }
+        
+        const { data: client, error: clientError } = await query.maybeSingle();
+
+        if (client) {
           setClientId(client.id);
 
-          // 2. Check for Pending Orders
-          const { data: pendingData, error: pendingError } = await supabase
+          // --- PENDING ORDER CHECK ---
+          const { data: pendingData } = await supabase
             .from('subscription_orders')
             .select('*')
             .eq('client_id', client.id)
@@ -59,31 +68,47 @@ export default function SubscriptionPage() {
             .order('created_at', { ascending: false })
             .limit(1);
 
-          if (!pendingError && pendingData && pendingData.length > 0) {
+          if (pendingData && pendingData.length > 0) {
              setPendingOrder(pendingData[0]);
           }
 
-          // 3. Calculate Subscription Details
+          // --- DATE CALCULATION LOGIC (FIXED) ---
           const today = new Date();
-          const expiry = new Date(client.plan_end_date || new Date());
-          const diffTime = expiry.getTime() - today.getTime();
+          let expiryDate = new Date(); // Default to now
+          let isTrial = (client.plan_name || '').toLowerCase().includes('trial') || (client.plan_name || '').toLowerCase().includes('free');
+
+          // Date Selection Priority:
+          // 1. plan_end_date (Agar DB me hai)
+          // 2. subscription_expiry (Backup column)
+          // 3. Agar Trial hai aur koi date nahi -> created_at + 15 Days
+          
+          if (client.plan_end_date) {
+            expiryDate = new Date(client.plan_end_date);
+          } else if (client.subscription_expiry) {
+            expiryDate = new Date(client.subscription_expiry);
+          } else if (isTrial && client.created_at) {
+            const joinDate = new Date(client.created_at);
+            expiryDate = new Date(joinDate);
+            expiryDate.setDate(joinDate.getDate() + 15); // Add 15 days logic
+          }
+
+          // Calculate Difference
+          const diffTime = expiryDate.getTime() - today.getTime();
           const daysRemaining = Math.max(
             0,
             Math.ceil(diffTime / (1000 * 60 * 60 * 24))
           );
 
           setSubscription({
-            planName: client.plan_name || 'Free',
-            status: client.subscription_status || 'inactive',
+            planName: client.plan_name || 'Trial Plan',
+            status: client.subscription_status || (daysRemaining > 0 ? 'active' : 'expired'),
             startStr: client.plan_start_date
               ? new Date(client.plan_start_date).toLocaleDateString('en-IN')
-              : '-',
-            endStr: client.plan_end_date
-              ? new Date(client.plan_end_date).toLocaleDateString('en-IN')
-              : '-',
+              : new Date(client.created_at).toLocaleDateString('en-IN'), // Fallback to join date
+            endStr: expiryDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), // Formatted Date
             daysRemaining,
             limit:
-              client.plan_name === 'Free'
+              client.plan_name === 'Free' || isTrial
                 ? 100
                 : client.plan_name === 'Basic'
                 ? 200
@@ -91,10 +116,10 @@ export default function SubscriptionPage() {
                 ? 2000
                 : client.plan_name === 'Enterprise'
                 ? 9999
-                : 100 // Default fallback
+                : 100
           });
 
-          // 4. Get Member Count
+          // --- MEMBER COUNT ---
           const { count } = await supabase
             .from('members')
             .select('*', { count: 'exact', head: true })
@@ -103,25 +128,23 @@ export default function SubscriptionPage() {
           setMemberCount(count || 0);
         }
 
-        // 5. FETCH ACTIVE PLANS FROM DATABASE (Dynamic Logic)
-        const { data: dbPlans, error: plansError } = await supabase
+        // --- FETCH PLANS ---
+        const { data: dbPlans } = await supabase
           .from('plans')
           .select('*')
-          .eq('active', true) // Only show plans enabled by Admin
-          .gt('price', 0)     // <--- ADDED: Only show Paid Plans (Hide Free/Trial)
+          .eq('active', true)
+          .gt('price', 0)
           .order('price', { ascending: true });
 
-        if (!plansError && dbPlans) {
-          // Map DB structure to UI structure if needed
+        if (dbPlans) {
           const mappedPlans = dbPlans.map(p => ({
             id: p.id,
             name: p.name,
             price: p.price,
-            durationDays: 30, // Default duration
-            features: Array.isArray(p.features) ? p.features : [], // Ensure array
-            // Maintain original styling for known plans, allow dynamic styling for new ones
+            durationDays: 30,
+            features: Array.isArray(p.features) ? p.features : [],
             color: getPlanStyle(p.name, p.color),
-            isPopular: p.name === 'Professional' // Example logic for popular badge
+            isPopular: p.name === 'Professional'
           }));
           setPlans(mappedPlans);
         }
@@ -137,18 +160,17 @@ export default function SubscriptionPage() {
     fetchData();
   }, []);
 
-  // Helper to maintain your specific UI design per plan
+  // ... (Baki ka pura code SAME rahega, niche ka part change mat karna)
   const getPlanStyle = (name: string, dbColor: string) => {
     if (name === 'Professional' || name === 'Pro') {
-      return 'bg-blue-700 text-white hover:bg-blue-800 shadow-md ring-2 ring-blue-600 scale-105 z-10'; // Original Pro Style
+      return 'bg-blue-700 text-white hover:bg-blue-800 shadow-md ring-2 ring-blue-600 scale-105 z-10'; 
     }
     if (name === 'Enterprise') {
-      return 'bg-purple-100 text-purple-700 hover:bg-purple-200 border-2 border-purple-200 dark:bg-purple-900/40 dark:text-purple-200 dark:hover:bg-purple-900/60 dark:border-purple-700'; // Original Enterprise Style
+      return 'bg-purple-100 text-purple-700 hover:bg-purple-200 border-2 border-purple-200 dark:bg-purple-900/40 dark:text-purple-200 dark:hover:bg-purple-900/60 dark:border-purple-700'; 
     }
     if (name === 'Basic') {
       return 'bg-gray-100 border-2 border-gray-200 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-700';
     }
-    // Fallback for new custom plans created by Admin
     return `bg-white border-2 ${dbColor || 'border-gray-200'} text-gray-900 hover:shadow-lg dark:bg-gray-900 dark:text-gray-100`;
   };
 
@@ -157,24 +179,19 @@ export default function SubscriptionPage() {
     setIsPaymentOpen(true);
   };
 
-  // Logic to cancel pending request
   const handleCancelRequest = async () => {
     if (!pendingOrder) return;
     if (confirm('Are you sure you want to cancel this request?')) {
       setLoading(true); 
-      
       try {
         const { error } = await supabase
           .from('subscription_orders')
           .delete()
           .eq('id', pendingOrder.id);
-          
         if (error) throw error;
-        
         toast.success("Request cancelled successfully");
         setPendingOrder(null); 
         window.location.reload(); 
-        
       } catch (err: any) {
         console.error("Cancel Error:", err);
         toast.error("Failed to cancel request: " + err.message);
@@ -193,7 +210,6 @@ export default function SubscriptionPage() {
 
   return (
     <div className="bg-slate-50 dark:bg-slate-900 space-y-10 p-6 min-h-screen">
-      {/* HEADER */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscription Plans</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -201,10 +217,7 @@ export default function SubscriptionPage() {
         </p>
       </div>
 
-      {/* ================= LOGIC: PENDING SCREEN vs PLANS ================= */}
-      
       {pendingOrder ? (
-        // --- 1. PENDING VERIFICATION SCREEN ---
         <div className="flex justify-center animate-in fade-in zoom-in duration-300">
             <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
                 <div className="bg-orange-100 dark:bg-orange-950/30 p-6 flex justify-center border-b border-orange-200 dark:border-orange-900/50">
@@ -250,9 +263,6 @@ export default function SubscriptionPage() {
         </div>
       ) : (
         <>
-          {/* ================= 2. CURRENT SUBSCRIPTION & PLANS ================= */}
-          
-          {/* Current Subscription Card */}
           <Card className="border-l-4 border-l-blue-600 shadow-sm overflow-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
             <CardHeader className="pb-4 bg-gray-50/50 dark:bg-gray-800/50">
               <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-400">
@@ -262,35 +272,31 @@ export default function SubscriptionPage() {
             </CardHeader>
 
             <CardContent className="grid md:grid-cols-4 gap-6 pt-6">
-              <InfoBlock title="Active Plan" value={subscription.planName} />
+              <InfoBlock title="Active Plan" value={subscription?.planName} />
               <InfoBlock
                 title="Member Usage"
-                value={`${memberCount} / ${subscription.limit}`}
+                value={`${memberCount} / ${subscription?.limit}`}
               >
-                <Progress value={(memberCount / subscription.limit) * 100} className="h-2 mt-2 bg-blue-100 dark:bg-gray-800" />
+                <Progress value={(memberCount / (subscription?.limit || 100)) * 100} className="h-2 mt-2 bg-blue-100 dark:bg-gray-800" />
               </InfoBlock>
-              <InfoBlock title="Valid Until" value={subscription.endStr} />
+              <InfoBlock title="Valid Until" value={subscription?.endStr} />
               <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900 text-center">
                  <p className="text-xs text-blue-600 dark:text-blue-400 uppercase font-bold mb-1">Status</p>
-                 <p className={`text-2xl font-bold ${subscription.daysRemaining > 5 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {subscription.daysRemaining} Days
+                 <p className={`text-2xl font-bold ${subscription?.daysRemaining > 5 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {subscription?.daysRemaining} Days
                  </p>
                  <p className="text-xs text-gray-500 dark:text-gray-400">Remaining</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Plans Grid - UPDATED FOR AUTO CENTERING */}
           {plans.length > 0 ? (
-            // Changed from GRID to FLEX to handle auto-centering perfectly
             <div className="flex flex-wrap justify-center gap-8 items-stretch">
               {plans.map(plan => (
                 <Card
                   key={plan.id}
-                  // Added w-full and max-w logic to behave like a responsive grid card
                   className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between w-full md:max-w-[360px] lg:max-w-[380px] ${plan.color}`}
                 >
-                  {/* Badge for Popular Plan */}
                   {plan.isPopular && (
                     <div className="absolute top-0 right-0 z-20">
                         <Badge className="rounded-none rounded-bl-xl bg-yellow-500 text-black px-4 py-1 text-xs font-bold border-none shadow-sm">
@@ -338,10 +344,10 @@ export default function SubscriptionPage() {
                           : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
                         }
                       `}
-                      disabled={subscription.planName === plan.name}
+                      disabled={subscription?.planName === plan.name}
                       onClick={() => handleBuyNow(plan)}
                     >
-                      {subscription.planName === plan.name
+                      {subscription?.planName === plan.name
                         ? 'Current Plan'
                         : 'Choose Plan'}
                     </Button>
@@ -350,7 +356,6 @@ export default function SubscriptionPage() {
               ))}
             </div>
           ) : (
-            // Fallback if no plans are active
             <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-xl border border-dashed border-gray-300 dark:border-gray-800">
                 <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">No Active Plans Available</h3>
@@ -360,7 +365,6 @@ export default function SubscriptionPage() {
         </>
       )}
 
-      {/* Payment Modal */}
       {selectedPlan && clientId && (
         <PaymentModal
           isOpen={isPaymentOpen}
@@ -373,7 +377,6 @@ export default function SubscriptionPage() {
   );
 }
 
-/* -------------------- UI HELPERS -------------------- */
 function InfoBlock({ title, value, children, highlight }: any) {
   return (
     <div>
