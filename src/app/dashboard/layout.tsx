@@ -124,12 +124,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           const expiry = new Date(client.plan_end_date || new Date());
           const today = new Date();
           
-          // ✅ LINE 2 — expiry check me plan ka reference lao
+          // ✅ FIX 1: Allow TRIAL plans to bypass strict checks
+          const isTrial = client.plan === 'TRIAL' || client.plan === 'FREE_TRIAL';
+          
+          // ✅ FIX 2: Check expiration only if NOT lifetime
+          // Trial expires normally based on date
           const isExpired = today > expiry && client.plan !== 'LIFETIME';
           
-          const isInactive = client.subscription_status !== 'active';
+          // ✅ FIX 3: Inactive check should allow TRIAL
+          // Agar Trial hai to 'subscription_status' ignore karo (kyunki wo payment status hai)
+          const isInactive = client.subscription_status !== 'active' && !isTrial;
 
-          // ✅ LINE 3 — condition same rahe
           if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
             router.push('/dashboard/subscription');
             return;
