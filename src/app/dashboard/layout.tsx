@@ -55,6 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const checkAccess = async () => {
+      console.log("🔍 Checking Dashboard Access...");
       const storedUser = localStorage.getItem('current_user');
       const storedMember = localStorage.getItem('current_member');
 
@@ -62,6 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
          ❌ MEMBER NEVER ALLOWED IN CLIENT DASHBOARD
       --------------------------------------------------- */
       if (storedMember && !storedUser) {
+        console.warn("🚫 Blocked: Member trying to access Client Dashboard");
         router.push('/member-portal/dashboard');
         return;
       }
@@ -70,6 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
          ❌ NO LOGIN
       --------------------------------------------------- */
       if (!storedUser) {
+        console.warn("🚫 Blocked: No User Found in LocalStorage");
         router.push('/login');
         return;
       }
@@ -83,6 +86,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         // ✅ IMPORTANT FIX
         const resolvedClientId = user.client_id ?? user.id;
 
+        console.log("👤 User ID:", user.id);
+        console.log("🏢 Resolved Client ID:", resolvedClientId);
+
         // ✅ LINE 1 — client fetch me plan add karo
         const { data: client, error } = await supabase
           .from('clients')
@@ -91,6 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .single();
 
         if (error) {
+          console.error("❌ DB Fetch Error:", error);
           // If fetch fails, we allow access safely to avoid lockout
           setIsAuthorized(true);
           setIsChecking(false);
@@ -98,6 +105,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         if (client) {
+          console.log("📋 Client Data Found:", client);
+          
           // ✅ FIX: Apply Global Theme Logic
           const root = document.documentElement;
           if (client.theme === 'dark') {
@@ -135,15 +144,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           // Agar Trial hai to 'subscription_status' ignore karo (kyunki wo payment status hai)
           const isInactive = client.subscription_status !== 'active' && !isTrial;
 
+          console.log("🛑 Access Checks:", { 
+              isTrial, 
+              isExpired, 
+              isInactive, 
+              plan: client.plan,
+              subStatus: client.subscription_status 
+          });
+
           if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
+            console.warn("⚠️ Redirecting to Subscription Page due to Expiry/Inactivity");
             router.push('/dashboard/subscription');
             return;
           }
         }
 
         // ✅ Client OR Treasurer both allowed
+        console.log("✅ Access Granted!");
         setIsAuthorized(true);
       } catch (err) {
+        console.error("🔥 Crash in Check Access:", err);
         router.push('/login');
       }
 
