@@ -135,32 +135,30 @@ function SignupForm() {
       let subStatus = 'inactive';
       let accountStatus = 'PENDING'; // Default
 
-      // ✅ FIX #1 — AUTO detection ko STRONG banao (Defined here for global scope in function)
+      // ✅ FIX #1 — AUTO detection ko STRONG banao
       const isAutoPaid =
         paymentMode === 'AUTO' ||
         paymentStatus === 'SUCCESS';
 
-      // 🧪 QUICK DEBUG CHECK
-      console.log({
-        paymentMode,
-        paymentStatus,
-        isAutoPaid
-      });
+      // 🧪 Trial Logic Fix
+      const isTrial = selectedPlanId === 'TRIAL' || selectedPlanId === 'FREE_TRIAL';
 
-      if (selectedPlanId === 'TRIAL') {
+      if (isTrial) {
         // TRIAL = ACTIVE IMMEDIATELY
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + trialDays);
         subscriptionExpiry = expiryDate.toISOString();
+        
         subStatus = 'active'; 
-        accountStatus = 'ACTIVE'; // Unlock Account
+        accountStatus = 'ACTIVE'; // Unlock Account Immediately
       } 
       else {
-        // ✅ NEW (FINAL) Logic using isAutoPaid
+        // PAID PLAN LOGIC
         if (isAutoPaid) {
           subStatus = 'active';
-          accountStatus = 'ACTIVE';
+          accountStatus = 'ACTIVE'; // Unlock if paid
         } else {
+          // Manual Payment -> Pending Approval
           subStatus = 'pending';
           accountStatus = 'PENDING';
         }
@@ -221,6 +219,7 @@ function SignupForm() {
         .eq('id', authData.user.id)
         .single();
 
+      // ✅ FIX: Allow TRIAL users to enter immediately
       if (
         client?.status === 'ACTIVE' &&
         (client?.subscription_status === 'active' || client?.plan === 'TRIAL')
@@ -228,6 +227,7 @@ function SignupForm() {
         toast.success("Account Created! Entering Dashboard...");
         router.replace('/dashboard');
       } else {
+        // Agar Manual Payment hai ya Pending hai
         toast.success("Account Created! Pending Admin Approval.");
         router.replace('/login');
       }
@@ -353,7 +353,7 @@ function SignupForm() {
                   </div>
                   <div className="grid gap-2">
                      <Label>Password</Label>
-                     <Input type="password" placeholder="••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
+                     <Input type="password" placeholder="•••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
                   </div>
                   
                   {/* BUTTON LOGIC */}
