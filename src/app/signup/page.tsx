@@ -170,13 +170,17 @@ function SignupForm() {
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
-          id: authData.user.id, // Primary Key
+          id: authData.user.id,
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
+
+          // 🔥 IMPORTANT — ADMIN & SIGNUP CONSISTENCY
+          plan: selectedPlanId === 'TRIAL' ? 'TRIAL' : selectedPlanId,
+
           plan_name: selectedPlanId === 'TRIAL' ? 'Trial' : currentPlan.name,
-          status: accountStatus, // 🔥 Uses correct variable
+          status: accountStatus,
           subscription_status: subStatus, 
           plan_end_date: subscriptionExpiry,
           plan_start_date: new Date().toISOString(),
