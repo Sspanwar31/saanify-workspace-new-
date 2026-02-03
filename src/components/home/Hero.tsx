@@ -160,8 +160,6 @@ export default function Hero() {
     const pricingSection = document.getElementById('pricing');
     if (pricingSection) {
       pricingSection.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      router.push('/payment');
     }
   };
 
