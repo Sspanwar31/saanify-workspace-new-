@@ -75,7 +75,7 @@ export default function Navbar() {
           </Button>
 
           <Button 
-            onClick={() => router.push('/payment')}
+            onClick={() => handleScrollTo('pricing')}
             className="bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl transition-all"
           >
             Get Started
@@ -100,7 +100,7 @@ export default function Navbar() {
           ))}
           <div className="h-px bg-slate-100 my-2" />
           <Button onClick={() => router.push('/login')} variant="outline" className="w-full justify-center">Sign In</Button>
-          <Button onClick={() => router.push('/payment')} className="w-full justify-center bg-blue-600 hover:bg-blue-700">Get Started</Button>
+          <Button onClick={() => handleScrollTo('pricing')} className="w-full justify-center bg-blue-600 hover:bg-blue-700">Get Started</Button>
         </div>
       )}
     </nav>
