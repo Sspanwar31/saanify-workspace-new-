@@ -10,7 +10,7 @@ import { Calendar, Clock, Users, Zap, Shield, Crown, Building2, Loader2 } from '
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
-// Interface to match your UI needs
+// Interface update
 interface SubscriptionData {
   planType: string
   status: string
@@ -38,18 +38,33 @@ export default function SubscriptionManagement() {
     const fetchSubscriptionData = async () => {
       try {
         setLoading(true);
+        
+        // 1. Get Current Authenticated User first (Safety Check)
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // 2. Fetch Client Data
+        // Hum query ko modify kar rahe hain taaki specific user hi mile
+        let query = supabase.from('clients').select('*');
+        
+        // Agar user logged in hai, to koshish karein ki usi ki email/id se match karein
+        if (user?.email) {
+            query = query.eq('email', user.email);
+        } else {
+            // Fallback agar auth user nahi mila (RLS par bharosa)
+            query = query.limit(1);
+        }
 
-        // 1. Get Client Details
-        const { data: clients, error: clientError } = await supabase
-          .from('clients')
-          .select('*')
-          .limit(1);
+        const { data: clients, error: clientError } = await query.maybeSingle(); // maybeSingle better hai limit(1) se
 
-        if (clientError) throw clientError;
+        if (clientError) {
+             console.error("Supabase Error:", clientError);
+             throw clientError;
+        }
 
-        if (clients && clients.length > 0 && isMounted) {
-          const client = clients[0];
-          
+        if (clients && isMounted) {
+          const client = clients;
+          console.log("✅ DEBUG: Fetched Client Data:", client); // Console me dekhein data araha hai ya nahi
+
           // 2. Get Plan Details
           const planNameQuery = client.plan_name || 'Trial';
           
@@ -57,39 +72,52 @@ export default function SubscriptionManagement() {
             .from('plans')
             .select('*')
             .ilike('name', planNameQuery) 
-            .single();
+            .maybeSingle();
 
-          // 3. Logic to determine if it is a Trial Plan
+          // 3. Check Trial Logic
           const isTrial = 
             planNameQuery.toLowerCase().includes('trial') || 
             planNameQuery.toLowerCase().includes('free') ||
             (planDetails && planDetails.price === 0);
 
-          // ✅ FIX START: Date Calculation Logic
+          // ✅ FIX: Multiple Date Columns Check
+          // Kabhi data 'plan_end_date' me hota hai, kabhi 'subscription_expiry' me
+          const dbEndDate = client.plan_end_date || client.subscription_expiry;
+
+          console.log("✅ DEBUG: DB Date Found:", dbEndDate);
+
           let targetEndDate = new Date(); 
 
-          if (client.plan_end_date) {
-            // Case A: Paid Plan OR Trial with fixed date in DB
-            targetEndDate = new Date(client.plan_end_date);
+          if (dbEndDate) {
+            // Case A: Date database me mojood hai (Priority)
+            targetEndDate = new Date(dbEndDate);
           } else if (isTrial && client.created_at) {
-            // Case B: Trial Plan with NO end date in DB -> Calculate (Joined + 15 Days)
+            // Case B: Date nahi hai, par Trial hai -> Join Date + 15 Days
+            console.log("⚠️ DEBUG: No End Date, calculating from Created At");
             const joinDate = new Date(client.created_at);
             targetEndDate = new Date(joinDate);
-            targetEndDate.setDate(joinDate.getDate() + 15); // Add 15 days
+            targetEndDate.setDate(joinDate.getDate() + 15);
+          } else {
+            // Case C: Fallback to Today (Taaki error na aye)
+            targetEndDate = new Date();
           }
           
-          // Calculate Days Remaining
+          // Calculate Days
           const now = new Date();
           const timeDiff = targetEndDate.getTime() - now.getTime();
           const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-          const calculatedDays = Math.max(0, daysDiff); // Minus me na jaye
+          const calculatedDays = Math.max(0, daysDiff); 
           setDaysRemaining(calculatedDays);
 
-          // Format Date for Display
-          const endDateString = targetEndDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-          // ✅ FIX END
+          // Format Date
+          // 'en-IN' use kiya taki format 'DD/MM/YYYY' jaisa readable ho
+          const endDateString = targetEndDate.toLocaleDateString('en-IN', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric' 
+          });
 
-          // 5. Map Limits based on Plan Type (Fallback Logic)
+          // 5. Limits Mapping
           let userLimit: string | number = 'Unlimited';
           if (planDetails?.limit_members) {
              const parsed = parseInt(planDetails.limit_members);
@@ -104,7 +132,7 @@ export default function SubscriptionManagement() {
           else if (planKey.includes('PRO')) { storageLimit = '20 GB'; societyLimit = 10; }
           else if (planKey.includes('ENTERPRISE')) { storageLimit = '100 GB'; societyLimit = 999; }
 
-          // 6. Construct Data Object
+          // 6. Data Object Construction
           const subData: SubscriptionData = {
             planType: planNameQuery.toUpperCase(), 
             status: (client.subscription_status || (calculatedDays > 0 ? 'ACTIVE' : 'EXPIRED')).toUpperCase(),
@@ -120,6 +148,8 @@ export default function SubscriptionManagement() {
           };
 
           setSubscription(subData);
+        } else {
+            console.warn("⚠️ DEBUG: No client found for this user");
         }
       } catch (error) {
         console.error('Failed to fetch subscription data:', error);
@@ -161,9 +191,8 @@ export default function SubscriptionManagement() {
   }
 
   const getProgressPercentage = () => {
-    // Only show progress for Trial
     if (!subscription?.planType.includes('TRIAL') && !subscription?.planType.includes('FREE')) return 100
-    const totalTrialDays = 15 // Default trial length
+    const totalTrialDays = 15 
     const days = daysRemaining > totalTrialDays ? totalTrialDays : daysRemaining;
     return ((totalTrialDays - days) / totalTrialDays) * 100
   }
