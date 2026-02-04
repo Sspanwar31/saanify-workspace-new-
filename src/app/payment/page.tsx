@@ -183,9 +183,12 @@ function PaymentContent() {
             .from('payment_proofs')
             .upload(fileName, proofFile);
 
-        if (uploadError) throw new Error("Upload Failed: " + uploadError.message);
+        if (uploadError) {
+            console.error('Supabase upload failed:', uploadError);
+            throw new Error("Upload Failed: " + uploadError.message);
+        }
 
-        const { data: publicUrl } } = supabase.storage.from('payment_proofs').getPublicUrl(fileName);
+        const { data: publicUrl } = supabase.storage.from('payment_proofs').getPublicUrl(fileName);
 
         // C. INSERT ORDER
         const { data: orderData, error: orderError } = await supabase
