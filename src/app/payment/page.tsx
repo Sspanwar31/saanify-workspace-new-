@@ -85,42 +85,39 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ STEP 1: handleOnlinePay() KO FIX KARO
+  // ✅ FINAL handleOnlinePay (SUMMARY)
   const handleOnlinePay = async () => {
     setLoading(true);
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-
-      // 1️⃣ CREATE PENDING ORDER (VERY IMPORTANT)
-      const razorpayOrderId = `order_${Date.now()}`; // abhi dummy, real Razorpay se aayega
-
-      const { error } = await supabase
-        .from('subscription_orders')
-        .insert({
-          client_id: user.id,
-          plan_name: plan.name,
+      // ✅ CHANGE #3 — backend API call (create order)
+      const res = await fetch('/api/payments/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId,
           amount: plan.price,
-          payment_method: 'AUTO',
-          status: 'pending',
-          transaction_id: razorpayOrderId,
-          duration_days: plan.duration || 30,
-          created_at: new Date().toISOString()
-        });
+          mode: 'AUTO'
+        })
+      });
 
-      if (error) throw error;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
-      // 2️⃣ RAZORPAY OPEN (abhi simulate)
-      toast.success("Redirecting to payment...");
+      // ✅ CHANGE #4 — Razorpay open (REAL FLOW)
+      const razorpay = new (window as any).Razorpay({
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        amount: data.amount,
+        currency: 'INR',
+        order_id: data.orderId,
+        handler: () => {
+          // Redirect with verified payment intent reference
+          router.push(`/signup?mode=AUTO&order_ref=${data.intentId || data.orderId}`);
+        }
+      });
 
-      // 3️⃣ AFTER SUCCESS (simulation)
-      router.push(
-        `/signup?plan=${planId}&mode=AUTO&orderId=${razorpayOrderId}`
-      );
-
+      razorpay.open();
     } catch (err: any) {
-      toast.error(err.message || "Payment init failed");
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
