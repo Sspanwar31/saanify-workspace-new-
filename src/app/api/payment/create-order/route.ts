@@ -25,7 +25,8 @@ const razorpay = new Razorpay({
 
 export async function POST(req: Request) {
   try {
-    const { amount, planName, clientId } = await req.json();
+    // 🔁 DIFF #2: clientId nahi lena (Client signup se pehle order create hota hai)
+    const { amount, planName } = await req.json();
 
     // 1. Razorpay Order Create
     const order = await razorpay.orders.create({
@@ -34,30 +35,4 @@ export async function POST(req: Request) {
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 2. Supabase Insert
-    // ✅ FIX: Table Name 'subscription_orders' kar diya hai
-    const { error } = await supabase.from('subscription_orders').insert([{
-      client_id: clientId,
-      plan_name: planName,
-      amount: amount,
-      payment_method: 'RAZORPAY',
-      status: 'pending',
-      transaction_id: order.id 
-    }]);
-
-    if (error) {
-      console.error("Supabase Insert Error:", error);
-      throw error;
-    }
-
-    return NextResponse.json({ 
-        orderId: order.id,
-        amount: amount * 100,
-        id: order.id 
-    });
-
-  } catch (error: any) {
-    console.error("Order Creation Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+    //
