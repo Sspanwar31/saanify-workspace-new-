@@ -42,13 +42,12 @@ export async function POST(req: Request) {
 
     // 2. Supabase Insert (Payment Intent/Order Store)
     // 🔁 DIFF #1: NO client_id, only plan + amount + order_id
-    const { error } = await supabase.from('subscription_orders').insert([{
+    const { error } = await supabase.from('payment_intents').insert([{
       plan_name: planName,
       amount: amount,
-      payment_method: 'AUTO', // Hardcoded as per new flow
-      status: 'pending',
-      transaction_id: order.id,
-      mode: 'AUTO' 
+      provider: 'RAZORPAY',
+      status: 'PENDING',
+      razorpay_order_id: order.id
     }]);
 
     if (error) {
