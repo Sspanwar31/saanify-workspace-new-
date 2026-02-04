@@ -42,8 +42,7 @@ function PaymentContent() {
   
   const [method, setMethod] = useState<'ONLINE' | 'MANUAL'>('ONLINE');
   const [loading, setLoading] = useState(false);
-  const [txnId, setTxnId] = useState('');
-  
+  const [txnId, setTxnId] = useState('');  
   // File Upload State
   const [proofFile, setProofFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,22 +91,25 @@ function PaymentContent() {
       // ✅ CHANGE #3 — backend API call (create order)
       console.log('🚀 calling create-order API');
       
+      // ✅ CHANGE #4: Safe parsing (handle body carefully)
+      const body = await req.json();
+      console.log('📦 Request body:', body);
+
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // ✅ CHANGE #1: Backend-compatible body structure
         body: JSON.stringify({
-          planId,
+          planId: planId,          // 🔑 KEY FIX: Use correct key
           amount: plan.price,
           mode: 'AUTO'
         })
       });
 
-      console.log('📡 status:', res.status);
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      // ✅ CHANGE #4 — Razorpay open (REAL FLOW)
+      // ✅ CHANGE #5 — Razorpay open (REAL FLOW)
       const razorpay = new (window as any).Razorpay({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount: data.amount,
@@ -183,7 +185,7 @@ function PaymentContent() {
 
         if (uploadError) throw new Error("Upload Failed: " + uploadError.message);
 
-        const { data: { publicUrl } } = supabase.storage.from('payment_proofs').getPublicUrl(fileName);
+        const { data: publicUrl } } = supabase.storage.from('payment_proofs').getPublicUrl(fileName);
 
         // C. INSERT ORDER
         const { data: orderData, error: orderError } = await supabase
