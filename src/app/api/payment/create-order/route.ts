@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 
+console.log('🔥 create-order route file LOADED');
+
 // --- KEY FIXING LOGIC ---
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
@@ -24,9 +26,12 @@ const razorpay = new Razorpay({
 });
 
 export async function POST(req: Request) {
+  console.log('🔥 POST /api/payments/create-order HIT');
+
   try {
     // 🔁 DIFF #2: clientId nahi lena (Client signup se pehle order create hota hai)
     const { amount, planName } = await req.json();
+    console.log('📦 Request body:', { amount, planName });
 
     // 1. Razorpay Order Create
     const order = await razorpay.orders.create({
@@ -58,7 +63,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error("Order Creation Error:", error);
+    console.error("❌ create-order error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
