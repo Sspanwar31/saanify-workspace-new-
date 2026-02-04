@@ -2,67 +2,97 @@ import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 
-console.log('🔥 create-order route file LOADED');
-
-// --- KEY FIXING LOGIC ---
+/* -------------------------------------------------------
+   Decode Service Role Key (B64 safe)
+------------------------------------------------------- */
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  if (!rawKey) return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; 
-  if (!rawKey.startsWith('eyJ')) {
-    return Buffer.from(rawKey, 'base64').toString('utf-8');
+
+  if (!rawKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY_B64 missing');
   }
-  return rawKey;
+
+  // If already JWT (starts with eyJ), return as-is
+  if (rawKey.startsWith('eyJ')) {
+    return rawKey;
+  }
+
+  // Otherwise decode base64
+  return Buffer.from(rawKey, 'base64').toString('utf-8');
 };
 
-// Backend Client
+/* -------------------------------------------------------
+   Supabase (Service Role – backend only)
+------------------------------------------------------- */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  getServiceRoleKey()! 
+  getServiceRoleKey()
 );
 
+/* -------------------------------------------------------
+   Razorpay Instance
+------------------------------------------------------- */
 const razorpay = new Razorpay({
   key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
+/* -------------------------------------------------------
+   POST /api/payments/create-order
+------------------------------------------------------- */
 export async function POST(req: Request) {
-  console.log('🔥 POST /api/payments/create-order HIT');
-
   try {
-    // 🔁 DIFF #2: clientId nahi lena (Client signup se pehle order create hota hai)
-    const { amount, planName } = await req.json();
-    console.log('📦 Request body:', { amount, planName });
+    /* 1️⃣ Parse request body */
+    const { amount, plan, mode } = await req.json();
 
-    // 1. Razorpay Order Create
+    if (!amount || !plan) {
+      return NextResponse.json(
+        { error: 'amount or plan missing' },
+        { status: 400 }
+      );
+    }
+
+    /* 2️⃣ Create Razorpay Order */
     const order = await razorpay.orders.create({
-      amount: amount * 100, 
+      amount: Math.round(amount * 100), // ₹ → paise
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 2. Supabase Insert (Payment Intent/Order Store)
-    // 🔁 DIFF #1: NO client_id, only plan + amount + order_id
-    const { error } = await supabase.from('payment_intents').insert([{
-      plan_name: planName,
-      amount: amount,
-      provider: 'RAZORPAY',
-      status: 'PENDING',
-      razorpay_order_id: order.id
-    }]);
+    /* 3️⃣ Insert into payment_intents */
+    const { error } = await supabase
+      .from('payment_intents')
+      .insert([
+        {
+          amount: amount,
+          plan: plan,              // ✅ column exists
+          mode: mode || 'AUTO',    // ✅ column exists
+          status: 'PENDING',
+          token: order.id,         // razorpay_order_id
+          expires_at: new Date(Date.now() + 15 * 60 * 1000),
+        },
+      ]);
 
     if (error) {
-      console.error("Supabase Insert Error:", error);
-      throw error;
+      console.error('Supabase insert failed:', error);
+      return NextResponse.json(
+        { error: 'Failed to create payment intent' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ 
-        orderId: order.id,
-        amount: amount * 100,
-        id: order.id 
+    /* 4️⃣ Return to frontend */
+    return NextResponse.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
     });
 
-  } catch (error: any) {
-    console.error("❌ create-order error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: any) {
+    console.error('❌ create-order error:', err);
+    return NextResponse.json(
+      { error: err.message || 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
