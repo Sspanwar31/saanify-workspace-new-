@@ -5,10 +5,11 @@ import { cookies } from 'next/headers';
 import { PrismaClient } from '@prisma/client';
 
 export default createMiddleware(async (req) => {
-  // Skip authentication for API routes and static files
+  // ✅ CHANGE: Skip authentication for API routes and static files
+  // Routes starting with /api/, /_next/, or static assets are skipped
   if (
     req.nextUrl.pathname.startsWith('/api/') ||
-    req.nextUrl.pathname.startsWith('/_next/') ||
+    req.nextUrl.pathname.startsWith('_next') ||
     req.nextUrl.pathname.includes('.')
   ) {
     return NextResponse.next();
@@ -45,7 +46,7 @@ export default createMiddleware(async (req) => {
     return NextResponse.next();
   } catch (error) {
     console.error('Auth middleware error:', error.message);
-      return NextResponse.redirect(new URL('/login'));
+    return NextResponse.redirect(new URL('/login'));
   }
 });
 
