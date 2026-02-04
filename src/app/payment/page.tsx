@@ -107,7 +107,7 @@ function PaymentContent() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Order creation failed');
 
       // ✅ CHANGE #5 — Razorpay open (REAL FLOW)
       const razorpay = new (window as any).Razorpay({
@@ -123,7 +123,7 @@ function PaymentContent() {
 
       razorpay.open();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err.message || 'Payment failed');
     } finally {
       setLoading(false);
     }
@@ -564,6 +564,7 @@ function PaymentContent() {
               </Card>
            </div>
         </div>
+      </div>
 
       </div>
     </div>
