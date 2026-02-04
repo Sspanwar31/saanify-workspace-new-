@@ -35,4 +35,30 @@ export async function POST(req: Request) {
       receipt: `rcpt_${Date.now()}`,
     });
 
-    //
+    // 2. Supabase Insert (Payment Intent/Order Store)
+    // 🔁 DIFF #1: NO client_id, only plan + amount + order_id
+    const { error } = await supabase.from('subscription_orders').insert([{
+      plan_name: planName,
+      amount: amount,
+      payment_method: 'AUTO', // Hardcoded as per new flow
+      status: 'pending',
+      transaction_id: order.id,
+      mode: 'AUTO' 
+    }]);
+
+    if (error) {
+      console.error("Supabase Insert Error:", error);
+      throw error;
+    }
+
+    return NextResponse.json({ 
+        orderId: order.id,
+        amount: amount * 100,
+        id: order.id 
+    });
+
+  } catch (error: any) {
+    console.error("Order Creation Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
