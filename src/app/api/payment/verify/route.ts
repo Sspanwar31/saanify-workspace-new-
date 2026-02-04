@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     const { data: subData, error: subError } = await supabase
       .from('subscription_orders') 
       .update({
-        status: 'success',
+        status: 'paid', // 🔁 DIFF #1: Status rename to 'paid' for consistency
         transaction_id: paymentId, 
         payment_method: 'RAZORPAY',
       })
@@ -67,30 +67,13 @@ export async function POST(req: Request) {
       throw new Error('Subscription update failed');
     }
 
-    // 3️⃣ Update Client Plan
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(startDate.getDate() + 30);
+    // 🔁 DIFF #2: ❌ CLIENT UPDATE BLOCK REMOVE KARO (MOST IMPORTANT)
+    // Ye logic ab Signup page par move ho gaya hai payment verify hone ke baad.
 
-    const { error: clientError } = await supabase
-      .from('clients')
-      .update({
-        plan_name: subData.plan_name,
-        plan_start_date: startDate.toISOString(),
-        plan_end_date: endDate.toISOString(),
-        subscription_status: 'active',
-        status: 'ACTIVE',
-      })
-      .eq('id', subData.client_id);
-
-    if (clientError) {
-      throw clientError;
-    }
-
-    // ✅ Frontend ko 'isPaid: true' bhej rahe hain taaki refresh ho sake
-    return NextResponse.json({ 
-        message: 'Success', 
-        isPaid: true 
+    // 🔁 DIFF #3: Response ko signup-friendly banao
+    return NextResponse.json({
+      payment_verified: true,
+      order_ref: orderId,
     });
 
   } catch (error: any) {
