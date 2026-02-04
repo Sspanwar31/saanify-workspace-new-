@@ -23,11 +23,7 @@ function SignupForm() {
   const urlPlan = searchParams.get('plan');
   const initialPlanId = urlPlan === 'TRIAL' ? 'TRIAL' : urlPlan || 'TRIAL';
 
-  const paymentStatus = searchParams.get('status') || 'ACTIVE'; // This is misleading for Trial, we fix logic below
   const refId = searchParams.get('ref') || ''; 
-
-  // ✅ STEP 1 — URL se payment_mode nikalo
-  const paymentMode = searchParams.get('mode'); // AUTO | MANUAL | null
 
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
   const [loading, setLoading] = useState(false);
@@ -129,18 +125,27 @@ function SignupForm() {
       if (authError) throw new Error("User Signup Failed: " + authError.message);
       if (!authData.user) throw new Error("Signup successful but no user ID returned.");
 
+      // ✅ PAYMENT INTENT VERIFY (PAID PLANS ONLY)
+      if (selectedPlanId !== 'TRIAL') {
+        const { data: intent } = await supabase
+          .from('payment_intents')
+          .select('status, plan')
+          .eq('reference_id', refId)
+          .single();
+
+        if (!intent || intent.status !== 'VERIFIED') {
+          toast.error('Payment not verified. Signup blocked.');
+          setLoading(false);
+          return;
+        }
+      }
+
       // --- STEP B: PREPARE CLIENT DATA ---
       // 🔥 CRITICAL LOGIC FIX 🔥
       let subscriptionExpiry = null;
       let subStatus = 'inactive';
       let accountStatus = 'PENDING'; // Default
 
-      // ✅ FIX #1 — AUTO detection ko STRONG banao
-      const isAutoPaid =
-        paymentMode === 'AUTO' ||
-        paymentStatus === 'SUCCESS';
-
-      // 🧪 Trial Logic Fix
       const isTrial = selectedPlanId === 'TRIAL' || selectedPlanId === 'FREE_TRIAL';
 
       if (isTrial) {
@@ -153,15 +158,10 @@ function SignupForm() {
         accountStatus = 'ACTIVE'; // Unlock Account Immediately
       } 
       else {
-        // PAID PLAN LOGIC
-        if (isAutoPaid) {
-          subStatus = 'active';
-          accountStatus = 'ACTIVE'; // Unlock if paid
-        } else {
-          // Manual Payment -> Pending Approval
-          subStatus = 'pending';
-          accountStatus = 'PENDING';
-        }
+        // PAID PLAN LOGIC (SIMPLIFIED)
+        // Payment already verified above, so ACTIVE
+        subStatus = 'active';
+        accountStatus = 'ACTIVE';
       }
 
       // --- STEP C: CREATE CLIENT ---
@@ -189,27 +189,6 @@ function SignupForm() {
         });
 
       if (clientError) throw new Error("Client Profile Creation Failed: " + clientError.message);
-
-      // --- STEP D: INSERT SUBSCRIPTION ORDER (ONLY IF PAID) ---
-      if (selectedPlanId !== 'TRIAL' && currentPlan.price > 0) {
-          const { error: payError } = await supabase
-            .from('subscription_orders')
-            .insert([{
-                client_id: authData.user.id, 
-                plan_name: currentPlan.name, 
-                amount: currentPlan.price,
-                payment_method: paymentMode === 'AUTO' ? 'AUTO' : 'MANUAL', 
-                // ✅ FIX #3 — subscription_orders me status bhi AUTO ke liye active
-                status: isAutoPaid ? 'paid' : 'pending', 
-                transaction_id: refId || `SIGNUP-${Date.now()}`,
-                duration_days: 30,        
-                created_at: new Date().toISOString()
-            }]);
-          
-          if (payError) {
-              console.error("Subscription Order Error:", payError);
-          }
-      }
 
       // --- SUCCESS & REDIRECT ---
       // 🔑 FINAL REDIRECT — DB IS SOURCE OF TRUTH
@@ -341,8 +320,8 @@ function SignupForm() {
             <CardHeader>
                <CardTitle className="text-2xl font-bold text-slate-900">Create Account</CardTitle>
                <CardDescription>
-                  {paymentStatus === 'PENDING_APPROVAL' 
-                    ? <span className="text-orange-600 font-medium">Payment Verification Pending (Ref: {refId})</span> 
+                  {refId 
+                    ? <span className="text-orange-600 font-medium">Completing Registration for Plan</span> 
                     : "Enter details to setup your new admin panel."}
                </CardDescription>
             </CardHeader>
@@ -366,7 +345,7 @@ function SignupForm() {
                   </div>
                   <div className="grid gap-2">
                      <Label>Password</Label>
-                     <Input type="password" placeholder="••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
+                     <Input type="password" placeholder="•••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
                   </div>
                   
                   {/* BUTTON LOGIC */}
