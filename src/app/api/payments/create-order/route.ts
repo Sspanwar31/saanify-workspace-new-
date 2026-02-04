@@ -9,7 +9,7 @@ const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
 
   if (!rawKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY_B64 missing');
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 missing");
   }
 
   // If already JWT (starts with eyJ), return as-is
@@ -43,7 +43,12 @@ const razorpay = new Razorpay({
 export async function POST(req: Request) {
   try {
     /* 1️⃣ Parse request body */
-    const { amount, plan, mode } = await req.json();
+    const body = await req.json();
+    
+    // Extract IDs and Amount safely
+    const amount = body.amount || body.price;
+    const plan = body.planId || body.planName || 'PRO'; // Use alias for plan
+    const mode = body.mode;
 
     if (!amount || !plan) {
       return NextResponse.json(
@@ -65,16 +70,16 @@ export async function POST(req: Request) {
       .insert([
         {
           amount: amount,
-          plan: plan,              // ✅ column exists
-          mode: mode || 'AUTO',    // ✅ column exists
+          plan: plan,                    // ✅ column exists
+          mode: mode || 'AUTO',        // ✅ column exists
           status: 'PENDING',
-          token: order.id,         // razorpay_order_id
-          expires_at: new Date(Date.now() + 15 * 60 * 1000),
+          token: order.id,             // razorpay_order_id
+          expires_at: new Date(Date.now() + 15 * 60 * 1000), // 15 mins expiry
         },
       ]);
 
     if (error) {
-      console.error('Supabase insert failed:', error);
+      console.error("Supabase insert failed:", error);
       return NextResponse.json(
         { error: 'Failed to create payment intent' },
         { status: 500 }
@@ -89,7 +94,7 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    console.error('❌ create-order error:', err);
+    console.error("❌ create-order error:", err);
     return NextResponse.json(
       { error: err.message || 'Internal Server Error' },
       { status: 500 }
