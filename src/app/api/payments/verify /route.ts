@@ -50,30 +50,26 @@ export async function POST(req: Request) {
     }
 
     // 2️⃣ Update Pending Order
-    // ✅ FIX: Table Name 'subscription_orders' kar diya hai
-    const { data: subData, error: subError } = await supabase
-      .from('subscription_orders') 
+    const { data, error } = await supabase
+      .from('payment_intents') 
       .update({
-        status: 'paid', // 🔁 DIFF #1: Status rename to 'paid' for consistency
-        transaction_id: paymentId, 
-        payment_method: 'RAZORPAY',
+        status: 'PAID',
+        razorpay_payment_id: paymentId
       })
-      .eq('transaction_id', orderId) 
+      .eq('razorpay_order_id', orderId) 
       .select()
       .single();
 
-    if (subError || !subData) {
-      console.error('Supabase update error:', subError);
-      throw new Error('Subscription update failed');
+    if (error || !data) {
+      console.error('Supabase update error:', error);
+      throw new Error('Payment verification failed');
     }
 
-    // 🔁 DIFF #2: ❌ CLIENT UPDATE BLOCK REMOVE KARO (MOST IMPORTANT)
-    // Ye logic ab Signup page par move ho gaya hai payment verify hone ke baad.
-
-    // 🔁 DIFF #3: Response ko signup-friendly banao
+    // ✅ client creation will happen AFTER signup
+    
     return NextResponse.json({
       payment_verified: true,
-      order_ref: orderId,
+      payment_intent_id: data.id
     });
 
   } catch (error: any) {
