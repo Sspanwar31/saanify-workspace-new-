@@ -90,6 +90,8 @@ function PaymentContent() {
     setLoading(true);
     try {
       // ✅ CHANGE #3 — backend API call (create order)
+      console.log('🚀 calling create-order API');
+      
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,6 +101,8 @@ function PaymentContent() {
           mode: 'AUTO'
         })
       });
+
+      console.log('📡 status:', res.status);
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
