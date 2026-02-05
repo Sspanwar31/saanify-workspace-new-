@@ -1,31 +1,22 @@
+Ye raha aapka updated Verify API code. Maine aapki instructions ke mutabiq client update logic ko hata diya hai aur response ko standardise kar diya hai. Ab ye API sirf payment verify karegi aur database update karegi, client create/update nahi karegi (wo kaam signup API karegi).
+
+```typescript
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ FIX 1: Key nikalne ka sahi logic (B64 support ke sath)
+// --- KEY FIXING LOGIC ---
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  
   if (!rawKey) {
-    console.error("❌ ERROR: SUPABASE_SERVICE_ROLE_KEY_B64 is missing in Vercel Env");
-    // Fallback try karein agar galti se simple name se save ho
-    return process.env.SUPABASE_SERVICE_ROLE_KEY || ''; 
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 is missing");
   }
-
-  // Agar key 'eyJ' (JWT format) se shuru nahi hoti, to iska matlab wo Base64 encoded hai
   if (!rawKey.startsWith('eyJ')) {
-    try {
-      return Buffer.from(rawKey, 'base64').toString('utf-8');
-    } catch (e) {
-      console.error("❌ Key decode failed, using raw key");
-      return rawKey;
-    }
+    return Buffer.from(rawKey, 'base64').toString('utf-8');
   }
-  
   return rawKey;
 };
 
-// ✅ FIX 2: Sahi decoded key ka use karke Client banayein
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   getServiceRoleKey()
@@ -35,54 +26,64 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+    const orderId = body.razorpay_order_id || body.orderCreationId;
+    const paymentId = body.razorpay_payment_id || body.razorpayPaymentId;
+    const signature = body.razorpay_signature || body.razorpaySignature;
 
-    // --- Validation ---
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+    if (!orderId || !paymentId || !signature) {
+      return NextResponse.json(
+        { error: 'Missing payment details' },
+        { status: 400 }
+      );
     }
 
-    // --- Signature Verification ---
-    const secret = process.env.RAZORPAY_KEY_SECRET;
-    if (!secret) {
-        throw new Error("RAZORPAY_KEY_SECRET is missing in Env");
+    // 1️⃣ Signature Verification
+    const hmac = crypto.createHmac(
+      'sha256',
+      process.env.RAZORPAY_KEY_SECRET!
+    );
+    hmac.update(`${orderId}|${paymentId}`);
+    const digest = hmac.digest('hex');
+
+    if (digest !== signature) {
+      return NextResponse.json(
+        { error: 'Invalid signature' },
+        { status: 400 }
+      );
     }
 
-    const generated_signature = crypto
-      .createHmac('sha256', secret)
-      .update(razorpay_order_id + '|' + razorpay_payment_id)
-      .digest('hex');
-
-    if (generated_signature !== razorpay_signature) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-    }
-
-    // --- Update Database ---
-    // Note: Hum 'token' column check kar rahe hain jisme Order ID save hai
+    // 2️⃣ Update Pending Order (Client Update HATA DIYA GAYA HAI)
     const { data, error } = await supabase
-      .from('payment_intents')
+      .from('payment_intents') 
       .update({
         status: 'PAID',
-        razorpay_payment_id: razorpay_payment_id,
-        updated_at: new Date()
+        razorpay_payment_id: paymentId
       })
-      .eq('token', razorpay_order_id)
+      .eq('token', orderId) // ✅ Token column check kar rahe hain
       .select()
       .single();
 
-    if (error) {
-        console.error("DB Error:", error);
-        return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+    if (error || !data) {
+      console.error('Supabase update error:', error);
+      throw new Error('Payment verification failed');
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Payment verified',
-      data: data 
+    // ❌ REMOVE COMPLETELY: Client update block yahan se hata diya gaya hai
+    // Ye kaam ab Signup API karegi.
+
+    // 🟢 STEP 3: Verify API ka FINAL RESPONSE (STANDARD)
+    return NextResponse.json({
+      success: true,
+      orderId: orderId,
+      plan: data.plan
     });
 
   } catch (error: any) {
-    console.error("API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('FINAL VERIFICATION ERROR:', error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }
+```
