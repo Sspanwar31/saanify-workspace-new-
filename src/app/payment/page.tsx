@@ -29,8 +29,7 @@ interface PendingPaymentState {
 function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const planId = searchParams.get('plan') || 'PRO';
-  
+  const planId = searchParams.get('plan') || 'PRO';  
   // Try to get user details from URL or LocalStorage if available (For creating client)
   // Assuming these are passed via URL from previous signup step
   const userName = searchParams.get('name') || '';
@@ -39,7 +38,6 @@ function PaymentContent() {
   const societyName = searchParams.get('society') || '';
 
   const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.PRO;
-  
   const [method, setMethod] = useState<'ONLINE' | 'MANUAL'>('ONLINE');
   const [loading, setLoading] = useState(false);
   const [txnId, setTxnId] = useState('');  
@@ -107,7 +105,7 @@ function PaymentContent() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Order creation failed');
+      if (!res.ok) throw new Error(data.error);
 
       // ✅ CHANGE #5 — Razorpay open (REAL FLOW)
       const razorpay = new (window as any).Razorpay({
@@ -123,7 +121,7 @@ function PaymentContent() {
 
       razorpay.open();
     } catch (err: any) {
-      toast.error(err.message || 'Payment failed');
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -183,10 +181,7 @@ function PaymentContent() {
             .from('payment_proofs')
             .upload(fileName, proofFile);
 
-        if (uploadError) {
-            console.error('Supabase upload failed:', uploadError);
-            throw new Error("Upload Failed: " + uploadError.message);
-        }
+        if (uploadError) throw new Error("Upload Failed: " + uploadError.message);
 
         const { data: publicUrl } = supabase.storage.from('payment_proofs').getPublicUrl(fileName);
 
@@ -377,7 +372,7 @@ function PaymentContent() {
                         animate={{ height: 'auto', opacity: 1 }} 
                         exit={{ height: 0, opacity: 0 }}
                       >
-                         <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100 mb-4">
+                         <div className="bg-blue-50/50 rounded-xl p-4 border-blue-100 mb-4">
                             <ul className="space-y-2 text-sm text-blue-800">
                                <li className="flex gap-2"><CheckCircle className="w-4 h-4"/> Instant Account Activation</li>
                                <li className="flex gap-2"><CheckCircle className="w-4 h-4"/> Automatic Invoice Generation</li>
@@ -440,7 +435,7 @@ function PaymentContent() {
                                </Button>
                             </div>
                             {/* UPI Box */}
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
+                            <div className="bg-slate-50 p-4 rounded-xl border-slate-200 relative group">
                                <p className="text-xs font-bold text-slate-400 uppercase mb-2">UPI Transfer</p>
                                <p className="font-bold text-slate-800 text-lg">saanify@hdfc</p>
                                <p className="text-xs text-slate-500 mt-1">Scan QR in any app</p>
@@ -564,7 +559,6 @@ function PaymentContent() {
               </Card>
            </div>
         </div>
-      </div>
 
       </div>
     </div>
