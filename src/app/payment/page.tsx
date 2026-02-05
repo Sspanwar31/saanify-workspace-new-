@@ -51,7 +51,7 @@ function PaymentContent() {
   // 1. ON LOAD: Check if user has a pending payment in LocalStorage
   useEffect(() => {
     const savedPayment = localStorage.getItem('user_pending_payment');
-    if (savedPayment)) {
+    if (savedPayment) { // ✅ FIXED: Removed extra bracket
       setPendingPayment(JSON.parse(savedPayment));
     }
   }, []);
@@ -584,7 +584,7 @@ function PaymentContent() {
 
                     <div className="flex justify-between items-end">
                        <span className="font-bold text-slate-700">Total Pay</span>
-                       <span className="text-3xl font-bold text-slate-900">₹${plan.price.toLocaleString()}</span>
+                       <span className="text-3xl font-bold text-slate-900">₹{plan.price.toLocaleString()}</span>
                     </div>
 
                     <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-500 leading-relaxed text-center">
