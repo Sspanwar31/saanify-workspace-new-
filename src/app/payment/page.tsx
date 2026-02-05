@@ -51,7 +51,7 @@ function PaymentContent() {
   // 1. ON LOAD: Check if user has a pending payment in LocalStorage
   useEffect(() => {
     const savedPayment = localStorage.getItem('user_pending_payment');
-    if (savedPayment) {
+    if (savedPayment)) {
       setPendingPayment(JSON.parse(savedPayment));
     }
   }, []);
@@ -82,15 +82,13 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ FINAL handleOnlinePay (FIXED VERSION)
+  // ✅ FINAL handleOnlinePay (UPDATED WITH VERIFICATION)
   const handleOnlinePay = async () => {
     setLoading(true);
     try {
       console.log('🚀 calling create-order API');
       
-      // FIX: 'req' object client side pe nahi hota, isliye woh lines hata di hain.
-      // Hum seedha fetch call karenge backend API par.
-
+      // 1. Order Create karein
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -104,16 +102,53 @@ function PaymentContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Order creation failed");
 
-      // Razorpay open logic
+      // 2. Razorpay Popup Open karein
       const razorpay = new (window as any).Razorpay({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount: data.amount,
         currency: 'INR',
         order_id: data.orderId,
-        handler: (response: any) => {
-          // Redirect with verified payment intent reference
-          // Adding payment_id for safety
-          router.push(`/signup?mode=AUTO&order_ref=${data.intentId || data.orderId}&payment_id=${response.razorpay_payment_id}`);
+        
+        // 🟢 HERE IS THE MAIN CHANGE (Handler update)
+        handler: async (response: any) => {
+          try {
+            toast.loading("Verifying Payment...");
+
+            // Step A: Payment Verify API ko call karein
+            const verifyReq = await fetch('/api/payments/verify', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({
+                 razorpay_payment_id: response.razorpay_payment_id,
+                 razorpay_order_id: response.razorpay_order_id,
+                 razorpay_signature: response.razorpay_signature
+               })
+            });
+
+            const verifyData = await verifyReq.json();
+
+            if (verifyReq.ok && verifyData.success) {
+                toast.success("Payment Verified! Redirecting...");
+                
+                // Step B: Signup Page par redirect karein (Order ID ke saath)
+                // Hum 'response.razorpay_order_id' bhej rahe hain taaki signup API isse DB me check kar sake
+                router.push(`/signup?mode=AUTO&orderId=${response.razorpay_order_id}`);
+            } else {
+                toast.error("Payment Verification Failed. Please contact support.");
+                console.error("Verification failed:", verifyData);
+            }
+
+          } catch (verifyError) {
+             console.error("Verification API Error:", verifyError);
+             toast.error("Payment verification failed due to network error.");
+          }
+        },
+        
+        // Modal close hone par loading band karein
+        modal: {
+            ondismiss: function() {
+                setLoading(false);
+            }
         }
       });
 
@@ -121,9 +156,10 @@ function PaymentContent() {
     } catch (err: any) {
       console.error("Payment Error: ", err);
       toast.error(err.message || "Payment initiation failed");
-    } finally {
-      setLoading(false);
-    }
+      setLoading(false); // Error aane par loading hata dein
+    } 
+    // Note: 'finally { setLoading(false) }' yaha se hata diya hai
+    // kyunki payment popup khula rahta hai to loading true hi rahni chahiye
   };
 
   // --- REAL BACKEND SUBMISSION LOGIC ---
@@ -548,7 +584,7 @@ function PaymentContent() {
 
                     <div className="flex justify-between items-end">
                        <span className="font-bold text-slate-700">Total Pay</span>
-                       <span className="text-3xl font-bold text-slate-900">₹{plan.price.toLocaleString()}</span>
+                       <span className="text-3xl font-bold text-slate-900">₹${plan.price.toLocaleString()}</span>
                     </div>
 
                     <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-500 leading-relaxed text-center">
