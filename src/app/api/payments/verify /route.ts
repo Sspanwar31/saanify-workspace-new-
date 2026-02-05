@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-// --- KEY FIXING LOGIC ---
+// --- SERVICE ROLE KEY FIX ---
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
   if (!rawKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 is missing");
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY_B64 is missing');
   }
   if (!rawKey.startsWith('eyJ')) {
     return Buffer.from(rawKey, 'base64').toString('utf-8');
@@ -19,13 +19,14 @@ const supabase = createClient(
   getServiceRoleKey()
 );
 
+// ✅ ONLY POST — NO GET / NO DEFAULT EXPORT
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const orderId = body.razorpay_order_id || body.orderCreationId;
-    const paymentId = body.razorpay_payment_id || body.razorpayPaymentId;
-    const signature = body.razorpay_signature || body.razorpaySignature;
+    const orderId = body.razorpay_order_id;
+    const paymentId = body.razorpay_payment_id;
+    const signature = body.razorpay_signature;
 
     if (!orderId || !paymentId || !signature) {
       return NextResponse.json(
@@ -34,41 +35,42 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1️⃣ Signature Verification
+    // 1️⃣ Razorpay Signature Verify
     const hmac = crypto.createHmac(
       'sha256',
       process.env.RAZORPAY_KEY_SECRET!
     );
-    hmac.update(`${orderId}|${paymentId}`);
-    const digest = hmac.digest('hex');
 
-    if (digest !== signature) {
+    hmac.update(`${orderId}|${paymentId}`);
+    const expectedSignature = hmac.digest('hex');
+
+    if (expectedSignature !== signature) {
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
       );
     }
 
-    // 2️⃣ Update Pending Order (Client Update HATA DIYA GAYA HAI)
+    // 2️⃣ Mark payment_intents as PAID
     const { data, error } = await supabase
-      .from('payment_intents') 
+      .from('payment_intents')
       .update({
         status: 'PAID',
         razorpay_payment_id: paymentId
       })
-      .eq('token', orderId) // ✅ Token column check kar rahe hain
-      .select()
+      .eq('token', orderId) // 🔑 razorpay_order_id == token
+      .select('id, plan')
       .single();
 
     if (error || !data) {
-      console.error('Supabase update error:', error);
-      throw new Error('Payment verification failed');
+      console.error('Payment intent update failed:', error);
+      return NextResponse.json(
+        { error: 'Payment intent not found' },
+        { status: 404 }
+      );
     }
 
-    // ❌ REMOVE COMPLETELY: Client update block yahan se hata diya gaya hai
-    // Ye kaam ab Signup API karegi.
-
-    // 🟢 STEP 3: Verify API ka FINAL RESPONSE (STANDARD)
+    // ✅ FINAL VERIFY RESPONSE (Signup will handle next step)
     return NextResponse.json({
       success: true,
       orderId: orderId,
@@ -76,9 +78,9 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error('FINAL VERIFICATION ERROR:', error);
+    console.error('VERIFY API ERROR:', error);
     return NextResponse.json(
-      { error: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
