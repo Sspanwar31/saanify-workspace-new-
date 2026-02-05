@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
     const orderId = body.razorpay_order_id || body.orderCreationId;
     const paymentId = body.razorpay_payment_id || body.razorpayPaymentId;
-    const signature = body.razorpay_signature || body.razorpaySignature;
+    const signature = body.razorpay_signature || body.razorpay_signature;
 
     if (!orderId || !paymentId || !signature) {
       return NextResponse.json(
@@ -67,6 +67,49 @@ export async function POST(req: Request) {
 
     // ✅ client creation will happen AFTER signup
     
+    // 3️⃣ Activate client subscription
+    // 3️⃣ Activate client subscription
+    const planName = data.plan_name;
+    const durationDays = 30;
+    const planEndDate =
+      planName === 'ENTERPRISE'
+     ? new Date('2099-12-31T23:59:59Z'
+     : new Date(Date.now() + durationDays * 24 * 60 * 1000);
+    
+    const { error: clientError } = await supabase
+      .from('clients')
+      .update({
+        plan: planName,
+        plan_name: planName.charAt(0) + planName.slice(1).toLowerCase(),
+        plan_start_date: new Date(),
+        plan_end_date: planEndDate,
+        subscription_status: 'active',
+        has_used_trial: true,
+        updated_at: new Date()
+      })
+      .eq('id', data.client_id);
+
+    if (clientError) {
+      console.error('Client update failed:', clientError);
+      throw new Error('Client activation failed');
+    }
+
+    // ✅ client creation will happen AFTER signup
+    
+    // 3️⃣ client plan_end_date
+    const { error: dateError } = await supabase
+      .from('clients')
+      .update({
+        plan_end_date: planEndDate,
+        updated_at: new Date()
+      })
+      .eq('id', data.client_id);
+
+    if (dateError) {
+      console.error('Client date update failed:', dateError);
+      throw new Error("Subscription activation failed");
+    }
+
     return NextResponse.json({
       payment_verified: true,
       payment_intent_id: data.id
