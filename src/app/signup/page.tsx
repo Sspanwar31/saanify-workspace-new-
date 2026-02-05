@@ -61,38 +61,16 @@ function SignupForm() {
     }
 
     try {
-      // --- STEP A: CHECK PAYMENT (New Logic) ---
-      let verifiedPlan = selectedPlanId;
-      let paymentData = null;
+      // --- STEP A: CHECK PAYMENT (REMOVE COMPLETELY) ---
+      // ❌ DELETE THIS ENTIRE BLOCK (Payment check removed)
+      // Client ko payment_intents ka kuch bhi pata nahi hona chahiye
 
-      // Agar Order ID url me hai, to DB se confirm karein
-      if (orderId) {
-        // 🔴 CHANGE 2: 'reference_id' ki jagah 'token' check karein
-        const { data: intent, error: intentError } = await supabase
-          .from('payment_intents')
-          .select('*')
-          .eq('token', orderId) 
-          .single();
+      // 🟢 CHANGE 2: VERIFIED PLAN DIRECT SET KARO (SAFE WAY)
+      // Payment already verify API me verified ho chuka hai
+      const verifiedPlan = orderId ? 'PRO' : selectedPlanId;
 
-        if (intentError || !intent) {
-           toast.error('Invalid Payment Order ID.');
-           setLoading(false); 
-           return;
-        }
-
-        // 🔴 CHANGE 3: Status 'PAID' check karein ('VERIFIED' nahi)
-        if (intent.status !== 'PAID') {
-           toast.error('Payment not completed yet. Please pay first.');
-           setLoading(false);
-           return;
-        }
-
-        // Payment sahi hai, Plan DB se uthayein (Security)
-        verifiedPlan = intent.plan || 'PRO'; 
-        paymentData = intent;
-      } else {
-        // Agar Trial hai to DB check karein
-         if (selectedPlanId === 'TRIAL') {
+      // Trial Check (sirf trial select kiya ho)
+      if (!orderId && verifiedPlan === 'TRIAL') {
           const { data: existingTrialClient } = await supabase
             .from('clients')
             .select('id')
@@ -105,7 +83,6 @@ function SignupForm() {
             setLoading(false);
             return;
           }
-        }
       }
 
       // --- STEP B: CREATE AUTH USER ---
@@ -153,7 +130,7 @@ function SignupForm() {
           phone: formData.phone,
           society_name: formData.societyName,
           
-          plan: verifiedPlan, // 🔴 DB wala plan use karein
+          plan: verifiedPlan, // 🔴 Direct plan use kar rahe hain
           plan_name: verifiedPlan.charAt(0) + verifiedPlan.slice(1).toLowerCase(),
           
           status: 'ACTIVE',
@@ -169,16 +146,9 @@ function SignupForm() {
 
       if (clientError) throw new Error("Client Creation Failed: " + clientError.message);
 
-      // --- STEP E: LINK PAYMENT TO CLIENT (🔴 MISSING PART ADDED) ---
-      if (orderId && paymentData) {
-         await supabase
-           .from('payment_intents')
-           .update({ 
-              client_id: authData.user.id,  // Ab payment ko maalik mil gaya
-              updated_at: new Date()
-           })
-           .eq('token', orderId);
-      }
+      // 🔴 CHANGE 3: PAYMENT LINK UPDATE BHI HATAO (CLIENT SIDE)
+      // ❌ DELETE THIS TOO (Step E removed)
+      // Ye kaam signup API karegi — browser nahi
 
       // --- SUCCESS ---
       toast.success("Account Created Successfully!");
