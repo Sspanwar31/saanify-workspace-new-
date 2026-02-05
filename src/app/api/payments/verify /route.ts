@@ -27,6 +27,16 @@ export async function POST(req: Request) {
     const paymentId = body.razorpay_payment_id || body.razorpayPaymentId;
     const signature = body.razorpay_signature || body.razorpaySignature;
 
+    // 🟢 CHANGE #1 — body se clientId lo
+    const clientId = body.client_id;
+
+    if (!clientId) {
+      return NextResponse.json(
+        { error: 'client_id missing' },
+        { status: 400 }
+      );
+    }
+
     if (!orderId || !paymentId || !signature) {
       return NextResponse.json(
         { error: 'Missing payment details' },
@@ -74,6 +84,7 @@ export async function POST(req: Request) {
         ? new Date('2099-12-31T23:59:59Z')
         : new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
 
+    // 🟢 CHANGE #2 — clients update me data.client_id hatao, direct clientId use karo
     const { error: clientError } = await supabase
       .from('clients')
       .update({
@@ -86,7 +97,7 @@ export async function POST(req: Request) {
         has_used_trial: true,
         updated_at: new Date()
       })
-      .eq('id', data.client_id);
+      .eq('id', clientId); // ✅ Corrected: used clientId from body
 
     if (clientError) {
       console.error('Client update failed:', clientError);
