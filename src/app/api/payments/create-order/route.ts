@@ -7,17 +7,12 @@ import { createClient } from '@supabase/supabase-js';
 ------------------------------------------------------- */
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-
   if (!rawKey) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 missing");
   }
-
-  // If already JWT (starts with eyJ), return as-is
   if (rawKey.startsWith('eyJ')) {
     return rawKey;
   }
-
-  // Otherwise decode base64
   return Buffer.from(rawKey, 'base64').toString('utf-8');
 };
 
@@ -42,12 +37,11 @@ const razorpay = new Razorpay({
 ------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
-    /* 1️⃣ Parse request body */
     const body = await req.json();
-    
-    // Extract IDs and Amount safely
+
+    // 1. Extract IDs and Amount safely
     const amount = body.amount || body.price;
-    const plan = body.planId || body.planName || 'PRO'; // Use alias for plan
+    const plan = body.planId || body.planName || 'PRO';
     const mode = body.mode;
 
     if (!amount || !plan) {
@@ -57,36 +51,41 @@ export async function POST(req: Request) {
       );
     }
 
-    /* 2️⃣ Create Razorpay Order */
+    // 2. Create Razorpay Order
+    console.log("Creating Razorpay Order...");
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100), // ₹ → paise
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
     });
+    console.log("Razorpay Order Created:", order.id);
 
-    /* 3️⃣ Insert into payment_intents */
-    const { error } = await supabase
+    // 3. Insert into payment_intents
+    // FIX: Using .toISOString() for date and logging full error
+    const insertData = {
+      amount: amount,
+      plan: plan,
+      mode: mode || 'AUTO',
+      status: 'PENDING',
+      token: order.id, // Ensure database column 'token' is TEXT, not UUID
+      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // FIX: ISO String
+    };
+
+    const { data, error } = await supabase
       .from('payment_intents')
-      .insert([
-        {
-          amount: amount,
-          plan: plan,                    // ✅ column exists
-          mode: mode || 'AUTO',        // ✅ column exists
-          status: 'PENDING',
-          token: order.id,             // razorpay_order_id
-          expires_at: new Date(Date.now() + 15 * 60 * 1000), // 15 mins expiry
-        },
-      ]);
+      .insert([insertData])
+      .select();
 
     if (error) {
-      console.error("Supabase insert failed:", error);
+      console.error("❌ Supabase insert failed details:", error); // Check Server Logs
+      // Return ACTUAL database error to frontend for debugging
       return NextResponse.json(
-        { error: 'Failed to create payment intent' },
+        { error: `DB Insert Failed: ${error.message}`, details: error },
         { status: 500 }
       );
     }
 
-    /* 4️⃣ Return to frontend */
+    // 4. Return to frontend
     return NextResponse.json({
       orderId: order.id,
       amount: order.amount,
@@ -94,7 +93,7 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    console.error("❌ create-order error:", err);
+    console.error("❌ create-order critical error:", err);
     return NextResponse.json(
       { error: err.message || 'Internal Server Error' },
       { status: 500 }
