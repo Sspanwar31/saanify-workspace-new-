@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       amount: amount,
       plan: plan,
       mode: mode || 'AUTO',
-      status: 'PENDING',
+      status: 'pending', // ✅ Capital 'PENDING' hata kar small 'pending' likh dijiye
       token: order.id, // Ensure database column 'token' is TEXT, not UUID
       expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // FIX: ISO String
     };
