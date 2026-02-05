@@ -82,46 +82,45 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ FINAL handleOnlinePay (SUMMARY)
+  // ✅ FINAL handleOnlinePay (FIXED VERSION)
   const handleOnlinePay = async () => {
     setLoading(true);
     try {
-      // ✅ CHANGE #3 — backend API call (create order)
       console.log('🚀 calling create-order API');
       
-      // ✅ CHANGE #4: Safe parsing (handle body carefully)
-      const body = await req.json();
-      console.log('📦 Request body:', body);
+      // FIX: 'req' object client side pe nahi hota, isliye woh lines hata di hain.
+      // Hum seedha fetch call karenge backend API par.
 
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // ✅ CHANGE #1: Backend-compatible body structure
         body: JSON.stringify({
-          planId: planId,          // 🔑 KEY FIX: Use correct key
+          planId: planId,          
           amount: plan.price,
           mode: 'AUTO'
         })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "Order creation failed");
 
-      // ✅ CHANGE #5 — Razorpay open (REAL FLOW)
+      // Razorpay open logic
       const razorpay = new (window as any).Razorpay({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
         amount: data.amount,
         currency: 'INR',
         order_id: data.orderId,
-        handler: () => {
+        handler: (response: any) => {
           // Redirect with verified payment intent reference
-          router.push(`/signup?mode=AUTO&order_ref=${data.intentId || data.orderId}`);
+          // Adding payment_id for safety
+          router.push(`/signup?mode=AUTO&order_ref=${data.intentId || data.orderId}&payment_id=${response.razorpay_payment_id}`);
         }
       });
 
       razorpay.open();
     } catch (err: any) {
-      toast.error(err.message);
+      console.error("Payment Error: ", err);
+      toast.error(err.message || "Payment initiation failed");
     } finally {
       setLoading(false);
     }
