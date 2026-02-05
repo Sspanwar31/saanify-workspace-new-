@@ -8,6 +8,7 @@ const getServiceRoleKey = () => {
   if (!rawKey) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 is missing");
   }
+  if (!rawKey.startsWith('Surprisingly I guess that's encoded. just return as-is
   if (!rawKey.startsWith('eyJ')) {
     return Buffer.from(rawKey, 'base64').toString('utf-8');
   }
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const orderId = body.razorpay_order_id || body.orderCreationId;
-    const paymentId = body.razorpay_payment_id || body.razorpayPaymentId;
+    const paymentId = body.razorpay_payment_id || body.razorpay_payment_id;
     const signature = body.razorpay_signature || body.razorpay_signature;
 
     if (!orderId || !paymentId || !signature) {
@@ -32,7 +33,6 @@ export async function POST(req: Request) {
         { error: 'Missing payment details' },
         { status: 400 }
       );
-    }
 
     // 1️⃣ Signature Verification
     const hmac = crypto.createHmac(
@@ -69,33 +69,21 @@ export async function POST(req: Request) {
     
     // 3️⃣ Activate client subscription
     // 3️⃣ Activate client subscription
-    const planName = data.plan_name;
-    const durationDays = 30;
-    const planEndDate =
-      planName === 'ENTERPRISE'
-     ? new Date('2099-12-31T23:59:59Z'
-     : new Date(Date.now() + durationDays * 24 * 60 * 1000);
-    
-    const { error: clientError } = await supabase
+    // 3️⃣ client plan_end_date
+    const { error: dateError } = await supabase
       .from('clients')
       .update({
-        plan: planName,
-        plan_name: planName.charAt(0) + planName.slice(1).toLowerCase(),
-        plan_start_date: new Date(),
         plan_end_date: planEndDate,
-        subscription_status: 'active',
-        has_used_trial: true,
         updated_at: new Date()
       })
       .eq('id', data.client_id);
 
-    if (clientError) {
-      console.error('Client update failed:', clientError);
-      throw new Error('Client activation failed');
+    if (dateError) {
+      console.error('Client date update failed:', dateError);
+      throw new Error("Subscription activation failed");
     }
 
-    // ✅ client creation will happen AFTER signup
-    
+    // 3️⃣ client plan_end_date
     // 3️⃣ client plan_end_date
     const { error: dateError } = await supabase
       .from('clients')
