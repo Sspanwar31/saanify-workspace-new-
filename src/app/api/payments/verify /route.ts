@@ -1,6 +1,3 @@
-Ye raha aapka updated Verify API code. Maine aapki instructions ke mutabiq client update logic ko hata diya hai aur response ko standardise kar diya hai. Ab ye API sirf payment verify karegi aur database update karegi, client create/update nahi karegi (wo kaam signup API karegi).
-
-```typescript
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -86,4 +83,3 @@ export async function POST(req: Request) {
     );
   }
 }
-```
