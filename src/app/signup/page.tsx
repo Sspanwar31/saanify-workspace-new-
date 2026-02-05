@@ -19,11 +19,12 @@ function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // ✅ FIX 1 — Trial ke liye plan hard lock karo
+  // 🔴 CHANGE 1: 'ref' ki jagah 'orderId' use karein
+  const orderId = searchParams.get('orderId') || '';
+  
   const urlPlan = searchParams.get('plan');
-  const initialPlanId = urlPlan === 'TRIAL' ? 'TRIAL' : urlPlan || 'TRIAL';
-
-  const refId = searchParams.get('ref') || ''; 
+  // Agar Order ID hai to hum maan lenge ki Paid plan hai, bhale hi URL me kuch bhi ho
+  const initialPlanId = orderId ? 'PRO' : (urlPlan || 'TRIAL');
 
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
   const [loading, setLoading] = useState(false);
@@ -31,20 +32,12 @@ function SignupForm() {
   const [trialUsed, setTrialUsed] = useState(false);
 
   useEffect(() => {
-    const hasUsedTrial = localStorage.getItem('saanify_trial_used');
-    
-    // ✅ FIX 2 — localStorage effect ko TRIAL submit pe ignore karo
-    if (hasUsedTrial && initialPlanId === 'TRIAL') {
-      setTrialUsed(true);
-      // ❌ DO NOT auto-switch plan here
-    } else if (hasUsedTrial) {
-      setTrialUsed(true);
-    }
-  }, [initialPlanId]);
-
-  useEffect(() => {
     // Rely on DB check, reset local state on mount
     setTrialUsed(false);
+    const hasUsedTrial = localStorage.getItem('saanify_trial_used');
+    if (hasUsedTrial) {
+      setTrialUsed(true);
+    }
   }, []);
 
   const [formData, setFormData] = useState({
@@ -68,48 +61,54 @@ function SignupForm() {
     }
 
     try {
-      // 1. Fetch Trial Settings
-      const { data: settings } = await supabase
-        .from('system_settings')
-        .select('trial_days')
-        .single();
+      // --- STEP A: CHECK PAYMENT (New Logic) ---
+      let verifiedPlan = selectedPlanId;
+      let paymentData = null;
 
-      const trialDays = settings?.trial_days || 15; 
+      // Agar Order ID url me hai, to DB se confirm karein
+      if (orderId) {
+        // 🔴 CHANGE 2: 'reference_id' ki jagah 'token' check karein
+        const { data: intent, error: intentError } = await supabase
+          .from('payment_intents')
+          .select('*')
+          .eq('token', orderId) 
+          .single();
 
-      // 2. DB Check: Trial Used?
-      const { data: existingTrialClient } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', formData.email)
-        .eq('has_used_trial', true)
-        .maybeSingle();
+        if (intentError || !intent) {
+           toast.error('Invalid Payment Order ID.');
+           setLoading(false); 
+           return;
+        }
 
-      if (existingTrialClient && selectedPlanId === 'TRIAL') {
-        toast.error("Free trial already used. Please choose a paid plan.");
-        setLoading(false);
-        return;
-      }
+        // 🔴 CHANGE 3: Status 'PAID' check karein ('VERIFIED' nahi)
+        if (intent.status !== 'PAID') {
+           toast.error('Payment not completed yet. Please pay first.');
+           setLoading(false);
+           return;
+        }
 
-      // 3. Duplicate Check
-      const { data: existingClients, error: fetchError } = await supabase
-        .from('clients')
-        .select('email, phone')
-        .or(`email.eq.${formData.email},phone.eq.${formData.phone}`);
+        // Payment sahi hai, Plan DB se uthayein (Security)
+        verifiedPlan = intent.plan || 'PRO'; 
+        paymentData = intent;
+      } else {
+        // Agar Trial hai to DB check karein
+         if (selectedPlanId === 'TRIAL') {
+          const { data: existingTrialClient } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('email', formData.email)
+            .eq('has_used_trial', true)
+            .maybeSingle();
 
-      if (fetchError) console.error('Error checking duplicates:', fetchError);
-
-      const isDuplicate = existingClients && existingClients.length > 0;
-
-      if (isDuplicate) {
-        if (selectedPlanId === 'TRIAL') {
-          toast.error("This email/phone has already used the Free Trial. Please choose a paid plan.");
-          setTimeout(() => router.push('/dashboard/subscription'), 2000); 
-          setLoading(false);
-          return;
+          if (existingTrialClient) {
+            toast.error("Free trial already used. Please choose a paid plan.");
+            setLoading(false);
+            return;
+          }
         }
       }
 
-      // --- STEP A: CREATE AUTH USER ---
+      // --- STEP B: CREATE AUTH USER ---
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -125,46 +124,26 @@ function SignupForm() {
       if (authError) throw new Error("User Signup Failed: " + authError.message);
       if (!authData.user) throw new Error("Signup successful but no user ID returned.");
 
-      // ✅ PAYMENT INTENT VERIFY (PAID PLANS ONLY)
-      if (selectedPlanId !== 'TRIAL') {
-        const { data: intent } = await supabase
-          .from('payment_intents')
-          .select('status, plan')
-          .eq('reference_id', refId)
-          .single();
-
-        if (!intent || intent.status !== 'VERIFIED') {
-          toast.error('Payment not verified. Signup blocked.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      // --- STEP B: PREPARE CLIENT DATA ---
-      // 🔥 CRITICAL LOGIC FIX 🔥
-      let subscriptionExpiry = null;
+      // --- STEP C: PREPARE CLIENT DATA ---
+      let planDurationDays = 15; // Default Trial
       let subStatus = 'inactive';
-      let accountStatus = 'PENDING'; // Default
-
-      const isTrial = selectedPlanId === 'TRIAL' || selectedPlanId === 'FREE_TRIAL';
-
-      if (isTrial) {
-        // TRIAL = ACTIVE IMMEDIATELY
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + trialDays);
-        subscriptionExpiry = expiryDate.toISOString();
-        
-        subStatus = 'active'; 
-        accountStatus = 'ACTIVE'; // Unlock Account Immediately
-      } 
-      else {
-        // PAID PLAN LOGIC (SIMPLIFIED)
-        // Payment already verified above, so ACTIVE
-        subStatus = 'active';
-        accountStatus = 'ACTIVE';
+      
+      if (verifiedPlan === 'TRIAL') {
+         // Trial Logic
+         const { data: settings } = await supabase.from('system_settings').select('trial_days').single();
+         planDurationDays = settings?.trial_days || 15;
+         subStatus = 'active';
+      } else {
+         // Paid Logic
+         planDurationDays = verifiedPlan === 'YEARLY' ? 365 : 30;
+         subStatus = 'active'; // Paid hai to active
       }
 
-      // --- STEP C: CREATE CLIENT ---
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(startDate.getDate() + planDurationDays);
+
+      // --- STEP D: INSERT CLIENT ---
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
@@ -173,65 +152,55 @@ function SignupForm() {
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
-
-          // 🔥 IMPORTANT — ADMIN & SIGNUP CONSISTENCY
-          plan: selectedPlanId === 'TRIAL' ? 'TRIAL' : selectedPlanId,
-
-          plan_name: selectedPlanId === 'TRIAL' ? 'Trial' : currentPlan.name,
-          status: accountStatus,
-          subscription_status: subStatus, 
-          plan_end_date: subscriptionExpiry,
-          plan_start_date: new Date().toISOString(),
-          has_used_trial: selectedPlanId === 'TRIAL',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          role: 'client' 
+          
+          plan: verifiedPlan, // 🔴 DB wala plan use karein
+          plan_name: verifiedPlan.charAt(0) + verifiedPlan.slice(1).toLowerCase(),
+          
+          status: 'ACTIVE',
+          subscription_status: subStatus,
+          plan_start_date: startDate.toISOString(),
+          plan_end_date: endDate.toISOString(),
+          
+          // Agar payment kiya hai to trial used maana jayega
+          has_used_trial: verifiedPlan !== 'TRIAL', 
+          
+          role: 'client'
         });
 
-      if (clientError) throw new Error("Client Profile Creation Failed: " + clientError.message);
+      if (clientError) throw new Error("Client Creation Failed: " + clientError.message);
 
-      // --- SUCCESS & REDIRECT ---
-      // 🔑 FINAL REDIRECT — DB IS SOURCE OF TRUTH
-      const { data: client } = await supabase
-        .from('clients')
-        .select('plan, status, subscription_status')
-        .eq('id', authData.user.id)
-        .single();
-
-      // ✅ FIX: Allow TRIAL users to enter immediately
-      if (
-        client?.status === 'ACTIVE' &&
-        (client?.subscription_status === 'active' || client?.plan === 'TRIAL')
-      ) {
-        toast.success("Account Created! Entering Dashboard...");
-        
-        // 🔥 FIX: Set LocalStorage MANUALLY & Force Reload
-        // This ensures DashboardLayout finds the user immediately.
-        const userObj = { 
-            id: authData.user.id, 
-            email: formData.email, 
-            role: 'client',
-            ...client 
-        };
-        localStorage.setItem('current_user', JSON.stringify(userObj));
-        
-        // Force full reload to bypass stale state
-        window.location.href = '/dashboard'; 
-        
-      } else {
-        // Agar Manual Payment hai ya Pending hai
-        toast.success("Account Created! Pending Admin Approval.");
-        router.replace('/login');
+      // --- STEP E: LINK PAYMENT TO CLIENT (🔴 MISSING PART ADDED) ---
+      if (orderId && paymentData) {
+         await supabase
+           .from('payment_intents')
+           .update({ 
+              client_id: authData.user.id,  // Ab payment ko maalik mil gaya
+              updated_at: new Date()
+           })
+           .eq('token', orderId);
       }
+
+      // --- SUCCESS ---
+      toast.success("Account Created Successfully!");
+      
+      // LocalStorage Set
+      localStorage.setItem('current_user', JSON.stringify({ 
+         id: authData.user.id, 
+         email: formData.email, 
+         role: 'client',
+         plan: verifiedPlan
+      }));
+      
+      window.location.href = '/dashboard';
 
     } catch (err: any) {
       console.error('Signup error:', err);
-      toast.error(err.message || "Signup failed. Please try again.");
+      toast.error(err.message || "Signup failed.");
     } finally {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* LEFT SIDE */}
@@ -320,8 +289,8 @@ function SignupForm() {
             <CardHeader>
                <CardTitle className="text-2xl font-bold text-slate-900">Create Account</CardTitle>
                <CardDescription>
-                  {refId 
-                    ? <span className="text-orange-600 font-medium">Completing Registration for Plan</span> 
+                  {orderId 
+                    ? <span className="text-orange-600 font-medium">Completing Registration for Paid Plan</span> 
                     : "Enter details to setup your new admin panel."}
                </CardDescription>
             </CardHeader>
@@ -365,7 +334,7 @@ function SignupForm() {
                      ) : selectedPlanId === 'TRIAL' ? (
                         'Start Free Trial'
                      ) : (
-                        'Register & Request Approval'
+                        'Create Account'
                      )}
                   </Button>
                </form>
