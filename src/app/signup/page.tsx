@@ -22,8 +22,8 @@ function SignupForm() {
   // 🔴 CHANGE 1: 'ref' ki jagah 'orderId' use karein
   const orderId = searchParams.get('orderId') || '';
   
-  // ✅ FIX: Initial state empty rakho taaki server/client mismatch na ho
-  const [selectedPlanId, setSelectedPlanId] = useState<string>(''); 
+  // ✅ STEP-1: State ko clear karo (Correct naming)
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string>('TRIAL');
   const [loading, setLoading] = useState(false);
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
@@ -31,8 +31,9 @@ function SignupForm() {
   // ✅ FIX: Mount hone par correct plan set karein (Client side only)
   useEffect(() => {
     const urlPlan = searchParams.get('plan');
-    const initialPlanId = orderId ? 'PRO' : (urlPlan || 'TRIAL');
-    setSelectedPlanId(initialPlanId);
+    // URL me agar PRO code hai to PRO, nahi to TRIAL
+    const initialPlanCode = orderId ? 'PRO' : (urlPlan || 'TRIAL');
+    setSelectedPlanCode(initialPlanCode);
     
     // Trial Logic Check
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
@@ -49,7 +50,8 @@ function SignupForm() {
     password: ''
   });
 
-  const currentPlan = SUBSCRIPTION_PLANS[selectedPlanId as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.TRIAL;
+  // Using selectedPlanCode to fetch config
+  const currentPlan = SUBSCRIPTION_PLANS[selectedPlanCode as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.TRIAL;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,14 +66,11 @@ function SignupForm() {
     try {
       // --- STEP A: CHECK PAYMENT (REMOVE COMPLETELY) ---
       
-      // 🔹 CHANGE 1: Verified plan ko string nahi, DB se lao
-      const planKey = orderId ? 'PRO' : selectedPlanId;
-
-      // 🔑 Fetch plan from DB
+      // ✅ STEP-2: DB se plan CODE se fetch karo (NOT name)
       const { data: planRow, error: planError } = await supabase
         .from('plans')
-        .select('id, name')
-        .ilike('name', planKey === 'TRIAL' ? 'Trial' : planKey)
+        .select('id, code, name, duration_days')
+        .eq('code', selectedPlanCode)
         .single();
 
       if (planError || !planRow) {
@@ -81,7 +80,7 @@ function SignupForm() {
       }
 
       // Trial Check (sirf trial select kiya ho)
-      if (!orderId && planKey === 'TRIAL') {
+      if (!orderId && selectedPlanCode === 'TRIAL') {
           const { data: existingTrialClient } = await supabase
             .from('clients')
             .select('id')
@@ -113,29 +112,14 @@ function SignupForm() {
       if (!authData.user) throw new Error("Signup successful but no user ID returned.");
 
       // --- STEP C: PREPARE CLIENT DATA ---
-      // 🔹 CHANGE 2: Duration logic ko plan-based rakho
-      let planDurationDays = 15;
-      let subStatus = 'active';
-
-      if (planRow.name.toLowerCase().includes('trial')) {
-        const { data: settings } = await supabase
-          .from('system_settings')
-          .select('trial_days')
-          .single();
-
-        planDurationDays = settings?.trial_days || 15;
-      } else {
-        // Paid plans
-        planDurationDays = planRow.name.toLowerCase().includes('year')
-          ? 365
-          : 30;
-      }
+      // ✅ STEP-3: Duration logic simplify karo (DB driven)
+      const planDurationDays = planRow.duration_days;
 
       const startDate = new Date();
       const endDate = new Date();
       endDate.setDate(startDate.getDate() + planDurationDays);
 
-      // ✅ Signup insert FINAL & CORRECT
+      // ✅ STEP-4: CLIENT INSERT — THIS IS MOST IMPORTANT
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
@@ -145,11 +129,17 @@ function SignupForm() {
           phone: formData.phone,
           society_name: formData.societyName,
 
-          plan: planRow.name,                 // ✅ ONLY THIS
+          // 🔥 SINGLE SOURCE OF TRUTH
+          plan_id: planRow.id,
+
+          // 🟡 optional legacy (rakh sakte ho)
+          plan: planRow.code,
+          plan_name: planRow.name,
+
           subscription_status: 'active',
           plan_start_date: startDate.toISOString(),
           plan_end_date: endDate.toISOString(),
-          has_used_trial: planRow.name === 'TRIAL',
+          has_used_trial: planRow.code === 'TRIAL',
 
           role: 'client'
         });
@@ -164,7 +154,7 @@ function SignupForm() {
          id: authData.user.id, 
          email: formData.email, 
          role: 'client',
-         plan: planRow.name
+         plan: planRow.code
       }));
       
       window.location.href = '/dashboard';
@@ -198,12 +188,12 @@ function SignupForm() {
                  <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Selected Plan</p>
                  <h3 className="text-2xl font-bold text-white mt-1">{currentPlan.name}</h3>
               </div>
-              <Badge className={selectedPlanId === 'PRO' ? 'bg-purple-600' : 'bg-blue-600'}>
+              <Badge className={selectedPlanCode === 'PRO' ? 'bg-purple-600' : 'bg-blue-600'}>
                 ₹{currentPlan.price}/mo
               </Badge>
            </div>
            
-           {trialUsed && selectedPlanId === 'TRIAL' && (
+           {trialUsed && selectedPlanCode === 'TRIAL' && (
              <div className="bg-orange-500/20 border border-orange-500/50 text-orange-300 px-3 py-2 rounded-lg text-sm mb-4 flex items-center gap-2">
                <AlertCircle className="w-4 h-4" />
                Trial already used - Please select a paid plan
@@ -233,12 +223,12 @@ function SignupForm() {
                   key={key} 
                   onClick={() => { 
                     if (!isTrialDisabled) {
-                      setSelectedPlanId(key); 
+                      setSelectedPlanCode(key); 
                       setShowPlanSelector(false); 
                     }
                   }}
                   className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center transition-all ${
-                    selectedPlanId === key ? 'bg-blue-600 border-blue-500' : 
+                    selectedPlanCode === key ? 'bg-blue-600 border-blue-500' : 
                     isTrialDisabled ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-50' :
                     'bg-slate-800 border-slate-700 hover:bg-slate-700'
                   }`}
@@ -290,24 +280,24 @@ function SignupForm() {
                   </div>
                   <div className="grid gap-2">
                      <Label>Password</Label>
-                     <Input type="password" placeholder="•••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
+                     <Input type="password" placeholder="••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
                   </div>
                   
                   {/* BUTTON LOGIC */}
                   <Button 
                     type="submit" 
                     className={`w-full h-11 text-base mt-2 ${
-                      selectedPlanId === 'TRIAL' && trialUsed
+                      selectedPlanCode === 'TRIAL' && trialUsed
                         ? 'bg-gray-400 cursor-not-allowed'
                         : 'bg-blue-600 hover:bg-blue-700'
                     } text-white`} 
-                    disabled={loading || (selectedPlanId === 'TRIAL' && trialUsed)}
+                    disabled={loading || (selectedPlanCode === 'TRIAL' && trialUsed)}
                   >
                      {loading ? (
                         <div className="flex items-center justify-center">
                            <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Processing...
                         </div>
-                     ) : selectedPlanId === 'TRIAL' ? (
+                     ) : selectedPlanCode === 'TRIAL' ? (
                         'Start Free Trial'
                      ) : (
                         'Create Account'
