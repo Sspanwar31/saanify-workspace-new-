@@ -1,3 +1,10 @@
+Ye raha updated code. Maine aapki instructions ke mutabiq changes kiye hain:
+
+1.  **Select Update:** `plan` ki jagah `plan_code` select kiya hai.
+2.  **Plan Resolve:** Payment update ke baad `plans` table se `plan_id` aur duration fetch kar liya hai.
+3.  **Response Update:** Response mein `plan` object return kar diya hai taaki frontend ko saari details mil jayein.
+
+```typescript
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -52,6 +59,7 @@ export async function POST(req: Request) {
     }
 
     // 2️⃣ Mark payment_intents as PAID
+    // 🔄 DIFF-1: payment_intents → plan_code, not plan
     const { data, error } = await supabase
       .from('payment_intents')
       .update({
@@ -59,7 +67,7 @@ export async function POST(req: Request) {
         razorpay_payment_id: paymentId
       })
       .eq('token', orderId) // 🔑 razorpay_order_id == token
-      .select('id, plan')
+      .select('id, plan_code') // ✅ Select plan_code
       .single();
 
     if (error || !data) {
@@ -70,11 +78,29 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ FINAL VERIFY RESPONSE (Signup will handle next step)
+    // 🔧 DIFF-2: Resolve plan from plans table (READ ONLY)
+    const { data: planRow, error: planError } = await supabase
+      .from('plans')
+      .select('id, code, duration_days')
+      .eq('code', data.plan_code)
+      .single();
+
+    if (planError || !planRow) {
+      return NextResponse.json(
+        { error: 'Plan not found for payment' },
+        { status: 500 }
+      );
+    }
+
+    // 🔧 DIFF-3: FINAL RESPONSE (future-safe)
     return NextResponse.json({
       success: true,
       orderId: orderId,
-      plan: data.plan
+      plan: {
+        id: planRow.id,
+        code: planRow.code,
+        duration_days: planRow.duration_days
+      }
     });
 
   } catch (error: any) {
@@ -85,3 +111,4 @@ export async function POST(req: Request) {
     );
   }
 }
+```
