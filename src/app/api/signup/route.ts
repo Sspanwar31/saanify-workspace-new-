@@ -48,6 +48,7 @@ export async function POST(req: Request) {
       const planEnd = new Date();
       planEnd.setDate(today.getDate() + trialDays);
 
+      // 🔁 TRIAL FLOW FIX
       const { error } = await supabase
         .from('clients')
         .insert({
@@ -55,8 +56,8 @@ export async function POST(req: Request) {
           name,
           plan: 'TRIAL',
           subscription_status: 'active',
-          plan_start: today.toISOString(),
-          plan_end: planEnd.toISOString(),
+          plan_start_date: today.toISOString(),   // ✅ FIX
+          plan_end_date: planEnd.toISOString(),   // ✅ FIX
           has_used_trial: true
         });
 
@@ -121,6 +122,7 @@ export async function POST(req: Request) {
       }
 
       // 3️⃣ Create client
+      // 🔁 PAID FLOW FIX
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
@@ -128,8 +130,8 @@ export async function POST(req: Request) {
           name,
           plan: payment.plan,
           subscription_status: 'active',
-          plan_start: today.toISOString(),
-          plan_end: planEnd.toISOString(),
+          plan_start_date: today.toISOString(),   // ✅ FIX
+          plan_end_date: planEnd.toISOString(),   // ✅ FIX
           has_used_trial: true
         });
 
