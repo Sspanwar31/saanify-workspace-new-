@@ -135,8 +135,7 @@ function SignupForm() {
       const endDate = new Date();
       endDate.setDate(startDate.getDate() + planDurationDays);
 
-      // --- STEP D: INSERT CLIENT ---
-      // 🔹 CHANGE 3: CLIENT INSERT — MOST IMPORTANT FIX
+      // ✅ Signup insert FINAL & CORRECT
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
@@ -145,19 +144,13 @@ function SignupForm() {
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
-          
-          plan_id: planRow.id,          // ✅ FK
-          plan: planRow.name,           // optional but recommended
-          plan_name: planRow.name,      // backward compatibility
-          
-          status: 'ACTIVE',
-          subscription_status: subStatus,
+
+          plan: planRow.name,                 // ✅ ONLY THIS
+          subscription_status: 'active',
           plan_start_date: startDate.toISOString(),
           plan_end_date: endDate.toISOString(),
-          
-          // 🔹 CHANGE 4: has_used_trial logic (safe)
-          has_used_trial: true,
-          
+          has_used_trial: planRow.name === 'TRIAL',
+
           role: 'client'
         });
 
