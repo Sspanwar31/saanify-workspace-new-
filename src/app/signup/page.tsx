@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
@@ -62,15 +60,27 @@ function SignupForm() {
 
     try {
       // --- STEP A: CHECK PAYMENT (REMOVE COMPLETELY) ---
-      // ❌ DELETE THIS ENTIRE BLOCK (Payment check removed)
-      // Client ko payment_intents ka kuch bhi pata nahi hona chahiye
+      // ❌ Payment check removed
+      
+      // 🔹 CHANGE 1: Verified plan ko string nahi, DB se lao
+      // 🔑 Resolve final plan key
+      const planKey = orderId ? 'PRO' : selectedPlanId;
 
-      // 🟢 CHANGE 2: VERIFIED PLAN DIRECT SET KARO (SAFE WAY)
-      // Payment already verify API me verified ho chuka hai
-      const verifiedPlan = orderId ? 'PRO' : selectedPlanId;
+      // 🔑 Fetch plan from DB
+      const { data: planRow, error: planError } = await supabase
+        .from('plans')
+        .select('id, name')
+        .ilike('name', planKey === 'TRIAL' ? 'Trial' : planKey)
+        .single();
+
+      if (planError || !planRow) {
+        toast.error('Invalid subscription plan.');
+        setLoading(false);
+        return;
+      }
 
       // Trial Check (sirf trial select kiya ho)
-      if (!orderId && verifiedPlan === 'TRIAL') {
+      if (!orderId && planKey === 'TRIAL') {
           const { data: existingTrialClient } = await supabase
             .from('clients')
             .select('id')
@@ -102,18 +112,22 @@ function SignupForm() {
       if (!authData.user) throw new Error("Signup successful but no user ID returned.");
 
       // --- STEP C: PREPARE CLIENT DATA ---
-      let planDurationDays = 15; // Default Trial
-      let subStatus = 'inactive';
-      
-      if (verifiedPlan === 'TRIAL') {
-         // Trial Logic
-         const { data: settings } = await supabase.from('system_settings').select('trial_days').single();
-         planDurationDays = settings?.trial_days || 15;
-         subStatus = 'active';
+      // 🔹 CHANGE 2: Duration logic ko plan-based rakho
+      let planDurationDays = 15;
+      let subStatus = 'active';
+
+      if (planRow.name.toLowerCase().includes('trial')) {
+        const { data: settings } = await supabase
+          .from('system_settings')
+          .select('trial_days')
+          .single();
+
+        planDurationDays = settings?.trial_days || 15;
       } else {
-         // Paid Logic
-         planDurationDays = verifiedPlan === 'YEARLY' ? 365 : 30;
-         subStatus = 'active'; // Paid hai to active
+        // Paid plans
+        planDurationDays = planRow.name.toLowerCase().includes('year')
+          ? 365
+          : 30;
       }
 
       const startDate = new Date();
@@ -121,6 +135,7 @@ function SignupForm() {
       endDate.setDate(startDate.getDate() + planDurationDays);
 
       // --- STEP D: INSERT CLIENT ---
+      // 🔹 CHANGE 3: CLIENT INSERT — MOST IMPORTANT FIX
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
@@ -130,25 +145,22 @@ function SignupForm() {
           phone: formData.phone,
           society_name: formData.societyName,
           
-          plan: verifiedPlan, // 🔴 Direct plan use kar rahe hain
-          plan_name: verifiedPlan.charAt(0) + verifiedPlan.slice(1).toLowerCase(),
+          plan_id: planRow.id,          // ✅ FK
+          plan: planRow.name,           // optional but recommended
+          plan_name: planRow.name,      // backward compatibility
           
           status: 'ACTIVE',
           subscription_status: subStatus,
           plan_start_date: startDate.toISOString(),
           plan_end_date: endDate.toISOString(),
           
-          // Agar payment kiya hai to trial used maana jayega
-          has_used_trial: verifiedPlan !== 'TRIAL', 
+          // 🔹 CHANGE 4: has_used_trial logic (safe)
+          has_used_trial: true,
           
           role: 'client'
         });
 
       if (clientError) throw new Error("Client Creation Failed: " + clientError.message);
-
-      // 🔴 CHANGE 3: PAYMENT LINK UPDATE BHI HATAO (CLIENT SIDE)
-      // ❌ DELETE THIS TOO (Step E removed)
-      // Ye kaam signup API karegi — browser nahi
 
       // --- SUCCESS ---
       toast.success("Account Created Successfully!");
@@ -158,7 +170,7 @@ function SignupForm() {
          id: authData.user.id, 
          email: formData.email, 
          role: 'client',
-         plan: verifiedPlan
+         plan: planRow.name
       }));
       
       window.location.href = '/dashboard';
