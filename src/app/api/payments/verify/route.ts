@@ -52,15 +52,14 @@ export async function POST(req: Request) {
     }
 
     // 2️⃣ Mark payment_intents as PAID
-    // 🔄 DIFF-1: payment_intents → plan_code, not plan
     const { data, error } = await supabase
       .from('payment_intents')
       .update({
         status: 'PAID',
         razorpay_payment_id: paymentId
       })
-      .eq('token', orderId) // 🔑 razorpay_order_id == token
-      .select('id, plan_code') // ✅ Select plan_code
+      .eq('token', orderId) 
+      .select('id, plan') // ✅ CORRECT: 'plan'
       .single();
 
     if (error || !data) {
@@ -75,7 +74,7 @@ export async function POST(req: Request) {
     const { data: planRow, error: planError } = await supabase
       .from('plans')
       .select('id, code, duration_days')
-      .eq('code', data.plan_code)
+      .eq('code', data.plan) // ✅ CORRECT: 'data.plan'
       .single();
 
     if (planError || !planRow) {
