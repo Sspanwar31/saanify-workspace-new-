@@ -44,10 +44,10 @@ export default function SubscriptionManagement() {
         
         if (!user) throw new Error("User not authenticated");
 
-        // Step 2: Client fetch (Plan string + Date + Status)
+        // 🔧 STEP-1: Client fetch FIX (plan_id use kar rahe hain)
         const { data: client, error: clientError } = await supabase
           .from('clients')
-          .select('plan, plan_end_date, subscription_status')
+          .select('plan_id, plan_end_date, subscription_status')
           .eq('id', user.id)
           .single();
 
@@ -58,16 +58,21 @@ export default function SubscriptionManagement() {
 
         console.log("✅ DEBUG: Fetched Client Data:", client);
 
-        // Step 3: Plan fetch (Using client.plan string)
+        // 🔧 STEP-2: Plan fetch FIX (MOST IMPORTANT - ID based)
         const { data: plan, error: planError } = await supabase
           .from('plans')
-          .select('name, limit_members')
-          .eq('name', client.plan)
+          .select('id, name, code, limit_members, features, duration_days')
+          .eq('id', client.plan_id)
           .single();
 
         if (planError || !plan) {
             console.error("Plan fetch error:", planError);
             throw planError || new Error("Plan configuration missing");
+        }
+
+        // 🔧 STEP-4: Status calculation (ensure null check)
+        if (!client.plan_end_date) {
+          throw new Error("Subscription end date missing");
         }
 
         // --- LOGIC FOR STATUS & DATES ---
@@ -89,28 +94,30 @@ export default function SubscriptionManagement() {
         // Status Logic
         const status = calculatedDays > 0 ? 'ACTIVE' : 'EXPIRED';
 
-        // Features Safe Parse (Fallback in case DB doesn't return array or needs parse)
-        const features = Array.isArray(plan.features) 
-          ? plan.features 
-          : JSON.parse(plan.features || '[]');
+        // 🔧 STEP-5: Features parsing FIX (Safe Parse)
+        const features =
+          Array.isArray(plan.features)
+            ? plan.features
+            : JSON.parse(plan.features ?? '[]');
 
         // Limits Mapping
         const limits = {
           users: plan.limit_members || 'Unlimited',
-          storage: 'N/A', // Since select is specific, keeping simple
+          storage: 'N/A', // Assuming storage is not in select, keeping N/A
           societies: 1
         };
 
         // Data Object Construction
         if (isMounted) {
+          // 🔧 STEP-3: SubscriptionData mapping FIX (plan.code use kiya)
           const subData: SubscriptionData = {
-            planType: plan.name.toUpperCase(), 
+            planType: plan.code, 
             status: status,
             trialEnds: endDateString,
             currentPeriodEnd: endDateString,
             features: features,
             limits: limits,
-            isTrialUsed: false // Not fetched in select but keeping interface consistent
+            isTrialUsed: false 
           };
           setSubscription(subData);
         }
