@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
@@ -20,23 +22,24 @@ function SignupForm() {
   // 🔴 CHANGE 1: 'ref' ki jagah 'orderId' use karein
   const orderId = searchParams.get('orderId') || '';
   
-  const urlPlan = searchParams.get('plan');
-  // Agar Order ID hai to hum maan lenge ki Paid plan hai, bhale hi URL me kuch bhi ho
-  const initialPlanId = orderId ? 'PRO' : (urlPlan || 'TRIAL');
-
-  const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId);
+  // ✅ FIX: Initial state empty rakho taaki server/client mismatch na ho
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(''); 
   const [loading, setLoading] = useState(false);
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
 
+  // ✅ FIX: Mount hone par correct plan set karein (Client side only)
   useEffect(() => {
-    // Rely on DB check, reset local state on mount
-    setTrialUsed(false);
+    const urlPlan = searchParams.get('plan');
+    const initialPlanId = orderId ? 'PRO' : (urlPlan || 'TRIAL');
+    setSelectedPlanId(initialPlanId);
+    
+    // Trial Logic Check
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
     if (hasUsedTrial) {
       setTrialUsed(true);
     }
-  }, []);
+  }, [searchParams, orderId]); // Dependencies add kiye
 
   const [formData, setFormData] = useState({
     name: '',
@@ -60,10 +63,8 @@ function SignupForm() {
 
     try {
       // --- STEP A: CHECK PAYMENT (REMOVE COMPLETELY) ---
-      // ❌ Payment check removed
       
       // 🔹 CHANGE 1: Verified plan ko string nahi, DB se lao
-      // 🔑 Resolve final plan key
       const planKey = orderId ? 'PRO' : selectedPlanId;
 
       // 🔑 Fetch plan from DB
