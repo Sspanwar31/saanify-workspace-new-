@@ -39,103 +39,82 @@ export default function SubscriptionManagement() {
       try {
         setLoading(true);
         
-        // 1. Get Current Authenticated User first (Safety Check)
+        // Step 1: Get Current Authenticated User first
         const { data: { user } } = await supabase.auth.getUser();
         
-        // 2. Fetch Client Data
-        let query = supabase.from('clients').select('*');
+        if (!user) throw new Error("User not authenticated");
+
+        // Step 2: Client fetch (Plan string + Date + Status)
+        const { data: client, error: clientError } = await supabase
+          .from('clients')
+          .select('plan, plan_end_date, subscription_status')
+          .eq('id', user.id)
+          .single();
+
+        if (clientError || !client) {
+            console.error("Client fetch error:", clientError);
+            throw clientError || new Error("Client not found");
+        }
+
+        console.log("✅ DEBUG: Fetched Client Data:", client);
+
+        // Step 3: Plan fetch (Using client.plan string)
+        const { data: plan, error: planError } = await supabase
+          .from('plans')
+          .select('name, limit_members')
+          .eq('name', client.plan)
+          .single();
+
+        if (planError || !plan) {
+            console.error("Plan fetch error:", planError);
+            throw planError || new Error("Plan configuration missing");
+        }
+
+        // --- LOGIC FOR STATUS & DATES ---
+        const targetEndDate = new Date(client.plan_end_date);
+        const now = new Date();
+        const timeDiff = targetEndDate.getTime() - now.getTime();
+        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        const calculatedDays = Math.max(0, daysDiff);
         
-        if (user?.email) {
-            query = query.eq('email', user.email);
-        } else {
-            query = query.limit(1);
-        }
+        setDaysRemaining(calculatedDays);
 
-        const { data: clients, error: clientError } = await query.maybeSingle();
+        // Format Date
+        const endDateString = targetEndDate.toLocaleDateString('en-IN', { 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric' 
+        });
 
-        if (clientError) {
-             console.error("Supabase Error:", clientError);
-             throw clientError;
-        }
+        // Status Logic
+        const status = calculatedDays > 0 ? 'ACTIVE' : 'EXPIRED';
 
-        if (clients && isMounted) {
-          const client = clients;
-          console.log("✅ DEBUG: Fetched Client Data:", client);
+        // Features Safe Parse (Fallback in case DB doesn't return array or needs parse)
+        const features = Array.isArray(plan.features) 
+          ? plan.features 
+          : JSON.parse(plan.features || '[]');
 
-          // 🧩 FIX 1: Plan ID based (no string matching)
-          const { data: planDetails } = await supabase
-            .from('plans')
-            .select('*')
-            .eq('id', client.plan_id)
-            .maybeSingle();
+        // Limits Mapping
+        const limits = {
+          users: plan.limit_members || 'Unlimited',
+          storage: 'N/A', // Since select is specific, keeping simple
+          societies: 1
+        };
 
-          // 3. Check Trial Logic (based on plan details or fallback)
-          const isTrial = 
-            planDetails?.name?.toLowerCase().includes('trial') || 
-            (planDetails && planDetails.price === 0);
-
-          // 🧩 FIX 2: Expiry date single source of truth
-          if (!client.plan_end_date) {
-            throw new Error('Plan end date missing')
-          }
-          const targetEndDate = new Date(client.plan_end_date);
-
-          // 🧩 FIX 3: Trial duration system_settings se lo
-          const { data: settings } = await supabase
-            .from('system_settings')
-            .select('trial_days')
-            .single()
-
-          const totalTrialDays = settings?.trial_days || 15
-
-          // Calculate Days
-          const now = new Date();
-          const timeDiff = targetEndDate.getTime() - now.getTime();
-          const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-          const calculatedDays = Math.max(0, daysDiff); 
-          setDaysRemaining(calculatedDays);
-
-          // Format Date
-          const endDateString = targetEndDate.toLocaleDateString('en-IN', { 
-            day: '2-digit', 
-            month: 'short', 
-            year: 'numeric' 
-          });
-
-          // 🧩 FIX 4: Safe Parse (JSON string check)
-          const features =
-            Array.isArray(planDetails?.features)
-              ? planDetails.features
-              : JSON.parse(planDetails?.features || '[]')
-
-          // 🧩 FIX 5: Limits string se nahi, DB se
-          const limits = {
-            users: planDetails?.limit_members || 'Unlimited',
-            storage: planDetails?.storage_limit || 'N/A',
-            societies: planDetails?.society_limit || 1
-          };
-
-          // 🧩 FIX 6: Status calculation derived, not trusted
-          const status =
-            new Date(client.plan_end_date) > new Date()
-              ? 'ACTIVE'
-              : 'EXPIRED';
-
-          // 6. Data Object Construction
+        // Data Object Construction
+        if (isMounted) {
           const subData: SubscriptionData = {
-            planType: planDetails?.name?.toUpperCase() || 'TRIAL', 
+            planType: plan.name.toUpperCase(), 
             status: status,
             trialEnds: endDateString,
             currentPeriodEnd: endDateString,
             features: features,
             limits: limits,
-            isTrialUsed: client.has_used_trial || false
+            isTrialUsed: false // Not fetched in select but keeping interface consistent
           };
-
           setSubscription(subData);
-        } else {
-            console.warn("⚠️ DEBUG: No client found for this user");
         }
+
       } catch (error) {
         console.error('Failed to fetch subscription data:', error);
         toast.error("Could not load subscription details");
@@ -176,14 +155,8 @@ export default function SubscriptionManagement() {
   }
 
   const getProgressPercentage = () => {
-    // ✅ FIX 3: Using totalTrialDays from settings instead of hardcoded 15
-    // Note: Since totalTrialDays is inside useEffect scope, 
-    // we recalculate or pass it if needed. For simplicity in this callback:
-    // If it's not a trial, show full bar.
     if (!subscription?.planType.includes('TRIAL') && !subscription?.planType.includes('FREE')) return 100
-    
-    // Assuming we want a default if settings fail to load, or we rely on 15 as fallback in logic.
-    // Ideally, we should store totalTrialDays in state, but keeping logic simple:
+    // Simple logic assuming 15 days default for calculation visual
     const totalTrialDays = 15; 
     const days = daysRemaining > totalTrialDays ? totalTrialDays : daysRemaining;
     return ((totalTrialDays - days) / totalTrialDays) * 100
@@ -226,7 +199,7 @@ export default function SubscriptionManagement() {
             </CardTitle>
             <CardDescription>Your subscription details</CardDescription>
           </CardHeader>
-          <CardContent className="pace-y-4">
+          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Plan Type</span>
               <div className="flex items-center gap-2">
@@ -257,7 +230,6 @@ export default function SubscriptionManagement() {
                   <Progress value={getProgressPercentage()} className="h-2" />
                   <p className="text-xs text-muted-foreground">
                     Upgrade during trial to continue using all features.
-                    {subscription?.isTrialUsed && " (Trial used)"}
                   </p>
                 </div>
               </>
