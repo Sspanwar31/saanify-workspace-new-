@@ -1,10 +1,3 @@
-Ye raha updated code. Maine aapki instructions ke mutabiq changes kiye hain:
-
-1.  **Select Update:** `plan` ki jagah `plan_code` select kiya hai.
-2.  **Plan Resolve:** Payment update ke baad `plans` table se `plan_id` aur duration fetch kar liya hai.
-3.  **Response Update:** Response mein `plan` object return kar diya hai taaki frontend ko saari details mil jayein.
-
-```typescript
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -111,4 +104,3 @@ export async function POST(req: Request) {
     );
   }
 }
-```
