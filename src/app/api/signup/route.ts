@@ -26,8 +26,7 @@ export async function POST(req: Request) {
     const {
       email,
       name,
-      planType, // "TRIAL" | "PAID"
-      orderId   // only for PAID
+      planType // "TRIAL" | "PAID"
     } = body;
 
     if (!email || !name || !planType) {
@@ -40,24 +39,40 @@ export async function POST(req: Request) {
     const today = new Date();
 
     // -------------------------------
-    // 🟢 TRIAL FLOW
+    // 🟢 TRIAL FLOW (REFACTORED)
     // -------------------------------
     if (planType === 'TRIAL') {
-      const trialDays = 7;
+      
+      // 1️⃣ Fetch TRIAL plan from DB
+      const { data: planRow, error: planError } = await supabase
+        .from('plans')
+        .select('id, code, duration_days')
+        .eq('code', 'TRIAL')
+        .single();
 
+      if (planError || !planRow) {
+        console.error('Plan fetch error:', planError);
+        return NextResponse.json({ error: 'Plan not found' }, { status: 500 });
+      }
+
+      // 2️⃣ Calculate end date
       const planEnd = new Date();
-      planEnd.setDate(today.getDate() + trialDays);
+      planEnd.setDate(today.getDate() + planRow.duration_days);
 
-      // 🔁 TRIAL FLOW FIX
+      // 3️⃣ Insert client
       const { error } = await supabase
         .from('clients')
         .insert({
           email,
           name,
-          plan: 'TRIAL',
+          
+          plan_id: planRow.id,        // 🔥 SINGLE SOURCE OF TRUTH
+          plan: planRow.code,         // legacy (optional)
+          plan_name: 'Trial',
+
           subscription_status: 'active',
-          plan_start_date: today.toISOString(),   // ✅ FIX
-          plan_end_date: planEnd.toISOString(),   // ✅ FIX
+          plan_start_date: today.toISOString(),
+          plan_end_date: planEnd.toISOString(),
           has_used_trial: true
         });
 
@@ -75,83 +90,9 @@ export async function POST(req: Request) {
       });
     }
 
-    // -------------------------------
-    // 🔵 PAID FLOW
-    // -------------------------------
-    if (planType === 'PAID') {
-      if (!orderId) {
-        return NextResponse.json(
-          { error: 'Order ID required for paid signup' },
-          { status: 400 }
-        );
-      }
-
-      // 1️⃣ Verify payment intent
-      const { data: payment, error: paymentError } = await supabase
-        .from('payment_intents')
-        .select('plan, status')
-        .eq('token', orderId)
-        .single();
-
-      if (paymentError || !payment) {
-        return NextResponse.json(
-          { error: 'Invalid Payment Order ID' },
-          { status: 400 }
-        );
-      }
-
-      if (payment.status !== 'PAID') {
-        return NextResponse.json(
-          { error: 'Payment not completed' },
-          { status: 400 }
-        );
-      }
-
-      // 2️⃣ Plan duration
-      let planEnd = new Date();
-
-      if (payment.plan === 'PRO') {
-        planEnd.setDate(today.getDate() + 30);
-      } else if (payment.plan === 'YEARLY') {
-        planEnd.setDate(today.getDate() + 365);
-      } else {
-        return NextResponse.json(
-          { error: 'Unknown plan type' },
-          { status: 400 }
-        );
-      }
-
-      // 3️⃣ Create client
-      // 🔁 PAID FLOW FIX
-      const { error: clientError } = await supabase
-        .from('clients')
-        .insert({
-          email,
-          name,
-          plan: payment.plan,
-          subscription_status: 'active',
-          plan_start_date: today.toISOString(),   // ✅ FIX
-          plan_end_date: planEnd.toISOString(),   // ✅ FIX
-          has_used_trial: true
-        });
-
-      if (clientError) {
-        console.error('Paid signup failed:', clientError);
-        return NextResponse.json(
-          { error: 'Paid signup failed' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        plan: payment.plan
-      });
-    }
-
-    // -------------------------------
-    // ❌ INVALID PLAN
-    // -------------------------------
+    // ❌ PAID FLOW PURA REMOVE KARO
+    // (Paid signup ab directly frontend/Auth flow se handle hoga via orderId)
+    
     return NextResponse.json(
       { error: 'Invalid plan type' },
       { status: 400 }
