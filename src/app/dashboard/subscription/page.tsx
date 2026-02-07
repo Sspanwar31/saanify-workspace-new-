@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import PaymentModal from '@/components/client/subscription/PaymentModal'; // Verify Path
+import PaymentModal from '@/components/client/subscription/PaymentModal'; 
 import { toast } from 'sonner';
 
 export default function SubscriptionPage() {
@@ -33,7 +33,6 @@ export default function SubscriptionPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
-  /* -------------------- FETCH DATA (FIXED & FUTURE PROOF) -------------------- */
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -46,8 +45,7 @@ export default function SubscriptionPage() {
             return;
         }
 
-        // 2. Fetch Client Data (Single Source of Truth)
-        // Hum '*' select kar rahe hain taaki koi column miss na ho
+        // 2. Fetch Client Data (Base Info)
         const { data: client, error: clientError } = await supabase
             .from('clients')
             .select('*')
@@ -58,6 +56,29 @@ export default function SubscriptionPage() {
 
         if (client) {
           setClientId(client.id);
+
+          // 3. Fetch Plan Details using 'plan_id' (LINKING TABLES)
+          let activePlanDetails = null;
+          
+          if (client.plan_id) {
+             // Agar client ke paas plan_id hai, to plans table se data uthao
+             const { data: planData } = await supabase
+                .from('plans')
+                .select('*')
+                .eq('id', client.plan_id)
+                .single();
+             activePlanDetails = planData;
+          }
+
+          // 4. Fallback Logic (Agar plan_id missing ho to text se dhundo)
+          if (!activePlanDetails && client.plan) {
+             const { data: planDataByName } = await supabase
+                .from('plans')
+                .select('*')
+                .ilike('code', client.plan) // e.g. matches 'PRO' with 'PRO'
+                .maybeSingle();
+             activePlanDetails = planDataByName;
+          }
 
           // --- PENDING ORDER CHECK ---
           const { data: pendingData } = await supabase
@@ -72,42 +93,34 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // --- 1. MEMBER LIMIT LOGIC (FIXED) ---
-          // Database mein 'PRO', 'BASIC', 'ENTERPRISE' ya 'TRIAL' ho sakta hai
-          const rawPlan = client.plan ? client.plan.toUpperCase().trim() : 'TRIAL';
-          
-          let limit = 100; // Default
-          if (rawPlan.includes('PRO') || rawPlan.includes('PROFESSIONAL')) limit = 2000;
-          else if (rawPlan.includes('BASIC')) limit = 200;
-          else if (rawPlan.includes('ENTERPRISE')) limit = 9999; // Unlimited
-          else if (rawPlan.includes('TRIAL')) limit = 100;
-
-          // --- 2. DATE LOGIC (FIXED) ---
+          // --- DATE CALCULATION LOGIC ---
           const today = new Date();
-          today.setHours(0, 0, 0, 0); // Reset time to midnight
+          today.setHours(0, 0, 0, 0);
 
           let endDate = new Date();
-          
-          // Priority: plan_end_date hi sabse main hai
+          // Priority: DB End Date > Subscription Expiry > Calculated
           if (client.plan_end_date) {
             endDate = new Date(client.plan_end_date);
           } else if (client.subscription_expiry) {
             endDate = new Date(client.subscription_expiry);
           } else {
-             // Fallback: Agar date nahi hai to created_at + 15 days
+             // Fallback: created_at + duration from plan table
+             const duration = activePlanDetails?.duration_days || 30;
              endDate = new Date(client.created_at || new Date());
-             endDate.setDate(endDate.getDate() + 15);
+             endDate.setDate(endDate.getDate() + duration);
           }
-
-          // Reset time for accurate comparison
           endDate.setHours(0, 0, 0, 0);
 
           const diffTime = endDate.getTime() - today.getTime();
           const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-
           const status = daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED';
 
-          // --- 3. MEMBER COUNT ---
+          // --- MEMBER LIMIT LOGIC (From Plans Table) ---
+          // Ab hum hardcode nahi karenge, table se value lenge
+          const limit = activePlanDetails?.limit_members || 100; // Default 100 if nothing found
+          const planNameDisplay = activePlanDetails?.name || client.plan || 'Basic';
+
+          // --- FETCH MEMBER COUNT ---
           const { count } = await supabase
             .from('members')
             .select('*', { count: 'exact', head: true })
@@ -115,23 +128,22 @@ export default function SubscriptionPage() {
 
           const currentMemberCount = count || 0;
 
-          // --- SET DATA TO STATE ---
+          // --- SET SUBSCRIPTION STATE ---
           setSubscription({
-            planName: client.plan_name || rawPlan, // 'Professional' or 'PRO'
+            planName: planNameDisplay,
             status: status,
-            // Format dates nicely
             endStr: endDate.toLocaleDateString('en-IN', {
                 day: '2-digit', month: 'short', year: 'numeric'
             }),
             daysRemaining: daysRemaining,
-            limit: limit,
+            limit: limit, // Table value: 2000, 999999, etc.
             usagePercent: Math.min(100, (currentMemberCount / limit) * 100)
           });
           
           setMemberCount(currentMemberCount);
         }
 
-        // --- FETCH PLANS FOR UPGRADE UI ---
+        // --- FETCH ALL PLANS (For Upgrade Cards) ---
         const { data: dbPlans } = await supabase
           .from('plans')
           .select('*')
@@ -144,10 +156,11 @@ export default function SubscriptionPage() {
             id: p.id,
             name: p.name,
             price: p.price,
-            durationDays: 30,
+            durationDays: p.duration_days || 30,
             features: Array.isArray(p.features) ? p.features : [],
             color: getPlanStyle(p.name, p.color),
-            isPopular: p.name === 'Professional'
+            isPopular: p.name === 'Professional',
+            code: p.code
           }));
           setPlans(mappedPlans);
         }
@@ -210,6 +223,16 @@ export default function SubscriptionPage() {
       </div>
     );
 
+  // Fallback UI agar data load na ho (No Plan fix)
+  if (!subscription && !loading) {
+     return (
+        <div className="p-10 text-center">
+            <h2 className="text-xl font-bold text-red-500">Subscription Data Not Found</h2>
+            <p className="text-gray-500">Please contact support with your email.</p>
+        </div>
+     )
+  }
+
   return (
     <div className="bg-slate-50 dark:bg-slate-900 space-y-10 p-6 min-h-screen">
       <div>
@@ -221,7 +244,6 @@ export default function SubscriptionPage() {
 
       {pendingOrder ? (
         <div className="flex justify-center animate-in fade-in zoom-in duration-300">
-             {/* Pending Order Card Code Same as before */}
              <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
                 <div className="bg-orange-100 dark:bg-orange-950/30 p-6 flex justify-center border-b border-orange-200 dark:border-orange-900/50">
                     <div className="h-24 w-24 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm animate-pulse border border-orange-200 dark:border-orange-700">
@@ -241,7 +263,6 @@ export default function SubscriptionPage() {
                     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 text-left shadow-sm">
                         <Row label="Requested Plan" value={pendingOrder.plan_name} />
                         <Row label="Amount Paid" value={`₹${pendingOrder.amount.toLocaleString()}`} />
-                        <Row label="Transaction ID" value={pendingOrder.transaction_id || 'N/A'} mono />
                         <Row label="Date" value={new Date(pendingOrder.created_at).toLocaleDateString()} />
                         <div className="flex justify-between items-center pt-2">
                             <span className="text-gray-500 dark:text-gray-400 text-sm">Status</span>
@@ -271,12 +292,12 @@ export default function SubscriptionPage() {
             </CardHeader>
 
             <CardContent className="grid md:grid-cols-4 gap-6 pt-6">
-              {/* ✅ FIXED: Value Checks to avoid 'undefined' */}
-              <InfoBlock title="Active Plan" value={subscription?.planName || 'No Plan'} />
+              
+              <InfoBlock title="Active Plan" value={subscription?.planName} />
               
               <InfoBlock
                 title="Member Usage"
-                value={`${memberCount} / ${subscription?.limit || '0'}`}
+                value={`${memberCount} / ${subscription?.limit}`}
               >
                 <Progress 
                     value={subscription?.usagePercent || 0} 
@@ -284,7 +305,7 @@ export default function SubscriptionPage() {
                 />
               </InfoBlock>
               
-              <InfoBlock title="Valid Until" value={subscription?.endStr || 'N/A'} />
+              <InfoBlock title="Valid Until" value={subscription?.endStr} />
               
               <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900 text-center">
                  <p className="text-xs text-blue-600 dark:text-blue-400 uppercase font-bold mb-1">Status</p>
@@ -296,7 +317,7 @@ export default function SubscriptionPage() {
             </CardContent>
           </Card>
 
-          {/* PLANS GRID */}
+          {/* PLANS LIST */}
           {plans.length > 0 ? (
             <div className="flex flex-wrap justify-center gap-8 items-stretch">
               {plans.map(plan => (
@@ -322,7 +343,7 @@ export default function SubscriptionPage() {
                           ₹{plan.price.toLocaleString()}
                         </span>
                         <span className={`text-sm font-medium ${plan.name === 'Professional' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
-                          / 30 days
+                          / {plan.durationDays} days
                         </span>
                       </div>
                     </CardHeader>
@@ -351,11 +372,11 @@ export default function SubscriptionPage() {
                           : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
                         }
                       `}
-                      // Improved Logic to check if this plan is currently active
-                      disabled={subscription?.planName?.toLowerCase().includes(plan.name.toLowerCase())}
+                      // Improved: Compare Plan Code or Name
+                      disabled={subscription?.planName?.toLowerCase() === plan.name.toLowerCase()}
                       onClick={() => handleBuyNow(plan)}
                     >
-                      {subscription?.planName?.toLowerCase().includes(plan.name.toLowerCase())
+                      {subscription?.planName?.toLowerCase() === plan.name.toLowerCase()
                         ? 'Current Plan'
                         : 'Choose Plan'}
                     </Button>
