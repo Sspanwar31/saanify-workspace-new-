@@ -71,20 +71,18 @@ export default function SubscriptionManagement() {
             throw planError || new Error("Plan configuration missing");
         }
 
-        // --- LOGIC FOR STATUS & DATES ---
-        
-        // ✅ DIFF–2: DATE + DAYS CALCULATION FIX (TIMEZONE SAFE)
-        const targetEndDate = new Date(client.plan_end_date);
-        const today = new Date();
+        // ✅ DIFF — ONLY THIS PART CHANGE KARO (FIXED: PRODUCTION SAFE)
+        // 🔥 FIX: Strip time completely (DATE-only math)
+        const endDateStr = client.plan_end_date.split('T')[0]; // YYYY-MM-DD
+        const todayStr = new Date().toISOString().split('T')[0];
 
-        // 🔐 Normalize to avoid UTC vs IST bug
-        targetEndDate.setHours(0, 0, 0, 0);
-        today.setHours(0, 0, 0, 0);
+        const endDate = new Date(endDateStr);
+        const today = new Date(todayStr);
 
-        const diffMs = targetEndDate.getTime() - today.getTime();
+        const diffMs = endDate.getTime() - today.getTime();
         const calculatedDays = Math.max(
           0,
-          Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+          Math.round(diffMs / (1000 * 60 * 60 * 24))
         );
 
         setDaysRemaining(calculatedDays);
