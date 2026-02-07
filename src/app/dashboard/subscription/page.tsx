@@ -9,10 +9,9 @@ import {
   Loader2,
   Clock,
   AlertTriangle,
-  ShieldCheck,
-  Zap,
-  Building2,
-  Users
+  Mail,
+  User,
+  ShieldAlert
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -28,6 +27,9 @@ export default function SubscriptionPage() {
   const [memberCount, setMemberCount] = useState(0);
   const [clientId, setClientId] = useState<string | null>(null);
   
+  // Error Debugging State
+  const [debugInfo, setDebugInfo] = useState<any>({});
+  
   const [pendingOrder, setPendingOrder] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -40,47 +42,38 @@ export default function SubscriptionPage() {
 
         // 1. Get Logged In User
         const { data: { user } } = await supabase.auth.getUser();
+        
         if (!user || !user.email) {
-            console.error("User not logged in");
+            setDebugInfo({ error: "User not logged in or email missing" });
+            setLoading(false);
             return;
         }
 
-        // 2. Fetch Client Data (Base Info)
+        // DEBUG: Save email to show if error happens
+        setDebugInfo(prev => ({ ...prev, userEmail: user.email }));
+
+        // 2. Fetch Client Data
         const { data: client, error: clientError } = await supabase
             .from('clients')
             .select('*')
             .eq('email', user.email)
             .maybeSingle();
 
-        if (clientError) throw clientError;
+        if (clientError) {
+             setDebugInfo(prev => ({ ...prev, dbError: clientError.message }));
+             console.error("DB Error:", clientError);
+        }
+
+        if (!client) {
+             setDebugInfo(prev => ({ ...prev, clientStatus: "Not Found in DB" }));
+             // Don't return yet, let the UI show the specific error below
+        }
 
         if (client) {
           setClientId(client.id);
+          setDebugInfo(prev => ({ ...prev, clientFound: true, clientId: client.id, rawPlan: client.plan }));
 
-          // 3. Fetch Plan Details using 'plan_id' (LINKING TABLES)
-          let activePlanDetails = null;
-          
-          if (client.plan_id) {
-             // Agar client ke paas plan_id hai, to plans table se data uthao
-             const { data: planData } = await supabase
-                .from('plans')
-                .select('*')
-                .eq('id', client.plan_id)
-                .single();
-             activePlanDetails = planData;
-          }
-
-          // 4. Fallback Logic (Agar plan_id missing ho to text se dhundo)
-          if (!activePlanDetails && client.plan) {
-             const { data: planDataByName } = await supabase
-                .from('plans')
-                .select('*')
-                .ilike('code', client.plan) // e.g. matches 'PRO' with 'PRO'
-                .maybeSingle();
-             activePlanDetails = planDataByName;
-          }
-
-          // --- PENDING ORDER CHECK ---
+          // 3. PENDING ORDER CHECK
           const { data: pendingData } = await supabase
             .from('subscription_orders')
             .select('*')
@@ -93,21 +86,47 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // --- DATE CALCULATION LOGIC ---
+          // 4. PLAN & LIMIT LOGIC (Robust Fallback System)
+          let limit = 100; // Default Safe Limit
+          let planDisplayName = client.plan_name || client.plan || 'Unknown Plan';
+          
+          // Step A: Try fetching from Plans table
+          if (client.plan_id) {
+             const { data: planData } = await supabase
+                .from('plans')
+                .select('*')
+                .eq('id', client.plan_id)
+                .maybeSingle();
+             
+             if (planData) {
+                limit = planData.limit_members;
+                planDisplayName = planData.name;
+             }
+          }
+          
+          // Step B: If Plan Table Fetch Failed, Use Hardcoded Logic based on Client 'plan' column
+          // This fixes "0 / undefined" error
+          if (limit === 100 && client.plan) {
+             const p = client.plan.toUpperCase();
+             if (p.includes('PRO') || p.includes('PROFESSIONAL')) limit = 2000;
+             else if (p.includes('BASIC')) limit = 200;
+             else if (p.includes('ENTERPRISE')) limit = 999999;
+             else if (p.includes('TRIAL')) limit = 100;
+          }
+
+          // 5. DATE LOGIC
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
           let endDate = new Date();
-          // Priority: DB End Date > Subscription Expiry > Calculated
           if (client.plan_end_date) {
             endDate = new Date(client.plan_end_date);
           } else if (client.subscription_expiry) {
             endDate = new Date(client.subscription_expiry);
           } else {
-             // Fallback: created_at + duration from plan table
-             const duration = activePlanDetails?.duration_days || 30;
+             // Fallback: Created At + 30 days
              endDate = new Date(client.created_at || new Date());
-             endDate.setDate(endDate.getDate() + duration);
+             endDate.setDate(endDate.getDate() + 30);
           }
           endDate.setHours(0, 0, 0, 0);
 
@@ -115,35 +134,30 @@ export default function SubscriptionPage() {
           const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
           const status = daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED';
 
-          // --- MEMBER LIMIT LOGIC (From Plans Table) ---
-          // Ab hum hardcode nahi karenge, table se value lenge
-          const limit = activePlanDetails?.limit_members || 100; // Default 100 if nothing found
-          const planNameDisplay = activePlanDetails?.name || client.plan || 'Basic';
-
-          // --- FETCH MEMBER COUNT ---
+          // 6. MEMBER COUNT
           const { count } = await supabase
             .from('members')
             .select('*', { count: 'exact', head: true })
             .eq('client_id', client.id);
-
+          
           const currentMemberCount = count || 0;
 
-          // --- SET SUBSCRIPTION STATE ---
+          // SET FINAL DATA
           setSubscription({
-            planName: planNameDisplay,
+            planName: planDisplayName,
             status: status,
             endStr: endDate.toLocaleDateString('en-IN', {
                 day: '2-digit', month: 'short', year: 'numeric'
             }),
             daysRemaining: daysRemaining,
-            limit: limit, // Table value: 2000, 999999, etc.
-            usagePercent: Math.min(100, (currentMemberCount / limit) * 100)
+            limit: limit,
+            usagePercent: limit > 0 ? Math.min(100, (currentMemberCount / limit) * 100) : 0
           });
           
           setMemberCount(currentMemberCount);
         }
 
-        // --- FETCH ALL PLANS (For Upgrade Cards) ---
+        // FETCH ALL PLANS (UI ONLY)
         const { data: dbPlans } = await supabase
           .from('plans')
           .select('*')
@@ -159,15 +173,14 @@ export default function SubscriptionPage() {
             durationDays: p.duration_days || 30,
             features: Array.isArray(p.features) ? p.features : [],
             color: getPlanStyle(p.name, p.color),
-            isPopular: p.name === 'Professional',
-            code: p.code
+            isPopular: p.name === 'Professional'
           }));
           setPlans(mappedPlans);
         }
 
-      } catch (err) {
-        console.error("Error loading subscription page:", err);
-        toast.error("Failed to load subscription details");
+      } catch (err: any) {
+        console.error("Critical Error:", err);
+        setDebugInfo(prev => ({ ...prev, criticalError: err.message }));
       } finally {
         setLoading(false);
       }
@@ -223,12 +236,45 @@ export default function SubscriptionPage() {
       </div>
     );
 
-  // Fallback UI agar data load na ho (No Plan fix)
-  if (!subscription && !loading) {
+  // ERROR STATE: Show useful info instead of generic error
+  if (!subscription) {
      return (
-        <div className="p-10 text-center">
-            <h2 className="text-xl font-bold text-red-500">Subscription Data Not Found</h2>
-            <p className="text-gray-500">Please contact support with your email.</p>
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+            <Card className="max-w-md w-full border-red-200 bg-white shadow-lg">
+                <CardHeader className="bg-red-50 border-b border-red-100">
+                    <CardTitle className="text-red-700 flex items-center gap-2">
+                        <ShieldAlert className="h-6 w-6"/>
+                        Subscription Not Found
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-4">
+                    <p className="text-gray-600 text-sm">
+                        We could not find a client profile linked to your account. This usually happens if:
+                    </p>
+                    <ul className="list-disc list-inside text-sm text-gray-500 space-y-1 ml-2">
+                        <li>You are logged in with a different email.</li>
+                        <li>The database entry is missing or deleted.</li>
+                        <li>Database Policy (RLS) is blocking access.</li>
+                    </ul>
+
+                    <div className="bg-slate-100 p-3 rounded-md text-xs font-mono space-y-2 border border-slate-200">
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Logged In Email:</span>
+                            <span className="font-bold text-slate-800">{debugInfo.userEmail || 'Checking...'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">DB Status:</span>
+                            <span className={`font-bold ${debugInfo.dbError ? 'text-red-600' : 'text-orange-600'}`}>
+                                {debugInfo.dbError ? 'Access Denied (RLS)' : 'No Row Found'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <Button onClick={() => window.location.reload()} className="w-full" variant="outline">
+                        <RefreshCw className="h-4 w-4 mr-2"/> Retry
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
      )
   }
@@ -372,7 +418,6 @@ export default function SubscriptionPage() {
                           : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
                         }
                       `}
-                      // Improved: Compare Plan Code or Name
                       disabled={subscription?.planName?.toLowerCase() === plan.name.toLowerCase()}
                       onClick={() => handleBuyNow(plan)}
                     >
