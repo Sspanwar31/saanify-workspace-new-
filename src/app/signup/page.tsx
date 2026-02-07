@@ -12,45 +12,55 @@ import { CheckCircle, ArrowLeft, Loader2, ShieldCheck, AlertCircle } from 'lucid
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
-import { useAdminStore } from '@/lib/admin/store';
 import { supabase } from '@/lib/supabase-simple'; 
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // 🔴 CHANGE 1: 'ref' ki jagah 'orderId' use karein
   const orderId = searchParams.get('orderId') || '';
   
-  // ✅ STEP-1: State ko clear karo (Correct naming)
+  // ✅ Default State
   const [selectedPlanCode, setSelectedPlanCode] = useState<string>('TRIAL');
   const [loading, setLoading] = useState(false);
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
 
-  // ✅ NEW (FIXED)
+  // ✅ FIX 1: URL se plan lete waqt use UPPERCASE mein convert karein
   useEffect(() => {
     const urlPlan = searchParams.get('plan');
-    const orderId = searchParams.get('orderId');
+    const urlOrderId = searchParams.get('orderId');
 
-    // 🟢 Paid signup → plan MUST exist
-    if (orderId) {
+    // Agar URL me plan hai to use UPPERCASE karo (kyunki DB me ENTERPRISE/PRO uppercase me hai)
+    let planCode = urlPlan ? urlPlan.toUpperCase() : 'TRIAL';
+
+    // Validate if plan exists in your Config, else fallback to TRIAL
+    // (Optional: Agar config me nahi hai to force TRIAL)
+    if (!SUBSCRIPTION_PLANS[planCode as keyof typeof SUBSCRIPTION_PLANS]) {
+       // Agar galat plan code aaya URL me, to Trial set kar do
+       if (!urlOrderId) {
+         planCode = 'TRIAL';
+       }
+    }
+
+    // 🟢 Paid signup check
+    if (urlOrderId) {
       if (!urlPlan) {
         toast.error('Invalid payment redirect. Please try again.');
         return;
       }
-      setSelectedPlanCode(urlPlan);
+      setSelectedPlanCode(planCode);
     } 
     // 🟢 Free signup
     else {
-      setSelectedPlanCode(urlPlan || 'TRIAL');
+      setSelectedPlanCode(planCode);
     }
 
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
     if (hasUsedTrial) {
       setTrialUsed(true);
     }
-  }, [searchParams]); // ✅ 👉 orderId dependency hata diya
+  }, [searchParams]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -60,7 +70,7 @@ function SignupForm() {
     password: ''
   });
 
-  // Using selectedPlanCode to fetch config
+  // Safe access to Current Plan for UI
   const currentPlan = SUBSCRIPTION_PLANS[selectedPlanCode as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.TRIAL;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,31 +83,25 @@ function SignupForm() {
       return;
     }
 
-    // 🛑 EXTRA SAFETY (handleSubmit me)
-    if (selectedPlanCode !== 'TRIAL' && !orderId) {
-      toast.error("Payment required for selected plan.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // --- STEP A: CHECK PAYMENT (REMOVE COMPLETELY) ---
+      // ✅ FIX 2: Database se Plan Fetch karte waqt UPPERCASE code use karein
+      // Aapke DB me 'code' column = ENTERPRISE, PRO, etc.
       
-      // ✅ STEP-2: DB se plan CODE se fetch karo (NOT name)
       const { data: planRow, error: planError } = await supabase
         .from('plans')
         .select('id, code, name, duration_days')
-        .eq('code', selectedPlanCode)
+        .eq('code', selectedPlanCode.toUpperCase()) // Ensure Uppercase match
         .single();
 
       if (planError || !planRow) {
-        toast.error('Invalid subscription plan.');
+        console.error("Plan Fetch Error:", planError);
+        toast.error(`Invalid subscription plan: ${selectedPlanCode}`);
         setLoading(false);
         return;
       }
 
-      // Trial Check (sirf trial select kiya ho)
-      if (!orderId && selectedPlanCode === 'TRIAL') {
+      // Trial Check logic...
+      if (!orderId && planRow.code === 'TRIAL') {
           const { data: existingTrialClient } = await supabase
             .from('clients')
             .select('id')
@@ -112,7 +116,7 @@ function SignupForm() {
           }
       }
 
-      // --- STEP B: CREATE AUTH USER ---
+      // Auth Signup
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -128,15 +132,13 @@ function SignupForm() {
       if (authError) throw new Error("User Signup Failed: " + authError.message);
       if (!authData.user) throw new Error("Signup successful but no user ID returned.");
 
-      // --- STEP C: PREPARE CLIENT DATA ---
-      // ✅ STEP-3: Duration logic simplify karo (DB driven)
-      const planDurationDays = planRow.duration_days;
-
+      // Calculate Dates based on DB duration
+      const planDurationDays = planRow.duration_days || 30; // Fallback to 30 if null
       const startDate = new Date();
       const endDate = new Date();
       endDate.setDate(startDate.getDate() + planDurationDays);
 
-      // ✅ STEP-4: CLIENT INSERT — THIS IS MOST IMPORTANT
+      // Client Insert
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
@@ -145,28 +147,23 @@ function SignupForm() {
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
-
-          // 🔥 SINGLE SOURCE OF TRUTH
+          
+          // 🔥 Sahi Plan ID aur Code DB se
           plan_id: planRow.id,
-
-          // 🟡 optional legacy (rakh sakte ho)
-          plan: planRow.code,
-          plan_name: planRow.name,
+          plan: planRow.code,      // 'ENTERPRISE', 'PRO', etc.
+          plan_name: planRow.name, // 'Enterprise', 'Professional'
 
           subscription_status: 'active',
           plan_start_date: startDate.toISOString(),
           plan_end_date: endDate.toISOString(),
           has_used_trial: planRow.code === 'TRIAL',
-
           role: 'client'
         });
 
       if (clientError) throw new Error("Client Creation Failed: " + clientError.message);
 
-      // --- SUCCESS ---
       toast.success("Account Created Successfully!");
       
-      // LocalStorage Set
       localStorage.setItem('current_user', JSON.stringify({ 
          id: authData.user.id, 
          email: formData.email, 
@@ -184,12 +181,13 @@ function SignupForm() {
     }
   };
   
+  // ... (Baaki UI code same rahega) ...
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* LEFT SIDE */}
       <div className="lg:w-1/3 bg-slate-900 text-white p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
+        {/* ... Background and Header ... */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
-        
         <div>
           <Link href="/" className="flex items-center text-slate-300 hover:text-white mb-8">
             <ArrowLeft className="w-4 h-4 mr-2"/> Back to Home
@@ -205,7 +203,7 @@ function SignupForm() {
                  <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Selected Plan</p>
                  <h3 className="text-2xl font-bold text-white mt-1">{currentPlan.name}</h3>
               </div>
-              <Badge className={selectedPlanCode === 'PRO' ? 'bg-purple-600' : 'bg-blue-600'}>
+              <Badge className={selectedPlanCode === 'PRO' ? 'bg-purple-600' : selectedPlanCode === 'ENTERPRISE' ? 'bg-orange-500' : 'bg-blue-600'}>
                 ₹{currentPlan.price}/mo
               </Badge>
            </div>
@@ -218,7 +216,7 @@ function SignupForm() {
            )}
            
            <ul className="space-y-2 mb-6">
-              {currentPlan.features.slice(0, 4).map((f, i) => (
+              {currentPlan.features && currentPlan.features.slice(0, 4).map((f: any, i: number) => (
                 <li key={i} className="flex gap-2 text-sm text-slate-300">
                    <CheckCircle className="w-4 h-4 text-green-400 shrink-0"/> {f}
                 </li>
@@ -240,7 +238,7 @@ function SignupForm() {
                   key={key} 
                   onClick={() => { 
                     if (!isTrialDisabled) {
-                      setSelectedPlanCode(key); 
+                      setSelectedPlanCode(key); // Key is already Uppercase in Config usually
                       setShowPlanSelector(false); 
                     }
                   }}
@@ -260,20 +258,20 @@ function SignupForm() {
              })}
           </div>
         )}
-
+        
         <div className="text-xs text-slate-500 mt-auto pt-8">
            <p className="flex items-center gap-2"><ShieldCheck className="w-3 h-3"/> Bank-grade security & encryption</p>
         </div>
       </div>
 
-      {/* RIGHT SIDE: Signup Form */}
+      {/* RIGHT SIDE: Signup Form (Same as yours) */}
       <div className="lg:w-2/3 p-4 flex items-center justify-center">
          <Card className="w-full max-w-md border-0 shadow-none bg-transparent">
             <CardHeader>
                <CardTitle className="text-2xl font-bold text-slate-900">Create Account</CardTitle>
                <CardDescription>
                   {orderId 
-                    ? <span className="text-orange-600 font-medium">Completing Registration for Paid Plan</span> 
+                    ? <span className="text-orange-600 font-medium">Completing Registration for {currentPlan.name} Plan</span> 
                     : "Enter details to setup your new admin panel."}
                </CardDescription>
             </CardHeader>
@@ -300,7 +298,6 @@ function SignupForm() {
                      <Input type="password" placeholder="•••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
                   </div>
                   
-                  {/* BUTTON LOGIC */}
                   <Button 
                     type="submit" 
                     className={`w-full h-11 text-base mt-2 ${
@@ -317,20 +314,17 @@ function SignupForm() {
                      ) : selectedPlanCode === 'TRIAL' ? (
                         'Start Free Trial'
                      ) : (
-                        'Create Account'
+                        `Create ${currentPlan.name} Account`
                      )}
                   </Button>
                </form>
-               
                <Separator className="my-6" />
-               
                <p className="text-center text-sm text-slate-600">
                   Already have an account? <Link href="/login" className="text-blue-600 font-bold hover:underline">Sign In</Link>
                </p>
             </CardContent>
          </Card>
       </div>
-
     </div>
   );
 }
