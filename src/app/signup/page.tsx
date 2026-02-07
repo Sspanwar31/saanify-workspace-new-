@@ -11,26 +11,22 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, ArrowLeft, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { SUBSCRIPTION_PLANS } from '@/config/plans'; 
 import { supabase } from '@/lib/supabase-simple'; 
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // URL Params
+  // URL se Order ID lo (Razorpay wapis aate waqt ye deta hai)
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
 
   // State
   const [selectedPlan, setSelectedPlan] = useState<any>(null); 
   const [loading, setLoading] = useState(false);
-  const [fetchingPlan, setFetchingPlan] = useState(true);
+  const [verifyingPayment, setVerifyingPayment] = useState(true);
   const [trialUsed, setTrialUsed] = useState(false);
   
-  // 🔥 Change: Default true rakha hai taaki agar plan na mile to user select kar sake
-  const [showPlanSelector, setShowPlanSelector] = useState(false);
-
   const [formData, setFormData] = useState({
     name: '',
     societyName: '',
@@ -39,112 +35,100 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ STEP 1: Plan Fetch Logic (Robust)
+  // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo
   useEffect(() => {
-    async function fetchPlanFromBackend() {
-      setFetchingPlan(true);
+    async function smartVerifyPlan() {
+      setVerifyingPayment(true);
       
       try {
-        let codeToFetch = '';
+        // CASE 1: Agar Payment Order ID hai (PAID USER)
+        if (orderId) {
+            console.log("Verifying Order ID:", orderId);
 
-        // Case A: URL me plan hai
-        if (urlPlanCode) {
-            codeToFetch = urlPlanCode;
-        } 
-        // Case B: URL me nahi hai, par Payment ID hai -> LocalStorage check karo
-        else if (orderId) {
-            // Jahan payment initiate ki thi, wahan localStorage.setItem('last_plan', 'ENTERPRISE') kar dena chahiye
-            const savedPlan = localStorage.getItem('last_selected_plan');
-            if (savedPlan) {
-                codeToFetch = savedPlan;
-            } else {
-                // Agar yahan bhi nahi mila, to hum niche UI me user se puch lenge
-                console.warn("Plan code missing from URL and Storage");
-                setFetchingPlan(false);
-                setShowPlanSelector(true); // User ko bolenge khud select kare
-                return; 
+            // 1. Payment Intents table se check karo ki is Order ID ka Plan kya hai
+            // Aapke data ke hisab se 'token' column me 'order_...' hai.
+            const { data: paymentData, error: paymentError } = await supabase
+                .from('payment_intents')
+                .select('plan, amount, status, token')
+                .eq('token', orderId) 
+                .single();
+
+            if (paymentError || !paymentData) {
+                console.error("Payment Intent Not Found:", paymentError);
+                toast.error("Payment Verification Failed. Order ID not found in system.");
+                setVerifyingPayment(false);
+                return;
             }
+
+            console.log("Payment Found:", paymentData);
+            const verifiedPlanCode = paymentData.plan; // e.g., 'ENTERPRISE' or 'PRO'
+
+            // 2. Ab Plans table se is code ki full details nikalo (Duration, Features etc)
+            const { data: planDetails, error: planError } = await supabase
+                .from('plans')
+                .select('*')
+                .eq('code', verifiedPlanCode)
+                .single();
+
+            if (planDetails) {
+                setSelectedPlan(planDetails);
+                toast.success(`Payment Verified for ${planDetails.name} Plan!`);
+            } else {
+                toast.error("Plan details missing in database.");
+            }
+
         } 
-        // Case C: Free user
+        // CASE 2: Free Trial (No Order ID)
         else {
-            codeToFetch = 'TRIAL';
-        }
-
-        // Fetch from DB
-        const { data: planRow, error } = await supabase
-          .from('plans')
-          .select('*')
-          .eq('code', codeToFetch.toUpperCase())
-          .single();
-
-        if (error || !planRow) {
-           console.error("Plan fetch error:", error);
-           // Agar plan DB me nahi mila, to selector dikhao
-           setShowPlanSelector(true);
-        } else {
-            setSelectedPlan(planRow);
+            // URL se plan uthao ya default TRIAL
+            const code = urlPlanCode ? urlPlanCode.toUpperCase() : 'TRIAL';
+            
+            const { data: planDetails } = await supabase
+                .from('plans')
+                .select('*')
+                .eq('code', code)
+                .single();
+            
+            if (planDetails) setSelectedPlan(planDetails);
         }
 
       } catch (err) {
-        console.error("Setup error:", err);
+        console.error("Verification Error:", err);
       } finally {
-        setFetchingPlan(false);
+        setVerifyingPayment(false);
       }
     }
 
-    fetchPlanFromBackend();
+    smartVerifyPlan();
 
+    // Trial check
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
     if (hasUsedTrial) setTrialUsed(true);
 
   }, [searchParams, orderId, urlPlanCode]);
 
 
-  // ✅ Handler: Agar User Manually Plan Select Kare
-  const handleManualPlanSelect = async (planCode: string) => {
-      setFetchingPlan(true);
-      const { data: planRow } = await supabase
-          .from('plans')
-          .select('*')
-          .eq('code', planCode)
-          .single();
-      
-      if (planRow) {
-          setSelectedPlan(planRow);
-          setShowPlanSelector(false); // Plan mil gaya, selector band karo
-      }
-      setFetchingPlan(false);
-  };
-
+  // ✅ SUBMIT FORM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     if (!selectedPlan) {
-      toast.error("Please select a plan to continue.");
-      setShowPlanSelector(true);
+      toast.error("Plan not selected.");
       setLoading(false);
       return;
     }
 
-    if (!supabase) {
-        toast.error("Supabase connection error");
+    // Double Check: Agar Order ID hai par plan match nahi kar raha (Backend se)
+    // Ye waise hoga nahi kyunki humne useEffect me set kiya hai, par safety ke liye
+    if (orderId && selectedPlan.code === 'TRIAL') {
+        toast.error("System Error: Payment ID linked to Trial plan.");
         setLoading(false);
         return;
     }
 
     try {
-      // 1. Trial Check
-      if (!orderId && selectedPlan.code === 'TRIAL') {
-          const { data: existing } = await supabase.from('clients').select('id').eq('email', formData.email).eq('has_used_trial', true).maybeSingle();
-          if (existing) {
-            toast.error("Free trial already used.");
-            setLoading(false);
-            return;
-          }
-      }
-
-      // 2. Auth Signup
+      // 1. Auth Signup
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -156,7 +140,7 @@ function SignupForm() {
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error("Signup failed.");
 
-      // 3. Insert Client (Data from PLANS table to CLIENTS table)
+      // 2. Client Table Insert
       const planDays = selectedPlan.duration_days || 30;
       const endDate = new Date();
       endDate.setDate(new Date().getDate() + planDays);
@@ -168,7 +152,7 @@ function SignupForm() {
           phone: formData.phone,
           society_name: formData.societyName,
           
-          // 🔥 DB se aaya hua sahi data
+          // 🔥 Verified Data from Backend
           plan_id: selectedPlan.id,
           plan: selectedPlan.code,
           plan_name: selectedPlan.name,
@@ -177,11 +161,17 @@ function SignupForm() {
           plan_start_date: new Date().toISOString(),
           plan_end_date: endDate.toISOString(),
           has_used_trial: selectedPlan.code === 'TRIAL',
-          registration_number: orderId || null,
+          
+          registration_number: orderId || null, // Tracking ke liye
           role: 'client'
       });
 
       if (clientError) throw new Error(clientError.message);
+
+      // 3. Optional: Payment Intent ko update kar sakte ho ki "client_created: true" (taaki reuse na ho)
+      if (orderId) {
+          await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
+      }
 
       toast.success("Account Created Successfully!");
       localStorage.setItem('current_user', JSON.stringify({ id: authData.user.id, email: formData.email, role: 'client', plan: selectedPlan.code }));
@@ -195,13 +185,38 @@ function SignupForm() {
     }
   };
 
-  // --- UI RENDER ---
-
-  if (fetchingPlan) {
-      return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin w-8 h-8 text-blue-600"/></div>;
+  // --- RENDER ---
+  
+  if (verifyingPayment) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+           <Loader2 className="animate-spin w-10 h-10 text-blue-600"/>
+           <div className="text-center">
+             <h3 className="font-semibold text-lg text-slate-800">Verifying Payment...</h3>
+             <p className="text-slate-500 text-sm">Checking secure records for your plan.</p>
+           </div>
+        </div>
+      );
   }
 
-  // Fallback Features Display
+  // Error State: Order ID hai par database me nahi mila
+  if (orderId && !selectedPlan) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+           <div className="bg-red-50 p-8 rounded-xl border border-red-200 text-center max-w-md">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
+              <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
+              <p className="text-slate-600 mt-2 mb-4">
+                 We could not find the plan details for Order ID: <br/> 
+                 <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
+              </p>
+              <Link href="/"><Button variant="outline">Return Home</Button></Link>
+           </div>
+        </div>
+      );
+  }
+
+  // Display Vars
   const displayFeatures = selectedPlan?.features 
     ? (typeof selectedPlan.features === 'string' ? JSON.parse(selectedPlan.features) : selectedPlan.features)
     : [];
@@ -211,61 +226,43 @@ function SignupForm() {
       {/* LEFT SIDE */}
       <div className="lg:w-1/3 bg-slate-900 text-white p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
+        
         <div>
           <Link href="/" className="flex items-center text-slate-300 hover:text-white mb-8"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Home</Link>
           <h1 className="text-3xl font-bold mb-4">Join Saanify Today</h1>
         </div>
 
-        {/* Selected Plan Card */}
-        {selectedPlan ? (
-            <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-6 my-8">
-            <div className="flex justify-between items-start mb-4">
-                <div>
-                    <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Confirmed Plan</p>
-                    <h3 className="text-2xl font-bold text-white mt-1">{selectedPlan.name}</h3>
-                </div>
-                <Badge className="bg-green-600">₹{selectedPlan.price}</Badge>
-            </div>
-            <ul className="space-y-2 mb-6">
-                {displayFeatures.slice(0, 3).map((f: any, i: number) => (
-                    <li key={i} className="flex gap-2 text-sm text-slate-300"><CheckCircle className="w-4 h-4 text-green-400"/> {f}</li>
-                ))}
-            </ul>
-            {/* Payment hone ke baad plan change button mat dikhao agar confirm ho gaya */}
-            {!orderId && <Button variant="outline" onClick={() => setShowPlanSelector(true)} className="w-full border-slate-600 text-slate-300">Change Plan</Button>}
-            </div>
-        ) : (
-            // Agar plan fetch nahi hua (Payment ID hai par Plan URL missing)
-            <div className="bg-red-900/20 border border-red-500/50 p-6 rounded-xl my-8">
-                <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
-                <h3 className="text-lg font-bold text-white">Plan Not Detected</h3>
-                <p className="text-sm text-slate-300 mb-4">Payment ID received but plan details missing. Please select the plan you paid for.</p>
-                <Button onClick={() => setShowPlanSelector(true)} className="w-full bg-red-600 hover:bg-red-700">Select Paid Plan</Button>
-            </div>
-        )}
+        {/* Verified Plan Card */}
+        <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-6 my-8 relative overflow-hidden">
+           {/* Verified Badge */}
+           {orderId && (
+               <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg flex items-center gap-1">
+                 <ShieldCheck className="w-3 h-3" /> VERIFIED
+               </div>
+           )}
 
-        {/* PLAN SELECTOR (Fallback Mechanism) */}
-        {showPlanSelector && (
-          <div className="space-y-2 animate-in slide-in-from-left-4 bg-slate-900 p-4 rounded-lg border border-slate-700 absolute inset-0 z-50 overflow-y-auto">
-             <div className="flex justify-between items-center mb-4">
-                 <h3 className="font-bold">Select Your Plan</h3>
-                 <Button size="sm" variant="ghost" onClick={() => setShowPlanSelector(false)}>Close</Button>
-             </div>
-             {Object.entries(SUBSCRIPTION_PLANS).map(([key, plan]) => {
-                // Agar payment kiya hai, to TRIAL select mat karne do
-                if (orderId && key === 'TRIAL') return null;
+           <div className="flex justify-between items-start mb-4">
+              <div>
+                 <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">
+                    {orderId ? "Paid Plan" : "Selected Plan"}
+                 </p>
+                 <h3 className="text-2xl font-bold text-white mt-1">{selectedPlan?.name}</h3>
+              </div>
+              <Badge className={selectedPlan?.code === 'ENTERPRISE' ? 'bg-orange-500' : 'bg-blue-600'}>
+                ₹{selectedPlan?.price}
+              </Badge>
+           </div>
+           
+           <ul className="space-y-2 mb-6">
+              {displayFeatures.slice(0, 4).map((f: any, i: number) => (
+                <li key={i} className="flex gap-2 text-sm text-slate-300"><CheckCircle className="w-4 h-4 text-green-400 shrink-0"/> {f}</li>
+              ))}
+           </ul>
+        </div>
 
-                return (
-                <div key={key} onClick={() => handleManualPlanSelect(key)}
-                  className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center hover:bg-slate-800 border-slate-700`}
-                >
-                   <span className="font-medium">{plan.name}</span>
-                   <span className="font-bold">₹{plan.price}</span>
-                </div>
-                );
-             })}
-          </div>
-        )}
+        <div className="text-xs text-slate-500 mt-auto pt-8">
+           <p className="flex items-center gap-2"><ShieldCheck className="w-3 h-3"/> Bank-grade security & encryption</p>
+        </div>
       </div>
 
       {/* RIGHT SIDE: Signup Form */}
@@ -275,7 +272,7 @@ function SignupForm() {
                <CardTitle className="text-2xl font-bold text-slate-900">Create Account</CardTitle>
                <CardDescription>
                   {orderId 
-                    ? <span className="text-green-600 font-bold">Payment Order ID: {orderId}</span> 
+                    ? <span className="text-green-600 font-medium flex items-center gap-2"><CheckCircle className="w-4 h-4"/> Payment Verified for {selectedPlan?.name}</span> 
                     : "Enter details to setup your new admin panel."}
                </CardDescription>
             </CardHeader>
@@ -287,7 +284,7 @@ function SignupForm() {
                   <div className="grid gap-2"><Label>Phone</Label><Input required onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
                   <div className="grid gap-2"><Label>Password</Label><Input type="password" required onChange={e => setFormData({...formData, password: e.target.value})} /></div>
                   
-                  <Button type="submit" className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white" disabled={loading || !selectedPlan}>
+                  <Button type="submit" className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white mt-2" disabled={loading}>
                      {loading ? <Loader2 className="animate-spin mr-2" /> : "Complete Registration"}
                   </Button>
                </form>
