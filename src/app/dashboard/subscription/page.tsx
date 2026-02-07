@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import PaymentModal from '@/components/client/subscription/PaymentModal';
+import PaymentModal from '@/components/client/subscription/PaymentModal'; // Assuming path
 import { toast } from 'sonner';
 
 export default function SubscriptionPage() {
@@ -46,7 +46,6 @@ export default function SubscriptionPage() {
         }
 
         // 2. Client Info nikalo (Jo User se match kare)
-        // Hum 'maybeSingle()' use karenge taaki agar row na mile to error na aye
         let query = supabase.from('clients').select('*');
         
         // Koshish karein email se match karne ki (Best Practice)
@@ -74,53 +73,65 @@ export default function SubscriptionPage() {
 
           // --- DATE CALCULATION LOGIC (FIXED) ---
           const today = new Date();
+          
+          // 🔴 MAIN BUG #3 FIX: Timezone Issue
+          // Normalize Today to Midnight IST
+          today.setHours(0, 0, 0, 0);
+
           let expiryDate = new Date(); // Default to now
           
-          // 🟢 FIX #1: Use direct 'plan' comparison
-          let isTrial = client.plan === 'TRIAL';
+          // ✅ FIX #1: Use direct 'plan' comparison (Canonical Source)
+          const planCode = (client.plan || '').toUpperCase();
+          const isTrial = planCode === 'TRIAL';
 
-          // Date Selection Priority:
-          // 1. plan_end_date (Agar DB me hai)
-          // 2. subscription_expiry (Backup column)
-          // 3. Agar Trial hai aur koi date nahi -> created_at + 15 Days
+          // ✅ FIX #2: Date Priority (Correct for ALL plans)
+          // 1. plan_end_date (Highest Priority for ALL plans)
+          // 2. subscription_expiry (Fallback)
+          // 3. trial fallback (created_at + 15 days)
           
-          // 🟢 FIX #2: Prioritize plan_end_date only if it's a TRIAL plan
-          if (client.plan === 'TRIAL' && client.plan_end_date) {
+          if (client.plan_end_date) {
             expiryDate = new Date(client.plan_end_date);
+            // Normalize expiryDate to Midnight to avoid time part issues
+            expiryDate.setHours(0, 0, 0, 0);
           } else if (client.subscription_expiry) {
             expiryDate = new Date(client.subscription_expiry);
+            expiryDate.setHours(0, 0, 0, 0);
           } else if (isTrial && client.created_at) {
             const joinDate = new Date(client.created_at);
             expiryDate = new Date(joinDate);
             expiryDate.setDate(joinDate.getDate() + 15); // Add 15 days logic
+            expiryDate.setHours(0, 0, 0, 0);
           }
 
           // Calculate Difference
           const diffTime = expiryDate.getTime() - today.getTime();
-          const daysRemaining = Math.max(
-            0,
-            Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-          );
+          const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-          // 🟢 FIX #3: Use explicit status for TRIAL
-          const finalStatus = isTrial ? 'active' : (client.subscription_status || 'inactive');
+          // Status Logic
+          const finalStatus = daysRemaining <= 0 ? 'EXPIRED' : 'ACTIVE';
 
+          // ✅ FINAL CORRECT setSubscription BLOCK
+          // ✅ FIX #1: Correct mapping using planCode
           setSubscription({
-            planName: client.plan_name || 'Trial Plan',
+            planName: client.plan_name || planCode,
             status: finalStatus,
             startStr: client.plan_start_date
               ? new Date(client.plan_start_date).toLocaleDateString('en-IN')
-              : new Date(client.created_at).toLocaleDateString('en-IN'), // Fallback to join date
-            endStr: expiryDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), // Formatted Date
+              : new Date(client.created_at).toLocaleDateString('en-IN'),
+            endStr: expiryDate.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }),
             daysRemaining,
             limit:
-              client.plan_name === 'Free' || isTrial
+              planCode === 'TRIAL'
                 ? 100
-                : client.plan_name === 'Basic'
+                : planCode === 'BASIC'
                 ? 200
-                : client.plan_name === 'Professional'
+                : planCode === 'PRO'
                 ? 2000
-                : client.plan_name === 'Enterprise'
+                : planCode === 'ENTERPRISE'
                 ? 9999
                 : 100
           });
@@ -234,15 +245,15 @@ export default function SubscriptionPage() {
                 <CardContent className="p-8 text-center space-y-6">
                     <div>
                         <h2 className="text-3xl font-bold text-orange-900 dark:text-orange-400 mb-2">
-                        Verification Pending
+                            Verification Pending
                         </h2>
                         <p className="text-orange-700/80 dark:text-orange-200/70">
-                        We have received your payment request. Admin approval is required.
+                            We have received your payment request. Admin approval is required.
                         </p>
                     </div>
 
                     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 text-left shadow-sm">
-                        <Row label="Requested Plan" value={pendingOrder.plan_name} highlight />
+                        <Row label="Requested Plan" value={pendingOrder.plan_name} />
                         <Row label="Amount Paid" value={`₹${pendingOrder.amount.toLocaleString()}`} />
                         <Row label="Transaction ID" value={pendingOrder.transaction_id || 'N/A'} mono />
                         <Row label="Date" value={new Date(pendingOrder.created_at).toLocaleDateString()} />
@@ -300,9 +311,9 @@ export default function SubscriptionPage() {
             <div className="flex flex-wrap justify-center gap-8 items-stretch">
               {plans.map(plan => (
                 <Card
-                  key={plan.id}
-                  className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between w-full md:max-w-[360px] lg:max-w-[380px] ${plan.color}`}
-                >
+                    key={plan.id}
+                    className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between w-full md:max-w-[360px] lg:max-w-[380px] ${plan.color}`}
+                  >
                   {plan.isPopular && (
                     <div className="absolute top-0 right-0 z-20">
                         <Badge className="rounded-none rounded-bl-xl bg-yellow-500 text-black px-4 py-1 text-xs font-bold border-none shadow-sm">
