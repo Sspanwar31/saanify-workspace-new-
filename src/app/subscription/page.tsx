@@ -39,12 +39,10 @@ export default function SubscriptionManagement() {
       try {
         setLoading(true);
         
-        // Step 1: Get Current Authenticated User first
         const { data: { user } } = await supabase.auth.getUser();
-        
         if (!user) throw new Error("User not authenticated");
 
-        // Step 2: Client fetch (Plan ID + Date + Status)
+        // Step 2: Client fetch
         const { data: client, error: clientError } = await supabase
           .from('clients')
           .select('plan_id, plan_end_date, subscription_status')
@@ -56,14 +54,13 @@ export default function SubscriptionManagement() {
             throw clientError || new Error("Client not found");
         }
 
-        console.log("✅ DEBUG: Fetched Client Data:", client);
+        console.log("✅ DEBUG: Client Data from DB:", client); // Console check karein ki data kya aa raha hai
 
-        // ✅ DIFF–1: PLAN FETCH FIX (MOST IMPORTANT)
-        // Ab hum plan_id ka use karke plan fetch karenge (Future Safe)
+        // Step 3: Plan fetch
         const { data: plan, error: planError } = await supabase
           .from('plans')
           .select('id, name, code, limit_members, features, duration_days')
-          .eq('id', client.plan_id) // ✅ FIX: id = client.plan_id
+          .eq('id', client.plan_id)
           .single();
 
         if (planError || !plan) {
@@ -71,41 +68,48 @@ export default function SubscriptionManagement() {
             throw planError || new Error("Plan configuration missing");
         }
 
-        // ✅ DIFF — ONLY THIS PART CHANGE KARO (FIXED: PRODUCTION SAFE)
-        // 🔥 FIX: Strip time completely (DATE-only math)
-        const endDateStr = client.plan_end_date.split('T')[0]; // YYYY-MM-DD
-        const todayStr = new Date().toISOString().split('T')[0];
+        // ✅ FIX 1: Robust Date Parsing (Handles 'T' or space)
+        const planEndDateValue = client.plan_end_date;
+        let endDate: Date;
 
-        const endDate = new Date(endDateStr);
-        const today = new Date(todayStr);
+        if (planEndDateValue) {
+            endDate = new Date(planEndDateValue); // Direct Date object
+        } else {
+            // Fallback agar date missing ho
+            endDate = new Date(); 
+        }
 
-        const diffMs = endDate.getTime() - today.getTime();
-        const calculatedDays = Math.max(
-          0,
-          Math.round(diffMs / (1000 * 60 * 60 * 24))
-        );
+        // ✅ FIX 2: Compare Dates properly (Normalize to Midnight)
+        const today = new Date();
+        
+        // Time hata kar sirf Date compare karein
+        const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        // Calculate difference in milliseconds
+        const diffMs = endDateOnly.getTime() - todayOnly.getTime();
+        
+        // Convert to days (Math.ceil use karein taki 0.5 day bhi 1 day dikhe)
+        const calculatedDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
         setDaysRemaining(calculatedDays);
 
-        // ✅ DIFF–4: DATE DISPLAY (OPTIONAL BUT CLEAN)
-        const endDateString = new Date(client.plan_end_date)
-          .toLocaleDateString('en-IN', {
+        // ✅ FIX 3: Display Date Formatting
+        const endDateString = endDate.toLocaleDateString('en-IN', {
             day: '2-digit',
             month: 'short',
             year: 'numeric',
           });
 
-        // ✅ DIFF–3: STATUS LOGIC FIX (USER FRIENDLY)
-        const status =
-          calculatedDays === 0
-            ? 'EXPIRES TODAY'
-            : 'ACTIVE';
+        // ✅ FIX 4: Status Logic
+        let status = 'ACTIVE';
+        if (calculatedDays <= 0) status = 'EXPIRED';
+        if (calculatedDays === 0) status = 'EXPIRES TODAY';
+        // Agar database me status active hai to usse priority de sakte hain, 
+        // par date calculation zyada accurate hoti hai display ke liye.
 
         // Features Safe Parse
-        const features =
-          Array.isArray(plan.features)
-            ? plan.features
-            : JSON.parse(plan.features ?? '[]');
+        const features = Array.isArray(plan.features) ? plan.features : JSON.parse(plan.features ?? '[]');
 
         // Limits Mapping
         const limits = {
@@ -114,10 +118,9 @@ export default function SubscriptionManagement() {
           societies: 1
         };
 
-        // Data Object Construction
         if (isMounted) {
           const subData: SubscriptionData = {
-            planType: plan.code, // Code (PRO/TRIAL) use kar rahe hain
+            planType: plan.code || 'PLAN',
             status: status,
             trialEnds: endDateString,
             currentPeriodEnd: endDateString,
