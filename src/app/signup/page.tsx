@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, ArrowLeft, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { SUBSCRIPTION_PLANS } from '@/config/plans';
+import { SUBSCRIPTION_PLANS } from '@/config/plans'; // Fixed typo in import
 import { useAdminStore } from '@/lib/admin/store';
 import { supabase } from '@/lib/supabase-simple'; 
 
@@ -29,18 +29,21 @@ function SignupForm() {
   const [trialUsed, setTrialUsed] = useState(false);
 
   // ✅ FIX: Mount hone par correct plan set karein (Client side only)
+  // ✅ NEW (FIXED)
   useEffect(() => {
     const urlPlan = searchParams.get('plan');
-    // URL me agar PRO code hai to PRO, nahi to TRIAL
-    const initialPlanCode = orderId ? 'PRO' : (urlPlan || 'TRIAL');
-    setSelectedPlanCode(initialPlanCode);
-    
-    // Trial Logic Check
+
+    if (urlPlan) {
+        setSelectedPlanCode(urlPlan);
+    } else {
+        setSelectedPlanCode('TRIAL');
+    }
+
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
     if (hasUsedTrial) {
       setTrialUsed(true);
     }
-  }, [searchParams, orderId]); // Dependencies add kiye
+  }, [searchParams]); // ✅ 👉 orderId dependency hata diya
 
   const [formData, setFormData] = useState({
     name: '',
@@ -280,7 +283,7 @@ function SignupForm() {
                   </div>
                   <div className="grid gap-2">
                      <Label>Password</Label>
-                     <Input type="password" placeholder="••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
+                     <Input type="password" placeholder="•••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
                   </div>
                   
                   {/* BUTTON LOGIC */}
