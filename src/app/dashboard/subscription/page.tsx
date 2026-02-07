@@ -7,18 +7,19 @@ import {
   CheckCircle,
   RefreshCw,
   Loader2,
-  Calendar,
-  Users,
+  Clock,
   AlertTriangle,
   ShieldCheck,
-  Clock 
+  Zap,
+  Building2,
+  Users
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import PaymentModal from '@/components/client/subscription/PaymentModal'; // Assuming path
+import PaymentModal from '@/components/client/subscription/PaymentModal'; // Verify Path
 import { toast } from 'sonner';
 
 export default function SubscriptionPage() {
@@ -32,28 +33,28 @@ export default function SubscriptionPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
-  /* -------------------- FETCH DATA (FIXED LOGIC) -------------------- */
+  /* -------------------- FETCH DATA (FIXED & FUTURE PROOF) -------------------- */
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // 1. Pehle Logged In User nikalo (Safety)
+        // 1. Get Logged In User
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        if (!user || !user.email) {
             console.error("User not logged in");
             return;
         }
 
-        // 2. Client Info nikalo (Jo User se match kare)
-        let query = supabase.from('clients').select('*');
-        
-        // Koshish karein email se match karne ki (Best Practice)
-        if(user.email) {
-            query = query.eq('email', user.email);
-        }
-        
-        const { data: client, error: clientError } = await query.maybeSingle();
+        // 2. Fetch Client Data (Single Source of Truth)
+        // Hum '*' select kar rahe hain taaki koi column miss na ho
+        const { data: client, error: clientError } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('email', user.email)
+            .maybeSingle();
+
+        if (clientError) throw clientError;
 
         if (client) {
           setClientId(client.id);
@@ -71,81 +72,66 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // --- DATE CALCULATION LOGIC (FIXED) ---
+          // --- 1. MEMBER LIMIT LOGIC (FIXED) ---
+          // Database mein 'PRO', 'BASIC', 'ENTERPRISE' ya 'TRIAL' ho sakta hai
+          const rawPlan = client.plan ? client.plan.toUpperCase().trim() : 'TRIAL';
+          
+          let limit = 100; // Default
+          if (rawPlan.includes('PRO') || rawPlan.includes('PROFESSIONAL')) limit = 2000;
+          else if (rawPlan.includes('BASIC')) limit = 200;
+          else if (rawPlan.includes('ENTERPRISE')) limit = 9999; // Unlimited
+          else if (rawPlan.includes('TRIAL')) limit = 100;
+
+          // --- 2. DATE LOGIC (FIXED) ---
           const today = new Date();
-          
-          // 🔴 MAIN BUG #3 FIX: Timezone Issue
-          // Normalize Today to Midnight IST
-          today.setHours(0, 0, 0, 0);
+          today.setHours(0, 0, 0, 0); // Reset time to midnight
 
-          let expiryDate = new Date(); // Default to now
+          let endDate = new Date();
           
-          // ✅ FIX #1: Use direct 'plan' comparison (Canonical Source)
-          const planCode = (client.plan || '').toUpperCase();
-          const isTrial = planCode === 'TRIAL';
-
-          // ✅ FIX #2: Date Priority (Correct for ALL plans)
-          // 1. plan_end_date (Highest Priority for ALL plans)
-          // 2. subscription_expiry (Fallback)
-          // 3. trial fallback (created_at + 15 days)
-          
+          // Priority: plan_end_date hi sabse main hai
           if (client.plan_end_date) {
-            expiryDate = new Date(client.plan_end_date);
-            // Normalize expiryDate to Midnight to avoid time part issues
-            expiryDate.setHours(0, 0, 0, 0);
+            endDate = new Date(client.plan_end_date);
           } else if (client.subscription_expiry) {
-            expiryDate = new Date(client.subscription_expiry);
-            expiryDate.setHours(0, 0, 0, 0);
-          } else if (isTrial && client.created_at) {
-            const joinDate = new Date(client.created_at);
-            expiryDate = new Date(joinDate);
-            expiryDate.setDate(joinDate.getDate() + 15); // Add 15 days logic
-            expiryDate.setHours(0, 0, 0, 0);
+            endDate = new Date(client.subscription_expiry);
+          } else {
+             // Fallback: Agar date nahi hai to created_at + 15 days
+             endDate = new Date(client.created_at || new Date());
+             endDate.setDate(endDate.getDate() + 15);
           }
 
-          // Calculate Difference
-          const diffTime = expiryDate.getTime() - today.getTime();
+          // Reset time for accurate comparison
+          endDate.setHours(0, 0, 0, 0);
+
+          const diffTime = endDate.getTime() - today.getTime();
           const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-          // Status Logic
-          const finalStatus = daysRemaining <= 0 ? 'EXPIRED' : 'ACTIVE';
+          const status = daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED';
 
-          // ✅ FINAL CORRECT setSubscription BLOCK
-          // ✅ FIX #1: Correct mapping using planCode
-          setSubscription({
-            planName: client.plan_name || planCode,
-            status: finalStatus,
-            startStr: client.plan_start_date
-              ? new Date(client.plan_start_date).toLocaleDateString('en-IN')
-              : new Date(client.created_at).toLocaleDateString('en-IN'),
-            endStr: expiryDate.toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-            }),
-            daysRemaining,
-            limit:
-              planCode === 'TRIAL'
-                ? 100
-                : planCode === 'BASIC'
-                ? 200
-                : planCode === 'PRO'
-                ? 2000
-                : planCode === 'ENTERPRISE'
-                ? 9999
-                : 100
-          });
-
-          // --- MEMBER COUNT ---
+          // --- 3. MEMBER COUNT ---
           const { count } = await supabase
             .from('members')
             .select('*', { count: 'exact', head: true })
             .eq('client_id', client.id);
 
-          setMemberCount(count || 0);
+          const currentMemberCount = count || 0;
+
+          // --- SET DATA TO STATE ---
+          setSubscription({
+            planName: client.plan_name || rawPlan, // 'Professional' or 'PRO'
+            status: status,
+            // Format dates nicely
+            endStr: endDate.toLocaleDateString('en-IN', {
+                day: '2-digit', month: 'short', year: 'numeric'
+            }),
+            daysRemaining: daysRemaining,
+            limit: limit,
+            usagePercent: Math.min(100, (currentMemberCount / limit) * 100)
+          });
+          
+          setMemberCount(currentMemberCount);
         }
 
-        // --- FETCH PLANS ---
+        // --- FETCH PLANS FOR UPGRADE UI ---
         const { data: dbPlans } = await supabase
           .from('plans')
           .select('*')
@@ -177,7 +163,6 @@ export default function SubscriptionPage() {
     fetchData();
   }, []);
 
-  // ... (Baki ka pura code SAME rahega, niche ka part change mat karna)
   const getPlanStyle = (name: string, dbColor: string) => {
     if (name === 'Professional' || name === 'Pro') {
       return 'bg-blue-700 text-white hover:bg-blue-800 shadow-md ring-2 ring-blue-600 scale-105 z-10'; 
@@ -236,7 +221,8 @@ export default function SubscriptionPage() {
 
       {pendingOrder ? (
         <div className="flex justify-center animate-in fade-in zoom-in duration-300">
-            <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
+             {/* Pending Order Card Code Same as before */}
+             <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
                 <div className="bg-orange-100 dark:bg-orange-950/30 p-6 flex justify-center border-b border-orange-200 dark:border-orange-900/50">
                     <div className="h-24 w-24 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm animate-pulse border border-orange-200 dark:border-orange-700">
                         <Clock className="h-12 w-12 text-orange-600 dark:text-orange-500" />
@@ -271,10 +257,6 @@ export default function SubscriptionPage() {
                             Cancel Request
                         </Button>
                     </div>
-
-                    <p className="text-xs text-orange-500/80 dark:text-orange-500/80 flex items-center justify-center gap-1">
-                        <ShieldCheck className="h-3 w-3" /> Secure Payment Processing
-                    </p>
                 </CardContent>
             </Card>
         </div>
@@ -289,14 +271,21 @@ export default function SubscriptionPage() {
             </CardHeader>
 
             <CardContent className="grid md:grid-cols-4 gap-6 pt-6">
-              <InfoBlock title="Active Plan" value={subscription?.planName} />
+              {/* ✅ FIXED: Value Checks to avoid 'undefined' */}
+              <InfoBlock title="Active Plan" value={subscription?.planName || 'No Plan'} />
+              
               <InfoBlock
                 title="Member Usage"
-                value={`${memberCount} / ${subscription?.limit}`}
+                value={`${memberCount} / ${subscription?.limit || '0'}`}
               >
-                <Progress value={(memberCount / (subscription?.limit || 100)) * 100} className="h-2 mt-2 bg-blue-100 dark:bg-gray-800" />
+                <Progress 
+                    value={subscription?.usagePercent || 0} 
+                    className="h-2 mt-2 bg-blue-100 dark:bg-gray-800" 
+                />
               </InfoBlock>
-              <InfoBlock title="Valid Until" value={subscription?.endStr} />
+              
+              <InfoBlock title="Valid Until" value={subscription?.endStr || 'N/A'} />
+              
               <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900 text-center">
                  <p className="text-xs text-blue-600 dark:text-blue-400 uppercase font-bold mb-1">Status</p>
                  <p className={`text-2xl font-bold ${subscription?.daysRemaining > 5 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -307,6 +296,7 @@ export default function SubscriptionPage() {
             </CardContent>
           </Card>
 
+          {/* PLANS GRID */}
           {plans.length > 0 ? (
             <div className="flex flex-wrap justify-center gap-8 items-stretch">
               {plans.map(plan => (
@@ -361,10 +351,11 @@ export default function SubscriptionPage() {
                           : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
                         }
                       `}
-                      disabled={subscription?.planName === plan.name}
+                      // Improved Logic to check if this plan is currently active
+                      disabled={subscription?.planName?.toLowerCase().includes(plan.name.toLowerCase())}
                       onClick={() => handleBuyNow(plan)}
                     >
-                      {subscription?.planName === plan.name
+                      {subscription?.planName?.toLowerCase().includes(plan.name.toLowerCase())
                         ? 'Current Plan'
                         : 'Choose Plan'}
                     </Button>
