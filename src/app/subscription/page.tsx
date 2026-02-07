@@ -34,18 +34,18 @@ export default function SubscriptionManagement() {
   // --- FETCH DATA FROM SUPABASE ---
   useEffect(() => {
     let isMounted = true;
-    
+  
     const fetchSubscriptionData = async () => {
       try {
         setLoading(true);
-        
+      
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
-        // Step 2: Client fetch
+        // 👉 CHANGE 1: Select '*' (Sab kuch mangwao debug ke liye)
         const { data: client, error: clientError } = await supabase
           .from('clients')
-          .select('plan_id, plan_end_date, subscription_status')
+          .select('*') 
           .eq('id', user.id)
           .single();
 
@@ -54,12 +54,14 @@ export default function SubscriptionManagement() {
             throw clientError || new Error("Client not found");
         }
 
-        console.log("✅ DEBUG: Client Data from DB:", client); // Console check karein ki data kya aa raha hai
+        // 👉 DEBUG: Isko Browser Console (F12) me check karna zaroori hai
+        console.log("🔥 FULL CLIENT DATA:", client);
+        console.log("🔥 Plan End Date Value:", client.plan_end_date);
 
         // Step 3: Plan fetch
         const { data: plan, error: planError } = await supabase
           .from('plans')
-          .select('id, name, code, limit_members, features, duration_days')
+          .select('*') // Yahan bhi sab le aao
           .eq('id', client.plan_id)
           .single();
 
@@ -68,18 +70,33 @@ export default function SubscriptionManagement() {
             throw planError || new Error("Plan configuration missing");
         }
 
-        // ✅ FIX 1: Robust Date Parsing (Handles 'T' or space)
-        const planEndDateValue = client.plan_end_date;
+        // ✅ FIX: DATE LOGIC
+        // Database se date uthao
+        const rawDate = client.plan_end_date;
+        
         let endDate: Date;
+        let isValidDate = false;
 
-        if (planEndDateValue) {
-            endDate = new Date(planEndDateValue); // Direct Date object
-        } else {
-            // Fallback agar date missing ho
-            endDate = new Date(); 
+        // Agar date hai, tabhi parse karo, warna Aaj ki date MAT daalo
+        if (rawDate) {
+            endDate = new Date(rawDate); // Direct Date object
+            // Check karo ki date valid hai ya nahi (Invalid Date check)
+            if (!isNaN(endDate.getTime())) {
+                isValidDate = true;
+            }
         }
 
-        // ✅ FIX 2: Compare Dates properly (Normalize to Midnight)
+        // Agar date missing hai, toh hum 'plan_duration' add karke calculate karenge (Backup Logic)
+        if (!isValidDate) {
+            console.warn("⚠️ Date missing or invalid, calculating from Start Date...");
+            // Agar end date nahi hai, toh Start Date + 30 days (ya plan duration) kar do
+            const startDate = client.plan_start_date ? new Date(client.plan_start_date) : new Date();
+            const duration = plan.duration_days || 30; // Default 30 days
+            startDate.setDate(startDate.getDate() + duration);
+            endDate = startDate;
+        }
+
+        // --- Calculation Logic (Same as before but safer) ---
         const today = new Date();
         
         // Time hata kar sirf Date compare karein
@@ -92,18 +109,16 @@ export default function SubscriptionManagement() {
         // Convert to days (Math.ceil use karein taki 0.5 day bhi 1 day dikhe)
         const calculatedDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
-        setDaysRemaining(calculatedDays);
-
-        // ✅ FIX 3: Display Date Formatting
+        // Display Date
         const endDateString = endDate.toLocaleDateString('en-IN', {
             day: '2-digit',
             month: 'short',
             year: 'numeric',
-          });
+        });
 
-        // ✅ FIX 4: Status Logic
+        // Status Logic
         let status = 'ACTIVE';
-        if (calculatedDays <= 0) status = 'EXPIRED';
+        if (calculatedDays < 0) status = 'EXPIRED';
         if (calculatedDays === 0) status = 'EXPIRES TODAY';
         // Agar database me status active hai to usse priority de sakte hain, 
         // par date calculation zyada accurate hoti hai display ke liye.
@@ -119,6 +134,8 @@ export default function SubscriptionManagement() {
         };
 
         if (isMounted) {
+          setDaysRemaining(calculatedDays); // Set state explicitly
+        
           const subData: SubscriptionData = {
             planType: plan.code || 'PLAN',
             status: status,
@@ -140,9 +157,9 @@ export default function SubscriptionManagement() {
         }
       }
     }
-    
+  
     fetchSubscriptionData()
-    
+  
     return () => {
       isMounted = false;
     };
