@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
-import { useSearchParams } from 'next/navigation'; // 👈 NEW IMPORT
 import {
   Crown,
   CheckCircle,
@@ -10,8 +9,10 @@ import {
   Loader2,
   Clock,
   AlertTriangle,
-  ShieldAlert,
-  Eye
+  Users,
+  Building2,
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -27,13 +28,6 @@ export default function SubscriptionPage() {
   const [memberCount, setMemberCount] = useState(0);
   const [clientId, setClientId] = useState<string | null>(null);
   
-  // URL se ID padhne ke liye
-  const searchParams = useSearchParams();
-  const adminOverrideId = searchParams.get('id'); // 👈 URL se '?id=...' nikalega
-
-  // Debugging
-  const [debugInfo, setDebugInfo] = useState<any>({});
-  
   const [pendingOrder, setPendingOrder] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -44,51 +38,38 @@ export default function SubscriptionPage() {
       try {
         setLoading(true);
 
-        // 1. Get Logged In User (Admin or Client)
-        const { data: { user } } = await supabase.auth.getUser();
+        // ✅ STEP 1: LOCAL STORAGE SE ID NIKALO (Jaise MembersPage me kiya)
+        const userStr = localStorage.getItem('current_user');
         
-        if (!user || !user.email) {
-            setDebugInfo({ error: "User not logged in" });
+        if (!userStr) {
+            console.error("No user found in LocalStorage");
             setLoading(false);
             return;
         }
 
-        setDebugInfo(prev => ({ ...prev, userEmail: user.email }));
+        const user = JSON.parse(userStr);
+        // Universal ID Resolver: Kabhi id direct hoti hai, kabhi client_id me
+        const resolvedClientId = user.client_id ?? user.id;
 
-        // 2. QUERY LOGIC CHANGE (Admin Support)
-        let query = supabase.from('clients').select('*');
-
-        // 👉 AGAR URL MEIN ID HAI (ADMIN VIEW)
-        if (adminOverrideId) {
-            console.log("Admin View Mode: Fetching by ID", adminOverrideId);
-            query = query.eq('id', adminOverrideId);
-        } 
-        // 👉 NORMAL CLIENT VIEW
-        else {
-            console.log("Client View Mode: Fetching by Email", user.email);
-            query = query.eq('email', user.email);
+        if (!resolvedClientId) {
+            toast.error("Client ID missing in session");
+            setLoading(false);
+            return;
         }
 
-        const { data: client, error: clientError } = await query.maybeSingle();
+        setClientId(resolvedClientId);
 
-        if (clientError) {
-             setDebugInfo(prev => ({ ...prev, dbError: clientError.message }));
-        }
+        // ✅ STEP 2: CLIENT DATA FETCH BY ID (Not Email)
+        const { data: client, error: clientError } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', resolvedClientId)
+            .single();
 
-        if (!client) {
-             setDebugInfo(prev => ({ 
-                 ...prev, 
-                 clientStatus: "Not Found",
-                 mode: adminOverrideId ? "Admin ID Search" : "Email Search",
-                 searchedFor: adminOverrideId || user.email
-             }));
-        }
+        if (clientError) throw clientError;
 
         if (client) {
-          setClientId(client.id);
-          setDebugInfo(prev => ({ ...prev, clientFound: true, clientId: client.id }));
-
-          // 3. PENDING ORDER CHECK
+          // --- PENDING ORDER CHECK ---
           const { data: pendingData } = await supabase
             .from('subscription_orders')
             .select('*')
@@ -101,11 +82,12 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // 4. PLAN & LIMIT LOGIC
+          // --- PLAN DETAILS FETCH ---
           let limit = 100; 
           let planDisplayName = client.plan_name || client.plan || 'Unknown Plan';
-          
-          // Step A: Plans table se data
+          let durationDays = 30;
+
+          // A. Try fetching from Plans table linked by ID
           if (client.plan_id) {
              const { data: planData } = await supabase
                 .from('plans')
@@ -116,10 +98,11 @@ export default function SubscriptionPage() {
              if (planData) {
                 limit = planData.limit_members;
                 planDisplayName = planData.name;
+                durationDays = planData.duration_days || 30;
              }
           }
           
-          // Step B: Fallback Limit
+          // B. Fallback: Agar Plans table link nahi hai to text match karo
           if (limit === 100 && client.plan) {
              const p = client.plan.toUpperCase();
              if (p.includes('PRO') || p.includes('PROFESSIONAL')) limit = 2000;
@@ -128,18 +111,24 @@ export default function SubscriptionPage() {
              else if (p.includes('TRIAL')) limit = 100;
           }
 
-          // 5. DATE LOGIC
+          // --- DATE CALCULATION LOGIC ---
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
           let endDate = new Date();
+          
+          // Priority 1: DB Plan End Date
           if (client.plan_end_date) {
             endDate = new Date(client.plan_end_date);
-          } else if (client.subscription_expiry) {
+          } 
+          // Priority 2: Subscription Expiry Column
+          else if (client.subscription_expiry) {
             endDate = new Date(client.subscription_expiry);
-          } else {
+          } 
+          // Priority 3: Calculated from Created At
+          else {
              endDate = new Date(client.created_at || new Date());
-             endDate.setDate(endDate.getDate() + 30);
+             endDate.setDate(endDate.getDate() + durationDays);
           }
           endDate.setHours(0, 0, 0, 0);
 
@@ -147,7 +136,7 @@ export default function SubscriptionPage() {
           const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
           const status = daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED';
 
-          // 6. MEMBER COUNT
+          // --- MEMBER COUNT FETCH ---
           const { count } = await supabase
             .from('members')
             .select('*', { count: 'exact', head: true })
@@ -169,7 +158,7 @@ export default function SubscriptionPage() {
           setMemberCount(currentMemberCount);
         }
 
-        // FETCH ALL PLANS
+        // --- FETCH ALL PLANS (For Display) ---
         const { data: dbPlans } = await supabase
           .from('plans')
           .select('*')
@@ -191,15 +180,17 @@ export default function SubscriptionPage() {
         }
 
       } catch (err: any) {
-        console.error("Critical Error:", err);
-        setDebugInfo(prev => ({ ...prev, criticalError: err.message }));
+        console.error("Error:", err);
+        // Agar ID valid hai par table access nahi, to shyd RLS issue ho sakta hai
+        // Par members page chal raha hai to ye bhi chalna chahiye
+        toast.error("Failed to load subscription.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [adminOverrideId]); // 👈 Re-run if ID changes in URL
+  }, []); // Run once on mount
 
   const getPlanStyle = (name: string, dbColor: string) => {
     if (name === 'Professional' || name === 'Pro') {
@@ -215,11 +206,6 @@ export default function SubscriptionPage() {
   };
 
   const handleBuyNow = (plan: any) => {
-    // Admin should not be able to buy plans for client easily, or warn them
-    if (adminOverrideId) {
-        toast.warning("Admin Mode: Cannot purchase plans directly.");
-        return;
-    }
     setSelectedPlan(plan);
     setIsPaymentOpen(true);
   };
@@ -248,66 +234,32 @@ export default function SubscriptionPage() {
     return (
       <div className="flex justify-center py-20 flex-col items-center gap-4">
         <Loader2 className="animate-spin h-10 w-10 text-blue-500" />
-        <p className="text-gray-500 text-sm">Loading details...</p>
+        <p className="text-gray-500 text-sm">Loading subscription details...</p>
       </div>
     );
 
-  // ERROR STATE FOR ADMIN (Missing ID)
+  // Fallback agar data na mile
   if (!subscription) {
-     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-            <Card className="max-w-md w-full border-red-200 bg-white shadow-lg">
-                <CardHeader className="bg-red-50 border-b border-red-100">
-                    <CardTitle className="text-red-700 flex items-center gap-2">
-                        <ShieldAlert className="h-6 w-6"/>
-                        Admin Access Error
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-4">
-                    <p className="text-gray-600 text-sm">
-                        You are logged in as Admin (<strong>{debugInfo.userEmail}</strong>), but no Client ID was provided.
-                    </p>
-                    <p className="text-gray-500 text-sm">
-                        To view a client's subscription, the URL must include their ID:
-                    </p>
-                    <div className="bg-slate-100 p-2 text-xs font-mono border rounded">
-                        .../subscription?id=CLIENT_ID_HERE
-                    </div>
-                    
-                    <div className="text-xs text-orange-600 pt-2">
-                        <strong>Debug:</strong> {debugInfo.dbError ? debugInfo.dbError : "No client linked to your admin email."}
-                    </div>
-
-                    <Button onClick={() => window.history.back()} className="w-full" variant="outline">
-                        Go Back
-                    </Button>
-                </CardContent>
-            </Card>
+      return (
+        <div className="p-10 text-center">
+            <AlertTriangle className="h-10 w-10 text-orange-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold">Subscription Data Not Found</h3>
+            <p className="text-sm text-gray-500 mt-2">Could not verify client identity from session.</p>
         </div>
-     )
+      )
   }
 
   return (
     <div className="bg-slate-50 dark:bg-slate-900 space-y-10 p-6 min-h-screen">
-      <div className="flex justify-between items-start">
-        <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscription Plans</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Upgrade your society with secure, scalable plans
-            </p>
-        </div>
-        
-        {/* Admin Badge */}
-        {adminOverrideId && (
-            <Badge variant="destructive" className="flex gap-2 px-3 py-1">
-                <Eye className="h-4 w-4" /> Admin Viewing Mode
-            </Badge>
-        )}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscription Plans</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          Upgrade your society with secure, scalable plans
+        </p>
       </div>
 
       {pendingOrder ? (
         <div className="flex justify-center animate-in fade-in zoom-in duration-300">
-             {/* Pending Order Card (Same as before) */}
              <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
                 <div className="bg-orange-100 dark:bg-orange-950/30 p-6 flex justify-center border-b border-orange-200 dark:border-orange-900/50">
                     <div className="h-24 w-24 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm animate-pulse border border-orange-200 dark:border-orange-700">
@@ -320,8 +272,27 @@ export default function SubscriptionPage() {
                             Verification Pending
                         </h2>
                         <p className="text-orange-700/80 dark:text-orange-200/70">
-                            Payment request received. Amount: ₹{pendingOrder.amount}
+                            We have received your payment request. Amount: ₹{pendingOrder.amount}
                         </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 text-left shadow-sm">
+                        <Row label="Requested Plan" value={pendingOrder.plan_name} />
+                        <Row label="Amount Paid" value={`₹${pendingOrder.amount.toLocaleString()}`} />
+                        <Row label="Date" value={new Date(pendingOrder.created_at).toLocaleDateString()} />
+                        <div className="flex justify-between items-center pt-2">
+                            <span className="text-gray-500 dark:text-gray-400 text-sm">Status</span>
+                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600 px-3 py-1">Pending Approval</Badge>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 justify-center pt-2">
+                        <Button variant="outline" onClick={() => window.location.reload()} className="border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-950/30">
+                            <RefreshCw className="h-4 w-4 mr-2" /> Check Status
+                        </Button>
+                        <Button variant="ghost" onClick={handleCancelRequest} className="text-red-500 hover:text-red-400 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
+                            Cancel Request
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
