@@ -44,7 +44,7 @@ export default function SubscriptionManagement() {
         
         if (!user) throw new Error("User not authenticated");
 
-        // 🔧 STEP-1: Client fetch FIX (plan_id use kar rahe hain)
+        // Step 2: Client fetch (Plan ID + Date + Status)
         const { data: client, error: clientError } = await supabase
           .from('clients')
           .select('plan_id, plan_end_date, subscription_status')
@@ -58,11 +58,12 @@ export default function SubscriptionManagement() {
 
         console.log("✅ DEBUG: Fetched Client Data:", client);
 
-        // 🔧 STEP-2: Plan fetch FIX (MOST IMPORTANT - ID based)
+        // ✅ DIFF–1: PLAN FETCH FIX (MOST IMPORTANT)
+        // Ab hum plan_id ka use karke plan fetch karenge (Future Safe)
         const { data: plan, error: planError } = await supabase
           .from('plans')
           .select('id, name, code, limit_members, features, duration_days')
-          .eq('id', client.plan_id)
+          .eq('id', client.plan_id) // ✅ FIX: id = client.plan_id
           .single();
 
         if (planError || !plan) {
@@ -70,31 +71,39 @@ export default function SubscriptionManagement() {
             throw planError || new Error("Plan configuration missing");
         }
 
-        // 🔧 STEP-4: Status calculation (ensure null check)
-        if (!client.plan_end_date) {
-          throw new Error("Subscription end date missing");
-        }
-
         // --- LOGIC FOR STATUS & DATES ---
-        const targetEndDate = new Date(client.plan_end_date);
-        const now = new Date();
-        const timeDiff = targetEndDate.getTime() - now.getTime();
-        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        const calculatedDays = Math.max(0, daysDiff);
         
+        // ✅ DIFF–2: DATE + DAYS CALCULATION FIX (TIMEZONE SAFE)
+        const targetEndDate = new Date(client.plan_end_date);
+        const today = new Date();
+
+        // 🔐 Normalize to avoid UTC vs IST bug
+        targetEndDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+
+        const diffMs = targetEndDate.getTime() - today.getTime();
+        const calculatedDays = Math.max(
+          0,
+          Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+        );
+
         setDaysRemaining(calculatedDays);
 
-        // Format Date
-        const endDateString = targetEndDate.toLocaleDateString('en-IN', { 
-          day: '2-digit', 
-          month: 'short', 
-          year: 'numeric' 
-        });
+        // ✅ DIFF–4: DATE DISPLAY (OPTIONAL BUT CLEAN)
+        const endDateString = new Date(client.plan_end_date)
+          .toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          });
 
-        // Status Logic
-        const status = calculatedDays > 0 ? 'ACTIVE' : 'EXPIRED';
+        // ✅ DIFF–3: STATUS LOGIC FIX (USER FRIENDLY)
+        const status =
+          calculatedDays === 0
+            ? 'EXPIRES TODAY'
+            : 'ACTIVE';
 
-        // 🔧 STEP-5: Features parsing FIX (Safe Parse)
+        // Features Safe Parse
         const features =
           Array.isArray(plan.features)
             ? plan.features
@@ -103,15 +112,14 @@ export default function SubscriptionManagement() {
         // Limits Mapping
         const limits = {
           users: plan.limit_members || 'Unlimited',
-          storage: 'N/A', // Assuming storage is not in select, keeping N/A
+          storage: 'N/A',
           societies: 1
         };
 
         // Data Object Construction
         if (isMounted) {
-          // 🔧 STEP-3: SubscriptionData mapping FIX (plan.code use kiya)
           const subData: SubscriptionData = {
-            planType: plan.code, 
+            planType: plan.code, // Code (PRO/TRIAL) use kar rahe hain
             status: status,
             trialEnds: endDateString,
             currentPeriodEnd: endDateString,
@@ -155,6 +163,7 @@ export default function SubscriptionManagement() {
         return 'bg-green-100 text-green-800'
       case 'EXPIRED':
       case 'INACTIVE':
+      case 'EXPIRES TODAY':
         return 'bg-red-100 text-red-800'
       default:
         return 'bg-gray-100 text-gray-800'
