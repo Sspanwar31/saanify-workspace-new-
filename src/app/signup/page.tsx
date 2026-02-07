@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, ArrowLeft, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { SUBSCRIPTION_PLANS } from '@/config/plans'; // Fixed typo in import
+import { SUBSCRIPTION_PLANS } from '@/config/plans';
 import { useAdminStore } from '@/lib/admin/store';
 import { supabase } from '@/lib/supabase-simple'; 
 
@@ -28,15 +28,22 @@ function SignupForm() {
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
 
-  // ✅ FIX: Mount hone par correct plan set karein (Client side only)
   // ✅ NEW (FIXED)
   useEffect(() => {
     const urlPlan = searchParams.get('plan');
+    const orderId = searchParams.get('orderId');
 
-    if (urlPlan) {
-        setSelectedPlanCode(urlPlan);
-    } else {
-        setSelectedPlanCode('TRIAL');
+    // 🟢 Paid signup → plan MUST exist
+    if (orderId) {
+      if (!urlPlan) {
+        toast.error('Invalid payment redirect. Please try again.');
+        return;
+      }
+      setSelectedPlanCode(urlPlan);
+    } 
+    // 🟢 Free signup
+    else {
+      setSelectedPlanCode(urlPlan || 'TRIAL');
     }
 
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
@@ -62,6 +69,13 @@ function SignupForm() {
 
     if (!supabase) {
       toast.error("Supabase is not configured. Connection failed.");
+      setLoading(false);
+      return;
+    }
+
+    // 🛑 EXTRA SAFETY (handleSubmit me)
+    if (selectedPlanCode !== 'TRIAL' && !orderId) {
+      toast.error("Payment required for selected plan.");
       setLoading(false);
       return;
     }
