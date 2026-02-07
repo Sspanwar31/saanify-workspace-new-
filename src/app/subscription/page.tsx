@@ -34,29 +34,37 @@ export default function SubscriptionManagement() {
   // --- FETCH DATA FROM SUPABASE ---
   useEffect(() => {
     let isMounted = true;
-  
+    
     const fetchSubscriptionData = async () => {
       try {
         setLoading(true);
-      
+        
+        // 1. User nikalo
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not authenticated");
+        if (!user || !user.email) throw new Error("User not authenticated or email missing");
 
-        // 👉 CHANGE 1: Select '*' (Sab kuch mangwao debug ke liye)
+        console.log("👤 Logged in User Email:", user.email);
+
+        // 👉 CHANGE 1: Search by EMAIL instead of ID
+        // (ID mismatch ki wajah se data nahi mil raha tha)
         const { data: client, error: clientError } = await supabase
           .from('clients')
-          .select('*') 
-          .eq('id', user.id)
+          .select('*')
+          .eq('email', user.email) // <--- Yahan change kiya hai
           .single();
 
-        if (clientError || !client) {
-            console.error("Client fetch error:", clientError);
-            throw clientError || new Error("Client not found");
+        if (clientError) {
+           console.error("❌ DB Error fetching client:", clientError);
         }
 
-        // 👉 DEBUG: Isko Browser Console (F12) me check karna zaroori hai
-        console.log("🔥 FULL CLIENT DATA:", client);
-        console.log("🔥 Plan End Date Value:", client.plan_end_date);
+        if (!client) {
+             console.warn("⚠️ Client data is NULL. Check RLS policies or Email mismatch.");
+             // Agar client nahi mila, toh function yahi rok do taaki galat date na dikhe
+             throw new Error("Client profile not found for this email.");
+        }
+
+        console.log("✅ Client Found:", client);
+        console.log("🗓 Plan End Date from DB:", client.plan_end_date);
 
         // Step 3: Plan fetch
         const { data: plan, error: planError } = await supabase
@@ -70,46 +78,28 @@ export default function SubscriptionManagement() {
             throw planError || new Error("Plan configuration missing");
         }
 
-        // ✅ FIX: DATE LOGIC
-        // Database se date uthao
-        const rawDate = client.plan_end_date;
+        // ✅ FIX: DATE CALCULATION
+        let endDate = new Date();
         
-        let endDate: Date;
-        let isValidDate = false;
-
-        // Agar date hai, tabhi parse karo, warna Aaj ki date MAT daalo
-        if (rawDate) {
-            endDate = new Date(rawDate); // Direct Date object
-            // Check karo ki date valid hai ya nahi (Invalid Date check)
-            if (!isNaN(endDate.getTime())) {
-                isValidDate = true;
-            }
+        // Agar DB me date hai to use karo, nahi to aaj ki date mat maano (Error dikhao)
+        if (client.plan_end_date) {
+            endDate = new Date(client.plan_end_date);
+        } else {
+             // Agar date null hai, toh 30 din add kar do (Temporary fix)
+             console.warn("Date is missing in DB, adding 30 days default");
+             endDate.setDate(endDate.getDate() + 30);
         }
 
-        // Agar date missing hai, toh hum 'plan_duration' add karke calculate karenge (Backup Logic)
-        if (!isValidDate) {
-            console.warn("⚠️ Date missing or invalid, calculating from Start Date...");
-            // Agar end date nahi hai, toh Start Date + 30 days (ya plan duration) kar do
-            const startDate = client.plan_start_date ? new Date(client.plan_start_date) : new Date();
-            const duration = plan.duration_days || 30; // Default 30 days
-            startDate.setDate(startDate.getDate() + duration);
-            endDate = startDate;
-        }
-
-        // --- Calculation Logic (Same as before but safer) ---
+        // Time reset karke sirf Din compare karo
         const today = new Date();
         
-        // Time hata kar sirf Date compare karein
         const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
         const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-        // Calculate difference in milliseconds
-        const diffMs = endDateOnly.getTime() - todayOnly.getTime();
-        
-        // Convert to days (Math.ceil use karein taki 0.5 day bhi 1 day dikhe)
-        const calculatedDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        const diffTime = endDateOnly.getTime() - todayOnly.getTime();
+        const calculatedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
-        // Display Date
+        // Display Date Format
         const endDateString = endDate.toLocaleDateString('en-IN', {
             day: '2-digit',
             month: 'short',
@@ -118,10 +108,8 @@ export default function SubscriptionManagement() {
 
         // Status Logic
         let status = 'ACTIVE';
-        if (calculatedDays < 0) status = 'EXPIRED';
+        if (calculatedDays <= 0) status = 'EXPIRED';
         if (calculatedDays === 0) status = 'EXPIRES TODAY';
-        // Agar database me status active hai to usse priority de sakte hain, 
-        // par date calculation zyada accurate hoti hai display ke liye.
 
         // Features Safe Parse
         const features = Array.isArray(plan.features) ? plan.features : JSON.parse(plan.features ?? '[]');
@@ -134,8 +122,8 @@ export default function SubscriptionManagement() {
         };
 
         if (isMounted) {
-          setDaysRemaining(calculatedDays); // Set state explicitly
-        
+          setDaysRemaining(calculatedDays);
+          
           const subData: SubscriptionData = {
             planType: plan.code || 'PLAN',
             status: status,
@@ -149,8 +137,8 @@ export default function SubscriptionManagement() {
         }
 
       } catch (error) {
-        console.error('Failed to fetch subscription data:', error);
-        toast.error("Could not load subscription details");
+        console.error('CRITICAL ERROR:', error);
+        toast.error("Subscription details not found");
       } finally {
         if (isMounted) {
           setLoading(false)
@@ -159,7 +147,7 @@ export default function SubscriptionManagement() {
     }
   
     fetchSubscriptionData()
-  
+    
     return () => {
       isMounted = false;
     };
