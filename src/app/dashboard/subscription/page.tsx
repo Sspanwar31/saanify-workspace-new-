@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple';
+import { useSearchParams } from 'next/navigation'; // 👈 NEW IMPORT
 import {
   Crown,
   CheckCircle,
@@ -9,9 +10,8 @@ import {
   Loader2,
   Clock,
   AlertTriangle,
-  Mail,
-  User,
-  ShieldAlert
+  ShieldAlert,
+  Eye
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,11 @@ export default function SubscriptionPage() {
   const [memberCount, setMemberCount] = useState(0);
   const [clientId, setClientId] = useState<string | null>(null);
   
-  // Error Debugging State
+  // URL se ID padhne ke liye
+  const searchParams = useSearchParams();
+  const adminOverrideId = searchParams.get('id'); // 👈 URL se '?id=...' nikalega
+
+  // Debugging
   const [debugInfo, setDebugInfo] = useState<any>({});
   
   const [pendingOrder, setPendingOrder] = useState<any>(null);
@@ -40,38 +44,49 @@ export default function SubscriptionPage() {
       try {
         setLoading(true);
 
-        // 1. Get Logged In User
+        // 1. Get Logged In User (Admin or Client)
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user || !user.email) {
-            setDebugInfo({ error: "User not logged in or email missing" });
+            setDebugInfo({ error: "User not logged in" });
             setLoading(false);
             return;
         }
 
-        // DEBUG: Save email to show if error happens
         setDebugInfo(prev => ({ ...prev, userEmail: user.email }));
 
-        // 2. Fetch Client Data
-        const { data: client, error: clientError } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('email', user.email)
-            .maybeSingle();
+        // 2. QUERY LOGIC CHANGE (Admin Support)
+        let query = supabase.from('clients').select('*');
+
+        // 👉 AGAR URL MEIN ID HAI (ADMIN VIEW)
+        if (adminOverrideId) {
+            console.log("Admin View Mode: Fetching by ID", adminOverrideId);
+            query = query.eq('id', adminOverrideId);
+        } 
+        // 👉 NORMAL CLIENT VIEW
+        else {
+            console.log("Client View Mode: Fetching by Email", user.email);
+            query = query.eq('email', user.email);
+        }
+
+        const { data: client, error: clientError } = await query.maybeSingle();
 
         if (clientError) {
              setDebugInfo(prev => ({ ...prev, dbError: clientError.message }));
-             console.error("DB Error:", clientError);
         }
 
         if (!client) {
-             setDebugInfo(prev => ({ ...prev, clientStatus: "Not Found in DB" }));
-             // Don't return yet, let the UI show the specific error below
+             setDebugInfo(prev => ({ 
+                 ...prev, 
+                 clientStatus: "Not Found",
+                 mode: adminOverrideId ? "Admin ID Search" : "Email Search",
+                 searchedFor: adminOverrideId || user.email
+             }));
         }
 
         if (client) {
           setClientId(client.id);
-          setDebugInfo(prev => ({ ...prev, clientFound: true, clientId: client.id, rawPlan: client.plan }));
+          setDebugInfo(prev => ({ ...prev, clientFound: true, clientId: client.id }));
 
           // 3. PENDING ORDER CHECK
           const { data: pendingData } = await supabase
@@ -86,11 +101,11 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // 4. PLAN & LIMIT LOGIC (Robust Fallback System)
-          let limit = 100; // Default Safe Limit
+          // 4. PLAN & LIMIT LOGIC
+          let limit = 100; 
           let planDisplayName = client.plan_name || client.plan || 'Unknown Plan';
           
-          // Step A: Try fetching from Plans table
+          // Step A: Plans table se data
           if (client.plan_id) {
              const { data: planData } = await supabase
                 .from('plans')
@@ -104,8 +119,7 @@ export default function SubscriptionPage() {
              }
           }
           
-          // Step B: If Plan Table Fetch Failed, Use Hardcoded Logic based on Client 'plan' column
-          // This fixes "0 / undefined" error
+          // Step B: Fallback Limit
           if (limit === 100 && client.plan) {
              const p = client.plan.toUpperCase();
              if (p.includes('PRO') || p.includes('PROFESSIONAL')) limit = 2000;
@@ -124,7 +138,6 @@ export default function SubscriptionPage() {
           } else if (client.subscription_expiry) {
             endDate = new Date(client.subscription_expiry);
           } else {
-             // Fallback: Created At + 30 days
              endDate = new Date(client.created_at || new Date());
              endDate.setDate(endDate.getDate() + 30);
           }
@@ -142,7 +155,6 @@ export default function SubscriptionPage() {
           
           const currentMemberCount = count || 0;
 
-          // SET FINAL DATA
           setSubscription({
             planName: planDisplayName,
             status: status,
@@ -157,7 +169,7 @@ export default function SubscriptionPage() {
           setMemberCount(currentMemberCount);
         }
 
-        // FETCH ALL PLANS (UI ONLY)
+        // FETCH ALL PLANS
         const { data: dbPlans } = await supabase
           .from('plans')
           .select('*')
@@ -187,7 +199,7 @@ export default function SubscriptionPage() {
     };
 
     fetchData();
-  }, []);
+  }, [adminOverrideId]); // 👈 Re-run if ID changes in URL
 
   const getPlanStyle = (name: string, dbColor: string) => {
     if (name === 'Professional' || name === 'Pro') {
@@ -203,6 +215,11 @@ export default function SubscriptionPage() {
   };
 
   const handleBuyNow = (plan: any) => {
+    // Admin should not be able to buy plans for client easily, or warn them
+    if (adminOverrideId) {
+        toast.warning("Admin Mode: Cannot purchase plans directly.");
+        return;
+    }
     setSelectedPlan(plan);
     setIsPaymentOpen(true);
   };
@@ -221,7 +238,6 @@ export default function SubscriptionPage() {
         setPendingOrder(null); 
         window.location.reload(); 
       } catch (err: any) {
-        console.error("Cancel Error:", err);
         toast.error("Failed to cancel request: " + err.message);
         setLoading(false);
       }
@@ -232,11 +248,11 @@ export default function SubscriptionPage() {
     return (
       <div className="flex justify-center py-20 flex-col items-center gap-4">
         <Loader2 className="animate-spin h-10 w-10 text-blue-500" />
-        <p className="text-gray-500 text-sm">Loading your subscription details...</p>
+        <p className="text-gray-500 text-sm">Loading details...</p>
       </div>
     );
 
-  // ERROR STATE: Show useful info instead of generic error
+  // ERROR STATE FOR ADMIN (Missing ID)
   if (!subscription) {
      return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
@@ -244,34 +260,26 @@ export default function SubscriptionPage() {
                 <CardHeader className="bg-red-50 border-b border-red-100">
                     <CardTitle className="text-red-700 flex items-center gap-2">
                         <ShieldAlert className="h-6 w-6"/>
-                        Subscription Not Found
+                        Admin Access Error
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
                     <p className="text-gray-600 text-sm">
-                        We could not find a client profile linked to your account. This usually happens if:
+                        You are logged in as Admin (<strong>{debugInfo.userEmail}</strong>), but no Client ID was provided.
                     </p>
-                    <ul className="list-disc list-inside text-sm text-gray-500 space-y-1 ml-2">
-                        <li>You are logged in with a different email.</li>
-                        <li>The database entry is missing or deleted.</li>
-                        <li>Database Policy (RLS) is blocking access.</li>
-                    </ul>
-
-                    <div className="bg-slate-100 p-3 rounded-md text-xs font-mono space-y-2 border border-slate-200">
-                        <div className="flex justify-between">
-                            <span className="text-slate-500">Logged In Email:</span>
-                            <span className="font-bold text-slate-800">{debugInfo.userEmail || 'Checking...'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-slate-500">DB Status:</span>
-                            <span className={`font-bold ${debugInfo.dbError ? 'text-red-600' : 'text-orange-600'}`}>
-                                {debugInfo.dbError ? 'Access Denied (RLS)' : 'No Row Found'}
-                            </span>
-                        </div>
+                    <p className="text-gray-500 text-sm">
+                        To view a client's subscription, the URL must include their ID:
+                    </p>
+                    <div className="bg-slate-100 p-2 text-xs font-mono border rounded">
+                        .../subscription?id=CLIENT_ID_HERE
+                    </div>
+                    
+                    <div className="text-xs text-orange-600 pt-2">
+                        <strong>Debug:</strong> {debugInfo.dbError ? debugInfo.dbError : "No client linked to your admin email."}
                     </div>
 
-                    <Button onClick={() => window.location.reload()} className="w-full" variant="outline">
-                        <RefreshCw className="h-4 w-4 mr-2"/> Retry
+                    <Button onClick={() => window.history.back()} className="w-full" variant="outline">
+                        Go Back
                     </Button>
                 </CardContent>
             </Card>
@@ -281,15 +289,25 @@ export default function SubscriptionPage() {
 
   return (
     <div className="bg-slate-50 dark:bg-slate-900 space-y-10 p-6 min-h-screen">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscription Plans</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Upgrade your society with secure, scalable plans
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscription Plans</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Upgrade your society with secure, scalable plans
+            </p>
+        </div>
+        
+        {/* Admin Badge */}
+        {adminOverrideId && (
+            <Badge variant="destructive" className="flex gap-2 px-3 py-1">
+                <Eye className="h-4 w-4" /> Admin Viewing Mode
+            </Badge>
+        )}
       </div>
 
       {pendingOrder ? (
         <div className="flex justify-center animate-in fade-in zoom-in duration-300">
+             {/* Pending Order Card (Same as before) */}
              <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
                 <div className="bg-orange-100 dark:bg-orange-950/30 p-6 flex justify-center border-b border-orange-200 dark:border-orange-900/50">
                     <div className="h-24 w-24 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-sm animate-pulse border border-orange-200 dark:border-orange-700">
@@ -302,27 +320,8 @@ export default function SubscriptionPage() {
                             Verification Pending
                         </h2>
                         <p className="text-orange-700/80 dark:text-orange-200/70">
-                            We have received your payment request. Admin approval is required.
+                            Payment request received. Amount: ₹{pendingOrder.amount}
                         </p>
-                    </div>
-
-                    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 text-left shadow-sm">
-                        <Row label="Requested Plan" value={pendingOrder.plan_name} />
-                        <Row label="Amount Paid" value={`₹${pendingOrder.amount.toLocaleString()}`} />
-                        <Row label="Date" value={new Date(pendingOrder.created_at).toLocaleDateString()} />
-                        <div className="flex justify-between items-center pt-2">
-                            <span className="text-gray-500 dark:text-gray-400 text-sm">Status</span>
-                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600 px-3 py-1">Pending Approval</Badge>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4 justify-center pt-2">
-                        <Button variant="outline" onClick={() => window.location.reload()} className="border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-950/30">
-                            <RefreshCw className="h-4 w-4 mr-2" /> Check Status
-                        </Button>
-                        <Button variant="ghost" onClick={handleCancelRequest} className="text-red-500 hover:text-red-400 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
-                            Cancel Request
-                        </Button>
                     </div>
                 </CardContent>
             </Card>
