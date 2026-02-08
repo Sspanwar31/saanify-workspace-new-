@@ -275,12 +275,18 @@ function PaymentContent() {
             return;
         }
 
+        // ✅ FIXED BLOCK STARTS HERE
         if (order.status === 'approved') {
-            localStorage.removeItem('user_pending_payment');
-            toast.success("Payment Approved! Redirecting...");
-            // Redirect to Dashboard or Success page
-            router.push(`/dashboard?status=approved`); 
-        } else if (order.status === 'rejected') {
+          localStorage.removeItem('user_pending_payment');
+          toast.success("Payment Approved! Complete Signup to Activate.");
+
+          // IMPORTANT:
+          // Manual payment ke baad dashboard nahi
+          // Signup completion mandatory
+          router.push(`/signup/complete?orderId=${pendingPayment.invoiceId}`);
+        } 
+        // ✅ FIXED BLOCK ENDS HERE
+        else if (order.status === 'rejected') {
             localStorage.removeItem('user_pending_payment');
             setPendingPayment(null);
             toast.error("Payment Rejected by Admin. Please try again.");
