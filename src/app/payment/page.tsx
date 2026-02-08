@@ -283,7 +283,7 @@ function PaymentContent() {
           // IMPORTANT:
           // Manual payment ke baad dashboard nahi
           // Signup completion mandatory
-          router.push(`/signup/complete?orderId=${pendingPayment.invoiceId}`);
+          router.push(`/signup?mode=MANUAL&orderId=${pendingPayment.invoiceId}`);
         } 
         // ✅ FIXED BLOCK ENDS HERE
         else if (order.status === 'rejected') {
