@@ -25,26 +25,49 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // 1. Insert into subscription_orders
-    // Status 'pending' rakhenge taaki Admin baad me check karke approve kare
+    // ✅ STEP 1: Prevent duplicate pending / approved manual orders
+    const { data: existingOrder } = await supabase
+      .from('subscription_orders')
+      .select('id, status')
+      .eq('client_id', clientId)
+      .eq('payment_method', 'manual')
+      .in('status', ['pending', 'approved'])
+      .maybeSingle();
+
+    if (existingOrder) {
+      return NextResponse.json(
+        {
+          error:
+            existingOrder.status === 'approved'
+              ? 'Payment already approved'
+              : 'Payment already pending verification'
+        },
+        { status: 400 }
+      );
+    }
+
+    // ✅ STEP 2: Normalize screenshot URL
+    const screenshotPublicUrl =
+      typeof screenshotUrl === 'string'
+        ? screenshotUrl
+        : screenshotUrl?.publicUrl ?? null;
+
+    // ✅ STEP 3: Insert manual payment
     const { data, error } = await supabase
       .from('subscription_orders')
       .insert([{
         client_id: clientId,
         plan_name: planName,
-        amount: amount,
-        payment_method: 'MANUAL', // Pata chale ki ye manual hai
-        status: 'pending',        // Abhi verify nahi hua hai
-        transaction_id: transactionId, // User ka diya hua UTR/Ref No
-        screenshot_url: screenshotUrl || null
+        amount,
+        payment_method: 'manual', // ✅ lowercase (IMPORTANT)
+        status: 'pending',
+        transaction_id: transactionId,
+        screenshot_url: screenshotPublicUrl
       }])
       .select()
       .single();
 
-    if (error) {
-      console.error("Manual Entry Error:", error);
-      throw error;
-    }
+    if (error) throw error;
 
     return NextResponse.json({ 
         success: true, 
