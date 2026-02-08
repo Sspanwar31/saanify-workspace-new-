@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   try {
     const { orderId } = await req.json(); // subscription_orders table ki ID
 
-    // 1. Fetch Order Details
+    // 1️⃣ Fetch order details
     const { data: order, error: fetchError } = await supabase
         .from('subscription_orders')
         .select('*')
@@ -29,22 +29,34 @@ export async function POST(req: Request) {
 
     if (fetchError || !order) throw new Error("Order not found");
 
-    if (order.status === 'success') {
+    // 2️⃣ Already approved check (ENUM SAFE)
+    if (order.status === 'approved') {
         return NextResponse.json({ message: "Already approved" });
     }
 
-    // 2. Update Order Status to Success
+    // 3️⃣ Approve order status
     const { error: updateError } = await supabase
         .from('subscription_orders')
-        .update({ status: 'success' })
+        .update({ status: 'approved' })
         .eq('id', orderId);
 
     if (updateError) throw updateError;
 
-    // 3. Activate Client Plan (Main Logic)
+    // 4️⃣ Get plan duration dynamically from 'plans' table
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('duration_days')
+      .eq('name', order.plan_name)
+      .single();
+
+    if (planError || !plan) {
+      throw new Error('Plan not found');
+    }
+
+    // 5️⃣ Activate client plan with correct duration
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(startDate.getDate() + 30); // 30 Days Plan
+    endDate.setDate(startDate.getDate() + plan.duration_days);
 
     const { error: clientError } = await supabase
       .from('clients')
@@ -59,7 +71,10 @@ export async function POST(req: Request) {
 
     if (clientError) throw clientError;
 
-    return NextResponse.json({ success: true, message: "Plan Activated Successfully" });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Plan Activated Successfully' 
+    });
 
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
