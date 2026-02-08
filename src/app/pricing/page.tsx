@@ -1,180 +1,314 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { CheckCircle, AlertCircle, ArrowLeft, Loader2, ShieldCheck, Crown, Building2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
-import { supabase } from '@/lib/supabaseClient'; // ✅ Fixed Import
+import { supabase } from '@/lib/supabase-simple'; // ✅ CORRECT IMPORT (Local file hai yeh)
 
 export default function PricingPage() {
   const router = useRouter();
   
-  // 2️⃣ STATE ADD KARO
+  // 🔴 STATE & LOADERS
+  const [loading, setLoading] = useState(true);
   const [trialUsed, setTrialUsed] = useState(false);
   const [plans, setPlans] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  // 4️⃣ useEffect UPDATE (Plans Fetching)
+  // 🔴 DATA FETCH
   useEffect(() => {
-    const fetchPlans = async () => {
-      const { data, error } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('active', true)
-        .order('price', { ascending: true });
+    let isMounted = true;
+    
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // 1. Check Auth
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
 
-      if (!error && data) {
-        setPlans(data);
-      }
-      setLoading(false);
-    };
+        // 2. Check Trial Status
+        // Note: DB check instead of localStorage for accuracy
+        const { data: client, error: clientError } = await supabase
+          .from('clients')
+          .select('has_used_trial')
+          .eq('id', user.id)
+          .single();
 
-    fetchPlans();
-  }, []);
+        if (client && client.has_used_trial) {
+            setTrialUsed(true);
+        }
 
-  // 4️⃣ HANDLE PLAN SELECT (IMPORTANT FIX)
-  const handlePlanSelect = (planCode: string) => {
-    if (planCode === 'TRIAL' && trialUsed) {
-      toast.error("You have already used your Free Trial. Please choose a paid plan.");
-      return;
+        // 3. Fetch Plans
+        const { data: dbPlans, error: plansError } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('active', true)
+          .gt('price', 0)
+          .order('price', { ascending: true });
+
+        if (plansError) throw new Error("Failed to load plans.");
+
+        if (isMounted && dbPlans) {
+          const mappedPlans = dbPlans.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            durationDays: 30, // Frontend pe static for now
+            features: Array.isArray(p.features) ? p.features : [],
+            color: p.color, // Assuming 'color' column exists
+            isPopular: p.name === 'Professional'
+          }));
+          setPlans(mappedPlans);
+        }
+
+      } catch (err) {
+        console.error("Error loading page:", err);
+        toast.error("Could not load plans.");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
     }
     
-    // Redirect to signup page with plan code
-    router.push(`/signup?plan=${planCode}`);
+    fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleBuyNow = (plan: any) => {
+    // Payment logic here...
+    console.log("Selected Plan:", plan);
   };
 
-  // 4️⃣ OPTIONAL: Loading Guard
+  const handleBuyNow = (planId: string) => {
+    console.log("Plan selected:", planId);
+    // Payment logic here...
+  };
+
+  // --- RENDER ---
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading plans...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-500" />
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-50 py-20 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <Link href="/" className="inline-flex items-center text-slate-600 hover:text-slate-900 mb-8">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold text-slate-900">Choose Your Plan</h1>
-          <p className="text-slate-600 mt-2">
-            Select the best plan for your society
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Choose Your Plan</h1>
+          <p className="text-slate-600">
+            {trialUsed 
+              ? "You have already used your free trial. Please choose a paid plan to continue." 
+              : "Select a plan that fits your society's needs."}
           </p>
-          
-          {/* Trial Used Warning */}
-          {trialUsed && (
-            <div className="mb-8 bg-orange-100 border border-orange-200 p-4 rounded-lg flex items-center justify-center gap-3">
-              <AlertCircle className="w-6 h-6 text-orange-600" />
-              <p className="text-orange-800">
-                You've already used your free trial. Select a paid plan to continue.
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-16">
-          {plans.map((plan) => {
-            const isDisabled = plan.code === 'TRIAL' && trialUsed;
-            
-            return (
-              <div 
-                key={plan.id}
-                onClick={() => !isDisabled && handlePlanSelect(plan.code)}
-                className={`
-                  bg-white rounded-2xl border-2 transition-all duration-300 overflow-hidden hover:border-blue-400 relative
-                  ${isDisabled 
-                    ? 'opacity-50 cursor-not-allowed grayscale' 
-                    : 'cursor-pointer hover:-translate-y-1 hover:shadow-lg'
-                  }
-                `}
-              >
-                {/* Popular Badge */}
-                {plan.highlighted && (
-                  <div className="absolute top-0 right-0 z-10 transform translate-x-1/2 -translate-y-1/2">
-                    <span className="bg-yellow-500 text-black px-3 py-1 text-xs font-bold shadow-sm rounded-full">
-                      Most Popular
-                    </span>
-                  </div>
-                )}
+        <div className="flex gap-8 items-center text-slate-400 mb-8">
+            <span className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              Cancel Anytime
+            </span>
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-slate-600" />
+              Secure SSL Payment
+            </span>
+        </div>
 
-                <div className="p-8">
-                  {/* Header */}
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
-                      <div className="text-sm text-slate-500">{plan.description}</div>
+        {trialUsed && (
+          <div className="bg-orange-100 border border-orange-200 rounded-lg p-4 mb-8">
+             <div className="flex items-center gap-2 text-orange-800">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-semibold">Trial Already Used</span>
+             </div>
+          </div>
+        )}
+
+        <div className="grid gap-8 md:grid-cols-3">
+          {plans.map((plan: any) => {
+             const isDisabled = plan.name === 'Trial' && trialUsed;
+
+             return (
+                <div 
+                  key={plan.id}
+                  onClick={() => !isDisabled && handleBuyNow(plan.id)}
+                  className={`relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
+                    isDisabled 
+                      ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-50' 
+                      : 'bg-white border-slate-200 hover:border-blue-500 hover:-translate-y-1 cursor-pointer'
+                  }`}
+                >
+                  {plan.isPopular && (
+                    <div className="absolute top-0 right-0 z-20 transform translate-x-1/2 translate-y-1/2">
+                        <span className="bg-yellow-500 text-black px-3 py-1 text-xs font-bold rounded-full">
+                          Most Popular
+                        </span>
                     </div>
-                    {plan.highlighted && (
-                      <Badge className="bg-purple-600 text-white">Popular</Badge>
-                    )}
-                  </div>
+                  )}
 
-                  {/* Price & Duration */}
-                  <div className="text-center mb-6">
-                    <div className="text-4xl font-extrabold font-bold text-slate-900 mb-1">
-                      ₹{plan.price.toLocaleString()}
+                  <div className="p-8">
+                    <h3 className={`text-xl font-bold ${
+                      plan.name === 'Professional' ? 'text-blue-600' : 'text-slate-900' 
+                    }`}>
+                      {plan.name}
+                    </h3>
+                    <div className={`mt-2 text-sm ${
+                      plan.name === 'Professional' ? 'text-blue-500' : 'text-slate-600' 
+                    }`}>
+                      {plan.description}
                     </div>
-                    <div className="text-sm text-slate-500">
-                      {plan.duration} days
+
+                    <div className="mt-4 flex items-baseline justify-between">
+                        <div className="text-2xl font-extrabold text-slate-900">
+                           {plan.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}{' '}
+                           <span className="text-xs text-slate-500">
+                              {plan.durationDays} days
+                           </span>
+                        </div>
+
+                        {plan.isPopular && (
+                           <span className="inline-flex items-center text-xs font-semibold text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded-md">
+                              Most Popular
+                           </span>
+                        )}
                     </div>
+
+                    <ul className="space-y-3 mt-4">
+                      {plan.features.slice(0, 4).map((feature: string, index) => (
+                        <li key={index} className="flex gap-2 text-sm text-slate-700">
+                           <div className="h-1.5 w-1.5 bg-green-500 rounded-full"></div>
+                           {feature}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button 
+                       onClick={(e) => { e.stopPropagation(); handleBuyNow(plan.id); }}
+                       className={`w-full h-12 text-base font-semibold transition-all ${
+                          isDisabled
+                            ? 'bg-gray-300 text-gray-400 cursor-not-allowed' 
+                            : plan.name === 'Professional' 
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                                : 'bg-slate-900 hover:bg-slate-800'
+                        }`}
+                       disabled={isDisabled}
+                    >
+                       {isDisabled 
+                         ? 'Trial Used'
+                         : plan.name === 'TRIAL' ? 'Start Free Trial' : 'Choose Plan'}
+                       }
+                    </Button>
                   </div>
-
-                  {/* Features */}
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.slice(0, 5).map((feature: string, index: number) => (
-                      <li key={index} className="flex gap-3 text-sm text-slate-700">
-                        <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Select Button */}
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!isDisabled) handlePlanSelect(plan.code);
-                    }}
-                    disabled={isDisabled}
-                    className={`w-full py-3 font-semibold rounded-lg transition-colors ${
-                      isDisabled 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : plan.id === 'PRO' 
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white' 
-                          : 'bg-slate-900 text-white hover:bg-slate-800'
-                    }`}
-                  >
-                    {plan.code === 'TRIAL' && trialUsed ? 'Trial Used' : plan.code === 'TRIAL' ? 'Start Free Trial' : 'Choose Plan'}
-                  </Button>
                 </div>
-              </div>
-            );
+             );
           })}
         </div>
 
         {/* Trust Footer */}
         <div className="text-center mt-12">
-          <div className="flex flex-wrap gap-8 justify-center items-center text-slate-500 text-sm">
-            <span className="flex items-center gap-1">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              Secure Payments
-            </span>
-            <span className="flex items-center gap-1">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              Instant Activation
-            </span>
-            <span className="flex items-center gap-1">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              Cancel Anytime
-            </span>
+          <div className="flex gap-8 items-center text-slate-400">
+             <span className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-slate-400" />
+                Bank-grade security & encryption
+             </span>
+             <span className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-slate-400" />
+                7 Days Money-Back Guarantee
+             </span>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function InfoBlock({ title, value, highlight }: any) {
+  return (
+    <div>
+      <p className="text-xs text-slate-500 uppercase font-bold mb-1 tracking-wide">{title}</p>
+      <p className={`text-xl font-bold ${highlight ? 'text-green-600' : 'text-slate-900'}`}>
+        {value}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, value, mono, highlight }: any) {
+  return (
+    <div className="flex justify-between items-center text-sm border-b border-dashed border-slate-200 dark:border-slate-800 pb-2 last:border-0 last:pb-0">
+      <span className="text-gray-600 dark:text-gray-400">{label}</span>
+      <span className={`${mono ? 'font-mono text-xs' : 'font-semibold'} ${highlight ? 'text-orange-700 dark:text-orange-400' : 'text-slate-900 dark:text-slate-200'}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function PendingModal() {
+  const [pendingOrder, setPendingOrder] = useState<any>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  return (
+    <div className="flex justify-center min-h-screen z-50 bg-slate-900/90 flex flex-col items-center justify-center">
+       <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
+         <CardContent className="p-8 text-center space-y-6">
+            <div>
+                <h2 className="text-3xl font-bold text-orange-900 dark:text-orange-400 mb-2">
+                    Verification Pending
+                </h2>
+                <p className="text-orange-700/80 dark:text-orange-200/70">
+                    We have received your payment request. Admin approval is required.
+                </p>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 text-left shadow-sm">
+                <Row label="Requested Plan" value={pendingOrder.plan_name} highlight />
+                <Row label="Amount Paid" value={`₹${pendingOrder.amount.toLocaleString()}`} />
+                <Row label="Transaction ID" value={pendingOrder.transaction_id || 'N/A'} mono />
+                <Row label="Date" value={new Date(pendingOrder.created_at).toLocaleDateString()} />
+                <div className="flex justify-between items-center pt-2">
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">Status</span>
+                    <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900 dark:text-white">Pending Approval</Badge>
+                </div>
+            </div>
+
+            <div className="flex gap-4 justify-center pt-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => window.location.reload()} 
+                  className="border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:hover:bg-orange-950/30"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                </Button>
+                
+                <Button 
+                  variant="ghost"
+                  onClick={() => router.push('/support')}
+                  disabled={isCancelling}
+                  className="text-red-500 hover:text-red-400 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                >
+                  {isCancelling ? (
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  {isCancelling ? "Cancelling..." : "Cancel Request"}
+                </Button>
+            </div>
+
+            <p className="text-xs text-orange-500/80 dark:text-orange-500/80 flex items-center justify-center gap-1">
+               <ShieldCheck className="h-3 w-3" /> Secure Payment Processing
+            </p>
+         </CardContent>
+       </Card>
     </div>
   );
 }
