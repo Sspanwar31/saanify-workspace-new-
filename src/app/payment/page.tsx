@@ -223,7 +223,7 @@ function PaymentContent() {
         // ---------------------------------------------------------
         // Ab hum direct insert nahi karenge, API ko bolenge insert karne ko
         
-        const response = await fetch('/api/manual-payment', {
+        const response = await fetch('/api/admin/approve-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
