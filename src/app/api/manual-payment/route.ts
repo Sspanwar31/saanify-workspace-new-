@@ -6,125 +6,120 @@ export const runtime = 'nodejs';
 
 // 🔐 KEY FIXING LOGIC (Admin Power)
 const getServiceRoleKey = () => {
-  const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  
-  // ❌ Agar key nahi hai to ERROR throw karo, Anon key mat use karo
-  if (!b64) {
-    console.error("CRITICAL: SUPABASE_SERVICE_ROLE_KEY_B64 is missing");
-    throw new Error("Server Configuration Error: Admin Key Missing");
-  }
+const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
 
-  // ✅ Sahi Decoding Logic (Jo Admin API me use kiya)
-  try {
-      // Agar pehle se eyJ... hai to wahi use karo
-      if (b64.trim().startsWith('eyJ')) return b64.trim();
-      
-      // Nahi to decode karo
-      return Buffer.from(b64, 'base64').toString('utf-8').trim();
-  } catch (e) {
-      return b64; // Fallback
-  }
+// ❌ Agar key nahi hai to ERROR throw karo, Anon key mat use karo
+if (!b64) {
+console.error("CRITICAL: SUPABASE_SERVICE_ROLE_KEY_B64 is missing");
+throw new Error("Server Configuration Error: Admin Key Missing");
+}
+
+// ✅ Sahi Decoding Logic (Jo Admin API me use kiya)
+try {
+// Agar pehle se eyJ... hai to wahi use karo
+if (b64.trim().startsWith('eyJ')) return b64.trim();
+
+// Nahi to decode karo
+return Buffer.from(b64, 'base64').toString('utf-8').trim();
+} catch (e) {
+return b64; // Fallback
+}
 };
 
 export async function POST(req: Request) {
-  try {
-    const serviceKey = getServiceRoleKey();
-    
-    // 👑 Admin Client (RLS Bypass karega)
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false // Admin mode ON
-        }
-      }
-    );
+try {
+const serviceKey = getServiceRoleKey();
 
-    // ✅ CHANGE 1: 'email' bhi receive karein (Frontend se bhejna padega)
-    const { clientId, email, planName, amount, transactionId, screenshotUrl, durationDays } = await req.json();
+// 👑 Admin Client (RLS Bypass karega)
+const supabaseAdmin = createClient(
+process.env.NEXT_PUBLIC_SUPABASE_URL!,
+serviceKey,
+{
+auth: {
+autoRefreshToken: false,
+persistSession: false // Admin mode ON
+}
+}
+);
 
-    if (!clientId || !amount || !transactionId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+const { clientId, planName, amount, transactionId, screenshotUrl, durationDays } = await req.json();
 
-    // 🛠️ SCREENSHOT URL FIXER (Ye code image ko sahi karega)
-    let finalScreenshotUrl = screenshotUrl;
+if (!clientId || !amount || !transactionId) {
+return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+}
 
-    // Case 1: Agar object aa gaya ({ publicUrl: '...' })
-    if (typeof screenshotUrl === 'object' && screenshotUrl?.publicUrl) {
-        finalScreenshotUrl = screenshotUrl.publicUrl;
-    }
-    // Case 2: Agar JSON String aa gayi ('{"publicUrl": "..."}')
-    else if (typeof screenshotUrl === 'string' && screenshotUrl.trim().startsWith('{')) {
-        try {
-            const parsed = JSON.parse(screenshotUrl);
-            if (parsed.publicUrl) finalScreenshotUrl = parsed.publicUrl;
-        } catch (e) {
-            // Parsing fail hui to original string hi rahne do
-        }
-    }
+// 🛠️ SCREENSHOT URL FIXER (Ye code image ko sahi karega)
+let finalScreenshotUrl = screenshotUrl;
 
-    console.log("Processing Manual Payment:", { clientId, transactionId, finalScreenshotUrl });
+// Case 1: Agar object aa gaya ({ publicUrl: '...' })
+if (typeof screenshotUrl === 'object' && screenshotUrl?.publicUrl) {
+finalScreenshotUrl = screenshotUrl.publicUrl;
+}
+// Case 2: Agar JSON String aa gayi ('{"publicUrl": "..."}')
+else if (typeof screenshotUrl === 'string' && screenshotUrl.trim().startsWith('{')) {
+try {
+const parsed = JSON.parse(screenshotUrl);
+if (parsed.publicUrl) finalScreenshotUrl = parsed.publicUrl;
+} catch (e) {
+// Parsing fail hui to original string hi rahne do
+}
+}
 
-    // ✅ STEP 1: Duplicate Check
-    const { data: existingOrder } = await supabaseAdmin
-      .from('subscription_orders')
-      .select('id, status')
-      .eq('client_id', clientId)
-      .eq('payment_method', 'manual')
-      .in('status', ['pending', 'approved'])
-      .maybeSingle();
+console.log("Processing Manual Payment:", { clientId, transactionId, finalScreenshotUrl });
 
-    if (existingOrder) {
-      return NextResponse.json(
-        {
-          error: existingOrder.status === 'approved'
-              ? 'Payment already approved'
-              : 'Payment already pending verification'
-        },
-        { status: 400 }
-      );
-    }
+// ✅ STEP 1: Duplicate Check
+const { data: existingOrder } = await supabaseAdmin
+.from('subscription_orders')
+.select('id, status')
+.eq('client_id', clientId)
+.eq('payment_method', 'manual')
+.in('status', ['pending', 'approved'])
+.maybeSingle();
 
-    // ✅ STEP 2: Insert (RLS Bypass ke sath)
-    // ✅ CHANGE 2: Insert karte waqt 'email' column me bhi data dalein
-    const { data, error } = await supabaseAdmin
-      .from('subscription_orders')
-      .insert([{
-        client_id: clientId,
-        plan_name: planName,
-        amount,
-        payment_method: 'manual', // lowercase
-        status: 'pending',
-        transaction_id: transactionId,
-        screenshot_url: finalScreenshotUrl, // ✅ Fixed URL
-        duration_days: durationDays || 30,   // Duration bhi add kar diya
-        
-        // 👇 Ye line add karein taki baad me match kar sake
-        email: email // User ka asli email (jo form me bhara tha)
-      }])
-      .select()
-      .single();
+if (existingOrder) {
+return NextResponse.json(
+{
+error: existingOrder.status === 'approved'
+? 'Payment already approved'
+: 'Payment already pending verification'
+},
+{ status: 400 }
+);
+}
 
-    if (error) {
-        console.error("Insert Failed:", error);
-        throw error;
-    }
+// ✅ STEP 2: Insert (RLS Bypass ke sath)
+const { data, error } = await supabaseAdmin
+.from('subscription_orders')
+.insert([{
+client_id: clientId,
+plan_name: planName,
+amount,
+payment_method: 'manual', // lowercase
+status: 'pending',
+transaction_id: transactionId,
+screenshot_url: finalScreenshotUrl, // ✅ Fixed URL
+duration_days: durationDays || 30 // Duration bhi add kar diya
+}])
+.select()
+.single();
 
-    return NextResponse.json({ 
-        success: true, 
-        message: 'Payment submitted for verification',
-        orderId: data.id 
-    });
+if (error) {
+console.error("Insert Failed:", error);
+throw error;
+}
 
-  } catch (error: any) {
-    console.error("Manual Payment API Error:", error);
-    // Client ko readable error bhejo
-    return NextResponse.json(
-        { error: error.message || "Internal Server Error" }, 
-        { status: 500 }
-    );
-  }
+return NextResponse.json({
+success: true,
+message: 'Payment submitted for verification',
+orderId: data.id
+});
+
+} catch (error: any) {
+console.error("Manual Payment API Error:", error);
+// Client ko readable error bhejo
+return NextResponse.json(
+{ error: error.message || "Internal Server Error" },
+{ status: 500 }
+);
+}
 }
