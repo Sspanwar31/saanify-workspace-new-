@@ -162,44 +162,38 @@ function PaymentContent() {
     // kyunki payment popup khula rahta hai to loading true hi rahni chahiye
   };
 
-  // --- REAL BACKEND SUBMISSION LOGIC ---
+  // --- REAL BACKEND SUBMISSION LOGIC (FIXED) ---
   const handleManualSubmit = async () => {
     if (!txnId) return toast.error("Please enter Transaction ID");
     if (!proofFile) return toast.error("Please upload payment screenshot");
     
-    // Check if we have minimal user details (Need email at least)
-    // If user came directly here without previous step, we might need to ask inputs
-    // But assuming flow is Signup -> Payment, details should be in URL or Context
-    if(!userEmail && !pendingPayment) {
-       // Fallback: Prompt user if email missing (Logic dependent on your flow)
-       // For now, proceeding assuming email is present or we use a placeholder to debug
-       console.warn("User email missing from params");
-    }
-
     setLoading(true);
 
     try {
         let clientId = null;
 
-        // A. CREATE OR FIND CLIENT (Crucial Step)
-        // If we have an email, check if client exists
+        // ---------------------------------------------------------
+        // 1. CLIENT HANDLING (Frontend Side)
+        // ---------------------------------------------------------
+        // Agar user login hai ya email hai, to check karein
         if (userEmail) {
             const { data: existing } = await supabase.from('clients').select('id').eq('email', userEmail).single();
             if (existing) clientId = existing.id;
         }
 
-        // If no client found, Create New Client
+        // Agar Client nahi mila, to naya banayein
+        // NOTE: Agar 'clients' table par RLS error aye, to Client Creation bhi API me le jana padega.
         if (!clientId) {
             const { data: newClient, error: createError } = await supabase
                 .from('clients')
                 .insert([{
                     name: userName || 'New User',
-                    email: userEmail || `user-${Date.now()}@temp.com`, // Fallback
+                    email: userEmail || `user-${Date.now()}@temp.com`,
                     phone: userPhone,
                     society_name: societyName || 'New Society',
                     plan_name: plan.name,
                     status: 'pending',
-                    has_used_trial: planId === 'TRIAL' // Logic for one-time trial
+                    has_used_trial: planId === 'TRIAL'
                 }])
                 .select()
                 .single();
@@ -208,7 +202,9 @@ function PaymentContent() {
             clientId = newClient.id;
         }
 
-        // B. UPLOAD PROOF
+        // ---------------------------------------------------------
+        // 2. UPLOAD PROOF (Storage)
+        // ---------------------------------------------------------
         const fileExt = proofFile.name.split('.').pop();
         const fileName = `${clientId}_${Date.now()}.${fileExt}`;
         
@@ -218,29 +214,39 @@ function PaymentContent() {
 
         if (uploadError) throw new Error("Upload Failed: " + uploadError.message);
 
-        const { data: publicUrl } = supabase.storage.from('payment_proofs').getPublicUrl(fileName);
+        // Public URL nikalein
+        const { data: urlData } = supabase.storage.from('payment_proofs').getPublicUrl(fileName);
+        const publicUrl = urlData.publicUrl;
 
-        // C. INSERT ORDER
-        const { data: orderData, error: orderError } = await supabase
-            .from('subscription_orders')
-            .insert([{
-                client_id: clientId,
-                plan_name: plan.name,
+        // ---------------------------------------------------------
+        // 3. CALL API (Ye hai Main Fix) - Database Insert via API
+        // ---------------------------------------------------------
+        // Ab hum direct insert nahi karenge, API ko bolenge insert karne ko
+        
+        const response = await fetch('/api/manual-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId: clientId,
+                planName: plan.name,
                 amount: plan.price,
-                status: 'pending',
-                payment_method: 'manual',
-                transaction_id: txnId,
-                screenshot_url: publicUrl,
-                duration_days: plan.duration || 30
-            }])
-            .select()
-            .single();
+                transactionId: txnId,
+                screenshotUrl: publicUrl, // Ab hum clean URL bhej rahe hain
+                durationDays: plan.duration || 30
+            })
+        });
 
-        if (orderError) throw new Error("Order Failed: " + orderError.message);
+        const result = await response.json();
 
-        // D. SAVE STATE (Success)
+        if (!response.ok) {
+            throw new Error(result.error || "Failed to submit payment order");
+        }
+
+        // ---------------------------------------------------------
+        // 4. SAVE STATE (Success)
+        // ---------------------------------------------------------
         const paymentState = {
-            invoiceId: orderData.id,
+            invoiceId: result.orderId, // API se jo ID aayi wo use karein
             planId: planId,
             txnId: txnId,
             timestamp: Date.now()
