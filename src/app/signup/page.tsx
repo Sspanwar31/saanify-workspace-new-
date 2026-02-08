@@ -21,6 +21,9 @@ function SignupForm() {
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
 
+  // ✅ SMART ADDITION: Mode flag (AUTO | MANUAL)
+  const mode = searchParams.get('mode');
+
   // State
   const [selectedPlan, setSelectedPlan] = useState<any>(null); 
   const [loading, setLoading] = useState(false);
@@ -35,7 +38,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo
+  // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo (Updated for AUTO + MANUAL)
   useEffect(() => {
     async function smartVerifyPlan() {
       setVerifyingPayment(true);
@@ -44,37 +47,55 @@ function SignupForm() {
         // CASE 1: Agar Payment Order ID hai (PAID USER)
         if (orderId) {
             console.log("Verifying Order ID:", orderId);
+            console.log("Mode:", mode);
 
-            // 1. Payment Intents table se check karo ki is Order ID ka Plan kya hai
-            // Aapke data ke hisab se 'token' column me 'order_...' hai.
-            const { data: paymentData, error: paymentError } = await supabase
+            let verifiedPlanCode: string | null = null;
+
+            // 🟢 AUTO PAYMENT
+            if (mode !== 'MANUAL') {
+              const { data: paymentData, error } = await supabase
                 .from('payment_intents')
-                .select('plan, amount, status, token')
-                .eq('token', orderId) 
+                .select('plan, status')
+                .eq('token', orderId)
                 .single();
 
-            if (paymentError || !paymentData) {
-                console.error("Payment Intent Not Found:", paymentError);
-                toast.error("Payment Verification Failed. Order ID not found in system.");
+              if (error || !paymentData) {
+                toast.error("Payment verification failed.");
                 setVerifyingPayment(false);
                 return;
+              }
+
+              verifiedPlanCode = paymentData.plan;
             }
 
-            console.log("Payment Found:", paymentData);
-            const verifiedPlanCode = paymentData.plan; // e.g., 'ENTERPRISE' or 'PRO'
-
-            // 2. Ab Plans table se is code ki full details nikalo (Duration, Features etc)
-            const { data: planDetails, error: planError } = await supabase
-                .from('plans')
-                .select('*')
-                .eq('code', verifiedPlanCode)
+            // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
+            if (mode === 'MANUAL') {
+              const { data: order, error } = await supabase
+                .from('subscription_orders')
+                .select('plan_name, status')
+                .eq('id', orderId)
+                .eq('status', 'approved')
                 .single();
+
+              if (error || !order) {
+                toast.error("Manual payment not approved yet.");
+                setVerifyingPayment(false);
+                return;
+              }
+
+              verifiedPlanCode = order.plan_name.toUpperCase();
+            }
+
+            // 🔥 COMMON: plans table se plan uthao
+            const { data: planDetails } = await supabase
+              .from('plans')
+              .select('*')
+              .eq('code', verifiedPlanCode)
+              .single();
 
             if (planDetails) {
                 setSelectedPlan(planDetails);
-                toast.success(`Payment Verified for ${planDetails.name} Plan!`);
-            } else {
-                toast.error("Plan details missing in database.");
+                toast.success(`Plan verified: ${planDetails.name}`);
             }
 
         } 
@@ -105,7 +126,7 @@ function SignupForm() {
     const hasUsedTrial = localStorage.getItem('saanify_trial_used');
     if (hasUsedTrial) setTrialUsed(true);
 
-  }, [searchParams, orderId, urlPlanCode]);
+  }, [searchParams, orderId, urlPlanCode, mode]);
 
 
   // ✅ SUBMIT FORM
