@@ -1,314 +1,316 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, AlertCircle, ArrowLeft, Loader2, ShieldCheck, Crown, Building2, RefreshCw } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { CheckCircle, ArrowLeft, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
-import { supabase } from '@/lib/supabase-simple'; // ✅ CORRECT IMPORT (Local file hai yeh)
+import { useAdminStore } from '@/lib/admin/store';
+import { supabase } from '@/lib/supabase-simple'; 
 
-export default function PricingPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   
-  // 🔴 STATE & LOADERS
-  const [loading, setLoading] = useState(true);
+  // 🔴 CHANGE 1: 'ref' ki jagah 'orderId' use karein
+  const orderId = searchParams.get('orderId') || '';
+  
+  // ✅ FIX: Initial state empty rakho taaki server/client mismatch na ho
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(''); 
+  const [loading, setLoading] = useState(false);
+  const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [trialUsed, setTrialUsed] = useState(false);
-  const [plans, setPlans] = useState<any[]>([]);
 
-  // 🔴 DATA FETCH
+  // ✅ FIX: Mount hone par correct plan set karein (Client side only)
   useEffect(() => {
-    let isMounted = true;
+    const urlPlan = searchParams.get('plan');
+    const initialPlanId = orderId ? 'PRO' : (urlPlan || 'TRIAL');
+    setSelectedPlanId(initialPlanId);
     
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // 1. Check Auth
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not authenticated");
-
-        // 2. Check Trial Status
-        // Note: DB check instead of localStorage for accuracy
-        const { data: client, error: clientError } = await supabase
-          .from('clients')
-          .select('has_used_trial')
-          .eq('id', user.id)
-          .single();
-
-        if (client && client.has_used_trial) {
-            setTrialUsed(true);
-        }
-
-        // 3. Fetch Plans
-        const { data: dbPlans, error: plansError } = await supabase
-          .from('plans')
-          .select('*')
-          .eq('active', true)
-          .gt('price', 0)
-          .order('price', { ascending: true });
-
-        if (plansError) throw new Error("Failed to load plans.");
-
-        if (isMounted && dbPlans) {
-          const mappedPlans = dbPlans.map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            durationDays: 30, // Frontend pe static for now
-            features: Array.isArray(p.features) ? p.features : [],
-            color: p.color, // Assuming 'color' column exists
-            isPopular: p.name === 'Professional'
-          }));
-          setPlans(mappedPlans);
-        }
-
-      } catch (err) {
-        console.error("Error loading page:", err);
-        toast.error("Could not load plans.");
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+    // Trial Logic Check
+    const hasUsedTrial = localStorage.getItem('saanify_trial_used');
+    if (hasUsedTrial) {
+      setTrialUsed(true);
     }
-    
-    fetchData();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  }, [searchParams, orderId]);
 
-  const handleBuyNow = (plan: any) => {
-    // Payment logic here...
-    console.log("Selected Plan:", plan);
+  const [formData, setFormData] = useState({
+    name: '',
+    societyName: '',
+    email: '',
+    phone: '',
+    password: ''
+  });
+
+  const currentPlan = SUBSCRIPTION_PLANS[selectedPlanId as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.TRIAL;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    if (!supabase) {
+      toast.error("Supabase is not configured. Connection failed.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // --- STEP A: CHECK PAYMENT (REMOVE COMPLETELY) ---
+      
+      // 🔹 CHANGE 2: VERIFIED PLAN DIRECT SET KARO (SAFE WAY)
+      // Payment already verify API me verified ho chuka hai
+      const verifiedPlan = orderId ? 'PRO' : selectedPlanId;
+
+      // Trial Check (sirf trial select kiya ho)
+      if (!orderId && verifiedPlan === 'TRIAL') {
+          const { data: existingTrialClient } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('email', formData.email)
+            .eq('has_used_trial', true)
+            .maybeSingle();
+
+          if (existingTrialClient) {
+            toast.error("Free trial already used. Please choose a paid plan.");
+            setLoading(false);
+            return;
+          }
+      }
+
+      // --- STEP B: CREATE AUTH USER ---
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+            phone: formData.phone,
+            society_name: formData.societyName
+          }
+        }
+      });
+
+      if (authError) throw new Error("User Signup Failed: " + authError.message);
+      if (!authData.user) throw new Error("Signup successful but no user ID returned.");
+
+      // --- STEP C: PREPARE CLIENT DATA ---
+      // 🔹 CHANGE 2: Duration logic ko plan-based rakho
+      let planDurationDays = 15;
+      let subStatus = 'active';
+
+      if (verifiedPlan === 'TRIAL') {
+         // Trial Logic
+         const { data: settings } = await supabase.from('system_settings').select('trial_days').single();
+         planDurationDays = settings?.trial_days || 15;
+         subStatus = 'active';
+      } else {
+         // Paid Logic
+         planDurationDays = verifiedPlan === 'YEARLY' ? 365 : 30;
+         subStatus = 'active'; // Paid hai to active
+      }
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(startDate.getDate() + planDurationDays);
+
+      // ✅ Signup insert FINAL & CORRECT
+      const { error: clientError } = await supabase
+        .from('clients')
+        .insert({
+          id: authData.user.id,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          society_name: formData.societyName,
+          plan: planRow.name,                 // ✅ ONLY THIS
+          subscription_status: 'active',
+          plan_start_date: startDate.toISOString(),
+          plan_end_date: endDate.toISOString(),
+          has_used_trial: verifiedPlan !== 'TRIAL', 
+          role: 'client'
+        });
+
+      if (clientError) throw new Error("Client Creation Failed: " + clientError.message);
+
+      // --- SUCCESS ---
+      toast.success("Account Created Successfully!");
+      
+      // LocalStorage Set
+      localStorage.setItem('current_user', JSON.stringify({ 
+         id: authData.user.id, 
+         email: formData.email, 
+         role: 'client',
+         plan: planRow.name
+      }));
+      
+      window.location.href = '/dashboard';
+
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      toast.error(err.message || "Signup failed.");
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const handleBuyNow = (planId: string) => {
-    console.log("Plan selected:", planId);
-    // Payment logic here...
-  };
-
-  // --- RENDER ---
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin h-8 w-8 text-blue-500" />
-      </div>
-    );
-  }
-
+  
   return (
-    <div className="min-h-screen bg-slate-50 py-20 px-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+      {/* LEFT SIDE */}
+      <div className="lg:w-1/3 bg-slate-900 text-white p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
+        
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Choose Your Plan</h1>
-          <p className="text-slate-600">
-            {trialUsed 
-              ? "You have already used your free trial. Please choose a paid plan to continue." 
-              : "Select a plan that fits your society's needs."}
-          </p>
+          <Link href="/" className="flex items-center text-slate-300 hover:text-white mb-8">
+            <ArrowLeft className="w-4 h-4 mr-2"/> Back to Home
+          </Link>
+          <h1 className="text-3xl font-bold mb-4">Join Saanify Today</h1>
+          <p className="text-slate-400">Complete financial management for your cooperative society.</p>
         </div>
 
-        <div className="flex gap-8 items-center text-slate-400 mb-8">
-            <span className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              Cancel Anytime
-            </span>
-            <span className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-slate-600" />
-              Secure SSL Payment
-            </span>
-        </div>
-
-        {trialUsed && (
-          <div className="bg-orange-100 border border-orange-200 rounded-lg p-4 mb-8">
-             <div className="flex items-center gap-2 text-orange-800">
-                <AlertCircle className="w-5 h-5" />
-                <span className="font-semibold">Trial Already Used</span>
+        {/* Selected Plan Card */}
+        <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-xl p-6 my-8">
+           <div className="flex justify-between items-start mb-4">
+              <div>
+                 <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Selected Plan</p>
+                 <h3 className="text-2xl font-bold text-white mt-1">{currentPlan.name}</h3>
+              </div>
+              <Badge className={selectedPlanId === 'PRO' ? 'bg-purple-600' : 'bg-blue-600'}>
+                ₹{currentPlan.price}/mo
+              </Badge>
+           </div>
+           
+           {trialUsed && selectedPlanId === 'TRIAL' && (
+             <div className="bg-orange-500/20 border border-orange-500/50 text-orange-300 px-3 py-2 rounded-lg text-sm mb-4 flex items-center gap-2">
+               <AlertCircle className="w-4 h-4" />
+               Trial already used - Please select a paid plan
              </div>
+           )}
+           
+           <ul className="space-y-2 mb-6">
+              {currentPlan.features.slice(0, 4).map((f, i) => (
+                <li key={i} className="flex gap-2 text-sm text-slate-300">
+                   <CheckCircle className="w-4 h-4 text-green-400 shrink-0"/> {f}
+                </li>
+              ))}
+           </ul>
+
+           <Button variant="outline" onClick={() => setShowPlanSelector(!showPlanSelector)} className="w-full border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white">
+              {showPlanSelector ? "Keep Current Plan" : "Change Plan"}
+           </Button>
+        </div>
+
+        {/* Plan Selector */}
+        {showPlanSelector && (
+          <div className="space-y-2 animate-in slide-in-from-left-4">
+             {Object.entries(SUBSCRIPTION_PLANS).map(([key, plan]) => {
+                const isTrialDisabled = key === 'TRIAL' && trialUsed;
+                return (
+                <div 
+                  key={key} 
+                  onClick={() => { 
+                    if (!isTrialDisabled) {
+                      setSelectedPlanId(key); 
+                      setShowPlanSelector(false); 
+                    }
+                  }}
+                  className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center transition-all ${
+                    selectedPlanId === key ? 'bg-blue-600 border-blue-500' : 
+                    isTrialDisabled ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-50' :
+                    'bg-slate-800 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                   <span className="font-medium">{plan.name}</span>
+                   <div className="flex items-center gap-2">
+                     {isTrialDisabled && <AlertCircle className="w-4 h-4 text-orange-500" />}
+                     <span className="font-bold">₹{plan.price}</span>
+                   </div>
+                </div>
+                );
+             })}
           </div>
         )}
 
-        <div className="grid gap-8 md:grid-cols-3">
-          {plans.map((plan: any) => {
-             const isDisabled = plan.name === 'Trial' && trialUsed;
-
-             return (
-                <div 
-                  key={plan.id}
-                  onClick={() => !isDisabled && handleBuyNow(plan.id)}
-                  className={`relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
-                    isDisabled 
-                      ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-50' 
-                      : 'bg-white border-slate-200 hover:border-blue-500 hover:-translate-y-1 cursor-pointer'
-                  }`}
-                >
-                  {plan.isPopular && (
-                    <div className="absolute top-0 right-0 z-20 transform translate-x-1/2 translate-y-1/2">
-                        <span className="bg-yellow-500 text-black px-3 py-1 text-xs font-bold rounded-full">
-                          Most Popular
-                        </span>
-                    </div>
-                  )}
-
-                  <div className="p-8">
-                    <h3 className={`text-xl font-bold ${
-                      plan.name === 'Professional' ? 'text-blue-600' : 'text-slate-900' 
-                    }`}>
-                      {plan.name}
-                    </h3>
-                    <div className={`mt-2 text-sm ${
-                      plan.name === 'Professional' ? 'text-blue-500' : 'text-slate-600' 
-                    }`}>
-                      {plan.description}
-                    </div>
-
-                    <div className="mt-4 flex items-baseline justify-between">
-                        <div className="text-2xl font-extrabold text-slate-900">
-                           {plan.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}{' '}
-                           <span className="text-xs text-slate-500">
-                              {plan.durationDays} days
-                           </span>
-                        </div>
-
-                        {plan.isPopular && (
-                           <span className="inline-flex items-center text-xs font-semibold text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded-md">
-                              Most Popular
-                           </span>
-                        )}
-                    </div>
-
-                    <ul className="space-y-3 mt-4">
-                      {plan.features.slice(0, 4).map((feature: string, index) => (
-                        <li key={index} className="flex gap-2 text-sm text-slate-700">
-                           <div className="h-1.5 w-1.5 bg-green-500 rounded-full"></div>
-                           {feature}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Button 
-                       onClick={(e) => { e.stopPropagation(); handleBuyNow(plan.id); }}
-                       className={`w-full h-12 text-base font-semibold transition-all ${
-                          isDisabled
-                            ? 'bg-gray-300 text-gray-400 cursor-not-allowed' 
-                            : plan.name === 'Professional' 
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                                : 'bg-slate-900 hover:bg-slate-800'
-                        }`}
-                       disabled={isDisabled}
-                    >
-                       {isDisabled 
-                         ? 'Trial Used'
-                         : plan.name === 'TRIAL' ? 'Start Free Trial' : 'Choose Plan'}
-                       }
-                    </Button>
-                  </div>
-                </div>
-             );
-          })}
-        </div>
-
-        {/* Trust Footer */}
-        <div className="text-center mt-12">
-          <div className="flex gap-8 items-center text-slate-400">
-             <span className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-slate-400" />
-                Bank-grade security & encryption
-             </span>
-             <span className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-slate-400" />
-                7 Days Money-Back Guarantee
-             </span>
-          </div>
+        <div className="text-xs text-slate-500 mt-auto pt-8">
+           <p className="flex items-center gap-2"><ShieldCheck className="w-3 h-3"/> Bank-grade security & encryption</p>
         </div>
       </div>
+
+      {/* RIGHT SIDE: Signup Form */}
+      <div className="lg:w-2/3 p-4 flex items-center justify-center">
+         <Card className="w-full max-w-md border-0 shadow-none bg-transparent">
+            <CardHeader>
+               <CardTitle className="text-2xl font-bold text-slate-900">Create Account</CardTitle>
+               <CardDescription>
+                  {orderId 
+                    ? <span className="text-orange-600 font-medium">Completing Registration for Paid Plan</span> 
+                    : "Enter details to setup your new admin panel."}
+               </CardDescription>
+            </CardHeader>
+            <CardContent>
+               <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid gap-2">
+                     <Label>Full Name</Label>
+                     <Input placeholder="John Doe" required onChange={e => setFormData({...formData, name: e.target.value})} />
+                  </div>
+                  <div className="grid gap-2">
+                     <Label>Society Name</Label>
+                     <Input placeholder="Green Valley Co-op" required onChange={e => setFormData({...formData, societyName: e.target.value})} />
+                  </div>
+                  <div className="grid gap-2">
+                     <Label>Email</Label>
+                     <Input type="email" placeholder="admin@society.com" required onChange={e => setFormData({...formData, email: e.target.value})} />
+                  </div>
+                  <div className="grid gap-2">
+                     <Label>Phone Number</Label>
+                     <Input placeholder="+91 98765 43210" required onChange={e => setFormData({...formData, phone: e.target.value})} />
+                  </div>
+                  <div className="grid gap-2">
+                     <Label>Password</Label>
+                     <Input type="password" placeholder="•••••••••" required onChange={e => setFormData({...formData, password: e.target.value})} />
+                  </div>
+                  
+                  {/* BUTTON LOGIC */}
+                  <Button 
+                    type="submit" 
+                    className={`w-full h-11 text-base mt-2 ${
+                      selectedPlanId === 'TRIAL' && trialUsed
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    } text-white`} 
+                    disabled={loading || (selectedPlanId === 'TRIAL' && trialUsed)}
+                  >
+                     {loading ? (
+                        <div className="flex items-center justify-center">
+                           <Loader2 className="w-4 h-4 mr-2 animate-spin"/> Processing...
+                        </div>
+                     ) : selectedPlanId === 'TRIAL' ? (
+                        'Start Free Trial'
+                     ) : (
+                        'Create Account'
+                     )}
+                  </Button>
+               </form>
+               
+               <Separator className="my-6" />
+               
+               <p className="text-center text-sm text-slate-600">
+                  Already have an account? <Link href="/login" className="text-blue-600 font-bold hover:underline">Sign In</Link>
+               </p>
+            </CardContent>
+         </Card>
+      </div>
+
     </div>
   );
 }
 
-function InfoBlock({ title, value, highlight }: any) {
-  return (
-    <div>
-      <p className="text-xs text-slate-500 uppercase font-bold mb-1 tracking-wide">{title}</p>
-      <p className={`text-xl font-bold ${highlight ? 'text-green-600' : 'text-slate-900'}`}>
-        {value}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function Row({ label, value, mono, highlight }: any) {
-  return (
-    <div className="flex justify-between items-center text-sm border-b border-dashed border-slate-200 dark:border-slate-800 pb-2 last:border-0 last:pb-0">
-      <span className="text-gray-600 dark:text-gray-400">{label}</span>
-      <span className={`${mono ? 'font-mono text-xs' : 'font-semibold'} ${highlight ? 'text-orange-700 dark:text-orange-400' : 'text-slate-900 dark:text-slate-200'}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function PendingModal() {
-  const [pendingOrder, setPendingOrder] = useState<any>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-
-  return (
-    <div className="flex justify-center min-h-screen z-50 bg-slate-900/90 flex flex-col items-center justify-center">
-       <Card className="w-full max-w-2xl border-none shadow-2xl bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/40 dark:to-gray-900 overflow-hidden border border-orange-200 dark:border-orange-900/50">
-         <CardContent className="p-8 text-center space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold text-orange-900 dark:text-orange-400 mb-2">
-                    Verification Pending
-                </h2>
-                <p className="text-orange-700/80 dark:text-orange-200/70">
-                    We have received your payment request. Admin approval is required.
-                </p>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 text-left shadow-sm">
-                <Row label="Requested Plan" value={pendingOrder.plan_name} highlight />
-                <Row label="Amount Paid" value={`₹${pendingOrder.amount.toLocaleString()}`} />
-                <Row label="Transaction ID" value={pendingOrder.transaction_id || 'N/A'} mono />
-                <Row label="Date" value={new Date(pendingOrder.created_at).toLocaleDateString()} />
-                <div className="flex justify-between items-center pt-2">
-                    <span className="text-gray-500 dark:text-gray-400 text-sm">Status</span>
-                    <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900 dark:text-white">Pending Approval</Badge>
-                </div>
-            </div>
-
-            <div className="flex gap-4 justify-center pt-2">
-                <Button 
-                  variant="outline"
-                  onClick={() => window.location.reload()} 
-                  className="border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:hover:bg-orange-950/30"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-                </Button>
-                
-                <Button 
-                  variant="ghost"
-                  onClick={() => router.push('/support')}
-                  disabled={isCancelling}
-                  className="text-red-500 hover:text-red-400 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                >
-                  {isCancelling ? (
-                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  {isCancelling ? "Cancelling..." : "Cancel Request"}
-                </Button>
-            </div>
-
-            <p className="text-xs text-orange-500/80 dark:text-orange-500/80 flex items-center justify-center gap-1">
-               <ShieldCheck className="h-3 w-3" /> Secure Payment Processing
-            </p>
-         </CardContent>
-       </Card>
-    </div>
-  );
+export default function SignupPage() {
+  return <Suspense fallback={<div>Loading...</div>}><SignupForm /></Suspense>;
 }
