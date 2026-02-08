@@ -42,7 +42,8 @@ export async function POST(req: Request) {
       }
     );
 
-    const { clientId, planName, amount, transactionId, screenshotUrl, durationDays } = await req.json();
+    // ✅ CHANGE 1: 'email' bhi receive karein (Frontend se bhejna padega)
+    const { clientId, email, planName, amount, transactionId, screenshotUrl, durationDays } = await req.json();
 
     if (!clientId || !amount || !transactionId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
     }
 
     // ✅ STEP 2: Insert (RLS Bypass ke sath)
+    // ✅ CHANGE 2: Insert karte waqt 'email' column me bhi data dalein
     const { data, error } = await supabaseAdmin
       .from('subscription_orders')
       .insert([{
@@ -98,7 +100,10 @@ export async function POST(req: Request) {
         status: 'pending',
         transaction_id: transactionId,
         screenshot_url: finalScreenshotUrl, // ✅ Fixed URL
-        duration_days: durationDays || 30   // Duration bhi add kar diya
+        duration_days: durationDays || 30,   // Duration bhi add kar diya
+        
+        // 👇 Ye line add karein taki baad me match kar sake
+        email: email // User ka asli email (jo form me bhara tha)
       }])
       .select()
       .single();
