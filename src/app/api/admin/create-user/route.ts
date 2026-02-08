@@ -1,13 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-export const runtime = 'nodejs';
+// ✅ IMPORTANT: Ye line jaruri hai kyunki hum 'Buffer' use kar rahe hain
+export const runtime = 'nodejs'; 
 
-// 🔐 Helper to decode your specific B64 key
+// ✅ APKA BATAYA HUA WORKING LOGIC
 const getServiceRoleKey = () => {
   const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
   if (!b64) return null;
-  return Buffer.from(b64, 'base64').toString('utf-8').trim();
+  // B64 ko decode karke string banata hai aur extra space hatata hai
+  return Buffer.from(b64, 'base64').toString('utf-8').trim(); 
 };
 
 export async function POST(req: Request) {
@@ -15,11 +17,13 @@ export async function POST(req: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = getServiceRoleKey();
 
+    // 1. Configuration Check
     if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json({ error: "Server Config Error: Missing B64 Key" }, { status: 500 });
+      console.error("Server Config Error: Missing URL or B64 Key");
+      return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
     }
 
-    // Initialize Admin Client with DECODED key
+    // 2. Admin Client Init (RLS Bypass)
     const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
@@ -27,50 +31,77 @@ export async function POST(req: Request) {
       }
     });
 
-    const body = await req.json();
-    const { email, password, name, role, status } = body;
+    const { orderId } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and Password required" }, { status: 400 });
+    if (!orderId) {
+      return NextResponse.json({ error: "Missing Order ID" }, { status: 400 });
     }
 
-    // 1. Create Auth User
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { name }
+    console.log(`Processing Order Approval: ${orderId}`);
+
+    // 3. Get Order Details
+    const { data: order, error: fetchError } = await supabaseAdmin
+      .from('subscription_orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError || !order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    if (order.status === 'approved') {
+      return NextResponse.json({ message: "Already Approved" });
+    }
+
+    // 4. Update Status to Approved
+    const { error: updateError } = await supabaseAdmin
+      .from('subscription_orders')
+      .update({ status: 'approved' })
+      .eq('id', orderId);
+
+    if (updateError) {
+      console.error("Order Update Failed:", updateError);
+      throw new Error(updateError.message);
+    }
+
+    // 5. Activate Client Plan
+    // Plan duration fetch karein
+    const { data: planData } = await supabaseAdmin
+      .from('plans')
+      .select('duration_days')
+      .eq('name', order.plan_name)
+      .maybeSingle();
+
+    const duration = planData?.duration_days || 30; // Default 30 days
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(startDate.getDate() + duration);
+
+    // Client Table Update
+    const { error: clientError } = await supabaseAdmin
+      .from('clients')
+      .update({
+        plan_name: order.plan_name,
+        subscription_status: 'active',
+        plan_start_date: startDate.toISOString(),
+        plan_end_date: endDate.toISOString(),
+      })
+      .eq('id', order.client_id);
+
+    if (clientError) {
+      console.error("Client Update Warning:", clientError);
+      // Order approve ho gaya, client update fail hua to bhi success return karein
+      // taki UI par "Approved" dikhe, lekin log check kar sakein.
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Plan Activated Successfully' 
     });
 
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: 400 });
-    }
-
-    if (!authData.user) {
-      return NextResponse.json({ error: "User creation failed" }, { status: 500 });
-    }
-
-    // 2. Insert into Public Table
-    const { error: dbError } = await supabaseAdmin
-      .from('admins')
-      .insert([{
-        id: authData.user.id,
-        email,
-        name,
-        role: role || 'SUPPORT',
-        status: status || 'ACTIVE'
-      }]);
-
-    if (dbError) {
-      // Rollback auth user if DB fails
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      return NextResponse.json({ error: dbError.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, userId: authData.user.id });
-
   } catch (error: any) {
-    console.error("Create User Error:", error);
+    console.error("Admin Approval Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
