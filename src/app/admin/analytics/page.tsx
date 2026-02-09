@@ -1,4 +1,6 @@
 'use client';
+export const dynamic = 'force-dynamic';
+
 import { useAdminStore } from '@/lib/admin/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +11,13 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 export default function AnalyticsPage() {
   const { analyticsData } = useAdminStore();
+
+  // ✅ SAFE DATA LOGIC (Crash Prevention)
+  const safeData = analyticsData ?? {
+    revenueTrend: [],
+    userGrowth: [],
+    deviceUsage: [],
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -35,7 +44,8 @@ export default function AnalyticsPage() {
            {/* Overview Charts */}
            <Card><CardHeader><CardTitle>Performance Summary</CardTitle></CardHeader><CardContent className="h-[300px]">
              <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={analyticsData.revenueTrend}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><Tooltip/><Bar dataKey="value" fill="#8884d8" /></BarChart>
+               {/* ✅ Changed to safeData.revenueTrend */}
+               <BarChart data={safeData.revenueTrend}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><Tooltip/><Bar dataKey="value" fill="#8884d8" /></BarChart>
              </ResponsiveContainer>
            </CardContent></Card>
         </TabsContent>
@@ -44,7 +54,8 @@ export default function AnalyticsPage() {
         <TabsContent value="growth" className="space-y-6">
            <Card><CardHeader><CardTitle>Client Acquisition Trend</CardTitle></CardHeader><CardContent className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
-                 <LineChart data={analyticsData.userGrowth}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip/><Line type="monotone" dataKey="active" stroke="#82ca9d" strokeWidth={2}/><Line type="monotone" dataKey="total" stroke="#8884d8" strokeWidth={2}/></LineChart>
+                 {/* ✅ Changed to safeData.userGrowth */}
+                 <LineChart data={safeData.userGrowth}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip/><Line type="monotone" dataKey="active" stroke="#82ca9d" strokeWidth={2}/><Line type="monotone" dataKey="total" stroke="#8884d8" strokeWidth={2}/></LineChart>
               </ResponsiveContainer>
            </CardContent></Card>
         </TabsContent>
@@ -53,7 +64,8 @@ export default function AnalyticsPage() {
         <TabsContent value="revenue" className="space-y-6">
            <Card><CardHeader><CardTitle>Monthly Revenue Stream</CardTitle></CardHeader><CardContent className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
-                 <AreaChart data={analyticsData.revenueTrend}><defs><linearGradient id="colorRv" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/><stop offset="95%" stopColor="#8884d8" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="name"/><YAxis/><Tooltip/><Area type="monotone" dataKey="value" stroke="#8884d8" fillOpacity={1} fill="url(#colorRv)"/></AreaChart>
+                 {/* ✅ Changed to safeData.revenueTrend */}
+                 <AreaChart data={safeData.revenueTrend}><defs><linearGradient id="colorRv" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/><stop offset="95%" stopColor="#8884d8" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="name"/><YAxis/><Tooltip/><Area type="monotone" dataKey="value" stroke="#8884d8" fillOpacity={1} fill="url(#colorRv)"/></AreaChart>
               </ResponsiveContainer>
            </CardContent></Card>
         </TabsContent>
@@ -61,7 +73,7 @@ export default function AnalyticsPage() {
         {/* TAB 4: DATA VISUALIZATION */}
         <TabsContent value="visualization" className="space-y-6">
            <div className="grid gap-6 md:grid-cols-2">
-              <Card><CardHeader><CardTitle>Device Usage</CardTitle></CardHeader><CardContent className="h-[300px] flex justify-center"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={analyticsData.deviceUsage} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" label>{analyticsData.deviceUsage.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></CardContent></Card>
+              <Card><CardHeader><CardTitle>Device Usage</CardTitle></CardHeader><CardContent className="h-[300px] flex justify-center"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={safeData.deviceUsage} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" label>{safeData.deviceUsage.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></CardContent></Card>
               <Card><CardHeader><CardTitle>Regional Heatmap</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center bg-slate-50 text-slate-400">Map Visualization Component Placeholder</CardContent></Card>
            </div>
         </TabsContent>
