@@ -3,23 +3,37 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function GET() {
   try {
+    console.log("🟢 API Started...");
+
     // ==========================================
-    // 1. SERVICE ROLE KEY DECODING (IMPORTANT)
+    // 1. KEY HANDLING (CRITICAL FIX)
     // ==========================================
     let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
 
-    // Agar normal key nahi hai, to B64 wali check karo aur decode karo
-    if (!serviceKey && process.env.SUPABASE_SERVICE_ROLE_KEY_B64) {
-      const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-      // Agar 'eyJ' se start nahi ho raha matlab pure base64 hai, usko decode karo
-      serviceKey = Buffer.from(b64Key, 'base64').toString('utf-8').trim();
+    // Agar normal key nahi hai, to B64 try karte hain
+    if (!serviceKey && b64Key) {
+      console.log("⚠️ Using B64 Key check...");
+      // Check agar ye already decoded hai (JWT starts with eyJ)
+      if (b64Key.startsWith('eyJ')) {
+        serviceKey = b64Key;
+      } else {
+        // Agar encoded hai to decode karo
+        try {
+          serviceKey = Buffer.from(b64Key, 'base64').toString('utf-8').trim();
+        } catch (e) {
+          throw new Error("Failed to decode Base64 Key");
+        }
+      }
     }
 
     if (!serviceKey) {
-      throw new Error('CRITICAL: Service Role Key missing or invalid');
+      throw new Error("CRITICAL: Supabase Service Role Key is MISSING. Check Vercel Env Variables.");
     }
 
-    // Supabase Client Initialize
+    // ==========================================
+    // 2. SUPABASE CONNECTION
+    // ==========================================
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       serviceKey,
@@ -27,96 +41,110 @@ export async function GET() {
     );
 
     // ==========================================
-    // 2. DATA FETCHING (Clients + Plans)
+    // 3. FETCH DATA (Plans & Clients)
     // ==========================================
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    console.log("🟢 Fetching Data from DB...");
 
-    console.log("Fetching Dashboard Data...");
-
-    // Parallel Fetching for Speed
+    // Parallel fetch
     const [clientsRes, plansRes] = await Promise.all([
       supabase.from('clients').select('*'),
       supabase.from('plans').select('*')
     ]);
 
-    if (clientsRes.error) throw clientsRes.error;
-    if (plansRes.error) throw plansRes.error;
+    // Check for DB Errors
+    if (clientsRes.error) throw new Error(`Clients Table Error: ${clientsRes.error.message}`);
+    if (plansRes.error) throw new Error(`Plans Table Error: ${plansRes.error.message}`);
 
     const clients = clientsRes.data || [];
     const plans = plansRes.data || [];
 
+    console.log(`✅ Data Fetched: ${clients.length} Clients, ${plans.length} Plans`);
+
     // ==========================================
-    // 3. CALCULATIONS (Real Data)
+    // 4. CALCULATIONS
     // ==========================================
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
 
     // A. Total Clients
     const totalClients = clients.length;
 
-    // B. New Clients This Month
-    const newClients = clients.filter(c => new Date(c.created_at) >= startOfMonth).length;
+    // B. New Clients
+    const newClients = clients.filter(c => c.created_at && new Date(c.created_at) >= startOfMonth).length;
 
     // C. Active Trials
-    // Check karte hain ki plan name me 'trial' hai ya price 0 hai
     const activeTrials = clients.filter(c => {
-      const status = c.status?.toLowerCase() || '';
       const planName = c.plan_name?.toLowerCase() || '';
+      const status = c.status?.toLowerCase() || '';
       return status === 'active' && planName.includes('trial');
     }).length;
 
-    // D. REVENUE CALCULATION (Linking Client to Plan Table)
+    // D. REVENUE CALCULATION
     let totalRevenue = 0;
 
-    // Optimization: Plans ka ek Map bana lete hain ID ke hisab se fast lookup ke liye
+    // Map Plans for fast access (Handle Price as String/Number)
     const planMap = new Map();
     plans.forEach(p => {
-      planMap.set(p.id, Number(p.price)); // Price ko number bana lo
+      // Aapke database me price string '7000' hai, usko Number me convert karna zaruri hai
+      const price = parseFloat(p.price || '0'); 
+      planMap.set(p.id, price);
     });
 
-    // Clients loop karke price add karo
     clients.forEach(client => {
-      // Sirf 'ACTIVE' clients ka revenue jodo
       if (client.status?.toLowerCase() === 'active') {
+        // Agar Plan ID match kare
         if (client.plan_id && planMap.has(client.plan_id)) {
-          // Agar Plan ID match ho gayi (Best way)
           totalRevenue += planMap.get(client.plan_id);
-        } else {
-            // Fallback: Agar ID match nahi hui to Plan Name se guess karo (Optional)
-            // Lekin aapke data me plan_id sahi hai, to ye else part shayad run na ho
+        } 
+        // Fallback: Agar Plan ID match na ho, par Plan Name match ho jaye (Optional safety)
+        else if (client.plan_name) {
+           // Basic logic backup
+           if (client.plan_name.toLowerCase().includes('enterprise')) totalRevenue += 10000;
+           else if (client.plan_name.toLowerCase().includes('pro')) totalRevenue += 7000;
+           else if (client.plan_name.toLowerCase().includes('basic')) totalRevenue += 4000;
         }
       }
     });
 
-    console.log("Stats:", { totalClients, totalRevenue, activeTrials });
+    console.log("✅ Calculations Done. Revenue:", totalRevenue);
 
     // ==========================================
-    // 4. RESPONSE
+    // 5. SUCCESS RESPONSE
     // ==========================================
     return NextResponse.json({
       kpi: {
-        totalClients: totalClients,
-        newClients: newClients,
+        totalClients,
+        newClients,
         revenue: totalRevenue,
-        activeTrials: activeTrials,
-        systemHealth: '100%',
+        activeTrials,
+        systemHealth: '100%'
       },
       alerts: [],
       activities: clients
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) // Newest first
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 5)
         .map(c => ({
            type: 'New Client',
-           client: c.name || c.email,
-           time: c.created_at
+           client: c.name || c.email || 'Unknown',
+           time: c.created_at || new Date().toISOString()
         }))
     });
 
   } catch (err: any) {
-    console.error('Dashboard API Error:', err.message);
-    return NextResponse.json(
-      { error: 'Internal Server Error', details: err.message },
-      { status: 500 }
-    );
+    // ==========================================
+    // 6. ERROR RESPONSE (Detailed)
+    // ==========================================
+    console.error('❌ API CRASH:', err.message);
+    
+    // Return actual error to Frontend so we can see it
+    return NextResponse.json({ 
+      error: 'Dashboard API Failed', 
+      details: err.message,
+      // Fallback data taaki dashboard bilkul blank na dikhe
+      kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Error' },
+      alerts: [{ type: 'error', message: `API Error: ${err.message}`, action: '#' }],
+      activities: []
+    }, { status: 200 }); // Status 200 bhej rahe hain taaki frontend crash na ho, bas error dikhaye
   }
 }
