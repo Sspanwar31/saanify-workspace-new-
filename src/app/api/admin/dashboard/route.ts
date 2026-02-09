@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'; // Apne DB connection ka path use kare
+import { prisma } from '@/lib/prisma'; // Ab ye line error nahi degi
 
 export async function GET() {
   try {
-    // 1. Dates calculate karein (Current Month Revenue ke liye)
+    // 1. Dates calculate karein
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-    // 2. Parallel Database Queries run karein (Performance ke liye)
+    // 2. Parallel Database Queries
+    // NOTE: Make sure aapke schema.prisma me 'Society', 'Payment', 'ActivityLog' naam ke models hon.
     const [
       totalClients, 
       newClientsThisMonth,
@@ -16,15 +17,15 @@ export async function GET() {
       recentLogs
     ] = await Promise.all([
       
-      // Total Clients count
+      // Total Clients
       prisma.society.count(), 
       
-      // New Clients joined this month
+      // New Clients this month
       prisma.society.count({
         where: { createdAt: { gte: startOfMonth } }
       }),
 
-      // Total Revenue (Month to Date) - Payments table se sum
+      // Total Revenue
       prisma.payment.aggregate({
         _sum: { amount: true },
         where: { 
@@ -33,42 +34,42 @@ export async function GET() {
         }
       }),
 
-      // Active Trials (Maan lo jinka plan 'TRIAL' hai)
+      // Active Trials
       prisma.society.count({
         where: { subscriptionStatus: 'TRIAL' }
       }),
 
-      // Alerts: Pending Payments
+      // Pending Payments
       prisma.payment.count({
         where: { status: 'PENDING_VERIFICATION' }
       }),
 
-      // Live Pulse: Activity Logs (Agar table hai, nahi toh user logins se nikalo)
+      // Recent Activity Logs (Fallback to empty array if table doesn't exist yet)
       prisma.activityLog.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
-        include: { user: { select: { name: true } } } // User ka naam bhi layein
-      })
+        include: { user: { select: { name: true } } }
+      }).catch(() => []) // Agar table nahi hai to crash nahi karega, empty array dega
     ]);
 
-    // 3. Data ko Frontend ke format me structure karein
-    const responseData = {
+    // 3. Response Structure
+    const responseData: any = {
       kpi: {
         totalClients: totalClients,
         newClients: newClientsThisMonth,
         revenue: totalRevenue._sum.amount || 0,
         activeTrials: activeTrials,
-        systemHealth: "98.5%" // Isko abhi ke liye static rakh sakte hain ya server uptime check laga sakte hain
+        systemHealth: "98.5%" 
       },
       alerts: [],
-      activities: recentLogs.map(log => ({
-        type: log.action, // e.g., "New Login", "Payment Received"
-        client: log.user.name,
-        time: log.createdAt.toISOString() // Frontend pe format karenge
+      activities: recentLogs.map((log: any) => ({
+        type: log.action, 
+        client: log.user?.name || 'Unknown',
+        time: log.createdAt.toISOString()
       }))
     };
 
-    // Agar pending payments hain to alert add karein
+    // Add Alerts
     if (pendingPayments > 0) {
       responseData.alerts.push({
         type: 'critical',
@@ -80,6 +81,10 @@ export async function GET() {
     return NextResponse.json(responseData);
 
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
+    console.error("Dashboard API Error:", error); // Terminal me error dikhega
+    return NextResponse.json(
+      { error: 'Failed to fetch dashboard data', details: String(error) }, 
+      { status: 500 }
+    );
   }
 }
