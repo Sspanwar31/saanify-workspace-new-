@@ -19,7 +19,11 @@ export default function AdminDashboard() {
   useEffect(() => { setIsMounted(true); refreshDashboard(); }, []);
   if (!isMounted) return <div className="p-8">Loading Command Center...</div>;
 
-  const data = getOverviewData();
+  // ✅ FIX 1: Safe Data Object (Agar data undefined ho to crash nahi hoga)
+  const data = getOverviewData() || {
+    alerts: [],
+    kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Good' }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -39,9 +43,10 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 2. SMART ALERTS (Only show if issues exist) */}
+      {/* 2. SMART ALERTS */}
+      {/* ✅ FIX 2: Optional chaining aur fallback empty array use kiya hai */}
       <div className="space-y-3">
-         {data.alerts.map((alert, i) => (
+         {(data?.alerts || []).map((alert, i) => (
            <Alert key={i} className={`border-l-4 ${alert.type === 'critical' || alert.type === 'error' ? 'border-l-red-500 bg-red-50' : 'border-l-yellow-500 bg-yellow-50'}`}>
               <AlertTriangle className={`h-4 w-4 ${alert.type === 'critical' || alert.type === 'error' ? 'text-red-600' : 'text-yellow-600'}`} />
               <div className="flex justify-between items-center w-full">
@@ -57,7 +62,7 @@ export default function AdminDashboard() {
         <Card className="border-t-4 border-t-blue-500 shadow-sm">
            <CardContent className="p-6">
               <div className="flex justify-between items-start">
-                 <div><p className="text-xs font-bold text-slate-400 uppercase">Total Clients</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi.totalClients}</h3></div>
+                 <div><p className="text-xs font-bold text-slate-400 uppercase">Total Clients</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi?.totalClients || 0}</h3></div>
                  <div className="p-2 bg-blue-50 rounded-lg"><Users className="h-6 w-6 text-blue-600"/></div>
               </div>
               <p className="text-xs text-green-600 mt-3 flex items-center font-medium"><TrendingUp className="h-3 w-3 mr-1"/> +2 this month</p>
@@ -67,7 +72,7 @@ export default function AdminDashboard() {
         <Card className="border-t-4 border-t-emerald-500 shadow-sm">
            <CardContent className="p-6">
               <div className="flex justify-between items-start">
-                 <div><p className="text-xs font-bold text-slate-400 uppercase">Revenue (MTD)</p><h3 className="text-3xl font-bold text-slate-800 mt-1">₹{data.kpi.revenue.toLocaleString()}</h3></div>
+                 <div><p className="text-xs font-bold text-slate-400 uppercase">Revenue (MTD)</p><h3 className="text-3xl font-bold text-slate-800 mt-1">₹{(data.kpi?.revenue || 0).toLocaleString()}</h3></div>
                  <div className="p-2 bg-emerald-50 rounded-lg"><DollarSign className="h-6 w-6 text-emerald-600"/></div>
               </div>
               <p className="text-xs text-green-600 mt-3 flex items-center font-medium"><TrendingUp className="h-3 w-3 mr-1"/> +12% growth</p>
@@ -77,7 +82,7 @@ export default function AdminDashboard() {
         <Card className="border-t-4 border-t-orange-500 shadow-sm">
            <CardContent className="p-6">
               <div className="flex justify-between items-start">
-                 <div><p className="text-xs font-bold text-slate-400 uppercase">Active Trials</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi.activeTrials}</h3></div>
+                 <div><p className="text-xs font-bold text-slate-400 uppercase">Active Trials</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi?.activeTrials || 0}</h3></div>
                  <div className="p-2 bg-orange-50 rounded-lg"><Clock className="h-6 w-6 text-orange-600"/></div>
               </div>
               <p className="text-xs text-orange-600 mt-3 flex items-center font-medium">Potential Leads</p>
@@ -87,7 +92,7 @@ export default function AdminDashboard() {
         <Card className="border-t-4 border-t-purple-500 shadow-sm">
            <CardContent className="p-6">
               <div className="flex justify-between items-start">
-                 <div><p className="text-xs font-bold text-slate-400 uppercase">System Health</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi.systemHealth}</h3></div>
+                 <div><p className="text-xs font-bold text-slate-400 uppercase">System Health</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi?.systemHealth || '-'}</h3></div>
                  <div className="p-2 bg-purple-50 rounded-lg"><Activity className="h-6 w-6 text-purple-600"/></div>
               </div>
               <p className="text-xs text-slate-400 mt-3">All systems operational</p>
@@ -111,7 +116,8 @@ export default function AdminDashboard() {
                      <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:scale-110 transition-transform"><CreditCard className="h-6 w-6 text-orange-600"/></div>
                      <div>
                         <h4 className="font-bold text-slate-700">Verify Payments</h4>
-                        {data.alerts.find(a => a.type === 'critical') && <Badge className="mt-1 bg-red-500 text-white">Action Needed</Badge>}
+                        {/* ✅ FIX 3: Safe check for alerts inside map */}
+                        {(data?.alerts || []).find(a => a.type === 'critical') && <Badge className="mt-1 bg-red-500 text-white">Action Needed</Badge>}
                      </div>
                   </CardContent>
                </Card>
@@ -136,12 +142,13 @@ export default function AdminDashboard() {
             <Card>
                <CardContent className="p-0">
                   <div className="divide-y divide-slate-100">
-                     {activities.slice(0, 5).map((act, i) => (
+                     {/* ✅ FIX 4: Added (activities || []) fallback to prevent slice crash */}
+                     {(activities || []).slice(0, 5).map((act, i) => (
                         <div key={i} className="p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors">
                            <div className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
                            <div>
-                              <p className="text-sm font-medium text-slate-700">{act.type}</p>
-                              <p className="text-xs text-slate-500">{act.client} • {act.time}</p>
+                              <p className="text-sm font-medium text-slate-700">{act?.type || 'Unknown Activity'}</p>
+                              <p className="text-xs text-slate-500">{act?.client || 'Unknown'} • {act?.time || 'Just now'}</p>
                            </div>
                         </div>
                      ))}
