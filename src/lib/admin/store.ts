@@ -1,10 +1,11 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 import { useAdminStore } from '@/lib/admin/store';
 import { useRouter } from 'next/navigation';
 import { 
   TrendingUp, Users, DollarSign, Activity, AlertTriangle, 
-  ArrowRight, Plus, CreditCard, Clock, Zap, UploadCloud
+  ArrowRight, Plus, CreditCard, Clock, Zap, UploadCloud, Shield
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
