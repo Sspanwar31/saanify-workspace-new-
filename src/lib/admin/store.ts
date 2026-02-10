@@ -1,9 +1,8 @@
 import { create } from 'zustand';
-// ✅ FIX: "auth-helpers" hata diya, simple "supabase-js" use kar rahe hain jo installed hoga
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ Initialize Client (Standard Way)
-// Dhyan rahe: Yahan ANON KEY hi use karein. RLS Policy se permission manage karein.
+// ✅ 1. Client Initialize (Bina Auth Helpers ke)
+// Ye Vercel par bina error ke chalega
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
@@ -14,6 +13,7 @@ interface AdminState {
   error: string | null;
   clients: any[];
   plans: any[];
+  
   refreshDashboard: () => Promise<void>;
   getOverviewData: () => any;
 }
@@ -24,32 +24,34 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   clients: [],
   plans: [],
 
-  // ✅ ACTION: Data Fetching
+  // ✅ ACTION: Fetch Data
   refreshDashboard: async () => {
     set({ isLoading: true, error: null });
-    console.log("🔄 Store: Fetching data from Supabase...", supabaseUrl ? "URL Found" : "URL Missing");
+    
+    // Agar Env variables nahi mile to error na de, bas log kare
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("⚠️ Supabase Keys Missing in Environment Variables");
+      set({ isLoading: false });
+      return;
+    }
 
     try {
+      console.log("🔄 Store: Fetching data...");
+      
       // 1. Fetch Clients
       const { data: clientsData, error: clientError } = await supabase
         .from('clients')
         .select('*')
-        .eq('is_deleted', false); // Sirf active clients
+        .eq('is_deleted', false); // Delete wale nahi chahiye
 
-      if (clientError) {
-        // Agar permission error aye to console me clear bataye
-        console.error("Permission Error? Check RLS Policies in Supabase.");
-        throw new Error(`Clients Error: ${clientError.message}`);
-      }
+      if (clientError) throw clientError;
 
       // 2. Fetch Plans
       const { data: plansData, error: planError } = await supabase
         .from('plan')
         .select('*');
 
-      if (planError) throw new Error(`Plans Error: ${planError.message}`);
-
-      console.log(`✅ Success: Found ${clientsData?.length} clients and ${plansData?.length} plans.`);
+      if (planError) throw planError;
 
       set({ 
         clients: clientsData || [], 
@@ -63,39 +65,32 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
-  // ✅ GETTER: Calculation Logic
+  // ✅ GETTER: Safe Calculation Logic
   getOverviewData: () => {
-    const { clients, plans } = get();
-    
-    const safeClients = clients || [];
-    const safePlans = plans || [];
+    const state = get();
+    // Safety: Agar state undefined ho to crash na ho
+    const clients = state.clients || [];
+    const plans = state.plans || [];
 
     let totalRevenue = 0;
     let activeTrials = 0;
     
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    safeClients.forEach((client: any) => {
-      // Revenue Logic
+    // Logic
+    clients.forEach((client: any) => {
+      // Revenue
       if (client.plan_id) {
-        const matchedPlan = safePlans.find((p: any) => p.id === client.plan_id);
-        if (matchedPlan && matchedPlan.price) {
-          totalRevenue += Number(matchedPlan.price);
-        }
+        const matchedPlan = plans.find((p: any) => p.id === client.plan_id);
+        if (matchedPlan?.price) totalRevenue += Number(matchedPlan.price);
       }
-
-      // Trial Logic
-      const planName = (client.plan_name || '').toLowerCase();
-      const planCode = (client.plan || '').toLowerCase();
-      if (planName.includes('trial') || planCode.includes('trial')) {
-        activeTrials++;
-      }
+      
+      // Trials
+      const pName = (client.plan_name || '').toLowerCase();
+      const pCode = (client.plan || '').toLowerCase();
+      if (pName.includes('trial') || pCode.includes('trial')) activeTrials++;
     });
 
-    // Fake Activities from Created Dates
-    const activities = safeClients
+    // Activities
+    const activities = clients
       .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
       .map((client: any) => ({
@@ -104,19 +99,17 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         time: client.created_at ? new Date(client.created_at).toLocaleDateString() : 'Just now'
       }));
 
+    // Return Structure (Ye kabhi undefined return nahi karega)
     return {
       kpi: {
-        totalClients: safeClients.length,
+        totalClients: clients.length,
         revenue: totalRevenue,
         activeTrials: activeTrials,
         systemHealth: 'Healthy'
       },
       alerts: [],
       activities: activities,
-      quickStats: {
-        newClientsToday: 0,
-        revenueToday: 0
-      }
+      quickStats: { newClientsToday: 0, revenueToday: 0 }
     };
   }
 }));
