@@ -110,9 +110,20 @@ export async function GET() {
     console.log("✅ Calculations Done. Revenue:", totalRevenue);
 
     // ==========================================
-    // 5. SUCCESS RESPONSE
+    // 5. SUCCESS RESPONSE (DEBUG ADDED)
     // ==========================================
     return NextResponse.json({
+      // ✅ HARD DEBUG ADDED
+      debug: {
+        env: {
+          hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+          hasServiceKey: !!serviceKey
+        },
+        counts: {
+          clients: clients.length,
+          plans: plans.length
+        }
+      },
       kpi: {
         totalClients,
         newClients,
@@ -144,7 +155,15 @@ export async function GET() {
       // Fallback data taaki dashboard bilkul blank na dikhe
       kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Error' },
       alerts: [{ type: 'error', message: `API Error: ${err.message}`, action: '#' }],
-      activities: []
+      activities: [],
+      // ✅ Debug info in error response too
+      debug: {
+        env: {
+          hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+          hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY || !!process.env.SUPABASE_SERVICE_ROLE_KEY_B64
+        },
+        counts: { clients: 0, plans: 0 }
+      }
     }, { status: 200 }); // Status 200 bhej rahe hain taaki frontend crash na ho, bas error dikhaye
   }
 }
