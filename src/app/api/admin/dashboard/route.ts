@@ -79,6 +79,7 @@ export async function GET() {
     // Map Plans for fast access (Handle Price as String/Number)
     const planMap = new Map();
     plans.forEach(p => {
+      // Aapke database me price string '7000' hai, usko Number me convert karna zaruri hai
       const price = parseFloat(p.price || '0'); 
       planMap.set(p.id, price);
     });
@@ -91,6 +92,7 @@ export async function GET() {
         } 
         // Fallback: Agar Plan ID match na ho, par Plan Name match ho jaye (Optional safety)
         else if (client.plan_name) {
+           // Basic logic backup
            if (client.plan_name.toLowerCase().includes('enterprise')) totalRevenue += 10000;
            else if (client.plan_name.toLowerCase().includes('pro')) totalRevenue += 7000;
            else if (client.plan_name.toLowerCase().includes('basic')) totalRevenue += 4000;
@@ -122,9 +124,11 @@ export async function GET() {
 
   } catch (err: any) {
     // ==========================================
-    // 6. ERROR RESPONSE
+    // 6. ERROR RESPONSE (Clean)
     // ==========================================
-    // Return actual error to Frontend so we can see it
+    console.error('❌ API CRASH:', err.message);
+    
+    // Return actual error to Frontend so we can see it (No Debug Data)
     return NextResponse.json({ 
       error: 'Dashboard API Failed', 
       details: err.message,
@@ -132,6 +136,6 @@ export async function GET() {
       kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Error' },
       alerts: [{ type: 'error', message: `API Error: ${err.message}`, action: '#' }],
       activities: []
-    }, { status: 200 });
+    }, { status: 200 }); 
   }
 }
