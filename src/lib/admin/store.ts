@@ -48,7 +48,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
       // 2. Fetch Plans
       const { data: plansData, error: planError } = await supabase
-        .from('plan')
+        .from('plans') // ✅ FIXED: Changed from 'plan' to 'plans'
         .select('*');
 
       if (planError) throw planError;
