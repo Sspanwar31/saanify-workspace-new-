@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useAdminStore } from '@/lib/admin/store'; // Make sure path sahi ho
+import { useAdminStore } from '@/lib/admin/store';
 import { useRouter } from 'next/navigation';
 import { 
   Shield, TrendingUp, Users, DollarSign, Activity, AlertTriangle, 
@@ -18,34 +18,16 @@ export default function AdminDashboard() {
   const { getOverviewData, activities, refreshDashboard, isLoading, error } = useAdminStore();
   const [isMounted, setIsMounted] = useState(false);
 
-  // DEBUGGING: Data variable ko yahan define karein taaki console me print kar sakein
-  const rawData = getOverviewData ? getOverviewData() : null;
-  
   // Safe Data Object (Fallback values ke sath)
-  const data = rawData || {
+  const data = getOverviewData() || {
     alerts: [],
     kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Unknown' }
   };
 
   useEffect(() => { 
     setIsMounted(true); 
-    
-    console.log("🟢 Dashboard Mounted");
-    console.log("🔄 Triggering refreshDashboard()...");
-    
-    refreshDashboard()
-      .then(() => console.log("✅ refreshDashboard completed"))
-      .catch((err) => console.error("❌ refreshDashboard failed:", err));
-
+    refreshDashboard();
   }, []);
-
-  // DEBUGGING: Har render pe check karein ki data kya hai
-  console.log("📊 Current Dashboard State:", { 
-    rawData, 
-    finalData: data, 
-    activities, 
-    isLoading: isLoading || 'Not provided by store' 
-  });
 
   if (!isMounted) return <div className="p-8">Loading Command Center...</div>;
 
@@ -67,27 +49,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* -------------------- DEBUG SECTION (REMOVE LATER) -------------------- */}
-      <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-xs overflow-auto border border-red-500 shadow-xl">
-        <h3 className="text-white font-bold text-lg mb-2 border-b border-gray-700 pb-2">🛠️ DEBUGGER (Remove before Production)</h3>
-        <div className="grid grid-cols-2 gap-4">
-            <div>
-                <strong className="text-yellow-400">Status Check:</strong>
-                <p>Overview Data Present: {rawData ? "✅ Yes" : "❌ No (Undefined/Null)"}</p>
-                <p>Activities Present: {activities?.length > 0 ? `✅ Yes (${activities.length})` : "❌ No/Empty"}</p>
-                <p>Store Loading: {isLoading ? "⏳ Yes" : "⏹️ No"}</p>
-                <p>Store Error: {error ? `⚠️ ${error}` : "✅ None"}</p>
-            </div>
-            <div>
-                <strong className="text-yellow-400">Raw Data Dump:</strong>
-                <pre className="whitespace-pre-wrap max-h-40 overflow-auto text-gray-300">
-                    {JSON.stringify(data, null, 2)}
-                </pre>
-            </div>
-        </div>
-      </div>
-      {/* ---------------------------------------------------------------------- */}
-
       {/* 2. SMART ALERTS */}
       <div className="space-y-3">
          {(data?.alerts || []).map((alert, i) => (
@@ -99,7 +60,6 @@ export default function AdminDashboard() {
               </div>
            </Alert>
          ))}
-         {/* Agar alerts khali hai to message dikhaye */}
          {(data?.alerts || []).length === 0 && (
              <div className="text-center text-sm text-gray-400 py-2 border border-dashed rounded">No Active Alerts</div>
          )}
@@ -127,8 +87,6 @@ export default function AdminDashboard() {
            </CardContent>
         </Card>
 
-        {/* ... (Baki Cards same rahenge) ... */}
-        
         <Card className="border-t-4 border-t-orange-500 shadow-sm">
             <CardContent className="p-6">
             <div className="flex justify-between items-start">
@@ -170,7 +128,6 @@ export default function AdminDashboard() {
                      </div>
                   </CardContent>
                </Card>
-               {/* Other Quick Actions ... */}
                <Card className="hover:border-purple-300 transition-all cursor-pointer group" onClick={() => router.push('/admin/settings')}>
                   <CardContent className="p-4 flex items-center gap-4">
                      <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center group-hover:scale-110 transition-transform"><UploadCloud className="h-6 w-6 text-purple-600"/></div>
@@ -201,7 +158,6 @@ export default function AdminDashboard() {
                            </div>
                         </div>
                      ))}
-                     {/* Debug: Empty Activity Check */}
                      {(activities || []).length === 0 && <div className="p-4 text-center text-xs text-gray-400">No recent activity found</div>}
                   </div>
                   <Button variant="ghost" className="w-full text-xs text-slate-500 border-t" onClick={() => router.push('/admin/activity')}>View Full Audit Log</Button>
