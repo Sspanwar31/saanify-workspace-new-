@@ -1,18 +1,19 @@
 import { create } from 'zustand';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+// ✅ FIX: "auth-helpers" hata diya, simple "supabase-js" use kar rahe hain jo installed hoga
+import { createClient } from '@supabase/supabase-js';
 
-// Supabase client initialize karein
-const supabase = createClientComponentClient();
+// ✅ Initialize Client (Standard Way)
+// Dhyan rahe: Yahan ANON KEY hi use karein. RLS Policy se permission manage karein.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface AdminState {
   isLoading: boolean;
   error: string | null;
-  
-  // Data containers
   clients: any[];
   plans: any[];
-  
-  // Actions
   refreshDashboard: () => Promise<void>;
   getOverviewData: () => any;
 }
@@ -23,21 +24,25 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   clients: [],
   plans: [],
 
-  // ✅ ACTION: Data Fetching directly from Supabase
+  // ✅ ACTION: Data Fetching
   refreshDashboard: async () => {
     set({ isLoading: true, error: null });
-    console.log("🔄 Store: Fetching data from Supabase...");
+    console.log("🔄 Store: Fetching data from Supabase...", supabaseUrl ? "URL Found" : "URL Missing");
 
     try {
-      // 1. Fetch Clients (Jo delete nahi hue hain)
+      // 1. Fetch Clients
       const { data: clientsData, error: clientError } = await supabase
         .from('clients')
         .select('*')
-        .eq('is_deleted', false);
+        .eq('is_deleted', false); // Sirf active clients
 
-      if (clientError) throw new Error(`Clients Error: ${clientError.message}`);
+      if (clientError) {
+        // Agar permission error aye to console me clear bataye
+        console.error("Permission Error? Check RLS Policies in Supabase.");
+        throw new Error(`Clients Error: ${clientError.message}`);
+      }
 
-      // 2. Fetch Plans (Price calculate karne ke liye)
+      // 2. Fetch Plans
       const { data: plansData, error: planError } = await supabase
         .from('plan')
         .select('*');
@@ -46,7 +51,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
       console.log(`✅ Success: Found ${clientsData?.length} clients and ${plansData?.length} plans.`);
 
-      // Store me save karein
       set({ 
         clients: clientsData || [], 
         plans: plansData || [],
@@ -59,62 +63,47 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
-  // ✅ GETTER: Calculation Logic (Dashboard ke liye data prepare karna)
+  // ✅ GETTER: Calculation Logic
   getOverviewData: () => {
     const { clients, plans } = get();
     
-    // Safety check
     const safeClients = clients || [];
     const safePlans = plans || [];
 
-    // --- 1. Calculate Revenue & Stats ---
     let totalRevenue = 0;
     let activeTrials = 0;
     
-    // Current Month Growth Calculation
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    let newClientsThisMonth = 0;
 
-    safeClients.forEach((client) => {
-      // Revenue Logic: Client ke plan_id se Plan table ka price dhundo
+    safeClients.forEach((client: any) => {
+      // Revenue Logic
       if (client.plan_id) {
-        const matchedPlan = safePlans.find(p => p.id === client.plan_id);
+        const matchedPlan = safePlans.find((p: any) => p.id === client.plan_id);
         if (matchedPlan && matchedPlan.price) {
           totalRevenue += Number(matchedPlan.price);
         }
       }
 
-      // Trial Logic: Case insensitive check
+      // Trial Logic
       const planName = (client.plan_name || '').toLowerCase();
-      const planCode = (client.plan || '').toLowerCase(); // Kabhi kabhi code 'plan' column me hota hai
-      
+      const planCode = (client.plan || '').toLowerCase();
       if (planName.includes('trial') || planCode.includes('trial')) {
         activeTrials++;
       }
-
-      // Growth Logic
-      if (client.created_at) {
-        const createdDate = new Date(client.created_at);
-        if (createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear) {
-          newClientsThisMonth++;
-        }
-      }
     });
 
-    // --- 2. Generate Activity Log from Client Data ---
-    // Kyuki abhi activity table nahi hai, hum 'created_at' se fake logs banayenge
+    // Fake Activities from Created Dates
     const activities = safeClients
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) // Newest first
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
-      .map(client => ({
+      .map((client: any) => ({
         type: 'New Subscription',
-        client: client.society_name || client.name || 'Unknown User',
-        time: new Date(client.created_at).toLocaleDateString()
+        client: client.society_name || client.name || 'User',
+        time: client.created_at ? new Date(client.created_at).toLocaleDateString() : 'Just now'
       }));
 
-    // --- 3. Return Final Object for Dashboard ---
     return {
       kpi: {
         totalClients: safeClients.length,
@@ -122,11 +111,11 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         activeTrials: activeTrials,
         systemHealth: 'Healthy'
       },
-      alerts: [], // Future me yahan logic add kar sakte hain
+      alerts: [],
       activities: activities,
       quickStats: {
-        newClientsToday: 0, // Placeholder
-        revenueToday: 0     // Placeholder
+        newClientsToday: 0,
+        revenueToday: 0
       }
     };
   }
