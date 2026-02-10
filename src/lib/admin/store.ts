@@ -39,16 +39,18 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       console.log("🔄 Store: Fetching data...");
       
       // 1. Fetch Clients
+      // ✅ FINAL FIX: Added .eq('role', 'client') to filter out admins
       const { data: clientsData, error: clientError } = await supabase
         .from('clients')
         .select('*')
-        .eq('is_deleted', false); // Delete wale nahi chahiye
+        .eq('is_deleted', false) // Delete wale nahi chahiye
+        .eq('role', 'client'); // ✅ ONLY REAL CLIENTS
 
       if (clientError) throw clientError;
 
       // 2. Fetch Plans
       const { data: plansData, error: planError } = await supabase
-        .from('plans') // ✅ FIXED: Changed from 'plan' to 'plans'
+        .from('plans') 
         .select('*');
 
       if (planError) throw planError;
