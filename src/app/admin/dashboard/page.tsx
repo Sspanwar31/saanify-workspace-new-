@@ -1,32 +1,56 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useAdminStore } from '@/lib/admin/store';
+import { useAdminStore } from '@/lib/admin/store'; // Make sure path sahi ho
 import { useRouter } from 'next/navigation';
 import { 
   Shield, TrendingUp, Users, DollarSign, Activity, AlertTriangle, 
-  CheckCircle, ArrowRight, Plus, CreditCard, Clock, Zap, UploadCloud
+  ArrowRight, Plus, CreditCard, Clock, Zap, UploadCloud
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertTitle } from '@/components/ui/alert';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { getOverviewData, activities, refreshDashboard } = useAdminStore();
-  const [isMounted, setIsMounted] = useState(false);
   
-  useEffect(() => { setIsMounted(true); refreshDashboard(); }, []);
-  if (!isMounted) return <div className="p-8">Loading Command Center...</div>;
+  // Store se values le rahe hain
+  const { getOverviewData, activities, refreshDashboard, isLoading, error } = useAdminStore();
+  const [isMounted, setIsMounted] = useState(false);
 
-  // ✅ FIX 1: Safe Data Object (Agar data undefined ho to crash nahi hoga)
-  const data = getOverviewData() || {
+  // DEBUGGING: Data variable ko yahan define karein taaki console me print kar sakein
+  const rawData = getOverviewData ? getOverviewData() : null;
+  
+  // Safe Data Object (Fallback values ke sath)
+  const data = rawData || {
     alerts: [],
-    kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Good' }
+    kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Unknown' }
   };
 
+  useEffect(() => { 
+    setIsMounted(true); 
+    
+    console.log("🟢 Dashboard Mounted");
+    console.log("🔄 Triggering refreshDashboard()...");
+    
+    refreshDashboard()
+      .then(() => console.log("✅ refreshDashboard completed"))
+      .catch((err) => console.error("❌ refreshDashboard failed:", err));
+
+  }, []);
+
+  // DEBUGGING: Har render pe check karein ki data kya hai
+  console.log("📊 Current Dashboard State:", { 
+    rawData, 
+    finalData: data, 
+    activities, 
+    isLoading: isLoading || 'Not provided by store' 
+  });
+
+  if (!isMounted) return <div className="p-8">Loading Command Center...</div>;
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* 1. HEADER */}
       <div className="flex justify-between items-center">
@@ -43,8 +67,28 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* -------------------- DEBUG SECTION (REMOVE LATER) -------------------- */}
+      <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-xs overflow-auto border border-red-500 shadow-xl">
+        <h3 className="text-white font-bold text-lg mb-2 border-b border-gray-700 pb-2">🛠️ DEBUGGER (Remove before Production)</h3>
+        <div className="grid grid-cols-2 gap-4">
+            <div>
+                <strong className="text-yellow-400">Status Check:</strong>
+                <p>Overview Data Present: {rawData ? "✅ Yes" : "❌ No (Undefined/Null)"}</p>
+                <p>Activities Present: {activities?.length > 0 ? `✅ Yes (${activities.length})` : "❌ No/Empty"}</p>
+                <p>Store Loading: {isLoading ? "⏳ Yes" : "⏹️ No"}</p>
+                <p>Store Error: {error ? `⚠️ ${error}` : "✅ None"}</p>
+            </div>
+            <div>
+                <strong className="text-yellow-400">Raw Data Dump:</strong>
+                <pre className="whitespace-pre-wrap max-h-40 overflow-auto text-gray-300">
+                    {JSON.stringify(data, null, 2)}
+                </pre>
+            </div>
+        </div>
+      </div>
+      {/* ---------------------------------------------------------------------- */}
+
       {/* 2. SMART ALERTS */}
-      {/* ✅ FIX 2: Optional chaining aur fallback empty array use kiya hai */}
       <div className="space-y-3">
          {(data?.alerts || []).map((alert, i) => (
            <Alert key={i} className={`border-l-4 ${alert.type === 'critical' || alert.type === 'error' ? 'border-l-red-500 bg-red-50' : 'border-l-yellow-500 bg-yellow-50'}`}>
@@ -55,6 +99,10 @@ export default function AdminDashboard() {
               </div>
            </Alert>
          ))}
+         {/* Agar alerts khali hai to message dikhaye */}
+         {(data?.alerts || []).length === 0 && (
+             <div className="text-center text-sm text-gray-400 py-2 border border-dashed rounded">No Active Alerts</div>
+         )}
       </div>
 
       {/* 3. KPI HERO CARDS */}
@@ -79,24 +127,26 @@ export default function AdminDashboard() {
            </CardContent>
         </Card>
 
+        {/* ... (Baki Cards same rahenge) ... */}
+        
         <Card className="border-t-4 border-t-orange-500 shadow-sm">
-           <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                 <div><p className="text-xs font-bold text-slate-400 uppercase">Active Trials</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi?.activeTrials || 0}</h3></div>
-                 <div className="p-2 bg-orange-50 rounded-lg"><Clock className="h-6 w-6 text-orange-600"/></div>
-              </div>
-              <p className="text-xs text-orange-600 mt-3 flex items-center font-medium">Potential Leads</p>
-           </CardContent>
+            <CardContent className="p-6">
+            <div className="flex justify-between items-start">
+                <div><p className="text-xs font-bold text-slate-400 uppercase">Active Trials</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi?.activeTrials || 0}</h3></div>
+                <div className="p-2 bg-orange-50 rounded-lg"><Clock className="h-6 w-6 text-orange-600"/></div>
+            </div>
+            <p className="text-xs text-orange-600 mt-3 flex items-center font-medium">Potential Leads</p>
+            </CardContent>
         </Card>
 
         <Card className="border-t-4 border-t-purple-500 shadow-sm">
-           <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                 <div><p className="text-xs font-bold text-slate-400 uppercase">System Health</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi?.systemHealth || '-'}</h3></div>
-                 <div className="p-2 bg-purple-50 rounded-lg"><Activity className="h-6 w-6 text-purple-600"/></div>
-              </div>
-              <p className="text-xs text-slate-400 mt-3">All systems operational</p>
-           </CardContent>
+            <CardContent className="p-6">
+            <div className="flex justify-between items-start">
+                <div><p className="text-xs font-bold text-slate-400 uppercase">System Health</p><h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi?.systemHealth || '-'}</h3></div>
+                <div className="p-2 bg-purple-50 rounded-lg"><Activity className="h-6 w-6 text-purple-600"/></div>
+            </div>
+            <p className="text-xs text-slate-400 mt-3">All systems operational</p>
+            </CardContent>
         </Card>
       </div>
 
@@ -116,11 +166,11 @@ export default function AdminDashboard() {
                      <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:scale-110 transition-transform"><CreditCard className="h-6 w-6 text-orange-600"/></div>
                      <div>
                         <h4 className="font-bold text-slate-700">Verify Payments</h4>
-                        {/* ✅ FIX 3: Safe check for alerts inside map */}
                         {(data?.alerts || []).find(a => a.type === 'critical') && <Badge className="mt-1 bg-red-500 text-white">Action Needed</Badge>}
                      </div>
                   </CardContent>
                </Card>
+               {/* Other Quick Actions ... */}
                <Card className="hover:border-purple-300 transition-all cursor-pointer group" onClick={() => router.push('/admin/settings')}>
                   <CardContent className="p-4 flex items-center gap-4">
                      <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center group-hover:scale-110 transition-transform"><UploadCloud className="h-6 w-6 text-purple-600"/></div>
@@ -142,7 +192,6 @@ export default function AdminDashboard() {
             <Card>
                <CardContent className="p-0">
                   <div className="divide-y divide-slate-100">
-                     {/* ✅ FIX 4: Added (activities || []) fallback to prevent slice crash */}
                      {(activities || []).slice(0, 5).map((act, i) => (
                         <div key={i} className="p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors">
                            <div className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
@@ -152,6 +201,8 @@ export default function AdminDashboard() {
                            </div>
                         </div>
                      ))}
+                     {/* Debug: Empty Activity Check */}
+                     {(activities || []).length === 0 && <div className="p-4 text-center text-xs text-gray-400">No recent activity found</div>}
                   </div>
                   <Button variant="ghost" className="w-full text-xs text-slate-500 border-t" onClick={() => router.push('/admin/activity')}>View Full Audit Log</Button>
                </CardContent>
