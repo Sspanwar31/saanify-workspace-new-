@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { createClient } from '@supabase/supabase-js';
 
-// 1. Client Initialize
+// ✅ 1. Client Initialize
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface AdminState {
@@ -11,6 +12,7 @@ interface AdminState {
   error: string | null;
   clients: any[];
   plans: any[];
+  
   refreshDashboard: () => Promise<void>;
   getOverviewData: () => any;
 }
@@ -21,29 +23,28 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   clients: [],
   plans: [],
 
-  // ACTION: Fetch Data
+  // ✅ ACTION: Fetch Data
   refreshDashboard: async () => {
     set({ isLoading: true, error: null });
     
     if (!supabaseUrl || !supabaseKey) {
-      console.error("⚠️ Supabase Keys Missing");
-      set({ isLoading: false });
+      set({ error: "Supabase Keys Missing", isLoading: false });
       return;
     }
 
     try {
-      // Fetch Clients
+      // 1. Fetch Clients
       const { data: clientsData, error: clientError } = await supabase
         .from('clients')
         .select('*')
         .eq('is_deleted', false)
-        .eq('role', 'client'); // Only Clients
+        .eq('role', 'client'); // ✅ Only Real Clients
 
       if (clientError) throw clientError;
 
-      // Fetch Plans
+      // 2. Fetch Plans
       const { data: plansData, error: planError } = await supabase
-        .from('plan') // Table name check karlena (plan ya plans)
+        .from('plans') 
         .select('*');
 
       if (planError) throw planError;
@@ -55,12 +56,11 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       });
 
     } catch (error: any) {
-      console.error("❌ Store Error:", error.message);
       set({ error: error.message, isLoading: false });
     }
   },
 
-  // GETTER: Calculation Logic
+  // ✅ GETTER: Safe Calculation Logic
   getOverviewData: () => {
     const state = get();
     const clients = state.clients || [];
@@ -70,18 +70,19 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     let activeTrials = 0;
     
     clients.forEach((client: any) => {
-      // Revenue Calculation
+      // Revenue
       if (client.plan_id) {
         const matchedPlan = plans.find((p: any) => p.id === client.plan_id);
         if (matchedPlan?.price) totalRevenue += Number(matchedPlan.price);
       }
-      // Trial Count
+      
+      // Trials
       const pName = (client.plan_name || '').toLowerCase();
       const pCode = (client.plan || '').toLowerCase();
       if (pName.includes('trial') || pCode.includes('trial')) activeTrials++;
     });
 
-    // Recent Activity
+    // Activities
     const activities = clients
       .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
@@ -99,7 +100,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         systemHealth: 'Healthy'
       },
       alerts: [],
-      activities: activities
+      activities: activities,
+      quickStats: { newClientsToday: 0, revenueToday: 0 }
     };
   }
 }));
