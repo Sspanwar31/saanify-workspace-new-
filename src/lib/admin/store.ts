@@ -1,202 +1,105 @@
-'use client';
+import { create } from 'zustand';
+import { createClient } from '@supabase/supabase-js';
 
-import { useEffect, useState } from 'react';
-import { useAdminStore } from '@/lib/admin/store';
-import { useRouter } from 'next/navigation';
-import { 
-  TrendingUp, Users, DollarSign, Activity, AlertTriangle, 
-  ArrowRight, Plus, CreditCard, Clock, Zap, UploadCloud, Shield
-} from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertTitle } from '@/components/ui/alert';
+// 1. Client Initialize
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-export default function AdminDashboard() {
-  const router = useRouter();
-  
-  // Store se data aur function le rahe hain
-  const { getOverviewData, refreshDashboard, isLoading } = useAdminStore();
-  const [isMounted, setIsMounted] = useState(false);
-  
-  useEffect(() => { 
-    setIsMounted(true); 
-    refreshDashboard(); // Page load hote hi data fetch karega
-  }, []);
-
-  // Safe Data Object (Agar data load nahi hua to crash nahi hoga)
-  const rawData = getOverviewData();
-  
-  const data = {
-    kpi: rawData?.kpi || { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Unknown' },
-    alerts: rawData?.alerts || [],
-    activities: rawData?.activities || []
-  };
-
-  if (!isMounted) return <div className="p-8">Loading Command Center...</div>;
-
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      
-      {/* 1. HEADER */}
-      <div className="flex justify-between items-center">
-        <div>
-           <h1 className="text-3xl font-bold text-slate-900">Welcome back, Admin 👋</h1>
-           <p className="text-gray-500">SaaS Command Center • {new Date().toLocaleDateString()}</p>
-        </div>
-        <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-full border border-green-200">
-           <span className="relative flex h-3 w-3">
-             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-             <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-           </span>
-           <span className="text-sm font-bold text-green-700">System Healthy</span>
-        </div>
-      </div>
-
-      {/* 2. SMART ALERTS (Agar koi alert ho tabhi dikhega) */}
-      <div className="space-y-3">
-         {data.alerts.map((alert: any, i: number) => (
-           <Alert key={i} className={`border-l-4 ${alert.type === 'critical' || alert.type === 'error' ? 'border-l-red-500 bg-red-50' : 'border-l-yellow-500 bg-yellow-50'}`}>
-              <AlertTriangle className={`h-4 w-4 ${alert.type === 'critical' || alert.type === 'error' ? 'text-red-600' : 'text-yellow-600'}`} />
-              <div className="flex justify-between items-center w-full">
-                 <AlertTitle className="text-sm font-bold mb-0 ml-2 text-slate-800">{alert.message}</AlertTitle>
-                 <Button size="sm" variant="ghost" className="h-6 text-xs hover:bg-white/50" onClick={() => router.push(alert.action)}>Fix Now <ArrowRight className="ml-1 h-3 w-3"/></Button>
-              </div>
-           </Alert>
-         ))}
-      </div>
-
-      {/* 3. KPI HERO CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Total Clients */}
-        <Card className="border-t-4 border-t-blue-500 shadow-sm">
-           <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                 <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase">Total Clients</p>
-                    {isLoading ? (
-                        <div className="h-8 w-16 bg-slate-200 animate-pulse rounded mt-1"></div>
-                    ) : (
-                        <h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi.totalClients}</h3>
-                    )}
-                 </div>
-                 <div className="p-2 bg-blue-50 rounded-lg"><Users className="h-6 w-6 text-blue-600"/></div>
-              </div>
-              <p className="text-xs text-green-600 mt-3 flex items-center font-medium"><TrendingUp className="h-3 w-3 mr-1"/> Active Members</p>
-           </CardContent>
-        </Card>
-        
-        {/* Revenue */}
-        <Card className="border-t-4 border-t-emerald-500 shadow-sm">
-           <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                 <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase">Revenue (Total)</p>
-                    {isLoading ? (
-                        <div className="h-8 w-24 bg-slate-200 animate-pulse rounded mt-1"></div>
-                    ) : (
-                        <h3 className="text-3xl font-bold text-slate-800 mt-1">₹{data.kpi.revenue.toLocaleString()}</h3>
-                    )}
-                 </div>
-                 <div className="p-2 bg-emerald-50 rounded-lg"><DollarSign className="h-6 w-6 text-emerald-600"/></div>
-              </div>
-              <p className="text-xs text-green-600 mt-3 flex items-center font-medium"><TrendingUp className="h-3 w-3 mr-1"/> Calculated from Plans</p>
-           </CardContent>
-        </Card>
-
-        {/* Active Trials */}
-        <Card className="border-t-4 border-t-orange-500 shadow-sm">
-           <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                 <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase">Active Trials</p>
-                    {isLoading ? (
-                        <div className="h-8 w-16 bg-slate-200 animate-pulse rounded mt-1"></div>
-                    ) : (
-                        <h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi.activeTrials}</h3>
-                    )}
-                 </div>
-                 <div className="p-2 bg-orange-50 rounded-lg"><Clock className="h-6 w-6 text-orange-600"/></div>
-              </div>
-              <p className="text-xs text-orange-600 mt-3 flex items-center font-medium">Potential Leads</p>
-           </CardContent>
-        </Card>
-
-        {/* System Health */}
-        <Card className="border-t-4 border-t-purple-500 shadow-sm">
-           <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                 <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase">System Health</p>
-                    <h3 className="text-3xl font-bold text-slate-800 mt-1">{data.kpi.systemHealth}</h3>
-                 </div>
-                 <div className="p-2 bg-purple-50 rounded-lg"><Activity className="h-6 w-6 text-purple-600"/></div>
-              </div>
-              <p className="text-xs text-slate-400 mt-3">All systems operational</p>
-           </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-         {/* 4. SMART ACTIONS */}
-         <div className="lg:col-span-2 space-y-6">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Zap className="h-5 w-5 text-yellow-500"/> Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-4">
-               <Card className="hover:border-blue-300 transition-all cursor-pointer group" onClick={() => router.push('/admin/clients')}>
-                  <CardContent className="p-4 flex items-center gap-4">
-                     <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus className="h-6 w-6 text-blue-600"/></div>
-                     <div><h4 className="font-bold text-slate-700">Add New Client</h4><p className="text-xs text-slate-500">Onboard a new society</p></div>
-                  </CardContent>
-               </Card>
-               <Card className="hover:border-orange-300 transition-all cursor-pointer group" onClick={() => router.push('/admin/subscriptions')}>
-                  <CardContent className="p-4 flex items-center gap-4">
-                     <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:scale-110 transition-transform"><CreditCard className="h-6 w-6 text-orange-600"/></div>
-                     <div>
-                        <h4 className="font-bold text-slate-700">Verify Payments</h4>
-                        {data.alerts.some((a: any) => a.type === 'critical') && <Badge className="mt-1 bg-red-500 text-white">Action Needed</Badge>}
-                     </div>
-                  </CardContent>
-               </Card>
-               <Card className="hover:border-purple-300 transition-all cursor-pointer group" onClick={() => router.push('/admin/settings')}>
-                  <CardContent className="p-4 flex items-center gap-4">
-                     <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center group-hover:scale-110 transition-transform"><UploadCloud className="h-6 w-6 text-purple-600"/></div>
-                     <div><h4 className="font-bold text-slate-700">Run Backup</h4><p className="text-xs text-slate-500">Manual Git Push</p></div>
-                  </CardContent>
-               </Card>
-               <Card className="hover:border-green-300 transition-all cursor-pointer group" onClick={() => router.push('/admin/analytics')}>
-                  <CardContent className="p-4 flex items-center gap-4">
-                     <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="h-6 w-6 text-green-600"/></div>
-                     <div><h4 className="font-bold text-slate-700">View Live Activity</h4><p className="text-xs text-slate-500">Check system logs</p></div>
-                  </CardContent>
-               </Card>
-            </div>
-         </div>
-
-         {/* 5. LIVE ACTIVITY SNAPSHOT */}
-         <div>
-            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Clock className="h-5 w-5 text-slate-500"/> Live Pulse</h3>
-            <Card>
-               <CardContent className="p-0">
-                  <div className="divide-y divide-slate-100">
-                     {data.activities.length === 0 ? (
-                        <div className="p-4 text-center text-gray-400 text-sm">No recent activity</div>
-                     ) : (
-                        data.activities.map((act: any, i: number) => (
-                            <div key={i} className="p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors">
-                            <div className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
-                            <div>
-                                <p className="text-sm font-medium text-slate-700">{act.type}</p>
-                                <p className="text-xs text-slate-500">{act.client} • {act.time}</p>
-                            </div>
-                            </div>
-                        ))
-                     )}
-                  </div>
-                  <Button variant="ghost" className="w-full text-xs text-slate-500 border-t" onClick={() => router.push('/admin/activity')}>View Full Audit Log</Button>
-               </CardContent>
-            </Card>
-         </div>
-      </div>
-    </div>
-  );
+interface AdminState {
+  isLoading: boolean;
+  error: string | null;
+  clients: any[];
+  plans: any[];
+  refreshDashboard: () => Promise<void>;
+  getOverviewData: () => any;
 }
+
+export const useAdminStore = create<AdminState>((set, get) => ({
+  isLoading: false,
+  error: null,
+  clients: [],
+  plans: [],
+
+  // ACTION: Fetch Data
+  refreshDashboard: async () => {
+    set({ isLoading: true, error: null });
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("⚠️ Supabase Keys Missing");
+      set({ isLoading: false });
+      return;
+    }
+
+    try {
+      // Fetch Clients
+      const { data: clientsData, error: clientError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('is_deleted', false)
+        .eq('role', 'client'); // Only Clients
+
+      if (clientError) throw clientError;
+
+      // Fetch Plans
+      const { data: plansData, error: planError } = await supabase
+        .from('plan') // Table name check karlena (plan ya plans)
+        .select('*');
+
+      if (planError) throw planError;
+
+      set({ 
+        clients: clientsData || [], 
+        plans: plansData || [],
+        isLoading: false 
+      });
+
+    } catch (error: any) {
+      console.error("❌ Store Error:", error.message);
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+  // GETTER: Calculation Logic
+  getOverviewData: () => {
+    const state = get();
+    const clients = state.clients || [];
+    const plans = state.plans || [];
+
+    let totalRevenue = 0;
+    let activeTrials = 0;
+    
+    clients.forEach((client: any) => {
+      // Revenue Calculation
+      if (client.plan_id) {
+        const matchedPlan = plans.find((p: any) => p.id === client.plan_id);
+        if (matchedPlan?.price) totalRevenue += Number(matchedPlan.price);
+      }
+      // Trial Count
+      const pName = (client.plan_name || '').toLowerCase();
+      const pCode = (client.plan || '').toLowerCase();
+      if (pName.includes('trial') || pCode.includes('trial')) activeTrials++;
+    });
+
+    // Recent Activity
+    const activities = clients
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5)
+      .map((client: any) => ({
+        type: 'New Subscription',
+        client: client.society_name || client.name || 'User',
+        time: client.created_at ? new Date(client.created_at).toLocaleDateString() : 'Just now'
+      }));
+
+    return {
+      kpi: {
+        totalClients: clients.length,
+        revenue: totalRevenue,
+        activeTrials: activeTrials,
+        systemHealth: 'Healthy'
+      },
+      alerts: [],
+      activities: activities
+    };
+  }
+}));
