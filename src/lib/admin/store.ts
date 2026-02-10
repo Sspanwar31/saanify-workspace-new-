@@ -1,91 +1,132 @@
 import { create } from 'zustand';
-// persist hata diya hai taaki live data load ho sake
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-// --- INTERFACES (Same as before) ---
-// (Interfaces wahi purane rakhein, bas code niche se update karein)
+// Supabase client initialize karein
+const supabase = createClientComponentClient();
 
 interface AdminState {
-  // Data States
-  stats: any;
-  clients: any[];
-  invoices: any[];
-  auditLogs: any[];
   isLoading: boolean;
-
+  error: string | null;
+  
+  // Data containers
+  clients: any[];
+  plans: any[];
+  
   // Actions
   refreshDashboard: () => Promise<void>;
-  
-  // Getter
   getOverviewData: () => any;
 }
 
 export const useAdminStore = create<AdminState>((set, get) => ({
-  // 1. Initial State (Safe Defaults)
-  stats: { totalRevenue: 0, activeClients: 0, totalClients: 0, uptime: '100%' },
-  clients: [],
-  invoices: [],
-  plans: [],
-  auditLogs: [], // Default empty array
   isLoading: false,
+  error: null,
+  clients: [],
+  plans: [],
 
-  // 2. Fetch Data from Backend
+  // ✅ ACTION: Data Fetching directly from Supabase
   refreshDashboard: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
+    console.log("🔄 Store: Fetching data from Supabase...");
+
     try {
-      const res = await fetch('/api/admin/dashboard'); 
-      if (res.ok) {
-        const data = await res.json();
-        set({
-          stats: data.kpi || {},
-          auditLogs: data.activities || [], // Agar undefined aaya to empty array
-          isLoading: false
-        });
-      } else {
-        console.error("API Error:", res.status);
-        set({ isLoading: false });
-      }
-    } catch (error) {
-      console.error("Fetch failed", error);
-      set({ isLoading: false });
+      // 1. Fetch Clients (Jo delete nahi hue hain)
+      const { data: clientsData, error: clientError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('is_deleted', false);
+
+      if (clientError) throw new Error(`Clients Error: ${clientError.message}`);
+
+      // 2. Fetch Plans (Price calculate karne ke liye)
+      const { data: plansData, error: planError } = await supabase
+        .from('plan')
+        .select('*');
+
+      if (planError) throw new Error(`Plans Error: ${planError.message}`);
+
+      console.log(`✅ Success: Found ${clientsData?.length} clients and ${plansData?.length} plans.`);
+
+      // Store me save karein
+      set({ 
+        clients: clientsData || [], 
+        plans: plansData || [],
+        isLoading: false 
+      });
+
+    } catch (error: any) {
+      console.error("❌ Store Error:", error.message);
+      set({ error: error.message, isLoading: false });
     }
   },
 
-  // ... (Baki actions jaise deleteClient, verifyPayment same rahenge) ...
-
-  // 3. SAFE SELECTOR (Yahan Error aa raha tha)
+  // ✅ GETTER: Calculation Logic (Dashboard ke liye data prepare karna)
   getOverviewData: () => {
-    const { stats, invoices, clients, auditLogs } = get();
+    const { clients, plans } = get();
     
-    // Safety Checks: Agar koi data undefined hai to empty array/object use karein
-    const safeInvoices = invoices || [];
+    // Safety check
     const safeClients = clients || [];
-    const safeLogs = auditLogs || [];
-    const safeStats = stats || {};
+    const safePlans = plans || [];
 
-    // Logic
-    const pendingPayments = safeInvoices.filter((i: any) => i.status === 'PENDING').length;
+    // --- 1. Calculate Revenue & Stats ---
+    let totalRevenue = 0;
+    let activeTrials = 0;
+    
+    // Current Month Growth Calculation
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    let newClientsThisMonth = 0;
 
+    safeClients.forEach((client) => {
+      // Revenue Logic: Client ke plan_id se Plan table ka price dhundo
+      if (client.plan_id) {
+        const matchedPlan = safePlans.find(p => p.id === client.plan_id);
+        if (matchedPlan && matchedPlan.price) {
+          totalRevenue += Number(matchedPlan.price);
+        }
+      }
+
+      // Trial Logic: Case insensitive check
+      const planName = (client.plan_name || '').toLowerCase();
+      const planCode = (client.plan || '').toLowerCase(); // Kabhi kabhi code 'plan' column me hota hai
+      
+      if (planName.includes('trial') || planCode.includes('trial')) {
+        activeTrials++;
+      }
+
+      // Growth Logic
+      if (client.created_at) {
+        const createdDate = new Date(client.created_at);
+        if (createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear) {
+          newClientsThisMonth++;
+        }
+      }
+    });
+
+    // --- 2. Generate Activity Log from Client Data ---
+    // Kyuki abhi activity table nahi hai, hum 'created_at' se fake logs banayenge
+    const activities = safeClients
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) // Newest first
+      .slice(0, 5)
+      .map(client => ({
+        type: 'New Subscription',
+        client: client.society_name || client.name || 'Unknown User',
+        time: new Date(client.created_at).toLocaleDateString()
+      }));
+
+    // --- 3. Return Final Object for Dashboard ---
     return {
       kpi: {
-        totalClients: safeStats.totalClients || safeClients.length || 0,
-        revenue: safeStats.revenue || 0,
-        activeTrials: safeStats.activeTrials || 0,
-        systemHealth: safeStats.systemHealth || '100%'
+        totalClients: safeClients.length,
+        revenue: totalRevenue,
+        activeTrials: activeTrials,
+        systemHealth: 'Healthy'
       },
-      alerts: pendingPayments > 0 ? [{
-        type: 'critical',
-        message: `${pendingPayments} Manual payments pending verification`,
-        action: '/admin/subscriptions'
-      }] : [],
-      // ✅ FIX: "slice" error yahan fix hua hai
-      activities: safeLogs.slice(0, 5).map((log: any) => ({
-         type: log.action || log.type || 'Activity',
-         client: log.user || log.client || 'System',
-         time: log.timestamp || log.time || new Date().toISOString()
-      })),
+      alerts: [], // Future me yahan logic add kar sakte hain
+      activities: activities,
       quickStats: {
-        newClientsToday: 0,
-        revenueToday: 0
+        newClientsToday: 0, // Placeholder
+        revenueToday: 0     // Placeholder
       }
     };
   }
