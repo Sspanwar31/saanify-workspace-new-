@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ 1. Client Initialize
+// 1. Client Initialize
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
@@ -23,12 +23,13 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   clients: [],
   plans: [],
 
-  // ✅ ACTION: Fetch Data
+  // ACTION: Fetch Data
   refreshDashboard: async () => {
     set({ isLoading: true, error: null });
     
     if (!supabaseUrl || !supabaseKey) {
-      set({ error: "Supabase Keys Missing", isLoading: false });
+      // Silently fail or set error state without console log
+      set({ error: "Configuration Error", isLoading: false });
       return;
     }
 
@@ -38,13 +39,13 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         .from('clients')
         .select('*')
         .eq('is_deleted', false)
-        .eq('role', 'client'); // ✅ Only Real Clients
+        .eq('role', 'client'); 
 
       if (clientError) throw clientError;
 
       // 2. Fetch Plans
       const { data: plansData, error: planError } = await supabase
-        .from('plans') 
+        .from('plan') // Agar table name 'plans' hai to wahan 'plans' likhein
         .select('*');
 
       if (planError) throw planError;
@@ -56,11 +57,12 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       });
 
     } catch (error: any) {
+      // Error state set karenge par console me red error nahi dikhayenge agar zaroorat nahi
       set({ error: error.message, isLoading: false });
     }
   },
 
-  // ✅ GETTER: Safe Calculation Logic
+  // GETTER: Calculation Logic
   getOverviewData: () => {
     const state = get();
     const clients = state.clients || [];
