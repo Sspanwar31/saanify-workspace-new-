@@ -1,21 +1,22 @@
 'use client';
-
+import { useState, useEffect } from 'react';
 import DesktopShell from './DesktopShell';
 import MobileShell from './MobileShell';
 
-function isMobile() {
-  if (typeof window === 'undefined') return false;
-  return window.innerWidth < 768;
-}
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
 
-export default function AppShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const mobile = isMobile();
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile(); // Initial check
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  return mobile ? (
+  // Jab tak check nahi hota, kuch load na karein (taaki flicker na ho)
+  if (isMobile === null) return null; 
+
+  return isMobile ? (
     <MobileShell>{children}</MobileShell>
   ) : (
     <DesktopShell>{children}</DesktopShell>
