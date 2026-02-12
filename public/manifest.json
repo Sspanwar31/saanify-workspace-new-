@@ -11,13 +11,13 @@
   "icons": [
     {
       "src": "https://i.ibb.co/xq1w1H7M/saanifylogo-png.png",
-    "sizes": "192x192",
-    "type": "image/png"
-  },
-  {
-    "src": "https://i.ibb.co/xq1w1H7M/saanifylogo-png.png",
-    "sizes": "512x512",
-    "type": "image/png"
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/xq1w1H7M/saanifylogo-png.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }
