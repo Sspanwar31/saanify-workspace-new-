@@ -2,6 +2,7 @@
   "name": "Saanify",
   "short_name": "Saanify",
   "description": "Society & SaaS Management App",
+  "id": "/login",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",
@@ -10,12 +11,12 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://i.ibb.co/xq1w1H7M/saanifylogo-png.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://i.ibb.co/xq1w1H7M/saanifylogo-png.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
