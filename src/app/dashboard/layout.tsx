@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { Loader2, Menu, X, Shield } from 'lucide-react'; // Icons add kiye
+import { Loader2 } from 'lucide-react'; 
+import MobileBottomNav from '@/components/layout/MobileBottomNav'; // ✅ IMPORT ADDED
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -129,58 +130,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthorized) return null;
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
       
-      {/* --- DESKTOP SIDEBAR --- */}
+      {/* DESKTOP SIDEBAR: Desktop par dikhega, mobile par hidden */}
       <div className="w-64 shrink-0 hidden md:block h-full border-r border-slate-200 dark:border-slate-800">
         <ClientSidebar />
       </div>
 
-      {/* --- MOBILE DRAWER (Menu khulne par dikhega) --- */}
+      {/* MOBILE DRAWER: Sirf 'More' click karne par khulega */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[100] md:hidden">
-          {/* Backdrop (Kala parda) */}
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm" 
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          {/* Sidebar Area */}
-          <div className="relative w-72 h-full bg-white dark:bg-slate-900 shadow-2xl animate-in slide-in-from-left duration-300">
-             <div className="absolute right-4 top-4">
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
-                  <X className="h-6 w-6" />
-                </button>
-             </div>
+        <div className="fixed inset-0 z-[150] md:hidden">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+          <div className="relative w-72 h-full bg-white dark:bg-slate-900 animate-in slide-in-from-left">
              <ClientSidebar />
           </div>
         </div>
       )}
 
-      {/* --- MAIN AREA --- */}
-      <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* MOBILE HEADER (Jo APK/Android feel dega) */}
-        <header className="md:hidden h-14 flex items-center justify-between px-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 bg-blue-600 rounded flex items-center justify-center">
-               <Shield className="h-4 w-4 text-white" />
-            </div>
-            <span className="font-bold text-slate-800 dark:text-white tracking-tight">Saanify</span>
-          </div>
-          
-          <button 
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-        </header>
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 overflow-y-auto h-full pb-20 md:pb-0 bg-slate-50 dark:bg-slate-900">
+        {/* Desktop Layout kharab na ho isliye padding sirf mobile par 'pb-20' di hai */}
+        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+          {children}
+        </div>
+      </main>
 
-        {/* PAGE CONTENT */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-           {children}
-        </main>
-      </div>
+      {/* MOBILE BOTTOM NAV: Sirf mobile par dikhega */}
+      <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
     </div>
   );
 }
