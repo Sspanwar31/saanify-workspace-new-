@@ -32,7 +32,9 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-[#1a1f37] text-white flex flex-col shadow-xl h-full">
+    // Isse sidebar mobile (chhoti screen) par hidden rahega 
+    // aur medium (md) screen se upar (laptop/desktop) dikhai dega.
+    <aside className="hidden md:flex w-64 bg-[#1a1f37] text-white flex flex-col shadow-xl h-full">
         {/* LOGO AREA */}
         <div className="p-6 border-b border-white/10 flex items-center gap-3">
           <div className="h-9 w-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
