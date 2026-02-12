@@ -3,7 +3,11 @@
 import MobileHeader from './MobileHeader';
 import MobileDrawer from './MobileDrawer';
 
-export default function MobileShell({ children }) {
+export default function MobileShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="h-screen w-full bg-background overflow-hidden">
       <MobileHeader />
