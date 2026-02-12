@@ -1,18 +1,23 @@
 'use client';
 
-import ClientOnly from '@/components/ClientOnly';
-import { isMobile, isPWA } from '@/lib/device';
-import MobileShell from './MobileShell';
 import DesktopShell from './DesktopShell';
+import MobileShell from './MobileShell';
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
-  return (
-    <ClientOnly>
-      {isMobile() || isPWA() ? (
-        <MobileShell>{children}</MobileShell>
-      ) : (
-        <DesktopShell>{children}</DesktopShell>
-      )}
-    </ClientOnly>
+function isMobile() {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth < 768;
+}
+
+export default function AppShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const mobile = isMobile();
+
+  return mobile ? (
+    <MobileShell>{children}</MobileShell>
+  ) : (
+    <DesktopShell>{children}</DesktopShell>
   );
 }
