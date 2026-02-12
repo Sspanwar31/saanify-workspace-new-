@@ -13,6 +13,7 @@ import ClientOnly from "@/components/ClientOnly";
 import * as React from "react";
 // ✅ IMPORT ADDED
 import GlobalAuthListener from '@/components/auth/GlobalAuthListener';
+import AppShell from '@/components/app/AppShell'; // ✅ NEW IMPORT
 
 // Initialize performance fixes on client side
 if (typeof window !== 'undefined') {
@@ -117,7 +118,9 @@ export default function RootLayout({
           <GlobalAuthListener />
           
           <ErrorBoundary>
-            {children}
+            <AppShell>
+              {children}
+            </AppShell>
           </ErrorBoundary>
         </Providers>
         <ClientOnly>
