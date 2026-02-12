@@ -35,9 +35,17 @@ export const metadata: Metadata = {
   description: "Modern financial management for cooperative societies.",
   keywords: ["Society Management", "Community Living", "Member Management", "Maintenance Tracking", "Financial Management", "Resident Portal"],
   authors: [{ name: "Saanify Team" }],
+
+  // ✅ ADD THIS
+  applicationName: "Saanify",
+  manifest: "/manifest.json",
+  themeColor: "#0f172a",
+
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icons/icon-192.png",   // 🔁 favicon.ico ki jagah
+    apple: "/icons/icon-192.png",
   },
+
   openGraph: {
     title: "Saanify Society Management",
     description: "Complete society management solution for modern communities",
@@ -60,6 +68,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* ✅ PWA */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0f172a" />
+        <meta name="mobile-web-app-capable" content="yes" />
+
+        {/* existing script */}
         <script dangerouslySetInnerHTML={{
           __html: `
             // Immediate Performance API patch - runs before any React code
@@ -110,6 +124,19 @@ export default function RootLayout({
           <Toaster />
           <SonnerToaster />
         </ClientOnly>
+
+        {/* ✅ Service Worker (Bottom of body) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                  navigator.serviceWorker.register('/service-worker.js');
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
