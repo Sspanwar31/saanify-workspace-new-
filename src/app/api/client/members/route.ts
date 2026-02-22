@@ -3,6 +3,18 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
+// ✅ 1. CORS Headers Add kiye hain
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', 
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// ✅ 2. OPTIONS method add kiya hai (Preflight requests ke liye)
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 const getServiceRoleKey = () => {
   const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
   if (!b64) return process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -22,15 +34,15 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const clientId = searchParams.get('client_id');
-    if (!clientId) return NextResponse.json({ error: "Client ID required" }, { status: 400 });
+    if (!clientId) return NextResponse.json({ error: "Client ID required" }, { status: 400, headers: corsHeaders });
 
     const supabase = getAdminClient();
     const { data, error } = await supabase.from('members').select('*').eq('client_id', clientId).order('created_at', { ascending: false });
     
     if (error) throw error;
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: corsHeaders });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -40,15 +52,15 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const { id, ...updates } = body;
     
-    if (!id) return NextResponse.json({ error: "Member ID required" }, { status: 400 });
+    if (!id) return NextResponse.json({ error: "Member ID required" }, { status: 400, headers: corsHeaders });
 
     const supabase = getAdminClient();
     const { error } = await supabase.from('members').update(updates).eq('id', id);
 
     if (error) throw error;
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: corsHeaders });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -59,7 +71,7 @@ export async function DELETE(req: Request) {
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: "Member ID required" }, { status: 400 });
+      return NextResponse.json({ error: "Member ID required" }, { status: 400, headers: corsHeaders });
     }
 
     const supabase = getAdminClient();
@@ -102,10 +114,10 @@ export async function DELETE(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: corsHeaders });
 
   } catch (error: any) {
     console.error('DELETE MEMBER ERROR:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
   }
 }
