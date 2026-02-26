@@ -1,4 +1,5 @@
 'use client';
+
 export const dynamic = 'force-dynamic';
 
 import { useEffect } from 'react';
@@ -79,7 +80,7 @@ export default function AnalyticsPage() {
              </CardContent></Card>
           </TabsContent>
 
-          {/* ✅ TAB 4: YAHAN REAL DATA VISUALIZATION ADD KIYA GAYA HAI */}
+          {/* ✅ TAB 4: DATA VISUALIZATION (ADDED HERE) */}
           <TabsContent value="visualization" className="space-y-6">
              <div className="grid gap-6 md:grid-cols-2">
                 
@@ -89,9 +90,18 @@ export default function AnalyticsPage() {
                   <CardContent className="h-[300px] flex justify-center">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        {/* Ab ye label ke sath plan ka naam aur number dikhayega */}
-                        <Pie data={safeData.planDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" nameKey="name" label={(entry) => `${entry.name}: ${entry.value}`}>
-                          {safeData.planDistribution.map((entry, index) => (
+                        {/* ✅ Crash fix: Removed custom string function from label */}
+                        <Pie 
+                          data={safeData.planDistribution || []} 
+                          cx="50%" 
+                          cy="50%" 
+                          innerRadius={60} 
+                          outerRadius={80} 
+                          dataKey="value" 
+                          nameKey="name" 
+                          label={(entry) => `${entry.name}: ${entry.value}`} 
+                        >
+                          {(safeData.planDistribution || []).map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
@@ -101,19 +111,20 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                {/* 2. CLIENT STATUS BAR CHART (Replaced Text with Graph) */}
+                {/* 2. CLIENT STATUS BAR CHART */}
                 <Card>
                   <CardHeader><CardTitle>Client Status Overview</CardTitle></CardHeader>
                   <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={safeData.clientStatus} layout="vertical" margin={{ left: 20 }}>
+                      <BarChart data={safeData.clientStatus || []} layout="vertical" margin={{ left: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis dataKey="name" type="category" width={100} />
                         <Tooltip />
-                        <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]}>
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                           {/* Active green color, Deleted red color */}
-                          {safeData.clientStatus.map((entry, index) => (
+                          {(safeData.clientStatus || []).map((entry, index) => (
+                            {/* Active green color, Deleted red color */}
                             <Cell key={`cell-${index}`} fill={index === 0 ? '#10b981' : '#ef4444'} />
                           ))}
                         </Bar>
@@ -126,6 +137,7 @@ export default function AnalyticsPage() {
           </TabsContent>
         </Tabs>
       )}
-    </div>
+ 
+        </div>
   );
 }
