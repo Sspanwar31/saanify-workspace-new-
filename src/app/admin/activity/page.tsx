@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Shield, Activity, Search, Filter, Download, Zap, CheckCircle, 
-  XCircle, AlertTriangle, User, Server, Database, Clock 
+  Shield, Activity, Search, Filter, Download, Zap, 
+  AlertTriangle, User, Database 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Ya aapka apna supabase client import karein
-import { formatDistanceToNow } from 'date-fns'; // npm install date-fns (Time formatting ke liye)
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 // DATABASE ROW TYPE DEFINITION
 type ClientLog = {
@@ -28,19 +27,19 @@ type ClientLog = {
 };
 
 export default function ActivityPage() {
-  const supabase = createClientComponentClient(); // Supabase connection init
+  const supabase = createClientComponentClient(); 
   const [logs, setLogs] = useState<ClientLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 1. DATA FETCHING FROM NEW TABLE
+  // 1. DATA FETCHING
   useEffect(() => {
     const fetchLogs = async () => {
       try {
         const { data, error } = await supabase
-          .from('client_audit_logs') // <--- NEW TABLE NAME
+          .from('client_audit_logs') // Ensure this table exists in Supabase
           .select('*')
-          .order('created_at', { ascending: false }) // Latest pehle
+          .order('created_at', { ascending: false })
           .limit(100);
 
         if (error) throw error;
@@ -55,32 +54,50 @@ export default function ActivityPage() {
     fetchLogs();
   }, []);
 
-  // 2. HELPER: SELECT ICON BASED ON ACTION
+  // 2. HELPER: Time Ago Function (Replaces date-fns to fix error)
+  const timeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " years ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " months ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " days ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + " hours ago";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + " mins ago";
+    return Math.floor(seconds) + " seconds ago";
+  };
+
+  // 3. HELPER: Select Icon
   const getIcon = (action: string) => {
-    const lower = action.toLowerCase();
+    const lower = action ? action.toLowerCase() : '';
     if (lower.includes('login') || lower.includes('auth')) return Shield;
     if (lower.includes('backup') || lower.includes('database')) return Database;
     if (lower.includes('update') || lower.includes('setting')) return Zap;
     if (lower.includes('user') || lower.includes('member')) return User;
-    return Activity; // Default icon
+    return Activity;
   };
 
-  // 3. DYNAMIC KPI STATS CALCULATION
+  // 4. STATS CALCULATION
   const stats = useMemo(() => {
     const total = logs.length;
     const failed = logs.filter(l => l.status === 'FAILED').length;
     const successRate = total > 0 ? ((total - failed) / total * 100).toFixed(1) : '100';
-    // Unique Clients count
     const uniqueClients = new Set(logs.map(l => l.client_name)).size;
 
     return { total, failed, successRate, uniqueClients };
   }, [logs]);
 
-  // Filter Logic for Search
+  // Filter Logic
   const filteredLogs = logs.filter(log => 
-    log.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.actor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.action.toLowerCase().includes(searchTerm.toLowerCase())
+    (log.client_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (log.actor_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (log.action?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -95,7 +112,7 @@ export default function ActivityPage() {
         <Button variant="outline"><Download className="w-4 h-4 mr-2"/> Export Report</Button>
       </div>
 
-      {/* KPI STATS (DYNAMIC DATA) */}
+      {/* KPI STATS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
          <Card className="bg-blue-50 border-blue-200 shadow-sm">
             <CardContent className="p-4">
@@ -161,7 +178,7 @@ export default function ActivityPage() {
                                   </div>
                                </div>
                                <Badge variant="outline" className="text-xs bg-white">
-                                 {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                                 {timeAgo(log.created_at)}
                                </Badge>
                             </div>
                             {log.status === 'FAILED' && (
@@ -187,7 +204,7 @@ export default function ActivityPage() {
                  <div className="relative flex-1">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400"/>
                     <Input 
-                        placeholder="Search client, admin or action..." 
+                        placeholder="Search..." 
                         className="pl-8 bg-slate-50"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -200,7 +217,7 @@ export default function ActivityPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 hover:bg-slate-50">
-                    <TableHead>Client / Admin</TableHead> {/* Renamed Column */}
+                    <TableHead>Client / Admin</TableHead>
                     <TableHead>Action</TableHead>
                     <TableHead>Resource</TableHead>
                     <TableHead>IP Address</TableHead>
