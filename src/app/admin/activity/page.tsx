@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Shield, Activity, Search, Filter, Download, Zap, CheckCircle, 
   XCircle, AlertTriangle, User, Server, Database, Clock 
@@ -11,20 +11,77 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useAdminStore } from '@/lib/admin/store';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Ya aapka apna supabase client import karein
+import { formatDistanceToNow } from 'date-fns'; // npm install date-fns (Time formatting ke liye)
+
+// DATABASE ROW TYPE DEFINITION
+type ClientLog = {
+  id: string;
+  client_name: string;
+  actor_name: string;
+  actor_role: string;
+  action: string;
+  resource: string;
+  ip_address: string;
+  status: 'SUCCESS' | 'FAILED' | 'WARNING';
+  created_at: string;
+};
 
 export default function ActivityPage() {
-  const { activities } = useAdminStore();
+  const supabase = createClientComponentClient(); // Supabase connection init
+  const [logs, setLogs] = useState<ClientLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // MOCK DATA FOR DISPLAY
-  const extendedLogs = [
-    { id: 1, user: 'Super Admin', role: 'SUPER_ADMIN', action: 'System Backup', target: 'Database', ip: '192.168.1.1', status: 'SUCCESS', time: 'Just now', icon: Database },
-    { id: 2, user: 'John Doe', role: 'SUPPORT', action: 'Reset Password', target: 'User: Rahul', ip: '10.0.0.45', status: 'SUCCESS', time: '10 mins ago', icon: User },
-    { id: 3, user: 'System Bot', role: 'AUTOMATION', action: 'Schema Sync', target: 'Supabase', ip: '127.0.0.1', status: 'FAILED', time: '1 hour ago', icon: Server },
-    { id: 4, user: 'Super Admin', role: 'SUPER_ADMIN', action: 'Update Settings', target: 'Global Config', ip: '192.168.1.1', status: 'SUCCESS', time: '2 hours ago', icon: Zap },
-    { id: 5, user: 'Unknown', role: 'GUEST', action: 'Failed Login', target: 'Auth System', ip: '45.22.19.11', status: 'WARNING', time: '5 hours ago', icon: Shield },
-  ];
+  // 1. DATA FETCHING FROM NEW TABLE
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('client_audit_logs') // <--- NEW TABLE NAME
+          .select('*')
+          .order('created_at', { ascending: false }) // Latest pehle
+          .limit(100);
+
+        if (error) throw error;
+        if (data) setLogs(data);
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLogs();
+  }, []);
+
+  // 2. HELPER: SELECT ICON BASED ON ACTION
+  const getIcon = (action: string) => {
+    const lower = action.toLowerCase();
+    if (lower.includes('login') || lower.includes('auth')) return Shield;
+    if (lower.includes('backup') || lower.includes('database')) return Database;
+    if (lower.includes('update') || lower.includes('setting')) return Zap;
+    if (lower.includes('user') || lower.includes('member')) return User;
+    return Activity; // Default icon
+  };
+
+  // 3. DYNAMIC KPI STATS CALCULATION
+  const stats = useMemo(() => {
+    const total = logs.length;
+    const failed = logs.filter(l => l.status === 'FAILED').length;
+    const successRate = total > 0 ? ((total - failed) / total * 100).toFixed(1) : '100';
+    // Unique Clients count
+    const uniqueClients = new Set(logs.map(l => l.client_name)).size;
+
+    return { total, failed, successRate, uniqueClients };
+  }, [logs]);
+
+  // Filter Logic for Search
+  const filteredLogs = logs.filter(log => 
+    log.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.actor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.action.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -32,36 +89,36 @@ export default function ActivityPage() {
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
-           <h1 className="text-3xl font-bold text-slate-800">Activity & Audit</h1>
-           <p className="text-gray-500">Monitor system events and security trails</p>
+           <h1 className="text-3xl font-bold text-slate-800">Client Activity Monitor</h1>
+           <p className="text-gray-500">Track actions performed by Society Admins</p>
         </div>
-        <Button variant="outline"><Download className="w-4 h-4 mr-2"/> Export Logs</Button>
+        <Button variant="outline"><Download className="w-4 h-4 mr-2"/> Export Report</Button>
       </div>
 
-      {/* KPI STATS */}
+      {/* KPI STATS (DYNAMIC DATA) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
          <Card className="bg-blue-50 border-blue-200 shadow-sm">
             <CardContent className="p-4">
                <p className="text-xs font-bold text-blue-700 uppercase">Total Events</p>
-               <h3 className="text-2xl font-bold text-blue-900">1,240</h3>
+               <h3 className="text-2xl font-bold text-blue-900">{stats.total}</h3>
             </CardContent>
          </Card>
          <Card className="bg-green-50 border-green-200 shadow-sm">
             <CardContent className="p-4">
                <p className="text-xs font-bold text-green-700 uppercase">Success Rate</p>
-               <h3 className="text-2xl font-bold text-green-900">98.5%</h3>
+               <h3 className="text-2xl font-bold text-green-900">{stats.successRate}%</h3>
             </CardContent>
          </Card>
          <Card className="bg-red-50 border-red-200 shadow-sm">
             <CardContent className="p-4">
                <p className="text-xs font-bold text-red-700 uppercase">Failed Actions</p>
-               <h3 className="text-2xl font-bold text-red-900">12</h3>
+               <h3 className="text-2xl font-bold text-red-900">{stats.failed}</h3>
             </CardContent>
          </Card>
          <Card className="bg-purple-50 border-purple-200 shadow-sm">
             <CardContent className="p-4">
-               <p className="text-xs font-bold text-purple-700 uppercase">Active Users</p>
-               <h3 className="text-2xl font-bold text-purple-900">5</h3>
+               <p className="text-xs font-bold text-purple-700 uppercase">Active Clients</p>
+               <h3 className="text-2xl font-bold text-purple-900">{stats.uniqueClients}</h3>
             </CardContent>
          </Card>
       </div>
@@ -73,18 +130,21 @@ export default function ActivityPage() {
           <TabsTrigger value="audit" className="gap-2"><Shield className="w-4 h-4"/> Audit Logs</TabsTrigger>
         </TabsList>
 
-        {/* TAB 1: LIVE FEED (Timeline View) */}
+        {/* TAB 1: LIVE FEED */}
         <TabsContent value="live">
            <Card>
-             <CardHeader><CardTitle>Real-time Activity Stream</CardTitle></CardHeader>
+             <CardHeader><CardTitle>Real-time Client Actions</CardTitle></CardHeader>
              <CardContent>
+                {loading ? <p className="p-4 text-center text-gray-500">Loading logs...</p> : (
                 <div className="space-y-6 relative before:absolute before:inset-y-0 before:left-5 before:w-0.5 before:bg-slate-200 ml-2">
-                   {extendedLogs.map((log) => (
+                   {filteredLogs.map((log) => {
+                      const Icon = getIcon(log.action);
+                      return (
                       <div key={log.id} className="relative flex items-start gap-4 pl-4">
                          {/* Timeline Dot */}
                          <div className={`absolute left-0 mt-1.5 h-10 w-10 rounded-full border-4 border-white flex items-center justify-center shadow-sm z-10 
                             ${log.status === 'SUCCESS' ? 'bg-green-100 text-green-600' : log.status === 'FAILED' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
-                            <log.icon className="w-5 h-5"/>
+                            <Icon className="w-5 h-5"/>
                          </div>
                          
                          {/* Timeline Content */}
@@ -92,24 +152,33 @@ export default function ActivityPage() {
                             <div className="flex justify-between items-start">
                                <div>
                                   <p className="font-bold text-slate-800 text-base">{log.action}</p>
-                                  <p className="text-sm text-slate-600">Performed by <span className="font-semibold text-blue-600">{log.user}</span> on <span className="font-mono bg-white px-1 rounded border">{log.target}</span></p>
+                                  <p className="text-sm text-slate-600 mt-1">
+                                    Performed by <span className="font-semibold text-blue-600">{log.actor_name}</span> 
+                                    <span className="text-gray-400"> ({log.client_name})</span>
+                                  </p>
+                                  <div className="mt-2 text-xs font-mono bg-white px-2 py-1 inline-block rounded border">
+                                    Target: {log.resource}
+                                  </div>
                                </div>
-                               <Badge variant="outline" className="text-xs bg-white">{log.time}</Badge>
+                               <Badge variant="outline" className="text-xs bg-white">
+                                 {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                               </Badge>
                             </div>
                             {log.status === 'FAILED' && (
                                <div className="mt-3 text-xs text-red-700 bg-red-50 p-2 rounded-lg flex items-center gap-2 border border-red-100">
-                                  <AlertTriangle className="w-4 h-4"/> Action failed due to connection timeout.
+                                  <AlertTriangle className="w-4 h-4"/> Action Failed
                                </div>
                             )}
                          </div>
                       </div>
-                   ))}
+                   )})}
                 </div>
+                )}
              </CardContent>
            </Card>
         </TabsContent>
 
-        {/* TAB 2: AUDIT TABLE (Detailed View) */}
+        {/* TAB 2: AUDIT TABLE */}
         <TabsContent value="audit">
            <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-4">
@@ -117,7 +186,12 @@ export default function ActivityPage() {
               <div className="flex gap-2 w-1/3">
                  <div className="relative flex-1">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400"/>
-                    <Input placeholder="Search logs..." className="pl-8 bg-slate-50"/>
+                    <Input 
+                        placeholder="Search client, admin or action..." 
+                        className="pl-8 bg-slate-50"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                  </div>
                  <Button variant="outline" size="icon"><Filter className="h-4 w-4"/></Button>
               </div>
@@ -126,31 +200,35 @@ export default function ActivityPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 hover:bg-slate-50">
-                    <TableHead>User / Role</TableHead>
+                    <TableHead>Client / Admin</TableHead> {/* Renamed Column */}
                     <TableHead>Action</TableHead>
                     <TableHead>Resource</TableHead>
                     <TableHead>IP Address</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Timestamp</TableHead>
+                    <TableHead className="text-right">Time</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {extendedLogs.map((log) => (
+                  {loading ? (
+                    <TableRow><TableCell colSpan={6} className="text-center h-24">Loading data...</TableCell></TableRow>
+                  ) : filteredLogs.map((log) => (
                     <TableRow key={log.id} className="hover:bg-slate-50">
                       <TableCell>
-                        <div className="font-medium text-slate-900">{log.user}</div>
-                        <div className="text-xs text-slate-500 font-mono">{log.role}</div>
+                        <div className="font-bold text-slate-800">{log.client_name}</div>
+                        <div className="text-xs text-blue-600 font-medium">{log.actor_name} <span className='text-gray-400'>({log.actor_role})</span></div>
                       </TableCell>
-                      <TableCell><span className="font-medium">{log.action}</span></TableCell>
-                      <TableCell><code className="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200">{log.target}</code></TableCell>
-                      <TableCell className="font-mono text-xs text-slate-600">{log.ip}</TableCell>
+                      <TableCell><span className="font-medium text-slate-700">{log.action}</span></TableCell>
+                      <TableCell><code className="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200 text-gray-600">{log.resource}</code></TableCell>
+                      <TableCell className="font-mono text-xs text-slate-500">{log.ip_address}</TableCell>
                       <TableCell>
                         <Badge className={
-                           log.status==='SUCCESS'?'bg-green-100 text-green-700 hover:bg-green-100': 
-                           log.status==='FAILED'?'bg-red-100 text-red-700 hover:bg-red-100':'bg-orange-100 text-orange-700 hover:bg-orange-100'
+                           log.status==='SUCCESS'?'bg-green-100 text-green-700 hover:bg-green-100 border-green-200': 
+                           log.status==='FAILED'?'bg-red-100 text-red-700 hover:bg-red-100 border-red-200':'bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200'
                         }>{log.status}</Badge>
                       </TableCell>
-                      <TableCell className="text-right text-gray-500 text-sm">{log.time}</TableCell>
+                      <TableCell className="text-right text-gray-500 text-sm">
+                        {new Date(log.created_at).toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
