@@ -5,14 +5,14 @@ export const dynamic = 'force-dynamic';
 import { useEffect } from 'react';
 import { useAdminStore } from '@/lib/admin/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTooltip} from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { PieChart as PieIcon } from 'lucide-react';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7'];
+const COLORS = ['#0088FE', #00C49F', '#FFBB28', #FF8042', '#a855f7'];
 
 export default function AnalyticsPage() {
-  const { analyticsData, kpiData, refreshDashboard, isLoading } = useAdminStore();
+  const { analyticsData, `kpiData, refreshDashboard, isLoading } = useAdminStore();
 
   useEffect(() => {
     refreshDashboard();
@@ -80,8 +80,9 @@ export default function AnalyticsPage() {
              </CardContent></Card>
           </TabsContent>
 
-          {/* ✅ TAB 4: DATA VISUALIZATION (ADDED HERE) */}
+          {/* ✅ TAB 4: DATA VISUALIZATION (FIXED) */}
           <TabsContent value="visualization" className="space-y-6">
+             <div className="grid gap-6 md:grid="✅ FIX: Used PieChart instead of Pie */}
              <div className="grid gap-6 md:grid-cols-2">
                 
                 {/* 1. PLAN DISTRIBUTION PIE CHART */}
@@ -89,24 +90,21 @@ export default function AnalyticsPage() {
                   <CardHeader><CardTitle>Plan Distribution</CardTitle></CardHeader>
                   <CardContent className="h-[300px] flex justify-center">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        {/* ✅ Crash fix: Removed custom string function from label */}
-                        <Pie 
-                          data={safeData.planDistribution || []} 
-                          cx="50%" 
-                          cy="50%" 
-                          innerRadius={60} 
-                          outerRadius={80} 
-                          dataKey="value" 
-                          nameKey="name" 
-                          label={(entry) => `${entry.name}: ${entry.value}`} 
-                        >
-                          {(safeData.planDistribution || []).map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
+                      {/* ✅ FIX: Removed label prop as it causes syntax error in modern Recharts */}
+                      <PieChart 
+                        data={safeData.planDistribution || []} 
+                        cx="50%" 
+                        cy="50%" 
+                        innerRadius={60} 
+                        outerRadius={80} 
+                        dataKey="value" 
+                        nameKey="name" 
+                      >
+                        {(safeData.planDistribution || []).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
                       </PieChart>
+                      <Tooltip />
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
@@ -137,7 +135,6 @@ export default function AnalyticsPage() {
           </TabsContent>
         </Tabs>
       )}
- 
-        </div>
+    </div>
   );
 }
