@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  Play, RotateCcw, Clock, Mail, Bell, Server, Activity, Database, Lock, Loader2 
+  Play, RotateCcw, Clock, Mail, Bell, Server, Activity, Database, Loader2 
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'; // Ya aapka standard import
+
+// CHANGE: Standard Supabase Import (No extra package needed)
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase Client directly using Env Variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Static UI Config (Icons & Descriptions)
 const SYSTEM_TASKS_CONFIG = [
@@ -23,7 +30,6 @@ const SYSTEM_TASKS_CONFIG = [
 ];
 
 export default function AutomationPage() {
-  const supabase = createClientComponentClient();
   const [loading, setLoading] = useState(true);
   const [systemTasks, setSystemTasks] = useState<any[]>([]);
   const [commRules, setCommRules] = useState<any[]>([]);
