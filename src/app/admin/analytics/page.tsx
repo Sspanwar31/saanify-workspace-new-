@@ -5,25 +5,26 @@ export const dynamic = 'force-dynamic';
 import { useEffect } from 'react';
 import { useAdminStore } from '@/lib/admin/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTooltip} from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { PieChart as PieIcon } from 'lucide-react';
 
-const COLORS = ['#0088FE', #00C49F', '#FFBB28', #FF8042', '#a855f7'];
+// FIXED: Added missing quotes around colors
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7'];
 
 export default function AnalyticsPage() {
-  const { analyticsData, `kpiData, refreshDashboard, isLoading } = useAdminStore();
+  // FIXED: Removed the stray backtick before kpiData
+  const { analyticsData, kpiData, refreshDashboard, isLoading } = useAdminStore();
 
   useEffect(() => {
     refreshDashboard();
   }, [refreshDashboard]);
 
-  // ✅ UPDATED SAFE DATA
   const safeData = analyticsData ?? {
     revenueTrend: [],
     userGrowth: [],
-    planDistribution: [], // Naya
-    clientStatus: [],     // Naya
+    planDistribution: [],
+    clientStatus: [],
   };
 
   const safeKpi = kpiData ?? {
@@ -50,7 +51,6 @@ export default function AnalyticsPage() {
             <TabsTrigger value="visualization" className="gap-2"><PieIcon className="w-4 h-4"/> Visualization</TabsTrigger>
           </TabsList>
 
-          {/* TAB 1, 2, 3 wahi rahenge jo pehle the */}
           <TabsContent value="overview" className="space-y-6">
              <div className="grid gap-4 md:grid-cols-3">
                 <Card className="bg-blue-50 border-blue-200"><CardContent className="p-6"><p className="text-blue-700 font-bold uppercase text-xs mb-2">Total Revenue (MRR)</p><div className="text-3xl font-bold text-blue-900">₹{safeKpi.totalRevenue.toLocaleString('en-IN')}</div><p className="text-xs text-blue-600 mt-1">Based on active plans</p></CardContent></Card>
@@ -80,9 +80,7 @@ export default function AnalyticsPage() {
              </CardContent></Card>
           </TabsContent>
 
-          {/* ✅ TAB 4: DATA VISUALIZATION (FIXED) */}
           <TabsContent value="visualization" className="space-y-6">
-             <div className="grid gap-6 md:grid="✅ FIX: Used PieChart instead of Pie */}
              <div className="grid gap-6 md:grid-cols-2">
                 
                 {/* 1. PLAN DISTRIBUTION PIE CHART */}
@@ -90,21 +88,24 @@ export default function AnalyticsPage() {
                   <CardHeader><CardTitle>Plan Distribution</CardTitle></CardHeader>
                   <CardContent className="h-[300px] flex justify-center">
                     <ResponsiveContainer width="100%" height="100%">
-                      {/* ✅ FIX: Removed label prop as it causes syntax error in modern Recharts */}
-                      <PieChart 
-                        data={safeData.planDistribution || []} 
-                        cx="50%" 
-                        cy="50%" 
-                        innerRadius={60} 
-                        outerRadius={80} 
-                        dataKey="value" 
-                        nameKey="name" 
-                      >
-                        {(safeData.planDistribution || []).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                      <PieChart>
+                        {/* FIXED: Proper Pie element syntax without crashing labels */}
+                        <Pie
+                          data={safeData.planDistribution || []} 
+                          cx="50%" 
+                          cy="50%" 
+                          innerRadius={60} 
+                          outerRadius={80} 
+                          dataKey="value" 
+                          nameKey="name"
+                          label
+                        >
+                          {(safeData.planDistribution || []).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
                       </PieChart>
-                      <Tooltip />
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
@@ -120,9 +121,7 @@ export default function AnalyticsPage() {
                         <YAxis dataKey="name" type="category" width={100} />
                         <Tooltip />
                         <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                          {/* Active green color, Deleted red color */}
                           {(safeData.clientStatus || []).map((entry, index) => (
-                            {/* Active green color, Deleted red color */}
                             <Cell key={`cell-${index}`} fill={index === 0 ? '#10b981' : '#ef4444'} />
                           ))}
                         </Bar>
@@ -136,5 +135,5 @@ export default function AnalyticsPage() {
         </Tabs>
       )}
     </div>
-  );
+  ); 
 }
