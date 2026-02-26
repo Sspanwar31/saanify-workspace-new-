@@ -5,11 +5,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Interfaces
+// ✅ UPDATE KIYA GAYA INTERFACE
 interface AnalyticsData {
   revenueTrend: { name: string; value: number }[];
   userGrowth: { name: string; active: number; total: number }[];
-  deviceUsage: { name: string; value: number }[];
+  planDistribution: { name: string; value: number }[]; // NAYA
+  clientStatus: { name: string; value: number }[];     // NAYA
 }
 
 interface KpiData {
@@ -24,7 +25,7 @@ interface AdminState {
   clients: any[];
   plans: any[];
   analyticsData: AnalyticsData | null;
-  kpiData: KpiData | null; // Naya kpiData state
+  kpiData: KpiData | null;
 
   refreshDashboard: () => Promise<void>;
 }
@@ -46,7 +47,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
 
     try {
-      // 1. Fetch ALL Clients (Active + Deleted dono chahiye Churn nikalne ke liye)
       const { data: allClientsData, error: clientError } = await supabase
         .from('clients')
         .select('*')
@@ -54,7 +54,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
       if (clientError) throw clientError;
 
-      // 2. Fetch Plans
       const { data: plansData, error: planError } = await supabase
         .from('plans') 
         .select('*');
@@ -64,12 +63,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       const allClients = allClientsData || [];
       const plans = plansData || [];
 
-      // --- REAL CALCULATIONS START HERE ---
-      
       const activeClients = allClients.filter(c => c.is_deleted !== true);
       const deletedClients = allClients.filter(c => c.is_deleted === true);
 
-      // A. Calculate KPIs (Overview Tab)
+      // --- KPIs ---
       let calculatedRevenue = 0;
       activeClients.forEach(client => {
         if (client.plan_id) {
@@ -89,12 +86,11 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         churnRate: churnPercentage
       };
 
-      // B. Calculate Graph Data (Tabs 2, 3, 4)
+      // --- CHARTS DATA ---
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const growthMap: Record<string, { active: number; total: number; revenue: number }> = {};
       let runningTotal = 0;
 
-      // Sort by date
       const sortedClients = [...activeClients].sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
@@ -119,7 +115,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         growthMap[monthName].revenue += clientRev;
       });
 
-      // Prepare Recharts arrays
       const userGrowth = Object.keys(growthMap).map(key => ({
         name: key,
         active: growthMap[key].active,
@@ -131,20 +126,33 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         value: growthMap[key].revenue
       }));
 
-      // Performance Summary (Bar Chart for Overview)
-      const performanceSummary = revenueTrend;
+      // ✅ 1. PLAN DISTRIBUTION (Naya Pie Chart logic)
+      const planCounts: Record<string, number> = {};
+      activeClients.forEach(client => {
+        let planName = 'Trial / Free';
+        if (client.plan_id) {
+          const matchedPlan = plans.find((p: any) => p.id === client.plan_id);
+          if (matchedPlan && matchedPlan.name) planName = matchedPlan.name;
+        }
+        planCounts[planName] = (planCounts[planName] || 0) + 1;
+      });
 
-      // Device Data (Mock because DB usually doesn't store this by default)
-      const deviceUsage = [
-        { name: 'Mobile Users', value: Math.floor(activeClients.length * 0.7) },
-        { name: 'Desktop Users', value: Math.floor(activeClients.length * 0.3) }
+      const planDistribution = Object.keys(planCounts).map(key => ({
+        name: key,
+        value: planCounts[key]
+      }));
+
+      // ✅ 2. CLIENT STATUS (Naya Chart logic)
+      const clientStatus = [
+        { name: 'Active Users', value: activeClients.length },
+        { name: 'Deleted Users', value: deletedClients.length }
       ];
 
       set({ 
         clients: activeClients, 
         plans: plans,
         kpiData: kpiData,
-        analyticsData: { revenueTrend: performanceSummary, userGrowth, deviceUsage },
+        analyticsData: { revenueTrend, userGrowth, planDistribution, clientStatus },
         isLoading: false 
       });
 
