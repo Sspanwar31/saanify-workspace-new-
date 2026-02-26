@@ -5,12 +5,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// ✅ UPDATE KIYA GAYA INTERFACE
 interface AnalyticsData {
   revenueTrend: { name: string; value: number }[];
   userGrowth: { name: string; active: number; total: number }[];
-  planDistribution: { name: string; value: number }[]; // NAYA
-  clientStatus: { name: string; value: number }[];     // NAYA
+  planDistribution: { name: string; value: number }[];
+  clientStatus: { name: string; value: number }[];
 }
 
 interface KpiData {
@@ -28,6 +27,7 @@ interface AdminState {
   kpiData: KpiData | null;
 
   refreshDashboard: () => Promise<void>;
+  getOverviewData: () => any; // ✅ RESTORED FOR MAIN DASHBOARD
 }
 
 export const useAdminStore = create<AdminState>((set, get) => ({
@@ -66,7 +66,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       const activeClients = allClients.filter(c => c.is_deleted !== true);
       const deletedClients = allClients.filter(c => c.is_deleted === true);
 
-      // --- KPIs ---
+      // --- KPIs FOR ANALYTICS ---
       let calculatedRevenue = 0;
       activeClients.forEach(client => {
         if (client.plan_id) {
@@ -86,7 +86,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         churnRate: churnPercentage
       };
 
-      // --- CHARTS DATA ---
+      // --- CHARTS DATA FOR ANALYTICS ---
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const growthMap: Record<string, { active: number; total: number; revenue: number }> = {};
       let runningTotal = 0;
@@ -126,7 +126,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         value: growthMap[key].revenue
       }));
 
-      // ✅ 1. PLAN DISTRIBUTION (Naya Pie Chart logic)
       const planCounts: Record<string, number> = {};
       activeClients.forEach(client => {
         let planName = 'Trial / Free';
@@ -142,7 +141,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         value: planCounts[key]
       }));
 
-      // ✅ 2. CLIENT STATUS (Naya Chart logic)
       const clientStatus = [
         { name: 'Active Users', value: activeClients.length },
         { name: 'Deleted Users', value: deletedClients.length }
@@ -160,5 +158,46 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       console.error("Fetch Error:", error);
       set({ error: error.message, isLoading: false });
     }
+  },
+
+  // ✅ RESTORED: THIS FIXES THE MAIN DASHBOARD CRASH
+  getOverviewData: () => {
+    const state = get();
+    const clients = state.clients || [];
+    const plans = state.plans || [];
+
+    let totalRevenue = 0;
+    let activeTrials = 0;
+    
+    clients.forEach((client: any) => {
+      if (client.plan_id) {
+        const matchedPlan = plans.find((p: any) => p.id === client.plan_id);
+        if (matchedPlan?.price) totalRevenue += Number(matchedPlan.price);
+      }
+      const pName = (client.plan_name || '').toLowerCase();
+      const pCode = (client.plan || '').toLowerCase();
+      if (pName.includes('trial') || pCode.includes('trial')) activeTrials++;
+    });
+
+    const activities = [...clients]
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5)
+      .map((client: any) => ({
+        type: 'New Subscription',
+        client: client.society_name || client.name || 'User',
+        time: client.created_at ? new Date(client.created_at).toLocaleDateString() : 'Just now'
+      }));
+
+    return {
+      kpi: {
+        totalClients: clients.length,
+        revenue: totalRevenue,
+        activeTrials: activeTrials,
+        systemHealth: 'Healthy'
+      },
+      alerts: [],
+      activities: activities,
+      quickStats: { newClientsToday: 0, revenueToday: 0 }
+    };
   }
 }));
