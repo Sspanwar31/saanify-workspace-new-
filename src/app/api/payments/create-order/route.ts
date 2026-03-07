@@ -3,6 +3,15 @@ import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 
 /* -------------------------------------------------------
+   CORS Headers (Flutter App Connect ke liye Zaroori)
+------------------------------------------------------- */
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+/* -------------------------------------------------------
    Decode Service Role Key (B64 safe)
 ------------------------------------------------------- */
 const getServiceRoleKey = () => {
@@ -33,7 +42,14 @@ const razorpay = new Razorpay({
 });
 
 /* -------------------------------------------------------
-   POST /api/payments/create-order
+   OPTIONS Method (Preflight request)
+------------------------------------------------------- */
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
+/* -------------------------------------------------------
+   POST /api/payment/create-order
 ------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
@@ -43,11 +59,12 @@ export async function POST(req: Request) {
     const amount = body.amount || body.price;
     const plan = body.planId || body.planName || 'PRO';
     const mode = body.mode;
+    const clientId = body.clientId; // ✅ Client ID extracted for tracking
 
     if (!amount || !plan) {
       return NextResponse.json(
         { error: 'amount or plan missing' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders } // ✅ Added CORS headers
       );
     }
 
@@ -61,14 +78,14 @@ export async function POST(req: Request) {
     console.log("Razorpay Order Created:", order.id);
 
     // 3. Insert into payment_intents
-    // FIX: Using .toISOString() for date and logging full error
     const insertData = {
       amount: amount,
       plan: plan,
       mode: mode || 'AUTO',
-      status: 'pending', // ✅ Capital 'PENDING' hata kar small 'pending' likh dijiye
-      token: order.id, // Ensure database column 'token' is TEXT, not UUID
-      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // FIX: ISO String
+      status: 'pending',
+      token: order.id,
+      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      client_id: clientId, // ✅ Client ID inserted for admin tracking
     };
 
     const { data, error } = await supabase
@@ -77,11 +94,10 @@ export async function POST(req: Request) {
       .select();
 
     if (error) {
-      console.error("❌ Supabase insert failed details:", error); // Check Server Logs
-      // Return ACTUAL database error to frontend for debugging
+      console.error("❌ Supabase insert failed details:", error);
       return NextResponse.json(
         { error: `DB Insert Failed: ${error.message}`, details: error },
-        { status: 500 }
+        { status: 500, headers: corsHeaders } // ✅ Added CORS headers
       );
     }
 
@@ -90,13 +106,15 @@ export async function POST(req: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
+    }, {
+      headers: corsHeaders // ✅ Added CORS headers
     });
 
   } catch (err: any) {
     console.error("❌ create-order critical error:", err);
     return NextResponse.json(
       { error: err.message || 'Internal Server Error' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders } // ✅ Added CORS headers
     );
   }
 }
