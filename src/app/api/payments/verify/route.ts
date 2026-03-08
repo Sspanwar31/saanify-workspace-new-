@@ -75,7 +75,7 @@ export async function POST(req: Request) {
         razorpay_payment_id: paymentId
       })
       .eq('token', orderId) 
-      .select('plan, amount') // Plan name chahiye duration calculate karne ke liye
+      .select('plan') // Plan name chahiye duration calculate karne ke liye
       .single();
 
     if (intentErr || !intent) {
@@ -86,18 +86,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3️⃣ NEW: Actual Plan Activation in 'clients' table
-    // Nayi expiry date calculate karein (Plan name ke base par)
-    const duration = intent.plan.toUpperCase().includes('ENTERPRISE') ? 365 : 30;
+    // ✅ 3️⃣ FIX: Fetch Plan Details from 'plans' table to get ID and LIMIT
+    const { data: planRecord } = await supabase
+      .from('plans')
+      .select('id, limit_members, duration_days')
+      .eq('code', intent.plan) // Ensure intent.plan is 'PRO', 'BASIC', etc.
+      .single();
+
+    // Duration calculate karein (Database se ya fallback)
+    const duration = planRecord?.duration_days || (intent.plan.toUpperCase().includes('ENTERPRISE') ? 365 : 30);
     const newExpiry = new Date();
     newExpiry.setDate(newExpiry.getDate() + duration);
 
-    // ✅ FIX: Update both 'plan' and 'plan_name'
+    // ✅ 4️⃣ FIX: Update ALL plan columns in 'clients' table
     const { error: clientUpdateErr } = await supabase
       .from('clients')
       .update({
-        plan: intent.plan,          // Internal Code (e.g., ENTERPRISE)
-        plan_name: intent.plan,     // Display Name (e.g., Enterprise)
+        plan: intent.plan,
+        plan_name: intent.plan,         // Sync display name
+        plan_id: planRecord?.id,        // 👈 YE SABSE ZAROORI HAI WEBSITE KE LIYE
+        loan_limit_percent: planRecord?.limit_members || 200, // Member limit sync
         plan_start_date: new Date().toISOString(),
         plan_end_date: newExpiry.toISOString(),
         subscription_status: 'active'
@@ -112,7 +120,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4️⃣ Final Response (Headers lagana zaroori hai)
+    // 5️⃣ Final Response
     return NextResponse.json(
       { success: true, isPaid: true, orderId: orderId }, 
       { status: 200, headers: corsHeaders } 
