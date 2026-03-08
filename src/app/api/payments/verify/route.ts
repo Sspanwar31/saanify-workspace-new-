@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ 1. CORS Headers
+// ✅ UPDATED CORS Headers (X-Requested-With added)
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
 };
 
 // --- SERVICE ROLE KEY FIX (Secure & B64 Safe) ---
@@ -26,9 +26,12 @@ const supabase = createClient(
   getServiceRoleKey()
 );
 
-// ✅ 2. OPTIONS Method for CORS
+// ✅ UPDATED OPTIONS Method (Status 204 for Standard Preflight)
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+  return new NextResponse(null, { 
+    status: 204, 
+    headers: corsHeaders 
+  });
 }
 
 export async function POST(req: Request) {
@@ -109,17 +112,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4️⃣ Final Response (Flutter ke liye isPaid: true)
-    return NextResponse.json({
-      success: true,
-      isPaid: true, // ✅ Flutter UI check karega ye
-      orderId: orderId // ✅ Debugging ke liye helpful hai
-    }, { headers: corsHeaders });
+    // 4️⃣ Final Response (Headers lagana zaroori hai)
+    return NextResponse.json(
+      { success: true, isPaid: true, orderId: orderId }, 
+      { status: 200, headers: corsHeaders } 
+    );
 
   } catch (error: any) {
     console.error('VERIFY API ERROR:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error' }, 
       { status: 500, headers: corsHeaders }
     );
   }
