@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ 1. CORS Headers (Code 1 se uthaya gaya)
+// ✅ 1. CORS Headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// --- SERVICE ROLE KEY FIX (Code 2 se maintain kiya) ---
+// --- SERVICE ROLE KEY FIX (Secure & B64 Safe) ---
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
   if (!rawKey) {
@@ -26,7 +26,7 @@ const supabase = createClient(
   getServiceRoleKey()
 );
 
-// ✅ 2. OPTIONS Method for CORS (Code 1 se added)
+// ✅ 2. OPTIONS Method for CORS
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Flutter/Web dono keys handle karne ke liye (Code 1 logic)
+    // Flutter/Web dono keys handle karne ke liye
     const orderId = body.razorpay_order_id || body.orderCreationId;
     const paymentId = body.razorpay_payment_id;
     const signature = body.razorpay_signature;
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3️⃣ NEW: Actual Plan Activation in 'clients' table (Code 1 Logic)
+    // 3️⃣ NEW: Actual Plan Activation in 'clients' table
     // Nayi expiry date calculate karein (Plan name ke base par)
     const duration = intent.plan.toUpperCase().includes('ENTERPRISE') ? 365 : 30;
     const newExpiry = new Date();
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       isPaid: true, // ✅ Flutter UI check karega ye
-      orderId: orderId
+      orderId: orderId // ✅ Debugging ke liye helpful hai
     }, { headers: corsHeaders });
 
   } catch (error: any) {
