@@ -82,56 +82,50 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // --- PLAN DETAILS FETCH (UPDATED LOGIC AS REQUESTED) ---
-          // ✅ DIRECT DATABASE MAPPING (No hardcoded fallback)
+          // ✅ NEW LOGIC: Plan ID ko ignore karo, sirf Plan Name aur Code use karo
+          // Isse Flutter aur Website dono sync ho jayenge
           let planDisplayName = client.plan_name || client.plan || 'Basic';
-          let limit = 200; 
+          let limit = 200; // Default limit for Basic
+          let durationDays = 30;
 
-          // Agar plans table linked hai toh wahan se limit uthayein
-          if (client.plan_id) {
-             const { data: planData } = await supabase
-                .from('plans')
-                .select('limit_members, name')
-                .eq('id', client.plan_id)
-                .single();
-             
-             if (planData) {
-                limit = planData.limit_members;
-                planDisplayName = planData.name;
-             }
+          // Member Limit determine karein (Based on Plan Name/Code text)
+          const p = planDisplayName.toUpperCase();
+          const code = (client.plan || '').toUpperCase();
+
+          if (p.includes('ENTERPRISE') || code.includes('ENTERPRISE')) {
+            limit = 999999;
+            durationDays = 365;
+          } else if (p.includes('PRO') || p.includes('PROFESSIONAL') || code.includes('PRO')) {
+            limit = 2000;
+            durationDays = 30;
+          } else if (p.includes('TRIAL') || code.includes('TRIAL')) {
+            limit = 100;
+            durationDays = 7;
           } else {
-            // Fallback based on string
-            const p = planDisplayName.toUpperCase();
-            if (p.includes('PRO')) limit = 2000;
-            else if (p.includes('ENTERPRISE')) limit = 999999;
+            limit = 200; // Default Basic
+            durationDays = 30;
           }
 
-          // DATE LOGIC (Ensure Priority to plan_end_date)
+          // --- DATE CALCULATION LOGIC ---
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
+          // Priority: plan_end_date -> subscription_expiry -> created_at + duration
           let endDate = new Date();
-          
-          // Priority 1: DB Plan End Date
           if (client.plan_end_date) {
             endDate = new Date(client.plan_end_date);
-          } 
-          // Priority 2: Subscription Expiry Column
-          else if (client.subscription_expiry) {
+          } else if (client.subscription_expiry) {
             endDate = new Date(client.subscription_expiry);
-          } 
-          // Priority 3: Fallback
-          else {
-             endDate = new Date();
-             endDate.setDate(endDate.getDate() + 30);
+          } else {
+             endDate = new Date(client.created_at || new Date());
+             endDate.setDate(endDate.getDate() + durationDays);
           }
           endDate.setHours(0, 0, 0, 0);
 
           const diffTime = endDate.getTime() - today.getTime();
           const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-          const status = daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED';
-
-          // --- MEMBER COUNT FETCH ---
+          
+          // Member Count
           const { count } = await supabase
             .from('members')
             .select('*', { count: 'exact', head: true })
@@ -140,8 +134,8 @@ export default function SubscriptionPage() {
           const currentMemberCount = count || 0;
 
           setSubscription({
-            planName: planDisplayName,
-            status: status,
+            planName: planDisplayName, // Ab ye Professional/Enterprise sahi dikhayega
+            status: daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED',
             endStr: endDate.toLocaleDateString('en-IN', {
                 day: '2-digit', month: 'short', year: 'numeric'
             }),
