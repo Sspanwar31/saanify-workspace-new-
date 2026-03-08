@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-// --- SERVICE ROLE KEY FIX ---
+// ✅ 1. CORS Headers (Code 1 se uthaya gaya)
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// --- SERVICE ROLE KEY FIX (Code 2 se maintain kiya) ---
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
   if (!rawKey) {
@@ -19,19 +26,25 @@ const supabase = createClient(
   getServiceRoleKey()
 );
 
-// ✅ ONLY POST — NO GET / NO DEFAULT EXPORT
+// ✅ 2. OPTIONS Method for CORS (Code 1 se added)
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const orderId = body.razorpay_order_id;
+    // Flutter/Web dono keys handle karne ke liye (Code 1 logic)
+    const orderId = body.razorpay_order_id || body.orderCreationId;
     const paymentId = body.razorpay_payment_id;
     const signature = body.razorpay_signature;
+    const clientId = body.clientId; // ✅ Client ID important hai activation ke liye
 
     if (!orderId || !paymentId || !signature) {
       return NextResponse.json(
         { error: 'Missing payment details' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -46,60 +59,66 @@ export async function POST(req: Request) {
 
     if (expectedSignature !== signature) {
       return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 400 }
+        { error: 'Invalid signature', isPaid: false },
+        { status: 400, headers: corsHeaders }
       );
     }
 
     // 2️⃣ Mark payment_intents as PAID
-    const { data, error } = await supabase
+    const { data: intent, error: intentErr } = await supabase
       .from('payment_intents')
       .update({
         status: 'PAID',
         razorpay_payment_id: paymentId
       })
       .eq('token', orderId) 
-      .select('id, plan') // ✅ CORRECT: 'plan'
+      .select('plan, amount') // Plan name chahiye duration calculate karne ke liye
       .single();
 
-    if (error || !data) {
-      console.error('Payment intent update failed:', error);
+    if (intentErr || !intent) {
+      console.error('Payment intent update failed:', intentErr);
       return NextResponse.json(
         { error: 'Payment intent not found' },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
-    // 🔧 DIFF-2: Resolve plan from plans table (READ ONLY)
-    const { data: planRow, error: planError } = await supabase
-      .from('plans')
-      .select('id, code, duration_days')
-      .eq('code', data.plan) // ✅ CORRECT: 'data.plan'
-      .single();
+    // 3️⃣ NEW: Actual Plan Activation in 'clients' table (Code 1 Logic)
+    // Nayi expiry date calculate karein (Plan name ke base par)
+    const duration = intent.plan.toUpperCase().includes('ENTERPRISE') ? 365 : 30;
+    const newExpiry = new Date();
+    newExpiry.setDate(newExpiry.getDate() + duration);
 
-    if (planError || !planRow) {
+    const { error: clientUpdateErr } = await supabase
+      .from('clients')
+      .update({
+        plan_name: intent.plan,
+        plan_start_date: new Date().toISOString(),
+        plan_end_date: newExpiry.toISOString(),
+        subscription_status: 'active'
+      })
+      .eq('id', clientId); // ✅ Sahi client update hoga
+
+    if (clientUpdateErr) {
+      console.error('Client activation failed:', clientUpdateErr);
       return NextResponse.json(
-        { error: 'Plan not found for payment' },
-        { status: 500 }
+        { error: 'Failed to activate plan' },
+        { status: 500, headers: corsHeaders }
       );
     }
 
-    // 🔧 DIFF-3: FINAL RESPONSE (future-safe)
+    // 4️⃣ Final Response (Flutter ke liye isPaid: true)
     return NextResponse.json({
       success: true,
-      orderId: orderId,
-      plan: {
-        id: planRow.id,
-        code: planRow.code,
-        duration_days: planRow.duration_days
-      }
-    });
+      isPaid: true, // ✅ Flutter UI check karega ye
+      orderId: orderId
+    }, { headers: corsHeaders });
 
   } catch (error: any) {
     console.error('VERIFY API ERROR:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
