@@ -89,10 +89,12 @@ export async function POST(req: Request) {
     const newExpiry = new Date();
     newExpiry.setDate(newExpiry.getDate() + duration);
 
+    // ✅ FIX: Update both 'plan' and 'plan_name'
     const { error: clientUpdateErr } = await supabase
       .from('clients')
       .update({
-        plan_name: intent.plan,
+        plan: intent.plan,          // Internal Code (e.g., ENTERPRISE)
+        plan_name: intent.plan,     // Display Name (e.g., Enterprise)
         plan_start_date: new Date().toISOString(),
         plan_end_date: newExpiry.toISOString(),
         subscription_status: 'active'
