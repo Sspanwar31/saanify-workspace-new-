@@ -84,7 +84,7 @@ export default function PaymentModal({
           toast.loading("Verifying Payment...");
 
           // Call Backend to Verify Signature & Activate Plan
-          const verifyRes = await fetch('/api/payment/verify', {
+          const verifyRes = await fetch('/api/payments/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
