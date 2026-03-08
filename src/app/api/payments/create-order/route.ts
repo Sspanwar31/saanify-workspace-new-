@@ -59,12 +59,13 @@ export async function POST(req: Request) {
     const amount = body.amount || body.price;
     const plan = body.planId || body.planName || 'PRO';
     const mode = body.mode;
-    const clientId = body.clientId; // ✅ Client ID extracted for tracking
+    
+    // ❌ clientId hata diya kyunki database column nahi hai
 
     if (!amount || !plan) {
       return NextResponse.json(
         { error: 'amount or plan missing' },
-        { status: 400, headers: corsHeaders } // ✅ Added CORS headers
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -77,25 +78,26 @@ export async function POST(req: Request) {
     });
     console.log("Razorpay Order Created:", order.id);
 
-    // 3. Insert into payment_intents (Updated as per your snippet)
+    // 3. Insert into payment_intents
     const insertData = {
       amount: amount,
       plan: plan,
-      mode: mode || 'AUTO',
+      mode: mode || 'AUTO', // Mode logic maintained
       status: 'pending', 
       token: order.id, // Razorpay Order ID
       expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      // ✅ client_id remove kar diya fix ke hisab se
     };
 
     const { error } = await supabase
       .from('payment_intents')
-      .insert([insertData]); // 👈 Ab ye error nahi dega
+      .insert([insertData]);
 
     if (error) {
       console.error("❌ Supabase insert failed details:", error);
       return NextResponse.json(
         { error: `DB Insert Failed: ${error.message}`, details: error },
-        { status: 500, headers: corsHeaders } // ✅ Added CORS headers
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -105,14 +107,14 @@ export async function POST(req: Request) {
       amount: order.amount,
       currency: order.currency,
     }, {
-      headers: corsHeaders // ✅ Added CORS headers
+      headers: corsHeaders
     });
 
   } catch (err: any) {
     console.error("❌ create-order critical error:", err);
     return NextResponse.json(
       { error: err.message || 'Internal Server Error' },
-      { status: 500, headers: corsHeaders } // ✅ Added CORS headers
+      { status: 500, headers: corsHeaders }
     );
   }
 }
