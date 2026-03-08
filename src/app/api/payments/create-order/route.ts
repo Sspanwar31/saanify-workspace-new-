@@ -77,21 +77,19 @@ export async function POST(req: Request) {
     });
     console.log("Razorpay Order Created:", order.id);
 
-    // 3. Insert into payment_intents
+    // 3. Insert into payment_intents (Updated as per your snippet)
     const insertData = {
       amount: amount,
       plan: plan,
       mode: mode || 'AUTO',
-      status: 'pending',
-      token: order.id,
+      status: 'pending', 
+      token: order.id, // Razorpay Order ID
       expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      client_id: clientId, // ✅ Client ID inserted for admin tracking
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('payment_intents')
-      .insert([insertData])
-      .select();
+      .insert([insertData]); // 👈 Ab ye error nahi dega
 
     if (error) {
       console.error("❌ Supabase insert failed details:", error);
