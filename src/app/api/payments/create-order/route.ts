@@ -82,11 +82,10 @@ export async function POST(req: Request) {
     const insertData = {
       amount: amount,
       plan: plan,
-      mode: mode || 'AUTO', // Mode logic maintained
+      mode: mode || 'AUTO',
       status: 'pending', 
       token: order.id, // Razorpay Order ID
       expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      // ✅ client_id remove kar diya fix ke hisab se
     };
 
     const { error } = await supabase
@@ -106,6 +105,8 @@ export async function POST(req: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
+      // ✅ SUCCESS RESPONSE: Added razorpayKey for Flutter
+      razorpayKey: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
     }, {
       headers: corsHeaders
     });
