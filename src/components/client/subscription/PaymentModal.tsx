@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase-simple';
 import {
@@ -18,7 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const loadRazorpay = () => {
   return new Promise((resolve) => {
     const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.src = 'https://checkout.azorpay.com/v1/checkout.js';
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
@@ -96,9 +94,18 @@ export default function PaymentModal({
           });
 
           const verifyData = await verifyRes.json();
-          if (verifyData.success) {
-             toast.success("Activated!");
-             window.location.reload();
+          
+          // ✅ YOUR CHANGES APPLIED HERE
+          if (verifyData.isPaid) {
+            toast.success("Subscription Upgraded!");
+            
+            // ✅ Browser ki memory se purana user data hatayein
+            localStorage.removeItem('current_user'); 
+            
+            // Page reload karein taaki database se fresh data aaye
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
           }
         },
         prefill: {
