@@ -82,32 +82,31 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // --- PLAN DETAILS FETCH (UPDATED LOGIC) ---
+          // --- PLAN DETAILS FETCH (UPDATED LOGIC AS REQUESTED) ---
+          // ✅ DIRECT DATABASE MAPPING (No hardcoded fallback)
           let planDisplayName = client.plan_name || client.plan || 'Basic';
-          let limit = client.member_limit || 200; // Database se limit lein
-          let durationDays = 30;
+          let limit = 200; 
 
-          // Agar plans table se linked hai toh wahan se details lein
+          // Agar plans table linked hai toh wahan se limit uthayein
           if (client.plan_id) {
-              const { data: planData } = await supabase
-                  .from('plans')
-                  .select('*')
-                  .eq('id', client.plan_id)
-                  .maybeSingle();
-              
-              if (planData) {
-                  limit = planData.limit_members;
-                  planDisplayName = planData.name;
-              }
+             const { data: planData } = await supabase
+                .from('plans')
+                .select('limit_members, name')
+                .eq('id', client.plan_id)
+                .single();
+             
+             if (planData) {
+                limit = planData.limit_members;
+                planDisplayName = planData.name;
+             }
           } else {
-              // Manual override based on string (Sync with database values)
-              const p = planDisplayName.toUpperCase();
-              if (p.includes('ENTERPRISE')) limit = 999999;
-              else if (p.includes('PRO') || p.includes('PROFESSIONAL')) limit = 2000;
-              else limit = 200;
+            // Fallback based on string
+            const p = planDisplayName.toUpperCase();
+            if (p.includes('PRO')) limit = 2000;
+            else if (p.includes('ENTERPRISE')) limit = 999999;
           }
 
-          // --- DATE CALCULATION LOGIC ---
+          // DATE LOGIC (Ensure Priority to plan_end_date)
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
@@ -121,10 +120,10 @@ export default function SubscriptionPage() {
           else if (client.subscription_expiry) {
             endDate = new Date(client.subscription_expiry);
           } 
-          // Priority 3: Calculated from Created At
+          // Priority 3: Fallback
           else {
-             endDate = new Date(client.created_at || new Date());
-             endDate.setDate(endDate.getDate() + durationDays);
+             endDate = new Date();
+             endDate.setDate(endDate.getDate() + 30);
           }
           endDate.setHours(0, 0, 0, 0);
 
