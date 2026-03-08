@@ -79,33 +79,26 @@ export default function PaymentModal({
         description: `Upgrade to ${plan.name} Plan`,
         order_id: data.orderId, // Order ID from Backend
         
-        // 4. Handle Success
+        // 4. Handle Success (UPDATED LOGIC)
         handler: async function (response: any) {
           toast.loading("Verifying Payment...");
 
-          // Call Backend to Verify Signature & Activate Plan
-          const verifyRes = await fetch('/api/payments/verify', {
+          // ✅ URL ko plural 'payments' karein
+          const verifyRes = await fetch('/api/payments/verify', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              orderCreationId: data.orderId,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
+              razorpay_order_id: data.orderId, // Check karein keys 'razorpay_order_id' hi hon
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
               clientId: clientId,
-              planDuration: plan.durationDays
             }),
           });
 
           const verifyData = await verifyRes.json();
-
-          if (verifyData.isPaid) {
-            toast.dismiss();
-            toast.success("Payment Successful! Plan Activated.");
-            onClose();
-            window.location.reload(); // Refresh to show new plan
-          } else {
-            toast.dismiss();
-            toast.error("Payment Verification Failed. Contact Support.");
+          if (verifyData.success) {
+             toast.success("Activated!");
+             window.location.reload();
           }
         },
         prefill: {
