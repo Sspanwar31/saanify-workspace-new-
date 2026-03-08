@@ -57,7 +57,7 @@ export default function PaymentModal({
 
     try {
       // 2. Create Order on Backend
-      const response = await fetch('/api/payment/create-order', {
+      const response = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
