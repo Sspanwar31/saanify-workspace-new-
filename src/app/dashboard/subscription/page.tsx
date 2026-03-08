@@ -82,33 +82,29 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // --- PLAN DETAILS FETCH ---
-          let limit = 100; 
-          let planDisplayName = client.plan_name || client.plan || 'Unknown Plan';
+          // --- PLAN DETAILS FETCH (UPDATED LOGIC) ---
+          let planDisplayName = client.plan_name || client.plan || 'Basic';
+          let limit = client.member_limit || 200; // Database se limit lein
           let durationDays = 30;
 
-          // A. Try fetching from Plans table linked by ID
+          // Agar plans table se linked hai toh wahan se details lein
           if (client.plan_id) {
-             const { data: planData } = await supabase
-                .from('plans')
-                .select('*')
-                .eq('id', client.plan_id)
-                .maybeSingle();
-             
-             if (planData) {
-                limit = planData.limit_members;
-                planDisplayName = planData.name;
-                durationDays = planData.duration_days || 30;
-             }
-          }
-          
-          // B. Fallback: Agar Plans table link nahi hai to text match karo
-          if (limit === 100 && client.plan) {
-             const p = client.plan.toUpperCase();
-             if (p.includes('PRO') || p.includes('PROFESSIONAL')) limit = 2000;
-             else if (p.includes('BASIC')) limit = 200;
-             else if (p.includes('ENTERPRISE')) limit = 999999;
-             else if (p.includes('TRIAL')) limit = 100;
+              const { data: planData } = await supabase
+                  .from('plans')
+                  .select('*')
+                  .eq('id', client.plan_id)
+                  .maybeSingle();
+              
+              if (planData) {
+                  limit = planData.limit_members;
+                  planDisplayName = planData.name;
+              }
+          } else {
+              // Manual override based on string (Sync with database values)
+              const p = planDisplayName.toUpperCase();
+              if (p.includes('ENTERPRISE')) limit = 999999;
+              else if (p.includes('PRO') || p.includes('PROFESSIONAL')) limit = 2000;
+              else limit = 200;
           }
 
           // --- DATE CALCULATION LOGIC ---
