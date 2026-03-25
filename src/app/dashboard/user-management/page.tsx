@@ -398,7 +398,7 @@ export default function UserManagementPage() {
 
         {/* 4. Tab Contents */}
         <TabsContent value="all-users" className="space-y-6">
-          {/* ✅ UPDATED: Dark Mode in Filter Bar */}
+          {/* ✅ FIXED: Dark Mode in Filter Bar */}
           <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border dark:border-slate-800 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
             <div className="flex flex-col md:flex-row gap-4 w-full items-center">
               <div className="flex items-center gap-2 text-gray-500 font-medium whitespace-nowrap">
@@ -413,51 +413,65 @@ export default function UserManagementPage() {
               <Button variant="outline" className="h-10 px-4 w-full md:w-auto"><Download className="h-4 w-4 mr-2"/> Export</Button>
             </div>
           </div>
-          <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table>
-            {/* ✅ UPDATED: Dark Mode in Table Header */}
-            <TableHeader className="bg-gray-50 dark:bg-slate-800">
-              <TableRow>
-                <TableHead className="py-4 pl-6 w-[300px]">User Info</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Linked</TableHead>
-                <TableHead className="text-right pr-6">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-            {loading ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">Loading users...</TableCell></TableRow> : filteredUsers.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">No users found matching filters.</TableCell></TableRow> : filteredUsers.map((user) => (
-              {/* ✅ UPDATED: Dark Mode in Table Row & Text */}
-              <TableRow key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 border-b dark:border-slate-800 transition-colors">
-                <TableCell className="pl-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback className="bg-gray-100 text-gray-600 font-bold">
-                        {user.name?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-slate-100">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell><Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1 font-medium`}>{user.role.replace('_', ' ').toUpperCase()}</Badge></TableCell>
-                <TableCell><Badge variant={user.status === 'active' ? 'default' : 'destructive'} className="uppercase text-[10px] px-2">{user.status}</Badge></TableCell>
-                <TableCell className="text-gray-600 font-medium text-sm">{user.phone}</TableCell>
-                <TableCell>
-                  {user.role === 'member' ? <div className="flex items-center text-blue-600 text-xs font-medium bg-blue-50 px-2 py-1 rounded w-fit"><LinkIcon className="h-3 w-3 mr-1"/> Linked</div> : <span className="text-gray-400 text-xs italic">System User</span>}
-                </TableCell>
-                <TableCell className="text-right pr-6">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} className="text-blue-600 hover:bg-blue-50 h-8 w-8"><Edit className="h-4 w-4" /></Button>
-                    {user.role !== 'client_admin' && <Button variant="ghost" size="icon" onClick={() => handleToggleBlock(user)} className={`h-8 w-8 ${user.status === 'active' ? "text-orange-500 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"}`}>{user.status === 'active' ? <Lock className="h-4 w-4"/> : <Unlock className="h-4 w-4" />}</Button>}
-                    {user.role !== 'client_admin' && <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-50 h-8 w-8" onClick={() => handleDelete(user.id, user.role)}><Trash2 className="h-4 w-4" /></Button>}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody></Table></div></CardContent></Card>
+
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  {/* ✅ FIXED: Dark Mode in Table Header */}
+                  <TableHeader className="bg-gray-50 dark:bg-slate-800">
+                    <TableRow>
+                      <TableHead className="py-4 pl-6 w-[300px]">User Info</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Linked</TableHead>
+                      <TableHead className="text-right pr-6">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">Loading users...</TableCell></TableRow>
+                    ) : filteredUsers.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">No users found matching filters.</TableCell></TableRow>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        // ✅ FIXED: Dark Mode in Table Row & Text
+                        <TableRow key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 border-b dark:border-slate-800 transition-colors">
+                          <TableCell className="pl-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarFallback className="bg-gray-100 text-gray-600 font-bold">
+                                  {user.name?.charAt(0) || 'U'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-semibold text-gray-900 dark:text-slate-100">{user.name}</p>
+                                <p className="text-xs text-gray-500">{user.email}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell><Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1 font-medium`}>{user.role.replace('_', ' ').toUpperCase()}</Badge></TableCell>
+                          <TableCell><Badge variant={user.status === 'active' ? 'default' : 'destructive'} className="uppercase text-[10px] px-2">{user.status}</Badge></TableCell>
+                          <TableCell className="text-gray-600 font-medium text-sm">{user.phone}</TableCell>
+                          <TableCell>
+                            {user.role === 'member' ? <div className="flex items-center text-blue-600 text-xs font-medium bg-blue-50 px-2 py-1 rounded w-fit"><LinkIcon className="h-3 w-3 mr-1"/> Linked</div> : <span className="text-gray-400 text-xs italic">System User</span>}
+                          </TableCell>
+                          <TableCell className="text-right pr-6">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} className="text-blue-600 hover:bg-blue-50 h-8 w-8"><Edit className="h-4 w-4" /></Button>
+                              {user.role !== 'client_admin' && <Button variant="ghost" size="icon" onClick={() => handleToggleBlock(user)} className={`h-8 w-8 ${user.status === 'active' ? "text-orange-500 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"}`}>{user.status === 'active' ? <Lock className="h-4 w-4"/> : <Unlock className="h-4 w-4" />}</Button>}
+                              {user.role !== 'client_admin' && <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-50 h-8 w-8" onClick={() => handleDelete(user.id, user.role)}><Trash2 className="h-4 w-4" /></Button>}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Roles & Activity Tabs (Fixed Table Structure) */}
