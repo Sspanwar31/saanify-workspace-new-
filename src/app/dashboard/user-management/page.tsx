@@ -235,7 +235,6 @@ export default function UserManagementPage() {
   const handleDelete = async (userId: string, role: string) => {
     if (role === 'client_admin') { alert("Action Denied: Cannot delete Main Admin."); return; }
     if (confirm("Delete this user? This will also remove their login access.")) {
-      // Correct Table Logic for Delete
       const table = role === 'treasurer' ? 'clients' : 'members';
       const { error } = await supabase.from(table).delete().eq('id', userId);
       
@@ -253,11 +252,9 @@ export default function UserManagementPage() {
   const handleToggleBlock = async (user: any) => {
     if (user.role === 'client_admin') return;
 
-    // 1. Determine New Status
     const currentStatus = (user.status || 'active').toLowerCase();
     const newStatus = currentStatus === 'active' ? 'blocked' : 'active';
     
-    // 2. Call API
     const toastId = toast.loading("Updating status...");
 
     try {
@@ -266,7 +263,7 @@ export default function UserManagementPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 userId: user.id,
-                role: user.role, // 'member' or 'treasurer'
+                role: user.role,
                 newStatus: newStatus
             })
         });
@@ -275,7 +272,6 @@ export default function UserManagementPage() {
 
         if (!res.ok) throw new Error(result.error || "Update failed");
 
-        // 3. Success - Update UI
         setUsers(prevUsers => prevUsers.map(u => 
             u.id === user.id ? { ...u, status: newStatus } : u
         ));
