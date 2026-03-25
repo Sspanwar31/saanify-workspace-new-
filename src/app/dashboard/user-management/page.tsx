@@ -289,35 +289,45 @@ export default function UserManagementPage() {
     }
   };
 
-  const togglePermission = (role: string, permission: string) => {
-    if (!isEditingRoles || role === 'client_admin') return;
+  // ✅ UPDATED: Universal Toggle Permission Logic
+  const togglePermission = (role: 'treasurer' | 'member', permission: string) => {
+    if (!isEditingRoles) return;
+    
     setRoleConfig((prev: any) => {
-      const currentPerms = prev[role];
-      return currentPerms.includes(permission) ? { ...prev, [role]: currentPerms.filter((p: string) => p !== permission) } : { ...prev, [role]: [...currentPerms, permission] };
+      const currentPerms = prev[role] || [];
+      const newPerms = currentPerms.includes(permission)
+        ? currentPerms.filter((p: string) => p !== permission)
+        : [...currentPerms, permission];
+        
+      return { ...prev, [role]: newPerms };
     });
   };
 
+  // ✅ UPDATED: Direct Supabase Update for Saving Permissions
   const savePermissions = async () => {
     if (!clientId) return;
 
+    const toastId = toast.loading("Saving permissions...");
     try {
-      const res = await fetch('/api/roles/update-permissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId,
-          role: 'treasurer',
-          permissions: roleConfig.treasurer
+      // ✅ ASLI FIX: Direct Supabase update (Exactly like Flutter logic)
+      const { error } = await supabase
+        .from('clients')
+        .update({ 
+          role_permissions: {
+            treasurer: roleConfig.treasurer,
+            member: roleConfig.member
+          } 
         })
-      });
+        .eq('id', clientId);
 
-      if (!res.ok) throw new Error('Permission save failed');
+      if (error) throw error;
 
       await logActivity('Permissions Update', 'Updated role permissions matrix');
-      toast.success("Permissions updated successfully");
+      toast.success("Permissions saved successfully", { id: toastId });
       setIsEditingRoles(false);
     } catch (err) {
-      toast.error("Failed to save permissions");
+      console.error(err);
+      toast.error("Failed to save permissions", { id: toastId });
     }
   };
 
@@ -348,14 +358,15 @@ export default function UserManagementPage() {
       {/* 2. TABS */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex justify-center mb-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3 h-12 bg-white rounded-full p-1 shadow-sm border">
-            <TabsTrigger value="all-users" className="rounded-full text-sm font-medium data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 transition-all">
+          {/* ✅ UPDATED: Dark Mode Classes in TabsList */}
+          <TabsList className="grid w-full max-w-2xl grid-cols-3 h-12 bg-white dark:bg-slate-900 rounded-full p-1 shadow-sm border dark:border-slate-800">
+            <TabsTrigger value="all-users" className="rounded-full text-sm font-medium data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-slate-800 dark:text-slate-300 transition-all">
               <Users className="h-4 w-4 mr-2"/> All Users
             </TabsTrigger>
-            <TabsTrigger value="roles" className="rounded-full text-sm font-medium data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 transition-all">
+            <TabsTrigger value="roles" className="rounded-full text-sm font-medium data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-slate-800 dark:text-slate-300 transition-all">
               <Shield className="h-4 w-4 mr-2"/> Roles & Permissions
             </TabsTrigger>
-            <TabsTrigger value="activity" className="rounded-full text-sm font-medium data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 transition-all">
+            <TabsTrigger value="activity" className="rounded-full text-sm font-medium data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-slate-800 dark:text-slate-300 transition-all">
               <Activity className="h-4 w-4 mr-2"/> Activity Logs
             </TabsTrigger>
           </TabsList>
@@ -391,7 +402,8 @@ export default function UserManagementPage() {
 
         {/* 4. Tab Contents */}
         <TabsContent value="all-users" className="space-y-6">
-          <div className="bg-white p-4 rounded-lg border flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
+          {/* ✅ UPDATED: Dark Mode in Filter Bar */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border dark:border-slate-800 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
             <div className="flex flex-col md:flex-row gap-4 w-full items-center">
               <div className="flex items-center gap-2 text-gray-500 font-medium whitespace-nowrap">
                 <FilterIcon className="h-4 w-4" /> Filters
@@ -405,9 +417,22 @@ export default function UserManagementPage() {
               <Button variant="outline" className="h-10 px-4 w-full md:w-auto"><Download className="h-4 w-4 mr-2"/> Export</Button>
             </div>
           </div>
-          <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table><TableHeader className="bg-gray-50"><TableRow><TableHead className="py-4 pl-6 w-[300px]">User Info</TableHead><TableHead>Role</TableHead><TableHead>Status</TableHead><TableHead>Phone</TableHead><TableHead>Linked</TableHead><TableHead className="text-right pr-6">Actions</TableHead></TableRow></TableHeader><TableBody>
+          <Card><CardContent className="p-0"><div className="overflow-x-auto"><Table>
+            {/* ✅ UPDATED: Dark Mode in Table Header */}
+            <TableHeader className="bg-gray-50 dark:bg-slate-800">
+              <TableRow>
+                <TableHead className="py-4 pl-6 w-[300px]">User Info</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Linked</TableHead>
+                <TableHead className="text-right pr-6">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
             {loading ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">Loading users...</TableCell></TableRow> : filteredUsers.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-12 text-gray-500">No users found matching filters.</TableCell></TableRow> : filteredUsers.map((user) => (
-              <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors">
+              {/* ✅ UPDATED: Dark Mode in Table Row & Text */}
+              <TableRow key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 border-b dark:border-slate-800 transition-colors">
                 <TableCell className="pl-6 py-4">
                   <div className="flex items-center gap-3">
                     <Avatar>
@@ -416,7 +441,7 @@ export default function UserManagementPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-semibold text-gray-900">{user.name}</p>
+                      <p className="font-semibold text-gray-900 dark:text-slate-100">{user.name}</p>
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
                   </div>
@@ -441,8 +466,9 @@ export default function UserManagementPage() {
 
         {/* Roles & Activity Tabs (Fixed Table Structure) */}
         <TabsContent value="roles" className="space-y-6">
-          <div className="flex justify-between items-center bg-white p-6 rounded-xl border shadow-sm">
-            <div><h2 className="text-lg font-bold text-gray-900">Role Capabilities</h2><p className="text-sm text-gray-500 mt-1">Configure what each role can access and perform.</p></div>
+          {/* ✅ UPDATED: Dark Mode in Role Capabilities Section */}
+          <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-xl border dark:border-slate-800 shadow-sm">
+            <div><h2 className="text-lg font-bold text-gray-900 dark:text-white">Role Capabilities</h2><p className="text-sm text-gray-500 mt-1">Configure what each role can access and perform.</p></div>
             <div className="flex gap-3">{isEditingRoles ? <><Button variant="outline" onClick={() => setIsEditingRoles(false)} className="text-red-600 border-red-200 bg-red-50 hover:bg-red-100"><X className="h-4 w-4 mr-2"/> Cancel</Button><Button onClick={savePermissions} className="bg-green-600 text-white hover:bg-green-700 shadow-md"><Save className="h-4 w-4 mr-2"/> Save Changes</Button></> : <Button onClick={() => setIsEditingRoles(true)} className="bg-blue-600 text-white hover:bg-blue-700 shadow-md"><Edit className="h-4 w-4 mr-2"/> Edit Permissions</Button>}</div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
