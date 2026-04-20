@@ -1,4 +1,4 @@
-import React from 'react'; // ✅ Added for React.FormEvent type
+"use client"; // <--- YE LINE SABSE UPAR HONI CHAHIYEimport React from 'react'; // ✅ Added for React.FormEvent type
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
