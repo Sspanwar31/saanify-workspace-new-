@@ -38,26 +38,36 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 1. DATA FETCHING
+  // 1. DATA FETCHING WITH REALTIME
   useEffect(() => {
+    // 1. Pehle purane logs fetch karein
     const fetchLogs = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('client_audit_logs') // Ensure this table exists in Supabase
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
-
-        if (error) throw error;
-        if (data) setLogs(data);
-      } catch (error) {
-        console.error('Error fetching logs:', error);
-      } finally {
-        setLoading(false);
-      }
+      const { data } = await supabase
+        .from('client_audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (data) setLogs(data);
+      setLoading(false);
     };
 
     fetchLogs();
+
+    // 2. ✅ REALTIME LISTENER (Bina refresh data dikhayega)
+    const channel = supabase
+      .channel('realtime-audit')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'client_audit_logs' }, 
+        (payload) => {
+          // Nayi entry ko list mein sabse upar add karein
+          setLogs((currentLogs) => [payload.new as ClientLog, ...currentLogs]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // 2. HELPER: Time Ago Function (Vanilla JS - No package needed)
