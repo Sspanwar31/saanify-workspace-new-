@@ -1,4 +1,6 @@
-"use client"; // <--- YE LINE SABSE UPAR HONI CHAHIYEimport React from 'react'; // ✅ Added for React.FormEvent type
+"use client";
+
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -47,42 +49,33 @@ export default function LoginPage() {
       });
 
       if (error) {
-        // --- SUPER ADMIN AUTO-CREATION (Preserved from Original Code) ---
-        if (
-          formData.email === 'admin@saanify.com' &&
-          error.message.includes('Invalid')
-        ) {
-          await createSuperAdmin();
-          return;
-        }
+        // ❌ FAILED LOGIN LOGIC (Website)
+        console.log("Login failed, recording log...");
+        
+        // Society dhoondhne ki koshish karein
+        const { data: client } = await supabase
+          .from('clients')
+          .select('id, society_name, role, client_id')
+          .eq('email', formData.email)
+          .maybeSingle();
 
-        // --- FAILED LOGIN LOG (Added from your provided snippet) ---
-        try {
-          // Try to identify society for logs
-          const { data: client } = await supabase
-            .from('clients')
-            .select('id, society_name, role')
-            .eq('email', formData.email)
-            .maybeSingle();
-
-          await supabase.from('client_audit_logs').insert([{
-            client_id: client ? (client.role === 'client' ? client.id : client.client_id) : null,
-            client_name: client?.society_name || 'Unknown Society',
-            actor_name: formData.email,
-            actor_role: 'GUEST',
-            action: 'FAILED_LOGIN',
-            status: 'FAILED',
-            ip_address: 'Web_Browser',
-            resource: 'AUTH_SYSTEM'
-          }]);
-        } catch (logErr) { console.error("Logging failed", logErr); }
-        // -------------------------------------------------------------
-
+        // Log insert karein
+        await supabase.from('client_audit_logs').insert([{
+          client_id: client ? (client.role === 'client' ? client.id : client.client_id) : null,
+          client_name: client?.society_name || 'Security Alert',
+          actor_name: formData.email,
+          actor_role: 'GUEST',
+          action: 'FAILED_LOGIN',
+          status: 'FAILED',
+          ip_address: 'Web_Browser',
+          resource: 'AUTH_SYSTEM'
+        }]);
+        
         throw error;
       }
 
       if (data.user) {
-        // --- SUCCESS LOGIN LOG (Added from your provided snippet) ---
+        // ✅ SUCCESS LOGIN LOGIC (Website)
         await supabase.from('client_audit_logs').insert([{
           actor_name: formData.email,
           action: 'LOGIN_SUCCESS',
@@ -90,20 +83,12 @@ export default function LoginPage() {
           ip_address: 'Web_Browser',
           resource: 'AUTH_SYSTEM'
         }]);
-        // -----------------------------------------------------------
-
-        if (rememberMe) {
-          localStorage.setItem('remember_email', formData.email);
-        } else {
-          localStorage.removeItem('remember_email');
-        }
 
         await checkRoleAndRedirect(data.user.id);
       }
-    } catch {
-      toast.error('Access Denied', {
-        description: 'Invalid credentials or account inactive.',
-      });
+    } catch (err: any) {
+      toast.error('Login Failed', { description: err.message || 'Invalid credentials' });
+    } finally {
       setLoading(false);
     }
   };
@@ -344,7 +329,7 @@ export default function LoginPage() {
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     className="pl-11 pr-11 h-11 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 rounded-xl"
-                    placeholder="••••"
+                    placeholder="•••"
                     autoComplete="current-password"
                     name="password"
                     id="password"
