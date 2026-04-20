@@ -38,29 +38,46 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 1. DATA FETCHING WITH REALTIME
   useEffect(() => {
     // 1. Pehle purane logs fetch karein
     const fetchLogs = async () => {
-      const { data } = await supabase
-        .from('client_audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      if (data) setLogs(data);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from('client_audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (error) throw error;
+        if (data) setLogs(data);
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchLogs();
 
-    // 2. ✅ REALTIME LISTENER (Bina refresh data dikhayega)
+    // 2. ✅ REALTIME LISTENER (Safe Version)
     const channel = supabase
       .channel('realtime-audit')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'client_audit_logs' }, 
         (payload) => {
-          // Nayi entry ko list mein sabse upar add karein
-          setLogs((currentLogs) => [payload.new as ClientLog, ...currentLogs]);
+          console.log('New log received!', payload.new);
+          
+          // 🛑 FIX 1: Check karein ki payload mein asli data hai ya nahi
+          if (payload.new && payload.new.id) {
+            setLogs((currentLogs) => {
+              // Duplicate entry rokne ke liye check
+              const exists = currentLogs.some(log => log.id === payload.new.id);
+              if (exists) return currentLogs;
+              
+              // Nayi entry ko upar jodein
+              return [payload.new as ClientLog, ...currentLogs];
+            });
+          }
         }
       )
       .subscribe();
@@ -70,8 +87,8 @@ export default function ActivityPage() {
     };
   }, []);
 
-  // 2. HELPER: Time Ago Function (Vanilla JS - No package needed)
   const timeAgo = (dateString: string) => {
+    if (!dateString) return "Just now";
     const date = new Date(dateString);
     const now = new Date();
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -89,7 +106,6 @@ export default function ActivityPage() {
     return Math.floor(seconds) + " seconds ago";
   };
 
-  // 3. HELPER: Select Icon
   const getIcon = (action: string) => {
     const lower = action ? action.toLowerCase() : '';
     if (lower.includes('login') || lower.includes('auth')) return Shield;
@@ -99,21 +115,21 @@ export default function ActivityPage() {
     return Activity;
   };
 
-  // 4. STATS CALCULATION
   const stats = useMemo(() => {
     const total = logs.length;
-    const failed = logs.filter(l => l.status === 'FAILED').length;
+    // 🛑 FIX 2: Safely handle null status
+    const failed = logs.filter(l => l && l.status === 'FAILED').length;
     const successRate = total > 0 ? ((total - failed) / total * 100).toFixed(1) : '100';
-    const uniqueClients = new Set(logs.map(l => l.client_name)).size;
+    const uniqueClients = new Set(logs.map(l => l?.client_name || 'Unknown')).size;
 
     return { total, failed, successRate, uniqueClients };
   }, [logs]);
 
-  // Filter Logic
+  // 🛑 FIX 3: Safe fallback on filter
   const filteredLogs = logs.filter(log => 
-    (log.client_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (log.actor_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (log.action?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    (log.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (log.actor_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (log.action || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
