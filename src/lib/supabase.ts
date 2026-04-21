@@ -15,27 +15,39 @@ const createMockClient = () => {
             single: async () => ({ data: null, error: { message: "PREVIEW MODE: Database disconnected" } }),
             maybeSingle: async () => ({ data: null, error: null })
           }),
-          single: async () => ({ data: null, error: { message: "PREVIEW MODE: Database disconnected" } }),
-          order: async () => ({ data: [], error: null })
         }),
-        order: () => Promise.resolve({ data: [], error: null }),
-        insert: async () => ({ error: { message: "PREVIEW MODE: Cannot write data" } }),
-        update: async () => ({ eq: async () => ({ error: null }) }),
-        delete: () => ({ eq: async () => ({ error: null }) }),
+        order: async () => ({ data: [], error: null })
       }),
-      insert: async () => ({ error: null }),
-      upsert: async () => ({ select: () => ({ single: async () => ({ data: {}, error: null }) }) })
+      insert: async () => ({ error: { message: "PREVIEW MODE: Cannot write data" } }),
+      update: async () => ({ eq: async () => ({ error: null }) }),
     }),
     auth: {
-      signUp: async () => ({ data: { user: null }, error: null }),
       signInWithPassword: async () => ({ data: { user: null }, error: { message: "Preview Mode: Auth disconnected" } }),
-      getSession: async () => ({ data: { session: null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
-    }
+    },
+    channel: () => ({ on: () => ({ subscribe: () => {} }) }), // Mock realtime
   } as any;
 };
 
-// INITIALIZE: Use Real Client if keys exist, otherwise Mock Client
-export const supabase = (supabaseUrl && supabaseKey) 
-  ? createClient(supabaseUrl, supabaseKey) 
-  : createMockClient();
+// ✅ NEXT.js Development mein multiple instances rokne ke liye global cache use karein
+const globalForSupabase = global as unknown as { supabase: any };
+
+// ✅ INITIALIZE: Sirf ek baar create hoga
+export const supabase = globalForSupabase.supabase || (
+  (supabaseUrl && supabaseKey) 
+    ? createClient(supabaseUrl, supabaseKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+        realtime: {
+          params: {
+            events_per_second: 10,
+          },
+        },
+      }) 
+    : createMockClient()
+);
+
+// Development environment mein instance ko global save karlo
+if (process.env.NODE_ENV !== 'production') globalForSupabase.supabase = supabase;
