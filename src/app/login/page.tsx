@@ -1,5 +1,3 @@
-"use client";
-
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -42,8 +40,6 @@ export default function LoginPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-  
-    // Email ko trim aur lowercase karein taaki matching mein galti na ho
     const cleanEmail = formData.email.trim().toLowerCase();
 
     try {
@@ -59,20 +55,45 @@ export default function LoginPage() {
           return;
         }
 
-        // ❌ FAILED LOGIN LOG (Improved)
+        // ❌ FAILED LOGIN LOG (Teeno Tables Check Karega)
         console.log("Login failed, recording security log...");
         try {
-          const { data: client } = await supabase
-            .from('clients')
-            .select('id, society_name, role, client_id')
-            .eq('email', cleanEmail)
-            .maybeSingle();
+          let logId = null, logName = 'Unknown User', logRole = 'GUEST', logSociety = 'Security Alert';
 
+          // 1. Check in Admins
+          const { data: adm } = await supabase.from('admins').select('id, name').eq('email', cleanEmail).maybeSingle();
+          if (adm) { 
+            logId = adm.id; 
+            logName = adm.name; 
+            logRole = 'ADMIN'; 
+            logSociety = 'Saanify HQ'; 
+          } else {
+            // 2. Check in Clients (Owner/Treasurer)
+            const { data: clt } = await supabase.from('clients').select('id, society_name, name, role, client_id').eq('email', cleanEmail).maybeSingle();
+            if (clt) { 
+              // Agar owner hai toh apni ID, agar treasurer hai toh client ki ID
+              logId = clt.role === 'client' ? clt.id : clt.client_id; 
+              logName = clt.name; 
+              logRole = clt.role.toUpperCase(); 
+              logSociety = clt.society_name; 
+            } else {
+              // 3. Check in Members (End User)
+              const { data: mem } = await supabase.from('members').select('id, name, client_id').eq('email', cleanEmail).maybeSingle();
+              if (mem) { 
+                logId = mem.client_id; // Member link to client
+                logName = mem.name; 
+                logRole = 'MEMBER'; 
+                logSociety = 'Member Portal'; 
+              }
+            }
+          }
+
+          // Log Insert karein
           await supabase.from('client_audit_logs').insert([{
-            client_id: client ? (client.role === 'client' ? client.id : client.client_id) : null,
-            client_name: client?.society_name || 'Security Alert',
-            actor_name: cleanEmail,
-            actor_role: 'GUEST',
+            client_id: logId,
+            client_name: logSociety,
+            actor_name: `${logName} (${cleanEmail})`,
+            actor_role: logRole,
             action: 'FAILED_LOGIN',
             status: 'FAILED',
             ip_address: 'Web_Browser',
@@ -93,16 +114,19 @@ export default function LoginPage() {
             .eq('id', data.user.id)
             .maybeSingle();
 
-          await supabase.from('client_audit_logs').insert([{
-            client_id: profile ? (profile.role === 'client' ? profile.id : profile.client_id) : null,
-            client_name: profile?.society_name || 'Saanify System',
-            actor_name: cleanEmail,
-            actor_role: profile?.role?.toUpperCase() || 'USER',
-            action: 'LOGIN_SUCCESS',
-            status: 'SUCCESS',
-            ip_address: 'Web_Browser',
-            resource: 'AUTH_SYSTEM'
-          }]);
+          // Agar client role ka user mila toh log karein
+          if (profile) {
+            await supabase.from('client_audit_logs').insert([{
+              client_id: profile.role === 'client' ? profile.id : profile.client_id,
+              client_name: profile?.society_name || 'Saanify System',
+              actor_name: cleanEmail,
+              actor_role: profile?.role?.toUpperCase() || 'USER',
+              action: 'LOGIN_SUCCESS',
+              status: 'SUCCESS',
+              ip_address: 'Web_Browser',
+              resource: 'AUTH_SYSTEM'
+            }]);
+          }
         } catch (logErr) { console.error("Logging success failed", logErr); }
 
         if (rememberMe) localStorage.setItem('remember_email', cleanEmail);
