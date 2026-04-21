@@ -37,15 +37,15 @@ export default function LoginPage() {
     }
   }, []);
 
-  /* ================= AUTH LOGIC (UPDATED) ================= */
+  /* ================= AUTH LOGIC ================= */
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 👈 Fix 1: Baar-baar button rokne ke liye check
-    if (isLoading) return;
+    // 👈 Safety Check: Agar pehle check karlein taaki double click se login fail n ho.
+    if (isLoading) return; 
 
     setLoading(true);
-    // 👈 Fix 2: Email ko normalize karna taaki case-insensitive login ho
+    // 👈 Email Clean: Email ko trim aur lowercase karein.
     const cleanEmail = formData.email.trim().toLowerCase();
 
     try {
@@ -56,15 +56,12 @@ export default function LoginPage() {
 
       if (error) {
         // --- SUPER ADMIN AUTO-CREATION ---
-        if (
-          cleanEmail === 'admin@saanify.com' &&
-          error.message.includes('Invalid')
-        ) {
+        if (cleanEmail === 'admin@saanify.com' && error.message.includes('Invalid')) {
           await createSuperAdmin();
           return;
         }
 
-        // ❌ FAILED LOGIN LOG (Background Async - UI block nahi hoga)
+        // ❌ FAILED LOGIN LOG (Async IIFE - Non Blocking)
         console.log("Login failed, recording security log...");
         // IIFE Immediately Execute toh hoga (Non-blocking)
         (async () => {
@@ -94,6 +91,7 @@ export default function LoginPage() {
 
       if (data.user) {
         // ✅ SUCCESS LOGIN LOG (Simple & Fast)
+        // User success hone par hi pehle simple insert kar do, detailed lookup se wait nahi (Ye optional hai lekin "Code 1" me profile fetch logic hata)
         await supabase.from('client_audit_logs').insert([{
           actor_name: cleanEmail,
           action: 'LOGIN_SUCCESS',
@@ -108,13 +106,12 @@ export default function LoginPage() {
         await checkRoleAndRedirect(data.user.id);
       }
     } catch (err: any) {
-      // 👈 Rate Limit Check: Agar Supabase rate limit de raha hai
+      // 👈 Rate Limit Check: Rate limit error message ko handle kiya hai
       const msg = err.message.includes('rate limit') 
         ? "Too many attempts. Please wait 1 minute." 
-        : "Invalid email or password.";
+        : err.message || 'Invalid email or password.';
       
       toast.error('Login Failed', { description: msg });
-    } finally {
       setLoading(false);
     }
   };
@@ -254,8 +251,8 @@ export default function LoginPage() {
     });
     if (data.user) {
       await supabase
-          .from('admins')
-          .upsert([{ id: data.user.id, email: formData.email }]);
+        .from('admins')
+        .upsert([{ id: data.user.id, email: formData.email }]);
       router.push('/admin');
     }
   };
