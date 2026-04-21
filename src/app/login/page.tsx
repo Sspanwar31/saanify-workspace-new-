@@ -42,53 +42,76 @@ export default function LoginPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+  
+    // Email ko trim aur lowercase karein taaki matching mein galti na ho
+    const cleanEmail = formData.email.trim().toLowerCase();
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
+        email: cleanEmail,
         password: formData.password,
       });
 
       if (error) {
-        // ❌ FAILED LOGIN LOGIC (Website)
-        console.log("Login failed, recording log...");
-        
-        // Society dhoondhne ki koshish karein
-        const { data: client } = await supabase
-          .from('clients')
-          .select('id, society_name, role, client_id')
-          .eq('email', formData.email)
-          .maybeSingle();
+        // --- SUPER ADMIN AUTO-CREATION ---
+        if (cleanEmail === 'admin@saanify.com' && error.message.includes('Invalid')) {
+          await createSuperAdmin();
+          return;
+        }
 
-        // Log insert karein
-        await supabase.from('client_audit_logs').insert([{
-          client_id: client ? (client.role === 'client' ? client.id : client.client_id) : null,
-          client_name: client?.society_name || 'Security Alert',
-          actor_name: formData.email,
-          actor_role: 'GUEST',
-          action: 'FAILED_LOGIN',
-          status: 'FAILED',
-          ip_address: 'Web_Browser',
-          resource: 'AUTH_SYSTEM'
-        }]);
-        
+        // ❌ FAILED LOGIN LOG (Improved)
+        console.log("Login failed, recording security log...");
+        try {
+          const { data: client } = await supabase
+            .from('clients')
+            .select('id, society_name, role, client_id')
+            .eq('email', cleanEmail)
+            .maybeSingle();
+
+          await supabase.from('client_audit_logs').insert([{
+            client_id: client ? (client.role === 'client' ? client.id : client.client_id) : null,
+            client_name: client?.society_name || 'Security Alert',
+            actor_name: cleanEmail,
+            actor_role: 'GUEST',
+            action: 'FAILED_LOGIN',
+            status: 'FAILED',
+            ip_address: 'Web_Browser',
+            resource: 'AUTH_SYSTEM'
+          }]);
+        } catch (logErr) { console.error("Logging failure failed", logErr); }
+
         throw error;
       }
 
       if (data.user) {
-        // ✅ SUCCESS LOGIN LOGIC (Website)
-        await supabase.from('client_audit_logs').insert([{
-          actor_name: formData.email,
-          action: 'LOGIN_SUCCESS',
-          status: 'SUCCESS',
-          ip_address: 'Web_Browser',
-          resource: 'AUTH_SYSTEM'
-        }]);
+        // ✅ SUCCESS LOGIN LOG (Now with Client Details)
+        try {
+          // Login ke baad profile fetch karein taaki sahi ID mil sake
+          const { data: profile } = await supabase
+            .from('clients')
+            .select('id, society_name, role, client_id')
+            .eq('id', data.user.id)
+            .maybeSingle();
+
+          await supabase.from('client_audit_logs').insert([{
+            client_id: profile ? (profile.role === 'client' ? profile.id : profile.client_id) : null,
+            client_name: profile?.society_name || 'Saanify System',
+            actor_name: cleanEmail,
+            actor_role: profile?.role?.toUpperCase() || 'USER',
+            action: 'LOGIN_SUCCESS',
+            status: 'SUCCESS',
+            ip_address: 'Web_Browser',
+            resource: 'AUTH_SYSTEM'
+          }]);
+        } catch (logErr) { console.error("Logging success failed", logErr); }
+
+        if (rememberMe) localStorage.setItem('remember_email', cleanEmail);
+        else localStorage.removeItem('remember_email');
 
         await checkRoleAndRedirect(data.user.id);
       }
     } catch (err: any) {
       toast.error('Login Failed', { description: err.message || 'Invalid credentials' });
-    } finally {
       setLoading(false);
     }
   };
