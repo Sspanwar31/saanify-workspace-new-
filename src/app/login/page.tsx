@@ -41,11 +41,11 @@ export default function LoginPage() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Baar-baar click rokne se bachne ke liye check karein
+    // 👈 Fix 1: Baar-baar button rokne ke liye check
     if (isLoading) return;
 
     setLoading(true);
-    // Email ko clean karein taaki case-insensitive match ho
+    // 👈 Fix 2: Email ko normalize karna taaki case-insensitive login ho
     const cleanEmail = formData.email.trim().toLowerCase();
 
     try {
@@ -64,8 +64,8 @@ export default function LoginPage() {
           return;
         }
 
-        // ❌ FAILED LOGIN LOG (Background Async - UI block nahi karega)
-        console.log("Login failed, recording security log in background...");
+        // ❌ FAILED LOGIN LOG (Background Async - UI block nahi hoga)
+        console.log("Login failed, recording security log...");
         // IIFE Immediately Execute toh hoga (Non-blocking)
         (async () => {
           try {
@@ -93,7 +93,7 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // ✅ SUCCESS LOGIN LOG (Fast)
+        // ✅ SUCCESS LOGIN LOG (Simple & Fast)
         await supabase.from('client_audit_logs').insert([{
           actor_name: cleanEmail,
           action: 'LOGIN_SUCCESS',
@@ -108,12 +108,13 @@ export default function LoginPage() {
         await checkRoleAndRedirect(data.user.id);
       }
     } catch (err: any) {
-      // Rate limit check aur proper error message
+      // 👈 Rate Limit Check: Agar Supabase rate limit de raha hai
       const msg = err.message.includes('rate limit') 
-        ? "Too many attempts. Please wait 1 minute."
-        : err.message || 'Invalid email or password.';
+        ? "Too many attempts. Please wait 1 minute." 
+        : "Invalid email or password.";
       
       toast.error('Login Failed', { description: msg });
+    } finally {
       setLoading(false);
     }
   };
@@ -253,8 +254,8 @@ export default function LoginPage() {
     });
     if (data.user) {
       await supabase
-        .from('admins')
-        .upsert([{ id: data.user.id, email: formData.email }]);
+          .from('admins')
+          .upsert([{ id: data.user.id, email: formData.email }]);
       router.push('/admin');
     }
   };
