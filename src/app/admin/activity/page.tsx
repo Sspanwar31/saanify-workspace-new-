@@ -48,10 +48,14 @@ export default function ActivityPage() {
           .order('created_at', { ascending: false })
           .limit(100);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase Error:", error.message); // 👈 Ye console mein error dikhayega
+          return;
+        }
+      
         if (data) setLogs(data);
       } catch (error) {
-        console.error('Error fetching logs:', error);
+        console.error('Fetch Error:', error);
       } finally {
         setLoading(false);
       }
