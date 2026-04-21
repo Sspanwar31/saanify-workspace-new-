@@ -41,11 +41,7 @@ export default function LoginPage() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 👈 Safety Check: Agar pehle check karlein taaki double click se login fail n ho.
-    if (isLoading) return; 
-
     setLoading(true);
-    // 👈 Email Clean: Email ko trim aur lowercase karein.
     const cleanEmail = formData.email.trim().toLowerCase();
 
     try {
@@ -61,44 +57,79 @@ export default function LoginPage() {
           return;
         }
 
-        // ❌ FAILED LOGIN LOG (Async IIFE - Non Blocking)
+        // ❌ FAILED LOGIN LOG (Teeno Tables Check Karega)
         console.log("Login failed, recording security log...");
-        // IIFE Immediately Execute toh hoga (Non-blocking)
-        (async () => {
-          try {
-            // Pehle user identify karein
-            const { data: client } = await supabase
-              .from('clients')
-              .select('id, society_name, role, client_id')
-              .eq('email', cleanEmail)
-              .maybeSingle();
+        try {
+          let logId = null, logName = 'Unknown User', logRole = 'GUEST', logSociety = 'Security Alert';
 
-            await supabase.from('client_audit_logs').insert([{
-              client_id: client ? (client.role === 'client' ? client.id : client.client_id) : null,
-              client_name: client?.society_name || 'Security Alert',
-              actor_name: cleanEmail,
-              actor_role: 'GUEST',
-              action: 'FAILED_LOGIN',
-              status: 'FAILED',
-              ip_address: 'Web_Browser',
-              resource: 'AUTH_SYSTEM'
-            }]);
-          } catch (logErr) { console.error("Logging failure failed", logErr); }
-        })();
+          // 1. Check in Admins
+          const { data: adm } = await supabase.from('admins').select('id, name').eq('email', cleanEmail).maybeSingle();
+          if (adm) { 
+            logId = adm.id; 
+            logName = adm.name; 
+            logRole = 'ADMIN'; 
+            logSociety = 'Saanify HQ'; 
+          } else {
+            // 2. Check in Clients (Owner/Treasurer)
+            const { data: clt } = await supabase.from('clients').select('id, society_name, name, role, client_id').eq('email', cleanEmail).maybeSingle();
+            if (clt) { 
+              // Agar owner hai toh apni ID, agar treasurer hai toh client ki ID
+              logId = clt.role === 'client' ? clt.id : clt.client_id; 
+              logName = clt.name; 
+              logRole = clt.role.toUpperCase(); 
+              logSociety = clt.society_name; 
+            } else {
+              // 3. Check in Members (End User)
+              const { data: mem } = await supabase.from('members').select('id, name, client_id').eq('email', cleanEmail).maybeSingle();
+              if (mem) { 
+                logId = mem.client_id; // Member link to client
+                logName = mem.name; 
+                logRole = 'MEMBER'; 
+                logSociety = 'Member Portal'; 
+              }
+            }
+          }
+
+          // Log Insert karein
+          await supabase.from('client_audit_logs').insert([{
+            client_id: logId,
+            client_name: logSociety,
+            actor_name: `${logName} (${cleanEmail})`,
+            actor_role: logRole,
+            action: 'FAILED_LOGIN',
+            status: 'FAILED',
+            ip_address: 'Web_Browser',
+            resource: 'AUTH_SYSTEM'
+          }]);
+        } catch (logErr) { console.error("Logging failure failed", logErr); }
 
         throw error;
       }
 
       if (data.user) {
-        // ✅ SUCCESS LOGIN LOG (Simple & Fast)
-        // User success hone par hi pehle simple insert kar do, detailed lookup se wait nahi (Ye optional hai lekin "Code 1" me profile fetch logic hata)
-        await supabase.from('client_audit_logs').insert([{
-          actor_name: cleanEmail,
-          action: 'LOGIN_SUCCESS',
-          status: 'SUCCESS',
-          ip_address: 'Web_Browser',
-          resource: 'AUTH_SYSTEM'
-        }]);
+        // ✅ SUCCESS LOGIN LOG (Now with Client Details)
+        try {
+          // Login ke baad profile fetch karein taaki sahi ID mil sake
+          const { data: profile } = await supabase
+            .from('clients')
+            .select('id, society_name, role, client_id')
+            .eq('id', data.user.id)
+            .maybeSingle();
+
+          // Agar client role ka user mila toh log karein
+          if (profile) {
+            await supabase.from('client_audit_logs').insert([{
+              client_id: profile.role === 'client' ? profile.id : profile.client_id,
+              client_name: profile?.society_name || 'Saanify System',
+              actor_name: cleanEmail,
+              actor_role: profile?.role?.toUpperCase() || 'USER',
+              action: 'LOGIN_SUCCESS',
+              status: 'SUCCESS',
+              ip_address: 'Web_Browser',
+              resource: 'AUTH_SYSTEM'
+            }]);
+          }
+        } catch (logErr) { console.error("Logging success failed", logErr); }
 
         if (rememberMe) localStorage.setItem('remember_email', cleanEmail);
         else localStorage.removeItem('remember_email');
@@ -106,12 +137,7 @@ export default function LoginPage() {
         await checkRoleAndRedirect(data.user.id);
       }
     } catch (err: any) {
-      // 👈 Rate Limit Check: Rate limit error message ko handle kiya hai
-      const msg = err.message.includes('rate limit') 
-        ? "Too many attempts. Please wait 1 minute." 
-        : err.message || 'Invalid email or password.';
-      
-      toast.error('Login Failed', { description: msg });
+      toast.error('Login Failed', { description: err.message || 'Invalid credentials' });
       setLoading(false);
     }
   };
@@ -368,11 +394,11 @@ export default function LoginPage() {
               {/* CHANGE 2: Remember Me Checkbox */}
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
                 <span>Remember me</span>
               </div>
 
