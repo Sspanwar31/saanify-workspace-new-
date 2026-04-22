@@ -63,23 +63,28 @@ export default function ActivityPage() {
 
     fetchLogs();
 
-    // 2. ✅ REALTIME LISTENER (Safe Version)
+    // 2. ✅ REALTIME LISTENER (Safe Version) - STEP 3 UPDATE
     const channel = supabase
       .channel('realtime-audit')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'client_audit_logs' }, 
         (payload) => {
-          console.log('New log received!', payload.new);
+          console.log('New log arrived!', payload.new);
           
-          // 🛑 FIX 1: Check karein ki payload mein asli data hai ya nahi
-          if (payload.new && payload.new.id) {
+          const incoming = payload.new;
+          if (incoming && incoming.id) {
+            // Naye data ko process karein taaki UI na tute
+            const formattedLog: ClientLog = {
+              ...incoming,
+              client_name: incoming.client_name || 'Security Alert',
+              actor_name: incoming.actor_name || 'GUEST',
+              status: incoming.status || 'FAILED'
+            };
+
             setLogs((currentLogs) => {
-              // Duplicate entry rokne ke liye check
-              const exists = currentLogs.some(log => log.id === payload.new.id);
+              const exists = currentLogs.some(l => l.id === formattedLog.id);
               if (exists) return currentLogs;
-              
-              // Nayi entry ko upar jodein
-              return [payload.new as ClientLog, ...currentLogs];
+              return [formattedLog, ...currentLogs];
             });
           }
         }
@@ -119,22 +124,32 @@ export default function ActivityPage() {
     return Activity;
   };
 
+  // ✅ STEP 2: Stats (KPI) Calculation Fix
   const stats = useMemo(() => {
+    if (!logs || logs.length === 0) return { total: 0, failed: 0, successRate: '100', uniqueClients: 0 };
+
     const total = logs.length;
-    // 🛑 FIX 2: Safely handle null status
+    // Safely check status
     const failed = logs.filter(l => l && l.status === 'FAILED').length;
     const successRate = total > 0 ? ((total - failed) / total * 100).toFixed(1) : '100';
+    
+    // ✅ FIX: Null client_name handles here
     const uniqueClients = new Set(logs.map(l => l?.client_name || 'Unknown')).size;
 
     return { total, failed, successRate, uniqueClients };
   }, [logs]);
 
-  // 🛑 FIX 3: Safe fallback on filter
-  const filteredLogs = logs.filter(log => 
-    (log.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (log.actor_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (log.action || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ✅ STEP 1: Filter Logic Safe Fix
+  const filteredLogs = logs.filter(log => {
+    const search = searchTerm.toLowerCase();
+    const clientName = (log?.client_name || 'System').toLowerCase();
+    const actorName = (log?.actor_name || 'Unknown').toLowerCase();
+    const action = (log?.action || 'Action').toLowerCase();
+
+    return clientName.includes(search) || 
+           actorName.includes(search) || 
+           action.includes(search);
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
