@@ -63,28 +63,21 @@ export default function ActivityPage() {
 
     fetchLogs();
 
-    // 2. ✅ REALTIME LISTENER (Safe Version) - STEP 3 UPDATE
+    // 2. ✅ UPDATED REALTIME LISTENER (New Channel & Logic)
     const channel = supabase
-      .channel('realtime-audit')
+      .channel('audit-logs-global') // Unique channel name
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'client_audit_logs' }, 
         (payload) => {
-          console.log('New log arrived!', payload.new);
-          
-          const incoming = payload.new;
-          if (incoming && incoming.id) {
-            // Naye data ko process karein taaki UI na tute
-            const formattedLog: ClientLog = {
-              ...incoming,
-              client_name: incoming.client_name || 'Security Alert',
-              actor_name: incoming.actor_name || 'GUEST',
-              status: incoming.status || 'FAILED'
-            };
-
-            setLogs((currentLogs) => {
-              const exists = currentLogs.some(l => l.id === formattedLog.id);
-              if (exists) return currentLogs;
-              return [formattedLog, ...currentLogs];
+          const incoming = payload.new as ClientLog;
+          if (incoming) {
+            setLogs((current) => {
+              // 1. Check duplicate
+              if (current.some(l => l.id === incoming.id)) return current;
+              // 2. Add to top
+              const updated = [incoming, ...current];
+              // 3. Keep only last 100 for performance
+              return updated.slice(0, 100);
             });
           }
         }
