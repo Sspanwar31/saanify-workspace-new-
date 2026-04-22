@@ -39,8 +39,10 @@ export default function LoginPage() {
 
   /* ================= AUTH LOGIC ================= */
 
+  // ✅ UPDATED handleAuth function (As requested)
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     const cleanEmail = formData.email.trim().toLowerCase();
 
@@ -51,89 +53,70 @@ export default function LoginPage() {
       });
 
       if (error) {
-        // --- SUPER ADMIN AUTO-CREATION ---
-        if (cleanEmail === 'admin@saanify.com' && error.message.includes('Invalid')) {
-          await createSuperAdmin();
-          return;
-        }
+        // ❌ FAILED LOGIN LOGIC (Teeno Tables Check Karega)
+        let logId = null, logName = 'Unknown User', logRole = 'GUEST', logSociety = 'Security Alert';
 
-        // ❌ FAILED LOGIN LOG (Teeno Tables Check Karega)
-        console.log("Login failed, recording security log...");
-        try {
-          let logId = null, logName = 'Unknown User', logRole = 'GUEST', logSociety = 'Security Alert';
-
-          // 1. Check in Admins
-          const { data: adm } = await supabase.from('admins').select('id, name').eq('email', cleanEmail).maybeSingle();
-          if (adm) { 
-            logId = adm.id; 
-            logName = adm.name; 
-            logRole = 'ADMIN'; 
-            logSociety = 'Saanify HQ'; 
+        const { data: adm } = await supabase.from('admins').select('id, name').eq('email', cleanEmail).maybeSingle();
+        if (adm) { 
+          logId = adm.id; logName = adm.name; logRole = 'ADMIN'; logSociety = 'Saanify HQ'; 
+        } else {
+          const { data: clt } = await supabase.from('clients').select('id, society_name, name, role, client_id').eq('email', cleanEmail).maybeSingle();
+          if (clt) { 
+            logId = clt.role === 'client' ? clt.id : clt.client_id; 
+            logName = clt.name; logRole = clt.role.toUpperCase(); logSociety = clt.society_name; 
           } else {
-            // 2. Check in Clients (Owner/Treasurer)
-            const { data: clt } = await supabase.from('clients').select('id, society_name, name, role, client_id').eq('email', cleanEmail).maybeSingle();
-            if (clt) { 
-              // Agar owner hai toh apni ID, agar treasurer hai toh client ki ID
-              logId = clt.role === 'client' ? clt.id : clt.client_id; 
-              logName = clt.name; 
-              logRole = clt.role.toUpperCase(); 
-              logSociety = clt.society_name; 
-            } else {
-              // 3. Check in Members (End User)
-              const { data: mem } = await supabase.from('members').select('id, name, client_id').eq('email', cleanEmail).maybeSingle();
-              if (mem) { 
-                logId = mem.client_id; // Member link to client
-                logName = mem.name; 
-                logRole = 'MEMBER'; 
-                logSociety = 'Member Portal'; 
-              }
+            const { data: mem } = await supabase.from('members').select('id, name, client_id').eq('email', cleanEmail).maybeSingle();
+            if (mem) { 
+              logId = mem.client_id; logName = mem.name; logRole = 'MEMBER'; logSociety = 'Member Portal'; 
             }
           }
+        }
 
-          // Log Insert karein
-          await supabase.from('client_audit_logs').insert([{
-            client_id: logId,
-            client_name: logSociety,
-            actor_name: `${logName} (${cleanEmail})`,
-            actor_role: logRole,
-            action: 'FAILED_LOGIN',
-            status: 'FAILED',
-            ip_address: 'Web_Browser',
-            resource: 'AUTH_SYSTEM'
-          }]);
-        } catch (logErr) { console.error("Logging failure failed", logErr); }
-
+        await supabase.from('client_audit_logs').insert([{
+          client_id: logId,
+          client_name: logSociety,
+          actor_name: `${logName} (${cleanEmail})`,
+          actor_role: logRole,
+          action: 'FAILED_LOGIN',
+          status: 'FAILED',
+          ip_address: 'Web_Browser',
+          resource: 'AUTH_SYSTEM'
+        }]);
         throw error;
       }
 
       if (data.user) {
-        // ✅ SUCCESS LOGIN LOG (Now with Client Details)
-        try {
-          // Login ke baad profile fetch karein taaki sahi ID mil sake
-          const { data: profile } = await supabase
-            .from('clients')
-            .select('id, society_name, role, client_id')
-            .eq('id', data.user.id)
-            .maybeSingle();
+        // ✅ SUCCESS LOGIN LOGIC (Universal: Admin, Client, aur Member ke liye)
+        let logId = null, logName = 'User', logRole = 'USER', logSociety = 'Saanify System';
 
-          // Agar client role ka user mila toh log karein
-          if (profile) {
-            await supabase.from('client_audit_logs').insert([{
-              client_id: profile.role === 'client' ? profile.id : profile.client_id,
-              client_name: profile?.society_name || 'Saanify System',
-              actor_name: cleanEmail,
-              actor_role: profile?.role?.toUpperCase() || 'USER',
-              action: 'LOGIN_SUCCESS',
-              status: 'SUCCESS',
-              ip_address: 'Web_Browser',
-              resource: 'AUTH_SYSTEM'
-            }]);
-          }
-        } catch (logErr) { console.error("Logging success failed", logErr); }
+        // Identify Kaun hai (Admin, Client ya Member)
+        const [admRes, cltRes, memRes] = await Promise.all([
+          supabase.from('admins').select('id, name').eq('id', data.user.id).maybeSingle(),
+          supabase.from('clients').select('id, society_name, name, role, client_id').eq('id', data.user.id).maybeSingle(),
+          supabase.from('members').select('id, name, client_id').eq('auth_user_id', data.user.id).maybeSingle(),
+        ]);
+
+        if (admRes.data) {
+          logId = admRes.data.id; logName = admRes.data.name; logRole = 'ADMIN'; logSociety = 'Saanify HQ';
+        } else if (cltRes.data) {
+          logId = cltRes.data.role === 'client' ? cltRes.data.id : cltRes.data.client_id;
+          logName = cltRes.data.name; logRole = cltRes.data.role.toUpperCase(); logSociety = cltRes.data.society_name;
+        } else if (memRes.data) {
+          logId = memRes.data.client_id; logName = memRes.data.name; logRole = 'MEMBER'; logSociety = 'Member Portal';
+        }
+
+        await supabase.from('client_audit_logs').insert([{
+          client_id: logId,
+          client_name: logSociety,
+          actor_name: `${logName} (${cleanEmail})`,
+          actor_role: logRole,
+          action: 'LOGIN_SUCCESS',
+          status: 'SUCCESS',
+          ip_address: 'Web_Browser',
+          resource: 'AUTH_SYSTEM'
+        }]);
 
         if (rememberMe) localStorage.setItem('remember_email', cleanEmail);
-        else localStorage.removeItem('remember_email');
-
         await checkRoleAndRedirect(data.user.id);
       }
     } catch (err: any) {
