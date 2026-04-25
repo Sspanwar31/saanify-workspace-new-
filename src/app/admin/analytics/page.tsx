@@ -2,11 +2,11 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect } from 'react';
+// useMemo ko import kiya
+import { useEffect, useMemo } from 'react';
 import { useAdminStore } from '@/lib/admin/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-// Legend added to imports
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { PieChart as PieIcon } from 'lucide-react';
 
@@ -31,6 +31,37 @@ export default function AnalyticsPage() {
     activeUsers: 0,
     churnRate: '0.0',
   };
+
+  // --- ✅ NAYA LOGIC: Plan Distribution ko saaf karne ke liye ---
+  const normalizedPlanData = useMemo(() => {
+    if (!safeData.planDistribution || safeData.planDistribution.length === 0) return [];
+
+    const planGroups = {
+      'TRIAL': 0,
+      'BASIC': 0,
+      'PROFESSIONAL': 0,
+      'ENTERPRISE': 0
+    };
+
+    safeData.planDistribution.forEach(item => {
+      const name = (item.name || '').toUpperCase();
+      
+      if (name.includes('TRIAL') || name.includes('FREE')) {
+        planGroups['TRIAL'] += item.value;
+      } else if (name.includes('BASIC')) {
+        planGroups['BASIC'] += item.value;
+      } else if (name.includes('PRO')) {
+        planGroups['PROFESSIONAL'] += item.value;
+      } else if (name.includes('ENTERPRISE')) {
+        planGroups['ENTERPRISE'] += item.value;
+      }
+    });
+
+    // Sirf wahi return karein jisme value 0 se zyada ho
+    return Object.entries(planGroups)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }));
+  }, [safeData.planDistribution]);
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -94,7 +125,7 @@ export default function AnalyticsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={safeData.planDistribution || []}
+                        data={normalizedPlanData} // 👈 Naya normalized data yahan use karein
                         cx="50%"
                         cy="45%"
                         innerRadius={70}  // Inner radius badhaya (Donut look)
@@ -104,7 +135,8 @@ export default function AnalyticsPage() {
                         nameKey="name"
                         label={({ name, value }) => `${name}: ${value}`} // Labels ko informative banaya
                       >
-                        {(safeData.planDistribution || []).map((entry, index) => (
+                        {/* Map function mein bhi normalizedPlanData use karein */}
+                        {normalizedPlanData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
                         ))}
                       </Pie>
