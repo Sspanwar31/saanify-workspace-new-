@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ UPDATED CORS Headers (X-Requested-With added)
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -42,96 +41,90 @@ export async function POST(req: Request) {
     const orderId = body.razorpay_order_id || body.orderCreationId;
     const paymentId = body.razorpay_payment_id;
     const signature = body.razorpay_signature;
-    const clientId = body.clientId; // ✅ Client ID important hai activation ke liye
+    const clientId = body.clientId; 
 
-    if (!orderId || !paymentId || !signature) {
-      return NextResponse.json(
-        { error: 'Missing payment details' },
-        { status: 400, headers: corsHeaders }
-      );
+    // 1. Basic Validation
+    if (!orderId || !paymentId || !signature || !clientId) {
+      return NextResponse.json({ error: 'Missing Required Fields' }, { status: 400, headers: corsHeaders });
     }
 
-    // 1️⃣ Razorpay Signature Verify
-    const hmac = crypto.createHmac(
-      'sha256',
-      process.env.RAZORPAY_KEY_SECRET!
-    );
-
+    // 2. Razorpay Signature Verify
+    const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!);
     hmac.update(`${orderId}|${paymentId}`);
     const expectedSignature = hmac.digest('hex');
 
     if (expectedSignature !== signature) {
-      return NextResponse.json(
-        { error: 'Invalid signature', isPaid: false },
-        { status: 400, headers: corsHeaders }
-      );
+      return NextResponse.json({ error: 'Invalid Payment Signature' }, { status: 400, headers: corsHeaders });
     }
 
-    // 2️⃣ Mark payment_intents as PAID
+    // 3. Update Payment Intent & Fetch Plan Info
     const { data: intent, error: intentErr } = await supabase
       .from('payment_intents')
-      .update({
-        status: 'PAID',
-        razorpay_payment_id: paymentId
-      })
-      .eq('token', orderId) 
-      .select('plan') // Plan name chahiye duration calculate karne ke liye
+      .update({ status: 'PAID', razorpay_payment_id: paymentId })
+      .eq('token', orderId)
+      .select('plan')
       .single();
 
     if (intentErr || !intent) {
       console.error('Payment intent update failed:', intentErr);
-      return NextResponse.json(
-        { error: 'Payment intent not found' },
-        { status: 404, headers: corsHeaders }
-      );
+      return NextResponse.json({ error: 'Intent not found' }, { status: 404, headers: corsHeaders });
     }
 
-    // --- NEW UPDATE LOGIC START (As requested) ---
-
-    // 1. Naye plan ki details 'plans' table se nikalen
+    // 4. Fetch Plan Details (Robust Logic)
     const { data: planRow } = await supabase
       .from('plans')
       .select('id, name, duration_days')
-      .eq('code', intent.plan) // intent.plan me 'BASIC', 'PRO' ya 'ENTERPRISE' hona chahiye
-      .single();
+      .eq('code', intent.plan) 
+      .maybeSingle();
 
-    // 2. Expiry date set karein
+    // Expiry Date Logic (Code 2 + Fallback)
     const duration = planRow?.duration_days || (intent.plan.toUpperCase().includes('ENTERPRISE') ? 365 : 30);
-    const newExpiry = new Date();
-    newExpiry.setDate(newExpiry.getDate() + duration);
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + duration);
 
-    // 3. ✅ CLIENT TABLE UPDATE (Sari important fields ke sath)
-    const { error: clientUpdateErr } = await supabase
-      .from('clients')
-      .update({
-        plan: intent.plan,                         // e.g., 'PRO'
-        plan_name: planRow?.name || intent.plan,    // e.g., 'Professional'
-        plan_id: planRow?.id,                      // Website isi se data uthati hai
+    // 5. ✅ UPDATE CLIENT & CREATE ORDER (Everything in one go - Merged Logic)
+    const updateResults = await Promise.all([
+      // A. Activate Client (Using Code 2's robust fields)
+      supabase.from('clients').update({
+        status: 'ACTIVE', // Ensuring status is set
+        plan: intent.plan,
+        plan_name: planRow?.name || intent.plan,
+        plan_id: planRow?.id,                      
         subscription_status: 'active',
         plan_start_date: new Date().toISOString(),
-        plan_end_date: newExpiry.toISOString(),
-        subscription_expiry: newExpiry.toISOString() // ✅ Kuch logic is column ko bhi use karte hain
-      })
-      .eq('id', clientId); // Ensure 'clientId' sahi aa raha hai payload me
+        plan_end_date: expiryDate.toISOString(),
+        subscription_expiry: expiryDate.toISOString() 
+      }).eq('id', clientId),
 
-    if (clientUpdateErr) {
-      console.error("❌ Database Update Failed:", clientUpdateErr);
+      // B. Create Subscription Order record (For Admin History - From Code 1)
+      supabase.from('subscription_orders').insert({
+        client_id: clientId,
+        plan_name: planRow?.name || intent.plan,
+        amount: intent.amount, // Assuming amount exists in intent object, else you might need to fetch it
+        status: 'approved',
+        payment_method: 'RAZORPAY',
+        transaction_id: paymentId,
+        duration_days: duration
+      })
+    ]);
+
+    // Check if updates failed
+    if (updateResults[0].error) {
+      console.error("❌ Database Update Failed:", updateResults[0].error);
       return NextResponse.json({ error: 'Database update failed' }, { status: 500, headers: corsHeaders });
     }
 
-    // --- NEW UPDATE LOGIC END ---
-
-    // 5️⃣ Final Response
-    return NextResponse.json(
-      { success: true, isPaid: true, orderId: orderId }, 
-      { status: 200, headers: corsHeaders } 
-    );
+    // 6. Return SUCCESS
+    return NextResponse.json({ 
+      success: true, 
+      message: "Payment Verified & Account Activated",
+      redirect: "/dashboard",
+      isPaid: true,
+      orderId: orderId
+    }, { status: 200, headers: corsHeaders });
 
   } catch (error: any) {
-    console.error('VERIFY API ERROR:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' }, 
-      { status: 500, headers: corsHeaders }
-    );
+    console.error('CRITICAL VERIFY ERROR:', error);
+    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
   }
 }
