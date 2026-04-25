@@ -6,14 +6,13 @@ import { useEffect } from 'react';
 import { useAdminStore } from '@/lib/admin/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+// Legend added to imports
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { PieChart as PieIcon } from 'lucide-react';
 
-// FIXED: Added missing quotes around colors
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7'];
 
 export default function AnalyticsPage() {
-  // FIXED: Removed the stray backtick before kpiData
   const { analyticsData, kpiData, refreshDashboard, isLoading } = useAdminStore();
 
   useEffect(() => {
@@ -80,58 +79,92 @@ export default function AnalyticsPage() {
              </CardContent></Card>
           </TabsContent>
 
+          {/* --- CHANGED START --- */}
           <TabsContent value="visualization" className="space-y-6">
-             <div className="grid gap-6 md:grid-cols-2">
-                
-                {/* 1. PLAN DISTRIBUTION PIE CHART */}
-                <Card>
-                  <CardHeader><CardTitle>Plan Distribution</CardTitle></CardHeader>
-                  <CardContent className="h-[300px] flex justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        {/* FIXED: Proper Pie element syntax without crashing labels */}
-                        <Pie
-                          data={safeData.planDistribution || []} 
-                          cx="50%" 
-                          cy="50%" 
-                          innerRadius={60} 
-                          outerRadius={80} 
-                          dataKey="value" 
-                          nameKey="name"
-                          label
-                        >
-                          {(safeData.planDistribution || []).map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+            <div className="grid gap-6 md:grid-cols-2">
+              
+              {/* 1. PLAN DISTRIBUTION (Improved Donut Chart) */}
+              <Card className="shadow-sm border-slate-200">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <PieIcon className="w-5 h-5 text-purple-500" /> Plan Distribution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-[350px] flex flex-col items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={safeData.planDistribution || []}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius={70}  // Inner radius badhaya (Donut look)
+                        outerRadius={100}
+                        paddingAngle={5}   // Sections ke beech gap
+                        dataKey="value"
+                        nameKey="name"
+                        label={({ name, value }) => `${name}: ${value}`} // Labels ko informative banaya
+                      >
+                        {(safeData.planDistribution || []).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                      />
+                      <Legend verticalAlign="bottom" height={36} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
-                {/* 2. CLIENT STATUS BAR CHART */}
-                <Card>
-                  <CardHeader><CardTitle>Client Status Overview</CardTitle></CardHeader>
-                  <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={safeData.clientStatus || []} layout="vertical" margin={{ left: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={100} />
-                        <Tooltip />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                          {(safeData.clientStatus || []).map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={index === 0 ? '#10b981' : '#ef4444'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-                
-             </div>
+              {/* 2. CLIENT STATUS OVERVIEW (Modern Horizontal Bar) */}
+              <Card className="shadow-sm border-slate-200">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold text-slate-800">Client Status Overview</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={safeData.clientStatus || []} 
+                      layout="vertical" 
+                      margin={{ left: 30, right: 30, top: 20, bottom: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                      <XAxis type="number" hide /> {/* X-Axis hide kiya clean look ke liye */}
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={100} 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 13, fontWeight: 500 }}
+                      />
+                      <Tooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                      />
+                      <Bar 
+                        dataKey="value" 
+                        barSize={40}  // Bar ko thoda mota kiya
+                        radius={[0, 10, 10, 0]} // Round edges
+                        label={{ position: 'right', fill: '#1e293b', fontWeight: 'bold' }} // Bar ke aage value dikhao
+                      >
+                        {(safeData.clientStatus || []).map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.name.toLowerCase().includes('active') ? '#10b981' : '#f43f5e'} 
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              
+            </div>
           </TabsContent>
+          {/* --- CHANGED END --- */}
+
         </Tabs>
       )}
     </div>
