@@ -23,15 +23,6 @@ function SignupForm() {
   // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
-  // ✅ NEW DEBUG STATE
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  
-  // Helper function screen par log dikhane ke liye
-  const addLog = (msg: string) => {
-    console.log(msg);
-    setDebugLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
-  };
-
   // --- States ---
   const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
   const [isPaid, setIsPaid] = useState(false); // ✅ Naya State: Payment confirm karne ke liye
@@ -69,7 +60,6 @@ function SignupForm() {
         // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO
         if (data.status === 'PAID') {
           setIsPaid(true); // Ye state true hote hi loader gayab ho jayega
-          addLog("🎉 SUCCESS: Unlocking form...");
         }
       }
     } catch (err) {
@@ -80,8 +70,6 @@ function SignupForm() {
   // ✅ 2. Realtime Listener ko "Aggressive" banayein
   useEffect(() => {
     if (!orderId || mode === 'MANUAL') return; // ✅ Trial aur Manual ko skip karo
-
-    addLog(`🔍 Monitoring Payment: ${orderId}`);
 
     const channel = supabase
       .channel(`payment-sync-${orderId}`)
@@ -94,7 +82,6 @@ function SignupForm() {
           filter: `token=eq.${orderId}`,
         },
         (payload) => {
-          addLog(`⚡ DB Activity: ${payload.eventType}`);
           // Jaise hi database mein koi halchal ho, naya data fetch karo
           if (payload.new) {
             fetchPlan(payload.new);
@@ -102,7 +89,6 @@ function SignupForm() {
         }
       )
       .subscribe((status) => {
-        addLog(`🌐 Realtime Connection: ${status}`);
         // Subscribe hote hi ek baar phir check karein
         if (status === 'SUBSCRIBED') fetchPlan();
       });
@@ -119,16 +105,8 @@ function SignupForm() {
             console.log("Verifying Order ID:", orderId);
             console.log("Mode:", mode);
 
-            // 🟢 AUTO PAYMENT
-            // Note: Logic moved to aggressive realtime listener above for Auto mode
-            // but we keep structure here for safety or if realtime fails
-            if (mode !== 'MANUAL') {
-               // await fetchPlan(); 
-            }
-
             // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
             if (mode === 'MANUAL') {
-              addLog("Checking Manual Approval...");
               const { data: order, error } = await supabase
                 .from('subscription_orders')
                 .select('plan_name, status')
@@ -138,7 +116,6 @@ function SignupForm() {
 
               if (error || !order) {
                 toast.error("Manual payment not approved yet.");
-                addLog("❌ Manual payment not approved.");
                 setSelectedPlan(null);
                 return;
               }
@@ -181,7 +158,6 @@ function SignupForm() {
 
       } catch (err) {
         console.error("Verification Error:", err);
-        addLog(`Verification Error: ${err}`);
         setSelectedPlan(null);
       } 
     }
@@ -288,11 +264,6 @@ function SignupForm() {
   if (orderId && mode === 'AUTO' && !isPaid) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        {/* Aapka Debug Panel upar dikhate rahein */}
-        <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-xs mb-8">
-           {debugLogs.map((log, i) => <div key={i}>{log}</div>)}
-        </div>
-        
         <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
         <h2 className="text-xl font-bold">Verifying Your Payment</h2>
         <p className="text-gray-500">Waiting for confirmation...</p>
