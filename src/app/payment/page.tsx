@@ -48,7 +48,7 @@ function PaymentContent() {
   // --- PERSISTENCE STATE ---
   const [pendingPayment, setPendingPayment] = useState<PendingPaymentState | null>(null);
 
-  // 1. ON LOAD: Check if user has a pending payment in LocalStorage
+  //1. ON LOAD: Check if user has a pending payment in LocalStorage
   useEffect(() => {
     const savedPayment = localStorage.getItem('user_pending_payment');
     if (savedPayment) { // ✅ FIXED: Removed extra bracket
@@ -67,7 +67,7 @@ function PaymentContent() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size >5 * 1024 * 1024) {
         toast.error("File size should be less than 5MB");
         return;
       }
@@ -82,84 +82,57 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ FINAL handleOnlinePay (UPDATED WITH VERIFICATION)
+  // ✅ FINAL handleOnlinePay (UPDATED WITH VERIFICATION) - Replacement applied here
   const handleOnlinePay = async () => {
     setLoading(true);
     try {
-      console.log('🚀 calling create-order API');
+      console.log('🚀 Step 1: Requesting Order from API...');
       
-      // 1. Order Create karein
+      //1. Order Create karein
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planId: planId,          
           amount: plan.price,
-          mode: 'AUTO'
+          mode: 'AUTO',
+          // ✅ ZAROORI: Yahan email ya koi unique identifier bhejien 
+          // taaki API use Database mein likh sake PEHLE HI
+          email: userEmail 
         })
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Order creation failed");
 
-      // 2. Razorpay Popup Open karein
-      const razorpay = new (window as any).Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+      console.log('✅ Step 2: Database Entry Confirmed. Opening Razorpay...');
+
+      // 2. Razorpay Popup
+      const options = {
+        key: data.razorpayKey || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: data.amount,
         currency: 'INR',
         order_id: data.orderId,
-        
-        // 🟢 HERE IS THE MAIN CHANGE (Handler update)
         handler: async (response: any) => {
-          try {
-            toast.loading("Verifying Payment...");
-
-            // Step A: Payment Verify API ko call karein
-            const verifyReq = await fetch('/api/payments/verify', {
-               method: 'POST',
-               headers: { 'Content-Type': 'application/json' },
-               body: JSON.stringify({
-                 razorpay_payment_id: response.razorpay_payment_id,
-                 razorpay_order_id: response.razorpay_order_id,
-                 razorpay_signature: response.razorpay_signature
-               })
-            });
-
-            const verifyData = await verifyReq.json();
-
-            if (verifyReq.ok && verifyData.success) {
-                toast.success("Payment Verified! Redirecting...");
-                
-                // Step B: Signup Page par redirect karein (Order ID ke saath)
-                // Hum 'response.razorpay_order_id' bhej rahe hain taaki signup API isse DB me check kar sake
-                router.push(`/signup?mode=AUTO&orderId=${response.razorpay_order_id}`);
-            } else {
-                toast.error("Payment Verification Failed. Please contact support.");
-                console.error("Verification failed:", verifyData);
-            }
-
-          } catch (verifyError) {
-             console.error("Verification API Error:", verifyError);
-             toast.error("Payment verification failed due to network error.");
-          }
+          // Success hote hi turant Signup page par bhejien
+          // Kyunki Webhook piche se 'PAID' kar dega aur Signup page 
+          // use INSERT + UPDATE listener se turant pakad lega.
+          toast.success("Payment Received! Finalizing...");
+          window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
         },
-        
-        // Modal close hone par loading band karein
         modal: {
-            ondismiss: function() {
-                setLoading(false);
-            }
+          ondismiss: () => setLoading(false)
         }
-      });
+      };
 
-      razorpay.open();
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+      
     } catch (err: any) {
-      console.error("Payment Error: ", err);
-      toast.error(err.message || "Payment initiation failed");
-      setLoading(false); // Error aane par loading hata dein
-    } 
-    // Note: 'finally { setLoading(false) }' yaha se hata diya hai
-    // kyunki payment popup khula rahta hai to loading true hi rahni chahiye
+      console.error("❌ Payment Initiation Failed:", err);
+      toast.error(err.message || "Could not start payment");
+      setLoading(false);
+    }
   };
 
   // --- REAL BACKEND SUBMISSION LOGIC (FIXED) ---
@@ -173,7 +146,7 @@ function PaymentContent() {
         let clientId = null;
 
         // ---------------------------------------------------------
-        // 1. CLIENT HANDLING (Frontend Side)
+        //1. CLIENT HANDLING (Frontend Side)
         // ---------------------------------------------------------
         // Agar user login hai ya email hai, to check karein
         if (userEmail) {
@@ -203,7 +176,7 @@ function PaymentContent() {
         }
 
         // ---------------------------------------------------------
-        // 2. UPLOAD PROOF (Storage)
+        //2. UPLOAD PROOF (Storage)
         // ---------------------------------------------------------
         const fileExt = proofFile.name.split('.').pop();
         const fileName = `${clientId}_${Date.now()}.${fileExt}`;
@@ -219,7 +192,7 @@ function PaymentContent() {
         const publicUrl = urlData.publicUrl;
 
         // ---------------------------------------------------------
-        // 3. CALL API (Ye hai Main Fix) - Database Insert via API
+        //3. CALL API (Ye hai Main Fix) - Database Insert via API
         // ---------------------------------------------------------
         // Ab hum direct insert nahi karenge, API ko bolenge insert karne ko
         
@@ -243,7 +216,7 @@ function PaymentContent() {
         }
 
         // ---------------------------------------------------------
-        // 4. SAVE STATE (Success)
+        //4. SAVE STATE (Success)
         // ---------------------------------------------------------
         const paymentState = {
             invoiceId: result.orderId, // API se jo ID aayi wo use karein
@@ -482,7 +455,7 @@ function PaymentContent() {
                                </Button>
                             </div>
                             {/* UPI Box */}
-                            <div className="bg-slate-50 p-4 rounded-xl border-slate-200 relative group">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
                                <p className="text-xs font-bold text-slate-400 uppercase mb-2">UPI Transfer</p>
                                <p className="font-bold text-slate-800 text-lg">saanify@hdfc</p>
                                <p className="text-xs text-slate-500 mt-1">Scan QR in any app</p>
