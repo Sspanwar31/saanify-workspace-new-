@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { CheckCircle, ArrowLeft, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -28,11 +27,6 @@ function SignupForm() {
   const [selectedPlan, setSelectedPlan] = useState<any>(null); 
   const [loading, setLoading] = useState(false);
   
-  // ✅ FIX 4: verifyingPayment state REMOVED completely
-  // const [verifyingPayment, setVerifyingPayment] = useState(false);
-  
-  // ✅ FIX 6 (Part 1): trialUsed state REMOVED (moving to DB check)
-  
   const [formData, setFormData] = useState({
     name: '',
     societyName: '',
@@ -43,6 +37,23 @@ function SignupForm() {
 
   // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo
   useEffect(() => {
+    
+    // ✅ CHANGE 2: RETRY LOGIC ADD (Helper Function)
+    async function fetchPlanWithRetry(orderId: string, retries = 5) {
+      for (let i = 0; i < retries; i++) {
+        const { data } = await supabase
+          .from('payment_intents')
+          .select('*')
+          .eq('token', orderId)
+          .single();
+
+        if (data) return data;
+
+        await new Promise(res => setTimeout(res, 1500));
+      }
+      return null;
+    }
+
     async function smartVerifyPlan() {
       try {
         // CASE 1: Agar Payment Order ID hai (PAID USER)
@@ -54,23 +65,16 @@ function SignupForm() {
 
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
-              const { data: paymentData, error } = await supabase
-                .from('payment_intents')
-                .select('*')
-                .eq('token', orderId)
-                .single();
+              // ✅ CHANGE 2: Using retry function instead of direct call
+              const paymentData = await fetchPlanWithRetry(orderId);
 
-              // Invalid order check
-              if (orderId && !paymentData) {
-                toast.error("Invalid order");
-                // ✅ FIX 4: setVerifyingPayment(false) removed
+              if (!paymentData) {
+                toast.error("Payment not found, try again");
                 return;
               }
 
-              // Warning for processing payment
-              if (paymentData && paymentData.status !== 'PAID') {
-                toast.warning("Payment processing... please wait");
-              }
+              // ✅ CHANGE 5: STATUS CHECK REMOVE (Webhook handles status now)
+              // Old block removed: if (paymentData && paymentData.status !== 'PAID') ...
 
               verifiedPlanCode = paymentData.plan;
             }
@@ -86,7 +90,6 @@ function SignupForm() {
 
               if (error || !order) {
                 toast.error("Manual payment not approved yet.");
-                // ✅ FIX 4: setVerifyingPayment(false) removed
                 return;
               }
 
@@ -100,10 +103,12 @@ function SignupForm() {
               .eq('code', verifiedPlanCode)
               .single();
 
-            // ✅ FIX 5 & FIX 2: Safe Plan Set & Toast Spam Fix
-            if (planDetails && !selectedPlan) {
-                setSelectedPlan(planDetails);
+            // ✅ CHANGE 4: TOAST SPAM FIX
+            if (planDetails) {
+              setSelectedPlan(planDetails);
+              if (!selectedPlan) {
                 toast.success(`Plan verified: ${planDetails.name}`);
+              }
             }
 
         } 
@@ -118,7 +123,6 @@ function SignupForm() {
                 .eq('code', code)
                 .single();
             
-            // ✅ FIX 5: Safe Plan Set applied here too
             if (planDetails && !selectedPlan) {
                 setSelectedPlan(planDetails);
             }
@@ -127,14 +131,12 @@ function SignupForm() {
       } catch (err) {
         console.error("Verification Error:", err);
       } 
-      // ✅ FIX 4: finally block removed (no verifyingPayment state to clean)
     }
 
     smartVerifyPlan();
 
-    // ✅ FIX 6 (Part 2): LocalStorage trial check REMOVED
-
-  }, [orderId, urlPlanCode, mode]); // ✅ FIX 3: searchParams removed from dependency array
+  // ✅ CHANGE 3: FIX DEPENDENCY ARRAY (Removed searchParams)
+  }, [orderId, urlPlanCode, mode]); 
 
 
   // ✅ SUBMIT FORM
@@ -156,7 +158,7 @@ function SignupForm() {
     }
 
     try {
-      // ✅ FIX 6 (Part 3): DB Check for Trial usage
+      // DB Check for Trial usage
       if (selectedPlan.code === 'TRIAL') {
         const { data } = await supabase
           .from('clients')
@@ -229,21 +231,13 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // ✅ FIX 1 & 4: "Verifying Payment..." text & Loader UI block are already gone
-  
-  // Error State: Order ID hai par database me nahi mila
+  // ✅ CHANGE 1: ERROR BLOCK FIX (Replaced Error UI with Loading UI)
   if (orderId && !selectedPlan) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-           <div className="bg-red-50 p-8 rounded-xl border border-red-200 text-center max-w-md">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
-              <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
-              <p className="text-slate-600 mt-2 mb-4">
-                 We could not find the plan details for Order ID: <br/> 
-                 <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
-              </p>
-              <Link href="/"><Button variant="outline">Return Home</Button></Link>
-           </div>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+          <Loader2 className="animate-spin w-10 h-10 text-blue-600"/>
+          <h2 className="text-lg font-semibold">Processing your payment...</h2>
+          <p className="text-sm text-gray-500">Please wait, do not refresh.</p>
         </div>
       );
   }
