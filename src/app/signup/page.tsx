@@ -71,38 +71,34 @@ function SignupForm() {
     }
   };
 
-  // ✅ UPDATED REALTIME: (Replacement applied here)
+  // ✅ UPDATED REALTIME LISTENER (Replacement applied here)
   useEffect(() => {
     if (!orderId) return;
 
-    // 1. Pehle manually check karein (Ho sakta hai entry ho gayi ho)
-    fetchPlan();
-
-    // 2. ✅ REALTIME: Dono events listen karein (INSERT aur UPDATE)
     const channel = supabase
-      .channel(`payment-monitor-${orderId}`)
+      .channel(`payment-check-${orderId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // 👈 Ab ye INSERT aur UPDATE dono ko pakad lega
+          event: '*', // 👈 INSERT aur UPDATE dono pakado
           schema: 'public',
           table: 'payment_intents',
           filter: `token=eq.${orderId}`,
         },
         (payload) => {
-          console.log("⚡ Realtime Activity:", payload.eventType);
-          const data = payload.new;
-
-          // Agar entry abhi-abhi insert hui hai ya paid hui hai
-          if (data && (payload.eventType === 'INSERT' || data.status === 'PAID')) {
-            fetchPlan(data); // Turant UI update karo
+          console.log("⚡ Database Change Detect:", payload.eventType);
+          
+          // CASE 1: Agar user pehle aa gaya aur row ab bani (INSERT)
+          // CASE 2: Agar row pehle se thi aur ab PAID hui (UPDATE)
+          if (payload.new) {
+            fetchPlan(payload.new); // Form khol do
           }
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [orderId]); // Dependency: orderId
+  }, [orderId]); 
 
   // ✅ SMART LOGIC: Initial Verification
   useEffect(() => {
@@ -115,9 +111,8 @@ function SignupForm() {
 
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
-              // Note: fetchPlan is already called in the realtime useEffect now
-              // but keeping this here ensures logic flow if needed elsewhere
-              // await fetchPlan(); 
+              // Calling the optimized fetchPlan
+              await fetchPlan();
             }
 
             // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
