@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // 1. Extract IDs and Amount safely
+    //1. Extract IDs and Amount safely
     const amount = body.amount || body.price;
     const plan = body.planId || body.planName || 'PRO';
     const mode = body.mode;
@@ -77,38 +77,24 @@ export async function POST(req: Request) {
     console.log("Razorpay Order Created:", order.id);
 
     // 3. Insert into payment_intents (Replacement applied here)
-    console.log("Saving PENDING intent to DB...");
+    // 1. Razorpay Order Banayein
+    // const order = await razorpay.orders.create({ ... }); // Done above
 
-    // ✅ FORCE DATABASE INSERT (await zaroori hai)
-    const { data: dbEntry, error: dbErr } = await supabase
+    // 2. ✅ ZAROORI: 'await' lagana compulsory hai taaki entry turant ho
+    // Bina iske, user signup page par pehle pahunch jayega aur entry baad mein hogi
+    await supabase
       .from('payment_intents')
       .insert([{
-        amount: amount,
-        plan: plan,
-        mode: mode || 'AUTO',
-        status: 'pending', 
-        token: order.id, 
+        token: order.id,
+        status: 'pending',
+        amount: amount, 
+        plan: plan,     
+        mode: mode || 'AUTO', 
         expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      }])
-      .select() // Realtime ko trigger karne ke liye
-      .single();
+      }]); 
 
-    if (dbErr) {
-      console.error("DB Insert Failed!", dbErr);
-      return NextResponse.json({ error: "Database rejected entry" }, { status: 500, headers: corsHeaders });
-    }
-
-    // ✅ Return ONLY after DB confirmation
-    console.log("DB Insert confirmed. Returning to frontend.");
-    return NextResponse.json({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      // Added razorpayKey for Flutter as per previous requirements
-      razorpayKey: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
-    }, {
-      headers: corsHeaders
-    });
+    // 3. Ab response bhejo
+    return NextResponse.json({ orderId: order.id });
 
   } catch (err: any) {
     console.error("❌ create-order critical error:", err);
