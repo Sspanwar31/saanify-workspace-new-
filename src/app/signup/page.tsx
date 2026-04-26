@@ -45,7 +45,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ MODIFIED fetchPlan: Pehli baar mein data na milne par crash nahi hoga
+  // ✅ 1. Optimized fetchPlan (Simplified)
   const fetchPlan = async (intentData?: any) => {
     try {
       const data = intentData || (await supabase
@@ -54,15 +54,9 @@ function SignupForm() {
         .eq('token', orderId)
         .maybeSingle()).data;
 
-      if (!data) {
-        // 🛑 CHANGE: Agar data nahi mila, toh wait karein (Null set mat karein)
-        addLog("📡 Waiting for payment record to appear in database...");
-        return; 
-      }
+      if (!data) return;
 
-      addLog(`✅ Record Found! Status: ${data.status}`);
-
-      // 1. Plan ki details hamesha load karein (Left side card ke liye)
+      // Plan Details fetch karein
       const { data: planDetails } = await supabase
         .from('plans')
         .select('*')
@@ -72,18 +66,14 @@ function SignupForm() {
       if (planDetails) {
         setSelectedPlan(planDetails);
         
-        // 2. ✅ CHECK STATUS: Agar status PAID hai, toh loader band karo
+        // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO
         if (data.status === 'PAID') {
-          setIsPaid(true); // ✅ Isse loader hatega aur form khulega
-          addLog("🎉 SUCCESS: Payment is PAID. Unlocking form...");
-          toast.success(`Plan verified: ${planDetails.name}`);
-        } else {
-          addLog("⏳ Status is still PENDING. Waiting for Webhook...");
+          setIsPaid(true); // Ye state true hote hi loader gayab ho jayega
+          addLog("🎉 SUCCESS: Unlocking form...");
         }
       }
     } catch (err) {
-      console.error("Fetch Error:", err);
-      // addLog(`❌ Fetch error: ${err}`);
+      console.error(err);
     }
   };
 
@@ -293,49 +283,21 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // ✅ UPDATED RENDER LOGIC
-  // Agar PAID mode hai aur abhi tak confirmation nahi mili, toh loader dikhao
-  if (orderId && mode !== 'MANUAL' && !isPaid) {
-      return (
-        <div className="min-h-screen bg-white flex flex-col p-8">
-          
-          {/* --- DEBUG PANEL (Screen par dikhega) --- */}
-          <div className="mb-auto bg-black text-green-400 p-4 rounded-lg font-mono text-xs mb-8 overflow-auto max-h-64 border border-green-900">
-             <p className="font-bold border-b border-green-900 mb-2 text-white">🔍 SYSTEM DEBUG LOGS:</p>
-             {debugLogs.map((log, i) => <div key={i} className="mb-1">{log}</div>)}
-          </div>
-
-          {/* Loading UI */}
-          <div className="flex-grow flex flex-col items-center justify-center gap-4">
-            <div className="relative">
-              <Loader2 className="animate-spin w-12 h-12 text-blue-600"/>
-              <CheckCircle className={`absolute top-0 right-0 w-4 h-4 text-green-500 transition-opacity ${isPaid ? 'opacity-100' : 'opacity-0'}`} />
-            </div>
-            <h2 className="text-xl font-bold text-slate-800">Verifying Your Payment</h2>
-            <p className="text-slate-500 animate-pulse">Waiting for Razorpay confirmation...</p>
-            <div className="mt-4 px-4 py-2 bg-slate-100 rounded-full text-xs font-mono text-slate-400">
-              Order ID: {orderId}
-            </div>
-          </div>
+  // ✅ 2. RENDER LOGIC (Strictly based on isPaid)
+  // Jab tak isPaid false hai aur orderId hai, tab tak loader dikhao
+  if (orderId && mode === 'AUTO' && !isPaid) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        {/* Aapka Debug Panel upar dikhate rahein */}
+        <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-xs mb-8">
+           {debugLogs.map((log, i) => <div key={i}>{log}</div>)}
         </div>
-      );
-  }
-
-  // Error Condition
-  if (orderId && selectedPlan === null) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-           <div className="bg-red-50 p-8 rounded-xl border border-red-200 text-center max-w-md">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
-              <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
-              <p className="text-slate-600 mt-2 mb-4">
-                 We could not find plan details for Order ID: <br/> 
-                 <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
-              </p>
-              <Link href="/"><Button variant="outline">Return Home</Button></Link>
-           </div>
-        </div>
-      );
+        
+        <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
+        <h2 className="text-xl font-bold">Verifying Your Payment</h2>
+        <p className="text-gray-500">Waiting for confirmation...</p>
+      </div>
+    );
   }
 
   // Display Vars
@@ -343,6 +305,7 @@ function SignupForm() {
     ? (typeof selectedPlan.features === 'string' ? JSON.parse(selectedPlan.features) : selectedPlan.features)
     : [];
 
+  // ✅ PAID hote hi ye asli form dikhayega
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* LEFT SIDE */}
