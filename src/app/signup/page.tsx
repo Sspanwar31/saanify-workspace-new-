@@ -23,8 +23,8 @@ function SignupForm() {
   // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
-  // State
-  const [selectedPlan, setSelectedPlan] = useState<any>(null); 
+  // ✅ FIX 2: STATE SAFE INIT
+  const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -38,7 +38,7 @@ function SignupForm() {
   // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo
   useEffect(() => {
     
-    // ✅ CHANGE 2: RETRY LOGIC ADD (Helper Function)
+    // ✅ FIX 6: RETRY FUNCTION UPGRADE — FINAL
     async function fetchPlanWithRetry(orderId: string, retries = 5) {
       for (let i = 0; i < retries; i++) {
         const { data } = await supabase
@@ -47,7 +47,8 @@ function SignupForm() {
           .eq('token', orderId)
           .single();
 
-        if (data) return data;
+        // ✅ FIX 6: Safety check for data.plan
+        if (data && data.plan) return data;
 
         await new Promise(res => setTimeout(res, 1500));
       }
@@ -65,16 +66,14 @@ function SignupForm() {
 
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
-              // ✅ CHANGE 2: Using retry function instead of direct call
               const paymentData = await fetchPlanWithRetry(orderId);
 
               if (!paymentData) {
                 toast.error("Payment not found, try again");
+                // ✅ FIX 5: Set null if paymentData not found/valid
+                setSelectedPlan(null);
                 return;
               }
-
-              // ✅ CHANGE 5: STATUS CHECK REMOVE (Webhook handles status now)
-              // Old block removed: if (paymentData && paymentData.status !== 'PAID') ...
 
               verifiedPlanCode = paymentData.plan;
             }
@@ -90,6 +89,8 @@ function SignupForm() {
 
               if (error || !order) {
                 toast.error("Manual payment not approved yet.");
+                // ✅ FIX 5: Set null on failure
+                setSelectedPlan(null);
                 return;
               }
 
@@ -103,12 +104,16 @@ function SignupForm() {
               .eq('code', verifiedPlanCode)
               .single();
 
-            // ✅ CHANGE 4: TOAST SPAM FIX
+            // ✅ FIX 5: IMPORTANT — DEFAULT FALLBACK
+            if (!planDetails) {
+              setSelectedPlan(null);
+              return;
+            }
+
+            // ✅ FIX 4: setSelectedPlan BUG FIX (Removed stale check)
             if (planDetails) {
               setSelectedPlan(planDetails);
-              if (!selectedPlan) {
-                toast.success(`Plan verified: ${planDetails.name}`);
-              }
+              toast.success(`Plan verified: ${planDetails.name}`);
             }
 
         } 
@@ -123,19 +128,23 @@ function SignupForm() {
                 .eq('code', code)
                 .single();
             
-            if (planDetails && !selectedPlan) {
-                setSelectedPlan(planDetails);
+            // ✅ FIX 5: Applied fallback here too
+            if (!planDetails) {
+              setSelectedPlan(null);
+              return;
             }
+
+            setSelectedPlan(planDetails);
         }
 
       } catch (err) {
         console.error("Verification Error:", err);
+        setSelectedPlan(null); // Ensure error sets to null
       } 
     }
 
     smartVerifyPlan();
 
-  // ✅ CHANGE 3: FIX DEPENDENCY ARRAY (Removed searchParams)
   }, [orderId, urlPlanCode, mode]); 
 
 
@@ -158,15 +167,15 @@ function SignupForm() {
     }
 
     try {
-      // DB Check for Trial usage
+      // ✅ Backend safety (must)
       if (selectedPlan.code === 'TRIAL') {
         const { data } = await supabase
           .from('clients')
-          .select('has_used_trial')
+          .select('id') // FIX 6: Selecting only id is faster
           .eq('email', formData.email)
-          .single();
+          .limit(1);   // FIX 6: Optimization
 
-        if (data?.has_used_trial) {
+        if (data?.length > 0) {
           toast.error("Trial already used");
           setLoading(false);
           return;
@@ -231,13 +240,30 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // ✅ CHANGE 1: ERROR BLOCK FIX (Replaced Error UI with Loading UI)
-  if (orderId && !selectedPlan) {
+  // ✅ FIX 3: LOADING CONDITION CORRECT करो (undefined = fetching)
+  if (orderId && selectedPlan === undefined) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4">
           <Loader2 className="animate-spin w-10 h-10 text-blue-600"/>
           <h2 className="text-lg font-semibold">Processing your payment...</h2>
           <p className="text-sm text-gray-500">Please wait, do not refresh.</p>
+        </div>
+      );
+  }
+
+  // ✅ FIX 1: FORCE RERENDER FIX (null = fetch failed/not found)
+  if (orderId && selectedPlan === null) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+           <div className="bg-red-50 p-8 rounded-xl border border-red-200 text-center max-w-md">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
+              <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
+              <p className="text-slate-600 mt-2 mb-4">
+                 We could not find the plan details for Order ID: <br/> 
+                 <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
+              </p>
+              <Link href="/"><Button variant="outline">Return Home</Button></Link>
+           </div>
         </div>
       );
   }
