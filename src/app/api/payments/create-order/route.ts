@@ -60,8 +60,6 @@ export async function POST(req: Request) {
     const plan = body.planId || body.planName || 'PRO';
     const mode = body.mode;
     
-    // ❌ clientId hata diya kyunki database column nahi hai
-
     if (!amount || !plan) {
       return NextResponse.json(
         { error: 'amount or plan missing' },
@@ -88,16 +86,16 @@ export async function POST(req: Request) {
       expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     };
 
-    const { error } = await supabase
+    // ✅ Is hisse ko replace kiya gaya hai (Instant visibility ke liye .select() add kiya)
+    const { data: newIntent, error } = await supabase
       .from('payment_intents')
-      .insert([insertData]);
+      .insert([insertData])
+      .select() // ✅ Ye line add karein (Instant visibility ke liye)
+      .single();
 
     if (error) {
-      console.error("❌ Supabase insert failed details:", error);
-      return NextResponse.json(
-        { error: `DB Insert Failed: ${error.message}`, details: error },
-        { status: 500, headers: corsHeaders }
-      );
+      console.error("❌ DB Insert Failed:", error);
+      return NextResponse.json({ error: 'DB Insert Failed' }, { status: 500, headers: corsHeaders });
     }
 
     // 4. Return to frontend
