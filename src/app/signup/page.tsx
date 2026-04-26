@@ -23,6 +23,15 @@ function SignupForm() {
   // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
+  // ✅ NEW DEBUG STATE
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  
+  // Helper function screen par log dikhane ke liye
+  const addLog = (msg: string) => {
+    console.log(msg);
+    setDebugLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
+
   // --- States ---
   const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
   const [isPaid, setIsPaid] = useState(false); // ✅ Naya State: Payment confirm karne ke liye
@@ -46,9 +55,14 @@ function SignupForm() {
         .maybeSingle()).data;
 
       if (!data) {
-        if (!intentData) setSelectedPlan(null); 
+        if (!intentData) {
+          addLog("⚠️ Row NOT FOUND in Database yet. Waiting for Realtime...");
+          setSelectedPlan(null); 
+        }
         return;
       }
+
+      addLog(`✅ Row Found! Status is: ${data.status}`);
 
       // 1. Plan ki details hamesha load karein (Left side card ke liye)
       const { data: planDetails } = await supabase
@@ -63,18 +77,36 @@ function SignupForm() {
         // 2. ✅ CHECK STATUS: Agar status PAID hai, toh loader band karo
         if (data.status === 'PAID') {
           setIsPaid(true); // Isse loader hatega aur form khulega
+          addLog("🎉 Payment Status is PAID! Form unlocked.");
           toast.success(`Payment Verified: ${planDetails.name}`);
+        } else {
+          addLog(`⏳ Payment Status: ${data.status}. Waiting for update...`);
         }
       }
     } catch (err) {
       console.error("Plan Fetch Error:", err);
+      addLog(`❌ Error fetching plan: ${err}`);
     }
   };
 
-  // ✅ UPDATED REALTIME LISTENER (Replacement applied here)
+  // ✅ UPDATED REALTIME LISTENER with DEBUGGING
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId) {
+      addLog("❌ No Order ID found in URL");
+      return;
+    }
 
+    addLog(`🔍 Starting Check for Order: ${orderId}`);
+
+    // 1. Initial Database Check
+    const checkDB = async () => {
+      addLog("📡 Fetching initial status from Database...");
+      await fetchPlan();
+    };
+    checkDB();
+
+    // 2. Realtime Listener with Debugging
+    addLog("🔌 Connecting to Supabase Realtime...");
     const channel = supabase
       .channel(`payment-check-${orderId}`)
       .on(
@@ -86,7 +118,7 @@ function SignupForm() {
           filter: `token=eq.${orderId}`,
         },
         (payload) => {
-          console.log("⚡ Database Change Detect:", payload.eventType);
+          addLog(`⚡ REALTIME SIGNAL: ${payload.eventType} detected!`);
           
           // CASE 1: Agar user pehle aa gaya aur row ab bani (INSERT)
           // CASE 2: Agar row pehle se thi aur ab PAID hui (UPDATE)
@@ -95,7 +127,9 @@ function SignupForm() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        addLog(`🌐 Channel Status: ${status}`);
+      });
 
     return () => { supabase.removeChannel(channel); };
   }, [orderId]); 
@@ -111,12 +145,13 @@ function SignupForm() {
 
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
-              // Calling the optimized fetchPlan
-              await fetchPlan();
+              // Calling optimized fetchPlan (already called in debug useEffect, but ensuring logic flow)
+              // await fetchPlan(); 
             }
 
             // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
             if (mode === 'MANUAL') {
+              addLog("Checking Manual Approval...");
               const { data: order, error } = await supabase
                 .from('subscription_orders')
                 .select('plan_name, status')
@@ -126,6 +161,7 @@ function SignupForm() {
 
               if (error || !order) {
                 toast.error("Manual payment not approved yet.");
+                addLog("❌ Manual payment not approved.");
                 setSelectedPlan(null);
                 return;
               }
@@ -168,6 +204,7 @@ function SignupForm() {
 
       } catch (err) {
         console.error("Verification Error:", err);
+        addLog(`Verification Error: ${err}`);
         setSelectedPlan(null);
       } 
     }
@@ -273,15 +310,25 @@ function SignupForm() {
   // Agar PAID mode hai aur abhi tak confirmation nahi mili, toh loader dikhao
   if (orderId && mode !== 'MANUAL' && !isPaid) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white">
-          <div className="relative">
-            <Loader2 className="animate-spin w-12 h-12 text-blue-600"/>
-            <CheckCircle className={`absolute top-0 right-0 w-4 h-4 text-green-500 transition-opacity ${isPaid ? 'opacity-100' : 'opacity-0'}`} />
+        <div className="min-h-screen bg-white flex flex-col p-8">
+          
+          {/* --- DEBUG PANEL (Screen par dikhega) --- */}
+          <div className="mb-auto bg-black text-green-400 p-4 rounded-lg font-mono text-xs mb-8 overflow-auto max-h-64 border border-green-900">
+             <p className="font-bold border-b border-green-900 mb-2 text-white">🔍 SYSTEM DEBUG LOGS:</p>
+             {debugLogs.map((log, i) => <div key={i} className="mb-1">{log}</div>)}
           </div>
-          <h2 className="text-xl font-bold text-slate-800">Verifying Your Payment</h2>
-          <p className="text-slate-500 animate-pulse">Waiting for Razorpay confirmation...</p>
-          <div className="mt-4 px-4 py-2 bg-slate-100 rounded-full text-xs font-mono text-slate-400">
-            Order ID: {orderId}
+
+          {/* Loading UI */}
+          <div className="flex-grow flex flex-col items-center justify-center gap-4">
+            <div className="relative">
+              <Loader2 className="animate-spin w-12 h-12 text-blue-600"/>
+              <CheckCircle className={`absolute top-0 right-0 w-4 h-4 text-green-500 transition-opacity ${isPaid ? 'opacity-100' : 'opacity-0'}`} />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800">Verifying Your Payment</h2>
+            <p className="text-slate-500 animate-pulse">Waiting for Razorpay confirmation...</p>
+            <div className="mt-4 px-4 py-2 bg-slate-100 rounded-full text-xs font-mono text-slate-400">
+              Order ID: {orderId}
+            </div>
           </div>
         </div>
       );
