@@ -23,8 +23,9 @@ function SignupForm() {
   // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
-  // State
+  // --- States ---
   const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
+  const [isPaid, setIsPaid] = useState(false); // ✅ Naya State: Payment confirm karne ke liye
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -35,22 +36,21 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ MODIFIED fetchPlan: Isme logic ko aur fast kiya gaya hai
+  // ✅ MODIFIED fetchPlan: Plan dikhao par Form tabhi kholo jab PAID ho
   const fetchPlan = async (intentData?: any) => {
     try {
-      // Agar realtime se data mil gaya hai toh query ki zaroorat nahi
       const data = intentData || (await supabase
         .from('payment_intents')
         .select('*')
         .eq('token', orderId)
         .maybeSingle()).data;
 
-      if (!data || !data.plan) {
-        if (!intentData) setSelectedPlan(null); // Sirf tab null karein jab sach mein data na ho
+      if (!data) {
+        if (!intentData) setSelectedPlan(null); 
         return;
       }
 
-      // Plan details fetch karein
+      // 1. Plan ki details hamesha load karein (Left side card ke liye)
       const { data: planDetails } = await supabase
         .from('plans')
         .select('*')
@@ -59,8 +59,10 @@ function SignupForm() {
 
       if (planDetails) {
         setSelectedPlan(planDetails);
-        // Loading state turant band karein
+        
+        // 2. ✅ CHECK STATUS: Agar status PAID hai, toh loader band karo
         if (data.status === 'PAID') {
+          setIsPaid(true); // Isse loader hatega aur form khulega
           toast.success(`Payment Verified: ${planDetails.name}`);
         }
       }
@@ -267,13 +269,20 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // Loading Condition
-  if (orderId && selectedPlan === undefined) {
+  // ✅ UPDATED RENDER LOGIC
+  // Agar PAID mode hai aur abhi tak confirmation nahi mili, toh loader dikhao
+  if (orderId && mode !== 'MANUAL' && !isPaid) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-          <Loader2 className="animate-spin w-10 h-10 text-blue-600"/>
-          <h2 className="text-lg font-semibold">Processing your payment...</h2>
-          <p className="text-sm text-gray-500">Please wait, do not refresh.</p>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white">
+          <div className="relative">
+            <Loader2 className="animate-spin w-12 h-12 text-blue-600"/>
+            <CheckCircle className={`absolute top-0 right-0 w-4 h-4 text-green-500 transition-opacity ${isPaid ? 'opacity-100' : 'opacity-0'}`} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800">Verifying Your Payment</h2>
+          <p className="text-slate-500 animate-pulse">Waiting for Razorpay confirmation...</p>
+          <div className="mt-4 px-4 py-2 bg-slate-100 rounded-full text-xs font-mono text-slate-400">
+            Order ID: {orderId}
+          </div>
         </div>
       );
   }
