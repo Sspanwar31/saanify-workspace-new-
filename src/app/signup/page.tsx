@@ -23,7 +23,7 @@ function SignupForm() {
   // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
-  // ✅ FIX 2: STATE SAFE INIT
+  // State
   const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
   const [loading, setLoading] = useState(false);
   
@@ -35,26 +35,77 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo
-  useEffect(() => {
-    
-    // ✅ FIX 6: RETRY FUNCTION UPGRADE — FINAL
-    async function fetchPlanWithRetry(orderId: string, retries = 5) {
-      for (let i = 0; i < retries; i++) {
-        const { data } = await supabase
-          .from('payment_intents')
-          .select('*')
-          .eq('token', orderId)
-          .single();
+  // ✅ FIX 2: fetchPlan function alag kiya (Extracted Logic)
+  const fetchPlan = async () => {
+    const { data } = await supabase
+      .from('payment_intents')
+      .select('*')
+      .eq('token', orderId)
+      .single();
 
-        // ✅ FIX 6: Safety check for data.plan
-        if (data && data.plan) return data;
-
-        await new Promise(res => setTimeout(res, 1500));
-      }
-      return null;
+    // ✅ FIX 3: PENDING ko block mat karo (Status ignore karo, bas plan check karo)
+    // Agar data exist karta hai aur usmein plan code hai, toh fetch karo.
+    // Agar data hi nahi mila (Invalid ID), toh null set karo taaki Error UI dikhe.
+    if (!data) {
+      setSelectedPlan(null);
+      return;
     }
 
+    if (data && data.plan) {
+      const { data: planDetails } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('code', data.plan)
+        .single();
+
+      if (planDetails) {
+        setSelectedPlan(planDetails);
+        // Sirf tab toast karein jab plan verify ho jaye (initial load pe)
+        // Realtime pe bhi chalega, jo user ko confirm karega
+        toast.success(`Plan verified: ${planDetails.name}`);
+      } else {
+        // Payment hai lekin plan code galat hai ya missing hai
+        setSelectedPlan(null);
+      }
+    } else {
+      // Payment record mila but plan column empty hai
+      setSelectedPlan(null);
+    }
+  };
+
+  // ✅ FIX 1: REALTIME SUBSCRIPTION
+  useEffect(() => {
+    if (!orderId) return;
+
+    const channel = supabase
+      .channel('payment-status')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'payment_intents',
+          filter: `token=eq.${orderId}`,
+        },
+        (payload) => {
+          const updated = payload.new;
+
+          console.log("Realtime Update:", updated);
+
+          if (updated.status === 'PAID') {
+            fetchPlan(); // 👈 Webhook update hote hi dubara plan fetch karo
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [orderId]); // Dependency: orderId
+
+  // ✅ SMART LOGIC: Initial Verification
+  useEffect(() => {
     async function smartVerifyPlan() {
       try {
         // CASE 1: Agar Payment Order ID hai (PAID USER)
@@ -62,20 +113,10 @@ function SignupForm() {
             console.log("Verifying Order ID:", orderId);
             console.log("Mode:", mode);
 
-            let verifiedPlanCode: string | null = null;
-
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
-              const paymentData = await fetchPlanWithRetry(orderId);
-
-              if (!paymentData) {
-                toast.error("Payment not found, try again");
-                // ✅ FIX 5: Set null if paymentData not found/valid
-                setSelectedPlan(null);
-                return;
-              }
-
-              verifiedPlanCode = paymentData.plan;
+              // ✅ FIX 2: smartVerifyPlan mein bhi yahi call karo
+              await fetchPlan();
             }
 
             // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
@@ -89,29 +130,22 @@ function SignupForm() {
 
               if (error || !order) {
                 toast.error("Manual payment not approved yet.");
-                // ✅ FIX 5: Set null on failure
                 setSelectedPlan(null);
                 return;
               }
 
-              verifiedPlanCode = order.plan_name.toUpperCase();
-            }
+              const verifiedPlanCode = order.plan_name.toUpperCase();
+              const { data: planDetails } = await supabase
+                .from('plans')
+                .select('*')
+                .eq('code', verifiedPlanCode)
+                .single();
 
-            // 🔥 COMMON: plans table se plan uthao
-            const { data: planDetails } = await supabase
-              .from('plans')
-              .select('*')
-              .eq('code', verifiedPlanCode)
-              .single();
+              if (!planDetails) {
+                setSelectedPlan(null);
+                return;
+              }
 
-            // ✅ FIX 5: IMPORTANT — DEFAULT FALLBACK
-            if (!planDetails) {
-              setSelectedPlan(null);
-              return;
-            }
-
-            // ✅ FIX 4: setSelectedPlan BUG FIX (Removed stale check)
-            if (planDetails) {
               setSelectedPlan(planDetails);
               toast.success(`Plan verified: ${planDetails.name}`);
             }
@@ -128,7 +162,6 @@ function SignupForm() {
                 .eq('code', code)
                 .single();
             
-            // ✅ FIX 5: Applied fallback here too
             if (!planDetails) {
               setSelectedPlan(null);
               return;
@@ -139,7 +172,7 @@ function SignupForm() {
 
       } catch (err) {
         console.error("Verification Error:", err);
-        setSelectedPlan(null); // Ensure error sets to null
+        setSelectedPlan(null);
       } 
     }
 
@@ -167,13 +200,13 @@ function SignupForm() {
     }
 
     try {
-      // ✅ Backend safety (must)
+      // Backend safety (must)
       if (selectedPlan.code === 'TRIAL') {
         const { data } = await supabase
           .from('clients')
-          .select('id') // FIX 6: Selecting only id is faster
+          .select('id')
           .eq('email', formData.email)
-          .limit(1);   // FIX 6: Optimization
+          .limit(1);
 
         if (data?.length > 0) {
           toast.error("Trial already used");
@@ -240,7 +273,7 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // ✅ FIX 3: LOADING CONDITION CORRECT करो (undefined = fetching)
+  // Loading Condition
   if (orderId && selectedPlan === undefined) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4">
@@ -251,7 +284,7 @@ function SignupForm() {
       );
   }
 
-  // ✅ FIX 1: FORCE RERENDER FIX (null = fetch failed/not found)
+  // Error Condition
   if (orderId && selectedPlan === null) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50">
