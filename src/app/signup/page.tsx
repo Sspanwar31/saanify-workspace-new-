@@ -21,17 +21,17 @@ function SignupForm() {
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
 
-  // ✅ SMART ADDITION: Mode flag (AUTO | MANUAL)
+  // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
   // State
   const [selectedPlan, setSelectedPlan] = useState<any>(null); 
   const [loading, setLoading] = useState(false);
   
-  // ✅ FIX 1: verifyingPayment state false kiya
-  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  // ✅ FIX 4: verifyingPayment state REMOVED completely
+  // const [verifyingPayment, setVerifyingPayment] = useState(false);
   
-  const [trialUsed, setTrialUsed] = useState(false);
+  // ✅ FIX 6 (Part 1): trialUsed state REMOVED (moving to DB check)
   
   const [formData, setFormData] = useState({
     name: '',
@@ -41,11 +41,9 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo (Updated for AUTO + MANUAL)
+  // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo
   useEffect(() => {
     async function smartVerifyPlan() {
-      // ✅ FIX 3: setVerifyingPayment(true) REMOVED
-      
       try {
         // CASE 1: Agar Payment Order ID hai (PAID USER)
         if (orderId) {
@@ -56,21 +54,20 @@ function SignupForm() {
 
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
-              // ✅ FIX 3 & FIX 6: Query changed to * to support status warning check
               const { data: paymentData, error } = await supabase
                 .from('payment_intents')
                 .select('*')
                 .eq('token', orderId)
                 .single();
 
-              // ✅ FIX 4: Invalid order check added
+              // Invalid order check
               if (orderId && !paymentData) {
                 toast.error("Invalid order");
-                setVerifyingPayment(false);
+                // ✅ FIX 4: setVerifyingPayment(false) removed
                 return;
               }
 
-              // ✅ FIX 6: Optional warning for processing payment
+              // Warning for processing payment
               if (paymentData && paymentData.status !== 'PAID') {
                 toast.warning("Payment processing... please wait");
               }
@@ -89,7 +86,7 @@ function SignupForm() {
 
               if (error || !order) {
                 toast.error("Manual payment not approved yet.");
-                setVerifyingPayment(false);
+                // ✅ FIX 4: setVerifyingPayment(false) removed
                 return;
               }
 
@@ -103,7 +100,8 @@ function SignupForm() {
               .eq('code', verifiedPlanCode)
               .single();
 
-            if (planDetails) {
+            // ✅ FIX 5 & FIX 2: Safe Plan Set & Toast Spam Fix
+            if (planDetails && !selectedPlan) {
                 setSelectedPlan(planDetails);
                 toast.success(`Plan verified: ${planDetails.name}`);
             }
@@ -120,24 +118,23 @@ function SignupForm() {
                 .eq('code', code)
                 .single();
             
-            if (planDetails) setSelectedPlan(planDetails);
+            // ✅ FIX 5: Safe Plan Set applied here too
+            if (planDetails && !selectedPlan) {
+                setSelectedPlan(planDetails);
+            }
         }
 
       } catch (err) {
         console.error("Verification Error:", err);
-      } finally {
-        // ✅ FIX 7: finally block kept
-        setVerifyingPayment(false);
-      }
+      } 
+      // ✅ FIX 4: finally block removed (no verifyingPayment state to clean)
     }
 
     smartVerifyPlan();
 
-    // Trial check
-    const hasUsedTrial = localStorage.getItem('saanify_trial_used');
-    if (hasUsedTrial) setTrialUsed(true);
+    // ✅ FIX 6 (Part 2): LocalStorage trial check REMOVED
 
-  }, [searchParams, orderId, urlPlanCode, mode]);
+  }, [orderId, urlPlanCode, mode]); // ✅ FIX 3: searchParams removed from dependency array
 
 
   // ✅ SUBMIT FORM
@@ -151,8 +148,7 @@ function SignupForm() {
       return;
     }
 
-    // Double Check: Agar Order ID hai par plan match nahi kar raha (Backend se)
-    // Ye waise hoga nahi kyunki humne useEffect me set kiya hai, par safety ke liye
+    // Double Check: Agar Order ID hai par plan match nahi kar raha
     if (orderId && selectedPlan.code === 'TRIAL') {
         toast.error("System Error: Payment ID linked to Trial plan.");
         setLoading(false);
@@ -160,6 +156,21 @@ function SignupForm() {
     }
 
     try {
+      // ✅ FIX 6 (Part 3): DB Check for Trial usage
+      if (selectedPlan.code === 'TRIAL') {
+        const { data } = await supabase
+          .from('clients')
+          .select('has_used_trial')
+          .eq('email', formData.email)
+          .single();
+
+        if (data?.has_used_trial) {
+          toast.error("Trial already used");
+          setLoading(false);
+          return;
+        }
+      }
+
       // 1. Auth Signup
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -184,7 +195,6 @@ function SignupForm() {
           phone: formData.phone,
           society_name: formData.societyName,
           
-          // 🔥 Verified Data from Backend
           plan_id: selectedPlan.id,
           plan: selectedPlan.code,
           plan_name: selectedPlan.name,
@@ -194,13 +204,13 @@ function SignupForm() {
           plan_end_date: endDate.toISOString(),
           has_used_trial: selectedPlan.code === 'TRIAL',
           
-          registration_number: orderId || null, // Tracking ke liye
+          registration_number: orderId || null,
           role: 'client'
       });
 
       if (clientError) throw new Error(clientError.message);
 
-      // 3. Optional: Payment Intent ko update kar sakte ho ki "client_created: true" (taaki reuse na ho)
+      // 3. Optional: Payment Intent update
       if (orderId) {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
@@ -219,7 +229,7 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // ✅ FIX 2: Loading UI block REMOVED
+  // ✅ FIX 1 & 4: "Verifying Payment..." text & Loader UI block are already gone
   
   // Error State: Order ID hai par database me nahi mila
   if (orderId && !selectedPlan) {
