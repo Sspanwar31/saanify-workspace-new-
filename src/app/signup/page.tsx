@@ -27,7 +27,10 @@ function SignupForm() {
   // State
   const [selectedPlan, setSelectedPlan] = useState<any>(null); 
   const [loading, setLoading] = useState(false);
-  const [verifyingPayment, setVerifyingPayment] = useState(true);
+  
+  // ✅ FIX 1: verifyingPayment state false kiya
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  
   const [trialUsed, setTrialUsed] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -41,7 +44,7 @@ function SignupForm() {
   // ✅ SMART LOGIC: Payment Intents Table se Plan Nikalo (Updated for AUTO + MANUAL)
   useEffect(() => {
     async function smartVerifyPlan() {
-      setVerifyingPayment(true);
+      // ✅ FIX 3: setVerifyingPayment(true) REMOVED
       
       try {
         // CASE 1: Agar Payment Order ID hai (PAID USER)
@@ -53,16 +56,23 @@ function SignupForm() {
 
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
+              // ✅ FIX 3 & FIX 6: Query changed to * to support status warning check
               const { data: paymentData, error } = await supabase
                 .from('payment_intents')
-                .select('plan, status')
+                .select('*')
                 .eq('token', orderId)
                 .single();
 
-              if (error || !paymentData) {
-                toast.error("Payment verification failed.");
+              // ✅ FIX 4: Invalid order check added
+              if (orderId && !paymentData) {
+                toast.error("Invalid order");
                 setVerifyingPayment(false);
                 return;
+              }
+
+              // ✅ FIX 6: Optional warning for processing payment
+              if (paymentData && paymentData.status !== 'PAID') {
+                toast.warning("Payment processing... please wait");
               }
 
               verifiedPlanCode = paymentData.plan;
@@ -116,6 +126,7 @@ function SignupForm() {
       } catch (err) {
         console.error("Verification Error:", err);
       } finally {
+        // ✅ FIX 7: finally block kept
         setVerifyingPayment(false);
       }
     }
@@ -208,18 +219,8 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  if (verifyingPayment) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
-           <Loader2 className="animate-spin w-10 h-10 text-blue-600"/>
-           <div className="text-center">
-             <h3 className="font-semibold text-lg text-slate-800">Verifying Payment...</h3>
-             <p className="text-slate-500 text-sm">Checking secure records for your plan.</p>
-           </div>
-        </div>
-      );
-  }
-
+  // ✅ FIX 2: Loading UI block REMOVED
+  
   // Error State: Order ID hai par database me nahi mila
   if (orderId && !selectedPlan) {
       return (
