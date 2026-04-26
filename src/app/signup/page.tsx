@@ -71,27 +71,31 @@ function SignupForm() {
     }
   };
 
-  // ✅ MODIFIED REALTIME: Isko aur fast banaya gaya hai
+  // ✅ UPDATED REALTIME: (Replacement applied here)
   useEffect(() => {
-    if (!orderId || mode === 'MANUAL') return;
+    if (!orderId) return;
 
+    // 1. Pehle manually check karein (Ho sakta hai entry ho gayi ho)
+    fetchPlan();
+
+    // 2. ✅ REALTIME: Dono events listen karein (INSERT aur UPDATE)
     const channel = supabase
-      .channel(`payment:${orderId}`) // Unique channel name
+      .channel(`payment-monitor-${orderId}`)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // 👈 Ab ye INSERT aur UPDATE dono ko pakad lega
           schema: 'public',
           table: 'payment_intents',
           filter: `token=eq.${orderId}`,
         },
         (payload) => {
-          const updated = payload.new;
-          console.log("⚡ Realtime Update Received:", updated.status);
+          console.log("⚡ Realtime Activity:", payload.eventType);
+          const data = payload.new;
 
-          if (updated.status === 'PAID') {
-            // 🚀 Direct fetchPlan call with payload data for instant response
-            fetchPlan(updated); 
+          // Agar entry abhi-abhi insert hui hai ya paid hui hai
+          if (data && (payload.eventType === 'INSERT' || data.status === 'PAID')) {
+            fetchPlan(data); // Turant UI update karo
           }
         }
       )
@@ -111,8 +115,9 @@ function SignupForm() {
 
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
-              // Calling the optimized fetchPlan
-              await fetchPlan();
+              // Note: fetchPlan is already called in the realtime useEffect now
+              // but keeping this here ensures logic flow if needed elsewhere
+              // await fetchPlan(); 
             }
 
             // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
