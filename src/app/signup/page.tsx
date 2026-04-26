@@ -45,7 +45,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ MODIFIED fetchPlan: Plan dikhao par Form tabhi kholo jab PAID ho
+  // ✅ MODIFIED fetchPlan: Pehli baar mein data na milne par crash nahi hoga
   const fetchPlan = async (intentData?: any) => {
     try {
       const data = intentData || (await supabase
@@ -55,14 +55,12 @@ function SignupForm() {
         .maybeSingle()).data;
 
       if (!data) {
-        if (!intentData) {
-          addLog("⚠️ Row NOT FOUND in Database yet. Waiting for Realtime...");
-          setSelectedPlan(null); 
-        }
-        return;
+        // 🛑 CHANGE: Agar data nahi mila, toh wait karein (Null set mat karein)
+        addLog("📡 Waiting for payment record to appear in database...");
+        return; 
       }
 
-      addLog(`✅ Row Found! Status is: ${data.status}`);
+      addLog(`✅ Record Found! Status: ${data.status}`);
 
       // 1. Plan ki details hamesha load karein (Left side card ke liye)
       const { data: planDetails } = await supabase
@@ -76,63 +74,51 @@ function SignupForm() {
         
         // 2. ✅ CHECK STATUS: Agar status PAID hai, toh loader band karo
         if (data.status === 'PAID') {
-          setIsPaid(true); // Isse loader hatega aur form khulega
-          addLog("🎉 Payment Status is PAID! Form unlocked.");
-          toast.success(`Payment Verified: ${planDetails.name}`);
+          setIsPaid(true); // ✅ Isse loader hatega aur form khulega
+          addLog("🎉 SUCCESS: Payment is PAID. Unlocking form...");
+          toast.success(`Plan verified: ${planDetails.name}`);
         } else {
-          addLog(`⏳ Payment Status: ${data.status}. Waiting for update...`);
+          addLog("⏳ Status is still PENDING. Waiting for Webhook...");
         }
       }
     } catch (err) {
-      console.error("Plan Fetch Error:", err);
-      addLog(`❌ Error fetching plan: ${err}`);
+      console.error("Fetch Error:", err);
+      // addLog(`❌ Fetch error: ${err}`);
     }
   };
 
-  // ✅ UPDATED REALTIME LISTENER with DEBUGGING
+  // ✅ 2. Realtime Listener ko "Aggressive" banayein
   useEffect(() => {
-    if (!orderId) {
-      addLog("❌ No Order ID found in URL");
-      return;
-    }
+    if (!orderId || mode === 'MANUAL') return; // ✅ Trial aur Manual ko skip karo
 
-    addLog(`🔍 Starting Check for Order: ${orderId}`);
+    addLog(`🔍 Monitoring Payment: ${orderId}`);
 
-    // 1. Initial Database Check
-    const checkDB = async () => {
-      addLog("📡 Fetching initial status from Database...");
-      await fetchPlan();
-    };
-    checkDB();
-
-    // 2. Realtime Listener with Debugging
-    addLog("🔌 Connecting to Supabase Realtime...");
     const channel = supabase
-      .channel(`payment-check-${orderId}`)
+      .channel(`payment-sync-${orderId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // 👈 INSERT aur UPDATE dono pakado
+          event: '*', // 👈 INSERT, UPDATE sab pakado
           schema: 'public',
           table: 'payment_intents',
           filter: `token=eq.${orderId}`,
         },
         (payload) => {
-          addLog(`⚡ REALTIME SIGNAL: ${payload.eventType} detected!`);
-          
-          // CASE 1: Agar user pehle aa gaya aur row ab bani (INSERT)
-          // CASE 2: Agar row pehle se thi aur ab PAID hui (UPDATE)
+          addLog(`⚡ DB Activity: ${payload.eventType}`);
+          // Jaise hi database mein koi halchal ho, naya data fetch karo
           if (payload.new) {
-            fetchPlan(payload.new); // Form khol do
+            fetchPlan(payload.new);
           }
         }
       )
       .subscribe((status) => {
-        addLog(`🌐 Channel Status: ${status}`);
+        addLog(`🌐 Realtime Connection: ${status}`);
+        // Subscribe hote hi ek baar phir check karein
+        if (status === 'SUBSCRIBED') fetchPlan();
       });
 
     return () => { supabase.removeChannel(channel); };
-  }, [orderId]); 
+  }, [orderId, mode]); 
 
   // ✅ SMART LOGIC: Initial Verification
   useEffect(() => {
@@ -144,9 +130,10 @@ function SignupForm() {
             console.log("Mode:", mode);
 
             // 🟢 AUTO PAYMENT
+            // Note: Logic moved to aggressive realtime listener above for Auto mode
+            // but we keep structure here for safety or if realtime fails
             if (mode !== 'MANUAL') {
-              // Calling optimized fetchPlan (already called in debug useEffect, but ensuring logic flow)
-              // await fetchPlan(); 
+               // await fetchPlan(); 
             }
 
             // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
@@ -342,7 +329,7 @@ function SignupForm() {
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
               <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
               <p className="text-slate-600 mt-2 mb-4">
-                 We could not find the plan details for Order ID: <br/> 
+                 We could not find plan details for Order ID: <br/> 
                  <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
               </p>
               <Link href="/"><Button variant="outline">Return Home</Button></Link>
