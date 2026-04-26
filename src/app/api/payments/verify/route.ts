@@ -25,7 +25,7 @@ const supabase = createClient(
   getServiceRoleKey()
 );
 
-// ✅ UPDATED OPTIONS Method (Status 204 for Standard Preflight)
+// ✅ UPDATED OPTIONS Method
 export async function OPTIONS() {
   return new NextResponse(null, { 
     status: 204, 
@@ -41,14 +41,15 @@ export async function POST(req: Request) {
     const orderId = body.razorpay_order_id || body.orderCreationId;
     const paymentId = body.razorpay_payment_id;
     const signature = body.razorpay_signature;
-    const clientId = body.clientId; 
+    
+    // ❌ CHANGE 1: clientId REMOVED
 
-    // 1. Basic Validation
-    if (!orderId || !paymentId || !signature || !clientId) {
+    // ✅ CHANGE 1: Validation updated (clientId removed)
+    if (!orderId || !paymentId || !signature) {
       return NextResponse.json({ error: 'Missing Required Fields' }, { status: 400, headers: corsHeaders });
     }
 
-    // 2. Razorpay Signature Verify
+    // ✅ 1. Signature Verify (Same as before)
     const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!);
     hmac.update(`${orderId}|${paymentId}`);
     const expectedSignature = hmac.digest('hex');
@@ -57,12 +58,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid Payment Signature' }, { status: 400, headers: corsHeaders });
     }
 
-    // 3. Update Payment Intent & Fetch Plan Info
+    // ✅ 2. Payment mark as PAID (Core Logic)
+    // ❌ CHANGE 3: Plan fetch, duration, expiry logic REMOVED
+    // ❌ CHANGE 2: Client update & subscription_orders insert REMOVED
+    
     const { data: intent, error: intentErr } = await supabase
       .from('payment_intents')
-      .update({ status: 'PAID', razorpay_payment_id: paymentId })
+      .update({
+        status: 'PAID',
+        razorpay_payment_id: paymentId
+      })
       .eq('token', orderId)
-      .select('plan')
+      .select('*') // Replaced 'plan' with '*' as requested
       .single();
 
     if (intentErr || !intent) {
@@ -70,55 +77,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Intent not found' }, { status: 404, headers: corsHeaders });
     }
 
-    // 4. Fetch Plan Details (Robust Logic)
-    const { data: planRow } = await supabase
-      .from('plans')
-      .select('id, name, duration_days')
-      .eq('code', intent.plan) 
-      .maybeSingle();
-
-    // Expiry Date Logic (Code 2 + Fallback)
-    const duration = planRow?.duration_days || (intent.plan.toUpperCase().includes('ENTERPRISE') ? 365 : 30);
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + duration);
-
-    // 5. ✅ UPDATE CLIENT & CREATE ORDER (Everything in one go - Merged Logic)
-    const updateResults = await Promise.all([
-      // A. Activate Client (Using Code 2's robust fields)
-      supabase.from('clients').update({
-        status: 'ACTIVE', // Ensuring status is set
-        plan: intent.plan,
-        plan_name: planRow?.name || intent.plan,
-        plan_id: planRow?.id,                      
-        subscription_status: 'active',
-        plan_start_date: new Date().toISOString(),
-        plan_end_date: expiryDate.toISOString(),
-        subscription_expiry: expiryDate.toISOString() 
-      }).eq('id', clientId),
-
-      // B. Create Subscription Order record (For Admin History - From Code 1)
-      supabase.from('subscription_orders').insert({
-        client_id: clientId,
-        plan_name: planRow?.name || intent.plan,
-        amount: intent.amount, // Assuming amount exists in intent object, else you might need to fetch it
-        status: 'approved',
-        payment_method: 'RAZORPAY',
-        transaction_id: paymentId,
-        duration_days: duration
-      })
-    ]);
-
-    // Check if updates failed
-    if (updateResults[0].error) {
-      console.error("❌ Database Update Failed:", updateResults[0].error);
-      return NextResponse.json({ error: 'Database update failed' }, { status: 500, headers: corsHeaders });
-    }
-
-    // 6. Return SUCCESS
+    // ✅ CHANGE 4: Simple Response
     return NextResponse.json({ 
-      success: true, 
-      message: "Payment Verified & Account Activated",
-      redirect: "/dashboard",
+      success: true,
       isPaid: true,
       orderId: orderId
     }, { status: 200, headers: corsHeaders });
