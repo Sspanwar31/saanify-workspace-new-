@@ -35,50 +35,46 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ FIX 2: fetchPlan function alag kiya (Extracted Logic)
-  const fetchPlan = async () => {
-    const { data } = await supabase
-      .from('payment_intents')
-      .select('*')
-      .eq('token', orderId)
-      .single();
+  // ✅ MODIFIED fetchPlan: Isme logic ko aur fast kiya gaya hai
+  const fetchPlan = async (intentData?: any) => {
+    try {
+      // Agar realtime se data mil gaya hai toh query ki zaroorat nahi
+      const data = intentData || (await supabase
+        .from('payment_intents')
+        .select('*')
+        .eq('token', orderId)
+        .maybeSingle()).data;
 
-    // ✅ FIX 3: PENDING ko block mat karo (Status ignore karo, bas plan check karo)
-    // Agar data exist karta hai aur usmein plan code hai, toh fetch karo.
-    // Agar data hi nahi mila (Invalid ID), toh null set karo taaki Error UI dikhe.
-    if (!data) {
-      setSelectedPlan(null);
-      return;
-    }
+      if (!data || !data.plan) {
+        if (!intentData) setSelectedPlan(null); // Sirf tab null karein jab sach mein data na ho
+        return;
+      }
 
-    if (data && data.plan) {
+      // Plan details fetch karein
       const { data: planDetails } = await supabase
         .from('plans')
         .select('*')
-        .eq('code', data.plan)
+        .eq('code', data.plan.toUpperCase())
         .single();
 
       if (planDetails) {
         setSelectedPlan(planDetails);
-        // Sirf tab toast karein jab plan verify ho jaye (initial load pe)
-        // Realtime pe bhi chalega, jo user ko confirm karega
-        toast.success(`Plan verified: ${planDetails.name}`);
-      } else {
-        // Payment hai lekin plan code galat hai ya missing hai
-        setSelectedPlan(null);
+        // Loading state turant band karein
+        if (data.status === 'PAID') {
+          toast.success(`Payment Verified: ${planDetails.name}`);
+        }
       }
-    } else {
-      // Payment record mila but plan column empty hai
-      setSelectedPlan(null);
+    } catch (err) {
+      console.error("Plan Fetch Error:", err);
     }
   };
 
-  // ✅ FIX 1: REALTIME SUBSCRIPTION
+  // ✅ MODIFIED REALTIME: Isko aur fast banaya gaya hai
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId || mode === 'MANUAL') return;
 
     const channel = supabase
-      .channel('payment-status')
+      .channel(`payment:${orderId}`) // Unique channel name
       .on(
         'postgres_changes',
         {
@@ -89,19 +85,17 @@ function SignupForm() {
         },
         (payload) => {
           const updated = payload.new;
-
-          console.log("Realtime Update:", updated);
+          console.log("⚡ Realtime Update Received:", updated.status);
 
           if (updated.status === 'PAID') {
-            fetchPlan(); // 👈 Webhook update hote hi dubara plan fetch karo
+            // 🚀 Direct fetchPlan call with payload data for instant response
+            fetchPlan(updated); 
           }
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [orderId]); // Dependency: orderId
 
   // ✅ SMART LOGIC: Initial Verification
@@ -115,7 +109,7 @@ function SignupForm() {
 
             // 🟢 AUTO PAYMENT
             if (mode !== 'MANUAL') {
-              // ✅ FIX 2: smartVerifyPlan mein bhi yahi call karo
+              // Calling the optimized fetchPlan
               await fetchPlan();
             }
 
