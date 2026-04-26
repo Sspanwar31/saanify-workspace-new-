@@ -76,12 +76,11 @@ export async function POST(req: Request) {
     });
     console.log("Razorpay Order Created:", order.id);
 
-    // 3. Insert into payment_intents (Replacement applied)
+    // 3. Insert into payment_intents (Replacement applied here)
     console.log("Saving PENDING intent to DB...");
-    
-    // ✅ ZAROORI: await lagayein aur .select() use karein 
-    // taaki frontend ko rasta milne se pehle row ban jaye
-    const { error: dbErr } = await supabase
+
+    // ✅ FORCE DATABASE INSERT (await zaroori hai)
+    const { data: dbEntry, error: dbErr } = await supabase
       .from('payment_intents')
       .insert([{
         amount: amount,
@@ -91,18 +90,21 @@ export async function POST(req: Request) {
         token: order.id, 
         expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       }])
-      .select(); 
+      .select() // Realtime ko trigger karne ke liye
+      .single();
 
-    if (dbErr) throw dbErr;
+    if (dbErr) {
+      console.error("DB Insert Failed!", dbErr);
+      return NextResponse.json({ error: "Database rejected entry" }, { status: 500, headers: corsHeaders });
+    }
 
-    console.log("Row created! Now sending to frontend.");
-
-    // 4. Return to frontend
+    // ✅ Return ONLY after DB confirmation
+    console.log("DB Insert confirmed. Returning to frontend.");
     return NextResponse.json({
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      // ✅ SUCCESS RESPONSE: Added razorpayKey for Flutter
+      // Added razorpayKey for Flutter as per previous requirements
       razorpayKey: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
     }, {
       headers: corsHeaders
