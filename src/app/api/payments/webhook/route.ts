@@ -44,29 +44,26 @@ export async function POST(req: Request) {
     // 🎯 ONLY handle successful payments
     if (event.event === 'payment.captured') {
       const payment = event.payload.payment.entity;
-
       const orderId = payment.order_id;
       const paymentId = payment.id;
-      const amount = payment.amount / 100;
 
-      console.log("✅ Payment Captured:", orderId);
+      console.log("✅ Processing Payment for Order:", orderId);
 
-      // 🔥 UPDATE DB
+      // 🔥 DB UPDATE (Using select to force immediate commit visibility)
       const { error } = await supabase
         .from('payment_intents')
         .update({
           status: 'PAID',
           razorpay_payment_id: paymentId,
-          amount: amount
+          // Amount already captured by entity, optional to re-set
         })
-        .eq('token', orderId);
+        .eq('token', orderId)
+        .select(); // ✅ Force commit acknowledgment
 
       if (error) {
-        console.error("❌ DB Update Failed:", error);
-        return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
+        console.error("❌ Webhook DB Error:", error);
+        return NextResponse.json({ error: 'Retry later' }, { status: 500 });
       }
-
-      console.log("✅ Payment Updated in DB");
     }
 
     return NextResponse.json({ success: true });
