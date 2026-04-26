@@ -76,27 +76,26 @@ export async function POST(req: Request) {
     });
     console.log("Razorpay Order Created:", order.id);
 
-    // 3. Insert into payment_intents
-    const insertData = {
-      amount: amount,
-      plan: plan,
-      mode: mode || 'AUTO',
-      status: 'pending', 
-      token: order.id, // Razorpay Order ID
-      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-    };
-
-    // ✅ Is hisse ko replace kiya gaya hai (Instant visibility ke liye .select() add kiya)
-    const { data: newIntent, error } = await supabase
+    // 3. Insert into payment_intents (Replacement applied)
+    console.log("Saving PENDING intent to DB...");
+    
+    // ✅ ZAROORI: await lagayein aur .select() use karein 
+    // taaki frontend ko rasta milne se pehle row ban jaye
+    const { error: dbErr } = await supabase
       .from('payment_intents')
-      .insert([insertData])
-      .select() // ✅ Ye line add karein (Instant visibility ke liye)
-      .single();
+      .insert([{
+        amount: amount,
+        plan: plan,
+        mode: mode || 'AUTO',
+        status: 'pending', 
+        token: order.id, 
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      }])
+      .select(); 
 
-    if (error) {
-      console.error("❌ DB Insert Failed:", error);
-      return NextResponse.json({ error: 'DB Insert Failed' }, { status: 500, headers: corsHeaders });
-    }
+    if (dbErr) throw dbErr;
+
+    console.log("Row created! Now sending to frontend.");
 
     // 4. Return to frontend
     return NextResponse.json({
