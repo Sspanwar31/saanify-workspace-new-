@@ -42,8 +42,6 @@ export async function POST(req: Request) {
     const paymentId = body.razorpay_payment_id;
     const signature = body.razorpay_signature;
     
-    // ❌ CHANGE 1: clientId REMOVED
-
     // ✅ CHANGE 1: Validation updated (clientId removed)
     if (!orderId || !paymentId || !signature) {
       return NextResponse.json({ error: 'Missing Required Fields' }, { status: 400, headers: corsHeaders });
@@ -59,9 +57,6 @@ export async function POST(req: Request) {
     }
 
     // ✅ 2. Payment mark as PAID (Core Logic)
-    // ❌ CHANGE 3: Plan fetch, duration, expiry logic REMOVED
-    // ❌ CHANGE 2: Client update & subscription_orders insert REMOVED
-    
     const { data: intent, error: intentErr } = await supabase
       .from('payment_intents')
       .update({
@@ -69,12 +64,12 @@ export async function POST(req: Request) {
         razorpay_payment_id: paymentId
       })
       .eq('token', orderId)
-      .select('*') // Replaced 'plan' with '*' as requested
-      .single();
+      .select() // ✅ Ye line Realtime ko 'PAID' signal turant bhejegi
+      .maybeSingle(); // .single() ki jagah maybeSingle safe hai
 
-    if (intentErr || !intent) {
-      console.error('Payment intent update failed:', intentErr);
-      return NextResponse.json({ error: 'Intent not found' }, { status: 404, headers: corsHeaders });
+    if (intentErr) {
+      console.error('Database update failed:', intentErr);
+      return NextResponse.json({ error: 'Database error' }, { status: 500, headers: corsHeaders });
     }
 
     // ✅ CHANGE 4: Simple Response
