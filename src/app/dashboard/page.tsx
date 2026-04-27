@@ -80,94 +80,103 @@ export default function ClientDashboard() {
 
   const [chartData, setChartData] = useState<any[]>([]);
 
+  // ✅ UPDATED USE EFFECT: Direct Auth Check & Fetch Logic
   useEffect(() => {
     const init = async () => {
-        const storedUser = localStorage.getItem('current_user');
-        const storedMember = localStorage.getItem('current_member');
-
-        if (!storedUser && !storedMember) { router.push('/login'); return; }
-        
         try {
-            let userId = ''; 
-            let userRole = 'client_admin';
-            let permissions: string[] = [];
+            setLoading(true);
 
-            if (storedUser) {
-                const user = JSON.parse(storedUser);
-                
-                // Get User Record by ID
-                const { data: userData, error } = await supabase
-                    .from('clients')
-                    .select('*')
-                    .eq('id', user.id) 
-                    .single();
+            // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
+            // Ye kabhi galat user nahi dega, chahe localStorage mein kuch bhi ho
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-                if (error || !userData) return;
-
-                setClientData(userData);
-                userRole = userData.role || 'client';
-
-                // ID Logic
-                if (userRole === 'client') {
-                    userId = userData.id; 
-                } else {
-                    userId = userData.client_id;
-                }
-
-                if (userRole === 'treasurer') {
-                    try {
-                        const perms = typeof userData.role_permissions === 'string' 
-                            ? JSON.parse(userData.role_permissions) 
-                            : userData.role_permissions;
-                        permissions = perms?.treasurer || [];
-                    } catch (e) { }
-                }
-
-            } else if (storedMember) {
-                const member = JSON.parse(storedMember);
-                userRole = member.role;
-                const { data: client } = await supabase.from('clients').select('*').eq('id', member.client_id).single();
-                setClientData(client);
-                userId = member.client_id;
-                
-                if (member.role === 'treasurer') {
-                    permissions = client?.role_permissions?.['treasurer'] || [];
-                }
+            if (authError || !user) {
+                console.error("No active session found");
+                router.push('/login');
+                return;
             }
 
-            // Permissions Check
-            const canViewPassbook = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('VIEW_PASSBOOK');
-            const canViewLoans = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('VIEW_LOANS');
-            const canViewExpenses = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('MANAGE_EXPENSES');
-            const canViewMembers = userRole === 'client_admin' || userRole === 'client' || userRole === 'treasurer' || permissions.includes('VIEW_MEMBERS');
+            // 🚀 2. Is ID ke base par database se Profile fetch karo
+            const { data: userData, error: dbError } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('id', user.id) 
+                .maybeSingle();
 
-            // Fetch All Tables
-            const [passbookRes, expenseRes, loansRes, membersRes, adminFundRes] = await Promise.all([
-                canViewPassbook ? supabase.from('passbook_entries').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
-                canViewExpenses ? supabase.from('expenses_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
-                canViewLoans ? supabase.from('loans').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
-                canViewMembers ? supabase.from('members').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
-                canViewExpenses ? supabase.from('admin_fund_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] })
-            ]);
+            // Agar client table mein nahi mila, toh members table check karo
+            if (!userData) {
+                const { data: memberData } = await supabase
+                    .from('members')
+                    .select('*')
+                    .eq('auth_user_id', user.id)
+                    .maybeSingle();
+                
+                if (memberData) {
+                    // Member logic yahan handle karein
+                    const { data: parentClient } = await supabase.from('clients').select('*').eq('id', memberData.client_id).single();
+                    setClientData(parentClient);
+                    await fetchAndCalculate(memberData.client_id, memberData.role, parentClient?.role_permissions);
+                } else {
+                    router.push('/login');
+                    return;
+                }
+            } else {
+                // ✅ Root Client mil gaya
+                setClientData(userData);
+                let activeClientId = userData.role === 'client' ? userData.id : userData.client_id;
+                
+                // Permissions handle karein
+                let perms = [];
+                if (userData.role === 'treasurer') {
+                    perms = typeof userData.role_permissions === 'string' 
+                        ? JSON.parse(userData.role_permissions)?.treasurer || []
+                        : userData.role_permissions?.treasurer || [];
+                }
 
-            setMembersData(membersRes.data || []);
-            setLoansData(loansRes.data || []);
-            setTransactionsData(passbookRes.data || []); 
+                // 🚀 3. Business Data Fetch karein (Using activeClientId)
+                await fetchAndCalculate(activeClientId, userData.role, perms);
+                
+                // Safety ke liye localStorage update kardo
+                localStorage.setItem('current_user', JSON.stringify(userData));
+            }
 
-            calculateFinancials(
-                passbookRes.data || [], 
-                expenseRes.data || [], 
-                loansRes.data || [],
-                membersRes.data || [],
-                adminFundRes.data || []
-            );
-
-        } catch(e) { } finally {
+        } catch(e) {
+            console.error("Dashboard Init Error:", e);
+        } finally {
             setLoading(false);
         }
     };
+
+    // Helper function taaki code clean rahe
+    const fetchAndCalculate = async (userId: string, userRole: string, permissions: any[]) => {
+        const canViewPassbook = userRole === 'client' || permissions.includes('VIEW_PASSBOOK');
+        const canViewLoans = userRole === 'client' || permissions.includes('VIEW_LOANS');
+        const canViewExpenses = userRole === 'client' || permissions.includes('MANAGE_EXPENSES');
+        const canViewMembers = userRole === 'client' || permissions.includes('VIEW_MEMBERS');
+
+        const [passbookRes, expenseRes, loansRes, membersRes, adminFundRes] = await Promise.all([
+            canViewPassbook ? supabase.from('passbook_entries').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+            canViewExpenses ? supabase.from('expenses_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+            canViewLoans ? supabase.from('loans').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+            canViewMembers ? supabase.from('members').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
+            canViewExpenses ? supabase.from('admin_fund_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] })
+        ]);
+
+        setMembersData(membersRes.data || []);
+        setLoansData(loansRes.data || []);
+        setTransactionsData(passbookRes.data || []); 
+
+        calculateFinancials(
+            passbookRes.data || [], 
+            expenseRes.data || [], 
+            loansRes.data || [],
+            membersRes.data || [],
+            adminFundRes.data || []
+        );
+    };
+
     init();
-  }, [router]);
+  }, [router]);  
 
   // Banner Logic
   useEffect(() => {
