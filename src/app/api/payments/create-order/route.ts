@@ -55,19 +55,49 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    //1. Extract IDs and Amount safely
+    // 1. Extract IDs and Amount safely
     const amount = body.amount || body.price;
     const plan = body.planId || body.planName || 'PRO';
     const mode = body.mode;
-    
-    if (!amount || !plan) {
+    const email = body.email; // ✅ Email ab compulsory hai
+
+    if (!amount || !plan || !email) {
       return NextResponse.json(
-        { error: 'amount or plan missing' },
+        { error: 'amount, plan or email missing' },
         { status: 400, headers: corsHeaders }
       );
     }
 
-    // 2. Create Razorpay Order
+    // 1. Check karein: Kya is user ne pehle hi pay kar diya hai?
+    const { data: existingPaid } = await supabase
+      .from('payment_intents')
+      .select('token')
+      .eq('email', email)
+      .eq('status', 'PAID')
+      .maybeSingle();
+
+    if (existingPaid) {
+      // 🚨 Agar pehle hi PAID hai, toh naya order mat banao, seedha redirect rasta bhejo
+      return NextResponse.json({ 
+        action: 'GOTO_SIGNUP', 
+        orderId: existingPaid.token 
+      }, { headers: corsHeaders });
+    }
+
+    // 2. Check karein: Kya koi order pehle se PENDING hai?
+    const { data: existingPending } = await supabase
+      .from('payment_intents')
+      .select('token')
+      .eq('email', email)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (existingPending) {
+      // ♻️ Purana order hi wapas bhej do
+      return NextResponse.json({ orderId: existingPending.token }, { headers: corsHeaders });
+    }
+
+    // 3. Naya Razorpay Order tabhi banaiye jab upar ke dono case fail hon
     console.log("Creating Razorpay Order...");
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100), // ₹ → paise
@@ -76,12 +106,7 @@ export async function POST(req: Request) {
     });
     console.log("Razorpay Order Created:", order.id);
 
-    // 3. Insert into payment_intents (Replacement applied here)
-    // 1. Razorpay Order Banayein
-    // const order = await razorpay.orders.create({ ... }); // Done above
-
-    // 2. ✅ ZAROORI: 'await' lagana compulsory hai taaki entry turant ho
-    // Bina iske, user signup page par pehle pahunch jayega aur entry baad mein hogi
+    // 4. Insert into payment_intents (Replacement applied here)
     await supabase
       .from('payment_intents')
       .insert([{
@@ -91,9 +116,10 @@ export async function POST(req: Request) {
         plan: plan,     
         mode: mode || 'AUTO', 
         expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        email: email 
       }]); 
 
-    // 3. Ab response bhejo
+    // 5. Ab response bhejo
     return NextResponse.json({ orderId: order.id });
 
   } catch (err: any) {
