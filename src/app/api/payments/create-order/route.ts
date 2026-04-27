@@ -54,79 +54,59 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const { email, amount, planId } = body;
 
-    // 1. Extract IDs and Amount safely
-    const amount = body.amount || body.price;
-    const plan = body.planId || body.planName || 'PRO';
-    const mode = body.mode;
-    const email = body.email; // ✅ Email ab compulsory hai
+    if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
-    if (!amount || !plan || !email) {
-      return NextResponse.json(
-        { error: 'amount, plan or email missing' },
-        { status: 400, headers: corsHeaders }
-      );
-    }
-
-    // 1. Check karein: Kya is user ne pehle hi pay kar diya hai?
-    const { data: existingPaid } = await supabase
+    // 1. Check: Kya is email se pehle hi PAID (lekin register nahi) payment ho chuki hai?
+    const { data: paidIntent } = await supabase
       .from('payment_intents')
       .select('token')
       .eq('email', email)
       .eq('status', 'PAID')
       .maybeSingle();
 
-    if (existingPaid) {
-      // 🚨 Agar pehle hi PAID hai, toh naya order mat banao, seedha redirect rasta bhejo
+    if (paidIntent) {
+      // 🚀 MAGIC: Naya order banane ke bajaye purana rasta bhej do
       return NextResponse.json({ 
-        action: 'GOTO_SIGNUP', 
-        orderId: existingPaid.token 
+        action: 'REDIRECT_SIGNUP', 
+        orderId: paidIntent.token 
       }, { headers: corsHeaders });
     }
 
-    // 2. Check karein: Kya koi order pehle se PENDING hai?
-    const { data: existingPending } = await supabase
+    // 2. Check: Kya koi PENDING order hai? (Taaki ek hi order reuse ho)
+    const { data: pendingIntent } = await supabase
       .from('payment_intents')
       .select('token')
       .eq('email', email)
       .eq('status', 'pending')
       .maybeSingle();
 
-    if (existingPending) {
-      // ♻️ Purana order hi wapas bhej do
-      return NextResponse.json({ orderId: existingPending.token }, { headers: corsHeaders });
+    if (pendingIntent) {
+       return NextResponse.json({ 
+         orderId: pendingIntent.token, 
+         amount: amount * 100 
+       }, { headers: corsHeaders });
     }
 
-    // 3. Naya Razorpay Order tabhi banaiye jab upar ke dono case fail hon
-    console.log("Creating Razorpay Order...");
+    // 3. Agar kuch nahi mila, tabhi naya Razorpay order banayein
     const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // ₹ → paise
+      amount: Math.round(amount * 100),
       currency: 'INR',
-      receipt: `rcpt_${Date.now()}`,
     });
-    console.log("Razorpay Order Created:", order.id);
 
-    // 4. Insert into payment_intents (Replacement applied here)
-    await supabase
-      .from('payment_intents')
-      .insert([{
-        token: order.id,
-        status: 'pending',
-        amount: amount, 
-        plan: plan,     
-        mode: mode || 'AUTO', 
-        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        email: email 
-      }]); 
+    // DB mein insert karein
+    await supabase.from('payment_intents').insert([{
+      email: email,
+      token: order.id,
+      amount: amount,
+      plan: planId,
+      status: 'pending'
+    }]);
 
-    // 5. Ab response bhejo
-    return NextResponse.json({ orderId: order.id });
+    return NextResponse.json({ orderId: order.id, amount: order.amount });
 
   } catch (err: any) {
-    console.error("❌ create-order critical error:", err);
-    return NextResponse.json(
-      { error: err.message || 'Internal Server Error' },
-      { status: 500, headers: corsHeaders }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
