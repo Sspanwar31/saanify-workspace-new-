@@ -240,15 +240,15 @@ function SignupForm() {
 
       toast.success("Account Created Successfully!");
 
-      // ✅ ZAROORI FIX: Middleware session pehchan sake, isliye cookie set karein
+      // 1. Cookie set karo (Middleware ke liye)
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         document.cookie = `auth-token=${session.access_token}; path=/; max-age=3600; SameSite=Lax`;
       }
 
-      // ✅ Redirect to fresh session
+      // 2. Seedha Client Dashboard par bhejo
       setTimeout(() => {
-        window.location.replace('/client/dashboard'); // 👈 Direct destination use karein
+        window.location.replace('/client/dashboard');
       }, 1000);
 
     } catch (err: any) {
