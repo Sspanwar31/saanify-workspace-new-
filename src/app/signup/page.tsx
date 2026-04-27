@@ -15,6 +15,8 @@ import { supabase } from '@/lib/supabase-simple';
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // URL se Order ID lo (Razorpay wapis aate waqt ye deta hai)
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
   const mode = searchParams.get('mode');
@@ -22,9 +24,7 @@ function SignupForm() {
   // --- States ---
   const [selectedPlan, setSelectedPlan] = useState<any>(null); 
   const [isPaid, setIsPaid] = useState(false); 
-  const [isVerifying, setIsVerifying] = useState(true); // ✅ Zaroori: Loader control ke liye
-  const [loading, setLoading] = useState(false);
-  
+  const [loading, setLoading] = useState(false);  
   const [formData, setFormData] = useState({
     name: '',
     societyName: '',
@@ -33,16 +33,20 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ UPDATED fetchPlan (Handles both PAID and CONSUMED to stop loader)
+  // ✅ UPDATED fetchPlan (Handles pending status to stop loop + safe verification)
   const fetchPlan = async (intentData?: any) => {
     try {
+      // If intentData is provided (realtime), use it. Otherwise fetch fresh data.
       const data = intentData || (await supabase
         .from('payment_intents')
         .select('*')
         .eq('token', orderId)
         .maybeSingle()).data;
 
-      if (!data) return;
+      if (!data) {
+        // Agar data nahi mila toh isVerifying false karo taaki infinite loop na chale
+        return; 
+      }
 
       // Plan Details fetch karein
       const { data: planDetails } = await supabase
@@ -54,7 +58,8 @@ function SignupForm() {
       if (planDetails) {
         setSelectedPlan(planDetails);
         
-        // ✅ FIX: Agar status PAID ya CONSUMED hai, toh loader band karo
+        // ✅ AGAR PAID HAI TO LOADER KHATAM KARO (Updated logic)
+        // Agar status PAID ya CONSUMED hai toh form khul do
         if (data.status === 'PAID' || data.status === 'CONSUMED') {
           setIsPaid(true);
           setIsVerifying(false); 
@@ -65,11 +70,11 @@ function SignupForm() {
     }
   };
 
-  // ✅ REALTIME LISTENER
+  // ✅ REALTIME LISTENER (Aggressive)
   useEffect(() => {
     if (!orderId || mode === 'MANUAL') {
-      setIsVerifying(false); 
-      return;
+        setIsVerifying(false);
+      return; 
     }
 
     const channel = supabase
@@ -77,25 +82,27 @@ function SignupForm() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: '*', // 👈 INSERT, UPDATE sab pakado
           schema: 'public',
           table: 'payment_intents',
           filter: `token=eq.${orderId}`,
         },
         (payload) => {
+          // Jaise hi database mein koi halchal ho, naya data fetch karo
           if (payload.new) {
             fetchPlan(payload.new);
           }
         }
       )
       .subscribe((status) => {
+        // Subscribe hote hi ek baar phir check karein
         if (status === 'SUBSCRIBED') fetchPlan();
       });
 
     return () => { supabase.removeChannel(channel); };
   }, [orderId, mode]); 
 
-  // ✅ INITIAL VERIFICATION (Smart Logic)
+  // ✅ SMART LOGIC: Initial Verification
   useEffect(() => {
     async function smartVerifyPlan() {
       try {
@@ -103,6 +110,7 @@ function SignupForm() {
             console.log("Verifying Order ID:", orderId);
             console.log("Mode:", mode);
 
+            // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
             if (mode === 'MANUAL') {
               const { data: order, error } = await supabase
                 .from('subscription_orders')
@@ -132,9 +140,13 @@ function SignupForm() {
               setSelectedPlan(planDetails);
               toast.success(`Plan verified: ${planDetails.name}`);
             }
-        } else {
-            // FREE TRIAL
+
+        } 
+        // CASE 2: Free Trial (No Order ID)
+        else {
+            // URL se plan uthao ya default TRIAL
             const code = urlPlanCode ? urlPlanCode.toUpperCase() : 'TRIAL';
+            
             const { data: planDetails } = await supabase
                 .from('plans')
                 .select('*')
@@ -148,16 +160,19 @@ function SignupForm() {
 
             setSelectedPlan(planDetails);
         }
+
       } catch (err) {
         console.error("Verification Error:", err);
         setSelectedPlan(null);
       } 
     }
+
     smartVerifyPlan();
+
   }, [orderId, urlPlanCode, mode]); 
 
 
-  // ✅ HANDLE SUBMIT (Clean Logic + Redirect)
+  // ✅ UPDATED HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -168,6 +183,7 @@ function SignupForm() {
       return;
     }
 
+    // Double Check: Agar Order ID hai par plan match nahi kar raha
     if (orderId && selectedPlan.code === 'TRIAL') {
         toast.error("System Error: Payment ID linked to Trial plan.");
         setLoading(false);
@@ -176,11 +192,12 @@ function SignupForm() {
 
     try {
       // Backend safety (must)
+      // Case-insensitive email match check
       if (selectedPlan.code === 'TRIAL') {
         const { data } = await supabase
           .from('clients')
           .select('id')
-          .eq('email', formData.email)
+          .eq('email', formData.email.toLowerCase().trim()) // ✅ Email Case-insensitive check
           .limit(1);
 
         if (data?.length > 0) {
@@ -202,13 +219,14 @@ function SignupForm() {
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error("Signup failed.");
 
-      // 2. Client Table Insert
+      // 2. Calculate Expiry
       const planDays = selectedPlan.duration_days || 30;
       const endDate = new Date();
       endDate.setDate(new Date().getDate() + planDays);
 
-      const { error: clientError } = await supabase.from('clients').insert({
-          id: authData.user.id,
+      // 3. Client Table Upsert (using .upsert for idempotency & safety)
+      const { error: clientError } = await supabase.from('clients').upsert({
+          id: authData.user.id, // Direct ID
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -218,26 +236,25 @@ function SignupForm() {
           plan: selectedPlan.code,
           plan_name: selectedPlan.name,
 
-          subscription_status: 'active',
+          subscription_status: 'active', // ✅ Standardized status
           plan_start_date: new Date().toISOString(),
           plan_end_date: endDate.toISOString(),
-          has_used_trial: selectedPlan.code === 'TRIAL',
+          subscription_expiry: endDate.toISOString(), // ✅ Added expiry
           
-          registration_number: orderId || null,
+          registration_number: orderId || 'AUTO_JOIN', // ✅ Fallback registration number
           role: 'client'
       });
 
       if (clientError) throw new Error(clientError.message);
 
-      // 3. Mark as Consumed
+      // 4. Mark Intent as Consumed
       if (orderId) {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
-      // ✅ REDIRECTION (No localStorage delay)
-      toast.success("Welcome! Redirecting...");
+      toast.success("Account Created Successfully!");
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/dashboard'; // ✅ Timed redirect
       }, 2000);
 
     } catch (err: any) {
@@ -250,13 +267,14 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // ✅ RENDER LOGIC: Loader based on isVerifying
-  if (orderId && mode === 'AUTO' && isVerifying) {
+  // ✅ RENDER LOGIC (Strictly based on isPaid)
+  // Jab tak isPaid false hai aur orderId hai, tab tak loader dikhao
+  if (orderId && mode === 'AUTO' && !isPaid) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white">
         <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
         <h2 className="text-xl font-bold">Verifying Your Payment</h2>
-        <p className="text-gray-500">Redirecting to dashboard...</p>
+        <p className="text-gray-500">Waiting for confirmation...</p>
       </div>
     );
   }
@@ -266,7 +284,7 @@ function SignupForm() {
     ? (typeof selectedPlan.features === 'string' ? JSON.parse(selectedPlan.features) : selectedPlan.features)
     : [];
 
-  // ✅ RENDER MAIN FORM (When not verifying)
+  // ✅ RENDER MAIN FORM (When verified or free trial)
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* LEFT SIDE */}
