@@ -15,16 +15,12 @@ import { supabase } from '@/lib/supabase-simple';
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // URL se Order ID lo (Razorpay wapis aate waqt ye deta hai)
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
-
-  // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
   // --- States ---
-  const [selectedPlan, setSelectedPlan] = useState<any>(null); 
+  const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
   const [isPaid, setIsPaid] = useState(false); 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,7 +31,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ UPDATED fetchPlan (Handles both PAID and CONSUMED to stop loop + safe verification)
+  // ✅ 1. Optimized fetchPlan
   const fetchPlan = async (intentData?: any) => {
     try {
       const data = intentData || (await supabase
@@ -46,7 +42,6 @@ function SignupForm() {
 
       if (!data) return;
 
-      // Plan Details fetch karein
       const { data: planDetails } = await supabase
         .from('plans')
         .select('*')
@@ -56,10 +51,9 @@ function SignupForm() {
       if (planDetails) {
         setSelectedPlan(planDetails);
         
-        // ✅ FIX: Agar status PAID ya CONSUMED hai, toh form khul do
-        if (data.status === 'PAID' || data.status === 'CONSUMED') {
+        // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO
+        if (data.status === 'PAID') {
           setIsPaid(true);
-          setIsVerifying(false); 
         }
       }
     } catch (err) {
@@ -67,15 +61,12 @@ function SignupForm() {
     }
   };
 
-  // ✅ REALTIME LISTENER (Aggressive)
+  // ✅ REALTIME LISTENER
   useEffect(() => {
-    if (!orderId || mode === 'MANUAL') {
-      setIsVerifying(false); 
-      return; 
-    }
+    if (!orderId || mode === 'MANUAL') return;
 
     const channel = supabase
-      .channel(`payment-sync-${orderId}`)
+      .channel(`payment-check-${orderId}`)
       .on(
         'postgres_changes',
         {
@@ -97,7 +88,7 @@ function SignupForm() {
     return () => { supabase.removeChannel(channel); };
   }, [orderId, mode]); 
 
-  // ✅ INITIAL VERIFICATION
+  // ✅ SMART LOGIC: Initial Verification
   useEffect(() => {
     async function smartVerifyPlan() {
       try {
@@ -106,7 +97,7 @@ function SignupForm() {
             console.log("Verifying Order ID:", orderId);
             console.log("Mode:", mode);
 
-            // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
+            // 🟢 MANUAL PAYMENT (ADMIN APPROVED)
             if (mode === 'MANUAL') {
               const { data: order, error } = await supabase
                 .from('subscription_orders')
@@ -125,7 +116,6 @@ function SignupForm() {
               const { data: planDetails } = await supabase
                 .from('plans')
                 .select('*')
-                .select('*')
                 .eq('code', verifiedPlanCode)
                 .single();
 
@@ -141,12 +131,9 @@ function SignupForm() {
         } 
         // CASE 2: Free Trial (No Order ID)
         else {
-            // URL se plan uthao ya default TRIAL
             const code = urlPlanCode ? urlPlanCode.toUpperCase() : 'TRIAL';
-            
             const { data: planDetails } = await supabase
                 .from('plans')
-                .select('*')
                 .select('*')
                 .eq('code', code)
                 .single();
@@ -158,6 +145,7 @@ function SignupForm() {
 
             setSelectedPlan(planDetails);
         }
+
       } catch (err) {
         console.error("Verification Error:", err);
         setSelectedPlan(null);
@@ -169,7 +157,7 @@ function SignupForm() {
   }, [orderId, urlPlanCode, mode]); 
 
 
-  // ✅ HANDLE SUBMIT
+  // ✅ UPDATED SUBMIT FORM (With Auto Login Logic)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -180,6 +168,7 @@ function SignupForm() {
       return;
     }
 
+    // Double Check: Agar Order ID hai par plan match nahi kar raha
     if (orderId && selectedPlan.code === 'TRIAL') {
         toast.error("System Error: Payment ID linked to Trial plan.");
         setLoading(false);
@@ -189,7 +178,7 @@ function SignupForm() {
     try {
       // Backend safety (must)
       if (selectedPlan.code === 'TRIAL') {
-        const { data } = await supabase
+        const { data: existing } = await supabase
           .from('clients')
           .select('id')
           .eq('email', formData.email)
@@ -202,7 +191,29 @@ function SignupForm() {
         }
       }
 
-      // 1. Auth Signup
+      // ✅ 1. DUPLICATE CHECK & AUTO LOGIN (Direct Login)
+      const { data: existing } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', formData.email)
+        .maybeSingle();
+
+      if (existing) {
+        // ✅ Auto Login hai
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (loginError) throw loginError; // Wrong password -> Stop execution here
+
+        // Login Success
+        toast.success("Welcome back! Redirecting...");
+        router.push('/dashboard'); // ✅ Instant Redirect
+        return; 
+      }
+
+      // ✅ 2. AUTH SIGNUP (Only if User is New)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -214,7 +225,7 @@ function SignupForm() {
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error("Signup failed.");
 
-      // 2. Client Table Insert
+      // Client Table Insert
       const planDays = selectedPlan.duration_days || 30;
       const endDate = new Date();
       endDate.setDate(new Date().getDate() + planDays);
@@ -225,10 +236,10 @@ function SignupForm() {
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
-          
           plan_id: selectedPlan.id,
           plan: selectedPlan.code,
           plan_name: selectedPlan.name,
+
           subscription_status: 'active',
           plan_start_date: new Date().toISOString(),
           plan_end_date: endDate.toISOString(),
@@ -240,27 +251,17 @@ function SignupForm() {
 
       if (clientError) throw new Error(clientError.message);
 
-      // 3. Optional: Payment Intent update
+      // 3. Update Intent
       if (orderId) {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
       toast.success("Account Created Successfully!");
       
-      // ✅ Login Hai Direct (Auto Login)
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password
-      });
+      // ✅ CLEANUP: LocalStorage saaf kar do
+      localStorage.removeItem('active_payment_intent');
 
-      if (error) throw new Error(error.message);
-      if (data.user) {
-         // Redirect to dashboard using Next.js router
-         router.push('/dashboard');
-      } else {
-         toast.error("Login failed.");
-      }
-
+      router.push('/dashboard'); // ✅ Correct Redirect
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Signup failed.");
@@ -270,32 +271,30 @@ function SignupForm() {
   };
 
   // --- RENDER ---
-  
-  // Loader based on isVerifying
+  // Jab tak isPaid false hai aur orderId hai, tab tak loader dikhao
   if (orderId && mode === 'AUTO' && !isPaid) {
     return (
       <div className="min-h-screen flex flex flex-col items-center justify-center bg-white">
-        <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
-        <h2 className="text-xl font-bold">Verifying Your Payment</h2>
-        <p className="text-gray-500">Waiting for confirmation...</p>
-      </div>
-    );
+      <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
+      <h2 className="text-xl font-bold">Verifying Your Payment</h2>
+      <p className="text-gray-500">Waiting for confirmation...</p>
+    </div>
+  );
   }
 
   // Error Condition
   if (orderId && selectedPlan === null) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-           <div className="bg-red-50 p-8 rounded-xl border border-red-200 text-center max-w-md">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
-              <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
-              <p className="text-slate-600 mt-2 mb-4">
-                 We could not find the plan details for Order ID: <br/> 
-                 <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
-              </p>
-              <Link href="/"><Button variant="outline">Return Home</Button></Link>
-           </div>
-        </div>
+    return (
+      <div className="min-h-screen flex flex items-center justify-center bg-slate-50">
+         <div className="bg-red-50 p-8 rounded-xl border border border-red-200 text-center max-w-md">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
+            <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
+            <p className="text-slate-600 mt-2 mb-4">
+               We could not find the plan details for Order ID: <br/> 
+               <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
+            </p>
+            <Link href="/"><Button variant="outline">Return Home</Button></Link>
+         </div>
       </div>
     );
   }
@@ -305,9 +304,9 @@ function SignupForm() {
     ? (typeof selectedPlan.features === 'string' ? JSON.parse(selectedPlan.features) : selectedPlan.features)
     : [];
 
-  // ✅ MAIN FORM (When verified or free trial)
+  // ✅ PAID hote hi ye asli form dikhayega
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex flex-col lg:flex-row">
       {/* LEFT SIDE */}
       <div className="lg:w-1/3 bg-slate-900 text-white p-8 lg:p-12 flex flex flex-col justify-between relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
@@ -376,6 +375,7 @@ function SignupForm() {
             </CardContent>
          </Card>
       </div>
+    </div>
     </div>
   );
 }
