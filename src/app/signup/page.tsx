@@ -24,8 +24,8 @@ function SignupForm() {
   const mode = searchParams.get('mode');
 
   // --- States ---
-  const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
-  const [isPaid, setIsPaid] = useState(false); // ✅ Naya State: Payment confirm karne ke liye
+  const [selectedPlan, setSelectedPlan] = useState<any>(null); 
+  const [isPaid, setIsPaid] = useState(false); 
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -36,7 +36,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ 1. Optimized fetchPlan (Simplified)
+  // ✅ 1. Optimized fetchPlan
   const fetchPlan = async (intentData?: any) => {
     try {
       const data = intentData || (await supabase
@@ -59,17 +59,21 @@ function SignupForm() {
         
         // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO
         if (data.status === 'PAID') {
-          setIsPaid(true); // Ye state true hote hi loader gayab ho jayega
+          setIsPaid(true);
+          setIsVerifying(false); // ✅ Logic cleaned up
         }
       }
     } catch (err) {
-      console.error(err);
+      console.error("Fetch Error:", err);
     }
   };
 
   // ✅ 2. Realtime Listener ko "Aggressive" banayein
   useEffect(() => {
-    if (!orderId || mode === 'MANUAL') return; // ✅ Trial aur Manual ko skip karo
+    if (!orderId || mode === 'MANUAL') {
+      setIsVerifying(false); // Skip for manual/trial
+      return;
+    }
 
     const channel = supabase
       .channel(`payment-sync-${orderId}`)
@@ -167,7 +171,7 @@ function SignupForm() {
   }, [orderId, urlPlanCode, mode]); 
 
 
-  // ✅ SUBMIT FORM
+  // ✅ SUBMIT FORM (Cleaned up - No localStorage)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -245,13 +249,8 @@ function SignupForm() {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
-      // ✅ ADDED THIS LINE (Cleanup Logic)
-      localStorage.removeItem('active_payment_intent');
-
+      // ✅ Logic Cleaned: No localStorage or immediate redirect
       toast.success("Account Created Successfully!");
-      localStorage.setItem('current_user', JSON.stringify({ id: authData.user.id, email: formData.email, role: 'client', plan: selectedPlan.code }));
-      window.location.href = '/dashboard';
-
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Signup failed.");
