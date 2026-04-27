@@ -14,7 +14,6 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-// import { useAdminStore } from '@/lib/admin/store'; // Removed local store
 import { SUBSCRIPTION_PLANS } from '@/config/plans';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -30,8 +29,7 @@ function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const planId = searchParams.get('plan') || 'PRO';  
-  // Try to get user details from URL or LocalStorage if available (For creating client)
-  // Assuming these are passed via URL from previous signup step
+  // Try to get user details from URL or LocalStorage if available
   const userName = searchParams.get('name') || '';
   const userEmail = searchParams.get('email') || '';
   const userPhone = searchParams.get('phone') || '';
@@ -54,7 +52,7 @@ function PaymentContent() {
   //1. ON LOAD: Check if user has a pending payment in LocalStorage
   useEffect(() => {
     const savedPayment = localStorage.getItem('user_pending_payment');
-    if (savedPayment) { // ✅ FIXED: Removed extra bracket
+    if (savedPayment) {
       setPendingPayment(JSON.parse(savedPayment));
     }
   }, []);
@@ -85,15 +83,22 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ SMART handleOnlinePay (Double Payment Prevention & Cleanup)
+  // ✅ UPDATED handleOnlinePay (As requested)
   const handleOnlinePay = async () => {
+    // 1. Safety Check: Crash rokne ke liye
+    if (!plan || !plan.price) {
+      toast.error("Plan data missing. Please go back and select a plan again.");
+      return;
+    }
+
+    // 2. Email Check
     if (!email || !email.includes('@')) {
-      return toast.error("Please enter a valid email address to proceed");
+      return toast.error("Please enter a valid email to receive the invoice.");
     }
 
     setLoading(true);
     try {
-      //1. API Call (Database check + Order creation)
+      // Order create API
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,33 +110,22 @@ function PaymentContent() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Order creation failed");
+      if (!res.ok) throw new Error(data.error);
 
-      //2. 🛡️ ANTI-DUPLICATE: Agar pehle hi pay kar diya hai
-      if (data.action === 'GOTO_SIGNUP') {
-        toast.success("Payment already verified! Redirecting...");
-        window.location.href = `/signup?mode=AUTO&orderId=${data.orderId}`;
-        return;
-      }
-
-      //3. Open Razorpay Popup (Bina kisi localStorage ke)
+      // 3. Open Razorpay
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        key: data.razorpayKey || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: data.amount,
-        currency: "INR",
         order_id: data.orderId,
         handler: async (response: any) => {
-          // Success hote hi seedha Signup page
+          // ✅ Success: Go to Signup
           window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
         },
         modal: { ondismiss: () => setLoading(false) }
       };
-
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
+      new (window as any).Razorpay(options).open();
 
     } catch (err: any) {
-      console.error("Payment Error: ", err);
       toast.error(err.message || "Payment initiation failed");
       setLoading(false);
     }
@@ -157,7 +151,6 @@ function PaymentContent() {
         }
 
         // Agar Client nahi mila, to naya banayein
-        // NOTE: Agar 'clients' table par RLS error aye, to Client Creation bhi API me le jana padega.
         if (!clientId) {
             const { data: newClient, error: createError } = await supabase
                 .from('clients')
@@ -194,10 +187,8 @@ function PaymentContent() {
         const publicUrl = urlData.publicUrl;
 
         // ---------------------------------------------------------
-        //3. CALL API (Ye hai Main Fix) - Database Insert via API
+        //3. CALL API (Database Insert via API)
         // ---------------------------------------------------------
-        // Ab hum direct insert nahi karenge, API ko bolenge insert karne ko
-        
         const response = await fetch('/api/manual-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -206,7 +197,7 @@ function PaymentContent() {
                 planName: plan.name,
                 amount: plan.price,
                 transactionId: txnId,
-                screenshotUrl: publicUrl, // Ab hum clean URL bhej rahe hain
+                screenshotUrl: publicUrl,
                 durationDays: plan.duration || 30
             })
         });
@@ -221,7 +212,7 @@ function PaymentContent() {
         //4. SAVE STATE (Success)
         // ---------------------------------------------------------
         const paymentState = {
-            invoiceId: result.orderId, // API se jo ID aayi wo use karein
+            invoiceId: result.orderId, 
             planId: planId,
             txnId: txnId,
             timestamp: Date.now()
@@ -256,17 +247,11 @@ function PaymentContent() {
             return;
         }
 
-        // ✅ FIXED BLOCK STARTS HERE
         if (order.status === 'approved') {
           localStorage.removeItem('user_pending_payment');
           toast.success("Payment Approved! Complete Signup to Activate.");
-
-          // IMPORTANT:
-          // Manual payment ke baad dashboard nahi
-          // Signup completion mandatory
           router.push(`/signup?mode=MANUAL&orderId=${pendingPayment.invoiceId}`);
         } 
-        // ✅ FIXED BLOCK ENDS HERE
         else if (order.status === 'rejected') {
             localStorage.removeItem('user_pending_payment');
             setPendingPayment(null);
@@ -394,7 +379,7 @@ function PaymentContent() {
                         animate={{ height: 'auto', opacity: 1 }} 
                         exit={{ height: 0, opacity: 0 }}
                       >
-                         {/* ✉️ EMAIL INPUT BOX (Recommended: Instant Payment card ke andar dalo) */}
+                         {/* ✉️ EMAIL INPUT BOX */}
                          <div className="space-y-4 mb-6">
                             <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                               <Label className="text-blue-900 mb-2 block">Enter Email for Invoice & Security</Label>
