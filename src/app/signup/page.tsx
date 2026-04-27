@@ -15,14 +15,16 @@ import { supabase } from '@/lib/supabase-simple';
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // URL se Order ID lo (Razorpay wapis aate waqt ye deta hai)
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
   const mode = searchParams.get('mode');
 
   // --- States ---
-  const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
-  const [isPaid, setIsPaid] = useState(false); 
+  const [selectedPlan, setSelectedPlan] = useState<any>(null); 
   const [loading, setLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     societyName: '',
@@ -31,7 +33,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ 1. Optimized fetchPlan
+  // ✅ 1. Optimized fetchPlan (Simplified)
   const fetchPlan = async (intentData?: any) => {
     try {
       const data = intentData || (await supabase
@@ -42,6 +44,7 @@ function SignupForm() {
 
       if (!data) return;
 
+      // Plan Details fetch karein
       const { data: planDetails } = await supabase
         .from('plans')
         .select('*')
@@ -50,10 +53,10 @@ function SignupForm() {
 
       if (planDetails) {
         setSelectedPlan(planDetails);
-        
         // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO
         if (data.status === 'PAID') {
           setIsPaid(true);
+          setIsVerifying(false);
         }
       }
     } catch (err) {
@@ -61,16 +64,19 @@ function SignupForm() {
     }
   };
 
-  // ✅ REALTIME LISTENER
+  // ✅ 2. Realtime Listener ko "Aggressive" banayein
   useEffect(() => {
-    if (!orderId || mode === 'MANUAL') return;
+    if (!orderId || mode === 'MANUAL') {
+        setIsVerifying(false);
+      return;
+    }
 
     const channel = supabase
-      .channel(`payment-check-${orderId}`)
+      .channel(`payment-sync-${orderId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: '*', // 👈 INSERT, UPDATE sab pakado
           schema: 'public',
           table: 'payment_intents',
           filter: `token=eq.${orderId}`,
@@ -97,7 +103,7 @@ function SignupForm() {
             console.log("Verifying Order ID:", orderId);
             console.log("Mode:", mode);
 
-            // 🟢 MANUAL PAYMENT (ADMIN APPROVED)
+            // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
             if (mode === 'MANUAL') {
               const { data: order, error } = await supabase
                 .from('subscription_orders')
@@ -131,7 +137,9 @@ function SignupForm() {
         } 
         // CASE 2: Free Trial (No Order ID)
         else {
+            // URL se plan uthao ya default TRIAL
             const code = urlPlanCode ? urlPlanCode.toUpperCase() : 'TRIAL';
+            
             const { data: planDetails } = await supabase
                 .from('plans')
                 .select('*')
@@ -157,7 +165,7 @@ function SignupForm() {
   }, [orderId, urlPlanCode, mode]); 
 
 
-  // ✅ UPDATED SUBMIT FORM (With Auto Login Logic)
+  // ✅ HANDLE SUBMIT (With Direct Login)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -178,7 +186,7 @@ function SignupForm() {
     try {
       // Backend safety (must)
       if (selectedPlan.code === 'TRIAL') {
-        const { data: existing } = await supabase
+        const { data } = await supabase
           .from('clients')
           .select('id')
           .eq('email', formData.email)
@@ -191,29 +199,7 @@ function SignupForm() {
         }
       }
 
-      // ✅ 1. DUPLICATE CHECK & AUTO LOGIN (Direct Login)
-      const { data: existing } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', formData.email)
-        .maybeSingle();
-
-      if (existing) {
-        // ✅ Auto Login hai
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (loginError) throw loginError; // Wrong password -> Stop execution here
-
-        // Login Success
-        toast.success("Welcome back! Redirecting...");
-        router.push('/dashboard'); // ✅ Instant Redirect
-        return; 
-      }
-
-      // ✅ 2. AUTH SIGNUP (Only if User is New)
+      // 1. Auth Signup
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -225,7 +211,7 @@ function SignupForm() {
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error("Signup failed.");
 
-      // Client Table Insert
+      // 2. Client Table Insert
       const planDays = selectedPlan.duration_days || 30;
       const endDate = new Date();
       endDate.setDate(new Date().getDate() + planDays);
@@ -236,6 +222,7 @@ function SignupForm() {
           email: formData.email,
           phone: formData.phone,
           society_name: formData.societyName,
+          
           plan_id: selectedPlan.id,
           plan: selectedPlan.code,
           plan_name: selectedPlan.name,
@@ -251,17 +238,28 @@ function SignupForm() {
 
       if (clientError) throw new Error(clientError.message);
 
-      // 3. Update Intent
+      // 3. Optional: Payment Intent update
       if (orderId) {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
       toast.success("Account Created Successfully!");
       
-      // ✅ CLEANUP: LocalStorage saaf kar do
-      localStorage.removeItem('active_payment_intent');
+      // ✅ Login Hai Direct (Auto Login)
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password
+      });
 
-      router.push('/dashboard'); // ✅ Correct Redirect
+      if (loginError) throw new Error(loginError.message);
+      if (data.user) {
+         // ✅ Redirect to dashboard using Next.js router
+         router.push('/dashboard');
+      } else {
+         // Fallback error toast
+         toast.error("Login failed. Please try again.");
+      }
+
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Signup failed.");
@@ -270,31 +268,14 @@ function SignupForm() {
     }
   };
 
-  // --- RENDER ---
-  // Jab tak isPaid false hai aur orderId hai, tab tak loader dikhao
-  if (orderId && mode === 'AUTO' && !isPaid) {
+  // --- RENDER LOGIC (Strictly based on isVerifying)
+  // Jab tak isVerifying false hai aur orderId hai, tab tak loader dikhao
+  if (orderId && mode === 'AUTO' && !isVerifying) {
     return (
       <div className="min-h-screen flex flex flex-col items-center justify-center bg-white">
-      <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
-      <h2 className="text-xl font-bold">Verifying Your Payment</h2>
-      <p className="text-gray-500">Waiting for confirmation...</p>
-    </div>
-  );
-  }
-
-  // Error Condition
-  if (orderId && selectedPlan === null) {
-    return (
-      <div className="min-h-screen flex flex items-center justify-center bg-slate-50">
-         <div className="bg-red-50 p-8 rounded-xl border border border-red-200 text-center max-w-md">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
-            <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
-            <p className="text-slate-600 mt-2 mb-4">
-               We could not find the plan details for Order ID: <br/> 
-               <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
-            </p>
-            <Link href="/"><Button variant="outline">Return Home</Button></Link>
-         </div>
+        <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
+        <h2 className="text-xl font-bold">Verifying Your Payment</h2>
+        <p className="text-gray-500">Waiting for confirmation...</p>
       </div>
     );
   }
@@ -375,7 +356,6 @@ function SignupForm() {
             </CardContent>
          </Card>
       </div>
-    </div>
     </div>
   );
 }
