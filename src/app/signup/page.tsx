@@ -23,6 +23,7 @@ function SignupForm() {
   const mode = searchParams.get('mode');
 
   // --- States ---
+  const [isPaid, setIsPaid] = useState(false); // ✅ Added missing state definition
   const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
   const [loading, setLoading] = useState(false);
   
@@ -233,40 +234,22 @@ function SignupForm() {
 
       if (clientError) throw new Error(clientError.message);
 
-      // 3. Optional: Payment Intent update
       if (orderId) {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
       toast.success("Account Created Successfully!");
-      
-      // ✅ Login Hai Direct (Auto Login)
-      const { data: existingClient, error: loginError } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', formData.email)
-        .maybeSingle();
 
-      if (existingClient) {
-         // ✅ Auto Login hai Direct
-         const { data: loginData } = await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password
-          });
-
-         toast.success("Welcome back! Redirecting...");
-         setTimeout(() => {
-            router.push('/dashboard');
-         }, 1000);
-         return;
+      // ✅ ZAROORI FIX: Middleware session pehchan sake, isliye cookie set karein
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        document.cookie = `auth-token=${session.access_token}; path=/; max-age=3600; SameSite=Lax`;
       }
 
-      // ❌ ye mat use karo:
-      // localStorage.removeItem('active_payment_intent');
-      // router.push('/dashboard');
-
-      // ✅ Correct Redirect
-      router.push('/dashboard');
+      // ✅ Redirect to fresh session
+      setTimeout(() => {
+        window.location.replace('/client/dashboard'); // 👈 Direct destination use karein
+      }, 1000);
 
     } catch (err: any) {
       console.error(err);
