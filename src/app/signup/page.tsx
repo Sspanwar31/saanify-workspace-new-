@@ -245,6 +245,9 @@ function SignupForm() {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
+      // ✅ ADDED THIS LINE (Cleanup Logic)
+      localStorage.removeItem('active_payment_intent');
+
       toast.success("Account Created Successfully!");
       localStorage.setItem('current_user', JSON.stringify({ id: authData.user.id, email: formData.email, role: 'client', plan: selectedPlan.code }));
       window.location.href = '/dashboard';
