@@ -1,97 +1,84 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// --- COOKIES & AUTH UTILS ---
-const decodeJwtPayload = (tokenValue: string) => {
+// --- JWT DECODER FIX ---
+function decodeJwt(token: string) {
   try {
-    const base64Url = tokenValue.split('.')[1];
-    if (!base64Url) return null;
-    const base64Url = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(atob(base64Url).split('.')[1]).map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
-    return JSON.parse(jsonPayload);
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    // Buffer use karna server-side par zyada stable hai
+    const decoded = JSON.parse(Buffer.from(payload, 'base64').toString());
+    return decoded;
   } catch (error) {
-    console.error("JWT Decode Error:", error);
     return null;
   }
-};
-
-// --- ROUTES & AUTHORIZATION ---
-const publicRoutePatterns = [
-  '/', '/login', 
-  '/signup', 
-  '/api/auth', '/api/payment', '/api/create-order',
-  '/favicon.ico', '/_next/static/*' // Matches '/((?!api|_next/static|_next/image|favicon.ico).*)'
-];
+}
 
 // --- CONFIGURATION ---
 export const config = {
   matcher: [
-    // Match all routes except API and protected admin routes
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - uploads (public uploads)
+     */
+    '/((?!api|_next/static|_next/image|uploads|favicon.ico).*)',
   ],
-  // Protected Admin Routes (Only access by ADMIN)
-  {
-    path: '/admin',
-    // Note: You can add checks inside the body instead of middleware if needed
-  }
-];
+};
 
-export const middleware = async (req: NextRequest) => {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  
+  // 1. Get Token Value Safely
+  const tokenObj = req.cookies.get('auth-token');
+  const token = tokenObj?.value;
 
-  // 1. API Routes ke liye Middleware skip karein
-  if (pathname.startsWith('/api/')) {
-    return NextResponse.next();
+  // 2. Define Public Routes
+  const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/signup';
+
+  // 3. LOGIC: Agar Token nahi hai aur rasta Protected hai -> Login par bhejo
+  if (!token) {
+    if (isPublicRoute) return NextResponse.next();
+    return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // 2. Allow uploads to pass through (for now, as per snippet)
-  if (pathname.startsWith('/uploads/')) {
-    return NextResponse.next();
-  }
+  // 4. LOGIC: Agar Token hai toh Decode karo
+  const user = decodeJwt(token);
 
-  // 3. Check if it is a public route
-  const isPublicRoute = publicRoutePatterns.some(pattern => {
-    return pathname.startsWith(pattern);
-  });
-
-  // 4. Get Token
-  const token = req.cookies.get('auth-token');
-
-  // 5. If Token nahi hai and public route nahi hai -> redirect to login
-  if (!token && isPublicRoute) {
-    const url = req.nextUrl.clone();
-    url.searchParams.set('error', 'Auth Required'); // Keep it simple
-    return NextResponse.redirect(new URL('/login', url)); // Redirect to login page
-  }
-
-  // 6. Decode User Info
-  const user = decodeJwtPayload(token);
-
-  // 7. If User nahi mila or invalid token -> Login pe bhej do
+  // 5. Agar Token kharab hai -> Cookie delete karo aur Login bhejo
   if (!user) {
-    const url = req.nextUrl.clone();
-    url.searchParams.set('error', 'Invalid Token');
-    return NextResponse.redirect(new URL('/login', url));
+    const response = NextResponse.redirect(new URL('/login', req.url));
+    response.cookies.delete('auth-token');
+    return response;
   }
 
-  // 8. Check Role-based routing (Admin vs Client)
-  const userRole = user?.role?.toUpperCase();
-  const isAdmin = userRole === 'ADMIN';
+  // 6. ROLE BASED ROUTING
+  const userRole = (user.role || 'CLIENT').toUpperCase();
 
-  // 9. Protected Dashboard Redirect
-  if (pathname.startsWith('/dashboard')) {
-    if (!isAdmin) {
-      const url = req.nextUrl.clone();
-      return NextResponse.redirect(new URL('/client', url)); // Client dashboard
-    }
+  // A. Agar login hai aur Login/Signup page kholne ki koshish kare -> Dashboard bhejo
+  if (isPublicRoute) {
+    const target = userRole === 'ADMIN' ? '/admin' : '/client/dashboard';
+    return NextResponse.redirect(new URL(target, req.url));
   }
 
-  // 10. Protected Admin Panel Redirect
-  if (isAdmin) {
-    return NextResponse.next(); 
+  // B. Admin routes protection
+  if (pathname.startsWith('/admin') && userRole !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/client/dashboard', req.url));
   }
+
+  // C. Client routes protection
+  if (pathname.startsWith('/client') && userRole === 'ADMIN') {
+    return NextResponse.redirect(new URL('/admin', req.url));
+  }
+
+  // D. Root /dashboard shortcut handling
+  if (pathname === '/dashboard') {
+    const target = userRole === 'ADMIN' ? '/admin' : '/client/dashboard';
+    return NextResponse.redirect(new URL(target, req.url));
+  }
+
+  return NextResponse.next();
 }
-
-// Export both config and middleware
-export { config };
-export { middleware };
