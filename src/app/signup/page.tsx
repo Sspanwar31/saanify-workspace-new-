@@ -240,15 +240,15 @@ function SignupForm() {
 
       toast.success("Account Created Successfully!");
 
-      // 1. Cookie set karo (Middleware ke liye)
+      // 1. Cookie set karein (Middleware ke liye)
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         document.cookie = `auth-token=${session.access_token}; path=/; max-age=3600; SameSite=Lax`;
       }
 
-      // 2. Seedha Client Dashboard par bhejo
+      // 2. ✅ REDIRECT TO /dashboard (Exactly matching middleware)
       setTimeout(() => {
-        window.location.replace('/client/dashboard');
+        window.location.replace('/dashboard'); 
       }, 1000);
 
     } catch (err: any) {
