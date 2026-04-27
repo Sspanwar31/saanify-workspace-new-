@@ -83,42 +83,40 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ UPDATED handleOnlinePay (As requested)
+  // ✅ UPDATED handleOnlinePay (With Anti-Duplicate Logic)
   const handleOnlinePay = async () => {
-    // 1. Safety Check: Crash rokne ke liye
+    // 🛑 CRASH PROTECTION: Agar data nahi hai toh aage mat badho
     if (!plan || !plan.price) {
-      toast.error("Plan data missing. Please go back and select a plan again.");
-      return;
+      return toast.error("Plan data error. Please refresh page.");
     }
-
-    // 2. Email Check
-    if (!email || !email.includes('@')) {
-      return toast.error("Please enter a valid email to receive the invoice.");
-    }
+    if (!email) return toast.error("Email is required");
 
     setLoading(true);
     try {
-      // Order create API
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: email.trim().toLowerCase(), 
-          amount: plan.price, 
-          planId: planId 
-        })
+        body: JSON.stringify({ email, amount: plan.price, planId: planId })
       });
 
       const data = await res.json();
+
+      // ✅ ANTI-DUPLICATE REDIRECT
+      if (data.action === 'REDIRECT_SIGNUP') {
+        toast.success("Payment already verified! Moving to signup...");
+        window.location.href = `/signup?mode=AUTO&orderId=${data.orderId}`;
+        return;
+      }
+
       if (!res.ok) throw new Error(data.error);
 
-      // 3. Open Razorpay
+      // Razorpay Popup kholo
       const options = {
-        key: data.razorpayKey || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: data.amount,
         order_id: data.orderId,
         handler: async (response: any) => {
-          // ✅ Success: Go to Signup
+          // Success ke baad hard redirect
           window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
         },
         modal: { ondismiss: () => setLoading(false) }
@@ -126,7 +124,7 @@ function PaymentContent() {
       new (window as any).Razorpay(options).open();
 
     } catch (err: any) {
-      toast.error(err.message || "Payment initiation failed");
+      toast.error(err.message || "Something went wrong");
       setLoading(false);
     }
   };
