@@ -83,48 +83,83 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ UPDATED handleOnlinePay (With Anti-Duplicate Logic)
+  // ✅ UPDATED handleOnlinePay (With Client-Side Verification)
   const handleOnlinePay = async () => {
-    // 🛑 CRASH PROTECTION: Agar data nahi hai toh aage mat badho
-    if (!plan || !plan.price) {
-      return toast.error("Plan data error. Please refresh page.");
+    if (!email || !email.includes('@')) {
+      return toast.error("Please enter a valid email for invoice");
     }
-    if (!email) return toast.error("Email is required");
+    if (!plan || !plan.price) {
+      return toast.error("Plan error. Please refresh.");
+    }
 
     setLoading(true);
     try {
+      // Step A: Create Order (Backend logic email save karega)
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, amount: plan.price, planId: planId })
+        body: JSON.stringify({ 
+          email: email.trim().toLowerCase(), 
+          amount: plan.price, 
+          planId: planId 
+        })
       });
 
       const data = await res.json();
 
-      // ✅ ANTI-DUPLICATE REDIRECT
+      // 🛡️ ANTI-DUPLICATE: Agar pehle hi pay kar diya hai
       if (data.action === 'REDIRECT_SIGNUP') {
-        toast.success("Payment already verified! Moving to signup...");
+        toast.success("Payment already verified!");
         window.location.href = `/signup?mode=AUTO&orderId=${data.orderId}`;
         return;
       }
 
       if (!res.ok) throw new Error(data.error);
 
-      // Razorpay Popup kholo
+      // Step B: Razorpay Popup
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: data.amount,
+        currency: "INR",
+        name: "Saanify",
         order_id: data.orderId,
+        
+        // 🚀 YE HAI MAIN FIX: 
+        // Redirect karne se pehle Browser khud Verify API ko call karega
         handler: async (response: any) => {
-          // Success ke baad hard redirect
-          window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
+          toast.loading("Verifying Payment with Database...");
+          
+          try {
+            const verifyRes = await fetch('/api/payments/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            if (verifyRes.ok) {
+              // ✅ Ab Database confirm 'PAID' ho chuka hai, ab redirect karo
+              window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
+            } else {
+              toast.error("Database sync failed. Please refresh Signup page.");
+            }
+          } catch (e) {
+            // Webhook backup ke bharose redirect kardo agar network error ho
+            window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
+          }
         },
-        modal: { ondismiss: () => setLoading(false) }
+        modal: { ondismiss: () => setLoading(false) },
+        prefill: { email: email }
       };
-      new (window as any).Razorpay(options).open();
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
 
     } catch (err: any) {
-      toast.error(err.message || "Something went wrong");
+      toast.error(err.message || "Payment initiation failed");
       setLoading(false);
     }
   };
