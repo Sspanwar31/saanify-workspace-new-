@@ -238,17 +238,27 @@ function SignupForm() {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
+      // ✅ Naye user ka data local storage mein dalo taaki Dashboard confuse na ho
+      const newUserProfile = {
+        id: authData.user.id,
+        email: formData.email,
+        name: formData.name,
+        society_name: formData.societyName,
+        role: 'client'
+      };
+      localStorage.setItem('current_user', JSON.stringify(newUserProfile));
+
       toast.success("Account Created Successfully!");
 
-      // 1. Cookie set karein (Middleware ke liye)
+      // 1. Session check karke cookie set karein (Middleware ke liye)
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         document.cookie = `auth-token=${session.access_token}; path=/; max-age=3600; SameSite=Lax`;
       }
 
-      // 2. ✅ REDIRECT TO /dashboard (Exactly matching middleware)
+      // 2. ✅ HARD REDIRECT (Isse purana data saaf ho jayega)
       setTimeout(() => {
-        window.location.replace('/dashboard'); 
+        window.location.href = '/dashboard';
       }, 1000);
 
     } catch (err: any) {
