@@ -19,12 +19,14 @@ function SignupForm() {
   // URL se Order ID lo (Razorpay wapis aate waqt ye deta hai)
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
+
+  // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
   // --- States ---
   const [selectedPlan, setSelectedPlan] = useState<any>(null); 
+  const [isPaid, setIsPaid] = useState(false); 
   const [loading, setLoading] = useState(false);
-  
   const [formData, setFormData] = useState({
     name: '',
     societyName: '',
@@ -33,7 +35,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ 1. Optimized fetchPlan (Simplified)
+  // ✅ UPDATED fetchPlan (Handles both PAID and CONSUMED to stop loop + safe verification)
   const fetchPlan = async (intentData?: any) => {
     try {
       const data = intentData || (await supabase
@@ -53,10 +55,11 @@ function SignupForm() {
 
       if (planDetails) {
         setSelectedPlan(planDetails);
-        // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO
-        if (data.status === 'PAID') {
+        
+        // ✅ FIX: Agar status PAID ya CONSUMED hai, toh form khul do
+        if (data.status === 'PAID' || data.status === 'CONSUMED') {
           setIsPaid(true);
-          setIsVerifying(false);
+          setIsVerifying(false); 
         }
       }
     } catch (err) {
@@ -64,11 +67,11 @@ function SignupForm() {
     }
   };
 
-  // ✅ 2. Realtime Listener ko "Aggressive" banayein
+  // ✅ REALTIME LISTENER (Aggressive)
   useEffect(() => {
     if (!orderId || mode === 'MANUAL') {
-        setIsVerifying(false);
-      return;
+      setIsVerifying(false); 
+      return; 
     }
 
     const channel = supabase
@@ -76,7 +79,7 @@ function SignupForm() {
       .on(
         'postgres_changes',
         {
-          event: '*', // 👈 INSERT, UPDATE sab pakado
+          event: '*',
           schema: 'public',
           table: 'payment_intents',
           filter: `token=eq.${orderId}`,
@@ -94,7 +97,7 @@ function SignupForm() {
     return () => { supabase.removeChannel(channel); };
   }, [orderId, mode]); 
 
-  // ✅ SMART LOGIC: Initial Verification
+  // ✅ INITIAL VERIFICATION
   useEffect(() => {
     async function smartVerifyPlan() {
       try {
@@ -122,6 +125,7 @@ function SignupForm() {
               const { data: planDetails } = await supabase
                 .from('plans')
                 .select('*')
+                .select('*')
                 .eq('code', verifiedPlanCode)
                 .single();
 
@@ -143,6 +147,7 @@ function SignupForm() {
             const { data: planDetails } = await supabase
                 .from('plans')
                 .select('*')
+                .select('*')
                 .eq('code', code)
                 .single();
             
@@ -153,7 +158,6 @@ function SignupForm() {
 
             setSelectedPlan(planDetails);
         }
-
       } catch (err) {
         console.error("Verification Error:", err);
         setSelectedPlan(null);
@@ -165,7 +169,7 @@ function SignupForm() {
   }, [orderId, urlPlanCode, mode]); 
 
 
-  // ✅ HANDLE SUBMIT (With Direct Login)
+  // ✅ HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -176,7 +180,6 @@ function SignupForm() {
       return;
     }
 
-    // Double Check: Agar Order ID hai par plan match nahi kar raha
     if (orderId && selectedPlan.code === 'TRIAL') {
         toast.error("System Error: Payment ID linked to Trial plan.");
         setLoading(false);
@@ -226,7 +229,6 @@ function SignupForm() {
           plan_id: selectedPlan.id,
           plan: selectedPlan.code,
           plan_name: selectedPlan.name,
-
           subscription_status: 'active',
           plan_start_date: new Date().toISOString(),
           plan_end_date: endDate.toISOString(),
@@ -246,18 +248,17 @@ function SignupForm() {
       toast.success("Account Created Successfully!");
       
       // ✅ Login Hai Direct (Auto Login)
-      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password
       });
 
-      if (loginError) throw new Error(loginError.message);
+      if (error) throw new Error(error.message);
       if (data.user) {
-         // ✅ Redirect to dashboard using Next.js router
+         // Redirect to dashboard using Next.js router
          router.push('/dashboard');
       } else {
-         // Fallback error toast
-         toast.error("Login failed. Please try again.");
+         toast.error("Login failed.");
       }
 
     } catch (err: any) {
@@ -268,9 +269,10 @@ function SignupForm() {
     }
   };
 
-  // --- RENDER LOGIC (Strictly based on isVerifying)
-  // Jab tak isVerifying false hai aur orderId hai, tab tak loader dikhao
-  if (orderId && mode === 'AUTO' && !isVerifying) {
+  // --- RENDER ---
+  
+  // Loader based on isVerifying
+  if (orderId && mode === 'AUTO' && !isPaid) {
     return (
       <div className="min-h-screen flex flex flex-col items-center justify-center bg-white">
         <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
@@ -280,14 +282,32 @@ function SignupForm() {
     );
   }
 
+  // Error Condition
+  if (orderId && selectedPlan === null) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+           <div className="bg-red-50 p-8 rounded-xl border border-red-200 text-center max-w-md">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
+              <h2 className="text-xl font-bold text-red-700">Payment Verification Failed</h2>
+              <p className="text-slate-600 mt-2 mb-4">
+                 We could not find the plan details for Order ID: <br/> 
+                 <span className="font-mono bg-white px-2 py-1 rounded border border-red-100 mt-1 inline-block">{orderId}</span>
+              </p>
+              <Link href="/"><Button variant="outline">Return Home</Button></Link>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
   // Display Vars
   const displayFeatures = selectedPlan?.features 
     ? (typeof selectedPlan.features === 'string' ? JSON.parse(selectedPlan.features) : selectedPlan.features)
     : [];
 
-  // ✅ PAID hote hi ye asli form dikhayega
+  // ✅ MAIN FORM (When verified or free trial)
   return (
-    <div className="min-h-screen bg-slate-50 flex flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* LEFT SIDE */}
       <div className="lg:w-1/3 bg-slate-900 text-white p-8 lg:p-12 flex flex flex-col justify-between relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
