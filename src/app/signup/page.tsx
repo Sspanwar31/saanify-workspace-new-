@@ -15,16 +15,17 @@ import { supabase } from '@/lib/supabase-simple';
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
   // URL se Order ID lo (Razorpay wapis aate waqt ye deta hai)
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
+
+  // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
   // --- States ---
-  const [selectedPlan, setSelectedPlan] = useState<any>(null); 
-  const [isPaid, setIsPaid] = useState(false); 
-  const [loading, setLoading] = useState(false);  
+  const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
+  const [loading, setLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     societyName: '',
@@ -33,7 +34,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ UPDATED fetchPlan (Handles pending status to stop loop + safe verification)
+  // ✅ UPDATED fetchPlan (Handles both PAID and CONSUMED to stop loop)
   const fetchPlan = async (intentData?: any) => {
     try {
       // If intentData is provided (realtime), use it. Otherwise fetch fresh data.
@@ -43,10 +44,7 @@ function SignupForm() {
         .eq('token', orderId)
         .maybeSingle()).data;
 
-      if (!data) {
-        // Agar data nahi mila toh isVerifying false karo taaki infinite loop na chale
-        return; 
-      }
+      if (!data) return;
 
       // Plan Details fetch karein
       const { data: planDetails } = await supabase
@@ -58,11 +56,9 @@ function SignupForm() {
       if (planDetails) {
         setSelectedPlan(planDetails);
         
-        // ✅ AGAR PAID HAI TO LOADER KHATAM KARO (Updated logic)
-        // Agar status PAID ya CONSUMED hai toh form khul do
+        // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO (Updated logic)
         if (data.status === 'PAID' || data.status === 'CONSUMED') {
-          setIsPaid(true);
-          setIsVerifying(false); 
+          setIsPaid(true); 
         }
       }
     } catch (err) {
@@ -72,13 +68,10 @@ function SignupForm() {
 
   // ✅ REALTIME LISTENER (Aggressive)
   useEffect(() => {
-    if (!orderId || mode === 'MANUAL') {
-        setIsVerifying(false);
-      return; 
-    }
+    if (!orderId || mode === 'MANUAL') return;
 
     const channel = supabase
-      .channel(`payment-sync-${orderId}`)
+      .channel(`payment-check-${orderId}`)
       .on(
         'postgres_changes',
         {
@@ -95,17 +88,17 @@ function SignupForm() {
         }
       )
       .subscribe((status) => {
-        // Subscribe hote hi ek baar phir check karein
         if (status === 'SUBSCRIBED') fetchPlan();
       });
 
     return () => { supabase.removeChannel(channel); };
   }, [orderId, mode]); 
 
-  // ✅ SMART LOGIC: Initial Verification
+  // ✅ INITIAL VERIFICATION
   useEffect(() => {
     async function smartVerifyPlan() {
       try {
+        // CASE 1: Agar Payment Order ID hai (PAID USER)
         if (orderId) {
             console.log("Verifying Order ID:", orderId);
             console.log("Mode:", mode);
@@ -160,7 +153,6 @@ function SignupForm() {
 
             setSelectedPlan(planDetails);
         }
-
       } catch (err) {
         console.error("Verification Error:", err);
         setSelectedPlan(null);
@@ -172,7 +164,7 @@ function SignupForm() {
   }, [orderId, urlPlanCode, mode]); 
 
 
-  // ✅ UPDATED HANDLE SUBMIT
+  // ✅ HANDLE SUBMIT (With Auto Login Logic)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -192,12 +184,11 @@ function SignupForm() {
 
     try {
       // Backend safety (must)
-      // Case-insensitive email match check
       if (selectedPlan.code === 'TRIAL') {
         const { data } = await supabase
           .from('clients')
           .select('id')
-          .eq('email', formData.email.toLowerCase().trim()) // ✅ Email Case-insensitive check
+          .eq('email', formData.email)
           .limit(1);
 
         if (data?.length > 0) {
@@ -211,22 +202,17 @@ function SignupForm() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          data: { full_name: formData.name, phone: formData.phone, society_name: formData.societyName }
-        }
       });
 
       if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error("Signup failed.");
 
-      // 2. Calculate Expiry
+      // 2. Client Table Insert (using .upsert)
       const planDays = selectedPlan.duration_days || 30;
       const endDate = new Date();
       endDate.setDate(new Date().getDate() + planDays);
 
-      // 3. Client Table Upsert (using .upsert for idempotency & safety)
       const { error: clientError } = await supabase.from('clients').upsert({
-          id: authData.user.id, // Direct ID
+          id: authData.user.id,
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
@@ -236,7 +222,7 @@ function SignupForm() {
           plan: selectedPlan.code,
           plan_name: selectedPlan.name,
 
-          subscription_status: 'active', // ✅ Standardized status
+          subscription_status: 'active',
           plan_start_date: new Date().toISOString(),
           plan_end_date: endDate.toISOString(),
           subscription_expiry: endDate.toISOString(), // ✅ Added expiry
@@ -247,15 +233,40 @@ function SignupForm() {
 
       if (clientError) throw new Error(clientError.message);
 
-      // 4. Mark Intent as Consumed
+      // 3. Optional: Payment Intent update
       if (orderId) {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
       toast.success("Account Created Successfully!");
-      setTimeout(() => {
-        window.location.href = '/dashboard'; // ✅ Timed redirect
-      }, 2000);
+      
+      // ✅ Login Hai Direct (Auto Login)
+      const { data: existingClient, error: loginError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', formData.email)
+        .maybeSingle();
+
+      if (existingClient) {
+         // ✅ Auto Login hai Direct
+         const { data: loginData } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password
+          });
+
+         toast.success("Welcome back! Redirecting...");
+         setTimeout(() => {
+            router.push('/dashboard');
+         }, 1000);
+         return;
+      }
+
+      // ❌ ye mat use karo:
+      // localStorage.removeItem('active_payment_intent');
+      // router.push('/dashboard');
+
+      // ✅ Correct Redirect
+      router.push('/dashboard');
 
     } catch (err: any) {
       console.error(err);
@@ -267,14 +278,13 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // ✅ RENDER LOGIC (Strictly based on isPaid)
-  // Jab tak isPaid false hai aur orderId hai, tab tak loader dikhao
+  // Loader based on isVerifying
   if (orderId && mode === 'AUTO' && !isPaid) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+      <div className="min-h-screen flex flex flex-col items-center justify-center bg-white">
         <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
         <h2 className="text-xl font-bold">Verifying Your Payment</h2>
-        <p className="text-gray-500">Waiting for confirmation...</p>
+        <p className="text-gray-500">Redirecting to dashboard...</p>
       </div>
     );
   }
@@ -284,7 +294,7 @@ function SignupForm() {
     ? (typeof selectedPlan.features === 'string' ? JSON.parse(selectedPlan.features) : selectedPlan.features)
     : [];
 
-  // ✅ RENDER MAIN FORM (When verified or free trial)
+  // ✅ MAIN FORM (When verified or free trial)
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* LEFT SIDE */}
