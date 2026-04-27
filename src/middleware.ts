@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// --- JWT DECODER FIX ---
+// --- JWT DECODER ---
 function decodeJwt(token: string) {
   try {
     const payload = token.split('.')[1];
     if (!payload) return null;
-    // Buffer use karna server-side par zyada stable hai
     const decoded = JSON.parse(Buffer.from(payload, 'base64').toString());
     return decoded;
   } catch (error) {
@@ -17,14 +16,6 @@ function decodeJwt(token: string) {
 // --- CONFIGURATION ---
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - uploads (public uploads)
-     */
     '/((?!api|_next/static|_next/image|uploads|favicon.ico).*)',
   ],
 };
@@ -32,52 +23,55 @@ export const config = {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   
-  // 1. Get Token Value Safely
+  // 1. Get Token Safely
   const tokenObj = req.cookies.get('auth-token');
   const token = tokenObj?.value;
 
   // 2. Define Public Routes
   const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/signup';
 
-  // 3. LOGIC: Agar Token nahi hai aur rasta Protected hai -> Login par bhejo
+  // 3. LOGIC: No Token -> Go to Login
   if (!token) {
     if (isPublicRoute) return NextResponse.next();
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // 4. LOGIC: Agar Token hai toh Decode karo
+  // 4. LOGIC: Valid Token -> Check Role
   const user = decodeJwt(token);
 
-  // 5. Agar Token kharab hai -> Cookie delete karo aur Login bhejo
   if (!user) {
     const response = NextResponse.redirect(new URL('/login', req.url));
     response.cookies.delete('auth-token');
     return response;
   }
 
-  // 6. ROLE BASED ROUTING
   const userRole = (user.role || 'CLIENT').toUpperCase();
 
-  // A. Agar login hai aur Login/Signup page kholne ki koshish kare -> Dashboard bhejo
+  // 🚀 5. REDIRECT LOGIC (NEW)
+  
+  // A. Agar login hai aur Login/Signup page par hai -> Sahi dashboard par bhejo
   if (isPublicRoute) {
-    const target = userRole === 'ADMIN' ? '/admin' : '/client/dashboard';
+    const target = userRole === 'ADMIN' ? '/admin' : '/dashboard'; // ✅ Client to /dashboard
     return NextResponse.redirect(new URL(target, req.url));
   }
 
   // B. Admin routes protection
   if (pathname.startsWith('/admin') && userRole !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/client/dashboard', req.url));
+    return NextResponse.redirect(new URL('/dashboard', req.url)); // ✅ Redirect non-admins to /dashboard
   }
 
-  // C. Client routes protection
-  if (pathname.startsWith('/client') && userRole === 'ADMIN') {
-    return NextResponse.redirect(new URL('/admin', req.url));
+  // C. Old /client routes protection (Cleanup)
+  if (pathname.startsWith('/client')) {
+    return NextResponse.redirect(new URL('/dashboard', req.url)); // ✅ Old links to new /dashboard
   }
 
-  // D. Root /dashboard shortcut handling
+  // D. Handle root /dashboard redirect based on Admin role
   if (pathname === '/dashboard') {
-    const target = userRole === 'ADMIN' ? '/admin' : '/client/dashboard';
-    return NextResponse.redirect(new URL(target, req.url));
+    if (userRole === 'ADMIN') {
+      return NextResponse.redirect(new URL('/admin', req.url));
+    }
+    // Clients remain on /dashboard
+    return NextResponse.next();
   }
 
   return NextResponse.next();
