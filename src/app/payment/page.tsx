@@ -82,57 +82,71 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ FINAL handleOnlinePay (UPDATED WITH VERIFICATION) - Replacement applied here
+  // ✅ SMART handleOnlinePay (Double Payment Prevention)
   const handleOnlinePay = async () => {
     setLoading(true);
+
     try {
-      console.log('🚀 Step 1: Requesting Order from API...');
-      
-      //1. Order Create karein
+      //1. Check if we already have an active order for THIS plan
+      const savedIntent = localStorage.getItem('active_payment_intent');
+      if (savedIntent) {
+        const intent = JSON.parse(savedIntent);
+        // Agar plan aur price match karta hai, toh wahi order reuse karo
+        if (intent.planId === planId && intent.amount === plan.price) {
+          console.log("♻️ Resuming existing order:", intent.orderId);
+          // Seedha Razorpay kholo bina naya order banaye
+          return openRazorpayPopup(intent.orderId, intent.amount);
+        } else {
+          // Agar user ne plan badal diya hai, toh purana saaf karo
+          localStorage.removeItem('active_payment_intent');
+        }
+      }
+
+      //2. Create New Order (If no valid intent found)
+      console.log('🚀 Calling create-order API...');
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId: planId,          
-          amount: plan.price,
-          mode: 'AUTO',
-          // ✅ ZAROORI: Yahan email ya koi unique identifier bhejien 
-          // taaki API use Database mein likh sake PEHLE HI
-          email: userEmail 
-        })
+        body: JSON.stringify({ planId, amount: plan.price, mode: 'AUTO' })
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Order creation failed");
 
-      console.log('✅ Step 2: Database Entry Confirmed. Opening Razorpay...');
+      //3. Save to LocalStorage for 'Back' button safety
+      localStorage.setItem('active_payment_intent', JSON.stringify({
+        orderId: data.orderId,
+        planId: planId,
+        amount: plan.price
+      }));
 
-      // 2. Razorpay Popup
-      const options = {
-        key: data.razorpayKey || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: data.amount,
-        currency: 'INR',
-        order_id: data.orderId,
-        handler: async (response: any) => {
-          // Success hote hi turant Signup page par bhejien
-          // Kyunki Webhook piche se 'PAID' kar dega aur Signup page 
-          // use INSERT + UPDATE listener se turant pakad lega.
-          toast.success("Payment Received! Finalizing...");
-          window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
-        },
-        modal: {
-          ondismiss: () => setLoading(false)
-        }
-      };
+      //4. Open Razorpay
+      openRazorpayPopup(data.orderId, data.amount);
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
-      
     } catch (err: any) {
-      console.error("❌ Payment Initiation Failed:", err);
-      toast.error(err.message || "Could not start payment");
+      console.error("Payment Error: ", err);
+      toast.error(err.message || "Payment initiation failed");
       setLoading(false);
     }
+  };
+
+  // ✅ HELPER: Razorpay Popup Function
+  const openRazorpayPopup = (orderId: string, amount: number) => {
+    const rzp = new (window as any).Razorpay({
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+      amount: amount,
+      currency: 'INR',
+      order_id: orderId,
+      handler: async (response: any) => {
+        // 🔥 SUCCESS CLEANUP: Payment ho gayi, ab memory saaf karo
+        localStorage.removeItem('active_payment_intent');
+
+        toast.success("Payment Received!");
+        window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
+      },
+      modal: { ondismiss: () => setLoading(false) }
+    });
+    rzp.open();
   };
 
   // --- REAL BACKEND SUBMISSION LOGIC (FIXED) ---
