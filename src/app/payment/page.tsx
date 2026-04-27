@@ -45,6 +45,9 @@ function PaymentContent() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ✅ ADDED STATE: Email
+  const [email, setEmail] = useState(''); 
+
   // --- PERSISTENCE STATE ---
   const [pendingPayment, setPendingPayment] = useState<PendingPaymentState | null>(null);
 
@@ -82,71 +85,56 @@ function PaymentContent() {
     fileInputRef.current?.click();
   };
 
-  // ✅ SMART handleOnlinePay (Double Payment Prevention)
+  // ✅ SMART handleOnlinePay (Double Payment Prevention & Cleanup)
   const handleOnlinePay = async () => {
+    if (!email || !email.includes('@')) {
+      return toast.error("Please enter a valid email address to proceed");
+    }
+
     setLoading(true);
-
     try {
-      //1. Check if we already have an active order for THIS plan
-      const savedIntent = localStorage.getItem('active_payment_intent');
-      if (savedIntent) {
-        const intent = JSON.parse(savedIntent);
-        // Agar plan aur price match karta hai, toh wahi order reuse karo
-        if (intent.planId === planId && intent.amount === plan.price) {
-          console.log("♻️ Resuming existing order:", intent.orderId);
-          // Seedha Razorpay kholo bina naya order banaye
-          return openRazorpayPopup(intent.orderId, intent.amount);
-        } else {
-          // Agar user ne plan badal diya hai, toh purana saaf karo
-          localStorage.removeItem('active_payment_intent');
-        }
-      }
-
-      //2. Create New Order (If no valid intent found)
-      console.log('🚀 Calling create-order API...');
+      //1. API Call (Database check + Order creation)
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, amount: plan.price, mode: 'AUTO' })
+        body: JSON.stringify({ 
+          email: email.trim().toLowerCase(), 
+          amount: plan.price, 
+          planId: planId 
+        })
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Order creation failed");
 
-      //3. Save to LocalStorage for 'Back' button safety
-      localStorage.setItem('active_payment_intent', JSON.stringify({
-        orderId: data.orderId,
-        planId: planId,
-        amount: plan.price
-      }));
+      //2. 🛡️ ANTI-DUPLICATE: Agar pehle hi pay kar diya hai
+      if (data.action === 'GOTO_SIGNUP') {
+        toast.success("Payment already verified! Redirecting...");
+        window.location.href = `/signup?mode=AUTO&orderId=${data.orderId}`;
+        return;
+      }
 
-      //4. Open Razorpay
-      openRazorpayPopup(data.orderId, data.amount);
+      //3. Open Razorpay Popup (Bina kisi localStorage ke)
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+        amount: data.amount,
+        currency: "INR",
+        order_id: data.orderId,
+        handler: async (response: any) => {
+          // Success hote hi seedha Signup page
+          window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
+        },
+        modal: { ondismiss: () => setLoading(false) }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
 
     } catch (err: any) {
       console.error("Payment Error: ", err);
       toast.error(err.message || "Payment initiation failed");
       setLoading(false);
     }
-  };
-
-  // ✅ HELPER: Razorpay Popup Function
-  const openRazorpayPopup = (orderId: string, amount: number) => {
-    const rzp = new (window as any).Razorpay({
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-      amount: amount,
-      currency: 'INR',
-      order_id: orderId,
-      handler: async (response: any) => {
-        // 🔥 SUCCESS CLEANUP: Payment ho gayi, ab memory saaf karo
-        localStorage.removeItem('active_payment_intent');
-
-        toast.success("Payment Received!");
-        window.location.href = `/signup?mode=AUTO&orderId=${response.razorpay_order_id}`;
-      },
-      modal: { ondismiss: () => setLoading(false) }
-    });
-    rzp.open();
   };
 
   // --- REAL BACKEND SUBMISSION LOGIC (FIXED) ---
@@ -406,20 +394,25 @@ function PaymentContent() {
                         animate={{ height: 'auto', opacity: 1 }} 
                         exit={{ height: 0, opacity: 0 }}
                       >
-                         <div className="bg-blue-50/50 rounded-xl p-4 border-blue-100 mb-4">
-                            <ul className="space-y-2 text-sm text-blue-800">
-                               <li className="flex gap-2"><CheckCircle className="w-4 h-4"/> Instant Account Activation</li>
-                               <li className="flex gap-2"><CheckCircle className="w-4 h-4"/> Automatic Invoice Generation</li>
-                               <li className="flex gap-2"><CheckCircle className="w-4 h-4"/> No Manual Verification Needed</li>
-                            </ul>
+                         {/* ✉️ EMAIL INPUT BOX (Recommended: Instant Payment card ke andar dalo) */}
+                         <div className="space-y-4 mb-6">
+                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                              <Label className="text-blue-900 mb-2 block">Enter Email for Invoice & Security</Label>
+                              <Input 
+                                type="email" 
+                                placeholder="yourname@gmail.com" 
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="bg-white border-blue-200 focus:ring-blue-500"
+                              />
+                            </div>
+
+                            {/* PAY BUTTON */}
+                            <Button onClick={handleOnlinePay} disabled={loading} className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
+                              {loading ? "Processing..." : `Pay ₹${plan.price}`}
+                            </Button>
                          </div>
-                         <Button 
-                            onClick={handleOnlinePay} 
-                            disabled={loading}
-                            className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
-                         >
-                            {loading ? <><Loader2 className="mr-2 animate-spin"/> Processing...</> : `Pay ₹${plan.price.toLocaleString()} Securely`}
-                         </Button>
+
                          <div className="flex justify-center gap-6 mt-4 opacity-60">
                              <div className="flex items-center gap-1 text-xs font-bold text-slate-500"><CreditCard className="w-3 h-3"/> VISA</div>
                              <div className="flex items-center gap-1 text-xs font-bold text-slate-500"><CreditCard className="w-3 h-3"/> MasterCard</div>
