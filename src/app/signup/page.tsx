@@ -15,17 +15,14 @@ import { supabase } from '@/lib/supabase-simple';
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // URL se Order ID lo (Razorpay wapis aate waqt ye deta hai)
   const orderId = searchParams.get('orderId') || searchParams.get('razorpay_order_id') || '';
   const urlPlanCode = searchParams.get('plan'); 
-
-  // Mode flag (AUTO | MANUAL)
   const mode = searchParams.get('mode');
 
   // --- States ---
   const [selectedPlan, setSelectedPlan] = useState<any>(null); 
   const [isPaid, setIsPaid] = useState(false); 
+  const [isVerifying, setIsVerifying] = useState(true); // ✅ Zaroori: Loader control ke liye
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -36,7 +33,7 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ 1. Optimized fetchPlan
+  // ✅ UPDATED fetchPlan (Handles both PAID and CONSUMED to stop loader)
   const fetchPlan = async (intentData?: any) => {
     try {
       const data = intentData || (await supabase
@@ -57,10 +54,10 @@ function SignupForm() {
       if (planDetails) {
         setSelectedPlan(planDetails);
         
-        // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO
-        if (data.status === 'PAID') {
+        // ✅ FIX: Agar status PAID ya CONSUMED hai, toh loader band karo
+        if (data.status === 'PAID' || data.status === 'CONSUMED') {
           setIsPaid(true);
-          setIsVerifying(false); // ✅ Logic cleaned up
+          setIsVerifying(false); 
         }
       }
     } catch (err) {
@@ -68,10 +65,10 @@ function SignupForm() {
     }
   };
 
-  // ✅ 2. Realtime Listener ko "Aggressive" banayein
+  // ✅ REALTIME LISTENER
   useEffect(() => {
     if (!orderId || mode === 'MANUAL') {
-      setIsVerifying(false); // Skip for manual/trial
+      setIsVerifying(false); 
       return;
     }
 
@@ -80,36 +77,32 @@ function SignupForm() {
       .on(
         'postgres_changes',
         {
-          event: '*', // 👈 INSERT, UPDATE sab pakado
+          event: '*',
           schema: 'public',
           table: 'payment_intents',
           filter: `token=eq.${orderId}`,
         },
         (payload) => {
-          // Jaise hi database mein koi halchal ho, naya data fetch karo
           if (payload.new) {
             fetchPlan(payload.new);
           }
         }
       )
       .subscribe((status) => {
-        // Subscribe hote hi ek baar phir check karein
         if (status === 'SUBSCRIBED') fetchPlan();
       });
 
     return () => { supabase.removeChannel(channel); };
   }, [orderId, mode]); 
 
-  // ✅ SMART LOGIC: Initial Verification
+  // ✅ INITIAL VERIFICATION (Smart Logic)
   useEffect(() => {
     async function smartVerifyPlan() {
       try {
-        // CASE 1: Agar Payment Order ID hai (PAID USER)
         if (orderId) {
             console.log("Verifying Order ID:", orderId);
             console.log("Mode:", mode);
 
-            // 🟠 MANUAL PAYMENT (ADMIN APPROVED)
             if (mode === 'MANUAL') {
               const { data: order, error } = await supabase
                 .from('subscription_orders')
@@ -139,13 +132,9 @@ function SignupForm() {
               setSelectedPlan(planDetails);
               toast.success(`Plan verified: ${planDetails.name}`);
             }
-
-        } 
-        // CASE 2: Free Trial (No Order ID)
-        else {
-            // URL se plan uthao ya default TRIAL
+        } else {
+            // FREE TRIAL
             const code = urlPlanCode ? urlPlanCode.toUpperCase() : 'TRIAL';
-            
             const { data: planDetails } = await supabase
                 .from('plans')
                 .select('*')
@@ -159,19 +148,16 @@ function SignupForm() {
 
             setSelectedPlan(planDetails);
         }
-
       } catch (err) {
         console.error("Verification Error:", err);
         setSelectedPlan(null);
       } 
     }
-
     smartVerifyPlan();
-
   }, [orderId, urlPlanCode, mode]); 
 
 
-  // ✅ SUBMIT FORM (Cleaned up - No localStorage)
+  // ✅ HANDLE SUBMIT (Clean Logic + Redirect)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -182,7 +168,6 @@ function SignupForm() {
       return;
     }
 
-    // Double Check: Agar Order ID hai par plan match nahi kar raha
     if (orderId && selectedPlan.code === 'TRIAL') {
         toast.error("System Error: Payment ID linked to Trial plan.");
         setLoading(false);
@@ -244,13 +229,17 @@ function SignupForm() {
 
       if (clientError) throw new Error(clientError.message);
 
-      // 3. Optional: Payment Intent update
+      // 3. Mark as Consumed
       if (orderId) {
           await supabase.from('payment_intents').update({ status: 'CONSUMED' }).eq('token', orderId);
       }
 
-      // ✅ Logic Cleaned: No localStorage or immediate redirect
-      toast.success("Account Created Successfully!");
+      // ✅ REDIRECTION (No localStorage delay)
+      toast.success("Welcome! Redirecting...");
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 2000);
+
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Signup failed.");
@@ -261,14 +250,13 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // ✅ 2. RENDER LOGIC (Strictly based on isPaid)
-  // Jab tak isPaid false hai aur orderId hai, tab tak loader dikhao
-  if (orderId && mode === 'AUTO' && !isPaid) {
+  // ✅ RENDER LOGIC: Loader based on isVerifying
+  if (orderId && mode === 'AUTO' && isVerifying) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white">
         <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
         <h2 className="text-xl font-bold">Verifying Your Payment</h2>
-        <p className="text-gray-500">Waiting for confirmation...</p>
+        <p className="text-gray-500">Redirecting to dashboard...</p>
       </div>
     );
   }
@@ -278,7 +266,7 @@ function SignupForm() {
     ? (typeof selectedPlan.features === 'string' ? JSON.parse(selectedPlan.features) : selectedPlan.features)
     : [];
 
-  // ✅ PAID hote hi ye asli form dikhayega
+  // ✅ RENDER MAIN FORM (When not verifying)
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* LEFT SIDE */}
