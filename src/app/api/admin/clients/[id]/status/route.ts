@@ -57,12 +57,12 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid action: ' + action }, { status: 400, headers: corsHeaders });
     }
 
-    // ✅ DATABASE UPDATE (Bypassing RLS with Service Role Key)
+    // ✅ DATABASE UPDATE (Only Status Update, Subscription Removed)
     const { data, error: dbError } = await supabaseAdmin
       .from('clients')
       .update({ 
-        status: newStatus,
-        subscription_status: newStatus === 'ACTIVE' ? 'active' : 'expired'
+        status: newStatus
+        // ✅ subscription_status update logic removed here
       })
       .eq('id', clientId)
       .select();
