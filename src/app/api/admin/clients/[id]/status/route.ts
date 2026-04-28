@@ -1,45 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// --- 🔐 SAFER BASE64 DECODER ---
 const getServiceRoleKey = () => {
-  const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  if (!rawKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 missing");
-  return rawKey.startsWith('eyJ') ? rawKey : Buffer.from(rawKey, 'base64').toString('utf-8').trim();
-};
+  const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
+  
+  if (!b64Key) {
+    console.error("❌ Environment Variable 'SUPABASE_SERVICE_ROLE_KEY_B64' missing in Vercel.");
+    return null;
+  }
 
-const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, getServiceRoleKey());
+  try {
+    // Agar key pehle se hi 'eyJ' se shuru ho rahi hai, matlab wo already decoded hai
+    if (b64Key.startsWith('eyJ')) return b64Key;
+    
+    // Base64 se decode karein
+    return Buffer.from(b64Key, 'base64').toString('utf-8').trim();
+  } catch (e) {
+    console.error("❌ Failed to decode Base64 key:", e);
+    return null;
+  }
+};
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const clientId = params.id;
-    const { action } = await req.json();
+    const body = await req.json();
+    const { action } = body;
 
-    // 1. Status Logic (Standardizing to UPPERCASE)
-    let updateFields: any = {};
+    const serviceKey = getServiceRoleKey();
 
-    if (action === 'LOCK') {
-      updateFields = { status: 'LOCKED', subscription_status: 'locked' };
-    } else if (action === 'EXPIRE') {
-      updateFields = { status: 'EXPIRED', subscription_status: 'expired' };
-    } else if (action === 'ACTIVATE' || action === 'UNLOCK') {
-      updateFields = { status: 'ACTIVE', subscription_status: 'active' };
-    } else {
-      return NextResponse.json({ error: 'Invalid Action' }, { status: 400 });
+    if (!serviceKey) {
+      return NextResponse.json({ error: "Server Configuration Error: Key Missing" }, { status: 500 });
     }
 
-    // 2. Database Update
-    const { data, error } = await supabaseAdmin
+    // Initialize Supabase only when needed inside the handler
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // 1. Mapping Logic (Standardizing Status)
+    let updateData: any = {};
+    const cmd = action?.toUpperCase();
+
+    if (cmd === 'LOCK') {
+      updateData = { status: 'LOCKED', subscription_status: 'locked' };
+    } else if (cmd === 'EXPIRE') {
+      updateData = { status: 'EXPIRED', subscription_status: 'expired' };
+    } else if (cmd === 'ACTIVATE' || cmd === 'UNLOCK' || cmd === 'ACTIVE') {
+      updateData = { status: 'ACTIVE', subscription_status: 'active' };
+    } else {
+      return NextResponse.json({ error: 'Invalid Action: ' + action }, { status: 400 });
+    }
+
+    // 2. Database Update (Bypassing RLS)
+    const { data, error: dbError } = await supabaseAdmin
       .from('clients')
-      .update(updateFields)
+      .update(updateData)
       .eq('id', clientId)
       .select();
 
-    if (error) throw error;
+    if (dbError) {
+      console.error('Supabase DB Error:', dbError.message);
+      return NextResponse.json({ error: dbError.message }, { status: 500 });
+    }
 
-    return NextResponse.json({ success: true, status: updateFields.status });
+    return NextResponse.json({ 
+      success: true, 
+      status: updateData.status,
+      message: `Client status updated to ${updateData.status}`
+    });
 
   } catch (err: any) {
-    console.error('API Error:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('Fatal API Crash:', err.message);
+    return NextResponse.json({ error: "API Internal Error: " + err.message }, { status: 500 });
   }
 }
