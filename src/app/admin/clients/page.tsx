@@ -20,8 +20,7 @@ export default function ClientManagement() {
   const [clients, setClients] = useState<any[]>([]);
   const [treasurers, setTreasurers] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  
+  const [searchTerm, setSearchTerm] = useState('');  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); 
   const [selectedStaff, setSelectedStaff] = useState<any[]>([]); 
@@ -31,8 +30,10 @@ export default function ClientManagement() {
 
   useEffect(() => { fetchClients(); }, []);
 
+  // ✅ SAHI LOGIC: Refresh function jo hamesha database se taaza data layega
   const fetchClients = async () => {
-    const { data: clientData } = await supabase
+    setLoading(true);
+    const { data: clientData, error: clientErr } = await supabase
       .from('clients')
       .select('*')
       .eq('role', 'client') 
@@ -54,77 +55,94 @@ export default function ClientManagement() {
       setIsStaffModalOpen(true);
   };
 
-  // ACTIONS
-  
-  // ✅ LOCK / UNLOCK (Direct DB Update + API Trigger)
+  // ✅ ACTION 1: LOCK / UNLOCK (Full Fix)
   const handleLockToggle = async (client: any) => {
-     const newStatus = client.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
+     // Case handle karne ke liye uppercase karein
+     const currentStatus = (client.status || 'ACTIVE').toUpperCase();
+     const newStatus = currentStatus === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
      
-     // 1. Direct DB Update
-     const { error } = await supabase.from('clients').update({ status: newStatus }).eq('id', client.id);
+     toast.loading(newStatus === 'LOCKED' ? "Locking Account..." : "Unlocking Account...", { id: 'status-update' });
+
+     // 1. Database Update
+     const { error } = await supabase
+        .from('clients')
+        .update({ status: newStatus })
+        .eq('id', client.id);
      
      if (error) {
-        return toast.error("Update failed: " + error.message);
+        return toast.error("Failed: " + error.message, { id: 'status-update' });
      }
 
-     toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked");
-     setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
-     
-     // 2. Force Logout via API
-     if(newStatus === 'LOCKED') {
-        fetch(`/api/admin/clients/${client.id}/status`, {
+     // 2. Force Logout API call (For Security)
+     if (newStatus === 'LOCKED') {
+        await fetch(`/api/admin/clients/${client.id}/status`, {
             method: 'POST', 
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ action: 'LOCK' })
-        }).catch(err => console.log("Logout API triggered silently"));
+        }).catch(() => null);
      }
+
+     toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked", { id: 'status-update' });
+     
+     // 3. ✅ Refresh from DB (Isse status change hamesha ke liye save hoga)
+     fetchClients();
   };
 
-  // ✅ EXPIRE ACCOUNT (Direct DB Update + API Trigger)
+  // ✅ ACTION 2: EXPIRE ACCOUNT (Fix)
   const handleMarkExpired = async (id: string) => {
-     if(!confirm("Mark this subscription as expired?")) return;
+     if(!confirm("Mark this subscription as expired? Client will be unable to login.")) return;
+     
      const yesterday = new Date();
      yesterday.setDate(yesterday.getDate() - 1);
      
-     const { error } = await supabase.from('clients').update({ 
-        status: 'EXPIRED',
-        subscription_expiry: yesterday.toISOString() 
-     }).eq('id', id);
+     toast.loading("Marking as Expired...", { id: 'expire-update' });
 
-     if (error) {
-        return toast.error("Update failed");
-     } 
+     const { error } = await supabase
+        .from('clients')
+        .update({ 
+          status: 'EXPIRED', // ✅ Ensure this is separate from LOCKED
+          subscription_status: 'expired',
+          subscription_expiry: yesterday.toISOString() 
+        })
+        .eq('id', id);
+
+     if (error) return toast.error("Failed to expire", { id: 'expire-update' });
      
-     toast.success("Client marked as Expired");
-     fetchClients();
-     
-     fetch(`/api/admin/clients/${id}/status`, {
-        method: 'POST', 
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ action: 'EXPIRE' })
-     }).catch(console.error);
+     toast.success("Client status set to EXPIRED", { id: 'expire-update' });
+     fetchClients(); // Sync UI
   };
 
-  // ✅ DELETE ACCOUNT (API First -> DB Fallback)
+  // ✅ ACTION 3: DELETE CLIENT
   const handleDelete = async (id: string) => {
-    if(!confirm("WARNING: This will delete client and ALL data! Continue?")) return;
+    if(!confirm("⚠️ DANGER: This will delete client and ALL their data! Continue?")) return;
     
-    // Try API first (Handles Auth + Cascade)
+    toast.loading("Deleting Client...", { id: 'delete-client' });
+    
+    // Try API for auth deletion + DB Cascade
     const res = await fetch(`/api/admin/clients/${id}/delete`, { method: 'DELETE' });
     
     if (res.ok) {
-        toast.success("Client Profile Deleted");
+        toast.success("Client & Auth Deleted", { id: 'delete-client' });
         fetchClients();
     } else {
-        // Fallback: Direct DB Delete
-        const { error } = await supabase.from('clients').delete().eq('id', id);
+        // Fallback: Direct DB Update (is_deleted flag)
+        const { error } = await supabase.from('clients').update({ is_deleted: true, status: 'DELETED' }).eq('id', id);
         if(!error) {
-            toast.success("Client Deleted from DB");
+            toast.success("Client marked as Deleted", { id: 'delete-client' });
             fetchClients();
         } else {
-            toast.error("Delete Failed: " + error.message);
+            toast.error("Delete Failed", { id: 'delete-client' });
         }
     }
+  };
+  
+  // UI rendering mein badges check karein (Standard Case)
+  const getBadgeStyle = (status: string) => {
+    const s = (status || '').toUpperCase();
+    if (s === 'ACTIVE') return "bg-green-100 text-green-700 border-green-200";
+    if (s === 'LOCKED') return "bg-red-100 text-red-700 border-red-200";
+    if (s === 'EXPIRED') return "bg-orange-100 text-orange-700 border-orange-200";
+    return "bg-slate-100 text-slate-700";
   };
 
   const openAddModal = () => { 
@@ -235,7 +253,7 @@ export default function ClientManagement() {
                           </Badge>
                       </td>
                       <td className="p-4">
-                        <Badge className={c.status === 'ACTIVE' ? "bg-green-100 text-green-700" : c.status === 'LOCKED' ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}>{c.status}</Badge>
+                        <Badge className={getBadgeStyle(c.status)}>{c.status}</Badge>
                       </td>
                       <td className="p-4 font-bold text-slate-700">₹{revenue}</td>
                       <td className="p-4 text-right pr-6">
@@ -248,7 +266,7 @@ export default function ClientManagement() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleLockToggle(c)}>{c.status === 'LOCKED' ? <><Unlock className="mr-2 h-4 w-4 text-green-600"/> Unlock Account</> : <><Lock className="mr-2 h-4 w-4 text-orange-600"/> Lock Account</>}</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleMarkExpired(c.id)}><Calendar className="mr-2 h-4 w-4 text-slate-500"/> Mark Expired</DropdownMenuItem>
-                            <DropdownMenuSeparator/><DropdownMenuItem className="text-red-600" onClick={() => handleDelete(c.id)}><Trash2 className="mr-2 w-4 h-4"/> Delete Client</DropdownMenuItem>
+                            <DropdownMenuSeparator/><DropdownMenuItem className="text-red-600" onClick={() => handleDelete(c.id)}><Trash2 className="mr-2 h-4 w-4"/> Delete Client</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
