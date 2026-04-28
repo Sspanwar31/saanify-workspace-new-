@@ -61,16 +61,17 @@ export async function POST(req: Request) {
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 3. ✅ FIXED: Database Insert (Adding 'mode' to prevent null constraint error)
+    // 3. ✅ FULL COLUMN SYNC (Adding all required fields)
     const { data: insertedData, error: dbError } = await supabase
       .from('payment_intents')
       .insert([{
         email: email.toLowerCase().trim(),
         token: order.id,
         amount: amount,
-        plan: planId,
+        plan: planId.toUpperCase(), // e.g., 'BASIC'
         status: 'pending',
-        mode: 'AUTO' // 👈 YE LINE MISSING THI. Ab error nahi aayega.
+        mode: 'AUTO', // ✅ Mode Fixed
+        expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(), // ✅ Expiry Fixed (20 mins)
       }])
       .select();
 
