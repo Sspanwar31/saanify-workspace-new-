@@ -38,20 +38,52 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, amount, planId } = body;
+    // ✅ Added phone extraction
+    const { email, phone, amount, planId } = body;
+    const cleanEmail = email.toLowerCase().trim();
 
     if (!email) return NextResponse.json({ error: "Email required" }, { status: 400, headers: corsHeaders });
 
-    // 1. Check existing PAID intent
+    // 1. Check existing PAID intent (Flow continuation logic)
     const { data: paidIntent } = await supabase
       .from('payment_intents')
       .select('token')
-      .eq('email', email)
+      .eq('email', cleanEmail)
       .eq('status', 'PAID')
       .maybeSingle();
 
     if (paidIntent) {
       return NextResponse.json({ action: 'REDIRECT_SIGNUP', orderId: paidIntent.token }, { headers: corsHeaders });
+    }
+
+    // 🛑 NEW CHECK 1: Kya ye Email ya Phone pehle se registered hai?
+    const { data: existingUser } = await supabase
+      .from('clients')
+      .select('id, has_used_trial')
+      .or(`email.eq.${cleanEmail},phone.eq.${phone}`)
+      .maybeSingle();
+
+    if (existingUser) {
+      return NextResponse.json({ 
+        error: "This email or phone number is already registered with an account." 
+      }, { status: 400, headers: corsHeaders });
+    }
+
+    // 🛑 NEW CHECK 2: Trial Abuse Protection
+    if (planId.toUpperCase() === 'TRIAL') {
+      // Hum payment_intents mein bhi check karenge ki kya isne pehle trial liya hai
+      const { data: usedTrial } = await supabase
+        .from('payment_intents')
+        .select('id')
+        .eq('email', cleanEmail)
+        .eq('plan', 'TRIAL')
+        .maybeSingle();
+
+      if (usedTrial) {
+        return NextResponse.json({ 
+          error: "You have already used your Free Trial. Please choose a paid plan." 
+        }, { status: 400, headers: corsHeaders });
+      }
     }
 
     // 2. Razorpay Order Create
@@ -65,7 +97,7 @@ export async function POST(req: Request) {
     const { data: insertedData, error: dbError } = await supabase
       .from('payment_intents')
       .insert([{
-        email: email.toLowerCase().trim(),
+        email: cleanEmail,
         token: order.id,
         amount: amount,
         plan: planId.toUpperCase(), // e.g., 'BASIC'
