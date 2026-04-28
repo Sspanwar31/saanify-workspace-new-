@@ -2,63 +2,47 @@ import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 
-/* -------------------------------------------------------
-   CORS Headers (Flutter App Connect ke liye Zaroori)
-------------------------------------------------------- */
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-/* -------------------------------------------------------
-   Decode Service Role Key (B64 safe)
-------------------------------------------------------- */
+// ✅ B64 DECODER FIX: Pakka karein ki key sahi se decode ho rahi hai
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  if (!rawKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 missing");
+  if (!rawKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 missing");
+  
+  try {
+    if (rawKey.startsWith('eyJ')) return rawKey;
+    return Buffer.from(rawKey, 'base64').toString('utf-8').trim();
+  } catch (e) {
+    return rawKey; // Fallback
   }
-  if (rawKey.startsWith('eyJ')) {
-    return rawKey;
-  }
-  return Buffer.from(rawKey, 'base64').toString('utf-8');
 };
 
-/* -------------------------------------------------------
-   Supabase (Service Role – backend only)
-------------------------------------------------------- */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   getServiceRoleKey()
 );
 
-/* -------------------------------------------------------
-   Razorpay Instance
-------------------------------------------------------- */
 const razorpay = new Razorpay({
   key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
-/* -------------------------------------------------------
-   OPTIONS Method (Preflight request)
-------------------------------------------------------- */
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 
-/* -------------------------------------------------------
-   POST /api/payment/create-order
-------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { email, amount, planId } = body;
 
-    if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+    if (!email) return NextResponse.json({ error: "Email required" }, { status: 400, headers: corsHeaders });
 
-    // 1. Check: Kya is email se pehle hi PAID (lekin register nahi) payment ho chuki hai?
+    // 1. Check existing PAID intent
     const { data: paidIntent } = await supabase
       .from('payment_intents')
       .select('token')
@@ -67,46 +51,50 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (paidIntent) {
-      // 🚀 MAGIC: Naya order banane ke bajaye purana rasta bhej do
-      return NextResponse.json({ 
-        action: 'REDIRECT_SIGNUP', 
-        orderId: paidIntent.token 
-      }, { headers: corsHeaders });
+      return NextResponse.json({ action: 'REDIRECT_SIGNUP', orderId: paidIntent.token }, { headers: corsHeaders });
     }
 
-    // 2. Check: Kya koi PENDING order hai? (Taaki ek hi order reuse ho)
-    const { data: pendingIntent } = await supabase
-      .from('payment_intents')
-      .select('token')
-      .eq('email', email)
-      .eq('status', 'pending')
-      .maybeSingle();
-
-    if (pendingIntent) {
-       return NextResponse.json({ 
-         orderId: pendingIntent.token, 
-         amount: amount * 100 
-       }, { headers: corsHeaders });
-    }
-
-    // 3. Agar kuch nahi mila, tabhi naya Razorpay order banayein
+    // 2. Razorpay Order Create
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
       currency: 'INR',
+      receipt: `rcpt_${Date.now()}`,
     });
 
-    // DB mein insert karein
-    await supabase.from('payment_intents').insert([{
-      email: email,
-      token: order.id,
-      amount: amount,
-      plan: planId,
-      status: 'pending'
-    }]);
+    // 3. ✅ CRITICAL FIX: Database Insert with ERROR CHECKING
+    // Hum .select() use karenge taaki database confirm kare ki row ban gayi hai
+    const { data: insertedData, error: dbError } = await supabase
+      .from('payment_intents')
+      .insert([{
+        email: email.toLowerCase().trim(),
+        token: order.id,
+        amount: amount,
+        plan: planId,
+        status: 'pending'
+      }])
+      .select(); // 👈 Data wapas mangwayein confirmation ke liye
 
-    return NextResponse.json({ orderId: order.id, amount: order.amount });
+    if (dbError) {
+      console.error("❌ SUPABASE INSERT ERROR:", dbError.message);
+      // Agar yahan error aata hai, toh rasta yahi rok do
+      return NextResponse.json({ error: "Database failed to save order: " + dbError.message }, { status: 500, headers: corsHeaders });
+    }
+
+    if (!insertedData || insertedData.length === 0) {
+      return NextResponse.json({ error: "No data was inserted" }, { status: 500, headers: corsHeaders });
+    }
+
+    console.log("✅ DB Entry Created Successfully for:", order.id);
+
+    // 4. Return to frontend ONLY after successful DB insert
+    return NextResponse.json({ 
+      orderId: order.id, 
+      amount: order.amount,
+      razorpayKey: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID 
+    }, { headers: corsHeaders });
 
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("🔥 FATAL API ERROR:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }
 }
