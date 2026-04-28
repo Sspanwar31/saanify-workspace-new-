@@ -1,85 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// --- 🔐 SAFER BASE64 DECODER ---
-const getServiceRoleKey = () => {
-  const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  
-  if (!b64Key) {
-    console.error("❌ Environment Variable 'SUPABASE_SERVICE_ROLE_KEY_B64' missing in Vercel.");
-    return null;
-  }
-
-  try {
-    // Agar key pehle se hi 'eyJ' se shuru ho rahi hai, matlab wo already decoded hai
-    if (b64Key.startsWith('eyJ')) return b64Key;
-    
-    // Base64 se decode karein
-    return Buffer.from(b64Key, 'base64').toString('utf-8').trim();
-  } catch (e) {
-    console.error("❌ Failed to decode Base64 key:", e);
-    return null;
-  }
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+// --- 🔐 SERVICE ROLE KEY DECODER (Base64 Fix) ---
+const getServiceRoleKey = () => {
+  const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
+  if (!b64Key) throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 missing");
+  
+  if (b64Key.startsWith('eyJ')) return b64Key; // Pehle se decoded hai
+  return Buffer.from(b64Key, 'base64').toString('utf-8').trim(); // B64 se decode karo
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
+export async function POST(
+  req: NextRequest,
+  context: any
+) {
   try {
+    // ✅ FIX 1: Params ko safely handle karein (Next.js 14/15 stability)
+    const params = await context.params; 
     const clientId = params.id;
+
     const body = await req.json();
     const { action } = body;
 
-    const serviceKey = getServiceRoleKey();
-
-    if (!serviceKey) {
-      return NextResponse.json({ error: "Server Configuration Error: Key Missing" }, { status: 500 });
+    if (!clientId || !action) {
+      return NextResponse.json({ error: 'Missing Data' }, { status: 400, headers: corsHeaders });
     }
 
-    // Initialize Supabase only when needed inside the handler
+    const serviceKey = getServiceRoleKey();
+    
+    // Initialize Supabase only inside handler to avoid global init issues
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      serviceKey
     );
 
-    // 1. Mapping Logic (Standardizing Status)
-    let updateData: any = {};
-    const cmd = action?.toUpperCase();
+    // ✅ SAHI LOGIC: Ab ye teeno cases handle karega
+    let newStatus: 'ACTIVE' | 'LOCKED' | 'EXPIRED';
 
-    if (cmd === 'LOCK') {
-      updateData = { status: 'LOCKED', subscription_status: 'locked' };
-    } else if (cmd === 'EXPIRE') {
-      updateData = { status: 'EXPIRED', subscription_status: 'expired' };
-    } else if (cmd === 'ACTIVATE' || cmd === 'UNLOCK' || cmd === 'ACTIVE') {
-      updateData = { status: 'ACTIVE', subscription_status: 'active' };
+    if (action === 'LOCK') {
+      newStatus = 'LOCKED';
+    } else if (action === 'EXPIRE') {
+      newStatus = 'EXPIRED';
+    } else if (action === 'ACTIVATE' || action === 'UNLOCK') {
+      newStatus = 'ACTIVE'; // 👈 Ye missing tha, isliye 400 aa raha tha
     } else {
-      return NextResponse.json({ error: 'Invalid Action: ' + action }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid action: ' + action }, { status: 400, headers: corsHeaders });
     }
 
-    // 2. Database Update (Bypassing RLS)
+    // ✅ DATABASE UPDATE (Bypassing RLS with Service Role Key)
     const { data, error: dbError } = await supabaseAdmin
       .from('clients')
-      .update(updateData)
+      .update({ 
+        status: newStatus,
+        subscription_status: newStatus === 'ACTIVE' ? 'active' : 'expired'
+      })
       .eq('id', clientId)
       .select();
 
     if (dbError) {
-      console.error('Supabase DB Error:', dbError.message);
-      return NextResponse.json({ error: dbError.message }, { status: 500 });
+      console.error('❌ Supabase Error:', dbError.message);
+      return NextResponse.json({ error: dbError.message }, { status: 500, headers: corsHeaders });
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      status: updateData.status,
-      message: `Client status updated to ${updateData.status}`
+    return NextResponse.json({
+      success: true,
+      status: newStatus,
+      updated: data
     });
 
   } catch (err: any) {
-    console.error('Fatal API Crash:', err.message);
-    return NextResponse.json({ error: "API Internal Error: " + err.message }, { status: 500 });
+    console.error('🔥 API Route Error:', err.message);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: corsHeaders });
   }
 }
