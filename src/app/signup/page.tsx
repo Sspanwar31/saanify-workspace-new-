@@ -23,7 +23,8 @@ function SignupForm() {
   const mode = searchParams.get('mode');
 
   // --- States ---
-  const [isPaid, setIsPaid] = useState(false); // ✅ Added missing state definition
+  const [isPaid, setIsPaid] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true); // ✅ Added state for Loader Control
   const [selectedPlan, setSelectedPlan] = useState<any | undefined>(undefined); 
   const [loading, setLoading] = useState(false);
   
@@ -35,35 +36,46 @@ function SignupForm() {
     password: ''
   });
 
-  // ✅ UPDATED fetchPlan (Handles both PAID and CONSUMED to stop loop)
+  // ✅ 1. Optimized fetchPlan (Bina Crash wala logic)
   const fetchPlan = async (intentData?: any) => {
     try {
-      // If intentData is provided (realtime), use it. Otherwise fetch fresh data.
       const data = intentData || (await supabase
         .from('payment_intents')
         .select('*')
         .eq('token', orderId)
         .maybeSingle()).data;
 
-      if (!data) return;
+      if (!data) {
+        console.log("Waiting for data...");
+        return;
+      }
 
-      // Plan Details fetch karein
-      const { data: planDetails } = await supabase
+      // 🚀 AGAR PAID HAI TO LOADER TURANT HATNA CHAIYE
+      if (data.status === 'PAID' || data.status === 'CONSUMED') {
+        setIsPaid(true);
+        setIsVerifying(false); // 👈 Ye line loader ko stop karti hai
+        console.log("✅ Payment status confirmed:", data.status);
+      }
+
+      // Plan Details fetch karein (Safety check ke saath)
+      const { data: planDetails, error: planErr } = await supabase
         .from('plans')
         .select('*')
-        .eq('code', data.plan.toUpperCase())
-        .single();
+        .eq('code', data.plan.toString().toUpperCase())
+        .maybeSingle();
 
       if (planDetails) {
         setSelectedPlan(planDetails);
-        
-        // 🚀 AGAR PAID HAI TO LOADER KHATAM KARO (Updated logic)
-        if (data.status === 'PAID' || data.status === 'CONSUMED') {
-          setIsPaid(true); 
-        }
+      } else {
+        console.warn("Plan details not found in 'plans' table for code:", data.plan);
+        // Agar plan nahi bhi mila par payment PAID hai, toh bhi form kholo
+        if (data.status === 'PAID') setIsVerifying(false);
       }
+      
     } catch (err) {
-      console.error("Fetch Error:", err);
+      console.error("Critical Fetch Error:", err);
+      // 🛑 ZAROORI: Error aane par bhi loader hatao taaki screen black na ho
+      setIsVerifying(false); 
     }
   };
 
@@ -271,13 +283,16 @@ function SignupForm() {
 
   // --- RENDER ---
   
-  // Loader based on isVerifying
-  if (orderId && mode === 'AUTO' && !isPaid) {
+  // ✅ 2. LOADER UI (Text correct kiya gaya hai)
+  if (orderId && mode === 'AUTO' && isVerifying) {
     return (
-      <div className="min-h-screen flex flex flex-col items-center justify-center bg-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6 text-center">
         <Loader2 className="animate-spin w-12 h-12 text-blue-600 mb-4"/>
-        <h2 className="text-xl font-bold">Verifying Your Payment</h2>
-        <p className="text-gray-500">Redirecting to dashboard...</p>
+        <h2 className="text-2xl font-bold text-slate-800">Payment Received!</h2>
+        <p className="text-gray-500 max-w-xs">Setting up your registration form. Please wait a second...</p>
+        <div className="mt-8 px-4 py-2 bg-slate-100 rounded-full text-[10px] font-mono text-slate-400">
+          Order ID: {orderId}
+        </div>
       </div>
     );
   }
