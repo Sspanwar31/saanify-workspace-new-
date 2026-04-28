@@ -28,7 +28,7 @@ export async function POST(
     // ✅ FIX 1: Params ko safely handle karein (Next.js 14/15 stability)
     const params = await context.params; 
     const clientId = params.id;
-
+    
     const body = await req.json();
     const { action } = body;
 
@@ -44,26 +44,30 @@ export async function POST(
       serviceKey
     );
 
-    // ✅ SAHI LOGIC: Ab ye teeno cases handle karega
-    let newStatus: 'ACTIVE' | 'LOCKED' | 'EXPIRED';
+    // ✅ NAYA LOGIC: Payload decide karein (Sirf Status Update)
+    let updatePayload: any = {};
+    const cmd = action?.toUpperCase();
 
-    if (action === 'LOCK') {
-      newStatus = 'LOCKED';
-    } else if (action === 'EXPIRE') {
-      newStatus = 'EXPIRED';
-    } else if (action === 'ACTIVATE' || action === 'UNLOCK') {
-      newStatus = 'ACTIVE'; // 👈 Ye missing tha, isliye 400 aa raha tha
-    } else {
+    if (cmd === 'LOCK') {
+      updatePayload = { status: 'LOCKED' }; // Sirf login rokega
+    } 
+    else if (cmd === 'EXPIRE') {
+      // Sirf status expire hoga, subscription_status touch nahi hoga
+      updatePayload = { status: 'EXPIRED' };
+    } 
+    else if (cmd === 'ACTIVATE' || cmd === 'UNLOCK') {
+      // ✅ SABSE ZAROORI: Unlock karte waqt sirf 'ACTIVE' karo
+      // Taaki user access le sake, par subscription_status backend se ho
+      updatePayload = { status: 'ACTIVE' }; 
+    } 
+    else {
       return NextResponse.json({ error: 'Invalid action: ' + action }, { status: 400, headers: corsHeaders });
     }
 
-    // ✅ DATABASE UPDATE (Only Status Update, Subscription Removed)
+    // ✅ DATABASE UPDATE (Sirf Status Change, Subscription logic removed)
     const { data, error: dbError } = await supabaseAdmin
       .from('clients')
-      .update({ 
-        status: newStatus
-        // ✅ subscription_status update logic removed here
-      })
+      .update(updatePayload)
       .eq('id', clientId)
       .select();
 
@@ -74,9 +78,9 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      status: newStatus,
+      status: updatePayload.status,
       updated: data
-    });
+    }, { status: 200, headers: corsHeaders });
 
   } catch (err: any) {
     console.error('🔥 API Route Error:', err.message);
