@@ -28,8 +28,7 @@ export default function ClientProfile() {
   // Modal State
   const [isRenewOpen, setIsRenewOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); 
-  const [newPlan, setNewPlan] = useState('');
-  
+  const [newPlan, setNewPlan] = useState('');  
   // Add Staff Form
   const [staffForm, setStaffForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
@@ -56,61 +55,57 @@ export default function ClientProfile() {
   useEffect(() => { fetchClient(); }, [id]);
 
   // 2. Handle Actions
-  
-  // ✅ LOCK / UNLOCK (Hybrid: DB First + API Background)
+
+  // ✅ 1. Sahi handleLockToggle Logic (Isse replace karein)
   const handleLockToggle = async () => {
-    const newStatus = client.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
-    
-    // 1. Direct DB Update (Fast Action)
-    // Isse UI update hoga aur Client ka GlobalListener usse logout kar dega
-    const { error } = await supabase
-        .from('clients')
-        .update({ status: newStatus })
-        .eq('id', id);
+    const currentStatus = (client.status || 'ACTIVE').toUpperCase();
+    const isLocked = currentStatus === 'LOCKED';
+  
+    // Agar locked hai toh ACTIVATE bhejo, warna LOCK bhejo
+    const actionToSend = isLocked ? 'ACTIVATE' : 'LOCK'; 
+    const newStatusLabel = isLocked ? 'ACTIVE' : 'LOCKED';
 
-    if (error) {
-        return toast.error('Action failed: ' + error.message);
-    }
+    toast.loading(isLocked ? "Unlocking Account..." : "Locking Account...", { id: 'action' });
 
-    toast.success(`Client ${newStatus === 'LOCKED' ? 'Locked' : 'Unlocked'}`);
-    setClient({ ...client, status: newStatus });
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: actionToSend })
+      });
 
-    // 2. Background API Call (Security Action)
-    // Ye line zaroori hai Server Session kill karne ke liye
-    if (newStatus === 'LOCKED') {
-        fetch(`/api/admin/clients/${id}/status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'LOCK' })
-        }).catch(err => console.error("Background logout failed:", err));
-        // .catch lagaya hai taaki agar ye fail bhi ho, to user ko error na dikhe
-        // kyunki Step 1 se uska kaam already ho chuka hai.
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        toast.success(`Account is now ${newStatusLabel}`, { id: 'action' });
+        // Database se taaza data wapas lo taaki UI update ho jaye
+        await fetchClient(); 
+      } else {
+        throw new Error(data.error || "Update failed");
+      }
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
-  // ✅ EXPIRE ACCOUNT (Hybrid)
+  // ✅ 2. handleExpireClient function fix
   const handleExpireClient = async () => {
     if (!confirm('Are you sure you want to expire this account?')) return;
-    
-    // 1. Direct DB Update
-    const { error } = await supabase
-        .from('clients')
-        .update({ status: 'EXPIRED' })
-        .eq('id', id);
-
-    if (error) {
-        return toast.error('Failed to expire account');
-    }
-
-    toast.success('Account Expired');
-    setClient({ ...client, status: 'EXPIRED' });
-    
-    // 2. Background API Call
-    fetch(`/api/admin/clients/${id}/status`, {
+  
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'EXPIRE' })
-    }).catch(err => console.error("Background logout failed:", err));
+      });
+
+      if (res.ok) {
+        toast.success('Account marked as EXPIRED');
+        await fetchClient(); // ✅ Sync UI with DB
+      }
+    } catch (e) {
+      toast.error('Failed to expire account');
+    }
   };
 
   // ✅ NOTIFY CLIENT (Mock API for now)
@@ -217,21 +212,28 @@ export default function ClientProfile() {
       {/* HEADER CARD */}
       <Card className="bg-white shadow-sm border-slate-200 overflow-visible">
         <CardContent className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-           <div className="flex gap-5 items-center">
-              <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-blue-200">
-                  {client.society_name?.charAt(0) || client.name?.charAt(0)}
-              </div>
-              <div>
-                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{client.society_name || 'Unknown Society'}</h1>
-                 <div className="flex flex-wrap gap-4 text-sm text-slate-500 mt-2">
-                    <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><ShieldCheck className="w-3.5 h-3.5 text-blue-500"/> {client.name}</span>
-                    <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><Mail className="w-3.5 h-3.5 text-blue-500"/> {client.email}</span>
-                    <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><Phone className="w-3.5 h-3.5 text-blue-500"/> {client.phone || '--'}</span>
-                 </div>
-              </div>
-           </div>
-           <div className="flex gap-3 items-center">
-              <Badge className={client.status === 'ACTIVE' ? "bg-green-100 text-green-700 hover:bg-green-100 px-3 py-1" : "bg-red-100 text-red-700 px-3 py-1"}>{client.status}</Badge>
+             <div className="flex gap-5 items-center">
+                <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-blue-200">
+                    {client.society_name?.charAt(0) || client.name?.charAt(0)}
+                </div>
+                <div>
+                   <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{client.society_name || 'Unknown Society'}</h1>
+                   <div className="flex flex-wrap gap-4 text-sm text-slate-500 mt-2">
+                      <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><ShieldCheck className="w-3.5 h-3.5 text-blue-500"/> {client.name}</span>
+                      <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><Mail className="w-3.5 h-3.5 text-blue-500"/> {client.email}</span>
+                      <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100"><Phone className="w-3.5 h-3.5 text-blue-500"/> {client.phone || '--'}</span>
+                   </div>
+                </div>
+             </div>
+             <div className="flex gap-3 items-center">
+              {/* ✅ BADGE UI FIX: Jahan aapka Badge render ho raha hai */}
+              <Badge className={
+                client.status === 'ACTIVE' ? "bg-green-100 text-green-700" : 
+                client.status === 'LOCKED' ? "bg-red-100 text-red-700" : 
+                "bg-orange-100 text-orange-700"
+              }>
+                {client.status}
+              </Badge>
               <Badge variant="outline" className="text-blue-600 border-blue-200 px-3 py-1 text-xs uppercase font-bold">{client.plan} PLAN</Badge>
               <div className="h-8 w-px bg-slate-200 mx-2"></div>
               <Button onClick={handleAccess} className="bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-200 font-medium">
@@ -250,13 +252,13 @@ export default function ClientProfile() {
                   <DropdownMenuItem onClick={handleLockToggle} className={client.status === 'LOCKED' ? "text-green-600" : "text-orange-600"}>
                      {client.status === 'LOCKED' ? <><Unlock className="mr-2 w-4 h-4"/> Unlock Account</> : <><Lock className="mr-2 w-4 h-4"/> Lock Account</>}
                   </DropdownMenuItem>
-                  {/* ✅ NEW: Expire Action */}
+                  {/* ✅ Expire Action Menu Item */}
                   <DropdownMenuItem onClick={handleExpireClient} className="text-red-600">
                      <AlertTriangle className="mr-2 w-4 h-4"/> Expire Account
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-           </div>
+             </div>
         </CardContent>
       </Card>
 
@@ -345,7 +347,12 @@ export default function ClientProfile() {
             <div className="py-4">
                 <Select value={newPlan} onValueChange={setNewPlan}>
                     <SelectTrigger><SelectValue placeholder="Select Plan"/></SelectTrigger>
-                    <SelectContent><SelectItem value="TRIAL">Free Trial</SelectItem><SelectItem value="BASIC">Basic</SelectItem><SelectItem value="PRO">Pro</SelectItem><SelectItem value="ENTERPRISE">Enterprise</SelectItem></SelectContent>
+                    <SelectContent>
+                        <SelectItem value="TRIAL">Free Trial</SelectItem>
+                        <SelectItem value="BASIC">Basic</SelectItem>
+                        <SelectItem value="PRO">Pro</SelectItem>
+                        <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                    </SelectContent>
                 </Select>
             </div>
             <DialogFooter><Button onClick={handleUpdatePlan} className="w-full bg-blue-600">Update Plan</Button></DialogFooter>
