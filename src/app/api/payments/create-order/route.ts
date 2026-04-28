@@ -61,8 +61,7 @@ export async function POST(req: Request) {
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 3. ✅ CRITICAL FIX: Database Insert with ERROR CHECKING
-    // Hum .select() use karenge taaki database confirm kare ki row ban gayi hai
+    // 3. ✅ FIXED: Database Insert (Adding 'mode' to prevent null constraint error)
     const { data: insertedData, error: dbError } = await supabase
       .from('payment_intents')
       .insert([{
@@ -70,9 +69,10 @@ export async function POST(req: Request) {
         token: order.id,
         amount: amount,
         plan: planId,
-        status: 'pending'
+        status: 'pending',
+        mode: 'AUTO' // 👈 YE LINE MISSING THI. Ab error nahi aayega.
       }])
-      .select(); // 👈 Data wapas mangwayein confirmation ke liye
+      .select();
 
     if (dbError) {
       console.error("❌ SUPABASE INSERT ERROR:", dbError.message);
