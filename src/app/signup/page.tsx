@@ -177,7 +177,7 @@ function SignupForm() {
   }, [orderId, urlPlanCode, mode]); 
 
 
-  // ✅ HANDLE SUBMIT (With Auto Login Logic)
+  // ✅ HANDLE SUBMIT (With Security Logic)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -209,6 +209,17 @@ function SignupForm() {
           setLoading(false);
           return;
         }
+      }
+
+      // 🛑 SECURITY: Final Database check before Auth
+      const { data: check } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('phone', formData.phone)
+        .maybeSingle();
+
+      if (check) {
+        throw new Error("This phone number is already linked to another society.");
       }
 
       // 1. Auth Signup
