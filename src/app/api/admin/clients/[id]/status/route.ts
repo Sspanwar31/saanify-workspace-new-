@@ -1,89 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-// --- 🔐 SERVICE ROLE KEY DECODER (Base64 Fix) ---
 const getServiceRoleKey = () => {
   const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  if (!b64Key) throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 missing");
-  
-  if (b64Key.startsWith('eyJ')) return b64Key; // Pehle se decoded hai
-  return Buffer.from(b64Key, 'base64').toString('utf-8').trim(); // B64 se decode karo
+  if (!b64Key) return null;
+  try {
+    if (b64Key.startsWith('eyJ')) return b64Key;
+    return Buffer.from(b64Key, 'base64').toString('utf-8').trim();
+  } catch (e) { return null; }
 };
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: corsHeaders });
-}
+export async function POST(req: NextRequest, context: any) {
+  const params = await context.params; 
+  const clientId = params?.id;
 
-export async function POST(
-  req: NextRequest,
-  context: any
-) {
   try {
-    // ✅ FIX 1: Params ko safely handle karein (Next.js 14/15 stability)
-    const params = await context.params; 
-    const clientId = params.id;
-    
-    const body = await req.json();
-    const { action } = body;
+    const { action } = await req.json();
+    const serviceKey = getServiceRoleKey();
 
-    if (!clientId || !action) {
-      return NextResponse.json({ error: 'Missing Data' }, { status: 400, headers: corsHeaders });
+    if (!serviceKey || !clientId) {
+      return NextResponse.json({ error: "Config Error" }, { status: 500 });
     }
 
-    const serviceKey = getServiceRoleKey();
-    
-    // Initialize Supabase only inside handler to avoid global init issues
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceKey
-    );
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
 
-    // ✅ NAYA LOGIC: Payload decide karein (Sirf Status Update)
-    let updatePayload: any = {};
+    // ✅ NAYA LOGIC: Sirf 'status' badlega
+    let newStatus = '';
     const cmd = action?.toUpperCase();
 
     if (cmd === 'LOCK') {
-      updatePayload = { status: 'LOCKED' }; // Sirf login rokega
-    } 
-    else if (cmd === 'EXPIRE') {
-      // Sirf status expire hoga, subscription_status touch nahi hoga
-      updatePayload = { status: 'EXPIRED' };
-    } 
-    else if (cmd === 'ACTIVATE' || cmd === 'UNLOCK') {
-      // ✅ SABSE ZAROORI: Unlock karte waqt sirf 'ACTIVE' karo
-      // Taaki user access le sake, par subscription_status backend se ho
-      updatePayload = { status: 'ACTIVE' }; 
-    } 
-    else {
-      return NextResponse.json({ error: 'Invalid action: ' + action }, { status: 400, headers: corsHeaders });
+      newStatus = 'LOCKED';
+    } else if (cmd === 'EXPIRE') {
+      newStatus = 'EXPIRED';
+    } else if (cmd === 'ACTIVATE' || cmd === 'UNLOCK') {
+      newStatus = 'ACTIVE';
+    } else {
+      return NextResponse.json({ error: 'Invalid Action' }, { status: 400 });
     }
 
-    // ✅ DATABASE UPDATE (Sirf Status Change, Subscription logic removed)
-    const { data, error: dbError } = await supabaseAdmin
+    // 🚀 DB UPDATE: Sirf status column update hoga
+    const { error: dbError } = await supabaseAdmin
       .from('clients')
-      .update(updatePayload)
-      .eq('id', clientId)
-      .select();
+      .update({ status: newStatus }) 
+      .eq('id', clientId);
 
-    if (dbError) {
-      console.error('❌ Supabase Error:', dbError.message);
-      return NextResponse.json({ error: dbError.message }, { status: 500, headers: corsHeaders });
-    }
+    if (dbError) throw dbError;
 
-    return NextResponse.json({
-      success: true,
-      status: updatePayload.status,
-      updated: data
-    }, { status: 200, headers: corsHeaders });
+    return NextResponse.json({ success: true, status: newStatus }, { status: 200 });
 
   } catch (err: any) {
-    console.error('🔥 API Route Error:', err.message);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: corsHeaders });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
