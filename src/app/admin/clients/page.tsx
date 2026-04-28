@@ -30,10 +30,8 @@ export default function ClientManagement() {
 
   useEffect(() => { fetchClients(); }, []);
 
-  // ✅ SAHI LOGIC: Refresh function jo hamesha database se taaza data layega
   const fetchClients = async () => {
-    setLoading(true);
-    const { data: clientData, error: clientErr } = await supabase
+    const { data: clientData } = await supabase
       .from('clients')
       .select('*')
       .eq('role', 'client') 
@@ -55,6 +53,8 @@ export default function ClientManagement() {
       setIsStaffModalOpen(true);
   };
 
+  // ACTIONS
+  
   // ✅ ACTION 1: LOCK / UNLOCK (Full Fix)
   const handleLockToggle = async (client: any) => {
      // Case handle karne ke liye uppercase karein
@@ -92,17 +92,12 @@ export default function ClientManagement() {
   const handleMarkExpired = async (id: string) => {
      if(!confirm("Mark this subscription as expired? Client will be unable to login.")) return;
      
-     const yesterday = new Date();
-     yesterday.setDate(yesterday.getDate() - 1);
-     
      toast.loading("Marking as Expired...", { id: 'expire-update' });
 
      const { error } = await supabase
         .from('clients')
         .update({ 
-          status: 'EXPIRED', // ✅ Ensure this is separate from LOCKED
-          subscription_status: 'expired',
-          subscription_expiry: yesterday.toISOString() 
+          status: 'EXPIRED'
         })
         .eq('id', id);
 
@@ -135,7 +130,7 @@ export default function ClientManagement() {
         }
     }
   };
-  
+
   // UI rendering mein badges check karein (Standard Case)
   const getBadgeStyle = (status: string) => {
     const s = (status || '').toUpperCase();
@@ -144,6 +139,8 @@ export default function ClientManagement() {
     if (s === 'EXPIRED') return "bg-orange-100 text-orange-700 border-orange-200";
     return "bg-slate-100 text-slate-700";
   };
+
+  // ... (Baaki code wahi rahega) ... 
 
   const openAddModal = () => { 
       setEditingId(null); 
