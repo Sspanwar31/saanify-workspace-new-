@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// ✅ B64 DECODER FIX: Pakka karein ki key sahi se decode ho rahi hai
+// ✅ B64 DECODER FIX
 const getServiceRoleKey = () => {
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
   if (!rawKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY_B64 missing");
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields (email, amount, or planId)" }, { status: 400, headers: corsHeaders });
     }
 
-    // 🛑 NEW CHECK 1: Kya ye Email ya Phone pehle se registered hai?
+    // 🛑 CHECK 1: Renewal (Existing User)
     if (!isRenewal) {
         const { data: existingUser } = await supabase
           .from('clients')
@@ -61,9 +61,8 @@ export async function POST(req: Request) {
         }
     }
 
-    // 🛑 NEW CHECK 2: Trial Abuse Protection
+    // 🛑 CHECK 2: Trial Abuse Protection
     if (planId.toString().toUpperCase() === 'TRIAL') {
-      // Hum payment_intents mein bhi check karenge ki kya isne pehle trial liya hai
       const { data: usedTrial } = await supabase
         .from('payment_intents')
         .select('id')
@@ -78,14 +77,22 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. Razorpay Order Create
+    // 🚀 STEP 3: DELETE OLD PENDING INTENTS (Fixes Duplicate Key Error)
+    // Naya record insert karne se pehle purane pending records hatana zaroori hai
+    await supabase
+      .from('payment_intents')
+      .delete()
+      .eq('email', cleanEmail)
+      .eq('status', 'pending');
+
+    // 4. Razorpay Order Create
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 3. ✅ FULL COLUMN SYNC (Adding all required fields)
+    // 5. Insert New Intent
     const { data: insertedData, error: dbError } = await supabase
       .from('payment_intents')
       .insert([{
@@ -94,14 +101,13 @@ export async function POST(req: Request) {
         amount: amount,
         plan: planId.toUpperCase(), // e.g., 'BASIC'
         status: 'pending',
-        mode: 'AUTO', // ✅ Mode Fixed
-        expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(), // ✅ Expiry Fixed (20 mins)
+        mode: 'AUTO',
+        expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(), // 20 mins expiry
       }])
       .select();
 
     if (dbError) {
       console.error("❌ SUPABASE INSERT ERROR:", dbError.message);
-      // Agar yahan error aata hai, toh rasta yahi rok do
       return NextResponse.json({ error: "Database failed to save order: " + dbError.message }, { status: 500, headers: corsHeaders });
     }
 
@@ -111,7 +117,7 @@ export async function POST(req: Request) {
 
     console.log("✅ DB Entry Created Successfully for:", order.id);
 
-    // 4. Return to frontend ONLY after successful DB insert
+    // 6. Return to frontend ONLY after successful DB insert
     return NextResponse.json({ 
       orderId: order.id, 
       amount: order.amount,
