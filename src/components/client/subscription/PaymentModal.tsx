@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'; // ✅ Added Title/Description
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 const loadRazorpay = () => {
   return new Promise((resolve) => {
     const script = document.createElement('script');
-    script.src = 'https://checkout.Razorpay.com/v1/checkout.js';
+    // ✅ Fixed URL (lowercase 'razorpay')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
@@ -41,11 +42,21 @@ export default function PaymentModal({
   const [loading, setLoading] = useState(false);
   const [txnId, setTxnId] = useState('');
 
-  // ---------------- ONLINE PAYMENT (REAL RAZORPAY LOGIC) ----------------
+  // ---------------- ONLINE PAYMENT (UPDATED LOGIC) ----------------
   const handleOnlinePay = async () => {
     setLoading(true);
 
-    // 1. Load Razorpay SDK
+    // ✅ STEP 1: Get User Details from LocalStorage (Safety First)
+    const userStr = localStorage.getItem('current_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    if (!user?.email) {
+      toast.error("User email not found in session. Please re-login.");
+      setLoading(false);
+      return;
+    }
+
+    // 2. Load Razorpay SDK
     const isLoaded = await loadRazorpay();
     if (!isLoaded) {
       toast.error('Razorpay SDK failed to load. Check internet connection.');
@@ -54,21 +65,24 @@ export default function PaymentModal({
     }
 
     try {
-      // 2. Create Order on Backend
+      // 3. Create Order on Backend (Updated Payload)
       const response = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
+            email: user.email,          // 👈 Added
+            phone: user.phone || "",    // 👈 Added
             amount: plan.price, 
-            planName: plan.name, 
-            clientId: clientId 
+            planId: plan.name,          // 👈 Using planId instead of planName
+            clientId: clientId,
+            isRenewal: true             // 👈 Added for bypass check
         }),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Order creation failed');
 
-      // 3. Initialize Razorpay Options
+      // 4. Initialize Razorpay Options
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Key from Vercel Env
         amount: plan.price * 100, // Paise
@@ -77,16 +91,15 @@ export default function PaymentModal({
         description: `Upgrade to ${plan.name} Plan`,
         order_id: data.orderId, // Order ID from Backend
         
-        // 4. Handle Success (UPDATED LOGIC)
+        // 5. Handle Success
         handler: async function (response: any) {
           toast.loading("Verifying Payment...");
 
-          // ✅ URL ko plural 'payments' karein
           const verifyRes = await fetch('/api/payments/verify', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              razorpay_order_id: data.orderId, // Check karein keys 'razorpay_order_id' hi hon
+              razorpay_order_id: data.orderId,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               clientId: clientId,
@@ -95,7 +108,6 @@ export default function PaymentModal({
 
           const verifyData = await verifyRes.json();
           
-          // ✅ YOUR CHANGES APPLIED HERE
           if (verifyData.isPaid) {
             toast.success("Subscription Upgraded!");
             
@@ -106,19 +118,21 @@ export default function PaymentModal({
             setTimeout(() => {
               window.location.reload();
             }, 1000);
+          } else {
+            toast.error("Verification failed");
           }
         },
         prefill: {
-          name: 'Society Admin', // Optional: You can fetch user details here
-          email: 'admin@society.com',
-          contact: '',
+          name: user.name || 'Society Admin', // ✅ Using user data from LocalStorage
+          email: user.email,
+          contact: user.phone || '',
         },
         theme: {
           color: '#2563eb', // Blue color to match UI
         },
       };
 
-      // 5. Open Popup
+      // 6. Open Popup
       const paymentObject = new (window as any).Razorpay(options);
       paymentObject.open();
       
@@ -185,6 +199,11 @@ export default function PaymentModal({
           border-gray-200 dark:border-gray-800
         "
       >
+        {/* ✅ Fix Accessibility: DialogTitle is required */}
+        <div className="sr-only">
+            <DialogTitle>Payment for {plan.name}</DialogTitle>
+            <DialogDescription>Complete your subscription upgrade</DialogDescription>
+        </div>
 
         {/* LEFT – PAYMENT METHODS */}
         <div className="w-full md:w-2/3 p-8 overflow-y-auto bg-slate-50 dark:bg-slate-900">
