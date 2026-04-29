@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import PaymentModal from '@/components/client/subscription/PaymentModal'; // Assuming file name typo fix
+import PaymentModal from '@/components/client/subscription/PaymentModal'; 
 import { toast } from 'sonner';
 
 // ✅ FIX 1: Move getPlanStyle OUTSIDE component
@@ -75,7 +75,7 @@ export default function SubscriptionPage() {
       try {
         setLoading(true);
 
-        // ✅ STEP 1: LOCAL STORAGE SE ID NIKALO (Jaise MembersPage me kiya)
+        // ✅ STEP 1: LOCAL STORAGE SE ID NIKALO
         const userStr = localStorage.getItem('current_user');
         
         if (!userStr) {
@@ -85,7 +85,6 @@ export default function SubscriptionPage() {
         }
 
         const user = JSON.parse(userStr);
-        // Universal ID Resolver: Kabhi id direct hoti hai, kabhi client_id me
         const resolvedClientId = user.client_id ?? user.id;
 
         if (!resolvedClientId) {
@@ -96,7 +95,7 @@ export default function SubscriptionPage() {
 
         setClientId(resolvedClientId);
 
-        // ✅ STEP 2: CLIENT DATA FETCH BY ID (Not Email)
+        // ✅ STEP 2: CLIENT DATA FETCH BY ID
         const { data: client, error: clientError } = await supabase
             .from('clients')
             .select('*')
@@ -119,12 +118,10 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // ✅ NEW LOGIC: Plan ID ko ignore karo, sirf Plan Name aur Code use karo
           let planDisplayName = client.plan_name || client.plan || 'Basic';
-          let limit = 200; // Default limit for Basic
+          let limit = 200; 
           let durationDays = 30;
 
-          // Member Limit determine karein (Based on Plan Name/Code text)
           const p = planDisplayName.toUpperCase();
           const code = (client.plan || '').toUpperCase();
 
@@ -138,15 +135,13 @@ export default function SubscriptionPage() {
             limit = 100;
             durationDays = 7;
           } else {
-            limit = 200; // Default Basic
+            limit = 200; 
             durationDays = 30;
           }
 
-          // --- DATE CALCULATION LOGIC ---
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          // Priority: plan_end_date -> subscription_expiry -> created_at + duration
           let endDate = new Date();
           if (client.plan_end_date) {
             endDate = new Date(client.plan_end_date);
@@ -161,7 +156,6 @@ export default function SubscriptionPage() {
           const diffTime = endDate.getTime() - today.getTime();
           const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
           
-          // Member Count
           const { count } = await supabase
             .from('members')
             .select('*', { count: 'exact', head: true })
@@ -170,7 +164,7 @@ export default function SubscriptionPage() {
           const currentMemberCount = count || 0;
 
           setSubscription({
-            planName: planDisplayName, // Ab ye Professional/Enterprise sahi dikhayega
+            planName: planDisplayName,
             status: daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED',
             endStr: endDate.toLocaleDateString('en-IN', {
                 day: '2-digit', month: 'short', year: 'numeric'
@@ -183,7 +177,7 @@ export default function SubscriptionPage() {
           setMemberCount(currentMemberCount);
         }
 
-        // --- FETCH ALL PLANS (For Display) ---
+        // --- FETCH ALL PLANS ---
         const { data: dbPlans } = await supabase
           .from('plans')
           .select('*')
@@ -198,7 +192,7 @@ export default function SubscriptionPage() {
             price: p.price,
             durationDays: p.duration_days || 30,
             features: Array.isArray(p.features) ? p.features : [],
-            color: getPlanStyle(p.name, p.color), // ✅ Using external function
+            color: getPlanStyle(p.name, p.color),
             isPopular: p.name === 'Professional'
           }));
           setPlans(mappedPlans);
@@ -206,8 +200,6 @@ export default function SubscriptionPage() {
 
       } catch (err: any) {
         console.error("Error:", err);
-        // Agar ID valid hai par table access nahi, to shyd RLS issue ho sakta hai
-        // Par members page chal raha hai to ye bhi chalna chahiye
         toast.error("Failed to load subscription.");
       } finally {
         setLoading(false);
@@ -215,16 +207,17 @@ export default function SubscriptionPage() {
     };
 
     fetchData();
-  }, []); // Run once on mount
+  }, []); 
 
-  // ✅ UPDATED handleBuyNow (isRenewal Flag Added)
-  const handleBuyNow = (plan: any) => {
-    // ✅ CHANGE: Ab yahan se fetch call ho raha hai (Agar modal logic wahi hai to ye logic hata dena padega, lekin request ke hisaab yeh rakhna safe hai)
+  // ✅ FIX 2: Added async keyword here
+  const handleBuyNow = async (plan: any) => {
+    // Note: Fetch call logic retained from your snippet, 
+    // though usually this logic might reside inside the modal or use the returned order ID.
     
-    // Client data se email aur phone nikalna (Agar available)
     const userEmail = subscription?.email;
     const userPhone = subscription?.phone;
 
+    // This fetch call will now work because the function is async
     const res = await fetch('/api/payments/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -233,11 +226,10 @@ export default function SubscriptionPage() {
         phone: userPhone,
         amount: plan.price,
         planId: plan.name,
-        isRenewal: true // 👈 Ye add karein taaki API block na kare
+        isRenewal: true 
       })
     });
     
-    // Note: Agar aap PaymentModal ke andar logic handle karte hain to orderId fetch karna padega
     setSelectedPlan(plan);
     setIsPaymentOpen(true);
   };
@@ -262,7 +254,6 @@ export default function SubscriptionPage() {
     }
   };
 
-  // UI rendering mein badges check karein (Standard Case)
   const getBadgeStyle = (status: string) => {
     const s = (status || '').toUpperCase();
     if (s === 'ACTIVE') return "bg-green-100 text-green-700 border-green-200";
@@ -279,7 +270,6 @@ export default function SubscriptionPage() {
       </div>
     );
 
-  // Fallback agar data na mile
   if (!subscription) {
     return (
       <div className="p-10 text-center">
@@ -318,7 +308,6 @@ export default function SubscriptionPage() {
                     </div>
 
                     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 text-left shadow-sm">
-                        {/* Using the Row component here would be cleaner but keeping divs for stability as per original code */}
                         <div className="flex justify-between items-center text-sm border-b border-dashed border-slate-200 dark:border-slate-800 pb-2 last:border-0">
                             <span className="text-gray-500 dark:text-gray-400">Requested Plan</span>
                             <span className="font-bold text-gray-900 dark:text-slate-200">{pendingOrder.plan_name}</span>
@@ -440,14 +429,12 @@ export default function SubscriptionPage() {
                               : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
                         }
                       `}
-                      // ✅ FIX: Safety for toLowerCase() crash
                       disabled={(plan?.name || "").toLowerCase() === (subscription?.planName || "").toLowerCase()}
                       onClick={() => handleBuyNow(plan)}
                     >
                       {(subscription?.planName || "").toLowerCase() === (plan?.name || "").toLowerCase()
                         ? 'Current Plan'
                         : 'Choose Plan'}
-                      }
                     </Button>
                   </div>
                 </Card>
