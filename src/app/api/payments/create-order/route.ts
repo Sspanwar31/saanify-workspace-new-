@@ -38,39 +38,31 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    // ✅ Added phone extraction
     const { email, phone, amount, planId } = body;
+    const isRenewal = body?.isRenewal || false; // Frontend se bhejein agar ye purana client hai
     const cleanEmail = email.toLowerCase().trim();
 
-    if (!email) return NextResponse.json({ error: "Email required" }, { status: 400, headers: corsHeaders });
-
-    // 1. Check existing PAID intent (Flow continuation logic)
-    const { data: paidIntent } = await supabase
-      .from('payment_intents')
-      .select('token')
-      .eq('email', cleanEmail)
-      .eq('status', 'PAID')
-      .maybeSingle();
-
-    if (paidIntent) {
-      return NextResponse.json({ action: 'REDIRECT_SIGNUP', orderId: paidIntent.token }, { headers: corsHeaders });
+    if (!email || !amount || !planId) {
+      return NextResponse.json({ error: "Missing required fields (email, amount, or planId)" }, { status: 400, headers: corsHeaders });
     }
 
     // 🛑 NEW CHECK 1: Kya ye Email ya Phone pehle se registered hai?
-    const { data: existingUser } = await supabase
-      .from('clients')
-      .select('id, has_used_trial')
-      .or(`email.eq.${cleanEmail},phone.eq.${phone}`)
-      .maybeSingle();
+    if (!isRenewal) {
+        const { data: existingUser } = await supabase
+          .from('clients')
+          .select('id')
+          .or(`email.eq.${cleanEmail},phone.eq.${phone}`)
+          .maybeSingle();
 
-    if (existingUser) {
-      return NextResponse.json({ 
-        error: "This email or phone number is already registered with an account." 
-      }, { status: 400, headers: corsHeaders });
+        if (existingUser) {
+          return NextResponse.json({ 
+            error: "This email or phone number is already registered with an account." 
+          }, { status: 400, headers: corsHeaders });
+        }
     }
 
     // 🛑 NEW CHECK 2: Trial Abuse Protection
-    if (planId.toUpperCase() === 'TRIAL') {
+    if (planId.toString().toUpperCase() === 'TRIAL') {
       // Hum payment_intents mein bhi check karenge ki kya isne pehle trial liya hai
       const { data: usedTrial } = await supabase
         .from('payment_intents')
