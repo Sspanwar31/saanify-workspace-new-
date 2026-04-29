@@ -18,8 +18,46 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import PaymentModal from '@/components/client/subscription/PaymentModal'; 
+import PaymentModal from '@/components/client/subscription/PaymentModal'; // Assuming file name typo fix
 import { toast } from 'sonner';
+
+// ✅ FIX 1: Move getPlanStyle OUTSIDE component
+const getPlanStyle = (name: string = "", dbColor: string = "") => {
+  const safeName = (name || "").toLowerCase();
+  if (safeName === 'professional' || safeName === 'pro') {
+    return 'bg-blue-700 text-white hover:bg-blue-800 shadow-md ring-2 ring-blue-600 scale-105 z-10'; 
+  }
+  if (safeName === 'enterprise') {
+    return 'bg-purple-100 text-purple-700 hover:bg-purple-200 border-2 border-purple-200 dark:bg-purple-900/40 dark:text-purple-200 dark:hover:bg-purple-900/60 dark:border-purple-700'; 
+  }
+  if (safeName === 'basic') {
+    return 'bg-gray-100 border-2 border-gray-200 text-gray-900 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-700';
+  }
+  return `bg-white border-2 ${dbColor || 'border-gray-200'} text-gray-900 hover:shadow-lg dark:bg-gray-900 dark:text-gray-100`;
+};
+
+function InfoBlock({ title, value, children, highlight }: any) {
+  return (
+    <div>
+      <p className="text-xs text-slate-500 dark:text-slate-500 uppercase font-bold mb-1 tracking-wide">{title}</p>
+      <p className={`text-xl font-bold ${highlight ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-slate-200'}`}>
+        {value}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, value, mono, highlight }: any) {
+  return (
+    <div className="flex justify-between items-center text-sm border-b border-dashed border-slate-200 dark:border-slate-800 pb-2 last:border-0 last:pb-0">
+      <span className="text-slate-600 dark:text-slate-400">{label}</span>
+      <span className={`${mono ? 'font-mono text-xs' : 'font-semibold'} ${highlight ? 'text-orange-700 dark:text-orange-400' : 'text-gray-900 dark:text-slate-200'}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
@@ -82,7 +120,6 @@ export default function SubscriptionPage() {
           }
 
           // ✅ NEW LOGIC: Plan ID ko ignore karo, sirf Plan Name aur Code use karo
-          // Isse Flutter aur Website dono sync ho jayenge
           let planDisplayName = client.plan_name || client.plan || 'Basic';
           let limit = 200; // Default limit for Basic
           let durationDays = 30;
@@ -161,7 +198,7 @@ export default function SubscriptionPage() {
             price: p.price,
             durationDays: p.duration_days || 30,
             features: Array.isArray(p.features) ? p.features : [],
-            color: getPlanStyle(p.name, p.color),
+            color: getPlanStyle(p.name, p.color), // ✅ Using external function
             isPopular: p.name === 'Professional'
           }));
           setPlans(mappedPlans);
@@ -169,7 +206,7 @@ export default function SubscriptionPage() {
 
       } catch (err: any) {
         console.error("Error:", err);
-        // Agar ID valid hai par table access nahi, toh shyad RLS issue ho sakta hai
+        // Agar ID valid hai par table access nahi, to shyd RLS issue ho sakta hai
         // Par members page chal raha hai to ye bhi chalna chahiye
         toast.error("Failed to load subscription.");
       } finally {
@@ -181,8 +218,8 @@ export default function SubscriptionPage() {
   }, []); // Run once on mount
 
   // ✅ UPDATED handleBuyNow (isRenewal Flag Added)
-  const handleBuyNow = async (plan: any) => {
-    // ✅ CHANGE: Ab yahan se fetch call ho raha hai (Agar modal logic wahi hai to ye logic hata dena padega, lekin request ke hisaab yeh rakhna safe hai agar backend direct bhi call kar raha ho)
+  const handleBuyNow = (plan: any) => {
+    // ✅ CHANGE: Ab yahan se fetch call ho raha hai (Agar modal logic wahi hai to ye logic hata dena padega, lekin request ke hisaab yeh rakhna safe hai)
     
     // Client data se email aur phone nikalna (Agar available)
     const userEmail = subscription?.email;
@@ -199,7 +236,7 @@ export default function SubscriptionPage() {
         isRenewal: true // 👈 Ye add karein taaki API block na kare
       })
     });
-    // ... baaki logic (modal open karna, ya response handle karna)
+    
     // Note: Agar aap PaymentModal ke andar logic handle karte hain to orderId fetch karna padega
     setSelectedPlan(plan);
     setIsPaymentOpen(true);
@@ -238,7 +275,7 @@ export default function SubscriptionPage() {
     return (
       <div className="flex justify-center py-20 flex-col items-center gap-4">
         <Loader2 className="animate-spin h-10 w-10 text-blue-500" />
-        <p className="text-gray-500">Loading subscription details...</p>
+        <p className="text-gray-500 text-sm">Loading subscription details...</p>
       </div>
     );
 
@@ -247,7 +284,7 @@ export default function SubscriptionPage() {
     return (
       <div className="p-10 text-center">
          <AlertTriangle className="h-10 w-10 text-orange-500 mx-auto mb-4" />
-         <h3 className="text-lg font-semibold text-gray-900">Subscription Data Not Found</h3>
+         <h3 className="text-lg font-bold text-gray-900">Subscription Data Not Found</h3>
          <p className="text-sm text-gray-500 mt-2">Could not verify client identity from session.</p>
       </div>
     );
@@ -272,7 +309,7 @@ export default function SubscriptionPage() {
                 </div>
                 <CardContent className="p-8 text-center space-y-6">
                     <div>
-                        <h2 className="text-3xl font-bold text-orange-900 dark:text-orange-200">
+                        <h2 className="text-3xl font-bold text-orange-900 dark:text-orange-400 mb-2">
                             Verification Pending
                         </h2>
                         <p className="text-orange-700/80 dark:text-orange-200/70">
@@ -281,18 +318,28 @@ export default function SubscriptionPage() {
                     </div>
 
                     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 text-left shadow-sm">
-                        <Row label="Requested Plan" value={pendingOrder.plan_name} />
-                        <Row label="Amount Paid" value={`₹${pendingOrder.amount.toLocaleString()}`} />
-                        <Row label="Date" value={new Date(pendingOrder.created_at).toLocaleDateString()} />
+                        {/* Using the Row component here would be cleaner but keeping divs for stability as per original code */}
+                        <div className="flex justify-between items-center text-sm border-b border-dashed border-slate-200 dark:border-slate-800 pb-2 last:border-0">
+                            <span className="text-gray-500 dark:text-gray-400">Requested Plan</span>
+                            <span className="font-bold text-gray-900 dark:text-slate-200">{pendingOrder.plan_name}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm border-b border-dashed border-slate-200 dark:border-slate-800 pb-2 last:border-0">
+                            <span className="text-gray-500 dark:text-gray-400">Amount Paid</span>
+                            <span className="font-bold text-gray-900 dark:text-slate-900">₹{pendingOrder.amount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm border-b border-dashed border-slate-200 dark:border-slate-800 pb-2 last:border-0">
+                            <span className="text-gray-500 dark:text-gray-400">Date</span>
+                            <span className="font-semibold text-gray-900 dark:text-slate-200">{new Date(pendingOrder.created_at).toLocaleDateString()}</span>
+                        </div>
                         <div className="flex justify-between items-center pt-2">
-                            <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">Status</span>
-                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300 px-3 py-1">Pending Approval</Badge>
+                            <span className="text-gray-500 dark:text-gray-400 text-sm uppercase font-bold">Status</span>
+                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-900/30">Pending Approval</Badge>
                         </div>
                     </div>
 
                     <div className="flex gap-4 justify-center pt-2">
                         <Button variant="outline" onClick={() => window.location.reload()} className="border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-950/30">
-                            <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+                            <RefreshCw className="h-4 w-4 mr-2" /> Check Status
                         </Button>
                         <Button variant="ghost" onClick={handleCancelRequest} className="text-red-500 hover:text-red-400 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">
                             Cancel Request
@@ -303,17 +350,17 @@ export default function SubscriptionPage() {
         </div>
       ) : (
         <>
-          <Card className="border-l-4 border-l-blue-600 shadow-sm overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardHeader className="pb-4 bg-gray-50/50 dark:bg-slate-800/50">
-              <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                <Crown className="w-5 h-5 text-blue-600" />
+          <Card className="border-l-4 border-l-blue-600 shadow-sm overflow-hidden bg-white dark:bg-gray-900 border-slate-200 dark:border-gray-800">
+            <CardHeader className="pb-4 bg-gray-50/50 dark:bg-gray-800/50">
+              <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-400">
+                <Crown className="h-5 w-5" />
                 Current Subscription
               </CardTitle>
             </CardHeader>
 
             <CardContent className="grid md:grid-cols-4 gap-6 pt-6">
               
-              <InfoBlock title="Active Plan" value={subscription?.planName} />
+              <InfoBlock title="Active Plan" value={subscription?.planName} />              
               
               <InfoBlock
                 title="Member Usage"
@@ -339,70 +386,80 @@ export default function SubscriptionPage() {
           </Card>
 
           {/* PLANS LIST */}
-          <div className="flex flex-wrap justify-center gap-8 items-stretch">
-            {plans.map(plan => (
-              <Card
-                key={plan.id}
-                className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between w-full md:max-w-[360px] lg:max-w-[380px] ${plan.color}`}
-              >
-                {plan.isPopular && (
-                  <div className="absolute top-0 right-0 z-20">
-                    <Badge className="rounded-none rounded-bl-xl bg-yellow-500 text-black px-4 py-1 text-xs font-bold border-none shadow-sm">
-                      Most Popular
-                    </Badge>
-                  </div>
-                )}
-
-                <div>
-                  <CardHeader className="text-center pb-4 pt-8">
-                    <CardTitle className={`text-2xl ${plan.name === 'Professional' ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-                      {plan.name}
-                    </CardTitle>
-                    <div className="mt-4 flex items-baseline justify-center gap-1">
-                      <span className={`text-4xl font-extrabold ${plan.name === 'Professional' ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-                        ₹{plan.price.toLocaleString()}
-                      </span>
-                      <span className={`text-sm font-medium ${plan.name === 'Professional' ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                        / {plan.durationDays} days
-                      </span>
+          {plans.length > 0 ? (
+            <div className="flex flex-wrap justify-center gap-8 items-stretch">
+              {plans.map(plan => (
+                <Card
+                      key={plan.id}
+                      className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-1 h-full flex flex-col justify-between w-full md:max-w-[360px] lg:max-w-[380px] ${getPlanStyle(plan.name, plan.color)}`}
+                >
+                  {plan.isPopular && (
+                    <div className="absolute top-0 right-0 z-20">
+                          <Badge className="rounded-none rounded-bl-xl bg-yellow-500 text-black px-4 py-1 text-xs font-bold border-none shadow-sm">
+                            Most Popular
+                          </Badge>
                     </div>
-                  </CardHeader>
+                  )}
 
-                  <CardContent className="space-y-8 px-6">
-                    <ul className="space-y-4 px-2">
-                      {plan.features.map((f: string, i: number) => (
-                        <li key={i} className={`flex gap-3 text-sm ${plan.name === 'Professional' ? 'text-blue-50' : 'text-slate-600 dark:text-slate-300'}`}>
-                          <div className={`mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${plan.name === 'Professional' ? 'bg-blue-600 text-white' : 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'}`}>
+                  <div>
+                    <CardHeader className="text-center pb-4 pt-8">
+                      <CardTitle className={`text-2xl ${plan.name === 'Professional' ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                        {plan.name}
+                      </CardTitle>
+                      <div className="mt-4 flex items-baseline justify-center gap-1">
+                        <span className={`text-4xl font-extrabold ${plan.name === 'Professional' ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                          ₹{plan.price.toLocaleString()}
+                        </span>
+                        <span className={`text-sm font-medium ${plan.name === 'Professional' ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                          / {plan.durationDays} days
+                        </span>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-8 px-6">
+                      <ul className="space-y-4 px-2">
+                        {plan.features.map((f: string, i: number) => (
+                          <li key={i} className={`flex gap-3 text-sm ${plan.name === 'Professional' ? 'text-blue-50' : 'text-slate-600 dark:text-slate-300'}`}>
+                            <div className={`mt-0.5 h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${plan.name === 'professional' ? 'bg-blue-600 text-white' : 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'}`}>
                                 <CheckCircle className={`h-3 w-3 ${plan.name === 'Professional' ? 'text-white' : 'text-green-600'}`} />
-                          </div>
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </div>
+                            </div>
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </div>
 
-                <div className="p-6 pt-0 mt-auto">
-                  <Button
-                    className={`w-full h-12 text-base font-semibold shadow-sm transition-all
-                      ${plan.name === 'Professional' 
-                          ? 'bg-white text-blue-700 hover:bg-blue-50' 
-                          : plan.name === 'Enterprise'
-                          ? 'bg-purple-600 text-white hover:bg-purple-700'
-                          : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
+                  <div className="p-6 pt-0 mt-auto">
+                    <Button
+                      className={`w-full h-12 text-base font-semibold shadow-sm transition-all
+                        ${plan.name === 'Professional' 
+                              ? 'bg-white text-blue-700 hover:bg-blue-50' 
+                              : plan.name === 'Enterprise'
+                              ? 'bg-purple-600 text-white hover:bg-purple-700'
+                              : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
+                        }
+                      `}
+                      // ✅ FIX: Safety for toLowerCase() crash
+                      disabled={(plan?.name || "").toLowerCase() === (subscription?.planName || "").toLowerCase()}
+                      onClick={() => handleBuyNow(plan)}
+                    >
+                      {(subscription?.planName || "").toLowerCase() === (plan?.name || "").toLowerCase()
+                        ? 'Current Plan'
+                        : 'Choose Plan'}
                       }
-                    `}
-                    disabled={subscription?.planName?.toLowerCase() === plan.name.toLowerCase()}
-                    onClick={() => handleBuyNow(plan)}
-                  >
-                    {subscription?.planName?.toLowerCase() === plan.name.toLowerCase()
-                      ? 'Current Plan'
-                      : 'Choose Plan'}
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-xl border-dashed border-gray-300 dark:border-gray-800">
+                  <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white">No Active Plans Available</h3>
+                  <p className="text-gray-500 mt-2">Please contact support or check back later.</p>
+            </div>
+          )}
         </>
       )}
 
@@ -414,29 +471,6 @@ export default function SubscriptionPage() {
           clientId={clientId}
         />
       )}
-    </div>
-  );
-}
-
-function InfoBlock({ title, value, children, highlight }: any) {
-  return (
-    <div>
-      <p className="text-xs text-slate-500 dark:text-slate-500 uppercase font-bold mb-1 tracking-wide">{title}</p>
-      <p className={`text-xl font-bold ${highlight ? 'text-green-600 dark:text-green-400' : 'text-slate-900 dark:text-slate-200'}`}>
-        {value}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function Row({ label, value, mono, highlight }: any) {
-  return (
-    <div className="flex justify-between items-center text-sm border-b border-dashed border-slate-200 dark:border-slate-800 pb-2 last:border-0 last:pb-0">
-      <span className="text-slate-600 dark:text-slate-400">{label}</span>
-      <span className={`${mono ? 'font-mono text-xs' : 'font-semibold'} ${highlight ? 'text-orange-700 dark:text-orange-400 text-lg' : 'text-slate-900 dark:text-slate-200'}`}>
-        {value}
-      </span>
     </div>
   );
 }
