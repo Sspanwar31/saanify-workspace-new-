@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'; // ✅ Added Title/Description
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,55 +46,59 @@ export default function PaymentModal({
   const handleOnlinePay = async () => {
     setLoading(true);
 
-    // ✅ STEP 1: Get User Details from LocalStorage (Safety First)
+    // 1. User Details Extraction with Safety
     const userStr = localStorage.getItem('current_user');
     const user = userStr ? JSON.parse(userStr) : null;
     
     if (!user?.email) {
-      toast.error("User email not found in session. Please re-login.");
+      toast.error("User session expired. Please login again.");
       setLoading(false);
       return;
     }
 
-    // 2. Load Razorpay SDK
+    // 2. Load Razorpay Script
     const isLoaded = await loadRazorpay();
     if (!isLoaded) {
-      toast.error('Razorpay SDK failed to load. Check internet connection.');
+      toast.error('Razorpay SDK failed to load. Check your internet.');
       setLoading(false);
       return;
     }
 
     try {
-      // 3. Create Order on Backend (Updated Payload)
+      // 3. Create Order
       const response = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            email: user.email,          // 👈 Added
-            phone: user.phone || "",    // 👈 Added
+            email: user.email,
+            phone: user.phone || "",
             amount: plan.price, 
-            planId: plan.name,          // 👈 Using planId instead of planName
+            planId: plan.name, 
             clientId: clientId,
-            isRenewal: true             // 👈 Added for bypass check
+            isRenewal: true 
         }),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Order creation failed');
 
-      // 4. Initialize Razorpay Options
+      // 4. Verification of Key
+      const rzpKey = data.razorpayKey || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!rzpKey) {
+        throw new Error("Razorpay Key is missing. Check environment variables.");
+      }
+
+      // 5. Razorpay Options
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Key from Vercel Env
-        amount: plan.price * 100, // Paise
+        key: rzpKey, 
+        amount: data.amount, // Paise mein backend se aata hai
         currency: 'INR',
-        name: 'Saanify V2',
-        description: `Upgrade to ${plan.name} Plan`,
-        order_id: data.orderId, // Order ID from Backend
-        
-        // 5. Handle Success
+        name: 'Saanify',
+        description: `Upgrade to ${plan.name}`,
+        image: '', // 👈 Isko empty rakhein taaki localhost wala error na aaye
+        order_id: data.orderId,
         handler: async function (response: any) {
           toast.loading("Verifying Payment...");
-
           const verifyRes = await fetch('/api/payments/verify', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -107,41 +111,45 @@ export default function PaymentModal({
           });
 
           const verifyData = await verifyRes.json();
-          
           if (verifyData.isPaid) {
-            toast.success("Subscription Upgraded!");
-            
-            // ✅ Browser ki memory se purana user data hatayein
+            toast.success("Payment Successful!");
             localStorage.removeItem('current_user'); 
-            
-            // Page reload karein taaki database se fresh data aaye
-            setTimeout(() => {
-              window.location.reload();
-            }, 1000);
+            setTimeout(() => window.location.reload(), 1500);
           } else {
-            toast.error("Verification failed");
+            toast.error("Payment verification failed.");
           }
         },
         prefill: {
-          name: user.name || 'Society Admin', // ✅ Using user data from LocalStorage
-          email: user.email,
+          name: user.name || '',
+          email: user.email || '',
           contact: user.phone || '',
         },
-        theme: {
-          color: '#2563eb', // Blue color to match UI
+        notes: {
+          clientId: clientId,
+          planName: plan.name
         },
+        theme: { color: '#2563eb' },
+        modal: {
+          ondismiss: function() {
+            setLoading(false); // 👈 Jab user cancel kare toh loader band ho jaye
+          }
+        }
       };
 
-      // 6. Open Popup
       const paymentObject = new (window as any).Razorpay(options);
-      paymentObject.open();
       
-      // Stop loading spinner immediately so user can see popup
-      setLoading(false);
+      // 6. Handle failure to open
+      paymentObject.on('payment.failed', function (response: any){
+          toast.error(response.error.description);
+          setLoading(false);
+      });
+
+      paymentObject.open();
+      setLoading(false); // Important: Popup khulne ke baad spinner hata dein
 
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || 'Payment initialization failed');
+      console.error("RZP ERROR:", err);
+      toast.error(err.message || 'Payment failed to start');
       setLoading(false);
     }
   };
@@ -201,7 +209,7 @@ export default function PaymentModal({
       >
         {/* ✅ Fix Accessibility: DialogTitle is required */}
         <div className="sr-only">
-            <DialogTitle>Payment for {plan.name}</DialogTitle>
+            <DialogTitle>Complete Your Payment</DialogTitle>
             <DialogDescription>Complete your subscription upgrade</DialogDescription>
         </div>
 
