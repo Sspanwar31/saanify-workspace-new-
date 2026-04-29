@@ -77,49 +77,54 @@ export async function POST(req: Request) {
       }
     }
 
-    // 🚀 STEP 1: CLEANUP (No condition, just delete any pending)
-    // Hum expired check nahi karenge, seedha delete karenge taaki 
-    // unique constraint ("one_active_payment") khali ho jaye.
-    await supabase
-      .from('payment_intents')
-      .delete()
-      .eq('email', cleanEmail)
-      .eq('status', 'pending');
-
-    // 2. Razorpay Order Create
+    // 1. Razorpay Order Create pehle kar lete hain
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 3. Database Insert
+    // 🚀 STEP 2: UPSERT LOGIC (The Real Fix)
+    // Hum 'insert' ki jagah 'upsert' use karenge.
+    // 'onConflict: email' ka matlab hai agar email pehle se hai, to error mat do, bas data update kar do.
     const { data: insertedData, error: dbError } = await supabase
       .from('payment_intents')
-      .insert([{
+      .upsert({
         email: cleanEmail,
         token: order.id,
         amount: amount,
-        plan: planId.toUpperCase(), // e.g., 'BASIC'
+        plan: planId.toUpperCase(),
         status: 'pending',
         mode: 'AUTO',
-        expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(), // 20 mins expiry
-      }])
+        expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(),
+      }, { 
+        onConflict: 'email', // ✅ Yeh batata hai ki kis column par check karna hai
+        ignoreDuplicates: false 
+      })
       .select();
 
     if (dbError) {
-      console.error("❌ SUPABASE INSERT ERROR:", dbError.message);
-      // Agar ab bhi error aaye, to iska matlab hai database constraint bahut strict hai
-      return NextResponse.json({ error: "Database failed to save order: " + dbError.message }, { status: 500, headers: corsHeaders });
+      console.error("❌ SUPABASE UPSERT ERROR:", dbError.message);
+      
+      // AGAR UPSERT BHI FAIL HO RAHA HAI (Constraint issue), toh manual Update try karenge
+      const { error: manualUpdateError } = await supabase
+        .from('payment_intents')
+        .update({
+          token: order.id,
+          amount: amount,
+          plan: planId.toUpperCase(),
+          status: 'pending',
+          expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(),
+        })
+        .eq('email', cleanEmail)
+        .eq('status', 'pending');
+
+      if (manualUpdateError) {
+        return NextResponse.json({ error: "Database Lock: " + manualUpdateError.message }, { status: 500, headers: corsHeaders });
+      }
     }
 
-    if (!insertedData || insertedData.length === 0) {
-      return NextResponse.json({ error: "No data was inserted" }, { status: 500, headers: corsHeaders });
-    }
-
-    console.log("✅ DB Entry Created Successfully for:", order.id);
-
-    // 4. Return to frontend ONLY after successful DB insert
+    // 3. Return success
     return NextResponse.json({ 
       orderId: order.id, 
       amount: order.amount,
