@@ -209,15 +209,23 @@ export default function SubscriptionPage() {
     fetchData();
   }, []); 
 
-  // ✅ FIX 2: Added async keyword here
+  // ✅ UPDATED handleBuyNow (Safe LocalStorage Fetch)
   const handleBuyNow = async (plan: any) => {
-    // Note: Fetch call logic retained from your snippet, 
-    // though usually this logic might reside inside the modal or use the returned order ID.
-    
-    const userEmail = subscription?.email;
-    const userPhone = subscription?.phone;
+    // 1. Pehle check karein ki data available hai
+    if (!plan) {
+      toast.error("Plan details missing");
+      return;
+    }
 
-    // This fetch call will now work because the function is async
+    // 2. LocalStorage se user nikalte waqt safety (Subscription state me email/phone nahi hai)
+    const userStr = localStorage.getItem('current_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    // Email aur Phone safely nikal rahe hain
+    const userEmail = (user?.email || "").toLowerCase().trim();
+    const userPhone = user?.phone || "";
+
+    // Fetch call
     const res = await fetch('/api/payments/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -226,7 +234,7 @@ export default function SubscriptionPage() {
         phone: userPhone,
         amount: plan.price,
         planId: plan.name,
-        isRenewal: true 
+        isRenewal: true // Taaki existing user block na ho
       })
     });
     
@@ -429,12 +437,19 @@ export default function SubscriptionPage() {
                               : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
                         }
                       `}
-                      disabled={(plan?.name || "").toLowerCase() === (subscription?.planName || "").toLowerCase()}
+                      // ✅ STEP 2: Sabse safe comparison (String wrapper)
+                      disabled={
+                        String(subscription?.planName || "").toLowerCase() === 
+                        String(plan?.name || "").toLowerCase()
+                      }
                       onClick={() => handleBuyNow(plan)}
                     >
-                      {(subscription?.planName || "").toLowerCase() === (plan?.name || "").toLowerCase()
-                        ? 'Current Plan'
-                        : 'Choose Plan'}
+                      {
+                        String(subscription?.planName || "").toLowerCase() === 
+                        String(plan?.name || "").toLowerCase()
+                          ? 'Current Plan'
+                          : 'Choose Plan'
+                      }
                     </Button>
                   </div>
                 </Card>
