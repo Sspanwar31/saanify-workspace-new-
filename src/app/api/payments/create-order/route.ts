@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { email, phone, amount, planId } = body;
-    const isRenewal = body?.isRenewal || false; // Frontend se bhejein agar ye purana client hai
+    const isRenewal = body?.isRenewal || false; 
     const cleanEmail = email.toLowerCase().trim();
 
     if (!email || !amount || !planId) {
@@ -77,22 +77,36 @@ export async function POST(req: Request) {
       }
     }
 
-    // 🚀 STEP 3: DELETE OLD PENDING INTENTS (Fixes Duplicate Key Error)
-    // Naya record insert karne se pehle purane pending records hatana zaroori hai
-    await supabase
+    // 🚀 STEP 1: REUSE WALA LOGIC (Check for existing pending intent)
+    // Agar user ne 2 minute pehle button dabaya tha aur payment nahi ki, 
+    // toh database mein wahi order para hoga. Usey reuse karein.
+    const { data: existingIntent } = await supabase
       .from('payment_intents')
-      .delete()
+      .select('token, amount')
       .eq('email', cleanEmail)
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      .maybeSingle();
 
-    // 4. Razorpay Order Create
+    if (existingIntent) {
+      // Naya order banane ki zaroorat nahi hai, purana wapas bhej do
+      console.log("Reusing existing pending order for signup/upgrade sync");
+      return NextResponse.json({ 
+        orderId: existingIntent.token, 
+        amount: existingIntent.amount * 100, // Razorpay paise maangta hai, DB mein rupees hai
+        razorpayKey: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID 
+      }, { headers: corsHeaders });
+    }
+
+    // --- AGAR PENDING ORDER NAHI HAI, TABHI NAYA BANAYEIN ---
+
+    // 2. Razorpay Order Create
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 5. Insert New Intent
+    // 3. Database Insert (Wahi purana process)
     const { data: insertedData, error: dbError } = await supabase
       .from('payment_intents')
       .insert([{
@@ -117,7 +131,7 @@ export async function POST(req: Request) {
 
     console.log("✅ DB Entry Created Successfully for:", order.id);
 
-    // 6. Return to frontend ONLY after successful DB insert
+    // 4. Return to frontend ONLY after successful DB insert
     return NextResponse.json({ 
       orderId: order.id, 
       amount: order.amount,
