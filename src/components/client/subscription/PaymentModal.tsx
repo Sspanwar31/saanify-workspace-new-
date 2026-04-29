@@ -97,6 +97,8 @@ export default function PaymentModal({
         description: `Upgrade to ${plan.name}`,
         image: '', // 👈 Isko empty rakhein taaki localhost wala error na aaye
         order_id: data.orderId,
+        
+        // ✅ UPDATED HANDLER LOGIC (NO LOGOUT)
         handler: async function (response: any) {
           toast.loading("Verifying Payment...");
           const verifyRes = await fetch('/api/payments/verify', { 
@@ -111,14 +113,30 @@ export default function PaymentModal({
           });
 
           const verifyData = await verifyRes.json();
+          
           if (verifyData.isPaid) {
             toast.success("Payment Successful!");
-            localStorage.removeItem('current_user'); 
-            setTimeout(() => window.location.reload(), 1500);
+
+            // ✅ PURANA LOGIC (Delete): localStorage.removeItem('current_user'); 👈 ISKO HATA DEIN
+
+            // ✅ NAYA LOGIC (Update local data if needed):
+            const userStr = localStorage.getItem('current_user');
+            if (userStr) {
+              const user = JSON.parse(userStr);
+              user.plan_name = plan.name; // Local data ko update kar dein bina logout kiye
+              user.plan = plan.name.toUpperCase();
+              localStorage.setItem('current_user', JSON.stringify(user));
+            }
+
+            // Page reload karein, SubscriptionPage ka useEffect khud Backend se fresh data utha lega
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
           } else {
             toast.error("Payment verification failed.");
           }
         },
+        
         prefill: {
           name: user.name || '',
           email: user.email || '',
