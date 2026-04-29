@@ -77,27 +77,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // 🚀 STEP 1: REUSE WALA LOGIC (Check for existing pending intent)
-    // Agar user ne 2 minute pehle button dabaya tha aur payment nahi ki, 
-    // toh database mein wahi order para hoga. Usey reuse karein.
-    const { data: existingIntent } = await supabase
+    // 🚀 STEP 1: CLEANUP (No condition, just delete any pending)
+    // Hum expired check nahi karenge, seedha delete karenge taaki 
+    // unique constraint ("one_active_payment") khali ho jaye.
+    await supabase
       .from('payment_intents')
-      .select('token, amount')
+      .delete()
       .eq('email', cleanEmail)
-      .eq('status', 'pending')
-      .maybeSingle();
-
-    if (existingIntent) {
-      // Naya order banane ki zaroorat nahi hai, purana wapas bhej do
-      console.log("Reusing existing pending order for signup/upgrade sync");
-      return NextResponse.json({ 
-        orderId: existingIntent.token, 
-        amount: existingIntent.amount * 100, // Razorpay paise maangta hai, DB mein rupees hai
-        razorpayKey: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID 
-      }, { headers: corsHeaders });
-    }
-
-    // --- AGAR PENDING ORDER NAHI HAI, TABHI NAYA BANAYEIN ---
+      .eq('status', 'pending');
 
     // 2. Razorpay Order Create
     const order = await razorpay.orders.create({
@@ -106,7 +93,7 @@ export async function POST(req: Request) {
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 3. Database Insert (Wahi purana process)
+    // 3. Database Insert
     const { data: insertedData, error: dbError } = await supabase
       .from('payment_intents')
       .insert([{
@@ -122,6 +109,7 @@ export async function POST(req: Request) {
 
     if (dbError) {
       console.error("❌ SUPABASE INSERT ERROR:", dbError.message);
+      // Agar ab bhi error aaye, to iska matlab hai database constraint bahut strict hai
       return NextResponse.json({ error: "Database failed to save order: " + dbError.message }, { status: 500, headers: corsHeaders });
     }
 
