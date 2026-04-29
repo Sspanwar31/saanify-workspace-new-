@@ -84,7 +84,8 @@ export default function SubscriptionPage() {
             return;
         }
 
-        const user = JSON.parse(userStr);
+        // Safety fallback added as per snippet
+        const user = JSON.parse(userStr || '{}');
         const resolvedClientId = user.client_id ?? user.id;
 
         if (!resolvedClientId) {
@@ -95,7 +96,7 @@ export default function SubscriptionPage() {
 
         setClientId(resolvedClientId);
 
-        // ✅ STEP 2: CLIENT DATA FETCH BY ID
+        // ✅ STEP 2: CLIENT DATA FETCH BY ID (Fresh Data from Backend)
         const { data: client, error: clientError } = await supabase
             .from('clients')
             .select('*')
@@ -118,6 +119,7 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
+          // Backend se fetched fresh data use kar rahe hain
           let planDisplayName = client.plan_name || client.plan || 'Basic';
           let limit = 200; 
           let durationDays = 30;
