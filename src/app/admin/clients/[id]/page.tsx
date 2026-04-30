@@ -35,7 +35,13 @@ export default function ClientProfile() {
 
   // 1. Fetch Client & Staff
   const fetchClient = async () => {
-    const { data, error } = await supabase.from('clients').select('*').eq('id', id).single();
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', id)
+      .eq('is_deleted', false) // ✅ ADD THIS
+      .single();
+      
     if (data) {
         setClient(data);
         setNewPlan(data.plan);
@@ -147,7 +153,7 @@ export default function ClientProfile() {
       if (!res.ok) {
           toast.error("Delete Failed: " + (data.error || "Unknown error"));
       } else {
-          toast.success("Client Hard Deleted Successfully");
+          toast.success("Client Deleted Successfully"); // ✅ Change Message
           router.push('/admin/clients'); // Redirect back to list
       }
   };
@@ -155,7 +161,11 @@ export default function ClientProfile() {
   const handleDeleteStaff = async (staffId: string) => {
       if(!confirm("Are you sure you want to remove this staff member?")) return;
       
-      const { error } = await supabase.from('clients').delete().eq('id', staffId);
+      // ✅ NEW (recommended soft delete)
+      const { error } = await supabase
+        .from('clients')
+        .update({ is_deleted: true })
+        .eq('id', staffId);
       
       if (error) {
           toast.error("Failed to delete staff: " + error.message);
