@@ -46,104 +46,89 @@ export async function DELETE(
 
     console.log(`🗑️ Deleting associated data for Client: ${clientId}...`);
 
-    // ✅ CASCADE DELETE LOGIC START
-    // Pehle saara dependent data delete karo with error checks
+    // Helper function (Safe Delete)
+    const safeDelete = async (query: any, label: string) => {
+      const { error } = await query;
+      if (error) {
+        console.warn(`⚠️ ${label} delete skipped:`, error.message);
+      } else {
+        console.log(`✅ ${label} deleted`);
+      }
+    };
+
+    // 🔁 CASCADE DELETE SAFE MODE
     
-    // 4.1 Delete Notifications
-    const { error: notifError } = await supabaseAdmin
-      .from('notifications')
-      .delete()
-      .eq('client_id', clientId);
+    await safeDelete(
+      supabaseAdmin.from('notifications').delete().eq('client_id', clientId),
+      'notifications'
+    );
 
-    if (notifError) {
-      return NextResponse.json({ error: "Failed to delete notifications: " + notifError.message }, { status: 400 });
-    }
+    await safeDelete(
+      supabaseAdmin.from('passbook_entries').delete().eq('client_id', clientId),
+      'passbook_entries'
+    );
 
-    // 4.2 Delete Passbook Entries
-    const { error: passbookError } = await supabaseAdmin
-      .from('passbook_entries')
-      .delete()
-      .eq('client_id', clientId);
+    await safeDelete(
+      supabaseAdmin.from('expenses_ledger').delete().eq('client_id', clientId),
+      'expenses'
+    );
 
-    if (passbookError) {
-      return NextResponse.json({ error: "Failed to delete passbook entries: " + passbookError.message }, { status: 400 });
-    }
+    await safeDelete(
+      supabaseAdmin.from('loans').delete().eq('client_id', clientId),
+      'loans'
+    );
 
-    // 4.3 Delete Expenses
-    const { error: expensesError } = await supabaseAdmin
-      .from('expenses_ledger')
-      .delete()
-      .eq('client_id', clientId);
+    await safeDelete(
+      supabaseAdmin.from('members').delete().eq('client_id', clientId),
+      'members'
+    );
 
-    if (expensesError) {
-      return NextResponse.json({ error: "Failed to delete expenses: " + expensesError.message }, { status: 400 });
-    }
+    await safeDelete(
+      supabaseAdmin.from('admin_fund_ledger').delete().eq('client_id', clientId),
+      'admin_fund_ledger'
+    );
 
-    // 4.4 Delete Loans
-    const { error: loansError } = await supabaseAdmin
-      .from('loans')
-      .delete()
-      .eq('client_id', clientId);
-
-    if (loansError) {
-      return NextResponse.json({ error: "Failed to delete loans: " + loansError.message }, { status: 400 });
-    }
-
-    // 4.5 Delete Members
-    const { error: membersError } = await supabaseAdmin
-      .from('members')
-      .delete()
-      .eq('client_id', clientId);
-
-    if (membersError) {
-      return NextResponse.json({ error: "Failed to delete members: " + membersError.message }, { status: 400 });
-    }
-    
-    // 4.6 Delete Admin Fund Ledger (If exists)
-    const { error: ledgerError } = await supabaseAdmin
-      .from('admin_fund_ledger')
-      .delete()
-      .eq('client_id', clientId);
-
-    if (ledgerError) {
-      return NextResponse.json({ error: "Failed to delete ledger: " + ledgerError.message }, { status: 400 });
-    }
-
-    // 4.7 Delete Linked Treasurers (Staff)
-    // ✅ FIX: Filter by role 'treasurer' to avoid deleting the main client
+    // ✅ STAFF DELETE (SAFE VERSION)
     const { data: staff } = await supabaseAdmin
       .from('clients')
       .select('id')
       .eq('client_id', clientId)
-      .eq('role', 'treasurer'); // ✅ ADD THIS
+      .eq('role', 'treasurer');
 
-    if (staff && staff.length > 0) {
-        for (const s of staff) {
-            await supabaseAdmin.auth.admin.deleteUser(s.id);
+    if (staff?.length) {
+      for (const s of staff) {
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(s.id);
+        } catch (e) {
+          console.warn("⚠️ Staff auth delete failed:", s.id);
         }
-        // Fir DB se udaao
-        await supabaseAdmin
+      }
+
+      await safeDelete(
+        supabaseAdmin
           .from('clients')
           .delete()
           .eq('client_id', clientId)
-          .eq('role', 'treasurer');
+          .eq('role', 'treasurer'),
+        'staff'
+      );
     }
-    // ✅ CASCADE DELETE LOGIC END
 
-
-    // 5. ✅ SOFT DELETE Client from DB
-    const { error: dbError } = await supabaseAdmin
+    // ✅ CLIENT SOFT DELETE (IMPORTANT CHECK ADD)
+    const { error: dbError, data } = await supabaseAdmin
       .from('clients')
       .update({
         is_deleted: true,
         status: 'DELETED',
         updated_at: new Date().toISOString()
       })
-      .eq('id', clientId);
+      .eq('id', clientId)
+      .select();
 
-    if (dbError) {
-      console.error("DB Update Error:", dbError);
-      return NextResponse.json({ error: dbError.message }, { status: 400 });
+    if (dbError || !data?.length) {
+      return NextResponse.json({
+        error: "Client not found or update failed"
+      }, { status: 400 });
     }
 
     // 6. Delete Client from Auth (Login Access Cleanup)
