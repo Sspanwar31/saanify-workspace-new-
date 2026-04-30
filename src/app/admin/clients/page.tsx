@@ -57,56 +57,58 @@ export default function ClientManagement() {
 
   // ACTIONS
   
-  // ✅ ACTION 1: LOCK / UNLOCK (Full Fix)
+  // ✅ Fix 1: handleLockToggle (API Approach)
   const handleLockToggle = async (client: any) => {
-     // Case handle karne ke liye uppercase karein
-     const currentStatus = (client.status || 'ACTIVE').toUpperCase();
-     const newStatus = currentStatus === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
-     
-     toast.loading(newStatus === 'LOCKED' ? "Locking Account..." : "Unlocking Account...", { id: 'status-update' });
+    const currentStatus = (client.status || 'ACTIVE').toUpperCase();
+    const isCurrentlyLocked = currentStatus === 'LOCKED';
+    
+    // Agar abhi locked hai toh ACTIVATE bhejenge, warna LOCK
+    const actionToSend = isCurrentlyLocked ? 'ACTIVATE' : 'LOCK';
+    const toastId = toast.loading(isCurrentlyLocked ? "Unlocking Account..." : "Locking Account...");
 
-     //1. Database Update
-     const { error } = await supabase
-        .from('clients')
-        .update({ status: newStatus })
-        .eq('id', client.id);
-     
-     if (error) {
-        return toast.error("Failed: " + error.message, { id: 'status-update' });
-     }
+    try {
+      const res = await fetch(`/api/admin/clients/${client.id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: actionToSend })
+      });
 
-     //2. Force Logout API call (For Security)
-     if (newStatus === 'LOCKED') {
-        await fetch(`/api/admin/clients/${client.id}/status`, {
-            method: 'POST', 
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ action: 'LOCK' })
-        }).catch(() => null);
-     }
+      const data = await res.json();
 
-     toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked", { id: 'status-update' });
-     
-     //3. ✅ Refresh from DB (Isse status change hamesha ke liye save hoga)
-     fetchClients();
+      if (res.ok && data.success) {
+        toast.success(isCurrentlyLocked ? "Account Unlocked" : "Account Locked", { id: toastId });
+        // UI refresh karein
+        fetchClients();
+      } else {
+        throw new Error(data.error || "Update failed");
+      }
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
+    }
   };
 
-  // ✅ ACTION 2: EXPIRE ACCOUNT (Fix)
+  // ✅ Fix 2: handleMarkExpired (API Approach)
   const handleMarkExpired = async (id: string) => {
-     if(!confirm("Mark this subscription as expired? Client will be unable to login.")) return;
-     
-     toast.loading("Marking as Expired...", { id: 'expire-update' });
+    if (!confirm("Mark this subscription as expired? Client will be unable to login.")) return;
 
-     const { error } = await supabase
-        .from('clients')
-        .update({ 
-          status: 'EXPIRED'
-        })
-        .eq('id', id);
+    const toastId = toast.loading("Marking as Expired...");
 
-     if (error) return toast.error("Failed to expire", { id: 'expire-update' });
-     
-     toast.success("Client status set to EXPIRED", { id: 'expire-update' });
-     fetchClients(); // Sync UI
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'EXPIRE' })
+      });
+
+      if (res.ok) {
+        toast.success("Client status set to EXPIRED", { id: toastId });
+        fetchClients();
+      } else {
+        throw new Error("Failed to expire");
+      }
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId });
+    }
   };
 
   // ✅ ACTION 3: DELETE CLIENT
