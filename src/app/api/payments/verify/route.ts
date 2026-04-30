@@ -41,8 +41,8 @@ export async function POST(req: Request) {
     const orderId = body.razorpay_order_id || body.orderCreationId;
     const paymentId = body.razorpay_payment_id;
     const signature = body.razorpay_signature;
-    const clientId = body.clientId; // ✅ RESTORED: Upgrade ke waqt hum clientId bhej rahe hain
-    
+
+    // ✅ CHANGE 1: Validation updated (clientId dependency removed)
     if (!orderId || !paymentId || !signature) {
       return NextResponse.json({ error: 'Missing Required Fields' }, { status: 400, headers: corsHeaders });
     }
@@ -56,51 +56,56 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid Payment Signature' }, { status: 400, headers: corsHeaders });
     }
 
-    // ✅ 2. Payment mark as PAID (Core Logic)
+    // 🚀 STEP 2: GET PLAN & EMAIL FROM INTENT (The Source of Truth)
+    // Hum intent table se email nikalenge taaki clients table ko target kar sakein
     const { data: intent, error: intentErr } = await supabase
       .from('payment_intents')
-      .update({
-        status: 'PAID',
-        razorpay_payment_id: paymentId
-      })
+      .select('*')
       .eq('token', orderId)
-      .select() // ✅ Ye line Realtime ko 'PAID' signal turant bhejegi
-      .maybeSingle(); // .single() ki jagah maybeSingle safe hai
+      .single();
 
-    if (intentErr) {
-      console.error('Database update failed:', intentErr);
-      return NextResponse.json({ error: 'Database error' }, { status: 500, headers: corsHeaders });
+    if (intentErr || !intent) {
+      throw new Error("Payment record not found in database");
     }
 
-    // 🚀 NAYA LOGIC: Agar clientId maujood hai (Matlab ye UPGRADE/RENEW hai)
-    if (clientId && intent) {
-      console.log("Processing Upgrade for Client:", clientId);
+    // 3. Mark Intent as PAID (Signup flow ke liye)
+    await supabase
+      .from('payment_intents')
+      .update({ status: 'PAID', razorpay_payment_id: paymentId })
+      .eq('token', orderId);
 
-      // Nayi expiry date calculate karein (Today + 30 Days)
-      const newEndDate = new Date();
-      newEndDate.setDate(newEndDate.getDate() + 30);
+    // 🚀 STEP 4: TARGET CLIENT BY EMAIL (Bulletproof Upgrade Logic)
+    // Hum 'email' ko target karenge kyunki main accounts ka client_id null hota hai
+    
+    // Nayi expiry calculate karein (Today + 30 Days)
+    const newEndDate = new Date();
+    newEndDate.setDate(newEndDate.getDate() + 30);
 
-      // Clients table ko update karein
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update({
-          plan: intent.plan, // e.g. 'PROFESSIONAL'
-          plan_name: intent.plan.charAt(0) + intent.plan.slice(1).toLowerCase(), // e.g. 'Professional'
-          status: 'ACTIVE',
-          plan_start_date: new Date().toISOString(),
-          plan_end_date: newEndDate.toISOString(),
-          subscription_status: 'active',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', clientId);
+    // Plan Name formatting (BASIC -> Basic)
+    const formattedPlanName = intent.plan.charAt(0).toUpperCase() + intent.plan.slice(1).toLowerCase();
 
-      if (updateError) {
-        console.error('Failed to update client plan:', updateError);
-        // Hum yahan return nahi karenge kyunki payment toh ho chuka hai
-      }
+    const { error: updateError } = await supabase
+      .from('clients')
+      .update({
+        plan: intent.plan.toUpperCase(), // 'BASIC', 'PROFESSIONAL', 'ENTERPRISE'
+        plan_name: formattedPlanName,    // 'Basic', 'Professional', 'Enterprise'
+        status: 'ACTIVE',
+        subscription_status: 'active',
+        plan_start_date: new Date().toISOString(),
+        plan_end_date: newEndDate.toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', intent.email); // 🎯 TARGETING BY EMAIL
+
+    if (updateError) {
+      console.error('Update failed (User might be new/Signup flow):', updateError.message);
+      // Agar update fail hota hai iska matlab user naya hai (Signup Flow), 
+      // toh hum yahan error nahi denge, kyunki Signup flow usey handle kar lega.
+    } else {
+      console.log('✅ Subscription Updated for:', intent.email);
     }
 
-    // 3. Simple Response (Signup flow handles rest via Realtime)
+    // 5. Simple Response (Signup flow handles rest via Realtime)
     return NextResponse.json({ 
       success: true,
       isPaid: true,
