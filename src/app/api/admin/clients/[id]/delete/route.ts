@@ -13,91 +13,49 @@ export async function DELETE(
       return NextResponse.json({ error: "Client ID missing" }, { status: 400 });
     }
 
-    // 1. Get Base64 Key from Env
-    const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64 || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // STEP 1: Helper function ADD karo
+    const getServiceRoleKey = () => {
+      const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
+      if (!b64Key) return null;
 
-    if (!b64Key) {
-      console.error("❌ Critical: SUPABASE_SERVICE_ROLE_KEY_B64 is missing in Env");
-      return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
-    }
+      try {
+        // ✅ agar already JWT hai to use directly
+        if (b64Key.startsWith('eyJ')) return b64Key;
 
-    // STEP 1 — B64 DECODE FIX (SAFE VERSION)
-    let serviceRoleKey: string;
-
-    try {
-      serviceRoleKey = b64Key.startsWith('ey')
-        ? b64Key.trim()
-        : Buffer.from(b64Key, 'base64').toString('utf-8').trim();
-
-      if (!serviceRoleKey || !serviceRoleKey.startsWith('ey')) {
-        throw new Error("Decoded key invalid");
+        // ✅ warna decode karo
+        return Buffer.from(b64Key, 'base64').toString('utf-8').trim();
+      } catch (e) {
+        return null;
       }
+    };
 
-    } catch (e: any) {
-      console.error("❌ Service key decode failed:", e.message);
+    // 🔴 STEP 2: PURA key decode logic REMOVE karo (Done)
+    
+    // 🔴 STEP 3: Replace Supabase init
+    const serviceKey = getServiceRoleKey();
 
-      return NextResponse.json({
-        error: "Service role key invalid"
-      }, { status: 500 });
+    if (!serviceKey) {
+      return NextResponse.json({ error: "Service key missing" }, { status: 500 });
     }
 
-    // 3. Init Admin Client
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceRoleKey, 
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      serviceKey
     );
 
     console.log(`🗑️ Deleting associated data for Client: ${clientId}...`);
 
-    // Helper function (Safe Delete)
-    const safeDelete = async (query: any, label: string) => {
-      const { error } = await query;
-      if (error) {
-        console.warn(`⚠️ ${label} delete skipped:`, error.message);
-      } else {
-        console.log(`✅ ${label} deleted`);
-      }
-    };
+    // Helper function removed (safeDelete) because we are using direct awaits now
 
-    // 🔁 CASCADE DELETE SAFE MODE
-    
-    await safeDelete(
-      supabaseAdmin.from('notifications').delete().eq('client_id', clientId),
-      'notifications'
-    );
+    // 🔴 STEP 4: IMPORTANT FIX (Direct awaits without error checks)
+    await supabaseAdmin.from('notifications').delete().eq('client_id', clientId);
+    await supabaseAdmin.from('passbook_entries').delete().eq('client_id', clientId);
+    await supabaseAdmin.from('expenses_ledger').delete().eq('client_id', clientId);
+    await supabaseAdmin.from('loans').delete().eq('client_id', clientId);
+    await supabaseAdmin.from('members').delete().eq('client_id', clientId);
+    await supabaseAdmin.from('admin_fund_ledger').delete().eq('client_id', clientId);
 
-    await safeDelete(
-      supabaseAdmin.from('passbook_entries').delete().eq('client_id', clientId),
-      'passbook_entries'
-    );
-
-    await safeDelete(
-      supabaseAdmin.from('expenses_ledger').delete().eq('client_id', clientId),
-      'expenses'
-    );
-
-    await safeDelete(
-      supabaseAdmin.from('loans').delete().eq('client_id', clientId),
-      'loans'
-    );
-
-    await safeDelete(
-      supabaseAdmin.from('members').delete().eq('client_id', clientId),
-      'members'
-    );
-
-    await safeDelete(
-      supabaseAdmin.from('admin_fund_ledger').delete().eq('client_id', clientId),
-      'admin_fund_ledger'
-    );
-
-    // ✅ STAFF DELETE (SAFE VERSION)
+    // ✅ STAFF DELETE (Updated to remove safeDelete usage)
     const { data: staff } = await supabaseAdmin
       .from('clients')
       .select('id')
@@ -113,52 +71,37 @@ export async function DELETE(
         }
       }
 
-      await safeDelete(
-        supabaseAdmin
-          .from('clients')
-          .delete()
-          .eq('client_id', clientId)
-          .eq('role', 'treasurer'),
-        'staff'
-      );
+      // Direct await instead of safeDelete
+      await supabaseAdmin
+        .from('clients')
+        .delete()
+        .eq('client_id', clientId)
+        .eq('role', 'treasurer');
     }
 
-    // 🔥 STEP 2 — UPDATE QUERY FIX (NO RETURN ON ERROR)
-    const { data, error } = await supabaseAdmin
+    // 🔴 STEP 5: FINAL SAFE DELETE (MOST IMPORTANT)
+    const { error: dbError } = await supabaseAdmin
       .from('clients')
       .update({
         is_deleted: true,
         status: 'DELETED',
         updated_at: new Date().toISOString()
       })
-      .eq('id', clientId)
-      .select();
+      .eq('id', clientId);
 
-    if (error) {
-      console.error("❌ Update failed:", error.message);
-      // ❗ return मत करो
+    if (dbError) {
+      console.error("❌ DB Error:", dbError);
+      return NextResponse.json({ error: dbError.message }, { status: 400 });
     }
 
-    console.log("✅ Soft delete result:", data);
-
-    // 🔥 STEP 5 — AUTH DELETE SAFE WRAP
+    // 🔴 STEP 6: Auth delete (safe mode)
     try {
-      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(clientId);
-
-      if (authError) {
-        console.warn("⚠️ Auth delete skipped:", authError.message);
-      } else {
-        console.log("✅ Auth user deleted");
-      }
+      await supabaseAdmin.auth.admin.deleteUser(clientId);
     } catch (e) {
-      console.warn("⚠️ Auth delete crash ignored");
+      console.warn("Auth delete skipped");
     }
 
-    // 🔥 STEP 4 — FINAL RESPONSE FORCE SUCCESS
-    return NextResponse.json({
-      success: true,
-      message: "Client deleted successfully"
-    });
+    return NextResponse.json({ success: true, message: "Client deleted successfully" });
 
   } catch (err: any) {
     console.error("API Error:", err.message);
