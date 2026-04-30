@@ -77,19 +77,28 @@ export async function POST(req: Request) {
       }
     }
 
-    // 1. Razorpay Order Create pehle kar lete hain
+    // 2. Razorpay Order Create (Pehle Order banayenge)
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 🚀 STEP 2: UPSERT LOGIC (The Real Fix)
-    // Hum 'insert' ki jagah 'upsert' use karenge.
-    // 'onConflict: email' ka matlab hai agar email pehle se hai, to error mat do, bas data update kar do.
+    // 🚀 STEP 1: RASTA SAAF KAREIN (Fix for Duplicate Key)
+    // Naya intent banane se pehle, us email ke saare PENDING intents delete karo
+    // Isse 'one_active_payment' wala constraint kabhi trigger hi nahi hoga
+    const { error: delError } = await supabase
+      .from('payment_intents')
+      .delete()
+      .eq('email', cleanEmail)
+      .eq('status', 'pending');
+
+    if (delError) console.error("Cleanup error:", delError.message);
+
+    // 🚀 STEP 2: NAYA RECORD INSERT KAREIN
     const { data: insertedData, error: dbError } = await supabase
       .from('payment_intents')
-      .upsert({
+      .insert([{
         email: cleanEmail,
         token: order.id,
         amount: amount,
@@ -97,34 +106,15 @@ export async function POST(req: Request) {
         status: 'pending',
         mode: 'AUTO',
         expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(),
-      }, { 
-        onConflict: 'email', // ✅ Yeh batata hai ki kis column par check karna hai
-        ignoreDuplicates: false 
-      })
+      }])
       .select();
 
     if (dbError) {
-      console.error("❌ SUPABASE UPSERT ERROR:", dbError.message);
-      
-      // AGAR UPSERT BHI FAIL HO RAHA HAI (Constraint issue), toh manual Update try karenge
-      const { error: manualUpdateError } = await supabase
-        .from('payment_intents')
-        .update({
-          token: order.id,
-          amount: amount,
-          plan: planId.toUpperCase(),
-          status: 'pending',
-          expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(),
-        })
-        .eq('email', cleanEmail)
-        .eq('status', 'pending');
-
-      if (manualUpdateError) {
-        return NextResponse.json({ error: "Database Lock: " + manualUpdateError.message }, { status: 500, headers: corsHeaders });
-      }
+      // Agar yahan error aaya toh aage mat badho
+      return NextResponse.json({ error: "Database save failed: " + dbError.message }, { status: 500, headers: corsHeaders });
     }
 
-    // 3. Return success
+    // 4. Sab sahi hai, ab frontend ko orderId bhejo
     return NextResponse.json({ 
       orderId: order.id, 
       amount: order.amount,
