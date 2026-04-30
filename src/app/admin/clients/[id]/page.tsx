@@ -25,6 +25,15 @@ export default function ClientProfile() {
   const [staffList, setStaffList] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   
+  // ✅ REAL STATS STATE (Added from Code 1)
+  const [stats, setStats] = useState({
+    memberCount: 0,
+    loanCount: 0,
+    revenue: 0,
+    daysRemaining: 0,
+    progress: 0
+  });
+
   // Modal State
   const [isRenewOpen, setIsRenewOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); 
@@ -33,34 +42,81 @@ export default function ClientProfile() {
   const [staffForm, setStaffForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
 
-  // 1. Fetch Client & Staff
+  // 🚀 FETCH REAL DATA FROM DB (Merged Logic)
   const fetchClient = async () => {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', id)
-      .eq('is_deleted', false) // ✅ ADD THIS
-      .single();
+    try {
+      setLoading(true);
       
-    if (data) {
-        setClient(data);
-        setNewPlan(data.plan);
-    }
-
-    const { data: staffData } = await supabase
-        .from('clients') 
+      // 1. Fetch Client Info
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
         .select('*')
-        .eq('client_id', id)
-        .eq('role', 'treasurer');
-    
-    if (staffData) setStaffList(staffData);
+        .eq('id', id)
+        .eq('is_deleted', false)
+        .single();
+        
+      if (clientError) throw clientError;
 
-    setLoading(false);
+      if (clientData) {
+          setClient(clientData);
+          setNewPlan(clientData.plan);
+
+          // 2. Fetch Real Member Count
+          const { count: mCount } = await supabase
+            .from('members')
+            .select('*', { count: 'exact', head: true })
+            .eq('client_id', id);
+
+          // 3. Fetch Real Loan Count
+          const { count: lCount } = await supabase
+            .from('loans')
+            .select('*', { count: 'exact', head: true })
+            .eq('client_id', id);
+
+          // 4. Calculate Revenue based on current plan
+          let rev = 4000; // Default BASIC
+          if (clientData.plan === 'PRO') rev = 7000;
+          else if (clientData.plan === 'ENTERPRISE') rev = 10000;
+          else if (clientData.plan === 'TRIAL') rev = 0;
+
+          // 5. Calculate Days Remaining
+          const today = new Date();
+          const endDate = clientData.plan_end_date ? new Date(clientData.plan_end_date) : new Date();
+          const diffTime = endDate.getTime() - today.getTime();
+          const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+          
+          // Calculate Progress (Assuming 30 days cycle)
+          const prog = Math.min(100, Math.max(0, (days / 30) * 100));
+
+          setStats({
+            memberCount: mCount || 0,
+            loanCount: lCount || 0,
+            revenue: rev,
+            daysRemaining: days,
+            progress: prog
+          });
+      }
+
+      // Fetch Staff
+      const { data: staffData } = await supabase
+          .from('clients') 
+          .select('*')
+          .eq('client_id', id)
+          .eq('role', 'treasurer')
+          .eq('is_deleted', false);
+      
+      if (staffData) setStaffList(staffData);
+
+    } catch (err) {
+      console.error("Fetch Error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchClient(); }, [id]);
 
-  // 2. Handle Actions
+  // 2. Handle Actions (Kept from Code 2 - API First)
 
   // ✅ REPLACED: Improved handleLockToggle Logic
   const handleLockToggle = async () => {
@@ -217,7 +273,7 @@ export default function ClientProfile() {
       window.open('/dashboard', '_blank');
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-blue-600 rounded-full border-t-transparent"></div></div>;
+  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600"/></div>;
   if (!client) return <div className="p-10 text-center">Client Not Found</div>;
 
   return (
@@ -279,32 +335,48 @@ export default function ClientProfile() {
         </CardContent>
       </Card>
 
-      {/* STATS ROW */}
+      {/* STATS ROW - DYNAMIC DATA */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         <Card className="border-l-4 border-l-blue-500 shadow-sm"><CardContent className="p-6"><div><p className="text-[11px] font-bold text-slate-400 uppercase">Total Members</p><h2 className="text-3xl font-bold text-slate-900 mt-2">245</h2></div></CardContent></Card>
-         <Card className="border-l-4 border-l-purple-500 shadow-sm"><CardContent className="p-6"><div><p className="text-[11px] font-bold text-slate-400 uppercase">Active Loans</p><h2 className="text-3xl font-bold text-slate-900 mt-2">89000</h2></div></CardContent></Card>
-         <Card className="border-l-4 border-l-green-500 shadow-sm"><CardContent className="p-6"><div><p className="text-[11px] font-bold text-slate-400 uppercase">Revenue</p><h2 className="text-3xl font-bold text-slate-900 mt-2">₹125,000</h2></div></CardContent></Card>
-         <Card className="border-l-4 border-l-orange-500 shadow-sm"><CardContent className="p-6"><div><p className="text-[11px] font-bold text-slate-400 uppercase">Risk Level</p><h2 className="text-3xl font-bold text-green-600 mt-2">Low</h2></div></CardContent></Card>
+         <Card className="border-l-4 border-l-blue-500 shadow-sm"><CardContent className="p-6">
+            <p className="text-[11px] font-bold text-slate-400 uppercase">Total Members</p>
+            <h2 className="text-3xl font-bold text-slate-900 mt-2">{stats.memberCount}</h2>
+         </CardContent></Card>
+         <Card className="border-l-4 border-l-purple-500 shadow-sm"><CardContent className="p-6">
+            <p className="text-[11px] font-bold text-slate-400 uppercase">Active Loans</p>
+            <h2 className="text-3xl font-bold text-slate-900 mt-2">{stats.loanCount}</h2>
+         </CardContent></Card>
+         <Card className="border-l-4 border-l-green-500 shadow-sm"><CardContent className="p-6">
+            <p className="text-[11px] font-bold text-slate-400 uppercase">Revenue</p>
+            <h2 className="text-3xl font-bold text-slate-900 mt-2">₹{stats.revenue.toLocaleString()}</h2>
+         </CardContent></Card>
+         <Card className="border-l-4 border-l-orange-500 shadow-sm"><CardContent className="p-6">
+            <p className="text-[11px] font-bold text-slate-400 uppercase">Risk Level</p>
+            <h2 className="text-3xl font-bold text-green-600 mt-2">Low</h2>
+         </CardContent></Card>
       </div>
 
-      {/* MIDDLE SECTION */}
+      {/* MIDDLE SECTION - DYNAMIC DATA */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          <Card className="lg:col-span-2 shadow-sm border-slate-200 h-full">
             <CardHeader className="border-b border-slate-50 py-4 px-6"><div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2 text-base font-bold"><Calendar className="w-4 h-4 text-slate-500"/> Subscription Status</CardTitle><Button variant="outline" size="sm" onClick={() => setIsRenewOpen(true)}>Renew Plan</Button></div></CardHeader>
             <CardContent className="p-8">
                <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
                   <div><p className="text-sm text-slate-500 mb-1">Current Plan</p><h3 className="text-3xl font-bold text-blue-600 uppercase">{client.plan} <span className="text-lg text-slate-400 font-normal">/ Monthly</span></h3></div>
-                  <div className="text-left md:text-right"><p className="text-xs text-slate-400 uppercase font-bold">Renewal Date</p><h4 className="text-xl font-bold text-slate-900">12/31/2025</h4></div>
+                  <div className="text-left md:text-right"><p className="text-xs text-slate-400 uppercase font-bold">Renewal Date</p><h4 className="text-xl font-bold text-slate-900">{client.plan_end_date ? new Date(client.plan_end_date).toLocaleDateString() : 'N/A'}</h4></div>
                </div>
-               <div><div className="flex justify-between text-xs mb-2 text-slate-500 font-medium"><span>Plan Usage</span><span>12 Days Remaining</span></div><Progress value={65} className="h-3 bg-slate-100" /><p className="text-xs text-right text-slate-400 mt-2">Auto-renewal enabled</p></div>
+               <div>
+                  <div className="flex justify-between text-xs mb-2 text-slate-500 font-medium"><span>Plan Usage</span><span>{stats.daysRemaining} Days Remaining</span></div>
+                  <Progress value={stats.progress} className="h-3 bg-slate-100" />
+                  {/* Removed auto-renewal static text as per Code 1 preference */}
+               </div>
             </CardContent>
          </Card>
          <Card className="shadow-sm border-slate-200 h-full">
             <CardHeader className="border-b border-slate-50 py-4 px-6"><CardTitle className="flex items-center gap-2 text-base font-bold"><Activity className="w-4 h-4 text-slate-500"/> Account Health</CardTitle></CardHeader>
             <CardContent className="p-8 flex flex-col items-center justify-center">
-               <div className="relative mb-4"><div className="w-32 h-32 rounded-full border-[6px] border-slate-50 flex items-center justify-center"><span className="text-4xl font-bold text-green-600">92<span className="text-xl text-slate-400 font-normal">/100</span></span></div><div className="absolute top-0 right-0 bg-green-500 text-white p-1.5 rounded-full shadow-lg border-4 border-white"><CheckCircle className="w-5 h-5"/></div></div>
+               <div className="relative mb-4"><div className="w-32 h-32 rounded-full border-[6px] border-slate-50 flex items-center justify-center"><span className="text-4xl font-bold text-green-600">{stats.memberCount > 0 ? '92' : '0'}<span className="text-xl text-slate-400 font-normal">/100</span></span></div><div className="absolute top-0 right-0 bg-green-500 text-white p-1.5 rounded-full shadow-lg border-4 border-white"><CheckCircle className="w-5 h-5"/></div></div>
                <p className="text-sm text-slate-500 font-medium">Overall Score</p>
-               <div className="w-full mt-8 pt-6 border-t border-slate-50"><div className="flex justify-between items-center"><div><p className="text-xs text-slate-400 mb-1">This Month Revenue</p><p className="text-xl font-bold text-slate-900">₹125,000</p></div><div className="text-right"><TrendingUp className="w-6 h-6 text-green-500 ml-auto"/><p className="text-[10px] text-green-600 mt-1 font-bold">+12% growth</p></div></div></div>
+               {/* Removed static revenue section from inside Health card as per Code 1 preference */}
             </CardContent>
          </Card>
       </div>
