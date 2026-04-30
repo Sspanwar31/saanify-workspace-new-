@@ -84,14 +84,14 @@ export async function POST(req: Request) {
       receipt: `rcpt_${Date.now()}`,
     });
 
-    // 🚀 STEP 1: RASTA SAAF KAREIN (Fix for Duplicate Key)
-    // Naya intent banane se pehle, us email ke saare PENDING intents delete karo
+    // 🚀 STEP 1: CANCEL OLD PENDING (SAFE FIX)
+    // Naya intent banane se pehle, us email ke saare PENDING intents ko 'CANCELLED' mark karo
     // Isse 'one_active_payment' wala constraint kabhi trigger hi nahi hoga
     const { error: delError } = await supabase
       .from('payment_intents')
-      .delete()
+      .update({ status: 'CANCELLED' })
       .eq('email', cleanEmail)
-      .eq('status', 'pending');
+      .eq('status', 'PENDING');
 
     if (delError) console.error("Cleanup error:", delError.message);
 
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
         token: order.id,
         amount: amount,
         plan: planId.toUpperCase(),
-        status: 'pending',
+        status: 'PENDING', // ✅ FIX
         mode: 'AUTO',
         expires_at: new Date(Date.now() + 20 * 60 * 1000).toISOString(),
       }])
