@@ -41,8 +41,8 @@ export async function POST(req: Request) {
     const orderId = body.razorpay_order_id || body.orderCreationId;
     const paymentId = body.razorpay_payment_id;
     const signature = body.razorpay_signature;
+    const clientId = body.clientId; // ✅ RESTORED: Upgrade ke waqt hum clientId bhej rahe hain
     
-    // ✅ CHANGE 1: Validation updated (clientId removed)
     if (!orderId || !paymentId || !signature) {
       return NextResponse.json({ error: 'Missing Required Fields' }, { status: 400, headers: corsHeaders });
     }
@@ -72,7 +72,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Database error' }, { status: 500, headers: corsHeaders });
     }
 
-    // ✅ CHANGE 4: Simple Response
+    // 🚀 NAYA LOGIC: Agar clientId maujood hai (Matlab ye UPGRADE/RENEW hai)
+    if (clientId && intent) {
+      console.log("Processing Upgrade for Client:", clientId);
+
+      // Nayi expiry date calculate karein (Today + 30 Days)
+      const newEndDate = new Date();
+      newEndDate.setDate(newEndDate.getDate() + 30);
+
+      // Clients table ko update karein
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({
+          plan: intent.plan, // e.g. 'PROFESSIONAL'
+          plan_name: intent.plan.charAt(0) + intent.plan.slice(1).toLowerCase(), // e.g. 'Professional'
+          status: 'ACTIVE',
+          plan_start_date: new Date().toISOString(),
+          plan_end_date: newEndDate.toISOString(),
+          subscription_status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', clientId);
+
+      if (updateError) {
+        console.error('Failed to update client plan:', updateError);
+        // Hum yahan return nahi karenge kyunki payment toh ho chuka hai
+      }
+    }
+
+    // 3. Simple Response (Signup flow handles rest via Realtime)
     return NextResponse.json({ 
       success: true,
       isPaid: true,
