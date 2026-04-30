@@ -16,7 +16,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
     }
 
-    // 2. Decode the Key
+    // 2. Decode Key
     let serviceRoleKey = b64Key;
     if (!b64Key.startsWith('ey')) {
        try {
@@ -39,10 +39,12 @@ export async function DELETE(
       }
     );
 
-    console.log(`🗑️ Hard Deleting Client: ${clientId} and all associated data...`);
+    console.log(`🗑️ Soft Deleting Client: ${clientId}...`);
 
     // ✅ CASCADE DELETE LOGIC START
     // Pehle saara dependent data delete karo, warna Foreign Key constraint error aayega
+    // NOTE: Agar aapko members/loans restore karne hain, toh ye cascade delete logic remove karna hoga.
+    // Current logic: Clean up data, keep Client shell.
 
     // 4.1 Delete Notifications
     await supabaseAdmin.from('notifications').delete().eq('client_id', clientId);
@@ -75,18 +77,23 @@ export async function DELETE(
     // ✅ CASCADE DELETE LOGIC END
 
 
-    // 5. Delete Client from DB
+    // 5. ✅ SOFT DELETE Client from DB (Updated Logic)
     const { error: dbError } = await supabaseAdmin
       .from('clients')
-      .delete()
+      .update({
+        is_deleted: true,
+        status: 'DELETED',
+        updated_at: new Date().toISOString()
+      })
       .eq('id', clientId);
 
     if (dbError) {
-      console.error("DB Delete Error:", dbError);
+      console.error("DB Update Error:", dbError);
       return NextResponse.json({ error: dbError.message }, { status: 400 });
     }
 
     // 6. Delete Client from Auth (Login Access Cleanup)
+    // Note: Client record exists (soft deleted), but Auth access must be revoked.
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(clientId);
 
     if (authError) {
@@ -95,7 +102,7 @@ export async function DELETE(
       console.log("✅ Auth User Deleted Successfully");
     }
 
-    return NextResponse.json({ success: true, message: "Client Hard Deleted" });
+    return NextResponse.json({ success: true, message: "Client Soft Deleted Successfully" });
 
   } catch (err: any) {
     console.error("API Error:", err.message);
