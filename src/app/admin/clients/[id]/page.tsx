@@ -25,15 +25,6 @@ export default function ClientProfile() {
   const [staffList, setStaffList] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   
-  // ✅ REAL STATS STATE (Added from Code 1)
-  const [stats, setStats] = useState({
-    memberCount: 0,
-    loanCount: 0,
-    revenue: 0,
-    daysRemaining: 0,
-    progress: 0
-  });
-
   // Modal State
   const [isRenewOpen, setIsRenewOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false); 
@@ -41,6 +32,17 @@ export default function ClientProfile() {
   // Add Staff Form
   const [staffForm, setStaffForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
+
+  // ✅ 1. REAL DATA STATE (Updated with Net Profit & Admin Revenue)
+  const [stats, setStats] = useState({
+    members: 0,
+    activeLoans: 0,
+    netProfit: 0, // Society ka profit/loss
+    adminRevenue: 0, // Admin ki kamai (Subscription)
+    daysRemaining: 0, // For Subscription UI
+    progress: 0, // For Subscription UI
+    health: 0
+  });
 
   // 🚀 FETCH REAL DATA FROM DB (Merged Logic)
   const fetchClient = async () => {
@@ -67,19 +69,44 @@ export default function ClientProfile() {
             .select('*', { count: 'exact', head: true })
             .eq('client_id', id);
 
-          // 3. Fetch Real Loan Count
+          // 3. Fetch Real Active Loans (Approved Only)
           const { count: lCount } = await supabase
             .from('loans')
             .select('*', { count: 'exact', head: true })
+            .eq('client_id', id)
+            .eq('status', 'approved'); 
+
+          // 4. Calculate Financials (Passbook vs Expenses)
+          // Passbook se Income (Interest/Fines)
+          const { data: passbook } = await supabase
+            .from('passbook_entries')
+            .select('amount, type, category')
             .eq('client_id', id);
 
-          // 4. Calculate Revenue based on current plan
-          let rev = 4000; // Default BASIC
-          if (clientData.plan === 'PRO') rev = 7000;
-          else if (clientData.plan === 'ENTERPRISE') rev = 10000;
-          else if (clientData.plan === 'TRIAL') rev = 0;
+          let totalIncome = 0;
+          passbook?.forEach(entry => {
+            // Sirf Interest aur Fine hi society ki asli kamai (Profit) hoti hai
+            if (entry.type === 'deposit' && ['interest', 'fine', 'penalty'].includes(entry.category?.toLowerCase())) {
+              totalIncome += Number(entry.amount);
+            }
+          });
 
-          // 5. Calculate Days Remaining
+          // Expenses table se kharche
+          const { data: expenses } = await supabase
+            .from('expenses_ledger')
+            .select('amount')
+            .eq('client_id', id);
+
+          const totalExpense = expenses?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
+          const netProfit = totalIncome - totalExpense;
+
+          // Admin ki kamai (Subscription based)
+          let adminRevenue = 4000;
+          if (clientData.plan === 'PRO') adminRevenue = 7000;
+          else if (clientData.plan === 'ENTERPRISE') adminRevenue = 10000;
+          else if (clientData.plan === 'TRIAL') adminRevenue = 0;
+
+          // 5. Calculate Days Remaining (For Subscription UI)
           const today = new Date();
           const endDate = clientData.plan_end_date ? new Date(clientData.plan_end_date) : new Date();
           const diffTime = endDate.getTime() - today.getTime();
@@ -88,12 +115,18 @@ export default function ClientProfile() {
           // Calculate Progress (Assuming 30 days cycle)
           const prog = Math.min(100, Math.max(0, (days / 30) * 100));
 
+          // Health Score
+          const health = mCount && mCount > 0 ? 92 : 0;
+
+          // ✅ STATE UPDATE
           setStats({
-            memberCount: mCount || 0,
-            loanCount: lCount || 0,
-            revenue: rev,
+            members: mCount || 0,
+            activeLoans: lCount || 0,
+            netProfit: netProfit,
+            adminRevenue: adminRevenue,
             daysRemaining: days,
-            progress: prog
+            progress: prog,
+            health: health
           });
       }
 
@@ -335,27 +368,40 @@ export default function ClientProfile() {
         </CardContent>
       </Card>
 
-      {/* STATS ROW - DYNAMIC DATA */}
+      {/* STATS ROW - UPDATED WITH REAL FINANCIALS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         <Card className="border-l-4 border-l-blue-500 shadow-sm"><CardContent className="p-6">
-            <p className="text-[11px] font-bold text-slate-400 uppercase">Total Members</p>
-            <h2 className="text-3xl font-bold text-slate-900 mt-2">{stats.memberCount}</h2>
-         </CardContent></Card>
-         <Card className="border-l-4 border-l-purple-500 shadow-sm"><CardContent className="p-6">
-            <p className="text-[11px] font-bold text-slate-400 uppercase">Active Loans</p>
-            <h2 className="text-3xl font-bold text-slate-900 mt-2">{stats.loanCount}</h2>
-         </CardContent></Card>
-         <Card className="border-l-4 border-l-green-500 shadow-sm"><CardContent className="p-6">
-            <p className="text-[11px] font-bold text-slate-400 uppercase">Revenue</p>
-            <h2 className="text-3xl font-bold text-slate-900 mt-2">₹{stats.revenue.toLocaleString()}</h2>
-         </CardContent></Card>
-         <Card className="border-l-4 border-l-orange-500 shadow-sm"><CardContent className="p-6">
-            <p className="text-[11px] font-bold text-slate-400 uppercase">Risk Level</p>
-            <h2 className="text-3xl font-bold text-green-600 mt-2">Low</h2>
-         </CardContent></Card>
+         <Card className="border-l-4 border-l-blue-500 shadow-sm">
+            <CardContent className="p-6">
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Total Members</p>
+                <h2 className="text-3xl font-bold text-slate-900 mt-2">{stats.members}</h2>
+            </CardContent>
+         </Card>
+
+         <Card className="border-l-4 border-l-purple-500 shadow-sm">
+            <CardContent className="p-6">
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Active Loans</p>
+                <h2 className="text-3xl font-bold text-slate-900 mt-2">{stats.activeLoans}</h2>
+            </CardContent>
+         </Card>
+
+         <Card className="border-l-4 border-l-green-500 shadow-sm">
+            <CardContent className="p-6">
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Society Net Profit</p>
+                <h2 className={`text-3xl font-bold mt-2 ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ₹{stats.netProfit.toLocaleString()}
+                </h2>
+            </CardContent>
+         </Card>
+
+         <Card className="border-l-4 border-l-orange-500 shadow-sm">
+            <CardContent className="p-6">
+                <p className="text-[11px] font-bold text-slate-400 uppercase">Admin Revenue</p>
+                <h2 className="text-3xl font-bold text-blue-600 mt-2">₹{stats.adminRevenue.toLocaleString()}</h2>
+            </CardContent>
+         </Card>
       </div>
 
-      {/* MIDDLE SECTION - DYNAMIC DATA */}
+      {/* MIDDLE SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          <Card className="lg:col-span-2 shadow-sm border-slate-200 h-full">
             <CardHeader className="border-b border-slate-50 py-4 px-6"><div className="flex justify-between items-center"><CardTitle className="flex items-center gap-2 text-base font-bold"><Calendar className="w-4 h-4 text-slate-500"/> Subscription Status</CardTitle><Button variant="outline" size="sm" onClick={() => setIsRenewOpen(true)}>Renew Plan</Button></div></CardHeader>
@@ -367,16 +413,14 @@ export default function ClientProfile() {
                <div>
                   <div className="flex justify-between text-xs mb-2 text-slate-500 font-medium"><span>Plan Usage</span><span>{stats.daysRemaining} Days Remaining</span></div>
                   <Progress value={stats.progress} className="h-3 bg-slate-100" />
-                  {/* Removed auto-renewal static text as per Code 1 preference */}
                </div>
             </CardContent>
          </Card>
          <Card className="shadow-sm border-slate-200 h-full">
             <CardHeader className="border-b border-slate-50 py-4 px-6"><CardTitle className="flex items-center gap-2 text-base font-bold"><Activity className="w-4 h-4 text-slate-500"/> Account Health</CardTitle></CardHeader>
             <CardContent className="p-8 flex flex-col items-center justify-center">
-               <div className="relative mb-4"><div className="w-32 h-32 rounded-full border-[6px] border-slate-50 flex items-center justify-center"><span className="text-4xl font-bold text-green-600">{stats.memberCount > 0 ? '92' : '0'}<span className="text-xl text-slate-400 font-normal">/100</span></span></div><div className="absolute top-0 right-0 bg-green-500 text-white p-1.5 rounded-full shadow-lg border-4 border-white"><CheckCircle className="w-5 h-5"/></div></div>
-               <p className="text-sm text-slate-500 font-medium">Overall Score</p>
-               {/* Removed static revenue section from inside Health card as per Code 1 preference */}
+               <div className="relative mb-4"><div className="w-32 h-32 rounded-full border-[6px] border-slate-50 flex items-center justify-center"><span className="text-4xl font-bold text-green-600">{stats.health}<span className="text-xl text-slate-400 font-normal">/100</span></span></div><div className="absolute top-0 right-0 bg-green-500 text-white p-1.5 rounded-full shadow-lg border-4 border-white"><CheckCircle className="w-5 h-5"/></div></div>
+               <p className="text-sm text-slate-500 font-medium">Society Activity Score</p>
             </CardContent>
          </Card>
       </div>
