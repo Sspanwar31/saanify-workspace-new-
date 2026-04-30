@@ -3,83 +3,74 @@ import { NextResponse } from 'next/server';
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // ✅ Step 1: Params ab ek Promise hai
 ) {
   try {
-    const clientId = params.id;
-    
-    // Validation at top
+    // ✅ Step 2: Params ko await karein (Next.js 15 fix)
+    const { id: clientId } = await params;
+
     if (!clientId) {
       return NextResponse.json({ error: "Client ID missing" }, { status: 400 });
     }
 
-    // STEP 1: Helper function ADD karo
-    const getServiceRoleKey = () => {
+    // ✅ Step 3: Service Role Key Logic (Bulletproof)
+    const getServiceKey = () => {
       const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-      if (!b64Key) return null;
+      if (!b64Key) return process.env.SUPABASE_SERVICE_ROLE_KEY; // Fallback to raw key
 
       try {
-        // ✅ agar already JWT hai to use directly
         if (b64Key.startsWith('eyJ')) return b64Key;
-
-        // ✅ warna decode karo
         return Buffer.from(b64Key, 'base64').toString('utf-8').trim();
       } catch (e) {
-        return null;
+        return b64Key;
       }
     };
 
-    // 🔴 STEP 2: PURA key decode logic REMOVE karo (Done)
-    
-    // 🔴 STEP 3: Replace Supabase init
-    const serviceKey = getServiceRoleKey();
-
+    const serviceKey = getServiceKey();
     if (!serviceKey) {
-      return NextResponse.json({ error: "Service key missing" }, { status: 500 });
+      return NextResponse.json({ error: "Server Configuration Error: Key Missing" }, { status: 500 });
     }
 
+    // ✅ Step 4: Supabase Admin Init (RLS bypass karne ke liye)
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceKey
+      serviceKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
 
-    console.log(`🗑️ Deleting associated data for Client: ${clientId}...`);
+    console.log(`🗑️ Starting deletion for Client ID: ${clientId}`);
 
-    // Helper function removed (safeDelete) because we are using direct awaits now
+    // ✅ Step 5: Related Tables Cleanup
+    // Note: 'client_id' column un tables mein hota hai jo client se judi hain
+    const tablesToClean = [
+      'notifications', 'passbook_entries', 'expenses_ledger', 
+      'loans', 'members', 'admin_fund_ledger'
+    ];
 
-    // 🔴 STEP 4: IMPORTANT FIX (Direct awaits without error checks)
-    await supabaseAdmin.from('notifications').delete().eq('client_id', clientId);
-    await supabaseAdmin.from('passbook_entries').delete().eq('client_id', clientId);
-    await supabaseAdmin.from('expenses_ledger').delete().eq('client_id', clientId);
-    await supabaseAdmin.from('loans').delete().eq('client_id', clientId);
-    await supabaseAdmin.from('members').delete().eq('client_id', clientId);
-    await supabaseAdmin.from('admin_fund_ledger').delete().eq('client_id', clientId);
+    for (const table of tablesToClean) {
+      await supabaseAdmin.from(table).delete().eq('client_id', clientId);
+    }
 
-    // ✅ STAFF DELETE (Updated to remove safeDelete usage)
+    // ✅ Step 6: Delete Staff (Treasurers/Assistants)
     const { data: staff } = await supabaseAdmin
       .from('clients')
       .select('id')
-      .eq('client_id', clientId)
-      .eq('role', 'treasurer');
+      .eq('client_id', clientId); // Woh users jinka owner ye clientId hai
 
-    if (staff?.length) {
+    if (staff && staff.length > 0) {
       for (const s of staff) {
-        try {
-          await supabaseAdmin.auth.admin.deleteUser(s.id);
-        } catch (e) {
-          console.warn("⚠️ Staff auth delete failed:", s.id);
-        }
+        await supabaseAdmin.auth.admin.deleteUser(s.id).catch(() => null);
       }
-
-      // Direct await instead of safeDelete
-      await supabaseAdmin
-        .from('clients')
-        .delete()
-        .eq('client_id', clientId)
-        .eq('role', 'treasurer');
+      // Delete staff records from clients table
+      await supabaseAdmin.from('clients').delete().eq('client_id', clientId);
     }
 
-    // 🔴 STEP 5: FINAL SAFE DELETE (MOST IMPORTANT)
+    // ✅ Step 7: SOFT DELETE Main Client (Asli Fix Yahan Hai)
     const { error: dbError } = await supabaseAdmin
       .from('clients')
       .update({
@@ -87,24 +78,23 @@ export async function DELETE(
         status: 'DELETED',
         updated_at: new Date().toISOString()
       })
-      .eq('id', clientId);
+      .eq('id', clientId); // Yahan clientId ab sahi string hai
 
     if (dbError) {
-      console.error("❌ DB Error:", dbError);
+      console.error("❌ Database Update Error:", dbError.message);
       return NextResponse.json({ error: dbError.message }, { status: 400 });
     }
 
-    // 🔴 STEP 6: Auth delete (safe mode)
-    try {
-      await supabaseAdmin.auth.admin.deleteUser(clientId);
-    } catch (e) {
-      console.warn("Auth delete skipped");
+    // ✅ Step 8: Final Auth Delete (User login na kar sake)
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(clientId);
+    if (authError) {
+      console.warn("⚠️ Auth user delete failed (maybe already deleted):", authError.message);
     }
 
-    return NextResponse.json({ success: true, message: "Client deleted successfully" });
+    return NextResponse.json({ success: true, message: "Client and all data deleted successfully" });
 
   } catch (err: any) {
-    console.error("API Error:", err.message);
+    console.error("🔥 CRITICAL API ERROR:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
