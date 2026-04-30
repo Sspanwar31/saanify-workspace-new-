@@ -34,13 +34,15 @@ export default function ClientManagement() {
     const { data: clientData } = await supabase
       .from('clients')
       .select('*')
-      .eq('role', 'client') 
+      .eq('role', 'client')
+      .eq('is_deleted', false) // ✅ ADD THIS
       .order('created_at', { ascending: false });
 
     const { data: staffData } = await supabase
       .from('clients')
       .select('*')
-      .eq('role', 'treasurer');
+      .eq('role', 'treasurer')
+      .eq('is_deleted', false); // ✅ ADD THIS
 
     if (clientData) setClients(clientData);
     if (staffData) setTreasurers(staffData);
@@ -63,7 +65,7 @@ export default function ClientManagement() {
      
      toast.loading(newStatus === 'LOCKED' ? "Locking Account..." : "Unlocking Account...", { id: 'status-update' });
 
-     // 1. Database Update
+     //1. Database Update
      const { error } = await supabase
         .from('clients')
         .update({ status: newStatus })
@@ -73,7 +75,7 @@ export default function ClientManagement() {
         return toast.error("Failed: " + error.message, { id: 'status-update' });
      }
 
-     // 2. Force Logout API call (For Security)
+     //2. Force Logout API call (For Security)
      if (newStatus === 'LOCKED') {
         await fetch(`/api/admin/clients/${client.id}/status`, {
             method: 'POST', 
@@ -84,7 +86,7 @@ export default function ClientManagement() {
 
      toast.success(newStatus === 'LOCKED' ? "Account Locked" : "Account Unlocked", { id: 'status-update' });
      
-     // 3. ✅ Refresh from DB (Isse status change hamesha ke liye save hoga)
+     //3. ✅ Refresh from DB (Isse status change hamesha ke liye save hoga)
      fetchClients();
   };
 
@@ -203,9 +205,12 @@ export default function ClientManagement() {
     }
   };
 
-  const filteredClients = clients.filter(c => 
-    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.society_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  // ✅ Better: Extra safety filter
+  const filteredClients = clients
+    .filter(c => !c.is_deleted) // ✅ safety layer
+    .filter(c => 
+      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      c.society_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
