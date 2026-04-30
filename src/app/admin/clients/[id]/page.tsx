@@ -44,12 +44,12 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // 🚀 FETCH REAL DATA FROM DB (Merged Logic)
+  // 🚀 UPDATED FETCH FUNCTION (API FIRST)
   const fetchClient = async () => {
     try {
       setLoading(true);
       
-      // 1. Fetch Client Info
+      // 1. Client Basic Info (Ye hamesha kaam karta hai)
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
         .select('*')
@@ -63,74 +63,37 @@ export default function ClientProfile() {
           setClient(clientData);
           setNewPlan(clientData.plan);
 
-          // 2. Fetch Real Member Count
-          const { count: mCount } = await supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('client_id', id);
+          // 🚀 2. FETCH REAL STATS FROM OUR NEW API (The Fix)
+          // Ye API Admin key use karti hai isliye sabka data layegi
+          const res = await fetch(`/api/admin/clients/${id}/stats`);
+          const statsData = await res.json();
 
-          // 3. Fetch Real Active Loans (Approved Only)
-          const { count: lCount } = await supabase
-            .from('loans')
-            .select('*', { count: 'exact', head: true })
-            .eq('client_id', id)
-            .eq('status', 'approved'); 
-
-          // 4. Calculate Financials (Passbook vs Expenses)
-          // Passbook se Income (Interest/Fines)
-          const { data: passbook } = await supabase
-            .from('passbook_entries')
-            .select('amount, type, category')
-            .eq('client_id', id);
-
-          let totalIncome = 0;
-          passbook?.forEach(entry => {
-            // Sirf Interest aur Fine hi society ki asli kamai (Profit) hoti hai
-            if (entry.type === 'deposit' && ['interest', 'fine', 'penalty'].includes(entry.category?.toLowerCase())) {
-              totalIncome += Number(entry.amount);
-            }
-          });
-
-          // Expenses table se kharche
-          const { data: expenses } = await supabase
-            .from('expenses_ledger')
-            .select('amount')
-            .eq('client_id', id);
-
-          const totalExpense = expenses?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-          const netProfit = totalIncome - totalExpense;
-
-          // Admin ki kamai (Subscription based)
+          // Calculate Admin Revenue & Dates locally (as these depend on client info)
           let adminRevenue = 4000;
           if (clientData.plan === 'PRO') adminRevenue = 7000;
           else if (clientData.plan === 'ENTERPRISE') adminRevenue = 10000;
           else if (clientData.plan === 'TRIAL') adminRevenue = 0;
 
-          // 5. Calculate Days Remaining (For Subscription UI)
           const today = new Date();
           const endDate = clientData.plan_end_date ? new Date(clientData.plan_end_date) : new Date();
           const diffTime = endDate.getTime() - today.getTime();
           const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-          
-          // Calculate Progress (Assuming 30 days cycle)
           const prog = Math.min(100, Math.max(0, (days / 30) * 100));
 
-          // Health Score
-          const health = mCount && mCount > 0 ? 92 : 0;
-
-          // ✅ STATE UPDATE
-          setStats({
-            members: mCount || 0,
-            activeLoans: lCount || 0,
-            netProfit: netProfit,
-            adminRevenue: adminRevenue,
-            daysRemaining: days,
-            progress: prog,
-            health: health
-          });
+          if (res.ok) {
+            setStats({
+              members: statsData.memberCount || 0,
+              activeLoans: statsData.loanCount || 0,
+              netProfit: statsData.netProfit || 0,
+              adminRevenue: adminRevenue,
+              daysRemaining: days,
+              progress: prog,
+              health: statsData.memberCount > 0 ? 92 : 0
+            });
+          }
       }
 
-      // Fetch Staff
+      // 3. Staff List (Direct Supabase call kyunki iska alag API nahi hai)
       const { data: staffData } = await supabase
           .from('clients') 
           .select('*')
