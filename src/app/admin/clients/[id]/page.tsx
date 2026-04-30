@@ -62,16 +62,17 @@ export default function ClientProfile() {
 
   // 2. Handle Actions
 
-  // ✅ 1. Sahi handleLockToggle Logic (Isse replace karein)
+  // ✅ REPLACED: Improved handleLockToggle Logic
   const handleLockToggle = async () => {
+    if (!client) return;
+
     const currentStatus = (client.status || 'ACTIVE').toUpperCase();
     const isLocked = currentStatus === 'LOCKED';
-  
-    // Agar locked hai toh ACTIVATE bhejo, warna LOCK bhejo
     const actionToSend = isLocked ? 'ACTIVATE' : 'LOCK'; 
     const newStatusLabel = isLocked ? 'ACTIVE' : 'LOCKED';
 
-    toast.loading(isLocked ? "Unlocking Account..." : "Locking Account...", { id: 'action' });
+    // Toast ID taaki success hone par loading wala toast replace ho jaye
+    const toastId = toast.loading(isLocked ? "Unlocking..." : "Locking...");
 
     try {
       const res = await fetch(`/api/admin/clients/${id}/status`, {
@@ -80,17 +81,23 @@ export default function ClientProfile() {
         body: JSON.stringify({ action: actionToSend })
       });
 
-      const data = await res.json();
+      // Check karein ki response JSON hai ya nahi
+      const data = await res.json().catch(() => ({ success: false, error: "Server Error" }));
 
       if (res.ok && data.success) {
-        toast.success(`Account is now ${newStatusLabel}`, { id: 'action' });
-        // Database se taaza data wapas lo taaki UI update ho jaye
-        await fetchClient(); 
+        toast.success(`Account is now ${newStatusLabel}`, { id: toastId });
+        
+        // ✅ UI Refresh: Wait karein thoda taaki DB update sync ho jaye
+        setTimeout(async () => {
+          await fetchClient(); 
+        }, 500);
+
       } else {
         throw new Error(data.error || "Update failed");
       }
     } catch (err: any) {
-      toast.error(err.message);
+      console.error("Lock/Unlock Error:", err);
+      toast.error(err.message || "Failed to update status", { id: toastId });
     }
   };
 
