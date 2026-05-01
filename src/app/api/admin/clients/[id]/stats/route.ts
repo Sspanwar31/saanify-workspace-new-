@@ -13,45 +13,39 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const serviceKey = getServiceRoleKey();
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
-    // 1. Counts
-    const { count: memberCount } = await supabaseAdmin.from('members').select('*', { count: 'exact', head: true }).eq('client_id', clientId).eq('status', 'active');
-    const { count: loanCount } = await supabaseAdmin.from('loans').select('*', { count: 'exact', head: true }).eq('client_id', clientId).eq('status', 'active');
+    // 1. Fetch All Required Data
+    const [passbookRes, expensesRes, membersRes, loansRes] = await Promise.all([
+      supabaseAdmin.from('passbook_entries').select('interest_amount, fine_amount').eq('client_id', clientId),
+      supabaseAdmin.from('expenses_ledger').select('amount').eq('client_id', clientId),
+      supabaseAdmin.from('members').select('id').eq('client_id', clientId).eq('status', 'active'),
+      supabaseAdmin.from('loans').select('id').eq('client_id', clientId).in('status', ['active', 'approved'])
+    ]);
 
-    // 2. Fetch All Records
-    const { data: passbook } = await supabaseAdmin.from('passbook_entries').select('amount, type, category').eq('client_id', clientId);
-    const { data: expenses } = await supabaseAdmin.from('expenses_ledger').select('amount').eq('client_id', clientId);
-
-    let totalIncome = 0;
-    let totalExpense = 0;
-
-    // 🎯 ASLI INCOME LOGIC: Sirf Interest aur Fines
-    passbook?.forEach(e => {
-      const amt = Number(e.amount) || 0;
-      const type = (e.type || '').toUpperCase();
-      const cat = (e.category || '').toUpperCase();
-
-      // Dashboard Sync: Interest, Fine, Penalty hi "Income" hai
-      if (type === 'INTEREST' || type === 'FINE' || cat === 'INTEREST' || cat === 'FINE' || cat === 'PENALTY') {
-        totalIncome += amt;
-      }
+    // 🎯 ASLI INCOME CALCULATION (Based on your columns)
+    let totalIncome = 0; // Target: ₹2,720
+    
+    passbookRes.data?.forEach(entry => {
+      // Hum categories nahi, seedha columns ka total karenge
+      const interest = Number(entry.interest_amount) || 0;
+      const fine = Number(entry.fine_amount) || 0;
+      totalIncome += (interest + fine);
     });
 
-    // 🎯 ASLI EXPENSE LOGIC: Pura Expense Ledger
-    expenses?.forEach(e => {
-      totalExpense += (Number(e.amount) || 0);
-    });
+    // 🎯 ASLI EXPENSE CALCULATION
+    const totalExpense = expensesRes.data?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0; // Target: ₹6,100
 
+    // Net Profit = (Interest + Fines) - Total Expenses
     const netProfit = totalIncome - totalExpense;
 
     return NextResponse.json({
       success: true,
-      memberCount: memberCount || 0,
-      loanCount: loanCount || 0,
-      netProfit: netProfit, // Ye ab -3380 aayega
+      memberCount: membersRes.data?.length || 0,
+      loanCount: loansRes.data?.length || 0,
+      netProfit: netProfit, // Result should be -3380
       debug: {
         income: totalIncome,
         expense: totalExpense,
-        incomeBreakdown: { interest_fine: totalIncome }
+        passbookRows: passbookRes.data?.length
       }
     });
 
