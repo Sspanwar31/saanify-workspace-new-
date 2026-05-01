@@ -13,55 +13,51 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const serviceKey = getServiceRoleKey();
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
-    // 1. Members (Sirf Active)
-    const { count: memberCount } = await supabaseAdmin
-      .from('members').select('*', { count: 'exact', head: true }).eq('client_id', clientId).eq('status', 'active');
+    // 1. Members & Loans
+    const { count: memberCount } = await supabaseAdmin.from('members').select('*', { count: 'exact', head: true }).eq('client_id', clientId).eq('status', 'active');
+    const { count: loanCount } = await supabaseAdmin.from('loans').select('*', { count: 'exact', head: true }).eq('client_id', clientId).eq('status', 'active');
 
-    // 2. Active Loans (Status 'active' match with dashboard)
-    const { count: loanCount } = await supabaseAdmin
-      .from('loans').select('*', { count: 'exact', head: true }).eq('client_id', clientId).eq('status', 'active');
+    // 2. Fetch Data for Debugging
+    const { data: passbook } = await supabaseAdmin.from('passbook_entries').select('amount, type, category, description').eq('client_id', clientId);
+    const { data: expenses } = await supabaseAdmin.from('expenses_ledger').select('amount, category').eq('client_id', clientId);
 
-    // 3. Passbook Entries (Earning Source)
-    const { data: passbook } = await supabaseAdmin
-      .from('passbook_entries')
-      .select('amount, type, category')
-      .eq('client_id', clientId);
+    // 🎯 DEBUG COUNTERS
+    let debugIncomeBreakdown: any = {};
+    let ignoredEntries: any[] = [];
+    let actualEarnings = 0;
 
-    // 4. Expense Ledger (Expense Source)
-    const { data: expenses } = await supabaseAdmin
-      .from('expenses_ledger')
-      .select('amount')
-      .eq('client_id', clientId);
-
-    // 🎯 STRICT CALCULATION LOGIC
-    let actualEarnings = 0; // Target: ₹2,720
-    
     passbook?.forEach(entry => {
       const amt = Number(entry.amount) || 0;
-      const cat = (entry.category || '').toUpperCase().trim();
+      const cat = (entry.category || 'NO_CATEGORY').toUpperCase().trim();
+      
+      // Check if this category is considered "Income" (Munafa)
+      const isProfitCategory = ['INTEREST', 'FINE', 'PENALTY', 'LATE FEE', 'LATE_FEE'].includes(cat);
 
-      // ❌ EMI Principal, Loan Amount, aur Normal Deposits ko IGNORE karna hai
-      // ✅ Sirf wahi items jo "Munafa" hain:
-      if (cat === 'INTEREST' || cat === 'FINE' || cat === 'PENALTY' || cat === 'LATE FEE' || cat === 'LATE_FEE') {
+      if (entry.type === 'deposit' && isProfitCategory) {
         actualEarnings += amt;
+        debugIncomeBreakdown[cat] = (debugIncomeBreakdown[cat] || 0) + amt;
+      } else {
+        // Record why this entry was ignored
+        ignoredEntries.push({ amt, cat, type: entry.type, desc: entry.description });
       }
     });
 
-    // Total Expenses: Sum of all expenses in ledger (Target: ₹6,100)
-    const totalExpenses = expenses?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
-
-    // Formula: 2720 - 6100 = -3380
-    const netProfit = actualEarnings - totalExpenses;
-
-    console.log(`Checking ${clientId}: Income=${actualEarnings}, Expense=${totalExpenses}, Profit=${netProfit}`);
+    const totalExpense = expenses?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
+    const netProfit = actualEarnings - totalExpense;
 
     return NextResponse.json({
       success: true,
-      memberCount: memberCount || 0,
-      loanCount: loanCount || 0,
-      netProfit: netProfit, // Ab ye exact -3380 aayega
-      totalIncome: actualEarnings,
-      totalExpense: totalExpenses
+      memberCount,
+      loanCount,
+      netProfit,
+      // 🚀 DEBUG DATA (Check this in Console)
+      debug: {
+        calculatedIncome: actualEarnings,
+        calculatedExpense: totalExpense,
+        incomeBreakdown: debugIncomeBreakdown,
+        totalEntriesChecked: passbook?.length || 0,
+        sampleIgnoredEntries: ignoredEntries.slice(0, 5) // Pehli 5 ignored entries dekho
+      }
     });
 
   } catch (err: any) {
