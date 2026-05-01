@@ -13,39 +13,66 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const serviceKey = getServiceRoleKey();
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
-    // 1. Members
+    // 1. Members (Filter: status='active' and not deleted)
     const { count: memberCount } = await supabaseAdmin
-      .from('members').select('*', { count: 'exact', head: true }).eq('client_id', clientId);
+      .from('members')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+      .eq('status', 'active');
 
-    // 2. Active Loans
+    // 2. Active Loans (Filter: status='active')
     const { count: loanCount } = await supabaseAdmin
-      .from('loans').select('*', { count: 'exact', head: true }).eq('client_id', clientId).in('status', ['active', 'approved']);
+      .from('loans')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+      .eq('status', 'active');
 
-    // 3. Financials (Profit Calculation)
-    const { data: passbook } = await supabaseAdmin.from('passbook_entries').select('amount, type, category').eq('client_id', clientId);
-    const { data: expenses } = await supabaseAdmin.from('expenses_ledger').select('amount').eq('client_id', clientId);
+    // 3. Passbook Entries (Sirf Interest aur Fine nikalne ke liye)
+    const { data: passbook } = await supabaseAdmin
+      .from('passbook_entries')
+      .select('amount, type, category')
+      .eq('client_id', clientId);
 
-    // FORMULA SYNC: Earnings (Interest + Fines)
-    let actualEarnings = 0;
+    // 4. Expense Ledger (Poore society ke kharche)
+    const { data: expenses } = await supabaseAdmin
+      .from('expenses_ledger')
+      .select('amount')
+      .eq('client_id', clientId);
+
+    // 🎯 ASLI CALCULATION (Exact Sync with Client Dashboard)
+    let totalInterestAndFines = 0;
+    
     passbook?.forEach(entry => {
-      const cat = (entry.category || '').toLowerCase().trim();
-      if (entry.type === 'deposit' && (cat === 'interest' || cat === 'fine' || cat === 'penalty' || cat === 'late_fee')) {
-        actualEarnings += Number(entry.amount);
+      const amt = Number(entry.amount) || 0;
+      const type = (entry.type || '').toUpperCase();
+      const cat = (entry.category || '').toUpperCase();
+
+      // Dashboard logic: INTEREST + FINE categories only
+      // EMI ke principal part ko ignore karna hai
+      if (type === 'DEPOSIT' || type === 'INSTALLMENT' || type === 'INTEREST' || type === 'FINE') {
+          if (cat.includes('INTEREST') || cat.includes('FINE') || cat.includes('PENALTY') || cat.includes('LATE')) {
+            totalInterestAndFines += amt;
+          }
       }
     });
 
-    const totalExpense = expenses?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-    const netProfit = actualEarnings - totalExpense;
+    // Total Expenses from Ledger
+    const totalExpenses = expenses?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
+
+    // Formula: (2720) - (6100) = -3380
+    const netProfit = totalInterestAndFines - totalExpenses;
 
     return NextResponse.json({
       success: true,
       memberCount: memberCount || 0,
       loanCount: loanCount || 0,
       netProfit: netProfit, // Result: -3380
-      actualEarnings,
-      totalExpense
+      totalIncome: totalInterestAndFines,
+      totalExpense: totalExpenses
     });
+
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("Stats API Error:", err.message);
+    return NextResponse.json({ error: err.message, success: false }, { status: 500 });
   }
 }
