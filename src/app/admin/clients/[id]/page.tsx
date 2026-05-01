@@ -48,7 +48,7 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // 🚀 UPDATED FETCH FUNCTION (Path updated to /stats as requested)
+  // 🚀 UPDATED FETCH FUNCTION (Debug Logs Added)
   const fetchClient = async () => {
     try {
       setLoading(true);
@@ -79,6 +79,15 @@ export default function ClientProfile() {
           const statsData = await res.json();
 
           if (res.ok && statsData.success) {
+            
+            // 🚀 YE LINE ADD KAREIN 🚀
+            console.log("--- SUBSCRIPTION DEBUG INFO ---");
+            console.log("Final Net Profit:", statsData.netProfit);
+            console.log("Income Breakdown:", statsData.debug?.incomeBreakdown);
+            console.log("Expense Total:", statsData.debug?.calculatedExpense);
+            console.log("Ignored some entries like:", statsData.debug?.sampleIgnoredEntries);
+            console.log("-------------------------------");
+
             setStats({
               members: statsData.memberCount || 0,
               activeLoans: statsData.loanCount || 0,
