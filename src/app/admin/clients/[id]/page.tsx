@@ -94,7 +94,7 @@ export default function ClientProfile() {
               adminRevenue: adminRevenue,
               daysRemaining: days,
               progress: Math.min(100, (days / 30) * 100),
-              health: (statsData.memberCount > 0) ? 92 : 0
+              health: statsData.healthScore || 0 // 👈 API wali real value use karein
             });
           }
       }
@@ -371,7 +371,7 @@ export default function ClientProfile() {
             <CardContent className="p-8">
                <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
                   <div><p className="text-sm text-slate-500 mb-1">Current Plan</p><h3 className="text-3xl font-bold text-blue-600 uppercase">{client.plan} <span className="text-lg text-slate-400 font-normal">/ Monthly</span></h3></div>
-                  <div className="text-left md:text-right"><p className="text-xs text-slate-400 uppercase font-bold">Renewal Date</p><h4 className="text-xl font-bold text-slate-900">{client.plan_end_date ? new Date(client.plan_end_date).toLocaleDateString() : 'N/A'}</h4></div>
+                  <div className="text-left md:text-right"><p className="text-xs text-slate-400 uppercase font-bold">Renewal Date</p><h4 className="text-xl font-bold text-slate-900">{client.plan_end_date ? new Date(clientData.plan_end_date).toLocaleDateString() : 'N/A'}</h4></div>
                </div>
                <div>
                   <div className="flex justify-between text-xs mb-2 text-slate-500 font-medium"><span>Plan Usage</span><span>{stats.daysRemaining} Days Remaining</span></div>
@@ -382,7 +382,16 @@ export default function ClientProfile() {
          <Card className="shadow-sm border-slate-200 h-full">
             <CardHeader className="border-b border-slate-50 py-4 px-6"><CardTitle className="flex items-center gap-2 text-base font-bold"><Activity className="w-4 h-4 text-slate-500"/> Account Health</CardTitle></CardHeader>
             <CardContent className="p-8 flex flex-col items-center justify-center">
-               <div className="relative mb-4"><div className="w-32 h-32 rounded-full border-[6px] border-slate-50 flex items-center justify-center"><span className="text-4xl font-bold text-green-600">{stats.health}<span className="text-xl text-slate-400 font-normal">/100</span></span></div><div className="absolute top-0 right-0 bg-green-500 text-white p-1.5 rounded-full shadow-lg border-4 border-white"><CheckCircle className="w-5 h-5"/></div></div>
+               <div className="relative mb-4">
+                  <div className="w-32 h-32 rounded-full border-[6px] border-slate-50 flex items-center justify-center">
+                    {/* ✅ UPDATED UI COLOR LOGIC */}
+                    <span className={`text-4xl font-bold ${stats.health > 70 ? 'text-green-600' : 'text-orange-500'}`}>
+                       {stats.health}
+                       <span className="text-xl text-slate-400 font-normal">/100</span>
+                    </span>
+                  </div>
+                  <div className="absolute top-0 right-0 bg-green-500 text-white p-1.5 rounded-full shadow-lg border-4 border-white"><CheckCircle className="w-5 h-5"/></div>
+               </div>
                <p className="text-sm text-slate-500 font-medium">Society Activity Score</p>
             </CardContent>
          </Card>
