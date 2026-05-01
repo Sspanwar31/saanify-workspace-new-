@@ -2,64 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const getServiceRoleKey = () => {
-  const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  if (!b64Key) return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
-  try {
-    if (b64Key.startsWith('eyJ')) return b64Key;
-    return Buffer.from(b64Key, 'base64').toString('utf-8').trim();
-  } catch (e) { return null; }
+  const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
+  if (!b64) return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+  return b64.startsWith('eyJ') ? b64 : Buffer.from(b64, 'base64').toString().trim();
 };
 
-// 🚀 GET: Fetch Real Stats (Fixed Next.js 15 Params)
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> } // ✅ Type Fix
-) {
-  const { id: clientId } = await params; // ✅ Must await params
-  const serviceKey = getServiceRoleKey();
-  
-  if (!serviceKey) return NextResponse.json({ error: "Key Error" }, { status: 500 });
-  const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
-
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // 1. Members
-    const { count: memberCount } = await supabaseAdmin
-      .from('members').select('*', { count: 'exact', head: true }).eq('client_id', clientId);
-
-    // 2. Active Loans
-    const { count: loanCount } = await supabaseAdmin
-      .from('loans').select('*', { count: 'exact', head: true }).eq('client_id', clientId).in('status', ['active', 'approved']);
-
-    // 3. Financials
-    const { data: passbook } = await supabaseAdmin.from('passbook_entries').select('amount, type, category').eq('client_id', clientId);
-    const { data: expenses } = await supabaseAdmin.from('expenses_ledger').select('amount').eq('client_id', clientId);
-
-    let totalIncome = 0;
-    passbook?.forEach(entry => {
-      if (entry.type === 'deposit' && ['interest', 'fine', 'penalty'].includes(entry.category?.toLowerCase() || '')) {
-        totalIncome += Number(entry.amount);
-      }
-    });
-    const totalExpense = expenses?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-
-    return NextResponse.json({
-      success: true,
-      memberCount: memberCount || 0,
-      loanCount: loanCount || 0,
-      netProfit: totalIncome - totalExpense
-    });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message, success: false }, { status: 500 });
-  }
-}
-
-// 🚀 POST: Update Status (Fixed Next.js 15 Params)
-export async function POST(
-  req: NextRequest, 
-  { params }: { params: Promise<{ id: string }> } // ✅ Type Fix
-) {
-  try {
-    const { id: clientId } = await params; // ✅ Must await params
+    const { id: clientId } = await params;
     const { action } = await req.json();
     const serviceKey = getServiceRoleKey();
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
@@ -76,6 +26,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, status: newStatus });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message, success: false }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
