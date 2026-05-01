@@ -48,64 +48,46 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // 🚀 UPDATED FETCH FUNCTION (API FIRST)
+  // 🚀 UPDATED FETCH FUNCTION (As requested: Using /status endpoint)
   const fetchClient = async () => {
     try {
       setLoading(true);
       
-      // 1. Client Basic Info (Ye hamesha kaam karta hai)
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', id)
-        .eq('is_deleted', false)
-        .single();
-        
+      // 1. Basic Client Info
+      const { data: clientData, error: clientError } = await supabase.from('clients').select('*').eq('id', id).eq('is_deleted', false).single();
+      
       if (clientError) throw clientError;
-
+        
       if (clientData) {
           setClient(clientData);
           setNewPlan(clientData.plan);
 
-          // 🚀 2. FETCH REAL STATS FROM OUR NEW API (The Fix)
-          // Ye API Admin key use karti hai isliye sabka data layegi
-          const res = await fetch(`/api/admin/clients/${id}/stats`);
+          // 🚀 2. FETCH REAL STATS FROM API (The Fix)
+          // Humne path update kiya hai: /api/admin/clients/${id}/status (kyunki GET wahi hai)
+          const res = await fetch(`/api/admin/clients/${id}/status`);
           const statsData = await res.json();
 
-          // Calculate Admin Revenue & Dates locally (as these depend on client info)
-          let adminRevenue = 4000;
-          if (clientData.plan === 'PRO') adminRevenue = 7000;
-          else if (clientData.plan === 'ENTERPRISE') adminRevenue = 10000;
-          else if (clientData.plan === 'TRIAL') adminRevenue = 0;
-
-          const today = new Date();
-          const endDate = clientData.plan_end_date ? new Date(clientData.plan_end_date) : new Date();
-          const diffTime = endDate.getTime() - today.getTime();
-          const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-          const prog = Math.min(100, Math.max(0, (days / 30) * 100));
-
-          // ✅ CHANGED HERE: Added && statsData.success check
           if (res.ok && statsData.success) {
+            // Subscription calculations
+            const today = new Date();
+            const endDate = clientData.plan_end_date ? new Date(clientData.plan_end_date) : new Date();
+            const diffTime = endDate.getTime() - today.getTime();
+            const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
             setStats({
               members: statsData.memberCount || 0,
               activeLoans: statsData.loanCount || 0,
               netProfit: statsData.netProfit || 0,
-              adminRevenue: adminRevenue,
+              adminRevenue: clientData.plan === 'PRO' ? 7000 : (clientData.plan === 'ENTERPRISE' ? 10000 : 4000),
               daysRemaining: days,
-              progress: prog,
-              health: statsData.memberCount > 0 ? 92 : 0
+              progress: Math.min(100, (days / 30) * 100),
+              health: (statsData.memberCount > 0) ? 92 : 0
             });
           }
       }
 
-      // 3. Staff List (Direct Supabase call kyunki iska alag API nahi hai)
-      const { data: staffData } = await supabase
-          .from('clients') 
-          .select('*')
-          .eq('client_id', id)
-          .eq('role', 'treasurer')
-          .eq('is_deleted', false);
-      
+      // 3. Staff fetch logic same rahega...
+      const { data: staffData } = await supabase.from('clients').select('*').eq('client_id', id).eq('role', 'treasurer').eq('is_deleted', false);
       if (staffData) setStaffList(staffData);
 
     } catch (err) {
@@ -117,7 +99,7 @@ export default function ClientProfile() {
 
   useEffect(() => { fetchClient(); }, [id]);
 
-  // 2. Handle Actions (Kept from Code 2 - API First)
+  // 2. Handle Actions (Kept from Code - API First)
 
   // ✅ REPLACED: Improved handleLockToggle Logic
   const handleLockToggle = async () => {
