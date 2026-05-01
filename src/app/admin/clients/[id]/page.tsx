@@ -48,12 +48,12 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // 🚀 UPDATED FETCH FUNCTION (As requested: Using /status endpoint)
+  // 🚀 UPDATED FETCH FUNCTION (Path updated to /stats as requested)
   const fetchClient = async () => {
     try {
       setLoading(true);
       
-      // 1. Basic Client Info
+      // 1. Client Table ka data (Supabase se)
       const { data: clientData, error: clientError } = await supabase.from('clients').select('*').eq('id', id).eq('is_deleted', false).single();
       
       if (clientError) throw clientError;
@@ -62,23 +62,28 @@ export default function ClientProfile() {
           setClient(clientData);
           setNewPlan(clientData.plan);
 
-          // 🚀 2. FETCH REAL STATS FROM API (The Fix)
-          // Humne path update kiya hai: /api/admin/clients/${id}/status (kyunki GET wahi hai)
-          const res = await fetch(`/api/admin/clients/${id}/status`);
+          // Subscription calculations (Preserved from previous version for UI logic)
+          const today = new Date();
+          const endDate = clientData.plan_end_date ? new Date(clientData.plan_end_date) : new Date();
+          const diffTime = endDate.getTime() - today.getTime();
+          const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+          
+          let adminRevenue = 4000;
+          if (clientData.plan === 'PRO') adminRevenue = 7000;
+          else if (clientData.plan === 'ENTERPRISE') adminRevenue = 10000;
+          else if (clientData.plan === 'TRIAL') adminRevenue = 0;
+
+          // 🚀 2. Calculations (Nayi Stats API se)
+          // 🎯 Path updated to /stats as requested
+          const res = await fetch(`/api/admin/clients/${id}/stats`);
           const statsData = await res.json();
 
           if (res.ok && statsData.success) {
-            // Subscription calculations
-            const today = new Date();
-            const endDate = clientData.plan_end_date ? new Date(clientData.plan_end_date) : new Date();
-            const diffTime = endDate.getTime() - today.getTime();
-            const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-
             setStats({
               members: statsData.memberCount || 0,
               activeLoans: statsData.loanCount || 0,
               netProfit: statsData.netProfit || 0,
-              adminRevenue: clientData.plan === 'PRO' ? 7000 : (clientData.plan === 'ENTERPRISE' ? 10000 : 4000),
+              adminRevenue: adminRevenue,
               daysRemaining: days,
               progress: Math.min(100, (days / 30) * 100),
               health: (statsData.memberCount > 0) ? 92 : 0
