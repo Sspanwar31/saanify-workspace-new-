@@ -80,7 +80,8 @@ export default function ClientProfile() {
           const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
           const prog = Math.min(100, Math.max(0, (days / 30) * 100));
 
-          if (res.ok) {
+          // ✅ CHANGED HERE: Added && statsData.success check
+          if (res.ok && statsData.success) {
             setStats({
               members: statsData.memberCount || 0,
               activeLoans: statsData.loanCount || 0,
