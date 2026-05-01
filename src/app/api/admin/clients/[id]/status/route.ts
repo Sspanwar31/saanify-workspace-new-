@@ -47,11 +47,13 @@ export async function GET(
 
     console.log("Members Count:", memberCount, mErr);
 
-    // ✅ 2. Loan Count
+    // 🔥 FINAL CODE (Loan Count Fix)
+    // ✅ 2. Loan Count (Updated to check active & approved)
     const { count: loanCount, error: lErr } = await supabaseAdmin
       .from('loans')
       .select('*', { count: 'exact', head: true })
-      .eq('client_id', clientId);
+      .eq('client_id', clientId)
+      .in('status', ['active', 'approved']); // ✅ FIX
 
     console.log("Loan Count:", loanCount, lErr);
 
@@ -98,10 +100,10 @@ export async function GET(
 // ✅ POST: Update Status (LOCK/EXPIRE/ACTIVATE)
 export async function POST(
   req: NextRequest, 
-  { params }: { params: { id: string } } // ✅ Updated signature to match GET
+  { params }: { params: { id: string } }
 ) {
   try {
-    const clientId = params.id; // ✅ Removed await
+    const clientId = params.id; 
     const { action } = await req.json();
     const serviceKey = getServiceRoleKey();
 
