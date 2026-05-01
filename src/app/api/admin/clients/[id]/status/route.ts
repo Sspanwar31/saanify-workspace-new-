@@ -10,9 +10,15 @@ const getServiceRoleKey = () => {
   } catch (e) { return null; }
 };
 
-// ✅ GET: Fetch Real Stats (FIXED - Production Ready)
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id: clientId } = await params;
+// ✅ GET: Fetch Real Stats (Updated Signature & Debug Logs)
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const clientId = params.id;
+
+  console.log("API CLIENT ID:", clientId); // ✅ debug
+
   const serviceKey = getServiceRoleKey();
 
   if (!serviceKey) {
@@ -25,85 +31,77 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   );
 
   try {
-    // ✅ 1. MEMBER COUNT (FIXED - is_deleted check added)
+    // ✅ DEBUG: Fetch Raw Loans
+    const { data: rawLoans } = await supabaseAdmin
+      .from('loans')
+      .select('*')
+      .eq('client_id', clientId);
+
+    console.log("RAW LOANS:", rawLoans);
+
+    // ✅ 1. Member Count
     const { count: memberCount, error: mErr } = await supabaseAdmin
       .from('members')
       .select('*', { count: 'exact', head: true })
-      .eq('client_id', clientId)
-      .eq('is_deleted', false);
+      .eq('client_id', clientId);
 
-    if (mErr) throw mErr;
+    console.log("Members Count:", memberCount, mErr);
 
-    // ✅ 2. LOAN COUNT (FIXED - multiple statuses: ACTIVE & APPROVED)
+    // ✅ 2. Loan Count
     const { count: loanCount, error: lErr } = await supabaseAdmin
       .from('loans')
       .select('*', { count: 'exact', head: true })
-      .eq('client_id', clientId)
-      .in('status', ['ACTIVE', 'APPROVED']);
+      .eq('client_id', clientId);
 
-    if (lErr) throw lErr;
+    console.log("Loan Count:", loanCount, lErr);
 
-    // ✅ 3. PASSBOOK (Income)
-    const { data: passbook, error: pErr } = await supabaseAdmin
+    // ✅ 3. Passbook
+    const { data: passbook } = await supabaseAdmin
       .from('passbook_entries')
       .select('amount, type, category')
-      .eq('client_id', clientId)
-      .eq('is_deleted', false);
+      .eq('client_id', clientId);
 
-    if (pErr) throw pErr;
-
-    // ✅ 4. EXPENSES
-    const { data: expenses, error: eErr } = await supabaseAdmin
+    // ✅ 4. Expenses
+    const { data: expenses } = await supabaseAdmin
       .from('expenses_ledger')
       .select('amount')
       .eq('client_id', clientId);
 
-    if (eErr) throw eErr;
-
-    // ✅ 5. SAFE CALCULATION
     let totalIncome = 0;
 
-    for (const entry of passbook || []) {
-      const type = entry.type?.toLowerCase();
-      const category = entry.category?.toLowerCase();
-
+    passbook?.forEach(entry => {
       if (
-        type === 'deposit' &&
-        ['interest', 'fine', 'penalty', 'loan_interest'].includes(category)
+        entry.type === 'deposit' &&
+        ['interest', 'fine', 'penalty'].includes(entry.category?.toLowerCase())
       ) {
-        totalIncome += Number(entry.amount) || 0;
+        totalIncome += Number(entry.amount);
       }
-    }
+    });
 
     const totalExpense =
-      expenses?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
+      expenses?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
 
     const netProfit = totalIncome - totalExpense;
 
-    // ✅ FINAL RESPONSE (IMPORTANT)
     return NextResponse.json({
-      success: true,
-      memberCount: memberCount ?? 0,
-      loanCount: loanCount ?? 0,
-      netProfit: netProfit ?? 0
+      memberCount: memberCount || 0,
+      loanCount: loanCount || 0,
+      netProfit
     });
 
   } catch (err: any) {
-    console.error("STATS API ERROR:", err);
-    return NextResponse.json(
-      { error: err.message, success: false },
-      { status: 500 }
-    );
+    console.error("API ERROR:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// ✅ POST: Update Status (LOCK/EXPIRE/ACTIVATE) - Unchanged
+// ✅ POST: Update Status (LOCK/EXPIRE/ACTIVATE)
 export async function POST(
   req: NextRequest, 
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } } // ✅ Updated signature to match GET
 ) {
   try {
-    const { id: clientId } = await params;
+    const clientId = params.id; // ✅ Removed await
     const { action } = await req.json();
     const serviceKey = getServiceRoleKey();
 
