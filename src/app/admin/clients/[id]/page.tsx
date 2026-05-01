@@ -48,63 +48,74 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // 🚀 UPDATED FETCH FUNCTION (Debug Logs Updated)
+  // ✅ REPLACED FETCH FUNCTION
   const fetchClient = async () => {
     try {
       setLoading(true);
       
-      // 1. Client Table ka data (Supabase se)
-      const { data: clientData, error: clientError } = await supabase.from('clients').select('*').eq('id', id).eq('is_deleted', false).single();
-      
-      if (clientError) throw clientError;
+      // 1. Client Basic Info (Pehle client ka table data lo)
+      const { data: clientTableData, error: clientError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', id)
+        .eq('is_deleted', false)
+        .single();
         
-      if (clientData) {
-          setClient(clientData);
-          setNewPlan(clientData.plan);
-
-          // Subscription calculations (Preserved from previous version for UI logic)
-          const today = new Date();
-          const endDate = clientData.plan_end_date ? new Date(clientData.plan_end_date) : new Date();
-          const diffTime = endDate.getTime() - today.getTime();
-          const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-          
-          let adminRevenue = 4000;
-          if (clientData.plan === 'PRO') adminRevenue = 7000;
-          else if (clientData.plan === 'ENTERPRISE') adminRevenue = 10000;
-          else if (clientData.plan === 'TRIAL') adminRevenue = 0;
-
-          // 🚀 2. Calculations (Nayi Stats API se)
-          // 🎯 Path updated to /stats as requested
-          const res = await fetch(`/api/admin/clients/${id}/stats`);
-          const statsData = await res.json();
-
-          if (res.ok && statsData.success) {
-            
-            // ✅ DEBUG LOGS UPDATED
-            console.log("--- SUBSCRIPTION DEBUG INFO ---");
-            console.log("Final Net Profit:", statsData.netProfit);
-            console.log("Calculated Income:", statsData.debug?.income); // updated key
-            console.log("Calculated Expense:", statsData.debug?.expense); // updated key
-            console.log("-------------------------------");
-
-            setStats({
-              members: statsData.memberCount || 0,
-              activeLoans: statsData.loanCount || 0,
-              netProfit: statsData.netProfit || 0,
-              adminRevenue: adminRevenue,
-              daysRemaining: days,
-              progress: Math.min(100, (days / 30) * 100),
-              health: statsData.healthScore || 0 // 👈 API wali real value use karein
-            });
-          }
+      if (clientError || !clientTableData) {
+        console.error("Client not found or error:", clientError);
+        setLoading(false);
+        return;
       }
 
-      // 3. Staff fetch logic same rahega...
-      const { data: staffData } = await supabase.from('clients').select('*').eq('client_id', id).eq('role', 'treasurer').eq('is_deleted', false);
+      // State update karein
+      setClient(clientTableData);
+      setNewPlan(clientTableData.plan);
+
+      // 🚀 2. FETCH REAL STATS FROM OUR API (The Fix)
+      const res = await fetch(`/api/admin/clients/${id}/stats`);
+      const statsData = await res.json();
+
+      if (res.ok) {
+        // Calculations using clientTableData (Jo humne upar fetch kiya)
+        let revenueAmount = 4000;
+        if (clientTableData.plan === 'PRO') revenueAmount = 7000;
+        else if (clientTableData.plan === 'ENTERPRISE') revenueAmount = 10000;
+        else if (clientTableData.plan === 'TRIAL') revenueAmount = 0;
+
+        const today = new Date();
+        const endDate = clientTableData.plan_end_date ? new Date(clientTableData.plan_end_date) : new Date();
+        const diffTime = endDate.getTime() - today.getTime();
+        const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        const prog = Math.min(100, Math.max(0, (days / 30) * 100));
+
+        // Sabhi real values set karein
+        setStats({
+          members: statsData.memberCount || 0,
+          activeLoans: statsData.loanCount || 0,
+          netProfit: statsData.netProfit || 0,
+          adminRevenue: revenueAmount,
+          daysRemaining: days,
+          progress: prog,
+          health: statsData.healthScore || 0
+        });
+
+        console.log("--- DEBUG SUCCESS ---");
+        console.log("Profit Match:", statsData.netProfit);
+        console.log("Health Score:", statsData.healthScore);
+      }
+
+      // 3. Staff List fetch karein
+      const { data: staffData } = await supabase
+          .from('clients') 
+          .select('*')
+          .eq('client_id', id)
+          .eq('role', 'treasurer')
+          .eq('is_deleted', false);
+      
       if (staffData) setStaffList(staffData);
 
     } catch (err) {
-      console.error("Fetch Error:", err);
+      console.error("Critical Fetch Error:", err);
     } finally {
       setLoading(false);
     }
@@ -371,7 +382,7 @@ export default function ClientProfile() {
             <CardContent className="p-8">
                <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
                   <div><p className="text-sm text-slate-500 mb-1">Current Plan</p><h3 className="text-3xl font-bold text-blue-600 uppercase">{client.plan} <span className="text-lg text-slate-400 font-normal">/ Monthly</span></h3></div>
-                  <div className="text-left md:text-right"><p className="text-xs text-slate-400 uppercase font-bold">Renewal Date</p><h4 className="text-xl font-bold text-slate-900">{client.plan_end_date ? new Date(clientData.plan_end_date).toLocaleDateString() : 'N/A'}</h4></div>
+                  <div className="text-left md:text-right"><p className="text-xs text-slate-400 uppercase font-bold">Renewal Date</p><h4 className="text-xl font-bold text-slate-900">{client.plan_end_date ? new Date(client.plan_end_date).toLocaleDateString() : 'N/A'}</h4></div>
                </div>
                <div>
                   <div className="flex justify-between text-xs mb-2 text-slate-500 font-medium"><span>Plan Usage</span><span>{stats.daysRemaining} Days Remaining</span></div>
