@@ -13,50 +13,56 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const serviceKey = getServiceRoleKey();
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
-    // 1. Members & Loans
+    // 1. Basic Counts
     const { count: memberCount } = await supabaseAdmin.from('members').select('*', { count: 'exact', head: true }).eq('client_id', clientId).eq('status', 'active');
     const { count: loanCount } = await supabaseAdmin.from('loans').select('*', { count: 'exact', head: true }).eq('client_id', clientId).eq('status', 'active');
 
-    // 2. Fetch Data for Debugging
-    const { data: passbook } = await supabaseAdmin.from('passbook_entries').select('amount, type, category, description').eq('client_id', clientId);
-    const { data: expenses } = await supabaseAdmin.from('expenses_ledger').select('amount, category').eq('client_id', clientId);
+    // 2. Fetch Data from all sources (Like Client Store)
+    const { data: passbook } = await supabaseAdmin.from('passbook_entries').select('*').eq('client_id', clientId);
+    const { data: expenses } = await supabaseAdmin.from('expenses_ledger').select('*').eq('client_id', clientId);
 
-    // 🎯 DEBUG COUNTERS
-    let debugIncomeBreakdown: any = {};
-    let ignoredEntries: any[] = [];
-    let actualEarnings = 0;
+    let totalIncome = 0;   // Target: 2720
+    let totalExpense = 0;  // Target: 6100
 
-    passbook?.forEach(entry => {
-      const amt = Number(entry.amount) || 0;
-      const cat = (entry.category || 'NO_CATEGORY').toUpperCase().trim();
+    // 🎯 PASSBOOK LOGIC (Income + Expense from Passbook)
+    passbook?.forEach(e => {
+      const amt = Number(e.amount) || 0;
+      const type = (e.type || '').toUpperCase();
       
-      // Check if this category is considered "Income" (Munafa)
-      const isProfitCategory = ['INTEREST', 'FINE', 'PENALTY', 'LATE FEE', 'LATE_FEE'].includes(cat);
-
-      if (entry.type === 'deposit' && isProfitCategory) {
-        actualEarnings += amt;
-        debugIncomeBreakdown[cat] = (debugIncomeBreakdown[cat] || 0) + amt;
-      } else {
-        // Record why this entry was ignored
-        ignoredEntries.push({ amt, cat, type: entry.type, desc: entry.description });
+      // Income Check (Interest, Fine, Late Fee)
+      if (['INTEREST', 'FINE', 'PENALTY', 'LATE_FEE', 'LATE FEE'].includes(type)) {
+        totalIncome += amt;
+      }
+      
+      // Expense from Passbook (Withdrawals/Expenses)
+      if (type === 'WITHDRAWAL' || type === 'EXPENSE') {
+        totalExpense += amt;
       }
     });
 
-    const totalExpense = expenses?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
-    const netProfit = actualEarnings - totalExpense;
+    // 🎯 EXPENSES LEDGER LOGIC (Direct Expenses)
+    expenses?.forEach(e => {
+      const amt = Number(e.amount) || 0;
+      // Agar entry INCOME type ki hai ledger mein (Rare)
+      if (e.type === 'INCOME') {
+        totalIncome += amt;
+      } else {
+        totalExpense += amt;
+      }
+    });
+
+    const netProfit = totalIncome - totalExpense;
 
     return NextResponse.json({
       success: true,
       memberCount,
       loanCount,
-      netProfit,
-      // 🚀 DEBUG DATA (Check this in Console)
+      netProfit, // Result should be -3380
       debug: {
-        calculatedIncome: actualEarnings,
-        calculatedExpense: totalExpense,
-        incomeBreakdown: debugIncomeBreakdown,
-        totalEntriesChecked: passbook?.length || 0,
-        sampleIgnoredEntries: ignoredEntries.slice(0, 5) // Pehli 5 ignored entries dekho
+        totalIncome,
+        totalExpense,
+        passbookCount: passbook?.length || 0,
+        ledgerCount: expenses?.length || 0
       }
     });
 
