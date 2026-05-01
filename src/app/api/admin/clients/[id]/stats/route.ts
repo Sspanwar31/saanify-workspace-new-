@@ -34,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       if (e.type === 'INCOME') maintenanceIncome += (Number(e.amount) || 0);
     });
 
-    const totalIncome = interestAndFine + maintenanceIncome; // Target: 2720
+    const totalIncome = interestAndFine + maintenanceIncome; 
 
     // --- 🎯 2. EXPENSE CALCULATION (Operational) ---
     let operationalCost = 0;
@@ -59,8 +59,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
       const monthlyShare = totalSettledInt / tenure;
 
-      // 🚀 B. ASLI FIX: Count actual payments from passbook
-      // Hum calendar date nahi ginenye, hum ginenye ki member ne kitni rows entries ki hain
+      // B. ASLI FIX: Count actual payments from passbook
       const monthsPaid = passbookData.filter(e => 
         e.member_id === m.id && 
         (Number(e.deposit_amount) > 0 || Number(e.installment_amount) > 0)
@@ -77,11 +76,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const totalExpense = operationalCost + totalMaturityLiability;
     const netProfit = totalIncome - totalExpense;
 
+    // --- 🎯 5. HEALTH SCORE LOGIC (NEW ADDED LOGIC) ---
+    // 🚀 NEW: Dynamic Health Score Calculation
+    let score = 0;
+    
+    // A. Member Score (Max 40 points)
+    if (membersRes.data && membersRes.data.length > 0) score += 40; 
+    
+    // B. Loan Activity (Max 30 points)
+    if (loansRes.data && loansRes.data.length > 0) score += 30;
+    
+    // C. Financial Stability (Max 30 points)
+    if (netProfit >= 0) score += 30; 
+    else if (totalIncome > 0) score += 15; // Small score if there is some income despite loss
+
+    const healthScore = Math.min(score, 100); // 100 se upar na jaye
+
     return NextResponse.json({
       success: true,
       memberCount: membersRes.data?.length || 0,
       loanCount: loansRes.data?.length || 0,
       netProfit: netProfit, 
+      healthScore: healthScore, // 👈 Send this to frontend
       debug: {
         income: totalIncome,
         expense: totalExpense,
