@@ -19,7 +19,11 @@ import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ClientProfile() {
-  const { id } = useParams();
+  // ✅ FIX: Handle ID safely (Array check)
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  console.log("FRONTEND ID:", id);
+
   const router = useRouter();
   const [client, setClient] = useState<any>(null);
   const [staffList, setStaffList] = useState<any[]>([]); 
