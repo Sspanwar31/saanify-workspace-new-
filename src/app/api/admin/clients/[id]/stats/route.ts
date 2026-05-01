@@ -13,21 +13,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const serviceKey = getServiceRoleKey();
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
-    // 1. Sabhi data fetch karein
+    // 1. Fetch All Data
     const [passbookRes, ledgerRes, membersRes, loansRes] = await Promise.all([
-      // Passbook Entries (Interest aur Fines ke liye)
-      supabaseAdmin.from('passbook_entries').select('interest_amount, fine_amount').eq('client_id', clientId),
-      // Expenses Ledger (Maintenance Income aur Operational Cost ke liye)
+      supabaseAdmin.from('passbook_entries').select('*').eq('client_id', clientId),
       supabaseAdmin.from('expenses_ledger').select('amount, type').eq('client_id', clientId),
-      // Members Table (Accrued Interest/Maturity ke liye)
       supabaseAdmin.from('members').select('*').eq('client_id', clientId).eq('status', 'active'),
-      // Active Loans count
       supabaseAdmin.from('loans').select('id').eq('client_id', clientId).eq('status', 'active')
     ]);
 
+    const passbookData = passbookRes.data || [];
+
     // --- 🎯 1. INCOME CALCULATION (Credits) ---
     let interestAndFine = 0;
-    passbookRes.data?.forEach(e => {
+    passbookData.forEach(e => {
       interestAndFine += (Number(e.interest_amount) || 0) + (Number(e.fine_amount) || 0);
     });
 
@@ -36,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       if (e.type === 'INCOME') maintenanceIncome += (Number(e.amount) || 0);
     });
 
-    const totalIncome = interestAndFine + maintenanceIncome; // Result: 2720
+    const totalIncome = interestAndFine + maintenanceIncome; // Target: 2720
 
     // --- 🎯 2. EXPENSE CALCULATION (Operational) ---
     let operationalCost = 0;
@@ -44,41 +42,38 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       if (e.type === 'EXPENSE') operationalCost += (Number(e.amount) || 0);
     });
 
-    // --- 🎯 3. MATURITY LIABILITY (Current Accrued Interest) ---
+    // --- 🎯 3. MATURITY LIABILITY (Months Paid Logic) ---
     let totalMaturityLiability = 0;
-    const today = new Date();
 
     membersRes.data?.forEach(m => {
       const monthlyDep = Number(m.monthly_deposit_amount) || 0;
-      const tenure = 36; // 36 months standard
+      const tenure = 36;
       
-      // A. Total Settled Interest logic
+      // A. Settled Interest (Override vs Auto 12%)
       let totalSettledInt = 0;
       if (m.maturity_is_override) {
-        // Agar admin ne manual amount set kiya hai (e.g. 4000)
         totalSettledInt = Number(m.maturity_manual_amount) || 0;
       } else {
-        // Nahi toh Auto Calculation (12% per year)
         totalSettledInt = monthlyDep * tenure * 0.12; 
       }
 
-      // B. Monthly Share (Total Int / 36)
       const monthlyShare = totalSettledInt / tenure;
 
-      // C. ✅ Months Completed (Native JS Calculation)
-      const joinDate = new Date(m.join_date || m.created_at);
-      const monthsCompleted = (today.getFullYear() - joinDate.getFullYear()) * 12 + (today.getMonth() - joinDate.getMonth());
-      
-      // Safety: Tenure se upar ya 0 se niche na jaye
-      const safeMonths = Math.max(0, Math.min(monthsCompleted, tenure));
+      // 🚀 B. ASLI FIX: Count actual payments from passbook
+      // Hum calendar date nahi ginenye, hum ginenye ki member ne kitni rows entries ki hain
+      const monthsPaid = passbookData.filter(e => 
+        e.member_id === m.id && 
+        (Number(e.deposit_amount) > 0 || Number(e.installment_amount) > 0)
+      ).length;
 
-      // D. Current Accrued for this member
+      const safeMonths = Math.max(0, Math.min(monthsPaid, tenure));
+
+      // C. Current Accrued
       const currentAccrued = monthlyShare * safeMonths;
       totalMaturityLiability += currentAccrued;
     });
 
     // --- 🎯 4. FINAL NET PROFIT ---
-    // Formula: Total Income - (Ops Cost + Maturity Liability)
     const totalExpense = operationalCost + totalMaturityLiability;
     const netProfit = totalIncome - totalExpense;
 
@@ -86,7 +81,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       success: true,
       memberCount: membersRes.data?.length || 0,
       loanCount: loansRes.data?.length || 0,
-      netProfit: netProfit, // Ye ab exact dashboard se match karega
+      netProfit: netProfit, 
       debug: {
         income: totalIncome,
         expense: totalExpense,
