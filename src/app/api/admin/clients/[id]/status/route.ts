@@ -10,131 +10,72 @@ const getServiceRoleKey = () => {
   } catch (e) { return null; }
 };
 
-// ✅ GET: Fetch Real Stats (Updated Signature & Debug Logs)
+// 🚀 GET: Fetch Real Stats (Fixed Next.js 15 Params)
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // ✅ Type Fix
 ) {
-  const clientId = params.id;
-
-  console.log("API CLIENT ID:", clientId); // ✅ debug
-
+  const { id: clientId } = await params; // ✅ Must await params
   const serviceKey = getServiceRoleKey();
-
-  if (!serviceKey) {
-    return NextResponse.json({ error: "Config Error" }, { status: 500 });
-  }
-
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey
-  );
+  
+  if (!serviceKey) return NextResponse.json({ error: "Key Error" }, { status: 500 });
+  const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
 
   try {
-    // ✅ DEBUG: Fetch Raw Loans
-    const { data: rawLoans } = await supabaseAdmin
-      .from('loans')
-      .select('*')
-      .eq('client_id', clientId);
+    // 1. Members
+    const { count: memberCount } = await supabaseAdmin
+      .from('members').select('*', { count: 'exact', head: true }).eq('client_id', clientId);
 
-    console.log("RAW LOANS:", rawLoans);
+    // 2. Active Loans
+    const { count: loanCount } = await supabaseAdmin
+      .from('loans').select('*', { count: 'exact', head: true }).eq('client_id', clientId).in('status', ['active', 'approved']);
 
-    // ✅ 1. Member Count
-    const { count: memberCount, error: mErr } = await supabaseAdmin
-      .from('members')
-      .select('*', { count: 'exact', head: true })
-      .eq('client_id', clientId);
-
-    console.log("Members Count:", memberCount, mErr);
-
-    // 🔥 FINAL CODE (Loan Count Fix)
-    // ✅ 2. Loan Count (Updated to check active & approved)
-    const { count: loanCount, error: lErr } = await supabaseAdmin
-      .from('loans')
-      .select('*', { count: 'exact', head: true })
-      .eq('client_id', clientId)
-      .in('status', ['active', 'approved']); // ✅ FIX
-
-    console.log("Loan Count:", loanCount, lErr);
-
-    // ✅ 3. Passbook
-    const { data: passbook } = await supabaseAdmin
-      .from('passbook_entries')
-      .select('amount, type, category')
-      .eq('client_id', clientId);
-
-    // ✅ 4. Expenses
-    const { data: expenses } = await supabaseAdmin
-      .from('expenses_ledger')
-      .select('amount')
-      .eq('client_id', clientId);
+    // 3. Financials
+    const { data: passbook } = await supabaseAdmin.from('passbook_entries').select('amount, type, category').eq('client_id', clientId);
+    const { data: expenses } = await supabaseAdmin.from('expenses_ledger').select('amount').eq('client_id', clientId);
 
     let totalIncome = 0;
-
     passbook?.forEach(entry => {
-      if (
-        entry.type === 'deposit' &&
-        ['interest', 'fine', 'penalty'].includes(entry.category?.toLowerCase())
-      ) {
+      if (entry.type === 'deposit' && ['interest', 'fine', 'penalty'].includes(entry.category?.toLowerCase() || '')) {
         totalIncome += Number(entry.amount);
       }
     });
-
-    const totalExpense =
-      expenses?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-
-    const netProfit = totalIncome - totalExpense;
+    const totalExpense = expenses?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
 
     return NextResponse.json({
+      success: true,
       memberCount: memberCount || 0,
       loanCount: loanCount || 0,
-      netProfit
+      netProfit: totalIncome - totalExpense
     });
-
   } catch (err: any) {
-    console.error("API ERROR:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message, success: false }, { status: 500 });
   }
 }
 
-// ✅ POST: Update Status (LOCK/EXPIRE/ACTIVATE)
+// 🚀 POST: Update Status (Fixed Next.js 15 Params)
 export async function POST(
   req: NextRequest, 
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // ✅ Type Fix
 ) {
   try {
-    const clientId = params.id; 
+    const { id: clientId } = await params; // ✅ Must await params
     const { action } = await req.json();
     const serviceKey = getServiceRoleKey();
-
-    if (!serviceKey || !clientId) {
-      return NextResponse.json({ error: "Config or ID Error", success: false }, { status: 500 });
-    }
-
-    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
     let newStatus = '';
     const cmd = action?.toUpperCase();
-
     if (cmd === 'LOCK') newStatus = 'LOCKED';
     else if (cmd === 'EXPIRE') newStatus = 'EXPIRED';
     else if (cmd === 'ACTIVATE' || cmd === 'UNLOCK') newStatus = 'ACTIVE';
-    else return NextResponse.json({ error: 'Invalid Action', success: false }, { status: 400 });
+    else return NextResponse.json({ error: 'Invalid Action' }, { status: 400 });
 
-    const { error: dbError } = await supabaseAdmin
-      .from('clients')
-      .update({ 
-        status: newStatus,
-        updated_at: new Date().toISOString() 
-      }) 
-      .eq('id', clientId);
+    const { error } = await supabaseAdmin.from('clients').update({ status: newStatus }).eq('id', clientId);
+    if (error) throw error;
 
-    if (dbError) throw dbError;
-
-    return NextResponse.json({ success: true, status: newStatus }, { status: 200 });
-
+    return NextResponse.json({ success: true, status: newStatus });
   } catch (err: any) {
-    console.error("API Crash:", err.message);
     return NextResponse.json({ error: err.message, success: false }, { status: 500 });
   }
 }
