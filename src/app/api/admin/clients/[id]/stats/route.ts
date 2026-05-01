@@ -13,15 +13,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const serviceKey = getServiceRoleKey();
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
-    // 1. Sabhi table se data ek saath mangwayein
+    // 1. Sabhi table se data fetch karein
     const [passbookRes, ledgerRes, membersRes, loansRes] = await Promise.all([
+      // Passbook se interest aur fine
       supabaseAdmin.from('passbook_entries').select('interest_amount, fine_amount').eq('client_id', clientId),
+      // Ledger se Maintenance(Income) aur Ops(Expense)
       supabaseAdmin.from('expenses_ledger').select('amount, type').eq('client_id', clientId),
-      supabaseAdmin.from('members').select('id, total_deposits').eq('client_id', clientId).eq('status', 'active'),
+      // Members table se Current Accrued (Ye wo interest hai jo society par udhaar hai)
+      supabaseAdmin.from('members').select('id, current_accrued, status').eq('client_id', clientId).eq('status', 'active'),
+      // Active Loans count
       supabaseAdmin.from('loans').select('id').eq('client_id', clientId).eq('status', 'active')
     ]);
 
-    // --- 🎯 INCOME CALCULATION ---
+    // --- 🎯 1. INCOME CALCULATION (Credits) ---
     let interestIncome = 0;
     let fineIncome = 0;
     passbookRes.data?.forEach(e => {
@@ -29,7 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       fineIncome += (Number(e.fine_amount) || 0);
     });
 
-    let otherFeesIncome = 0; // (Maintenance Fees from Ledger)
+    let otherFeesIncome = 0; // Maintenance fees etc.
     ledgerRes.data?.forEach(e => {
       if (e.type === 'INCOME') {
         otherFeesIncome += (Number(e.amount) || 0);
@@ -38,7 +42,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const totalIncome = interestIncome + fineIncome + otherFeesIncome; // Target: 2720
 
-    // --- 🎯 EXPENSE CALCULATION ---
+    // --- 🎯 2. EXPENSE CALCULATION (Debits) ---
     let operationalCost = 0;
     ledgerRes.data?.forEach(e => {
       if (e.type === 'EXPENSE') {
@@ -46,20 +50,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }
     });
 
-    // Maturity Liability = Members ke total deposits ka sum
-    const maturityLiability = membersRes.data?.reduce((acc, m) => acc + (Number(m.total_deposits) || 0), 0) || 0;
+    // 🚀 ASLI BADLAV: Maturity Liability = Sum of all members' "current_accrued"
+    const maturityLiability = membersRes.data?.reduce((acc, m) => acc + (Number(m.current_accrued) || 0), 0) || 0;
 
-    const totalExpense = operationalCost + maturityLiability; // Target: 6100
+    const totalExpense = operationalCost + maturityLiability; // Target: 6100 (100 + 6000)
 
-    // --- 🎯 FINAL NET PROFIT ---
-    const netProfit = totalIncome - totalExpense; // Result: -3380
+    // --- 🎯 3. FINAL NET PROFIT ---
+    const netProfit = totalIncome - totalExpense; // Result: 2720 - 6100 = -3380
 
     return NextResponse.json({
       success: true,
       memberCount: membersRes.data?.length || 0,
       loanCount: loansRes.data?.length || 0,
       netProfit: netProfit,
-      // Frontend summary ke liye details
       details: {
         interestIncome,
         fineIncome,
@@ -72,6 +75,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
 
   } catch (err: any) {
+    console.error("Stats API Error:", err.message);
     return NextResponse.json({ error: err.message, success: false }, { status: 500 });
   }
 }
