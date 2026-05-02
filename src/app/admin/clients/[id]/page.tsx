@@ -275,36 +275,33 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess with Real Impersonation API
+  // ✅ UPDATED: handleAccess function
   const handleAccess = async () => {
-    try {
-      // ✅ Save admin session (optional but useful later)
-      const { data: sessionData } = await supabase.auth.getSession();
+      const toastId = toast.loading("Generating Secure Access...");
 
-      localStorage.setItem(
-        'admin_session',
-        JSON.stringify(sessionData.session)
-      );
+      try {
+          const res = await fetch('/api/admin/impersonate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ clientId: id }) // 'id' from useParams
+          });
 
-      // ✅ Call impersonation API
-      const res = await fetch('/api/admin/impersonate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId: client.id })
-      });
+          const data = await res.json();
 
-      const data = await res.json();
-
-      if (data.success) {
-        window.location.href = data.url; // 🔥 REAL LOGIN SWITCH
-      } else {
-        throw new Error(data.error);
+          if (res.ok && data.url) {
+              toast.success("Access Granted! Redirecting...", { id: toastId });
+              
+              // 1. Local storage mein client data set karein (Sidebar/Stats ke liye)
+              localStorage.setItem('current_user', JSON.stringify(client));
+              
+              // 2. Magic link par redirect karein (Ye user ko asli dashboard mein ghusa dega)
+              window.location.href = data.url; 
+          } else {
+              throw new Error(data.error || "Access Denied");
+          }
+      } catch (err: any) {
+          toast.error(err.message, { id: toastId });
       }
-
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to access client panel");
-    }
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600"/></div>;
