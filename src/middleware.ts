@@ -27,8 +27,7 @@ export async function middleware(req: NextRequest) {
   const tokenObj = req.cookies.get('auth-token');
   const token = tokenObj?.value;
 
-  // ✅ NEW: Impersonation cookie check
-  const isImpersonating = req.cookies.get('impersonating')?.value === 'true';
+  // ❌ REMOVED: const isImpersonating = req.cookies.get('impersonating')?.value === 'true';
 
   // 2. Define Public Routes
   const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/signup';
@@ -58,13 +57,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL(target, req.url));
   }
 
-  // ✅ UPDATED: Admin routes protection (Impersonation Safe)
+  // B. Admin routes protection
   if (pathname.startsWith('/admin')) {
-    // ❌ Agar impersonation chal raha hai → admin panel block karo
-    if (isImpersonating) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
-
+    // No need for explicit impersonation check here anymore.
+    // If real impersonation is active, the userRole will be 'CLIENT', so this check handles it.
     if (userRole !== 'ADMIN') {
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
@@ -75,15 +71,8 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
-  // ✅ FIXED: /dashboard logic (Impersonation Safe)
+  // ✅ UPDATED: /dashboard logic (Clean Version)
   if (pathname === '/dashboard') {
-
-    // 👉 Agar impersonation ON hai → allow karo
-    if (isImpersonating) {
-      return NextResponse.next();
-    }
-
-    // 👉 Normal case: admin ko dashboard pe nahi rehne dena
     if (userRole === 'ADMIN') {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
