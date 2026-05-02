@@ -87,7 +87,6 @@ export default function ClientDashboard() {
             setLoading(true);
 
             // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
-            // Ye kabhi galat user nahi dega, chahe localStorage mein kuch bhi ho
             const { data: { user }, error: authError } = await supabase.auth.getUser();
 
             if (authError || !user) {
@@ -103,7 +102,6 @@ export default function ClientDashboard() {
                 .eq('id', user.id) 
                 .maybeSingle();
 
-            // Agar client table mein nahi mila, toh members table check karo
             if (!userData) {
                 const { data: memberData } = await supabase
                     .from('members')
@@ -112,7 +110,6 @@ export default function ClientDashboard() {
                     .maybeSingle();
                 
                 if (memberData) {
-                    // Member logic yahan handle karein
                     const { data: parentClient } = await supabase.from('clients').select('*').eq('id', memberData.client_id).single();
                     setClientData(parentClient);
                     await fetchAndCalculate(memberData.client_id, memberData.role, parentClient?.role_permissions);
@@ -121,11 +118,9 @@ export default function ClientDashboard() {
                     return;
                 }
             } else {
-                // ✅ Root Client mil gaya
                 setClientData(userData);
                 let activeClientId = userData.role === 'client' ? userData.id : userData.client_id;
                 
-                // Permissions handle karein
                 let perms = [];
                 if (userData.role === 'treasurer') {
                     perms = typeof userData.role_permissions === 'string' 
@@ -133,10 +128,7 @@ export default function ClientDashboard() {
                         : userData.role_permissions?.treasurer || [];
                 }
 
-                // 🚀 3. Business Data Fetch karein (Using activeClientId)
                 await fetchAndCalculate(activeClientId, userData.role, perms);
-                
-                // Safety ke liye localStorage update kardo
                 localStorage.setItem('current_user', JSON.stringify(userData));
             }
 
@@ -147,7 +139,6 @@ export default function ClientDashboard() {
         }
     };
 
-    // Helper function taaki code clean rahe
     const fetchAndCalculate = async (userId: string, userRole: string, permissions: any[]) => {
         const canViewPassbook = userRole === 'client' || permissions.includes('VIEW_PASSBOOK');
         const canViewLoans = userRole === 'client' || permissions.includes('VIEW_LOANS');
@@ -239,7 +230,7 @@ export default function ClientDashboard() {
   }, [membersData, loansData, clientData]);
 
 
-  // ✅ FINANCIAL LOGIC (Corrected Payment Modes for Loans)
+  // ✅ FINANCIAL LOGIC
   const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[], adminFunds: any[]) => {
     
     let realIncome = 0; 
@@ -249,7 +240,6 @@ export default function ClientDashboard() {
     let totalDepositsCollected = 0; 
     const monthlyMap: {[key: string]: number} = {};
 
-    // 1. Passbook (Inflow + Recovery)
     passbook.forEach(t => {
         const totalAmt = Number(t.total_amount) || 0; 
         const interest = Number(t.interest_amount) || 0;
@@ -269,14 +259,13 @@ export default function ClientDashboard() {
         monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
     });
 
-    // 2. Expenses (Outflow)
     expenses.forEach(e => {
         const amt = Number(e.amount) || 0;
         const type = (e.type || '').toUpperCase().trim();
         
         if (type === 'EXPENSE') {
             cashExpense += amt;
-            cash -= amt; // Default subtract from Cash
+            cash -= amt; 
         } 
         else if (type === 'INCOME') {
             realIncome += amt;
@@ -284,7 +273,6 @@ export default function ClientDashboard() {
         }
     });
 
-    // 3. Admin Fund (Inject/Withdraw)
     adminFunds.forEach(f => {
         const amt = Number(f.amount) || 0;
         const type = (f.type || '').toUpperCase().trim();
@@ -296,18 +284,14 @@ export default function ClientDashboard() {
         }
     });
 
-    // 4. Loans (Subtract Principal from Correct Mode)
     loans.forEach(l => {
         const outstanding = Number(l.remaining_balance) || 0;
         const principal = Number(l.amount) || 0; 
-        const mode = (l.payment_mode || 'cash').toLowerCase(); // ✅ Use Payment Mode
+        const mode = (l.payment_mode || 'cash').toLowerCase(); 
 
         if (l.status === 'active' || (outstanding > 0 && l.status !== 'closed')) {
              pendingLoanCount++;
         }
-
-        // 🔥 FIX: Subtract Principal from Specific Mode
-        // Logic: Agar Bank se loan diya hai, to Bank balance kam hoga.
         
         if (mode.includes('cash')) {
             cash -= principal;
@@ -316,11 +300,10 @@ export default function ClientDashboard() {
         } else if (mode.includes('upi') || mode.includes('online')) {
             upi -= principal;
         } else {
-            cash -= principal; // Default fallback
+            cash -= principal; 
         }
     });
 
-    // 5. Maturity Liability
     let maturityLiability = 0;
     const memberDeposits: {[key: string]: any[]} = {};
     passbook.forEach(p => {
@@ -379,6 +362,37 @@ export default function ClientDashboard() {
     router.push('/login');
   };
 
+  // ✅ NEW: Return to Admin Function
+  const handleReturnToAdmin = async () => {
+    try {
+      const savedSession = localStorage.getItem('admin_session');
+
+      if (savedSession) {
+        const session = JSON.parse(savedSession);
+
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        });
+      }
+
+      // Clear impersonation
+      document.cookie = "impersonating=false; path=/";
+      localStorage.removeItem('admin_session');
+      localStorage.removeItem('current_user');
+
+      window.location.href = '/admin';
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // 🚀 NEW: Check for Impersonation
+  const isImpersonating =
+    typeof document !== "undefined" &&
+    document.cookie.includes("impersonating=true");
+
   if (loading) return <div className="h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950">Loading Dashboard...</div>;
   if (!clientData) return null;
 
@@ -431,6 +445,13 @@ export default function ClientDashboard() {
           <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
         </div>
         <div className="flex items-center gap-4">
+            {/* ✅ NEW IMPERSONATION BUTTON */}
+            {isImpersonating && (
+              <Button onClick={handleReturnToAdmin} className="bg-purple-600 hover:bg-purple-700 text-white text-sm md:text-base font-medium">
+                🔙 Return to Admin
+              </Button>
+            )}
+
             <div className="text-right hidden md:block">
             <p className="text-xs text-slate-400 dark:text-slate-500 font-mono uppercase">SYSTEM DATE</p>
             <p className="font-bold text-slate-700 dark:text-slate-200">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
