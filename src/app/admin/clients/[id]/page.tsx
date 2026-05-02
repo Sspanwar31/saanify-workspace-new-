@@ -275,10 +275,10 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess with Impersonation Logic
+  // ✅ UPDATED: handleAccess with Real Impersonation API
   const handleAccess = async () => {
     try {
-      // ✅ 1. Save admin session
+      // ✅ Save admin session (optional but useful later)
       const { data: sessionData } = await supabase.auth.getSession();
 
       localStorage.setItem(
@@ -286,17 +286,24 @@ export default function ClientProfile() {
         JSON.stringify(sessionData.session)
       );
 
-      // ✅ 2. Set impersonation flag
-      document.cookie = "impersonating=true; path=/";
+      // ✅ Call impersonation API
+      const res = await fetch('/api/admin/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: client.id })
+      });
 
-      // ✅ 3. Store client info (optional but useful)
-      localStorage.setItem('current_user', JSON.stringify(client));
+      const data = await res.json();
 
-      // ✅ 4. Open client dashboard
-      window.open('/dashboard', '_blank');
+      if (data.success) {
+        window.location.href = data.url; // 🔥 REAL LOGIN SWITCH
+      } else {
+        throw new Error(data.error);
+      }
 
-    } catch (err) {
-      console.error("Impersonation Error:", err);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to access client panel");
     }
   };
 
