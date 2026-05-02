@@ -275,9 +275,29 @@ export default function ClientProfile() {
       }
   };
 
-  const handleAccess = () => {
+  // ✅ UPDATED: handleAccess with Impersonation Logic
+  const handleAccess = async () => {
+    try {
+      // ✅ 1. Save admin session
+      const { data: sessionData } = await supabase.auth.getSession();
+
+      localStorage.setItem(
+        'admin_session',
+        JSON.stringify(sessionData.session)
+      );
+
+      // ✅ 2. Set impersonation flag
+      document.cookie = "impersonating=true; path=/";
+
+      // ✅ 3. Store client info (optional but useful)
       localStorage.setItem('current_user', JSON.stringify(client));
+
+      // ✅ 4. Open client dashboard
       window.open('/dashboard', '_blank');
+
+    } catch (err) {
+      console.error("Impersonation Error:", err);
+    }
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600"/></div>;
