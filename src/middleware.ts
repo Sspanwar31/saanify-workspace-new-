@@ -27,6 +27,9 @@ export async function middleware(req: NextRequest) {
   const tokenObj = req.cookies.get('auth-token');
   const token = tokenObj?.value;
 
+  // ✅ NEW: Impersonation cookie check
+  const isImpersonating = req.cookies.get('impersonating')?.value === 'true';
+
   // 2. Define Public Routes
   const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/signup';
 
@@ -47,30 +50,43 @@ export async function middleware(req: NextRequest) {
 
   const userRole = (user.role || 'CLIENT').toUpperCase();
 
-  // 🚀 5. REDIRECT LOGIC (NEW)
+  // 🚀 5. REDIRECT LOGIC
   
   // A. Agar login hai aur Login/Signup page par hai -> Sahi dashboard par bhejo
   if (isPublicRoute) {
-    const target = userRole === 'ADMIN' ? '/admin' : '/dashboard'; // ✅ Client to /dashboard
+    const target = userRole === 'ADMIN' ? '/admin' : '/dashboard';
     return NextResponse.redirect(new URL(target, req.url));
   }
 
-  // B. Admin routes protection
-  if (pathname.startsWith('/admin') && userRole !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/dashboard', req.url)); // ✅ Redirect non-admins to /dashboard
+  // ✅ UPDATED: Admin routes protection (Impersonation Safe)
+  if (pathname.startsWith('/admin')) {
+    // ❌ Agar impersonation chal raha hai → admin panel block karo
+    if (isImpersonating) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+
+    if (userRole !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
   }
 
-  // C. Old /client routes protection (Cleanup)
+  // C. Old /client routes protection
   if (pathname.startsWith('/client')) {
-    return NextResponse.redirect(new URL('/dashboard', req.url)); // ✅ Old links to new /dashboard
+    return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
-  // D. Handle root /dashboard redirect based on Admin role
+  // ✅ FIXED: /dashboard logic (Impersonation Safe)
   if (pathname === '/dashboard') {
+
+    // 👉 Agar impersonation ON hai → allow karo
+    if (isImpersonating) {
+      return NextResponse.next();
+    }
+
+    // 👉 Normal case: admin ko dashboard pe nahi rehne dena
     if (userRole === 'ADMIN') {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
-    // Clients remain on /dashboard
     return NextResponse.next();
   }
 
