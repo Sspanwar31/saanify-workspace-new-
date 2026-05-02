@@ -67,6 +67,9 @@ export default function ClientDashboard() {
   const [transactionsData, setTransactionsData] = useState<any[]>([]);
   const [showMonthlyBanner, setShowMonthlyBanner] = useState(false);
 
+  // ✅ ADDED STATE: Show Back to Admin Button
+  const [showBack, setShowBack] = useState(false);
+
   const [financials, setFinancials] = useState({
     netProfit: 0,
     totalIncome: 0,
@@ -168,6 +171,14 @@ export default function ClientDashboard() {
 
     init();
   }, [router]);  
+
+  // ✅ STEP 5: CHECK IF BACK BUTTON IS NEEDED
+  useEffect(() => {
+    fetch('/api/admin/restore-session')
+      .then(res => {
+        if (res.ok) setShowBack(true);
+      });
+  }, []);
 
   // Banner Logic
   useEffect(() => {
@@ -356,14 +367,36 @@ export default function ClientDashboard() {
     setChartData(chart);
   };
 
+  // ✅ NEW HANDLER: Return to Admin
+  const handleReturnToAdmin = async () => {
+    try {
+      const res = await fetch('/api/admin/restore-session');
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
+
+      const session = data.session;
+
+      // ✅ Restore admin session
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
+
+      // ✅ Go back to admin
+      window.location.href = '/admin';
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to return to admin");
+    }
+  };
+
   const handleLogout = () => {
     // ❌ REMOVED: localStorage.removeItem('current_user');
     localStorage.removeItem('current_member'); 
     router.push('/login');
   };
-
-  // ❌ REMOVED: handleReturnToAdmin function
-  // ❌ REMOVED: isImpersonating check
 
   if (loading) return <div className="h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950">Loading Dashboard...</div>;
   if (!clientData) return null;
@@ -417,7 +450,14 @@ export default function ClientDashboard() {
           <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
         </div>
         <div className="flex items-center gap-4">
-            {/* ❌ REMOVED: Return to Admin Button */}
+            {/* ✅ BACK TO ADMIN BUTTON */}
+            {showBack && (
+              <Button onClick={handleReturnToAdmin} variant="outline" className="gap-2 text-sm font-medium">
+                <LogOut className="w-4 h-4 rotate-180" />
+                Back to Admin
+              </Button>
+            )}
+            
             <div className="text-right hidden md:block">
             <p className="text-xs text-slate-400 dark:text-slate-500 font-mono uppercase">SYSTEM DATE</p>
             <p className="font-bold text-slate-700 dark:text-slate-200">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
