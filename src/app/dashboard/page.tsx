@@ -129,7 +129,7 @@ export default function ClientDashboard() {
                 }
 
                 await fetchAndCalculate(activeClientId, userData.role, perms);
-                localStorage.setItem('current_user', JSON.stringify(userData));
+                // ❌ REMOVED: localStorage.setItem('current_user', JSON.stringify(userData));
             }
 
         } catch(e) {
@@ -357,41 +357,13 @@ export default function ClientDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('current_user');
+    // ❌ REMOVED: localStorage.removeItem('current_user');
     localStorage.removeItem('current_member'); 
     router.push('/login');
   };
 
-  // ✅ NEW: Return to Admin Function
-  const handleReturnToAdmin = async () => {
-    try {
-      const savedSession = localStorage.getItem('admin_session');
-
-      if (savedSession) {
-        const session = JSON.parse(savedSession);
-
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
-        });
-      }
-
-      // Clear impersonation
-      document.cookie = "impersonating=false; path=/";
-      localStorage.removeItem('admin_session');
-      localStorage.removeItem('current_user');
-
-      window.location.href = '/admin';
-
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // 🚀 NEW: Check for Impersonation
-  const isImpersonating =
-    typeof document !== "undefined" &&
-    document.cookie.includes("impersonating=true");
+  // ❌ REMOVED: handleReturnToAdmin function
+  // ❌ REMOVED: isImpersonating check
 
   if (loading) return <div className="h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950">Loading Dashboard...</div>;
   if (!clientData) return null;
@@ -445,13 +417,7 @@ export default function ClientDashboard() {
           <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
         </div>
         <div className="flex items-center gap-4">
-            {/* ✅ NEW IMPERSONATION BUTTON */}
-            {isImpersonating && (
-              <Button onClick={handleReturnToAdmin} className="bg-purple-600 hover:bg-purple-700 text-white text-sm md:text-base font-medium">
-                🔙 Return to Admin
-              </Button>
-            )}
-
+            {/* ❌ REMOVED: Return to Admin Button */}
             <div className="text-right hidden md:block">
             <p className="text-xs text-slate-400 dark:text-slate-500 font-mono uppercase">SYSTEM DATE</p>
             <p className="font-bold text-slate-700 dark:text-slate-200">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
