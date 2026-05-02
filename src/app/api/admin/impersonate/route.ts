@@ -1,17 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server'; // ✅ Ensure NextRequest type is imported
+import { createClient } from '@supabase-js/supabase-js';
+import { process } from 'process';
 
-// ✅ STEP 1: Service Role Key Decoder (RLS Bypass karne ke liye)
+// --- HELPER FUNCTIONS ---
+
+// ✅ Role Key Decoder Logic (Matches your snippet)
 const getServiceRoleKey = () => {
-  const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const b64Key = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY_B64;
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_URL;
   
   if (!b64Key && !rawKey) return null;
 
   try {
-    // Agar key B64 mein hai toh decode karein, warna raw use karein
-    if (b64Key) {
-      if (b64Key.startsWith('eyJ')) return b64Key;
+    // Agar key base64 mein hai, toh decode karke use karein (Supabase standard)
+    if (b64Key.startsWith('eyJ')) {
       return Buffer.from(b64Key, 'base64').toString('utf-8').trim();
     }
     return rawKey;
@@ -22,65 +24,87 @@ const getServiceRoleKey = () => {
 
 export async function POST(req: NextRequest) {
   try {
-    const { clientId } = await req.json();
-    const serviceKey = getServiceRoleKey();
+    // 1. Parse JSON body safely
+    const body = await req.json();
+    const { clientId } = body;
 
-    if (!serviceKey) {
-      return NextResponse.json({ error: "Server Configuration Error (Key Missing)" }, { status: 500 });
+    // 2. Get Service Role Key
+    const serviceRoleKey = getServiceRoleKey();
+
+    if (!serviceRoleKey) {
+      return NextResponse.json({ error: 'Server Configuration Error (Key Missing)', status: 500 });
     }
 
-    // ✅ STEP 2: Initialize Supabase Admin (Admin powers enabled)
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    console.log("👉 IMPORTANT REQUEST FOR:", clientId);
 
-    console.log("👉 IMPERSONATE REQUEST FOR:", clientId);
+    // 3. Initialize Supabase Admin (For Client Auth)
+    let supabaseAdmin;
+    try {
+        supabaseAdmin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          serviceRoleKey
+        );
 
-    // ✅ 3. Client ka asli Email fetch karein
-    const { data: client, error: dbError } = await supabaseAdmin
-      .from('clients')
-      .select('id, email, name')
-      .eq('id', clientId)
-      .maybeSingle();
+        // Config for standard client
+        supabaseAdmin.auth.autoRefreshToken = false;
+        supabaseAdmin.auth.persistSession = false;
+    } catch (e) {
+        console.error('❌ Admin Client Init Error:', e);
+        return NextResponse.json({ error: 'Admin Config Error' });
+    }
 
-    if (dbError || !client?.email) {
-      console.error("❌ CLIENT NOT FOUND:", dbError?.message);
+    // 4. Check if user exists in 'clients' table to get email
+    // Note: Logic assumes 'clients' table is in Public/Public schema
+    const { data, error: dbError } = await supabaseAdmin
+        .from('clients')
+        .select('id, email')
+        .eq('id', clientId)
+        .maybeSingle();
+
+    if (dbError) {
+      console.error("❌ DB Error fetching client:", dbError);
+      return NextResponse.json({ error: dbError.message }, { status: 500 });
+    }
+
+    if (!data || !data.email) {
+      console.log("❌ CLIENT NOT FOUND in DB:", clientId);
       return NextResponse.json({ error: 'Client record or email missing' }, { status: 404 });
     }
 
-    // ✅ 4. Magic Link Generate karein
-    // Note: redirectTo mein wahi URL dein jahan Admin ko bhejna hai
-    const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: client.email,
-      options: {
-        redirectTo: `${new URL(req.url).origin}/dashboard` // Dashboard par redirect karega
-      }
-    });
+    const clientEmail = data.email;
 
-    if (linkError) {
-      console.error("❌ MAGIC LINK GENERATION FAILED:", linkError.message);
-      return NextResponse.json({ error: linkError.message }, { status: 500 });
+    // 5. Generate Magic Link
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin
+        .createLink({ type: 'magiclink', email: clientEmail });
+
+    if (linkError || !linkData) {
+      console.error("❌ MAGIC LINK GENERATION FAILED:", linkError);
+      return NextResponse.json({ error: linkError.message || 'Link generation failed' });
     }
 
-    console.log("✅ ACCESS LINK GENERATED FOR:", client.email);
+    // 6. Store Admin Session (HTTP Only Cookie)
+    // Note: We need to send the session cookie in the response
+    const { data: sessionData, error: sessError } = await supabaseAdmin.auth.admin
+        .setSession({
+          access_token: linkData.access_token,
+          refresh_token: linkData.refresh_token,
+          expires_at: new Date(linkData.expires_at).toISOString(),
+          user: { email: clientEmail } // Storing minimal data in cookie
+        });
+    
+    const adminSession = { email: clientEmail, ...sessionData };
 
-    // Magic link ka action_link wapas bhejien
+    console.log("✅ ACCESS LINK GENERATED FOR:", clientEmail);
+
+    // 7. Return Success Response with Link
     return NextResponse.json({
       success: true,
-      url: data.properties.action_link,
-      clientName: client.name
+      url: linkData.properties.action_link,
+      clientName: data.name || 'Admin',
     });
 
-  } catch (err: any) {
-    console.error("❌ CRITICAL IMPERSONATE ERROR:", err.message);
+  } catch (err) {
+    console.error("❌ CRITICAL IMPERSONATE ERROR:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
