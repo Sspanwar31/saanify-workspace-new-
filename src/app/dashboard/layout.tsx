@@ -17,21 +17,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ✅ STATE: For Impersonation Banner
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // ✅ UPDATED STEP 1: Simple + Reliable Cookie Check
-  const checkImpersonation = () => {
-    try {
-      const cookies = document.cookie;
+  // ✅ NEW WAY (JWT based detection)
+  const checkImpersonation = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
 
-      const isActive = cookies.includes('impersonation_active=true');
+    if (!session) return;
 
-      setIsImpersonating(isActive);
+    const payload = JSON.parse(atob(session.access_token.split('.')[1]));
 
-      console.log("IMPERSONATION CHECK:", {
-        isActive,
-        cookies
-      });
-
-    } catch {
+    if (payload.is_impersonating) {
+      setIsImpersonating(true);
+    } else {
       setIsImpersonating(false);
     }
   };
@@ -169,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* ✅ STEP 3: Banner confirmation */}
+      {/* ✅ Banner confirmation */}
       {isImpersonating && pathname.startsWith('/dashboard') && (
         <div className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm shadow-md z-50">
           <span className="font-medium">
