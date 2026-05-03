@@ -19,7 +19,7 @@ const getServiceRoleKey = () => {
 
 export async function POST(req: NextRequest) {
   try {
-    // ✅ CHANGE 1: Extract only clientId
+    // ✅ Extract only clientId
     const { clientId } = await req.json();
     const serviceKey = getServiceRoleKey();
 
@@ -27,21 +27,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Server Config Error: Admin Key Missing" }, { status: 500 });
     }
 
-    // ✅ STEP 2: Initialize Supabase Admin with Bypass Settings
+    // ✅ Initialize Supabase Admin
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       serviceKey,
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false // Server par session save na karein
+          persistSession: false
         }
       }
     );
 
     console.log("👉 ADMIN ACCESS REQUEST FOR CLIENT:", clientId);
 
-    // ✅ 3. Get client email (Bypassing RLS with Service Key)
+    // ✅ Get client email
     const { data: client, error: dbError } = await supabaseAdmin
       .from('clients')
       .select('id, email')
@@ -60,7 +60,18 @@ export async function POST(req: NextRequest) {
 
     console.log("✅ FOUND EMAIL:", client.email);
 
-    // ✅ 4. Generate Admin Magic Link
+    // ✅ STEP 2: Add JWT Claims (User Metadata Update)
+    // Hum user_metadata update kar rahe hain taaki magic link login ke baad
+    // session ke token mein ye claims aa jayein.
+    await supabaseAdmin.auth.admin.updateUserById(client.id, {
+      user_metadata: {
+        is_impersonating: true,
+        client_id: client.id,
+        role: 'client'
+      }
+    });
+
+    // ✅ 3. Generate Admin Magic Link
     const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: client.email,
@@ -83,7 +94,7 @@ export async function POST(req: NextRequest) {
       url: data.properties.action_link,
     });
 
-    // ✅ CHANGE 2 & 3: Add new cookies
+    // ✅ Add new cookies
     response.cookies.set('impersonation_active', 'true', {
       path: '/',
       httpOnly: false,
