@@ -53,7 +53,7 @@ export default function ClientProfile() {
     try {
       setLoading(true);
       
-      // 1. Client Basic Info (Pehle client ka table data lo)
+      //1. Client Basic Info (Pehle client ka table data lo)
       const { data: clientTableData, error: clientError } = await supabase
         .from('clients')
         .select('*')
@@ -104,7 +104,7 @@ export default function ClientProfile() {
         console.log("Health Score:", statsData.healthScore);
       }
 
-      // 3. Staff List fetch karein
+      //3. Staff List fetch karein
       const { data: staffData } = await supabase
           .from('clients') 
           .select('*')
@@ -213,7 +213,7 @@ export default function ClientProfile() {
   const handleDelete = async () => {
       if(!confirm("⚠️ WARNING: This will permanently delete client, all members, and all financial data. This cannot be undone.\n\nAre you sure?")) return;
       
-      // Call the API endpoint instead of direct Supabase call
+      // Call API endpoint instead of direct Supabase call
       const res = await fetch(`/api/admin/clients/${id}/delete`, {
           method: 'DELETE'
       });
@@ -275,19 +275,24 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function
+  // ✅ UPDATED: handleAccess function (JWT SYSTEM)
   const handleAccess = async () => {
     try {
       // ✅ 1. Get current admin session
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
 
-      // ✅ 2. Call API
-      const res = await fetch('/api/admin/impersonate', {
+      if (!session) {
+        toast.error("Admin not logged in");
+        return;
+      }
+
+      // ✅ 2. Call NEW JWT API
+      const res = await fetch('/api/admin/impersonate-jwt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId: client.id,
-          adminSession: sessionData.session
+          adminId: session.user.id
         })
       });
 
@@ -295,10 +300,19 @@ export default function ClientProfile() {
 
       if (!res.ok) throw new Error(data.error);
 
-      // ✅ 3. Redirect to client panel
-      window.location.href = data.url;
+      const token = data.token;
+
+      // ✅ 3. 🔥 CRITICAL: Replace Supabase session
+      await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: token,
+      });
+
+      // ✅ 4. Redirect
+      window.location.href = '/dashboard';
 
     } catch (err: any) {
+      console.error(err);
       toast.error(err.message || "Failed to access client panel");
     }
   };
