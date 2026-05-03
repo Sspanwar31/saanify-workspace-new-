@@ -49,16 +49,30 @@ export async function POST(req: NextRequest) {
 
     console.log('👉 JWT IMPERSONATION:', { clientId, adminId });
 
-    // ✅ STEP 3: Verify Admin
+    // ✅ STEP 3: Verify Admin (EMAIL VERIFY LOGIC)
+    // 1. Get admin email from auth.users
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(adminId);
+
+    if (userError || !userData?.user?.email) {
+      return NextResponse.json({ error: 'Invalid admin user' }, { status: 403 });
+    }
+
+    const adminEmail = userData.user.email;
+
+    // 2. Verify admin via admins table using email
     const { data: admin, error: adminError } = await supabaseAdmin
       .from('admins')
       .select('id')
-      .eq('id', adminId)
+      .eq('email', adminEmail)
       .single();
 
     if (adminError || !admin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
+
+    // 🔍 DEBUG (optional)
+    console.log("ADMIN VERIFIED:", adminEmail);
+
 
     // ✅ STEP 4: Get Client (optional but safe)
     const { data: client, error: clientError } = await supabaseAdmin
