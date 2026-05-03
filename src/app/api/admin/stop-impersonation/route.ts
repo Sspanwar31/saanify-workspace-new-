@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function POST() {
-  cookies().delete('admin_session');
-
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true
   });
+
+  // ✅ UPDATED LOGIC: Clear Impersonation Cookies
+  response.cookies.set('impersonation_active', '', { 
+    maxAge: 0,
+    path: '/' 
+  });
+  response.cookies.set('impersonated_client_id', '', { 
+    maxAge: 0,
+    path: '/' 
+  });
+
+  return response;
 }
