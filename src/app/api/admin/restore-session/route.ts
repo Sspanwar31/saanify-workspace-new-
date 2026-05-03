@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const adminSession = req.cookies.get('admin_session')?.value;
+  try {
+    const cookie = req.cookies.get('admin_session');
 
-  if (!adminSession) {
-    return NextResponse.json({ error: 'No session found' }, { status: 404 });
+    if (!cookie) {
+      return NextResponse.json({ error: 'No session found' }, { status: 401 });
+    }
+
+    const session = JSON.parse(cookie.value);
+
+    return NextResponse.json({
+      success: true,
+      session
+    });
+
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  return NextResponse.json({
-    success: true,
-    session: JSON.parse(adminSession),
-  });
 }
