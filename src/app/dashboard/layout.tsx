@@ -5,14 +5,31 @@ import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { Loader2 } from 'lucide-react'; 
-import MobileBottomNav from '@/components/layout/MobileBottomNav'; // ✅ IMPORT ADDED
+import MobileBottomNav from '@/components/layout/MobileBottomNav';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Mobile Menu State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // ✅ ADDED STATE: For Impersonation Banner
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
+  // ✅ ADDED LOGIC: Check for admin session cookie
+  useEffect(() => {
+    // check cookie (server already sets admin_session)
+    fetch('/api/admin/restore-session')
+      .then(res => res.ok ? setIsImpersonating(true) : setIsImpersonating(false))
+      .catch(() => setIsImpersonating(false));
+  }, []);
+
+  // ✅ ADDED HANDLER: Back to Admin
+  const handleBack = async () => {
+    await fetch('/api/admin/restore-session');
+    window.location.href = '/admin/dashboard';
+  };
 
   // --- Auto Backup Function (Unchanged) ---
   const performAutoBackup = async (clientId: string) => {
@@ -130,33 +147,53 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthorized) return null;
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
-      
-      {/* DESKTOP SIDEBAR: Desktop par dikhega, mobile par hidden */}
-      <div className="w-64 shrink-0 hidden md:block h-full border-r border-slate-200 dark:border-slate-800">
-        <ClientSidebar />
-      </div>
+    <>
+      {/* ✅ ADDED BANNER: Shows only if impersonating */}
+      {isImpersonating && (
+        <div className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm shadow-md z-50">
+          <span className="font-medium">
+            🔐 You are viewing as client
+          </span>
 
-      {/* MOBILE DRAWER: Sirf 'More' click karne par khulega */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[150] md:hidden">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-          <div className="relative w-72 h-full bg-white dark:bg-slate-900 animate-in slide-in-from-left">
-             <ClientSidebar />
-          </div>
+          <button
+            onClick={handleBack}
+            className="bg-white text-purple-700 px-3 py-1 rounded-md text-xs font-semibold hover:bg-gray-100 transition"
+          >
+            Back to Admin
+          </button>
+
         </div>
       )}
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 overflow-y-auto h-full pb-20 md:pb-0 bg-slate-50 dark:bg-slate-900">
-        {/* Desktop Layout kharab na ho isliye padding sirf mobile par 'pb-20' di hai */}
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {children}
+      {/* ORIGINAL LAYOUT */}
+      <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
+        
+        {/* DESKTOP SIDEBAR: Desktop par dikhega, mobile par hidden */}
+        <div className="w-64 shrink-0 hidden md:block h-full border-r border-slate-200 dark:border-slate-800">
+          <ClientSidebar />
         </div>
-      </main>
 
-      {/* MOBILE BOTTOM NAV: Sirf mobile par dikhega */}
-      <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
-    </div>
+        {/* MOBILE DRAWER: Sirf 'More' click karne par khulega */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[150] md:hidden">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+            <div className="relative w-72 h-full bg-white dark:bg-slate-900 animate-in slide-in-from-left">
+               <ClientSidebar />
+            </div>
+          </div>
+        )}
+
+        {/* MAIN CONTENT AREA */}
+        <main className="flex-1 overflow-y-auto h-full pb-20 md:pb-0 bg-slate-50 dark:bg-slate-900">
+          {/* Desktop Layout kharab na ho isliye padding sirf mobile par 'pb-20' di hai */}
+          <div className="p-4 md:p-8 max-w-7xl mx-auto">
+            {children}
+          </div>
+        </main>
+
+        {/* MOBILE BOTTOM NAV: Sirf mobile par dikhega */}
+        <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
+      </div>
+    </>
   );
 }
