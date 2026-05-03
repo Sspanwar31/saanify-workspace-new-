@@ -19,7 +19,8 @@ const getServiceRoleKey = () => {
 
 export async function POST(req: NextRequest) {
   try {
-    const { clientId } = await req.json();
+    // ✅ Extract clientId AND adminSession from request body
+    const { clientId, adminSession } = await req.json();
     const serviceKey = getServiceRoleKey();
 
     if (!serviceKey) {
@@ -76,11 +77,21 @@ export async function POST(req: NextRequest) {
 
     console.log("✅ ACCESS LINK GENERATED SUCCESSFULLY");
 
-    // Action link return karein
-    return NextResponse.json({
+    // ✅ Create response object
+    const response = NextResponse.json({
       success: true,
       url: data.properties.action_link,
     });
+
+    // ✅ SAVE ADMIN SESSION (FIXED FOR LOCALHOST)
+    response.cookies.set('admin_session', JSON.stringify(adminSession), {
+      httpOnly: true,
+      path: '/',
+      secure: process.env.NODE_ENV === 'production', // ✅ better (Works on Local & Vercel)
+      sameSite: 'lax',
+    });
+
+    return response;
 
   } catch (err: any) {
     console.error("🔥 CRITICAL API ERROR:", err.message);
