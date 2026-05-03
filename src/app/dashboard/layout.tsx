@@ -17,43 +17,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ✅ STATE: For Impersonation Banner
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // ✅ STEP 1: Updated Impersonation Check (Fix with Email Comparison)
+  // ✅ UPDATED STEP 1: Simple + Reliable Cookie Check
+  const checkImpersonation = () => {
+    try {
+      const cookies = document.cookie;
+
+      const isActive = cookies.includes('impersonation_active=true');
+
+      setIsImpersonating(isActive);
+
+      console.log("IMPERSONATION CHECK:", {
+        isActive,
+        cookies
+      });
+
+    } catch {
+      setIsImpersonating(false);
+    }
+  };
+
   useEffect(() => {
-    const checkImpersonation = async () => {
-      try {
-        const res = await fetch('/api/admin/restore-session', {
-          credentials: 'include' // 🔥 VERY IMPORTANT
-        });
-
-        const data = await res.json();
-
-        // Get current logged in user
-        const { data: { user } } = await supabase.auth.getUser();
-
-        // 🧪 FINAL DEBUG CHECK
-        console.log({
-          isImpersonating: data?.isImpersonating,
-          currentUser: user?.email,
-          adminEmail: data?.adminSession?.user?.email,
-          match: user?.email !== data?.adminSession?.user?.email
-        });
-
-        // ✅ CORE FIX: sirf tab true jab admin != current user
-        if (
-          res.ok &&
-          data?.isImpersonating === true &&
-          user?.email !== data?.adminSession?.user?.email
-        ) {
-          setIsImpersonating(true);
-        } else {
-          setIsImpersonating(false);
-        }
-
-      } catch {
-        setIsImpersonating(false);
-      }
-    };
-
     checkImpersonation();
   }, []);
 
