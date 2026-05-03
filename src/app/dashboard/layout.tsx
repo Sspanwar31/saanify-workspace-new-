@@ -14,20 +14,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // ✅ ADDED STATE: For Impersonation Banner
+  // ✅ STATE: For Impersonation Banner
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // ✅ ADDED LOGIC: Check for admin session cookie
+  // ✅ STEP 1: Updated Impersonation Check
   useEffect(() => {
-    // check cookie (server already sets admin_session)
-    fetch('/api/admin/restore-session')
-      .then(res => res.ok ? setIsImpersonating(true) : setIsImpersonating(false))
-      .catch(() => setIsImpersonating(false));
+    const checkImpersonation = async () => {
+      try {
+        const res = await fetch('/api/admin/restore-session', {
+          credentials: 'include' // 🔥 VERY IMPORTANT
+        });
+
+        const data = await res.json();
+
+        // ✅ Correct logic
+        if (data?.isImpersonating === true) {
+          setIsImpersonating(true);
+        } else {
+          setIsImpersonating(false);
+        }
+
+      } catch {
+        setIsImpersonating(false);
+      }
+    };
+
+    checkImpersonation();
   }, []);
 
-  // ✅ ADDED HANDLER: Back to Admin
+  // ✅ STEP 2: Fixed handleBack (Clear Session instead of Restore)
   const handleBack = async () => {
-    await fetch('/api/admin/restore-session');
+    await fetch('/api/admin/clear-session', {
+      method: 'POST',
+      credentials: 'include'
+    });
+
     window.location.href = '/admin/dashboard';
   };
 
@@ -57,26 +78,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   useEffect(() => {
-    let attempts = 0;
+    // ✅ STEP 4: Replaced localStorage with Real Auth Check
     const checkAccess = async () => {
-      const storedUser = localStorage.getItem('current_user');
-      if (!storedUser && attempts < 2) {
-         attempts++;
-         setTimeout(checkAccess, 200);
-         return;
-      }
-      const storedMember = localStorage.getItem('current_member');
-      if (storedMember && !storedUser) {
-        router.push('/member-portal/dashboard');
-        return;
-      }
-      if (!storedUser) {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
         router.push('/login');
         return;
       }
+
       try {
-        const user = JSON.parse(storedUser);
-        const resolvedClientId = user.client_id ?? user.id;
+        // Assuming Auth ID maps to Client ID, or we fetch client data based on ID
+        const resolvedClientId = session.user.id;
+        
         const { data: client, error } = await supabase
           .from('clients')
           .select('plan, plan_end_date, subscription_status, theme, auto_backup, status')
@@ -115,7 +129,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           const isLocked = client.status === 'LOCKED' || client.status === 'EXPIRED';
 
           if (isLocked) {
-             localStorage.clear();
+             // localStorage.clear(); // Optional: clear local storage on lock
              router.push('/login');
              return;
           }
@@ -125,9 +139,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }
         }
         setIsAuthorized(true);
-      } catch (err) { router.push('/login'); }
+      } catch (err) { 
+        console.error("Auth check error:", err);
+        router.push('/login'); 
+      }
       setIsChecking(false);
     };
+    
     checkAccess();
   }, [pathname, router]);
 
@@ -148,7 +166,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* ✅ ADDED BANNER: Shows only if impersonating */}
+      {/* ✅ BANNER: Shows only if impersonating (Step 3: Double button fix handled by keeping only this) */}
       {isImpersonating && (
         <div className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm shadow-md z-50">
           <span className="font-medium">
