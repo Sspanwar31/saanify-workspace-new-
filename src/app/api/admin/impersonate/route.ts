@@ -19,8 +19,8 @@ const getServiceRoleKey = () => {
 
 export async function POST(req: NextRequest) {
   try {
-    // ✅ Extract clientId AND adminSession from request body
-    const { clientId, adminSession } = await req.json();
+    // ✅ CHANGE 1: Extract only clientId
+    const { clientId } = await req.json();
     const serviceKey = getServiceRoleKey();
 
     if (!serviceKey) {
@@ -83,12 +83,15 @@ export async function POST(req: NextRequest) {
       url: data.properties.action_link,
     });
 
-    // ✅ SAVE ADMIN SESSION (FIXED FOR LOCALHOST)
-    response.cookies.set('admin_session', JSON.stringify(adminSession), {
-      httpOnly: true,
+    // ✅ CHANGE 2 & 3: Add new cookies
+    response.cookies.set('impersonation_active', 'true', {
       path: '/',
-      secure: process.env.NODE_ENV === 'production', // ✅ better (Works on Local & Vercel)
-      sameSite: 'lax',
+      httpOnly: false,
+    });
+
+    response.cookies.set('impersonated_client_id', clientId, {
+      path: '/',
+      httpOnly: false,
     });
 
     return response;
