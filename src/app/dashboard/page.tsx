@@ -67,8 +67,8 @@ export default function ClientDashboard() {
   const [transactionsData, setTransactionsData] = useState<any[]>([]);
   const [showMonthlyBanner, setShowMonthlyBanner] = useState(false);
 
-  // ✅ UPDATED STATE: Using isImpersonating
-  const [isImpersonating, setIsImpersonating] = useState(false);
+  // ❌ REMOVED: Local handleReturnToAdmin and isImpersonating UI controls
+  // Logic moved to Layout to avoid double buttons
 
   const [financials, setFinancials] = useState({
     netProfit: 0,
@@ -159,38 +159,22 @@ export default function ClientDashboard() {
         setLoansData(loansRes.data || []);
         setTransactionsData(passbookRes.data || []); 
 
+        // ✅ FIX 1: Corrected variable name (adminFunds -> adminFundRes)
         calculateFinancials(
             passbookRes.data || [], 
             expenseRes.data || [], 
             loansRes.data || [],
             membersRes.data || [],
-            adminFunds.data || []
+            adminFundRes.data || []
         );
     };
 
     init();
   }, [router]);  
 
-  // ✅ UPDATED CHECK LOGIC: Strict check for impersonation
-  useEffect(() => {
-    const checkImpersonation = async () => {
-      try {
-        const res = await fetch('/api/admin/restore-session');
-        const data = await res.json();
-
-        // ✅ FIX: sirf tab true jab adminSession hai + user client hai
-        if (res.ok && data?.isImpersonating === true) {
-          setIsImpersonating(true);
-        } else {
-          setIsImpersonating(false);
-        }
-      } catch {
-        setIsImpersonating(false);
-      }
-    };
-
-    checkImpersonation();
-  }, []);
+  // ❌ REMOVED: Old Impersonation check logic (handled in Layout)
+  // Dashboard page itself doesn't need to know if impersonating for UI logic anymore
+  // as the Layout handles the Banner and Button.
 
   // Banner Logic
   useEffect(() => {
@@ -379,30 +363,7 @@ export default function ClientDashboard() {
     setChartData(chart);
   };
 
-  // ✅ NEW HANDLER: Return to Admin
-  const handleReturnToAdmin = async () => {
-    try {
-      const res = await fetch('/api/admin/restore-session');
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error);
-
-      const session = data.session;
-
-      // ✅ Restore admin session
-      await supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-
-      // ✅ Go back to admin
-      window.location.href = '/admin';
-
-    } catch (err) {
-      console.error(err);
-      alert("Failed to return to admin");
-    }
-  };
+  // ❌ REMOVED: handleReturnToAdmin (Logic moved to Layout)
 
   const handleLogout = () => {
     localStorage.removeItem('current_member'); 
@@ -461,13 +422,7 @@ export default function ClientDashboard() {
           <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
         </div>
         <div className="flex items-center gap-4">
-            {/* ✅ BACK TO ADMIN BUTTON (Updated State) */}
-            {isImpersonating && (
-              <Button onClick={handleReturnToAdmin} variant="outline" className="gap-2 text-sm font-medium">
-                <LogOut className="w-4 h-4 rotate-180" />
-                Back to Admin
-              </Button>
-            )}
+            {/* ❌ REMOVED: "Back to Admin" Button (Moved to Layout to avoid duplicates) */}
             
             <div className="text-right hidden md:block">
             <p className="text-xs text-slate-400 dark:text-slate-500 font-mono uppercase">SYSTEM DATE</p>
