@@ -57,14 +57,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     checkImpersonation();
   }, []);
 
-  // ✅ STEP 2: Fixed handleBack (Clear Session instead of Restore)
+  // ✅ STEP 2: Updated handleBack (Stop Impersonation API)
   const handleBack = async () => {
-    await fetch('/api/admin/clear-session', {
-      method: 'POST',
-      credentials: 'include'
-    });
+    try {
+      await fetch('/api/admin/stop-impersonation', {
+        method: 'POST'
+      });
 
-    window.location.href = '/admin/dashboard';
+      // 🔥 force reload admin session
+      window.location.href = '/admin/dashboard';
+
+    } catch (err) {
+      console.error('Failed to stop impersonation', err);
+    }
   };
 
   // --- Auto Backup Function (Unchanged) ---
@@ -181,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* ✅ STEP 3: Extra Safety (Pathname check) */}
+      {/* ✅ STEP 3: Banner confirmation */}
       {isImpersonating && pathname.startsWith('/dashboard') && (
         <div className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm shadow-md z-50">
           <span className="font-medium">
