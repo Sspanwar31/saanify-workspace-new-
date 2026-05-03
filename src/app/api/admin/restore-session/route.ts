@@ -8,32 +8,20 @@ export async function GET(req: NextRequest) {
     if (!cookie) {
       return NextResponse.json({
         isImpersonating: false
-      });
+      }, { status: 200 });
     }
 
-    // ✅ FIX 2: safe parse
-    let session = null;
-    try {
-      session = JSON.parse(cookie.value);
-    } catch {
-      session = null;
-    }
+    const session = JSON.parse(cookie.value);
 
-    // ✅ FIX 3: extra safety
-    if (!session) {
-      return NextResponse.json({
-        isImpersonating: false
-      });
-    }
-
+    // ✅ FIX 2: Sirf tab true agar cookie mein flag set hai
     return NextResponse.json({
-      isImpersonating: true,
+      isImpersonating: session?.isImpersonating === true,
       adminSession: session
     });
 
   } catch (err) {
     return NextResponse.json({
       isImpersonating: false
-    });
+    }, { status: 500 });
   }
 }
