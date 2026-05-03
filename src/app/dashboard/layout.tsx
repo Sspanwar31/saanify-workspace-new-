@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ✅ STATE: For Impersonation Banner
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // ✅ STEP 1: Updated Impersonation Check
+  // ✅ STEP 1: Updated Impersonation Check (Fix with Email Comparison)
   useEffect(() => {
     const checkImpersonation = async () => {
       try {
@@ -27,8 +27,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         const data = await res.json();
 
-        // ✅ Correct logic
-        if (data?.isImpersonating === true) {
+        // Get current logged in user
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // 🧪 FINAL DEBUG CHECK
+        console.log({
+          isImpersonating: data?.isImpersonating,
+          currentUser: user?.email,
+          adminEmail: data?.adminSession?.user?.email,
+          match: user?.email !== data?.adminSession?.user?.email
+        });
+
+        // ✅ CORE FIX: sirf tab true jab admin != current user
+        if (
+          res.ok &&
+          data?.isImpersonating === true &&
+          user?.email !== data?.adminSession?.user?.email
+        ) {
           setIsImpersonating(true);
         } else {
           setIsImpersonating(false);
@@ -166,8 +181,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* ✅ BANNER: Shows only if impersonating (Step 3: Double button fix handled by keeping only this) */}
-      {isImpersonating && (
+      {/* ✅ STEP 3: Extra Safety (Pathname check) */}
+      {isImpersonating && pathname.startsWith('/dashboard') && (
         <div className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm shadow-md z-50">
           <span className="font-medium">
             🔐 You are viewing as client
