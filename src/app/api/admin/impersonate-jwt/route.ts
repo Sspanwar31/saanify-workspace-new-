@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 
 // ✅ STEP 1: Decode Service Role Key (B64 Support)
+// Note: Function kept but not used in this refactored endpoint
 const getServiceRoleKey = () => {
   const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
 
@@ -30,28 +31,43 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing params' }, { status: 400 });
     }
 
-    const serviceKey = getServiceRoleKey();
-
-    if (!serviceKey) {
-      return NextResponse.json(
-        { error: 'Service role key missing' },
-        { status: 500 }
-      );
-    }
-
-    // ✅ STEP 2: Supabase Admin (RLS bypass)
-    const supabaseAdmin = createClient(SUPABASE_URL, serviceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
     console.log('👉 JWT IMPERSONATION:', { clientId, adminId });
 
-    // ✅ STEP 3: Verify Admin (EMAIL VERIFY LOGIC)
-    // 1. Get admin email from auth.users
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(adminId);
+    // ✅ STEP 1: JWT Payload (MOVED UP)
+    const payload = {
+      sub: adminId, 
+      role: 'authenticated',
+      // 🔥 RLS CLAIMS
+      client_id: clientId,
+      is_impersonating: true,
+      aud: 'authenticated',
+      exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour
+    };
+
+    // ✅ STEP 2: SIGN TOKEN (MOVED UP)
+    const token = jwt.sign(payload, JWT_SECRET);
+    console.log('✅ JWT GENERATED');
+
+    // ✅ STEP 3: Supabase Client using ANON + JWT (REPLACED SERVICE ROLE CLIENT)
+    const supabaseAdmin = createClient(
+      SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
+    // ✅ STEP 4: Verify Admin (UPDATED TO USE auth.getUser)
+    // 1. Get admin email from auth.users (Client is now Admin via JWT)
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser();
 
     if (userError || !userData?.user?.email) {
       return NextResponse.json({ error: 'Invalid admin user' }, { status: 403 });
@@ -73,8 +89,8 @@ export async function POST(req: NextRequest) {
     // 🔍 DEBUG (optional)
     console.log("ADMIN VERIFIED:", adminEmail);
 
-
-    // ✅ STEP 4: Get Client (optional but safe)
+    // ✅ STEP 5: Get Client (optional but safe)
+    // Note: Relies on RLS policies to allow read
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('id')
@@ -84,26 +100,6 @@ export async function POST(req: NextRequest) {
     if (clientError || !client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
-
-    // ✅ STEP 5: JWT Payload (🔥 MOST IMPORTANT)
-    const payload = {
-      sub: adminId, // 👈 actual admin
-
-      role: 'authenticated',
-
-      // 🔥 RLS CLAIMS
-      client_id: clientId,
-      is_impersonating: true,
-
-      // optional but useful
-      aud: 'authenticated',
-      exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour
-    };
-
-    // ✅ STEP 6: SIGN TOKEN
-    const token = jwt.sign(payload, JWT_SECRET);
-
-    console.log('✅ JWT GENERATED');
 
     return NextResponse.json({
       success: true,
