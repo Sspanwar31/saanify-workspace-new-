@@ -67,8 +67,8 @@ export default function ClientDashboard() {
   const [transactionsData, setTransactionsData] = useState<any[]>([]);
   const [showMonthlyBanner, setShowMonthlyBanner] = useState(false);
 
-  // ✅ ADDED STATE: Show Back to Admin Button
-  const [showBack, setShowBack] = useState(false);
+  // ✅ UPDATED STATE: Using isImpersonating
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   const [financials, setFinancials] = useState({
     netProfit: 0,
@@ -132,7 +132,6 @@ export default function ClientDashboard() {
                 }
 
                 await fetchAndCalculate(activeClientId, userData.role, perms);
-                // ❌ REMOVED: localStorage.setItem('current_user', JSON.stringify(userData));
             }
 
         } catch(e) {
@@ -165,19 +164,32 @@ export default function ClientDashboard() {
             expenseRes.data || [], 
             loansRes.data || [],
             membersRes.data || [],
-            adminFundRes.data || []
+            adminFunds.data || []
         );
     };
 
     init();
   }, [router]);  
 
-  // ✅ STEP 5: CHECK IF BACK BUTTON IS NEEDED
+  // ✅ UPDATED CHECK LOGIC: Strict check for impersonation
   useEffect(() => {
-    fetch('/api/admin/restore-session')
-      .then(res => {
-        if (res.ok) setShowBack(true);
-      });
+    const checkImpersonation = async () => {
+      try {
+        const res = await fetch('/api/admin/restore-session');
+        const data = await res.json();
+
+        // ✅ FIX: sirf tab true jab adminSession hai + user client hai
+        if (res.ok && data?.isImpersonating === true) {
+          setIsImpersonating(true);
+        } else {
+          setIsImpersonating(false);
+        }
+      } catch {
+        setIsImpersonating(false);
+      }
+    };
+
+    checkImpersonation();
   }, []);
 
   // Banner Logic
@@ -393,7 +405,6 @@ export default function ClientDashboard() {
   };
 
   const handleLogout = () => {
-    // ❌ REMOVED: localStorage.removeItem('current_user');
     localStorage.removeItem('current_member'); 
     router.push('/login');
   };
@@ -450,8 +461,8 @@ export default function ClientDashboard() {
           <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
         </div>
         <div className="flex items-center gap-4">
-            {/* ✅ BACK TO ADMIN BUTTON */}
-            {showBack && (
+            {/* ✅ BACK TO ADMIN BUTTON (Updated State) */}
+            {isImpersonating && (
               <Button onClick={handleReturnToAdmin} variant="outline" className="gap-2 text-sm font-medium">
                 <LogOut className="w-4 h-4 rotate-180" />
                 Back to Admin
