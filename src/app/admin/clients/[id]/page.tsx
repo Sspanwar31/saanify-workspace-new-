@@ -275,7 +275,7 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function (FINAL FIXED)
+  // ✅ UPDATED: handleAccess function (Frontend Implementation)
   const handleAccess = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -303,7 +303,7 @@ export default function ClientProfile() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId: client.id,
-          adminId: adminData.id // ✅ FIXED
+          adminId: adminData.id
         })
       });
 
@@ -312,23 +312,12 @@ export default function ClientProfile() {
 
       const token = data.token;
 
-      // ✅ STEP 1: SAVE ADMIN SESSION (CRITICAL)
-      localStorage.setItem(
-        'admin_session_backup',
-        JSON.stringify(session)
-      );
+      // 1. LocalStorage update karein
+      localStorage.setItem('current_user', JSON.stringify(client));
+      localStorage.setItem('impersonation_token', token);
 
-      // ✅ STEP 2: SET IMPERSONATION FLAG (OPTIONAL BUT USEFUL)
-      localStorage.setItem('is_impersonating', 'true');
-
-      // ✅ STEP 3: SET JWT SESSION (NO FAKE REFRESH TOKEN)
-      await supabase.auth.setSession({
-        access_token: token,
-        refresh_token: '', // 🔥 FIX
-      });
-
-      // ✅ BETTER NAVIGATION
-      router.push('/dashboard');
+      // 2. Dashboard tab kholein
+      window.open('/dashboard', '_blank');
 
     } catch (err: any) {
       console.error(err);
