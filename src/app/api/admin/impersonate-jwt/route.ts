@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 
 // ✅ STEP 1: Decode Service Role Key (B64 Support)
-// Note: Function kept but not used in this refactored endpoint
 const getServiceRoleKey = () => {
   const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
 
@@ -33,21 +32,6 @@ export async function POST(req: NextRequest) {
 
     console.log('👉 JWT IMPERSONATION:', { clientId, adminId });
 
-    // ✅ STEP 1: JWT Payload (MOVED UP)
-    const payload = {
-      sub: adminId, 
-      role: 'authenticated',
-      // 🔥 RLS CLAIMS
-      client_id: clientId,
-      is_impersonating: true,
-      aud: 'authenticated',
-      exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour
-    };
-
-    // ✅ STEP 2: SIGN TOKEN (MOVED UP)
-    const token = jwt.sign(payload, JWT_SECRET);
-    console.log('✅ JWT GENERATED');
-
     // ✅ GET SERVICE ROLE KEY (B64 SUPPORT)
     const serviceKey = getServiceRoleKey();
 
@@ -70,7 +54,7 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    // ✅ STEP 4: Verify Admin (DIRECT TABLE CHECK - NO AUTH)
+    // ✅ STEP 1: Verify Admin FIRST (MOVED UP)
     const { data: admin, error: adminError } = await supabaseAdmin
       .from('admins')
       .select('id, email')
@@ -87,7 +71,7 @@ export async function POST(req: NextRequest) {
     const adminEmail = admin.email;
     console.log("ADMIN VERIFIED:", adminEmail);
 
-    // ✅ STEP 5: Get Client (Direct Query)
+    // ✅ STEP 2: Get Client (SECOND CHECK)
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('id')
@@ -97,6 +81,21 @@ export async function POST(req: NextRequest) {
     if (clientError || !client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
+
+    // ✅ STEP 3: JWT Payload (MOVED DOWN & FIXED)
+    const payload = {
+      sub: clientId,           // ✅ FIXED (Was adminId)
+      role: 'authenticated',
+      // 🔥 RLS CLAIMS
+      client_id: clientId,
+      is_impersonating: true,
+      aud: 'authenticated',
+      exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour
+    };
+
+    // ✅ STEP 4: SIGN TOKEN (MOVED DOWN - Only generates if admin is valid)
+    const token = jwt.sign(payload, JWT_SECRET);
+    console.log('✅ JWT GENERATED');
 
     return NextResponse.json({
       success: true,
