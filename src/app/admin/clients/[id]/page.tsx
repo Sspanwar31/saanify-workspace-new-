@@ -312,12 +312,23 @@ export default function ClientProfile() {
 
       const token = data.token;
 
+      // ✅ STEP 1: SAVE ADMIN SESSION (CRITICAL)
+      localStorage.setItem(
+        'admin_session_backup',
+        JSON.stringify(session)
+      );
+
+      // ✅ STEP 2: SET IMPERSONATION FLAG (OPTIONAL BUT USEFUL)
+      localStorage.setItem('is_impersonating', 'true');
+
+      // ✅ STEP 3: SET JWT SESSION (NO FAKE REFRESH TOKEN)
       await supabase.auth.setSession({
         access_token: token,
-        refresh_token: token,
+        refresh_token: '', // 🔥 FIX
       });
 
-      window.location.href = '/dashboard';
+      // ✅ BETTER NAVIGATION
+      router.push('/dashboard');
 
     } catch (err: any) {
       console.error(err);
