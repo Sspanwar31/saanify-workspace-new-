@@ -1,3 +1,6 @@
+Ye raha updated code. Maine **auth dependency** ko completely remove kar diya hai aur direct `admins` table se verification kar raha hoon.
+
+```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
     const token = jwt.sign(payload, JWT_SECRET);
     console.log('✅ JWT GENERATED');
 
-    // ✅ STEP 3: Supabase Client using ANON + JWT (REPLACED SERVICE ROLE CLIENT)
+    // ✅ STEP 3: Supabase Client using ANON + JWT
     const supabaseAdmin = createClient(
       SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -65,32 +68,24 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    // ✅ STEP 4: Verify Admin (UPDATED TO USE auth.getUser)
-    // 1. Get admin email from auth.users (Client is now Admin via JWT)
-    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser();
-
-    if (userError || !userData?.user?.email) {
-      return NextResponse.json({ error: 'Invalid admin user' }, { status: 403 });
-    }
-
-    const adminEmail = userData.user.email;
-
-    // 2. Verify admin via admins table using email
+    // ✅ STEP 4: Verify Admin (DIRECT TABLE CHECK - NO AUTH)
     const { data: admin, error: adminError } = await supabaseAdmin
       .from('admins')
-      .select('id')
-      .eq('email', adminEmail)
+      .select('id, email')
+      .eq('id', adminId)
       .single();
 
     if (adminError || !admin) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Invalid admin user' },
+        { status: 403 }
+      );
     }
 
-    // 🔍 DEBUG (optional)
+    const adminEmail = admin.email;
     console.log("ADMIN VERIFIED:", adminEmail);
 
-    // ✅ STEP 5: Get Client (optional but safe)
-    // Note: Relies on RLS policies to allow read
+    // ✅ STEP 5: Get Client (Direct Query)
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('id')
@@ -111,3 +106,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+```
