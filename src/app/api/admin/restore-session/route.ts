@@ -2,26 +2,43 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   try {
+    // ✅ Get admin session cookie
     const cookie = req.cookies.get('admin_session');
 
-    // ✅ FIX 1: NEVER send 401 here
+    // 🔴 No session → safe response
     if (!cookie) {
       return NextResponse.json({
-        isImpersonating: false
+        isImpersonating: false,
+        adminSession: null,
       }, { status: 200 });
     }
 
-    const session = JSON.parse(cookie.value);
+    let session: any = null;
 
-    // ✅ FIX 2: Sirf tab true agar cookie mein flag set hai
-    return NextResponse.json({
+    try {
+      session = JSON.parse(cookie.value);
+    } catch (e) {
+      // ❌ corrupted cookie → clean exit
+      return NextResponse.json({
+        isImpersonating: false,
+        adminSession: null,
+      }, { status: 200 });
+    }
+
+    // ✅ SAFE DEFAULT STRUCTURE
+    const response = NextResponse.json({
       isImpersonating: session?.isImpersonating === true,
-      adminSession: session
+      adminSession: session ?? null,
+      originalAdminId: session?.originalAdminId ?? null,
+      currentClientId: session?.client_id ?? null,
     });
+
+    return response;
 
   } catch (err) {
     return NextResponse.json({
-      isImpersonating: false
+      isImpersonating: false,
+      adminSession: null,
     }, { status: 500 });
   }
 }
