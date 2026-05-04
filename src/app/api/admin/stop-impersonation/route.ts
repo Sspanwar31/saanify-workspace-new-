@@ -2,17 +2,31 @@ import { NextResponse } from 'next/server';
 
 export async function POST() {
   const response = NextResponse.json({
-    success: true
+    success: true,
   });
 
-  // ✅ UPDATED LOGIC: Clear Impersonation Cookies
-  response.cookies.set('impersonation_active', '', { 
-    maxAge: 0,
-    path: '/' 
+  // ✅ CLEAR IMPERSONATION FLAGS (SAFE WAY)
+  const cookieOptions = {
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+  };
+
+  response.cookies.set('impersonation_active', '', {
+    ...cookieOptions,
+    expires: new Date(0),
   });
-  response.cookies.set('impersonated_client_id', '', { 
-    maxAge: 0,
-    path: '/' 
+
+  response.cookies.set('impersonated_client_id', '', {
+    ...cookieOptions,
+    expires: new Date(0),
+  });
+
+  // 🔥 OPTIONAL BUT IMPORTANT: clear JWT session cookie if you store it
+  response.cookies.set('impersonation_token', '', {
+    ...cookieOptions,
+    expires: new Date(0),
   });
 
   return response;
