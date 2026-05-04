@@ -12,7 +12,7 @@ export async function POST() {
     sameSite: 'lax' as const,
   };
 
-  // ✅ clear impersonation flags
+  // ✅ clear impersonation flags ONLY
   response.cookies.set('impersonation_active', '', {
     ...cookieOptions,
     expires: new Date(0),
@@ -28,16 +28,7 @@ export async function POST() {
     expires: new Date(0),
   });
 
-  // 🔥 IMPORTANT: clear Supabase session cookie
-  response.cookies.set('sb-access-token', '', {
-    ...cookieOptions,
-    expires: new Date(0),
-  });
-
-  response.cookies.set('sb-refresh-token', '', {
-    ...cookieOptions,
-    expires: new Date(0),
-  });
+  // ❌ DO NOT clear Supabase session here
 
   return response;
 }
