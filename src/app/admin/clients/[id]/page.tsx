@@ -275,10 +275,9 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function (JWT SYSTEM)
+  // ✅ UPDATED: handleAccess function (FINAL FIXED)
   const handleAccess = async () => {
     try {
-      // ✅ 1. Get current admin session
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
@@ -286,29 +285,38 @@ export default function ClientProfile() {
         return;
       }
 
-      // ✅ 2. Call NEW JWT API
+      // ✅ FIX: map auth user → admins table
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('email', session.user.email)
+        .single();
+
+      if (adminError || !adminData) {
+        toast.error("Admin not found");
+        return;
+      }
+
+      // ✅ call API with correct adminId
       const res = await fetch('/api/admin/impersonate-jwt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId: client.id,
-          adminId: session.user.id
+          adminId: adminData.id // ✅ FIXED
         })
       });
 
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error);
 
       const token = data.token;
 
-      // ✅ 3. 🔥 CRITICAL: Replace Supabase session
       await supabase.auth.setSession({
         access_token: token,
         refresh_token: token,
       });
 
-      // ✅ 4. Redirect
       window.location.href = '/dashboard';
 
     } catch (err: any) {
