@@ -5,7 +5,6 @@ export async function POST() {
     success: true,
   });
 
-  // ✅ CLEAR IMPERSONATION FLAGS (SAFE WAY)
   const cookieOptions = {
     path: '/',
     httpOnly: true,
@@ -13,6 +12,7 @@ export async function POST() {
     sameSite: 'lax' as const,
   };
 
+  // ✅ clear impersonation flags
   response.cookies.set('impersonation_active', '', {
     ...cookieOptions,
     expires: new Date(0),
@@ -23,8 +23,18 @@ export async function POST() {
     expires: new Date(0),
   });
 
-  // 🔥 OPTIONAL BUT IMPORTANT: clear JWT session cookie if you store it
   response.cookies.set('impersonation_token', '', {
+    ...cookieOptions,
+    expires: new Date(0),
+  });
+
+  // 🔥 IMPORTANT: clear Supabase session cookie
+  response.cookies.set('sb-access-token', '', {
+    ...cookieOptions,
+    expires: new Date(0),
+  });
+
+  response.cookies.set('sb-refresh-token', '', {
     ...cookieOptions,
     expires: new Date(0),
   });
