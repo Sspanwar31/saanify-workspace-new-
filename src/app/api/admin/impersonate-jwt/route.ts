@@ -1,6 +1,3 @@
-Ye raha updated code. Maine **auth dependency** ko completely remove kar diya hai aur direct `admins` table se verification kar raha hoon.
-
-```typescript
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
