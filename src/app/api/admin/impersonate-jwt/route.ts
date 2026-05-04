@@ -48,16 +48,21 @@ export async function POST(req: NextRequest) {
     const token = jwt.sign(payload, JWT_SECRET);
     console.log('✅ JWT GENERATED');
 
-    // ✅ STEP 3: Supabase Client using ANON + JWT
+    // ✅ GET SERVICE ROLE KEY (B64 SUPPORT)
+    const serviceKey = getServiceRoleKey();
+
+    if (!serviceKey) {
+      return NextResponse.json(
+        { error: 'Service role key missing' },
+        { status: 500 }
+      );
+    }
+
+    // ✅ USE SERVICE ROLE (NO JWT HERE)
     const supabaseAdmin = createClient(
       SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      serviceKey,
       {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
         auth: {
           persistSession: false,
           autoRefreshToken: false,
