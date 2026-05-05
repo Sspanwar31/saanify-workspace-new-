@@ -59,7 +59,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           });
 
           if (impError) {
-            console.error("❌ Impersonation Failed:", impError.message);
+            // ⚠️ Check this (Updated as requested):
+            console.log("Full Error Object:", JSON.stringify(impError));
+            
             // Agar token invalid hai toh saaf kar dein taaki loop na ho
             localStorage.removeItem('impersonation_token');
             document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
