@@ -45,48 +45,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       try {
         setIsChecking(true);
 
-        // 🚀 1. SESSION SYNC
+        // 🚀 1. Check if Impersonation Token exists
         const impToken = localStorage.getItem('impersonation_token');
+        
         if (impToken) {
-          const { error: impError } = await supabase.auth.setSession({ 
+          const { data: impData, error: impError } = await supabase.auth.setSession({ 
             access_token: impToken, 
             refresh_token: impToken 
           });
-          // Agar token expired ya galat hai toh saaf karein
+
           if (impError) {
-             localStorage.removeItem('impersonation_token');
-             document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+            console.error("❌ Invalid Impersonation Token:", impError.message);
+            localStorage.removeItem('impersonation_token');
+            document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
           }
         }
 
-        // 🚀 2. GET CURRENT SESSION
+        // 🚀 2. Final Session Verification
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           router.push('/login');
           return;
         }
 
-        // 🚀 3. DECODE JWT (Banner Fix)
-        // Sirf banner tabhi dikhayein jab JWT ke andar 'is_impersonating' true ho
+        // 🚀 3. Impersonation Banner Logic (Strict Check)
+        // Token decode karke check karein ki kya ye sach mein Admin ne generate kiya hai
         const payload = JSON.parse(atob(session.access_token.split('.')[1]));
-        setIsImpersonating(!!payload.is_impersonating);
+        const actuallyImpersonating = !!payload.is_impersonating;
+        setIsImpersonating(actuallyImpersonating);
 
-        // 🚀 4. FETCH LOGGED-IN USER PROFILE (Name Fix)
-        // Ye wohi insaan hai jo login hai (Owner ya Treasurer)
+        // Agar JWT mein flag nahi hai toh local token delete karo (Cleanup)
+        if (!actuallyImpersonating && impToken) {
+            localStorage.removeItem('impersonation_token');
+        }
+
+        // 🚀 4. Fetch Profile
         const { data: userProfile, error: profileErr } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+          .from('clients').select('*').eq('id', session.user.id).single();
 
         if (profileErr || !userProfile) throw new Error("Profile not found");
 
-        // 🚀 RESOLVE TARGET SOCIETY (Owner Data)
+        // 🚀 RESOLVE TARGET SOCIETY (Owner Data) & LocalStorage Update
         const mainOwnerId = userProfile.role === 'treasurer' ? userProfile.client_id : userProfile.id;
 
-        // ✅ IMPORTANT: LocalStorage mein dono cheezein rakhein
-        // 1. userProfile: Taaki naam aur permissions mil sakein
-        // 2. resolved_client_id: Taaki Subscription page ko pata chale kiska data uthana hai
         const storageData = {
             ...userProfile,
             resolved_client_id: mainOwnerId 
