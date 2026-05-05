@@ -48,12 +48,12 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // ✅ REPLACED FETCH FUNCTION
+  // ✅ UPDATED FETCH FUNCTION (Using clientTableData)
   const fetchClient = async () => {
     try {
       setLoading(true);
       
-      //1. Client Basic Info (Pehle client ka table data lo)
+      // 1. Fetch Client Info
       const { data: clientTableData, error: clientError } = await supabase
         .from('clients')
         .select('*')
@@ -71,12 +71,12 @@ export default function ClientProfile() {
       setClient(clientTableData);
       setNewPlan(clientTableData.plan);
 
-      // 🚀 2. FETCH REAL STATS FROM OUR API (The Fix)
+      // 2. Fetch Stats from API
       const res = await fetch(`/api/admin/clients/${id}/stats`);
       const statsData = await res.json();
 
       if (res.ok) {
-        // Calculations using clientTableData (Jo humne upar fetch kiya)
+        // ✅ FIX: Use 'clientTableData' instead of 'clientData'
         let revenueAmount = 4000;
         if (clientTableData.plan === 'PRO') revenueAmount = 7000;
         else if (clientTableData.plan === 'ENTERPRISE') revenueAmount = 10000;
@@ -86,16 +86,14 @@ export default function ClientProfile() {
         const endDate = clientTableData.plan_end_date ? new Date(clientTableData.plan_end_date) : new Date();
         const diffTime = endDate.getTime() - today.getTime();
         const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-        const prog = Math.min(100, Math.max(0, (days / 30) * 100));
 
-        // Sabhi real values set karein
         setStats({
           members: statsData.memberCount || 0,
           activeLoans: statsData.loanCount || 0,
           netProfit: statsData.netProfit || 0,
           adminRevenue: revenueAmount,
           daysRemaining: days,
-          progress: prog,
+          progress: Math.min(100, (days / 30) * 100),
           health: statsData.healthScore || 0
         });
 
@@ -104,7 +102,7 @@ export default function ClientProfile() {
         console.log("Health Score:", statsData.healthScore);
       }
 
-      //3. Staff List fetch karein
+      // 3. Staff List fetch karein
       const { data: staffData } = await supabase
           .from('clients') 
           .select('*')
@@ -134,7 +132,6 @@ export default function ClientProfile() {
     const actionToSend = isLocked ? 'ACTIVATE' : 'LOCK'; 
     const newStatusLabel = isLocked ? 'ACTIVE' : 'LOCKED';
 
-    // Toast ID taaki success hone par loading wala toast replace ho jaye
     const toastId = toast.loading(isLocked ? "Unlocking..." : "Locking...");
 
     try {
@@ -144,17 +141,11 @@ export default function ClientProfile() {
         body: JSON.stringify({ action: actionToSend })
       });
 
-      // Check karein ki response JSON hai ya nahi
       const data = await res.json().catch(() => ({ success: false, error: "Server Error" }));
 
       if (res.ok && data.success) {
         toast.success(`Account is now ${newStatusLabel}`, { id: toastId });
-        
-        // ✅ UI Refresh: Wait karein thoda taaki DB update sync ho jaye
-        setTimeout(async () => {
-          await fetchClient(); 
-        }, 500);
-
+        setTimeout(async () => { await fetchClient(); }, 500);
       } else {
         throw new Error(data.error || "Update failed");
       }
@@ -167,17 +158,15 @@ export default function ClientProfile() {
   // ✅ 2. handleExpireClient function fix
   const handleExpireClient = async () => {
     if (!confirm('Are you sure you want to expire this account?')) return;
-  
     try {
       const res = await fetch(`/api/admin/clients/${id}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'EXPIRE' })
       });
-
       if (res.ok) {
         toast.success('Account marked as EXPIRED');
-        await fetchClient(); // ✅ Sync UI with DB
+        await fetchClient();
       }
     } catch (e) {
       toast.error('Failed to expire account');
@@ -212,31 +201,22 @@ export default function ClientProfile() {
   // ✅ UPDATED HANDLE DELETE (API Call)
   const handleDelete = async () => {
       if(!confirm("⚠️ WARNING: This will permanently delete client, all members, and all financial data. This cannot be undone.\n\nAre you sure?")) return;
-      
-      // Call API endpoint instead of direct Supabase call
-      const res = await fetch(`/api/admin/clients/${id}/delete`, {
-          method: 'DELETE'
-      });
-
+      const res = await fetch(`/api/admin/clients/${id}/delete`, { method: 'DELETE' });
       const data = await res.json();
-
       if (!res.ok) {
           toast.error("Delete Failed: " + (data.error || "Unknown error"));
       } else {
-          toast.success("Client Deleted Successfully"); // ✅ Change Message
-          router.push('/admin/clients'); // Redirect back to list
+          toast.success("Client Deleted Successfully");
+          router.push('/admin/clients');
       }
   };
 
   const handleDeleteStaff = async (staffId: string) => {
       if(!confirm("Are you sure you want to remove this staff member?")) return;
-      
-      // ✅ NEW (recommended soft delete)
       const { error } = await supabase
         .from('clients')
         .update({ is_deleted: true })
         .eq('id', staffId);
-      
       if (error) {
           toast.error("Failed to delete staff: " + error.message);
       } else {
@@ -245,29 +225,22 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ Add Staff Logic (Still Uses API because Creating User requires Admin Privileges)
+  // ✅ Add Staff Logic
   const handleAddStaff = async () => {
       if(!staffForm.name || !staffForm.email || !staffForm.password) return toast.error("Name, Email and Password required");
-      
       setIsAddingStaff(true);
       try {
           const res = await fetch('/api/admin/create-staff', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  ...staffForm,
-                  clientId: id // Link to this client
-              })
+              body: JSON.stringify({ ...staffForm, clientId: id })
           });
-
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Failed to create staff");
-
           toast.success("Staff Account Created Successfully! 🎉");
           setIsStaffModalOpen(false);
           setStaffForm({ name: '', email: '', phone: '', password: '' }); 
           fetchClient(); 
-
       } catch (error: any) {
           toast.error(error.message);
       } finally {
@@ -275,29 +248,40 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function
+  // ✅ ACCESS PANEL ACTION (JWT Sync)
   const handleAccess = async () => {
-    // Check karein ki aapke paas logged-in admin ki ID hai
-    const adminStr = localStorage.getItem('admin_user'); 
-    const admin = JSON.parse(adminStr || '{}');
+    const toastId = toast.loading("Verifying Admin Access...");
+    try {
+        const adminStr = localStorage.getItem('admin_user'); 
+        const admin = JSON.parse(adminStr || '{}');
 
-    const res = await fetch('/api/admin/impersonate-jwt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            clientId: id, 
-            adminId: admin.id // ✅ Pakka karein ye ID sahi hai
-        })
-    });
-    
-    const data = await res.json();
-    if (data.success) {
-        // Set cookie and localstorage as discussed before
-        document.cookie = `impersonation_token=${data.token}; path=/; max-age=3600`;
-        localStorage.setItem('current_user', JSON.stringify(data.clientData));
-        window.location.href = '/dashboard';
-    } else {
-        toast.error(data.error);
+        if (!admin.id) throw new Error("Admin session not found. Please re-login.");
+
+        const res = await fetch('/api/admin/impersonate-jwt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: id, adminId: admin.id })
+        });
+        
+        const data = await res.json();
+
+        if (data.success && data.token) {
+            // 1. Set Cookie for Middleware (Important!)
+            document.cookie = `impersonation_token=${data.token}; path=/; max-age=3600; SameSite=Lax`;
+            
+            // 2. Set LocalStorage for Dashboard UI
+            localStorage.setItem('impersonation_token', data.token);
+            localStorage.setItem('current_user', JSON.stringify(data.clientData));
+            
+            toast.success("Access Granted! Redirecting...", { id: toastId });
+            
+            // 3. Force Redirect to Dashboard
+            window.location.href = '/dashboard'; 
+        } else {
+            throw new Error(data.error || "Access Denied");
+        }
+    } catch (e: any) {
+        toast.error(e.message, { id: toastId });
     }
   };
 
@@ -327,7 +311,6 @@ export default function ClientProfile() {
                 </div>
              </div>
              <div className="flex gap-3 items-center">
-              {/* ✅ BADGE UI FIX: Jahan aapka Badge render ho raha hai */}
               <Badge className={
                 client.status === 'ACTIVE' ? "bg-green-100 text-green-700" : 
                 client.status === 'LOCKED' ? "bg-red-100 text-red-700" : 
@@ -353,7 +336,6 @@ export default function ClientProfile() {
                   <DropdownMenuItem onClick={handleLockToggle} className={client.status === 'LOCKED' ? "text-green-600" : "text-orange-600"}>
                      {client.status === 'LOCKED' ? <><Unlock className="mr-2 w-4 h-4"/> Unlock Account</> : <><Lock className="mr-2 w-4 h-4"/> Lock Account</>}
                   </DropdownMenuItem>
-                  {/* ✅ Expire Action Menu Item */}
                   <DropdownMenuItem onClick={handleExpireClient} className="text-red-600">
                      <AlertTriangle className="mr-2 w-4 h-4"/> Expire Account
                   </DropdownMenuItem>
@@ -416,7 +398,6 @@ export default function ClientProfile() {
             <CardContent className="p-8 flex flex-col items-center justify-center">
                <div className="relative mb-4">
                   <div className="w-32 h-32 rounded-full border-[6px] border-slate-50 flex items-center justify-center">
-                    {/* ✅ UPDATED UI COLOR LOGIC */}
                     <span className={`text-4xl font-bold ${stats.health > 70 ? 'text-green-600' : 'text-orange-500'}`}>
                        {stats.health}
                        <span className="text-xl text-slate-400 font-normal">/100</span>
@@ -503,7 +484,6 @@ export default function ClientProfile() {
             <div className="grid gap-4 py-4">
                 <div className="space-y-2"><Input placeholder="Staff Name" value={staffForm.name} onChange={e=>setStaffForm({...staffForm, name:e.target.value})}/></div>
                 <div className="space-y-2"><Input placeholder="Email Address" type="email" value={staffForm.email} onChange={e=>setStaffForm({...staffForm, email:e.target.value})}/></div>
-                {/* NEW PASSWORD FIELD */}
                 <div className="space-y-2"><Input placeholder="Set Password" type="password" value={staffForm.password} onChange={e=>setStaffForm({...staffForm, password:e.target.value})}/></div>
                 <div className="space-y-2"><Input placeholder="Phone Number (Optional)" value={staffForm.phone} onChange={e=>setStaffForm({...staffForm, phone:e.target.value})}/></div>
             </div>
