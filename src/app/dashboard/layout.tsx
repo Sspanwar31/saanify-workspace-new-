@@ -81,11 +81,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         if (profileErr || !userProfile) throw new Error("Profile not found");
 
-        // UI ke liye login user ka data set karein (Isse Treasurer ka naam dikhega)
-        localStorage.setItem('current_user', JSON.stringify(userProfile));
-
-        // 🚀 5. RESOLVE TARGET SOCIETY (Owner Data)
+        // 🚀 RESOLVE TARGET SOCIETY (Owner Data)
         const mainOwnerId = userProfile.role === 'treasurer' ? userProfile.client_id : userProfile.id;
+
+        // ✅ IMPORTANT: LocalStorage mein dono cheezein rakhein
+        // 1. userProfile: Taaki naam aur permissions mil sakein
+        // 2. resolved_client_id: Taaki Subscription page ko pata chale kiska data uthana hai
+        const storageData = {
+            ...userProfile,
+            resolved_client_id: mainOwnerId 
+        };
+        localStorage.setItem('current_user', JSON.stringify(storageData));
 
         const { data: mainClient } = await supabase
           .from('clients')
