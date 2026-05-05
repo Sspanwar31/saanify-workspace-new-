@@ -17,21 +17,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ✅ STATE: For Impersonation Banner
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // ✅ ADDED: Force Impersonation Session on Load
+  // ✅ UPDATED: Force Impersonation Session on Load (With SignOut & Error Handling)
   useEffect(() => {
-    const setupImpersonation = async () => {
+    const initSession = async () => {
       const token = localStorage.getItem('impersonation_token');
+      
       if (token) {
-        // ✅ Supabase ko ye token use karne ke liye force karein
+        // ✅ Pehle purana session clear karein
+        await supabase.auth.signOut(); 
+        
+        // ✅ Naya Impersonation session set karein
         const { error } = await supabase.auth.setSession({
           access_token: token,
-          refresh_token: token // Custom JWT mein refresh token same rakh sakte hain
+          refresh_token: token, // Impersonation mein refresh token nahi hota toh same bhej sakte hain
         });
-        
-        if (error) console.error("Session Set Error:", error);
+
+        if (error) {
+          console.error("❌ JWT Rejected:", error.message);
+          // Agar error aaye toh token delete karein taaki loop na bane
+          localStorage.removeItem('impersonation_token');
+          document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        } else {
+          console.log("✅ Impersonation Active");
+        }
       }
     };
-    setupImpersonation();
+    initSession();
   }, []);
 
   // ✅ NEW WAY (JWT based detection)
