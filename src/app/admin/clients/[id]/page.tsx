@@ -248,34 +248,38 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ ACCESS PANEL ACTION (JWT Sync)
+  // ✅ UPDATED: handleAccess function (Using Supabase Session)
   const handleAccess = async () => {
-    const toastId = toast.loading("Verifying Admin Access...");
+    const toastId = toast.loading("Bypassing Security...");
     try {
-        const adminStr = localStorage.getItem('admin_user'); 
-        const admin = JSON.parse(adminStr || '{}');
+        // 1. Get Admin ID safely
+        const { data: { session } } = await supabase.auth.getSession();
+        const adminId = session?.user?.id;
 
-        if (!admin.id) throw new Error("Admin session not found. Please re-login.");
+        if (!adminId) {
+            throw new Error("Admin session not found. Please re-login.");
+        }
 
+        // 2. API Call to generate JWT
         const res = await fetch('/api/admin/impersonate-jwt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: id, adminId: admin.id })
+            body: JSON.stringify({ clientId: id, adminId: adminId })
         });
         
         const data = await res.json();
 
         if (data.success && data.token) {
-            // 1. Set Cookie for Middleware (Important!)
+            // ✅ 3. Set Cookie (Middleware ke liye)
             document.cookie = `impersonation_token=${data.token}; path=/; max-age=3600; SameSite=Lax`;
             
-            // 2. Set LocalStorage for Dashboard UI
+            // ✅ 4. LocalStorage (Dashboard UI ke liye)
             localStorage.setItem('impersonation_token', data.token);
             localStorage.setItem('current_user', JSON.stringify(data.clientData));
             
-            toast.success("Access Granted! Redirecting...", { id: toastId });
+            toast.success("Access Granted!", { id: toastId });
             
-            // 3. Force Redirect to Dashboard
+            // ✅ 5. Force redirect
             window.location.href = '/dashboard'; 
         } else {
             throw new Error(data.error || "Access Denied");
