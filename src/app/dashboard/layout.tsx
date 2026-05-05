@@ -13,73 +13,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // ✅ STATE: For Impersonation Banner
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // ✅ UPDATED: Force Impersonation Session on Load (With SignOut & Error Handling)
-  useEffect(() => {
-    const initSession = async () => {
-      const token = localStorage.getItem('impersonation_token');
-      
-      if (token) {
-        // ✅ Pehle purana session clear karein
-        await supabase.auth.signOut(); 
-        
-        // ✅ Naya Impersonation session set karein
-        const { error } = await supabase.auth.setSession({
-          access_token: token,
-          refresh_token: token, // Impersonation mein refresh token nahi hota toh same bhej sakte hain
-        });
-
-        if (error) {
-          console.error("❌ JWT Rejected:", error.message);
-          // Agar error aaye toh token delete karein taaki loop na bane
-          localStorage.removeItem('impersonation_token');
-          document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-        } else {
-          console.log("✅ Impersonation Active");
-        }
-      }
-    };
-    initSession();
-  }, []);
-
-  // ✅ NEW WAY (JWT based detection)
-  const checkImpersonation = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) return;
-
-    const payload = JSON.parse(atob(session.access_token.split('.')[1]));
-
-    if (payload.is_impersonating) {
-      setIsImpersonating(true);
-    } else {
-      setIsImpersonating(false);
-    }
-  };
-
-  useEffect(() => {
-    checkImpersonation();
-  }, []);
-
-  // ✅ STEP 2: Updated handleBack (Stop Impersonation API)
-  const handleBack = async () => {
-    try {
-      await fetch('/api/admin/stop-impersonation', {
-        method: 'POST'
-      });
-
-      // 🔥 force reload admin session
-      window.location.href = '/admin/dashboard';
-
-    } catch (err) {
-      console.error('Failed to stop impersonation', err);
-    }
-  };
-
-  // --- Auto Backup Function (Unchanged) ---
+  // --- Auto Backup Function (Same as before) ---
   const performAutoBackup = async (clientId: string) => {
     try {
       const [members, loans, passbook, expenses] = await Promise.all([
@@ -104,20 +40,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } catch (err) { console.error("Backup Failed:", err); }
   };
 
+  // ✅ UPDATED: Main Auth & Impersonation Logic
   useEffect(() => {
-    // ✅ STEP 4: Replaced localStorage with Real Auth Check
-    const checkAccess = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-
+    const initializeAuth = async () => {
       try {
-        // Assuming Auth ID maps to Client ID, or we fetch client data based on ID
-        const resolvedClientId = session.user.id;
+        setIsChecking(true);
+
+        // 🚀 STEP 1: Pehle Impersonation Token check karein
+        const impToken = localStorage.getItem('impersonation_token');
         
+        if (impToken) {
+          console.log("🛠️ Syncing Impersonation Session...");
+          
+          // Supabase ko naya token force karein
+          const { data: { session: impSession }, error: impError } = await supabase.auth.setSession({
+            access_token: impToken,
+            refresh_token: impToken
+          });
+
+          if (impError) {
+            console.error("❌ Impersonation Sync Failed:", impError.message);
+            localStorage.removeItem('impersonation_token');
+            document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+          } else {
+            setIsImpersonating(true);
+            console.log("✅ Impersonation Session Active");
+          }
+        }
+
+        // 🚀 STEP 2: Ab Final Session check karein (Chahe Impersonated ho ya Normal)
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          console.warn("No valid session found, redirecting...");
+          router.push('/login');
+          return;
+        }
+
+        // 🚀 STEP 3: Client Details Verify karein (Theme, Backup, Lock Check)
+        const resolvedClientId = session.user.id;
         const { data: client, error } = await supabase
           .from('clients')
           .select('plan, plan_end_date, subscription_status, theme, auto_backup, status')
@@ -125,12 +86,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .single();
 
         if (error) {
+          // Agar client data fetch mein error ho, bhi authorized maan kar age badhein (ya handle karein jaise requirement ho)
           setIsAuthorized(true);
           setIsChecking(false);
           return;
         }
 
         if (client) {
+          // Theme Logic
           const root = document.documentElement;
           if (client.theme === 'dark') {
             root.classList.add('dark');
@@ -139,6 +102,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             root.classList.remove('dark');
             root.style.colorScheme = 'light';
           }
+
+          // Backup Logic
           if (client.auto_backup === true) {
              const today = new Date().toISOString().split('T')[0]; 
              const lastBackup = localStorage.getItem(`last_backup_${resolvedClientId}`);
@@ -148,38 +113,51 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 });
              }
           }
-          const expiry = new Date(client.plan_end_date || new Date());
-          const today = new Date();
-          const isTrial = client.plan === 'TRIAL' || client.plan === 'FREE_TRIAL';
-          const isExpired = today > expiry && client.plan !== 'LIFETIME';
-          const isInactive = client.subscription_status !== 'active' && !isTrial;
-          const isLocked = client.status === 'LOCKED' || client.status === 'EXPIRED';
 
+          // Access Protection (Lock/Expiry Check)
+          const isLocked = client.status === 'LOCKED' || client.status === 'EXPIRED';
           if (isLocked) {
-             // localStorage.clear(); // Optional: clear local storage on lock
              router.push('/login');
              return;
           }
+
+          const expiry = new Date(client.plan_end_date || new Date());
+          const todayDate = new Date();
+          const isTrial = client.plan === 'TRIAL' || client.plan === 'FREE_TRIAL';
+          const isExpired = todayDate > expiry && client.plan !== 'LIFETIME';
+          const isInactive = client.subscription_status !== 'active' && !isTrial;
+
           if ((isExpired || isInactive) && pathname !== '/dashboard/subscription') {
             router.push('/dashboard/subscription');
             return;
           }
         }
+
         setIsAuthorized(true);
-      } catch (err) { 
-        console.error("Auth check error:", err);
-        router.push('/login'); 
+      } catch (err) {
+        console.error("Auth initialization error:", err);
+        router.push('/login');
+      } finally {
+        setIsChecking(false);
       }
-      setIsChecking(false);
     };
-    
-    checkAccess();
+
+    initializeAuth();
   }, [pathname, router]);
 
   // Page change hone par menu apne aap band ho jaye
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
+
+  // ✅ handleBack to Admin logic (Updated as per new code)
+  const handleBack = async () => {
+    // 1. Cookies aur LocalStorage saaf karein
+    document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    localStorage.removeItem('impersonation_token');
+    // 2. Wapas admin par bhejien
+    window.location.href = '/admin/dashboard';
+  };
 
   if (isChecking) {
     return (
@@ -195,30 +173,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <>
       {/* ✅ Banner confirmation */}
       {isImpersonating && pathname.startsWith('/dashboard') && (
-        <div className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm shadow-md z-50">
-          <span className="font-medium">
-            🔐 You are viewing as client
-          </span>
-
+        <div className="w-full bg-purple-600 text-white px-4 py-2 flex justify-between items-center text-sm shadow-md z-50">
+          <span className="font-medium">🔐 Viewing as Client (Admin Mode)</span>
           <button
             onClick={handleBack}
             className="bg-white text-purple-700 px-3 py-1 rounded-md text-xs font-semibold hover:bg-gray-100 transition"
           >
             Back to Admin
           </button>
-
         </div>
       )}
 
       {/* ORIGINAL LAYOUT */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         
-        {/* DESKTOP SIDEBAR: Desktop par dikhega, mobile par hidden */}
+        {/* DESKTOP SIDEBAR */}
         <div className="w-64 shrink-0 hidden md:block h-full border-r border-slate-200 dark:border-slate-800">
           <ClientSidebar />
         </div>
 
-        {/* MOBILE DRAWER: Sirf 'More' click karne par khulega */}
+        {/* MOBILE DRAWER */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-[150] md:hidden">
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
@@ -230,13 +204,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* MAIN CONTENT AREA */}
         <main className="flex-1 overflow-y-auto h-full pb-20 md:pb-0 bg-slate-50 dark:bg-slate-900">
-          {/* Desktop Layout kharab na ho isliye padding sirf mobile par 'pb-20' di hai */}
           <div className="p-4 md:p-8 max-w-7xl mx-auto">
             {children}
           </div>
         </main>
 
-        {/* MOBILE BOTTOM NAV: Sirf mobile par dikhega */}
+        {/* MOBILE BOTTOM NAV */}
         <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
       </div>
     </>
