@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
+  const [client, setClient] = useState<any>(null); // ✅ Added client state for Banner Name
 
   // --- Auto Backup Function ---
   const performAutoBackup = async (clientId: string) => {
@@ -44,33 +45,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       try {
         setIsChecking(true);
 
-        // 1. Impersonation Check
+        // 🚀 1. SESSION SYNC
         const impToken = localStorage.getItem('impersonation_token');
         if (impToken) {
-          const { error: impError } = await supabase.auth.setSession({ access_token: impToken, refresh_token: impToken });
-          if (!impError) setIsImpersonating(true);
+          const { error: impError } = await supabase.auth.setSession({ 
+            access_token: impToken, 
+            refresh_token: impToken 
+          });
+          // Agar token expired ya galat hai toh saaf karein
+          if (impError) {
+             localStorage.removeItem('impersonation_token');
+             document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+          }
         }
 
-        // 2. Final Session Check
+        // 🚀 2. GET CURRENT SESSION
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           router.push('/login');
           return;
         }
 
-        // 🚀 3. TREASURER & PERMISSION LOGIC (The Fix)
-        // Pehle logged-in user ka profile nikalein
+        // 🚀 3. DECODE JWT (Banner Fix)
+        // Sirf banner tabhi dikhayein jab JWT ke andar 'is_impersonating' true ho
+        const payload = JSON.parse(atob(session.access_token.split('.')[1]));
+        setIsImpersonating(!!payload.is_impersonating);
+
+        // 🚀 4. FETCH LOGGED-IN USER PROFILE (Name Fix)
+        // Ye wohi insaan hai jo login hai (Owner ya Treasurer)
         const { data: userProfile, error: profileErr } = await supabase
           .from('clients')
-          .select('role, client_id, role_permissions, status')
+          .select('*')
           .eq('id', session.user.id)
           .single();
 
         if (profileErr || !userProfile) throw new Error("Profile not found");
 
-        // Resolve kiske account mein kaam ho raha hai
-        // Agar treasurer hai toh uske 'client_id' (Owner) ka data uthao
-        const mainOwnerId = userProfile.role === 'treasurer' ? userProfile.client_id : session.user.id;
+        // UI ke liye login user ka data set karein (Isse Treasurer ka naam dikhega)
+        localStorage.setItem('current_user', JSON.stringify(userProfile));
+
+        // 🚀 5. RESOLVE TARGET SOCIETY (Owner Data)
+        const mainOwnerId = userProfile.role === 'treasurer' ? userProfile.client_id : userProfile.id;
 
         const { data: mainClient } = await supabase
           .from('clients')
@@ -79,51 +94,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .single();
 
         if (mainClient) {
-          // --- Permission Check ---
-          // Agar Treasurer hai, toh check karein kya uske paas is page ki permission hai
+          // ✅ Set Client State for Banner Name
+          setClient(mainClient);
+
+          // --- Permission Check (Treasurer ke liye) ---
           if (userProfile.role === 'treasurer') {
             const permissions = userProfile.role_permissions?.treasurer || [];
-            const currentPath = pathname.toLowerCase();
+            const path = pathname.toLowerCase();
+            const isAllowed = 
+              path === '/dashboard' ||
+              (path.includes('members') && permissions.includes('View Members')) ||
+              (path.includes('passbook') && permissions.includes('View Passbook')) ||
+              (path.includes('loans') && permissions.includes('View Loans')) ||
+              (path.includes('expenses') && permissions.includes('Manage Expenses')) ||
+              (path.includes('reports') && permissions.includes('View Reports'));
 
-            // Logic: Agar path 'members' hai aur permission mein 'View Members' nahi hai toh block karein
-            const isAllowed = (path: string) => {
-                if (path === '/dashboard') return true; // Dashboard sabko allowed hai
-                if (path.includes('members') && permissions.includes('View Members')) return true;
-                if (path.includes('passbook') && permissions.includes('View Passbook')) return true;
-                if (path.includes('loans') && permissions.includes('View Loans')) return true;
-                if (path.includes('expenses') && permissions.includes('Manage Expenses')) return true;
-                if (path.includes('reports') && permissions.includes('View Reports')) return true;
-                return false;
-            };
-
-            // Agar permission nahi hai aur user dashboard ke bahar kisi page par hai
-            if (currentPath !== '/dashboard' && !isAllowed(currentPath)) {
-                toast.error("You don't have permission to access this section");
-                router.push('/dashboard');
-                return;
+            if (path !== '/dashboard' && !isAllowed) {
+              toast.error("Access Denied: Missing Permissions");
+              router.push('/dashboard');
+              return;
             }
           }
 
-          // --- Theme & Backup (Owner ke settings ke hisab se) ---
+          // --- Theme & Lock Check (Based on Society Owner) ---
           if (mainClient.theme === 'dark') document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');
 
+          if (mainClient.status === 'LOCKED' || mainClient.status === 'EXPIRED') {
+            toast.error("Society account is locked or expired");
+            router.push('/login');
+            return;
+          }
+          
+          // --- Auto Backup Logic ---
           if (mainClient.auto_backup === true) {
              const today = new Date().toISOString().split('T')[0];
              if (localStorage.getItem(`last_backup_${mainOwnerId}`) !== today) {
                 performAutoBackup(mainOwnerId).then(() => localStorage.setItem(`last_backup_${mainOwnerId}`, today));
              }
           }
-
-          // --- Expiry & Lock Check (Owner ke status ke hisab se) ---
-          if (mainClient.status === 'LOCKED' || mainClient.status === 'EXPIRED') {
-            router.push('/login');
-            return;
-          }
         }
 
         setIsAuthorized(true);
       } catch (err) {
+        console.error("Layout Auth Error:", err);
         router.push('/login');
       } finally {
         setIsChecking(false);
@@ -133,33 +147,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     initializeAuth();
   }, [pathname, router]);
 
+  // Handle Back to Admin
   const handleBack = () => {
-    document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     localStorage.removeItem('impersonation_token');
+    document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     window.location.href = '/admin/dashboard';
   };
 
-  if (isChecking) return <div className="h-screen w-full flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  if (isChecking) return <div className="h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-900"><Loader2 className="animate-spin text-blue-600" /></div>;
   if (!isAuthorized) return null;
 
   return (
     <>
+      {/* Banner sirf tab dikhega jab Admin ne access kiya ho */}
       {isImpersonating && (
-        <div className="w-full bg-purple-600 text-white px-4 py-2 flex justify-between items-center text-sm z-50">
-          <span>🔐 Admin Mode: Viewing Client Panel</span>
-          <button onClick={handleBack} className="bg-white text-purple-700 px-2 py-1 rounded text-xs font-bold">Back to Admin</button>
+        <div className="w-full bg-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm sticky top-0 z-[100]">
+          <span>🔐 Admin Mode: Viewing as {client?.name}</span>
+          <button onClick={handleBack} className="bg-white text-indigo-700 px-3 py-1 rounded text-xs font-bold shadow-sm">Exit Admin Mode</button>
         </div>
       )}
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
+        {/* Desktop Sidebar */}
         <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800"><ClientSidebar /></div>
+        
+        {/* Mobile Drawer */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-[150] md:hidden">
             <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileMenuOpen(false)} />
             <div className="relative w-72 h-full bg-white dark:bg-slate-900"><ClientSidebar /></div>
           </div>
         )}
+
+        {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+        
+        {/* Mobile Bottom Nav */}
         <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
       </div>
     </>
