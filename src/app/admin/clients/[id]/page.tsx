@@ -275,53 +275,29 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function (Frontend Implementation)
+  // ✅ UPDATED: handleAccess function
   const handleAccess = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
+    // Check karein ki aapke paas logged-in admin ki ID hai
+    const adminStr = localStorage.getItem('admin_user'); 
+    const admin = JSON.parse(adminStr || '{}');
 
-      if (!session) {
-        toast.error("Admin not logged in");
-        return;
-      }
-
-      // ✅ FIX: map auth user → admins table
-      const { data: adminData, error: adminError } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('email', session.user.email)
-        .single();
-
-      if (adminError || !adminData) {
-        toast.error("Admin not found");
-        return;
-      }
-
-      // ✅ call API with correct adminId
-      const res = await fetch('/api/admin/impersonate-jwt', {
+    const res = await fetch('/api/admin/impersonate-jwt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: client.id,
-          adminId: adminData.id
+        body: JSON.stringify({ 
+            clientId: id, 
+            adminId: admin.id // ✅ Pakka karein ye ID sahi hai
         })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      const token = data.token;
-
-      // 1. LocalStorage update karein
-      localStorage.setItem('current_user', JSON.stringify(client));
-      localStorage.setItem('impersonation_token', token);
-
-      // 2. Dashboard tab kholein
-      window.open('/dashboard', '_blank');
-
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to access client panel");
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+        // Set cookie and localstorage as discussed before
+        document.cookie = `impersonation_token=${data.token}; path=/; max-age=3600`;
+        localStorage.setItem('current_user', JSON.stringify(data.clientData));
+        window.location.href = '/dashboard';
+    } else {
+        toast.error(data.error);
     }
   };
 
