@@ -188,14 +188,40 @@ export default function ClientProfile() {
       setTimeout(() => toast.success("Ledger Downloaded"), 1500);
   };
 
+  // ✅ UPDATED: handleUpdatePlan (Fixing plan vs plan_name)
   const handleUpdatePlan = async () => {
-      const { error } = await supabase.from('clients').update({ plan: newPlan }).eq('id', id);
-      if(error) toast.error("Failed to update plan");
-      else {
-          toast.success("Plan Updated Successfully");
-          setIsRenewOpen(false);
-          fetchClient();
-      }
+    const toastId = toast.loading("Updating subscription plan...");
+    
+    // ✅ Mapping short codes to proper Display Names
+    const planMapping: { [key: string]: string } = {
+        'TRIAL': 'Trial',
+        'BASIC': 'Basic',
+        'PRO': 'Professional',
+        'ENTERPRISE': 'Enterprise'
+    };
+
+    const formattedName = planMapping[newPlan.toUpperCase()] || newPlan;
+
+    try {
+        // ✅ Dono columns ko sync mein update karein
+        const { error } = await supabase
+            .from('clients')
+            .update({ 
+                plan: newPlan.toUpperCase(),      // e.g., 'PRO'
+                plan_name: formattedName,          // e.g., 'Professional'
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        toast.success(`Plan updated to ${formattedName}`, { id: toastId });
+        setIsRenewOpen(false);
+        fetchClient(); // Refresh UI
+
+    } catch (err: any) {
+        toast.error(err.message, { id: toastId });
+    }
   };
 
   // ✅ UPDATED HANDLE DELETE (API Call)
@@ -322,8 +348,13 @@ export default function ClientProfile() {
               }>
                 {client.status}
               </Badge>
-              <Badge variant="outline" className="text-blue-600 border-blue-200 px-3 py-1 text-xs uppercase font-bold">{client.plan} PLAN</Badge>
-              <div className="h-8 w-px bg-slate-200 mx-2"></div>
+
+              {/* ✅ FIX: Display plan_name instead of raw plan code */}
+              <Badge variant="outline" className="text-blue-600 border-blue-200 px-3 py-1 text-xs uppercase font-bold">
+                {client.plan_name || client.plan} PLAN
+              </Badge>
+
+              <div className="h-8 w-px bg-slate-200 mx-2"></div> 
               <Button onClick={handleAccess} className="bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-200 font-medium">
                   <ExternalLink className="w-4 h-4 mr-2"/> Access Panel
               </Button>
