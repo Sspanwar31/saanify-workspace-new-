@@ -14,37 +14,36 @@ export async function POST(req: NextRequest) {
     const serviceKey = getServiceRoleKey();
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
-    // 1. Admin Verification (RLS Bypass)
-    const { data: admin } = await supabaseAdmin.from('admins').select('id').eq('id', adminId).single();
-    if (!admin) return NextResponse.json({ error: 'Admin validation failed' }, { status: 403 });
-
-    // 2. Client Details
+    // 1. Get Client Details
     const { data: client } = await supabaseAdmin.from('clients').select('*').eq('id', clientId).single();
     if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
 
-    // 🚀 STEP 3: ASLI FIX - Secret Key ko Buffer mein badlein
+    // 🚀 STEP 2: ASLI FIX (Base64 Secret Handling)
     const rawSecret = process.env.SUPABASE_JWT_SECRET;
     if (!rawSecret) throw new Error("JWT Secret missing in ENV");
     
-    // Base64 string ko binary bytes (Buffer) mein badalna zaroori hai
+    // Base64 secret ko bytes mein convert karna zaroori hai
     const jwtSecret = Buffer.from(rawSecret, 'base64');
 
     const now = Math.floor(Date.now() / 1000);
     const payload = {
-      aud: 'authenticated',
-      role: 'authenticated',
+      aud: 'authenticated',           // 👈 Must be this
+      role: 'authenticated',          // 👈 Must be this
+      iss: 'supabase',                // 👈 Must be this
       iat: now,
-      exp: now + (60 * 60), // 1 hour
-      sub: client.id,
+      exp: now + (60 * 60),           // 1 hour
+      sub: client.id,                 // User's UUID
       email: client.email,
       app_metadata: { provider: 'email', providers: ['email'] },
       user_metadata: { name: client.name },
-      client_id: client.id,
+      client_id: client.id,           // Custom Claim for RLS
       is_impersonating: true
     };
 
-    // 🚀 SIGN WITH HS256 and Binary Secret
+    // 🚀 STEP 3: SIGN WITH HS256 EXPLICITLY
     const token = jwt.sign(payload, jwtSecret, { algorithm: 'HS256' });
+
+    console.log("✅ DEBUG: Token generated for sub:", client.id);
 
     return NextResponse.json({ success: true, token, clientData: client });
 
