@@ -46,25 +46,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       try {
         setIsChecking(true);
 
-        // 🚀 STEP 1: Pehle Impersonation Token check karein
+        // 🚀 STEP 1: Impersonation Token Check (Updated Logic - No SignOut)
         const impToken = localStorage.getItem('impersonation_token');
         
         if (impToken) {
-          console.log("🛠️ Syncing Impersonation Session...");
-          
-          // Supabase ko naya token force karein
-          const { data: { session: impSession }, error: impError } = await supabase.auth.setSession({
+          console.log("🛠️ Attempting Impersonation Sync...");
+
+          // ✅ IMPORTANT: signOut() mat karein, seedha setSession karein
+          const { data: impData, error: impError } = await supabase.auth.setSession({
             access_token: impToken,
-            refresh_token: impToken
+            refresh_token: impToken, 
           });
 
           if (impError) {
-            console.error("❌ Impersonation Sync Failed:", impError.message);
+            console.error("❌ Impersonation Failed:", impError.message);
+            // Agar token invalid hai toh saaf kar dein taaki loop na ho
             localStorage.removeItem('impersonation_token');
             document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+            router.push('/login');
+            return; // Stop further execution
           } else {
+            console.log("✅ Session Authenticated for:", impData.user?.email);
             setIsImpersonating(true);
-            console.log("✅ Impersonation Session Active");
+            setIsAuthorized(true);
           }
         }
 
@@ -86,7 +90,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .single();
 
         if (error) {
-          // Agar client data fetch mein error ho, bhi authorized maan kar age badhein (ya handle karein jaise requirement ho)
           setIsAuthorized(true);
           setIsChecking(false);
           return;
@@ -150,7 +153,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // ✅ handleBack to Admin logic (Updated as per new code)
+  // ✅ handleBack to Admin logic
   const handleBack = async () => {
     // 1. Cookies aur LocalStorage saaf karein
     document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
