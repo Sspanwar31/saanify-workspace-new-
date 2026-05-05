@@ -53,7 +53,7 @@ export default function ClientProfile() {
     try {
       setLoading(true);
       
-      // 1. Fetch Client Info
+      // 1. Fetch Client Basic Info
       const { data: clientTableData, error: clientError } = await supabase
         .from('clients')
         .select('*')
@@ -62,55 +62,56 @@ export default function ClientProfile() {
         .single();
         
       if (clientError || !clientTableData) {
-        console.error("Client not found or error:", clientError);
+        console.error("Client not found:", clientError);
         setLoading(false);
         return;
       }
 
-      // State update karein
       setClient(clientTableData);
       setNewPlan(clientTableData.plan);
 
-      // 2. Fetch Stats from API
-      const res = await fetch(`/api/admin/clients/${id}/stats`);
-      const statsData = await res.json();
+      // 🚀 2. FETCH REAL STATS (API CALL)
+      // Isko try-catch mein rakhein taaki agar ye fail ho toh staff dikhna band na ho
+      try {
+        const res = await fetch(`/api/admin/clients/${id}/stats`);
+        const statsData = await res.json();
 
-      if (res.ok) {
-        // ✅ FIX: Use 'clientTableData' instead of 'clientData'
-        let revenueAmount = 4000;
-        if (clientTableData.plan === 'PRO') revenueAmount = 7000;
-        else if (clientTableData.plan === 'ENTERPRISE') revenueAmount = 10000;
-        else if (clientTableData.plan === 'TRIAL') revenueAmount = 0;
+        if (res.ok) {
+          const today = new Date();
+          const endDate = clientTableData.plan_end_date ? new Date(clientTableData.plan_end_date) : new Date();
+          const diffTime = endDate.getTime() - today.getTime();
+          const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-        const today = new Date();
-        const endDate = clientTableData.plan_end_date ? new Date(clientTableData.plan_end_date) : new Date();
-        const diffTime = endDate.getTime() - today.getTime();
-        const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-
-        setStats({
-          members: statsData.memberCount || 0,
-          activeLoans: statsData.loanCount || 0,
-          netProfit: statsData.netProfit || 0,
-          adminRevenue: revenueAmount,
-          daysRemaining: days,
-          progress: Math.min(100, (days / 30) * 100),
-          health: statsData.healthScore || 0
-        });
-
-        console.log("--- DEBUG SUCCESS ---");
-        console.log("Profit Match:", statsData.netProfit);
-        console.log("Health Score:", statsData.healthScore);
+          setStats({
+            members: statsData.memberCount || 0,
+            activeLoans: statsData.loanCount || 0,
+            netProfit: statsData.netProfit || 0,
+            adminRevenue: clientTableData.plan === 'PRO' ? 7000 : (clientTableData.plan === 'ENTERPRISE' ? 10000 : 4000),
+            daysRemaining: days,
+            progress: Math.min(100, (days / 30) * 100),
+            health: statsData.healthScore || 0
+          });
+        }
+      } catch (err) {
+        console.error("Stats API failed, but continuing to staff fetch:", err);
       }
 
-      // 3. Staff List fetch karein
-      const { data: staffData } = await supabase
+      // 🚀 3. FETCH STAFF LIST (Moved outside of Stats check)
+      console.log("Fetching staff for client_id:", id);
+      const { data: staffData, error: staffError } = await supabase
           .from('clients') 
           .select('*')
           .eq('client_id', id)
-          .eq('role', 'treasurer')
-          .eq('is_deleted', false);
+          .eq('is_deleted', false); // Role check hata diya hai taaki sabhi staff dikhein
       
-      if (staffData) setStaffList(staffData);
+      if (staffError) {
+        console.error("Staff fetch error:", staffError);
+      }
+
+      if (staffData) {
+        console.log("Staff found:", staffData.length);
+        setStaffList(staffData);
+      }
 
     } catch (err) {
       console.error("Critical Fetch Error:", err);
