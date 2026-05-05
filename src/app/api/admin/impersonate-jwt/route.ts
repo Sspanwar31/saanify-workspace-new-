@@ -2,94 +2,57 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ STEP 1: Service Role Key Decoder (B64 support)
 const getServiceRoleKey = () => {
-  const b64Key = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  if (!b64Key) return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
-  try {
-    if (b64Key.startsWith('eyJ')) return b64Key;
-    return Buffer.from(b64Key, 'base64').toString('utf-8').trim();
-  } catch (e) { return null; }
-};
-
-// ✅ STEP 2: JWT Secret Decoder (Standard & URL Safe Base64)
-const getJwtSecret = () => {
-  const secret = process.env.SUPABASE_JWT_SECRET;
-  if (!secret) return null;
-
-  // Agar secret pehle se decode ho chuka hai (plain string), toh buffer banayein
-  // Agar Base64 hai (jisne == hai), toh usey bytes mein badlein
-  try {
-    return Buffer.from(secret, 'base64');
-  } catch (e) {
-    return Buffer.from(secret); // Fallback to plain string buffer
-  }
+  const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
+  if (!b64) return process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+  return b64.startsWith('eyJ') ? b64 : Buffer.from(b64, 'base64').toString().trim();
 };
 
 export async function POST(req: NextRequest) {
   try {
     const { clientId, adminId } = await req.json();
     const serviceKey = getServiceRoleKey();
-    const jwtSecret = getJwtSecret();
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!);
 
-    if (!serviceKey || !jwtSecret) {
-      return NextResponse.json({ error: "Server Key Configuration Error" }, { status: 500 });
-    }
+    // 1. Client Details Fetch
+    const { data: client } = await supabaseAdmin.from('clients').select('*').eq('id', clientId).single();
+    if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
 
-    // 🚀 STEP 3: Admin Bypass Client (Using Service Role)
-    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
+    // 🚀 ASLI BADLAV: Secret ko as a PLAIN STRING use karein
+    const jwtSecret = process.env.SUPABASE_JWT_SECRET; 
+    if (!jwtSecret) throw new Error("JWT Secret missing in ENV");
 
-    // 1. Get Client Details (Ensuring they exist in auth and clients table)
-    const { data: client, error: clientErr } = await supabaseAdmin
-      .from('clients')
-      .select('*')
-      .eq('id', clientId)
-      .single();
-
-    if (clientErr || !client) {
-      return NextResponse.json({ error: 'Client record not found' }, { status: 404 });
-    }
-
-    // 🚀 STEP 4: Payload Strict Synchronization
     const now = Math.floor(Date.now() / 1000);
     const payload = {
-      aud: 'authenticated',           // 👈 Required by Supabase
-      iss: 'supabase',                // 👈 Required by Supabase
+      aud: 'authenticated',
+      iss: 'supabase',
       iat: now,
-      exp: now + (60 * 60),           // 1 hour expiry
-      sub: client.id,                 // 👈 Must be the UUID from auth.users
+      exp: now + (60 * 60 * 24), // 24 hours expiry (Safe side)
+      sub: client.id,           // User UUID
       email: client.email,
-      role: 'authenticated',          // 👈 Required for RLS bypass
+      role: 'authenticated',
       app_metadata: {
         provider: 'email',
         providers: ['email'],
       },
       user_metadata: {
-        name: client.name,
+        name: client.name || '',
       },
-      // Your Custom Claims
+      // Aapke custom claims
       client_id: client.id,
-      is_impersonating: true,
-      admin_id: adminId
+      is_impersonating: true
     };
 
-    // 🚀 STEP 5: Signing (HS256 with Decoded Buffer)
-    // jsonwebtoken library automatic 'base64url' handle kar legi agar hum Buffer bhejenge
+    // 🚀 SIGN WITH PLAIN STRING (Algorithm HS256)
+    // typ: 'JWT' header mein hona zaroori hai
     const token = jwt.sign(payload, jwtSecret, { 
       algorithm: 'HS256',
-      noTimestamp: false 
+      header: { typ: 'JWT', alg: 'HS256' }
     });
 
-    console.log("✅ JWT Successfully signed for Client:", client.email);
-
-    return NextResponse.json({
-      success: true,
-      token,
-      clientData: client
-    });
+    return NextResponse.json({ success: true, token, clientData: client });
 
   } catch (err: any) {
-    console.error("🔥 Impersonation API Error:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
