@@ -23,60 +23,61 @@ export const config = {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   
-  // 1. Get Token Safely
-  const tokenObj = req.cookies.get('auth-token');
-  const token = tokenObj?.value;
+  // 🚀 STEP 1: Pehle Impersonation Token check karein, fir normal auth-token
+  const impToken = req.cookies.get('impersonation_token')?.value;
+  const authToken = req.cookies.get('auth-token')?.value;
+  
+  // Jo bhi token mile use use karein (Impersonation ko priority dein)
+  const token = impToken || authToken;
 
-  // ❌ REMOVED: const isImpersonating = req.cookies.get('impersonating')?.value === 'true';
-
-  // 2. Define Public Routes
   const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/signup';
 
-  // 3. LOGIC: No Token -> Go to Login
+  // 2. No Token -> Go to Login
   if (!token) {
     if (isPublicRoute) return NextResponse.next();
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // 4. LOGIC: Valid Token -> Check Role
+  // 3. Decode Token
   const user = decodeJwt(token);
-
   if (!user) {
     const response = NextResponse.redirect(new URL('/login', req.url));
     response.cookies.delete('auth-token');
+    response.cookies.delete('impersonation_token');
     return response;
   }
 
+  // Impersonation ke waqt hum hamesha usey 'authenticated' (Client) maante hain
   const userRole = (user.role || 'CLIENT').toUpperCase();
 
-  // 🚀 5. REDIRECT LOGIC
+  // 🚀 4. REDIRECT LOGIC
   
-  // A. Agar login hai aur Login/Signup page par hai -> Sahi dashboard par bhejo
   if (isPublicRoute) {
+    // Agar Impersonating hai toh seedha dashboard
+    if (impToken) return NextResponse.redirect(new URL('/dashboard', req.url));
     const target = userRole === 'ADMIN' ? '/admin' : '/dashboard';
     return NextResponse.redirect(new URL(target, req.url));
   }
 
-  // B. Admin routes protection
+  // Dashboard protection
+  if (pathname.startsWith('/dashboard')) {
+    // Agar Admin bina impersonation ke yahan aaye toh wapas bhejo
+    if (userRole === 'ADMIN' && !impToken) {
+      return NextResponse.redirect(new URL('/admin', req.url));
+    }
+  }
+
+  // Admin routes protection
   if (pathname.startsWith('/admin')) {
-    // No need for explicit impersonation check here anymore.
-    // If real impersonation is active, the userRole will be 'CLIENT', so this check handles it.
-    if (userRole !== 'ADMIN') {
+    // Agar impersonation chal raha hai toh Admin panel allow nahi hai (kyunki ab aap client ho)
+    if (userRole !== 'ADMIN' || impToken) {
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
   }
 
-  // C. Old /client routes protection
+  // C. Old /client routes protection (Retained from original code)
   if (pathname.startsWith('/client')) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
-  }
-
-  // ✅ UPDATED: /dashboard logic (Clean Version)
-  if (pathname === '/dashboard') {
-    if (userRole === 'ADMIN') {
-      return NextResponse.redirect(new URL('/admin', req.url));
-    }
-    return NextResponse.next();
   }
 
   return NextResponse.next();
