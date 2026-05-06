@@ -15,7 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
-  const [client, setClient] = useState<any>(null); // ✅ Added client state for Banner Name
+  const [client, setClient] = useState<any>(null);
 
   // --- Auto Backup Function ---
   const performAutoBackup = async (clientId: string) => {
@@ -69,12 +69,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         // 🚀 3. Impersonation Banner Logic (Strict Check)
-        // Token decode karke check karein ki kya ye sach mein Admin ne generate kiya hai
         const payload = JSON.parse(atob(session.access_token.split('.')[1]));
         const actuallyImpersonating = !!payload.is_impersonating;
         setIsImpersonating(actuallyImpersonating);
 
-        // Agar JWT mein flag nahi hai toh local token delete karo (Cleanup)
         if (!actuallyImpersonating && impToken) {
             localStorage.removeItem('impersonation_token');
         }
@@ -84,11 +82,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .from('clients')
           .select('*')
           .eq('id', session.user.id)
-          .maybeSingle(); // 👈 single() ki jagah maybeSingle() use karein crash se bachne ke liye
+          .maybeSingle();
 
         if (profileErr) {
             console.error("Profile fetch error:", profileErr);
-            // Agar RLS error hai toh login par na bhejein, balki wait karein
             setIsChecking(false);
             return;
         }
@@ -115,7 +112,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .single();
 
         if (mainClient) {
-          // ✅ Set Client State for Banner Name
           setClient(mainClient);
 
           // --- Permission Check (Treasurer ke liye) ---
@@ -128,7 +124,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               (path.includes('passbook') && permissions.includes('View Passbook')) ||
               (path.includes('loans') && permissions.includes('View Loans')) ||
               (path.includes('expenses') && permissions.includes('Manage Expenses')) ||
-              (path.includes('reports') && permissions.includes('View Reports'));
+              (path.includes('reports') && permissions.includes('View Reports')) ||
+              (path.includes('maturity') && permissions.includes('View Dashboard')); // 🚀 FIX: Maturity link added
 
             if (path !== '/dashboard' && !isAllowed) {
               toast.error("Access Denied: Missing Permissions");
@@ -175,12 +172,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.location.href = '/admin/dashboard';
   };
 
-  if (isChecking) return <div className="h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-900"><Loader2 className="animate-spin text-blue-600" /></div>;
+  // 🚀 FIX: Improved loading screen
+  if (isChecking) return (
+    <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 gap-4">
+      <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
+      <p className="text-sm text-slate-500 animate-pulse">Synchronizing permissions...</p>
+    </div>
+  );
   if (!isAuthorized) return null;
 
   return (
     <>
-      {/* Banner sirf tab dikhega jab Admin ne access kiya ho */}
       {isImpersonating && (
         <div className="w-full bg-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm sticky top-0 z-[100]">
           <span>🔐 Admin Mode: Viewing as {client?.name}</span>
@@ -189,10 +191,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
-        {/* Desktop Sidebar */}
         <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800"><ClientSidebar /></div>
         
-        {/* Mobile Drawer */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-[150] md:hidden">
             <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileMenuOpen(false)} />
@@ -200,10 +200,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         )}
 
-        {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
         
-        {/* Mobile Bottom Nav */}
         <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
       </div>
     </>
