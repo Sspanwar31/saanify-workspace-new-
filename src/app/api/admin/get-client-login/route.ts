@@ -22,36 +22,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ Create Admin Supabase Client (Service Role)
-    const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY!, {
-      auth: {
-        persistSession: false,
-      },
-    });
+    // ✅ USER VERIFY CLIENT (ANON KEY)
+    const supabaseAuth = createClient(
+      SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // ✅ DB ACCESS CLIENT (SERVICE ROLE)
+    const supabaseAdmin = createClient(
+      SUPABASE_URL,
+      SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
 
     // 🔥 STEP 1: Get current user from request (Bearer token)
     const authHeader = req.headers.get('authorization');
 
     if (!authHeader) {
       return NextResponse.json(
-        { error: "Unauthorized" }, // ✅ Changed message
+        { error: "Unauthorized" }, 
         { status: 401 }
       );
     }
 
     const token = authHeader.replace('Bearer ', '');
 
-    // ✅ Changed `error: userError` to just `error`
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    // ✅ Changed to supabaseAuth for correct token verification
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAuth.auth.getUser(token);
 
-    if (error || !user) {
+    if (userError || !user) {
       return NextResponse.json(
-        { error: "Invalid token" }, // ✅ Changed message
+        { error: 'Unauthorized: Invalid token' }, 
         { status: 401 }
       );
     }
 
-    // 🔥 STEP 2: Verify Admin (email match)
+    // 🔥 STEP 2: Verify Admin (email match) - Uses supabaseAdmin for DB access
     const { data: admin, error: adminError } = await supabaseAdmin
       .from('admins')
       .select('id, email')
@@ -65,7 +74,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔥 STEP 3: Get Client
+    // 🔥 STEP 3: Get Client - Uses supabaseAdmin for DB access
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('id, email, is_deleted')
