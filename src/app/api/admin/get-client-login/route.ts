@@ -29,26 +29,24 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 🔥 STEP 1: Get current user from request (cookie-based session)
+    // 🔥 STEP 1: Get current user from request (Bearer token)
     const authHeader = req.headers.get('authorization');
 
     if (!authHeader) {
       return NextResponse.json(
-        { error: 'Unauthorized: No auth header' },
+        { error: "Unauthorized" }, // ✅ Changed message
         { status: 401 }
       );
     }
 
     const token = authHeader.replace('Bearer ', '');
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseAdmin.auth.getUser(token);
+    // ✅ Changed `error: userError` to just `error`
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
 
-    if (userError || !user) {
+    if (error || !user) {
       return NextResponse.json(
-        { error: 'Unauthorized: Invalid session' },
+        { error: "Invalid token" }, // ✅ Changed message
         { status: 401 }
       );
     }
