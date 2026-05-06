@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isImpersonating, setIsImpersonating] = useState(false);
+  // 🔴 REMOVED: const [isImpersonating, setIsImpersonating] = useState(false);
   const [client, setClient] = useState<any>(null);
 
   // --- Auto Backup Function ---
@@ -45,39 +45,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       try {
         setIsChecking(true);
 
-        // 🚀 1. Check if Impersonation Token exists
-        const impToken = localStorage.getItem('impersonation_token');
-        
-        if (impToken) {
-          const { data: impData, error: impError } = await supabase.auth.setSession({ 
-            access_token: impToken, 
-            refresh_token: impToken 
-          });
+        // 🔴 REMOVED: Impersonation Token Block (setSession)
 
-          if (impError) {
-            console.error("❌ Invalid Impersonation Token:", impError.message);
-            localStorage.removeItem('impersonation_token');
-            document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-          }
-        }
+        // 🟢 6. SAFE VERSION: Final Session Verification
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        // 🚀 2. Final Session Verification
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        if (sessionError || !session) {
           router.push('/login');
           return;
         }
 
-        // 🚀 3. Impersonation Banner Logic (Strict Check)
-        const payload = JSON.parse(atob(session.access_token.split('.')[1]));
-        const actuallyImpersonating = !!payload.is_impersonating;
-        setIsImpersonating(actuallyImpersonating);
-
-        if (!actuallyImpersonating && impToken) {
-            localStorage.removeItem('impersonation_token');
-        }
+        // 🔴 REMOVED: JWT Payload Check Block
 
         // 🚀 4. Fetch Profile
+        // 🟢 7. ADDED LOG DEBUG
+        console.log("AUTH USER:", session.user.id);
+        
         const { data: userProfile, error: profileErr } = await supabase
           .from('clients')
           .select('*')
@@ -96,14 +79,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             return;
         }
 
-        // 🚀 RESOLVE TARGET SOCIETY (Owner Data) & LocalStorage Update
-        const mainOwnerId = userProfile.role === 'treasurer' ? userProfile.client_id : userProfile.id;
+        // 🟢 7. SAFE VERSION: RESOLVE TARGET SOCIETY (Owner Data)
+        const mainOwnerId =
+          userProfile.role === 'treasurer' && userProfile.client_id
+            ? userProfile.client_id
+            : userProfile.id;
 
         const storageData = {
             ...userProfile,
             resolved_client_id: mainOwnerId 
         };
-        localStorage.setItem('current_user', JSON.stringify(storageData));
+        
+        // 🟢 8. OPTIONAL CLEANUP
+        // localStorage.setItem('current_user', JSON.stringify(storageData));
 
         const { data: mainClient } = await supabase
           .from('clients')
@@ -125,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               (path.includes('loans') && permissions.includes('View Loans')) ||
               (path.includes('expenses') && permissions.includes('Manage Expenses')) ||
               (path.includes('reports') && permissions.includes('View Reports')) ||
-              (path.includes('maturity') && permissions.includes('View Dashboard')); // 🚀 FIX: Maturity link added
+              (path.includes('maturity') && permissions.includes('View Dashboard'));
 
             if (path !== '/dashboard' && !isAllowed) {
               toast.error("Access Denied: Missing Permissions");
@@ -165,14 +153,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     initializeAuth();
   }, [pathname, router]);
 
-  // Handle Back to Admin
-  const handleBack = () => {
-    localStorage.removeItem('impersonation_token');
-    document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-    window.location.href = '/admin/dashboard';
-  };
+  // 🔴 REMOVED: handleBack function
 
-  // 🚀 FIX: Improved loading screen
   if (isChecking) return (
     <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 gap-4">
       <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
@@ -182,28 +164,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthorized) return null;
 
   return (
-    <>
-      {isImpersonating && (
-        <div className="w-full bg-indigo-600 text-white px-4 py-2 flex justify-between items-center text-sm sticky top-0 z-[100]">
-          <span>🔐 Admin Mode: Viewing as {client?.name}</span>
-          <button onClick={handleBack} className="bg-white text-indigo-700 px-3 py-1 rounded text-xs font-bold shadow-sm">Exit Admin Mode</button>
+    // 🔴 REMOVED: Fragment <> & Impersonation Banner
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
+      <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800"><ClientSidebar /></div>
+      
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[150] md:hidden">
+          <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileMenuOpen(false)} />
+          <div className="relative w-72 h-full bg-white dark:bg-slate-900"><ClientSidebar /></div>
         </div>
       )}
 
-      <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
-        <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800"><ClientSidebar /></div>
-        
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-[150] md:hidden">
-            <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileMenuOpen(false)} />
-            <div className="relative w-72 h-full bg-white dark:bg-slate-900"><ClientSidebar /></div>
-          </div>
-        )}
-
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
-        
-        <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
-      </div>
-    </>
+      <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+      
+      <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
+    </div>
   );
 }
