@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase';
 
 // 🚀 EXACT MATCH: Database mein jo strings hain, wahi yahan honi chahiye
 const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, perm: 'View Dashboard' },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, perm: 'ALWAYS' },
   { label: 'Members', href: '/dashboard/members', icon: Users, perm: 'View Members' },
   { label: 'Passbook', href: '/dashboard/passbook', icon: BookOpen, perm: 'View Passbook' },
   { label: 'Loans', href: '/dashboard/loans', icon: CreditCard, perm: 'View Loans' },
@@ -27,61 +27,17 @@ const navItems = [
   { label: 'Settings', href: '/dashboard/settings', icon: Settings, ownerOnly: true },
 ];
 
-export default function ClientSidebar() {
+export default function ClientSidebar({ profile }: { profile?: any }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [userRole, setUserRole] = useState('client_admin');
-  const [allowedItems, setAllowedItems] = useState<any[] | null>(null); // Dynamic Menu
 
-  useEffect(() => {
-    const checkPermissions = async () => {
-      const stored = localStorage.getItem('current_user') || localStorage.getItem('current_member');
-      if (!stored) return;
-
-      const user = JSON.parse(stored);
-      
-      // 1. If Client Admin (Owner) -> Show All
-      if (!user.role || user.role === 'client_admin') {
-          setUserRole('client_admin');
-          setAllowedItems(navItems);
-          return;
-      }
-
-      // 2. If Treasurer -> Fetch Permissions from DB
-      if (user.role === 'treasurer') {
-          setUserRole('treasurer');
-          const { data } = await supabase
-              .from('clients')
-              .select('role_permissions')
-              .eq('id', user.client_id)
-              .single();
-
-          // Get Permissions Array
-          const perms = data?.role_permissions?.['treasurer'] || [];
-          
-          if (!perms.length) {
-            setAllowedItems(navItems);
-            return;
-          }
-          
-          // ✅ No mapping needed — perm values ab directly DB strings hain
-          const filtered = navItems.filter(item => {
-             // Owner-only items treasurer ko kabhi mat dikhao
-             if (item.ownerOnly) return false;
-             // Sirf wahi dikhao jo permissions array mein hai
-             return perms.includes(item.perm);
-          });
-          
-          setAllowedItems(filtered);
-      }
-    };
-
-    checkPermissions();
-  }, []);
+  // ✅ Layout se profile lo, warna localStorage fallback
+  const user = profile || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('current_user') || '{}') : {});
+  const userRole = user.role || 'client_admin';
+  const permissions = user.role_permissions?.treasurer || [];
 
   const handleLogout = async () => {
     localStorage.clear();
-    // Cookie bhi saaf karein
     document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     await supabase.auth.signOut();
     router.push('/login');
@@ -103,7 +59,13 @@ export default function ClientSidebar() {
         
         {/* MENU */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {(allowedItems ?? navItems).map((item) => {
+          {navItems.map((item) => {
+            // ✅ ALWAYS = har role ko dikhega, ownerOnly = sirf owner ko
+            const hasAccess = userRole !== 'treasurer' || item.perm === 'ALWAYS' || permissions.includes(item.perm);
+            const isForbiddenForStaff = item.ownerOnly && userRole === 'treasurer';
+
+            if (!hasAccess || isForbiddenForStaff) return null;
+
             const isActive = pathname === item.href;
             return (
               <Link 
