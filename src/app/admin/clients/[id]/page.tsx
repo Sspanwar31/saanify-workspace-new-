@@ -275,41 +275,37 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function (New /get-client-login API)
+  // ✅ FIX (सबसे important): handleAccess function updated with Bearer token & redirect
   const handleAccess = async () => {
-    const toastId = toast.loading("Switching account...");
+    const toastId = toast.loading("Opening Client Login...");
 
     try {
-      // 1. Call new API
+      // ✅ session lo
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Admin not logged in");
+      }
+
+      // ✅ API CALL (FIXED)
       const res = await fetch('/api/admin/get-client-login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}` // 🔥 YE HI MISSING THA
+        },
         body: JSON.stringify({ clientId: id })
       });
 
       const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to get login");
+      if (!res.ok) {
+        throw new Error(data.error || "Failed");
       }
 
-      const { email, password } = data;
-
-      // 2. Logout current admin
-      await supabase.auth.signOut();
-
-      // 3. Login as client (REAL LOGIN)
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-
-      toast.success("Logged in as client", { id: toastId });
-
-      // 4. Redirect
-      window.location.href = '/dashboard';
+      // ✅ redirect to login page with email
+      window.location.href = `/login?email=${data.email}`;
 
     } catch (e: any) {
       toast.error(e.message, { id: toastId });
