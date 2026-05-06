@@ -81,9 +81,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         // 🚀 4. Fetch Profile
         const { data: userProfile, error: profileErr } = await supabase
-          .from('clients').select('*').eq('id', session.user.id).single();
+          .from('clients')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle(); // 👈 single() ki jagah maybeSingle() use karein crash se bachne ke liye
 
-        if (profileErr || !userProfile) throw new Error("Profile not found");
+        if (profileErr) {
+            console.error("Profile fetch error:", profileErr);
+            // Agar RLS error hai toh login par na bhejein, balki wait karein
+            setIsChecking(false);
+            return;
+        }
+
+        if (!userProfile) {
+            console.warn("Profile not found in DB");
+            router.push('/login');
+            return;
+        }
 
         // 🚀 RESOLVE TARGET SOCIETY (Owner Data) & LocalStorage Update
         const mainOwnerId = userProfile.role === 'treasurer' ? userProfile.client_id : userProfile.id;
