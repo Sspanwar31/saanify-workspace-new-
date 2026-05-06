@@ -275,44 +275,44 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function (Using Supabase Session)
+  // ✅ UPDATED: handleAccess function (New /get-client-login API)
   const handleAccess = async () => {
-    const toastId = toast.loading("Bypassing Security...");
+    const toastId = toast.loading("Switching account...");
+
     try {
-        // 1. Get Admin ID safely
-        const { data: { session } } = await supabase.auth.getSession();
-        const adminId = session?.user?.id;
+      // 1. Call new API
+      const res = await fetch('/api/admin/get-client-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: id })
+      });
 
-        if (!adminId) {
-            throw new Error("Admin session not found. Please re-login.");
-        }
+      const data = await res.json();
 
-        // 2. API Call to generate JWT
-        const res = await fetch('/api/admin/impersonate-jwt', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: id, adminId: adminId })
-        });
-        
-        const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to get login");
+      }
 
-        if (data.success && data.token) {
-            // ✅ 3. Set Cookie (Middleware ke liye)
-            document.cookie = `impersonation_token=${data.token}; path=/; max-age=3600; SameSite=Lax`;
-            
-            // ✅ 4. LocalStorage (Dashboard UI ke liye)
-            localStorage.setItem('impersonation_token', data.token);
-            localStorage.setItem('current_user', JSON.stringify(data.clientData));
-            
-            toast.success("Access Granted!", { id: toastId });
-            
-            // ✅ 5. Force redirect
-            window.location.href = '/dashboard'; 
-        } else {
-            throw new Error(data.error || "Access Denied");
-        }
+      const { email, password } = data;
+
+      // 2. Logout current admin
+      await supabase.auth.signOut();
+
+      // 3. Login as client (REAL LOGIN)
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      toast.success("Logged in as client", { id: toastId });
+
+      // 4. Redirect
+      window.location.href = '/dashboard';
+
     } catch (e: any) {
-        toast.error(e.message, { id: toastId });
+      toast.error(e.message, { id: toastId });
     }
   };
 
