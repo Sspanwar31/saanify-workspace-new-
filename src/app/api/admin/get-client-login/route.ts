@@ -15,47 +15,64 @@ export async function POST(req: NextRequest) {
       auth: { persistSession: false }
     });
 
-    // 1. Admin Token Check
+    // 1. Authorization Header Check
     const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'No token' }, { status: 401 });
+    if (!authHeader) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    }
 
-    // 2. Verify Admin Identity
+    const token = authHeader.replace('Bearer ', '');
+
+    // 2. Token se user nikalen
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError || !user) return NextResponse.json({ error: 'Invalid Session' }, { status: 401 });
 
-    // 3. Confirm Admin in DB (Check ID or Email)
-    const { data: admin } = await supabaseAdmin
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid Session or Token' }, { status: 401 });
+    }
+
+    // 🚀 STEP 3: ASLI PROBLEM YAHAN HAI (Check multiple columns)
+    // Hum check karenge ki user.id match kare YA user.email match kare
+    const { data: admin, error: adminError } = await supabaseAdmin
       .from('admins')
       .select('*')
-      .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
+      .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`) 
       .maybeSingle();
 
-    if (!admin) return NextResponse.json({ error: 'Access denied: Not an admin' }, { status: 403 });
+    if (!admin) {
+      // 🎯 DEBUG LOG: Ye aapke terminal/vercel log mein dikhega
+      console.error(`❌ ACCESS DENIED for email: ${user.email} with ID: ${user.id}`);
+      return NextResponse.json({ 
+        error: `Access denied: ${user.email} is not registered in the admins table.`,
+        debugEmail: user.email 
+      }, { status: 403 });
+    }
 
-    // 4. Get Client Email
-    const { data: client } = await supabaseAdmin.from('clients').select('email').eq('id', clientId).single();
+    // 4. Get Target Client
+    const { data: client } = await supabaseAdmin
+      .from('clients')
+      .select('email')
+      .eq('id', clientId)
+      .single();
+
     if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
 
-    // 🚀 ASLI STEP: Generate Official Access Link
-    // Is link par click karte hi user (Admin) automatically Client bankar login ho jayega
+    // 5. Official Link Generation
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: client.email,
-      options: { 
-        // Login ke baad Dashboard par bhejo aur metadata mein impersonation mark karo
-        redirectTo: `${new URL(req.url).origin}/dashboard?impersonate=true` 
-      }
+      options: { redirectTo: `${new URL(req.url).origin}/dashboard?impersonate=true` }
     });
 
     if (linkError) throw linkError;
 
     return NextResponse.json({
       success: true,
-      url: linkData.properties.action_link // Ye asli login link hai
+      url: linkData.properties.action_link,
+      email: client.email
     });
 
   } catch (err: any) {
+    console.error("🔥 API ERROR:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
