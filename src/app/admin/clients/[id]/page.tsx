@@ -275,7 +275,7 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function with Magic Link & localStorage
+  // ✅ UPDATED: handleAccess function with Flag Setting & localStorage
   const handleAccess = async () => {
     const toastId = toast.loading("Generating Secure Access...");
     try {
@@ -295,10 +295,10 @@ export default function ClientProfile() {
       if (res.ok && data.url) {
         toast.success("Access Granted! Redirecting...");
         
-        // ✅ 1. Mark as impersonating in local storage taaki banner dikhe
+        // ✅ 1. Redirect se pehle flag set karein
         localStorage.setItem('is_admin_impersonating', 'true');
         
-        // ✅ 2. Open the official magic link
+        // ✅ 2. Redirect to the magic link
         window.location.href = data.url; 
       } else {
         throw new Error(data.error || "Failed to generate access");
