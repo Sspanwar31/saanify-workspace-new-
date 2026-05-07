@@ -32,7 +32,11 @@ export async function POST(req: NextRequest) {
     const supabaseAdmin = createClient(
       SUPABASE_URL,
       SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
+      {
+        auth: {
+          persistSession: false,
+        },
+      }
     );
 
     // 🔥 STEP 1: Get current user from request (Bearer token)
@@ -40,14 +44,14 @@ export async function POST(req: NextRequest) {
 
     if (!authHeader) {
       return NextResponse.json(
-        { error: "Unauthorized" }, 
+        { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
     const token = authHeader.replace('Bearer ', '');
 
-    // ✅ Changed to supabaseAuth for correct token verification
+    // ✅ Verify token properly
     const {
       data: { user },
       error: userError,
@@ -55,16 +59,16 @@ export async function POST(req: NextRequest) {
 
     if (userError || !user) {
       return NextResponse.json(
-        { error: 'Unauthorized: Invalid token' }, 
+        { error: 'Unauthorized: Invalid token' },
         { status: 401 }
       );
     }
 
-    // 🔥 STEP 2: Verify Admin (email match) - Uses supabaseAdmin for DB access
+    // 🔥 STEP 2: Verify Admin using auth_user_id
     const { data: admin, error: adminError } = await supabaseAdmin
       .from('admins')
       .select('id, email')
-      .eq('email', user.email)
+      .eq('auth_user_id', user.id)
       .single();
 
     if (adminError || !admin) {
@@ -74,7 +78,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔥 STEP 3: Get Client - Uses supabaseAdmin for DB access
+    // 🔥 STEP 3: Get Client
     const { data: client, error: clientError } = await supabaseAdmin
       .from('clients')
       .select('id, email, is_deleted')
@@ -95,7 +99,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ FINAL RESPONSE (NO TOKENS)
+    // ✅ FINAL RESPONSE
     return NextResponse.json({
       success: true,
       email: client.email,
@@ -104,6 +108,7 @@ export async function POST(req: NextRequest) {
 
   } catch (err: any) {
     console.error('🔥 API ERROR:', err.message);
+
     return NextResponse.json(
       { error: err.message },
       { status: 500 }
