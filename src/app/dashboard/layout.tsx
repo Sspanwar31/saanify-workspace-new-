@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { Loader2 } from 'lucide-react'; 
+import { ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'; 
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 
@@ -14,7 +14,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  // 🔴 REMOVED: const [isImpersonating, setIsImpersonating] = useState(false);
+  
+  // ✅ ADDED BACK: Impersonation State
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  
   const [client, setClient] = useState<any>(null);
 
   // --- Auto Backup Function ---
@@ -41,11 +44,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   useEffect(() => {
+    // ✅ ADDED BACK: Check Impersonation Logic
+    const checkImpersonation = () => {
+      // 1. Check if URL has the flag or LocalStorage has it
+      const params = new URLSearchParams(window.location.search);
+      const hasUrlFlag = params.get('impersonate') === 'true';
+      const hasStorageFlag = localStorage.getItem('is_admin_impersonating') === 'true';
+
+      if (hasUrlFlag || hasStorageFlag) {
+        setIsImpersonating(true);
+        localStorage.setItem('is_admin_impersonating', 'true'); // Persist it
+      }
+    };
+
     const initializeAuth = async () => {
       try {
         setIsChecking(true);
-
-        // 🔴 REMOVED: Impersonation Token Block (setSession)
 
         // 🟢 6. SAFE VERSION: Final Session Verification
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -55,9 +69,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return;
         }
 
-        // 🔴 REMOVED: JWT Payload Check Block
-
-        // 🚀 4. Fetch Profile
         // 🟢 7. ADDED LOG DEBUG
         console.log("AUTH USER:", session.user.id);
         
@@ -90,9 +101,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             resolved_client_id: mainOwnerId 
         };
         
-        // 🟢 8. OPTIONAL CLEANUP
-        // localStorage.setItem('current_user', JSON.stringify(storageData));
-
         const { data: mainClient } = await supabase
           .from('clients')
           .select('*')
@@ -150,10 +158,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     };
 
-    initializeAuth();
+    checkImpersonation(); // ✅ Run this first
+    initializeAuth();      // ✅ Then run Auth
   }, [pathname, router]);
 
-  // 🔴 REMOVED: handleBack function
+  // ✅ ADDED BACK: Back to Admin Function
+  const handleBackToAdmin = () => {
+    localStorage.removeItem('is_admin_impersonating');
+    // Direct Admin Dashboard par bhejein
+    window.location.href = '/admin/clients'; 
+  };
 
   if (isChecking) return (
     <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 gap-4">
@@ -164,20 +178,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthorized) return null;
 
   return (
-    // 🔴 REMOVED: Fragment <> & Impersonation Banner
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
-      <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800"><ClientSidebar /></div>
-      
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[150] md:hidden">
-          <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileMenuOpen(false)} />
-          <div className="relative w-72 h-full bg-white dark:bg-slate-900"><ClientSidebar /></div>
+    // ✅ Added Fragment Wrapper <> to include Banner
+    <>
+      {/* ✅ Purple Banner for Admin */}
+      {isImpersonating && (
+        <div className="w-full bg-gradient-to-r from-purple-700 to-indigo-800 text-white px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[999]">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-purple-200" />
+            <span className="font-semibold tracking-wide">ADMIN VIEW: Actively managing this society</span>
+          </div>
+          <button 
+            onClick={handleBackToAdmin}
+            className="bg-white text-purple-800 px-4 py-1.5 rounded-full text-xs font-bold hover:bg-purple-50 transition-all flex items-center gap-2 shadow-sm"
+          >
+            <ArrowLeft className="w-3 h-3" /> Exit & Back to Admin
+          </button>
         </div>
       )}
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
-      
-      <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
-    </div>
+      <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
+        <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800"><ClientSidebar /></div>
+        
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[150] md:hidden">
+            <div className="fixed inset-0 bg-black/60" onClick={() => setIsMobileMenuOpen(false)} />
+            <div className="relative w-72 h-full bg-white dark:bg-slate-900"><ClientSidebar /></div>
+          </div>
+        )}
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+        
+        <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
+      </div>
+    </>
   );
 }
