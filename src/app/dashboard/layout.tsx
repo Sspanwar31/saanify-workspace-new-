@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     }
     setIsMobileMenuOpen(false);
-  }, [pathname, userProfile]);
+  }, [pathname, userProfile, router]);
 
   const handleBackToAdmin = () => {
     localStorage.removeItem('is_admin_impersonating');
@@ -128,11 +128,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         {/* Sidebar remains stable on navigation */}
         <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800">
+           {/* 🚀 Sidebar ko profile pass karein taaki wo flicker na kare */}
            <ClientSidebar profile={userProfile} /> 
         </div>
         
         <main className="flex-1 overflow-y-auto relative p-4 md:p-8">
-          {/* Children render immediately if authorized */}
+          {/* 🚀 Sirf aur sirf Authorized hone par content dikhayein */}
           {(isAuthorized || userProfile) && children}
         </main>
         
