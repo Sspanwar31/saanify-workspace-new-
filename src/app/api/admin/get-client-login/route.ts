@@ -1,127 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ ENV
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  (process.env.SUPABASE_SERVICE_ROLE_KEY_B64
-    ? Buffer.from(process.env.SUPABASE_SERVICE_ROLE_KEY_B64, 'base64')
-        .toString('utf-8')
-        .trim()
-    : null);
+const getServiceKey = () => {
+  const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
+  if (b64) return b64.startsWith('eyJ') ? b64 : Buffer.from(b64, 'base64').toString().trim();
+  return process.env.SUPABASE_SERVICE_ROLE_KEY;
+};
 
 export async function POST(req: NextRequest) {
   try {
     const { clientId } = await req.json();
+    const serviceKey = getServiceKey();
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey!, {
+      auth: { persistSession: false }
+    });
 
-    if (!clientId) {
-      return NextResponse.json(
-        { error: 'clientId required' },
-        { status: 400 }
-      );
-    }
-
-    // ✅ USER VERIFY CLIENT (ANON KEY)
-    const supabaseAuth = createClient(
-      SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    // ✅ DB ACCESS CLIENT (SERVICE ROLE)
-    const supabaseAdmin = createClient(
-      SUPABASE_URL,
-      SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          persistSession: false,
-        },
-      }
-    );
-
-    // 🔥 STEP 1: Get current user from request (Bearer token)
+    // 1. Admin Token Check
     const authHeader = req.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token) return NextResponse.json({ error: 'No token' }, { status: 401 });
 
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // 2. Verify Admin Identity
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !user) return NextResponse.json({ error: 'Invalid Session' }, { status: 401 });
 
-    const token = authHeader.replace('Bearer ', '');
-
-    // ✅ Verify token properly
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseAuth.auth.getUser(token);
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    // 🔥 STEP 2: Verify Admin (Direct ID Match)
-    // CHANGED: .single() to .maybeSingle()
-    const { data: admin, error: adminError } = await supabaseAdmin
+    // 3. Confirm Admin in DB (Check ID or Email)
+    const { data: admin } = await supabaseAdmin
       .from('admins')
-      .select('id, email, role, status')
-      .eq('id', user.id)
+      .select('*')
+      .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
       .maybeSingle();
 
-    // 🟢 UPDATED DEBUG LOGS
-    console.log("========== DEBUG ==========");
-    console.log("AUTH USER:", user);
-    console.log("AUTH USER ID:", user?.id);
-    console.log("AUTH EMAIL:", user?.email);
-    console.log("ADMIN FOUND:", admin);
-    console.log("ADMIN ERROR:", adminError);
-    console.log("========== END DEBUG ==========");
+    if (!admin) return NextResponse.json({ error: 'Access denied: Not an admin' }, { status: 403 });
 
-    if (adminError || !admin) {
-      return NextResponse.json(
-        { error: 'Access denied: Not an admin' },
-        { status: 403 }
-      );
-    }
+    // 4. Get Client Email
+    const { data: client } = await supabaseAdmin.from('clients').select('email').eq('id', clientId).single();
+    if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
 
-    // 🔥 STEP 3: Get Client
-    const { data: client, error: clientError } = await supabaseAdmin
-      .from('clients')
-      .select('id, email, is_deleted')
-      .eq('id', clientId)
-      .maybeSingle();
+    // 🚀 ASLI STEP: Generate Official Access Link
+    // Is link par click karte hi user (Admin) automatically Client bankar login ho jayega
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: client.email,
+      options: { 
+        // Login ke baad Dashboard par bhejo aur metadata mein impersonation mark karo
+        redirectTo: `${new URL(req.url).origin}/dashboard?impersonate=true` 
+      }
+    });
 
-    if (clientError || !client) {
-      return NextResponse.json(
-        { error: 'Client not found' },
-        { status: 404 }
-      );
-    }
+    if (linkError) throw linkError;
 
-    if (client.is_deleted) {
-      return NextResponse.json(
-        { error: 'Client is deleted' },
-        { status: 400 }
-      );
-    }
-
-    // ✅ FINAL RESPONSE
     return NextResponse.json({
       success: true,
-      email: client.email,
-      clientId: client.id,
+      url: linkData.properties.action_link // Ye asli login link hai
     });
 
   } catch (err: any) {
-    console.error('🔥 API ERROR:', err.message);
-
-    return NextResponse.json(
-      { error: err.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
