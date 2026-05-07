@@ -65,15 +65,21 @@ export async function POST(req: NextRequest) {
     }
 
     // 🔥 STEP 2: Verify Admin (Direct ID Match)
+    // CHANGED: .single() to .maybeSingle()
     const { data: admin, error: adminError } = await supabaseAdmin
       .from('admins')
       .select('id, email, role, status')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    // 🟢 TEMPORARY DEBUG LOGS
-    console.log("AUTH USER ID:", user.id);
+    // 🟢 UPDATED DEBUG LOGS
+    console.log("========== DEBUG ==========");
+    console.log("AUTH USER:", user);
+    console.log("AUTH USER ID:", user?.id);
+    console.log("AUTH EMAIL:", user?.email);
     console.log("ADMIN FOUND:", admin);
+    console.log("ADMIN ERROR:", adminError);
+    console.log("========== END DEBUG ==========");
 
     if (adminError || !admin) {
       return NextResponse.json(
