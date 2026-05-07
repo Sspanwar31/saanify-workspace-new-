@@ -275,38 +275,34 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ FIX (सबसे important): handleAccess function updated with Bearer token & redirect
+  // ✅ UPDATED: handleAccess function with Magic Link & localStorage
   const handleAccess = async () => {
-    const toastId = toast.loading("Opening Client Login...");
-
+    const toastId = toast.loading("Generating Secure Access...");
     try {
-      // ✅ session lo
       const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        throw new Error("Admin not logged in");
-      }
-
-      // ✅ API CALL (FIXED)
+      
       const res = await fetch('/api/admin/get-client-login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}` // 🔥 YE HI MISSING THA
+          'Authorization': `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({ clientId: id })
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed");
+      if (res.ok && data.url) {
+        toast.success("Access Granted! Redirecting...");
+        
+        // ✅ 1. Mark as impersonating in local storage taaki banner dikhe
+        localStorage.setItem('is_admin_impersonating', 'true');
+        
+        // ✅ 2. Open the official magic link
+        window.location.href = data.url; 
+      } else {
+        throw new Error(data.error || "Failed to generate access");
       }
-
-      // ✅ redirect to login page with email
-      window.location.href = `/login?email=${data.email}`;
-
     } catch (e: any) {
       toast.error(e.message, { id: toastId });
     }
