@@ -71,6 +71,10 @@ export async function POST(req: NextRequest) {
       .eq('auth_user_id', user.id)
       .single();
 
+    // 🟢 TEMPORARY DEBUG LOGS
+    console.log("AUTH USER ID:", user.id);
+    console.log("ADMIN FOUND:", admin);
+
     if (adminError || !admin) {
       return NextResponse.json(
         { error: 'Access denied: Not an admin' },
