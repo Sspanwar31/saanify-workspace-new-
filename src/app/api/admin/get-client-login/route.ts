@@ -64,11 +64,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔥 STEP 2: Verify Admin using auth_user_id
+    // 🔥 STEP 2: Verify Admin (Direct ID Match)
     const { data: admin, error: adminError } = await supabaseAdmin
       .from('admins')
-      .select('id, email')
-      .eq('auth_user_id', user.id)
+      .select('id, email, role, status')
+      .eq('id', user.id)
       .single();
 
     // 🟢 TEMPORARY DEBUG LOGS
