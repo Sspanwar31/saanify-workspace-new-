@@ -47,18 +47,54 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // 🚀 NEW FIX: Exit Impersonation Function
-  const handleExitImpersonation = () => {
-    // 1. Clear Impersonation Data
-    localStorage.removeItem('is_admin_impersonating');
-    localStorage.removeItem('impersonation_client_id');
-    localStorage.removeItem('impersonation_user');
-    
-    // 2. Reset Theme to Default (Optional, but safe)
-    document.documentElement.classList.remove('dark');
+  // 🔹 FIXED: handleBackToAdmin with Verification
+  const handleBackToAdmin = async () => {
+    const backupSession = localStorage.getItem('backup_admin_session');
 
-    // 3. Navigate back to Admin List
-    router.push('/admin/clients');
+    if (backupSession) {
+      try {
+        const { access_token, refresh_token } = JSON.parse(backupSession);
+
+        // 1. Admin Session Restore karein
+        const { data, error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        });
+
+        if (error) throw error;
+
+        // 2. ✅ VERIFICATION CHECK: Check karein ki session sahi se restore hui ya nahi
+        // Agar user nahi mila, to iska matlab Token expire ho gaya ya galat hai
+        if (!data.session || !data.session.user) {
+          throw new Error("Session Restore Failed: Invalid Token");
+        }
+
+        toast.success("Back to Admin Mode");
+
+        // 3. Cleanup LocalStorage
+        localStorage.removeItem('backup_admin_session');
+        localStorage.removeItem('is_admin_impersonating');
+        localStorage.removeItem('impersonation_client_id');
+        localStorage.removeItem('impersonation_user');
+
+        // 4. ⚡ FORCE RELOAD
+        // Ye sabse zaroori hai taaki saare React components fresh state mein aa jayein
+        // Aur koi bhi 'Ghost' Client token memory mein na rahe
+        window.location.href = '/admin/clients';
+
+      } catch (e: any) {
+        console.error("Back to Admin Error:", e);
+        toast.error("Session expired or invalid. Please Login again.");
+        
+        // Agar restore fail hua, to user ko logout karke login page par bhejo
+        await supabase.auth.signOut();
+        localStorage.clear();
+        router.push('/login');
+      }
+    } else {
+      // Fallback: Agar backup hi nahi mila
+      router.push('/admin/clients');
+    }
   };
 
   // ✅ UPDATED FETCH FUNCTION
@@ -327,7 +363,7 @@ export default function ClientProfile() {
       {/* ✅ FIX: Back Button Logic Changed */}
       {/* Link ko hata kar Button with onClick lagaya hai */}
       <button 
-        onClick={handleExitImpersonation}
+        onClick={handleBackToAdmin}
         className="text-sm text-slate-500 hover:text-blue-600 flex items-center gap-2 font-medium transition-colors cursor-pointer"
       >
         <ArrowLeft className="w-4 h-4"/> Back to Clients
