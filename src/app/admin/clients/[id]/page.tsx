@@ -275,7 +275,7 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function with Flag Setting & localStorage
+  // ✅ UPDATED: handleAccess function with New LocalStorage Logic
   const handleAccess = async () => {
     const toastId = toast.loading("Generating Secure Access...");
     try {
@@ -297,6 +297,7 @@ export default function ClientProfile() {
         
         // ✅ 1. Redirect se pehle flag set karein
         localStorage.setItem('is_admin_impersonating', 'true');
+        localStorage.setItem('impersonation_client_id', id);   // <--- ADDED THIS LINE
         
         // ✅ 2. Redirect to the magic link
         window.location.href = data.url; 
