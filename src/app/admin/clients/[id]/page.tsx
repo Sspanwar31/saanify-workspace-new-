@@ -289,8 +289,12 @@ export default function ClientProfile() {
       };
       localStorage.setItem('backup_admin_session', JSON.stringify(adminSession));
 
-      // ✅ STEP 2: API SE MAGIC LINK MANGWAYEIN
-      // Note: API ab 'url' return karegi, direct token nahi
+      // ✅ STEP 2 (MOST IMPORTANT): IMPERSONATION FLAGS LAGAYEIN
+      // Banner dikhan ke liye ye zaroori hai taaki DashboardLayout ko pata chale ki ye Admin hai
+      localStorage.setItem('is_admin_impersonating', 'true');
+      localStorage.setItem('impersonation_client_id', id); // Target Client ID store kar liya
+
+      // ✅ STEP 3: API SE MAGIC LINK MANGWAYEIN
       const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
         headers: {
@@ -305,8 +309,7 @@ export default function ClientProfile() {
       if (res.ok && data.url) {
         toast.success("Redirecting to Client Panel...");
         
-        // ✅ STEP 3: REDIRECT
-        // Hum page redirect kar rahe hain. Ye Supabase login handle karega.
+        // ✅ STEP 4: REDIRECT
         window.location.href = data.url; 
       } else {
         throw new Error(data.error || "Failed to generate access");
