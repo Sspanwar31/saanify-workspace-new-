@@ -30,7 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const hasInitialized = useRef(false); 
 
-  // 🚀 1. INITIAL AUTH & BACKGROUND SYNC
+  // 🚀 1. CLEAN AUTH LOGIC (NO LOCAL STORAGE ID SWITCHING)
   useEffect(() => {
     const syncAuth = async () => {
       try {
@@ -40,50 +40,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return;
         }
 
-        // Step 2: ADD NEW IMPERSONATION CLIENT LOGIC
-        // ✅ Impersonation Client ID check karein
-        const impersonationClientId = localStorage.getItem('impersonation_client_id');
+        // ✅ FIX: Banner Logic check only via flag, not ID
+        const isAdminImpersonating = localStorage.getItem('is_admin_impersonating') === 'true';
+        setIsImpersonating(isAdminImpersonating);
 
-        // ✅ Agar impersonate kar rahe hain to target client ID use karein, nahi to admin/session user ID
-        const targetClientId = impersonationClientId || session.user.id;
-
-        // ✅ Admin impersonation state set karein
-        if (impersonationClientId) {
-          setIsImpersonating(true);
-          localStorage.setItem('is_admin_impersonating', 'true');
-        } else {
-          setIsImpersonating(false);
-        }
-
-        // ✅ Target client (ya admin) ka profile load karein
+        // ✅ FIX: ALWAYS use REAL session ID. No fake targetClientId logic.
+        // If session is Client -> Load Client.
+        // If session is Admin (accidental load) -> Load Admin from clients table (if exists as a client).
         const { data: profile } = await supabase
           .from('clients')
           .select('*')
-          .eq('id', targetClientId)
+          .eq('id', session.user.id)
           .maybeSingle();
 
         if (profile) {
           const activeSocietyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
           const updatedUser = { ...profile, resolved_client_id: activeSocietyId };
           
-          // ✅ Storage Logic: Impersonation user ko alag store karein taaki admin user overwrite na ho
-          if (impersonationClientId) {
-            localStorage.setItem(
-              'impersonation_user',
-              JSON.stringify(updatedUser)
-            );
-          } else {
-            // Admin wapas aaya hai to normal user update karein
-            localStorage.setItem(
-              'current_user',
-              JSON.stringify(updatedUser)
-            );
+          // Storage Logic: Just keep current user in sync
+          localStorage.setItem('current_user', JSON.stringify(updatedUser));
+          
+          // Keep impersonation_user separate if needed, but profile is now driven by session
+          if(isAdminImpersonating) {
+             localStorage.setItem('impersonation_user', JSON.stringify(updatedUser));
           }
 
           setUserProfile(updatedUser);
           setIsAuthorized(true);
 
-          // Theme Logic: Profile ke hisaab se theme set karein
+          // Theme Logic
           if (profile.theme === 'dark') {
             document.documentElement.classList.add('dark');
           } else {
@@ -126,21 +111,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
-  // ✅ BACK BUTTON FIX (MAIN SOLUTION)
-  const handleBackToAdmin = () => {
-    // 1. Impersonation data clear karein
-    localStorage.removeItem('is_admin_impersonating');
-    localStorage.removeItem('impersonation_client_id');
-    localStorage.removeItem('impersonation_user');
+  // ✅ UPDATED BACK BUTTON LOGIC
+  const handleBackToAdmin = async () => {
+    const backupSession = localStorage.getItem('backup_admin_session');
 
-    // 2. Theme reset karein (optional safety, as hard reload will handle it)
-    document.documentElement.classList.remove('dark');
+    if (backupSession) {
+      try {
+        const { access_token, refresh_token } = JSON.parse(backupSession);
 
-    // 3. ⚡ HARD NAVIGATION: 
-    // Router.replace ki jagah window.location.href use rahe taaki page 
-    // puri tarah se reload ho aur Admin panel fresh state mein load ho.
-    // Isse 'stale client data' aur 'theme issue' dono solve ho jayenge.
-    window.location.href = '/admin/dashboard';
+        // 1. Clear old auth completely
+        await supabase.auth.signOut();
+
+        // 2. Clear ALL Supabase local keys
+        Object.keys(localStorage).forEach((key) => {
+          if (key.includes('supabase')) {
+            localStorage.removeItem(key);
+          }
+        });
+
+        // 3. Restore admin session
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        });
+
+        if (error) throw error;
+
+        // 4. Clean up flags
+        localStorage.removeItem('is_admin_impersonating');
+        localStorage.removeItem('impersonation_user');
+
+        // 5. THEME FIX: Force remove classes before redirect
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.remove('light');
+
+        // 6. Small delay then Hard reload to Admin
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        window.location.href = '/admin/clients';
+
+      } catch (e: any) {
+        console.error("Back to Admin Error:", e);
+        toast.error("Failed to restore session. Please Login again.");
+        await supabase.auth.signOut();
+        localStorage.clear();
+        router.push('/login');
+      }
+    } else {
+      router.push('/admin/clients');
+    }
   };
 
   // Asli Fast UI Logic
