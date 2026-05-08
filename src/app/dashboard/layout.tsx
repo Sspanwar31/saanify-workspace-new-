@@ -41,16 +41,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         // Step 2: ADD NEW IMPERSONATION CLIENT LOGIC
-        // ✅ Impersonation Client ID
-        const impersonationClientId =
-          localStorage.getItem('impersonation_client_id');
+        // ✅ Impersonation Client ID check karein
+        const impersonationClientId = localStorage.getItem('impersonation_client_id');
 
-        // ✅ If impersonating use target client
-        // otherwise use logged-in user id
-        const targetClientId =
-          impersonationClientId || session.user.id;
+        // ✅ Agar impersonate kar rahe hain to target client ID use karein, nahi to admin/session user ID
+        const targetClientId = impersonationClientId || session.user.id;
 
-        // ✅ Admin impersonation state
+        // ✅ Admin impersonation state set karein
         if (impersonationClientId) {
           setIsImpersonating(true);
           localStorage.setItem('is_admin_impersonating', 'true');
@@ -58,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setIsImpersonating(false);
         }
 
-        // ✅ Load target client profile
+        // ✅ Target client (ya admin) ka profile load karein
         const { data: profile } = await supabase
           .from('clients')
           .select('*')
@@ -69,13 +66,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           const activeSocietyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
           const updatedUser = { ...profile, resolved_client_id: activeSocietyId };
           
-          // ✅ REPLACE WITH THIS (Storage Logic)
+          // ✅ Storage Logic: Impersonation user ko alag store karein taaki admin user overwrite na ho
           if (impersonationClientId) {
             localStorage.setItem(
               'impersonation_user',
               JSON.stringify(updatedUser)
             );
           } else {
+            // Admin wapas aaya hai to normal user update karein
             localStorage.setItem(
               'current_user',
               JSON.stringify(updatedUser)
@@ -85,9 +83,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setUserProfile(updatedUser);
           setIsAuthorized(true);
 
-          // Theme Logic
-          if (profile.theme === 'dark') document.documentElement.classList.add('dark');
-          else document.documentElement.classList.remove('dark');
+          // Theme Logic: Profile ke hisaab se theme set karein
+          if (profile.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
           
           if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') router.push('/login');
         }
@@ -125,21 +126,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
-  // ✅ AB BACK BUTTON FIX
+  // ✅ BACK BUTTON FIX (MAIN SOLUTION)
   const handleBackToAdmin = () => {
+    // 1. Impersonation data clear karein
     localStorage.removeItem('is_admin_impersonating');
     localStorage.removeItem('impersonation_client_id');
     localStorage.removeItem('impersonation_user');
 
-    // ✅ RESET THEME
+    // 2. Theme reset karein (optional safety, as hard reload will handle it)
     document.documentElement.classList.remove('dark');
 
-    router.replace('/admin/dashboard');
-
-    // ✅ FORCE CLEAN RELOAD
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
+    // 3. ⚡ HARD NAVIGATION: 
+    // Router.replace ki jagah window.location.href use rahe taaki page 
+    // puri tarah se reload ho aur Admin panel fresh state mein load ho.
+    // Isse 'stale client data' aur 'theme issue' dono solve ho jayenge.
+    window.location.href = '/admin/dashboard';
   };
 
   // Asli Fast UI Logic
@@ -159,7 +160,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <ShieldCheck className="w-4 h-4 text-purple-200" />
             <span className="font-semibold tracking-wide">ADMIN VIEW</span>
           </div>
-          <button onClick={handleBackToAdmin} className="bg-white text-purple-800 px-4 py-1.5 rounded-full text-xs font-bold hover:bg-purple-50 transition-all flex items-center gap-2">
+          <button 
+            onClick={handleBackToAdmin} 
+            className="bg-white text-purple-800 px-4 py-1.5 rounded-full text-xs font-bold hover:bg-purple-50 transition-all flex items-center gap-2"
+          >
             <ArrowLeft className="w-3 h-3" /> Back to Admin
           </button>
         </div>
