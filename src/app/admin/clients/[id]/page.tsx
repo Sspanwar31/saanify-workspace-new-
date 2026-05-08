@@ -273,45 +273,46 @@ export default function ClientProfile() {
       }
   };
 
-  // Frontend Logic (Updated handleAccess)
   const handleAccess = async () => {
+    const toastId = toast.loading("Generating Secure Access...");
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Admin Session Backup
-      localStorage.setItem('backup_admin_session', JSON.stringify({
-        access_token: session?.access_token,
-        refresh_token: session?.refresh_token
-      }));
+      if (!session?.access_token) {
+        throw new Error("Admin session not found");
+      }
 
-      // Naya Swap API Call
+      // ✅ STEP 1: SAVE ADMIN SESSION (Backup taaki Back button kaam kare)
+      const adminSession = {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      };
+      localStorage.setItem('backup_admin_session', JSON.stringify(adminSession));
+
+      // ✅ STEP 2: API SE MAGIC LINK MANGWAYEIN
+      // Note: API ab 'url' return karegi, direct token nahi
       const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}` // Admin token pass kar rahe hain
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({ clientId: id })
       });
 
       const data = await res.json();
 
-      if (res.ok && data.access_token) {
-        toast.success("Access Granted! Switching session...");
+      if (res.ok && data.url) {
+        toast.success("Redirecting to Client Panel...");
         
-        // Set Client Session
-        await supabase.auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token
-        });
-
-        // Redirect to Client Dashboard (No Reload needed)
-        window.location.href = '/dashboard'; 
+        // ✅ STEP 3: REDIRECT
+        // Hum page redirect kar rahe hain. Ye Supabase login handle karega.
+        window.location.href = data.url; 
       } else {
-        throw new Error(data.error || "Failed to swap session");
+        throw new Error(data.error || "Failed to generate access");
       }
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message, { id: toastId });
     }
   };
 
