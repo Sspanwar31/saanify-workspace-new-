@@ -275,12 +275,17 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function with New LocalStorage Logic
+  // ✅ UPDATED: handleAccess function with Admin Token Storage
   const handleAccess = async () => {
     const toastId = toast.loading("Generating Secure Access...");
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
+      localStorage.setItem(
+        'admin_access_token',
+        session?.access_token || ''
+      );
+
       const res = await fetch('/api/admin/get-client-login', {
         method: 'POST',
         headers: {
@@ -297,7 +302,7 @@ export default function ClientProfile() {
         
         // ✅ 1. Redirect se pehle flag set karein
         localStorage.setItem('is_admin_impersonating', 'true');
-        localStorage.setItem('impersonation_client_id', id);   // <--- ADDED THIS LINE
+        localStorage.setItem('impersonation_client_id', id);
         
         // ✅ 2. Redirect to the magic link
         window.location.href = data.url; 
