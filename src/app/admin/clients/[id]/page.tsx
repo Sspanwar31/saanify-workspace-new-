@@ -47,49 +47,12 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // 🔹 UPDATED: handleBackToAdmin with your requested flow
+  // 🔹 UPDATED: handleBackToAdmin
+  // Since we are opening the client in a new tab, the admin tab stays alive.
+  // We simply navigate back to the list.
   const handleBackToAdmin = async () => {
-    const backupSession = localStorage.getItem('backup_admin_session');
-
-    if (backupSession) {
-      try {
-        const { access_token, refresh_token } = JSON.parse(backupSession);
-
-        // 1. Clear old auth completely
-        await supabase.auth.signOut();
-
-        // 2. Clear ALL Supabase local keys
-        Object.keys(localStorage).forEach((key) => {
-          if (key.includes('supabase')) {
-            localStorage.removeItem(key);
-          }
-        });
-
-        // 3. Restore admin session
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token
-        });
-
-        if (error) throw error;
-
-        // 4. Small delay
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // 5. Hard reload
-        window.location.replace('/admin/clients');
-
-      } catch (e: any) {
-        console.error("Back to Admin Error:", e);
-        toast.error("Failed to restore session. Please Login again.");
-        await supabase.auth.signOut();
-        localStorage.clear();
-        router.push('/login');
-      }
-    } else {
-      // Fallback: Agar backup hi nahi mila
-      router.push('/admin/clients');
-    }
+    // Logic Removed: No more session backup/restore needed
+    router.push('/admin/clients');
   };
 
   // ✅ UPDATED FETCH FUNCTION
@@ -313,19 +276,7 @@ export default function ClientProfile() {
         throw new Error("Admin session not found");
       }
 
-      // ✅ STEP 1: SAVE ADMIN SESSION (Backup taaki Back button kaam kare)
-      const adminSession = {
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      };
-      localStorage.setItem('backup_admin_session', JSON.stringify(adminSession));
-
-      // ✅ STEP 2 (MOST IMPORTANT): IMPERSONATION FLAGS LAGAYEIN
-      // Banner dikhan ke liye ye zaroori hai taaki DashboardLayout ko pata chale ki ye Admin hai
-      localStorage.setItem('is_admin_impersonating', 'true');
-      localStorage.setItem('impersonation_client_id', id); // Target Client ID store kar liya
-
-      // ✅ STEP 3: API SE MAGIC LINK MANGWAYEIN
+      // STEP 1: API SE MAGIC LINK MANGWAYEIN
       const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
         headers: {
@@ -338,10 +289,10 @@ export default function ClientProfile() {
       const data = await res.json();
 
       if (res.ok && data.url) {
-        toast.success("Redirecting to Client Panel...");
+        toast.success("Opening Client Panel in new tab...");
         
-        // ✅ STEP 4: REDIRECT
-        window.location.href = data.url; 
+        // ✅ STEP 2: OPEN NEW TAB (Window remains here, no session swap)
+        window.open(data.url, '_blank');
       } else {
         throw new Error(data.error || "Failed to generate access");
       }
@@ -355,7 +306,7 @@ export default function ClientProfile() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 min-h-screen">
-      {/* ✅ FIX: Back Button Logic Changed */}
+      {/* ✅ Back Button Logic Changed */}
       {/* Link ko hata kar Button with onClick lagaya hai */}
       <button 
         onClick={handleBackToAdmin}
