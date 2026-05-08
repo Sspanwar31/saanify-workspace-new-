@@ -47,7 +47,7 @@ export default function ClientProfile() {
     health: 0
   });
 
-  // 🔹 FIXED: handleBackToAdmin with Verification
+  // 🔹 UPDATED: handleBackToAdmin with your requested flow
   const handleBackToAdmin = async () => {
     const backupSession = localStorage.getItem('backup_admin_session');
 
@@ -55,43 +55,33 @@ export default function ClientProfile() {
       try {
         const { access_token, refresh_token } = JSON.parse(backupSession);
 
-        // ✅ Clean up current local session first
-        await supabase.auth.signOut({
-          scope: 'local'
+        // 1. Clear old auth completely
+        await supabase.auth.signOut();
+
+        // 2. Clear ALL Supabase local keys
+        Object.keys(localStorage).forEach((key) => {
+          if (key.includes('supabase')) {
+            localStorage.removeItem(key);
+          }
         });
 
-        // 1. Admin Session Restore karein
-        const { data, error } = await supabase.auth.setSession({
+        // 3. Restore admin session
+        const { error } = await supabase.auth.setSession({
           access_token,
           refresh_token
         });
 
         if (error) throw error;
 
-        // 2. ✅ VERIFICATION CHECK: Check karein ki session sahi se restore hui ya nahi
-        // Agar user nahi mila, to iska matlab Token expire ho gaya ya galat hai
-        if (!data.session || !data.session.user) {
-          throw new Error("Session Restore Failed: Invalid Token");
-        }
+        // 4. Small delay
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-        toast.success("Back to Admin Mode");
-
-        // 3. Cleanup LocalStorage
-        localStorage.removeItem('backup_admin_session');
-        localStorage.removeItem('is_admin_impersonating');
-        localStorage.removeItem('impersonation_client_id');
-        localStorage.removeItem('impersonation_user');
-
-        // 4. ⚡ FORCE RELOAD
-        // Ye sabse zaroori hai taaki saare React components fresh state mein aa jayein
-        // Aur koi bhi 'Ghost' Client token memory mein na rahe
-        window.location.href = '/admin/clients';
+        // 5. Hard reload
+        window.location.replace('/admin/clients');
 
       } catch (e: any) {
         console.error("Back to Admin Error:", e);
-        toast.error("Session expired or invalid. Please Login again.");
-        
-        // Agar restore fail hua, to user ko logout karke login page par bhejo
+        toast.error("Failed to restore session. Please Login again.");
         await supabase.auth.signOut();
         localStorage.clear();
         router.push('/login');
