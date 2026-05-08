@@ -1,143 +1,88 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
-// ✅ ROBUST KEY HANDLER
-// Ye function check karega ki key Base64 hai ya Raw text
+// ✅ 1. Robust Key Handler (B64 support)
 const getServiceKey = () => {
   const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const envKeyB64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
 
   let keyToUse = envKeyB64 || envKey || '';
-
   if (!keyToUse) return '';
 
-  // Agar key 'eyJ' se start ho rahi hai, to wo likely JWT hai (already decoded/base64 not needed)
   if (keyToUse.startsWith('eyJ')) return keyToUse;
 
   try {
-    // Try decode karke dekhte hain
-    const decoded = Buffer.from(keyToUse, 'base64').toString('utf-8').trim();
-    
-    // Agar decoded string valid lag rahi hai (length check), to use karein
-    if (decoded.length > 20 && !decoded.includes(' ')) {
-      return decoded;
-    }
+    // Standard Base64 decoding
+    return Buffer.from(keyToUse, 'base64').toString('utf-8').trim();
   } catch (e) {
-    console.log("Key decode failed, using as-is");
+    return keyToUse;
   }
-
-  // Agar decode fail ho ya raw key thi, to wapas original return kar do
-  return keyToUse;
 };
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { clientId } = body;
-
-    if (!clientId) {
-      return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
-    }
+    const { clientId } = await req.json();
+    if (!clientId) return NextResponse.json({ error: 'Client ID required' }, { status: 400 });
 
     const serviceKey = getServiceKey();
+    if (!serviceKey) return NextResponse.json({ error: 'Config Error' }, { status: 500 });
 
-    if (!serviceKey) {
-      return NextResponse.json({ error: 'Server Misconfiguration: Service Key missing' }, { status: 500 });
-    }
-
-    // 1. INITIALIZE ADMIN CLIENT
-    const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+    // 2. Initialize Admin Client (Bypasses RLS)
+    const supabaseAdmin = createClient(SUPABASE_URL, serviceKey, {
+      auth: { persistSession: false }
     });
 
-    // 2. VERIFY CALLER
+    // 3. Verify Admin Session
     const authHeader = req.headers.get('authorization');
-    
-    // Debugging: Agar Header missing hai to console mein dikhega
-    if (!authHeader) {
-      console.log("Missing Auth Header");
-      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-    }
+    const token = authHeader?.replace('Bearer ', '');
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const token = authHeader.replace('Bearer ', '').trim();
+    const { data: { user: adminAuthUser }, error: adminError } = await supabaseAdmin.auth.getUser(token);
+    if (adminError || !adminAuthUser) return NextResponse.json({ error: 'Invalid Admin Session' }, { status: 401 });
 
-    // Agar Token khali hai to error
-    if (!token) {
-       return NextResponse.json({ error: 'Unauthorized: Empty token' }, { status: 401 });
-    }
-
-    // Admin token ko verify karein
-    const { data: adminData, error: adminError } = await supabaseAdmin.auth.getUser(token);
-
-    // Debugging: Console mein exact Supabase error print karein
-    if (adminError) {
-      console.error("🚨 Supabase Auth Error:", adminError.message);
-      console.error("Token snippet:", token.substring(0, 20) + "...");
-      return NextResponse.json({ error: 'Unauthorized: Invalid Admin Token', details: adminError.message }, { status: 401 });
-    }
-
-    if (!adminData.user) {
-      return NextResponse.json({ error: 'Unauthorized: User not found' }, { status: 401 });
-    }
-
-    // 3. CHECK ADMIN TABLE
-    const { data: isAdminCheck, error: roleError } = await supabaseAdmin
+    // 4. Double Check in Admins Table (Security)
+    const { data: adminRecord } = await supabaseAdmin
       .from('admins')
       .select('id')
-      .eq('id', adminData.user.id)
+      .eq('id', adminAuthUser.id)
       .maybeSingle();
 
-    if (roleError) {
-      console.error("DB Error checking admin:", roleError);
-      return NextResponse.json({ error: 'Database error' }, { status: 500 });
-    }
+    if (!adminRecord) return NextResponse.json({ error: 'Access Denied: Not an admin' }, { status: 403 });
 
-    if (!isAdminCheck) {
-      return NextResponse.json({ error: 'Forbidden: Access denied' }, { status: 403 });
-    }
+    // 5. Get Target Client Email from Clients Table
+    const { data: clientData } = await supabaseAdmin
+      .from('clients')
+      .select('email')
+      .eq('id', clientId)
+      .single();
 
-    // 4. GET TARGET CLIENT DETAILS
-    const { data: targetUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(clientId);
+    if (!clientData?.email) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
 
-    if (userError || !targetUser.user) {
-      return NextResponse.json({ error: 'Target Client not found' }, { status: 404 });
-    }
-
-    // 5. GENERATE TOKENS
+    // 🚀 6. Generate Official Magic Link
+    // URL ko dynamic rakhen taaki localhost aur production dono par chale
+    const origin = new URL(req.url).origin;
+    
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
-      email: targetUser.user.email!,
+      email: clientData.email,
       options: {
-        redirectTo: 'http://localhost:3000/dummy', 
+        redirectTo: `${origin}/dashboard?impersonate=true` 
       }
     });
 
-    if (linkError) {
-      console.error("Generate Link Error:", linkError);
-      return NextResponse.json({ error: 'Failed to generate session' }, { status: 500 });
-    }
+    if (linkError) throw linkError;
 
-    const accessToken = linkData.properties?.access_token;
-    const refreshToken = linkData.properties?.refresh_token;
-
-    if (!accessToken) {
-      return NextResponse.json({ error: 'Token generation failed' }, { status: 500 });
-    }
-
-    // 6. RETURN SUCCESS
+    // 7. Success Response
     return NextResponse.json({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      user: targetUser.user
+      success: true,
+      url: linkData.properties.action_link, // Ye asli login URL hai
+      email: clientData.email
     });
 
   } catch (error: any) {
-    console.error("API Critical Error:", error);
-    return NextResponse.json({ error: 'Internal Server Error', message: error.message }, { status: 500 });
+    console.error("🔥 API Error:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
