@@ -66,6 +66,11 @@ export async function POST(req: NextRequest) {
     
     if (adminError || !adminAuthUser) return NextResponse.json({ error: 'Invalid Admin Session' }, { status: 401 });
 
+    // ✅ ADDED LOGS HERE
+    console.log("AUTH HEADER:", token?.slice(0, 30));
+    console.log("TOKEN USER:", adminAuthUser?.id);
+    console.log("TOKEN EMAIL:", adminAuthUser?.email);
+
     // 4. Double Check in Admins Table (Security)
     const { data: adminRecord } = await supabaseAdmin
       .from('admins')
