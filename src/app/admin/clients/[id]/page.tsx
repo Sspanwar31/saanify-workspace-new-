@@ -15,7 +15,6 @@ import {
   ArrowLeft, ExternalLink, Mail, Phone, MoreVertical, CreditCard, ShieldCheck, 
   Users, TrendingUp, AlertTriangle, CheckCircle, Trash2, Bell, FileText, Lock, Unlock, RefreshCw, Calendar, Activity, Plus, Loader2
 } from 'lucide-react';
-import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ClientProfile() {
@@ -37,18 +36,32 @@ export default function ClientProfile() {
   const [staffForm, setStaffForm] = useState({ name: '', email: '', phone: '', password: '' });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
 
-  // ✅ 1. REAL DATA STATE (Updated with Net Profit & Admin Revenue)
+  // ✅ 1. REAL DATA STATE
   const [stats, setStats] = useState({
     members: 0,
     activeLoans: 0,
-    netProfit: 0, // Society ka profit/loss
-    adminRevenue: 0, // Admin ki kamai (Subscription)
-    daysRemaining: 0, // For Subscription UI
-    progress: 0, // For Subscription UI
+    netProfit: 0, 
+    adminRevenue: 0, 
+    daysRemaining: 0, 
+    progress: 0, 
     health: 0
   });
 
-  // ✅ UPDATED FETCH FUNCTION (Using clientTableData)
+  // 🚀 NEW FIX: Exit Impersonation Function
+  const handleExitImpersonation = () => {
+    // 1. Clear Impersonation Data
+    localStorage.removeItem('is_admin_impersonating');
+    localStorage.removeItem('impersonation_client_id');
+    localStorage.removeItem('impersonation_user');
+    
+    // 2. Reset Theme to Default (Optional, but safe)
+    document.documentElement.classList.remove('dark');
+
+    // 3. Navigate back to Admin List
+    router.push('/admin/clients');
+  };
+
+  // ✅ UPDATED FETCH FUNCTION
   const fetchClient = async () => {
     try {
       setLoading(true);
@@ -70,8 +83,7 @@ export default function ClientProfile() {
       setClient(clientTableData);
       setNewPlan(clientTableData.plan);
 
-      // 🚀 2. FETCH REAL STATS (API CALL)
-      // Isko try-catch mein rakhein taaki agar ye fail ho toh staff dikhna band na ho
+      // 🚀 2. FETCH REAL STATS
       try {
         const res = await fetch(`/api/admin/clients/${id}/stats`);
         const statsData = await res.json();
@@ -96,13 +108,13 @@ export default function ClientProfile() {
         console.error("Stats API failed, but continuing to staff fetch:", err);
       }
 
-      // 🚀 3. FETCH STAFF LIST (Moved outside of Stats check)
+      // 🚀 3. FETCH STAFF LIST
       console.log("Fetching staff for client_id:", id);
       const { data: staffData, error: staffError } = await supabase
           .from('clients') 
           .select('*')
           .eq('client_id', id)
-          .eq('is_deleted', false); // Role check hata diya hai taaki sabhi staff dikhein
+          .eq('is_deleted', false); 
       
       if (staffError) {
         console.error("Staff fetch error:", staffError);
@@ -122,17 +134,13 @@ export default function ClientProfile() {
 
   useEffect(() => { fetchClient(); }, [id]);
 
-  // 2. Handle Actions (Kept from Code - API First)
-
-  // ✅ REPLACED: Improved handleLockToggle Logic
+  // Actions (Kept logic same)
   const handleLockToggle = async () => {
     if (!client) return;
-
     const currentStatus = (client.status || 'ACTIVE').toUpperCase();
     const isLocked = currentStatus === 'LOCKED';
     const actionToSend = isLocked ? 'ACTIVATE' : 'LOCK'; 
     const newStatusLabel = isLocked ? 'ACTIVE' : 'LOCKED';
-
     const toastId = toast.loading(isLocked ? "Unlocking..." : "Locking...");
 
     try {
@@ -156,7 +164,6 @@ export default function ClientProfile() {
     }
   };
 
-  // ✅ 2. handleExpireClient function fix
   const handleExpireClient = async () => {
     if (!confirm('Are you sure you want to expire this account?')) return;
     try {
@@ -174,7 +181,6 @@ export default function ClientProfile() {
     }
   };
 
-  // ✅ NOTIFY CLIENT (Mock API for now)
   const handleNotifyClient = async () => {
     toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
         loading: 'Sending Notification...',
@@ -183,33 +189,27 @@ export default function ClientProfile() {
     });
   };
 
-  // ✅ GENERATE LEDGER (Mock)
   const handleGenerateLedger = () => {
       toast.info("Generating Ledger PDF...");
       setTimeout(() => toast.success("Ledger Downloaded"), 1500);
   };
 
-  // ✅ UPDATED: handleUpdatePlan (Fixing plan vs plan_name)
   const handleUpdatePlan = async () => {
     const toastId = toast.loading("Updating subscription plan...");
-    
-    // ✅ Mapping short codes to proper Display Names
     const planMapping: { [key: string]: string } = {
         'TRIAL': 'Trial',
         'BASIC': 'Basic',
         'PRO': 'Professional',
         'ENTERPRISE': 'Enterprise'
     };
-
     const formattedName = planMapping[newPlan.toUpperCase()] || newPlan;
 
     try {
-        // ✅ Dono columns ko sync mein update karein
         const { error } = await supabase
             .from('clients')
             .update({ 
-                plan: newPlan.toUpperCase(),      // e.g., 'PRO'
-                plan_name: formattedName,          // e.g., 'Professional'
+                plan: newPlan.toUpperCase(),
+                plan_name: formattedName,
                 updated_at: new Date().toISOString()
             })
             .eq('id', id);
@@ -218,14 +218,13 @@ export default function ClientProfile() {
 
         toast.success(`Plan updated to ${formattedName}`, { id: toastId });
         setIsRenewOpen(false);
-        fetchClient(); // Refresh UI
+        fetchClient(); 
 
     } catch (err: any) {
         toast.error(err.message, { id: toastId });
     }
   };
 
-  // ✅ UPDATED HANDLE DELETE (API Call)
   const handleDelete = async () => {
       if(!confirm("⚠️ WARNING: This will permanently delete client, all members, and all financial data. This cannot be undone.\n\nAre you sure?")) return;
       const res = await fetch(`/api/admin/clients/${id}/delete`, { method: 'DELETE' });
@@ -252,7 +251,6 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ Add Staff Logic
   const handleAddStaff = async () => {
       if(!staffForm.name || !staffForm.email || !staffForm.password) return toast.error("Name, Email and Password required");
       setIsAddingStaff(true);
@@ -275,7 +273,6 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess function with Admin Token Storage
   const handleAccess = async () => {
     const toastId = toast.loading("Generating Secure Access...");
     try {
@@ -300,11 +297,9 @@ export default function ClientProfile() {
       if (res.ok && data.url) {
         toast.success("Access Granted! Redirecting...");
         
-        // ✅ 1. Redirect se pehle flag set karein
         localStorage.setItem('is_admin_impersonating', 'true');
         localStorage.setItem('impersonation_client_id', id);
         
-        // ✅ 2. Redirect to the magic link
         window.location.href = data.url; 
       } else {
         throw new Error(data.error || "Failed to generate access");
@@ -319,9 +314,14 @@ export default function ClientProfile() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 min-h-screen">
-      <Link href="/admin/clients" className="text-sm text-slate-500 hover:text-blue-600 flex items-center gap-2 font-medium transition-colors">
+      {/* ✅ FIX: Back Button Logic Changed */}
+      {/* Link ko hata kar Button with onClick lagaya hai */}
+      <button 
+        onClick={handleExitImpersonation}
+        className="text-sm text-slate-500 hover:text-blue-600 flex items-center gap-2 font-medium transition-colors cursor-pointer"
+      >
         <ArrowLeft className="w-4 h-4"/> Back to Clients
-      </Link>
+      </button>
       
       {/* HEADER CARD */}
       <Card className="bg-white shadow-sm border-slate-200 overflow-visible">
@@ -348,7 +348,6 @@ export default function ClientProfile() {
                 {client.status}
               </Badge>
 
-              {/* ✅ FIX: Display plan_name instead of raw plan code */}
               <Badge variant="outline" className="text-blue-600 border-blue-200 px-3 py-1 text-xs uppercase font-bold">
                 {client.plan_name || client.plan} PLAN
               </Badge>
@@ -379,7 +378,7 @@ export default function ClientProfile() {
         </CardContent>
       </Card>
 
-      {/* STATS ROW - UPDATED WITH REAL FINANCIALS */}
+      {/* STATS ROW */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          <Card className="border-l-4 border-l-blue-500 shadow-sm">
             <CardContent className="p-6">
@@ -492,7 +491,7 @@ export default function ClientProfile() {
          <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white border-none shadow-sm shadow-red-200 font-bold px-6"><Trash2 className="w-4 h-4 mr-2"/> Delete Account</Button>
       </div>
 
-      {/* RENEW PLAN DIALOG */}
+      {/* DIALOGS */}
       <Dialog open={isRenewOpen} onOpenChange={setIsRenewOpen}>
         <DialogContent>
             <DialogHeader><DialogTitle>Renew / Change Plan</DialogTitle><DialogDescription>Update subscription tier for this client.</DialogDescription></DialogHeader>
@@ -511,7 +510,6 @@ export default function ClientProfile() {
         </DialogContent>
       </Dialog>
 
-      {/* ADD STAFF DIALOG (UPDATED) */}
       <Dialog open={isStaffModalOpen} onOpenChange={setIsStaffModalOpen}>
         <DialogContent>
             <DialogHeader><DialogTitle>Add New Staff</DialogTitle><DialogDescription>Create a new treasurer account.</DialogDescription></DialogHeader>
