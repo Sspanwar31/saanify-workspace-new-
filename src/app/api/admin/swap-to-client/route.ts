@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // ✅ 1. Robust Key Handler (B64 support)
 const getServiceKey = () => {
@@ -29,17 +30,40 @@ export async function POST(req: NextRequest) {
     const serviceKey = getServiceKey();
     if (!serviceKey) return NextResponse.json({ error: 'Config Error' }, { status: 500 });
 
-    // 2. Initialize Admin Client (Bypasses RLS)
-    const supabaseAdmin = createClient(SUPABASE_URL, serviceKey, {
-      auth: { persistSession: false }
-    });
+    // ✅ NORMAL AUTH CLIENT (JWT VERIFY)
+    const supabaseAuth = createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        }
+      }
+    );
+
+    // ✅ SERVICE ROLE CLIENT
+    const supabaseAdmin = createClient(
+      SUPABASE_URL,
+      serviceKey,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        }
+      }
+    );
 
     // 3. Verify Admin Session
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: { user: adminAuthUser }, error: adminError } = await supabaseAdmin.auth.getUser(token);
+    const {
+      data: { user: adminAuthUser },
+      error: adminError
+    } = await supabaseAuth.auth.getUser(token);
+    
     if (adminError || !adminAuthUser) return NextResponse.json({ error: 'Invalid Admin Session' }, { status: 401 });
 
     // 4. Double Check in Admins Table (Security)
@@ -75,11 +99,18 @@ export async function POST(req: NextRequest) {
     if (linkError) throw linkError;
 
     // 7. Success Response
-    return NextResponse.json({
-      success: true,
-      url: linkData.properties.action_link, // Ye asli login URL hai
-      email: clientData.email
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        url: linkData.properties.action_link,
+        email: clientData.email
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate'
+        }
+      }
+    );
 
   } catch (error: any) {
     console.error("🔥 API Error:", error.message);
