@@ -12,10 +12,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   
-  // 🚀 Optimization: Initialize from LocalStorage to avoid initial flicker
+  // ✅ INITIAL STATE FIX
   const [userProfile, setUserProfile] = useState<any>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('current_user');
+      const impersonationUser = localStorage.getItem('impersonation_user');
+      const normalUser = localStorage.getItem('current_user');
+      const saved = impersonationUser || normalUser;
       return saved ? JSON.parse(saved) : null;
     }
     return null;
@@ -67,7 +69,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           const activeSocietyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
           const updatedUser = { ...profile, resolved_client_id: activeSocietyId };
           
-          localStorage.setItem('current_user', JSON.stringify(updatedUser));
+          // ✅ REPLACE WITH THIS (Storage Logic)
+          if (impersonationClientId) {
+            localStorage.setItem(
+              'impersonation_user',
+              JSON.stringify(updatedUser)
+            );
+          } else {
+            localStorage.setItem(
+              'current_user',
+              JSON.stringify(updatedUser)
+            );
+          }
+
           setUserProfile(updatedUser);
           setIsAuthorized(true);
 
@@ -111,13 +125,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
-  // ✅ UPDATED: NEW BACK FUNCTION (No SignOut)
+  // ✅ AB BACK BUTTON FIX
   const handleBackToAdmin = () => {
     localStorage.removeItem('is_admin_impersonating');
     localStorage.removeItem('impersonation_client_id');
-    localStorage.removeItem('current_user');
+    localStorage.removeItem('impersonation_user');
+
+    // ✅ RESET THEME
+    document.documentElement.classList.remove('dark');
 
     router.replace('/admin/dashboard');
+
+    // ✅ FORCE CLEAN RELOAD
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   // Asli Fast UI Logic
