@@ -55,6 +55,11 @@ export default function ClientProfile() {
       try {
         const { access_token, refresh_token } = JSON.parse(backupSession);
 
+        // ✅ Clean up current local session first
+        await supabase.auth.signOut({
+          scope: 'local'
+        });
+
         // 1. Admin Session Restore karein
         const { data, error } = await supabase.auth.setSession({
           access_token,
