@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // Step 4: Removed useSearchParams
 import { supabase } from '@/lib/supabase'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'; 
@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  // Step 5: Removed searchParams line
   
   // 🚀 Optimization: Initialize from LocalStorage to avoid initial flicker
   const [userProfile, setUserProfile] = useState<any>(() => {
@@ -23,11 +23,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
 
   const [isAuthorized, setIsAuthorized] = useState(!!userProfile);
-  const [isChecking, setIsChecking] = useState(!userProfile); // Agar data hai toh loading mat dikhao
+  const [isChecking, setIsChecking] = useState(!userProfile); 
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const hasInitialized = useRef(false); // Ek baar load hone ke baad dobara nahi chalega
+  const hasInitialized = useRef(false); 
 
   // 🚀 1. INITIAL AUTH & BACKGROUND SYNC
   useEffect(() => {
@@ -39,15 +39,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return;
         }
 
-        // Impersonation Check (Silent)
-        const isImp = searchParams.get('impersonate') === 'true' || localStorage.getItem('is_admin_impersonating') === 'true';
-        if (isImp) {
+        // Step 1: REMOVED OLD IMPERSONATION LOGIC BLOCK
+
+        // Step 2: ADD NEW IMPERSONATION CLIENT LOGIC
+        // ✅ Impersonation Client ID
+        const impersonationClientId =
+          localStorage.getItem('impersonation_client_id');
+
+        // ✅ If impersonating use target client
+        // otherwise use logged-in user id
+        const targetClientId =
+          impersonationClientId || session.user.id;
+
+        // ✅ Admin impersonation state
+        if (impersonationClientId) {
           setIsImpersonating(true);
           localStorage.setItem('is_admin_impersonating', 'true');
+        } else {
+          setIsImpersonating(false);
         }
 
-        // Profile Fetch (Background Sync - Doesn't block the UI)
-        const { data: profile } = await supabase.from('clients').select('*').eq('id', session.user.id).maybeSingle();
+        // ✅ Load target client profile
+        const { data: profile } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', targetClientId)
+          .maybeSingle();
 
         if (profile) {
           const activeSocietyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
@@ -72,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     if (!hasInitialized.current) syncAuth();
-  }, [router]); // Remove dependencies that change on navigation
+  }, [router]); 
 
   // 🚀 2. INSTANT PERMISSION GUARD (No Loading Spinner)
   useEffect(() => {
@@ -97,12 +114,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
+  // Step 3: FIX BACK BUTTON
   const handleBackToAdmin = () => {
+    // ✅ Remove impersonation state
+    localStorage.removeItem('impersonation_client_id');
     localStorage.removeItem('is_admin_impersonating');
-    window.location.href = '/admin/clients'; 
+
+    // ✅ Back to admin
+    window.location.href = '/admin/clients';
   };
 
-  // Asli Fast UI Logic: Agar profile hai, toh loader mat dikhao
+  // Asli Fast UI Logic
   if (isChecking && !userProfile) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-slate-950">
