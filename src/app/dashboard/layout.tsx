@@ -111,12 +111,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
-  // ✅ UPDATED: FIX BACK BUTTON
-  const handleBackToAdmin = () => {
+  // ✅ UPDATED: REPLACE ENTIRE FUNCTION
+  const handleBackToAdmin = async () => {
     localStorage.removeItem('is_admin_impersonating');
     localStorage.removeItem('impersonation_client_id');
 
-    window.location.href = '/admin/clients';
+    // logout client session
+    await supabase.auth.signOut();
+
+    window.location.href = '/admin/login';
   };
 
   // Asli Fast UI Logic
