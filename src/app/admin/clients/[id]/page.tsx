@@ -273,39 +273,45 @@ export default function ClientProfile() {
       }
   };
 
+  // Frontend Logic (Updated handleAccess)
   const handleAccess = async () => {
-    const toastId = toast.loading("Generating Secure Access...");
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      localStorage.setItem(
-        'admin_access_token',
-        session?.access_token || ''
-      );
+      // Admin Session Backup
+      localStorage.setItem('backup_admin_session', JSON.stringify({
+        access_token: session?.access_token,
+        refresh_token: session?.refresh_token
+      }));
 
-      const res = await fetch('/api/admin/get-client-login', {
+      // Naya Swap API Call
+      const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`
+          'Authorization': `Bearer ${session?.access_token}` // Admin token pass kar rahe hain
         },
         body: JSON.stringify({ clientId: id })
       });
 
       const data = await res.json();
 
-      if (res.ok && data.url) {
-        toast.success("Access Granted! Redirecting...");
+      if (res.ok && data.access_token) {
+        toast.success("Access Granted! Switching session...");
         
-        localStorage.setItem('is_admin_impersonating', 'true');
-        localStorage.setItem('impersonation_client_id', id);
-        
-        window.location.href = data.url; 
+        // Set Client Session
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token
+        });
+
+        // Redirect to Client Dashboard (No Reload needed)
+        window.location.href = '/dashboard'; 
       } else {
-        throw new Error(data.error || "Failed to generate access");
+        throw new Error(data.error || "Failed to swap session");
       }
     } catch (e: any) {
-      toast.error(e.message, { id: toastId });
+      toast.error(e.message);
     }
   };
 
