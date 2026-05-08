@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; // Step 4: Removed useSearchParams
+import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'; 
@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  // Step 5: Removed searchParams line
   
   // 🚀 Optimization: Initialize from LocalStorage to avoid initial flicker
   const [userProfile, setUserProfile] = useState<any>(() => {
@@ -38,8 +37,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           router.push('/login');
           return;
         }
-
-        // Step 1: REMOVED OLD IMPERSONATION LOGIC BLOCK
 
         // Step 2: ADD NEW IMPERSONATION CLIENT LOGIC
         // ✅ Impersonation Client ID
@@ -114,13 +111,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
-  // Step 3: FIX BACK BUTTON
+  // ✅ UPDATED: FIX BACK BUTTON
   const handleBackToAdmin = () => {
-    // ✅ Remove impersonation state
-    localStorage.removeItem('impersonation_client_id');
     localStorage.removeItem('is_admin_impersonating');
+    localStorage.removeItem('impersonation_client_id');
 
-    // ✅ Back to admin
     window.location.href = '/admin/clients';
   };
 
