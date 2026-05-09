@@ -48,8 +48,8 @@ export default function ClientProfile() {
   });
 
   // 🔹 UPDATED: handleBackToAdmin
-  // Since we are opening the client in a new tab, the admin tab stays alive.
-  // We simply navigate back to the list.
+  // Since we are opening client in a new tab, admin tab stays alive.
+  // We simply navigate back to list.
   const handleBackToAdmin = async () => {
     // Logic Removed: No more session backup/restore needed
     router.push('/admin/clients');
@@ -293,7 +293,8 @@ export default function ClientProfile() {
         toast.dismiss(toastId);
         toast.success("Redirecting to Client Panel...");
         
-        // ✅ REDIRECT IN SAME TAB
+        // ✅ SET FLAG BEFORE REDIRECTING
+        localStorage.setItem('is_admin_impersonating', 'true');
         window.location.href = data.url;
       } else {
         toast.dismiss(toastId);
