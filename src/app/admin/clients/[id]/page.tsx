@@ -267,42 +267,38 @@ export default function ClientProfile() {
       }
   };
 
+  // ✅ UPDATED: HANDLE ACCESS (Using Master Admin Token)
   const handleAccess = async () => {
-    const toastId = toast.loading("Generating Secure Access...");
+    const toastId = toast.loading("Verifying Admin Authority...");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 🚀 FIX: Hamesha master admin token use karein
+      const adminSessionStr = localStorage.getItem('master_admin_session');
+      const adminSession = adminSessionStr ? JSON.parse(adminSessionStr) : null;
       
-      if (!session?.access_token) {
-        throw new Error("Admin session not found");
-      }
+      // Agar backup nahi hai toh current session try karein
+      const currentSession = await supabase.auth.getSession();
+      const token = adminSession?.access_token || currentSession.data.session?.access_token;
 
-      // STEP 1: API SE MAGIC LINK MANGWAYEIN
+      if (!token) throw new Error("No Admin session found. Please re-login.");
+
       const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${token}` // ✅ Admin ka asli token jayega
         },
         body: JSON.stringify({ clientId: id })
       });
 
       const data = await res.json();
-
-      // ✅ UPDATED BLOCK
       if (res.ok && data.url) {
-        toast.dismiss(toastId);
-        toast.success("Redirecting to Client Panel...");
-        
-        // ✅ SET FLAG BEFORE REDIRECTING
         localStorage.setItem('is_admin_impersonating', 'true');
-        window.location.href = data.url;
+        window.location.href = data.url; 
       } else {
-        toast.dismiss(toastId);
-        throw new Error(data.error || "Failed to generate access");
+        throw new Error(data.error || "Permission Denied");
       }
     } catch (e: any) {
-      toast.dismiss(toastId);
-      toast.error(e.message);
+      toast.error(e.message, { id: toastId });
     }
   };
 
