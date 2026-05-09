@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; 
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'; 
@@ -11,58 +11,49 @@ import { toast } from 'sonner';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams(); // ✅ Added for checking URL params
   
-  // ✅ OPTIMISTIC STATE: Turant data nikalne ka try karein
+  // 🚀 1. OPTIMISTIC STATE (Instant Load)
+  // Turant data uthao LocalStorage se taaki page khaali na dikhe
   const [userProfile, setUserProfile] = useState<any>(() => {
     if (typeof window !== 'undefined') {
-      const impersonationUser = localStorage.getItem('impersonation_user');
-      const normalUser = localStorage.getItem('current_user');
-      const saved = impersonationUser || normalUser;
+      const saved = localStorage.getItem('impersonation_user') || localStorage.getItem('current_user');
       return saved ? JSON.parse(saved) : null;
     }
     return null;
   });
 
-  // ✅ FIX: Initial 'isChecking' ko False rakhenge
-  // Agar LS mein data hai, to Loader nahi dikhega. Tab dikhega jab data hai hi nahi.
-  const [isChecking, setIsChecking] = useState(false); 
-  const [isAuthorized, setIsAuthorized] = useState(!!userProfile);
+  // ✅ LOADING STATE LOGIC:
+  // Agar LS mein data hai to 'isChecking' false rahega (Turant UI).
+  // Agar LS mein data nahi hai to 'true' (Loader dikhega).
+  const [isChecking, setIsChecking] = useState(!userProfile); 
   const [isImpersonating, setIsImpersonating] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const hasInitialized = useRef(false); 
+  const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
-  // 🚀 1. SMOOTH AUTH LOGIC
+  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount)
+  // Humne dependency array khali kar di hai [] taaki page navigation par ye wapas na chale.
   useEffect(() => {
-    const syncAuth = async () => {
-      // ✅ AGAR PEHLE SE DATA HAI TO LOADER NAHI DIKHAYEGA
-      // Sirf tab dikhayein agar haal hi mein data clear hua ho aur koi user na ho
-      if (!userProfile) {
-        setIsChecking(true);
-      } else {
-        // Agar user pda hai to background mein silent refresh
-        setIsChecking(false); 
-      }
+    const performAuthSync = async () => {
+      // Agar pehle se run ho chuka hai to rok do
+      if (initialized.current) return;
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
-        // Agar session hi nahi hai to logout bhej do
         if (!session) {
           router.push('/login');
           return;
         }
 
-        // Impersonation Check
-        const isAdminImpersonating =
-          localStorage.getItem('is_admin_impersonating') === 'true' ||
-          pathname.includes('impersonate=true');
-          
-        setIsImpersonating(isAdminImpersonating);
+        // ✅ Impersonation Check (URL + LocalStorage)
+        const isImp = 
+          localStorage.getItem('is_admin_impersonating') === 'true' || 
+          searchParams.get('impersonate') === 'true';
+        
+        setIsImpersonating(isImp);
 
-        // Fetch Profile
-        // ✅ Hum yahan API call kar rahe hain, par frontend turant purana data (userProfile) use kar raha hai
-        // Isse "Flicker" nahi hoga.
+        // Silent Background Refresh
+        // Database se naya data lao, par UI ko mat roko
         const { data: profile } = await supabase
           .from('clients')
           .select('*')
@@ -75,13 +66,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           
           // Storage Update
           localStorage.setItem('current_user', JSON.stringify(updatedUser));
-          if(isAdminImpersonating) {
-             localStorage.setItem('impersonation_user', JSON.stringify(updatedUser));
+          
+          // Impersonation wale case mein localstorage update
+          if (isImp) {
+            localStorage.setItem('impersonation_user', JSON.stringify(updatedUser));
           }
 
-          // ✅ STATE UPDATE
+          // ✅ State Update (Background mein)
           setUserProfile(updatedUser);
-          setIsAuthorized(true);
 
           // Theme Update
           if (profile.theme === 'dark') {
@@ -93,18 +85,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') router.push('/login');
         }
       } catch (err) {
-        console.error("Sync error:", err);
+        console.error("Auth Sync Error:", err);
       } finally {
-        // ✅ Jab bhi kaam ho, checking off karein
+        // ✅ Kaam khatam, checking off karein
         setIsChecking(false);
-        hasInitialized.current = true;
+        initialized.current = true; // Mark as done
       }
     };
 
-    if (!hasInitialized.current) syncAuth();
-  }, [router, pathname]); // pathname remove kar sakte hain agar necessary na ho
+    performAuthSync();
+  }, [router]); // Agar strict mode mein loop kare to [router] rakhein, warna [] bhi chalega
 
-  // 🚀 2. PERMISSION GUARD
+  // 🚀 3. SILENT PERMISSION GUARD (Runs on Nav)
+  // Ye sirf permission check karega, data fetch nahi karega. Isse smoothness aayegi.
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
       const perms = userProfile.role_permissions?.treasurer || [];
@@ -124,10 +117,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.push('/dashboard');
       }
     }
-    setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
-  // ✅ UPDATED BACK BUTTON LOGIC
   const handleBackToAdmin = async () => {
     const toastId = toast.loading("Restoring Admin Session...");
     try {
@@ -155,8 +146,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  // ✅ OPTIMIZED LOADING CHECK
-  // Ab Sirf tab Loader Dikhega agar haal hi mein koi user nahi hai (Fresh Load)
+  // 🚀 UI RENDER
+  // Agar Profile pda hai turant content dikhega.
+  // Agar nahi hai to Loader dikhega.
   if (isChecking && !userProfile) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-slate-950">
@@ -188,10 +180,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         
         <main className="flex-1 overflow-y-auto relative p-4 md:p-8">
-          {(isAuthorized || userProfile) && children}
+          {/* children hamesha render honge agar userProfile hai */}
+          {children}
         </main>
         
-        <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
+        <MobileBottomNav onMenuClick={() => {}} />
       </div>
     </>
   );
