@@ -15,7 +15,6 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-// Added these imports for the Plan Form
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,7 +38,7 @@ export default function SubscriptionPage() {
   
   // Modal & Plans State
   const [viewProof, setViewProof] = useState<any>(null);
-  const [planConfig, setPlanConfig] = useState<any[]>([]); // Now Dynamic
+  const [planConfig, setPlanConfig] = useState<any[]>([]); 
 
   // Plan Edit/Create Modal State
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -47,106 +46,94 @@ export default function SubscriptionPage() {
       name: '', price: '', limit_members: '', features: '', color: 'border-gray-200'
   });
 
-  // --- 1. FETCH DATA & CALCULATE CHARTS ---
+  // --- 1. UPDATED FETCH DATA (SYNC MANUAL + AUTO) ---
   const fetchData = async () => {
     setLoading(true);
     try {
-      // A. Fetch Orders
-      const { data: orders, error: orderError } = await supabase
-        .from('subscription_orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // 🚀 STEP 1: Dono tables se data mangwayein
+      const [manualRes, autoRes, plansRes, clientsRes] = await Promise.all([
+        supabase.from('subscription_orders').select('*'),
+        supabase.from('payment_intents').select('*').eq('status', 'PAID'), // Sirf PAID wale lo
+        supabase.from('plans').select('*').order('price', { ascending: true }),
+        supabase.from('clients').select('id, name, email, society_name, client_id')
+      ]);
 
-      if (orderError) throw orderError;
+      if (manualRes.error) throw manualRes.error;
+      const manualOrders = manualRes.data || [];
+      const autoOrders = autoRes.data || [];
+      const clients = clientsRes.data || [];
+      setPlanConfig(plansRes.data || []);
 
-      // B. Fetch Plans from Database (NEW)
-      const { data: dbPlans, error: planError } = await supabase
-        .from('plans')
-        .select('*')
-        .order('price', { ascending: true });
+      // 🚀 STEP 2: Dono ko ek hi format mein laiye (Unified List)
+      const allPayments = [
+        ...manualOrders.map(o => ({ ...o, payment_type: 'MANUAL' })),
+        ...autoOrders.map(o => ({
+           id: o.id,
+           client_id: null, // intent mein aksar id nahi hoti, email se dhundenge niche
+           email: o.email,
+           amount: Number(o.amount),
+           status: 'paid',
+           created_at: o.created_at,
+           plan_name: o.plan,
+           payment_type: 'AUTO',
+           transaction_id: o.token
+        }))
+      ];
 
-      if (planError) throw planError;
-      setPlanConfig(dbPlans || []);
-
-      // C. Fetch Clients
-      const { data: clients } = await supabase.from('clients').select('id, name, email, society_name, client_id');
-
-      // Process Invoices
-      const formattedInvoices = orders?.map(order => {
-        const requestUser = clients?.find(c => c.id === order.client_id);
+      // 🚀 STEP 3: Process unified invoices for Table
+      const formattedInvoices = allPayments.map(order => {
+        // Email ya ID se client dhundo
+        const requestUser = clients.find(c => c.id === order.client_id || c.email === order.email);
         
-        let societyName = 'Unknown Society';
-        if (requestUser) {
-           if (requestUser.society_name) {
-             societyName = requestUser.society_name;
-           } else if (requestUser.client_id) {
-             const parentUser = clients?.find(c => c.id === requestUser.client_id);
-             if (parentUser?.society_name) {
-               societyName = `${parentUser.society_name} (via ${requestUser.name})`;
-             }
-           }
-        }
-
+        let societyName = requestUser?.society_name || 'Individual Client';
         return {
-          id: order.id,
-          clientId: order.client_id,
+          ...order,
           client: societyName,
-          adminName: requestUser?.name || 'Unknown User',
-          adminEmail: requestUser?.email || 'N/A',
+          adminName: requestUser?.name || 'External User',
+          adminEmail: requestUser?.email || order.email || 'N/A',
           plan: order.plan_name,
-          amount: order.amount,
-          status: (order.status || 'pending').toLowerCase(),
+          status: order.status.toLowerCase(),
           date: order.created_at,
-          transactionId: order.transaction_id,
-          durationDays: order.duration_days || 30,
-          screenshot_url: order.screenshot_url // ADDED: To show in modal
         };
-      }) || [];
+      });
 
-      setInvoices(formattedInvoices);
+      setInvoices(formattedInvoices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
-      // --- CALCULATE CHARTS (BACKEND CONNECTED) ---
-      
-      // 1. Revenue Chart (Group by Month)
+      // 🚀 STEP 4: CALCULATE REVENUE (Sum of Both)
       const monthMap: any = {};
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      
-      orders?.forEach(order => {
-         if(order.status === 'approved' || order.status === 'success' || order.status === 'paid') {
+      let successCount = 0;
+
+      allPayments.forEach(order => {
+         const st = order.status.toLowerCase();
+         if(st === 'approved' || st === 'success' || st === 'paid') {
+             successCount++;
              const d = new Date(order.created_at);
              const mName = monthNames[d.getMonth()];
              if(!monthMap[mName]) monthMap[mName] = 0;
-             monthMap[mName] += order.amount;
+             monthMap[mName] += Number(order.amount);
          }
       });
       
       const revChart = Object.keys(monthMap).map(key => ({ name: key, total: monthMap[key] }));
-      setRevenueData(revChart.length > 0 ? revChart : [{name: 'No Data', total: 0}]);
+      setRevenueData(revChart);
 
-      // 2. Pie Chart (Status Distribution)
-      const statusCounts = { paid: 0, pending: 0, rejected: 0 };
-      orders?.forEach(order => {
-         const st = (order.status || 'pending').toLowerCase();
-         if(st === 'approved' || st === 'success' || st === 'paid') statusCounts.paid++;
-         else if(st === 'pending') statusCounts.pending++;
-         else if(st === 'rejected') statusCounts.rejected++;
-      });
-
+      // Pie Chart Status
       setPieData([
-         { name: 'Paid/Active', value: statusCounts.paid, color: '#10B981' }, // Green
-         { name: 'Pending', value: statusCounts.pending, color: '#F59E0B' }, // Orange
-         { name: 'Rejected', value: statusCounts.rejected, color: '#EF4444' }  // Red
+         { name: 'Successful', value: successCount, color: '#10B981' },
+         { name: 'Pending', value: manualOrders.filter(o => o.status === 'pending').length, color: '#F59E0B' },
+         { name: 'Rejected', value: manualOrders.filter(o => o.status === 'rejected').length, color: '#EF4444' }
       ]);
 
     } catch (err: any) {
       console.error("Fetch Error:", err);
-      toast.error("Failed to load data");
+      toast.error("Failed to load synchronized data");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- REALTIME LISTENER (LIVE UPDATES) ---
+  // --- REALTIME LISTENER ---
   useEffect(() => {
     fetchData();
 
@@ -155,7 +142,7 @@ export default function SubscriptionPage() {
       .channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'subscription_orders' }, (payload) => {
           console.log('Realtime update:', payload);
-          fetchData(); // Reload data instantly
+          fetchData(); 
           toast.info("Dashboard updated via Live Sync");
       })
       .subscribe();
@@ -218,7 +205,13 @@ export default function SubscriptionPage() {
   const deleteInvoice = async (id: string) => {
     if(!confirm("Permanently delete this record?")) return;
     
-    // Check if permission exists first
+    // Auto payments (payment_intents) ko delete mat karein agar manual logic hai
+    const invoice = invoices.find(i => i.id === id);
+    if(invoice?.payment_type === 'AUTO') {
+      toast.error("Auto-generated records cannot be manually deleted from here.");
+      return;
+    }
+
     const { error } = await supabase.from('subscription_orders').delete().eq('id', id);
     
     if(error) {
@@ -227,27 +220,25 @@ export default function SubscriptionPage() {
     } else { 
         toast.success("Record Deleted Permanently"); 
         setInvoices(prev => prev.filter(i => i.id !== id));
-        fetchData(); // Sync charts
+        fetchData(); 
     }
   };
 
   // --- NEW PLAN MANAGEMENT FUNCTIONS ---
 
-  // A. Toggle Active Status
   const togglePlanActive = async (id: string, currentStatus: boolean) => {
     try {
         const { error } = await supabase.from('plans').update({ active: !currentStatus }).eq('id', id);
         if(error) throw error;
         toast.success(`Plan ${!currentStatus ? 'Activated' : 'Deactivated'}`);
-        fetchData(); // Reload to reflect changes
+        fetchData(); 
     } catch(err: any) {
         toast.error("Update failed: " + err.message);
     }
   };
 
-  // B. Delete Plan
   const deletePlan = async (id: string) => {
-    if(!confirm("Are you sure? This will hide the plan from clients but keep history.")) return;
+    if(!confirm("Are you sure? This will hide plan from clients but keep history.")) return;
     try {
         const { error } = await supabase.from('plans').delete().eq('id', id);
         if(error) throw error;
@@ -258,10 +249,8 @@ export default function SubscriptionPage() {
     }
   };
 
-  // C. Open Modal (Create or Edit)
   const openPlanModal = (plan: any = null) => {
       if (plan) {
-          // Editing existing plan
           setCurrentPlan({
               id: plan.id,
               name: plan.name,
@@ -271,17 +260,14 @@ export default function SubscriptionPage() {
               color: plan.color
           });
       } else {
-          // Creating New
           setCurrentPlan({ name: '', price: '', limit_members: '', features: '', color: 'border-blue-200' });
       }
       setIsPlanModalOpen(true);
   };
 
-  // D. Save Plan (Insert or Update)
   const handleSavePlan = async () => {
       if(!currentPlan.name || !currentPlan.price) return toast.error("Name and Price are required");
 
-      // Convert comma string back to array
       const featureArray = currentPlan.features.split(',').map((f:string) => f.trim()).filter((f:string) => f !== '');
       
       const payload = {
@@ -295,12 +281,10 @@ export default function SubscriptionPage() {
 
       try {
           if(currentPlan.id) {
-              // Update
               const { error } = await supabase.from('plans').update(payload).eq('id', currentPlan.id);
               if(error) throw error;
               toast.success("Plan Updated");
           } else {
-              // Create
               const { error } = await supabase.from('plans').insert([payload]);
               if(error) throw error;
               toast.success("New Plan Created");
@@ -334,7 +318,7 @@ export default function SubscriptionPage() {
           <TabsTrigger value="plans">Plan Config</TabsTrigger>
         </TabsList>
 
-        {/* --- OVERVIEW TAB (CONNECTED CHARTS) --- */}
+        {/* --- OVERVIEW TAB --- */}
         <TabsContent value="overview" className="space-y-6">
            <div className="grid gap-6 md:grid-cols-2">
               <Card className="shadow-sm">
@@ -366,22 +350,30 @@ export default function SubscriptionPage() {
               </Card>
            </div>
            
-           {/* Quick Stats Summary */}
            <div className="grid grid-cols-3 gap-4">
                <Card className="bg-blue-50 border-blue-100"><CardContent className="p-6 text-center"><p className="text-sm text-blue-600 font-bold uppercase">Total Revenue</p><h3 className="text-2xl font-bold text-blue-900">₹{revenueData.reduce((a, b) => a + b.total, 0).toLocaleString()}</h3></CardContent></Card>
-               <Card className="bg-green-50 border-green-100"><CardContent className="p-6 text-center"><p className="text-sm text-green-600 font-bold uppercase">Successful Orders</p><h3 className="text-2xl font-bold text-green-900">{pieData.find(p => p.name.includes('Paid'))?.value || 0}</h3></CardContent></Card>
+               <Card className="bg-green-50 border-green-100"><CardContent className="p-6 text-center"><p className="text-sm text-green-600 font-bold uppercase">Successful Orders</p><h3 className="text-2xl font-bold text-green-900">{pieData.find(p => p.name.includes('Successful'))?.value || 0}</h3></CardContent></Card>
                <Card className="bg-orange-50 border-orange-100"><CardContent className="p-6 text-center"><p className="text-sm text-orange-600 font-bold uppercase">Pending Actions</p><h3 className="text-2xl font-bold text-orange-900">{pieData.find(p => p.name.includes('Pending'))?.value || 0}</h3></CardContent></Card>
            </div>
         </TabsContent>
 
-        {/* --- BILLING TAB (TABLES) --- */}
+        {/* --- BILLING TAB (UPDATED UI) --- */}
         <TabsContent value="billing" className="space-y-8">
            <Card className="border-orange-200 bg-orange-50/30 shadow-sm">
              <CardHeader><CardTitle className="text-orange-800 flex items-center gap-2"><AlertCircle className="h-5 w-5"/> Pending Manual Payments</CardTitle></CardHeader>
              <CardContent>
                {pendingInvoices.length > 0 ? (
                  <Table>
-                   <TableHeader><TableRow><TableHead>Society Details</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>Proof</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead>Society Details</TableHead>
+                       <TableHead>Plan</TableHead>
+                       <TableHead>Amount</TableHead>
+                       <TableHead>Method</TableHead>
+                       <TableHead>Proof</TableHead>
+                       <TableHead className="text-right">Action</TableHead>
+                     </TableRow>
+                   </TableHeader>
                    <TableBody>
                      {pendingInvoices.map((inv) => (
                        <TableRow key={inv.id} className="bg-white">
@@ -392,6 +384,11 @@ export default function SubscriptionPage() {
                           </TableCell>
                           <TableCell><Badge variant="outline">{inv.plan}</Badge></TableCell>
                           <TableCell className="font-bold">₹{inv.amount.toLocaleString()}</TableCell>
+                          <TableCell>
+                             <Badge variant="outline" className={inv.payment_type === 'AUTO' ? "text-blue-600" : "text-orange-600"}>
+                                {inv.payment_type}
+                             </Badge>
+                          </TableCell>
                           <TableCell>
                              <Button size="sm" variant="outline" onClick={() => setViewProof(inv)} className="h-7 text-xs border-blue-200 text-blue-700 bg-blue-50">
                                 <Eye className="w-3 h-3 mr-1"/> View
@@ -413,7 +410,18 @@ export default function SubscriptionPage() {
               <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-slate-500"/> Verification History & Audit</CardTitle></CardHeader>
               <CardContent>
                  <Table>
-                   <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Society / Admin</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Proof</TableHead><TableHead className="text-right">Manage</TableHead></TableRow></TableHeader>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead>Date</TableHead>
+                       <TableHead>Society / Admin</TableHead>
+                       <TableHead>Plan</TableHead>
+                       <TableHead>Amount</TableHead>
+                       <TableHead>Method</TableHead>
+                       <TableHead>Status</TableHead>
+                       <TableHead>Proof</TableHead>
+                       <TableHead className="text-right">Manage</TableHead>
+                     </TableRow>
+                   </TableHeader>
                    <TableBody>
                      {historyInvoices.map((inv) => (
                        <TableRow key={inv.id}>
@@ -424,6 +432,11 @@ export default function SubscriptionPage() {
                           </TableCell>
                           <TableCell><Badge variant="secondary" className="text-[10px]">{inv.plan}</Badge></TableCell>
                           <TableCell className="font-mono text-sm">₹{inv.amount.toLocaleString()}</TableCell>
+                          <TableCell>
+                             <Badge variant="outline" className={inv.payment_type === 'AUTO' ? "text-blue-600" : "text-orange-600"}>
+                                {inv.payment_type}
+                             </Badge>
+                          </TableCell>
                           <TableCell>
                              <Badge className={inv.status === 'approved' || inv.status === 'paid' || inv.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
                                 {inv.status.toUpperCase()}
@@ -454,7 +467,7 @@ export default function SubscriptionPage() {
            </Card>
         </TabsContent>
 
-        {/* --- PLAN CONFIG TAB (DYNAMIC & INTERACTIVE) --- */}
+        {/* --- PLAN CONFIG TAB --- */}
         <TabsContent value="plans" className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Manage Plans</h2>
