@@ -48,10 +48,7 @@ export default function ClientProfile() {
   });
 
   // 🔹 UPDATED: handleBackToAdmin
-  // Since we are opening client in a new tab, admin tab stays alive.
-  // We simply navigate back to list.
   const handleBackToAdmin = async () => {
-    // Logic Removed: No more session backup/restore needed
     router.push('/admin/clients');
   };
 
@@ -188,34 +185,43 @@ export default function ClientProfile() {
       setTimeout(() => toast.success("Ledger Downloaded"), 1500);
   };
 
+  // ✅ UPDATED: handleUpdatePlan with proper Sync
   const handleUpdatePlan = async () => {
     const toastId = toast.loading("Updating subscription plan...");
+
+    // 🚀 STEP 1: Mapping define karein taaki Code aur Name sync rahein
     const planMapping: { [key: string]: string } = {
         'TRIAL': 'Trial',
         'BASIC': 'Basic',
         'PRO': 'Professional',
         'ENTERPRISE': 'Enterprise'
     };
-    const formattedName = planMapping[newPlan.toUpperCase()] || newPlan;
+
+    const upperPlanCode = newPlan.toUpperCase(); // e.g., 'PRO'
+    const formattedPlanName = planMapping[upperPlanCode] || newPlan; // e.g., 'Professional'
 
     try {
+        // 🚀 STEP 2: Dono columns ko sync mein update karein
         const { error } = await supabase
             .from('clients')
             .update({ 
-                plan: newPlan.toUpperCase(),
-                plan_name: formattedName,
+                plan: upperPlanCode,            // Database ka 'plan' column (Code)
+                plan_name: formattedPlanName,    // Database ka 'plan_name' column (Display Name)
                 updated_at: new Date().toISOString()
             })
             .eq('id', id);
 
         if (error) throw error;
 
-        toast.success(`Plan updated to ${formattedName}`, { id: toastId });
+        toast.success(`Plan updated to ${formattedPlanName}`, { id: toastId });
+        
+        // 🚀 STEP 3: Modal band karein aur data refresh karein
         setIsRenewOpen(false);
-        fetchClient(); 
+        fetchClient(); // Isse Admin UI turant update ho jayega
 
     } catch (err: any) {
-        toast.error(err.message, { id: toastId });
+        console.error("Update Error:", err);
+        toast.error("Failed to update: " + err.message, { id: toastId });
     }
   };
 
@@ -341,6 +347,7 @@ export default function ClientProfile() {
                 {client.status}
               </Badge>
 
+              {/* ✅ HEADER BADGE FIX: Ensure Sync */}
               <Badge variant="outline" className="text-blue-600 border-blue-200 px-3 py-1 text-xs uppercase font-bold">
                 {client.plan_name || client.plan} PLAN
               </Badge>
