@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   
-  // ✅ INITIAL STATE FIX
+  // ✅ OPTIMISTIC STATE: Turant data nikalne ka try karein
   const [userProfile, setUserProfile] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const impersonationUser = localStorage.getItem('impersonation_user');
@@ -23,33 +23,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null;
   });
 
+  // ✅ FIX: Initial 'isChecking' ko False rakhenge
+  // Agar LS mein data hai, to Loader nahi dikhega. Tab dikhega jab data hai hi nahi.
+  const [isChecking, setIsChecking] = useState(false); 
   const [isAuthorized, setIsAuthorized] = useState(!!userProfile);
-  const [isChecking, setIsChecking] = useState(!userProfile); 
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const hasInitialized = useRef(false); 
 
-  // 🚀 1. CLEAN AUTH LOGIC (NO LOCAL STORAGE ID SWITCHING)
+  // 🚀 1. SMOOTH AUTH LOGIC
   useEffect(() => {
     const syncAuth = async () => {
+      // ✅ AGAR PEHLE SE DATA HAI TO LOADER NAHI DIKHAYEGA
+      // Sirf tab dikhayein agar haal hi mein data clear hua ho aur koi user na ho
+      if (!userProfile) {
+        setIsChecking(true);
+      } else {
+        // Agar user pda hai to background mein silent refresh
+        setIsChecking(false); 
+      }
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        
+        // Agar session hi nahi hai to logout bhej do
         if (!session) {
           router.push('/login');
           return;
         }
 
-        // ✅ UPDATED: Check flag AND URL parameter
+        // Impersonation Check
         const isAdminImpersonating =
           localStorage.getItem('is_admin_impersonating') === 'true' ||
           pathname.includes('impersonate=true');
           
         setIsImpersonating(isAdminImpersonating);
 
-        // ✅ FIX: ALWAYS use REAL session ID. No fake targetClientId logic.
-        // If session is Client -> Load Client.
-        // If session is Admin (accidental load) -> Load Admin from clients table (if exists as a client).
+        // Fetch Profile
+        // ✅ Hum yahan API call kar rahe hain, par frontend turant purana data (userProfile) use kar raha hai
+        // Isse "Flicker" nahi hoga.
         const { data: profile } = await supabase
           .from('clients')
           .select('*')
@@ -60,18 +73,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           const activeSocietyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
           const updatedUser = { ...profile, resolved_client_id: activeSocietyId };
           
-          // Storage Logic: Just keep current user in sync
+          // Storage Update
           localStorage.setItem('current_user', JSON.stringify(updatedUser));
-          
-          // Keep impersonation_user separate if needed, but profile is now driven by session
           if(isAdminImpersonating) {
              localStorage.setItem('impersonation_user', JSON.stringify(updatedUser));
           }
 
+          // ✅ STATE UPDATE
           setUserProfile(updatedUser);
           setIsAuthorized(true);
 
-          // Theme Logic
+          // Theme Update
           if (profile.theme === 'dark') {
             document.documentElement.classList.add('dark');
           } else {
@@ -83,15 +95,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       } catch (err) {
         console.error("Sync error:", err);
       } finally {
+        // ✅ Jab bhi kaam ho, checking off karein
         setIsChecking(false);
         hasInitialized.current = true;
       }
     };
 
     if (!hasInitialized.current) syncAuth();
-  }, [router]); 
+  }, [router, pathname]); // pathname remove kar sakte hain agar necessary na ho
 
-  // 🚀 2. INSTANT PERMISSION GUARD (No Loading Spinner)
+  // 🚀 2. PERMISSION GUARD
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
       const perms = userProfile.role_permissions?.treasurer || [];
@@ -114,20 +127,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
-  // ✅ UPDATED BACK BUTTON LOGIC (Using master_admin_session)
+  // ✅ UPDATED BACK BUTTON LOGIC
   const handleBackToAdmin = async () => {
     const toastId = toast.loading("Restoring Admin Session...");
     try {
-      // 1. Client ke flags saaf karein
       localStorage.removeItem('is_admin_impersonating');
       
-      // 2. Admin ka purana session uthayein jo humne Step 1 mein save kiya tha
       const adminSessionStr = localStorage.getItem('master_admin_session');
       
       if (adminSessionStr) {
         const adminSession = JSON.parse(adminSessionStr);
         
-        // 🚀 ASLI MAGIC: Supabase ko bolo wapas Admin ban jaye
         const { error } = await supabase.auth.setSession({
           access_token: adminSession.access_token,
           refresh_token: adminSession.refresh_token
@@ -136,10 +146,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (error) throw error;
 
         toast.success("Admin Session Restored", { id: toastId });
-        // 3. Wapas Admin page par bhejien
         window.location.href = '/admin/clients';
       } else {
-        // Agar backup nahi mila tabhi login par bhejien
         window.location.href = '/admin/login';
       }
     } catch (err) {
@@ -147,7 +155,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  // Asli Fast UI Logic
+  // ✅ OPTIMIZED LOADING CHECK
+  // Ab Sirf tab Loader Dikhega agar haal hi mein koi user nahi hai (Fresh Load)
   if (isChecking && !userProfile) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-slate-950">
@@ -174,14 +183,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
-        {/* Sidebar remains stable on navigation */}
         <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800">
-           {/* 🚀 Sidebar ko profile pass karein taaki wo flicker na kare */}
            <ClientSidebar profile={userProfile} /> 
         </div>
         
         <main className="flex-1 overflow-y-auto relative p-4 md:p-8">
-          {/* 🚀 Sirf aur sirf Authorized hone par content dikhayein */}
           {(isAuthorized || userProfile) && children}
         </main>
         
