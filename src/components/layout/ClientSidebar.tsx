@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react'; // Optimization ke liye
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -16,7 +17,7 @@ const navItems = [
   { label: 'Members', href: '/dashboard/members', icon: Users, perm: 'View Members' },
   { label: 'Passbook', href: '/dashboard/passbook', icon: BookOpen, perm: 'View Passbook' },
   { label: 'Loans', href: '/dashboard/loans', icon: CreditCard, perm: 'View Loans' },
-  { label: 'Maturity', href: '/dashboard/maturity', icon: TrendingUp, perm: 'View Dashboard' }, // 🎯 Synced with your DB
+  { label: 'Maturity', href: '/dashboard/maturity', icon: TrendingUp, perm: 'View Dashboard' },
   { label: 'Admin Fund', href: '/dashboard/admin-fund', icon: ShieldCheck, perm: 'Manage Admin Fund' },
   { label: 'Expenses', href: '/dashboard/expenses', icon: Wallet, perm: 'Manage Expenses' },
   { label: 'Reports', href: '/dashboard/reports', icon: FileText, perm: 'View Reports' },
@@ -29,11 +30,20 @@ export default function ClientSidebar({ profile }: { profile: any }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // 🚀 ASLI FIX: Agar profile nahi hai, toh kuch mat dikhao (Wait for Layout)
-  if (!profile) return <div className="w-64 bg-white dark:bg-slate-900 h-full border-r animate-pulse" />;
+  // 🚀 ASLI FIX: Instant Data Sync
+  // Agar profile prop (Layout se) aa raha hai toh wo use karo, warna LocalStorage se uthao.
+  // Isse navigation ke waqt loader nahi aayega kyunki data hamesha rahega.
+  const user = useMemo(() => {
+    if (profile) return profile;
+    if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('current_user');
+        return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  }, [profile]);
 
-  const userRole = profile.role || 'client';
-  const permissions = profile.role_permissions?.treasurer || [];
+  const userRole = user?.role || 'client';
+  const permissions = user?.role_permissions?.treasurer || [];
 
   const handleLogout = async () => {
     localStorage.clear();
@@ -45,6 +55,7 @@ export default function ClientSidebar({ profile }: { profile: any }) {
 
   return (
     <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shadow-sm">
+        {/* HEADER: Hamesha dikhega */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
           <div className="h-9 w-9 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md">S</div>
           <div>
@@ -55,9 +66,9 @@ export default function ClientSidebar({ profile }: { profile: any }) {
           </div>
         </div>
         
+        {/* MENU: Ab bina kisi delay ke dikhega */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            // ✅ Permission Logic
             const hasAccess = userRole !== 'treasurer' || item.perm === 'ALWAYS' || permissions.includes(item.perm);
             const isForbiddenForStaff = item.ownerOnly && userRole === 'treasurer';
 
@@ -80,6 +91,7 @@ export default function ClientSidebar({ profile }: { profile: any }) {
           })}
         </nav>
 
+        {/* FOOTER: Hamesha dikhega */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800">
             <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 gap-3">
               <LogOut className="h-4 w-4" /> 
