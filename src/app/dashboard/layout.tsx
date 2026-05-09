@@ -40,8 +40,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return;
         }
 
-        // ✅ FIX: Banner Logic check only via flag, not ID
-        const isAdminImpersonating = localStorage.getItem('is_admin_impersonating') === 'true';
+        // ✅ UPDATED: Check flag AND URL parameter
+        const isAdminImpersonating =
+          localStorage.getItem('is_admin_impersonating') === 'true' ||
+          pathname.includes('impersonate=true');
+          
         setIsImpersonating(isAdminImpersonating);
 
         // ✅ FIX: ALWAYS use REAL session ID. No fake targetClientId logic.
@@ -147,6 +150,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         // 6. Small delay then Hard reload to Admin
         await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        // ✅ UPDATED REDIRECT
+        localStorage.setItem('is_admin_impersonating', 'false');
         window.location.href = '/admin/clients';
 
       } catch (e: any) {
