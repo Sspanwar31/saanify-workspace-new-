@@ -114,56 +114,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
-  // ✅ UPDATED BACK BUTTON LOGIC
+  // ✅ UPDATED BACK BUTTON LOGIC (Using master_admin_session)
   const handleBackToAdmin = async () => {
-    const backupSession = localStorage.getItem('backup_admin_session');
-
-    if (backupSession) {
-      try {
-        const { access_token, refresh_token } = JSON.parse(backupSession);
-
-        // 1. Clear old auth completely
-        await supabase.auth.signOut();
-
-        // 2. Clear ALL Supabase local keys
-        Object.keys(localStorage).forEach((key) => {
-          if (key.includes('supabase')) {
-            localStorage.removeItem(key);
-          }
-        });
-
-        // 3. Restore admin session
+    const toastId = toast.loading("Restoring Admin Session...");
+    try {
+      // 1. Client ke flags saaf karein
+      localStorage.removeItem('is_admin_impersonating');
+      
+      // 2. Admin ka purana session uthayein jo humne Step 1 mein save kiya tha
+      const adminSessionStr = localStorage.getItem('master_admin_session');
+      
+      if (adminSessionStr) {
+        const adminSession = JSON.parse(adminSessionStr);
+        
+        // 🚀 ASLI MAGIC: Supabase ko bolo wapas Admin ban jaye
         const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token
+          access_token: adminSession.access_token,
+          refresh_token: adminSession.refresh_token
         });
 
         if (error) throw error;
 
-        // 4. Clean up flags
-        localStorage.removeItem('is_admin_impersonating');
-        localStorage.removeItem('impersonation_user');
-
-        // 5. THEME FIX: Force remove classes before redirect
-        document.documentElement.classList.remove('dark');
-        document.documentElement.classList.remove('light');
-
-        // 6. Small delay then Hard reload to Admin
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        
-        // ✅ UPDATED REDIRECT
-        localStorage.setItem('is_admin_impersonating', 'false');
+        toast.success("Admin Session Restored", { id: toastId });
+        // 3. Wapas Admin page par bhejien
         window.location.href = '/admin/clients';
-
-      } catch (e: any) {
-        console.error("Back to Admin Error:", e);
-        toast.error("Failed to restore session. Please Login again.");
-        await supabase.auth.signOut();
-        localStorage.clear();
-        router.push('/login');
+      } else {
+        // Agar backup nahi mila tabhi login par bhejien
+        window.location.href = '/admin/login';
       }
-    } else {
-      router.push('/admin/clients');
+    } catch (err) {
+      window.location.href = '/admin/login';
     }
   };
 
