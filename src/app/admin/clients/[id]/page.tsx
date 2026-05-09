@@ -288,16 +288,20 @@ export default function ClientProfile() {
 
       const data = await res.json();
 
+      // ✅ UPDATED BLOCK
       if (res.ok && data.url) {
-        toast.success("Opening Client Panel in new tab...");
+        toast.dismiss(toastId);
+        toast.success("Redirecting to Client Panel...");
         
-        // ✅ STEP 2: OPEN NEW TAB (Window remains here, no session swap)
-        window.open(data.url, '_blank');
+        // ✅ REDIRECT IN SAME TAB
+        window.location.href = data.url;
       } else {
+        toast.dismiss(toastId);
         throw new Error(data.error || "Failed to generate access");
       }
     } catch (e: any) {
-      toast.error(e.message, { id: toastId });
+      toast.dismiss(toastId);
+      toast.error(e.message);
     }
   };
 
