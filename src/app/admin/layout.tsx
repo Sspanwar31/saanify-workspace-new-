@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react'; // Menu open/close ke liye
+import { useState, useEffect } from 'react'; // ✅ Added useEffect
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -7,6 +7,7 @@ import {
   Zap, Settings, LogOut, Shield, Menu, X 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase'; // ✅ Added supabase import
 
 const navItems = [
   { label: 'Overview', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -21,6 +22,21 @@ const navItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // ✅ ADDED: BACKUP ADMIN SESSION
+  useEffect(() => {
+    const backupAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Admin ka token hamesha ke liye ek alag chabhi mein save kar lo
+        localStorage.setItem('master_admin_session', JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        }));
+      }
+    };
+    backupAdmin();
+  }, []);
 
   const SidebarContent = () => (
     <>
