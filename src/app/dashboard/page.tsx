@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,6 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
-
-// ------------------------------------------------------------------
-// STEP 1: DEBUG HELPER
-// ------------------------------------------------------------------
-const debugTime = (label: string) => {
-  console.log(`⏱️ ${label}:`, performance.now().toFixed(2));
-};
 
 // ------------------------------------------------------------------
 // 2️⃣ HELPER FUNCTIONS
@@ -63,9 +56,8 @@ function getRiskyLoans(loans: any[]) {
 // ------------------------------------------------------------------
 
 export default function ClientDashboard() {
-  // STEP 2: COMPONENT RENDER DEBUG
-  console.log('🔄 Dashboard Render');
-  debugTime('Dashboard Render');
+  // ✅ FIX 2: Add initialized ref
+  const initialized = useRef(false);
 
   const router = useRouter();
   const { formatCurrency, symbol } = useCurrency();
@@ -98,22 +90,39 @@ export default function ClientDashboard() {
     pendingLoans: 0
   });
 
-  const [chartData, setChartData] = useState<any[]>([]);
+  // ✅ FIX 5: Memoized Chart Data
+  const chartData = useMemo(() => {
+    const monthlyMap: { [key: string]: number } = {};
+    transactionsData.forEach(t => {
+      if (!t) return;
+      const totalAmt = Number(t.total_amount) || 0;
+      const date = t.date ? new Date(t.date) : new Date(t.created_at);
+      const month = date.toLocaleString('default', { month: 'short' });
+      monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
+    });
 
-  // ✅ UPDATED USE EFFECT: Simplified Auth Logic using LocalStorage
+    return Object.keys(monthlyMap || {}).map(m => ({
+      month: m,
+      amount: monthlyMap[m]
+    }));
+  }, [transactionsData]);
+
+  // ✅ FIX 3: Replaced useEffect with Final Version
   useEffect(() => {
+
+    if (initialized.current) return;
+    initialized.current = true;
+
     const init = async () => {
-        // STEP 3: INIT DEBUG
+
         console.log('🚀 INIT START');
-        debugTime('INIT START');
 
         try {
-            // ✅ FIX: Only show spinner if we don't have cached data
+
             if (!clientData) {
                 setLoading(true);
             }
 
-            // ✅ STEP 3: Minimal logic relying on LocalStorage clientData
             const activeClientId =
               clientData?.resolved_client_id || clientData?.id;
 
@@ -131,43 +140,9 @@ export default function ClientDashboard() {
         }
     };
 
-    // ✅ UPDATED: fetchAndCalculate - No Permission Checks, Only activeClientId
     const fetchAndCalculate = async (activeClientId: string) => {
-        
-        // STEP 4: FETCH START
+
         console.log('📡 FETCH START');
-        console.time('FETCH_TIME');
-
-        // STEP 5: EACH QUERY DEBUG
-        console.time('passbook');
-        const passbookPromise = supabase
-          .from('passbook_entries')
-          .select('*')
-          .eq('client_id', activeClientId);
-
-        console.time('expenses');
-        const expensePromise = supabase
-          .from('expenses_ledger')
-          .select('*')
-          .eq('client_id', activeClientId);
-
-        console.time('loans');
-        const loansPromise = supabase
-          .from('loans')
-          .select('*')
-          .eq('client_id', activeClientId);
-
-        console.time('members');
-        const membersPromise = supabase
-          .from('members')
-          .select('*')
-          .eq('client_id', activeClientId);
-
-        console.time('adminfund');
-        const adminFundPromise = supabase
-          .from('admin_fund_ledger')
-          .select('*')
-          .eq('client_id', activeClientId);
 
         const [
           passbookRes,
@@ -176,38 +151,58 @@ export default function ClientDashboard() {
           membersRes,
           adminFundRes
         ] = await Promise.all([
-          passbookPromise,
-          expensePromise,
-          loansPromise,
-          membersPromise,
-          adminFundPromise
+          supabase
+            .from('passbook_entries')
+            .select('*')
+            .eq('client_id', activeClientId),
+
+          supabase
+            .from('expenses_ledger')
+            .select('*')
+            .eq('client_id', activeClientId),
+
+          supabase
+            .from('loans')
+            .select('*')
+            .eq('client_id', activeClientId),
+
+          supabase
+            .from('members')
+            .select('*')
+            .eq('client_id', activeClientId),
+
+          supabase
+            .from('admin_fund_ledger')
+            .select('*')
+            .eq('client_id', activeClientId)
         ]);
 
-        console.timeEnd('passbook');
-        console.timeEnd('expenses');
-        console.timeEnd('loans');
-        console.timeEnd('members');
-        console.timeEnd('adminfund');
+        const passbook = passbookRes.data || [];
+        const expenses = expenseRes.data || [];
+        const loans = loansRes.data || [];
+        const members = membersRes.data || [];
+        const adminFunds = adminFundRes.data || [];
 
-        setMembersData(membersRes.data || []);
-        setLoansData(loansRes.data || []);
-        setTransactionsData(passbookRes.data || []); 
+        setMembersData(members);
+        setLoansData(loans);
+        setTransactionsData(passbook);
 
-        calculateFinancials(
-            passbookRes.data || [], 
-            expenseRes.data || [], 
-            loansRes.data || [],
-            membersRes.data || [],
-            adminFundRes.data || []
-        );
+        requestAnimationFrame(() => {
+          calculateFinancials(
+            passbook,
+            expenses,
+            loans,
+            members,
+            adminFunds
+          );
+        });
 
-        // STEP 4: FETCH END
-        console.timeEnd('FETCH_TIME');
         console.log('✅ FETCH END');
     };
 
     init();
-  }, [router]);  
+
+}, []);
 
   // Banner Logic
   useEffect(() => {
@@ -273,7 +268,6 @@ export default function ClientDashboard() {
   // ✅ FINANCIAL LOGIC
   const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[], adminFunds: any[]) => {
     
-    // STEP 6: CALCULATION DEBUG (START)
     console.time('financial_calculation');
     console.log('🧮 Financial Calculation Start');
 
@@ -282,7 +276,6 @@ export default function ClientDashboard() {
     let cash = 0, bank = 0, upi = 0;
     let pendingLoanCount = 0;
     let totalDepositsCollected = 0; 
-    const monthlyMap: {[key: string]: number} = {};
 
     passbook.forEach(t => {
         const totalAmt = Number(t.total_amount) || 0; 
@@ -298,9 +291,7 @@ export default function ClientDashboard() {
         else if (mode.includes('bank') || mode.includes('cheque')) bank += totalAmt;
         else if (mode.includes('upi') || mode.includes('online')) upi += totalAmt;
 
-        const date = t.date ? new Date(t.date) : new Date(t.created_at);
-        const month = date.toLocaleString('default', { month: 'short' });
-        monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
+        // ✅ REMOVED: Monthly map logic (moved to useMemo for chartData)
     });
 
     expenses.forEach(e => {
@@ -385,11 +376,6 @@ export default function ClientDashboard() {
 
     const totalExpenseFinal = cashExpense + Number(maturityLiability.toFixed(2));
     const netProfitFinal = realIncome - totalExpenseFinal;
-    const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
-
-    // STEP 7: CHART DEBUG
-    console.log('📊 Chart Points:', chart.length);
-    setChartData(chart);
 
     setFinancials({
         netProfit: netProfitFinal,
@@ -402,7 +388,6 @@ export default function ClientDashboard() {
         pendingLoans: pendingLoanCount
     });
 
-    // STEP 6: CALCULATION DEBUG (END)
     console.timeEnd('financial_calculation');
     console.log('✅ Financial Calculation End');
   };
@@ -433,9 +418,7 @@ export default function ClientDashboard() {
   const overdueMembers = getOverdueMembers(membersData, 10);
   const riskyLoans = getRiskyLoans(loansData);
 
-  // STEP 9: PAGE LOAD END
-  console.timeEnd('ROUTE_CHANGE');
-  console.log('🎉 Dashboard Fully Loaded');
+  // ✅ FIX 1: Removed Route Change Logs
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
