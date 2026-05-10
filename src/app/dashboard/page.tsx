@@ -59,8 +59,18 @@ export default function ClientDashboard() {
   const router = useRouter();
   const { formatCurrency, symbol } = useCurrency();
   
-  const [loading, setLoading] = useState(true);
-  const [clientData, setClientData] = useState<any>(null);
+  // 🚀 OPTIMISTIC STATE (Instant Load from LocalStorage)
+  // Agar LS mein data hai, to turant UI load hoga, spinner nahi dikhega.
+  const [clientData, setClientData] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('current_user');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+
+  // Agar clientData hai to loading false, nahi to true.
+  const [loading, setLoading] = useState(!clientData);
 
   const [membersData, setMembersData] = useState<any[]>([]);
   const [loansData, setLoansData] = useState<any[]>([]);
@@ -87,7 +97,10 @@ export default function ClientDashboard() {
   useEffect(() => {
     const init = async () => {
         try {
-            setLoading(true);
+            // ✅ FIX: Only show spinner if we don't have cached data
+            if (!clientData) {
+                setLoading(true);
+            }
 
             // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
             const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -174,7 +187,7 @@ export default function ClientDashboard() {
 
   // ❌ REMOVED: Old Impersonation check logic (handled in Layout)
   // Dashboard page itself doesn't need to know if impersonating for UI logic anymore
-  // as the Layout handles the Banner and Button.
+  // as Layout handles Banner and Button.
 
   // Banner Logic
   useEffect(() => {
@@ -204,7 +217,7 @@ export default function ClientDashboard() {
     if(loading === false && transactionsData.length > 0) {
         toast.info('📅 Monthly Summary', {
         description: `
-    💰 Deposits: ₹${totalDeposits}
+    💰 Deposits: ${formatCurrency(totalDeposits)}
     🏦 Active Loans: ${activeLoans.length}
     ⚠️ Overdue Members: ${overdueMembers.length}
     🚨 Risky Loans: ${riskyLoans.length}
@@ -370,7 +383,7 @@ export default function ClientDashboard() {
     router.push('/login');
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950">Loading Dashboard...</div>;
+  if (loading && !clientData) return <div className="h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950">Loading Dashboard...</div>;
   if (!clientData) return null;
 
   const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
@@ -408,7 +421,7 @@ export default function ClientDashboard() {
             </button>
           </CardHeader>
           <CardContent className="text-sm space-y-1">
-            <div className="text-slate-700 dark:text-slate-300">💰 Deposits: ₹{totalDeposits}</div>
+            <div className="text-slate-700 dark:text-slate-300">💰 Deposits: {fmt(totalDeposits)}</div>
             <div className="text-slate-700 dark:text-slate-300">🏦 Active Loans: {activeLoans.length}</div>
             <div className="text-slate-700 dark:text-slate-300">⚠️ Overdue Members: {overdueMembers.length}</div>
             <div className="text-slate-700 dark:text-slate-300">🚨 Risky Loans: {riskyLoans.length}</div>
