@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react'; // Optimization ke liye
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -30,21 +29,12 @@ export default function ClientSidebar({ profile }: { profile: any }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // 🚀 ASLI FIX: Profile ka wait karein taaki flicker na ho
-  // Agar profile prop (Layout se) aa raha hai toh wo use karo, warna LocalStorage se uthao.
-  // Isse navigation ke waqt loader nahi aayega kyunki data hamesha rahega.
-  const user = useMemo(() => {
-    if (profile) return profile;
-    if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('current_user');
-        return saved ? JSON.parse(saved) : null;
-    }
-    return null;
-  }, [profile]);
+  // ✅ NEW CODE APPLIED (UseMemo hata karke direct assignment)
+  const user = profile;
 
   const userRole = user?.role || 'client';
   
-  // ✅ UPDATED: NEW CODE APPLIED
+  // ✅ SAFE ARRAY CHECK
   const permissions = Array.isArray(
     user?.role_permissions?.treasurer
   ) 
