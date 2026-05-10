@@ -27,20 +27,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Agar LS mein data hai to 'isChecking' false rahega (Turant UI).
   // Agar LS mein data nahi hai to 'true' (Loader dikhega).
   const [isChecking, setIsChecking] = useState(!userProfile); 
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); 
+  
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
   // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount)
-  // Humne dependency array khali kar di hai [] taaki page navigation par ye wapas na chale.
   useEffect(() => {
     const performAuthSync = async () => {
       // Agar pehle se run ho chuka hai to rok do
       if (initialized.current) return;
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
         
-        if (!session) {
+        if (authError || !session) {
+          console.error("No active session found");
           router.push('/login');
           return;
         }
@@ -52,38 +56,71 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         setIsImpersonating(isImp);
 
-        // Silent Background Refresh
-        // Database se naya data lao, par UI ko mat roko
+        // --- ✅ NEW CODE REPLACEMENT START ---
+        
+        // STEP 1: current login user load karo
         const { data: profile } = await supabase
           .from('clients')
           .select('*')
           .eq('id', session.user.id)
           .maybeSingle();
 
-        if (profile) {
-          const activeSocietyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
-          const updatedUser = { ...profile, resolved_client_id: activeSocietyId };
-          
-          // Storage Update
-          localStorage.setItem('current_user', JSON.stringify(updatedUser));
-          
-          // Impersonation wale case mein localstorage update
-          if (isImp) {
-            localStorage.setItem('impersonation_user', JSON.stringify(updatedUser));
-          }
-
-          // ✅ State Update (Background mein)
-          setUserProfile(updatedUser);
-
-          // Theme Update
-          if (profile.theme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-          
-          if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') router.push('/login');
+        if (!profile) {
+          router.push('/login');
+          return;
         }
+
+        // STEP 2: Treasurer hai to OWNER permissions load karo
+        let mergedProfile = profile;
+
+        if (profile.role === 'treasurer' && profile.client_id) {
+
+          const { data: ownerProfile } = await supabase
+            .from('clients')
+            .select('role_permissions')
+            .eq('id', profile.client_id)
+            .maybeSingle();
+
+          mergedProfile = {
+            ...profile,
+            // ✅ OWNER permissions inject karo
+            role_permissions: ownerProfile?.role_permissions || {}
+          };
+        }
+
+        // STEP 3
+        const activeSocietyId =
+          mergedProfile.role === 'treasurer'
+            ? mergedProfile.client_id
+            : mergedProfile.id;
+
+        const updatedUser = {
+          ...mergedProfile,
+          resolved_client_id: activeSocietyId
+        };
+
+        // Storage Update
+        localStorage.setItem('current_user', JSON.stringify(updatedUser));
+        
+        // Impersonation wale case mein localstorage update
+        if (isImp) {
+          localStorage.setItem('impersonation_user', JSON.stringify(updatedUser));
+        }
+
+        // ✅ State Update (Background mein)
+        setUserProfile(updatedUser);
+        setIsAuthorized(true);
+
+        // --- ✅ NEW CODE REPLACEMENT END ---
+
+        // Theme Update
+        if (profile.theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        
+        if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') router.push('/login');
       } catch (err) {
         console.error("Auth Sync Error:", err);
       } finally {
@@ -100,23 +137,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Ye sirf permission check karega, data fetch nahi karega. Isse smoothness aayegi.
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
-      const perms = userProfile.role_permissions?.treasurer || [];
+      // Database se aane wali permissions: ["View Dashboard", "View Members", ...]
+      const permissions = userProfile.role_permissions?.treasurer || [];
       const path = pathname.toLowerCase();
-      
+
+      // 🚀 ASLI SYNC: Exact strings from your DB dump
       const isAllowed = 
         path === '/dashboard' ||
-        (path.includes('members') && perms.includes('View Members')) ||
-        (path.includes('passbook') && perms.includes('View Passbook')) ||
-        (path.includes('loans') && perms.includes('View Loans')) ||
-        (path.includes('expenses') && perms.includes('Manage Expenses')) ||
-        (path.includes('reports') && perms.includes('View Reports')) ||
-        (path.includes('maturity') && perms.includes('View Dashboard'));
+        (path.includes('members') && permissions.includes('View Members')) ||
+        (path.includes('passbook') && permissions.includes('View Passbook')) ||
+        (path.includes('loans') && permissions.includes('View Loans')) ||
+        (path.includes('expenses') && permissions.includes('Manage Expenses')) ||
+        (path.includes('reports') && permissions.includes('View Reports')) ||
+        (path.includes('maturity') && permissions.includes('View Dashboard')) ||
+        (path.includes('admin-fund') && permissions.includes('Manage Admin Fund')) ||
+        (path.includes('user-management') && permissions.includes('User Management Access')) ||
+        (path.includes('settings') && permissions.includes('View Settings'));
 
       if (path !== '/dashboard' && !isAllowed) {
         toast.error("Access Restricted: Permission required");
         router.push('/dashboard');
+        return;
       }
     }
+    setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
   const handleBackToAdmin = async () => {
@@ -179,13 +223,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
            <ClientSidebar profile={userProfile} /> 
         </div>
         
+        {/* Mobile Menu Backdrop */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[50] md:hidden bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
+             <div className="w-72 h-full bg-white dark:bg-slate-900" onClick={e => e.stopPropagation()}>
+               <ClientSidebar profile={userProfile} />
+             </div>
+          </div>
+        )}
+        
         <main className="flex-1 overflow-y-auto relative p-4 md:p-8">
           {/* children hamesha render honge agar userProfile hai */}
-          {children}
+          {isAuthorized && children}
         </main>
         
-        <MobileBottomNav onMenuClick={() => {}} />
+        <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
       </div>
     </>
   );
-} 
+}
