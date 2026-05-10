@@ -89,7 +89,7 @@ export default function ClientDashboard() {
 
   const [chartData, setChartData] = useState<any[]>([]);
 
-  // ✅ UPDATED USE EFFECT: Direct Auth Check & Fetch Logic
+  // ✅ UPDATED USE EFFECT: Simplified Auth Logic using LocalStorage
   useEffect(() => {
     const init = async () => {
         try {
@@ -98,46 +98,16 @@ export default function ClientDashboard() {
                 setLoading(true);
             }
 
-            // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            // ✅ STEP 3: Minimal logic relying on LocalStorage clientData
+            const activeClientId =
+              clientData?.resolved_client_id || clientData?.id;
 
-            if (authError || !user) {
-                console.error("No active session found");
-                router.push('/login');
-                return;
+            if (!activeClientId) {
+              router.push('/login');
+              return;
             }
 
-            // 🚀 2. Is ID ke base par database se Profile fetch karo
-            const { data: userData, error: dbError } = await supabase
-                .from('clients')
-                .select('*')
-                .eq('id', user.id) 
-                .maybeSingle();
-
-            if (!userData) {
-                const { data: memberData } = await supabase
-                    .from('members')
-                    .select('*')
-                    .eq('auth_user_id', user.id)
-                    .maybeSingle();
-                
-                if (memberData) {
-                    const { data: parentClient } = await supabase.from('clients').select('*').eq('id', memberData.client_id).single();
-                    setClientData(parentClient);
-                    // Pass parent client ID
-                    await fetchAndCalculate(memberData.client_id);
-                } else {
-                    router.push('/login');
-                    return;
-                }
-            } else {
-                setClientData(userData);
-                // 🚀 3. RESOLVE MASTER ID (Always use Owner ID)
-                // Agar owner hai to apni ID, agar treasurer hai to client_id (Owner ka ID)
-                const activeClientId = userData.role === 'client' ? userData.id : userData.client_id;
-                
-                await fetchAndCalculate(activeClientId);
-            }
+            await fetchAndCalculate(activeClientId);
 
         } catch(e) {
             console.error("Dashboard Init Error:", e);
