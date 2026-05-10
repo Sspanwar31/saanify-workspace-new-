@@ -1,210 +1,103 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'; 
-import { supabase } from '@/lib/supabase'; 
-import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X } from 'lucide-react'; 
-import MobileBottomNav from '@/components/layout/MobileBottomNav';
+import { useMemo } from 'react'; // Optimization ke liye
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { 
+  LayoutDashboard, Users, BookOpen, CreditCard, TrendingUp, 
+  Wallet, FileText, Settings, LogOut, ShieldCheck,
+  UserCog, Crown 
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+const navItems = [
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, perm: 'ALWAYS' },
+  { label: 'Members', href: '/dashboard/members', icon: Users, perm: 'View Members' },
+  { label: 'Passbook', href: '/dashboard/passbook', icon: BookOpen, perm: 'View Passbook' },
+  { label: 'Loans', href: '/dashboard/loans', icon: CreditCard, perm: 'View Loans' },
+  { label: 'Maturity', href: '/dashboard/maturity', icon: TrendingUp, perm: 'View Dashboard' },
+  { label: 'Admin Fund', href: '/dashboard/admin-fund', icon: ShieldCheck, perm: 'Manage Admin Fund' },
+  { label: 'Expenses', href: '/dashboard/expenses', icon: Wallet, perm: 'Manage Expenses' },
+  { label: 'Reports', href: '/dashboard/reports', icon: FileText, perm: 'View Reports' },
+  { label: 'User Management', href: '/dashboard/user-management', icon: UserCog, perm: 'User Management Access' },
+  { label: 'Subscription', href: '/dashboard/subscription', icon: Crown, ownerOnly: true },
+  { label: 'Settings', href: '/dashboard/settings', icon: Settings, ownerOnly: true },
+];
+
+export default function ClientSidebar({ profile }: { profile: any }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams(); // ✅ Added for checking URL params
-  
-  // 🚀 1. OPTIMISTIC STATE (Instant Load)
-  // Turant data uthao LocalStorage se taaki page khaali na dikhe
-  const [userProfile, setUserProfile] = useState<any>(() => {
+  const router = useRouter();
+
+  // 🚀 ASLI FIX: Instant Data Sync
+  // Agar profile prop (Layout se) aa raha hai toh wo use karo, warna LocalStorage se uthao.
+  // Isse navigation ke waqt loader nahi aayega kyunki data hamesha rahega.
+  const user = useMemo(() => {
+    if (profile) return profile;
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('impersonation_user') || localStorage.getItem('current_user');
-      return saved ? JSON.parse(saved) : null;
+        const saved = localStorage.getItem('current_user');
+        return saved ? JSON.parse(saved) : null;
     }
     return null;
-  });
+  }, [profile]);
 
-  // ✅ LOADING STATE LOGIC:
-  // Agar LS mein data hai to 'isChecking' false rahega (Turant UI).
-  // Agar LS mein data nahi hai to 'true' (Loader dikhega).
-  const [isChecking, setIsChecking] = useState(!userProfile); 
-  const [isImpersonating, setIsImpersonating] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // ✅ Mobile Menu State
-  
-  const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
+  const userRole = user?.role || 'client';
+  const permissions = user?.role_permissions?.treasurer || [];
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount)
-  useEffect(() => {
-    const performAuthSync = async () => {
-      // Agar pehle se run ho chuka hai to rok do
-      if (initialized.current) return;
-
-      try {
-        // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
-        const { data: { session }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !session) {
-          console.error("No active session found");
-          router.push('/login');
-          return;
-        }
-
-        // ✅ Impersonation Check (URL + LocalStorage)
-        const isImp = 
-          localStorage.getItem('is_admin_impersonating') === 'true' || 
-          searchParams.get('impersonate') === 'true';
-        
-        setIsImpersonating(isImp);
-
-        // 🚀 Silent Background Refresh
-        // Database se naya data lao, par UI ko mat roko
-        const { data: profile } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle();
-
-        if (profile) {
-          const activeSocietyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
-          const updatedUser = { ...profile, resolved_client_id: activeSocietyId };
-          
-          // Storage Update
-          localStorage.setItem('current_user', JSON.stringify(updatedUser));
-          
-          // Impersonation wale case mein localstorage update
-          if (isImp) {
-            localStorage.setItem('impersonation_user', JSON.stringify(updatedUser));
-          }
-
-          // ✅ State Update (Background mein)
-          setUserProfile(updatedUser);
-
-          // Theme Update
-          if (profile.theme === 'dark') {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-          
-          if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') router.push('/login');
-        }
-      } catch (err) {
-        console.error("Auth Sync Error:", err);
-      } finally {
-        // ✅ Kaam khatam, checking off karein
-        setIsChecking(false);
-        initialized.current = true; // Mark as done
-      }
-    };
-
-    performAuthSync();
-  }, [router]); // Agar strict mode mein loop kare to [router] rakhein
-
-  // 🚀 3. SILENT PERMISSION GUARD (Runs on Nav)
-  // Ye sirf permission check karega, data fetch nahi karega. Isse smoothness aayegi.
-  useEffect(() => {
-    if (userProfile?.role === 'treasurer') {
-      // Database se aane wali permissions (Exact Strings)
-      const permissions = userProfile.role_permissions?.treasurer || [];
-      const path = pathname.toLowerCase();
-      
-      // 🚀 ASLI SYNC: Exact strings from your DB dump
-      const isAllowed = 
-        path === '/dashboard' ||
-        (path.includes('members') && permissions.includes('View Members')) ||
-        (path.includes('passbook') && permissions.includes('View Passbook')) ||
-        (path.includes('loans') && permissions.includes('View Loans')) ||
-        (path.includes('expenses') && permissions.includes('Manage Expenses')) ||
-        (path.includes('reports') && permissions.includes('View Reports')) ||
-        (path.includes('maturity') && permissions.includes('View Dashboard')) ||
-        (path.includes('admin-fund') && permissions.includes('Manage Admin Fund')) ||
-        (path.includes('user-management') && permissions.includes('User Management Access')) ||
-        (path.includes('settings') && permissions.includes('View Settings'));
-
-      if (path !== '/dashboard' && !isAllowed) {
-        toast.error("Access Restricted: Permission required");
-        router.push('/dashboard');
-        return;
-      }
-    }
-    setIsMobileMenuOpen(false); // ✅ Auto-close mobile menu on navigation
-  }, [pathname, userProfile, router]);
-
-  const handleBackToAdmin = async () => {
-    const toastId = toast.loading("Restoring Admin Session...");
-    try {
-      localStorage.removeItem('is_admin_impersonating');
-      
-      const adminSessionStr = localStorage.getItem('master_admin_session');
-      
-      if (adminSessionStr) {
-        const adminSession = JSON.parse(adminSessionStr);
-        
-        const { error } = await supabase.auth.setSession({
-          access_token: adminSession.access_token,
-          refresh_token: adminSession.refresh_token
-        });
-
-        if (error) throw error;
-
-        toast.success("Admin Session Restored", { id: toastId });
-        window.location.href = '/admin/clients';
-      } else {
-        window.location.href = '/admin/login';
-      }
-    } catch (err) {
-      window.location.href = '/admin/login';
-    }
+  const handleLogout = async () => {
+    localStorage.clear();
+    document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    await supabase.auth.signOut();
+    router.push('/login');
+    toast.success("Logged out");
   };
 
-  // 🚀 UI RENDER
-  // Agar Profile pda hai turant content dikhega.
-  // Agar nahi hai to Loader dikhega.
-  if (isChecking && !userProfile) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-slate-950">
-        <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
-      </div>
-    );
-  }
-
   return (
-    <>
-      {isImpersonating && (
-        <div className="w-full bg-gradient-to-r from-purple-700 to-indigo-800 text-white px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[999]">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-purple-200" />
-            <span className="font-semibold tracking-wide">ADMIN VIEW</span>
+    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shadow-sm">
+        {/* HEADER: Hamesha dikhega */}
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+          <div className="h-9 w-9 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md">S</div>
+          <div>
+             <h1 className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">Saanify V2</h1>
+             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
+                {userRole === 'treasurer' ? 'Treasurer Panel' : 'Society Manager'}
+             </p>
           </div>
-          <button 
-            onClick={handleBackToAdmin} 
-            className="bg-white text-purple-800 px-4 py-1.5 rounded-full text-xs font-bold hover:bg-purple-50 transition-all flex items-center gap-2"
-          >
-            <ArrowLeft className="w-3 h-3" /> Back to Admin
-          </button>
         </div>
-      )}
+        
+        {/* MENU: Ab bina kisi delay ke dikhega */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const hasAccess = userRole !== 'treasurer' || item.perm === 'ALWAYS' || permissions.includes(item.perm);
+            const isForbiddenForStaff = item.ownerOnly && userRole === 'treasurer';
 
-      <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
-        <div className="w-64 shrink-0 hidden md:block border-r dark:border-slate-800">
-           <ClientSidebar profile={userProfile} /> 
+            if (!hasAccess || isForbiddenForStaff) return null;
+
+            const isActive = pathname === item.href;
+            return (
+              <Link 
+                key={item.href} 
+                href={item.href} 
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                  ${isActive 
+                    ? 'bg-orange-500 text-white shadow-md font-semibold' 
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900'}`}
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="text-sm">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* FOOTER: Hamesha dikhega */}
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+            <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 gap-3">
+              <LogOut className="h-4 w-4" /> 
+              <span className="font-medium">Logout</span>
+            </Button>
         </div>
-        
-        {/* ✅ MOBILE MENU BACKDROP */}
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-[50] md:hidden bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
-             <div className="w-72 h-full bg-white dark:bg-slate-900" onClick={e => e.stopPropagation()}>
-               <ClientSidebar profile={userProfile} />
-             </div>
-          </div>
-        )}
-        
-        <main className="flex-1 overflow-y-auto relative p-4 md:p-8">
-          {/* children hamesha render honge agar userProfile hai */}
-          {children}
-        </main>
-        
-        <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
-      </div>
-    </>
+    </aside>
   );
 }
