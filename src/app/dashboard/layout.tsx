@@ -177,7 +177,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile]); 
+  }, []); // ✅ CHANGE APPLIED HERE
 
   // 🚀 3. SILENT PERMISSION GUARD (Runs on Nav)
   useEffect(() => {
