@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'; 
+import { ShieldCheck, ArrowLeft, Loader2, X } from 'lucide-react'; 
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 
@@ -28,6 +28,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Agar LS mein data nahi hai to 'true' (Loader dikhega).
   const [isChecking, setIsChecking] = useState(!userProfile); 
   const [isImpersonating, setIsImpersonating] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // ✅ Mobile Menu State
+  
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
   // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount)
@@ -37,9 +39,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (initialized.current) return;
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
+        // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
+        const { data: { session }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !session) {
+          console.error("No active session found");
           router.push('/login');
           return;
         }
@@ -51,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         setIsImpersonating(isImp);
 
-        // Silent Background Refresh
+        // 🚀 Silent Background Refresh
         // Database se naya data lao, par UI ko mat roko
         const { data: profile } = await supabase
           .from('clients')
@@ -93,16 +97,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     performAuthSync();
-  }, [router]); // Agar strict mode mein loop kare to [router] rakhein, warna [] bhi chalega
+  }, [router]); // Agar strict mode mein loop kare to [router] rakhein
 
   // 🚀 3. SILENT PERMISSION GUARD (Runs on Nav)
   // Ye sirf permission check karega, data fetch nahi karega. Isse smoothness aayegi.
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
-      // Database se aane wali permissions: ["View Dashboard", "View Members", ...]
+      // Database se aane wali permissions (Exact Strings)
       const permissions = userProfile.role_permissions?.treasurer || [];
       const path = pathname.toLowerCase();
-
+      
       // 🚀 ASLI SYNC: Exact strings from your DB dump
       const isAllowed = 
         path === '/dashboard' ||
@@ -122,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
     }
-    setIsMobileMenuOpen(false);
+    setIsMobileMenuOpen(false); // ✅ Auto-close mobile menu on navigation
   }, [pathname, userProfile, router]);
 
   const handleBackToAdmin = async () => {
@@ -185,12 +189,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
            <ClientSidebar profile={userProfile} /> 
         </div>
         
+        {/* ✅ MOBILE MENU BACKDROP */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[50] md:hidden bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
+             <div className="w-72 h-full bg-white dark:bg-slate-900" onClick={e => e.stopPropagation()}>
+               <ClientSidebar profile={userProfile} />
+             </div>
+          </div>
+        )}
+        
         <main className="flex-1 overflow-y-auto relative p-4 md:p-8">
           {/* children hamesha render honge agar userProfile hai */}
           {children}
         </main>
         
-        <MobileBottomNav onMenuClick={() => {}} />
+        <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
       </div>
     </>
   );
