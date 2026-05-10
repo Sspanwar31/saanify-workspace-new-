@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'; 
+import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
-import { RealtimeChannel } from '@supabase/supabase-js'; // ✅ STEP 1: Import add karo
+import { RealtimeChannel } from '@supabase/supabase-js'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { ShieldCheck, ArrowLeft, Loader2, X } from 'lucide-react'; 
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
@@ -12,7 +12,6 @@ import { toast } from 'sonner';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams(); // ✅ Added for checking URL params
   
   // 🚀 1. OPTIMISTIC STATE (Instant Load)
   // Turant data uthao LocalStorage se taaki page khaali na dikhe
@@ -25,8 +24,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
 
   // ✅ LOADING STATE LOGIC:
-  // Agar LS mein data hai to 'isChecking' false rahega (Turant UI).
-  // Agar LS mein data nahi hai to 'true' (Loader dikhega).
   const [isChecking, setIsChecking] = useState(!userProfile); 
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
@@ -50,10 +47,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return;
         }
 
-        // ✅ Impersonation Check (URL + LocalStorage)
-        const isImp = 
-          localStorage.getItem('is_admin_impersonating') === 'true' || 
-          searchParams.get('impersonate') === 'true';
+        // ✅ Impersonation Check (ONLY LocalStorage)
+        const isImp = localStorage.getItem('is_admin_impersonating') === 'true';
         
         setIsImpersonating(isImp);
 
@@ -132,7 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     performAuthSync();
-  }, [router]); // Agar strict mode mein loop kare to [router] rakhein, warna [] bhi chalega
+  }, [router]); 
 
   // ✅ STEP 2: NEW REALTIME PERMISSION SYNC
   useEffect(() => {
@@ -182,14 +177,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile]); // ✅ IMPORTANT: userProfile dependency taaki owner id change ho to re-subscribe ho
+  }, [userProfile]); 
 
   // 🚀 3. SILENT PERMISSION GUARD (Runs on Nav)
-  // Ye sirf permission check karega, data fetch nahi karega. Isse smoothness aayegi.
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
-      // Database se aane wali permissions (Exact Strings)
-      // ✅ NEW APPLIED: Array.isArray check
       const perms = Array.isArray(
         userProfile?.role_permissions?.treasurer
       ) 
@@ -197,7 +189,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         : [];
       const path = pathname.toLowerCase();
 
-      // 🚀 ASLI SYNC: Exact strings from your DB dump
       const isAllowed = 
         path === '/dashboard' ||
         (path.includes('members') && perms.includes('View Members')) ||
@@ -216,7 +207,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
     }
-    setIsMobileMenuOpen(false); // ✅ Auto-close mobile menu on nav
+    setIsMobileMenuOpen(false); 
   }, [pathname, userProfile, router]);
 
   const handleBackToAdmin = async () => {
@@ -247,8 +238,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   // 🚀 UI RENDER
-  // Agar Profile pda hai turant content dikhega.
-  // Agar nahi hai to Loader dikhega.
   if (isChecking && !userProfile) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-slate-950">
@@ -289,8 +278,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
         
         <main className="flex-1 overflow-y-auto relative p-4 md:p-8">
-          {/* children hamesha render honge agar userProfile hai */}
-          {isAuthorized && children}
+          {children}
         </main>
         
         <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
