@@ -60,7 +60,6 @@ export default function ClientDashboard() {
   const { formatCurrency, symbol } = useCurrency();
   
   // 🚀 OPTIMISTIC STATE (Instant Load from LocalStorage)
-  // Agar LS mein data hai, to turant UI load hoga, spinner nahi dikhega.
   const [clientData, setClientData] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('current_user');
@@ -76,9 +75,6 @@ export default function ClientDashboard() {
   const [loansData, setLoansData] = useState<any[]>([]);
   const [transactionsData, setTransactionsData] = useState<any[]>([]);
   const [showMonthlyBanner, setShowMonthlyBanner] = useState(false);
-
-  // ❌ REMOVED: Local handleReturnToAdmin and isImpersonating UI controls
-  // Logic moved to Layout to avoid double buttons
 
   const [financials, setFinancials] = useState({
     netProfit: 0,
@@ -128,23 +124,19 @@ export default function ClientDashboard() {
                 if (memberData) {
                     const { data: parentClient } = await supabase.from('clients').select('*').eq('id', memberData.client_id).single();
                     setClientData(parentClient);
-                    await fetchAndCalculate(memberData.client_id, memberData.role, parentClient?.role_permissions);
+                    // Pass parent client ID
+                    await fetchAndCalculate(memberData.client_id);
                 } else {
                     router.push('/login');
                     return;
                 }
             } else {
                 setClientData(userData);
-                let activeClientId = userData.role === 'client' ? userData.id : userData.client_id;
+                // 🚀 3. RESOLVE MASTER ID (Always use Owner ID)
+                // Agar owner hai to apni ID, agar treasurer hai to client_id (Owner ka ID)
+                const activeClientId = userData.role === 'client' ? userData.id : userData.client_id;
                 
-                let perms = [];
-                if (userData.role === 'treasurer') {
-                    perms = typeof userData.role_permissions === 'string' 
-                        ? JSON.parse(userData.role_permissions)?.treasurer || []
-                        : userData.role_permissions?.treasurer || [];
-                }
-
-                await fetchAndCalculate(activeClientId, userData.role, perms);
+                await fetchAndCalculate(activeClientId);
             }
 
         } catch(e) {
@@ -154,25 +146,22 @@ export default function ClientDashboard() {
         }
     };
 
-    const fetchAndCalculate = async (userId: string, userRole: string, permissions: any[]) => {
-        const canViewPassbook = userRole === 'client' || permissions.includes('VIEW_PASSBOOK');
-        const canViewLoans = userRole === 'client' || permissions.includes('VIEW_LOANS');
-        const canViewExpenses = userRole === 'client' || permissions.includes('MANAGE_EXPENSES');
-        const canViewMembers = userRole === 'client' || permissions.includes('VIEW_MEMBERS');
-
+    // ✅ UPDATED: fetchAndCalculate - No Permission Checks, Only activeClientId
+    const fetchAndCalculate = async (activeClientId: string) => {
+        
+        // 🚀 FETCH DATA (Using activeClientId for ALL queries)
         const [passbookRes, expenseRes, loansRes, membersRes, adminFundRes] = await Promise.all([
-            canViewPassbook ? supabase.from('passbook_entries').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
-            canViewExpenses ? supabase.from('expenses_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
-            canViewLoans ? supabase.from('loans').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
-            canViewMembers ? supabase.from('members').select('*').eq('client_id', userId) : Promise.resolve({ data: [] }),
-            canViewExpenses ? supabase.from('admin_fund_ledger').select('*').eq('client_id', userId) : Promise.resolve({ data: [] })
+            supabase.from('passbook_entries').select('*').eq('client_id', activeClientId),
+            supabase.from('expenses_ledger').select('*').eq('client_id', activeClientId),
+            supabase.from('loans').select('*').eq('client_id', activeClientId),
+            supabase.from('members').select('*').eq('client_id', activeClientId),
+            supabase.from('admin_fund_ledger').select('*').eq('client_id', activeClientId)
         ]);
 
         setMembersData(membersRes.data || []);
         setLoansData(loansRes.data || []);
         setTransactionsData(passbookRes.data || []); 
 
-        // ✅ FIX 1: Corrected variable name (adminFunds -> adminFundRes)
         calculateFinancials(
             passbookRes.data || [], 
             expenseRes.data || [], 
@@ -184,10 +173,6 @@ export default function ClientDashboard() {
 
     init();
   }, [router]);  
-
-  // ❌ REMOVED: Old Impersonation check logic (handled in Layout)
-  // Dashboard page itself doesn't need to know if impersonating for UI logic anymore
-  // as Layout handles Banner and Button.
 
   // Banner Logic
   useEffect(() => {
@@ -376,8 +361,6 @@ export default function ClientDashboard() {
     setChartData(chart);
   };
 
-  // ❌ REMOVED: handleReturnToAdmin (Logic moved to Layout)
-
   const handleLogout = () => {
     localStorage.removeItem('current_member'); 
     router.push('/login');
@@ -435,8 +418,6 @@ export default function ClientDashboard() {
           <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
         </div>
         <div className="flex items-center gap-4">
-            {/* ❌ REMOVED: "Back to Admin" Button (Moved to Layout to avoid duplicates) */}
-            
             <div className="text-right hidden md:block">
             <p className="text-xs text-slate-400 dark:text-slate-500 font-mono uppercase">SYSTEM DATE</p>
             <p className="font-bold text-slate-700 dark:text-slate-200">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
