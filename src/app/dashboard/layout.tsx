@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
+import { RealtimeChannel } from '@supabase/supabase-js'; // ✅ STEP 1: Import add karo
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { ShieldCheck, ArrowLeft, Loader2, X } from 'lucide-react'; 
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
@@ -99,6 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           resolved_client_id: activeSocietyId
         };
 
+        // Storage Update
         localStorage.setItem('current_user', JSON.stringify(updatedUser));
         
         // Impersonation wale case mein localstorage update
@@ -132,18 +134,67 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     performAuthSync();
   }, [router]); // Agar strict mode mein loop kare to [router] rakhein, warna [] bhi chalega
 
+  // ✅ STEP 2: NEW REALTIME PERMISSION SYNC
+  useEffect(() => {
+
+    if (!userProfile) return;
+
+    // Treasurer ke liye owner id
+    const ownerId =
+      userProfile.role === 'treasurer'
+        ? userProfile.client_id
+        : userProfile.id;
+
+    const channel: RealtimeChannel = supabase
+      .channel(`client-permission-${ownerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'clients',
+          filter: `id=eq.${ownerId}`
+        },
+        async (payload) => {
+          console.log('🔥 Permission Updated Realtime');
+
+          const updatedData: any = payload.new;
+
+          setUserProfile((prev: any) => {
+            const updatedUser = {
+              ...prev,
+              // ✅ realtime permissions inject
+              role_permissions: updatedData.role_permissions
+            };
+
+            // local cache update
+            localStorage.setItem(
+              'current_user',
+              JSON.stringify(updatedUser)
+            );
+
+            return updatedUser;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile]); // ✅ IMPORTANT: userProfile dependency taaki owner id change ho to re-subscribe ho
+
   // 🚀 3. SILENT PERMISSION GUARD (Runs on Nav)
   // Ye sirf permission check karega, data fetch nahi karega. Isse smoothness aayegi.
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
-      // Database se aane wali permissions
+      // Database se aane wali permissions (Exact Strings)
       // ✅ NEW APPLIED: Array.isArray check
       const perms = Array.isArray(
         userProfile?.role_permissions?.treasurer
       ) 
         ? userProfile.role_permissions.treasurer 
         : [];
-      
       const path = pathname.toLowerCase();
 
       // 🚀 ASLI SYNC: Exact strings from your DB dump
@@ -165,7 +216,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
     }
-    setIsMobileMenuOpen(false); // ✅ Fix: Mobile menu auto-closes on nav
+    setIsMobileMenuOpen(false); // ✅ Auto-close mobile menu on nav
   }, [pathname, userProfile, router]);
 
   const handleBackToAdmin = async () => {
