@@ -45,7 +45,7 @@ export default function ClientSidebar({ profile }: { profile: any }) {
     localStorage.clear();
     document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     await supabase.auth.signOut();
-    router.push('/login');
+    window.location.href = '/login'; // ✅ CHANGE 2: Smooth redirect
     toast.success("Logged out");
   };
 
@@ -75,6 +75,7 @@ export default function ClientSidebar({ profile }: { profile: any }) {
               <Link 
                 key={item.href} 
                 href={item.href} 
+                prefetch={false} // ✅ CHANGE 1: Prefetch Disabled
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
                   ${isActive 
                     ? 'bg-orange-500 text-white shadow-md font-semibold' 
