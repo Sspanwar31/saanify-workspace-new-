@@ -30,7 +30,7 @@ export default function ClientSidebar({ profile }: { profile: any }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // 🚀 ASLI FIX: Instant Data Sync
+  // 🚀 ASLI FIX: Profile ka wait karein taaki flicker na ho
   // Agar profile prop (Layout se) aa raha hai toh wo use karo, warna LocalStorage se uthao.
   // Isse navigation ke waqt loader nahi aayega kyunki data hamesha rahega.
   const user = useMemo(() => {
@@ -43,7 +43,13 @@ export default function ClientSidebar({ profile }: { profile: any }) {
   }, [profile]);
 
   const userRole = user?.role || 'client';
-  const permissions = user?.role_permissions?.treasurer || [];
+  
+  // ✅ UPDATED: NEW CODE APPLIED
+  const permissions = Array.isArray(
+    user?.role_permissions?.treasurer
+  ) 
+    ? user.role_permissions.treasurer
+    : [];
 
   const handleLogout = async () => {
     localStorage.clear();
