@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'; 
+import { ShieldCheck, ArrowLeft, Loader2, X } from 'lucide-react'; 
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 
@@ -99,7 +99,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           resolved_client_id: activeSocietyId
         };
 
-        // Storage Update
         localStorage.setItem('current_user', JSON.stringify(updatedUser));
         
         // Impersonation wale case mein localstorage update
@@ -137,22 +136,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Ye sirf permission check karega, data fetch nahi karega. Isse smoothness aayegi.
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
-      // Database se aane wali permissions: ["View Dashboard", "View Members", ...]
-      const permissions = userProfile.role_permissions?.treasurer || [];
+      // Database se aane wali permissions
+      // ✅ NEW APPLIED: Array.isArray check
+      const perms = Array.isArray(
+        userProfile?.role_permissions?.treasurer
+      ) 
+        ? userProfile.role_permissions.treasurer 
+        : [];
+      
       const path = pathname.toLowerCase();
 
       // 🚀 ASLI SYNC: Exact strings from your DB dump
       const isAllowed = 
         path === '/dashboard' ||
-        (path.includes('members') && permissions.includes('View Members')) ||
-        (path.includes('passbook') && permissions.includes('View Passbook')) ||
-        (path.includes('loans') && permissions.includes('View Loans')) ||
-        (path.includes('expenses') && permissions.includes('Manage Expenses')) ||
-        (path.includes('reports') && permissions.includes('View Reports')) ||
-        (path.includes('maturity') && permissions.includes('View Dashboard')) ||
-        (path.includes('admin-fund') && permissions.includes('Manage Admin Fund')) ||
-        (path.includes('user-management') && permissions.includes('User Management Access')) ||
-        (path.includes('settings') && permissions.includes('View Settings'));
+        (path.includes('members') && perms.includes('View Members')) ||
+        (path.includes('passbook') && perms.includes('View Passbook')) ||
+        (path.includes('loans') && perms.includes('View Loans')) ||
+        (path.includes('expenses') && perms.includes('Manage Expenses')) ||
+        (path.includes('reports') && perms.includes('View Reports')) ||
+        (path.includes('maturity') && perms.includes('View Dashboard')) ||
+        (path.includes('admin-fund') && perms.includes('Manage Admin Fund')) ||
+        (path.includes('user-management') && perms.includes('User Management Access')) ||
+        (path.includes('settings') && perms.includes('View Settings'));
 
       if (path !== '/dashboard' && !isAllowed) {
         toast.error("Access Restricted: Permission required");
@@ -160,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
     }
-    setIsMobileMenuOpen(false);
+    setIsMobileMenuOpen(false); // ✅ Fix: Mobile menu auto-closes on nav
   }, [pathname, userProfile, router]);
 
   const handleBackToAdmin = async () => {
