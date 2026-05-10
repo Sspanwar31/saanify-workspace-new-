@@ -31,7 +31,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
   // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount)
-  // Humne dependency array khali kar di hai [] taaki page navigation par ye wapas na chale.
   useEffect(() => {
     const performAuthSync = async () => {
       // Agar pehle se run ho chuka hai to rok do
@@ -100,23 +99,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Ye sirf permission check karega, data fetch nahi karega. Isse smoothness aayegi.
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
-      const perms = userProfile.role_permissions?.treasurer || [];
+      // Database se aane wali permissions: ["View Dashboard", "View Members", ...]
+      const permissions = userProfile.role_permissions?.treasurer || [];
       const path = pathname.toLowerCase();
-      
+
+      // 🚀 ASLI SYNC: Exact strings from your DB dump
       const isAllowed = 
         path === '/dashboard' ||
-        (path.includes('members') && perms.includes('View Members')) ||
-        (path.includes('passbook') && perms.includes('View Passbook')) ||
-        (path.includes('loans') && perms.includes('View Loans')) ||
-        (path.includes('expenses') && perms.includes('Manage Expenses')) ||
-        (path.includes('reports') && perms.includes('View Reports')) ||
-        (path.includes('maturity') && perms.includes('View Dashboard'));
+        (path.includes('members') && permissions.includes('View Members')) ||
+        (path.includes('passbook') && permissions.includes('View Passbook')) ||
+        (path.includes('loans') && permissions.includes('View Loans')) ||
+        (path.includes('expenses') && permissions.includes('Manage Expenses')) ||
+        (path.includes('reports') && permissions.includes('View Reports')) ||
+        (path.includes('maturity') && permissions.includes('View Dashboard')) ||
+        (path.includes('admin-fund') && permissions.includes('Manage Admin Fund')) ||
+        (path.includes('user-management') && permissions.includes('User Management Access')) ||
+        (path.includes('settings') && permissions.includes('View Settings'));
 
       if (path !== '/dashboard' && !isAllowed) {
         toast.error("Access Restricted: Permission required");
         router.push('/dashboard');
+        return;
       }
     }
+    setIsMobileMenuOpen(false);
   }, [pathname, userProfile, router]);
 
   const handleBackToAdmin = async () => {
