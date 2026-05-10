@@ -17,6 +17,13 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 
 // ------------------------------------------------------------------
+// STEP 1: DEBUG HELPER
+// ------------------------------------------------------------------
+const debugTime = (label: string) => {
+  console.log(`⏱️ ${label}:`, performance.now().toFixed(2));
+};
+
+// ------------------------------------------------------------------
 // 2️⃣ HELPER FUNCTIONS
 // ------------------------------------------------------------------
 
@@ -56,6 +63,10 @@ function getRiskyLoans(loans: any[]) {
 // ------------------------------------------------------------------
 
 export default function ClientDashboard() {
+  // STEP 2: COMPONENT RENDER DEBUG
+  console.log('🔄 Dashboard Render');
+  debugTime('Dashboard Render');
+
   const router = useRouter();
   const { formatCurrency, symbol } = useCurrency();
   
@@ -92,6 +103,10 @@ export default function ClientDashboard() {
   // ✅ UPDATED USE EFFECT: Simplified Auth Logic using LocalStorage
   useEffect(() => {
     const init = async () => {
+        // STEP 3: INIT DEBUG
+        console.log('🚀 INIT START');
+        debugTime('INIT START');
+
         try {
             // ✅ FIX: Only show spinner if we don't have cached data
             if (!clientData) {
@@ -119,14 +134,60 @@ export default function ClientDashboard() {
     // ✅ UPDATED: fetchAndCalculate - No Permission Checks, Only activeClientId
     const fetchAndCalculate = async (activeClientId: string) => {
         
-        // 🚀 FETCH DATA (Using activeClientId for ALL queries)
-        const [passbookRes, expenseRes, loansRes, membersRes, adminFundRes] = await Promise.all([
-            supabase.from('passbook_entries').select('*').eq('client_id', activeClientId),
-            supabase.from('expenses_ledger').select('*').eq('client_id', activeClientId),
-            supabase.from('loans').select('*').eq('client_id', activeClientId),
-            supabase.from('members').select('*').eq('client_id', activeClientId),
-            supabase.from('admin_fund_ledger').select('*').eq('client_id', activeClientId)
+        // STEP 4: FETCH START
+        console.log('📡 FETCH START');
+        console.time('FETCH_TIME');
+
+        // STEP 5: EACH QUERY DEBUG
+        console.time('passbook');
+        const passbookPromise = supabase
+          .from('passbook_entries')
+          .select('*')
+          .eq('client_id', activeClientId);
+
+        console.time('expenses');
+        const expensePromise = supabase
+          .from('expenses_ledger')
+          .select('*')
+          .eq('client_id', activeClientId);
+
+        console.time('loans');
+        const loansPromise = supabase
+          .from('loans')
+          .select('*')
+          .eq('client_id', activeClientId);
+
+        console.time('members');
+        const membersPromise = supabase
+          .from('members')
+          .select('*')
+          .eq('client_id', activeClientId);
+
+        console.time('adminfund');
+        const adminFundPromise = supabase
+          .from('admin_fund_ledger')
+          .select('*')
+          .eq('client_id', activeClientId);
+
+        const [
+          passbookRes,
+          expenseRes,
+          loansRes,
+          membersRes,
+          adminFundRes
+        ] = await Promise.all([
+          passbookPromise,
+          expensePromise,
+          loansPromise,
+          membersPromise,
+          adminFundPromise
         ]);
+
+        console.timeEnd('passbook');
+        console.timeEnd('expenses');
+        console.timeEnd('loans');
+        console.timeEnd('members');
+        console.timeEnd('adminfund');
 
         setMembersData(membersRes.data || []);
         setLoansData(loansRes.data || []);
@@ -139,6 +200,10 @@ export default function ClientDashboard() {
             membersRes.data || [],
             adminFundRes.data || []
         );
+
+        // STEP 4: FETCH END
+        console.timeEnd('FETCH_TIME');
+        console.log('✅ FETCH END');
     };
 
     init();
@@ -208,6 +273,10 @@ export default function ClientDashboard() {
   // ✅ FINANCIAL LOGIC
   const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[], adminFunds: any[]) => {
     
+    // STEP 6: CALCULATION DEBUG (START)
+    console.time('financial_calculation');
+    console.log('🧮 Financial Calculation Start');
+
     let realIncome = 0; 
     let cashExpense = 0;
     let cash = 0, bank = 0, upi = 0;
@@ -318,6 +387,10 @@ export default function ClientDashboard() {
     const netProfitFinal = realIncome - totalExpenseFinal;
     const chart = Object.keys(monthlyMap).map(m => ({ month: m, amount: monthlyMap[m] }));
 
+    // STEP 7: CHART DEBUG
+    console.log('📊 Chart Points:', chart.length);
+    setChartData(chart);
+
     setFinancials({
         netProfit: netProfitFinal,
         totalIncome: realIncome, 
@@ -328,7 +401,10 @@ export default function ClientDashboard() {
         depositTotal: totalDepositsCollected,
         pendingLoans: pendingLoanCount
     });
-    setChartData(chart);
+
+    // STEP 6: CALCULATION DEBUG (END)
+    console.timeEnd('financial_calculation');
+    console.log('✅ Financial Calculation End');
   };
 
   const handleLogout = () => {
@@ -356,6 +432,10 @@ export default function ClientDashboard() {
   
   const overdueMembers = getOverdueMembers(membersData, 10);
   const riskyLoans = getRiskyLoans(loansData);
+
+  // STEP 9: PAGE LOAD END
+  console.timeEnd('ROUTE_CHANGE');
+  console.log('🎉 Dashboard Fully Loaded');
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
