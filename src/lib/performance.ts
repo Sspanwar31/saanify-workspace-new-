@@ -25,6 +25,7 @@ export function useDataCache<T>(
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const initialized = useRef(false) // ✅ CHANGE: Added initialized ref
   const intervalRef = useRef<NodeJS.Timeout>()
 
   // Get data from cache
@@ -97,8 +98,10 @@ export function useDataCache<T>(
 
   // Initial fetch - prevent infinite re-renders
   useEffect(() => {
+    if (initialized.current) return // ✅ CHANGE: Prevent double execution
+    initialized.current = true      // ✅ CHANGE: Set initialized flag
     fetchData()
-  }, []) // Remove fetchData dependency to prevent infinite re-renders
+  }, []) 
 
   // Set up auto refetch - prevent infinite re-renders
   useEffect(() => {
@@ -113,7 +116,7 @@ export function useDataCache<T>(
         }
       }
     }
-  }, [refetchInterval]) // Remove fetchData dependency to prevent infinite re-renders
+  }, [refetchInterval]) 
 
   // Manual refresh
   const refresh = useCallback(() => {
@@ -236,14 +239,7 @@ export function usePerformanceMonitor(name: string) {
       const duration = performance.now() - startTime.current
       console.log(`${name} took ${duration.toFixed(2)}ms`)
       
-      // Log slow operations
-      if (duration > 1000) {
-        toast.warning(`Slow operation detected`, {
-          description: `${name} took ${duration.toFixed(0)}ms`,
-          duration: 3000
-        })
-      }
-      
+      // ✅ CHANGE: REMOVED toast.warning(...) block
       return duration
     }
     return 0
