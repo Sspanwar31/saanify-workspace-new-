@@ -39,14 +39,20 @@ export default function ClientDashboard() {
 
   const fetchUserData = useCallback(async () => {
     try {
+      console.log('🔍 Client Dashboard: Fetching user data...')
+      
       // First verify client access
       const verifyResponse = await fetch('/api/client/verify');
+      
+      console.log('🔍 Client Dashboard: Verify response status:', verifyResponse.status)
       
       if (!verifyResponse.ok) {
         if (verifyResponse.status === 401) {
           const errorData = await verifyResponse.json();
+          console.log('❌ Client Dashboard: Access denied:', errorData.error)
           setError(errorData.error || 'Access denied. Please login as a legitimate client.');
           setTimeout(() => {
+            console.log('🔄 Client Dashboard: Redirecting to login...')
             router.push('/login');
           }, 3000);
           return;
@@ -55,6 +61,7 @@ export default function ClientDashboard() {
       }
 
       const verifyData = await verifyResponse.json();
+      console.log('✅ Client Dashboard: Verification successful:', verifyData.currentUser?.email)
       
       if (!verifyData.success) {
         setError(verifyData.error || 'Client verification failed');
@@ -65,6 +72,7 @@ export default function ClientDashboard() {
       setUserData(verifyData.currentUser);
         
     } catch (err: any) {
+      console.error('❌ Client Dashboard: Error:', err.message)
       setError(err.message || 'Failed to load client dashboard');
     } finally {
       setLoading(false);
@@ -80,7 +88,7 @@ export default function ClientDashboard() {
       await fetch('/api/auth/logout', { method: 'POST' });
       router.push('/');
     } catch (err) {
-      // Error handling logic without console log
+      console.error('Logout failed:', err);
     }
   };
 
@@ -329,7 +337,7 @@ export default function ClientDashboard() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Your subscription has expired. Renew now to continue accessing service.
+                      Your subscription has expired. Renew now to continue accessing the service.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -389,4 +397,4 @@ export default function ClientDashboard() {
       </main>
     </div>
   );
-}
+} 
