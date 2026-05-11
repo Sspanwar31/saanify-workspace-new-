@@ -58,7 +58,7 @@ export default function ClientDashboard() {
 
   const [chartData, setChartData] = useState<any[]>([]);
 
-  // 🚀 CORE LOGIC: Using Code 1's Robust Data Fetching
+  // 🚀 CORE LOGIC: Updated Calculation Logic
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
@@ -76,7 +76,7 @@ export default function ClientDashboard() {
 
       const societyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
 
-      // 1. FETCH ALL RAW DATA (Code 1 Logic for Accuracy)
+      // 1. FETCH ALL RAW DATA
       const [statsRes, passbookRes, ledgerRes, loansRes, fundRes] = await Promise.all([
         fetch(`/api/admin/clients/${societyId}/stats`).then(r => r.json()),
         supabase.from('passbook_entries').select('*').eq('client_id', societyId),
@@ -88,42 +88,48 @@ export default function ClientDashboard() {
       if (statsRes.success) {
         let cash = 0, bank = 0, upi = 0, deposits = 0;
 
-        // A. Process Passbook (Inflows/Outflows)
+        // 1. Passbook Entries (Mainly IN)
         passbookRes.data?.forEach(t => {
           const amt = Number(t.total_amount) || 0;
           const depAmt = Number(t.deposit_amount) || 0;
-          const mode = (t.payment_mode || 'cash').toLowerCase();
+          const mode = (t.payment_mode || 'cash').toLowerCase().trim();
           deposits += depAmt;
 
-          if (mode.includes('bank') || mode.includes('cheque')) bank += amt;
-          else if (mode.includes('upi') || mode.includes('online')) upi += amt;
+          if (mode.includes('bank')) bank += amt;
+          else if (mode.includes('upi')) upi += amt;
           else cash += amt;
         });
 
-        // B. Process Expenses (Outflows)
+        // 2. Expenses Ledger (Mainly OUT) - Updated to respect payment_mode
         ledgerRes.data?.forEach(e => {
           const amt = Number(e.amount) || 0;
-          if (e.type === 'EXPENSE') cash -= amt; // Standard expense usually cash
-          else cash += amt;
+          const mode = (e.payment_mode || 'cash').toLowerCase();
+          if (e.type === 'EXPENSE') {
+            if (mode.includes('bank')) bank -= amt;
+            else if (mode.includes('upi')) upi -= amt;
+            else cash -= amt;
+          } else {
+            cash += amt;
+          }
         });
 
-        // C. Process Loans (Outflows)
+        // 3. Loans (OUT)
         loansRes.data?.forEach(l => {
-          const amt = Number(l.amount) || 0;
+          const amt = Number(l.amount) || 0; // Disbursement is OUT
           const mode = (l.payment_mode || 'cash').toLowerCase();
           if (mode.includes('bank')) bank -= amt;
           else if (mode.includes('upi')) upi -= amt;
           else cash -= amt;
         });
 
-        // D. Admin Fund (Inflows)
+        // 4. Admin Fund (IN/OUT)
         fundRes.data?.forEach(f => {
           const amt = Number(f.amount) || 0;
           if (f.type === 'INJECT') cash += amt;
           else cash -= amt;
         });
 
-        const totalLiq = cash + bank + upi;
+        // Margin Calculation
         const marginVal = statsRes.debug?.income > 0 
           ? ((statsRes.netProfit / statsRes.debug.income) * 100).toFixed(1) 
           : "0";
@@ -141,9 +147,9 @@ export default function ClientDashboard() {
           cashBal: cash,
           bankBal: bank,
           upiBal: upi,
-          totalLiquidity: totalLiq,
+          totalLiquidity: cash + bank + upi,
           depositTotal: deposits,
-          activeLoans: statsRes.loanCount || 0, // Mapped to activeLoans for UI
+          activeLoans: statsRes.loanCount || 0,
           activeMembers: statsRes.memberCount || 0,
           health: statsRes.healthScore || 0
         });
@@ -214,7 +220,7 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* 2. MAIN KPI CARDS (Code 2 UI with Code 1 Data) */}
+      {/* 2. MAIN KPI CARDS (Code 2 UI with Updated Data) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         <Card className={`border-l-4 bg-white dark:bg-slate-900 shadow-md ${financials.netProfit >= 0 ? 'border-l-green-500' : 'border-l-red-500'}`}>
           <CardContent className="pt-6">
@@ -262,7 +268,7 @@ export default function ClientDashboard() {
         </Card>
       </div>
 
-      {/* 3. LIQUIDITY POSITION SECTION (Code 2 UI with Code 1 Logic) */}
+      {/* 3. LIQUIDITY POSITION SECTION (Code 2 UI with Updated Data) */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Wallet className="w-6 h-6 text-orange-500" /> Liquidity Position (Live)
@@ -310,7 +316,7 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* 4. STATS & PERFORMANCE GRID (Code 2 UI with Code 1 Data) */}
+      {/* 4. STATS & PERFORMANCE GRID (Code 2 UI with Updated Data) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: System Status & Deposits */}
