@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 
-// Icons
+// Icons (Merged)
 import { 
   TrendingUp, TrendingDown, Wallet, Building2, Smartphone, 
   CheckCircle, Users, Landmark, AlertCircle, LogOut, Loader2,
@@ -35,7 +35,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // Detailed Financials State
+  // Detailed Financials State (Matching Code 2 UI requirements)
   const [financials, setFinancials] = useState({
     netProfit: 0,
     totalIncome: 0,
@@ -58,7 +58,7 @@ export default function ClientDashboard() {
 
   const [chartData, setChartData] = useState<any[]>([]);
 
-  // 🚀 CORE LOGIC: Data Fetching & Calculation
+  // 🚀 CORE LOGIC: Using Code 1's Robust Data Fetching
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
@@ -71,66 +71,91 @@ export default function ClientDashboard() {
       const profile = JSON.parse(savedUser);
       setUser(profile);
 
-      // Impersonation check for banner
+      // Impersonation check
       setIsImpersonating(localStorage.getItem('is_admin_impersonating') === 'true');
 
       const societyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
 
-      // 1. Fetch Stats from Admin API (Handles Logic & RLS Bypass)
-      const res = await fetch(`/api/admin/clients/${societyId}/stats`);
-      const statsData = await res.json();
+      // 1. FETCH ALL RAW DATA (Code 1 Logic for Accuracy)
+      const [statsRes, passbookRes, ledgerRes, loansRes, fundRes] = await Promise.all([
+        fetch(`/api/admin/clients/${societyId}/stats`).then(r => r.json()),
+        supabase.from('passbook_entries').select('*').eq('client_id', societyId),
+        supabase.from('expenses_ledger').select('*').eq('client_id', societyId),
+        supabase.from('loans').select('*').eq('client_id', societyId).eq('status', 'active'),
+        supabase.from('admin_fund_ledger').select('*').eq('client_id', societyId)
+      ]);
 
-      // 2. Fetch Liquidity directly from Passbook (For detailed breakdown)
-      const { data: passbook } = await supabase
-        .from('passbook_entries')
-        .select('amount, total_amount, payment_mode, deposit_amount')
-        .eq('client_id', societyId);
-
-      if (res.ok && statsData.success) {
-        // Calculate detailed liquidity
+      if (statsRes.success) {
         let cash = 0, bank = 0, upi = 0, deposits = 0;
-        passbook?.forEach(t => {
-          const amt = Number(t.total_amount) || 0;
-          const mode = (t.payment_mode || 'cash').toLowerCase().trim();
-          deposits += Number(t.deposit_amount || 0);
 
-          if (mode.includes('cash')) cash += amt;
-          else if (mode.includes('bank') || mode.includes('cheque')) bank += amt;
+        // A. Process Passbook (Inflows/Outflows)
+        passbookRes.data?.forEach(t => {
+          const amt = Number(t.total_amount) || 0;
+          const depAmt = Number(t.deposit_amount) || 0;
+          const mode = (t.payment_mode || 'cash').toLowerCase();
+          deposits += depAmt;
+
+          if (mode.includes('bank') || mode.includes('cheque')) bank += amt;
           else if (mode.includes('upi') || mode.includes('online')) upi += amt;
+          else cash += amt;
         });
 
-        const marginVal = statsData.debug?.income > 0 
-          ? ((statsData.netProfit / statsData.debug.income) * 100).toFixed(1) 
+        // B. Process Expenses (Outflows)
+        ledgerRes.data?.forEach(e => {
+          const amt = Number(e.amount) || 0;
+          if (e.type === 'EXPENSE') cash -= amt; // Standard expense usually cash
+          else cash += amt;
+        });
+
+        // C. Process Loans (Outflows)
+        loansRes.data?.forEach(l => {
+          const amt = Number(l.amount) || 0;
+          const mode = (l.payment_mode || 'cash').toLowerCase();
+          if (mode.includes('bank')) bank -= amt;
+          else if (mode.includes('upi')) upi -= amt;
+          else cash -= amt;
+        });
+
+        // D. Admin Fund (Inflows)
+        fundRes.data?.forEach(f => {
+          const amt = Number(f.amount) || 0;
+          if (f.type === 'INJECT') cash += amt;
+          else cash -= amt;
+        });
+
+        const totalLiq = cash + bank + upi;
+        const marginVal = statsRes.debug?.income > 0 
+          ? ((statsRes.netProfit / statsRes.debug.income) * 100).toFixed(1) 
           : "0";
 
         setFinancials({
-          netProfit: statsData.netProfit,
-          totalIncome: statsData.debug?.income || 0,
-          totalExpense: statsData.debug?.expense || 0,
-          interestIncome: statsData.debug?.interest || 0,
-          fineIncome: statsData.debug?.fines || 0,
-          maintenanceIncome: statsData.debug?.other || 0,
-          operationalCost: statsData.debug?.ops || 0,
-          maturityLiability: statsData.debug?.maturity || 0,
+          netProfit: statsRes.netProfit,
+          totalIncome: statsRes.debug?.income || 0,
+          totalExpense: statsRes.debug?.expense || 0,
+          interestIncome: statsRes.debug?.interest || 0,
+          fineIncome: statsRes.debug?.fines || 0,
+          maintenanceIncome: statsRes.debug?.other || 0,
+          operationalCost: statsRes.debug?.ops || 0,
+          maturityLiability: statsRes.debug?.maturity || 0,
           margin: marginVal,
           cashBal: cash,
           bankBal: bank,
           upiBal: upi,
-          totalLiquidity: cash + bank + upi,
+          totalLiquidity: totalLiq,
           depositTotal: deposits,
-          activeLoans: statsData.loanCount || 0,
-          activeMembers: statsData.memberCount || 0,
-          health: statsData.healthScore || 0
+          activeLoans: statsRes.loanCount || 0, // Mapped to activeLoans for UI
+          activeMembers: statsRes.memberCount || 0,
+          health: statsRes.healthScore || 0
         });
 
         // Dynamic Chart Data
         setChartData([
-          { name: 'Income', amount: statsData.debug?.income || 0, color: '#10b981' },
-          { name: 'Expense', amount: statsData.debug?.expense || 0, color: '#ef4444' }
+          { name: 'Income', amount: statsRes.debug?.income || 0, color: '#10b981' },
+          { name: 'Expense', amount: statsRes.debug?.expense || 0, color: '#ef4444' }
         ]);
       }
     } catch (err) {
-      console.error("Dashboard Load Error:", err);
+      console.error("Dashboard Error:", err);
       toast.error("Failed to sync financial data");
     } finally {
       setLoading(false);
@@ -155,7 +180,7 @@ export default function ClientDashboard() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       
-      {/* 1. TOP HEADER & NAVIGATION */}
+      {/* 1. TOP HEADER & NAVIGATION (Code 2 UI) */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-3">
@@ -189,7 +214,7 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* 2. MAIN KPI CARDS (Profit, Income, Expense, Margin) */}
+      {/* 2. MAIN KPI CARDS (Code 2 UI with Code 1 Data) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         <Card className={`border-l-4 bg-white dark:bg-slate-900 shadow-md ${financials.netProfit >= 0 ? 'border-l-green-500' : 'border-l-red-500'}`}>
           <CardContent className="pt-6">
@@ -237,7 +262,7 @@ export default function ClientDashboard() {
         </Card>
       </div>
 
-      {/* 3. LIQUIDITY POSITION SECTION (Detailed Breakdown) */}
+      {/* 3. LIQUIDITY POSITION SECTION (Code 2 UI with Code 1 Logic) */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Wallet className="w-6 h-6 text-orange-500" /> Liquidity Position (Live)
@@ -285,7 +310,7 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* 4. STATS & PERFORMANCE GRID */}
+      {/* 4. STATS & PERFORMANCE GRID (Code 2 UI with Code 1 Data) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: System Status & Deposits */}
@@ -294,8 +319,8 @@ export default function ClientDashboard() {
             <ShieldAlert className="h-5 w-5 text-orange-500" />
             <AlertTitle className="font-bold text-slate-900 dark:text-white">System Status</AlertTitle>
             <AlertDescription className="text-xs text-slate-500">
-              {financials.pendingLoans > 0 
-                ? `Attention: You have ${financials.pendingLoans} active loans in process.` 
+              {financials.activeLoans > 0 
+                ? `Attention: You have ${financials.activeLoans} active loans in process.` 
                 : "All society systems are synchronized with Supabase."}
             </AlertDescription>
           </Alert>
