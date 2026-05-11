@@ -1,581 +1,420 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useState, useEffect } from "react"; // Removed useCallback as it's no longer needed with []
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
-  TrendingUp, TrendingDown, Wallet, Building2, Smartphone, 
-  CheckCircle, Users, Landmark, AlertCircle, LogOut 
-} from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from 'recharts';
-import { supabase } from '@/lib/supabase';
-import { useCurrency } from '@/hooks/useCurrency';
-import { toast } from 'sonner';
+  CheckCircle, 
+  Clock, 
+  AlertCircle, 
+  Calendar,
+  CreditCard,
+  FileText,
+  LogOut,
+  User,
+  Settings
+} from "lucide-react";
+import Link from "next/link";
 
-// ------------------------------------------------------------------
-// 2️⃣ HELPER FUNCTIONS
-// ------------------------------------------------------------------
-
-function getMonthlyKey() {
-  const now = new Date();
-  return `monthly_summary_${now.getFullYear()}_${now.getMonth() + 1}`;
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  subscriptionStatus: string | null;
+  plan: string | null;
+  trialEndsAt: string | null;
+  expiryDate: string | null;
+  createdAt: string;
+  role: string;
 }
-
-function getMonthlyBannerKey() {
-  const now = new Date()
-  return `monthly_banner_closed_${now.getFullYear()}_${now.getMonth() + 1}`
-}
-
-function getOverdueMembers(members: any[], gracePeriod: number) {
-  const today = new Date();
-  return members.filter(m => {
-    if (!m.last_payment_date) return false;
-    const lastPaid = new Date(m.last_payment_date);
-    const dueDate = new Date(lastPaid);
-    dueDate.setDate(dueDate.getDate() + gracePeriod);
-    return today > dueDate;
-  });
-}
-
-function getRiskyLoans(loans: any[]) {
-  return loans.filter(l => {
-    if (!l.outstanding_amount) return false;
-    return (
-      l.missed_installments >= 2 ||
-      l.outstanding_amount > (l.loan_amount * 0.8)
-    );
-  });
-}
-
-// ------------------------------------------------------------------
-// MAIN COMPONENT
-// ------------------------------------------------------------------
 
 export default function ClientDashboard() {
-  // ✅ FIX 2: Add initialized ref
-  const initialized = useRef(false);
-
   const router = useRouter();
-  const { formatCurrency, symbol } = useCurrency();
-  
-  // 🚀 OPTIMISTIC STATE (Instant Load from LocalStorage)
-  const [clientData, setClientData] = useState<any>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('current_user');
-      return saved ? JSON.parse(saved) : null;
-    }
-    return null;
-  });
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Agar clientData hai to loading false, nahi to true.
-  const [loading, setLoading] = useState(!clientData);
-
-  const [membersData, setMembersData] = useState<any[]>([]);
-  const [loansData, setLoansData] = useState<any[]>([]);
-  const [transactionsData, setTransactionsData] = useState<any[]>([]);
-  const [showMonthlyBanner, setShowMonthlyBanner] = useState(false);
-
-  const [financials, setFinancials] = useState({
-    netProfit: 0,
-    totalIncome: 0,
-    totalExpense: 0,
-    cashBal: 0,
-    bankBal: 0,
-    upiBal: 0,
-    depositTotal: 0,
-    pendingLoans: 0
-  });
-
-  // ✅ FIX 5: Memoized Chart Data
-  const chartData = useMemo(() => {
-    const monthlyMap: { [key: string]: number } = {};
-    transactionsData.forEach(t => {
-      if (!t) return;
-      const totalAmt = Number(t.total_amount) || 0;
-      const date = t.date ? new Date(t.date) : new Date(t.created_at);
-      const month = date.toLocaleString('default', { month: 'short' });
-      monthlyMap[month] = (monthlyMap[month] || 0) + totalAmt;
-    });
-
-    return Object.keys(monthlyMap || {}).map(m => ({
-      month: m,
-      amount: monthlyMap[m]
-    }));
-  }, [transactionsData]);
-
-  // ✅ FIX 3: Replaced useEffect with Final Version
-  useEffect(() => {
-
-    if (initialized.current) return;
-    initialized.current = true;
-
-    const init = async () => {
-
-        console.log('🚀 INIT START');
-
-        try {
-
-            if (!clientData) {
-                setLoading(true);
-            }
-
-            const activeClientId =
-              clientData?.resolved_client_id || clientData?.id;
-
-            if (!activeClientId) {
-              router.push('/login');
-              return;
-            }
-
-            await fetchAndCalculate(activeClientId);
-
-        } catch(e) {
-            console.error("Dashboard Init Error:", e);
-        } finally {
-            setLoading(false);
+  // Removed useCallback, defined as standard async function
+  const fetchUserData = async () => {
+    try {
+      // REMOVED: console.log('🔍 Client Dashboard: Fetching user data...')
+      
+      // First verify client access
+      const verifyResponse = await fetch('/api/client/verify');
+      
+      // REMOVED: console.log('🔍 Client Dashboard: Verify response status:', verifyResponse.status)
+      
+      if (!verifyResponse.ok) {
+        if (verifyResponse.status === 401) {
+          const errorData = await verifyResponse.json();
+          // REMOVED: console.log('❌ Client Dashboard: Access denied:', errorData.error)
+          setError(errorData.error || 'Access denied. Please login as a legitimate client.');
+          setTimeout(() => {
+            // REMOVED: console.log('🔄 Client Dashboard: Redirecting to login...')
+            router.push('/login');
+          }, 3000);
+          return;
         }
-    };
+        throw new Error('Failed to verify client access');
+      }
 
-    const fetchAndCalculate = async (activeClientId: string) => {
+      const verifyData = await verifyResponse.json();
+      // REMOVED: console.log('✅ Client Dashboard: Verification successful:', verifyData.currentUser?.email)
+      
+      if (!verifyData.success) {
+        setError(verifyData.error || 'Client verification failed');
+        return;
+      }
 
-        console.log('📡 FETCH START');
-
-        const [
-          passbookRes,
-          expenseRes,
-          loansRes,
-          membersRes,
-          adminFundRes
-        ] = await Promise.all([
-          supabase
-            .from('passbook_entries')
-            .select('*')
-            .eq('client_id', activeClientId),
-
-          supabase
-            .from('expenses_ledger')
-            .select('*')
-            .eq('client_id', activeClientId),
-
-          supabase
-            .from('loans')
-            .select('*')
-            .eq('client_id', activeClientId),
-
-          supabase
-            .from('members')
-            .select('*')
-            .eq('client_id', activeClientId),
-
-          supabase
-            .from('admin_fund_ledger')
-            .select('*')
-            .eq('client_id', activeClientId)
-        ]);
-
-        const passbook = passbookRes.data || [];
-        const expenses = expenseRes.data || [];
-        const loans = loansRes.data || [];
-        const members = membersRes.data || [];
-        const adminFunds = adminFundRes.data || [];
-
-        setMembersData(members);
-        setLoansData(loans);
-        setTransactionsData(passbook);
-
-        requestAnimationFrame(() => {
-          calculateFinancials(
-            passbook,
-            expenses,
-            loans,
-            members,
-            adminFunds
-          );
-        });
-
-        console.log('✅ FETCH END');
-    };
-
-    init();
-
-}, []);
-
-  // Banner Logic
-  useEffect(() => {
-    const key = getMonthlyBannerKey()
-    if (!localStorage.getItem(key)) {
-      setShowMonthlyBanner(true)
+      // Set user data from verification response
+      setUserData(verifyData.currentUser);
+        
+    } catch (err: any) {
+      // REPLACED ERROR LOG WITH DEV CHECK
+      if (process.env.NODE_ENV === "development") {
+        console.error("Dashboard Error:", err);
+      }
+      setError(err.message || 'Failed to load client dashboard');
+    } finally {
+      setLoading(false);
     }
-  }, [])
+  };
 
-  function closeMonthlyBanner() {
-    const key = getMonthlyBannerKey()
-    localStorage.setItem(key, 'closed')
-    setShowMonthlyBanner(false)
+  // ✅ 1. useEffect double call fix
+  useEffect(() => {
+    let mounted = true;
+
+    const loadData = async () => {
+      if (mounted) {
+        await fetchUserData();
+      }
+    };
+
+    loadData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include', // ✅ 4. Logout optimization: Added credentials
+      });
+      router.replace('/'); // ✅ 4. Logout optimization: Changed push to replace
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
+
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status) {
+      return 'bg-gray-100 text-gray-800';
+    }
+    switch (status.toLowerCase()) {
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'expired':
+        return 'bg-red-100 text-red-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string | null | undefined) => {
+    if (!status) {
+      return <AlertCircle className="h-4 w-4" />;
+    }
+    switch (status.toLowerCase()) {
+      case 'active':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'pending':
+        return <Clock className="h-4 w-4" />;
+      case 'expired':
+        return <AlertCircle className="h-4 w-4" />;
+      case 'rejected':
+        return <AlertCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getDaysUntilExpiry = (expiryDate: string | null, trialEndsAt: string | null) => {
+    // Use trialEndsAt for trial users, expiryDate for paid users
+    const relevantDate = trialEndsAt || expiryDate;
+    if (!relevantDate) return null;
+    const expiry = new Date(relevantDate);
+    const now = new Date();
+    const diffTime = expiry.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Monthly Summary
-  useEffect(() => {
-    if (!membersData || !loansData || !transactionsData) return
-    const monthlyKey = getMonthlyKey()
-    if (localStorage.getItem(monthlyKey)) return
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <div className="mt-4 text-center">
+              <Button onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-    const totalDeposits = transactionsData.reduce((sum, t) => sum + Number(t.deposit_amount || 0), 0);
-    const activeLoans = loansData.filter(l => l.status === 'active' || (l.remaining_balance > 0 && l.status !== 'closed'));
-    const riskyLoans = getRiskyLoans(loansData)
-    const overdueMembers = getOverdueMembers(membersData, 10)
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <p className="text-center text-gray-600">No user data available</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-    if(loading === false && transactionsData.length > 0) {
-        toast.info('📅 Monthly Summary', {
-        description: `
-    💰 Deposits: ${formatCurrency(totalDeposits)}
-    🏦 Active Loans: ${activeLoans.length}
-    ⚠️ Overdue Members: ${overdueMembers.length}
-    🚨 Risky Loans: ${riskyLoans.length}
-        `,
-        duration: 8000,
-        })
-        localStorage.setItem(monthlyKey, 'shown')
-    }
-  }, [membersData, loansData, transactionsData, loading])
-
-  // Alerts
-  useEffect(() => {
-    if (!membersData.length && !loansData.length) return;
-    if (!clientData) return;
-    const alreadyShown = sessionStorage.getItem('dashboard_alerts_shown');
-    if (alreadyShown) return;
-
-    const gracePeriod = clientData.grace_period_day || 10;
-    const overdueMembers = getOverdueMembers(membersData, gracePeriod);
-    const riskyLoans = getRiskyLoans(loansData);
-
-    let hasAlert = false;
-    if (overdueMembers.length > 0) {
-      toast.warning(`⚠️ ${overdueMembers.length} member(s) have overdue dues`, { description: 'Please review pending installments', duration: 6000 });
-    }
-    if (riskyLoans.length > 0) {
-      toast.error(`🚨 ${riskyLoans.length} loan(s) at risk of default`, { description: 'Immediate attention required', duration: 7000 });
-    }
-    sessionStorage.setItem('dashboard_alerts_shown', 'true');
-  }, [membersData, loansData, clientData]);
-
-
-  // ✅ FINANCIAL LOGIC
-  const calculateFinancials = (passbook: any[], expenses: any[], loans: any[], membersList: any[], adminFunds: any[]) => {
-    
-    console.time('financial_calculation');
-    console.log('🧮 Financial Calculation Start');
-
-    let realIncome = 0; 
-    let cashExpense = 0;
-    let cash = 0, bank = 0, upi = 0;
-    let pendingLoanCount = 0;
-    let totalDepositsCollected = 0; 
-
-    passbook.forEach(t => {
-        const totalAmt = Number(t.total_amount) || 0; 
-        const interest = Number(t.interest_amount) || 0;
-        const fine = Number(t.fine_amount) || 0;
-        const deposit = Number(t.deposit_amount) || 0;
-
-        realIncome += (interest + fine);
-        totalDepositsCollected += deposit;
-
-        const mode = (t.payment_mode || '').toLowerCase().trim();
-        if (mode.includes('cash')) cash += totalAmt;
-        else if (mode.includes('bank') || mode.includes('cheque')) bank += totalAmt;
-        else if (mode.includes('upi') || mode.includes('online')) upi += totalAmt;
-
-        // ✅ REMOVED: Monthly map logic (moved to useMemo for chartData)
-    });
-
-    expenses.forEach(e => {
-        const amt = Number(e.amount) || 0;
-        const type = (e.type || '').toUpperCase().trim();
-        
-        if (type === 'EXPENSE') {
-            cashExpense += amt;
-            cash -= amt; 
-        } 
-        else if (type === 'INCOME') {
-            realIncome += amt;
-            cash += amt; 
-        }
-    });
-
-    adminFunds.forEach(f => {
-        const amt = Number(f.amount) || 0;
-        const type = (f.type || '').toUpperCase().trim();
-
-        if (type === 'INJECT') {
-            cash += amt;
-        } else if (type === 'WITHDRAW') {
-            cash -= amt;
-        }
-    });
-
-    loans.forEach(l => {
-        const outstanding = Number(l.remaining_balance) || 0;
-        const principal = Number(l.amount) || 0; 
-        const mode = (l.payment_mode || 'cash').toLowerCase(); 
-
-        if (l.status === 'active' || (outstanding > 0 && l.status !== 'closed')) {
-             pendingLoanCount++;
-        }
-        
-        if (mode.includes('cash')) {
-            cash -= principal;
-        } else if (mode.includes('bank') || mode.includes('cheque')) {
-            bank -= principal;
-        } else if (mode.includes('upi') || mode.includes('online')) {
-            upi -= principal;
-        } else {
-            cash -= principal; 
-        }
-    });
-
-    let maturityLiability = 0;
-    const memberDeposits: {[key: string]: any[]} = {};
-    passbook.forEach(p => {
-        if(p.member_id && Number(p.deposit_amount) > 0) {
-            if(!memberDeposits[p.member_id]) memberDeposits[p.member_id] = [];
-            memberDeposits[p.member_id].push(p);
-        }
-    });
-
-    Object.keys(memberDeposits).forEach(memberId => {
-        const deposits = memberDeposits[memberId];
-        const memberInfo = membersList.find(m => m.id === memberId);
-
-        if (deposits.length > 0) {
-             const sorted = deposits.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-             const monthlyDeposit = Number(sorted[0].deposit_amount || 0);
-             const tenureMonths = 36;
-             
-             const isOverride = memberInfo?.maturity_is_override || false;
-             const manualAmount = Number(memberInfo?.maturity_manual_amount || 0);
-
-             let settledInterest = 0;
-             if (isOverride && manualAmount > 0) {
-                 settledInterest = manualAmount;
-             } else {
-                 const totalPrincipal = monthlyDeposit * tenureMonths;
-                 settledInterest = totalPrincipal * 0.12; 
-             }
-             
-             const monthlyInterestShare = settledInterest / tenureMonths;
-             const depositCount = deposits.length;
-             maturityLiability += (monthlyInterestShare * depositCount);
-        }
-    });
-
-    const totalExpenseFinal = cashExpense + Number(maturityLiability.toFixed(2));
-    const netProfitFinal = realIncome - totalExpenseFinal;
-
-    setFinancials({
-        netProfit: netProfitFinal,
-        totalIncome: realIncome, 
-        totalExpense: totalExpenseFinal,
-        cashBal: cash, 
-        bankBal: bank,
-        upiBal: upi,
-        depositTotal: totalDepositsCollected,
-        pendingLoans: pendingLoanCount
-    });
-
-    console.timeEnd('financial_calculation');
-    console.log('✅ Financial Calculation End');
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('current_member'); 
-    router.push('/login');
-  };
-
-  if (loading && !clientData) return <div className="h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950">Loading Dashboard...</div>;
-  if (!clientData) return null;
-
-  const totalLiquidity = financials.cashBal + financials.bankBal + financials.upiBal;
-  const profitMargin = financials.totalIncome > 0 
-    ? ((financials.netProfit / financials.totalIncome) * 100).toFixed(1) 
-    : "0";
-    
-  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
-
-  const totalDeposits = Array.isArray(transactionsData)
-    ? transactionsData.reduce((sum, t) => sum + Number(t?.deposit_amount ?? 0), 0)
-    : 0;
+  const daysUntilExpiry = getDaysUntilExpiry(userData.expiryDate, userData.trialEndsAt);
   
-  const activeLoans = loansData.filter(l => 
-    l.status === 'active' || (l.remaining_balance > 0 && l.status !== 'closed')
-  );
-  
-  const overdueMembers = getOverdueMembers(membersData, 10);
-  const riskyLoans = getRiskyLoans(loansData);
-
-  // ✅ FIX 1: Removed Route Change Logs
+  // Determine which date to show
+  const relevantExpiryDate = userData.trialEndsAt || userData.expiryDate;
+  const dateLabel = userData.trialEndsAt ? 'Trial End Date' : 'Expiry Date';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 space-y-6 transition-colors duration-300">
-      
-      {showMonthlyBanner && !loading && (
-        <Card className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-blue-800 dark:text-blue-200 text-lg">
-              📅 This Month Summary
-            </CardTitle>
-            <button
-              onClick={closeMonthlyBanner}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              ✕
-            </button>
-          </CardHeader>
-          <CardContent className="text-sm space-y-1">
-            <div className="text-slate-700 dark:text-slate-300">💰 Deposits: {fmt(totalDeposits)}</div>
-            <div className="text-slate-700 dark:text-slate-300">🏦 Active Loans: {activeLoans.length}</div>
-            <div className="text-slate-700 dark:text-slate-300">⚠️ Overdue Members: {overdueMembers.length}</div>
-            <div className="text-slate-700 dark:text-slate-300">🚨 Risky Loans: {riskyLoans.length}</div>
-          </CardContent>
-        </Card>
-      )}
-      
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{clientData.society_name || 'My Society'}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Financial Overview • {clientData.name}</p>
-        </div>
-        <div className="flex items-center gap-4">
-            <div className="text-right hidden md:block">
-            <p className="text-xs text-slate-400 dark:text-slate-500 font-mono uppercase">SYSTEM DATE</p>
-            <p className="font-bold text-slate-700 dark:text-slate-200">{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><LogOut className="w-5 h-5"/></Button>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className={`border-l-4 dark:bg-slate-900 dark:border-slate-800 ${financials.netProfit >= 0 ? 'border-l-green-500 bg-green-50/50 dark:bg-green-900/10' : 'border-l-red-500 bg-red-50/50 dark:bg-red-900/10'}`}>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-300">Net Profit</CardTitle></CardHeader>
-          <CardContent>
-            <div className={`text-3xl font-bold ${financials.netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                {formatCurrency(financials.netProfit)}
+            <div className="flex items-center space-x-4">
+              <Link href="/subscription">
+                <Button variant="outline" size="sm">
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Manage Subscription
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Actual Earnings</p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </header>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Total Income</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(financials.totalIncome)}</div>
-            <div className="flex items-center text-xs text-green-600 dark:text-green-400 mt-1"><TrendingUp className="w-3 h-3 mr-1"/> Interest + Fines</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Total Expense</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(financials.totalExpense)}</div>
-            <div className="flex items-center text-xs text-red-600 dark:text-red-400 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Liability</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-600 dark:text-slate-400">Margin</CardTitle></CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${Number(profitMargin) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>{profitMargin}%</div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Health Indicator</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mt-4">
-        <Landmark className="w-5 h-5 text-orange-600 dark:text-orange-400" /> Liquidity Position
-      </h3>
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900">
-           <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">Cash In Hand</span>
-                 <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300">{formatCurrency(financials.cashBal)}</div>
-           </CardContent>
-        </Card>
-
-        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
-           <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase">Bank</span>
-                 <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">{formatCurrency(financials.bankBal)}</div>
-           </CardContent>
-        </Card>
-
-        <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900">
-           <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase">UPI</span>
-                 <Smartphone className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">{formatCurrency(financials.upiBal)}</div>
-           </CardContent>
-        </Card>
-
-        <Card className="bg-slate-900 dark:bg-black text-white border border-slate-700 dark:border-slate-800">
-           <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs font-bold text-slate-300 uppercase">Total Liquidity</span>
-                 <CheckCircle className="w-4 h-4 text-green-400" />
-              </div>
-              <div className="text-2xl font-bold">{formatCurrency(totalLiquidity)}</div>
-           </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-         <div className="space-y-4">
-            <Alert className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900">
-               <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
-               <AlertTitle className="text-yellow-800 dark:text-yellow-400">System Status</AlertTitle>
-               <AlertDescription className="text-yellow-700 dark:text-yellow-500">
-                 {financials.pendingLoans > 0 
-                   ? `${financials.pendingLoans} active loans.` 
-                   : "System updated live from Supabase."}
-               </AlertDescription>
-            </Alert>
-            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-               <CardContent className="p-4 flex justify-between items-center">
-                  <div><p className="text-xs text-gray-500 dark:text-gray-400">Total Deposits</p><h4 className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(financials.depositTotal)}</h4></div>
-                  <Users className="text-orange-500" />
-               </CardContent>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* User Info Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <User className="h-5 w-5 mr-2" />
+                  Profile Information
+                  {(userData.email === 'client1@gmail.com' || userData.email === 'client@saanify.com') && (
+                    <Badge className="ml-2 bg-purple-100 text-purple-800">
+                      Demo Account
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Name</p>
+                  <p className="text-lg font-semibold">{userData.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Email</p>
+                  <p className="text-sm">{userData.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Account Type</p>
+                  <p className="text-sm capitalize">
+                    {userData.email === 'client1@gmail.com' || userData.email === 'client@saanify.com' 
+                      ? 'Demo Client' 
+                      : 'Real Client'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Member Since</p>
+                  <p className="text-sm">{formatDate(userData.createdAt)}</p>
+                </div>
+              </CardContent>
             </Card>
-         </div>
 
-         <Card className="col-span-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardHeader><CardTitle className="text-slate-900 dark:text-white">Monthly Performance</CardTitle></CardHeader>
-            <CardContent className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData.length > 0 ? chartData : [{month: 'No Data', amount: 0}]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="month" stroke="#94a3b8" />
-                  <Tooltip 
-                    formatter={(value) => formatCurrency(Number(value))}
-                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
-                  />
-                  <Bar dataKey="amount" fill="#10B981" radius={[4,4,0,0]} name="Income" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-         </Card>
-      </div>
+            {/* Subscription Status Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CreditCard className="h-5 w-5 mr-2" />
+                  Subscription Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-500">Status</span>
+                  <Badge className={getStatusColor(userData.subscriptionStatus)}>
+                    <div className="flex items-center space-x-1">
+                      {getStatusIcon(userData.subscriptionStatus)}
+                      <span>{userData.subscriptionStatus ? userData.subscriptionStatus.toUpperCase() : 'UNKNOWN'}</span>
+                    </div>
+                  </Badge>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Current Plan</p>
+                  <p className="text-lg font-semibold capitalize">
+                    {userData.plan || 'No Active Plan'}
+                  </p>
+                </div>
+
+                {relevantExpiryDate && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">{dateLabel}</p>
+                    <p className="text-sm">{formatDate(relevantExpiryDate)}</p>
+                    {daysUntilExpiry !== null && (
+                      <p className={`text-xs mt-1 ${
+                        daysUntilExpiry <= 7 ? 'text-red-600 font-medium' : 'text-gray-500'
+                      }`}>
+                        {daysUntilExpiry > 0 ? `${daysUntilExpiry} days remaining` : 'Expired'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Settings className="h-5 w-5 mr-2" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {userData.subscriptionStatus === 'PENDING' && (
+                  <Alert>
+                    <Clock className="h-4 w-4" />
+                    <AlertDescription>
+                      Your subscription is pending approval. You'll be notified once it's reviewed.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {userData.subscriptionStatus === 'REJECTED' && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Your subscription was rejected. Please contact support or submit a new payment.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                  {userData.subscriptionStatus === 'EXPIRED' && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Your subscription has expired. Renew now to continue accessing service.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-2">
+                  {userData.subscriptionStatus !== 'ACTIVE' && (
+                    <Link href="/subscription">
+                      <Button className="w-full">
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        {userData.subscriptionStatus === 'PENDING' ? 'View Payment Status' : 'Upgrade Plan'}
+                      </Button>
+                    </Link>
+                  )}
+                  
+                  <Link href="/subscription/history">
+                    <Button variant="outline" className="w-full">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Payment History
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Additional Information */}
+          <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Welcome to Your Dashboard!</CardTitle>
+                <CardDescription>
+                  Here you can manage your subscription and account settings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <Calendar className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                    <h3 className="font-medium">Easy Planning</h3>
+                    <p className="text-sm text-gray-600 mt-1">Manage your subscription dates</p>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                    <h3 className="font-medium">Quick Approval</h3>
+                    <p className="text-sm text-gray-600 mt-1">Fast payment processing</p>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <CreditCard className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                    <h3 className="font-medium">Secure Payments</h3>
+                    <p className="text-sm text-gray-600 mt-1">Safe transaction processing</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
