@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from "react"; // Removed useCallback as it's no longer needed with []
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,23 +37,16 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Removed useCallback, defined as standard async function
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
-      // REMOVED: console.log('🔍 Client Dashboard: Fetching user data...')
-      
       // First verify client access
       const verifyResponse = await fetch('/api/client/verify');
-      
-      // REMOVED: console.log('🔍 Client Dashboard: Verify response status:', verifyResponse.status)
       
       if (!verifyResponse.ok) {
         if (verifyResponse.status === 401) {
           const errorData = await verifyResponse.json();
-          // REMOVED: console.log('❌ Client Dashboard: Access denied:', errorData.error)
           setError(errorData.error || 'Access denied. Please login as a legitimate client.');
           setTimeout(() => {
-            // REMOVED: console.log('🔄 Client Dashboard: Redirecting to login...')
             router.push('/login');
           }, 3000);
           return;
@@ -62,7 +55,6 @@ export default function ClientDashboard() {
       }
 
       const verifyData = await verifyResponse.json();
-      // REMOVED: console.log('✅ Client Dashboard: Verification successful:', verifyData.currentUser?.email)
       
       if (!verifyData.success) {
         setError(verifyData.error || 'Client verification failed');
@@ -73,42 +65,22 @@ export default function ClientDashboard() {
       setUserData(verifyData.currentUser);
         
     } catch (err: any) {
-      // REPLACED ERROR LOG WITH DEV CHECK
-      if (process.env.NODE_ENV === "development") {
-        console.error("Dashboard Error:", err);
-      }
       setError(err.message || 'Failed to load client dashboard');
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
-  // ✅ 1. useEffect double call fix
   useEffect(() => {
-    let mounted = true;
-
-    const loadData = async () => {
-      if (mounted) {
-        await fetchUserData();
-      }
-    };
-
-    loadData();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    fetchUserData();
+  }, [fetchUserData]);
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include', // ✅ 4. Logout optimization: Added credentials
-      });
-      router.replace('/'); // ✅ 4. Logout optimization: Changed push to replace
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/');
     } catch (err) {
-      console.error('Logout failed:', err);
+      // Error handling logic without console log
     }
   };
 
