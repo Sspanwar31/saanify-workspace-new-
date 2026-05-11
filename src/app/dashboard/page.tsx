@@ -1,29 +1,31 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Components
+// UI Components
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 
-// Icons (Merged from both codes)
+// Icons
 import { 
   TrendingUp, TrendingDown, Wallet, Building2, Smartphone, 
   CheckCircle, Users, Landmark, AlertCircle, LogOut, Loader2,
-  CreditCard
+  CreditCard, Calendar, Activity, ArrowUpRight, ArrowDownRight,
+  ShieldAlert
 } from 'lucide-react';
 
-// Chart
-import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+// Charts
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Utils
 import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/hooks/useCurrency';
+import { toast } from 'sonner';
 
 export default function ClientDashboard() {
   const router = useRouter();
@@ -31,14 +33,32 @@ export default function ClientDashboard() {
   
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
+  // Detailed Financials State
   const [financials, setFinancials] = useState({
-    netProfit: 0, totalIncome: 0, totalExpense: 0, margin: "0",
-    cashBal: 0, bankBal: 0, upiBal: 0, depositTotal: 0, pendingLoans: 0,
-    activeMembers: 0, health: 0
+    netProfit: 0,
+    totalIncome: 0,
+    totalExpense: 0,
+    interestIncome: 0,
+    fineIncome: 0,
+    maintenanceIncome: 0,
+    operationalCost: 0,
+    maturityLiability: 0,
+    margin: "0",
+    cashBal: 0,
+    bankBal: 0,
+    upiBal: 0,
+    totalLiquidity: 0,
+    depositTotal: 0,
+    activeLoans: 0,
+    activeMembers: 0,
+    health: 0
   });
+
   const [chartData, setChartData] = useState<any[]>([]);
 
-  // 🚀 LOGIC: LocalStorage Data Fetching (Common in both codes)
+  // 🚀 CORE LOGIC: Data Fetching & Calculation
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
@@ -51,39 +71,67 @@ export default function ClientDashboard() {
       const profile = JSON.parse(savedUser);
       setUser(profile);
 
-      // Resolve Society ID (Treasurer ho ya Owner)
+      // Impersonation check for banner
+      setIsImpersonating(localStorage.getItem('is_admin_impersonating') === 'true');
+
       const societyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
 
-      // Fetch Stats from our API (RLS Bypass)
+      // 1. Fetch Stats from Admin API (Handles Logic & RLS Bypass)
       const res = await fetch(`/api/admin/clients/${societyId}/stats`);
-      const data = await res.json();
+      const statsData = await res.json();
 
-      if (res.ok && data.success) {
-        // Calculate Margin
-        const marginVal = data.debug?.income > 0 
-          ? ((data.netProfit / data.debug.income) * 100).toFixed(1) 
+      // 2. Fetch Liquidity directly from Passbook (For detailed breakdown)
+      const { data: passbook } = await supabase
+        .from('passbook_entries')
+        .select('amount, total_amount, payment_mode, deposit_amount')
+        .eq('client_id', societyId);
+
+      if (res.ok && statsData.success) {
+        // Calculate detailed liquidity
+        let cash = 0, bank = 0, upi = 0, deposits = 0;
+        passbook?.forEach(t => {
+          const amt = Number(t.total_amount) || 0;
+          const mode = (t.payment_mode || 'cash').toLowerCase().trim();
+          deposits += Number(t.deposit_amount || 0);
+
+          if (mode.includes('cash')) cash += amt;
+          else if (mode.includes('bank') || mode.includes('cheque')) bank += amt;
+          else if (mode.includes('upi') || mode.includes('online')) upi += amt;
+        });
+
+        const marginVal = statsData.debug?.income > 0 
+          ? ((statsData.netProfit / statsData.debug.income) * 100).toFixed(1) 
           : "0";
 
         setFinancials({
-          netProfit: data.netProfit,
-          totalIncome: data.debug?.income || 0,
-          totalExpense: data.debug?.expense || 0,
+          netProfit: statsData.netProfit,
+          totalIncome: statsData.debug?.income || 0,
+          totalExpense: statsData.debug?.expense || 0,
+          interestIncome: statsData.debug?.interest || 0,
+          fineIncome: statsData.debug?.fines || 0,
+          maintenanceIncome: statsData.debug?.other || 0,
+          operationalCost: statsData.debug?.ops || 0,
+          maturityLiability: statsData.debug?.maturity || 0,
           margin: marginVal,
-          cashBal: data.debug?.ops || 0, // Simplified mapping
-          bankBal: 0, // These will come from your mode-wise logic if needed
-          upiBal: 0,
-          depositTotal: 0, 
-          pendingLoans: data.loanCount || 0,
-          activeMembers: data.memberCount || 0,
-          health: data.healthScore || 0
+          cashBal: cash,
+          bankBal: bank,
+          upiBal: upi,
+          totalLiquidity: cash + bank + upi,
+          depositTotal: deposits,
+          activeLoans: statsData.loanCount || 0,
+          activeMembers: statsData.memberCount || 0,
+          health: statsData.healthScore || 0
         });
 
+        // Dynamic Chart Data
         setChartData([
-          { month: 'Current', amount: data.debug?.income || 0 }
+          { name: 'Income', amount: statsData.debug?.income || 0, color: '#10b981' },
+          { name: 'Expense', amount: statsData.debug?.expense || 0, color: '#ef4444' }
         ]);
       }
     } catch (err) {
-      console.error("Dashboard Error:", err);
+      console.error("Dashboard Load Error:", err);
+      toast.error("Failed to sync financial data");
     } finally {
       setLoading(false);
     }
@@ -91,172 +139,215 @@ export default function ClientDashboard() {
 
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
-  // Helper from Code 2
   const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/');
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
+    localStorage.clear();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   if (loading && !user) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-slate-950">
-      <Loader2 className="animate-spin text-blue-500 h-10 w-10" />
-      <p className="text-slate-400 mt-4">Loading Financial Overview...</p>
+    <div className="h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
+      <p className="text-slate-500 mt-4 animate-pulse">Synchronizing Society Ledger...</p>
     </div>
   );
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       
-      {/* 1. HEADER SECTION (Code 1 UI + Code 2 Controls) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* 1. TOP HEADER & NAVIGATION */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight">{user?.society_name || 'My Society'}</h1>
-          <p className="text-slate-400 mt-1">Financial Overview • {user?.name}</p>
+          <div className="flex items-center gap-3">
+             <div className="p-2 bg-blue-600 rounded-xl"><Landmark className="text-white w-6 h-6"/></div>
+             <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
+                {user?.society_name || 'Society Dashboard'}
+             </h1>
+          </div>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-green-500" />
+            Financial Overview • {user?.name} ({user?.role})
+          </p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden md:block mr-4">
-            <p className="text-xs text-slate-500 font-mono uppercase tracking-widest">SYSTEM DATE</p>
-            <p className="text-lg font-bold text-slate-200">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="text-left md:text-right px-4 border-r dark:border-slate-700 hidden sm:block">
+            <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">SYSTEM DATE</p>
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
           </div>
           
-          {/* Code 2 Controls Integrated */}
-          <Link href="/subscription">
-            <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
-              <CreditCard className="h-4 w-4 mr-2" />
-              Manage Subscription
+          <Link href="/dashboard/subscription">
+            <Button variant="outline" size="sm" className="rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <CreditCard className="h-4 w-4 mr-2 text-blue-600" />
+              Subscription
             </Button>
           </Link>
-          <Button variant="outline" size="sm" onClick={handleLogout} className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
+
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl">
+            <LogOut className="h-4 w-4 mr-2" /> Logout
           </Button>
         </div>
       </div>
 
-      {/* 2. MAIN KPI CARDS (Matches Code 1 Screenshot) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className={`border-l-4 bg-slate-900/50 border-slate-800 ${financials.netProfit >= 0 ? 'border-l-green-500' : 'border-l-red-500'}`}>
+      {/* 2. MAIN KPI CARDS (Profit, Income, Expense, Margin) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        <Card className={`border-l-4 bg-white dark:bg-slate-900 shadow-md ${financials.netProfit >= 0 ? 'border-l-green-500' : 'border-l-red-500'}`}>
           <CardContent className="pt-6">
-            <p className="text-sm font-medium text-slate-400">Net Profit</p>
-            <h3 className={`text-3xl font-bold mt-2 ${financials.netProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <div className="flex justify-between items-start">
+               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Net Profit</p>
+               {financials.netProfit >= 0 ? <ArrowUpRight className="text-green-500 w-4 h-4"/> : <ArrowDownRight className="text-red-500 w-4 h-4"/>}
+            </div>
+            <h3 className={`text-3xl font-black mt-2 ${financials.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
               {formatCurrency(financials.netProfit)}
             </h3>
-            <p className="text-[10px] text-slate-500 mt-1">Actual Earnings</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium italic">Actual Society Earnings</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/50 border-slate-800">
+        <Card className="bg-white dark:bg-slate-900 shadow-md border-slate-100 dark:border-slate-800">
           <CardContent className="pt-6">
-            <p className="text-sm font-medium text-slate-400">Total Income</p>
-            <h3 className="text-3xl font-bold text-emerald-400 mt-2">{formatCurrency(financials.totalIncome)}</h3>
-            <div className="flex items-center text-[10px] text-emerald-500 mt-1"><TrendingUp className="w-3 h-3 mr-1"/> Interest + Fines</div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Income</p>
+            <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{formatCurrency(financials.totalIncome)}</h3>
+            <div className="flex items-center text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-bold">
+               <TrendingUp className="w-3 h-3 mr-1"/> Interest: {formatCurrency(financials.interestIncome)}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/50 border-slate-800">
+        <Card className="bg-white dark:bg-slate-900 shadow-md border-slate-100 dark:border-slate-800">
           <CardContent className="pt-6">
-            <p className="text-sm font-medium text-slate-400">Total Expense</p>
-            <h3 className="text-3xl font-bold text-red-400 mt-2">{formatCurrency(financials.totalExpense)}</h3>
-            <div className="flex items-center text-[10px] text-red-500 mt-1"><TrendingDown className="w-3 h-3 mr-1"/> Ops + Liability</div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Expense</p>
+            <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{formatCurrency(financials.totalExpense)}</h3>
+            <div className="flex items-center text-[10px] text-red-500 mt-1 font-bold">
+               <TrendingDown className="w-3 h-3 mr-1"/> Maturity: {formatCurrency(financials.maturityLiability)}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/50 border-slate-800">
+        <Card className="bg-white dark:bg-slate-900 shadow-md border-slate-100 dark:border-slate-800">
           <CardContent className="pt-6">
-            <p className="text-sm font-medium text-slate-400">Margin</p>
-            <h3 className="text-3xl font-bold text-blue-400 mt-2">{financials.margin}%</h3>
-            <p className="text-[10px] text-slate-500 mt-1">Health Indicator</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Profit Margin</p>
+            <h3 className={`text-3xl font-black mt-2 ${Number(financials.margin) >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+               {financials.margin}%
+            </h3>
+            <div className="mt-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
+               <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${Math.min(100, Math.max(0, Number(financials.margin)))}%` }}></div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* 3. LIQUIDITY POSITION SECTION (Matches Code 1 Screenshot) */}
-      <h3 className="text-xl font-bold text-white flex items-center gap-2">
-        <Landmark className="w-6 h-6 text-orange-500" /> Liquidity Position
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-[#064e3b]/20 border-emerald-900/50">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center text-emerald-400 mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider">Cash In Hand</span>
-              <Wallet className="w-5 h-5" />
-            </div>
-            <h3 className="text-2xl font-bold text-emerald-100">{formatCurrency(financials.cashBal)}</h3>
-          </CardContent>
-        </Card>
+      {/* 3. LIQUIDITY POSITION SECTION (Detailed Breakdown) */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Wallet className="w-6 h-6 text-orange-500" /> Liquidity Position (Live)
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50">
+            <CardContent className="p-6">
+                <div className="flex justify-between items-center text-emerald-700 dark:text-emerald-400 mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider">Cash In Hand</span>
+                <Wallet className="w-5 h-5 opacity-70" />
+                </div>
+                <h3 className="text-2xl font-bold text-emerald-900 dark:text-emerald-200">{formatCurrency(financials.cashBal)}</h3>
+            </CardContent>
+            </Card>
 
-        <Card className="bg-[#1e3a8a]/20 border-blue-900/50">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center text-blue-400 mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider">Bank</span>
-              <Building2 className="w-5 h-5" />
-            </div>
-            <h3 className="text-2xl font-bold text-blue-100">{formatCurrency(financials.bankBal)}</h3>
-          </CardContent>
-        </Card>
+            <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/50">
+            <CardContent className="p-6">
+                <div className="flex justify-between items-center text-blue-700 dark:text-blue-400 mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider">Bank Balance</span>
+                <Building2 className="w-5 h-5 opacity-70" />
+                </div>
+                <h3 className="text-2xl font-bold text-blue-900 dark:text-blue-200">{formatCurrency(financials.bankBal)}</h3>
+            </CardContent>
+            </Card>
 
-        <Card className="bg-[#4c1d95]/20 border-purple-900/50">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center text-purple-400 mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider">UPI</span>
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <h3 className="text-2xl font-bold text-purple-100">{formatCurrency(financials.upiBal)}</h3>
-          </CardContent>
-        </Card>
+            <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/50">
+            <CardContent className="p-6">
+                <div className="flex justify-between items-center text-purple-700 dark:text-purple-400 mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider">UPI / Online</span>
+                <Smartphone className="w-5 h-5 opacity-70" />
+                </div>
+                <h3 className="text-2xl font-bold text-purple-900 dark:text-purple-200">{formatCurrency(financials.upiBal)}</h3>
+            </CardContent>
+            </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center text-slate-400 mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider">Total Liquidity</span>
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            </div>
-            <h3 className="text-2xl font-bold text-white">{formatCurrency(financials.cashBal + financials.bankBal + financials.upiBal)}</h3>
-          </CardContent>
-        </Card>
+            <Card className="bg-slate-900 dark:bg-black border-slate-800 shadow-xl">
+            <CardContent className="p-6">
+                <div className="flex justify-between items-center text-slate-400 mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-green-400">Total Liquidity</span>
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-white">{formatCurrency(financials.totalLiquidity)}</h3>
+            </CardContent>
+            </Card>
+        </div>
       </div>
 
-      {/* 4. SYSTEM STATUS & CHART */}
+      {/* 4. STATS & PERFORMANCE GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Column: System Status & Deposits */}
         <div className="space-y-6">
-          <Alert className="bg-orange-950/20 border-orange-900 text-orange-200">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle className="font-bold">System Status</AlertTitle>
-            <AlertDescription className="text-xs opacity-80">
-              {financials.pendingLoans} active loans.
+          <Alert className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+            <ShieldAlert className="h-5 w-5 text-orange-500" />
+            <AlertTitle className="font-bold text-slate-900 dark:text-white">System Status</AlertTitle>
+            <AlertDescription className="text-xs text-slate-500">
+              {financials.pendingLoans > 0 
+                ? `Attention: You have ${financials.pendingLoans} active loans in process.` 
+                : "All society systems are synchronized with Supabase."}
             </AlertDescription>
           </Alert>
 
-          <Card className="bg-slate-900/50 border-slate-800">
-            <CardContent className="p-6 flex justify-between items-center">
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase">Total Deposits</p>
-                <h4 className="text-2xl font-bold text-white mt-1">{formatCurrency(financials.depositTotal)}</h4>
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+            <CardContent className="p-6 flex justify-between items-center relative">
+              <div className="z-10">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Deposits</p>
+                <h4 className="text-3xl font-black text-slate-900 dark:text-white mt-2">{formatCurrency(financials.depositTotal)}</h4>
+                <p className="text-[10px] text-green-500 font-bold mt-2">+ Real-time Collection</p>
               </div>
-              <Users className="w-10 h-10 text-orange-500 opacity-50" />
+              <Users className="w-16 h-16 text-slate-100 dark:text-slate-800 absolute right-4 bottom-2 z-0" />
             </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+             <CardHeader className="pb-2"><CardTitle className="text-xs font-bold text-slate-400 uppercase">Account Health</CardTitle></CardHeader>
+             <CardContent>
+                <div className="flex items-end justify-between">
+                   <h3 className="text-3xl font-black text-slate-900 dark:text-white">{financials.health}%</h3>
+                   <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-none rounded-lg">Operational</Badge>
+                </div>
+                <Progress value={financials.health} className="h-2 mt-4 bg-slate-100 dark:bg-slate-800" />
+             </CardContent>
           </Card>
         </div>
 
-        <Card className="lg:col-span-2 bg-slate-900/50 border-slate-800">
-          <CardHeader>
-            <CardTitle className="text-slate-200">Monthly Performance</CardTitle>
+        {/* Right Column: Monthly Chart */}
+        <Card className="lg:col-span-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-3xl shadow-md overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between border-b dark:border-slate-800 p-6">
+            <div>
+               <CardTitle className="text-slate-900 dark:text-white">Society Performance</CardTitle>
+               <p className="text-xs text-slate-500 mt-1">Income vs Expense Real-time Analysis</p>
+            </div>
+            <TrendingUp className="text-blue-500 w-5 h-5" />
           </CardHeader>
-          <CardContent className="h-[250px]">
+          <CardContent className="p-6 h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="month" stroke="#64748b" />
+              <BarChart data={chartData} barGap={8}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v/1000}k`} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
-                  itemStyle={{ color: '#10b981' }}
+                  cursor={{fill: 'transparent'}}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  formatter={(value: any) => [formatCurrency(value), 'Amount']}
                 />
-                <Bar dataKey="amount" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="amount" radius={[6, 6, 0, 0]} barSize={50}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
