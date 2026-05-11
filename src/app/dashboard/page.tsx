@@ -58,7 +58,7 @@ export default function ClientDashboard() {
 
   const [chartData, setChartData] = useState<any[]>([]);
 
-  // 🚀 CORE LOGIC: Using Code 1's Manual Calculation Logic
+  // 🚀 CORE LOGIC: Using Code 1's Exact Manual Calculation Logic
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
@@ -71,12 +71,12 @@ export default function ClientDashboard() {
       const profile = JSON.parse(savedUser);
       setUser(profile);
 
-      // Impersonation check
+      // Impersonation check (Code 2 Feature)
       setIsImpersonating(localStorage.getItem('is_admin_impersonating') === 'true');
 
       const societyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
 
-      // 1. FETCH ALL RAW DATA (Code 1 Approach: Manual Calculation)
+      // 1. FETCH ALL RAW DATA (Code 1 Logic: Manual Calculation)
       const [passbookRes, ledgerRes, loansRes, membersRes, fundRes] = await Promise.all([
         supabase.from('passbook_entries').select('*').eq('client_id', societyId),
         supabase.from('expenses_ledger').select('*').eq('client_id', societyId),
@@ -94,12 +94,13 @@ export default function ClientDashboard() {
         const total = Number(t.total_amount) || 0;
         const interest = Number(t.interest_amount) || 0;
         const fine = Number(t.fine_amount) || 0;
+        const depAmt = Number(t.deposit_amount) || 0;
         const mode = (t.payment_mode || 'cash').toLowerCase().trim();
         
         // Income Breakdown (Code 1)
         income_interest += interest;
         income_fine += fine;
-        deposits += Number(t.deposit_amount) || 0;
+        deposits += depAmt;
 
         // Liquidity IN (Code 2 Mode Logic)
         if (mode.includes('bank')) bank += total;
@@ -173,7 +174,7 @@ export default function ClientDashboard() {
         depositTotal: deposits,
         activeLoans: loansRes.data?.length || 0,
         activeMembers: membersRes.data?.length || 0,
-        health: membersRes.data?.length ? 85 : 0 // Fallback health logic
+        health: membersRes.data?.length ? 85 : 0 // Fallback health logic from Code 1
       });
 
       // Dynamic Chart Data
