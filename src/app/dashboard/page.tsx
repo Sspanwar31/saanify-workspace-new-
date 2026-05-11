@@ -58,7 +58,7 @@ export default function ClientDashboard() {
 
   const [chartData, setChartData] = useState<any[]>([]);
 
-  // 🚀 CORE LOGIC: Updated Calculation Logic
+  // 🚀 CORE LOGIC: Using Code 1's Manual Calculation Logic
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
@@ -76,90 +76,111 @@ export default function ClientDashboard() {
 
       const societyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
 
-      // 1. FETCH ALL RAW DATA
-      const [statsRes, passbookRes, ledgerRes, loansRes, fundRes] = await Promise.all([
-        fetch(`/api/admin/clients/${societyId}/stats`).then(r => r.json()),
+      // 1. FETCH ALL RAW DATA (Code 1 Approach: Manual Calculation)
+      const [passbookRes, ledgerRes, loansRes, membersRes, fundRes] = await Promise.all([
         supabase.from('passbook_entries').select('*').eq('client_id', societyId),
         supabase.from('expenses_ledger').select('*').eq('client_id', societyId),
         supabase.from('loans').select('*').eq('client_id', societyId).eq('status', 'active'),
+        supabase.from('members').select('*').eq('client_id', societyId).eq('status', 'active'), // Added for Maturity Calc
         supabase.from('admin_fund_ledger').select('*').eq('client_id', societyId)
       ]);
 
-      if (statsRes.success) {
-        let cash = 0, bank = 0, upi = 0, deposits = 0;
+      let income_interest = 0, income_fine = 0, income_other = 0;
+      let exp_ops = 0, exp_maturity = 0;
+      let cash = 0, bank = 0, upi = 0, deposits = 0;
 
-        // 1. Passbook Entries (Mainly IN)
-        passbookRes.data?.forEach(t => {
-          const amt = Number(t.total_amount) || 0;
-          const depAmt = Number(t.deposit_amount) || 0;
-          const mode = (t.payment_mode || 'cash').toLowerCase().trim();
-          deposits += depAmt;
+      // 2. PROCESS PASSBOOK (Code 1 Logic for Breakdown + Code 2 for Liquidity)
+      passbookRes.data?.forEach(t => {
+        const total = Number(t.total_amount) || 0;
+        const interest = Number(t.interest_amount) || 0;
+        const fine = Number(t.fine_amount) || 0;
+        const mode = (t.payment_mode || 'cash').toLowerCase().trim();
+        
+        // Income Breakdown (Code 1)
+        income_interest += interest;
+        income_fine += fine;
+        deposits += Number(t.deposit_amount) || 0;
 
+        // Liquidity IN (Code 2 Mode Logic)
+        if (mode.includes('bank')) bank += total;
+        else if (mode.includes('upi')) upi += total;
+        else cash += total;
+      });
+
+      // 3. PROCESS EXPENSES LEDGER (Code 1 Logic for Ops/Income + Code 2 for Liquidity)
+      ledgerRes.data?.forEach(e => {
+        const amt = Number(e.amount) || 0;
+        const mode = (e.payment_mode || 'cash').toLowerCase();
+        if (e.type === 'INCOME') {
+          income_other += amt;
+          // Liquidity IN
           if (mode.includes('bank')) bank += amt;
           else if (mode.includes('upi')) upi += amt;
           else cash += amt;
-        });
-
-        // 2. Expenses Ledger (Mainly OUT) - Updated to respect payment_mode
-        ledgerRes.data?.forEach(e => {
-          const amt = Number(e.amount) || 0;
-          const mode = (e.payment_mode || 'cash').toLowerCase();
-          if (e.type === 'EXPENSE') {
-            if (mode.includes('bank')) bank -= amt;
-            else if (mode.includes('upi')) upi -= amt;
-            else cash -= amt;
-          } else {
-            cash += amt;
-          }
-        });
-
-        // 3. Loans (OUT)
-        loansRes.data?.forEach(l => {
-          const amt = Number(l.amount) || 0; // Disbursement is OUT
-          const mode = (l.payment_mode || 'cash').toLowerCase();
+        } else {
+          exp_ops += amt;
+          // Liquidity OUT
           if (mode.includes('bank')) bank -= amt;
           else if (mode.includes('upi')) upi -= amt;
           else cash -= amt;
-        });
+        }
+      });
 
-        // 4. Admin Fund (IN/OUT)
-        fundRes.data?.forEach(f => {
-          const amt = Number(f.amount) || 0;
-          if (f.type === 'INJECT') cash += amt;
-          else cash -= amt;
-        });
+      // 4. PROCESS LOANS (OUT) - Code 2 Liquidity Logic
+      loansRes.data?.forEach(l => {
+        const amt = Number(l.amount) || 0;
+        const mode = (l.payment_mode || 'cash').toLowerCase();
+        if (mode.includes('bank')) bank -= amt;
+        else if (mode.includes('upi')) upi -= amt;
+        else cash -= amt;
+      });
 
-        // Margin Calculation
-        const marginVal = statsRes.debug?.income > 0 
-          ? ((statsRes.netProfit / statsRes.debug.income) * 100).toFixed(1) 
-          : "0";
+      // 5. ADMIN FUND (IN/OUT) - Code 2 Liquidity Logic
+      fundRes.data?.forEach(f => {
+        const amt = Number(f.amount) || 0;
+        if (f.type === 'INJECT') cash += amt;
+        else cash -= amt;
+      });
 
-        setFinancials({
-          netProfit: statsRes.netProfit,
-          totalIncome: statsRes.debug?.income || 0,
-          totalExpense: statsRes.debug?.expense || 0,
-          interestIncome: statsRes.debug?.interest || 0,
-          fineIncome: statsRes.debug?.fines || 0,
-          maintenanceIncome: statsRes.debug?.other || 0,
-          operationalCost: statsRes.debug?.ops || 0,
-          maturityLiability: statsRes.debug?.maturity || 0,
-          margin: marginVal,
-          cashBal: cash,
-          bankBal: bank,
-          upiBal: upi,
-          totalLiquidity: cash + bank + upi,
-          depositTotal: deposits,
-          activeLoans: statsRes.loanCount || 0,
-          activeMembers: statsRes.memberCount || 0,
-          health: statsRes.healthScore || 0
-        });
+      // 6. MATURITY LIABILITY CALCULATION (Code 1 Specific Logic)
+      membersRes.data?.forEach(m => {
+        const monthlyDep = Number(m.monthly_deposit_amount || 0);
+        const count = passbookRes.data?.filter(p => p.member_id === m.id && Number(p.deposit_amount) > 0).length || 0;
+        let settledInt = m.maturity_is_override ? Number(m.maturity_manual_amount) : (monthlyDep * 36 * 0.12);
+        exp_maturity += (settledInt / 36) * count;
+      });
 
-        // Dynamic Chart Data
-        setChartData([
-          { name: 'Income', amount: statsRes.debug?.income || 0, color: '#10b981' },
-          { name: 'Expense', amount: statsRes.debug?.expense || 0, color: '#ef4444' }
-        ]);
-      }
+      // 7. AGGREGATION (Code 1 Logic)
+      const totalInc = income_interest + income_fine + income_other;
+      const totalExp = exp_ops + exp_maturity;
+      const netProf = totalInc - totalExp;
+      const marginVal = totalInc > 0 ? ((netProf / totalInc) * 100).toFixed(1) : "0";
+
+      setFinancials({
+        netProfit: netProf,
+        totalIncome: totalInc,
+        totalExpense: totalExp,
+        interestIncome: income_interest,
+        fineIncome: income_fine,
+        maintenanceIncome: income_other, // Mapped from income_other
+        operationalCost: exp_ops,
+        maturityLiability: exp_maturity,
+        margin: marginVal,
+        cashBal: cash,
+        bankBal: bank,
+        upiBal: upi,
+        totalLiquidity: cash + bank + upi,
+        depositTotal: deposits,
+        activeLoans: loansRes.data?.length || 0,
+        activeMembers: membersRes.data?.length || 0,
+        health: membersRes.data?.length ? 85 : 0 // Fallback health logic
+      });
+
+      // Dynamic Chart Data
+      setChartData([
+        { name: 'Income', amount: totalInc, color: '#10b981' },
+        { name: 'Expense', amount: totalExp, color: '#ef4444' }
+      ]);
     } catch (err) {
       console.error("Dashboard Error:", err);
       toast.error("Failed to sync financial data");
@@ -220,7 +241,7 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* 2. MAIN KPI CARDS (Code 2 UI with Updated Data) */}
+      {/* 2. MAIN KPI CARDS (Code 2 UI with Code 1 Data) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         <Card className={`border-l-4 bg-white dark:bg-slate-900 shadow-md ${financials.netProfit >= 0 ? 'border-l-green-500' : 'border-l-red-500'}`}>
           <CardContent className="pt-6">
@@ -268,7 +289,7 @@ export default function ClientDashboard() {
         </Card>
       </div>
 
-      {/* 3. LIQUIDITY POSITION SECTION (Code 2 UI with Updated Data) */}
+      {/* 3. LIQUIDITY POSITION SECTION (Code 2 UI with Code 1 Logic) */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Wallet className="w-6 h-6 text-orange-500" /> Liquidity Position (Live)
@@ -316,7 +337,7 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* 4. STATS & PERFORMANCE GRID (Code 2 UI with Updated Data) */}
+      {/* 4. STATS & PERFORMANCE GRID (Code 2 UI with Code 1 Data) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: System Status & Deposits */}
