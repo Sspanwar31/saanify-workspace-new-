@@ -10,7 +10,7 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false,
+      detectSessionInUrl: true, // 👈 Isko TRUE kar diya gaya hai
     },
     realtime: {
       params: {
