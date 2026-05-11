@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchUserData = useCallback(async () => {
+  const fetchUserData = async () => {
     try {
       console.log('🔍 Client Dashboard: Fetching user data...')
       
@@ -77,11 +77,11 @@ export default function ClientDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  };
 
   useEffect(() => {
     fetchUserData();
-  }, [fetchUserData]);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -337,7 +337,7 @@ export default function ClientDashboard() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Your subscription has expired. Renew now to continue accessing the service.
+                      Your subscription has expired. Renew now to continue accessing service.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -397,4 +397,4 @@ export default function ClientDashboard() {
       </main>
     </div>
   );
-} 
+}
