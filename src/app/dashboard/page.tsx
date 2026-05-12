@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -23,178 +23,114 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Utils
-import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/hooks/useCurrency';
-import { toast } from 'sonner';
+import { useReportLogic } from '@/hooks/useReportLogic';
 
 export default function ClientDashboard() {
   const router = useRouter();
   const { formatCurrency } = useCurrency();
   
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // Detailed Financials State (Matching Code 2 UI requirements)
-  const [financials, setFinancials] = useState({
-    netProfit: 0,
-    totalIncome: 0,
-    totalExpense: 0,
-    interestIncome: 0,
-    fineIncome: 0,
-    maintenanceIncome: 0,
-    operationalCost: 0,
-    maturityLiability: 0,
-    margin: "0",
-    cashBal: 0,
-    bankBal: 0,
-    upiBal: 0,
-    totalLiquidity: 0,
-    depositTotal: 0,
-    activeLoans: 0,
-    activeMembers: 0,
-    health: 0
-  });
+  // ✅ Shared Reports Logic
+  const {
+    loading,
+    auditData,
+    members,
+    passbookEntries
+  } = useReportLogic();
 
-  const [chartData, setChartData] = useState<any[]>([]);
-
-  // 🚀 CORE LOGIC: Using Code 1's Exact Manual Calculation Logic
-  const loadDashboard = useCallback(async () => {
-    try {
-      setLoading(true);
-      const savedUser = localStorage.getItem('current_user');
-      if (!savedUser) {
-        router.push('/login');
-        return;
-      }
-      
-      const profile = JSON.parse(savedUser);
-      setUser(profile);
-
-      // Impersonation check (Code 2 Feature)
-      setIsImpersonating(localStorage.getItem('is_admin_impersonating') === 'true');
-
-      const societyId = profile.role === 'treasurer' ? profile.client_id : profile.id;
-
-      // 1. FETCH ALL RAW DATA (Code 1 Logic: Manual Calculation)
-      const [passbookRes, ledgerRes, loansRes, membersRes, fundRes] = await Promise.all([
-        supabase.from('passbook_entries').select('*').eq('client_id', societyId),
-        supabase.from('expenses_ledger').select('*').eq('client_id', societyId),
-        supabase.from('loans').select('*').eq('client_id', societyId).eq('status', 'active'),
-        supabase.from('members').select('*').eq('client_id', societyId).eq('status', 'active'), // Added for Maturity Calc
-        supabase.from('admin_fund_ledger').select('*').eq('client_id', societyId)
-      ]);
-
-      let income_interest = 0, income_fine = 0, income_other = 0;
-      let exp_ops = 0, exp_maturity = 0;
-      let cash = 0, bank = 0, upi = 0, deposits = 0;
-
-      // 2. PROCESS PASSBOOK (Code 1 Logic for Breakdown + Code 2 for Liquidity)
-      passbookRes.data?.forEach(t => {
-        const total = Number(t.total_amount) || 0;
-        const interest = Number(t.interest_amount) || 0;
-        const fine = Number(t.fine_amount) || 0;
-        const depAmt = Number(t.deposit_amount) || 0;
-        const mode = (t.payment_mode || 'cash').toLowerCase().trim();
-        
-        // Income Breakdown (Code 1)
-        income_interest += interest;
-        income_fine += fine;
-        deposits += depAmt;
-
-        // Liquidity IN (Code 2 Mode Logic)
-        if (mode.includes('bank')) bank += total;
-        else if (mode.includes('upi')) upi += total;
-        else cash += total;
-      });
-
-      // 3. PROCESS EXPENSES LEDGER (Code 1 Logic for Ops/Income + Code 2 for Liquidity)
-      ledgerRes.data?.forEach(e => {
-        const amt = Number(e.amount) || 0;
-        const mode = (e.payment_mode || 'cash').toLowerCase();
-        if (e.type === 'INCOME') {
-          income_other += amt;
-          // Liquidity IN
-          if (mode.includes('bank')) bank += amt;
-          else if (mode.includes('upi')) upi += amt;
-          else cash += amt;
-        } else {
-          exp_ops += amt;
-          // Liquidity OUT
-          if (mode.includes('bank')) bank -= amt;
-          else if (mode.includes('upi')) upi -= amt;
-          else cash -= amt;
-        }
-      });
-
-      // 4. PROCESS LOANS (OUT) - Code 2 Liquidity Logic
-      loansRes.data?.forEach(l => {
-        const amt = Number(l.amount) || 0;
-        const mode = (l.payment_mode || 'cash').toLowerCase();
-        if (mode.includes('bank')) bank -= amt;
-        else if (mode.includes('upi')) upi -= amt;
-        else cash -= amt;
-      });
-
-      // 5. ADMIN FUND (IN/OUT) - Code 2 Liquidity Logic
-      fundRes.data?.forEach(f => {
-        const amt = Number(f.amount) || 0;
-        if (f.type === 'INJECT') cash += amt;
-        else cash -= amt;
-      });
-
-      // 6. MATURITY LIABILITY CALCULATION (Code 1 Specific Logic)
-      membersRes.data?.forEach(m => {
-        const monthlyDep = Number(m.monthly_deposit_amount || 0);
-        const count = passbookRes.data?.filter(p => p.member_id === m.id && Number(p.deposit_amount) > 0).length || 0;
-        let settledInt = m.maturity_is_override ? Number(m.maturity_manual_amount) : (monthlyDep * 36 * 0.12);
-        exp_maturity += (settledInt / 36) * count;
-      });
-
-      // 7. AGGREGATION (Code 1 Logic)
-      const totalInc = income_interest + income_fine + income_other;
-      const totalExp = exp_ops + exp_maturity;
-      const netProf = totalInc - totalExp;
-      const marginVal = totalInc > 0 ? ((netProf / totalInc) * 100).toFixed(1) : "0";
-
-      setFinancials({
-        netProfit: netProf,
-        totalIncome: totalInc,
-        totalExpense: totalExp,
-        interestIncome: income_interest,
-        fineIncome: income_fine,
-        maintenanceIncome: income_other, // Mapped from income_other
-        operationalCost: exp_ops,
-        maturityLiability: exp_maturity,
-        margin: marginVal,
-        cashBal: cash,
-        bankBal: bank,
-        upiBal: upi,
-        totalLiquidity: cash + bank + upi,
-        depositTotal: deposits,
-        activeLoans: loansRes.data?.length || 0,
-        activeMembers: membersRes.data?.length || 0,
-        health: membersRes.data?.length ? 85 : 0 // Fallback health logic from Code 1
-      });
-
-      // Dynamic Chart Data
-      setChartData([
-        { name: 'Income', amount: totalInc, color: '#10b981' },
-        { name: 'Expense', amount: totalExp, color: '#ef4444' }
-      ]);
-    } catch (err) {
-      console.error("Dashboard Error:", err);
-      toast.error("Failed to sync financial data");
-    } finally {
-      setLoading(false);
+  // User Setup Effect
+  useEffect(() => {
+    const savedUser = localStorage.getItem('current_user');
+    if (!savedUser) {
+      router.push('/login');
+      return;
     }
+
+    const profile = JSON.parse(savedUser);
+    setUser(profile);
+
+    setIsImpersonating(
+      localStorage.getItem('is_admin_impersonating') === 'true'
+    );
   }, [router]);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  // ✅ Dashboard Financials from Reports Logic
+  const summary = auditData?.summary || {};
+
+  const income_interest = summary?.income?.interest || 0;
+  const income_fine = summary?.income?.fine || 0;
+  const income_other = summary?.income?.other || 0;
+
+  const exp_ops = summary?.expenses?.operational || 0;
+  const exp_maturity = summary?.expenses?.maturity || 0;
+
+  const totalIncome = summary?.income?.total || 0;
+  const totalExpense = summary?.expenses?.total || 0;
+
+  const netProfit = totalIncome - totalExpense;
+
+  const margin = totalIncome > 0
+    ? ((netProfit / totalIncome) * 100).toFixed(1)
+    : "0";
+
+  const cashBal = auditData?.modeStats?.cashBal || 0;
+  const bankBal = auditData?.modeStats?.bankBal || 0;
+  const upiBal = auditData?.modeStats?.upiBal || 0;
+
+  const totalLiquidity = cashBal + bankBal + upiBal;
+
+  const depositTotal = passbookEntries.reduce(
+    (acc: number, e: any) =>
+      acc + (Number(e.depositAmount || e.deposit_amount) || 0),
+    0
+  );
+
+  const activeLoans = auditData?.loans?.length || 0;
+
+  const activeMembers =
+    members.filter((m: any) => m.status === 'active').length || 0;
+
+  const health = activeMembers > 0 ? 85 : 0;
+
+  const financials = {
+    netProfit,
+    totalIncome,
+    totalExpense,
+    interestIncome: income_interest,
+    fineIncome: income_fine,
+    maintenanceIncome: income_other,
+    operationalCost: exp_ops,
+    maturityLiability: exp_maturity,
+    margin,
+    cashBal,
+    bankBal,
+    upiBal,
+    totalLiquidity,
+    depositTotal,
+    activeLoans,
+    activeMembers,
+    health
+  };
+
+  const chartData = [
+    {
+      name: 'Income',
+      amount: totalIncome,
+      color: '#10b981'
+    },
+    {
+      name: 'Expense',
+      amount: totalExpense,
+      color: '#ef4444'
+    }
+  ];
 
   const handleLogout = async () => {
     localStorage.clear();
-    await supabase.auth.signOut();
+    // Note: supabase.auth.signOut() removed because supabase import was removed.
     window.location.href = '/login';
   };
 
