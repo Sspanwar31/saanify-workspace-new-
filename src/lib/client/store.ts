@@ -1938,7 +1938,13 @@ export const useClientStore = create<ClientState>()(
     }
     }),
     {
-      name: 'saanify-client-prod-v3-FORCED', // <--- NEW KEY
+      // ✅ FIX: Dynamic Name based on Active Client ID
+      name: typeof window !== 'undefined' 
+        ? `saanify-storage-${localStorage.getItem('active_client_id') || 'default'}` 
+        : 'saanify-client-storage',
+      
+      // Optional: Aap storage ko sessionStorage mein bhi badal sakte hain 
+      // taaki tab band hote hi data saaf ho jaye, lekin localStorage bhi theek hai
     }
   )
 );
