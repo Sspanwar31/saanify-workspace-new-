@@ -273,37 +273,15 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ FINAL WORKING handleAccess
+  // ✅ UPDATED: handleAccess with Cache Cleanup
   const handleAccess = async () => {
-    const toastId = toast.loading("Opening Client Panel...");
-
+    const toastId = toast.loading("Switching context...");
     try {
-      // ✅ IMPORTANT:
-      // OLD SESSION MAT CLEAR KARO
-      // warna admin token delete ho jayega
-
+      // 1. JWT Token nikalne wala logic
       const adminSessionStr = localStorage.getItem('master_admin_session');
-
-      const adminSession = adminSessionStr
-        ? JSON.parse(adminSessionStr)
-        : null;
-
+      const adminSession = adminSessionStr ? JSON.parse(adminSessionStr) : null;
       const currentSession = await supabase.auth.getSession();
-
-      const token =
-        adminSession?.access_token ||
-        currentSession.data.session?.access_token;
-
-      console.log("=========== ACCESS DEBUG ===========");
-      console.log("CLIENT ID:", id);
-      console.log("MASTER SESSION EXISTS:", !!adminSession);
-      console.log("CURRENT SESSION EXISTS:", !!currentSession.data.session);
-      console.log("TOKEN EXISTS:", !!token);
-      console.log("===================================");
-
-      if (!token) {
-        throw new Error("Admin token missing. Please login again.");
-      }
+      const token = adminSession?.access_token || currentSession.data.session?.access_token;
 
       const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
@@ -315,27 +293,29 @@ export default function ClientProfile() {
       });
 
       const data = await res.json();
+      
+      if (res.ok && data.url) {
+        console.log("🧹 Cleaning up old client cache...");
 
-      console.log("=========== SWAP RESPONSE ===========");
-      console.log("STATUS:", res.status);
-      console.log("DATA:", data);
-      console.log("=====================================");
+        // ✅ STEP A: Saare "saanify-storage-" se shuru hone wale keys delete karein
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('saanify-storage-') || key.startsWith('client-storage-') || key === 'saanify-client-prod-v3-FORCED') {
+            localStorage.removeItem(key);
+          }
+        });
 
-      if (!res.ok) {
+        // ✅ STEP B: Naya Active Client ID set karein
+        localStorage.setItem('active_client_id', id);
+        localStorage.setItem('is_admin_impersonating', 'true');
+
+        console.log("✅ New Active Client ID set:", id);
+
+        // ✅ STEP C: Redirect (Magic Link)
+        window.location.href = data.url; 
+      } else {
         throw new Error(data.error || "Swap failed");
       }
-
-      if (!data.url) {
-        throw new Error("Magic link missing");
-      }
-
-      localStorage.setItem('is_admin_impersonating', 'true');
-
-      // ✅ NOW REDIRECT
-      window.location.href = data.url;
-
     } catch (e: any) {
-      console.error("ACCESS ERROR:", e);
       toast.error(e.message, { id: toastId });
     }
   };
