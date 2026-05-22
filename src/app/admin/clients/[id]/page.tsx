@@ -273,47 +273,69 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: HANDLE ACCESS (Using Master Admin Token)
+  // ✅ FINAL WORKING handleAccess
   const handleAccess = async () => {
-    const toastId = toast.loading("Verifying Admin Authority...");
+    const toastId = toast.loading("Opening Client Panel...");
+
     try {
-      // 🚀 FIX: Hamesha master admin token use karein
+      // ✅ IMPORTANT:
+      // OLD SESSION MAT CLEAR KARO
+      // warna admin token delete ho jayega
+
       const adminSessionStr = localStorage.getItem('master_admin_session');
-      const adminSession = adminSessionStr ? JSON.parse(adminSessionStr) : null;
-      
-      // Agar backup nahi hai toh current session try karein
+
+      const adminSession = adminSessionStr
+        ? JSON.parse(adminSessionStr)
+        : null;
+
       const currentSession = await supabase.auth.getSession();
-      const token = adminSession?.access_token || currentSession.data.session?.access_token;
 
-      if (!token) throw new Error("No Admin session found. Please re-login.");
+      const token =
+        adminSession?.access_token ||
+        currentSession.data.session?.access_token;
 
-      // ✅ CLEAR OLD CLIENT SESSION FIRST
-      console.log("🧹 CLEARING OLD SESSION BEFORE IMPERSONATION");
+      console.log("=========== ACCESS DEBUG ===========");
+      console.log("CLIENT ID:", id);
+      console.log("MASTER SESSION EXISTS:", !!adminSession);
+      console.log("CURRENT SESSION EXISTS:", !!currentSession.data.session);
+      console.log("TOKEN EXISTS:", !!token);
+      console.log("===================================");
 
-      await supabase.auth.signOut();
-
-      localStorage.removeItem('supabase.auth.token');
-      sessionStorage.clear();
-
-      console.log("✅ OLD SESSION CLEARED");
+      if (!token) {
+        throw new Error("Admin token missing. Please login again.");
+      }
 
       const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // ✅ Admin ka asli token jayega
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ clientId: id })
       });
 
       const data = await res.json();
-      if (res.ok && data.url) {
-        localStorage.setItem('is_admin_impersonating', 'true');
-        window.location.replace(data.url); // ✅ STEP 2: replace instead of href
-      } else {
-        throw new Error(data.error || "Permission Denied");
+
+      console.log("=========== SWAP RESPONSE ===========");
+      console.log("STATUS:", res.status);
+      console.log("DATA:", data);
+      console.log("=====================================");
+
+      if (!res.ok) {
+        throw new Error(data.error || "Swap failed");
       }
+
+      if (!data.url) {
+        throw new Error("Magic link missing");
+      }
+
+      localStorage.setItem('is_admin_impersonating', 'true');
+
+      // ✅ NOW REDIRECT
+      window.location.href = data.url;
+
     } catch (e: any) {
+      console.error("ACCESS ERROR:", e);
       toast.error(e.message, { id: toastId });
     }
   };
