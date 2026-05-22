@@ -127,11 +127,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    // ✅ FIX 2: Response object create karein, direct return nahi
+    const response = NextResponse.json({
       success: true,
       url: linkData.properties.action_link,
       email: clientData.email
     });
+
+    // ✅ FIX 1: New Impersonation Cookies set karein
+    response.cookies.set('impersonation_active', 'true', {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+    });
+
+    response.cookies.set('impersonated_client_id', clientId, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+    });
+
+    return response;
 
     // --- ✅ UPDATED SECTION END ---
 
