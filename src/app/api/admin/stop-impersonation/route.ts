@@ -28,7 +28,16 @@ export async function POST() {
     expires: new Date(0),
   });
 
-  // ❌ DO NOT clear Supabase session here
+  // ✅ Clear ONLY impersonated client session
+  response.cookies.set('sb-access-token', '', {
+    ...cookieOptions,
+    expires: new Date(0),
+  });
+
+  response.cookies.set('sb-refresh-token', '', {
+    ...cookieOptions,
+    expires: new Date(0),
+  });
 
   return response;
 }
