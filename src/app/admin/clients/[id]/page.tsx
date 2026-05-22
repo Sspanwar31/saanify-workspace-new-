@@ -287,6 +287,16 @@ export default function ClientProfile() {
 
       if (!token) throw new Error("No Admin session found. Please re-login.");
 
+      // ✅ CLEAR OLD CLIENT SESSION FIRST
+      console.log("🧹 CLEARING OLD SESSION BEFORE IMPERSONATION");
+
+      await supabase.auth.signOut();
+
+      localStorage.removeItem('supabase.auth.token');
+      sessionStorage.clear();
+
+      console.log("✅ OLD SESSION CLEARED");
+
       const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
         headers: {
@@ -299,7 +309,7 @@ export default function ClientProfile() {
       const data = await res.json();
       if (res.ok && data.url) {
         localStorage.setItem('is_admin_impersonating', 'true');
-        window.location.href = data.url; 
+        window.location.replace(data.url); // ✅ STEP 2: replace instead of href
       } else {
         throw new Error(data.error || "Permission Denied");
       }
