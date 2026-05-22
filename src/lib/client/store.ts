@@ -1952,13 +1952,13 @@ export const useClientStore = create<ClientState>()(
     }
     }),
     {
-      // ✅ FIX: Dynamic Name based on Active Client ID
       name: typeof window !== 'undefined' 
         ? `saanify-storage-${localStorage.getItem('active_client_id') || 'default'}` 
-        : 'saanify-client-storage',
+        : 'saanify-default-storage',
       
-      // Optional: Aap storage ko sessionStorage mein bhi badal sakte hain 
-      // taaki tab band hote hi data saaf ho jaye, lekin localStorage bhi theek hai
+      // ✅ Ek extra safety: Storage ko SessionStorage kar sakte hain
+      // Isse tab band hote hi data saaf ho jayega, conflict kabhi nahi hoga
+      // storage: createJSONStorage(() => sessionStorage), 
     }
   )
 );
