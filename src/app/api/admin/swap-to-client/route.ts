@@ -22,9 +22,19 @@ const getServiceKey = () => {
   }
 };
 
+// ✅ STEP 1: Top of file log
+console.log("🚀 SWAP API HIT");
+
 export async function POST(req: NextRequest) {
   try {
-    const { clientId } = await req.json();
+    // ✅ STEP 2: First line inside POST
+    console.log("📥 REQUEST RECEIVED");
+
+    // ✅ STEP 3: Body parsing with log
+    const body = await req.json();
+    console.log("📦 BODY:", body);
+    const { clientId } = body;
+    
     if (!clientId) return NextResponse.json({ error: 'Client ID required' }, { status: 400 });
 
     const serviceKey = getServiceKey();
@@ -57,6 +67,10 @@ export async function POST(req: NextRequest) {
     // 3. Verify Admin Session
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.replace('Bearer ', '');
+    
+    // ✅ STEP 4: Token exists check
+    console.log("🔑 TOKEN EXISTS:", !!token);
+    
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const {
@@ -64,9 +78,13 @@ export async function POST(req: NextRequest) {
       error: adminError
     } = await supabaseAuth.auth.getUser(token);
     
+    // ✅ STEP 5: Admin User Logs
+    console.log("👤 ADMIN USER:", adminAuthUser?.email);
+    console.log("❌ ADMIN ERROR:", adminError);
+    
     if (adminError || !adminAuthUser) return NextResponse.json({ error: 'Invalid Admin Session' }, { status: 401 });
 
-    // ✅ ADDED LOGS HERE
+    // ✅ ADDED LOGS HERE (Existing ones)
     console.log("AUTH HEADER:", token?.slice(0, 30));
     console.log("TOKEN USER:", adminAuthUser?.id);
     console.log("TOKEN EMAIL:", adminAuthUser?.email);
@@ -89,7 +107,10 @@ export async function POST(req: NextRequest) {
 
     if (!clientData?.email) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
 
-    // --- ✅ ADDED LOG BLOCK 1 START ---
+    // ✅ STEP 6: Client Data Log
+    console.log("🎯 CLIENT DATA:", clientData);
+
+    // --- ✅ ADDED LOG BLOCK 1 START (Existing) ---
     console.log("=================================");
     console.log("START IMPERSONATION");
     console.log("TARGET CLIENT ID:", clientId);
@@ -102,6 +123,9 @@ export async function POST(req: NextRequest) {
     // URL ko dynamic rakhen taaki localhost aur production dono par chale
     const origin = new URL(req.url).origin;
     
+    // ✅ STEP 7: Before generateLink
+    console.log("⚡ GENERATING MAGIC LINK...");
+    
     const { data: linkData, error: linkError } =
       await supabaseAdmin.auth.admin.generateLink({
         type: 'magiclink',
@@ -111,7 +135,11 @@ export async function POST(req: NextRequest) {
         }
       });
 
-    // --- ✅ ADDED LOG BLOCK 2 START ---
+    // ✅ STEP 8: After generateLink
+    console.log("📨 LINK DATA:", linkData);
+    console.log("❌ LINK ERROR:", linkError);
+
+    // --- ✅ ADDED LOG BLOCK 2 START (Existing) ---
     console.log("=========== MAGIC LINK DEBUG ===========");
     console.log("LINK GENERATED FOR:", clientData.email);
     console.log("ACTION LINK:", linkData?.properties?.action_link);
@@ -163,8 +191,19 @@ export async function POST(req: NextRequest) {
 
     return response;
 
+  // ✅ STEP 9: UPDATED CATCH BLOCK
   } catch (error: any) {
-    console.error("🔥 API Error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.log("🔥🔥🔥 SWAP API CRASHED 🔥🔥🔥");
+
+    console.log("MESSAGE:", error?.message);
+
+    console.log("STACK:", error?.stack);
+
+    return NextResponse.json(
+      {
+        error: error?.message || 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
 }
