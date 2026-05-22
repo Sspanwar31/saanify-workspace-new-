@@ -93,29 +93,47 @@ export async function POST(req: NextRequest) {
     // URL ko dynamic rakhen taaki localhost aur production dono par chale
     const origin = new URL(req.url).origin;
     
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: clientData.email,
-      options: {
-        redirectTo: `${origin}/dashboard?impersonate=true` 
-      }
+    // --- ✅ UPDATED SECTION START ---
+    
+    const { data: linkData, error: linkError } =
+      await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: clientData.email,
+        options: {
+          redirectTo: `${origin}/dashboard?impersonate=true`
+        }
+      });
+
+    console.log("LINK DATA:", linkData);
+    console.log("LINK ERROR:", linkError);
+
+    if (linkError) {
+      return NextResponse.json(
+        {
+          error: linkError.message,
+          details: linkError
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!linkData?.properties?.action_link) {
+      return NextResponse.json(
+        {
+          error: 'Magic link generation failed',
+          data: linkData
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      url: linkData.properties.action_link,
+      email: clientData.email
     });
 
-    if (linkError) throw linkError;
-
-    // 7. Success Response
-    return NextResponse.json(
-      {
-        success: true,
-        url: linkData.properties.action_link,
-        email: clientData.email
-      },
-      {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate'
-        }
-      }
-    );
+    // --- ✅ UPDATED SECTION END ---
 
   } catch (error: any) {
     console.error("🔥 API Error:", error.message);
