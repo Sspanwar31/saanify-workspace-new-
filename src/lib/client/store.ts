@@ -564,6 +564,7 @@ export interface ClientState {
   resetSettings: () => void;
   exportData: () => string;
   importData: (jsonData: string) => { success: boolean; message: string };
+  resetStore: () => void; // ✅ ADDED
   factoryReset: () => void;
 };
 
@@ -1916,6 +1917,19 @@ export const useClientStore = create<ClientState>()(
       }
     },
     
+    resetStore: () => { // ✅ ADDED IMPLEMENTATION
+      set({
+        members: [],
+        loans: [],
+        passbookEntries: [],
+        expenseLedger: [],
+        adminFundLedger: [],
+        loanRequests: [],
+      });
+
+      console.log("🧹 CLIENT STORE RESET");
+    },
+
     factoryReset: () => {
       set({
         settings: mockSettings,
