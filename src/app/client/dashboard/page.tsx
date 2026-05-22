@@ -1,5 +1,7 @@
 'use client';
 
+import { createClient } from '@supabase/supabase-js';
+
 import { useState, useEffect } from 'react';
 import { useClientStore } from '@/lib/client/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +23,76 @@ export default function ClientDashboard() {
     members, loans, passbookEntries, expenseLedger, adminFundLedger, 
     loanRequests, getReportData, getSocietyCashInHand 
   } = useClientStore();
+
+  // ✅ ADDED DEBUG SESSION
+  useEffect(() => {
+    const debugSession = async () => {
+      try {
+        console.log("========== DASHBOARD DEBUG START ==========");
+
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        // CURRENT SESSION
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        console.log("SESSION ERROR:", error);
+
+        if (!session) {
+          console.log("❌ NO ACTIVE SESSION");
+          return;
+        }
+
+        console.log("✅ ACTIVE SESSION FOUND");
+
+        console.log("USER ID:", session.user.id);
+        console.log("USER EMAIL:", session.user.email);
+
+        console.log(
+          "ACCESS TOKEN:",
+          session.access_token?.substring(0, 40)
+        );
+
+        console.log(
+          "REFRESH TOKEN:",
+          session.refresh_token?.substring(0, 40)
+        );
+
+        console.log(
+          "EXPIRES AT:",
+          new Date(session.expires_at! * 1000)
+        );
+
+        console.log(
+          "LOCAL STORAGE KEYS:",
+          Object.keys(localStorage)
+        );
+
+        // IMPORTANT
+        const authKeys = Object.keys(localStorage).filter((k) =>
+          k.includes('supabase')
+        );
+
+        console.log("SUPABASE STORAGE KEYS:", authKeys);
+
+        authKeys.forEach((k) => {
+          console.log("KEY:", k);
+          console.log("VALUE:", localStorage.getItem(k));
+        });
+
+        console.log("========== DASHBOARD DEBUG END ==========");
+      } catch (e) {
+        console.log("DEBUG ERROR:", e);
+      }
+    };
+
+    debugSession();
+  }, []);
 
   useEffect(() => setIsMounted(true), []);
 
