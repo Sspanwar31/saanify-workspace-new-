@@ -89,11 +89,18 @@ export async function POST(req: NextRequest) {
 
     if (!clientData?.email) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
 
+    // --- ✅ ADDED LOG BLOCK 1 START ---
+    console.log("=================================");
+    console.log("START IMPERSONATION");
+    console.log("TARGET CLIENT ID:", clientId);
+    console.log("TARGET CLIENT EMAIL:", clientData.email);
+    console.log("ADMIN USER:", adminAuthUser.email);
+    console.log("=================================");
+    // --- ✅ ADDED LOG BLOCK 1 END ---
+
     // 🚀 6. Generate Official Magic Link
     // URL ko dynamic rakhen taaki localhost aur production dono par chale
     const origin = new URL(req.url).origin;
-    
-    // --- ✅ UPDATED SECTION START ---
     
     const { data: linkData, error: linkError } =
       await supabaseAdmin.auth.admin.generateLink({
@@ -103,6 +110,13 @@ export async function POST(req: NextRequest) {
           redirectTo: `${origin}/dashboard?impersonate=true`
         }
       });
+
+    // --- ✅ ADDED LOG BLOCK 2 START ---
+    console.log("=========== MAGIC LINK DEBUG ===========");
+    console.log("LINK GENERATED FOR:", clientData.email);
+    console.log("ACTION LINK:", linkData?.properties?.action_link);
+    console.log("========================================");
+    // --- ✅ ADDED LOG BLOCK 2 END ---
 
     console.log("LINK DATA:", linkData);
     console.log("LINK ERROR:", linkError);
@@ -148,8 +162,6 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-
-    // --- ✅ UPDATED SECTION END ---
 
   } catch (error: any) {
     console.error("🔥 API Error:", error.message);
