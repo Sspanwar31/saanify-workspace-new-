@@ -3,6 +3,13 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs'; // Required for Buffer
 
+// ✅ CORS HEADERS
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 // 🔐 Helper to decode Base64 Service Role Key
 const getServiceRoleKey = () => {
   const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
@@ -31,6 +38,11 @@ const getServiceRoleKey = () => {
   }
 };
 
+// ✅ Handle Preflight Requests
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function POST(req: Request) {
   try {
     console.log("🚀 API HIT: /api/admin/create-client");
@@ -39,7 +51,13 @@ export async function POST(req: Request) {
     const serviceKey = getServiceRoleKey();
 
     if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json({ error: "Server Configuration Error: Missing URL or Key" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server Configuration Error: Missing URL or Key" },
+        {
+          status: 500,
+          headers: corsHeaders
+        }
+      );
     }
 
     // Initialize Admin Client
@@ -55,7 +73,13 @@ export async function POST(req: Request) {
 
     // Validate Input
     if (!email || !password || !name) {
-      return NextResponse.json({ error: "Name, Email and Password are required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Name, Email and Password are required" },
+        {
+          status: 400,
+          headers: corsHeaders
+        }
+      );
     }
 
     // 1. Create Auth User (Email Auto-Confirmed)
@@ -69,12 +93,24 @@ export async function POST(req: Request) {
 
     if (authError) {
       console.error("❌ Auth Create Error:", authError.message);
-      return NextResponse.json({ error: "Auth Error: " + authError.message }, { status: 400 });
+      return NextResponse.json(
+        { error: "Auth Error: " + authError.message },
+        {
+          status: 400,
+          headers: corsHeaders
+        }
+      );
     }
 
     if (!authData.user) {
       console.error("❌ User object missing after signup");
-      return NextResponse.json({ error: "User creation failed internally" }, { status: 500 });
+      return NextResponse.json(
+        { error: "User creation failed internally" },
+        {
+          status: 500,
+          headers: corsHeaders
+        }
+      );
     }
 
     console.log("✅ Auth User Created. ID:", authData.user.id);
@@ -108,14 +144,29 @@ export async function POST(req: Request) {
        console.log("🔄 Rolling back Auth User...");
        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
        
-       return NextResponse.json({ error: "Database Error: " + dbError.message }, { status: 500 });
+       return NextResponse.json(
+         { error: "Database Error: " + dbError.message },
+         {
+           status: 500,
+           headers: corsHeaders
+         }
+       );
     }
 
     console.log("🎉 SUCCESS: Client Created!");
-    return NextResponse.json({ success: true, userId: authData.user.id });
+    return NextResponse.json(
+      { success: true, userId: authData.user.id },
+      { headers: corsHeaders }
+    );
 
   } catch (error: any) {
     console.error("🔥 UNHANDLED API ERROR:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message },
+      {
+        status: 500,
+        headers: corsHeaders
+      }
+    );
   }
 }
