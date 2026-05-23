@@ -210,30 +210,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false); 
   }, [pathname, userProfile, router]);
 
+  // ✅ UPDATED: handleBackToAdmin with Scoped Access Logic
   const handleBackToAdmin = async () => {
-    const toastId = toast.loading("Restoring Admin Session...");
+    const toastId = toast.loading("Exiting Viewing Mode...");
     try {
-      localStorage.removeItem('is_admin_impersonating');
-      
-      const adminSessionStr = localStorage.getItem('master_admin_session');
-      
-      if (adminSessionStr) {
-        const adminSession = JSON.parse(adminSessionStr);
-        
-        const { error } = await supabase.auth.setSession({
-          access_token: adminSession.access_token,
-          refresh_token: adminSession.refresh_token
-        });
-
-        if (error) throw error;
-
-        toast.success("Admin Session Restored", { id: toastId });
-        window.location.href = '/admin/clients';
-      } else {
-        window.location.href = '/admin/login';
+      // 🚀 1. Database se active session record delete karein
+      // Isse backend (RLS) admin ka access turant block kar dega
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('admin_active_viewing')
+          .delete()
+          .eq('admin_id', user.id);
       }
+
+      // 🚀 2. Frontend Flags Clear karein
+      localStorage.removeItem('is_admin_impersonating');
+      localStorage.removeItem('is_admin_viewing');
+      localStorage.removeItem('viewing_client_id');
+
+      // 🚀 3. Zustand Cache Cleanup
+      // Saare clients ka data cache se hata dein taaki next time conflict na ho
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('saanify-storage-')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      toast.success("Viewing mode ended", { id: toastId });
+
+      // 🚀 4. Redirect to Super Admin clients list
+      // Note: Hum window.location use kar rahe hain taaki poora page fresh load ho
+      window.location.href = '/super-admin/clients';
+
     } catch (err) {
-      window.location.href = '/admin/login';
+      console.error("Error exiting view mode:", err);
+      // Fail hone par bhi safely bhej do
+      window.location.href = '/super-admin/clients';
     }
   };
 
@@ -248,17 +261,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {isImpersonating && (
+      {/* ✅ UPDATED BANNER LOGIC: Check for Impersonation OR Scoped Access */}
+      {(isImpersonating || userProfile?.resolved_client_id !== userProfile?.id) && (
         <div className="w-full bg-gradient-to-r from-purple-700 to-indigo-800 text-white px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[999]">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-purple-200" />
-            <span className="font-semibold tracking-wide">ADMIN VIEW</span>
+            <span className="font-semibold tracking-wide">ADMIN VIEW ACTIVE</span>
           </div>
           <button 
             onClick={handleBackToAdmin} 
             className="bg-white text-purple-800 px-4 py-1.5 rounded-full text-xs font-bold hover:bg-purple-50 transition-all flex items-center gap-2"
           >
-            <ArrowLeft className="w-3 h-3" /> Back to Admin
+            <ArrowLeft className="w-3 h-3" /> Back to Super Admin
           </button>
         </div>
       )}
