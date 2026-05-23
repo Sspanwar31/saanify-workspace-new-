@@ -273,16 +273,19 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess with Cache Cleanup
+  // ✅ UPDATED: handleAccess with Full Session Clear
   const handleAccess = async () => {
-    const toastId = toast.loading("Switching context...");
+    const toastId = toast.loading("Preparing secure access...");
     try {
-      // 1. JWT Token nikalne wala logic
+      // 1. Admin Token nikalna (Pehle ki tarah)
       const adminSessionStr = localStorage.getItem('master_admin_session');
       const adminSession = adminSessionStr ? JSON.parse(adminSessionStr) : null;
       const currentSession = await supabase.auth.getSession();
       const token = adminSession?.access_token || currentSession.data.session?.access_token;
 
+      if (!token) throw new Error("No Admin session found. Please re-login.");
+
+      // 2. Magic Link fetch karna
       const res = await fetch('/api/admin/swap-to-client', {
         method: 'POST',
         headers: {
@@ -295,28 +298,40 @@ export default function ClientProfile() {
       const data = await res.json();
       
       if (res.ok && data.url) {
-        console.log("🧹 Cleaning up old client cache...");
+        console.log("🧹 Performing Deep Cache Cleanup...");
 
-        // ✅ STEP A: Saare "saanify-storage-" se shuru hone wale keys delete karein
+        // 🔥 STEP A: Supabase Auth Session ko Logout karein 
+        // Isse browser ki cookies aur tokens 100% clear ho jayenge
+        await supabase.auth.signOut();
+
+        // ✅ STEP B: Saare Storage Keys delete karein (Supabase keys + Zustand keys)
         Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('saanify-storage-') || key.startsWith('client-storage-') || key === 'saanify-client-prod-v3-FORCED') {
+          if (
+            key.startsWith('saanify-storage-') || 
+            key.startsWith('client-storage-') || 
+            key.startsWith('sb-') || // Supabase ki apni keys (sb-xxxx-auth-token)
+            key === 'saanify-client-prod-v3-FORCED'
+          ) {
             localStorage.removeItem(key);
           }
         });
 
-        // ✅ STEP B: Naya Active Client ID set karein
+        // ✅ STEP C: Naye Client ka context set karein
         localStorage.setItem('active_client_id', id);
         localStorage.setItem('is_admin_impersonating', 'true');
 
-        console.log("✅ New Active Client ID set:", id);
+        console.log("🚀 Redirecting to new client dashboard...");
 
-        // ✅ STEP C: Redirect (Magic Link)
+        // ✅ STEP D: Final Redirect
+        // Kyunki humne upar signOut() kar diya hai, ab ye naya URL 
+        // bilkul fresh session banayega.
         window.location.href = data.url; 
       } else {
         throw new Error(data.error || "Swap failed");
       }
     } catch (e: any) {
-      toast.error(e.message, { id: toastId });
+      console.error("Access Panel Error:", e);
+      toast.error(e.message || "Failed to switch context", { id: toastId });
     }
   };
 
