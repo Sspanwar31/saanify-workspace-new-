@@ -273,50 +273,32 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess with Cache Cleanup
+  // ✅ UPDATED: handleAccess with DB Entry
   const handleAccess = async () => {
-    const toastId = toast.loading("Switching context...");
+    const toastId = toast.loading("Verifying Admin Scoped Access...");
     try {
-      // 1. JWT Token nikalne wala logic
-      const adminSessionStr = localStorage.getItem('master_admin_session');
-      const adminSession = adminSessionStr ? JSON.parse(adminSessionStr) : null;
-      const currentSession = await supabase.auth.getSession();
-      const token = adminSession?.access_token || currentSession.data.session?.access_token;
-
-      const res = await fetch('/api/admin/swap-to-client', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ clientId: id })
-      });
-
-      const data = await res.json();
-      
-      if (res.ok && data.url) {
-        console.log("🧹 Cleaning up old client cache...");
-
-        // ✅ STEP A: Saare "saanify-storage-" se shuru hone wale keys delete karein
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('saanify-storage-') || key.startsWith('client-storage-') || key === 'saanify-client-prod-v3-FORCED') {
-            localStorage.removeItem(key);
-          }
+      // 1. DB mein entry karo: "Main is Client ko dekhna chahta hoon"
+      // humne UNIQUE(admin_id) lagaya hai, isliye 'upsert' purani session hata dega
+      const { error } = await supabase
+        .from('admin_active_viewing')
+        .upsert({ 
+          admin_id: (await supabase.auth.getUser()).data.user?.id, 
+          client_id: id 
         });
 
-        // ✅ STEP B: Naya Active Client ID set karein
-        localStorage.setItem('active_client_id', id);
-        localStorage.setItem('is_admin_impersonating', 'true');
+      if (error) throw error;
 
-        console.log("✅ New Active Client ID set:", id);
+      // 2. LocalStorage mein sirf reference ke liye rakhein
+      localStorage.setItem('viewing_client_id', id);
+      localStorage.setItem('is_admin_viewing', 'true');
 
-        // ✅ STEP C: Redirect (Magic Link)
-        window.location.href = data.url; 
-      } else {
-        throw new Error(data.error || "Swap failed");
-      }
+      toast.success("Access Verified. Loading Dashboard...", { id: toastId });
+      
+      // 3. Redirect to dashboard
+      router.push('/dashboard');
+
     } catch (e: any) {
-      toast.error(e.message, { id: toastId });
+      toast.error("Security Check Failed: " + e.message);
     }
   };
 
@@ -540,4 +522,4 @@ export default function ClientProfile() {
       </Dialog>
     </div>
   );
-} 
+}
