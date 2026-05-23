@@ -273,32 +273,48 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess with DB Entry
+  // ✅ UPDATED: handleAccess with explicit onConflict
   const handleAccess = async () => {
     const toastId = toast.loading("Verifying Admin Scoped Access...");
     try {
-      // 1. DB mein entry karo: "Main is Client ko dekhna chahta hoon"
-      // humne UNIQUE(admin_id) lagaya hai, isliye 'upsert' purani session hata dega
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Admin not logged in");
+
+      // ✅ FIX: Explicitly specify 'onConflict' for admin_id
+      // Isse agar admin pehle se koi doosri society dekh raha hai, 
+      // toh purana record 'Update' ho jayega, 'Insert' nahi.
       const { error } = await supabase
         .from('admin_active_viewing')
-        .upsert({ 
-          admin_id: (await supabase.auth.getUser()).data.user?.id, 
-          client_id: id 
-        });
+        .upsert(
+          { 
+            admin_id: user.id, 
+            client_id: id,
+            started_at: new Date().toISOString() 
+          }, 
+          { onConflict: 'admin_id' } // 🚀 YE LINE ZARURI HAI
+        );
 
       if (error) throw error;
 
-      // 2. LocalStorage mein sirf reference ke liye rakhein
+      // LocalStorage flags (Reference ke liye)
       localStorage.setItem('viewing_client_id', id);
       localStorage.setItem('is_admin_viewing', 'true');
-
-      toast.success("Access Verified. Loading Dashboard...", { id: toastId });
       
-      // 3. Redirect to dashboard
+      // Zustand Cache Cleanup (Conflict se bachne ke liye)
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('saanify-storage-')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      toast.success("Access Verified", { id: toastId });
+      
+      // Dashboard par redirect
       router.push('/dashboard');
 
     } catch (e: any) {
-      toast.error("Security Check Failed: " + e.message);
+      console.error("Security Check Failed:", e.message);
+      toast.error("Security Check Failed: " + e.message, { id: toastId });
     }
   };
 
