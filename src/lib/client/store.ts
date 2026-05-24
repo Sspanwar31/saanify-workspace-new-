@@ -636,10 +636,9 @@ const mockAdminFund: AdminFund = {
   lastUpdated: new Date().toISOString()
 };
 
-// Store Definition
+// Store Definition - PERSISTENCE REMOVED
 export const useClientStore = create<ClientState>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       // ✅ 1. Sabse pehle login aur user ko empty karein
       isLoggedIn: false, 
       currentUser: null,
@@ -1919,19 +1918,5 @@ export const useClientStore = create<ClientState>()(
         premiumTrial: mockPremiumTrial,
       });
     }
-    }),
-    {
-      // ✅ CHECKED: Storage name is already correct as per requirement
-      name: typeof window !== 'undefined' 
-        ? `saanify-storage-${localStorage.getItem('active_client_id') || 'default'}` 
-        : 'saanify-default-storage',
-      
-      // ✅ UPDATED: Manual Storage Implementation for Refresh Protection
-      storage: {
-        getItem: (name) => localStorage.getItem(name) ? JSON.parse(localStorage.getItem(name)!) : null,
-        setItem: (name, value) => localStorage.setItem(name, JSON.stringify(value)),
-        removeItem: (name) => localStorage.removeItem(name),
-      }
-    }
-  )
+  })
 );
