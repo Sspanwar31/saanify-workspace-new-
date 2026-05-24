@@ -197,8 +197,8 @@ export default function ClientProfile() {
         'ENTERPRISE': 'Enterprise'
     };
 
-    const upperPlanCode = newPlan.toUpperCase(); // e.g., 'PRO'
-    const formattedPlanName = planMapping[upperPlanCode] || newPlan; // e.g., 'Professional'
+    const upperPlanCode = newPlan.toUpperCase(); // e.g. 'PRO'
+    const formattedPlanName = planMapping[upperPlanCode] || newPlan; // e.g. 'Professional'
 
     try {
         // 🚀 STEP 2: Dono columns ko sync mein update karein
@@ -275,47 +275,50 @@ export default function ClientProfile() {
 
   // ✅ UPDATED: handleAccess (New Logic with Cache Clear First & Replace)
   const handleAccess = async () => {
+    console.log("🚀 [DEBUG 1] handleAccess started for Client ID:", id);
     const toastId = toast.loading("Configuring Scoped Access...");
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Admin session not found");
+      if (!user) throw new Error("Admin not logged in");
 
-      // 🚀 STEP 1: Pehle purani saari Zustand cache saaf karein (Bina naya ID set kiye)
-      // Isse "One Step Behind" wala issue khatam ho jayega
+      // 1. CLEAR CACHE FIRST
+      console.log("🧹 [DEBUG 2] Clearing all storage keys...");
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('saanify-storage-') || key === 'saanify-client-prod-v3-FORCED') {
+        if (key.startsWith('saanify-storage-') || key.includes('client-storage')) {
           localStorage.removeItem(key);
         }
       });
 
-      // 🚀 STEP 2: Ab database mein naya entry update karein
+      // 2. UPDATE DATABASE CONTROL TABLE
       const { error } = await supabase
         .from('admin_active_viewing')
-        .upsert(
-          { 
-            admin_id: user.id, 
-            client_id: id, 
-            started_at: new Date().toISOString() 
-          }, 
-          { onConflict: 'admin_id' }
-        );
+        .upsert({ 
+          admin_id: user.id, 
+          client_id: id,
+          started_at: new Date().toISOString() 
+        }, { onConflict: 'admin_id' });
 
       if (error) throw error;
+      console.log("✅ [DEBUG 3] DB Table Updated successfully");
 
-      // 🚀 STEP 3: AB naya ID aur Flags set karein
-      localStorage.setItem('active_client_id', id); // Naya ID ab set hoga
+      // 3. SET NEW VALUES
+      localStorage.setItem('active_client_id', id);
       localStorage.setItem('viewing_client_id', id);
       localStorage.setItem('is_admin_viewing', 'true');
-      localStorage.setItem('is_admin_impersonating', 'true');
+      
+      console.log("💾 [DEBUG 4] LocalStorage set for ID:", id);
 
       toast.success("Access Verified", { id: toastId });
       
-      // 🚀 STEP 4: "replace" use karein href ki jagah taaki history clear rahe
-      window.location.replace('/dashboard');
+      // 4. FORCE REFRESH WITH TIMESTAMP (Cache Buster)
+      // Isse browser ko majbooran naya page load karna padega
+      const cacheBuster = Date.now();
+      window.location.href = `/dashboard?v=${id}&t=${cacheBuster}`;
 
     } catch (e: any) {
-      console.error("Access Panel Error:", e);
-      toast.error("Access Denied");
+      console.error("❌ [DEBUG ERROR]:", e.message);
+      toast.error("Security Check Failed");
     }
   };
 
