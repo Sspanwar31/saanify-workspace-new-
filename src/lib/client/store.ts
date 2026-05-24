@@ -568,7 +568,7 @@ export interface ClientState {
   factoryReset: () => void;
 };
 
-// --- REMOVE ANY OTHER 'mockUsers' or 'mockRoles' DEFINITIONS ---
+// --- CONSTANTS & MOCK DATA DEFINITIONS (Used by actions or defaults) ---
 
 // 1. EXPORT MOCK_ROLES (Renamed from DEFAULT_ROLES)
 export const MOCK_ROLES: Role[] = [
@@ -595,41 +595,7 @@ export const MOCK_ROLES: Role[] = [
   }
 ];
 
-// 2. DEFINE DEFAULT USER (To ensure Total Users = 1)
-const mockUsers: User[] = [
-  {
-    id: 'CLIENT_001',
-    name: 'Super Client',
-    email: 'super@saanify.com',
-    role: 'CLIENT_ADMIN',
-    status: 'ACTIVE',
-    avatar: '',
-    lastLogin: new Date().toISOString(),
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'TREASURER_001',
-    name: 'Test Treasurer',
-    email: 'treasurer@saanify.com',
-    role: 'TREASURER',
-    status: 'ACTIVE',
-    avatar: '',
-    lastLogin: new Date().toISOString(),
-    createdAt: new Date().toISOString()
-  }
-];
-
-// 3. OTHER EMPTY MOCKS (Keep these empty)
-const mockMembers: Member[] = [];
-const mockLoans: Loan[] = [];
-const mockPassbook: PassbookEntry[] = [];
-const mockExpenses: Expense[] = [];
-const mockLoanRequests: LoanRequest[] = [];
-const mockAdminFundLedger: AdminFundTransaction[] = [];
-const mockExpenseLedger: ExpenseLedgerEntry[] = [];
-const mockMaturityOverrides: MaturityOverride[] = [];
-const mockActivityLogs: ActivityLog[] = [];
-const mockRoles: Role[] = MOCK_ROLES;
+// Default Mock Data Definitions (Referenced by actions like resetSettings)
 const mockSubscription: SubscriptionStatus = {
   currentPlan: 'BASIC',
   status: 'ACTIVE',
@@ -637,17 +603,9 @@ const mockSubscription: SubscriptionStatus = {
   memberCount: 0,
   subscriptionDate: new Date().toISOString().split('T')[0]
 };
-const mockPremiumTrial: PremiumTrial = { used: false, active: false, startDate: null };
-const mockAdminFund: AdminFund = {
-  totalFunds: 0,
-  memberDeposits: 0,
-  loanDisbursed: 0,
-  expenses: 0,
-  interestEarned: 0,
-  lastUpdated: new Date().toISOString()
-};
 
-// Default Settings
+const mockPremiumTrial: PremiumTrial = { used: false, active: false, startDate: null };
+
 const mockSettings: Settings = {
   // Society Profile (Branding)
   societyName: 'Saanify Society',
@@ -669,40 +627,50 @@ const mockSettings: Settings = {
   smsNotifications: false,
 };
 
+const mockAdminFund: AdminFund = {
+  totalFunds: 0,
+  memberDeposits: 0,
+  loanDisbursed: 0,
+  expenses: 0,
+  interestEarned: 0,
+  lastUpdated: new Date().toISOString()
+};
+
+// Store Definition
 export const useClientStore = create<ClientState>()(
   persist(
     (set, get) => ({
-      // --- FORCE LOGGED IN STATE (PERMANENT FIX FOR NOW) ---
-      isLoggedIn: true, 
+      // ✅ 1. Sabse pehle login aur user ko empty karein
+      isLoggedIn: false, 
+      currentUser: null,
       
-      currentUser: {
-        id: 'CLIENT_001',
-        name: 'Super Client',
-        email: 'super@saanify.com',
-        role: 'CLIENT_ADMIN', // Ensure this matches the MOCK_ROLES ID
-        status: 'ACTIVE',
-        avatar: '',
-        lastLogin: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      },
+      // ✅ 2. Config defaults (Settings/Subscription)
       subscription: mockSubscription,
       premiumTrial: mockPremiumTrial,
       settings: mockSettings,
-      members: mockMembers,
-      passbook: mockPassbook,
-      passbookEntries: mockPassbook,
-      loans: mockLoans,
-      loanRequests: mockLoanRequests,
-      expenses: mockExpenses,
-      adminFund: mockAdminFund,
-      adminFundLedger: mockAdminFundLedger,
-      expenseLedger: mockExpenseLedger,
-      maturityOverrides: mockMaturityOverrides,
-      users: mockUsers,
-      activityLogs: mockActivityLogs,
-      roles: mockRoles,
       
-      // Login action with hardcoded admin check
+      // ✅ 3. Data lists ko initially empty rakhein (No hardcoded Ajay/Super Client data)
+      members: [],
+      passbook: [],
+      passbookEntries: [],
+      loans: [],
+      loanRequests: [],
+      expenses: [],
+      
+      // ✅ 4. Admin & Fund defaults (Objects need structure, lists need empty)
+      adminFund: mockAdminFund,
+      adminFundLedger: [],
+      expenseLedger: [],
+      maturityOverrides: [],
+      
+      // ✅ 5. User Management empty
+      users: [],
+      activityLogs: [],
+      roles: MOCK_ROLES, // Roles usually remain as structural defaults
+      
+      // --- BAAKI ACTIONS SAME RAHENGE ---
+      
+      // Login action with hardcoded admin check (Logic kept same)
       login: (email: string, password: string) => {
         // Hardcoded admin login for 'super@saanify.com'
         if (email === 'super@saanify.com') {
@@ -1402,7 +1370,7 @@ export const useClientStore = create<ClientState>()(
           },
           expenses: {
             ops: expenseLedger.filter(e => e.type === 'EXPENSE').reduce((s,c) => s+c.amount, 0),
-            maturityInt: getMaturityData().reduce((s, m) => s + m.finalInterest, 0),
+            maturityInt: getMaturityData().reduce((s, m) => s + m.settledInterest, 0), // Fixed reference
           },
           loans: {
             issued: loans.reduce((s, l) => s + l.amount, 0),
@@ -1952,6 +1920,7 @@ export const useClientStore = create<ClientState>()(
     }
     }),
     {
+      // ✅ 2. Dynamic Name setup (Jo aapne pehle kiya tha)
       name: typeof window !== 'undefined' 
         ? `saanify-storage-${localStorage.getItem('active_client_id') || 'default'}` 
         : 'saanify-default-storage',
