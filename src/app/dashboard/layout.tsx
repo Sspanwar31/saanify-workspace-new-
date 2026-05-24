@@ -14,15 +14,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   
-  // 🚀 1. OPTIMISTIC STATE (Instant Load)
-  // Turant data uthao LocalStorage se taaki page khaali na dikhe
-  const [userProfile, setUserProfile] = useState<any>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('impersonation_user') || localStorage.getItem('current_user');
-      return saved ? JSON.parse(saved) : null;
-    }
-    return null;
-  });
+  // 🚀 1. OPTIMISTIC STATE CHANGED TO NULL (As requested)
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   // ✅ LOADING STATE LOGIC:
   const [isChecking, setIsChecking] = useState(!userProfile); 
@@ -32,7 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED WITH SIMPLIFIED LOGIC
+  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED LOGIC
   useEffect(() => {
     const performAuthSync = async () => {
       // Agar pehle se run ho chuka hai to rok do
@@ -74,15 +67,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         setUserProfile(profile);
         
-        // Admin Banner Check
-        const adminViewing = !!localStorage.getItem('is_admin_viewing');
-        setIsImpersonating(adminViewing);
+        // 🚀 ADMIN VIEWING CHECK REPLACEMENT
+        const { data: viewing } = await supabase
+          .from('admin_active_viewing')
+          .select('*')
+          .maybeSingle();
 
-        // Cache Update (Safety ke liye)
-        localStorage.setItem('current_user', JSON.stringify(profile));
-        if (profile.id) {
-          localStorage.setItem('active_client_id', profile.id);
-        }
+        setIsImpersonating(!!viewing);
+
+        // DELETED: localStorage.setItem('current_user', JSON.stringify(profile));
+        // DELETED: localStorage.setItem('active_client_id', profile.id);
 
         console.log("✅ [LAYOUT DEBUG] User Logged In:", profile.society_name);
 
