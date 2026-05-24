@@ -66,11 +66,16 @@ const {
   data: { user },
 } = await supabase.auth.getUser();
 
+const activeClientId =
+  profile.role === 'treasurer'
+    ? profile.client_id
+    : profile.id;
+
 const { data: viewing } = await supabase
   .from('admin_active_viewing')
   .select('client_id')
   .eq('admin_id', user?.id)
-  .eq('client_id', profile.id)
+  .eq('client_id', activeClientId)
   .maybeSingle();
 
 setIsImpersonating(!!viewing);
