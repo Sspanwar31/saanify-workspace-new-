@@ -1,12 +1,11 @@
 'use client';
-
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
 import { RealtimeChannel } from '@supabase/supabase-js'; 
 import { useClientStore } from '@/lib/client/store'; // ✅ NEW IMPORT
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X } from 'lucide-react'; 
+import { ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'; 
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 
@@ -14,21 +13,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   
-  // 🚀 1. OPTIMISTIC STATE CHANGED TO NULL (As requested)
+  // 🚀 1. OPTIMISTIC STATE CHANGED TO NULL
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // ✅ LOADING STATE LOGIC:
+  // ✅ LOADING STATE LOGIC
   const [isChecking, setIsChecking] = useState(!userProfile); 
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); 
   
-  const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
+  const initialized = useRef(false); 
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED LOGIC
+  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount)
   useEffect(() => {
     const performAuthSync = async () => {
-      // Agar pehle se run ho chuka hai to rok do
       if (initialized.current) return;
 
       try {
@@ -36,18 +33,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          router.push('/login');
+          router.replace('/login');
           return;
         }
 
         // 🚀 ZUSTAND RESET (Memory clear)
-        // Pehle purana data saaf karein taaki contamination na ho
         useClientStore.getState().resetStore();
         console.log("🧹 Zustand Store Cleared");
 
-        // 🚀 SEEDHA VIEW SE DATA LO (Backend Logic)
-        // Ye wahi profile dega jo Admin dekh raha hai ya Client khud hai
-        // Hum maan rahe hain ki aapne `current_active_profile` view banayi hai
+        // 🚀 SEEDHA VIEW SE DATA LO
         const { data: profile } = await supabase
           .from('current_active_profile')
           .select('*')
@@ -67,52 +61,51 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         setUserProfile(profile);
         
-        // 🚀 ADMIN VIEWING CHECK REPLACEMENT
-        const { data: viewing } = await supabase
-          .from('admin_active_viewing')
-          .select('*')
-          .maybeSingle();
+       // 🚀 ADMIN VIEWING CHECK
+const {
+  data: { user },
+} = await supabase.auth.getUser();
 
-        setIsImpersonating(!!viewing);
+const { data: viewing } = await supabase
+  .from('admin_active_viewing')
+  .select('client_id')
+  .eq('admin_id', user?.id)
+  .eq('client_id', profile.id)
+  .maybeSingle();
 
-        // DELETED: localStorage.setItem('current_user', JSON.stringify(profile));
-        // DELETED: localStorage.setItem('active_client_id', profile.id);
+setIsImpersonating(!!viewing);
 
         console.log("✅ [LAYOUT DEBUG] User Logged In:", profile.society_name);
 
-        // Theme Update (Existing Logic)
+        // Theme Update
         if (profile.theme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');
         }
         
-        // Lock Check (Existing Logic)
+        // Lock Check
         if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') {
            router.push('/login');
            return;
         }
 
-        setIsAuthorized(true);
-
       } catch (err) {
         console.error("Auth Sync Critical Error:", err);
         router.push('/login');
       } finally {
-        // ✅ Kaam khatam, checking off karein
         setIsChecking(false);
-        initialized.current = true; // Mark as done
+        initialized.current = true; 
       }
     };
 
     performAuthSync();
   }, [router]); 
 
-  // ✅ STEP 2: REALTIME PERMISSION SYNC (Keeping existing logic)
+  // ✅ STEP 2: REALTIME PERMISSION SYNC
   useEffect(() => {
     if (!userProfile) return;
 
-    // Treasurer ke liye owner id
     const ownerId =
       userProfile.role === 'treasurer'
         ? userProfile.client_id
@@ -130,24 +123,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         },
         async (payload) => {
           console.log('🔥 Permission Updated Realtime');
-
           const updatedData: any = payload.new;
 
-          setUserProfile((prev: any) => {
-            const updatedUser = {
-              ...prev,
-              // ✅ realtime permissions inject
-              role_permissions: updatedData.role_permissions
-            };
-
-            // local cache update
-            localStorage.setItem(
-              'current_user',
-              JSON.stringify(updatedUser)
-            );
-
-            return updatedUser;
-          });
+          // ✅ FIX 1 APPLIED: Removed localStorage.setItem()
+          // Impersonation architecture me localStorage caching allowed nahi hai
+          setUserProfile((prev: any) => ({
+            ...prev,
+            role_permissions: updatedData.role_permissions
+          }));
         }
       )
       .subscribe();
@@ -155,9 +138,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile]); // ✅ Dependency added for safety
-
-  // 🚀 3. SILENT PERMISSION GUARD (Runs on Nav)
+  }, [userProfile?.id, userProfile?.client_id]); 
+  
+  // 🚀 3. SILENT PERMISSION GUARD
   useEffect(() => {
     if (userProfile?.role === 'treasurer') {
       const perms = Array.isArray(
@@ -188,28 +171,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false); 
   }, [pathname, userProfile, router]);
 
-  // ✅ UPDATED: handleBackToAdmin with new URL and Cleanup
+  // ✅ FIX 2 & 3 APPLIED: Cleaned handleBackToAdmin
+  // Removed risky localStorage loops and unnecessary cleanups
   const handleBackToAdmin = async () => {
-    const toastId = toast.loading("Returning to Admin Panel...");
     try {
-      // 🚀 1. Database Session Cleanup
       const { data: { user } } = await supabase.auth.getUser();
+
       if (user) {
-        await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
+        await supabase
+          .from('admin_active_viewing')
+          .delete()
+          .eq('admin_id', user.id);
       }
 
-      // 🚀 2. Frontend Cache Cleanup
-      localStorage.removeItem('is_admin_impersonating');
-      localStorage.removeItem('is_admin_viewing');
-      localStorage.removeItem('viewing_client_id');
-      localStorage.removeItem('active_client_id');
-
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
-      });
-
-      // 🚀 3. EXACT WEBSITE PATH FIX
-      // Humne verify kiya hai ki aapka URL /admin/clients hai
       window.location.href = '/admin/clients';
 
     } catch (err) {
@@ -228,7 +202,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* ✅ BANNER FIX: Sirf isViewing flag check karein aur Text Update */}
+      {/* ✅ BANNER */}
       {isImpersonating && (
         <div className="w-full bg-gradient-to-r from-purple-700 to-indigo-800 text-white px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[1000]">
           <div className="flex items-center gap-2">
