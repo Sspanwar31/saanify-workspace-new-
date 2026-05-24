@@ -29,12 +29,12 @@ export default function ClientSidebar({ profile }: { profile: any }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // ✅ NEW CODE APPLIED (UseMemo hata karke direct assignment)
+  // ✅ USING ONLY PROFILE PROP
   const user = profile;
 
   const userRole = user?.role || 'client';
   
-  // ✅ SAFE ARRAY CHECK
+  // ✅ SAFE ARRAY CHECK FROM PROFILE PROP
   const permissions = Array.isArray(
     user?.role_permissions?.treasurer
   ) 
@@ -45,13 +45,13 @@ export default function ClientSidebar({ profile }: { profile: any }) {
     localStorage.clear();
     document.cookie = "impersonation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     await supabase.auth.signOut();
-    window.location.href = '/login'; // ✅ CHANGE 2: Smooth redirect
+    window.location.href = '/login';
     toast.success("Logged out");
   };
 
   return (
     <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shadow-sm">
-        {/* HEADER: Hamesha dikhega */}
+        {/* HEADER */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
           <div className="h-9 w-9 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md">S</div>
           <div>
@@ -62,7 +62,7 @@ export default function ClientSidebar({ profile }: { profile: any }) {
           </div>
         </div>
         
-        {/* MENU: Ab bina kisi delay ke dikhega */}
+        {/* MENU */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const hasAccess = userRole !== 'treasurer' || item.perm === 'ALWAYS' || permissions.includes(item.perm);
@@ -75,7 +75,7 @@ export default function ClientSidebar({ profile }: { profile: any }) {
               <Link 
                 key={item.href} 
                 href={item.href} 
-                prefetch={false} // ✅ CHANGE 1: Prefetch Disabled
+                prefetch={false}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
                   ${isActive 
                     ? 'bg-orange-500 text-white shadow-md font-semibold' 
@@ -88,7 +88,7 @@ export default function ClientSidebar({ profile }: { profile: any }) {
           })}
         </nav>
 
-        {/* FOOTER: Hamesha dikhega */}
+        {/* FOOTER */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800">
             <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 gap-3">
               <LogOut className="h-4 w-4" /> 
