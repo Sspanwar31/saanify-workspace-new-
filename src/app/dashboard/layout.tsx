@@ -42,10 +42,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         console.log("🧹 Zustand Store Cleared");
 
         // 🚀 SEEDHA VIEW SE DATA LO
-        const { data: profile } = await supabase
-          .from('current_active_profile')
-          .select('*')
-          .maybeSingle();
+        // 🚀 FUNCTION SE DATA LO
+const { data: profile, error } = await supabase
+  .rpc('current_active_profile')
+  .single();
+
+console.log("🔥 PROFILE DATA:", profile);
+console.log("🔥 PROFILE ERROR:", error);
 
         if (!profile) {
           console.error("❌ [LAYOUT DEBUG] Profile not found in current_active_profile");
