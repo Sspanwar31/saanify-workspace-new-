@@ -42,81 +42,65 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data: { session }, error: authError } = await supabase.auth.getSession();
         
         if (authError || !session) {
-          console.error("No active session found");
           router.push('/login');
           return;
         }
 
-        // ✅ Impersonation Check (ONLY LocalStorage)
-        const isImp = localStorage.getItem('is_admin_impersonating') === 'true';
-        
-        setIsImpersonating(isImp);
+        // ✅ 1. Check if we are in Admin Viewing Mode
+        const isViewing = localStorage.getItem('is_admin_viewing') === 'true';
+        const viewingClientId = localStorage.getItem('viewing_client_id');
+        setIsImpersonating(isViewing);
 
-        // --- ✅ NEW CODE REPLACEMENT START ---
-        
-        // STEP 1: current login user load karo
-        const { data: profile } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle();
+        // ✅ 2. Profile Loading Logic (Admin aur Client dono ke liye)
+        let profileData = null;
 
-        if (!profile) {
-          router.push('/login');
-          return;
-        }
-
-        // STEP 2: Treasurer hai to OWNER permissions load karo
-        let mergedProfile = profile;
-
-        if (profile.role === 'treasurer' && profile.client_id) {
-
-          const { data: ownerProfile } = await supabase
+        if (isViewing && viewingClientId) {
+          // 🛠 Admin Mode: Admin ka session hai, lekin hume Client ka profile chahiye
+          const { data } = await supabase
             .from('clients')
-            .select('role_permissions')
-            .eq('id', profile.client_id)
+            .select('*')
+            .eq('id', viewingClientId) // Selected Client ki details lo
             .maybeSingle();
-
-          mergedProfile = {
-            ...profile,
-            // ✅ OWNER permissions inject karo
-            role_permissions: ownerProfile?.role_permissions || {}
-          };
+          profileData = data;
+        } else {
+          // 🛠 Normal Mode: Login user ka apna profile lo
+          const { data } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          profileData = data;
         }
 
-        // STEP 3
-        const activeSocietyId =
-          mergedProfile.role === 'treasurer'
-            ? mergedProfile.client_id
-            : mergedProfile.id;
+        // 🚀 3. IMPORTANT FIX: Agar profile nahi mila aur ye Admin nahi hai tabhi login par bhejien
+        if (!profileData && !isViewing) {
+          router.push('/login');
+          return;
+        }
+
+        // 🚀 4. Store aur User Profile update karein
+        const activeSocietyId = isViewing ? viewingClientId : profileData?.id;
 
         const updatedUser = {
-          ...mergedProfile,
-          resolved_client_id: activeSocietyId
+          ...profileData,
+          resolved_client_id: activeSocietyId,
+          role: isViewing ? 'ADMIN_VIEWER' : profileData?.role // Role flag for UI
         };
 
-        // Storage Update
-        localStorage.setItem('current_user', JSON.stringify(updatedUser));
-        
-        // Impersonation wale case mein localstorage update
-        if (isImp) {
-          localStorage.setItem('impersonation_user', JSON.stringify(updatedUser));
-        }
-
-        // ✅ State Update (Background mein)
         setUserProfile(updatedUser);
+        localStorage.setItem('current_user', JSON.stringify(updatedUser));
         setIsAuthorized(true);
 
-        // --- ✅ NEW CODE REPLACEMENT END ---
+        // --- END OF NEW CODE REPLACEMENT ---
 
-        // Theme Update
-        if (profile.theme === 'dark') {
+        // Theme Update (Keeping existing logic)
+        if (updatedUser.theme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');
         }
         
-        if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') router.push('/login');
+        if (updatedUser.status === 'LOCKED' || updatedUser.status === 'EXPIRED') router.push('/login');
       } catch (err) {
         console.error("Auth Sync Error:", err);
       } finally {
@@ -129,9 +113,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     performAuthSync();
   }, [router]); 
 
-  // ✅ STEP 2: NEW REALTIME PERMISSION SYNC
+  // ✅ STEP 2: REALTIME PERMISSION SYNC (Keeping existing logic)
   useEffect(() => {
-
     if (!userProfile) return;
 
     // Treasurer ke liye owner id
@@ -177,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []); // ✅ CHANGE APPLIED HERE
+  }, [userProfile]); // ✅ Dependency added for safety
 
   // 🚀 3. SILENT PERMISSION GUARD (Runs on Nav)
   useEffect(() => {
