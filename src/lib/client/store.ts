@@ -335,7 +335,8 @@ export interface ClientState {
   // Auth State
   isLoggedIn: boolean;
   currentUser: User | null;
-  isAdminViewing: boolean; // ADDED AS REQUESTED
+  isAdminViewing: boolean;
+  adminUserBackup?: User | null; // ✅ 5. NEW SELECTOR ADDED
   
   // Subscription State
   subscription: SubscriptionStatus;
@@ -642,7 +643,8 @@ export const useClientStore = create<ClientState>((set, get) => ({
       // ✅ 1. Sabse pehle login aur user ko empty karein
       isLoggedIn: false, 
       currentUser: null,
-      isAdminViewing: false, // ✅ ADDED
+      isAdminViewing: false,
+      adminUserBackup: null, // ✅ 6. INITIAL STORE STATE ME ADD KARO
       
       // ✅ 2. Config defaults (Settings/Subscription)
       subscription: mockSubscription,
@@ -672,11 +674,12 @@ export const useClientStore = create<ClientState>((set, get) => ({
       
       // Login action with hardcoded admin check (Logic kept same)
       login: (email: string, password: string) => {
-        // Hardcoded admin login for 'super@saanify.com'
+        // 1. LOGIN LOGIC FIX KARO
+        // Hardcoded super admin login
         if (email === 'super@saanify.com') {
           set({
             isLoggedIn: true,
-            isAdminViewing: true, // ✅ ADDED
+            isAdminViewing: false, // ✅ IMPORTANT FIX
             currentUser: {
               id: 'CLIENT_001',
               name: 'Super Client',
@@ -688,6 +691,7 @@ export const useClientStore = create<ClientState>((set, get) => ({
               createdAt: new Date().toISOString()
             }
           });
+
           return true;
         }
         
@@ -696,7 +700,8 @@ export const useClientStore = create<ClientState>((set, get) => ({
         if (user) {
           set({
             isLoggedIn: true,
-            isAdminViewing: user.role === 'ADMIN' || user.role === 'CLIENT_ADMIN' || user.role === 'TREASURER', // ✅ ADDED LOGIC
+            // 2. NORMAL USER LOGIN FIX
+            isAdminViewing: false,
             currentUser: user
           });
           return true;
@@ -1559,27 +1564,53 @@ export const useClientStore = create<ClientState>((set, get) => ({
     },
     
     // Ghost Mode (Impersonation)
+    // 3. IMPERSONATE USER FUNCTION FIX
     impersonateUser: (userId) => {
-      const user = get().users.find(u => u.id === userId);
-      if (user) {
-        get().addActivityLog({
-          userId: 'U001',
-          userName: 'Current User',
-          action: 'GHOST_MODE_ACTIVATED',
-          details: {
-            target: user.name,
-            after: `Impersonating user: ${user.email}`
-          },
-          ip: '192.168.1.100',
-          userAgent: navigator.userAgent
-        });
-      }
+      const state = get();
+
+      const user = state.users.find(u => u.id === userId);
+
+      if (!user) return;
+
+      // ✅ Save current admin first
+      const adminUser = state.currentUser;
+
+      // ✅ Switch only UI View
+      // 7. IMPERSONATE FUNCTION ME BACKUP SAVE KARO
+      set({
+        adminUserBackup: adminUser,
+        currentUser: user,
+        isAdminViewing: true
+      });
+
+      // ✅ Activity Log
+      get().addActivityLog({
+        userId: adminUser?.id || 'ADMIN',
+        userName: adminUser?.name || 'Admin',
+        action: 'GHOST_MODE_ACTIVATED',
+        details: {
+          target: user.name,
+          after: `Impersonating user: ${user.email}`
+        },
+        ip: '192.168.1.100',
+        userAgent: navigator.userAgent
+      });
     },
     
+    // 4. STOP IMPERSONATION FIX
     stopImpersonation: () => {
+      // 8. STOP IMPERSONATION REAL RESTORE
+      const backupAdmin = get().adminUserBackup;
+
+      set({
+        currentUser: backupAdmin || null,
+        adminUserBackup: null,
+        isAdminViewing: false
+      });
+
       get().addActivityLog({
-        userId: 'U001',
-        userName: 'Current User',
+        userId: backupAdmin?.id || 'ADMIN',
+        userName: backupAdmin?.name || 'Admin',
         action: 'GHOST_MODE_DEACTIVATED',
         details: {
           after: 'Stopped impersonation'
@@ -1897,7 +1928,8 @@ export const useClientStore = create<ClientState>((set, get) => ({
         adminFundLedger: [],
         loanRequests: [],
         settings: mockSettings, // ✅ Ensure old society name is cleared
-        isAdminViewing: false // ✅ ADDED RESET
+        isAdminViewing: false,
+        adminUserBackup: null // ✅ Added for cleanliness
       });
       console.log("🧹 CLIENT STORE RESET");
     },
@@ -1920,7 +1952,8 @@ export const useClientStore = create<ClientState>((set, get) => ({
         roles: [],
         subscription: mockSubscription,
         premiumTrial: mockPremiumTrial,
-        isAdminViewing: false // ✅ ADDED RESET
+        isAdminViewing: false,
+        adminUserBackup: null // ✅ Added for cleanliness
       });
     }
   })
