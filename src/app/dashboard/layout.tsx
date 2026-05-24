@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount)
+  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED LOGIC
   useEffect(() => {
     const performAuthSync = async () => {
       // Agar pehle se run ho chuka hai to rok do
@@ -39,56 +39,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       try {
         // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
-        const { data: { session }, error: authError } = await supabase.auth.getSession();
-        
-        if (authError || !session) {
-          router.push('/login');
-          return;
-        }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { router.push('/login'); return; }
 
-        // ✅ 1. Check if we are in Admin Viewing Mode
-        const isViewing = localStorage.getItem('is_admin_viewing') === 'true';
-        const viewingClientId = localStorage.getItem('viewing_client_id');
+        // ✅ NEW LOGIC START: Database se Source of Truth check karein
+        // 🚀 1. Pehle Database se check karein ki Admin kis Client ko dekh raha hai
+        const { data: activeViewing } = await supabase
+          .from('admin_active_viewing')
+          .select('client_id')
+          .eq('admin_id', session.user.id)
+          .maybeSingle();
+
+        const isViewing = !!activeViewing;
+        const targetClientId = activeViewing ? activeViewing.client_id : session.user.id;
+
+        // UI State update for Banner
         setIsImpersonating(isViewing);
 
-        // ✅ 2. Profile Loading Logic (Admin aur Client dono ke liye)
-        let profileData = null;
+        // 🚀 2. Profile usi Client ki load karein jo activeViewing mein hai
+        const { data: profile } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', targetClientId)
+          .maybeSingle();
 
-        if (isViewing && viewingClientId) {
-          // 🛠 Admin Mode: Admin ka session hai, lekin hume Client ka profile chahiye
-          const { data } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('id', viewingClientId) // Selected Client ki details lo
-            .maybeSingle();
-          profileData = data;
-        } else {
-          // 🛠 Normal Mode: Login user ka apna profile lo
-          const { data } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-          profileData = data;
-        }
+        if (!profile) { router.push('/login'); return; }
 
-        // 🚀 3. IMPORTANT FIX: Agar profile nahi mila aur ye Admin nahi hai tabhi login par bhejien
-        if (!profileData && !isViewing) {
-          router.push('/login');
-          return;
-        }
-
-        // 🚀 4. Store aur User Profile update karein
-        const activeSocietyId = isViewing ? viewingClientId : profileData?.id;
-
+        // 🚀 3. User State Update
         const updatedUser = {
-          ...profileData,
-          resolved_client_id: activeSocietyId,
-          role: isViewing ? 'ADMIN_VIEWER' : profileData?.role // Role flag for UI
+          ...profile,
+          resolved_client_id: targetClientId,
+          is_admin_viewer: isViewing
         };
 
         setUserProfile(updatedUser);
         localStorage.setItem('current_user', JSON.stringify(updatedUser));
+        
+        // LocalStorage sync (safety ke liye)
+        if (isViewing) {
+          localStorage.setItem('viewing_client_id', targetClientId);
+          localStorage.setItem('is_admin_viewing', 'true');
+          localStorage.setItem('is_admin_impersonating', 'true'); // Sync with handleBackToAdmin
+        } else {
+          // Cleanup agar viewing nahi hai
+          localStorage.removeItem('viewing_client_id');
+          localStorage.removeItem('is_admin_viewing');
+          localStorage.removeItem('is_admin_impersonating');
+        }
+        
         setIsAuthorized(true);
 
         // --- END OF NEW CODE REPLACEMENT ---
