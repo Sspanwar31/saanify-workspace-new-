@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED WITH RESET & ADMIN ID
+  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED WITH ZUSTAND SYNC
   useEffect(() => {
     const performAuthSync = async () => {
       // Agar pehle se run ho chuka hai to rok do
@@ -79,31 +79,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return;
         }
 
+        // ✅ UPDATED BLOCK: Force Zustand Update
         const updatedUser = {
           ...profile,
           resolved_client_id: targetId,
-          is_admin_viewer: isViewing, // 🔥 Naya flag
-          admin_user_id: session.user.id // 🔥 Admin ki asli ID save rakho
+          is_admin_viewer: isViewing
         };
 
+        // ✅ 1. Sabse zaruri: Zustand Store ko batayein ki User badal gaya hai
+        // Iske bina Dashboard purana data dikhata rahega
+        useClientStore.setState({ 
+          currentUser: updatedUser, 
+          isLoggedIn: true 
+        });
+
+        // ✅ 2. Local State update karein (Banner ke liye)
         setUserProfile(updatedUser);
-        setIsImpersonating(isViewing); // 🔥 Banner ke liye flag set karo
+        setIsImpersonating(isViewing); // Banner visibility ke liye zaruri hai
+        
+        // Cache update
         localStorage.setItem('current_user', JSON.stringify(updatedUser));
-        console.log("✨ [LAYOUT DEBUG 4] UI Updated for:", profile.society_name);
+        localStorage.setItem('active_client_id', targetId); // Sync with store key
+
+        console.log("🚀 [STORE SYNC] Forced Zustand to use:", profile.society_name);
 
         setIsAuthorized(true);
-
-        // LocalStorage sync (safety ke liye)
-        if (isViewing) {
-          localStorage.setItem('viewing_client_id', targetId);
-          localStorage.setItem('is_admin_viewing', 'true');
-          localStorage.setItem('is_admin_impersonating', 'true'); // Sync with handleBackToAdmin
-        } else {
-          // Cleanup agar viewing nahi hai
-          localStorage.removeItem('viewing_client_id');
-          localStorage.removeItem('is_admin_viewing');
-          localStorage.removeItem('is_admin_impersonating');
-        }
+        // ✅ END OF UPDATED BLOCK
 
         // Theme Update (Keeping existing logic)
         if (updatedUser.theme === 'dark') {
