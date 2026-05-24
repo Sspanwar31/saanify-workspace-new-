@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+// persist middleware removed as requested
 
 // Types
 export interface Member {
@@ -636,9 +636,8 @@ const mockAdminFund: AdminFund = {
   lastUpdated: new Date().toISOString()
 };
 
-// Store Definition - PERSISTENCE REMOVED
-export const useClientStore = create<ClientState>()(
-  (set, get) => ({
+// Simple Store Definition (No Persistence)
+export const useClientStore = create<ClientState>((set, get) => ({
       // ✅ 1. Sabse pehle login aur user ko empty karein
       isLoggedIn: false, 
       currentUser: null,
