@@ -193,43 +193,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsMobileMenuOpen(false); 
   }, [pathname, userProfile, router]);
 
-  // ✅ UPDATED: handleBackToAdmin with Scoped Access Logic
+  // ✅ UPDATED: handleBackToAdmin with new URL and Cleanup
   const handleBackToAdmin = async () => {
-    const toastId = toast.loading("Exiting Viewing Mode...");
+    const toastId = toast.loading("Returning to Admin Panel...");
     try {
-      // 🚀 1. Database se active session record delete karein
-      // Isse backend (RLS) admin ka access turant block kar dega
+      // 🚀 1. Database Session Cleanup
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase
-          .from('admin_active_viewing')
-          .delete()
-          .eq('admin_id', user.id);
+        await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
       }
 
-      // 🚀 2. Frontend Flags Clear karein
+      // 🚀 2. Frontend Cache Cleanup
       localStorage.removeItem('is_admin_impersonating');
       localStorage.removeItem('is_admin_viewing');
       localStorage.removeItem('viewing_client_id');
+      localStorage.removeItem('active_client_id');
 
-      // 🚀 3. Zustand Cache Cleanup
-      // Saare clients ka data cache se hata dein taaki next time conflict na ho
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('saanify-storage-')) {
-          localStorage.removeItem(key);
-        }
+        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
       });
 
-      toast.success("Viewing mode ended", { id: toastId });
-
-      // 🚀 4. Redirect to Super Admin clients list
-      // Note: Hum window.location use kar rahe hain taaki poora page fresh load ho
-      window.location.href = '/super-admin/clients';
+      // 🚀 3. EXACT WEBSITE PATH FIX
+      // Humne verify kiya hai ki aapka URL /admin/clients hai
+      window.location.href = '/admin/clients';
 
     } catch (err) {
-      console.error("Error exiting view mode:", err);
-      // Fail hone par bhi safely bhej do
-      window.location.href = '/super-admin/clients';
+      window.location.href = '/admin/clients';
     }
   };
 
