@@ -31,53 +31,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED LOGIC
+  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED DEBUG LOGIC
   useEffect(() => {
     const performAuthSync = async () => {
       // Agar pehle se run ho chuka hai to rok do
       if (initialized.current) return;
 
       try {
-        // 🚀 1. SABSE ZAROORI: Seedha Supabase Auth se Current User lo
+        console.log("🔍 [LAYOUT DEBUG 1] performAuthSync started");
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { router.push('/login'); return; }
+        
+        if (!session) {
+          router.push('/login');
+          return;
+        }
 
-        // ✅ NEW LOGIC START: Database se Source of Truth check karein
-        // 🚀 1. Pehle Database se check karein ki Admin kis Client ko dekh raha hai
-        const { data: activeViewing } = await supabase
+        // 1. Check DB for source of truth
+        const { data: viewingRecord } = await supabase
           .from('admin_active_viewing')
           .select('client_id')
           .eq('admin_id', session.user.id)
           .maybeSingle();
 
-        const isViewing = !!activeViewing;
-        const targetClientId = activeViewing ? activeViewing.client_id : session.user.id;
+        const isViewing = !!viewingRecord;
+        // URL se ya DB se ID pakdein
+        const targetId = viewingRecord ? viewingRecord.client_id : session.user.id;
+        
+        console.log("🎯 [LAYOUT DEBUG 2] Target Client ID:", targetId);
 
-        // UI State update for Banner
-        setIsImpersonating(isViewing);
-
-        // 🚀 2. Profile usi Client ki load karein jo activeViewing mein hai
-        const { data: profile } = await supabase
+        // 2. Fetch Profile
+        const { data: profile, error } = await supabase
           .from('clients')
           .select('*')
-          .eq('id', targetClientId)
-          .maybeSingle();
+          .eq('id', targetId)
+          .single();
 
-        if (!profile) { router.push('/login'); return; }
+        if (error || !profile) {
+          console.error("❌ [LAYOUT DEBUG 3] Profile load failed:", error);
+          router.push('/login');
+          return;
+        }
 
-        // 🚀 3. User State Update
         const updatedUser = {
           ...profile,
-          resolved_client_id: targetClientId,
+          resolved_client_id: targetId,
           is_admin_viewer: isViewing
         };
 
         setUserProfile(updatedUser);
         localStorage.setItem('current_user', JSON.stringify(updatedUser));
-        
+        console.log("✨ [LAYOUT DEBUG 4] UI Updated for:", profile.society_name);
+
+        setIsAuthorized(true);
+
         // LocalStorage sync (safety ke liye)
         if (isViewing) {
-          localStorage.setItem('viewing_client_id', targetClientId);
+          localStorage.setItem('viewing_client_id', targetId);
           localStorage.setItem('is_admin_viewing', 'true');
           localStorage.setItem('is_admin_impersonating', 'true'); // Sync with handleBackToAdmin
         } else {
@@ -86,10 +95,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           localStorage.removeItem('is_admin_viewing');
           localStorage.removeItem('is_admin_impersonating');
         }
-        
-        setIsAuthorized(true);
-
-        // --- END OF NEW CODE REPLACEMENT ---
 
         // Theme Update (Keeping existing logic)
         if (updatedUser.theme === 'dark') {
@@ -100,7 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         if (updatedUser.status === 'LOCKED' || updatedUser.status === 'EXPIRED') router.push('/login');
       } catch (err) {
-        console.error("Auth Sync Error:", err);
+        console.error("Auth Sync Critical Error:", err);
       } finally {
         // ✅ Kaam khatam, checking off karein
         setIsChecking(false);
