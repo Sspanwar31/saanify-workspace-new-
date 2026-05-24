@@ -273,50 +273,46 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess (New Logic with Cache Clear First & Force Redirect)
+  // ✅ REPLACED: handleAccess (New Logic without LocalStorage)
   const handleAccess = async () => {
-    console.log("🚀 [DEBUG 1] handleAccess started for Client ID:", id);
-    const toastId = toast.loading("Configuring Scoped Access...");
-    
+    console.log("🚀 Opening Client Dashboard:", id);
+
+    const toastId = toast.loading("Opening Client Dashboard...");
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Admin not logged in");
 
-      // 1. CLEAR CACHE FIRST
-      console.log("🧹 [DEBUG 2] Clearing all storage keys...");
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('saanify-storage-') || key.includes('client-storage')) {
-          localStorage.removeItem(key);
-        }
-      });
+      if (!user) {
+        throw new Error("Admin not logged in");
+      }
 
-      // 2. UPDATE DATABASE CONTROL TABLE
+      // ✅ ONLY DATABASE STATE
       const { error } = await supabase
         .from('admin_active_viewing')
-        .upsert({ 
-          admin_id: user.id, 
+        .upsert({
+          admin_id: user.id,
           client_id: id,
-          started_at: new Date().toISOString() 
-        }, { onConflict: 'admin_id' });
+        }, {
+          onConflict: 'admin_id'
+        });
 
-      if (error) throw error;
-      console.log("✅ [DEBUG 3] DB Table Updated successfully");
+      if (error) {
+        throw error;
+      }
 
-      // 3. SET NEW VALUES
-      localStorage.setItem('active_client_id', id);
-      localStorage.setItem('viewing_client_id', id);
-      localStorage.setItem('is_admin_viewing', 'true');
-      
-      console.log("💾 [DEBUG 4] LocalStorage set for ID:", id);
+      toast.success("Access Granted", {
+        id: toastId
+      });
 
-      // 4. FINAL REDIRECT LOGIC
-      toast.success("Access Verified");
-      // 🚀 Force redirect with full reload taaki store refresh ho jaye
+      // ✅ HARD REDIRECT
       window.location.href = '/dashboard';
 
     } catch (e: any) {
-      console.error("❌ [DEBUG ERROR]:", e.message);
-      toast.error("Security Check Failed");
+      console.error("❌ Access Error:", e);
+
+      toast.error(e.message || "Failed to access dashboard", {
+        id: toastId
+      });
     }
   };
 
