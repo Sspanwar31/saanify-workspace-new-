@@ -273,7 +273,7 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess (New Logic with Cache Clear First & Replace)
+  // ✅ UPDATED: handleAccess (New Logic with Cache Clear First & Force Redirect)
   const handleAccess = async () => {
     console.log("🚀 [DEBUG 1] handleAccess started for Client ID:", id);
     const toastId = toast.loading("Configuring Scoped Access...");
@@ -309,12 +309,10 @@ export default function ClientProfile() {
       
       console.log("💾 [DEBUG 4] LocalStorage set for ID:", id);
 
-      toast.success("Access Verified", { id: toastId });
-      
-      // 4. FORCE REFRESH WITH TIMESTAMP (Cache Buster)
-      // Isse browser ko majbooran naya page load karna padega
-      const cacheBuster = Date.now();
-      window.location.href = `/dashboard?v=${id}&t=${cacheBuster}`;
+      // 4. FINAL REDIRECT LOGIC
+      toast.success("Access Verified");
+      // 🚀 Force redirect with full reload taaki store refresh ho jaye
+      window.location.href = '/dashboard';
 
     } catch (e: any) {
       console.error("❌ [DEBUG ERROR]:", e.message);
