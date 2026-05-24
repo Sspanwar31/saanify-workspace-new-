@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED WITH ZUSTAND SYNC
+  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED WITH SIMPLIFIED LOGIC
   useEffect(() => {
     const performAuthSync = async () => {
       // Agar pehle se run ho chuka hai to rok do
@@ -47,75 +47,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           return;
         }
 
-        // 1. Check DB for source of truth
-        const { data: viewingRecord } = await supabase
-          .from('admin_active_viewing')
-          .select('client_id')
-          .eq('admin_id', session.user.id)
+        // 🚀 ZUSTAND RESET (Memory clear)
+        // Pehle purana data saaf karein taaki contamination na ho
+        useClientStore.getState().resetStore();
+        console.log("🧹 Zustand Store Cleared");
+
+        // 🚀 SEEDHA VIEW SE DATA LO (Backend Logic)
+        // Ye wahi profile dega jo Admin dekh raha hai ya Client khud hai
+        // Hum maan rahe hain ki aapne `current_active_profile` view banayi hai
+        const { data: profile } = await supabase
+          .from('current_active_profile')
+          .select('*')
           .maybeSingle();
 
-        const isViewing = !!viewingRecord;
-        // URL se ya DB se ID pakdein
-        const targetId = viewingRecord ? viewingRecord.client_id : session.user.id;
-        
-        console.log("🎯 [LAYOUT DEBUG 2] Target Client ID:", targetId);
-
-        // 🚀 B. ZUSTAND RESET: Agar client badal raha hai, toh purana data saaf karo
-        if (isViewing) {
-          useClientStore.getState().resetStore(); 
-          console.log("🧹 Zustand Store Purged for New Client");
-        }
-
-        // 2. Fetch Profile
-        const { data: profile, error } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', targetId)
-          .single();
-
-        if (error || !profile) {
-          console.error("❌ [LAYOUT DEBUG 3] Profile load failed:", error);
+        if (!profile) {
+          console.error("❌ [LAYOUT DEBUG] Profile not found in current_active_profile");
           router.push('/login');
           return;
         }
 
-        // ✅ UPDATED BLOCK: Force Zustand Update
-        const updatedUser = {
-          ...profile,
-          resolved_client_id: targetId,
-          is_admin_viewer: isViewing
-        };
-
-        // ✅ 1. Sabse zaruri: Zustand Store ko batayein ki User badal gaya hai
-        // Iske bina Dashboard purana data dikhata rahega
+        // 🚀 STORE UPDATE
         useClientStore.setState({ 
-          currentUser: updatedUser, 
+          currentUser: profile, 
           isLoggedIn: true 
         });
 
-        // ✅ 2. Local State update karein (Banner ke liye)
-        setUserProfile(updatedUser);
-        setIsImpersonating(isViewing); // Banner visibility ke liye zaruri hai
+        setUserProfile(profile);
         
-        // Cache update
-        localStorage.setItem('current_user', JSON.stringify(updatedUser));
-        localStorage.setItem('active_client_id', targetId); // Sync with store key
+        // Admin Banner Check
+        const adminViewing = !!localStorage.getItem('is_admin_viewing');
+        setIsImpersonating(adminViewing);
 
-        console.log("🚀 [STORE SYNC] Forced Zustand to use:", profile.society_name);
+        // Cache Update (Safety ke liye)
+        localStorage.setItem('current_user', JSON.stringify(profile));
+        if (profile.id) {
+          localStorage.setItem('active_client_id', profile.id);
+        }
 
-        setIsAuthorized(true);
-        // ✅ END OF UPDATED BLOCK
+        console.log("✅ [LAYOUT DEBUG] User Logged In:", profile.society_name);
 
-        // Theme Update (Keeping existing logic)
-        if (updatedUser.theme === 'dark') {
+        // Theme Update (Existing Logic)
+        if (profile.theme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');
         }
         
-        if (updatedUser.status === 'LOCKED' || updatedUser.status === 'EXPIRED') router.push('/login');
+        // Lock Check (Existing Logic)
+        if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') {
+           router.push('/login');
+           return;
+        }
+
+        setIsAuthorized(true);
+
       } catch (err) {
         console.error("Auth Sync Critical Error:", err);
+        router.push('/login');
       } finally {
         // ✅ Kaam khatam, checking off karein
         setIsChecking(false);
