@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
 import { RealtimeChannel } from '@supabase/supabase-js'; 
+import { useClientStore } from '@/lib/client/store'; // ✅ NEW IMPORT
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { ShieldCheck, ArrowLeft, Loader2, X } from 'lucide-react'; 
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
@@ -31,7 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const initialized = useRef(false); // ✅ Ensure effect runs only ONCE
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED DEBUG LOGIC
+  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount) - UPDATED WITH RESET & ADMIN ID
   useEffect(() => {
     const performAuthSync = async () => {
       // Agar pehle se run ho chuka hai to rok do
@@ -59,6 +60,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         console.log("🎯 [LAYOUT DEBUG 2] Target Client ID:", targetId);
 
+        // 🚀 B. ZUSTAND RESET: Agar client badal raha hai, toh purana data saaf karo
+        if (isViewing) {
+          useClientStore.getState().resetStore(); 
+          console.log("🧹 Zustand Store Purged for New Client");
+        }
+
         // 2. Fetch Profile
         const { data: profile, error } = await supabase
           .from('clients')
@@ -75,10 +82,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const updatedUser = {
           ...profile,
           resolved_client_id: targetId,
-          is_admin_viewer: isViewing
+          is_admin_viewer: isViewing, // 🔥 Naya flag
+          admin_user_id: session.user.id // 🔥 Admin ki asli ID save rakho
         };
 
         setUserProfile(updatedUser);
+        setIsImpersonating(isViewing); // 🔥 Banner ke liye flag set karo
         localStorage.setItem('current_user', JSON.stringify(updatedUser));
         console.log("✨ [LAYOUT DEBUG 4] UI Updated for:", profile.society_name);
 
@@ -236,12 +245,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* ✅ UPDATED BANNER LOGIC: Check for Impersonation OR Scoped Access */}
-      {(isImpersonating || userProfile?.resolved_client_id !== userProfile?.id) && (
-        <div className="w-full bg-gradient-to-r from-purple-700 to-indigo-800 text-white px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[999]">
+      {/* ✅ BANNER FIX: Sirf isViewing flag check karein aur Text Update */}
+      {isImpersonating && (
+        <div className="w-full bg-gradient-to-r from-purple-700 to-indigo-800 text-white px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[1000]">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-purple-200" />
-            <span className="font-semibold tracking-wide">ADMIN VIEW ACTIVE</span>
+            <span className="font-semibold tracking-wide">
+              ADMIN VIEWING: {userProfile?.society_name?.toUpperCase()}
+            </span>
           </div>
           <button 
             onClick={handleBackToAdmin} 
