@@ -1885,7 +1885,7 @@ export const useClientStore = create<ClientState>()(
       }
     },
     
-    resetStore: () => { // ✅ ADDED IMPLEMENTATION
+    resetStore: () => { 
       set({
         members: [],
         loans: [],
@@ -1893,8 +1893,9 @@ export const useClientStore = create<ClientState>()(
         expenseLedger: [],
         adminFundLedger: [],
         loanRequests: [],
+        settings: mockSettings, // ✅ Ensure old society name is cleared
+        // currentUser: null, // Layout handles this
       });
-
       console.log("🧹 CLIENT STORE RESET");
     },
 
