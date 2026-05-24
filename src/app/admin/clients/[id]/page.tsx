@@ -273,51 +273,49 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess (New Scoped Access Logic from Prompt)
+  // ✅ UPDATED: handleAccess (New Logic with Cache Clear First & Replace)
   const handleAccess = async () => {
     const toastId = toast.loading("Configuring Scoped Access...");
     try {
-      // 1. Get current Admin's ID
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Admin session not found. Please re-login.");
+      if (!user) throw new Error("Admin session not found");
 
-      // 🚀 2. NO API CALL NEEDED. Seedha control table mein entry karo.
-      // Isse RLS ko pata chal jayega ki ye Admin ab is Client ka data dekh sakta hai.
+      // 🚀 STEP 1: Pehle purani saari Zustand cache saaf karein (Bina naya ID set kiye)
+      // Isse "One Step Behind" wala issue khatam ho jayega
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('saanify-storage-') || key === 'saanify-client-prod-v3-FORCED') {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // 🚀 STEP 2: Ab database mein naya entry update karein
       const { error } = await supabase
         .from('admin_active_viewing')
         .upsert(
           { 
             admin_id: user.id, 
-            client_id: id, // Selected client ID
+            client_id: id, 
             started_at: new Date().toISOString() 
           }, 
-          { onConflict: 'admin_id' } // Ensures previous viewing is overwritten
+          { onConflict: 'admin_id' }
         );
 
       if (error) throw error;
 
-      // 3. Set LocalStorage Flags
+      // 🚀 STEP 3: AB naya ID aur Flags set karein
+      localStorage.setItem('active_client_id', id); // Naya ID ab set hoga
       localStorage.setItem('viewing_client_id', id);
-      localStorage.setItem('active_client_id', id); // Zustand dynamic key logic ke liye
       localStorage.setItem('is_admin_viewing', 'true');
       localStorage.setItem('is_admin_impersonating', 'true');
 
-      // 4. Clean Zustand Cache (Force fresh load for new client)
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('saanify-storage-')) {
-          localStorage.removeItem(key);
-        }
-      });
-
       toast.success("Access Verified", { id: toastId });
       
-      // 5. DIRECT REDIRECT (Bina Login Session Overwrite kiye)
-      // window.location use kar rahe hain taaki Zustand naya storage key read kare
-      window.location.href = '/dashboard';
+      // 🚀 STEP 4: "replace" use karein href ki jagah taaki history clear rahe
+      window.location.replace('/dashboard');
 
     } catch (e: any) {
       console.error("Access Panel Error:", e);
-      toast.error("Access Denied: " + (e.message || "Unknown error"), { id: toastId });
+      toast.error("Access Denied");
     }
   };
 
