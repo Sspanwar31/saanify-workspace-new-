@@ -335,6 +335,7 @@ export interface ClientState {
   // Auth State
   isLoggedIn: boolean;
   currentUser: User | null;
+  isAdminViewing: boolean; // ADDED AS REQUESTED
   
   // Subscription State
   subscription: SubscriptionStatus;
@@ -564,7 +565,7 @@ export interface ClientState {
   resetSettings: () => void;
   exportData: () => string;
   importData: (jsonData: string) => { success: boolean; message: string };
-  resetStore: () => void; // ✅ ADDED
+  resetStore: () => void;
   factoryReset: () => void;
 };
 
@@ -641,6 +642,7 @@ export const useClientStore = create<ClientState>((set, get) => ({
       // ✅ 1. Sabse pehle login aur user ko empty karein
       isLoggedIn: false, 
       currentUser: null,
+      isAdminViewing: false, // ✅ ADDED
       
       // ✅ 2. Config defaults (Settings/Subscription)
       subscription: mockSubscription,
@@ -674,6 +676,7 @@ export const useClientStore = create<ClientState>((set, get) => ({
         if (email === 'super@saanify.com') {
           set({
             isLoggedIn: true,
+            isAdminViewing: true, // ✅ ADDED
             currentUser: {
               id: 'CLIENT_001',
               name: 'Super Client',
@@ -693,6 +696,7 @@ export const useClientStore = create<ClientState>((set, get) => ({
         if (user) {
           set({
             isLoggedIn: true,
+            isAdminViewing: user.role === 'ADMIN' || user.role === 'CLIENT_ADMIN' || user.role === 'TREASURER', // ✅ ADDED LOGIC
             currentUser: user
           });
           return true;
@@ -704,6 +708,7 @@ export const useClientStore = create<ClientState>((set, get) => ({
       logout: () => {
         set({
           isLoggedIn: false,
+          isAdminViewing: false, // ✅ ADDED
           currentUser: null
         });
       },
@@ -1892,7 +1897,7 @@ export const useClientStore = create<ClientState>((set, get) => ({
         adminFundLedger: [],
         loanRequests: [],
         settings: mockSettings, // ✅ Ensure old society name is cleared
-        // currentUser: null, // Layout handles this
+        isAdminViewing: false // ✅ ADDED RESET
       });
       console.log("🧹 CLIENT STORE RESET");
     },
@@ -1915,6 +1920,7 @@ export const useClientStore = create<ClientState>((set, get) => ({
         roles: [],
         subscription: mockSubscription,
         premiumTrial: mockPremiumTrial,
+        isAdminViewing: false // ✅ ADDED RESET
       });
     }
   })
