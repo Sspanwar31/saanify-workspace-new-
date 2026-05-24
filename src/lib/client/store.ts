@@ -1920,14 +1920,17 @@ export const useClientStore = create<ClientState>()(
     }
     }),
     {
-      // ✅ 2. Dynamic Name setup (Jo aapne pehle kiya tha)
+      // ✅ CHECKED: Storage name is already correct as per requirement
       name: typeof window !== 'undefined' 
         ? `saanify-storage-${localStorage.getItem('active_client_id') || 'default'}` 
         : 'saanify-default-storage',
       
-      // ✅ Ek extra safety: Storage ko SessionStorage kar sakte hain
-      // Isse tab band hote hi data saaf ho jayega, conflict kabhi nahi hoga
-      // storage: createJSONStorage(() => sessionStorage), 
+      // ✅ UPDATED: Manual Storage Implementation for Refresh Protection
+      storage: {
+        getItem: (name) => localStorage.getItem(name) ? JSON.parse(localStorage.getItem(name)!) : null,
+        setItem: (name, value) => localStorage.setItem(name, JSON.stringify(value)),
+        removeItem: (name) => localStorage.removeItem(name),
+      }
     }
   )
 );
