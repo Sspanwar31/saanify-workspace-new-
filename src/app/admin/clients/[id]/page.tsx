@@ -273,34 +273,36 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ UPDATED: handleAccess with explicit onConflict
+  // ✅ UPDATED: handleAccess (New Scoped Access Logic from Prompt)
   const handleAccess = async () => {
-    const toastId = toast.loading("Verifying Admin Scoped Access...");
+    const toastId = toast.loading("Configuring Scoped Access...");
     try {
+      // 1. Get current Admin's ID
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Admin not logged in");
+      if (!user) throw new Error("Admin session not found. Please re-login.");
 
-      // ✅ FIX: Explicitly specify 'onConflict' for admin_id
-      // Isse agar admin pehle se koi doosri society dekh raha hai, 
-      // toh purana record 'Update' ho jayega, 'Insert' nahi.
+      // 🚀 2. NO API CALL NEEDED. Seedha control table mein entry karo.
+      // Isse RLS ko pata chal jayega ki ye Admin ab is Client ka data dekh sakta hai.
       const { error } = await supabase
         .from('admin_active_viewing')
         .upsert(
           { 
             admin_id: user.id, 
-            client_id: id,
+            client_id: id, // Selected client ID
             started_at: new Date().toISOString() 
           }, 
-          { onConflict: 'admin_id' } // 🚀 YE LINE ZARURI HAI
+          { onConflict: 'admin_id' } // Ensures previous viewing is overwritten
         );
 
       if (error) throw error;
 
-      // LocalStorage flags (Reference ke liye)
+      // 3. Set LocalStorage Flags
       localStorage.setItem('viewing_client_id', id);
+      localStorage.setItem('active_client_id', id); // Zustand dynamic key logic ke liye
       localStorage.setItem('is_admin_viewing', 'true');
-      
-      // Zustand Cache Cleanup (Conflict se bachne ke liye)
+      localStorage.setItem('is_admin_impersonating', 'true');
+
+      // 4. Clean Zustand Cache (Force fresh load for new client)
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('saanify-storage-')) {
           localStorage.removeItem(key);
@@ -309,12 +311,13 @@ export default function ClientProfile() {
 
       toast.success("Access Verified", { id: toastId });
       
-      // Dashboard par redirect
-      router.push('/dashboard');
+      // 5. DIRECT REDIRECT (Bina Login Session Overwrite kiye)
+      // window.location use kar rahe hain taaki Zustand naya storage key read kare
+      window.location.href = '/dashboard';
 
     } catch (e: any) {
-      console.error("Security Check Failed:", e.message);
-      toast.error("Security Check Failed: " + e.message, { id: toastId });
+      console.error("Access Panel Error:", e);
+      toast.error("Access Denied: " + (e.message || "Unknown error"), { id: toastId });
     }
   };
 
