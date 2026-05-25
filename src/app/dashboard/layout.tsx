@@ -21,52 +21,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isChecking, setIsChecking] = useState(!userProfile); 
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); 
-  
-  // ❌ REMOVED: const initialized = useRef(false); (As requested to remove logic completely)
 
-  // 🚀 2. SINGLE AUTH EFFECT (Updated Logic & Dependencies)
+  // 🚀 2. UPDATED AUTH EFFECT (As requested)
   useEffect(() => {
     const performAuthSync = async () => {
-      // ❌ REMOVED: if (initialized.current) return; (Better approach applied)
-
       try {
-        console.log("🔍 [LAYOUT DEBUG 1] performAuthSync started");
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        setIsChecking(true);
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (!session) {
           router.replace('/login');
           return;
         }
 
-        // 🚀 ZUSTAND RESET (Memory clear)
-        useClientStore.getState().resetStore();
-        console.log("🧹 Zustand Store Cleared");
-
-        // 🚀 FUNCTION SE DATA LO (RPC Call)
         const { data: profile, error } = await supabase
           .rpc('current_active_profile')
           .single();
 
-        console.log("🔥 PROFILE DATA:", profile);
-        console.log("🔥 PROFILE ERROR:", error);
+        console.log(profile);
 
-        if (!profile) {
-          console.error("❌ [LAYOUT DEBUG] Profile not found in current_active_profile");
-          router.push('/login');
+        if (error) {
+          console.error(error);
           return;
         }
 
-        // 🚀 STORE UPDATE
-        useClientStore.setState({ 
-          currentUser: profile, 
-          isLoggedIn: true 
+        if (!profile) {
+          console.warn("Profile temporarily missing");
+          return;
+        }
+
+        useClientStore.setState({
+          currentUser: profile,
+          isLoggedIn: true,
         });
 
         setUserProfile(profile);
-        
-        // 🚀 ADMIN VIEWING CHECK (UPDATED LOGIC)
-        const authUser = session.user; // ✅ Using session.user directly
 
+        // ✅ RESTORED NECESSARY LOGIC (Since "baki ka code same rahga" applies to UI functionality)
+        // Admin Impersonation Check
+        const authUser = session.user;
         const activeClientId =
           profile.role === 'treasurer'
             ? profile.client_id
@@ -75,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data: viewing } = await supabase
           .from('admin_active_viewing')
           .select('client_id')
-          .eq('admin_id', authUser.id) // ✅ Changed from user?.id
+          .eq('admin_id', authUser.id)
           .eq('client_id', activeClientId)
           .maybeSingle();
 
@@ -97,16 +93,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
       } catch (err) {
-        console.error("Auth Sync Critical Error:", err);
-        router.push('/login');
+        console.error(err);
       } finally {
         setIsChecking(false);
-        // ❌ REMOVED: initialized.current = true;
       }
     };
 
     performAuthSync();
-  }, [router, pathname]); // ✅ pathname added to dependencies
+  }, []); // ✅ Empty dependencies as requested
 
   // ✅ STEP 2: REALTIME PERMISSION SYNC
   useEffect(() => {
@@ -131,7 +125,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           console.log('🔥 Permission Updated Realtime');
           const updatedData: any = payload.new;
 
-          // localStorage removed as per previous architecture decision
           setUserProfile((prev: any) => ({
             ...prev,
             role_permissions: updatedData.role_permissions
@@ -188,11 +181,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .eq('admin_id', user.id);
       }
 
-      // ✅ CHANGED: Using router.replace instead of window.location.href
       router.replace('/admin/clients');
 
     } catch (err) {
-      // ✅ CHANGED: Using router.replace instead of window.location.href
       router.replace('/admin/clients');
     }
   };
