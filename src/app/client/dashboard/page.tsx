@@ -24,22 +24,14 @@ export default function ClientDashboard() {
     loanRequests, getReportData, getSocietyCashInHand 
   } = useClientStore();
 
-  // ✅ ADDED DEBUG SESSION
+  // ✅ UPDATED DEBUG SESSION (CreateClient hata diya, imported supabase use kiya)
   useEffect(() => {
     const debugSession = async () => {
       try {
         console.log("========== DASHBOARD DEBUG START ==========");
 
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-
-        // CURRENT SESSION
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
+        // 🔥 FIX: Alag se createClient nahi karna, imported 'supabase' use karna hai
+        const { data: { session }, error } = await supabase.auth.getSession();
 
         console.log("SESSION ERROR:", error);
 
