@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { supabase } from '@/lib/supabase'; 
 import { RealtimeChannel } from '@supabase/supabase-js'; 
-import { useClientStore } from '@/lib/client/store'; // ✅ NEW IMPORT
+import { useClientStore } from '@/lib/client/store'; 
 import ClientSidebar from '@/components/layout/ClientSidebar';
 import { ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react'; 
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
@@ -21,12 +22,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); 
   
-  const initialized = useRef(false); 
+  // ❌ REMOVED: const initialized = useRef(false); (As requested to remove logic completely)
 
-  // 🚀 2. SINGLE AUTH EFFECT (Run Once on Mount)
+  // 🚀 2. SINGLE AUTH EFFECT (Updated Logic & Dependencies)
   useEffect(() => {
     const performAuthSync = async () => {
-      if (initialized.current) return;
+      // ❌ REMOVED: if (initialized.current) return; (Better approach applied)
 
       try {
         console.log("🔍 [LAYOUT DEBUG 1] performAuthSync started");
@@ -41,14 +42,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         useClientStore.getState().resetStore();
         console.log("🧹 Zustand Store Cleared");
 
-        // 🚀 SEEDHA VIEW SE DATA LO
-        // 🚀 FUNCTION SE DATA LO
-const { data: profile, error } = await supabase
-  .rpc('current_active_profile')
-  .single();
+        // 🚀 FUNCTION SE DATA LO (RPC Call)
+        const { data: profile, error } = await supabase
+          .rpc('current_active_profile')
+          .single();
 
-console.log("🔥 PROFILE DATA:", profile);
-console.log("🔥 PROFILE ERROR:", error);
+        console.log("🔥 PROFILE DATA:", profile);
+        console.log("🔥 PROFILE ERROR:", error);
 
         if (!profile) {
           console.error("❌ [LAYOUT DEBUG] Profile not found in current_active_profile");
@@ -64,24 +64,22 @@ console.log("🔥 PROFILE ERROR:", error);
 
         setUserProfile(profile);
         
-       // 🚀 ADMIN VIEWING CHECK
-const {
-  data: { user },
-} = await supabase.auth.getUser();
+        // 🚀 ADMIN VIEWING CHECK (UPDATED LOGIC)
+        const authUser = session.user; // ✅ Using session.user directly
 
-const activeClientId =
-  profile.role === 'treasurer'
-    ? profile.client_id
-    : profile.id;
+        const activeClientId =
+          profile.role === 'treasurer'
+            ? profile.client_id
+            : profile.id;
 
-const { data: viewing } = await supabase
-  .from('admin_active_viewing')
-  .select('client_id')
-  .eq('admin_id', user?.id)
-  .eq('client_id', activeClientId)
-  .maybeSingle();
+        const { data: viewing } = await supabase
+          .from('admin_active_viewing')
+          .select('client_id')
+          .eq('admin_id', authUser.id) // ✅ Changed from user?.id
+          .eq('client_id', activeClientId)
+          .maybeSingle();
 
-setIsImpersonating(!!viewing);
+        setIsImpersonating(!!viewing);
 
         console.log("✅ [LAYOUT DEBUG] User Logged In:", profile.society_name);
 
@@ -103,12 +101,12 @@ setIsImpersonating(!!viewing);
         router.push('/login');
       } finally {
         setIsChecking(false);
-        initialized.current = true; 
+        // ❌ REMOVED: initialized.current = true;
       }
     };
 
     performAuthSync();
-  }, [router]); 
+  }, [router, pathname]); // ✅ pathname added to dependencies
 
   // ✅ STEP 2: REALTIME PERMISSION SYNC
   useEffect(() => {
@@ -133,8 +131,7 @@ setIsImpersonating(!!viewing);
           console.log('🔥 Permission Updated Realtime');
           const updatedData: any = payload.new;
 
-          // ✅ FIX 1 APPLIED: Removed localStorage.setItem()
-          // Impersonation architecture me localStorage caching allowed nahi hai
+          // localStorage removed as per previous architecture decision
           setUserProfile((prev: any) => ({
             ...prev,
             role_permissions: updatedData.role_permissions
@@ -179,8 +176,7 @@ setIsImpersonating(!!viewing);
     setIsMobileMenuOpen(false); 
   }, [pathname, userProfile, router]);
 
-  // ✅ FIX 2 & 3 APPLIED: Cleaned handleBackToAdmin
-  // Removed risky localStorage loops and unnecessary cleanups
+  // ✅ UPDATED: handleBackToAdmin
   const handleBackToAdmin = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -192,10 +188,12 @@ setIsImpersonating(!!viewing);
           .eq('admin_id', user.id);
       }
 
-      window.location.href = '/admin/clients';
+      // ✅ CHANGED: Using router.replace instead of window.location.href
+      router.replace('/admin/clients');
 
     } catch (err) {
-      window.location.href = '/admin/clients';
+      // ✅ CHANGED: Using router.replace instead of window.location.href
+      router.replace('/admin/clients');
     }
   };
 
