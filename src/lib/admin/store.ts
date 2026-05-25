@@ -23,7 +23,7 @@ interface AdminState {
   kpiData: KpiData | null;
 
   refreshDashboard: () => Promise<void>;
-  getOverviewData: () => any; // ✅ RESTORED FOR MAIN DASHBOARD
+  getOverviewData: () => any; 
 }
 
 export const useAdminStore = create<AdminState>((set, get) => ({
@@ -36,11 +36,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
   refreshDashboard: async () => {
     set({ isLoading: true, error: null });
-    
-   if (!supabase) {
-  set({ error: "Supabase Client Missing", isLoading: false });
-  return;
-}
 
     try {
       const { data: allClientsData, error: clientError } = await supabase
@@ -51,7 +46,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       if (clientError) throw clientError;
 
       const { data: plansData, error: planError } = await supabase
-        .from('plans') 
+        .from('plans')
         .select('*');
 
       if (planError) throw planError;
