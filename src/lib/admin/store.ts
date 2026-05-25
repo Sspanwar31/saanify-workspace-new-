@@ -1,9 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
 interface AnalyticsData {
   revenueTrend: { name: string; value: number }[];
   userGrowth: { name: string; active: number; total: number }[];
@@ -40,7 +37,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   refreshDashboard: async () => {
     set({ isLoading: true, error: null });
     
-    if (!supabaseUrl || !supabaseKey) {
+    {
       set({ error: "Supabase Keys Missing", isLoading: false });
       return;
     }
