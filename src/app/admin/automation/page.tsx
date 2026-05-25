@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Play, RotateCcw, Clock, Mail, Bell, Server, Activity, Database, Loader2 
+import {
+  Play, RotateCcw, Clock, Mail, Bell, Server,
+  Activity, Database, Loader2
 } from 'lucide-react';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,13 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
-// CHANGE: Standard Supabase Import (No extra package needed)
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase Client directly using Env Variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from '@/lib/supabase';
 
 // Static UI Config (Icons & Descriptions)
 const SYSTEM_TASKS_CONFIG = [
