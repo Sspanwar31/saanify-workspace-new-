@@ -37,10 +37,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   refreshDashboard: async () => {
     set({ isLoading: true, error: null });
     
-    {
-      set({ error: "Supabase Keys Missing", isLoading: false });
-      return;
-    }
+   if (!supabase) {
+  set({ error: "Supabase Client Missing", isLoading: false });
+  return;
+}
 
     try {
       const { data: allClientsData, error: clientError } = await supabase
