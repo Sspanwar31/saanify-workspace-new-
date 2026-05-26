@@ -37,25 +37,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (pError) console.error("❌ View Error:", pError);
 
         if (!profile) {
-          console.error("🚫 REDIRECT: Profile is NULL"); // Check 1
+          console.error("🚫 REDIRECT: Profile is NULL");
           router.replace('/login');
           return;
         }
 
-        if (profile.status !== 'ACTIVE') { // Status check ko flexible banayein
-           console.error("🚫 REDIRECT: Account Status is:", profile.status); // Check 2
-           // router.push('/login'); // Isse testing ke liye 1 minute band karein
-           // return;
+        if (profile.status !== 'ACTIVE') {
+           console.error("🚫 REDIRECT: Account Status is:", profile.status);
+           router.replace('/login');
+           return;
         }
 
-        // Agar profile mil gayi, toh Dashboard khol dein
+        // 🚀 ASLI FIX: LocalStorage aur Store ko update karein
+        // Iske bina 'useReportLogic' hook ko naya client nahi dikhega
+        localStorage.setItem('current_user', JSON.stringify(profile)); // 👈 Zaruri line
+        localStorage.setItem('active_client_id', profile.id);
+
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
         
-        // Admin viewing check
-        setIsImpersonating(!!localStorage.getItem('is_admin_viewing'));
+        // Banner logic: Agar session ID aur profile ID alag hai toh Admin dekh raha hai
+        setIsImpersonating(session.user.id !== profile.id);
 
-        console.log("🎉 SUCCESS: Dashboard loaded for", profile.society_name);
+        console.log("🎉 SUCCESS: Dashboard Data Synced for", profile.society_name);
         setIsChecking(false);
 
       } catch (err) {
@@ -87,6 +91,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         (payload) => {
           console.log('🔥 Permission Realtime Update');
           const updated = payload.new as any;
+          
+          // 🚀 LocalStorage bhi update karein realtime mein
+          const currentStored = localStorage.getItem('current_user');
+          if (currentStored) {
+            const parsed = JSON.parse(currentStored);
+            parsed.role_permissions = updated.role_permissions;
+            localStorage.setItem('current_user', JSON.stringify(parsed));
+          }
+
           setUserProfile((prev: any) => ({
             ...prev,
             role_permissions: updated.role_permissions
@@ -140,6 +153,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } catch (err) {
       console.error(err);
     } finally {
+      // 🚀 Admin view se vapas aate waqt localStorage clean karein
+      localStorage.removeItem('current_user');
+      localStorage.removeItem('active_client_id');
       router.replace('/admin/clients');
     }
   }, [router]);
