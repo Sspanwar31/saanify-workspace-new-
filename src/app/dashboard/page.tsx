@@ -44,13 +44,23 @@ export default function ClientDashboard() {
     passbookEntries
   } = useReportLogic();
 
-  // ✅ 3. BACKEND REALTIME VERIFICATION
+  // ✅ 3. BACKEND REALTIME VERIFICATION (UPDATED)
   useEffect(() => {
     const checkImpersonation = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
 
+        // No session
         if (!session?.user || !user) {
+          setIsImpersonating(false);
+          return;
+        }
+
+        // Direct client login me banner nahi dikhega
+        if (
+          user.role !== 'admin' &&
+          user.role !== 'super_admin'
+        ) {
           setIsImpersonating(false);
           return;
         }
@@ -60,12 +70,18 @@ export default function ClientDashboard() {
             ? user.client_id
             : user.id;
 
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('admin_active_viewing')
-          .select('client_id')
+          .select('id')
           .eq('admin_id', session.user.id)
           .eq('client_id', activeClientId)
           .maybeSingle();
+
+        if (error) {
+          console.error(error);
+          setIsImpersonating(false);
+          return;
+        }
 
         setIsImpersonating(!!data);
 
@@ -149,9 +165,27 @@ export default function ClientDashboard() {
     }
   ];
 
+  // ✅ UPDATED: handleLogout (Recommended Fix 2 & 3)
   const handleLogout = async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      // Remove stale records from DB
+      if (authUser) {
+        await supabase
+          .from('admin_active_viewing')
+          .delete()
+          .eq('admin_id', authUser.id);
+      }
+    } catch (err) {
+      console.error('Error clearing admin view:', err);
+    }
+
+    // Remove specific local storage flags
+    localStorage.removeItem('is_admin_impersonating');
+
     await supabase.auth.signOut();
-    localStorage.clear();
+    localStorage.clear(); // Fallback clear
     window.location.href = '/login';
   };
 
