@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useClientStore } from '@/lib/client/store'; // ✅ Store use karein
+import { supabase } from '@/lib/supabase'; // import add karein
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,10 +32,11 @@ export default function ClientDashboard() {
   const router = useRouter();
   const { formatCurrency } = useCurrency();
   
-  const [user, setUser] = useState<any>(null);
+  // ✅ 1. Store se user lo (Ye sabse stable tarika hai)
+  const { currentUser: user, resetStore } = useClientStore();
   const [isImpersonating, setIsImpersonating] = useState(false);
 
-  // ✅ Shared Reports Logic
+  // ✅ 2. Shared Reports Logic
   const {
     loading,
     auditData,
@@ -41,21 +44,12 @@ export default function ClientDashboard() {
     passbookEntries
   } = useReportLogic();
 
-  // User Setup Effect
+  // ✅ 3. REDIRECT HATAYA GAYA HAI
   useEffect(() => {
-    const savedUser = localStorage.getItem('current_user');
-    if (!savedUser) {
-      router.push('/login');
-      return;
-    }
-
-    const profile = JSON.parse(savedUser);
-    setUser(profile);
-
     setIsImpersonating(
       localStorage.getItem('is_admin_impersonating') === 'true'
     );
-  }, [router]);
+  }, []);
 
   // ✅ Dashboard Financials from Reports Logic
   const summary = auditData?.summary || {};
@@ -129,12 +123,13 @@ export default function ClientDashboard() {
   ];
 
   const handleLogout = async () => {
+    await supabase.auth.signOut();
     localStorage.clear();
-    // Note: supabase.auth.signOut() removed because supabase import was removed.
     window.location.href = '/login';
   };
 
-  if (loading && !user) return (
+  // ✅ 4. LOADING STATE: Jab tak user store mein na aaye, wait karo
+  if (!user || loading) return (
     <div className="h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
       <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
       <p className="text-slate-500 mt-4 animate-pulse">Synchronizing Society Ledger...</p>
