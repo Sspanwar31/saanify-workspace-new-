@@ -1,15 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from './supabase-service'; 
 import { Pool } from 'pg';
-
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function repairSystemSettingsTable() {
   console.log('🔧 Starting system_settings table repair...');
@@ -41,7 +31,7 @@ export async function repairSystemSettingsTable() {
     `;
 
     // Execute the repair SQL using Supabase RPC
-    const { data, error } = await supabase.rpc('exec_sql', { sql_query: repairSQL });
+    const { data, error } = await supabaseAdmin.rpc('exec_sql', { sql_query: repairSQL });
 
     if (error) {
       console.error('❌ Error executing repair SQL:', error);
@@ -50,7 +40,7 @@ export async function repairSystemSettingsTable() {
       console.log('🔄 Trying alternative repair approach...');
       
       // Create the table using raw SQL through Supabase's SQL editor
-      const { error: tableError } = await supabase
+      const { error: tableError } = await supabaseAdmin
         .from('system_settings')
         .select('id')
         .limit(1);
@@ -76,7 +66,7 @@ export async function repairSystemSettingsTable() {
       }
 
       // Now try to insert default row
-      const { error: insertError } = await supabase
+      const { error: insertError } = await supabaseAdmin
         .from('system_settings')
         .upsert({
           id: 1,
@@ -97,7 +87,7 @@ export async function repairSystemSettingsTable() {
     console.log('✅ System settings table repaired successfully');
     
     // Verify the table structure
-    const { data: verifyData, error: verifyError } = await supabase
+    const { data: verifyData, error: verifyError } = await supabaseAdmin
       .from('system_settings')
       .select('*')
       .eq('id', 1)
