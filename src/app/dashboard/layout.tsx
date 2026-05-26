@@ -27,22 +27,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { router.replace('/login'); return; }
 
-        // 🚀 SEEDHA VIEW SE PROFILE LO (Not RPC)
-        const { data: profile, error } = await supabase
-          .from('current_active_profile') // ✅ View ka naam
+        const { data: profile, error: pError } = await supabase
+          .from('current_active_profile')
           .select('*')
           .maybeSingle();
 
-        console.log("✅ Current Context Profile:", profile?.society_name);
+        console.log("🎯 [DEBUG] Profile Data:", profile?.society_name);
+
+        if (pError) console.error("❌ View Error:", pError);
 
         if (!profile) {
-          router.replace('/login');
-          return;
+          // 🚀 FIX: Agar Admin viewing mode mein hai, toh profile null nahi honi chahiye
+          // Check kijiye ki kahin user logout toh nahi ho gaya
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+             router.replace('/login');
+             return;
+          }
+          // Agar session hai lekin profile null hai, toh thoda rukiye (Loading dikhayein)
+          console.warn("⚠️ Profile sync in progress...");
+          return; 
         }
 
-        // Store sync
+        // Agar profile mil gayi, toh Dashboard khol dein
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
+        setIsChecking(false);
+        
+        // Admin viewing check
         setIsImpersonating(!!localStorage.getItem('is_admin_viewing'));
 
       } catch (err) {
