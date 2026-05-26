@@ -3,10 +3,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-simple'; 
 import { differenceInMonths } from 'date-fns';
+import { useClientStore } from '@/lib/client/store'; // 🚀 NEW IMPORT
 
 export function useReportLogic() {
   const [loading, setLoading] = useState(true);
-  const [clientId, setClientId] = useState<string | null>(null);
+  
+  // 🚀 LocalStorage ke bajaye Store se ID lo (Ye reactive hai)
+  // Jab bhi Layout store update karega, ye automatically change hoga
+  const { currentUser: user } = useClientStore();
+  const clientId = user?.resolved_client_id || user?.id;
 
   // Raw Data States
   const [members, setMembers] = useState<any[]>([]);
@@ -44,40 +49,25 @@ export function useReportLogic() {
     adminFund: []
   });
 
-  // 1. Fetch Data
+  // 1. Fetch Data - 🚀 Ab clientId change hone par auto re-fetch hoga
   useEffect(() => {
     const fetchData = async () => {
+      // ✅ Check if ID is available
+      if (!clientId) {
+        console.log("⏳ Waiting for Client ID...");
+        return; 
+      }
+
       setLoading(true);
-      
-      let cid = clientId;
-
-      if (!cid) {
-        const storedUser = localStorage.getItem('current_user');
-        const storedMember = localStorage.getItem('current_member');
-
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-          cid = user.role === 'treasurer' ? user.client_id : user.id;
-        } 
-        else if (storedMember) {
-          cid = JSON.parse(storedMember).client_id;
-        }
-
-        if (cid) setClientId(cid);
-      }
-
-      if (!cid) {
-        setLoading(false);
-        return;
-      }
-
       try {
+        console.log("📊 Hook Fetching Data for:", clientId);
+        
         const fetchFromApi = async (table: string) => {
              try {
                 const res = await fetch('/api/admin/get-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ table, clientId: cid })
+                    body: JSON.stringify({ table, clientId })
                 });
                 const json = await res.json();
                 return json.data || [];
@@ -141,7 +131,7 @@ export function useReportLogic() {
       }
     };
     fetchData();
-  }, [clientId]);
+  }, [clientId]); // 🚀 Re-run when clientId changes (reactive from store)
 
   // 2. Calculation Engine
   useEffect(() => {
@@ -254,7 +244,7 @@ export function useReportLogic() {
         interestRate: interestAmount, 
         totalInterestCollected: distributedInterest, 
         status: (l.status || '').toLowerCase(),
-        paymentMode: l.payment_mode || 'cash' // ✅ Added for Cashbook
+        paymentMode: l.payment_mode || 'cash'
       };
     });
 
@@ -310,12 +300,12 @@ export function useReportLogic() {
         else { entry.cashIn += amt; entry.cashInMode += amt; }
     });
 
-    // 3. Loans (OUT) - ✅ FIXED
+    // 3. Loans (OUT)
     filteredLoans.forEach((l: any) => {
         const d = (l.start_date || '').split('T')[0];
         if (isDateInRange(d) && (l.status === 'active' || l.status === 'closed')) {
             const entry = getOrSetEntry(d);
-            const amt = Number(l.amount); // Principal Out
+            const amt = Number(l.amount);
             entry.loanOut += amt;
             entry.cashOut += amt;
             
@@ -326,13 +316,13 @@ export function useReportLogic() {
         }
     });
 
-    // 4. Admin Fund (IN/OUT) - ✅ FIXED
+    // 4. Admin Fund (IN/OUT)
     filteredAdminFunds.forEach((a: any) => {
         const d = (a.date || a.created_at || '').split('T')[0];
         if(isDateInRange(d)) {
             const entry = getOrSetEntry(d);
             const amt = Number(a.amount);
-            if(a.type === 'INJECT') entry.cashInMode += amt; // Default Cash
+            if(a.type === 'INJECT') entry.cashInMode += amt;
             else entry.cashOutMode += amt;
         }
     });
@@ -341,14 +331,12 @@ export function useReportLogic() {
     let runningBal = 0;
     
     const finalLedger = sortedLedger.map((e: any) => {
-        // ✅ STEP 1: Daily Ledger ka netFlow change karo
         const netFlow =
           (e.cashInMode + e.bankInMode + e.upiInMode)
         - (e.cashOutMode + e.bankOutMode + e.upiOutMode);
         
         runningBal += netFlow;
 
-        // ✅ STEP 2: Daily Ledger ka cashIn / cashOut bhi derived banao
         const derivedCashIn =
           e.cashInMode + e.bankInMode + e.upiInMode;
 
@@ -378,7 +366,6 @@ export function useReportLogic() {
     });
 
     // --- E. MODE STATS (FINAL CALCULATION) ---
-    // Summing directly from Cashbook to match report table
     let totalCash = 0, totalBank = 0, totalUpi = 0;
     finalCashbook.forEach((e: any) => {
         totalCash += (e.cashIn - e.cashOut);
@@ -464,7 +451,7 @@ export function useReportLogic() {
         },
         dailyLedger: finalLedger,
         cashbook: finalCashbook,
-        modeStats: { cashBal: totalCash, bankBal: totalBank, upiBal: totalUpi }, // ✅ MATCHES TABLE
+        modeStats: { cashBal: totalCash, bankBal: totalBank, upiBal: totalUpi },
         loans: filteredLoans,
         memberReports, maturity, defaulters,
         adminFund: filteredAdminFunds
