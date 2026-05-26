@@ -12,13 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// CHANGE: Standard Supabase Import
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase Client directly using Env Variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// ✅ 1. MASTER IMPORT (No more createClient here!)
+import { supabase } from '@/lib/supabase';
 
 // DATABASE ROW TYPE DEFINITION
 type ClientLog = {
