@@ -273,48 +273,48 @@ export default function ClientProfile() {
       }
   };
 
-  // ✅ REPLACED: handleAccess (New Logic without LocalStorage)
+  // ✅ UPDATED: handleAccess (With Cookie Fix)
   const handleAccess = async () => {
-    console.log("🚀 Opening Client Dashboard:", id);
-
-    const toastId = toast.loading("Opening Client Dashboard...");
-
+    const toastId = toast.loading("Verifying Scoped Access...");
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Admin not logged in");
 
-      if (!user) {
-        throw new Error("Admin not logged in");
-      }
-
-      // ✅ ONLY DATABASE STATE
+      // 1. Update Database
       const { error } = await supabase
         .from('admin_active_viewing')
-        .upsert({
-          admin_id: user.id,
+        .upsert({ 
+          admin_id: user.id, 
           client_id: id,
-        }, {
-          onConflict: 'admin_id'
-        });
+          started_at: new Date().toISOString() 
+        }, { onConflict: 'admin_id' });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      toast.success("Access Granted", {
-        id: toastId
+      // 🚀 2. SET COOKIES (Next.js Middleware ke liye zaruri)
+      // Iske bina Next.js aapko dashboard par enter nahi hone dega
+      document.cookie = `is_admin_viewing=true; path=/; max-age=3600`;
+      document.cookie = `viewing_client_id=${id}; path=/; max-age=3600`;
+
+      // 3. LocalStorage Flags
+      localStorage.setItem('viewing_client_id', id);
+      localStorage.setItem('is_admin_viewing', 'true');
+      localStorage.setItem('active_client_id', id);
+
+      // 4. Clear Zustand Cache
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
       });
 
-      // ✅ HARD REDIRECT
+      toast.success("Access Verified", { id: toastId });
+      
+      // 🚀 5. HARD REFRESH TO DASHBOARD
       window.location.href = '/dashboard';
 
     } catch (e: any) {
-      console.error("❌ Access Error:", e);
-
-      toast.error(e.message || "Failed to access dashboard", {
-        id: toastId
-      });
+      toast.error("Access Denied: " + e.message);
     }
-  };
+  }; 
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600"/></div>;
   if (!client) return <div className="p-10 text-center">Client Not Found</div>;
