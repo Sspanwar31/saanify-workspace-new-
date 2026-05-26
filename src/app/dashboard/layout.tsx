@@ -24,64 +24,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const performAuthSync = async () => {
       try {
-        setIsChecking(true);
-
-        // Step 1: Session Check
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          console.log("❌ No Session → /login");
-          router.replace('/login');
-          return;
-        }
+        if (!session) { router.replace('/login'); return; }
 
-        // Step 2: Impersonation Check
-        const { data: viewing } = await supabase
-          .from('admin_active_viewing')
-          .select('client_id')
-          .eq('admin_id', session.user.id)
-          .maybeSingle();
-
-        setIsImpersonating(!!viewing);
-
-        // Step 3: Fetch Profile
-        const { data: profile, error: profileError } = await supabase
-          .from('current_active_profile')
+        // 🚀 SEEDHA VIEW SE PROFILE LO (Not RPC)
+        const { data: profile, error } = await supabase
+          .from('current_active_profile') // ✅ View ka naam
           .select('*')
           .maybeSingle();
 
-        if (profileError) {
-          console.error("❌ Profile Fetch Error:", profileError);
-          router.replace('/login');
-          return;
-        }
+        console.log("✅ Current Context Profile:", profile?.society_name);
 
         if (!profile) {
-          console.warn("⚠️ No Profile found");
           router.replace('/login');
           return;
         }
 
-        // Step 4: Lock/Expired Check
-        if (profile.status === 'LOCKED' || profile.status === 'EXPIRED') {
-          router.replace('/login');
-          return;
-        }
-
-        // Step 5: Theme
-        if (profile.theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-
-        // Step 6: Update Store & State
+        // Store sync
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
-        console.log("✅ Auth Synced:", profile.society_name);
+        setIsImpersonating(!!localStorage.getItem('is_admin_viewing'));
 
       } catch (err) {
-        console.error("❌ Fatal Auth Error:", err);
-        router.replace('/login');
+        console.error(err);
       } finally {
         setIsChecking(false);
       }
