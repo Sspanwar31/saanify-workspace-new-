@@ -56,10 +56,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
         
+        // 🚀 THEME FIX: Instant Theme Apply
+        if (profile.theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+
         // Banner logic: Agar session ID aur profile ID alag hai toh Admin dekh raha hai
         setIsImpersonating(session.user.id !== profile.id);
 
-        console.log("🎉 SUCCESS: Dashboard Data Synced for", profile.society_name);
+        console.log("🎉 SUCCESS: Dashboard loaded for", profile.society_name);
         setIsChecking(false);
 
       } catch (err) {
@@ -153,12 +160,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } catch (err) {
       console.error(err);
     } finally {
-      // 🚀 Admin view se vapas aate waqt localStorage clean karein
+      // 🚀 THEME LEAK FIX: Remove dark mode forcefully
+      document.documentElement.classList.remove('dark');
+      
+      // 🚀 Clean up localStorage
       localStorage.removeItem('current_user');
       localStorage.removeItem('active_client_id');
-      router.replace('/admin/clients');
+      
+      // 🚀 FORCE RELOAD to Admin Panel (Don't use router.replace)
+      window.location.href = '/admin/clients';
     }
-  }, [router]);
+  }, []); // router dependency hatayi kyunki ab window.location use ho raha hai
 
   // ━━━ CLOSE MOBILE MENU ON ROUTE CHANGE ━━━
   useEffect(() => {
