@@ -22,61 +22,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); 
 
-  // 🚀 2. UPDATED AUTH EFFECT (As requested)
+  // 🚀 2. UPDATED AUTH EFFECT (Using .from instead of .rpc)
   useEffect(() => {
     const performAuthSync = async () => {
       try {
         setIsChecking(true);
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
+        // 🚀 1. SESSION CHECK
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
+          console.log("❌ No Session - Redirecting to Login");
           router.replace('/login');
           return;
         }
 
-        const { data: profile, error } = await supabase
-          .rpc('current_active_profile')
-          .single();
+        // 🚀 2. FETCH PROFILE FROM VIEW (Not RPC)
+        const { data: profile, error: profileError } = await supabase
+          .from('current_active_profile')
+          .select('*')
+          .maybeSingle();
 
-        console.log(profile);
-
-        if (error) {
-          console.error(error);
+        if (profileError) {
+          console.error("❌ Profile Fetch Error:", profileError);
           return;
         }
 
         if (!profile) {
-          console.warn("Profile temporarily missing");
+          console.warn("⚠️ No Profile found for this user context");
           return;
         }
 
-        useClientStore.setState({
-          currentUser: profile,
-          isLoggedIn: true,
-        });
-
+        // 🚀 3. UPDATE STORE & STATE
+        useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
-
-        // ✅ RESTORED NECESSARY LOGIC (Since "baki ka code same rahga" applies to UI functionality)
-        // Admin Impersonation Check
-        const authUser = session.user;
-        const activeClientId =
-          profile.role === 'treasurer'
-            ? profile.client_id
-            : profile.id;
-
+        
+        // Impersonation Check (Updated Logic)
         const { data: viewing } = await supabase
           .from('admin_active_viewing')
           .select('client_id')
-          .eq('admin_id', authUser.id)
-          .eq('client_id', activeClientId)
+          .eq('admin_id', session.user.id)
           .maybeSingle();
 
         setIsImpersonating(!!viewing);
 
+        // ✅ RESTORED NECESSARY LOGIC (Theme & Lock)
         console.log("✅ [LAYOUT DEBUG] User Logged In:", profile.society_name);
 
         // Theme Update
