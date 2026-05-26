@@ -152,25 +152,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ BACK TO ADMIN ━━━
   const handleBackToAdmin = useCallback(async () => {
+    const toastId = toast.loading("Exiting view mode...");
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // 1. DB Cleanup
         await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      // 🚀 THEME LEAK FIX: Remove dark mode forcefully
+
+      // 2. Global Cleanup
       document.documentElement.classList.remove('dark');
       
-      // 🚀 Clean up localStorage
-      localStorage.removeItem('current_user');
-      localStorage.removeItem('active_client_id');
+      // 🚀 Sabse zaruri: In 3 keys ko hatayein
+      localStorage.removeItem('is_admin_viewing');
+      localStorage.removeItem('viewing_client_id');
+      localStorage.removeItem('is_admin_impersonating');
       
-      // 🚀 FORCE RELOAD to Admin Panel (Don't use router.replace)
+      // 3. Clear Zustand Keys
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
+      });
+
+      toast.success("Welcome back Admin", { id: toastId });
+      
+      // 4. Force Reload to Admin List
+      window.location.href = '/admin/clients';
+
+    } catch (err) {
       window.location.href = '/admin/clients';
     }
-  }, []); // router dependency hatayi kyunki ab window.location use ho raha hai
+  }, []);
 
   // ━━━ CLOSE MOBILE MENU ON ROUTE CHANGE ━━━
   useEffect(() => {
