@@ -37,25 +37,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (pError) console.error("❌ View Error:", pError);
 
         if (!profile) {
-          // 🚀 FIX: Agar Admin viewing mode mein hai, toh profile null nahi honi chahiye
-          // Check kijiye ki kahin user logout toh nahi ho gaya
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-             router.replace('/login');
-             return;
-          }
-          // Agar session hai lekin profile null hai, toh thoda rukiye (Loading dikhayein)
-          console.warn("⚠️ Profile sync in progress...");
-          return; 
+          console.error("🚫 REDIRECT: Profile is NULL"); // Check 1
+          router.replace('/login');
+          return;
+        }
+
+        if (profile.status !== 'ACTIVE') { // Status check ko flexible banayein
+           console.error("🚫 REDIRECT: Account Status is:", profile.status); // Check 2
+           // router.push('/login'); // Isse testing ke liye 1 minute band karein
+           // return;
         }
 
         // Agar profile mil gayi, toh Dashboard khol dein
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
-        setIsChecking(false);
         
         // Admin viewing check
         setIsImpersonating(!!localStorage.getItem('is_admin_viewing'));
+
+        console.log("🎉 SUCCESS: Dashboard loaded for", profile.society_name);
+        setIsChecking(false);
 
       } catch (err) {
         console.error(err);
