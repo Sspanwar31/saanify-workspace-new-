@@ -1,71 +1,56 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-/**
- * Service client for server-side operations only
- * Uses SERVICE_ROLE_KEY for elevated privileges
- * NEVER expose this to client-side code
- */
-export function getServiceClient() {
-  const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// ✅ SERVER-SIDE SINGLETON logic
+const createAdminClient = () => {
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase service configuration')
+    throw new Error('Missing Supabase Service Role configuration');
   }
-
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
+      persistSession: false // 🛡️ Server par session persist nahi karna chahiye
     }
-  })
+  });
+};
+
+// Global cache for development (Hot reloading fix)
+declare global {
+  var cachedSupabaseAdmin: SupabaseClient | undefined;
+}
+
+// 🚀 Poore server par sirf ye ek instance use hoga
+export const supabaseAdmin = globalThis.cachedSupabaseAdmin ?? createAdminClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.cachedSupabaseAdmin = supabaseAdmin;
 }
 
 /**
- * Get service client with admin context for automation tasks
+ * Backward compatibility functions - Ab ye naya singleton return karenge
  */
+export function getServiceClient() {
+  return supabaseAdmin;
+}
+
 export function getAutomationClient() {
-  const client = getServiceClient()
-  
-  // Set service role context for elevated operations
-  return client
+  return supabaseAdmin;
 }
 
-/**
- * Export supabaseService as function for lazy initialization
- */
 export function supabaseService() {
-  return getServiceClient()
+  return supabaseAdmin;
 }
 
-/**
- * Class-based service for backward compatibility
- */
+// Class-based compatibility
 class SupabaseServiceClass {
-  private static instance: SupabaseServiceClass | null = null
-  private client: SupabaseClient | null = null
-
-  static getInstance(): SupabaseServiceClass {
-    if (!SupabaseServiceClass.instance) {
-      SupabaseServiceClass.instance = new SupabaseServiceClass()
-    }
-    return SupabaseServiceClass.instance
+  static getInstance() {
+    return new SupabaseServiceClass();
   }
-
-  async getClient(): Promise<SupabaseClient | null> {
-    if (!this.client) {
-      try {
-        this.client = getServiceClient()
-      } catch (error) {
-        console.error('Failed to create Supabase client:', error)
-        return null
-      }
-    }
-    return this.client
+  async getClient() {
+    return supabaseAdmin;
   }
 }
 
-/**
- * Default export for class-based usage
- */
-export default SupabaseServiceClass
+export default SupabaseServiceClass;
