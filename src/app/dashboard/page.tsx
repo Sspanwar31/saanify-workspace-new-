@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useClientStore } from '@/lib/client/store'; // ✅ Store use karein
@@ -32,67 +31,18 @@ export default function ClientDashboard() {
   const router = useRouter();
   const { formatCurrency } = useCurrency();
   
-  // ✅ 1. Store se user lo (Ye sabse stable tarika hai)
-  const { currentUser: user, resetStore } = useClientStore();
-  const [isImpersonating, setIsImpersonating] = useState(false);
+  // ✅ Zustand Store
+  const { currentUser: user } = useClientStore();
 
-  // ✅ 2. Shared Reports Logic
+  // 🚀 REDIRECT AUR IMPERSONATION CHECK YAHAN SE HATA DEIN
+  // Kyunki ye kaam DashboardLayout.tsx kar raha hai.
+
   const {
     loading,
     auditData,
     members,
     passbookEntries
   } = useReportLogic();
-
-  // ✅ 3. BACKEND REALTIME VERIFICATION (UPDATED)
-  useEffect(() => {
-    const checkImpersonation = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        // No session
-        if (!session?.user || !user) {
-          setIsImpersonating(false);
-          return;
-        }
-
-        // Direct client login me banner nahi dikhega
-        if (
-          user.role !== 'admin' &&
-          user.role !== 'super_admin'
-        ) {
-          setIsImpersonating(false);
-          return;
-        }
-
-        const activeClientId =
-          user.role === 'treasurer'
-            ? user.client_id
-            : user.id;
-
-        const { data, error } = await supabase
-          .from('admin_active_viewing')
-          .select('id')
-          .eq('admin_id', session.user.id)
-          .eq('client_id', activeClientId)
-          .maybeSingle();
-
-        if (error) {
-          console.error(error);
-          setIsImpersonating(false);
-          return;
-        }
-
-        setIsImpersonating(!!data);
-
-      } catch (err) {
-        console.error('Impersonation check failed:', err);
-        setIsImpersonating(false);
-      }
-    };
-
-    checkImpersonation();
-  }, [user]);
 
   // ✅ Dashboard Financials from Reports Logic
   const summary = auditData?.summary || {};
@@ -165,7 +115,6 @@ export default function ClientDashboard() {
     }
   ];
 
-  // ✅ UPDATED: handleLogout (Recommended Fix 2 & 3)
   const handleLogout = async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -189,8 +138,8 @@ export default function ClientDashboard() {
     window.location.href = '/login';
   };
 
-  // ✅ 4. LOADING STATE: Jab tak user store mein na aaye, wait karo
-  if (!user || loading) return (
+  // ✅ LOADING SCREEN: Jab tak data fetch na ho jaye
+  if (loading || !user) return (
     <div className="h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
       <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
       <p className="text-slate-500 mt-4 animate-pulse">Synchronizing Society Ledger...</p>
