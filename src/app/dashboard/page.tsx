@@ -44,12 +44,39 @@ export default function ClientDashboard() {
     passbookEntries
   } = useReportLogic();
 
-  // ✅ 3. REDIRECT HATAYA GAYA HAI
+  // ✅ 3. BACKEND REALTIME VERIFICATION
   useEffect(() => {
-    setIsImpersonating(
-      localStorage.getItem('is_admin_impersonating') === 'true'
-    );
-  }, []);
+    const checkImpersonation = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session?.user || !user) {
+          setIsImpersonating(false);
+          return;
+        }
+
+        const activeClientId =
+          user.role === 'treasurer'
+            ? user.client_id
+            : user.id;
+
+        const { data } = await supabase
+          .from('admin_active_viewing')
+          .select('client_id')
+          .eq('admin_id', session.user.id)
+          .eq('client_id', activeClientId)
+          .maybeSingle();
+
+        setIsImpersonating(!!data);
+
+      } catch (err) {
+        console.error('Impersonation check failed:', err);
+        setIsImpersonating(false);
+      }
+    };
+
+    checkImpersonation();
+  }, [user]);
 
   // ✅ Dashboard Financials from Reports Logic
   const summary = auditData?.summary || {};
