@@ -1,32 +1,38 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const getServiceKey = () => {
+  const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
+  const raw = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  let key = b64 || raw || '';
+  
+  if (!key) return '';
 
-// ✅ SERVER-SIDE SINGLETON logic
-const createAdminClient = () => {
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase Service Role configuration');
-  }
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false // 🛡️ Server par session persist nahi karna chahiye
+  // Agar key eyJ se shuru nahi ho rahi aur B64 hai, toh decode karein
+  if (!key.startsWith('eyJ')) {
+    try {
+      return Buffer.from(key, 'base64').toString('utf-8').trim();
+    } catch (e) {
+      return key;
     }
-  });
+  }
+  return key;
 };
 
-// Global cache for development (Hot reloading fix)
-declare global {
-  var cachedSupabaseAdmin: SupabaseClient | undefined;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const serviceKey = getServiceKey();
+
+if (!supabaseUrl || !serviceKey) {
+  console.error("❌ CRITICAL ERROR: Supabase URL or Service Key missing!");
 }
 
-// 🚀 Poore server par sirf ye ek instance use hoga
-export const supabaseAdmin = globalThis.cachedSupabaseAdmin ?? createAdminClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.cachedSupabaseAdmin = supabaseAdmin;
-}
+// ✅ SINGLETON ADMIN CLIENT
+export const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 /**
  * Backward compatibility functions - Ab ye naya singleton return karenge
