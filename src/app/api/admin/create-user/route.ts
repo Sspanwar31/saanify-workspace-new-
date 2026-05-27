@@ -1,107 +1,59 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+// ✅ 1. Master Admin Singleton import karein
+import { supabaseAdmin } from '@/lib/supabase-service'; 
 
-// ✅ IMPORTANT: Ye line jaruri hai kyunki hum 'Buffer' use kar rahe hain
-export const runtime = 'nodejs'; 
-
-// ✅ APKA BATAYA HUA WORKING LOGIC
-const getServiceRoleKey = () => {
-  const b64 = process.env.SUPABASE_SERVICE_ROLE_KEY_B64;
-  if (!b64) return null;
-  // B64 ko decode karke string banata hai aur extra space hatata hai
-  return Buffer.from(b64, 'base64').toString('utf-8').trim(); 
-};
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = getServiceRoleKey();
+    const body = await req.json();
+    const { email, password, name, role, status } = body;
 
-    // 1. Configuration Check
-    if (!supabaseUrl || !serviceKey) {
-      console.error("Server Config Error: Missing URL or B64 Key");
-      return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
+    // 🚀 2. VALIDATION (Website se aaye huye data ko check karein)
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email and Password are required" }, { status: 400 });
     }
 
-    // 2. Admin Client Init (RLS Bypass)
-    const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+    console.log(`🚀 Creating New Admin: ${email}`);
+
+    // 🚀 3. CREATE AUTH USER (Supabase Auth mein login banayein)
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email,
+      password: password,
+      email_confirm: true, // Direct confirm taaki turant login ho sake
+      user_metadata: { name: name, role: role }
     });
 
-    const { orderId } = await req.json();
-
-    if (!orderId) {
-      return NextResponse.json({ error: "Missing Order ID" }, { status: 400 });
+    if (authError) {
+      console.error("❌ Auth Creation Failed:", authError.message);
+      return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    console.log(`Processing Order Approval: ${orderId}`);
+    // 🚀 4. INSERT INTO ADMINS TABLE (Database mein entry karein)
+    const { error: dbError } = await supabaseAdmin
+      .from('admins')
+      .insert({
+        id: authUser.user.id, // Auth ki ID aur Table ki ID match honi chahiye
+        email: email,
+        name: name,
+        role: role || 'SUPPORT',
+        status: status || 'ACTIVE',
+        created_at: new Date().toISOString()
+      });
 
-    // 3. Get Order Details
-    const { data: order, error: fetchError } = await supabaseAdmin
-      .from('subscription_orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
-
-    if (fetchError || !order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    if (order.status === 'approved') {
-      return NextResponse.json({ message: "Already Approved" });
-    }
-
-    // 4. Update Status to Approved
-    const { error: updateError } = await supabaseAdmin
-      .from('subscription_orders')
-      .update({ status: 'approved' })
-      .eq('id', orderId);
-
-    if (updateError) {
-      console.error("Order Update Failed:", updateError);
-      throw new Error(updateError.message);
-    }
-
-    // 5. Activate Client Plan
-    // Plan duration fetch karein
-    const { data: planData } = await supabaseAdmin
-      .from('plans')
-      .select('duration_days')
-      .eq('name', order.plan_name)
-      .maybeSingle();
-
-    const duration = planData?.duration_days || 30; // Default 30 days
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(startDate.getDate() + duration);
-
-    // Client Table Update
-    const { error: clientError } = await supabaseAdmin
-      .from('clients')
-      .update({
-        plan_name: order.plan_name,
-        subscription_status: 'active',
-        plan_start_date: startDate.toISOString(),
-        plan_end_date: endDate.toISOString(),
-      })
-      .eq('id', order.client_id);
-
-    if (clientError) {
-      console.error("Client Update Warning:", clientError);
-      // Order approve ho gaya, client update fail hua to bhi success return karein
-      // taki UI par "Approved" dikhe, lekin log check kar sakein.
+    if (dbError) {
+      console.error("❌ Database Entry Failed:", dbError.message);
+      // Agar table mein fail ho jaye, toh auth user ko delete kar dena chahiye (optional cleanup)
+      return NextResponse.json({ error: "Auth created but DB entry failed: " + dbError.message }, { status: 500 });
     }
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Plan Activated Successfully' 
+      message: "Admin User Created Successfully! 🎉" 
     });
 
   } catch (error: any) {
-    console.error("Admin Approval Error:", error);
+    console.error("🔥 Global API Error:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
