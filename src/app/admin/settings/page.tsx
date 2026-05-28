@@ -90,8 +90,15 @@ export default function AdminSettings() {
     
     // Create New (Use Secure API)
     if (!editingId) {
+        // ✅ CHANGE: Get Session and Send Token
+        const { data: { session } } = await supabase.auth.getSession();
+
         const res = await fetch('/api/admin/create-user', {
             method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}` // ✅ Website bhi token bhejegi
+            },
             body: JSON.stringify(adminForm)
         });
         const data = await res.json();
