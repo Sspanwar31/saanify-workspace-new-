@@ -27,22 +27,25 @@ export default function ClientManagement() {
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', society_name: '', phone: '', plan: 'BASIC', status: 'ACTIVE' });
+  
+  // ✅ CHANGE 2: UI mein Tabs add karein
+  const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');
 
   useEffect(() => { fetchClients(); }, []);
 
+  // ✅ CHANGE 1: Fetch Logic Update (Remove is_deleted filter)
   const fetchClients = async () => {
+    // 🚀 Sabhi clients lo (chahe deleted hon ya nahi)
     const { data: clientData } = await supabase
       .from('clients')
       .select('*')
       .eq('role', 'client')
-      .eq('is_deleted', false) // ✅ ADD THIS
       .order('created_at', { ascending: false });
 
     const { data: staffData } = await supabase
       .from('clients')
       .select('*')
-      .eq('role', 'treasurer')
-      .eq('is_deleted', false); // ✅ ADD THIS
+      .eq('role', 'treasurer');
 
     if (clientData) setClients(clientData);
     if (staffData) setTreasurers(staffData);
@@ -111,27 +114,44 @@ export default function ClientManagement() {
     }
   };
 
-  // ✅ ACTION 3: DELETE CLIENT
-  const handleDelete = async (id: string) => {
-    if(!confirm("⚠️ DANGER: This will delete client and ALL their data! Continue?")) return;
+  // ✅ CHANGE 3: Deletion aur Restore Logic (3-Way Fix)
+  
+  // 🚀 A. Soft Delete (Move to Trash)
+  const handleSoftDelete = async (id: string) => {
+    if(!confirm("Move this society to Trash?")) return;
+    const { error } = await supabase
+      .from('clients')
+      .update({ is_deleted: true, status: 'DELETED' })
+      .eq('id', id);
     
-    toast.loading("Deleting Client...", { id: 'delete-client' });
+    if(!error) {
+      toast.success("Moved to Trash");
+      fetchClients();
+    }
+  };
+
+  // 🚀 B. Restore (Trash se wapas lana)
+  const handleRestore = async (id: string) => {
+    const { error } = await supabase
+      .from('clients')
+      .update({ is_deleted: false, status: 'ACTIVE' })
+      .eq('id', id);
     
-    // Try API for auth deletion + DB Cascade
-    const res = await fetch(`/api/admin/clients/${id}/delete`, { method: 'DELETE' });
+    if(!error) {
+      toast.success("Society Restored!");
+      fetchClients();
+    }
+  };
+
+  // 🚀 C. Permanent Delete (Trigger Auth Cleanup)
+  const handlePermanentDelete = async (id: string) => {
+    if(!confirm("⚠️ PERMANENT DELETE: This will erase everything including Auth login! Proceed?")) return;
     
-    if (res.ok) {
-        toast.success("Client & Auth Deleted", { id: 'delete-client' });
-        fetchClients();
-    } else {
-        // Fallback: Direct DB Update (is_deleted flag)
-        const { error } = await supabase.from('clients').update({ is_deleted: true, status: 'DELETED' }).eq('id', id);
-        if(!error) {
-            toast.success("Client marked as Deleted", { id: 'delete-client' });
-            fetchClients();
-        } else {
-            toast.error("Delete Failed", { id: 'delete-client' });
-        }
+    const { error } = await supabase.from('clients').delete().eq('id', id);
+    
+    if(!error) {
+      toast.success("Society erased forever");
+      fetchClients();
     }
   };
 
@@ -207,9 +227,9 @@ export default function ClientManagement() {
     }
   };
 
-  // ✅ Better: Extra safety filter
+  // ✅ CHANGE 4: Table Filter aur Action Menu Update
   const filteredClients = clients
-    .filter(c => !c.is_deleted) // ✅ safety layer
+    .filter(c => activeTab === 'trash' ? c.is_deleted : !c.is_deleted) // 👈 Tab base filter
     .filter(c => 
       c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
       c.society_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -227,6 +247,26 @@ export default function ClientManagement() {
             <div className="relative max-w-md"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input placeholder="Search clients..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/></div>
         </CardHeader>
         <CardContent className="p-0">
+            {/* ✅ CHANGE 2: UI Tabs */}
+            <div className="px-6 pt-4">
+                <div className="flex gap-2 mb-4 border-b pb-2">
+                <Button 
+                    variant={activeTab === 'active' ? 'default' : 'ghost'} 
+                    onClick={() => setActiveTab('active')}
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600"
+                >
+                    Active Societies
+                </Button>
+                <Button 
+                    variant={activeTab === 'trash' ? 'default' : 'ghost'} 
+                    onClick={() => setActiveTab('trash')}
+                    className="text-red-600"
+                >
+                    Trash / Deleted
+                </Button>
+                </div>
+            </div>
+
             <div className="rounded-md">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
@@ -263,14 +303,28 @@ export default function ClientManagement() {
                       <td className="p-4 text-right pr-6">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4"/></Button></DropdownMenuTrigger>
+                          {/* ✅ CHANGE 4: Updated Dropdown Menu */}
                           <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel>Manage Client</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/clients/${c.id}`)}><Eye className="mr-2 h-4 w-4 text-blue-500"/> View Profile</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openEditModal(c)}><Edit className="mr-2 h-4 w-4 text-slate-500"/> Edit Details</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleLockToggle(c)}>{c.status === 'LOCKED' ? <><Unlock className="mr-2 h-4 w-4 text-green-600"/> Unlock Account</> : <><Lock className="mr-2 h-4 w-4 text-orange-600"/> Lock Account</>}</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleMarkExpired(c.id)}><Calendar className="mr-2 h-4 w-4 text-slate-500"/> Mark Expired</DropdownMenuItem>
-                            <DropdownMenuSeparator/><DropdownMenuItem className="text-red-600" onClick={() => handleDelete(c.id)}><Trash2 className="mr-2 h-4 w-4"/> Delete Client</DropdownMenuItem>
+                            {activeTab === 'active' ? (
+                              // ACTIVE TAB OPTIONS
+                              <>
+                                <DropdownMenuLabel>Manage Client</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => router.push(`/admin/clients/${c.id}`)}><Eye className="mr-2 h-4 w-4"/> View Profile</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEditModal(c)}><Edit className="mr-2 h-4 w-4"/> Edit Details</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleLockToggle(c)}>{c.status === 'LOCKED' ? <><Unlock className="mr-2 h-4 w-4 text-green-600"/> Unlock Account</> : <><Lock className="mr-2 h-4 w-4 text-orange-600"/> Lock Account</>}</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleMarkExpired(c.id)}><Calendar className="mr-2 h-4 w-4"/> Mark Expired</DropdownMenuItem>
+                                <DropdownMenuSeparator/><DropdownMenuItem onClick={() => handleSoftDelete(c.id)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4"/> Move to Trash</DropdownMenuItem>
+                              </>
+                            ) : (
+                              // TRASH TAB OPTIONS
+                              <>
+                                <DropdownMenuLabel>Recovery Options</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleRestore(c.id)} className="text-green-600"><RefreshCw className="mr-2 h-4 w-4"/> Restore Society</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handlePermanentDelete(c.id)} className="bg-red-50 text-red-700 font-bold"><AlertTriangle className="mr-2 h-4 w-4"/> Erase Permanently</DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
