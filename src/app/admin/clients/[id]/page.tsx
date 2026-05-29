@@ -155,20 +155,25 @@ export default function ClientProfile() {
     }
   };
 
+  // ✅ 1. Soft Delete Fix (Move to Trash)
   const handleExpireClient = async () => {
-    if (!confirm('Are you sure you want to expire this account?')) return;
+    if (!confirm('Are you sure you want to move this society to Trash?')) return;
+    const toastId = toast.loading("Moving to trash...");
     try {
-      const res = await fetch(`/api/admin/clients/${id}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'EXPIRE' })
-      });
-      if (res.ok) {
-        toast.success('Account marked as EXPIRED');
-        await fetchClient();
-      }
+      const { error } = await supabase
+        .from('clients')
+        .update({ 
+          is_deleted: true,      // ✅ Trash flag
+          status: 'DELETED',     // ✅ Status sync
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Society moved to Trash', { id: toastId });
+      router.push('/admin/clients'); // Wapas list par bhej do
     } catch (e) {
-      toast.error('Failed to expire account');
+      toast.error('Failed to update status');
     }
   };
 
@@ -225,15 +230,24 @@ export default function ClientProfile() {
     }
   };
 
+  // ✅ 2. Permanent Delete Logic (Auth Sync ke liye)
   const handleDelete = async () => {
-      if(!confirm("⚠️ WARNING: This will permanently delete client, all members, and all financial data. This cannot be undone.\n\nAre you sure?")) return;
-      const res = await fetch(`/api/admin/clients/${id}/delete`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) {
-          toast.error("Delete Failed: " + (data.error || "Unknown error"));
-      } else {
-          toast.success("Client Deleted Successfully");
+      if(!confirm("⚠️ WARNING: This will permanently delete client and ALL Auth data. This cannot be undone.\n\nAre you sure?")) return;
+      const toastId = toast.loading("Erasing permanently...");
+      
+      try {
+          // Asli DELETE command taaki SQL Trigger chale aur Auth saaf ho jaye
+          const { error } = await supabase
+            .from('clients')
+            .delete()
+            .eq('id', id);
+
+          if (error) throw error;
+          
+          toast.success("Society & Auth Erased Forever", { id: toastId });
           router.push('/admin/clients');
+      } catch (err: any) {
+          toast.error("Delete Failed: " + err.message);
       }
   };
 
