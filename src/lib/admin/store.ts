@@ -21,6 +21,7 @@ interface AdminState {
   plans: any[];
   analyticsData: AnalyticsData | null;
   kpiData: KpiData | null;
+  overviewData: any; // ✅ ADDED: Naye SQL View data ke liye
 
   refreshDashboard: () => Promise<void>;
   getOverviewData: () => any; 
@@ -33,127 +34,49 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   plans: [],
   analyticsData: null,
   kpiData: null,
+  overviewData: null, // ✅ ADDED: Initial state
 
+  // ✅ UPDATED: refreshDashboard function (SQL View logic)
   refreshDashboard: async () => {
-    set({ isLoading: true, error: null });
-
+    set({ isLoading: true });
     try {
-      const { data: allClientsData, error: clientError } = await supabase
-        .from('clients')
+      // 🚀 ASLI FIX: Seedha hamare naye KPI View se data mangwayein
+      const { data: kpis } = await supabase
+        .from('admin_dashboard_kpis')
         .select('*')
-        .eq('role', 'client');
+        .single();
 
-      if (clientError) throw clientError;
-
-      const { data: plansData, error: planError } = await supabase
-        .from('plans')
-        .select('*');
-
-      if (planError) throw planError;
-
-      const allClients = allClientsData || [];
-      const plans = plansData || [];
-
-      const activeClients = allClients.filter(c => c.is_deleted !== true);
-      const deletedClients = allClients.filter(c => c.is_deleted === true);
-
-      // --- KPIs FOR ANALYTICS ---
-      let calculatedRevenue = 0;
-      activeClients.forEach(client => {
-        if (client.plan_id) {
-          const matchedPlan = plans.find((p: any) => p.id === client.plan_id);
-          if (matchedPlan && matchedPlan.price) {
-            calculatedRevenue += Number(matchedPlan.price);
+      if (kpis) {
+        set({
+          overviewData: {
+            kpi: {
+              totalClients: kpis.total_clients,
+              revenue: kpis.revenue_mtd,          // Card par MTD dikhayega
+              totalRevenue: kpis.revenue_lifetime, // Background mein total rakhega
+              activeTrials: kpis.active_trials,
+              systemHealth: 'Healthy'
+            },
+            alerts: [] // Baaki logic same
           }
-        }
-      });
-
-      const totalClientCount = allClients.length > 0 ? allClients.length : 1;
-      const churnPercentage = ((deletedClients.length / totalClientCount) * 100).toFixed(1);
-
-      const kpiData = {
-        totalRevenue: calculatedRevenue,
-        activeUsers: activeClients.length,
-        churnRate: churnPercentage
-      };
-
-      // --- CHARTS DATA FOR ANALYTICS ---
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const growthMap: Record<string, { active: number; total: number; revenue: number }> = {};
-      let runningTotal = 0;
-
-      const sortedClients = [...activeClients].sort((a, b) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
-
-      sortedClients.forEach(client => {
-        const date = new Date(client.created_at);
-        const monthName = months[date.getMonth()];
-        
-        let clientRev = 0;
-        if (client.plan_id) {
-           const p = plans.find(x => x.id === client.plan_id);
-           if(p) clientRev = Number(p.price || 0);
-        }
-
-        if (!growthMap[monthName]) {
-          growthMap[monthName] = { active: 0, total: runningTotal, revenue: 0 };
-        }
-        
-        growthMap[monthName].active += 1;
-        runningTotal += 1;
-        growthMap[monthName].total = runningTotal;
-        growthMap[monthName].revenue += clientRev;
-      });
-
-      const userGrowth = Object.keys(growthMap).map(key => ({
-        name: key,
-        active: growthMap[key].active,
-        total: growthMap[key].total
-      }));
-
-      const revenueTrend = Object.keys(growthMap).map(key => ({
-        name: key,
-        value: growthMap[key].revenue
-      }));
-
-      const planCounts: Record<string, number> = {};
-      activeClients.forEach(client => {
-        let planName = 'Trial / Free';
-        if (client.plan_id) {
-          const matchedPlan = plans.find((p: any) => p.id === client.plan_id);
-          if (matchedPlan && matchedPlan.name) planName = matchedPlan.name;
-        }
-        planCounts[planName] = (planCounts[planName] || 0) + 1;
-      });
-
-      const planDistribution = Object.keys(planCounts).map(key => ({
-        name: key,
-        value: planCounts[key]
-      }));
-
-      const clientStatus = [
-        { name: 'Active Users', value: activeClients.length },
-        { name: 'Deleted Users', value: deletedClients.length }
-      ];
-
-      set({ 
-        clients: activeClients, 
-        plans: plans,
-        kpiData: kpiData,
-        analyticsData: { revenueTrend, userGrowth, planDistribution, clientStatus },
-        isLoading: false 
-      });
-
-    } catch (error: any) {
-      console.error("Fetch Error:", error);
-      set({ error: error.message, isLoading: false });
+        });
+      }
+    } catch (err) {
+      console.error("Dashboard Sync Error:", err);
+    } finally {
+      set({ isLoading: false });
     }
   },
 
-  // ✅ RESTORED: THIS FIXES THE MAIN DASHBOARD CRASH
+  // ✅ UPDATED: Ab ye overviewData ko check karega agar naya data hai to use return karega
   getOverviewData: () => {
     const state = get();
+    
+    // Agar SQL view se data load ho chuka hai, to use wahi return karo
+    if (state.overviewData) {
+      return state.overviewData;
+    }
+
+    // Fallback: Agar data nahi hai to purane client-side calculation ka use kare
     const clients = state.clients || [];
     const plans = state.plans || [];
 
