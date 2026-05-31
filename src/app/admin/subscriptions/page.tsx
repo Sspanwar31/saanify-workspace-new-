@@ -31,6 +31,7 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieC
 export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [pendingInvoices, setPendingInvoices] = useState<any[]>([]); // ✅ ADDED: Pending state for new logic
   
   // Charts State
   const [revenueData, setRevenueData] = useState<any[]>([]);
@@ -49,24 +50,22 @@ export default function SubscriptionPage() {
       name: '', price: '', limit_members: '', features: '', color: 'border-gray-200'
   });
 
-  // --- 1. NEW SYNCED FETCH DATA ---
+  // --- 1. UPDATED FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 🚀 ASLI SOURCE OF TRUTH: Ledger View aur KPIs lo
-      const [reportRes, kpiRes, pendingRes, plansRes] = await Promise.all([
-        supabase.from('admin_revenue_full_report').select('*'),
-        supabase.from('admin_dashboard_kpis').select('*').single(),
-        supabase.from('subscription_orders').select('*').eq('status', 'pending'),
+      // 🚀 ASLI FIX: History Ledger se lo aur Pending seedha orders table se
+      const [reportRes, ordersRes, plansRes] = await Promise.all([
+        supabase.from('admin_revenue_full_report').select('*'), // Sirf Approved/Paid data
+        supabase.from('subscription_orders').select('*'),       // Saare Orders (Pending isme milega)
         supabase.from('plans').select('*')
       ]);
 
       const ledgerData = reportRes.data || [];
-      const kpis = kpiRes.data;
-      const pendingOrders = pendingRes.data || [];
+      const allOrders = ordersRes.data || [];
       setPlanConfig(plansRes.data || []);
 
-      // 1. Update Invoices Table (Seedha Ledger se)
+      // 🚀 1. History Table Logic (Approved only)
       setInvoices(ledgerData.map(item => ({
         ...item,
         client: item.client_name,
@@ -74,30 +73,33 @@ export default function SubscriptionPage() {
         adminEmail: item.admin_email,
         date: item.payment_date,
         p_type: item.payment_mode,
-        status: 'paid' // Ledger me sirf paid hi aate hain
+        status: 'paid' 
       })));
 
-      // 2. Update KPI Cards
+      // 🚀 2. Pending Logic (Directly from orders table)
+      // Isse aapka '6bc16893' wala basic plan ab dikhne lagega
+      const pendingList = allOrders.filter(o => o.status === 'pending').map(order => {
+         // Find client info for pending list
+         return {
+           ...order,
+           client: order.society_name || 'New Society',
+           adminName: order.name || 'Admin',
+           p_type: 'MANUAL'
+         }
+      });
+
+      // KPI Update
       setRevenueSummary({
-        total: kpis?.revenue_lifetime || 0, // Ab ye 100% accurate hai
+        total: ledgerData.reduce((sum, item) => sum + Number(item.amount), 0),
         success: ledgerData.length,
-        pending: pendingOrders.length
+        pending: pendingList.length // 👈 Correct count update
       });
 
-      // 3. Update Charts (Monthly Trend)
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const monthlyMap: any = {};
-      
-      ledgerData.forEach(item => {
-        const d = new Date(item.payment_date);
-        const m = monthNames[d.getMonth()];
-        monthlyMap[m] = (monthlyMap[m] || 0) + Number(item.amount);
-      });
+      // ✅ Store pending list in a temporary state to show in UI
+      setPendingInvoices(pendingList); 
 
-      setRevenueData(Object.keys(monthlyMap).map(m => ({ name: m, total: monthlyMap[m] })));
-
-    } catch (err) {
-      console.error("Sync Error:", err);
+    } catch (err: any) {
+      console.error("Fetch Error:", err);
     } finally {
       setLoading(false);
     }
@@ -264,7 +266,8 @@ export default function SubscriptionPage() {
       }
   };
 
-  const pendingInvoices = invoices.filter(inv => inv.status === 'pending');
+  // Removed: const pendingInvoices = invoices.filter(inv => inv.status === 'pending'); 
+  // Reason: Using state variable 'pendingInvoices' now.
   const historyInvoices = invoices.filter(inv => inv.status !== 'pending');
 
   if (loading) return <div className="p-20 flex justify-center flex-col items-center gap-4"><Loader2 className="animate-spin h-10 w-10 text-blue-600"/><p className="text-slate-500">Syncing Subscription Data...</p></div>;
@@ -340,9 +343,9 @@ export default function SubscriptionPage() {
                           <TableCell>
                              <div className="font-bold text-slate-800">{inv.client}</div>
                              <div className="text-xs text-slate-500 flex items-center gap-1"><User className="w-3 h-3"/> {inv.adminName}</div>
-                             <div className="text-xs text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3"/> {inv.adminEmail}</div>
+                             <div className="text-xs text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3"/> {inv.adminEmail || 'N/A'}</div>
                           </TableCell>
-                          <TableCell><Badge variant="outline">{inv.plan}</Badge></TableCell>
+                          <TableCell><Badge variant="outline">{inv.plan_name || inv.plan}</Badge></TableCell>
                           <TableCell className="font-bold">₹{inv.amount.toLocaleString()}</TableCell>
                           <TableCell>
                              <Badge variant="outline" className={inv.p_type === 'AUTO' ? "text-blue-600" : "text-orange-600"}>
@@ -509,7 +512,7 @@ export default function SubscriptionPage() {
                <div>
                    <p className="text-sm text-slate-500 font-mono mb-1">TXN: {viewProof?.transactionId || 'MANUAL-PAY'}</p>
                    <h3 className="text-2xl font-bold text-slate-800">₹{viewProof?.amount?.toLocaleString()}</h3>
-                   <Badge variant="outline" className="mt-2">{viewProof?.plan}</Badge>
+                   <Badge variant="outline" className="mt-2">{viewProof?.plan_name || viewProof?.plan}</Badge>
                </div>
                <div className="w-full bg-white p-4 rounded border border-slate-100 text-left text-sm space-y-2">
                   <div className="flex justify-between">
