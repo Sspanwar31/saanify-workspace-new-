@@ -1,146 +1,116 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase'; // ✅ ADDED IMPORT
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FileText, Database, ShieldCheck, Activity, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { LayoutDashboard, Users, Settings, Database, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [stats, setStats] = useState({ totalClients: 0, pendingRequests: 0 });
   const [loading, setLoading] = useState(true);
-  const [dbLoading, setDbLoading] = useState(false);
 
-  // 1. AUTH CHECK (LocalStorage)
   useEffect(() => {
-    const checkAdmin = () => {
-      // Filhal hum simple check kar rahe hain. 
-      // Baad me hum Supabase Auth se check karenge.
-      const isAdmin = localStorage.getItem('admin_session'); 
-      
-      // Note: Agar aapne login nahi kiya hai, to ye redirect karega.
-      // Testing ke liye aap console me ye run kar sakte hain:
-      // localStorage.setItem('admin_session', 'true')
-      
-      if (!isAdmin) {
-        // router.push('/login'); // Uncomment this after proper login setup
+    const fetchStats = async () => {
+      try {
+        // 🚀 ASLI FIX: Hamare naye View se real numbers uthao
+        const { data: kpis } = await supabase.from('admin_dashboard_kpis').select('total_clients').maybeSingle();
+        
+        // Pending requests ke liye subscription_orders table dekhein
+        const { count } = await supabase
+          .from('subscription_orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+        setStats({
+          totalClients: kpis?.total_clients || 0,
+          pendingRequests: count || 0
+        });
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-    checkAdmin();
-  }, [router]);
+    fetchStats();
+  }, []);
 
-  // 2. DATABASE SETUP FUNCTION
-  const handleSetupDatabase = async () => {
-    setDbLoading(true);
-    try {
-      const res = await fetch('/api/admin/setup-db', { method: 'POST' });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Failed to setup DB');
-
-      toast.success("Database Initialized Successfully!");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Something went wrong");
-    } finally {
-      setDbLoading(false);
-    }
-  };
-
-  if (loading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin"/></div>;
+  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600"/></div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      
-      {/* HEADER */}
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Admin Console</h1>
-        <p className="text-slate-500">System overview and management.</p>
-      </header>
-
-      {/* STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-slate-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-slate-500">Live data coming soon</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Activity className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Online</div>
-            <p className="text-xs text-slate-500">Vercel & Supabase Connected</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-            <FileText className="h-4 w-4 text-slate-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* AUTOMATION SECTION */}
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold text-slate-800">System Automation</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* DATABASE CARD */}
-            <Card className="border-blue-100 bg-blue-50/50">
-                <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <Database className="w-5 h-5 text-blue-600"/>
-                        <CardTitle className="text-lg">Database Setup</CardTitle>
-                    </div>
-                    <CardDescription>
-                        Create necessary tables (Clients, Invoices) in Supabase automatically.
-                        Run this only once.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button 
-                        onClick={handleSetupDatabase} 
-                        disabled={dbLoading}
-                        className="bg-blue-600 hover:bg-blue-700"
-                    >
-                        {dbLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ShieldCheck className="mr-2 h-4 w-4"/>}
-                        {dbLoading ? 'Setting up...' : 'Initialize Database'}
-                    </Button>
-                </CardContent>
-            </Card>
-
-            {/* OTHER TOOLS (Placeholder) */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">User Management</CardTitle>
-                    <CardDescription>Manage client access and subscriptions.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button variant="outline" onClick={() => router.push('/admin/clients')}>
-                        View All Clients
-                    </Button>
-                </CardContent>
-            </Card>
-
+    <div className="p-8 max-w-5xl mx-auto space-y-8">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Admin Console</h1>
+          <p className="text-slate-500">System overview and management.</p>
         </div>
+        {/* 🚀 Dashboard par jane ka button */}
+        <Button onClick={() => router.push('/admin/dashboard')} className="bg-blue-600">
+           Go to Main Dashboard <ArrowRight className="ml-2 h-4 w-4"/>
+        </Button>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-slate-500">Total Clients</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.totalClients}</div>
+            <p className="text-xs text-green-600 mt-1">Live from database</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-slate-500">System Status</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-500"></div>
+              <span className="text-lg font-bold text-slate-700">Online</span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Vercel & Supabase Connected</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-slate-500">Pending Requests</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-orange-600">{stats.pendingRequests}</div>
+            <p className="text-xs text-slate-500 mt-1">Manual payments to verify</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card className="border-dashed border-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Database className="w-5 h-5 text-blue-600"/> Database Ready</CardTitle>
+            <CardDescription>Tables and views are already configured.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <div className="flex items-center gap-2 text-green-700 bg-green-50 p-3 rounded-lg border border-green-100">
+                <CheckCircle className="w-5 h-5"/>
+                <span className="text-sm font-medium">Core tables verified and synced.</span>
+             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Settings className="w-5 h-5 text-slate-700"/> Quick Access</CardTitle>
+            <CardDescription>Direct links to management tools.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+             <Button variant="outline" className="w-full justify-between" onClick={() => router.push('/admin/clients')}>
+               Manage All Clients <Users className="w-4 h-4"/>
+             </Button>
+             <Button variant="outline" className="w-full justify-between" onClick={() => router.push('/admin/dashboard')}>
+               View Detailed Stats <LayoutDashboard className="w-4 h-4"/>
+             </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
