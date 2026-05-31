@@ -1,5 +1,7 @@
 'use client';
+
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase'; // ✅ ADDED IMPORT
 import { useAdminStore } from '@/lib/admin/store';
 import { useRouter } from 'next/navigation';
 import { 
@@ -17,6 +19,9 @@ export default function AdminDashboard() {
   // Store se values le rahe hain
   const { getOverviewData, activities, refreshDashboard, isLoading, error } = useAdminStore();
   const [isMounted, setIsMounted] = useState(false);
+  
+  // ✅ 1. NEW STATE: Admin Name ke liye
+  const [adminName, setAdminName] = useState('Admin');
 
   // Safe Data Object (Fallback values ke sath)
   const data = getOverviewData() || {
@@ -24,9 +29,25 @@ export default function AdminDashboard() {
     kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Unknown', totalRevenue: 0 }
   };
 
-  useEffect(() => { 
+  // ✅ 2. UPDATED EFFECT: Admin ka naam fetch karein
+  useEffect(() => {
+    const getAdminProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        // Admins table se naam lo
+        const { data } = await supabase
+          .from('admins')
+          .select('name')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (data?.name) setAdminName(data.name);
+      }
+    };
+    
     setIsMounted(true); 
     refreshDashboard();
+    getAdminProfile(); // 🚀 Naam load karo
   }, []);
 
   if (!isMounted) return <div className="p-8">Loading Command Center...</div>;
@@ -37,7 +58,10 @@ export default function AdminDashboard() {
       {/* 1. HEADER */}
       <div className="flex justify-between items-center">
         <div>
-           <h1 className="text-3xl font-bold text-slate-900">Welcome back, Admin 👋</h1>
+           {/* ✅ 3. UI HEADER UPDATE */}
+           <h1 className="text-3xl font-bold text-slate-900">
+             Welcome back, {adminName} 👋
+           </h1>
            <p className="text-gray-500">SaaS Command Center • {new Date().toLocaleDateString()}</p>
         </div>
         <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-full border border-green-200">
