@@ -69,7 +69,8 @@ export async function POST(req: Request) {
     });
 
     const body = await req.json();
-    const { name, email, password, society_name, phone, plan } = body;
+    // 🚀 Added 'amount' and 'plan_id' to destructuring
+    const { name, email, password, society_name, phone, plan, amount, plan_id } = body;
 
     // Validate Input
     if (!email || !password || !name) {
@@ -115,6 +116,15 @@ export async function POST(req: Request) {
 
     console.log("✅ Auth User Created. ID:", authData.user.id);
 
+    // 🚀 Plan Name Mapping
+    const planMapping: any = {
+      'TRIAL': 'Trial Plan',
+      'BASIC': 'Basic Plan',
+      'PRO': 'Professional Plan',
+      'ENTERPRISE': 'Enterprise Plan'
+    };
+    const formattedPlanName = planMapping[plan?.toUpperCase()] || 'Basic Plan';
+
     // 2. Insert into Clients Table
     console.log("⏳ Inserting into Database...");
     
@@ -126,15 +136,13 @@ export async function POST(req: Request) {
         email,
         society_name: society_name || '',
         phone: phone || '',
-        
-        // ✅ FIX IS HERE:
-        plan: plan || 'TRIAL',  // System Code (TRIAL)
-        plan_name: (plan === 'TRIAL' || !plan) ? 'Trial Plan' : plan, // Display Name (Trial Plan) - NOT 'Free'
-        
-        // ... (Baaki sab same rahega) ...
+        plan: plan || 'BASIC',
+        plan_name: formattedPlanName,
+        plan_id: plan_id || null,
         status: 'ACTIVE',
-        created_at: new Date().toISOString(),
-        role: 'client'
+        subscription_status: 'active',
+        role: 'client',
+        created_at: new Date().toISOString()
       }]); 
 
     if (dbError) {
@@ -151,6 +159,27 @@ export async function POST(req: Request) {
            headers: corsHeaders
          }
        );
+    }
+
+    // 🚀 3. ASLI ADDITION: Insert into Admin Revenue Ledger
+    // Jab Admin naya client banata hai, toh wo amount Ledger me record hona chahiye
+    console.log("⏳ Updating Admin Revenue Ledger...");
+    const { error: ledgerError } = await supabaseAdmin.from('admin_revenue_ledger').insert([{
+      client_id: authData.user.id,
+      client_name: society_name || name,
+      amount: Number(amount) || 0, // Admin dwara collect kiya gaya paisa
+      payment_mode: 'ADMIN_MANUAL',
+      plan_name: formattedPlanName,
+      source_table: 'admin_creation',
+      source_id: authData.user.id,
+      payment_date: new Date().toISOString()
+    }]);
+
+    if (ledgerError) {
+      console.error("⚠️ Ledger Entry Warning:", ledgerError.message);
+      // Note: Client ban gaya hai, sirf ledger fail hua hai, isliye block nahi karenge
+    } else {
+      console.log("✅ Ledger Entry Created.");
     }
 
     console.log("🎉 SUCCESS: Client Created!");
