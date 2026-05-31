@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
@@ -26,7 +27,13 @@ export default function ClientManagement() {
   const [selectedStaff, setSelectedStaff] = useState<any[]>([]); 
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', society_name: '', phone: '', plan: 'BASIC', status: 'ACTIVE' });
+  
+  // ✅ A. formData state mein amount add karein
+  const [formData, setFormData] = useState({ 
+    name: '', email: '', password: '', society_name: '', phone: '', 
+    plan: 'BASIC', status: 'ACTIVE', 
+    amount: '4000' // 🚀 Ye line add karein
+  });
   
   // ✅ CHANGE 2: UI mein Tabs add karein
   const [activeTab, setActiveTab] = useState<'active' | 'trash'>('active');
@@ -166,9 +173,14 @@ export default function ClientManagement() {
 
   // ... (Baaki code wahi rahega) ... 
 
+  // ✅ B. openAddModal mein default amount set karein
   const openAddModal = () => { 
       setEditingId(null); 
-      setFormData({ name: '', email: '', password: '', society_name: '', phone: '', plan: 'BASIC', status: 'ACTIVE' }); 
+      setFormData({ 
+        name: '', email: '', password: '', society_name: '', phone: '', 
+        plan: 'BASIC', status: 'ACTIVE', 
+        amount: '4000' // 🚀 Default Basic price
+      }); 
       setIsDialogOpen(true); 
   };
   
@@ -182,48 +194,42 @@ export default function ClientManagement() {
     setIsDialogOpen(true);
   };
 
-  // SAVE LOGIC
+  // ✅ 2. Edit Logic Fix (Crashes rokne ke liye)
   const handleSave = async () => {
-    if(!formData.email || !formData.name) return toast.error("Required fields missing");
+    if(!formData.email || !formData.name) return toast.error("Missing fields");
     setIsSaving(true);
 
     try {
-        if (editingId) {
-            const updates: any = { 
-                name: formData.name,
-                society_name: formData.society_name,
-                phone: formData.phone,
-                plan: formData.plan
-            };
-            const { error } = await supabase.from('clients').update(updates).eq('id', editingId);
-            if(error) throw error;
-            toast.success("Details Updated");
-        } else {
-            const res = await fetch('/api/admin/create-client', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: formData.name,
-                    email: formData.email,
-                    password: formData.password || '123456',
-                    society_name: formData.society_name,
-                    phone: formData.phone,
-                    plan: formData.plan 
-                })
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to create client");
-            
-            toast.success("Client Created Successfully! 🎉");
-        }
-        
-        setIsDialogOpen(false);
-        fetchClients();
+      if (editingId) {
+        // 🚀 EDIT LOGIC: Direct Database (No Ledger Entry)
+        const { error } = await supabase
+          .from('clients')
+          .update({ 
+            name: formData.name,
+            society_name: formData.society_name,
+            phone: formData.phone,
+            plan: formData.plan
+            // Note: Edit mein amount update nahi hoga, sirf profile update hogi
+          })
+          .eq('id', editingId);
+        if(error) throw error;
+        toast.success("Profile Updated");
+      } else {
+        // 🚀 CREATE LOGIC: Call API (Ledger Entry will happen here)
+        const res = await fetch('/api/admin/create-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData) // Isme ab 'amount' bhi jayega
+        });
+        if (!res.ok) throw new Error("Failed to create client");
+        toast.success("Client & Revenue Created!");
+      }
+      setIsDialogOpen(false);
+      fetchClients();
     } catch(e: any) {
-        toast.error(e.message);
+      toast.error(e.message);
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
@@ -232,7 +238,7 @@ export default function ClientManagement() {
     .filter(c => activeTab === 'trash' ? c.is_deleted : !c.is_deleted) // 👈 Tab base filter
     .filter(c => 
       c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      c.society_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      c.societyName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -349,7 +355,17 @@ export default function ClientManagement() {
                <div className="space-y-2"><Input placeholder={editingId ? "New Password (Leave empty to keep same)" : "Password"} type="password" value={formData.password} onChange={e=>setFormData({...formData, password:e.target.value})}/></div>
                <div className="grid grid-cols-2 gap-4">
                   <Input placeholder="Phone Number" value={formData.phone} onChange={e=>setFormData({...formData, phone:e.target.value})}/>
-                  <Select value={formData.plan} onValueChange={v=>setFormData({...formData, plan:v})}>
+                  {/* ✅ 3. Plan ke sath Amount Auto-fill (Better UX) */}
+                  <Select 
+                    value={formData.plan} 
+                    onValueChange={v => {
+                      let amt = '4000';
+                      if(v === 'TRIAL') amt = '0';
+                      if(v === 'PRO') amt = '7000';
+                      if(v === 'ENTERPRISE') amt = '10000';
+                      setFormData({...formData, plan: v, amount: amt}); // 🚀 Plan ke sath amount bhi badlega
+                    }}
+                  >
                      <SelectTrigger><SelectValue placeholder="Plan"/></SelectTrigger>
                      <SelectContent>
                         <SelectItem value="TRIAL">Free Trial (15 Days)</SelectItem>
@@ -358,6 +374,16 @@ export default function ClientManagement() {
                         <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
                      </SelectContent>
                   </Select>
+               </div>
+               {/* ✅ C. Dialog ke andar Amount ka Input field add karein */}
+               <div className="space-y-2">
+                  <Label>Amount Collected (₹)</Label>
+                  <Input 
+                    type="number" 
+                    value={formData.amount} 
+                    onChange={e => setFormData({...formData, amount: e.target.value})} 
+                    placeholder="0 for Free/Trial"
+                  />
                </div>
             </div>
             <DialogFooter><Button onClick={handleSave} disabled={isSaving} className="w-full bg-blue-600 hover:bg-blue-700">{isSaving ? <RefreshCw className="animate-spin mr-2 h-4 w-4" /> : (editingId ? 'Update Client' : 'Create Account')}</Button></DialogFooter>
