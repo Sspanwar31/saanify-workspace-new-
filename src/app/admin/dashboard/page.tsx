@@ -21,7 +21,7 @@ export default function AdminDashboard() {
   // Safe Data Object (Fallback values ke sath)
   const data = getOverviewData() || {
     alerts: [],
-    kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Unknown' }
+    kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Unknown', totalRevenue: 0 }
   };
 
   useEffect(() => { 
@@ -77,13 +77,22 @@ export default function AdminDashboard() {
            </CardContent>
         </Card>
         
+        {/* 🚀 UPDATED REVENUE CARD */}
         <Card className="border-t-4 border-t-emerald-500 shadow-sm">
            <CardContent className="p-6">
               <div className="flex justify-between items-start">
-                 <div><p className="text-xs font-bold text-slate-400 uppercase">Revenue (MTD)</p><h3 className="text-3xl font-bold text-slate-800 mt-1">₹{(data.kpi?.revenue || 0).toLocaleString()}</h3></div>
+                 <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Revenue (MTD)</p>
+                    <h3 className="text-3xl font-bold text-slate-800 mt-1">
+                      ₹{(data.kpi?.revenue || 0).toLocaleString()}
+                    </h3>
+                 </div>
                  <div className="p-2 bg-emerald-50 rounded-lg"><DollarSign className="h-6 w-6 text-emerald-600"/></div>
               </div>
-              <p className="text-xs text-green-600 mt-3 flex items-center font-medium"><TrendingUp className="h-3 w-3 mr-1"/> +12% growth</p>
+              {/* 🚀 Lifetime Revenue niche chote aksharon mein */}
+              <p className="text-[10px] text-slate-500 mt-3 font-medium">
+                LIFETIME: ₹{(data.kpi?.totalRevenue || 0).toLocaleString()}
+              </p>
            </CardContent>
         </Card>
 
