@@ -36,32 +36,34 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   kpiData: null,
   overviewData: null, // ✅ ADDED: Initial state
 
-  // ✅ UPDATED: refreshDashboard function (SQL View logic)
+  // ✅ UPDATED: refreshDashboard function (SQL View logic with .maybeSingle)
   refreshDashboard: async () => {
     set({ isLoading: true });
     try {
-      // 🚀 ASLI FIX: Seedha hamare naye KPI View se data mangwayein
-      const { data: kpis } = await supabase
+      // 🚀 ASLI FIX: Hamare naye SQL View se data lo
+      const { data: kpis, error } = await supabase
         .from('admin_dashboard_kpis')
         .select('*')
-        .single();
+        .maybeSingle();
+
+      if (error) throw error;
 
       if (kpis) {
         set({
           overviewData: {
             kpi: {
               totalClients: kpis.total_clients,
-              revenue: kpis.revenue_mtd,          // Card par MTD dikhayega
-              totalRevenue: kpis.revenue_lifetime, // Background mein total rakhega
+              revenue: kpis.revenue_mtd,          // Current Month
+              totalRevenue: kpis.revenue_lifetime, // Lifetime Total
               activeTrials: kpis.active_trials,
               systemHealth: 'Healthy'
             },
-            alerts: [] // Baaki logic same
+            alerts: [] 
           }
         });
       }
     } catch (err) {
-      console.error("Dashboard Sync Error:", err);
+      console.error("Dashboard Fetch Error:", err);
     } finally {
       set({ isLoading: false });
     }
