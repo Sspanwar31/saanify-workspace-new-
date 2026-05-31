@@ -29,12 +29,17 @@ export default function AdminDashboard() {
     kpi: { totalClients: 0, revenue: 0, activeTrials: 0, systemHealth: 'Unknown', totalRevenue: 0 }
   };
 
-  // ✅ 2. UPDATED EFFECT: Admin ka naam fetch karein
+  // ✅ UPDATED EFFECT: Clean aur Fast Loading Logic
   useEffect(() => {
-    const getAdminProfile = async () => {
+    const initDashboard = async () => {
+      setIsMounted(true); // UI ko turant dikha do
+      
+      // 🚀 1. Pehle Dashboard Data refresh karein
+      await refreshDashboard();
+
+      // 🚀 2. Phir Admin Profile lo
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
-        // Admins table se naam lo
         const { data } = await supabase
           .from('admins')
           .select('name')
@@ -45,9 +50,7 @@ export default function AdminDashboard() {
       }
     };
     
-    setIsMounted(true); 
-    refreshDashboard();
-    getAdminProfile(); // 🚀 Naam load karo
+    initDashboard();
   }, []);
 
   if (!isMounted) return <div className="p-8">Loading Command Center...</div>;
