@@ -31,7 +31,7 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieC
 export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [pendingInvoices, setPendingInvoices] = useState<any[]>([]); // ✅ ADDED: Pending state for new logic
+  const [pendingInvoices, setPendingInvoices] = useState<any[]>([]);
   
   // Charts State
   const [revenueData, setRevenueData] = useState<any[]>([]);
@@ -50,56 +50,78 @@ export default function SubscriptionPage() {
       name: '', price: '', limit_members: '', features: '', color: 'border-gray-200'
   });
 
-  // --- 1. UPDATED FETCH DATA ---
+  // --- 🚀 FINAL FIXED FETCH DATA (With Chart Fix) ---
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 🚀 ASLI FIX: History Ledger se lo aur Pending seedha orders table se
-      const [reportRes, ordersRes, plansRes] = await Promise.all([
-        supabase.from('admin_revenue_full_report').select('*'), // Sirf Approved/Paid data
-        supabase.from('subscription_orders').select('*'),       // Saare Orders (Pending isme milega)
-        supabase.from('plans').select('*')
+      const [reportRes, kpiRes, ordersRes, plansRes] = await Promise.all([
+        supabase.from('admin_revenue_full_report').select('*'),
+        supabase.from('admin_dashboard_kpis').select('*').single(),
+        supabase.from('subscription_orders').select('*'),
+        supabase.from('plans').select('*') // ✅ Added to keep Plans tab working
       ]);
 
       const ledgerData = reportRes.data || [];
-      const allOrders = ordersRes.data || [];
-      setPlanConfig(plansRes.data || []);
+      const kpis = kpiRes.data;
+      const allRawOrders = ordersRes.data || [];
+      setPlanConfig(plansRes.data || []); // ✅ Update plans state
 
-      // 🚀 1. History Table Logic (Approved only)
+      // 1. Pending List Calculate karein
+      const pendingList = allRawOrders.filter(o => o.status === 'pending').map(order => ({
+          ...order,
+          client: order.society_name || 'New Society',
+          adminName: order.name || 'Admin',
+          p_type: 'MANUAL'
+      }));
+
+      // 2. Set Stats (Values directly from current variables to avoid lag)
+      const totalRevenue = kpis?.revenue_lifetime || 0;
+      const totalSuccess = ledgerData.length;
+      const totalPending = pendingList.length;
+
+      setRevenueSummary({
+        total: totalRevenue,
+        success: totalSuccess,
+        pending: totalPending
+      });
+
+      // 🚀 3. BAR CHART FIX (Revenue Trend)
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthlyMap: any = {};
+      
+      ledgerData.forEach(item => {
+        const d = new Date(item.payment_date);
+        const mName = monthNames[d.getMonth()];
+        monthlyMap[mName] = (monthlyMap[mName] || 0) + Number(item.amount);
+      });
+
+      // Map it and ensure it shows at least Jan-Current month
+      const revChart = Object.keys(monthlyMap).map(m => ({ name: m, total: monthlyMap[m] }));
+      setRevenueData(revChart.length > 0 ? revChart : [{name: 'No Data', total: 0}]);
+
+      // 🚀 4. PIE CHART FIX (Distribution)
+      // Note: Hum direct variables use kar rahe hain na ki state
+      setPieData([
+         { name: 'Successful', value: totalSuccess, color: '#10B981' },
+         { name: 'Pending', value: totalPending, color: '#F59E0B' },
+         { name: 'Rejected', value: allRawOrders.filter(o => o.status === 'rejected').length, color: '#EF4444' }
+      ]);
+
+      // 5. Set History Table
       setInvoices(ledgerData.map(item => ({
         ...item,
         client: item.client_name,
         adminName: item.admin_name,
-        adminEmail: item.admin_email,
         date: item.payment_date,
         p_type: item.payment_mode,
         status: 'paid' 
       })));
+      
+      // ✅ Set Pending Invoices State (Required for UI)
+      setPendingInvoices(pendingList);
 
-      // 🚀 2. Pending Logic (Directly from orders table)
-      // Isse aapka '6bc16893' wala basic plan ab dikhne lagega
-      const pendingList = allOrders.filter(o => o.status === 'pending').map(order => {
-         // Find client info for pending list
-         return {
-           ...order,
-           client: order.society_name || 'New Society',
-           adminName: order.name || 'Admin',
-           p_type: 'MANUAL'
-         }
-      });
-
-      // KPI Update
-      setRevenueSummary({
-        total: ledgerData.reduce((sum, item) => sum + Number(item.amount), 0),
-        success: ledgerData.length,
-        pending: pendingList.length // 👈 Correct count update
-      });
-
-      // ✅ Store pending list in a temporary state to show in UI
-      setPendingInvoices(pendingList); 
-
-    } catch (err: any) {
-      console.error("Fetch Error:", err);
+    } catch (err) {
+      console.error("Chart Sync Error:", err);
     } finally {
       setLoading(false);
     }
@@ -266,8 +288,6 @@ export default function SubscriptionPage() {
       }
   };
 
-  // Removed: const pendingInvoices = invoices.filter(inv => inv.status === 'pending'); 
-  // Reason: Using state variable 'pendingInvoices' now.
   const historyInvoices = invoices.filter(inv => inv.status !== 'pending');
 
   if (loading) return <div className="p-20 flex justify-center flex-col items-center gap-4"><Loader2 className="animate-spin h-10 w-10 text-blue-600"/><p className="text-slate-500">Syncing Subscription Data...</p></div>;
