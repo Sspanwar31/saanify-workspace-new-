@@ -434,20 +434,16 @@ export default function SubscriptionPage() {
                  <Table>
                    <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Society / Admin</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Status</TableHead><TableHead>Proof</TableHead><TableHead className="text-right">Manage</TableHead></TableRow></TableHeader>
                    <TableBody>
+                     {/* 🚀 UPDATED HISTORY TABLE LOGIC */}
                      {historyInvoices.map((inv) => (
                        <TableRow key={inv.id}>
-                          <TableCell className="text-xs text-slate-500">{new Date(inv.date).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                             <div className="font-medium text-sm">{inv.client}</div>
-                             <div className="text-[10px] text-slate-400">{inv.adminName}</div>
-                          </TableCell>
-                          <TableCell><Badge variant="secondary" className="text-[10px]">{inv.plan}</Badge></TableCell>
-                          <TableCell className="font-mono text-sm">₹{inv.amount.toLocaleString()}</TableCell>
-                          <TableCell>
-                             <Badge variant="outline" className={inv.p_type === 'AUTO' ? "text-blue-600" : "text-orange-600"}>
-                                {inv.p_type}
-                             </Badge>
-                          </TableCell>
+                          <TableCell>{new Date(inv.date).toLocaleDateString()}</TableCell>
+                          <TableCell>{inv.client}</TableCell>
+                          <TableCell>{inv.plan_name}</TableCell>
+                          <TableCell>₹{inv.amount.toLocaleString()}</TableCell>
+                          <TableCell><Badge>{inv.p_type}</Badge></TableCell>
+                          
+                          {/* Baaki columns same (Status, Proof, Manage) */}
                           <TableCell>
                              <Badge className={inv.status === 'approved' || inv.status === 'paid' || inv.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
                                 {inv.status.toUpperCase()}
