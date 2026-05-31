@@ -49,117 +49,55 @@ export default function SubscriptionPage() {
       name: '', price: '', limit_members: '', features: '', color: 'border-gray-200'
   });
 
-  // --- 1. UPDATED FETCH DATA (SYNC MANUAL + AUTO) ---
+  // --- 1. NEW SYNCED FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 🚀 1. Saara data ek saath mangwayein
-      const [ordersRes, intentsRes, clientsRes, plansRes] = await Promise.all([
-        supabase.from('subscription_orders').select('*'),
-        supabase.from('payment_intents').select('*').eq('status', 'PAID'),
-        supabase.from('clients').select('*').eq('role', 'client').eq('is_deleted', false),
+      // 🚀 ASLI SOURCE OF TRUTH: Ledger View aur KPIs lo
+      const [reportRes, kpiRes, pendingRes, plansRes] = await Promise.all([
+        supabase.from('admin_revenue_full_report').select('*'),
+        supabase.from('admin_dashboard_kpis').select('*').single(),
+        supabase.from('subscription_orders').select('*').eq('status', 'pending'),
         supabase.from('plans').select('*')
       ]);
 
-      const manualOrders = ordersRes.data || [];
-      const autoOrders = intentsRes.data || [];
-      const activeClients = clientsRes.data || [];
-      const allPlans = plansRes.data || [];
-      setPlanConfig(allPlans);
+      const ledgerData = reportRes.data || [];
+      const kpis = kpiRes.data;
+      const pendingOrders = pendingRes.data || [];
+      setPlanConfig(plansRes.data || []);
 
-      // 🚀 2. REVENUE CALCULATION (Dashboard Sync Logic)
-      // Wahi formula jo Admin Store use kar raha hai
-      let dashboardStyleRevenue = 0;
-      activeClients.forEach(client => {
-        if (client.plan_id) {
-          const matchedPlan = allPlans.find(p => p.id === client.plan_id);
-          if (matchedPlan?.price) dashboardStyleRevenue += Number(matchedPlan.price);
-        }
-      });
+      // 1. Update Invoices Table (Seedha Ledger se)
+      setInvoices(ledgerData.map(item => ({
+        ...item,
+        client: item.client_name,
+        adminName: item.admin_name,
+        adminEmail: item.admin_email,
+        date: item.payment_date,
+        p_type: item.payment_mode,
+        status: 'paid' // Ledger me sirf paid hi aate hain
+      })));
 
-      // 🚀 3. SUCCESSFUL ORDERS COUNT (Auto + Manual)
-      const totalSuccessfulOrders = 
-        manualOrders.filter(o => o.status === 'approved' || o.status === 'paid').length + 
-        autoOrders.length;
-
-      const totalPendingActions = manualOrders.filter(o => o.status === 'pending').length;
-
-      // 🚀 4. PROCESS INVOICES FOR TABLE (Merge both)
-      // Note: Manual logic ko maintain kiya hai taaki client_id se mapping sahi ho
-      
-      const unifiedInvoices = [
-        ...manualOrders.map(o => ({ ...o, p_type: 'MANUAL' })),
-        ...autoOrders.map(o => ({
-          id: o.id,
-          client: activeClients.find(c => c.email === o.email)?.society_name || 'New Signup',
-          adminName: activeClients.find(c => c.email === o.email)?.name || 'User',
-          adminEmail: o.email,
-          plan: o.plan,
-          amount: o.amount,
-          status: 'paid',
-          date: o.created_at,
-          p_type: 'AUTO',
-          transaction_id: o.token,
-          screenshot_url: null // Auto payments usually don't have screenshots here
-        }))
-      ];
-
-      // Process detailed info for Manual orders (to match table columns)
-      const formattedInvoices = unifiedInvoices.map(order => {
-        // If manual, find client by ID
-        if(order.p_type === 'MANUAL') {
-           const requestUser = activeClients.find(c => c.id === order.client_id);
-           return {
-             ...order,
-             client: requestUser?.society_name || 'Unknown Society',
-             adminName: requestUser?.name || 'Unknown User',
-             adminEmail: requestUser?.email || order.email || 'N/A',
-             date: order.created_at,
-             transactionId: order.transaction_id || 'MANUAL-PAY',
-             screenshot_url: order.screenshot_url
-           };
-        }
-        // Auto orders are already formatted above
-        return order;
-      });
-
-      setInvoices(formattedInvoices.sort((a, b) => new Date(b.date || b.created_at).getTime() - new Date(a.date || a.created_at).getTime()));
-
-      // --- KPI Update ---
+      // 2. Update KPI Cards
       setRevenueSummary({
-        total: dashboardStyleRevenue, // Ab ye 31,000 dikhayega
-        success: totalSuccessfulOrders,
-        pending: totalPendingActions
+        total: kpis?.revenue_lifetime || 0, // Ab ye 100% accurate hai
+        success: ledgerData.length,
+        pending: pendingOrders.length
       });
 
-      // --- CHARTS UPDATE ---
-      // 1. Revenue Trend (Monthly) - Based on ALL invoices
-      const monthMap: any = {};
+      // 3. Update Charts (Monthly Trend)
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthlyMap: any = {};
       
-      formattedInvoices.forEach(order => {
-         const st = order.status.toLowerCase();
-         if(st === 'approved' || st === 'success' || st === 'paid') {
-             const d = new Date(order.date || order.created_at);
-             const mName = monthNames[d.getMonth()];
-             if(!monthMap[mName]) monthMap[mName] = 0;
-             monthMap[mName] += Number(order.amount);
-         }
+      ledgerData.forEach(item => {
+        const d = new Date(item.payment_date);
+        const m = monthNames[d.getMonth()];
+        monthlyMap[m] = (monthlyMap[m] || 0) + Number(item.amount);
       });
-      
-      const revChart = Object.keys(monthMap).map(key => ({ name: key, total: monthMap[key] }));
-      setRevenueData(revChart.length > 0 ? revChart : [{name: 'No Data', total: 0}]);
 
-      // 2. Pie Chart (Status)
-      setPieData([
-         { name: 'Successful', value: revenueSummary.success, color: '#10B981' },
-         { name: 'Pending', value: revenueSummary.pending, color: '#F59E0B' },
-         { name: 'Rejected', value: manualOrders.filter(o => o.status === 'rejected').length, color: '#EF4444' }
-      ]);
+      setRevenueData(Object.keys(monthlyMap).map(m => ({ name: m, total: monthlyMap[m] })));
 
-    } catch (err: any) {
-      console.error("Fetch Error:", err);
-      toast.error("Failed to load synchronized data");
+    } catch (err) {
+      console.error("Sync Error:", err);
     } finally {
       setLoading(false);
     }
