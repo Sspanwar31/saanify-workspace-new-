@@ -58,13 +58,12 @@ export default function AdminSettings() {
     }
   }, [admins, currentEmail]);
 
-  // FIX: Async handling corrected here
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/admin/settings');
       if (res.ok) {
-        const data = await res.json(); // Await here first
-        setFormData(prev => ({ ...prev, ...data })); // Then set state
+        const data = await res.json();
+        setFormData(prev => ({ ...prev, ...data }));
       }
     } catch(e) { console.error(e); }
   };
@@ -85,37 +84,40 @@ export default function AdminSettings() {
     finally { setSaving(false); }
   };
 
+  // ✅ UPDATED: handleSaveAdmin function
   const handleSaveAdmin = async () => {
     if (!adminForm.email || (!editingId && !adminForm.password)) return toast.error("Required fields missing");
     
-    // Create New (Use Secure API)
-    if (!editingId) {
-        // ✅ CHANGE: Get Session and Send Token
-        const { data: { session } } = await supabase.auth.getSession();
+    setIsSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // ✅ CREATE aur UPDATE dono ke liye API use karein
+      const endpoint = editingId ? '/api/admin/update-user' : '/api/admin/create-user';
+      
+      const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}` 
+          },
+          body: JSON.stringify({ 
+            ...adminForm, 
+            userId: editingId // Edit ke waqt ID bhejte hain
+          })
+      });
 
-        const res = await fetch('/api/admin/create-user', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session?.access_token}` // ✅ Website bhi token bhejegi
-            },
-            body: JSON.stringify(adminForm)
-        });
-        const data = await res.json();
-        if(!res.ok) { toast.error(data.error || "Failed"); return; }
-        toast.success("Secure Admin Created");
-    } else {
-        // Update Existing (Direct DB ok for updates)
-        const { error: err } = await supabase.from('admins').update({
-            name: adminForm.name, role: adminForm.role, status: adminForm.status,
-            ...(adminForm.password ? { password: adminForm.password } : {})
-        }).eq('id', editingId);
-        if(err) { toast.error(err.message); return; }
-        toast.success("Admin Updated");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Action failed");
+
+      toast.success(editingId ? "Admin & Password Updated" : "Secure Admin Created");
+      setIsAdminDialogOpen(false);
+      fetchAdmins();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsAdminDialogOpen(false);
-    fetchAdmins();
   };
 
   const openAddModal = () => {
@@ -140,7 +142,6 @@ export default function AdminSettings() {
   };
 
   const handleBackup = async () => {
-    // We don't check for token here anymore, we let the backend handle validation
     setBackupLoading(true);
     try {
       const res = await fetch('/api/admin/github-backup', { method: 'POST' });
