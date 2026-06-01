@@ -83,7 +83,16 @@ export default function AnalyticsPage() {
 
           <TabsContent value="overview" className="space-y-6">
              <div className="grid gap-4 md:grid-cols-3">
-                <Card className="bg-blue-50 border-blue-200"><CardContent className="p-6"><p className="text-blue-700 font-bold uppercase text-xs mb-2">Total Revenue (MRR)</p><div className="text-3xl font-bold text-blue-900">₹{safeKpi.totalRevenue.toLocaleString('en-IN')}</div><p className="text-xs text-blue-600 mt-1">Based on active plans</p></CardContent></Card>
+                {/* 🚀 Total Revenue Card Update */}
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-6">
+                    <p className="text-blue-700 font-bold uppercase text-xs mb-2">Total Revenue (Lifetime)</p>
+                    <div className="text-3xl font-bold text-blue-900">
+                      ₹{safeKpi.totalRevenue.toLocaleString('en-IN')}
+                    </div>
+                    <p className="text-xs text-blue-600 mt-1">Direct from Revenue Ledger</p>
+                  </CardContent>
+                </Card>
                 <Card className="bg-green-50 border-green-200"><CardContent className="p-6"><p className="text-green-700 font-bold uppercase text-xs mb-2">Active Users</p><div className="text-3xl font-bold text-green-900">{safeKpi.activeUsers}</div><p className="text-xs text-green-600 mt-1">Current total active</p></CardContent></Card>
                 <Card className="bg-purple-50 border-purple-200"><CardContent className="p-6"><p className="text-purple-700 font-bold uppercase text-xs mb-2">Churn Rate</p><div className="text-3xl font-bold text-purple-900">{safeKpi.churnRate}%</div><p className="text-xs text-purple-600 mt-1">Deleted vs Total Accounts</p></CardContent></Card>
              </div>
