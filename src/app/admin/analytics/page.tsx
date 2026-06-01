@@ -2,7 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-// useMemo ko import kiya
 import { useEffect, useMemo } from 'react';
 import { useAdminStore } from '@/lib/admin/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,32 +31,20 @@ export default function AnalyticsPage() {
     churnRate: '0.0',
   };
 
-  // --- ✅ NAYA LOGIC: Plan Distribution ko saaf karne ke liye ---
+  // --- ✅ UPDATE 1: normalizedPlanData Logic Fixed ---
   const normalizedPlanData = useMemo(() => {
-    if (!safeData.planDistribution || safeData.planDistribution.length === 0) return [];
+    if (!safeData.planDistribution) return [];
 
-    const planGroups = {
-      'TRIAL': 0,
-      'BASIC': 0,
-      'PROFESSIONAL': 0,
-      'ENTERPRISE': 0
-    };
+    const planGroups = { 'TRIAL': 0, 'BASIC': 0, 'PRO': 0, 'ENTERPRISE': 0 };
 
     safeData.planDistribution.forEach(item => {
       const name = (item.name || '').toUpperCase();
-      
-      if (name.includes('TRIAL') || name.includes('FREE')) {
-        planGroups['TRIAL'] += item.value;
-      } else if (name.includes('BASIC')) {
-        planGroups['BASIC'] += item.value;
-      } else if (name.includes('PRO')) {
-        planGroups['PROFESSIONAL'] += item.value;
-      } else if (name.includes('ENTERPRISE')) {
-        planGroups['ENTERPRISE'] += item.value;
-      }
+      if (name.includes('TRIAL')) planGroups['TRIAL'] += item.value;
+      else if (name.includes('BASIC')) planGroups['BASIC'] += item.value;
+      else if (name.includes('PRO')) planGroups['PRO'] += item.value;
+      else if (name.includes('ENTERPRISE')) planGroups['ENTERPRISE'] += item.value;
     });
 
-    // Sirf wahi return karein jisme value 0 se zyada ho
     return Object.entries(planGroups)
       .filter(([_, value]) => value > 0)
       .map(([name, value]) => ({ name, value }));
@@ -83,7 +70,6 @@ export default function AnalyticsPage() {
 
           <TabsContent value="overview" className="space-y-6">
              <div className="grid gap-4 md:grid-cols-3">
-                {/* 🚀 Total Revenue Card Update */}
                 <Card className="bg-blue-50 border-blue-200">
                   <CardContent className="p-6">
                     <p className="text-blue-700 font-bold uppercase text-xs mb-2">Total Revenue (Lifetime)</p>
@@ -119,11 +105,10 @@ export default function AnalyticsPage() {
              </CardContent></Card>
           </TabsContent>
 
-          {/* --- CHANGED START --- */}
           <TabsContent value="visualization" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
               
-              {/* 1. PLAN DISTRIBUTION (Improved Donut Chart) */}
+              {/* --- ✅ UPDATE 2: Improved Donut Chart --- */}
               <Card className="shadow-sm border-slate-200">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -134,31 +119,39 @@ export default function AnalyticsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={normalizedPlanData} // 👈 Naya normalized data yahan use karein
+                        data={normalizedPlanData}
                         cx="50%"
-                        cy="45%"
-                        innerRadius={70}  // Inner radius badhaya (Donut look)
-                        outerRadius={100}
-                        paddingAngle={5}   // Sections ke beech gap
+                        cy="50%" // 🚀 Center mein kiya
+                        innerRadius={65}
+                        outerRadius={90}
+                        paddingAngle={8} // 🚀 Segments ke beech gap badhaya
                         dataKey="value"
                         nameKey="name"
-                        label={({ name, value }) => `${name}: ${value}`} // Labels ko informative banaya
+                        label={false} // 🚀 Floating labels band kiye (Overlap fix)
                       >
-                        {/* Map function mein bhi normalizedPlanData use karein */}
                         {normalizedPlanData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={COLORS[index % COLORS.length]} 
+                            style={{ filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.1))' }} // 🚀 Shadow added
+                          />
                         ))}
                       </Pie>
                       <Tooltip 
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
                       />
-                      <Legend verticalAlign="bottom" height={36} />
+                      <Legend 
+                        verticalAlign="bottom" 
+                        align="center"
+                        iconType="circle"
+                        wrapperStyle={{ paddingTop: '20px' }} 
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
 
-              {/* 2. CLIENT STATUS OVERVIEW (Modern Horizontal Bar) */}
+              {/* --- ✅ UPDATE 3: Improved Client Status Bar Chart --- */}
               <Card className="shadow-sm border-slate-200">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold text-slate-800">Client Status Overview</CardTitle>
@@ -171,7 +164,7 @@ export default function AnalyticsPage() {
                       margin={{ left: 30, right: 30, top: 20, bottom: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                      <XAxis type="number" hide /> {/* X-Axis hide kiya clean look ke liye */}
+                      <XAxis type="number" hide />
                       <YAxis 
                         dataKey="name" 
                         type="category" 
@@ -184,11 +177,11 @@ export default function AnalyticsPage() {
                         cursor={{ fill: '#f8fafc' }}
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
                       />
+                      {/* Bar component updated with new props */}
                       <Bar 
                         dataKey="value" 
-                        barSize={40}  // Bar ko thoda mota kiya
-                        radius={[0, 10, 10, 0]} // Round edges
-                        label={{ position: 'right', fill: '#1e293b', fontWeight: 'bold' }} // Bar ke aage value dikhao
+                        barSize={35} 
+                        radius={[0, 20, 20, 0]} // 🚀 Bars ko aur round kiya
                       >
                         {(safeData.clientStatus || []).map((entry, index) => (
                           <Cell 
@@ -204,7 +197,6 @@ export default function AnalyticsPage() {
               
             </div>
           </TabsContent>
-          {/* --- CHANGED END --- */}
 
         </Tabs>
       )}
