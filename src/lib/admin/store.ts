@@ -36,34 +36,53 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   kpiData: null,
   overviewData: null, // ✅ ADDED: Initial state
 
-  // ✅ UPDATED: refreshDashboard function (SQL View logic with .maybeSingle)
+  // ✅ UPDATED: refreshDashboard function (Fetching KPIs, Trends & Distribution)
   refreshDashboard: async () => {
     set({ isLoading: true });
     try {
-      // 🚀 ASLI FIX: Hamare naye SQL View se data lo
-      const { data: kpis, error } = await supabase
-        .from('admin_dashboard_kpis')
-        .select('*')
-        .maybeSingle();
+      // 🚀 1. Fetch KPI Data
+      const { data: kpi } = await supabase.from('admin_dashboard_kpis').select('*').single();
+      
+      // 🚀 2. Fetch Trends Data (For Charts)
+      const { data: trends } = await supabase.from('admin_analytics_trends').select('*');
 
-      if (error) throw error;
+      // 🚀 3. Fetch Plan Distribution (For Donut Chart)
+      let planDistributionData: { name: string; value: number }[] = [];
+      
+      try {
+        // Try RPC first
+        const { data: rpcPlans } = await supabase.rpc('get_plan_distribution');
+        if (rpcPlans) planDistributionData = rpcPlans;
+      } catch (rpcError) {
+        console.log("RPC failed, using fallback logic", rpcError);
+        // Agar RPC nahi hai toh manual calculation
+        const { data: clientPlans } = await supabase.from('clients').select('plan');
+        if (clientPlans) {
+           const counts: Record<string, number> = {};
+           clientPlans.forEach((c: any) => {
+             if(c.plan) counts[c.plan] = (counts[c.plan] || 0) + 1;
+           });
+           planDistributionData = Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
+        }
+      }
 
-      if (kpis) {
+      if (kpi && trends) {
         set({
-          overviewData: {
-            kpi: {
-              totalClients: kpis.total_clients,
-              revenue: kpis.revenue_mtd,          // Current Month
-              totalRevenue: kpis.revenue_lifetime, // Lifetime Total
-              activeTrials: kpis.active_trials,
-              systemHealth: 'Healthy'
-            },
-            alerts: [] 
+          kpiData: {
+            totalRevenue: kpi.revenue_lifetime,
+            activeUsers: kpi.total_clients,
+            churnRate: '2.4', // Iska logic aap manually calculate kar sakte hain
+          },
+          analyticsData: {
+            revenueTrend: trends.map(t => ({ name: t.name, value: t.revenue })),
+            userGrowth: trends.map(t => ({ name: t.name, active: t.clients, total: kpi.total_clients })),
+            planDistribution: planDistributionData,
+            clientStatus: [] // Can be calculated if needed
           }
         });
       }
     } catch (err) {
-      console.error("Dashboard Fetch Error:", err);
+      console.error(err);
     } finally {
       set({ isLoading: false });
     }
