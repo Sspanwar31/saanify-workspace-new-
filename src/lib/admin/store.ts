@@ -36,7 +36,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   kpiData: null,
   overviewData: null,
 
-  // ✅ UPDATED: refreshDashboard function (Aapka naya logic yahan lagaya hai)
+  // ✅ UPDATED: refreshDashboard function
   refreshDashboard: async () => {
     set({ isLoading: true });
     try {
@@ -61,22 +61,32 @@ export const useAdminStore = create<AdminState>((set, get) => ({
               activeTrials: kpi.active_trials,
               systemHealth: 'Healthy'
             },
-            activities: [], // Earlier logic for activities
+            activities: [],
             alerts: []
           },
           kpiData: {
-            totalRevenue: kpi.revenue_lifetime,
-            activeUsers: kpi.total_clients,
-            churnRate: kpi.churn_rate?.toString() || '0.0', // ✅ Churn Rate Fixed
+            totalRevenue: Number(kpi.revenue_lifetime),
+            activeUsers: Number(kpi.total_clients),
+            churnRate: kpi.churn_rate?.toString() || '0.0',
           },
           analyticsData: {
-            // ✅ Trend data ko mapping sahi ki (Charts will now work)
-            revenueTrend: trends.map(t => ({ name: t.name, value: Number(t.revenue) })),
-            userGrowth: trends.map(t => ({ name: t.name, active: Number(t.clients), total: kpi.total_clients })),
-            planDistribution: plans.map(p => ({ name: p.name, value: Number(p.value) })), // ✅ Plan Chart Fixed
+            // ✅ EXACT MAPPING: Frontend keys (value, active, total) se match kiya
+            revenueTrend: trends.map(t => ({ 
+              name: t.name, 
+              value: Number(t.revenue) 
+            })),
+            userGrowth: trends.map(t => ({ 
+              name: t.name, 
+              active: Number(t.active), 
+              total: Number(t.total) 
+            })),
+            planDistribution: plans.map(p => ({ 
+              name: p.name, 
+              value: Number(p.value) 
+            })),
             clientStatus: [
-                { name: 'Active Users', value: kpi.total_clients },
-                { name: 'Trial Users', value: kpi.active_trials }
+                { name: 'Active', value: kpi.total_clients },
+                { name: 'Trial', value: kpi.active_trials }
             ]
           }
         });
