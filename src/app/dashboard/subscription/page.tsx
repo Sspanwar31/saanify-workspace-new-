@@ -126,7 +126,7 @@ export default function SubscriptionPage() {
             .limit(1);
           if (pendingData?.length) setPendingOrder(pendingData[0]);
 
-          // 🚀 3. SMART MATCHING: Pehle ID se, phir Code se
+          // 🚀 1. Pehle matchedPlan dhoondiye (Jo aapne pehle sahi kiya tha)
           const matchedPlan = mappedPlans.find(p => 
             p.id === client.plan_id || 
             p.code === (client.plan || '').toUpperCase()
@@ -136,9 +136,22 @@ export default function SubscriptionPage() {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            const endDate = new Date(client.plan_end_date || client.created_at);
+            // 🚀 2. ASLI FIX: Dynamic End Date Calculation
+            let endDate;
+            
+            if (client.plan_end_date) {
+              // Agar database mein date hai toh wahi use karo
+              endDate = new Date(client.plan_end_date);
+            } else {
+              // AGAR NULL HAI: created_at + plan table ke duration_days
+              endDate = new Date(client.created_at);
+              const daysToAdd = matchedPlan.durationDays || 15; // fallback to 15
+              endDate.setDate(endDate.getDate() + daysToAdd);
+            }
+            
             endDate.setHours(0, 0, 0, 0);
 
+            // Remaining days calculate karein
             const diffTime = endDate.getTime() - today.getTime();
             const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
             
@@ -148,10 +161,11 @@ export default function SubscriptionPage() {
               planName: matchedPlan.name,
               status: daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED',
               endStr: endDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-              daysRemaining: daysRemaining,
+              daysRemaining: daysRemaining, // 👈 Ab ye 15 ya 30 dikhayega
               limit: parseInt(matchedPlan.limit_members || '100'),
               usagePercent: (count || 0) / (parseInt(matchedPlan.limit_members || '100')) * 100
             });
+            
             setMemberCount(count || 0);
           } else {
             console.error("Plan Match Failed. Client Plan Code:", client.plan);
