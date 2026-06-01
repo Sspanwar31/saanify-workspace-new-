@@ -36,17 +36,25 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   kpiData: null,
   overviewData: null, // ✅ ADDED: Initial state
 
-  // ✅ UPDATED: refreshDashboard function (Fetching KPIs, Trends & Distribution)
+  // ✅ UPDATED: refreshDashboard function (SQL View logic + Overview Data)
   refreshDashboard: async () => {
     set({ isLoading: true });
     try {
-      // 🚀 1. Fetch KPI Data
-      const { data: kpi } = await supabase.from('admin_dashboard_kpis').select('*').single();
+      // 🚀 1. Fetch KPI Data (From SQL View)
+      const { data: kpi } = await supabase.from('admin_dashboard_kpis').select('*').maybeSingle();
       
       // 🚀 2. Fetch Trends Data (For Charts)
       const { data: trends } = await supabase.from('admin_analytics_trends').select('*');
 
-      // 🚀 3. Fetch Plan Distribution (For Donut Chart)
+      // 🚀 3. Fetch Recent Activities (For Dashboard "Live Pulse")
+      const { data: recentClients } = await supabase
+        .from('clients')
+        .select('name, society_name, created_at')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // 🚀 4. Fetch Plan Distribution (For Analytics Page Donut Chart)
       let planDistributionData: { name: string; value: number }[] = [];
       
       try {
@@ -66,23 +74,44 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         }
       }
 
-      if (kpi && trends) {
+      if (kpi) {
+        // 🔥 ASLI FIX: overviewData ko populate karein taaki Dashboard khali na dikhe
+        const overview = {
+          kpi: {
+            totalClients: kpi.total_clients,
+            revenue: kpi.revenue_mtd,           // Current Month
+            totalRevenue: kpi.revenue_lifetime,  // Lifetime
+            activeTrials: kpi.active_trials,
+            systemHealth: 'Healthy'
+          },
+          activities: (recentClients || []).map(c => ({
+            type: 'New Client Added',
+            client: c.society_name || c.name,
+            time: new Date(c.created_at!).toLocaleDateString()
+          })),
+          alerts: []
+        };
+
         set({
+          overviewData: overview, // ✅ Dashboard fixed
           kpiData: {
             totalRevenue: kpi.revenue_lifetime,
             activeUsers: kpi.total_clients,
-            churnRate: '2.4', // Iska logic aap manually calculate kar sakte hain
+            churnRate: '0.0',
           },
           analyticsData: {
-            revenueTrend: trends.map(t => ({ name: t.name, value: t.revenue })),
-            userGrowth: trends.map(t => ({ name: t.name, active: t.clients, total: kpi.total_clients })),
-            planDistribution: planDistributionData,
-            clientStatus: [] // Can be calculated if needed
+            revenueTrend: (trends || []).map(t => ({ name: t.name, value: t.revenue })),
+            userGrowth: (trends || []).map(t => ({ name: t.name, active: t.clients, total: kpi.total_clients })),
+            planDistribution: planDistributionData, // Merged logic for Analytics page
+            clientStatus: [
+                { name: 'Active', value: kpi.total_clients },
+                { name: 'Trial', value: kpi.active_trials }
+            ]
           }
         });
       }
     } catch (err) {
-      console.error(err);
+      console.error("Store Refresh Error:", err);
     } finally {
       set({ isLoading: false });
     }
