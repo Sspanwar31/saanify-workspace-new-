@@ -84,24 +84,22 @@ export default function AdminSettings() {
     finally { setSaving(false); }
   };
 
-  // ✅ UPDATED: handleSaveAdmin function (setSaving fixed + Secure API for Updates)
+  // ✅ FINAL FIX: handleSaveAdmin (Create aur Edit dono ke liye Nayi API use karein)
   const handleSaveAdmin = async () => {
-    // Validation
+    // 1. Basic Validation
     if (!adminForm.email || (!editingId && !adminForm.password)) {
       return toast.error("Required fields missing");
     }
     
-    // ✅ FIX 1: setSaving use karein (setIsSaving nahi)
     setSaving(true); 
 
     try {
+      // 2. Auth Token lein verification ke liye
       const { data: { session } } = await supabase.auth.getSession();
       
-      // ✅ FIX 2: Create aur Update dono ke liye Secure API call karein
-      // Direct table update se password kabhi change nahi hoga
-      const endpoint = editingId ? '/api/admin/update-user' : '/api/admin/create-user';
-      
-      const res = await fetch(endpoint, {
+      // 🚀 3. AB HUM SIRF EK HI SECURE API CALL KARENGE
+      // Yeh API naya user banayegi ya purane ka password reset karegi
+      const res = await fetch('/api/admin/update-user', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -109,20 +107,24 @@ export default function AdminSettings() {
           },
           body: JSON.stringify({ 
             ...adminForm, 
-            userId: editingId // Edit ke waqt ID bhejte hain
+            userId: editingId // Agar null hai toh Create hoga, ID hai toh Update/Reset Password hoga
           })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Action failed");
+      if (!res.ok) throw new Error(data.error || "Operation failed");
 
-      toast.success(editingId ? "Admin & Password Updated" : "Secure Admin Created");
+      // 4. Success UI Update
+      toast.success(editingId ? "Admin & Password Updated Successfully" : "New Admin Created Successfully");
       setIsAdminDialogOpen(false);
+      
+      // 5. Refresh the list
       fetchAdmins();
+
     } catch (e: any) {
+      console.error("Admin Management Error:", e.message);
       toast.error(e.message);
     } finally {
-      // ✅ FIX 3: setSaving(false)
       setSaving(false);
     }
   };
