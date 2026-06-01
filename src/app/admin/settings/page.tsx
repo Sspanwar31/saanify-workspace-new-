@@ -84,15 +84,21 @@ export default function AdminSettings() {
     finally { setSaving(false); }
   };
 
-  // ✅ UPDATED: handleSaveAdmin function
+  // ✅ UPDATED: handleSaveAdmin function (setSaving fixed + Secure API for Updates)
   const handleSaveAdmin = async () => {
-    if (!adminForm.email || (!editingId && !adminForm.password)) return toast.error("Required fields missing");
+    // Validation
+    if (!adminForm.email || (!editingId && !adminForm.password)) {
+      return toast.error("Required fields missing");
+    }
     
-    setIsSaving(true);
+    // ✅ FIX 1: setSaving use karein (setIsSaving nahi)
+    setSaving(true); 
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // ✅ CREATE aur UPDATE dono ke liye API use karein
+      // ✅ FIX 2: Create aur Update dono ke liye Secure API call karein
+      // Direct table update se password kabhi change nahi hoga
       const endpoint = editingId ? '/api/admin/update-user' : '/api/admin/create-user';
       
       const res = await fetch(endpoint, {
@@ -116,7 +122,8 @@ export default function AdminSettings() {
     } catch (e: any) {
       toast.error(e.message);
     } finally {
-      setIsSaving(false);
+      // ✅ FIX 3: setSaving(false)
+      setSaving(false);
     }
   };
 
