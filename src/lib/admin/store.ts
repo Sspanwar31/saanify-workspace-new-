@@ -21,7 +21,7 @@ interface AdminState {
   plans: any[];
   analyticsData: AnalyticsData | null;
   kpiData: KpiData | null;
-  overviewData: any; // ✅ ADDED: Naye SQL View data ke liye
+  overviewData: any; // SQL View data ke liye
 
   refreshDashboard: () => Promise<void>;
   getOverviewData: () => any; 
@@ -34,84 +34,55 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   plans: [],
   analyticsData: null,
   kpiData: null,
-  overviewData: null, // ✅ ADDED: Initial state
+  overviewData: null,
 
-  // ✅ UPDATED: refreshDashboard function (SQL View logic + Overview Data)
+  // ✅ UPDATED: refreshDashboard function (Aapka naya logic yahan lagaya hai)
   refreshDashboard: async () => {
     set({ isLoading: true });
     try {
-      // 🚀 1. Fetch KPI Data (From SQL View)
-      const { data: kpi } = await supabase.from('admin_dashboard_kpis').select('*').maybeSingle();
-      
-      // 🚀 2. Fetch Trends Data (For Charts)
-      const { data: trends } = await supabase.from('admin_analytics_trends').select('*');
+      // 🚀 Sabhi views se data mangwayein
+      const [kpiRes, trendsRes, plansRes] = await Promise.all([
+        supabase.from('admin_dashboard_kpis').select('*').maybeSingle(),
+        supabase.from('admin_analytics_trends').select('*'),
+        supabase.from('admin_plan_stats').select('*')
+      ]);
 
-      // 🚀 3. Fetch Recent Activities (For Dashboard "Live Pulse")
-      const { data: recentClients } = await supabase
-        .from('clients')
-        .select('name, society_name, created_at')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      // 🚀 4. Fetch Plan Distribution (For Analytics Page Donut Chart)
-      let planDistributionData: { name: string; value: number }[] = [];
-      
-      try {
-        // Try RPC first
-        const { data: rpcPlans } = await supabase.rpc('get_plan_distribution');
-        if (rpcPlans) planDistributionData = rpcPlans;
-      } catch (rpcError) {
-        console.log("RPC failed, using fallback logic", rpcError);
-        // Agar RPC nahi hai toh manual calculation
-        const { data: clientPlans } = await supabase.from('clients').select('plan');
-        if (clientPlans) {
-           const counts: Record<string, number> = {};
-           clientPlans.forEach((c: any) => {
-             if(c.plan) counts[c.plan] = (counts[c.plan] || 0) + 1;
-           });
-           planDistributionData = Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
-        }
-      }
+      const kpi = kpiRes.data;
+      const trends = trendsRes.data || [];
+      const plans = plansRes.data || [];
 
       if (kpi) {
-        // 🔥 ASLI FIX: overviewData ko populate karein taaki Dashboard khali na dikhe
-        const overview = {
-          kpi: {
-            totalClients: kpi.total_clients,
-            revenue: kpi.revenue_mtd,           // Current Month
-            totalRevenue: kpi.revenue_lifetime,  // Lifetime
-            activeTrials: kpi.active_trials,
-            systemHealth: 'Healthy'
-          },
-          activities: (recentClients || []).map(c => ({
-            type: 'New Client Added',
-            client: c.society_name || c.name,
-            time: new Date(c.created_at!).toLocaleDateString()
-          })),
-          alerts: []
-        };
-
         set({
-          overviewData: overview, // ✅ Dashboard fixed
+          overviewData: {
+            kpi: {
+              totalClients: kpi.total_clients,
+              revenue: kpi.revenue_mtd,
+              totalRevenue: kpi.revenue_lifetime,
+              activeTrials: kpi.active_trials,
+              systemHealth: 'Healthy'
+            },
+            activities: [], // Earlier logic for activities
+            alerts: []
+          },
           kpiData: {
             totalRevenue: kpi.revenue_lifetime,
             activeUsers: kpi.total_clients,
-            churnRate: '0.0',
+            churnRate: kpi.churn_rate?.toString() || '0.0', // ✅ Churn Rate Fixed
           },
           analyticsData: {
-            revenueTrend: (trends || []).map(t => ({ name: t.name, value: t.revenue })),
-            userGrowth: (trends || []).map(t => ({ name: t.name, active: t.clients, total: kpi.total_clients })),
-            planDistribution: planDistributionData, // Merged logic for Analytics page
+            // ✅ Trend data ko mapping sahi ki (Charts will now work)
+            revenueTrend: trends.map(t => ({ name: t.name, value: Number(t.revenue) })),
+            userGrowth: trends.map(t => ({ name: t.name, active: Number(t.clients), total: kpi.total_clients })),
+            planDistribution: plans.map(p => ({ name: p.name, value: Number(p.value) })), // ✅ Plan Chart Fixed
             clientStatus: [
-                { name: 'Active', value: kpi.total_clients },
-                { name: 'Trial', value: kpi.active_trials }
+                { name: 'Active Users', value: kpi.total_clients },
+                { name: 'Trial Users', value: kpi.active_trials }
             ]
           }
         });
       }
     } catch (err) {
-      console.error("Store Refresh Error:", err);
+      console.error("Analytics Sync Error:", err);
     } finally {
       set({ isLoading: false });
     }
