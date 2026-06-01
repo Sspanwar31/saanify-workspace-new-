@@ -75,58 +75,45 @@ export default function SubscriptionPage() {
       try {
         setLoading(true);
 
-        // ✅ STEP 1: LOCAL STORAGE SE ID NIKALO
         const userStr = localStorage.getItem('current_user');
-        
         if (!userStr) {
-            console.error("No user found in LocalStorage");
             setLoading(false);
             return;
         }
 
-        // Safety fallback added as per snippet
         const user = JSON.parse(userStr || '{}');
         const resolvedClientId = user.client_id ?? user.id;
-
-        if (!resolvedClientId) {
-            toast.error("Client ID missing in session");
-            setLoading(false);
-            return;
-        }
-
         setClientId(resolvedClientId);
 
-        // ✅ STEP 2: CLIENT DATA FETCH BY ID (Fresh Data from Backend)
-        const { data: client, error: clientError } = await supabase
+        // 1. Client Data Fetch
+        const { data: client } = await supabase
             .from('clients')
             .select('*')
             .eq('id', resolvedClientId)
             .single();
 
-        if (clientError) throw clientError;
-
-        // --- MOVED: FETCH ALL PLANS BEFORE CLIENT LOGIC ---
-        // Humein plans ki zaroorat client details calculate karne ke liye padegi
+        // 2. FETCH ALL PLANS (🚀 FIX: Price >= 0 kiya taaki Trial bhi aaye)
         const { data: dbPlans } = await supabase
           .from('plans')
           .select('*')
           .eq('active', true)
-          .gt('price', 0)
+          .gte('price', 0) // ✅ 0 se bada ya barabar (Trial included)
           .order('price', { ascending: true });
 
-        let mappedPlans = [];
+        let mappedPlans: any[] = [];
         if (dbPlans) {
           mappedPlans = dbPlans.map(p => ({
             id: p.id,
             name: p.name,
+            code: p.code, // Zaruri hai matching ke liye
             price: p.price,
             durationDays: p.duration_days || 30,
-            limit_members: p.limit_members, // ✅ Added limit_members for logic
+            limit_members: p.limit_members,
             features: Array.isArray(p.features) ? p.features : [],
             color: getPlanStyle(p.name, p.color),
             isPopular: p.name === 'Professional'
           }));
-          setPlans(mappedPlans);
+          setPlans(mappedPlans.filter(p => p.price > 0)); // UI me sirf paid dikhao
         }
 
         if (client) {
@@ -136,22 +123,16 @@ export default function SubscriptionPage() {
             .select('*')
             .eq('client_id', client.id)
             .eq('status', 'pending')
-            .order('created_at', { ascending: false })
             .limit(1);
+          if (pendingData?.length) setPendingOrder(pendingData[0]);
 
-          if (pendingData && pendingData.length > 0) {
-             setPendingOrder(pendingData[0]);
-          }
-
-          // ✅ ASLI FIX: Seedha Plans table se data lo
-          const matchedPlan = mappedPlans.find(p => p.id === client.plan_id);
+          // 🚀 3. SMART MATCHING: Pehle ID se, phir Code se
+          const matchedPlan = mappedPlans.find(p => 
+            p.id === client.plan_id || 
+            p.code === (client.plan || '').toUpperCase()
+          );
 
           if (matchedPlan) {
-            // 1. Plan table se aayi hui values use karein
-            const planDisplayName = matchedPlan.name;
-            const limit = matchedPlan.limit_members || 100;
-            const durationDays = matchedPlan.duration_days; // ✅ Database se aayega (15, 30, etc.)
-
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -162,28 +143,23 @@ export default function SubscriptionPage() {
             const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
             
             const { count } = await supabase.from('members').select('*', { count: 'exact', head: true }).eq('client_id', client.id);
-            const currentMemberCount = count || 0;
 
             setSubscription({
-              planName: planDisplayName,
+              planName: matchedPlan.name,
               status: daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED',
               endStr: endDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
               daysRemaining: daysRemaining,
-              limit: limit,
-              usagePercent: limit > 0 ? Math.min(100, (currentMemberCount / limit) * 100) : 0
+              limit: parseInt(matchedPlan.limit_members || '100'),
+              usagePercent: (count || 0) / (parseInt(matchedPlan.limit_members || '100')) * 100
             });
-            
-            setMemberCount(currentMemberCount);
+            setMemberCount(count || 0);
           } else {
-            // Agar plan match nahi hua toh fallback
+            console.error("Plan Match Failed. Client Plan Code:", client.plan);
             setSubscription(null);
-            toast.error("Subscription plan not found in config.");
           }
         }
-
       } catch (err: any) {
-        console.error("Error:", err);
-        toast.error("Failed to load subscription.");
+        console.error("Fetch Error:", err);
       } finally {
         setLoading(false);
       }
