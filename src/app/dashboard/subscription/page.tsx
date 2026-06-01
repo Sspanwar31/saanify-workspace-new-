@@ -105,6 +105,30 @@ export default function SubscriptionPage() {
 
         if (clientError) throw clientError;
 
+        // --- MOVED: FETCH ALL PLANS BEFORE CLIENT LOGIC ---
+        // Humein plans ki zaroorat client details calculate karne ke liye padegi
+        const { data: dbPlans } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('active', true)
+          .gt('price', 0)
+          .order('price', { ascending: true });
+
+        let mappedPlans = [];
+        if (dbPlans) {
+          mappedPlans = dbPlans.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            durationDays: p.duration_days || 30,
+            limit_members: p.limit_members, // ✅ Added limit_members for logic
+            features: Array.isArray(p.features) ? p.features : [],
+            color: getPlanStyle(p.name, p.color),
+            isPopular: p.name === 'Professional'
+          }));
+          setPlans(mappedPlans);
+        }
+
         if (client) {
           // --- PENDING ORDER CHECK ---
           const { data: pendingData } = await supabase
@@ -119,85 +143,42 @@ export default function SubscriptionPage() {
              setPendingOrder(pendingData[0]);
           }
 
-          // Backend se fetched fresh data use kar rahe hain
-          let planDisplayName = client.plan_name || client.plan || 'Basic';
-          let limit = 200; 
-          let durationDays = 30;
+          // ✅ ASLI FIX: Seedha Plans table se data lo
+          const matchedPlan = mappedPlans.find(p => p.id === client.plan_id);
 
-          const p = planDisplayName.toUpperCase();
-          const code = (client.plan || '').toUpperCase();
+          if (matchedPlan) {
+            // 1. Plan table se aayi hui values use karein
+            const planDisplayName = matchedPlan.name;
+            const limit = matchedPlan.limit_members || 100;
+            const durationDays = matchedPlan.duration_days; // ✅ Database se aayega (15, 30, etc.)
 
-          if (p.includes('ENTERPRISE') || code.includes('ENTERPRISE')) {
-            limit = 999999;
-            durationDays = 365;
-          } else if (p.includes('PRO') || p.includes('PROFESSIONAL') || code.includes('PRO')) {
-            limit = 2000;
-            durationDays = 30;
-          } else if (p.includes('TRIAL') || code.includes('TRIAL')) {
-            limit = 100;
-            durationDays = 7;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const endDate = new Date(client.plan_end_date || client.created_at);
+            endDate.setHours(0, 0, 0, 0);
+
+            const diffTime = endDate.getTime() - today.getTime();
+            const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+            
+            const { count } = await supabase.from('members').select('*', { count: 'exact', head: true }).eq('client_id', client.id);
+            const currentMemberCount = count || 0;
+
+            setSubscription({
+              planName: planDisplayName,
+              status: daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED',
+              endStr: endDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+              daysRemaining: daysRemaining,
+              limit: limit,
+              usagePercent: limit > 0 ? Math.min(100, (currentMemberCount / limit) * 100) : 0
+            });
+            
+            setMemberCount(currentMemberCount);
           } else {
-            limit = 200; 
-            durationDays = 30;
+            // Agar plan match nahi hua toh fallback
+            setSubscription(null);
+            toast.error("Subscription plan not found in config.");
           }
-
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          let endDate = new Date();
-          if (client.plan_end_date) {
-            endDate = new Date(client.plan_end_date);
-          } else if (client.subscription_expiry) {
-            endDate = new Date(client.subscription_expiry);
-          } else {
-             endDate = new Date(client.created_at || new Date());
-             endDate.setDate(endDate.getDate() + durationDays);
-          }
-          endDate.setHours(0, 0, 0, 0);
-
-          const diffTime = endDate.getTime() - today.getTime();
-          const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-          
-          const { count } = await supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('client_id', client.id);
-          
-          const currentMemberCount = count || 0;
-
-          setSubscription({
-            planName: planDisplayName,
-            status: daysRemaining > 0 ? 'ACTIVE' : 'EXPIRED',
-            endStr: endDate.toLocaleDateString('en-IN', {
-                day: '2-digit', month: 'short', year: 'numeric'
-            }),
-            daysRemaining: daysRemaining,
-            limit: limit,
-            usagePercent: limit > 0 ? Math.min(100, (currentMemberCount / limit) * 100) : 0
-          });
-          
-          setMemberCount(currentMemberCount);
-        }
-
-        // --- FETCH ALL PLANS ---
-        const { data: dbPlans } = await supabase
-          .from('plans')
-          .select('*')
-          .eq('active', true)
-          .gt('price', 0)
-          .order('price', { ascending: true });
-
-        if (dbPlans) {
-          const mappedPlans = dbPlans.map(p => ({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            durationDays: p.duration_days || 30,
-            features: Array.isArray(p.features) ? p.features : [],
-            color: getPlanStyle(p.name, p.color),
-            isPopular: p.name === 'Professional'
-          }));
-          setPlans(mappedPlans);
         }
 
       } catch (err: any) {
@@ -439,7 +420,6 @@ export default function SubscriptionPage() {
                               : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900'
                         }
                       `}
-                      // ✅ STEP 2: Sabse safe comparison (String wrapper)
                       disabled={
                         String(subscription?.planName || "").toLowerCase() === 
                         String(plan?.name || "").toLowerCase()
