@@ -3,32 +3,40 @@ import { supabaseAdmin } from '@/lib/supabase-service';
 
 export const runtime = 'nodejs';
 
-// ✅ 1. CORS Headers jo Flutter Web ko allow karenge
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // localhost aur web dono ke liye
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-// ✅ 2. Handle OPTIONS (Preflight)
+// 🛡️ Preflight request (CORS) handling
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+  return NextResponse.json({}, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
 }
 
 export async function POST(req: Request) {
+  // CORS Headers - Sabhi responses ke liye
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
   try {
-    // ✅ 3. Verify Admin Token (Strong Security)
+    // 🛡️ SECURITY LAYER 1: Token Verification
     const authHeader = req.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
-    // Yahan Supabase check karega ki token asli hai ya nahi
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized Session" }, { status: 401, headers: corsHeaders });
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
     }
 
-    // 🛡️ SECURITY LAYER 2: Admin Role Check (Existing Logic)
+    // Check if token is valid
+    const { data: { user }, error: userCheckError } = await supabaseAdmin.auth.getUser(token);
+    if (userCheckError || !user) {
+      return NextResponse.json({ error: "Invalid Session" }, { status: 401, headers: corsHeaders });
+    }
+
+    // 🛡️ SECURITY LAYER 2: Admin Role Check
     const { data: adminCheck } = await supabaseAdmin
       .from('admins')
       .select('role')
@@ -39,7 +47,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden: Admins only" }, { status: 403, headers: corsHeaders });
     }
 
-    // --- Baki ka logic (createUser aur DB insert) ---
+    // --- Original Logic (Start) ---
     const body = await req.json();
     const { email, password, name, role, status } = body;
 
@@ -48,16 +56,17 @@ export async function POST(req: Request) {
     }
 
     // 🚀 STEP 1: CREATE AUTH USER
-    const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       user_metadata: { name, role }
     });
 
-    if (createAuthError) {
-      console.error("Supabase Auth Error:", createAuthError.message);
-      return NextResponse.json({ error: createAuthError.message }, { status: 400, headers: corsHeaders });
+    if (authError) {
+      // Yahan asli wajah pata chalegi (e.g. Email rate limit or already registered)
+      console.error("Supabase Auth Error:", authError.message);
+      return NextResponse.json({ error: authError.message }, { status: 400, headers: corsHeaders });
     }
 
     // 🚀 STEP 2: INSERT INTO ADMINS TABLE
@@ -74,12 +83,11 @@ export async function POST(req: Request) {
     if (dbError) {
       return NextResponse.json({ error: "Auth Created but DB Failed: " + dbError.message }, { status: 500, headers: corsHeaders });
     }
-    
-    // ✅ Har return mein headers zarur jodein
+
     return NextResponse.json({ success: true }, { headers: corsHeaders });
 
   } catch (error: any) {
     console.error("Create User Crash:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
   }
-}
+} 
