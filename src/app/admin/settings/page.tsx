@@ -85,7 +85,14 @@ export default function AdminSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch('/api/admin/settings', { method: 'POST', body: JSON.stringify(formData) });
+      // ✅ FIX: Convert dates to ISO String before sending to API
+      const payload = {
+        ...formData,
+        maintenance_start: formData.maintenance_start ? new Date(formData.maintenance_start).toISOString() : '',
+        maintenance_end: formData.maintenance_end ? new Date(formData.maintenance_end).toISOString() : '',
+      };
+
+      await fetch('/api/admin/settings', { method: 'POST', body: JSON.stringify(payload) });
       toast.success("Settings Saved!");
       setIsGithubDialogOpen(false);
     } catch (e) { toast.error("Failed"); } 
