@@ -6,9 +6,24 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Loader2, X, Settings } from 'lucide-react'; // ✅ Added Settings import
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
+
+// ✅ Block Screen Component
+const MaintenanceScreen = ({ settings }: any) => (
+  <div className="fixed inset-0 z-[9999] bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
+    <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 animate-pulse">
+      <Settings className="w-12 h-12 text-red-500 animate-spin" />
+    </div>
+    <h1 className="text-4xl font-black mb-4">{settings.maintenance_title}</h1>
+    <p className="max-w-md text-slate-400 text-lg mb-8">{settings.maintenance_msg}</p>
+    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+      <p className="text-sm text-slate-500 uppercase font-bold mb-2">Service Resumes At</p>
+      <p className="text-2xl font-mono text-green-400">{new Date(settings.maintenance_end).toLocaleString()}</p>
+    </div>
+  </div>
+);
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -16,9 +31,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ STATES ━━━
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [sysSettings, setSysSettings] = useState<any>(null); // ✅ Added System Settings State
   const [isChecking, setIsChecking] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // ━━━ FETCH SYSTEM SETTINGS ━━━
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/admin/settings');
+        const data = await res.json();
+        setSysSettings(data);
+      } catch (e) {
+        console.error("Failed to fetch system settings", e);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   // ━━━ AUTH + PROFILE SYNC ━━━
   useEffect(() => {
@@ -201,6 +231,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ━━━ MAIN LAYOUT ━━━
   return (
     <>
+      {/* 1. Full Lockout Check */}
+      {sysSettings?.is_maintenance_mode && <MaintenanceScreen settings={sysSettings} />}
+
+      {/* 2. Upcoming Notice Banner */}
+      {sysSettings?.is_maintenance_scheduled && !sysSettings?.is_maintenance_mode && (
+        <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top duration-500 z-[1000] sticky top-0">
+          ⚠️ SCHEDULED MAINTENANCE: Our systems will be down from {new Date(sysSettings.maintenance_start).toLocaleString()} to {new Date(sysSettings.maintenance_end).toLocaleString()}
+        </div>
+      )}
+
       {/* ━━ IMPERSONATION BANNER ━━ */}
       {isImpersonating && (
         <div className="w-full bg-gradient-to-r from-purple-700 via-purple-800 to-indigo-800 text-white px-4 md:px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[1000]">
