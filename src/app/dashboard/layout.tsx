@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X, Settings } from 'lucide-react'; // ✅ Added Settings import
+import { ShieldCheck, ArrowLeft, Loader2, X, Settings } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 
@@ -237,7 +237,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* 2. Upcoming Notice Banner */}
       {sysSettings?.is_maintenance_scheduled && !sysSettings?.is_maintenance_mode && (
         <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top duration-500 z-[1000] sticky top-0">
-          ⚠️ SCHEDULED MAINTENANCE: Our systems will be down from {new Date(sysSettings.maintenance_start).toLocaleString()} to {new Date(sysSettings.maintenance_end).toLocaleString()}
+          <span>
+            ⚠️ SCHEDULED MAINTENANCE: Our systems will be down from {new Date(sysSettings.maintenance_start).toLocaleString()} to {new Date(sysSettings.maintenance_end).toLocaleString()}
+          </span>
         </div>
       )}
 
