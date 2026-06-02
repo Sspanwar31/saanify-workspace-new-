@@ -255,7 +255,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Logic: Agar maintenance ON hai LEKIN agar Admin dekh raha hai (isImpersonating), 
   // toh block mat karo taaki testing ho sake.
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
-  const shouldShowLockout = isMaintenanceActive && !isImpersonating;
+  const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
   return (
     <>
