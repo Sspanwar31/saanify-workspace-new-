@@ -36,9 +36,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // ━━━ FETCH SYSTEM SETTINGS ━━━
+  // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER (UPDATED) ━━━
   useEffect(() => {
-    const fetchSettings = async () => {
+    // Pehle initial fetch karein
+    const fetchInitialSettings = async () => {
       try {
         const res = await fetch('/api/admin/settings');
         const data = await res.json();
@@ -47,7 +48,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         console.error("Failed to fetch system settings", e);
       }
     };
-    fetchSettings();
+    fetchInitialSettings();
+
+    // Ab Realtime listen karein
+    const settingsChannel = supabase
+      .channel('public:system_settings')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE', // Jab bhi Admin save karega
+          schema: 'public',
+          table: 'system_settings',
+          filter: 'id=eq.1'
+        },
+        (payload) => {
+          console.log('🚀 REALTIME: System Settings Updated', payload.new);
+          setSysSettings(payload.new); // Bina refresh ke state update hogi
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(settingsChannel);
+    };
   }, []);
 
   // ━━━ AUTH + PROFILE SYNC ━━━
@@ -79,8 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         // 🚀 ASLI FIX: LocalStorage aur Store ko update karein
-        // Iske bina 'useReportLogic' hook ko naya client nahi dikhega
-        localStorage.setItem('current_user', JSON.stringify(profile)); // 👈 Zaruri line
+        localStorage.setItem('current_user', JSON.stringify(profile)); 
         localStorage.setItem('active_client_id', profile.id);
 
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
@@ -228,17 +250,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // ━━━ MAIN LAYOUT ━━━
+  // ━━━ 2. MAINTENANCE LOGIC WITH ADMIN BYPASS (UPDATED) ━━━
+  
+  // Logic: Agar maintenance ON hai LEKIN agar Admin dekh raha hai (isImpersonating), 
+  // toh block mat karo taaki testing ho sake.
+  const isMaintenanceActive = sysSettings?.is_maintenance_mode;
+  const shouldShowLockout = isMaintenanceActive && !isImpersonating;
+
   return (
     <>
-      {/* 1. Full Lockout Check */}
-      {sysSettings?.is_maintenance_mode && <MaintenanceScreen settings={sysSettings} />}
+      {/* 1. Full Lockout Check (Ab bypass ke saath) */}
+      {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
 
-      {/* 2. Upcoming Notice Banner */}
-      {sysSettings?.is_maintenance_scheduled && !sysSettings?.is_maintenance_mode && (
+      {/* 2. Upcoming Notice Banner (Sirf tab dikhao jab lockout na ho) */}
+      {sysSettings?.is_maintenance_scheduled && !isMaintenanceActive && (
         <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top duration-500 z-[1000] sticky top-0">
           <span>
-            ⚠️ SCHEDULED MAINTENANCE: Our systems will be down from {new Date(sysSettings.maintenance_start).toLocaleString()} to {new Date(sysSettings.maintenance_end).toLocaleString()}
+            ⚠️ SCHEDULED MAINTENANCE: {sysSettings.maintenance_title} ({new Date(sysSettings.maintenance_start).toLocaleString()} - {new Date(sysSettings.maintenance_end).toLocaleString()})
           </span>
         </div>
       )}
