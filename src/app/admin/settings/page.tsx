@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea'; // ✅ Imported for Maintenance Message
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
@@ -33,10 +34,17 @@ export default function AdminSettings() {
   // Forms
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adminForm, setAdminForm] = useState({ email: '', password: '', name: '', role: 'SUPPORT', status: 'ACTIVE' });
+  
+  // ✅ UPDATED: Initial State with Maintenance Fields
   const [formData, setFormData] = useState({
     github_username: '', github_repo: '', github_token: '', github_branch: 'main',
     is_maintenance_mode: false, trial_days: 15, max_users_basic: 25, max_users_pro: 100,
-    auto_renewal: true, email_notify: true
+    auto_renewal: true, email_notify: true,
+    maintenance_title: '🏦 Saanify Maintenance Mode',
+    maintenance_msg: "We're currently upgrading our systems to provide better performance.",
+    maintenance_start: '',
+    maintenance_end: '',
+    is_maintenance_scheduled: false,
   });
 
   // 1. INITIAL FETCH
@@ -313,6 +321,54 @@ export default function AdminSettings() {
               <Label className="text-sm text-red-700 font-bold">Maintenance</Label>
               <Switch disabled={isReadOnly} checked={formData.is_maintenance_mode} onCheckedChange={v => setFormData({...formData, is_maintenance_mode: v})}/>
            </div>
+        </CardContent>
+      </Card>
+
+      {/* ✅ NEW: MAINTENANCE CONTROL CENTER */}
+      <Card className="border-t-4 border-t-red-600">
+        <CardHeader>
+            <CardTitle className="text-red-700 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5"/> Maintenance Control Center
+            </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>Alert Title</Label>
+                    <Input disabled={isReadOnly} value={formData.maintenance_title} onChange={e => setFormData({...formData, maintenance_title: e.target.value})} />
+                </div>
+                <div className="space-y-2 flex flex-col justify-end">
+                    <Label>Schedule Notice (Show Banner)</Label>
+                    <div className="flex items-center space-x-2">
+                        <Switch disabled={isReadOnly} checked={formData.is_maintenance_scheduled} onCheckedChange={v => setFormData({...formData, is_maintenance_scheduled: v})} />
+                        <span className="text-xs text-gray-500">Enable banner on dashboard</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="space-y-2">
+                <Label>Maintenance Message</Label>
+                <Textarea disabled={isReadOnly} value={formData.maintenance_msg} onChange={e => setFormData({...formData, maintenance_msg: e.target.value})} rows={3} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>Start Date & Time</Label>
+                    <Input disabled={isReadOnly} type="datetime-local" value={formData.maintenance_start} onChange={e => setFormData({...formData, maintenance_start: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label>Expected End Date & Time</Label>
+                    <Input disabled={isReadOnly} type="datetime-local" value={formData.maintenance_end} onChange={e => setFormData({...formData, maintenance_end: e.target.value})} />
+                </div>
+            </div>
+
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                <p className="font-bold text-red-800">Go Live (Immediate Lockout)</p>
+                <p className="text-xs text-red-600">This will block all client access immediately.</p>
+                </div>
+                <Switch disabled={isReadOnly} checked={formData.is_maintenance_mode} onCheckedChange={v => setFormData({...formData, is_maintenance_mode: v})} />
+            </div>
         </CardContent>
       </Card>
 
