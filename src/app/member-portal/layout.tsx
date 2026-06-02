@@ -4,14 +4,63 @@ import MemberSidebar from '@/components/member/MemberSidebar';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Bell } from 'lucide-react';
+import { Loader2, Bell, Settings, AlertTriangle } from 'lucide-react'; // ✅ Settings aur AlertTriangle icons add kiye
 import { Toaster, toast } from 'sonner';
+
+// 1. Maintenance Screen Component (Same design as client)
+const MaintenanceScreen = ({ settings }: any) => (
+  <div className="fixed inset-0 z-[9999] bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
+    <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 animate-pulse">
+      <Settings className="w-12 h-12 text-red-500 animate-spin" />
+    </div>
+    <h1 className="text-4xl font-black mb-4">{settings.maintenance_title}</h1>
+    <p className="max-w-md text-slate-400 text-lg mb-8">{settings.maintenance_msg}</p>
+    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+      <p className="text-sm text-slate-500 uppercase font-bold mb-2">Service Resumes At</p>
+      <p className="text-2xl font-mono text-green-400">{new Date(settings.maintenance_end).toLocaleString()}</p>
+    </div>
+  </div>
+);
 
 export default function MemberLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [memberId, setMemberId] = useState<string | null>(null);
+  
+  // 🔥 NEW STATE: System Settings
+  const [sysSettings, setSysSettings] = useState<any>(null);
 
+  // ━━━ 1. FETCH SYSTEM SETTINGS & REALTIME LISTENER (NEW) ━━━
+  useEffect(() => {
+    // Initial Fetch
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/admin/settings');
+        const data = await res.json();
+        setSysSettings(data);
+      } catch (e) {
+        console.error("Failed to fetch settings", e);
+      }
+    };
+    fetchSettings();
+
+    // Realtime Listener for System Settings (Table: system_settings)
+    const settingsChannel = supabase
+      .channel('member-system-settings')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'system_settings', filter: 'id=eq.1' },
+        (payload) => {
+          console.log('🚀 MEMBER PANEL: Maintenance Update Received', payload.new);
+          setSysSettings(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(settingsChannel); };
+  }, []);
+
+  // ━━━ 2. AUTH CHECK & SECURITY (EXISTING LOGIC) ━━━
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -22,7 +71,6 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
       }
 
       // Fetch Member Profile & Role & Status
-      // ✅ Added 'status' to check if blocked
       const { data: member } = await supabase
         .from('members')
         .select('id, role, status') 
@@ -54,46 +102,35 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
     checkAuth();
   }, [router]);
 
-  // 🔥 NEW: Realtime Status & Notification Listener
+  // ━━━ 3. REALTIME STATUS & NOTIFICATION LISTENER (EXISTING LOGIC) ━━━
   useEffect(() => {
     if (!memberId) return;
 
     // Listen for Status Change (Live Block)
-    const statusChannel = supabase
-      .channel(`member_status_guard:${memberId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'members', filter: `id=eq.${memberId}` },
+    const statusChannel = supabase.channel(`member_status_guard:${memberId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'members', filter: `id=eq.${memberId}` },
         async (payload) => {
-            const newStatus = (payload.new.status || 'active').toLowerCase();
-            if (newStatus !== 'active') {
+            if ((payload.new.status || 'active').toLowerCase() !== 'active') {
                 toast.error("Account Blocked by Admin. Logging out...");
                 await supabase.auth.signOut();
                 router.replace('/login');
             }
-        }
-      )
-      .subscribe();
+        }).subscribe();
 
-    // Listen for Notifications (Existing Logic)
-    const notifChannel = supabase
-      .channel('global-notifications')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `member_id=eq.${memberId}` },
-        (payload) => {
-          toast(payload.new.title, {
-            description: payload.new.message,
-            icon: <Bell className="w-5 h-5 text-blue-500" />,
-            duration: 5000,
-          });
+    // Listen for Notifications
+    const notifChannel = supabase.channel('global-notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `member_id=eq.${memberId}` },
+        (payload) => { 
+          toast(payload.new.title, { 
+            description: payload.new.message, 
+            icon: <Bell className="w-5 h-5 text-blue-500" /> 
+          }); 
         }
-      )
-      .subscribe();
+      ).subscribe();
 
-    return () => {
-      supabase.removeChannel(statusChannel);
-      supabase.removeChannel(notifChannel);
+    return () => { 
+      supabase.removeChannel(statusChannel); 
+      supabase.removeChannel(notifChannel); 
     };
   }, [memberId, router]);
 
@@ -101,17 +138,33 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
     return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" /></div>;
   }
 
+  // ━━━ 4. RENDER LOGIC ━━━
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      <Toaster position="top-center" />
-      <div className="hidden md:block w-64 flex-shrink-0">
-         <MemberSidebar />
-      </div>
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen">
-        <div className="max-w-5xl mx-auto">
-            {children}
+    <>
+      {/* FULL LOCKOUT SCREEN: Agar Maintenance Mode ON hai */}
+      {sysSettings?.is_maintenance_mode && <MaintenanceScreen settings={sysSettings} />}
+
+      {/* TOP BANNER: Agar Scheduled hai lekin mode OFF hai */}
+      {sysSettings?.is_maintenance_scheduled && !sysSettings?.is_maintenance_mode && (
+        <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold z-[1000] sticky top-0 flex items-center justify-center gap-2">
+          <AlertTriangle className="w-3 h-3" />
+          <span>
+            MAINTENANCE NOTICE: {sysSettings.maintenance_title} (Expected: {new Date(sysSettings.maintenance_end).toLocaleString()})
+          </span>
         </div>
-      </main>
-    </div>
+      )}
+
+      <div className="min-h-screen bg-slate-50 flex">
+        <Toaster position="top-center" />
+        <div className="hidden md:block w-64 flex-shrink-0">
+           <MemberSidebar />
+        </div>
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen">
+          <div className="max-w-5xl mx-auto">
+              {children}
+          </div>
+        </main>
+      </div>
+    </>
   );
 }
