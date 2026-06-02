@@ -84,17 +84,19 @@ export async function POST(req: Request) {
     // 2. SECURITY: Encrypt token before saving
     tokenValue = encryptToken(tokenValue);
 
-
-    // 3. Direct SQL Upsert
+    // 3. Updated SQL Upsert (Added Maintenance Fields)
     const query = `
       INSERT INTO system_settings (
         id, 
         github_username, github_repo, github_token, github_branch,
         is_maintenance_mode, trial_days, max_users_basic, max_users_pro,
-        auto_renewal, email_notify, updated_at
+        auto_renewal, email_notify, updated_at,
+        maintenance_title, maintenance_msg, maintenance_start, 
+        maintenance_end, is_maintenance_scheduled
       )
       VALUES (
-        1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()
+        1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(),
+        $11, $12, $13, $14, $15
       )
       ON CONFLICT (id) DO UPDATE SET
         github_username = EXCLUDED.github_username,
@@ -107,21 +109,33 @@ export async function POST(req: Request) {
         max_users_pro = EXCLUDED.max_users_pro,
         auto_renewal = EXCLUDED.auto_renewal,
         email_notify = EXCLUDED.email_notify,
-        updated_at = NOW()
+        updated_at = NOW(),
+        maintenance_title = EXCLUDED.maintenance_title,
+        maintenance_msg = EXCLUDED.maintenance_msg,
+        maintenance_start = EXCLUDED.maintenance_start,
+        maintenance_end = EXCLUDED.maintenance_end,
+        is_maintenance_scheduled = EXCLUDED.is_maintenance_scheduled
       RETURNING *;
     `;
 
+    // 4. Map values from frontend body to SQL parameters
     const values = [
       body.github_username || null,
       body.github_repo || null,
-      tokenValue || null, // Encrypted token is saved here
+      tokenValue || null,
       body.github_branch || 'main',
-      body.is_maintenance_mode || false,
-      body.trial_days || 15,
-      body.max_users_basic || 25,
-      body.max_users_pro || 100,
+      body.is_maintenance_mode ?? false,
+      body.trial_days || 10,
+      body.max_users_basic || 200,
+      body.max_users_pro || 500,
       body.auto_renewal ?? true,
-      body.email_notify ?? true
+      body.email_notify ?? true,
+      // Naye fields yahan se hain:
+      body.maintenance_title || 'Saanify Maintenance Mode',
+      body.maintenance_msg || 'We are currently upgrading our systems...',
+      body.maintenance_start || null,
+      body.maintenance_end || null,
+      body.is_maintenance_scheduled ?? false
     ];
 
     await client.query(query, values);
