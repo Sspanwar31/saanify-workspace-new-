@@ -52,12 +52,16 @@ export default function AdminSettings() {
     title: '', message: '', image_url: '', type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: ''
   });
 
+  // ✅ NEW: Broadcast List State
+  const [activeBroadcasts, setActiveBroadcasts] = useState<any[]>([]);
+
   // 1. INITIAL FETCH
   useEffect(() => {
     const init = async () => {
       const email = localStorage.getItem('admin_email');
       if (email) setCurrentEmail(email);
-      await Promise.all([fetchSettings(), fetchAdmins()]);
+      // ✅ Added fetchBroadcasts to initial load
+      await Promise.all([fetchSettings(), fetchAdmins(), fetchBroadcasts()]);
       setLoading(false);
     };
     init();
@@ -84,6 +88,12 @@ export default function AdminSettings() {
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at');
     if (data) setAdmins(data);
+  };
+
+  // ✅ NEW: Fetch Broadcasts List
+  const fetchBroadcasts = async () => {
+    const { data } = await supabase.from('broadcasts').select('*').order('created_at', { ascending: false }).limit(5);
+    if (data) setActiveBroadcasts(data);
   };
 
   // 2. ACTIONS
@@ -115,6 +125,16 @@ export default function AdminSettings() {
     else {
       toast.success("Broadcast Published Live!");
       setBroadcastForm({ title: '', message: '', image_url: '', type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '' });
+      fetchBroadcasts(); // ✅ Refresh list after publishing
+    }
+  };
+
+  // ✅ NEW: Toggle Broadcast Status
+  const toggleBroadcast = async (id: string, currentStatus: boolean) => {
+    const { error } = await supabase.from('broadcasts').update({ is_active: !currentStatus }).eq('id', id);
+    if (!error) {
+      toast.success("Status Updated");
+      fetchBroadcasts(); // Refresh list
     }
   };
 
@@ -468,6 +488,45 @@ export default function AdminSettings() {
                 </Button>
             </div>
           </div>
+
+          {/* ✅ NEW: MANAGE RECENT BROADCASTS LIST */}
+          {!isReadOnly && (
+             <div className="mt-8 space-y-4 pt-6 border-t border-slate-100">
+                <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4"/> Manage Recent Broadcasts
+                </h4>
+                <div className="grid gap-3">
+                  {activeBroadcasts.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between p-3 border rounded-xl bg-slate-50/50">
+                      <div className="flex items-center gap-3">
+                        <Badge variant={b.is_active ? "default" : "secondary"}>
+                          {b.is_active ? 'LIVE' : 'OFF'}
+                        </Badge>
+                        <div>
+                          <p className="text-sm font-bold">{b.title}</p>
+                          <p className="text-[10px] text-slate-500">{b.type} • Ends: {b.ends_at ? new Date(b.ends_at).toLocaleDateString() : 'No Limit'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Switch 
+                          checked={b.is_active} 
+                          onCheckedChange={() => toggleBroadcast(b.id, b.is_active)}
+                        />
+                        <Button variant="ghost" size="icon" onClick={async () => {
+                           if(confirm("Delete this broadcast?")) {
+                              await supabase.from('broadcasts').delete().eq('id', b.id);
+                              fetchBroadcasts();
+                           }
+                        }} className="h-8 w-8 text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4"/></Button>
+                      </div>
+                    </div>
+                  ))}
+                  {activeBroadcasts.length === 0 && (
+                    <div className="text-center py-4 text-xs text-slate-400">No broadcasts created yet.</div>
+                  )}
+                </div>
+             </div>
+          )}
         </CardContent>
       </Card>
 
