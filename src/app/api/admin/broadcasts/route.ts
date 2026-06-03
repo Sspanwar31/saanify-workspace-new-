@@ -15,7 +15,6 @@ export async function GET() {
     client = await getDbClient();
     if (!client) return NextResponse.json([]);
     
-    // 3. GET Query Replace
     const result = await client.query(`
       SELECT *
       FROM broadcasts
@@ -34,10 +33,13 @@ export async function POST(req: Request) {
   let client;
   try {
     const body = await req.json();
+    
+    // Step 1: Log Body
+    console.log("BODY =", body);
+    
     client = await getDbClient();
     if (!client) return NextResponse.json({ error: "DB Error" }, { status: 500 });
 
-    // 1. POST Query Replace
     const query = `
       INSERT INTO broadcasts (
         title,
@@ -72,7 +74,6 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
 
-    // 2. POST Values Replace
     const values = [
       body.title,
       body.message,
@@ -99,12 +100,27 @@ export async function POST(req: Request) {
       body.show_once ?? false
     ];
 
+    // Step 2: Log Values
+    console.log("VALUES =", values);
+
     const result = await client.query(query, values);
     await client.end();
     return NextResponse.json({ success: true, data: result.rows[0] });
+    
+  // Step 3: Detailed Error Handling
   } catch (error: any) {
+    console.error("POST ERROR =", error);
+
     if (client) await client.end();
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        error: error.message,
+        detail: error.detail,
+        code: error.code,
+      },
+      { status: 500 }
+    );
   }
 }
 
