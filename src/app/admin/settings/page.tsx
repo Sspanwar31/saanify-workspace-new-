@@ -48,7 +48,7 @@ export default function AdminSettings() {
     is_maintenance_scheduled: false,
   });
 
-  // ✅ UPDATED: Broadcast Form State (With all new fields)
+  // Broadcast Form State (With all new fields)
   const [broadcastForm, setBroadcastForm] = useState({
     title: '', message: '', image_url: '', 
     type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '',
@@ -132,7 +132,7 @@ export default function AdminSettings() {
     }
   };
 
-  // ✅ UPDATED: AI Suggest Logic
+  // AI Suggest Logic
   const handleAISuggest = () => {
     const title = broadcastForm.title.toLowerCase();
     let detected = null;
@@ -161,7 +161,7 @@ export default function AdminSettings() {
     toast.info(`AI: ${detected.key || 'Generic'} theme detected.`);
   };
 
-  // ✅ NEW: Festival Presets Handler
+  // Festival Presets Handler
   const applyPreset = (key: string) => {
     const presets: any = {
       DIWALI: { title: "Happy Diwali!", message: "May the festival of lights bring joy to your life.", animation_type: "DIYA", theme_color: "GOLD", display_mode: "FULLSCREEN" },
@@ -199,24 +199,54 @@ export default function AdminSettings() {
     finally { setSaving(false); }
   };
 
+  // Priority Mapping Object
+  const priorityMap: any = {
+    LOW: 1,
+    MEDIUM: 2,
+    HIGH: 3,
+    CRITICAL: 4
+  };
+
   const handlePublishBroadcast = async () => {
-    if(!broadcastForm.title || !broadcastForm.message) return toast.error("Required fields!");
-    
+    if(!broadcastForm.title || !broadcastForm.message) {
+      return toast.error("Required fields!");
+    }
+
     const res = await fetch('/api/admin/broadcasts', {
       method: 'POST',
-      body: JSON.stringify(broadcastForm)
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        ...broadcastForm,
+        priority: priorityMap[broadcastForm.priority]
+      })
     });
 
     if (res.ok) {
       toast.success("Broadcast Published!");
       fetchBroadcasts();
-      // Reset form
-      setBroadcastForm({ 
-        title:'', message:'', image_url:'', type:'FESTIVAL', style:'POPUP', starts_at:'', ends_at:'', 
-        target_audience: 'BOTH', animation_type: 'NONE',
-        festival_key: '', priority: 'MEDIUM', display_mode: 'TOP_BANNER', theme_color: 'DEFAULT',
-        cta_text: '', cta_link: '', is_recurring: false, recurring_type: 'NONE'
+
+      setBroadcastForm({
+        title:'',
+        message:'',
+        image_url:'',
+        type:'FESTIVAL',
+        style:'POPUP',
+        starts_at:'',
+        ends_at:'',
+        target_audience: 'BOTH',
+        animation_type: 'NONE',
+        festival_key: '',
+        priority: 'MEDIUM',
+        display_mode: 'TOP_BANNER',
+        theme_color: 'DEFAULT',
+        cta_text: '',
+        cta_link: '',
+        is_recurring: false,
+        recurring_type: 'NONE'
       });
+
     } else {
       toast.error("Publish failed");
     }
