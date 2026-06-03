@@ -14,7 +14,14 @@ export async function GET() {
   try {
     client = await getDbClient();
     if (!client) return NextResponse.json([]);
-    const result = await client.query('SELECT * FROM broadcasts ORDER BY created_at DESC');
+    
+    // 3. GET Query Replace
+    const result = await client.query(`
+      SELECT *
+      FROM broadcasts
+      ORDER BY priority DESC, created_at DESC
+    `);
+    
     await client.end();
     return NextResponse.json(result.rows);
   } catch (error: any) {
@@ -30,26 +37,66 @@ export async function POST(req: Request) {
     client = await getDbClient();
     if (!client) return NextResponse.json({ error: "DB Error" }, { status: 500 });
 
+    // 1. POST Query Replace
     const query = `
       INSERT INTO broadcasts (
-        title, message, image_url, type, style, 
-        is_active, starts_at, ends_at, target_audience, animation_type, created_at
-      ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+        title,
+        message,
+        image_url,
+        type,
+        style,
+        is_active,
+        starts_at,
+        ends_at,
+        target_audience,
+        animation_type,
+
+        category,
+        festival_key,
+        theme,
+        hero_enabled,
+        auto_generated,
+        priority,
+        dismissible,
+        show_once,
+
+        created_at
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,
+        $6,$7,$8,$9,$10,
+        $11,$12,$13,$14,
+        $15,$16,$17,$18,
+        NOW()
+      )
       RETURNING *;
     `;
 
+    // 2. POST Values Replace
     const values = [
       body.title,
       body.message,
       body.image_url || null,
       body.type || 'INFO',
       body.style || 'POPUP',
-      true, // is_active default true
+      true,
+
       body.starts_at || new Date().toISOString(),
       body.ends_at || null,
+
       body.target_audience || 'BOTH',
-      body.animation_type || 'NONE'
+      body.animation_type || 'NONE',
+
+      body.category || 'CUSTOM',
+      body.festival_key || null,
+      body.theme || 'default',
+
+      body.hero_enabled ?? false,
+      body.auto_generated ?? false,
+
+      body.priority ?? 1,
+      body.dismissible ?? true,
+      body.show_once ?? false
     ];
 
     const result = await client.query(query, values);
