@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea'; // ✅ Imported for Maintenance Message
+import { Textarea } from '@/components/ui/textarea'; 
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
@@ -45,6 +45,11 @@ export default function AdminSettings() {
     maintenance_start: '',
     maintenance_end: '',
     is_maintenance_scheduled: false,
+  });
+
+  // ✅ NEW: Broadcast Form State
+  const [broadcastForm, setBroadcastForm] = useState({
+    title: '', message: '', image_url: '', type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: ''
   });
 
   // 1. INITIAL FETCH
@@ -99,21 +104,29 @@ export default function AdminSettings() {
     finally { setSaving(false); }
   };
 
-  // ✅ FINAL FIX: handleSaveAdmin (Create aur Edit dono ke liye Nayi API use karein)
+  // ✅ NEW: Publish Broadcast Function
+  const handlePublishBroadcast = async () => {
+    const { error } = await supabase.from('broadcasts').insert([{
+      ...broadcastForm,
+      starts_at: broadcastForm.starts_at || new Date().toISOString(),
+      is_active: true
+    }]);
+    if (error) toast.error("Failed to publish");
+    else {
+      toast.success("Broadcast Published Live!");
+      setBroadcastForm({ title: '', message: '', image_url: '', type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '' });
+    }
+  };
+
   const handleSaveAdmin = async () => {
-    // 1. Basic Validation
     if (!adminForm.email || (!editingId && !adminForm.password)) {
       return toast.error("Required fields missing");
     }
     
     setSaving(true); 
-
     try {
-      // 2. Auth Token lein verification ke liye
       const { data: { session } } = await supabase.auth.getSession();
       
-      // 🚀 3. AB HUM SIRF EK HI SECURE API CALL KARENGE
-      // Yeh API naya user banayegi ya purane ka password reset karegi
       const res = await fetch('/api/admin/update-user', {
           method: 'POST',
           headers: { 
@@ -122,18 +135,15 @@ export default function AdminSettings() {
           },
           body: JSON.stringify({ 
             ...adminForm, 
-            userId: editingId // Agar null hai toh Create hoga, ID hai toh Update/Reset Password hoga
+            userId: editingId 
           })
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Operation failed");
 
-      // 4. Success UI Update
       toast.success(editingId ? "Admin & Password Updated Successfully" : "New Admin Created Successfully");
       setIsAdminDialogOpen(false);
-      
-      // 5. Refresh the list
       fetchAdmins();
 
     } catch (e: any) {
@@ -376,6 +386,88 @@ export default function AdminSettings() {
                 </div>
                 <Switch disabled={isReadOnly} checked={formData.is_maintenance_mode} onCheckedChange={v => setFormData({...formData, is_maintenance_mode: v})} />
             </div>
+        </CardContent>
+      </Card>
+
+      {/* ✅ NEW: PUBLIC BROADCAST (PROFESSIONAL BROADCASTER) */}
+      <Card className="border-t-4 border-t-blue-600 mt-8">
+        <CardHeader>
+          <CardTitle className="text-blue-700 flex items-center gap-2">
+            <Globe className="w-5 h-5"/> Professional Broadcaster (Greetings & News)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label>Title</Label>
+                <Input 
+                    disabled={isReadOnly} 
+                    value={broadcastForm.title} 
+                    onChange={e => setBroadcastForm({...broadcastForm, title: e.target.value})} 
+                    placeholder="e.g. Happy Diwali!"
+                />
+            </div>
+            <div className="space-y-2">
+                <Label>Image URL (Optional)</Label>
+                <Input 
+                    disabled={isReadOnly} 
+                    value={broadcastForm.image_url} 
+                    onChange={e => setBroadcastForm({...broadcastForm, image_url: e.target.value})} 
+                    placeholder="https://image-link.com/festival.jpg"
+                />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Message</Label>
+            <Textarea 
+                disabled={isReadOnly} 
+                value={broadcastForm.message} 
+                onChange={e => setBroadcastForm({...broadcastForm, message: e.target.value})} 
+                rows={2} 
+                placeholder="Type your greeting message here..."
+            />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-1">
+                <Label>Type</Label>
+                <Select disabled={isReadOnly} value={broadcastForm.type} onValueChange={v => setBroadcastForm({...broadcastForm, type: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="FESTIVAL">Festival</SelectItem>
+                        <SelectItem value="NEWS">System News</SelectItem>
+                        <SelectItem value="UPDATE">New Feature</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-1">
+                <Label>Display Style</Label>
+                <Select disabled={isReadOnly} value={broadcastForm.style} onValueChange={v => setBroadcastForm({...broadcastForm, style: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="BANNER">Top Banner</SelectItem>
+                        <SelectItem value="POPUP">Center Popup</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-1">
+                <Label>End Date</Label>
+                <Input 
+                    disabled={isReadOnly} 
+                    type="datetime-local" 
+                    value={broadcastForm.ends_at} 
+                    onChange={e => setBroadcastForm({...broadcastForm, ends_at: e.target.value})}
+                />
+            </div>
+            <div className="flex items-end">
+                <Button 
+                    disabled={isReadOnly}
+                    onClick={handlePublishBroadcast} 
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                    Publish Now
+                </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
