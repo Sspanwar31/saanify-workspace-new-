@@ -6,9 +6,11 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X, Settings } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Globe } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 // ✅ Block Screen Component
 const MaintenanceScreen = ({ settings }: any) => (
@@ -35,8 +37,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isChecking, setIsChecking] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // ✅ NEW: Broadcast States
+  const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
+  const [showPopup, setShowPopup] = useState(false);
 
-  // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER (UPDATED) ━━━
+  // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
     // Pehle initial fetch karein
     const fetchInitialSettings = async () => {
@@ -73,6 +79,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, []);
 
+  // ━━━ 2. REALTIME BROADCAST LISTENER (NEW) ━━━
+  useEffect(() => {
+    const fetchBroadcasts = async () => {
+      const now = new Date().toISOString();
+      const { data } = await supabase
+        .from('broadcasts')
+        .select('*')
+        .eq('is_active', true)
+        .lte('starts_at', now)
+        .gte('ends_at', now)
+        .maybeSingle();
+      
+      if (data) {
+        setActiveBroadcast(data);
+        if (data.style === 'POPUP') setShowPopup(true);
+      } else {
+        setActiveBroadcast(null);
+        setShowPopup(false);
+      }
+    };
+    fetchBroadcasts();
+
+    // Realtime Listen
+    const channel = supabase.channel('broadcasts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, fetchBroadcasts)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // ━━━ AUTH + PROFILE SYNC ━━━
   useEffect(() => {
     const performAuthSync = async () => {
@@ -84,8 +120,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .from('current_active_profile')
           .select('*')
           .maybeSingle();
-
-        console.log("🎯 [DEBUG] Profile Data:", profile?.society_name);
 
         if (pError) console.error("❌ View Error:", pError);
 
@@ -151,7 +185,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           console.log('🔥 Permission Realtime Update');
           const updated = payload.new as any;
           
-          // 🚀 LocalStorage bhi update karein realtime mein
           const currentStored = localStorage.getItem('current_user');
           if (currentStored) {
             const parsed = JSON.parse(currentStored);
@@ -215,19 +248,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // 2. Global Cleanup
       document.documentElement.classList.remove('dark');
       
-      // 🚀 Sabse zaruri: In 3 keys ko hatayein
       localStorage.removeItem('is_admin_viewing');
       localStorage.removeItem('viewing_client_id');
       localStorage.removeItem('is_admin_impersonating');
       
-      // 3. Clear Zustand Keys
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
       });
 
       toast.success("Welcome back Admin", { id: toastId });
       
-      // 4. Force Reload to Admin List
       window.location.href = '/admin/clients';
 
     } catch (err) {
@@ -250,19 +280,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // ━━━ 2. MAINTENANCE LOGIC WITH ADMIN BYPASS (UPDATED) ━━━
-  
-  // Logic: Agar maintenance ON hai LEKIN agar Admin dekh raha hai (isImpersonating), 
-  // toh block mat karo taaki testing ho sake.
+  // ━━━ 2. MAINTENANCE LOGIC WITH ADMIN BYPASS ━━━
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
   return (
     <>
-      {/* 1. Full Lockout Check (Ab bypass ke saath) */}
+      {/* 1. Full Lockout Check */}
       {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
 
-      {/* 2. Upcoming Notice Banner (Sirf tab dikhao jab lockout na ho) */}
+      {/* 2. Upcoming Notice Banner */}
       {sysSettings?.is_maintenance_scheduled && !isMaintenanceActive && (
         <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top duration-500 z-[1000] sticky top-0">
           <span>
@@ -288,6 +315,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
       )}
+
+      {/* ✅ NEW: BROADCAST BANNER (Impersonation Banner ke baad) */}
+      {activeBroadcast?.style === 'BANNER' && (
+        <div className="bg-blue-600 text-white py-2 px-4 text-center text-sm font-medium z-[1001] sticky top-0 flex items-center justify-center gap-3">
+          <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{activeBroadcast.type}</span>
+          {activeBroadcast.message}
+          <button onClick={() => setActiveBroadcast(null)} className="ml-2 hover:bg-blue-700 rounded-full p-0.5 transition-colors">
+            <X className="w-4 h-4 opacity-70 hover:opacity-100"/>
+          </button>
+        </div>
+      )}
+
+      {/* ✅ NEW: BROADCAST POPUP DIALOG */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent className="sm:max-w-md border-none overflow-hidden p-0 bg-transparent shadow-none">
+          <div className="relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800">
+             {activeBroadcast?.image_url && (
+               <img src={activeBroadcast.image_url} alt="Greeting" className="w-full h-48 object-cover" />
+             )}
+             <div className="p-8 text-center space-y-4">
+                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Globe className="w-8 h-8 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{activeBroadcast?.title}</h2>
+                <p className="text-slate-500 dark:text-slate-400">{activeBroadcast?.message}</p>
+                <Button onClick={() => setShowPopup(false)} className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl h-12 text-lg font-bold">Awesome!</Button>
+             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         {/* ━━ DESKTOP SIDEBAR ━━ */}
