@@ -21,6 +21,7 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Data State
   const [admins, setAdmins] = useState<any[]>([]);
@@ -47,9 +48,12 @@ export default function AdminSettings() {
     is_maintenance_scheduled: false,
   });
 
-  // ✅ NEW: Broadcast Form State
+  // ✅ NEW: Broadcast Form State (With Target & Animation)
   const [broadcastForm, setBroadcastForm] = useState({
-    title: '', message: '', image_url: '', type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: ''
+    title: '', message: '', image_url: '', 
+    type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '',
+    target_audience: 'BOTH', // New field
+    animation_type: 'NONE'   // New field
   });
 
   // ✅ NEW: Broadcast List State
@@ -60,7 +64,6 @@ export default function AdminSettings() {
     const init = async () => {
       const email = localStorage.getItem('admin_email');
       if (email) setCurrentEmail(email);
-      // Added fetchBroadcasts to initial load
       await Promise.all([fetchSettings(), fetchAdmins(), fetchBroadcasts()]);
       setLoading(false);
     };
@@ -97,6 +100,48 @@ export default function AdminSettings() {
     if (Array.isArray(data)) setActiveBroadcasts(data);
   };
 
+  // ✅ NEW: Image Upload Function
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `broadcast-images/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('broadcasts')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage.from('broadcasts').getPublicUrl(filePath);
+        setBroadcastForm({ ...broadcastForm, image_url: data.publicUrl });
+        toast.success("Image Uploaded Successfully!");
+    } catch (error) {
+        toast.error("Upload failed");
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
+  // ✅ NEW: AI Suggestion Button (Simulated AI)
+  const handleAISuggest = () => {
+    const title = broadcastForm.title.toLowerCase();
+    if(title.includes('diwali')) {
+        setBroadcastForm({...broadcastForm, animation_type: 'DIYA', type: 'FESTIVAL'});
+        toast.info("AI: Diwali theme detected. Diyas animation enabled.");
+    } else if (title.includes('holi')) {
+        setBroadcastForm({...broadcastForm, animation_type: 'HOLI', type: 'FESTIVAL'});
+        toast.info("AI: Holi theme detected. Colors splash enabled.");
+    } else {
+        setBroadcastForm({...broadcastForm, animation_type: 'CONFETTI', type: 'UPDATE'});
+        toast.info("AI: Generic update detected. Confetti animation enabled.");
+    }
+  };
+
   // 2. ACTIONS
   const handleSave = async () => {
     setSaving(true);
@@ -125,14 +170,17 @@ export default function AdminSettings() {
 
     if (res.ok) {
       toast.success("Broadcast Published!");
-      fetchBroadcasts(); // List refresh karein
-      setBroadcastForm({ title:'', message:'', image_url:'', type:'FESTIVAL', style:'POPUP', starts_at:'', ends_at:'' });
+      fetchBroadcasts();
+      // Reset form with new default fields
+      setBroadcastForm({ 
+        title:'', message:'', image_url:'', type:'FESTIVAL', style:'POPUP', starts_at:'', ends_at:'', 
+        target_audience: 'BOTH', animation_type: 'NONE' 
+      });
     } else {
       toast.error("Publish failed");
     }
   };
 
-  // ✅ UPDATED: Toggle Status Function (API Call)
   const toggleBroadcast = async (id: string, currentStatus: boolean) => {
     const res = await fetch('/api/admin/broadcasts', {
       method: 'PATCH',
@@ -141,7 +189,6 @@ export default function AdminSettings() {
     if (res.ok) fetchBroadcasts();
   };
 
-  // ✅ NEW: Delete Broadcast Function (API Call)
   const handleDeleteBroadcast = async (id: string) => {
     if(confirm("Delete?")) {
       const res = await fetch(`/api/admin/broadcasts?id=${id}`, { method: 'DELETE' });
@@ -433,25 +480,66 @@ export default function AdminSettings() {
         
         <CardContent className="space-y-6">
           {/* FORM SECTION */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border">
+            {/* Title + AI */}
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase text-slate-500">Alert Title</Label>
-              <Input 
-                disabled={isReadOnly}
-                value={broadcastForm.title} 
-                onChange={e => setBroadcastForm({...broadcastForm, title: e.target.value})} 
-                placeholder="Happy Holi!" 
-              />
+                <Label>Alert Title (AI reads this)</Label>
+                <div className="flex gap-2">
+                    <Input 
+                        disabled={isReadOnly}
+                        value={broadcastForm.title} 
+                        onChange={e => setBroadcastForm({...broadcastForm, title: e.target.value})} 
+                        onBlur={handleAISuggest} 
+                        placeholder="Happy Diwali!" 
+                    />
+                    <Button variant="outline" onClick={handleAISuggest} title="AI Auto-Detect Theme" disabled={isReadOnly}><RefreshCw className="w-4 h-4"/></Button>
+                </div>
             </div>
+            
+            {/* Image Upload */}
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase text-slate-500">Image URL</Label>
-              <Input 
-                disabled={isReadOnly}
-                value={broadcastForm.image_url} 
-                onChange={e => setBroadcastForm({...broadcastForm, image_url: e.target.value})} 
-                placeholder="https://..." 
-              />
+                <Label>Upload Image (Mobile/PC)</Label>
+                <div className="flex items-center gap-2">
+                    <Input 
+                        disabled={isReadOnly || isUploading}
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleImageUpload} 
+                        className="text-xs" 
+                    />
+                    {isUploading && <Loader2 className="w-4 h-4 animate-spin"/>}
+                </div>
+                {broadcastForm.image_url && <p className="text-[10px] text-green-600 truncate">{broadcastForm.image_url}</p>}
             </div>
+
+            {/* Target Audience */}
+            <div className="space-y-2">
+                <Label>Target Audience</Label>
+                <Select disabled={isReadOnly} value={broadcastForm.target_audience} onValueChange={v => setBroadcastForm({...broadcastForm, target_audience: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="BOTH">Everyone (Clients & Members)</SelectItem>
+                        <SelectItem value="CLIENT">Clients Only</SelectItem>
+                        <SelectItem value="MEMBER">Members Only</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Animation Style */}
+            <div className="space-y-2">
+                <Label>Animation Style</Label>
+                <Select disabled={isReadOnly} value={broadcastForm.animation_type} onValueChange={v => setBroadcastForm({...broadcastForm, animation_type: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="NONE">No Animation</SelectItem>
+                        <SelectItem value="DIYA">Virtual Diyas (Diwali)</SelectItem>
+                        <SelectItem value="HOLI">Color Splashes (Holi)</SelectItem>
+                        <SelectItem value="CONFETTI">Party Confetti (Update/New Feature)</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Message Content (Preserved) */}
             <div className="md:col-span-2 space-y-2">
               <Label className="text-xs font-bold uppercase text-slate-500">Message Content</Label>
               <Textarea 
@@ -461,27 +549,30 @@ export default function AdminSettings() {
                 placeholder="Wishing everyone a colorful Holi!" 
               />
             </div>
-            <div className="grid grid-cols-2 gap-4 md:col-span-2">
-              <div className="space-y-1">
-                 <Label className="text-xs font-bold">Display Style</Label>
-                 <Select disabled={isReadOnly} value={broadcastForm.style} onValueChange={v => setBroadcastForm({...broadcastForm, style: v})}>
-                   <SelectTrigger><SelectValue /></SelectTrigger>
-                   <SelectContent>
-                      <SelectItem value="BANNER">Top Banner</SelectItem>
-                      <SelectItem value="POPUP">Center Popup</SelectItem>
-                   </SelectContent>
-                 </Select>
-              </div>
-              <div className="space-y-1">
-                 <Label className="text-xs font-bold">Expires At</Label>
-                 <Input 
+
+            {/* Display Style (Preserved) */}
+            <div className="space-y-1">
+               <Label className="text-xs font-bold">Display Style</Label>
+               <Select disabled={isReadOnly} value={broadcastForm.style} onValueChange={v => setBroadcastForm({...broadcastForm, style: v})}>
+                 <SelectTrigger><SelectValue /></SelectTrigger>
+                 <SelectContent>
+                    <SelectItem value="BANNER">Top Banner</SelectItem>
+                    <SelectItem value="POPUP">Center Popup</SelectItem>
+                 </SelectContent>
+               </Select>
+            </div>
+
+            {/* Expires At (Preserved) */}
+            <div className="space-y-1">
+               <Label className="text-xs font-bold">Expires At</Label>
+               <Input 
                     disabled={isReadOnly}
                     type="datetime-local" 
                     value={broadcastForm.ends_at} 
                     onChange={e => setBroadcastForm({...broadcastForm, ends_at: e.target.value})} 
                  />
-              </div>
             </div>
+
             <Button 
                 disabled={isReadOnly}
                 onClick={handlePublishBroadcast} 
