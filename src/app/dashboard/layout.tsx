@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ STATES ━━━
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [sysSettings, setSysSettings] = useState<any>(null); // ✅ Added System Settings State
+  const [sysSettings, setSysSettings] = useState<any>(null); 
   const [isChecking, setIsChecking] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -44,7 +44,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
-    // Pehle initial fetch karein
     const fetchInitialSettings = async () => {
       try {
         const res = await fetch('/api/admin/settings');
@@ -56,20 +55,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
     fetchInitialSettings();
 
-    // Ab Realtime listen karein
     const settingsChannel = supabase
       .channel('public:system_settings')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE', // Jab bhi Admin save karega
+          event: 'UPDATE', 
           schema: 'public',
           table: 'system_settings',
           filter: 'id=eq.1'
         },
         (payload) => {
           console.log('🚀 REALTIME: System Settings Updated', payload.new);
-          setSysSettings(payload.new); // Bina refresh ke state update hogi
+          setSysSettings(payload.new); 
         }
       )
       .subscribe();
@@ -79,35 +77,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, []);
 
-  // ━━━ 2. REALTIME BROADCAST LISTENER (NEW) ━━━
-  useEffect(() => {
-    const fetchBroadcasts = async () => {
-      const now = new Date().toISOString();
-      const { data } = await supabase
-        .from('broadcasts')
-        .select('*')
-        .eq('is_active', true)
-        .lte('starts_at', now)
-        .gte('ends_at', now)
-        .maybeSingle();
-      
-      if (data) {
-        setActiveBroadcast(data);
-        if (data.style === 'POPUP') setShowPopup(true);
-      } else {
-        setActiveBroadcast(null);
-        setShowPopup(false);
-      }
-    };
-    fetchBroadcasts();
-
-    // Realtime Listen
-    const channel = supabase.channel('broadcasts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, fetchBroadcasts)
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+  // ━━━ 2. REALTIME BROADCAST LISTENER (UPDATED LOGIC) ━━━
+  const fetchBroadcasts = useCallback(async () => {
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from('broadcasts')
+      .select('*')
+      .eq('is_active', true) // Sabse pehle Switch check karega
+      .lte('starts_at', now) // Start time ho chuka ho
+      .or(`ends_at.is.null,ends_at.gte.${now}`) // Ya toh end date na ho, ya abhi khatam na hui ho
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (data) {
+      setActiveBroadcast(data);
+      if (data.style === 'POPUP') setShowPopup(true);
+    } else {
+      setActiveBroadcast(null); // Agar Admin ne OFF kiya toh turant banner hat jayega
+      setShowPopup(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchBroadcasts();
+    const channel = supabase.channel('broadcast-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => {
+        console.log("📢 Broadcast Update Detected");
+        fetchBroadcasts(); // Update UI instantly on toggle
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchBroadcasts]);
 
   // ━━━ AUTH + PROFILE SYNC ━━━
   useEffect(() => {
@@ -135,21 +136,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
            return;
         }
 
-        // 🚀 ASLI FIX: LocalStorage aur Store ko update karein
         localStorage.setItem('current_user', JSON.stringify(profile)); 
         localStorage.setItem('active_client_id', profile.id);
 
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
         
-        // 🚀 THEME FIX: Instant Theme Apply
         if (profile.theme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');
         }
 
-        // Banner logic: Agar session ID aur profile ID alag hai toh Admin dekh raha hai
         setIsImpersonating(session.user.id !== profile.id);
 
         console.log("🎉 SUCCESS: Dashboard loaded for", profile.society_name);
@@ -241,11 +239,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // 1. DB Cleanup
         await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
       }
 
-      // 2. Global Cleanup
       document.documentElement.classList.remove('dark');
       
       localStorage.removeItem('is_admin_viewing');
