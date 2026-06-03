@@ -90,14 +90,11 @@ export default function AdminSettings() {
     if (data) setAdmins(data);
   };
 
-  // ✅ UPDATED: Fetch Broadcasts List (New Logic)
+  // ✅ UPDATED: Fetch Broadcasts List (API Call)
   const fetchBroadcasts = async () => {
-    const { data, error } = await supabase
-      .from('broadcasts')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (data) setActiveBroadcasts(data);
-    if (error) console.error("Fetch Error:", error);
+    const res = await fetch('/api/admin/broadcasts');
+    const data = await res.json();
+    if (Array.isArray(data)) setActiveBroadcasts(data);
   };
 
   // 2. ACTIONS
@@ -117,35 +114,38 @@ export default function AdminSettings() {
     finally { setSaving(false); }
   };
 
-  // ✅ UPDATED: Publish Broadcast Function (With Validation)
+  // ✅ UPDATED: Publish Broadcast Function (API Call)
   const handlePublishBroadcast = async () => {
-    if(!broadcastForm.title || !broadcastForm.message) return toast.error("Title & Message required");
+    if(!broadcastForm.title || !broadcastForm.message) return toast.error("Required fields!");
     
-    const { error } = await supabase.from('broadcasts').insert([{
-      ...broadcastForm,
-      starts_at: broadcastForm.starts_at || new Date().toISOString(),
-      is_active: true
-    }]);
+    const res = await fetch('/api/admin/broadcasts', {
+      method: 'POST',
+      body: JSON.stringify(broadcastForm)
+    });
 
-    if (error) {
-      toast.error("Failed to publish");
-    } else {
+    if (res.ok) {
       toast.success("Broadcast Published!");
-      setBroadcastForm({ title: '', message: '', image_url: '', type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '' });
-      fetchBroadcasts(); // List update karne ke liye
+      fetchBroadcasts(); // List refresh karein
+      setBroadcastForm({ title:'', message:'', image_url:'', type:'FESTIVAL', style:'POPUP', starts_at:'', ends_at:'' });
+    } else {
+      toast.error("Publish failed");
     }
   };
 
-  // ✅ UPDATED: Toggle Status Function
+  // ✅ UPDATED: Toggle Status Function (API Call)
   const toggleBroadcast = async (id: string, currentStatus: boolean) => {
-    const { error } = await supabase
-      .from('broadcasts')
-      .update({ is_active: !currentStatus })
-      .eq('id', id);
+    const res = await fetch('/api/admin/broadcasts', {
+      method: 'PATCH',
+      body: JSON.stringify({ id, is_active: !currentStatus })
+    });
+    if (res.ok) fetchBroadcasts();
+  };
 
-    if (!error) {
-      toast.success("Status Updated");
-      fetchBroadcasts(); // UI refresh
+  // ✅ NEW: Delete Broadcast Function (API Call)
+  const handleDeleteBroadcast = async (id: string) => {
+    if(confirm("Delete?")) {
+      const res = await fetch(`/api/admin/broadcasts?id=${id}`, { method: 'DELETE' });
+      if (res.ok) fetchBroadcasts();
     }
   };
 
@@ -523,12 +523,7 @@ export default function AdminSettings() {
                                 onCheckedChange={() => toggleBroadcast(b.id, b.is_active)}
                               />
                            </div>
-                           <Button variant="ghost" size="icon" className="text-slate-300 hover:text-red-500 h-8 w-8" onClick={async () => {
-                              if(confirm("Delete this broadcast?")) {
-                                 await supabase.from('broadcasts').delete().eq('id', b.id);
-                                 fetchBroadcasts();
-                              }
-                           }}>
+                           <Button variant="ghost" size="icon" className="text-slate-300 hover:text-red-500 h-8 w-8" onClick={() => handleDeleteBroadcast(b.id)}>
                               <Trash2 className="w-4 h-4"/>
                            </Button>
                         </div>
