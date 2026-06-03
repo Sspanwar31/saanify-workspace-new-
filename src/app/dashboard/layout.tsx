@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Globe } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Globe, Sparkles, Flame, Palette } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -41,6 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ✅ NEW: Broadcast States
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [hasSeenPopup, setHasSeenPopup] = useState(false); // Session check
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -83,21 +84,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { data } = await supabase
       .from('broadcasts')
       .select('*')
-      .eq('is_active', true) // Sabse pehle Switch check karega
-      .lte('starts_at', now) // Start time ho chuka ho
-      .or(`ends_at.is.null,ends_at.gte.${now}`) // Ya toh end date na ho, ya abhi khatam na hui ho
+      .eq('is_active', true)
+      .or('target_audience.eq.BOTH,target_audience.eq.CLIENT') // 🎯 Targeted for Clients
+      .lte('starts_at', now)
+      .or(`ends_at.is.null,ends_at.gte.${now}`)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     
     if (data) {
       setActiveBroadcast(data);
-      if (data.style === 'POPUP') setShowPopup(true);
+      // Popup logic: Sirf ek baar dikhao per session taaki user pareshan na ho
+      const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
+      if (!sessionSeen && !hasSeenPopup) {
+        setShowPopup(true);
+      }
     } else {
-      setActiveBroadcast(null); // Agar Admin ne OFF kiya toh turant banner hat jayega
+      setActiveBroadcast(null);
       setShowPopup(false);
     }
-  }, []);
+  }, [hasSeenPopup]);
 
   useEffect(() => {
     fetchBroadcasts();
@@ -109,6 +115,53 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchBroadcasts]);
+
+  // Close Popup logic: Popup band hote hi wo Banner mein transition ho jaye
+  const handleDismissPopup = () => {
+    setShowPopup(false);
+    setHasSeenPopup(true);
+    if (activeBroadcast) {
+      sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
+    }
+  };
+
+  // ━━━ 2. VIRTUAL ANIMATIONS (DIYA, HOLI, CONFETTI) ━━━
+  const RenderAnimations = () => {
+    if (!showPopup || !activeBroadcast?.animation_type) return null;
+
+    if (activeBroadcast.animation_type === 'DIYA') {
+      return (
+        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="diya-glow absolute" style={{ 
+              bottom: `${Math.random() * 20}%`, 
+              left: `${Math.random() * 90}%`,
+              fontSize: '40px' 
+            }}>🪔</div>
+          ))}
+        </div>
+      );
+    }
+
+    if (activeBroadcast.animation_type === 'HOLI') {
+      const colors = ['#FF1493', '#32CD32', '#FFD700', '#FF4500', '#1E90FF'];
+      return (
+        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="holi-splash" style={{ 
+              top: `${Math.random() * 80}%`, 
+              left: `${Math.random() * 80}%`, 
+              width: '150px', height: '150px',
+              background: colors[Math.floor(Math.random() * colors.length)],
+              animationDelay: `${i * 0.3}s`
+            }} />
+          ))}
+        </div>
+      );
+    }
+
+    return null; // For CONFETTI use existing Toast or CSS Confetti
+  };
 
   // ━━━ AUTH + PROFILE SYNC ━━━
   useEffect(() => {
@@ -282,10 +335,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* 1. Full Lockout Check */}
+      {/* 1. Virtual Animations Layer */}
+      <RenderAnimations />
+
+      {/* 2. Full Lockout Check */}
       {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
 
-      {/* 2. Upcoming Notice Banner */}
+      {/* 3. Upcoming Notice Banner */}
       {sysSettings?.is_maintenance_scheduled && !isMaintenanceActive && (
         <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top duration-500 z-[1000] sticky top-0">
           <span>
@@ -312,31 +368,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ✅ NEW: BROADCAST BANNER (Impersonation Banner ke baad) */}
-      {activeBroadcast?.style === 'BANNER' && (
-        <div className="bg-blue-600 text-white py-2 px-4 text-center text-sm font-medium z-[1001] sticky top-0 flex items-center justify-center gap-3">
-          <span className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{activeBroadcast.type}</span>
-          {activeBroadcast.message}
-          <button onClick={() => setActiveBroadcast(null)} className="ml-2 hover:bg-blue-700 rounded-full p-0.5 transition-colors">
-            <X className="w-4 h-4 opacity-70 hover:opacity-100"/>
-          </button>
+      {/* 4. HYBRID DISPLAY: TOP BANNER (Popup dismissal ke baad bhi rahega) */}
+      {activeBroadcast && !showPopup && (
+        <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white py-2.5 px-6 text-center text-xs font-bold z-[1001] sticky top-0 flex items-center justify-between shadow-lg border-b border-white/10">
+          <div className="flex items-center gap-3 mx-auto">
+             <div className="animate-bounce bg-white/20 p-1 rounded-full"><Sparkles className="w-3 h-3"/></div>
+             <span className="uppercase tracking-widest opacity-70">[{activeBroadcast.type}]</span>
+             <span>{activeBroadcast.message}</span>
+          </div>
+          <button onClick={() => setActiveBroadcast(null)} className="hover:bg-white/10 rounded-full p-1"><X className="w-4 h-4"/></button>
         </div>
       )}
 
-      {/* ✅ NEW: BROADCAST POPUP DIALOG */}
+      {/* 5. MODERN GREETING POPUP */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="sm:max-w-md border-none overflow-hidden p-0 bg-transparent shadow-none">
-          <div className="relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800">
-             {activeBroadcast?.image_url && (
-               <img src={activeBroadcast.image_url} alt="Greeting" className="w-full h-48 object-cover" />
-             )}
-             <div className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Globe className="w-8 h-8 text-blue-600" />
+        <DialogContent className="sm:max-w-xl border-none p-0 bg-transparent shadow-none overflow-visible">
+          <div className="relative bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-500">
+             
+             {/* Dynamic Image with Fallback */}
+             <div className="relative h-64 w-full">
+                <img 
+                  src={activeBroadcast?.image_url || 'https://images.unsplash.com/photo-1514525253361-bee8a187c92a'} 
+                  className="w-full h-full object-cover" 
+                  alt="Greeting"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-900 via-transparent"></div>
+             </div>
+
+             <div className="p-10 text-center -mt-12 relative z-10 space-y-6">
+                <div className="w-20 h-20 bg-blue-600 rounded-3xl shadow-xl flex items-center justify-center mx-auto -rotate-12 transform hover:rotate-0 transition-all duration-500">
+                   {activeBroadcast?.animation_type === 'DIYA' ? <Flame className="w-10 h-10 text-white" /> : 
+                    activeBroadcast?.animation_type === 'HOLI' ? <Palette className="w-10 h-10 text-white" /> :
+                    <Globe className="w-10 h-10 text-white" />}
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{activeBroadcast?.title}</h2>
-                <p className="text-slate-500 dark:text-slate-400">{activeBroadcast?.message}</p>
-                <Button onClick={() => setShowPopup(false)} className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl h-12 text-lg font-bold">Awesome!</Button>
+
+                <div className="space-y-2">
+                   <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{activeBroadcast?.title}</h2>
+                   <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{activeBroadcast?.message}</p>
+                </div>
+
+                <Button onClick={handleDismissPopup} className="w-full bg-blue-600 hover:bg-blue-700 text-white h-14 rounded-2xl text-xl font-black shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+                   Explore More <X className="ml-2 w-5 h-5 opacity-50" />
+                </Button>
              </div>
           </div>
         </DialogContent>
