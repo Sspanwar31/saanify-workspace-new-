@@ -60,7 +60,7 @@ export default function AdminSettings() {
     const init = async () => {
       const email = localStorage.getItem('admin_email');
       if (email) setCurrentEmail(email);
-      // ✅ Added fetchBroadcasts to initial load
+      // Added fetchBroadcasts to initial load
       await Promise.all([fetchSettings(), fetchAdmins(), fetchBroadcasts()]);
       setLoading(false);
     };
@@ -90,17 +90,20 @@ export default function AdminSettings() {
     if (data) setAdmins(data);
   };
 
-  // ✅ NEW: Fetch Broadcasts List
+  // ✅ UPDATED: Fetch Broadcasts List (New Logic)
   const fetchBroadcasts = async () => {
-    const { data } = await supabase.from('broadcasts').select('*').order('created_at', { ascending: false }).limit(5);
+    const { data, error } = await supabase
+      .from('broadcasts')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (data) setActiveBroadcasts(data);
+    if (error) console.error("Fetch Error:", error);
   };
 
   // 2. ACTIONS
   const handleSave = async () => {
     setSaving(true);
     try {
-      // ✅ FIX: Convert dates to ISO String before sending to API
       const payload = {
         ...formData,
         maintenance_start: formData.maintenance_start ? new Date(formData.maintenance_start).toISOString() : '',
@@ -114,27 +117,35 @@ export default function AdminSettings() {
     finally { setSaving(false); }
   };
 
-  // ✅ NEW: Publish Broadcast Function
+  // ✅ UPDATED: Publish Broadcast Function (With Validation)
   const handlePublishBroadcast = async () => {
+    if(!broadcastForm.title || !broadcastForm.message) return toast.error("Title & Message required");
+    
     const { error } = await supabase.from('broadcasts').insert([{
       ...broadcastForm,
       starts_at: broadcastForm.starts_at || new Date().toISOString(),
       is_active: true
     }]);
-    if (error) toast.error("Failed to publish");
-    else {
-      toast.success("Broadcast Published Live!");
+
+    if (error) {
+      toast.error("Failed to publish");
+    } else {
+      toast.success("Broadcast Published!");
       setBroadcastForm({ title: '', message: '', image_url: '', type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '' });
-      fetchBroadcasts(); // ✅ Refresh list after publishing
+      fetchBroadcasts(); // List update karne ke liye
     }
   };
 
-  // ✅ NEW: Toggle Broadcast Status
+  // ✅ UPDATED: Toggle Status Function
   const toggleBroadcast = async (id: string, currentStatus: boolean) => {
-    const { error } = await supabase.from('broadcasts').update({ is_active: !currentStatus }).eq('id', id);
+    const { error } = await supabase
+      .from('broadcasts')
+      .update({ is_active: !currentStatus })
+      .eq('id', id);
+
     if (!error) {
       toast.success("Status Updated");
-      fetchBroadcasts(); // Refresh list
+      fetchBroadcasts(); // UI refresh
     }
   };
 
@@ -212,7 +223,7 @@ export default function AdminSettings() {
   if (loading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-blue-600"/></div>;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-slate-50 min-h-screen">
+    <div className="space-y-8">
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
@@ -361,7 +372,7 @@ export default function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* ✅ NEW: MAINTENANCE CONTROL CENTER */}
+      {/* ✅ UPDATED: MAINTENANCE CONTROL CENTER */}
       <Card className="border-t-4 border-t-red-600">
         <CardHeader>
             <CardTitle className="text-red-700 flex items-center gap-2">
@@ -409,123 +420,123 @@ export default function AdminSettings() {
         </CardContent>
       </Card>
 
-      {/* ✅ NEW: PUBLIC BROADCAST (PROFESSIONAL BROADCASTER) */}
-      <Card className="border-t-4 border-t-blue-600 mt-8">
-        <CardHeader>
-          <CardTitle className="text-blue-700 flex items-center gap-2">
-            <Globe className="w-5 h-5"/> Professional Broadcaster (Greetings & News)
+      {/* ✅ UPDATED: PUBLIC BROADCAST (PROFESSIONAL BROADCASTER) */}
+      <Card className="border-t-4 border-t-blue-600">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-blue-700 flex items-center gap-2 text-lg font-bold">
+            <Globe className="w-5 h-5"/> Professional Broadcaster
           </CardTitle>
+          <Button variant="ghost" size="icon" onClick={fetchBroadcasts} className="rounded-full">
+             <RefreshCw className="w-4 h-4 text-slate-400" />
+          </Button>
         </CardHeader>
-        <CardContent className="space-y-4 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <CardContent className="space-y-6">
+          {/* FORM SECTION */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
             <div className="space-y-2">
-                <Label>Title</Label>
-                <Input 
-                    disabled={isReadOnly} 
-                    value={broadcastForm.title} 
-                    onChange={e => setBroadcastForm({...broadcastForm, title: e.target.value})} 
-                    placeholder="e.g. Happy Diwali!"
-                />
+              <Label className="text-xs font-bold uppercase text-slate-500">Alert Title</Label>
+              <Input 
+                disabled={isReadOnly}
+                value={broadcastForm.title} 
+                onChange={e => setBroadcastForm({...broadcastForm, title: e.target.value})} 
+                placeholder="Happy Holi!" 
+              />
             </div>
             <div className="space-y-2">
-                <Label>Image URL (Optional)</Label>
-                <Input 
-                    disabled={isReadOnly} 
-                    value={broadcastForm.image_url} 
-                    onChange={e => setBroadcastForm({...broadcastForm, image_url: e.target.value})} 
-                    placeholder="https://image-link.com/festival.jpg"
-                />
+              <Label className="text-xs font-bold uppercase text-slate-500">Image URL</Label>
+              <Input 
+                disabled={isReadOnly}
+                value={broadcastForm.image_url} 
+                onChange={e => setBroadcastForm({...broadcastForm, image_url: e.target.value})} 
+                placeholder="https://..." 
+              />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Message</Label>
-            <Textarea 
-                disabled={isReadOnly} 
+            <div className="md:col-span-2 space-y-2">
+              <Label className="text-xs font-bold uppercase text-slate-500">Message Content</Label>
+              <Textarea 
+                disabled={isReadOnly}
                 value={broadcastForm.message} 
                 onChange={e => setBroadcastForm({...broadcastForm, message: e.target.value})} 
-                rows={2} 
-                placeholder="Type your greeting message here..."
-            />
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="space-y-1">
-                <Label>Type</Label>
-                <Select disabled={isReadOnly} value={broadcastForm.type} onValueChange={v => setBroadcastForm({...broadcastForm, type: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="FESTIVAL">Festival</SelectItem>
-                        <SelectItem value="NEWS">System News</SelectItem>
-                        <SelectItem value="UPDATE">New Feature</SelectItem>
-                    </SelectContent>
-                </Select>
+                placeholder="Wishing everyone a colorful Holi!" 
+              />
             </div>
-            <div className="space-y-1">
-                <Label>Display Style</Label>
-                <Select disabled={isReadOnly} value={broadcastForm.style} onValueChange={v => setBroadcastForm({...broadcastForm, style: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="BANNER">Top Banner</SelectItem>
-                        <SelectItem value="POPUP">Center Popup</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="space-y-1">
-                <Label>End Date</Label>
-                <Input 
-                    disabled={isReadOnly} 
+            <div className="grid grid-cols-2 gap-4 md:col-span-2">
+              <div className="space-y-1">
+                 <Label className="text-xs font-bold">Display Style</Label>
+                 <Select disabled={isReadOnly} value={broadcastForm.style} onValueChange={v => setBroadcastForm({...broadcastForm, style: v})}>
+                   <SelectTrigger><SelectValue /></SelectTrigger>
+                   <SelectContent>
+                      <SelectItem value="BANNER">Top Banner</SelectItem>
+                      <SelectItem value="POPUP">Center Popup</SelectItem>
+                   </SelectContent>
+                 </Select>
+              </div>
+              <div className="space-y-1">
+                 <Label className="text-xs font-bold">Expires At</Label>
+                 <Input 
+                    disabled={isReadOnly}
                     type="datetime-local" 
                     value={broadcastForm.ends_at} 
-                    onChange={e => setBroadcastForm({...broadcastForm, ends_at: e.target.value})}
-                />
+                    onChange={e => setBroadcastForm({...broadcastForm, ends_at: e.target.value})} 
+                 />
+              </div>
             </div>
-            <div className="flex items-end">
-                <Button 
-                    disabled={isReadOnly}
-                    onClick={handlePublishBroadcast} 
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                    Publish Now
-                </Button>
-            </div>
+            <Button 
+                disabled={isReadOnly}
+                onClick={handlePublishBroadcast} 
+                className="md:col-span-2 bg-blue-600 hover:bg-blue-700 shadow-lg"
+            >
+               Publish Broadcast Live
+            </Button>
           </div>
 
-          {/* ✅ NEW: MANAGE RECENT BROADCASTS LIST */}
+          {/* LIST SECTION (TOGGLES ARE HERE) */}
           {!isReadOnly && (
-             <div className="mt-8 space-y-4 pt-6 border-t border-slate-100">
-                <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4"/> Manage Recent Broadcasts
-                </h4>
-                <div className="grid gap-3">
-                  {activeBroadcasts.map((b) => (
-                    <div key={b.id} className="flex items-center justify-between p-3 border rounded-xl bg-slate-50/50">
-                      <div className="flex items-center gap-3">
-                        <Badge variant={b.is_active ? "default" : "secondary"}>
-                          {b.is_active ? 'LIVE' : 'OFF'}
-                        </Badge>
-                        <div>
-                          <p className="text-sm font-bold">{b.title}</p>
-                          <p className="text-[10px] text-slate-500">{b.type} • Ends: {b.ends_at ? new Date(b.ends_at).toLocaleDateString() : 'No Limit'}</p>
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+               <h4 className="text-sm font-bold text-slate-800">Manage Recent Broadcasts</h4>
+               {activeBroadcasts.length === 0 ? (
+                 <div className="text-center py-6 text-slate-400 text-sm border-2 border-dashed rounded-xl">
+                    No broadcasts created yet.
+                 </div>
+               ) : (
+                 <div className="grid gap-3">
+                   {activeBroadcasts.map((b) => (
+                     <div key={b.id} className="flex items-center justify-between p-4 border rounded-2xl bg-white shadow-sm hover:border-blue-200 transition-all">
+                        <div className="flex items-center gap-4">
+                           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${b.is_active ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-400'}`}>
+                              <Globe className="w-5 h-5" />
+                           </div>
+                           <div>
+                              <p className="font-bold text-sm text-slate-900">{b.title}</p>
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider">{b.style} • {b.type}</p>
+                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Switch 
-                          checked={b.is_active} 
-                          onCheckedChange={() => toggleBroadcast(b.id, b.is_active)}
-                        />
-                        <Button variant="ghost" size="icon" onClick={async () => {
-                           if(confirm("Delete this broadcast?")) {
-                              await supabase.from('broadcasts').delete().eq('id', b.id);
-                              fetchBroadcasts();
-                           }
-                        }} className="h-8 w-8 text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4"/></Button>
-                      </div>
-                    </div>
-                  ))}
-                  {activeBroadcasts.length === 0 && (
-                    <div className="text-center py-4 text-xs text-slate-400">No broadcasts created yet.</div>
-                  )}
-                </div>
-             </div>
+                        
+                        <div className="flex items-center gap-6">
+                           <div className="flex items-center gap-2">
+                              <span className={`text-[10px] font-bold ${b.is_active ? 'text-green-600' : 'text-slate-400'}`}>
+                                 {b.is_active ? 'ON AIR' : 'OFFLINE'}
+                              </span>
+                              <Switch 
+                                checked={b.is_active} 
+                                onCheckedChange={() => toggleBroadcast(b.id, b.is_active)}
+                              />
+                           </div>
+                           <Button variant="ghost" size="icon" className="text-slate-300 hover:text-red-500 h-8 w-8" onClick={async () => {
+                              if(confirm("Delete this broadcast?")) {
+                                 await supabase.from('broadcasts').delete().eq('id', b.id);
+                                 fetchBroadcasts();
+                              }
+                           }}>
+                              <Trash2 className="w-4 h-4"/>
+                           </Button>
+                        </div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
           )}
         </CardContent>
       </Card>
