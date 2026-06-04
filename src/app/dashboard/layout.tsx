@@ -187,7 +187,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, []);
 
-  // ━━━ 2. REALTIME BROADCAST LISTENER (UPDATED LOGIC) ━━━
+  // ━━━ 2. REALTIME BROADCAST LISTENER (UPDATED LOGIC WITH DEBUG) ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -203,11 +203,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
     
     if (data) {
+      console.log("🔥 ACTIVE BROADCAST FOUND", data);
+
       setActiveBroadcast(data);
-      const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
-      
-      // ✅ Popup Logic Update: Only open if mode is POPUP
-      if (data.display_mode === 'POPUP' && !sessionSeen) {
+
+      const sessionSeen = sessionStorage.getItem(
+        `seen_broadcast_${data.id}`
+      );
+
+      console.log("SESSION SEEN =", sessionSeen);
+
+      if (!sessionSeen && !hasSeenPopup) {
+        console.log("🔥 OPENING POPUP");
         setShowPopup(true);
       } else {
         setShowPopup(false);
@@ -408,9 +415,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const displayMode = activeBroadcast?.display_mode || 'TOP_BANNER';
 
+  console.log("activeBroadcast =", activeBroadcast);
+  console.log("showPopup =", showPopup);
+
   return (
     <>
-      {/* 3. Remove RenderAnimations Call - Deleted */}
+      {/* 3. Red Test Box */}
+      {activeBroadcast && (
+        <div
+          style={{
+            position: "fixed",
+            top: 20,
+            left: 20,
+            zIndex: 999999,
+            background: "red",
+            color: "white",
+            padding: "20px",
+            borderRadius: "10px"
+          }}
+        >
+          {activeBroadcast.title}
+        </div>
+      )}
 
       {/* 2. Full Lockout Check */}
       {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
@@ -471,8 +497,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ━━ FULLSCREEN ━━ */}
       {activeBroadcast?.display_mode === 'FULLSCREEN' && <FullscreenBroadcast broadcast={activeBroadcast} />}
 
-      {/* 5. MODERN GREETING POPUP (Replaced) */}
-      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+      {/* 5. MODERN GREETING POPUP (Force Open) */}
+      <Dialog open={true} onOpenChange={setShowPopup}>
         <DialogContent className="sm:max-w-xl border-none p-0 bg-transparent shadow-none overflow-visible">
           {activeBroadcast && (
             <div className="relative overflow-hidden rounded-[32px] bg-white dark:bg-slate-900 shadow-2xl">
