@@ -161,43 +161,43 @@ export default function AdminSettings() {
     toast.info(`AI: ${detected.key || 'Generic'} theme detected.`);
   };
 
-  // Festival Presets Handler (UPDATED WITH SOLID LIBRARY)
+  // Festival Presets Handler (UPDATED WITH MASTER LIBRARY)
   const applyPreset = (key: string) => {
-    // Master Library for Professional Content
-    const library: any = {
-      DIWALI: {
-        title: "Shubh Deepawali! 🪔",
-        msg: "Saanify Pariwar ki taraf se aapko aur aapke parivar ko Diwali ki hardik shubhkamnayein! | Saanify Pariwar wishes you a year full of light, joy and prosperity.",
-        img: "https://images.unsplash.com/photo-1573148164257-8a3064436573?q=80&w=1200", // Fixed High-Res Diwali Image
-        anim: "DIYA", color: "GOLD"
+    // 🎯 Fixed Professional Library (No random gym images)
+    const festivalLibrary: any = {
+      DIWALI: { 
+        title: "Shubh Deepawali! 🪔", 
+        message: "Saanify Pariwar ki taraf se aap sabhi ko Diwali ki hardik shubhkamnayein! | Saanify Pariwar wishes you a year full of light, joy and prosperity.", 
+        image_url: "https://images.unsplash.com/photo-1605141040333-e028b070440c?q=80&w=1200", 
+        animation_type: "DIYA", theme_color: "GOLD" 
       },
-      HOLI: {
-        title: "Happy Holi! 🎨",
-        msg: "Saanify Pariwar ki taraf se aapko rangon bhari Holi ki shubhkamnayein! | May your life be as colorful and joyful as the festival of Holi.",
-        img: "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?q=80&w=1200",
-        anim: "HOLI", color: "RED"
+      HOLI: { 
+        title: "Happy Holi! 🎨", 
+        message: "Saanify Pariwar ki taraf se aapko rangon bhari Holi ki shubhkamnayein! | Celebrate the colors of life and togetherness.", 
+        image_url: "https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?q=80&w=1200", 
+        animation_type: "HOLI", theme_color: "RED" 
       },
-      NEW_YEAR: {
-        title: "Happy New Year! 🎆",
-        msg: "Naya Saal, Nayi Shuruat! Saanify Pariwar ki taraf se aapko naye saal ki mubarakbaad. | Wishing you 365 days of success and happiness in the New Year.",
-        img: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?q=80&w=1200",
-        anim: "FIREWORKS", color: "GOLD"
+      NEW_YEAR: { 
+        title: "Happy New Year! 🎆", 
+        message: "Naya Saal, Nayi Shuruat! Saanify Pariwar ki taraf se aapko naye saal ki mubarakbaad. | Wishing you 365 days of success and happiness.", 
+        image_url: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?q=80&w=1200", 
+        animation_type: "FIREWORKS", theme_color: "GOLD" 
       }
     };
 
-    if (library[key]) {
-      const data = library[key];
+    if(festivalLibrary[key]) {
+      const data = festivalLibrary[key];
       setBroadcastForm({
         ...broadcastForm,
         title: data.title,
-        message: data.msg,
-        image_url: data.img,
-        animation_type: data.anim,
-        theme_color: data.color,
+        message: data.message,
+        image_url: data.image_url,
+        animation_type: data.animation_type,
+        theme_color: data.theme_color,
         festival_key: key,
-        display_mode: 'POPUP' // Default Modern Popup
+        display_mode: 'POPUP'
       });
-      toast.success(`${key} settings applied with professional branding!`);
+      toast.success(`AI: ${key} Premium Preset Applied!`);
     }
   };
 
