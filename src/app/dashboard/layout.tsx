@@ -45,18 +45,18 @@ const getThemeColor = (theme: string) => {
       case 'ORANGE':
          return 'bg-orange-600';
       case 'GOLD':
-         return 'bg-yellow-500 text-yellow-950'; // Gold looks better with dark text
+         return 'bg-yellow-500 text-yellow-950'; 
       default:
          return 'bg-blue-600';
    }
 };
 
 const festivalImages = {
-   DIWALI:'https://images.unsplash.com/photo-1546483875-ad9014c88eba?w=800&q=80', // Diwali fallback
-   HOLI:'https://images.unsplash.com/photo-1610197919218-6c2182360491?w=800&q=80', // Holi fallback
-   CHRISTMAS:'https://images.unsplash.com/photo-1512096701486-c0c4473e998c?w=800&q=80', // Christmas fallback
-   EID_AL_FITR:'https://images.unsplash.com/photo-1564121211835-e88c852648ab?w=800&q=80', // Eid fallback
-   NEW_YEAR:'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&q=80' // New Year fallback
+   DIWALI:'https://images.unsplash.com/photo-1546483875-ad9014c88eba?w=800&q=80', 
+   HOLI:'https://images.unsplash.com/photo-1610197919218-6c2182360491?w=800&q=80', 
+   CHRISTMAS:'https://images.unsplash.com/photo-1512096701486-c0c4473e998c?w=800&q=80', 
+   EID_AL_FITR:'https://images.unsplash.com/photo-1564121211835-e88c852648ab?w=800&q=80', 
+   NEW_YEAR:'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&q=80' 
 };
 
 // ✅ Fullscreen Broadcast Component
@@ -117,6 +117,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
 
+  // ━━━ 4. Add Festival Theme Helper ━━━
+  const getFestivalTheme = () => {
+    if (!activeBroadcast) return null;
+
+    switch (activeBroadcast.festival_key) {
+      case 'HOLI':
+        return {
+          bg: 'from-pink-500 via-yellow-400 to-blue-500',
+          icon: '🎨',
+          particles: ['🎨', '🎉', '✨', '🌈']
+        };
+
+      case 'DIWALI':
+        return {
+          bg: 'from-orange-500 via-yellow-400 to-amber-600',
+          icon: '🪔',
+          particles: ['🪔', '✨', '💫', '🌟']
+        };
+
+      case 'CHRISTMAS':
+        return {
+          bg: 'from-green-600 via-red-500 to-green-700',
+          icon: '🎄',
+          particles: ['🎄', '❄️', '🎁', '✨']
+        };
+
+      default:
+        return {
+          bg: 'from-blue-600 to-indigo-700',
+          icon: '📢',
+          particles: ['✨', '🎉']
+        };
+    }
+  };
+
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
     const fetchInitialSettings = async () => {
@@ -162,7 +197,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .or('target_audience.eq.BOTH,target_audience.eq.CLIENT')
       .lte('starts_at', now)
       .or(`ends_at.is.null,ends_at.gte.${now}`)
-      .order('priority', { ascending: false }) // Sort by priority as well
+      .order('priority', { ascending: false }) 
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -200,151 +235,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
-  };
-
-  // ━━━ 2. VIRTUAL ANIMATIONS (UPDATED) ━━━
-  const RenderAnimations = () => {
-    if (!activeBroadcast?.animation_type) return null;
-    
-    // Helper for random positioning
-    const rand = (min: number, max: number) => Math.random() * (max - min) + min;
-
-    if (activeBroadcast.animation_type === 'DIYA') {
-      return (
-        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="diya-glow absolute" style={{ 
-              bottom: `${rand(5, 20)}%`, 
-              left: `${rand(5, 90)}%`,
-              fontSize: '40px',
-              animation: `pulse ${rand(2, 4)}s infinite`
-            }}>🪔</div>
-          ))}
-        </div>
-      );
-    }
-
-    if (activeBroadcast.animation_type === 'HOLI') {
-      const colors = ['#FF1493', '#32CD32', '#FFD700', '#FF4500', '#1E90FF'];
-      return (
-        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-          {[...Array(15)].map((_, i) => (
-            <div key={i} className="absolute rounded-full blur-sm opacity-80 animate-bounce" style={{ 
-              top: `${rand(0, 80)}%`, 
-              left: `${rand(0, 90)}%`, 
-              width: `${rand(50, 150)}px`, height: `${rand(50, 150)}px`,
-              background: colors[Math.floor(Math.random() * colors.length)],
-              animationDelay: `${i * 0.2}s`
-            }} />
-          ))}
-        </div>
-      );
-    }
-
-    if (activeBroadcast.animation_type === 'GARBA') {
-      return (
-        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-           {[...Array(5)].map((_, i) => (
-              <div key={i} className="absolute text-4xl animate-spin" style={{
-                top: `${rand(10, 80)}%`,
-                left: `${rand(10, 90)}%`,
-                animationDuration: `${rand(3, 6)}s`,
-                opacity: 0.6
-              }}>🪘</div>
-           ))}
-        </div>
-      )
-    }
-
-    if (activeBroadcast.animation_type === 'FIREWORKS') {
-      return (
-        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-           {[...Array(4)].map((_, i) => (
-              <div key={i} className="absolute text-6xl animate-ping" style={{
-                top: `${rand(20, 60)}%`,
-                left: `${rand(20, 80)}%`,
-                animationDuration: '2s'
-              }}>🎆</div>
-           ))}
-        </div>
-      )
-    }
-
-    if (activeBroadcast.animation_type === 'MOON') {
-      return (
-         <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-            <div className="absolute text-9xl transition-all duration-[10000ms] ease-linear" style={{
-               top: '10%',
-               left: '-10%',
-               transform: 'translateX(100vw)'
-            }}>🌙</div>
-         </div>
-      )
-    }
-
-    if (activeBroadcast.animation_type === 'SNOW') {
-      return (
-        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-           {[...Array(20)].map((_, i) => (
-              <div key={i} className="absolute text-2xl animate-bounce" style={{
-                 top: `-5%`,
-                 left: `${rand(0, 100)}%`,
-                 animationDelay: `${rand(0, 5)}s`,
-                 animationDuration: `${rand(3, 8)}s`
-              }}>❄️</div>
-           ))}
-        </div>
-      )
-    }
-
-    if (activeBroadcast.animation_type === 'FLOWERS') {
-       return (
-          <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-             {[...Array(10)].map((_, i) => (
-                <div key={i} className="absolute text-4xl transition-all duration-[5000ms] ease-in-out" style={{
-                   top: `-10%`,
-                   left: `${rand(0, 100)}%`,
-                   transform: `translateY(110vh) rotate(${rand(0, 360)}deg)`,
-                   animationDelay: `${rand(0, 3)}s`
-                }}>🌸</div>
-             ))}
-          </div>
-       )
-    }
-
-    if (activeBroadcast.animation_type === 'SPARKLES') {
-      return (
-         <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-            {[...Array(15)].map((_, i) => (
-               <div key={i} className="absolute text-yellow-400 animate-pulse" style={{
-                  top: `${rand(0, 100)}%`,
-                  left: `${rand(0, 100)}%`,
-                  fontSize: `${rand(10, 30)}px`,
-                  animationDelay: `${i * 0.1}s`
-               }}>✨</div>
-            ))}
-         </div>
-      )
-    }
-
-    if (activeBroadcast.animation_type === 'TRICOLOR') {
-      return (
-         <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-            <div className="absolute top-0 w-full h-2 bg-orange-500 animate-pulse"></div>
-            <div className="absolute top-4 w-full h-2 bg-white animate-pulse delay-75"></div>
-            <div className="absolute top-8 w-full h-2 bg-green-500 animate-pulse delay-150"></div>
-            {[...Array(5)].map((_, i)=> (
-               <div key={i} className="absolute text-4xl animate-bounce" style={{
-                  top: `${rand(20, 80)}%`,
-                  left: `${rand(10, 90)}%`,
-                  animationDelay: `${i}s`
-               }}>🇮🇳</div>
-            ))}
-         </div>
-      )
-    }
-
-    return null;
   };
 
   // ━━━ AUTH + PROFILE SYNC ━━━
@@ -516,13 +406,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // Determine Display Mode
   const displayMode = activeBroadcast?.display_mode || 'TOP_BANNER';
 
   return (
     <>
-      {/* 1. Virtual Animations Layer */}
-      <RenderAnimations />
+      {/* 3. Remove RenderAnimations Call - Deleted */}
 
       {/* 2. Full Lockout Check */}
       {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
@@ -554,10 +442,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━ TOP BANNER (Conditional) ━━ */}
-      {activeBroadcast &&
-       !showPopup &&
-       displayMode === 'TOP_BANNER' && (
+      {/* ━━ TOP BANNER (Disabled for testing) ━━ */}
+      {false && activeBroadcast && !showPopup && displayMode === 'TOP_BANNER' && (
         <div className={`bg-gradient-to-r ${getPriorityColor(activeBroadcast.priority)} text-white py-2.5 px-6 text-center text-xs font-bold z-[1001] sticky top-0 flex items-center justify-between shadow-lg border-b border-white/10`}>
           <div className="flex items-center gap-3 mx-auto">
              <div className="animate-bounce bg-white/20 p-1 rounded-full"><Sparkles className="w-3 h-3"/></div>
@@ -568,7 +454,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━ BOTTOM BANNER (New) ━━ */}
+      {/* ━━ BOTTOM BANNER ━━ */}
       {activeBroadcast &&
        displayMode === 'BOTTOM_BANNER' && (
         <div className={`fixed bottom-0 left-0 right-0 z-[1001] bg-gradient-to-r ${getPriorityColor(activeBroadcast.priority)} text-white py-3 px-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]`}>
@@ -582,62 +468,92 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━ FULLSCREEN (New) ━━ */}
+      {/* ━━ FULLSCREEN ━━ */}
       {activeBroadcast?.display_mode === 'FULLSCREEN' && <FullscreenBroadcast broadcast={activeBroadcast} />}
 
-      {/* 5. MODERN GREETING POPUP */}
+      {/* 5. MODERN GREETING POPUP (Replaced) */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="sm:max-w-xl border-none p-0 bg-transparent shadow-none overflow-visible">
-          <div className="relative bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-500">
-             
-             {/* Dynamic Image with Fallback */}
-             <div className="relative h-64 w-full">
-                <img 
-                  src={
-                    activeBroadcast?.image_url || 
-                    festivalImages[activeBroadcast?.festival_key as keyof typeof festivalImages] || 
-                    'https://images.unsplash.com/photo-1514525253361-bee8a187c92a?w=800&q=80'
-                  } 
-                  className="w-full h-full object-cover" 
-                  alt="Greeting"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-900 via-transparent"></div>
-             </div>
+          {activeBroadcast && (
+            <div className="relative overflow-hidden rounded-[32px] bg-white dark:bg-slate-900 shadow-2xl">
 
-             <div className="p-10 text-center -mt-12 relative z-10 space-y-6">
-                {/* Icon with Theme Color */}
-                <div className={`w-20 h-20 ${getThemeColor(activeBroadcast?.theme_color || 'DEFAULT')} rounded-3xl shadow-xl flex items-center justify-center mx-auto -rotate-12 transform hover:rotate-0 transition-all duration-500`}>
-                   {activeBroadcast?.animation_type === 'DIYA' ? <Flame className="w-10 h-10 text-white" /> : 
-                    activeBroadcast?.animation_type === 'HOLI' ? <Palette className="w-10 h-10 text-white" /> :
-                    activeBroadcast?.animation_type === 'SNOW' ? <Snowflake className="w-10 h-10 text-white" /> :
-                    activeBroadcast?.animation_type === 'MOON' ? <Moon className="w-10 h-10 text-white" /> :
-                    activeBroadcast?.animation_type === 'FIREWORKS' ? <Zap className="w-10 h-10 text-white" /> :
-                    activeBroadcast?.animation_type === 'FLOWERS' ? <Flower2 className="w-10 h-10 text-white" /> :
-                    <Globe className="w-10 h-10 text-white" />}
+              {/* Festival Background */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${getFestivalTheme()?.bg} opacity-10`}
+              />
+
+              {/* Festival Particles */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="absolute text-2xl animate-pulse"
+                    style={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                    }}
+                  >
+                    {
+                      getFestivalTheme()?.particles[
+                        Math.floor(
+                          Math.random() *
+                          getFestivalTheme()!.particles.length
+                        )
+                      ]
+                    }
+                  </span>
+                ))}
+              </div>
+
+              {/* Image */}
+              {activeBroadcast.image_url && (
+                <div className="h-56 overflow-hidden">
+                  <img
+                    src={activeBroadcast.image_url}
+                    className="w-full h-full object-cover"
+                    alt=""
+                  />
+                </div>
+              )}
+
+              <div className="relative p-8 text-center">
+
+                <div className="text-6xl mb-4">
+                  {getFestivalTheme()?.icon}
                 </div>
 
-                <div className="space-y-2">
-                   <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{activeBroadcast?.title}</h2>
-                   <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{activeBroadcast?.message}</p>
-                </div>
+                <h2 className="text-3xl font-black mb-3">
+                  {activeBroadcast.title}
+                </h2>
 
-                <div className="space-y-3">
-                   {/* CTA Button */}
-                   {activeBroadcast?.cta_text && activeBroadcast?.cta_link && (
-                     <Button 
-                        onClick={() => window.open(activeBroadcast.cta_link, '_blank')} 
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white h-14 rounded-2xl text-xl font-black shadow-xl active:scale-95 transition-all"
-                     >
-                        {activeBroadcast.cta_text}
-                     </Button>
-                   )}
+                <p className="text-slate-600 dark:text-slate-300">
+                  {activeBroadcast.message}
+                </p>
 
-                   <Button onClick={handleDismissPopup} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 h-12 rounded-2xl text-lg font-bold transition-all">
-                      Close <X className="ml-2 w-4 h-4 opacity-50" />
-                   </Button>
-                </div>
-             </div>
-          </div>
+                {activeBroadcast.cta_text && (
+                  <Button
+                    className="mt-6 w-full"
+                    onClick={() => {
+                      if (activeBroadcast.cta_link) {
+                        window.open(activeBroadcast.cta_link, '_blank');
+                      }
+                    }}
+                  >
+                    {activeBroadcast.cta_text}
+                  </Button>
+                )}
+
+                <Button
+                  variant="outline"
+                  className="mt-3 w-full"
+                  onClick={handleDismissPopup}
+                >
+                  Continue
+                </Button>
+
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
