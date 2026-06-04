@@ -161,65 +161,44 @@ export default function AdminSettings() {
     toast.info(`AI: ${detected.key || 'Generic'} theme detected.`);
   };
 
-  // Festival Presets Handler (UPDATED)
+  // Festival Presets Handler (UPDATED WITH SOLID LIBRARY)
   const applyPreset = (key: string) => {
-    const type = broadcastForm.type; // FESTIVAL, ANNOUNCEMENT, UPDATE, etc.
-
-    // 1. DYNAMIC ASSET MAPPING
-    // Unsplash hume keyword ke base par automatic photo deta hai
-    const getAutoImage = (keyword: string) => `https://source.unsplash.com/featured/1200x600/?${keyword},celebration`;
-
-    let config = {
-      title: "",
-      message: "",
-      animation: "CONFETTI", // Default animation
-      color: "BLUE",
-      image: ""
+    // Master Library for Professional Content
+    const library: any = {
+      DIWALI: {
+        title: "Shubh Deepawali! 🪔",
+        msg: "Saanify Pariwar ki taraf se aapko aur aapke parivar ko Diwali ki hardik shubhkamnayein! | Saanify Pariwar wishes you a year full of light, joy and prosperity.",
+        img: "https://images.unsplash.com/photo-1573148164257-8a3064436573?q=80&w=1200", // Fixed High-Res Diwali Image
+        anim: "DIYA", color: "GOLD"
+      },
+      HOLI: {
+        title: "Happy Holi! 🎨",
+        msg: "Saanify Pariwar ki taraf se aapko rangon bhari Holi ki shubhkamnayein! | May your life be as colorful and joyful as the festival of Holi.",
+        img: "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?q=80&w=1200",
+        anim: "HOLI", color: "RED"
+      },
+      NEW_YEAR: {
+        title: "Happy New Year! 🎆",
+        msg: "Naya Saal, Nayi Shuruat! Saanify Pariwar ki taraf se aapko naye saal ki mubarakbaad. | Wishing you 365 days of success and happiness in the New Year.",
+        img: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?q=80&w=1200",
+        anim: "FIREWORKS", color: "GOLD"
+      }
     };
 
-    // 2. LOGIC FOR FESTIVALS (30-40 types)
-    if (type === 'FESTIVAL') {
-      const festivalName = key.replace(/_/g, ' ').toLowerCase();
-      config = {
-        title: `Happy ${festivalName.charAt(0).toUpperCase() + festivalName.slice(1)}!`,
-        message: `Saanify Pariwar ki taraf se aap sabhi ko ${festivalName} ki hardik shubhkamnayein! | Wishing you a blessed and joyful ${festivalName}.`,
-        animation: (key.includes('DIWALI') || key.includes('YEAR')) ? 'FIREWORKS' : (key.includes('HOLI') ? 'HOLI' : 'CONFETTI'),
-        color: (key.includes('DIWALI') || key.includes('GOLD')) ? 'GOLD' : 'RED',
-        image: getAutoImage(festivalName)
-      };
-    } 
-    
-    // 3. LOGIC FOR NON-FESTIVAL TYPES (Announcement, Update, Emergency)
-    else if (type === 'ANNOUNCEMENT' || type === 'UPDATE') {
-      config = {
-        title: type === 'UPDATE' ? "New Feature Alert! 🚀" : "Important Announcement 📢",
-        message: "We have some exciting news for you! Check out the latest updates in your dashboard. | Aapke liye ek mahatvapurn suchna hai, kripya dhyan dein.",
-        animation: "SPARKLES",
-        color: "BLUE",
-        image: getAutoImage(type === 'UPDATE' ? 'technology,rocket' : 'news,megaphone')
-      };
+    if (library[key]) {
+      const data = library[key];
+      setBroadcastForm({
+        ...broadcastForm,
+        title: data.title,
+        message: data.msg,
+        image_url: data.img,
+        animation_type: data.anim,
+        theme_color: data.color,
+        festival_key: key,
+        display_mode: 'POPUP' // Default Modern Popup
+      });
+      toast.success(`${key} settings applied with professional branding!`);
     }
-
-    else if (type === 'EMERGENCY' || type === 'CRITICAL') {
-      config = {
-        title: "Critical Update ⚠️",
-        message: "Important security or system update. Please take immediate action. | Mahatvapurn suraksha sandesh, kripya turant dhyan dein.",
-        animation: "NONE",
-        color: "RED",
-        image: getAutoImage('alert,warning')
-      };
-    }
-
-    // Final Form Update
-    setBroadcastForm({
-      ...broadcastForm,
-      title: config.title,
-      message: config.message,
-      animation_type: config.animation,
-      theme_color: config.color,
-      image_url: config.image,
-      festival_key: key
-    });
   };
 
   const handleSave = async () => {
