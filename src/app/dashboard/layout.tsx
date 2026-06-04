@@ -475,14 +475,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ━━ NEW BROADCAST UI SECTION ━━ */}
       <RenderFestivalDecor />
 
-      {/* HYBRID BANNER: Popup band hone ke baad dikhega */}
+      {/* HYBRID BANNER: Popup band hone ke baad dikhega (Fix 1 Applied) */}
       {activeBroadcast && !showPopup && (
         <div className={`sticky top-0 z-[1001] py-2 px-6 text-center text-xs font-bold transition-all animate-in slide-in-from-top duration-700 
           ${activeBroadcast.theme_color === 'GOLD' ? 'bg-gradient-to-r from-yellow-600 to-amber-800 text-white' : 'bg-blue-600 text-white'}`}>
           <div className="max-w-5xl mx-auto flex justify-between items-center">
             <span className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 animate-pulse" />
-              {activeBroadcast.message}
+              {/* ✅ Fix 1: Optional Chaining for safety */}
+              {activeBroadcast?.message}
             </span>
             {activeBroadcast.cta_link && (
               <a href={activeBroadcast.cta_link} target="_blank" className="bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors">
@@ -494,7 +495,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* MODERN HERO MODAL (POPUP) - UPDATED LOGIC */}
+      {/* MODERN HERO MODAL (POPUP) - UPDATED LOGIC WITH SAFETY CHECKS */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
           
@@ -514,9 +515,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               <div className="p-10 text-center -mt-16 relative z-10 space-y-6">
                 <h2 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">
-                   {activeBroadcast?.title}
+                   {/* Fix 3: Fallback for Title */}
+                   {activeBroadcast?.title || 'Notification'}
                 </h2>
                 <p className="text-lg text-slate-500 leading-relaxed">
+                   {/* Fix 2: Safe Message Display */}
                    {activeBroadcast?.message}
                 </p>
                 
@@ -545,10 +548,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               <div className="space-y-2 relative z-10">
                 <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase">
-                  {activeBroadcast?.title}
+                  {/* Fix 3: Fallback for Title */}
+                  {activeBroadcast?.title || 'Notification'}
                 </h2>
-                {/* Bilingual Message Support (safely handling split) */}
-                {activeBroadcast?.message.includes('|') ? (
+                {/* Fix 2: Bilingual Message Support (Safety Check for Split) */}
+                {activeBroadcast?.message?.includes('|') ? (
                    <>
                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
                         {activeBroadcast.message.split('|')[1]} {/* English part */}
@@ -559,7 +563,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                    </>
                 ) : (
                    <p className="text-md text-slate-500 font-medium">
-                     {activeBroadcast.message}
+                     {activeBroadcast?.message}
                    </p>
                 )}
               </div>
