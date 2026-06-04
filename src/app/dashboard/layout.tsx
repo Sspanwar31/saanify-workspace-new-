@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Globe, Sparkles, Flame, Palette, Zap, Moon, Snowflake, Flower2, Sparkles as SparklesIcon } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles, Flame, Palette, Zap, Moon, Snowflake, Flower2, Sparkles as SparklesIcon } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -413,31 +413,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  const displayMode = activeBroadcast?.display_mode || 'TOP_BANNER';
+  // 1. Decoration Icons/Animations Logic
+  const RenderFestivalDecor = () => {
+    if (!showPopup || !activeBroadcast) return null;
 
-  console.log("activeBroadcast =", activeBroadcast);
-  console.log("showPopup =", showPopup);
+    // DIYA ANIMATION (Diwali)
+    if (activeBroadcast.animation_type === 'DIYA') {
+      return (
+        <div className="fixed inset-0 pointer-events-none z-[10000]">
+          <div className="absolute bottom-10 left-10 text-6xl diya-glow">🪔</div>
+          <div className="absolute bottom-10 right-10 text-6xl diya-glow">🪔</div>
+          <div className="absolute top-20 left-1/4 text-4xl diya-glow opacity-50">🪔</div>
+        </div>
+      );
+    }
+
+    // HOLI SPLASH
+    if (activeBroadcast.animation_type === 'HOLI') {
+      return (
+        <div className="fixed inset-0 pointer-events-none z-[10000]">
+          <div className="holi-splash bg-pink-500 top-1/4 left-1/4 w-64 h-64 opacity-40 blur-3xl" />
+          <div className="holi-splash bg-yellow-400 bottom-1/4 right-1/4 w-80 h-80 opacity-40 blur-3xl" />
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <>
-      {/* 3. Red Test Box */}
-      {activeBroadcast && (
-        <div
-          style={{
-            position: "fixed",
-            top: 20,
-            left: 20,
-            zIndex: 999999,
-            background: "red",
-            color: "white",
-            padding: "20px",
-            borderRadius: "10px"
-          }}
-        >
-          {activeBroadcast.title}
-        </div>
-      )}
-
       {/* 2. Full Lockout Check */}
       {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
 
@@ -468,121 +472,59 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━ TOP BANNER (Disabled for testing) ━━ */}
-      {false && activeBroadcast && !showPopup && displayMode === 'TOP_BANNER' && (
-        <div className={`bg-gradient-to-r ${getPriorityColor(activeBroadcast.priority)} text-white py-2.5 px-6 text-center text-xs font-bold z-[1001] sticky top-0 flex items-center justify-between shadow-lg border-b border-white/10`}>
-          <div className="flex items-center gap-3 mx-auto">
-             <div className="animate-bounce bg-white/20 p-1 rounded-full"><Sparkles className="w-3 h-3"/></div>
-             <span className="uppercase tracking-widest opacity-70">[{activeBroadcast.type}]</span>
-             <span>{activeBroadcast.message}</span>
+      {/* ━━ NEW BROADCAST UI SECTION ━━ */}
+      <RenderFestivalDecor />
+
+      {/* HYBRID BANNER: Popup band hone ke baad dikhega */}
+      {activeBroadcast && !showPopup && (
+        <div className={`sticky top-0 z-[1001] py-2 px-6 text-center text-xs font-bold transition-all animate-in slide-in-from-top duration-700 
+          ${activeBroadcast.theme_color === 'GOLD' ? 'bg-gradient-to-r from-yellow-600 to-amber-800 text-white' : 'bg-blue-600 text-white'}`}>
+          <div className="max-w-5xl mx-auto flex justify-between items-center">
+            <span className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 animate-pulse" />
+              {activeBroadcast.message}
+            </span>
+            {activeBroadcast.cta_link && (
+              <a href={activeBroadcast.cta_link} target="_blank" className="bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors">
+                {activeBroadcast.cta_text || 'View More'}
+              </a>
+            )}
+            <button onClick={() => setActiveBroadcast(null)}><X className="w-4 h-4 opacity-50" /></button>
           </div>
-          <button onClick={() => setActiveBroadcast(null)} className="hover:bg-white/10 rounded-full p-1"><X className="w-4 h-4"/></button>
         </div>
       )}
 
-      {/* ━━ BOTTOM BANNER ━━ */}
-      {activeBroadcast &&
-       displayMode === 'BOTTOM_BANNER' && (
-        <div className={`fixed bottom-0 left-0 right-0 z-[1001] bg-gradient-to-r ${getPriorityColor(activeBroadcast.priority)} text-white py-3 px-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]`}>
-           <div className="max-w-7xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                 <span className="uppercase tracking-widest opacity-70 text-xs font-bold border border-white/20 px-2 py-1 rounded">[{activeBroadcast.type}]</span>
-                 <span className="text-sm font-medium">{activeBroadcast.message}</span>
-              </div>
-              <button onClick={() => setActiveBroadcast(null)} className="hover:bg-white/10 rounded-full p-1"><X className="w-4 h-4"/></button>
-           </div>
-        </div>
-      )}
-
-      {/* ━━ FULLSCREEN ━━ */}
-      {activeBroadcast?.display_mode === 'FULLSCREEN' && <FullscreenBroadcast broadcast={activeBroadcast} />}
-
-      {/* 5. MODERN GREETING POPUP (Force Open) */}
-      <Dialog open={true} onOpenChange={setShowPopup}>
-        <DialogContent className="sm:max-w-xl border-none p-0 bg-transparent shadow-none overflow-visible">
-          {activeBroadcast && (
-            <div className="relative overflow-hidden rounded-[32px] bg-white dark:bg-slate-900 shadow-2xl">
-
-              {/* Festival Background */}
-              <div
-                className={`absolute inset-0 bg-gradient-to-br ${getFestivalTheme()?.bg} opacity-10`}
-              />
-
-              {/* Festival Particles */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="absolute text-2xl animate-pulse"
-                    style={{
-                      top: `${Math.random() * 100}%`,
-                      left: `${Math.random() * 100}%`,
-                    }}
-                  >
-                    {
-                      getFestivalTheme()?.particles[
-                        Math.floor(
-                          Math.random() *
-                          getFestivalTheme()!.particles.length
-                        )
-                      ]
-                    }
-                  </span>
-                ))}
-              </div>
-
-              {/* Image */}
-              {activeBroadcast.image_url && (
-                <div className="h-56 overflow-hidden">
-                  <img
-                    src={activeBroadcast.image_url}
-                    className="w-full h-full object-cover"
-                    alt=""
-                  />
-                </div>
-              )}
-
-              <div className="relative p-8 text-center">
-
-                <div className="text-6xl mb-4">
-                  {getFestivalTheme()?.icon}
-                </div>
-
-                <h2 className="text-3xl font-black mb-3">
-                  {activeBroadcast.title}
-                </h2>
-
-                <p className="text-slate-600 dark:text-slate-300">
-                  {activeBroadcast.message}
-                </p>
-
-                {activeBroadcast.cta_text && (
-                  <Button
-                    className="mt-6 w-full"
-                    onClick={() => {
-                      if (activeBroadcast.cta_link) {
-                        window.open(activeBroadcast.cta_link, '_blank');
-                      }
-                    }}
-                  >
-                    {activeBroadcast.cta_text}
-                  </Button>
-                )}
-
-                <Button
-                  variant="outline"
-                  className="mt-3 w-full"
-                  onClick={handleDismissPopup}
-                >
-                  Continue
-                </Button>
-
-              </div>
+      {/* MODERN HERO MODAL (POPUP) */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
+          <div className="relative bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-[0_35px_100px_rgba(0,0,0,0.4)] border border-white/20">
+            
+            {/* Hero Banner Part */}
+            <div className="h-64 w-full relative">
+              <img src={activeBroadcast?.image_url || '/placeholder-festival.jpg'} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-900"></div>
             </div>
-          )}
+
+            <div className="p-10 text-center -mt-16 relative z-10 space-y-6">
+              <h2 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">
+                 {activeBroadcast?.title}
+              </h2>
+              <p className="text-lg text-slate-500 leading-relaxed">
+                 {activeBroadcast?.message}
+              </p>
+              
+              <Button 
+                onClick={() => { setShowPopup(false); sessionStorage.setItem('seen_greet', 'true'); }} 
+                className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl text-xl font-bold shadow-lg"
+              >
+                Celebrate Now 🚀
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
+      {/* Existing Layout Structure... */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         {/* ━━ DESKTOP SIDEBAR ━━ */}
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
