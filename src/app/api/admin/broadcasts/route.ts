@@ -34,42 +34,23 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // Step 1: Log Body
-    console.log("BODY =", body);
+    // Debug Logging
+    console.log("BROADCAST POST BODY =", body);
     
     client = await getDbClient();
-    if (!client) return NextResponse.json({ error: "DB Error" }, { status: 500 });
+    if (!client) return NextResponse.json({ error: "DB Connection Failed" }, { status: 500 });
 
+    // ✅ Updated Query with 21 Columns (Supporting CTA, Recurring, etc.)
     const query = `
       INSERT INTO broadcasts (
-        title,
-        message,
-        image_url,
-        type,
-        style,
-        is_active,
-        starts_at,
-        ends_at,
-        target_audience,
-        animation_type,
-
-        category,
-        festival_key,
-        theme,
-        hero_enabled,
-        auto_generated,
-        priority,
-        dismissible,
-        show_once,
-
-        created_at
+        title, message, image_url, type, style, 
+        is_active, starts_at, ends_at, target_audience, animation_type, 
+        category, festival_key, theme, hero_enabled, auto_generated, 
+        priority, dismissible, show_once, cta_text, cta_link, is_recurring, created_at
       )
       VALUES (
-        $1,$2,$3,$4,$5,
-        $6,$7,$8,$9,$10,
-        $11,$12,$13,$14,
-        $15,$16,$17,$18,
-        NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 
+        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, NOW()
       )
       RETURNING *;
     `;
@@ -78,9 +59,9 @@ export async function POST(req: Request) {
       body.title,
       body.message,
       body.image_url || null,
-      body.type || 'INFO',
-      body.style || 'POPUP',
-      true,
+      body.type || 'FESTIVAL', // Default to FESTIVAL if not provided
+      body.style || 'POPUP', 
+      true, // is_active default
 
       body.starts_at || new Date().toISOString(),
       body.ends_at || null,
@@ -90,24 +71,29 @@ export async function POST(req: Request) {
 
       body.category || 'CUSTOM',
       body.festival_key || null,
-      body.theme || 'default',
+      body.theme || 'DEFAULT', // Frontend 'theme_color' mapped to DB 'theme'
 
       body.hero_enabled ?? false,
       body.auto_generated ?? false,
 
-      body.priority ?? 1,
+      body.priority || 2, 
       body.dismissible ?? true,
-      body.show_once ?? false
+      body.show_once ?? false,
+      
+      // CTA Fields (Used in Frontend Modal)
+      body.cta_text || null, 
+      body.cta_link || null, 
+      
+      body.is_recurring ?? false
     ];
 
-    // Step 2: Log Values
-    console.log("VALUES =", values);
+    console.log("INSERT VALUES =", values);
 
     const result = await client.query(query, values);
     await client.end();
+    
     return NextResponse.json({ success: true, data: result.rows[0] });
     
-  // Step 3: Detailed Error Handling
   } catch (error: any) {
     console.error("POST ERROR =", error);
 
@@ -128,10 +114,13 @@ export async function PATCH(req: Request) {
     let client;
     try {
       const { id, is_active } = await req.json();
+      
       client = await getDbClient();
-      if (!client) return NextResponse.json({ error: "DB Error" });
+      if (!client) return NextResponse.json({ error: "DB Connection Failed" }, { status: 500 });
+
       await client.query('UPDATE broadcasts SET is_active = $1 WHERE id = $2', [is_active, id]);
       await client.end();
+      
       return NextResponse.json({ success: true });
     } catch (error: any) {
       if (client) await client.end();
@@ -144,10 +133,13 @@ export async function DELETE(req: Request) {
     try {
       const { searchParams } = new URL(req.url);
       const id = searchParams.get('id');
+      
       client = await getDbClient();
-      if (!client) return NextResponse.json({ error: "DB Error" });
+      if (!client) return NextResponse.json({ error: "DB Connection Failed" }, { status: 500 });
+
       await client.query('DELETE FROM broadcasts WHERE id = $1', [id]);
       await client.end();
+      
       return NextResponse.json({ success: true });
     } catch (error: any) {
       if (client) await client.end();
