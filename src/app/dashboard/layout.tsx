@@ -420,20 +420,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (activeBroadcast.animation_type === 'DIYA') {
       return (
         <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-          {/* Top Corners Pe Decoration */}
-          <div className="absolute top-4 left-4 md:left-72 text-6xl diya-glow drop-shadow-2xl opacity-90">🪔</div>
-          <div className="absolute top-4 right-4 text-6xl diya-glow drop-shadow-2xl opacity-90">🪔</div>
+          {/* Top Right Corner */}
+          <div className="absolute top-4 right-4 text-6xl diya-glow">🪔</div>
           
-          {/* Bottom Line (Sidebar se door) */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-10 opacity-40">
-             {[...Array(4)].map((_, i) => (
-               <div key={i} className="text-4xl diya-glow">🪔</div>
-             ))}
-          </div>
+          {/* Top Left (Sidebar se door - w-64 is approx 256px) */}
+          <div className="absolute top-4 left-[280px] text-6xl diya-glow">🪔</div>
+          
+          {/* Bottom Corner (Logout se door) */}
+          <div className="absolute bottom-10 right-10 text-5xl diya-glow opacity-60">🪔</div>
         </div>
       );
     }
-    // HOLI SPLASH (Preserving existing Holi logic as not in new snippet)
+    // HOLI SPLASH (Preserving existing Holi logic)
     if (activeBroadcast.animation_type === 'HOLI') {
       return (
         <div className="fixed inset-0 pointer-events-none z-[10000]">
