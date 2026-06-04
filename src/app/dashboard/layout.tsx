@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles, Flame, Palette, Zap, Moon, Snowflake, Flower2, Sparkles as SparklesIcon, Megaphone } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles, Flame, Palette, Zap, Moon, Snowflake, Flower2, Sparkles as SparklesIcon, Megaphone, Globe } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -413,22 +413,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // 1. Decoration Icons/Animations Logic
-  const RenderFestivalDecor = () => {
+  // ━━━ 1. Render Animations (Better Diya Placement) ━━━
+  const RenderAnimations = () => {
     if (!showPopup || !activeBroadcast) return null;
 
-    // DIYA ANIMATION (Diwali)
     if (activeBroadcast.animation_type === 'DIYA') {
       return (
-        <div className="fixed inset-0 pointer-events-none z-[10000]">
-          <div className="absolute bottom-10 left-10 text-6xl diya-glow">🪔</div>
-          <div className="absolute bottom-10 right-10 text-6xl diya-glow">🪔</div>
-          <div className="absolute top-20 left-1/4 text-4xl diya-glow opacity-50">🪔</div>
+        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
+          {/* Top Corners Pe Decoration */}
+          <div className="absolute top-4 left-4 md:left-72 text-6xl diya-glow drop-shadow-2xl opacity-90">🪔</div>
+          <div className="absolute top-4 right-4 text-6xl diya-glow drop-shadow-2xl opacity-90">🪔</div>
+          
+          {/* Bottom Line (Sidebar se door) */}
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-10 opacity-40">
+             {[...Array(4)].map((_, i) => (
+               <div key={i} className="text-4xl diya-glow">🪔</div>
+             ))}
+          </div>
         </div>
       );
     }
-
-    // HOLI SPLASH
+    // HOLI SPLASH (Preserving existing Holi logic as not in new snippet)
     if (activeBroadcast.animation_type === 'HOLI') {
       return (
         <div className="fixed inset-0 pointer-events-none z-[10000]">
@@ -473,108 +478,72 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* ━━ NEW BROADCAST UI SECTION ━━ */}
-      <RenderFestivalDecor />
+      <RenderAnimations />
 
-      {/* HYBRID BANNER: Popup band hone ke baad dikhega (Fix 1 Applied) */}
+      {/* 🚀 MODERN BRANDED BANNER (Dismissal ke baad) */}
       {activeBroadcast && !showPopup && (
-        <div className={`sticky top-0 z-[1001] py-2 px-6 text-center text-xs font-bold transition-all animate-in slide-in-from-top duration-700 
-          ${activeBroadcast.theme_color === 'GOLD' ? 'bg-gradient-to-r from-yellow-600 to-amber-800 text-white' : 'bg-blue-600 text-white'}`}>
-          <div className="max-w-5xl mx-auto flex justify-between items-center">
-            <span className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 animate-pulse" />
-              {/* ✅ Fix 1: Optional Chaining for safety */}
-              {activeBroadcast?.message}
-            </span>
-            {activeBroadcast.cta_link && (
-              <a href={activeBroadcast.cta_link} target="_blank" className="bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors">
-                {activeBroadcast.cta_text || 'View More'}
-              </a>
-            )}
-            <button onClick={() => setActiveBroadcast(null)}><X className="w-4 h-4 opacity-50" /></button>
+        <div className="sticky top-0 z-[1001] py-3 px-6 bg-gradient-to-r from-blue-800 via-indigo-900 to-blue-800 text-white shadow-2xl border-b border-white/10 animate-in slide-in-from-top duration-700">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-yellow-500 p-1.5 rounded-lg animate-pulse">
+                <Sparkles className="w-4 h-4 text-blue-900" />
+              </div>
+              <p className="text-xs md:text-sm font-bold tracking-wide">
+                <span className="text-yellow-400 uppercase mr-2 tracking-tighter">Saanify Pariwar:</span>
+                {/* ✅ Safety Check Applied */}
+                {activeBroadcast?.message?.includes('|') ? activeBroadcast.message.split('|')[0] : activeBroadcast?.message}
+              </p>
+            </div>
+            <button onClick={() => setActiveBroadcast(null)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+              <X className="w-4 h-4 opacity-50" />
+            </button>
           </div>
         </div>
       )}
 
-      {/* MODERN HERO MODAL (POPUP) - UPDATED LOGIC WITH SAFETY CHECKS */}
+      {/* 🚀 MODERN HERO POPUP (Center Modal) */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
-          
-          {activeBroadcast?.type === 'FESTIVAL' ? (
-            // --- FESTIVAL UI: Hero Image + High Animations ---
-            <div className="relative bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-[0_35px_100px_rgba(0,0,0,0.4)] border border-white/20 animate-in zoom-in-95 duration-500">
-              {/* Hero Image */}
-              <div className="h-64 w-full relative">
-                {/* Fallback to default placeholder if no specific image */}
-                <img 
-                  src={activeBroadcast?.image_url || festivalImages[activeBroadcast?.festival_key] || '/placeholder-festival.jpg'} 
-                  className="w-full h-full object-cover" 
-                  alt="Festival" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-900"></div>
-              </div>
-
-              <div className="p-10 text-center -mt-16 relative z-10 space-y-6">
-                <h2 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">
-                   {/* Fix 3: Fallback for Title */}
-                   {activeBroadcast?.title || 'Notification'}
-                </h2>
-                <p className="text-lg text-slate-500 leading-relaxed">
-                   {/* Fix 2: Safe Message Display */}
-                   {activeBroadcast?.message}
-                </p>
-                
-                <Button 
-                  onClick={handleDismissPopup} 
-                  className="w-full h-14 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white rounded-2xl text-xl font-bold shadow-lg transition-all transform hover:scale-105"
-                >
-                  Celebrate Now 🎊
-                </Button>
-              </div>
+          <div className="relative bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-[0_40px_120px_rgba(0,0,0,0.5)] border border-white/20 transition-all">
+            
+            {/* HERO IMAGE WITH OVERLAY */}
+            <div className="h-72 w-full relative group">
+              {/* ✅ Safety Check for Image */}
+              <img 
+                src={activeBroadcast?.image_url || festivalImages[activeBroadcast?.festival_key] || '/placeholder-festival.jpg'} 
+                className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110" 
+                alt="Festival"
+              />
+              {/* Dark gradient for text pop */}
+              <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-900 via-transparent"></div>
             </div>
-          ) : (
-            // --- PROFESSIONAL UPDATE/ANNOUNCEMENT UI: Glassmorphism + Confetti ---
-            <div className="p-10 text-center space-y-6 rounded-3xl backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border border-white/20 shadow-2xl relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-              
-              {/* Confetti/Sparkles Animation */}
-              <div className="absolute top-2 left-4 text-yellow-500 animate-bounce text-xl">✨</div>
-              <div className="absolute top-6 right-6 text-pink-500 animate-pulse text-xl">🎉</div>
-              <div className="absolute bottom-10 left-10 text-blue-400 animate-spin-slow text-lg opacity-50">💫</div>
 
-              {/* Dynamic Icon */}
-              <div className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center shadow-xl relative z-10
-                ${activeBroadcast?.priority > 2 ? 'bg-red-600 animate-pulse' : 'bg-blue-600'}`}>
-                 <Megaphone className="w-10 h-10 text-white"/>
+            <div className="p-12 text-center -mt-20 relative z-10 space-y-6">
+              <div className="bg-blue-600 w-24 h-24 mx-auto rounded-[2rem] shadow-2xl flex items-center justify-center -rotate-12 transform hover:rotate-0 transition-all duration-700">
+                <Globe className="w-12 h-12 text-white" />
               </div>
-
-              <div className="space-y-2 relative z-10">
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase">
-                  {/* Fix 3: Fallback for Title */}
+              
+              <div className="space-y-3">
+                <h2 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase">
+                  {/* ✅ Safety Check for Title */}
                   {activeBroadcast?.title || 'Notification'}
                 </h2>
-                {/* Fix 2: Bilingual Message Support (Safety Check for Split) */}
-                {activeBroadcast?.message?.includes('|') ? (
-                   <>
-                     <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                        {activeBroadcast.message.split('|')[1]} {/* English part */}
-                     </p>
-                     <p className="text-md text-slate-500 font-medium">
-                        {activeBroadcast.message.split('|')[0]} {/* Hindi part */}
-                     </p>
-                   </>
-                ) : (
-                   <p className="text-md text-slate-500 font-medium">
-                     {activeBroadcast?.message}
-                   </p>
-                )}
+                {/* Bilingual Message Support */}
+                <div className="space-y-1">
+                  <p className="text-md text-slate-500 font-bold leading-relaxed px-4">
+                    {activeBroadcast?.message?.split('|')?.[0]}
+                  </p>
+                  <p className="text-xs text-blue-500 font-medium opacity-70">
+                    {activeBroadcast?.message?.split('|')?.[1]}
+                  </p>
+                </div>
               </div>
-
-              {/* Button Style changes based on Priority */}
-              <Button onClick={handleDismissPopup} className={`w-full h-14 rounded-2xl text-lg font-black relative z-10
-                ${activeBroadcast?.priority > 2 ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                {activeBroadcast?.cta_text || 'Got it 👍'}
+              
+              <Button onClick={handleDismissPopup} className="w-full h-16 bg-gradient-to-r from-yellow-500 via-orange-600 to-red-600 text-white rounded-3xl text-xl font-black shadow-[0_15px_40px_rgba(234,179,8,0.3)] hover:scale-[1.02] active:scale-95 transition-all">
+                CELEBRATE NOW 🚀
               </Button>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
 
