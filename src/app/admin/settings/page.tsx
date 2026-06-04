@@ -161,26 +161,65 @@ export default function AdminSettings() {
     toast.info(`AI: ${detected.key || 'Generic'} theme detected.`);
   };
 
-  // Festival Presets Handler
+  // Festival Presets Handler (UPDATED)
   const applyPreset = (key: string) => {
-    const presets: any = {
-      DIWALI: { title: "Happy Diwali!", message: "May the festival of lights bring joy to your life.", animation_type: "DIYA", theme_color: "GOLD", display_mode: "FULLSCREEN" },
-      HOLI: { title: "Happy Holi!", message: "Play safe and enjoy the colors of life.", animation_type: "HOLI", theme_color: "RED", display_mode: "POPUP" },
-      NAVRATRI: { title: "Happy Navratri!", message: "Wishing you nine nights of devotion and dance.", animation_type: "GARBA", theme_color: "ORANGE", display_mode: "POPUP" },
-      EID: { title: "Eid Mubarak!", message: "May Allah bless you with peace and prosperity.", animation_type: "MOON", theme_color: "GREEN", display_mode: "BANNER" },
-      CHRISTMAS: { title: "Merry Christmas!", message: "Joy to the world, the Lord has come.", animation_type: "SNOW", theme_color: "RED", display_mode: "FULLSCREEN" },
-      NEW_YEAR: { title: "Happy New Year!", message: "Cheers to new beginnings!", animation_type: "FIREWORKS", theme_color: "GOLD", display_mode: "FULLSCREEN" },
-      REPUBLIC_DAY: { title: "Jai Hind!", message: "Celebrating the spirit of India.", animation_type: "TRICOLOR", theme_color: "ORANGE", display_mode: "BANNER" },
+    const type = broadcastForm.type; // FESTIVAL, ANNOUNCEMENT, UPDATE, etc.
+
+    // 1. DYNAMIC ASSET MAPPING
+    // Unsplash hume keyword ke base par automatic photo deta hai
+    const getAutoImage = (keyword: string) => `https://source.unsplash.com/featured/1200x600/?${keyword},celebration`;
+
+    let config = {
+      title: "",
+      message: "",
+      animation: "CONFETTI", // Default animation
+      color: "BLUE",
+      image: ""
     };
 
-    if(presets[key]) {
-      setBroadcastForm({
-        ...broadcastForm,
-        ...presets[key],
-        festival_key: key
-      });
-      toast.success(`Preset Applied: ${key}`);
+    // 2. LOGIC FOR FESTIVALS (30-40 types)
+    if (type === 'FESTIVAL') {
+      const festivalName = key.replace(/_/g, ' ').toLowerCase();
+      config = {
+        title: `Happy ${festivalName.charAt(0).toUpperCase() + festivalName.slice(1)}!`,
+        message: `Saanify Pariwar ki taraf se aap sabhi ko ${festivalName} ki hardik shubhkamnayein! | Wishing you a blessed and joyful ${festivalName}.`,
+        animation: (key.includes('DIWALI') || key.includes('YEAR')) ? 'FIREWORKS' : (key.includes('HOLI') ? 'HOLI' : 'CONFETTI'),
+        color: (key.includes('DIWALI') || key.includes('GOLD')) ? 'GOLD' : 'RED',
+        image: getAutoImage(festivalName)
+      };
+    } 
+    
+    // 3. LOGIC FOR NON-FESTIVAL TYPES (Announcement, Update, Emergency)
+    else if (type === 'ANNOUNCEMENT' || type === 'UPDATE') {
+      config = {
+        title: type === 'UPDATE' ? "New Feature Alert! 🚀" : "Important Announcement 📢",
+        message: "We have some exciting news for you! Check out the latest updates in your dashboard. | Aapke liye ek mahatvapurn suchna hai, kripya dhyan dein.",
+        animation: "SPARKLES",
+        color: "BLUE",
+        image: getAutoImage(type === 'UPDATE' ? 'technology,rocket' : 'news,megaphone')
+      };
     }
+
+    else if (type === 'EMERGENCY' || type === 'CRITICAL') {
+      config = {
+        title: "Critical Update ⚠️",
+        message: "Important security or system update. Please take immediate action. | Mahatvapurn suraksha sandesh, kripya turant dhyan dein.",
+        animation: "NONE",
+        color: "RED",
+        image: getAutoImage('alert,warning')
+      };
+    }
+
+    // Final Form Update
+    setBroadcastForm({
+      ...broadcastForm,
+      title: config.title,
+      message: config.message,
+      animation_type: config.animation,
+      theme_color: config.color,
+      image_url: config.image,
+      festival_key: key
+    });
   };
 
   const handleSave = async () => {
