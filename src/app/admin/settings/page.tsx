@@ -161,44 +161,49 @@ export default function AdminSettings() {
     toast.info(`AI: ${detected.key || 'Generic'} theme detected.`);
   };
 
-  // Festival Presets Handler (UPDATED WITH MASTER LIBRARY)
+  // Festival Presets Handler (UPDATED WITH AI IMAGE GENERATION)
   const applyPreset = (key: string) => {
-    // 🎯 Fixed Professional Library (No random gym images)
-    const festivalLibrary: any = {
-      DIWALI: { 
-        title: "Shubh Deepawali! 🪔", 
-        message: "Saanify Pariwar ki taraf se aap sabhi ko Diwali ki hardik shubhkamnayein! | Saanify Pariwar wishes you a year full of light, joy and prosperity.", 
-        image_url: "https://images.unsplash.com/photo-1605141040333-e028b070440c?q=80&w=1200", 
-        animation_type: "DIYA", theme_color: "GOLD" 
+    const festivalName = key.replace(/_/g, ' ').toLowerCase();
+
+    // 🤖 AI PROMPT GENERATOR (Professional Ecommerce Style)
+    const aiPrompt = `luxury ${festivalName} celebration background, premium golden elements, professional fintech style, high resolution 8k, bokeh lights, ecommerce hero banner, no text`;
+    
+    // Pollinations AI URL (No Watermark, Free, Fast)
+    const generatedImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(aiPrompt)}?width=1200&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+
+    const library: any = {
+      DIWALI: {
+        title: "SHUBH DEEPAWALI! 🪔",
+        msg: "Saanify Pariwar ki taraf se aap sabhi ko Diwali ki hardik shubhkamnayein! | Saanify Pariwar wishes you a year full of light, joy and prosperity.",
+        color: "GOLD", anim: "DIYA"
       },
-      HOLI: { 
-        title: "Happy Holi! 🎨", 
-        message: "Saanify Pariwar ki taraf se aapko rangon bhari Holi ki shubhkamnayein! | Celebrate the colors of life and togetherness.", 
-        image_url: "https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?q=80&w=1200", 
-        animation_type: "HOLI", theme_color: "RED" 
+      HOLI: {
+        title: "HAPPY HOLI! 🎨",
+        msg: "Saanify Pariwar ki taraf se aapko rangon bhari Holi ki shubhkamnayein! | Celebrate the colors of life and togetherness.",
+        color: "RED", anim: "HOLI"
       },
-      NEW_YEAR: { 
-        title: "Happy New Year! 🎆", 
-        message: "Naya Saal, Nayi Shuruat! Saanify Pariwar ki taraf se aapko naye saal ki mubarakbaad. | Wishing you 365 days of success and happiness.", 
-        image_url: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?q=80&w=1200", 
-        animation_type: "FIREWORKS", theme_color: "GOLD" 
+      // Baaki festivals ke liye generic logic
+      DEFAULT: {
+        title: `HAPPY ${festivalName.toUpperCase()}!`,
+        msg: `Saanify Pariwar ki taraf se aapko ${festivalName} ki shubhkamnayein! | Wishing you a very happy ${festivalName}.`,
+        color: "BLUE", anim: "CONFETTI"
       }
     };
 
-    if(festivalLibrary[key]) {
-      const data = festivalLibrary[key];
-      setBroadcastForm({
-        ...broadcastForm,
-        title: data.title,
-        message: data.message,
-        image_url: data.image_url,
-        animation_type: data.animation_type,
-        theme_color: data.theme_color,
-        festival_key: key,
-        display_mode: 'POPUP'
-      });
-      toast.success(`AI: ${key} Premium Preset Applied!`);
-    }
+    const data = library[key] || library.DEFAULT;
+
+    setBroadcastForm({
+      ...broadcastForm,
+      title: data.title,
+      message: data.msg,
+      image_url: generatedImageUrl, // 🚀 AI Generated Image
+      animation_type: data.anim,
+      theme_color: data.color,
+      festival_key: key,
+      display_mode: 'POPUP'
+    });
+
+    toast.success(`AI Generated a fresh ${key} banner for you!`);
   };
 
   const handleSave = async () => {
