@@ -101,6 +101,30 @@ const MaintenanceScreen = ({ settings }: any) => (
   </div>
 );
 
+// =========================================================
+// MASTER CONFIG (Component ke bahar)
+// =========================================================
+const MASTER_CONFIG: any = {
+  // --- STYLE: ROYAL GOLD (Devotional) ---
+  DIWALI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🪔' },
+  DUSSEHRA: { style: 'GOLDEN', defaultAnim: 'SPARKLES', icon: '🏹' },
+  RAM_NAVAMI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🚩' },
+  
+  // --- STYLE: VIBRANT (Celebration) ---
+  HOLI: { style: 'VIBRANT', defaultAnim: 'HOLI', icon: '🎨' },
+  NAVRATRI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '💃' },
+  RAKSHA_BANDHAN: { style: 'VIBRANT', defaultAnim: 'CONFETTI', icon: '🎁' },
+
+  // --- STYLE: WINTER/PEACEFUL ---
+  CHRISTMAS: { style: 'WINTER', defaultAnim: 'SNOW', icon: '🎄' },
+  NEW_YEAR: { style: 'WINTER', defaultAnim: 'FIREWORKS', icon: '🎆' },
+  EID_AL_FITR: { style: 'PEACEFUL', defaultAnim: 'MOON', icon: '🌙' },
+
+  // --- STYLE: CORPORATE (Broadcast Types) ---
+  UPDATE: { style: 'CORPORATE', defaultAnim: 'SPARKLES', icon: '🚀' },
+  EMERGENCY: { style: 'ALERT', defaultAnim: 'NONE', icon: '⚠️' }
+};
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -413,97 +437,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // --- 1. Premium Greeting Renderer (UPDATED) ---
+  // --- 3. Dynamic Greeting Renderer (UPDATED) ---
   const GreetingRenderer = () => {
     if (!activeBroadcast) return null;
 
-    const fest = activeBroadcast.festival_key || 'DIWALI';
-    const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
+    const key = activeBroadcast.festival_key || activeBroadcast.type;
+    const config = MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
+    
+    // 🎯 MANUAL OVERRIDE: Admin se aane wala animation priority lega
+    const currentAnim = activeBroadcast.animation_type; 
 
-    // ==========================================
-    // 1. DIWALI PREMIUM TEMPLATE
-    // ==========================================
-    if (fest === 'DIWALI') {
-      return (
-        <div className="relative w-[420px] h-[580px] rounded-[3rem] overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,.6)] border border-amber-400/30 flex flex-col items-center p-8 mx-auto">
-          {/* Background Layer */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,#090d1f_50%,#03040b_100%)]"></div>
-
-          {/* Floating Gold Particles (Animated via CSS) */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="gold-particle" style={{ left: `${15 + i * 15}%`, bottom: '-20px', animationDuration: `${6 + i}s` }}></div>
-            ))}
-          </div>
-
-          {/* Stars */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="star-twinkle absolute top-12 left-10 text-white">✦</div>
-            <div className="star-twinkle absolute top-24 right-14 text-amber-300" style={{ animationDelay: '1s' }}>✦</div>
-            <div className="star-twinkle absolute top-44 left-20 text-white" style={{ animationDelay: '2s' }}>✦</div>
-          </div>
-
-          <div className="relative z-10 text-amber-400 uppercase tracking-[8px] font-bold text-[10px]">SAANIFY</div>
-
-          {/* Animated Diya */}
-          <div className="relative z-10 mt-10">
-            <div className="absolute left-1/2 -translate-x-1/2 top-0 w-16 h-20 diya-flame bg-gradient-to-t from-orange-500 via-yellow-400 to-white rounded-full blur-[1px]"></div>
-            <div className="mt-16 w-28 h-14 rounded-b-full bg-gradient-to-b from-amber-700 to-amber-950 shadow-[0_15px_40px_rgba(255,152,0,.4)]"></div>
-          </div>
-
-          {/* Title Section */}
-          <div className="relative z-10 text-center mt-12">
-            <h1 className="diwali-title-vibrant text-6xl font-black leading-none drop-shadow-2xl">
-              शुभ<br/>दीपावली
-            </h1>
-            <p className="text-slate-300 mt-6 text-sm leading-relaxed px-4 italic font-medium">
-              {msgParts[0]}
-            </p>
-          </div>
-
-          <button onClick={handleDismissPopup} className="premium-btn relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-500 shadow-[0_15px_40px_rgba(255,193,7,.4)] hover:scale-105 transition-all">
-            CELEBRATE 🪔
-          </button>
-          <div className="relative z-10 mt-4 text-[9px] uppercase tracking-[4px] text-amber-400/60 font-bold">Premium Saanify Greeting</div>
+    return (
+      <div className={`relative w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 
+        ${config.style === 'GOLDEN' ? 'bg-[#090d1f]' : 
+          config.style === 'VIBRANT' ? 'bg-[#7928ca]' : 
+          config.style === 'WINTER' ? 'bg-[#b71c1c]' : 'bg-[#1e2d7a]'}>
+        
+        {/* 1. DYNAMIC ANIMATION LAYER */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+           {currentAnim === 'SNOW' && [...Array(20)].map((_, i) => (
+              <div key={i} className="snow-particle text-2xl" style={{left: `${Math.random()*100}%`, animationDelay: `${Math.random()*5}s`}}>❄️</div>
+           ))}
+           {currentAnim === 'DIYA' && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />}
+           {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
+              <div key={i} className="flower-particle text-3xl" style={{left: `${Math.random()*100}%`, bottom: '0', animationDelay: `${Math.random()*4}s`}}>🌸</div>
+           ))}
         </div>
-      );
-    }
 
-    // ==========================================
-    // 2. HOLI PREMIUM TEMPLATE
-    // ==========================================
-    if (fest === 'HOLI') {
-      return (
-        <div className="relative w-[420px] h-[580px] rounded-[3rem] overflow-hidden shadow-[0_30px_100px_rgba(255,0,128,0.3)] flex flex-col items-center p-8 mx-auto">
-          <div className="absolute inset-0 bg-[#7928ca]">
-            <div className="holi-splash-pro bg-pink-500 w-80 h-80 -top-20 -left-20"></div>
-            <div className="holi-splash-pro bg-blue-500 w-80 h-80 -bottom-20 -right-20" style={{ animationDelay: '2s' }}></div>
-          </div>
-          
-          <div className="relative z-10 text-white/50 uppercase tracking-[10px] font-black text-[10px]">SAANIFY EXPERIENCE</div>
-
-          <div className="relative z-10 mt-12 bg-white/10 backdrop-blur-xl p-8 rounded-[3rem] border border-white/20 shadow-2xl rotate-6 hover:rotate-0 transition-all duration-700">
-            <span className="text-7xl filter drop-shadow-2xl">🎨</span>
-          </div>
-
-          <div className="relative z-10 text-center mt-10">
-            <h1 className="holi-title-vibrant text-7xl font-black uppercase italic tracking-tighter leading-none">
-              HAPPY<br/>HOLI
-            </h1>
-            <div className="mt-6 space-y-1 px-6">
-              <p className="text-white text-lg font-bold drop-shadow-md">Rangon ka Utsav!</p>
-              <p className="text-white/60 text-xs italic">{msgParts[0]}</p>
-            </div>
-          </div>
-
-          <button onClick={handleDismissPopup} className="premium-btn relative z-10 mt-auto w-full h-16 rounded-3xl text-white text-2xl font-black bg-gradient-to-r from-pink-500 via-purple-600 to-blue-500 shadow-[0_15px_40px_rgba(156,39,255,0.4)] border border-white/20 hover:scale-105 transition-all">
-            PLAY COLORS 🌈
-          </button>
+        {/* 2. CONTENT LAYER */}
+        <div className="relative z-10 text-white uppercase tracking-[10px] font-black text-[10px] mb-12 opacity-50">SAANIFY</div>
+        
+        <div className="relative z-10 bg-white/10 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/20 shadow-2xl rotate-6">
+           <span className="text-7xl">{config.icon}</span>
         </div>
-      );
-    }
 
-    return null;
+        <div className="relative z-10 text-center mt-10">
+          <h1 className={`${config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant'} text-5xl font-black italic`}>
+            {activeBroadcast.title}
+          </h1>
+          <p className="mt-6 text-white/90 font-bold px-4 leading-relaxed">
+            {activeBroadcast.message?.split('|')[0]}
+          </p>
+        </div>
+
+        <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white bg-gradient-to-r from-white/20 to-white/5 backdrop-blur-md border border-white/20">
+           {activeBroadcast.cta_text || 'CONTINUE'}
+        </Button>
+      </div>
+    );
   };
 
   // ━━━ RenderAnimations Fix ━━━
@@ -567,7 +548,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className={`sticky top-0 z-[1001] w-full py-3 px-6 shadow-2xl transition-all duration-700 banner-shine
           ${activeBroadcast.theme_color === 'GOLD' 
             ? 'bg-gradient-to-r from-amber-700 via-yellow-500 to-amber-700 text-slate-900' 
-            : 'bg-gradient-to-r from-blue-800 via-indigo-600 to-blue-800 text-white'}`}>
+            : 'bg-gradient-to-r from-blue-800 via-indigo-600 to-blue-800 text-white'}>
         
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4 flex-1 justify-center">
@@ -593,7 +574,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 MODERN HERO POPUP (Center Modal) - UPDATED TO USE GreetingRenderer */}
+      {/* 🚀 MODERN HERO POPUP (Center Modal) - UPDATED TO USE DYNAMIC GreetingRenderer */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
            <GreetingRenderer />
