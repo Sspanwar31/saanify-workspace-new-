@@ -413,30 +413,95 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // ━━━ 1. Render Animations (Better Diya Placement) ━━━
+  // --- 1. Master Greeting Renderer ---
+  const GreetingRenderer = () => {
+    if (!activeBroadcast) return null;
+
+    const isAuto = activeBroadcast.content_mode === 'AUTO';
+    const fest = activeBroadcast.festival_key;
+
+    // MODE A: MANUAL IMAGE
+    if (!isAuto && activeBroadcast.image_url) {
+      return (
+        <div className="relative bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border border-white/10">
+          <div className="h-72 w-full relative">
+            <img src={activeBroadcast.image_url} className="w-full h-full object-cover" alt="Event" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent"></div>
+          </div>
+          <div className="p-10 text-center -mt-10 relative z-10 space-y-4">
+            <h2 className="text-4xl font-black text-white uppercase italic">{activeBroadcast.title}</h2>
+            <p className="text-slate-300 px-6">{activeBroadcast.message?.split('|')[0]}</p>
+            <Button onClick={handleDismissPopup} className="w-full h-14 bg-blue-600 rounded-2xl font-bold">CONTINUE 🚀</Button>
+          </div>
+        </div>
+      );
+    }
+
+    // MODE B: AUTO CSS TEMPLATE (DIWALI)
+    if (isAuto && fest === 'DIWALI') {
+      return (
+        <div className="relative w-full h-[600px] rounded-[3.5rem] overflow-hidden shadow-2xl border border-amber-400/20 flex flex-col items-center p-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1a2b8a_0%,#090d1f_60%,#02040a_100%)]"></div>
+          {/* Particles */}
+          <div className="absolute inset-0 pointer-events-none">
+              {[...Array(6)].map((_, i) => (
+                  <div key={i} className="gold-particle" style={{left: `${15*i}%`, bottom: '0', animationDuration: `${5+i}s`}}></div>
+              ))}
+          </div>
+          <div className="relative z-10 text-amber-400 tracking-[10px] font-black text-[10px] opacity-70 mb-12">SAANIFY PREMIUM</div>
+          <div className="relative z-10 scale-110">
+            <div className="diya-flame w-14 h-20 bg-gradient-to-t from-orange-600 via-yellow-400 to-white rounded-full blur-[2px] shadow-[0_0_50px_rgba(255,165,0,0.8)]"></div>
+            <div className="mt-[-15px] w-24 h-12 bg-gradient-to-b from-amber-700 to-amber-950 rounded-b-full"></div>
+          </div>
+          <div className="relative z-10 text-center mt-12 space-y-4">
+            <h1 className="diwali-title text-5xl font-black leading-tight italic uppercase">{activeBroadcast.title}</h1>
+            <p className="text-slate-400 text-sm leading-relaxed px-6 italic">{activeBroadcast.message?.split('|')[0]}</p>
+          </div>
+          <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 bg-gradient-to-r from-amber-600 to-yellow-500 text-white rounded-2xl font-black text-xl shadow-lg">CELEBRATE 🪔</Button>
+        </div>
+      );
+    }
+
+    // MODE C: AUTO CSS TEMPLATE (HOLI)
+    if (isAuto && fest === 'HOLI') {
+      return (
+        <div className="relative w-full h-[600px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10">
+          <div className="absolute inset-0 bg-[#7928ca]">
+              <div className="holi-splash-pro bg-pink-500 w-80 h-80 -top-20 -left-20"></div>
+              <div className="holi-splash-pro bg-blue-500 w-80 h-80 -bottom-20 -right-20" style={{animationDelay: '2s'}}></div>
+          </div>
+          <div className="relative z-10 text-white/50 uppercase tracking-[10px] font-black text-[10px] mb-12">SAANIFY EXPERIENCE</div>
+          <div className="relative z-10 bg-white/10 backdrop-blur-xl p-8 rounded-[3rem] border border-white/20 rotate-6 shadow-2xl">
+              <span className="text-7xl">🎨</span>
+          </div>
+          <div className="relative z-10 text-center mt-10 space-y-4">
+              <h1 className="holi-title-vibrant text-6xl font-black uppercase italic drop-shadow-2xl">{activeBroadcast.title}</h1>
+              <p className="text-white text-lg font-bold">Rangon ka Utsav!</p>
+              <p className="text-white/60 text-xs px-10 italic">{activeBroadcast.message?.split('|')[0]}</p>
+          </div>
+          <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 bg-gradient-to-r from-pink-500 via-purple-600 to-blue-500 text-white rounded-2xl font-black text-xl">PLAY COLORS 🌈</Button>
+        </div>
+      );
+    }
+
+    return null; // Fallback
+  };
+
+  // ━━━ RenderAnimations Fix ━━━
   const RenderAnimations = () => {
     if (!showPopup || !activeBroadcast) return null;
 
     if (activeBroadcast.animation_type === 'DIYA') {
       return (
         <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-          {/* Top Right Corner */}
-          <div className="absolute top-4 right-4 text-6xl diya-glow">🪔</div>
+          {/* Top Corners Pe Decoration */}
+          <div className="absolute top-4 right-10 text-6xl diya-glow">🪔</div>
+          <div className="absolute top-4 left-[300px] text-6xl diya-glow">🪔</div>
           
-          {/* Top Left (Sidebar se door - w-64 is approx 256px) */}
-          <div className="absolute top-4 left-[280px] text-6xl diya-glow">🪔</div>
-          
-          {/* Bottom Corner (Logout se door) */}
-          <div className="absolute bottom-10 right-10 text-5xl diya-glow opacity-60">🪔</div>
-        </div>
-      );
-    }
-    // HOLI SPLASH (Preserving existing Holi logic)
-    if (activeBroadcast.animation_type === 'HOLI') {
-      return (
-        <div className="fixed inset-0 pointer-events-none z-[10000]">
-          <div className="holi-splash bg-pink-500 top-1/4 left-1/4 w-64 h-64 opacity-40 blur-3xl" />
-          <div className="holi-splash bg-yellow-400 bottom-1/4 right-1/4 w-80 h-80 opacity-40 blur-3xl" />
+          {/* Subtle Background Particles (Aapka Floating Gold) */}
+          {[...Array(5)].map((_, i) => (
+              <div key={i} className="gold-particle" style={{ left: `${20*i}%`, bottom: '0', animationDuration: `${7+i}s` }}></div>
+          ))}
         </div>
       );
     }
@@ -475,7 +540,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━ NEW BROADCAST UI SECTION ━━ */}
+      {/* ━━ ANIMATIONS & POPUP SECTION ━━ */}
       <RenderAnimations />
 
       {/* 🚀 MODERN BRANDED BANNER (Dismissal ke baad) - CENTERED & ATTRACTIVE */}
@@ -509,49 +574,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 MODERN HERO POPUP (Center Modal) */}
+      {/* 🚀 MODERN HERO POPUP (Center Modal) - UPDATED TO USE GreetingRenderer */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
-          <div className="relative bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-[0_40px_120px_rgba(0,0,0,0.5)] border border-white/20 transition-all">
-            
-            {/* HERO IMAGE WITH OVERLAY */}
-            <div className="h-72 w-full relative group">
-              {/* ✅ Safety Check for Image */}
-              <img 
-                src={activeBroadcast?.image_url || festivalImages[activeBroadcast?.festival_key] || '/placeholder-festival.jpg'} 
-                className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110" 
-                alt="Festival"
-              />
-              {/* Dark gradient for text pop */}
-              <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-slate-900 via-transparent"></div>
-            </div>
-
-            <div className="p-12 text-center -mt-20 relative z-10 space-y-6">
-              <div className="bg-blue-600 w-24 h-24 mx-auto rounded-[2rem] shadow-2xl flex items-center justify-center -rotate-12 transform hover:rotate-0 transition-all duration-700">
-                <Globe className="w-12 h-12 text-white" />
-              </div>
-              
-              <div className="space-y-3">
-                <h2 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase">
-                  {/* ✅ Safety Check for Title */}
-                  {activeBroadcast?.title || 'Notification'}
-                </h2>
-                {/* Bilingual Message Support */}
-                <div className="space-y-1">
-                  <p className="text-md text-slate-500 font-bold leading-relaxed px-4">
-                    {activeBroadcast?.message?.split('|')?.[0]}
-                  </p>
-                  <p className="text-xs text-blue-500 font-medium opacity-70">
-                    {activeBroadcast?.message?.split('|')?.[1]}
-                  </p>
-                </div>
-              </div>
-              
-              <Button onClick={handleDismissPopup} className="w-full h-16 bg-gradient-to-r from-yellow-500 via-orange-600 to-red-600 text-white rounded-3xl text-xl font-black shadow-[0_15px_40px_rgba(234,179,8,0.3)] hover:scale-[1.02] active:scale-95 transition-all">
-                CELEBRATE NOW 🚀
-              </Button>
-            </div>
-          </div>
+           <GreetingRenderer />
         </DialogContent>
       </Dialog>
 
