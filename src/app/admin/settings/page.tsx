@@ -132,33 +132,29 @@ export default function AdminSettings() {
     }
   };
 
-  // AI Suggest Logic
+  // AI Suggest Logic (UPDATED: Image Generation + Promise Toast)
   const handleAISuggest = () => {
     const title = broadcastForm.title.toLowerCase();
-    let detected = null;
+    const festivalName = broadcastForm.festival_key || 'festival';
     
-    if (title.includes('diwali')) detected = { type: 'FESTIVAL', key: 'DIWALI', anim: 'DIYA', color: 'GOLD' };
-    else if (title.includes('holi')) detected = { type: 'FESTIVAL', key: 'HOLI', anim: 'HOLI', color: 'RED' };
-    else if (title.includes('navratri')) detected = { type: 'FESTIVAL', key: 'NAVRATRI', anim: 'GARBA', color: 'ORANGE' };
-    else if (title.includes('ganesh')) detected = { type: 'FESTIVAL', key: 'GANESH_CHATURTHI', anim: 'FLOWERS', color: 'RED' };
-    else if (title.includes('janmashtami')) detected = { type: 'FESTIVAL', key: 'JANMASHTAMI', anim: 'MOON', color: 'BLUE' };
-    else if (title.includes('raksha')) detected = { type: 'FESTIVAL', key: 'RAKSHA_BANDHAN', anim: 'SPARKLES', color: 'PURPLE' };
-    else if (title.includes('dussehra')) detected = { type: 'FESTIVAL', key: 'DUSSEHRA', anim: 'FIREWORKS', color: 'ORANGE' };
-    else if (title.includes('eid')) detected = { type: 'FESTIVAL', key: 'EID_AL_FITR', anim: 'MOON', color: 'GREEN' };
-    else if (title.includes('christmas')) detected = { type: 'FESTIVAL', key: 'CHRISTMAS', anim: 'SNOW', color: 'RED' };
-    else if (title.includes('new year')) detected = { type: 'EVENT', key: 'NEW_YEAR', anim: 'CONFETTI', color: 'GOLD' };
-    else if (title.includes('republic') || title.includes('independence')) detected = { type: 'EVENT', key: 'REPUBLIC_DAY', anim: 'TRICOLOR', color: 'ORANGE' };
-    else detected = { type: 'UPDATE', key: '', anim: 'CONFETTI', color: 'BLUE' };
+    // 🚀 Premium Prompt for AI
+    const prompt = `luxury ${festivalName} celebration, cinematic lighting, 8k resolution, premium gold and deep blue colors, professional fintech dashboard banner style, no text, minimal design`;
+    
+    const generatedUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1200&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
 
-    setBroadcastForm({
-      ...broadcastForm, 
-      animation_type: detected.anim, 
-      type: detected.type,
-      festival_key: detected.key,
-      theme_color: detected.color
-    });
-    
-    toast.info(`AI: ${detected.key || 'Generic'} theme detected.`);
+    setBroadcastForm(prev => ({
+      ...prev,
+      image_url: generatedUrl
+    }));
+
+    toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 2000)), 
+      {
+        loading: 'AI is generating a professional banner...',
+        success: 'AI Banner Generated! Check the preview below.',
+        error: 'AI Busy, try again.',
+      }
+    );
   };
 
   // Festival Presets Handler (UPDATED WITH AI IMAGE GENERATION)
@@ -701,6 +697,18 @@ export default function AdminSettings() {
                     {isUploading && <Loader2 className="w-4 h-4 animate-spin"/>}
                 </div>
                 {broadcastForm.image_url && <p className="text-[10px] text-green-600 truncate">{broadcastForm.image_url}</p>}
+            </div>
+
+            {/* Banner Preview UI (Added) */}
+            <div className="space-y-2 lg:col-span-3">
+                <Label>Banner Preview</Label>
+                <div className="border-2 border-dashed rounded-2xl h-40 flex items-center justify-center overflow-hidden bg-slate-100">
+                    {broadcastForm.image_url ? (
+                        <img src={broadcastForm.image_url} className="w-full h-full object-cover" alt="AI Preview" />
+                    ) : (
+                        <span className="text-slate-400 text-xs">AI will show preview here...</span>
+                    )}
+                </div>
             </div>
 
             {/* Message Content */}
