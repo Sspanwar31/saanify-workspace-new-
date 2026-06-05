@@ -48,7 +48,7 @@ export default function AdminSettings() {
     is_maintenance_scheduled: false,
   });
 
-  // Broadcast Form State (With all new fields)
+  // Broadcast Form State (UPDATED: Added content_mode)
   const [broadcastForm, setBroadcastForm] = useState({
     title: '', message: '', image_url: '', 
     type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '',
@@ -61,7 +61,8 @@ export default function AdminSettings() {
     cta_text: '',
     cta_link: '',
     is_recurring: false,
-    recurring_type: 'NONE'
+    recurring_type: 'NONE',
+    content_mode: 'AUTO', // 👈 NEW: 'AUTO' (CSS Template) ya 'MANUAL' (Upload)
   });
 
   // Broadcast List State
@@ -123,7 +124,7 @@ export default function AdminSettings() {
         if (uploadError) throw uploadError;
 
         const { data } = supabase.storage.from('broadcasts').getPublicUrl(filePath);
-        setBroadcastForm({ ...broadcastForm, image_url: data.publicUrl });
+        setBroadcastForm({ ...broadcastForm, image_url: data.publicUrl, content_mode: 'MANUAL' });
         toast.success("Image Uploaded Successfully!");
     } catch (error) {
         toast.error("Upload failed");
@@ -132,19 +133,19 @@ export default function AdminSettings() {
     }
   };
 
-  // AI Suggest Logic (UPDATED: Image Generation + Promise Toast)
+  // AI Suggest Logic (Kept for manual suggestions)
   const handleAISuggest = () => {
     const title = broadcastForm.title.toLowerCase();
     const festivalName = broadcastForm.festival_key || 'festival';
     
-    // 🚀 Premium Prompt for AI
     const prompt = `luxury ${festivalName} celebration, cinematic lighting, 8k resolution, premium gold and deep blue colors, professional fintech dashboard banner style, no text, minimal design`;
     
     const generatedUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1200&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
 
     setBroadcastForm(prev => ({
       ...prev,
-      image_url: generatedUrl
+      image_url: generatedUrl,
+      content_mode: 'MANUAL' // Switch to manual if generating AI image
     }));
 
     toast.promise(
@@ -157,49 +158,41 @@ export default function AdminSettings() {
     );
   };
 
-  // Festival Presets Handler (UPDATED WITH AI IMAGE GENERATION)
+  // Festival Presets Handler (UPDATED: Master Library Applied)
   const applyPreset = (key: string) => {
-    const festivalName = key.replace(/_/g, ' ').toLowerCase();
-
-    // 🤖 AI PROMPT GENERATOR (Professional Ecommerce Style)
-    const aiPrompt = `luxury ${festivalName} celebration background, premium golden elements, professional fintech style, high resolution 8k, bokeh lights, ecommerce hero banner, no text`;
-    
-    // Pollinations AI URL (No Watermark, Free, Fast)
-    const generatedImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(aiPrompt)}?width=1200&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
-
     const library: any = {
       DIWALI: {
-        title: "SHUBH DEEPAWALI! 🪔",
-        msg: "Saanify Pariwar ki taraf se aap sabhi ko Diwali ki hardik shubhkamnayein! | Saanify Pariwar wishes you a year full of light, joy and prosperity.",
-        color: "GOLD", anim: "DIYA"
+        title: "SHUBH DEEPAWALI",
+        message: "Saanify Pariwar ki taraf se aap sabhi ko samriddhi aur prakashmay jeevan ki hardik shubhkamnayein.",
+        anim: "DIYA", color: "GOLD"
       },
       HOLI: {
-        title: "HAPPY HOLI! 🎨",
-        msg: "Saanify Pariwar ki taraf se aapko rangon bhari Holi ki shubhkamnayein! | Celebrate the colors of life and togetherness.",
-        color: "RED", anim: "HOLI"
+        title: "HAPPY HOLI",
+        message: "Rangon, khushiyon aur pyar se bhari Holi ki hardik shubhkamnayein.",
+        anim: "HOLI", color: "RED"
       },
-      // Baaki festivals ke liye generic logic
+      // Baaki festivals ke liye bhi aise hi objects jodh sakte hain
       DEFAULT: {
-        title: `HAPPY ${festivalName.toUpperCase()}!`,
-        msg: `Saanify Pariwar ki taraf se aapko ${festivalName} ki shubhkamnayein! | Wishing you a very happy ${festivalName}.`,
-        color: "BLUE", anim: "CONFETTI"
+        title: "HAPPY FESTIVAL",
+        message: "Saanify Pariwar ki taraf shubhkamnayein.",
+        anim: "CONFETTI", color: "BLUE"
       }
     };
 
-    const data = library[key] || library.DEFAULT;
-
-    setBroadcastForm({
-      ...broadcastForm,
-      title: data.title,
-      message: data.msg,
-      image_url: generatedImageUrl, // 🚀 AI Generated Image
-      animation_type: data.anim,
-      theme_color: data.color,
-      festival_key: key,
-      display_mode: 'POPUP'
-    });
-
-    toast.success(`AI Generated a fresh ${key} banner for you!`);
+    if (library[key]) {
+      const data = library[key];
+      setBroadcastForm({
+        ...broadcastForm,
+        title: data.title,
+        message: data.message,
+        animation_type: data.anim,
+        theme_color: data.color,
+        festival_key: key,
+        content_mode: 'AUTO', // Automatically switch to Auto Template
+        image_url: '' // Clear manual image
+      });
+      toast.success(`${key} Premium Template Applied!`);
+    }
   };
 
   const handleSave = async () => {
@@ -218,7 +211,6 @@ export default function AdminSettings() {
     finally { setSaving(false); }
   };
 
-  // Priority Mapping Object
   const priorityMap: any = {
     LOW: 1,
     MEDIUM: 2,
@@ -263,7 +255,8 @@ export default function AdminSettings() {
         cta_text: '',
         cta_link: '',
         is_recurring: false,
-        recurring_type: 'NONE'
+        recurring_type: 'NONE',
+        content_mode: 'AUTO' // Reset to Auto
       });
 
     } else {
@@ -584,7 +577,7 @@ export default function AdminSettings() {
                 </Select>
             </div>
 
-            {/* Festival Preset Library (Point 13 & 4) */}
+            {/* Festival Preset Library */}
             <div className="space-y-2">
                 <Label>Festival Preset Library</Label>
                 <div className="flex gap-2">
@@ -622,7 +615,7 @@ export default function AdminSettings() {
                 </div>
             </div>
 
-            {/* Priority Select (Point 6) */}
+            {/* Priority Select */}
             <div className="space-y-2">
                 <Label>Priority</Label>
                 <Select disabled={isReadOnly} value={broadcastForm.priority} onValueChange={v => setBroadcastForm({...broadcastForm, priority: v})}>
@@ -636,7 +629,7 @@ export default function AdminSettings() {
                 </Select>
             </div>
 
-             {/* Display Mode (Point 7) */}
+             {/* Display Mode */}
              <div className="space-y-2">
                 <Label>Display Mode</Label>
                 <Select disabled={isReadOnly} value={broadcastForm.display_mode} onValueChange={v => setBroadcastForm({...broadcastForm, display_mode: v})}>
@@ -651,7 +644,7 @@ export default function AdminSettings() {
                 </Select>
             </div>
 
-            {/* Theme Color (Point 8) */}
+            {/* Theme Color */}
             <div className="space-y-2">
                 <Label>Theme Color</Label>
                 <Select disabled={isReadOnly} value={broadcastForm.theme_color} onValueChange={v => setBroadcastForm({...broadcastForm, theme_color: v})}>
@@ -668,7 +661,7 @@ export default function AdminSettings() {
                 </Select>
             </div>
 
-            {/* Animation Select (Point 3) */}
+            {/* Animation Select */}
             <div className="space-y-2">
                 <Label>Animation Style</Label>
                 <Select disabled={isReadOnly} value={broadcastForm.animation_type} onValueChange={v => setBroadcastForm({...broadcastForm, animation_type: v})}>
@@ -691,7 +684,7 @@ export default function AdminSettings() {
 
             {/* Image Upload */}
             <div className="space-y-2 lg:col-span-3">
-                <Label>Upload Image</Label>
+                <Label>Upload Image (Manual Mode)</Label>
                 <div className="flex items-center gap-2">
                     <Input disabled={isReadOnly || isUploading} type="file" accept="image/*" onChange={handleImageUpload} className="text-xs" />
                     {isUploading && <Loader2 className="w-4 h-4 animate-spin"/>}
@@ -699,14 +692,41 @@ export default function AdminSettings() {
                 {broadcastForm.image_url && <p className="text-[10px] text-green-600 truncate">{broadcastForm.image_url}</p>}
             </div>
 
-            {/* Banner Preview UI (Added) */}
+            {/* PREVIEW SECTION - UPDATED */}
             <div className="space-y-2 lg:col-span-3">
-                <Label>Banner Preview</Label>
-                <div className="border-2 border-dashed rounded-2xl h-40 flex items-center justify-center overflow-hidden bg-slate-100">
-                    {broadcastForm.image_url ? (
-                        <img src={broadcastForm.image_url} className="w-full h-full object-cover" alt="AI Preview" />
+                <Label className="text-xs font-black uppercase">Live Greeting Preview</Label>
+                
+                {/* Mode Selector */}
+                <div className="flex gap-2 mb-4 bg-slate-100 p-1 rounded-xl w-fit">
+                    <Button 
+                        variant={broadcastForm.content_mode === 'AUTO' ? 'default' : 'ghost'} 
+                        size="sm" 
+                        onClick={() => setBroadcastForm({...broadcastForm, content_mode: 'AUTO'})}
+                    >Auto Template</Button>
+                    <Button 
+                        variant={broadcastForm.content_mode === 'MANUAL' ? 'default' : 'ghost'} 
+                        size="sm" 
+                        onClick={() => setBroadcastForm({...broadcastForm, content_mode: 'MANUAL'})}
+                    >Manual Upload</Button>
+                </div>
+
+                <div className="border-2 border-dashed rounded-[3rem] h-[500px] flex items-center justify-center overflow-hidden bg-slate-900 relative scale-[0.8] origin-top">
+                    {broadcastForm.content_mode === 'MANUAL' && broadcastForm.image_url ? (
+                        <img src={broadcastForm.image_url} className="w-full h-full object-cover" />
+                    ) : broadcastForm.content_mode === 'AUTO' && broadcastForm.festival_key === 'DIWALI' ? (
+                        /* --- DIWALI PREVIEW CODE --- */
+                        <div className="relative w-full h-full flex flex-col items-center p-10">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,#090d1f_60%)]"></div>
+                            <div className="relative z-10 text-amber-400 tracking-[8px] font-bold text-[10px] mb-10">SAANIFY</div>
+                            <div className="relative z-10">
+                                <div className="w-16 h-20 bg-gradient-to-t from-orange-500 via-yellow-400 to-white rounded-full blur-[1px] shadow-[0_0_50px_orange]"></div>
+                                <div className="w-24 h-12 bg-gradient-to-b from-amber-800 to-amber-950 rounded-b-full mt-[-10px]"></div>
+                            </div>
+                            <h1 className="relative z-10 text-5xl font-black text-amber-400 text-center mt-10 italic">{broadcastForm.title}</h1>
+                            <p className="relative z-10 text-slate-300 text-center mt-4 px-10">{broadcastForm.message}</p>
+                        </div>
                     ) : (
-                        <span className="text-slate-400 text-xs">AI will show preview here...</span>
+                        <span className="text-slate-500">Select a preset to see preview</span>
                     )}
                 </div>
             </div>
@@ -722,7 +742,7 @@ export default function AdminSettings() {
               />
             </div>
 
-            {/* CTA Button Support (Point 9) */}
+            {/* CTA Button Support */}
             <div className="space-y-2">
                 <Label>CTA Button Text</Label>
                 <Input disabled={isReadOnly} value={broadcastForm.cta_text} onChange={e => setBroadcastForm({...broadcastForm, cta_text: e.target.value})} placeholder="Learn More" />
@@ -732,7 +752,7 @@ export default function AdminSettings() {
                 <Input disabled={isReadOnly} value={broadcastForm.cta_link} onChange={e => setBroadcastForm({...broadcastForm, cta_link: e.target.value})} placeholder="https://..." />
             </div>
 
-            {/* Start Date (Point 10) */}
+            {/* Start Date */}
             <div className="space-y-2">
                 <Label>Start Date</Label>
                 <Input disabled={isReadOnly} type="datetime-local" value={broadcastForm.starts_at} onChange={e => setBroadcastForm({...broadcastForm, starts_at: e.target.value})} />
@@ -755,7 +775,7 @@ export default function AdminSettings() {
             </Button>
           </div>
 
-          {/* LIST SECTION (Point 11) */}
+          {/* LIST SECTION */}
           {!isReadOnly && (
             <div className="space-y-3 pt-4 border-t border-slate-100">
                <h4 className="text-sm font-bold text-slate-800">Active Broadcasts</h4>
