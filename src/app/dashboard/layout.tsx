@@ -437,14 +437,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // --- 3. Dynamic Greeting Renderer (UPDATED) ---
+  // --- 3. Dynamic Greeting Renderer (FIXED FOR TURBOPACK) ---
   const GreetingRenderer = () => {
     if (!activeBroadcast) return null;
 
     const key = activeBroadcast.festival_key || activeBroadcast.type;
     const config = MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
     
-    // 🎯 MANUAL OVERRIDE: Admin se aane wala animation priority lega
     const currentAnim = activeBroadcast.animation_type; 
 
     return (
@@ -452,15 +451,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ${config.style === 'GOLDEN' ? 'bg-[#090d1f]' : 
           config.style === 'VIBRANT' ? 'bg-[#7928ca]' : 
           config.style === 'WINTER' ? 'bg-[#b71c1c]' : 'bg-[#1e2d7a]'}>
-        
+      
         {/* 1. DYNAMIC ANIMATION LAYER */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
+           {/* Fixed Snow Logic: String concatenation instead of template literals */}
            {currentAnim === 'SNOW' && [...Array(20)].map((_, i) => (
-              <div key={i} className="snow-particle text-2xl" style={{left: `${Math.random()*100}%`, animationDelay: `${Math.random()*5}s`}}>❄️</div>
+              <div key={i} className="snow-particle text-2xl" 
+                   style={{
+                     left: (Math.random() * 100) + "%", 
+                     animationDelay: (Math.random() * 5) + "s"
+                   }}>❄️</div>
            ))}
+
            {currentAnim === 'DIYA' && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />}
+
+           {/* Fixed Flowers Logic */}
            {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
-              <div key={i} className="flower-particle text-3xl" style={{left: `${Math.random()*100}%`, bottom: '0', animationDelay: `${Math.random()*4}s`}}>🌸</div>
+              <div key={i} className="flower-particle text-3xl" 
+                   style={{
+                     left: (Math.random() * 100) + "%", 
+                     bottom: "0px", 
+                     animationDelay: (Math.random() * 4) + "s"
+                   }}>🌸</div>
            ))}
         </div>
 
