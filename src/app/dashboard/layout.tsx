@@ -478,22 +478,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ━━ NEW BROADCAST UI SECTION ━━ */}
       <RenderAnimations />
 
-      {/* 🚀 MODERN BRANDED BANNER (Dismissal ke baad) */}
+      {/* 🚀 MODERN BRANDED BANNER (Dismissal ke baad) - CENTERED & ATTRACTIVE */}
       {activeBroadcast && !showPopup && (
-        <div className="sticky top-0 z-[1001] py-3 px-6 bg-gradient-to-r from-blue-800 via-indigo-900 to-blue-800 text-white shadow-2xl border-b border-white/10 animate-in slide-in-from-top duration-700">
+        <div className={`sticky top-0 z-[1001] w-full py-3 px-6 shadow-2xl transition-all duration-700 banner-shine
+          ${activeBroadcast.theme_color === 'GOLD' 
+            ? 'bg-gradient-to-r from-amber-700 via-yellow-500 to-amber-700 text-slate-900' 
+            : 'bg-gradient-to-r from-blue-800 via-indigo-600 to-blue-800 text-white'}`}>
+        
           <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-yellow-500 p-1.5 rounded-lg animate-pulse">
-                <Sparkles className="w-4 h-4 text-blue-900" />
+            <div className="flex items-center gap-4 flex-1 justify-center">
+              <div className="bg-white/20 p-2 rounded-xl animate-bounce">
+                <Sparkles className="w-4 h-4" />
               </div>
-              <p className="text-xs md:text-sm font-bold tracking-wide">
-                <span className="text-yellow-400 uppercase mr-2 tracking-tighter">Saanify Pariwar:</span>
-                {/* ✅ Safety Check Applied */}
-                {activeBroadcast?.message?.includes('|') ? activeBroadcast.message.split('|')[0] : activeBroadcast?.message}
-              </p>
+              
+              {/* Professional Bilingual Text */}
+              <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                <span className="bg-black/10 px-2 py-0.5 rounded text-[10px] font-black uppercase italic w-fit">
+                  Saanify Pariwar:
+                </span>
+                <p className="text-sm md:text-base font-black tracking-tight drop-shadow-md">
+                  {activeBroadcast?.message?.split('|')?.[0]}
+                </p>
+              </div>
             </div>
-            <button onClick={() => setActiveBroadcast(null)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
-              <X className="w-4 h-4 opacity-50" />
+
+            <button onClick={() => setActiveBroadcast(null)} className="p-1 hover:bg-black/5 rounded-full">
+              <X className="w-5 h-5 opacity-50" />
             </button>
           </div>
         </div>
