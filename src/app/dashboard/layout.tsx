@@ -413,78 +413,97 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // --- 1. Master Greeting Renderer ---
+  // --- 1. Premium Greeting Renderer (UPDATED) ---
   const GreetingRenderer = () => {
     if (!activeBroadcast) return null;
 
-    const isAuto = activeBroadcast.content_mode === 'AUTO';
-    const fest = activeBroadcast.festival_key;
+    const fest = activeBroadcast.festival_key || 'DIWALI';
+    const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
 
-    // MODE A: MANUAL IMAGE
-    if (!isAuto && activeBroadcast.image_url) {
+    // ==========================================
+    // 1. DIWALI PREMIUM TEMPLATE
+    // ==========================================
+    if (fest === 'DIWALI') {
       return (
-        <div className="relative bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border border-white/10">
-          <div className="h-72 w-full relative">
-            <img src={activeBroadcast.image_url} className="w-full h-full object-cover" alt="Event" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent"></div>
-          </div>
-          <div className="p-10 text-center -mt-10 relative z-10 space-y-4">
-            <h2 className="text-4xl font-black text-white uppercase italic">{activeBroadcast.title}</h2>
-            <p className="text-slate-300 px-6">{activeBroadcast.message?.split('|')[0]}</p>
-            <Button onClick={handleDismissPopup} className="w-full h-14 bg-blue-600 rounded-2xl font-bold">CONTINUE 🚀</Button>
-          </div>
-        </div>
-      );
-    }
+        <div className="relative w-[420px] h-[580px] rounded-[3rem] overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,.6)] border border-amber-400/30 flex flex-col items-center p-8 mx-auto">
+          {/* Background Layer */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,#090d1f_50%,#03040b_100%)]"></div>
 
-    // MODE B: AUTO CSS TEMPLATE (DIWALI)
-    if (isAuto && fest === 'DIWALI') {
-      return (
-        <div className="relative w-full h-[600px] rounded-[3.5rem] overflow-hidden shadow-2xl border border-amber-400/20 flex flex-col items-center p-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1a2b8a_0%,#090d1f_60%,#02040a_100%)]"></div>
-          {/* Particles */}
+          {/* Floating Gold Particles (Animated via CSS) */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="gold-particle" style={{ left: `${15 + i * 15}%`, bottom: '-20px', animationDuration: `${6 + i}s` }}></div>
+            ))}
+          </div>
+
+          {/* Stars */}
           <div className="absolute inset-0 pointer-events-none">
-              {[...Array(6)].map((_, i) => (
-                  <div key={i} className="gold-particle" style={{left: `${15*i}%`, bottom: '0', animationDuration: `${5+i}s`}}></div>
-              ))}
+            <div className="star-twinkle absolute top-12 left-10 text-white">✦</div>
+            <div className="star-twinkle absolute top-24 right-14 text-amber-300" style={{ animationDelay: '1s' }}>✦</div>
+            <div className="star-twinkle absolute top-44 left-20 text-white" style={{ animationDelay: '2s' }}>✦</div>
           </div>
-          <div className="relative z-10 text-amber-400 tracking-[10px] font-black text-[10px] opacity-70 mb-12">SAANIFY PREMIUM</div>
-          <div className="relative z-10 scale-110">
-            <div className="diya-flame w-14 h-20 bg-gradient-to-t from-orange-600 via-yellow-400 to-white rounded-full blur-[2px] shadow-[0_0_50px_rgba(255,165,0,0.8)]"></div>
-            <div className="mt-[-15px] w-24 h-12 bg-gradient-to-b from-amber-700 to-amber-950 rounded-b-full"></div>
+
+          <div className="relative z-10 text-amber-400 uppercase tracking-[8px] font-bold text-[10px]">SAANIFY</div>
+
+          {/* Animated Diya */}
+          <div className="relative z-10 mt-10">
+            <div className="absolute left-1/2 -translate-x-1/2 top-0 w-16 h-20 diya-flame bg-gradient-to-t from-orange-500 via-yellow-400 to-white rounded-full blur-[1px]"></div>
+            <div className="mt-16 w-28 h-14 rounded-b-full bg-gradient-to-b from-amber-700 to-amber-950 shadow-[0_15px_40px_rgba(255,152,0,.4)]"></div>
           </div>
-          <div className="relative z-10 text-center mt-12 space-y-4">
-            <h1 className="diwali-title text-5xl font-black leading-tight italic uppercase">{activeBroadcast.title}</h1>
-            <p className="text-slate-400 text-sm leading-relaxed px-6 italic">{activeBroadcast.message?.split('|')[0]}</p>
+
+          {/* Title Section */}
+          <div className="relative z-10 text-center mt-12">
+            <h1 className="diwali-title-vibrant text-6xl font-black leading-none drop-shadow-2xl">
+              शुभ<br/>दीपावली
+            </h1>
+            <p className="text-slate-300 mt-6 text-sm leading-relaxed px-4 italic font-medium">
+              {msgParts[0]}
+            </p>
           </div>
-          <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 bg-gradient-to-r from-amber-600 to-yellow-500 text-white rounded-2xl font-black text-xl shadow-lg">CELEBRATE 🪔</Button>
+
+          <button onClick={handleDismissPopup} className="premium-btn relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-500 shadow-[0_15px_40px_rgba(255,193,7,.4)] hover:scale-105 transition-all">
+            CELEBRATE 🪔
+          </button>
+          <div className="relative z-10 mt-4 text-[9px] uppercase tracking-[4px] text-amber-400/60 font-bold">Premium Saanify Greeting</div>
         </div>
       );
     }
 
-    // MODE C: AUTO CSS TEMPLATE (HOLI)
-    if (isAuto && fest === 'HOLI') {
+    // ==========================================
+    // 2. HOLI PREMIUM TEMPLATE
+    // ==========================================
+    if (fest === 'HOLI') {
       return (
-        <div className="relative w-full h-[600px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10">
+        <div className="relative w-[420px] h-[580px] rounded-[3rem] overflow-hidden shadow-[0_30px_100px_rgba(255,0,128,0.3)] flex flex-col items-center p-8 mx-auto">
           <div className="absolute inset-0 bg-[#7928ca]">
-              <div className="holi-splash-pro bg-pink-500 w-80 h-80 -top-20 -left-20"></div>
-              <div className="holi-splash-pro bg-blue-500 w-80 h-80 -bottom-20 -right-20" style={{animationDelay: '2s'}}></div>
+            <div className="holi-splash-pro bg-pink-500 w-80 h-80 -top-20 -left-20"></div>
+            <div className="holi-splash-pro bg-blue-500 w-80 h-80 -bottom-20 -right-20" style={{ animationDelay: '2s' }}></div>
           </div>
-          <div className="relative z-10 text-white/50 uppercase tracking-[10px] font-black text-[10px] mb-12">SAANIFY EXPERIENCE</div>
-          <div className="relative z-10 bg-white/10 backdrop-blur-xl p-8 rounded-[3rem] border border-white/20 rotate-6 shadow-2xl">
-              <span className="text-7xl">🎨</span>
+          
+          <div className="relative z-10 text-white/50 uppercase tracking-[10px] font-black text-[10px]">SAANIFY EXPERIENCE</div>
+
+          <div className="relative z-10 mt-12 bg-white/10 backdrop-blur-xl p-8 rounded-[3rem] border border-white/20 shadow-2xl rotate-6 hover:rotate-0 transition-all duration-700">
+            <span className="text-7xl filter drop-shadow-2xl">🎨</span>
           </div>
-          <div className="relative z-10 text-center mt-10 space-y-4">
-              <h1 className="holi-title-vibrant text-6xl font-black uppercase italic drop-shadow-2xl">{activeBroadcast.title}</h1>
-              <p className="text-white text-lg font-bold">Rangon ka Utsav!</p>
-              <p className="text-white/60 text-xs px-10 italic">{activeBroadcast.message?.split('|')[0]}</p>
+
+          <div className="relative z-10 text-center mt-10">
+            <h1 className="holi-title-vibrant text-7xl font-black uppercase italic tracking-tighter leading-none">
+              HAPPY<br/>HOLI
+            </h1>
+            <div className="mt-6 space-y-1 px-6">
+              <p className="text-white text-lg font-bold drop-shadow-md">Rangon ka Utsav!</p>
+              <p className="text-white/60 text-xs italic">{msgParts[0]}</p>
+            </div>
           </div>
-          <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 bg-gradient-to-r from-pink-500 via-purple-600 to-blue-500 text-white rounded-2xl font-black text-xl">PLAY COLORS 🌈</Button>
+
+          <button onClick={handleDismissPopup} className="premium-btn relative z-10 mt-auto w-full h-16 rounded-3xl text-white text-2xl font-black bg-gradient-to-r from-pink-500 via-purple-600 to-blue-500 shadow-[0_15px_40px_rgba(156,39,255,0.4)] border border-white/20 hover:scale-105 transition-all">
+            PLAY COLORS 🌈
+          </button>
         </div>
       );
     }
 
-    return null; // Fallback
+    return null;
   };
 
   // ━━━ RenderAnimations Fix ━━━
