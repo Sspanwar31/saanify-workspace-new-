@@ -13,31 +13,57 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 // =========================================================
-// CLEANED CONFIGURATION
+// MASTER CONFIG: Supporting All 30+ Festivals & 7 Types
 // =========================================================
 const MASTER_CONFIG: any = {
-  // --- STYLE: ROYAL GOLD (Devotional) ---
+  // --- GOLDEN STYLE ---
   DIWALI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🪔' },
   DUSSEHRA: { style: 'GOLDEN', defaultAnim: 'SPARKLES', icon: '🏹' },
+  MAHASHIVRATRI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🕉️' },
   RAM_NAVAMI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🚩' },
-  
-  // --- STYLE: VIBRANT (Celebration) ---
+  GURU_PURNIMA: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🙏' },
+  CHHATH_PUJA: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '☀️' },
+  KARWA_CHAUTH: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🌙' },
+  HANUMAN_JAYANTI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🔱' },
+
+  // --- VIBRANT STYLE ---
   HOLI: { style: 'VIBRANT', defaultAnim: 'HOLI', icon: '🎨' },
   NAVRATRI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '💃' },
+  GANESH_CHATURTHI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🐘' },
+  JANMASHTAMI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🏺' },
   RAKSHA_BANDHAN: { style: 'VIBRANT', defaultAnim: 'CONFETTI', icon: '🎁' },
+  LOHRI: { style: 'VIBRANT', defaultAnim: 'SPARKLES', icon: '🔥' },
+  ONAM: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🌸' },
+  PONGAL: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🌾' },
+  BAISAKHI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🥁' },
 
-  // --- STYLE: WINTER/PEACEFUL ---
+  // --- WINTER / PEACEFUL ---
   CHRISTMAS: { style: 'WINTER', defaultAnim: 'SNOW', icon: '🎄' },
   NEW_YEAR: { style: 'WINTER', defaultAnim: 'FIREWORKS', icon: '🎆' },
   EID_AL_FITR: { style: 'PEACEFUL', defaultAnim: 'MOON', icon: '🌙' },
+  EID_AL_ADHA: { style: 'PEACEFUL', defaultAnim: 'MOON', icon: '🕌' },
 
-  // --- STYLE: CORPORATE (Broadcast Types) ---
+  // --- NATIONAL STYLE ---
+  REPUBLIC_DAY: { style: 'NATIONAL', defaultAnim: 'CONFETTI', icon: '🇮🇳' },
+  INDEPENDENCE_DAY: { style: 'NATIONAL', defaultAnim: 'CONFETTI', icon: '🇮🇳' },
+
+  // --- BROADCAST TYPES (Corporate) ---
+  ANNOUNCEMENT: { style: 'CORPORATE', defaultAnim: 'SPARKLES', icon: '📢' },
   UPDATE: { style: 'CORPORATE', defaultAnim: 'SPARKLES', icon: '🚀' },
-  EMERGENCY: { style: 'ALERT', defaultAnim: 'NONE', icon: '⚠️' }
+  OFFER: { style: 'CORPORATE', defaultAnim: 'CONFETTI', icon: '💰' },
+  MAINTENANCE: { style: 'CORPORATE', defaultAnim: 'NONE', icon: '⚙️' },
+  EMERGENCY: { style: 'ALERT', defaultAnim: 'NONE', icon: '⚠️' },
+  EVENT: { style: 'CORPORATE', defaultAnim: 'CONFETTI', icon: '🗓️' }
+};
+
+// --- Helper: Get Style for Type/Key ---
+const getConfig = (b: any) => {
+  const key = b?.festival_key || b?.type || 'UPDATE';
+  return MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
 };
 
 // =========================================================
-// SUB-COMPONENTS (Cleaned & Optimized)
+// SUB-COMPONENTS
 // =========================================================
 
 // --- Maintenance Screen ---
@@ -46,7 +72,7 @@ const MaintenanceScreen = ({ settings }: any) => (
     <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 animate-pulse">
       <Settings className="w-12 h-12 text-red-500 animate-spin" />
     </div>
-    <h1 className="text-4xl font-black mb-4">{settings?.maintenance_title}</h1>
+    <h1 className="text-4xl font-black mb-4">{settings?.maintenance_title || 'Under Maintenance'}</h1>
     <p className="max-w-md text-slate-400 text-lg mb-8">{settings?.maintenance_msg}</p>
     <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
       <p className="text-sm text-slate-500 uppercase font-bold mb-2">Service Resumes At</p>
@@ -57,66 +83,46 @@ const MaintenanceScreen = ({ settings }: any) => (
   </div>
 );
 
-// --- GreetingRenderer (Moved outside for stability) ---
+// --- GreetingRenderer ---
 const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
   if (!activeBroadcast) return null;
+  const config = getConfig(activeBroadcast);
+  const currentAnim = activeBroadcast.animation_type || config.defaultAnim;
 
-  const key = activeBroadcast.festival_key || activeBroadcast.type;
-  const config = MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
-  const currentAnim = activeBroadcast.animation_type; 
+  let bgClass = "bg-[#1e2d7a]";
+  
+  // Merged Background Logic from both codes
+  if (config.style === 'GOLDEN') bgClass = "bg-[#090d1f]";
+  else if (config.style === 'VIBRANT') bgClass = "bg-[#7928ca]";
+  else if (config.style === 'WINTER') bgClass = "bg-[#b71c1c]";
+  else if (config.style === 'NATIONAL') bgClass = "bg-[#138808]";
+  else if (config.style === 'PEACEFUL') bgClass = "bg-[#0f766e]";
+  else if (config.style === 'CORPORATE') bgClass = "bg-[#0f172a]";
+  else if (config.style === 'ALERT') bgClass = "bg-[#dc2626]";
 
-  // Determine Background Style
-  let bgStyleClass = "bg-[#1e2d7a]"; // Default
-  if (config.style === 'GOLDEN') bgStyleClass = "bg-[#090d1f]";
-  else if (config.style === 'VIBRANT') bgStyleClass = "bg-[#7928ca]";
-  else if (config.style === 'WINTER') bgStyleClass = "bg-[#b71c1c]";
-
-  const containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 " + bgStyleClass;
-
-  // Determine Title Style
-  const titleTypeClass = config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant';
-  const fullTitleClass = titleTypeClass + " text-5xl font-black italic";
-
+  const titleClass = (config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant') + " text-4xl sm:text-5xl font-black italic text-center px-4";
   const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
 
   return (
-    <div className={containerClassName}>
-        {/* 1. DYNAMIC ANIMATION LAYER */}
+    <div className={"relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 " + bgClass}>
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {currentAnim === 'SNOW' && [...Array(20)].map((_, i) => (
-              <div key={i} className="snow-particle text-2xl" 
-                   style={{
-                     left: (Math.random() * 100) + "%", 
-                     animationDelay: (Math.random() * 5) + "s"
-                   }}>❄️</div>
+          {currentAnim === 'SNOW' && [...Array(15)].map((_, i) => (
+              <div key={i} className="snow-particle text-2xl" style={{ left: (Math.random() * 90) + "%", animationDelay: (Math.random() * 5) + "s" }}>❄️</div>
           ))}
-
           {currentAnim === 'DIYA' && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />}
-
           {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
-              <div key={i} className="flower-particle text-3xl" 
-                   style={{
-                     left: (Math.random() * 100) + "%", 
-                     bottom: "0px", 
-                     animationDelay: (Math.random() * 4) + "s"
-                   }}>🌸</div>
+              <div key={i} className="flower-particle text-3xl" style={{ left: (Math.random() * 90) + "%", bottom: "0px", animationDelay: (Math.random() * 4) + "s" }}>🌸</div>
           ))}
         </div>
 
-        {/* 2. CONTENT LAYER */}
         <div className="relative z-10 text-white uppercase tracking-[10px] font-black text-[10px] mb-12 opacity-50">SAANIFY</div>
-        
         <div className="relative z-10 bg-white/10 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/20 shadow-2xl rotate-6">
           <span className="text-7xl">{config.icon}</span>
         </div>
 
-        <div className="relative z-10 text-center mt-10">
-          <h1 className={fullTitleClass}>
-            {activeBroadcast.title}
-          </h1>
-          <p className="mt-6 text-white/90 font-bold px-4 leading-relaxed">
-            {msgParts[0]}
-          </p>
+        <div className="relative z-10 text-center mt-10 w-full">
+          <h1 className={titleClass}>{activeBroadcast.title}</h1>
+          <p className="mt-6 text-white/90 font-bold px-4 leading-relaxed">{msgParts[0]}</p>
         </div>
 
         <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white bg-gradient-to-r from-white/20 to-white/5 backdrop-blur-md border border-white/20">
@@ -126,18 +132,15 @@ const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
   );
 };
 
-// --- RenderAnimations (Moved outside) ---
+// --- RenderAnimations (Screen wide effects) ---
 const RenderAnimations = ({ showPopup, activeBroadcast }: any) => {
   if (!showPopup || !activeBroadcast) return null;
 
-  if (activeBroadcast.animation_type === 'DIYA') {
+  if (activeBroadcast.animation_type === 'DIYA' || getConfig(activeBroadcast).defaultAnim === 'DIYA') {
     return (
       <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-        {/* Top Corners Pe Decoration */}
         <div className="absolute top-4 right-10 text-6xl diya-glow">🪔</div>
         <div className="absolute top-4 left-[300px] text-6xl diya-glow hidden md:block">🪔</div>
-        
-        {/* Subtle Background Particles */}
         {[...Array(5)].map((_, i) => (
             <div key={i} className="gold-particle" style={{ left: `${20*i}%`, bottom: '0', animationDuration: `${7+i}s` }}></div>
         ))}
@@ -147,21 +150,15 @@ const RenderAnimations = ({ showPopup, activeBroadcast }: any) => {
   return null;
 };
 
-// =========================================================
-// MAIN LAYOUT COMPONENT
-// =========================================================
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // ━━━ STATES ━━━
   const [userProfile, setUserProfile] = useState<any>(null);
   const [sysSettings, setSysSettings] = useState<any>(null); 
   const [isChecking, setIsChecking] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // Broadcast States
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
@@ -204,17 +201,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ━━━ 2. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
-    const { data } = await supabase
-      .from('broadcasts')
-      .select('*')
+    const { data } = await supabase.from('broadcasts').select('*')
       .eq('is_active', true)
       .or('target_audience.eq.BOTH,target_audience.eq.CLIENT')
       .lte('starts_at', now)
       .or(`ends_at.is.null,ends_at.gte.${now}`)
-      .order('priority', { ascending: false }) 
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order('priority', { ascending: false }).order('created_at', { ascending: false })
+      .limit(1).maybeSingle();
     
     if (data) {
       setActiveBroadcast(data);
@@ -233,9 +226,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     fetchBroadcasts();
     const channel = supabase.channel('broadcast-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => {
-        fetchBroadcasts(); 
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => fetchBroadcasts())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchBroadcasts]);
@@ -248,20 +239,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  // ━━━ AUTH + PROFILE SYNC ━━━
+  // ━━━ 3. AUTH + PROFILE SYNC ━━━
   useEffect(() => {
     const performAuthSync = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { router.replace('/login'); return; }
 
-        const { data: profile, error: pError } = await supabase
-          .from('current_active_profile')
-          .select('*')
-          .maybeSingle();
-
-        if (pError) console.error("❌ View Error:", pError);
-
+        const { data: profile } = await supabase.from('current_active_profile').select('*').maybeSingle();
+        
         if (!profile || profile.status !== 'ACTIVE') {
           router.replace('/login');
           return;
@@ -273,25 +259,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
         
+        // Theme Sync
         if (profile.theme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');
         }
 
-        setIsImpersonating(session.user.id !== profile.id);
-        setIsChecking(false);
+        // Admin Check
+        const adminFlag = localStorage.getItem('is_admin_impersonating') === 'true';
+        setIsImpersonating(adminFlag);
 
+        setIsChecking(false);
       } catch (err) {
         console.error(err);
         setIsChecking(false);
       }
     };
-
     performAuthSync();
   }, [router]);
 
-  // ━━━ REALTIME PERMISSION SYNC ━━━
+  // ━━━ 4. REALTIME PERMISSION SYNC ━━━
   useEffect(() => {
     if (!userProfile) return;
 
@@ -326,7 +314,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(channel); };
   }, [userProfile?.id, userProfile?.client_id]);
 
-  // ━━━ PERMISSION GUARD (Treasurer) ━━━
+  // ━━━ 5. PERMISSION GUARD (Treasurer) ━━━
   useEffect(() => {
     if (!userProfile || userProfile.role !== 'treasurer') return;
 
@@ -356,7 +344,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname, userProfile, router]);
 
-  // ━━━ BACK TO ADMIN ━━━
+  // ━━━ 6. BACK TO ADMIN ━━━
   const handleBackToAdmin = useCallback(async () => {
     const toastId = toast.loading("Exiting view mode...");
     try {
@@ -382,23 +370,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, []);
 
-  // ━━━ CLOSE MOBILE MENU ON ROUTE CHANGE ━━━
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
-
   // ━━━ LOADING SCREEN ━━━
-  if (isChecking) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-slate-950 gap-4">
-        <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
-        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Loading your workspace...</p>
-      </div>
-    );
-  }
+  if (isChecking) return <div className="h-screen w-full flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
 
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
+  const bannerColorClass = activeBroadcast?.theme_color === 'GOLD' 
+    ? 'bg-gradient-to-r from-amber-700 via-yellow-500 to-amber-700 text-slate-900' 
+    : 'bg-gradient-to-r from-blue-800 via-indigo-600 to-blue-800 text-white';
 
   return (
     <>
@@ -435,32 +414,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ANIMATIONS & POPUP */}
       <RenderAnimations showPopup={showPopup} activeBroadcast={activeBroadcast} />
 
-      {/* ACTIVE BROADCAST BANNER (Dismissible) */}
+      {/* ACTIVE BROADCAST BANNER */}
       {activeBroadcast && !showPopup && (
-        <div className={`sticky top-0 z-[1001] w-full py-3 px-6 shadow-2xl transition-all duration-700 banner-shine
-          ${activeBroadcast.theme_color === 'GOLD' 
-            ? 'bg-gradient-to-r from-amber-700 via-yellow-500 to-amber-700 text-slate-900' 
-            : 'bg-gradient-to-r from-blue-800 via-indigo-600 to-blue-800 text-white'}`}>
-        
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className={"sticky top-0 z-[1001] w-full py-3 px-6 shadow-2xl " + bannerColorClass}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-sm font-black italic">
             <div className="flex items-center gap-4 flex-1 justify-center">
-              <div className="bg-white/20 p-2 rounded-xl animate-bounce">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              
-              <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
-                <span className="bg-black/10 px-2 py-0.5 rounded text-[10px] font-black uppercase italic w-fit">
-                  Saanify Pariwar:
-                </span>
-                <p className="text-sm md:text-base font-black tracking-tight drop-shadow-md">
-                  {activeBroadcast?.message?.split('|')?.[0]}
-                </p>
-              </div>
+              <Sparkles className="w-4 h-4 animate-pulse" />
+              <span className="bg-black/10 px-2 py-0.5 rounded text-[10px] font-black uppercase italic">Saanify Pariwar:</span>
+              <p>{activeBroadcast?.message?.split('|')?.[0]}</p>
             </div>
-
-            <button onClick={() => setActiveBroadcast(null)} className="p-1 hover:bg-black/5 rounded-full">
-              <X className="w-5 h-5 opacity-50" />
-            </button>
+            <button onClick={() => setActiveBroadcast(null)} className="p-1 hover:bg-black/5 rounded-full"><X className="w-5 h-5 opacity-70" /></button>
           </div>
         </div>
       )}
