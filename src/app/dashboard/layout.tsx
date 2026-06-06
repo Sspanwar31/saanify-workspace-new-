@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles, Flame, Palette, Zap, Moon, Snowflake, Flower2, Megaphone, Globe } from 'lucide-react'; // ✅ Removed duplicate Sparkles import
+import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles, Flame, Palette, Zap, Moon, Snowflake, Flower2, Megaphone, Globe } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -125,6 +125,97 @@ const MASTER_CONFIG: any = {
   EMERGENCY: { style: 'ALERT', defaultAnim: 'NONE', icon: '⚠️' }
 };
 
+// ✅ MOVED OUTSIDE: GreetingRenderer Component
+const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
+  if (!activeBroadcast) return null;
+
+  const key = activeBroadcast.festival_key || activeBroadcast.type;
+  const config = MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
+  const currentAnim = activeBroadcast.animation_type; 
+
+  // 🚀 STEP 1: Calculate Background Class separately
+  let bgStyleClass = "bg-[#1e2d7a]"; // Default
+  if (config.style === 'GOLDEN') bgStyleClass = "bg-[#090d1f]";
+  else if (config.style === 'VIBRANT') bgStyleClass = "bg-[#7928ca]";
+  else if (config.style === 'WINTER') bgStyleClass = "bg-[#b71c1c]";
+
+  const containerClassName = "relative w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 " + bgStyleClass;
+
+  // 🚀 STEP 2: Calculate Title Class separately
+  const titleTypeClass = config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant';
+  const fullTitleClass = titleTypeClass + " text-5xl font-black italic";
+
+  const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
+
+  return (
+    <div className={containerClassName}>
+        {/* 1. DYNAMIC ANIMATION LAYER */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {currentAnim === 'SNOW' && [...Array(20)].map((_, i) => (
+              <div key={i} className="snow-particle text-2xl" 
+                   style={{
+                     left: (Math.random() * 100) + "%", 
+                     animationDelay: (Math.random() * 5) + "s"
+                   }}>❄️</div>
+          ))}
+
+          {currentAnim === 'DIYA' && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />}
+
+          {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
+              <div key={i} className="flower-particle text-3xl" 
+                   style={{
+                     left: (Math.random() * 100) + "%", 
+                     bottom: "0px", 
+                     animationDelay: (Math.random() * 4) + "s"
+                   }}>🌸</div>
+          ))}
+        </div>
+
+        {/* 2. CONTENT LAYER */}
+        <div className="relative z-10 text-white uppercase tracking-[10px] font-black text-[10px] mb-12 opacity-50">SAANIFY</div>
+        
+        <div className="relative z-10 bg-white/10 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/20 shadow-2xl rotate-6">
+          <span className="text-7xl">{config.icon}</span>
+        </div>
+
+        <div className="relative z-10 text-center mt-10">
+          <h1 className={fullTitleClass}>
+            {activeBroadcast.title}
+          </h1>
+          <p className="mt-6 text-white/90 font-bold px-4 leading-relaxed">
+            {msgParts[0]}
+          </p>
+        </div>
+
+        <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white bg-gradient-to-r from-white/20 to-white/5 backdrop-blur-md border border-white/20">
+          {activeBroadcast.cta_text || 'CONTINUE'}
+        </Button>
+    </div>
+  );
+};
+
+// ✅ MOVED OUTSIDE: RenderAnimations Component
+const RenderAnimations = ({ showPopup, activeBroadcast }: any) => {
+  if (!showPopup || !activeBroadcast) return null;
+
+  if (activeBroadcast.animation_type === 'DIYA') {
+    return (
+      <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
+        {/* Top Corners Pe Decoration */}
+        <div className="absolute top-4 right-10 text-6xl diya-glow">🪔</div>
+        <div className="absolute top-4 left-[300px] text-6xl diya-glow">🪔</div>
+        
+        {/* Subtle Background Particles (Aapka Floating Gold) */}
+        {[...Array(5)].map((_, i) => (
+            <div key={i} className="gold-particle" style={{ left: `${20*i}%`, bottom: '0', animationDuration: `${7+i}s` }}></div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -140,41 +231,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
-
-  // ━━━ 4. Add Festival Theme Helper ━━━
-  const getFestivalTheme = () => {
-    if (!activeBroadcast) return null;
-
-    switch (activeBroadcast.festival_key) {
-      case 'HOLI':
-        return {
-          bg: 'from-pink-500 via-yellow-400 to-blue-500',
-          icon: '🎨',
-          particles: ['🎨', '🎉', '✨', '🌈']
-        };
-
-      case 'DIWALI':
-        return {
-          bg: 'from-orange-500 via-yellow-400 to-amber-600',
-          icon: '🪔',
-          particles: ['🪔', '✨', '💫', '🌟']
-        };
-
-      case 'CHRISTMAS':
-        return {
-          bg: 'from-green-600 via-red-500 to-green-700',
-          icon: '🎄',
-          particles: ['🎄', '❄️', '🎁', '✨']
-        };
-
-      default:
-        return {
-          bg: 'from-blue-600 to-indigo-700',
-          icon: '📢',
-          particles: ['✨', '🎉']
-        };
-    }
-  };
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -211,7 +267,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, []);
 
-  // ━━━ 2. REALTIME BROADCAST LISTENER (UPDATED LOGIC WITH DEBUG) ━━━
+  // ━━━ 2. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -437,98 +493,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // --- 3. Dynamic Greeting Renderer (FIXED FOR VERCEL BUILD) ---
-  const GreetingRenderer = () => {
-    if (!activeBroadcast) return null;
-
-    const key = activeBroadcast.festival_key || activeBroadcast.type;
-    const config = MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
-    const currentAnim = activeBroadcast.animation_type; 
-
-    // 🚀 STEP 1: Calculate Background Class separately
-    let bgStyleClass = "bg-[#1e2d7a]"; // Default
-    if (config.style === 'GOLDEN') bgStyleClass = "bg-[#090d1f]";
-    else if (config.style === 'VIBRANT') bgStyleClass = "bg-[#7928ca]";
-    else if (config.style === 'WINTER') bgStyleClass = "bg-[#b71c1c]";
-
-    const containerClassName = "relative w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 " + bgStyleClass;
-
-    // 🚀 STEP 2: Calculate Title Class separately
-    const titleTypeClass = config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant';
-    const fullTitleClass = titleTypeClass + " text-5xl font-black italic";
-
-    const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
-
-    return (
-      <div className={containerClassName}>
-      
-        {/* 1. DYNAMIC ANIMATION LAYER */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-           {currentAnim === 'SNOW' && [...Array(20)].map((_, i) => (
-              <div key={i} className="snow-particle text-2xl" 
-                   style={{
-                     left: (Math.random() * 100) + "%", 
-                     animationDelay: (Math.random() * 5) + "s"
-                   }}>❄️</div>
-           ))}
-
-           {currentAnim === 'DIYA' && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />}
-
-           {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
-              <div key={i} className="flower-particle text-3xl" 
-                   style={{
-                     left: (Math.random() * 100) + "%", 
-                     bottom: "0px", 
-                     animationDelay: (Math.random() * 4) + "s"
-                   }}>🌸</div>
-           ))}
-        </div>
-
-        {/* 2. CONTENT LAYER */}
-        <div className="relative z-10 text-white uppercase tracking-[10px] font-black text-[10px] mb-12 opacity-50">SAANIFY</div>
-        
-        <div className="relative z-10 bg-white/10 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/20 shadow-2xl rotate-6">
-           <span className="text-7xl">{config.icon}</span>
-        </div>
-
-        <div className="relative z-10 text-center mt-10">
-          {/* 🚀 FIXED: Using pre-calculated class variable */}
-          <h1 className={fullTitleClass}>
-            {activeBroadcast.title}
-          </h1>
-          <p className="mt-6 text-white/90 font-bold px-4 leading-relaxed">
-            {msgParts[0]}
-          </p>
-        </div>
-
-        <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white bg-gradient-to-r from-white/20 to-white/5 backdrop-blur-md border border-white/20">
-           {activeBroadcast.cta_text || 'CONTINUE'}
-        </Button>
-      </div>
-    );
-  };
-
-  // ━━━ RenderAnimations Fix ━━━
-  const RenderAnimations = () => {
-    if (!showPopup || !activeBroadcast) return null;
-
-    if (activeBroadcast.animation_type === 'DIYA') {
-      return (
-        <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-          {/* Top Corners Pe Decoration */}
-          <div className="absolute top-4 right-10 text-6xl diya-glow">🪔</div>
-          <div className="absolute top-4 left-[300px] text-6xl diya-glow">🪔</div>
-          
-          {/* Subtle Background Particles (Aapka Floating Gold) */}
-          {[...Array(5)].map((_, i) => (
-              <div key={i} className="gold-particle" style={{ left: `${20*i}%`, bottom: '0', animationDuration: `${7+i}s` }}></div>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <>
       {/* 2. Full Lockout Check */}
@@ -562,7 +526,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* ━━ ANIMATIONS & POPUP SECTION ━━ */}
-      <RenderAnimations />
+      <RenderAnimations showPopup={showPopup} activeBroadcast={activeBroadcast} />
 
       {/* 🚀 MODERN BRANDED BANNER (Dismissal ke baad) - CENTERED & ATTRACTIVE */}
       {activeBroadcast && !showPopup && (
@@ -595,10 +559,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 MODERN HERO POPUP (Center Modal) - UPDATED TO USE DYNAMIC GreetingRenderer */}
+      {/* 🚀 MODERN HERO POPUP (Center Modal) */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
-           <GreetingRenderer />
+           <GreetingRenderer activeBroadcast={activeBroadcast} handleDismissPopup={handleDismissPopup} />
         </DialogContent>
       </Dialog>
 
