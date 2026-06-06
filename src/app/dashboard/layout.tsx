@@ -437,24 +437,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // --- 3. Dynamic Greeting Renderer (FIXED FOR TURBOPACK) ---
+  // --- 3. Dynamic Greeting Renderer (FIXED FOR VERCEL BUILD) ---
   const GreetingRenderer = () => {
     if (!activeBroadcast) return null;
 
     const key = activeBroadcast.festival_key || activeBroadcast.type;
     const config = MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
-    
     const currentAnim = activeBroadcast.animation_type; 
 
+    // 🚀 STEP 1: Calculate Background Class separately
+    let bgStyleClass = "bg-[#1e2d7a]"; // Default
+    if (config.style === 'GOLDEN') bgStyleClass = "bg-[#090d1f]";
+    else if (config.style === 'VIBRANT') bgStyleClass = "bg-[#7928ca]";
+    else if (config.style === 'WINTER') bgStyleClass = "bg-[#b71c1c]";
+
+    const containerClassName = "relative w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 " + bgStyleClass;
+
+    // 🚀 STEP 2: Calculate Title Class separately
+    const titleTypeClass = config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant';
+    const fullTitleClass = titleTypeClass + " text-5xl font-black italic";
+
+    const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
+
     return (
-      <div className={`relative w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 
-        ${config.style === 'GOLDEN' ? 'bg-[#090d1f]' : 
-          config.style === 'VIBRANT' ? 'bg-[#7928ca]' : 
-          config.style === 'WINTER' ? 'bg-[#b71c1c]' : 'bg-[#1e2d7a]'}>
+      <div className={containerClassName}>
       
         {/* 1. DYNAMIC ANIMATION LAYER */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-           {/* Fixed Snow Logic: String concatenation instead of template literals */}
            {currentAnim === 'SNOW' && [...Array(20)].map((_, i) => (
               <div key={i} className="snow-particle text-2xl" 
                    style={{
@@ -465,7 +474,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
            {currentAnim === 'DIYA' && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />}
 
-           {/* Fixed Flowers Logic */}
            {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
               <div key={i} className="flower-particle text-3xl" 
                    style={{
@@ -484,11 +492,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className="relative z-10 text-center mt-10">
-          <h1 className={`${config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant'} text-5xl font-black italic`}>
+          {/* 🚀 FIXED: Using pre-calculated class variable */}
+          <h1 className={fullTitleClass}>
             {activeBroadcast.title}
           </h1>
           <p className="mt-6 text-white/90 font-bold px-4 leading-relaxed">
-            {activeBroadcast.message?.split('|')[0]}
+            {msgParts[0]}
           </p>
         </div>
 
