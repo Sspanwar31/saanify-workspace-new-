@@ -6,103 +6,14 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles, Flame, Palette, Zap, Moon, Snowflake, Flower2, Megaphone, Globe } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// ✅ Helpers
-const getPriorityColor = (priority: string) => {
-  switch(priority){
-    case 1: // LOW
-    case 'LOW':
-      return 'from-green-600 to-green-800';
-    case 2: // MEDIUM
-    case 'MEDIUM':
-      return 'from-blue-600 to-indigo-800';
-    case 3: // HIGH
-    case 'HIGH':
-      return 'from-orange-600 to-red-700';
-    case 4: // CRITICAL
-    case 'CRITICAL':
-      return 'from-red-700 to-red-900';
-    default:
-      return 'from-blue-600 to-indigo-800';
-  }
-};
-
-const getThemeColor = (theme: string) => {
-   switch(theme){
-      case 'RED':
-         return 'bg-red-600';
-      case 'GREEN':
-         return 'bg-green-600';
-      case 'BLUE':
-         return 'bg-blue-600';
-      case 'PURPLE':
-         return 'bg-purple-600';
-      case 'ORANGE':
-         return 'bg-orange-600';
-      case 'GOLD':
-         return 'bg-yellow-500 text-yellow-950'; 
-      default:
-         return 'bg-blue-600';
-   }
-};
-
-const festivalImages = {
-   DIWALI:'https://images.unsplash.com/photo-1546483875-ad9014c88eba?w=800&q=80', 
-   HOLI:'https://images.unsplash.com/photo-1610197919218-6c2182360491?w=800&q=80', 
-   CHRISTMAS:'https://images.unsplash.com/photo-1512096701486-c0c4473e998c?w=800&q=80', 
-   EID_AL_FITR:'https://images.unsplash.com/photo-1564121211835-e88c852648ab?w=800&q=80', 
-   NEW_YEAR:'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&q=80' 
-};
-
-// ✅ Fullscreen Broadcast Component
-const FullscreenBroadcast = ({broadcast}: any) => (
-  <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-700">
-      <div className="text-center text-white max-w-3xl px-6 space-y-6">
-          {broadcast.image_url && (
-            <div className="w-full h-64 rounded-2xl overflow-hidden shadow-2xl border border-white/10">
-               <img src={broadcast.image_url} className="w-full h-full object-cover" alt="Event" />
-            </div>
-          )}
-          <h1 className="text-5xl md:text-7xl font-black bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 drop-shadow-sm">
-             {broadcast.title}
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-300 font-light leading-relaxed">
-             {broadcast.message}
-          </p>
-          {broadcast.cta_text && broadcast.cta_link && (
-            <Button 
-              onClick={() => window.open(broadcast.cta_link, '_blank')}
-              className="bg-white text-black hover:bg-slate-200 text-lg px-8 py-6 rounded-full font-bold shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all transform hover:scale-105"
-            >
-              {broadcast.cta_text}
-            </Button>
-          )}
-      </div>
-  </div>
-);
-
-// ✅ Block Screen Component
-const MaintenanceScreen = ({ settings }: any) => (
-  <div className="fixed inset-0 z-[9999] bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
-    <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 animate-pulse">
-      <Settings className="w-12 h-12 text-red-500 animate-spin" />
-    </div>
-    <h1 className="text-4xl font-black mb-4">{settings.maintenance_title}</h1>
-    <p className="max-w-md text-slate-400 text-lg mb-8">{settings.maintenance_msg}</p>
-    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-      <p className="text-sm text-slate-500 uppercase font-bold mb-2">Service Resumes At</p>
-      <p className="text-2xl font-mono text-green-400">{new Date(settings.maintenance_end).toLocaleString()}</p>
-    </div>
-  </div>
-);
-
 // =========================================================
-// MASTER CONFIG (Component ke bahar)
+// CLEANED CONFIGURATION
 // =========================================================
 const MASTER_CONFIG: any = {
   // --- STYLE: ROYAL GOLD (Devotional) ---
@@ -125,7 +36,28 @@ const MASTER_CONFIG: any = {
   EMERGENCY: { style: 'ALERT', defaultAnim: 'NONE', icon: '⚠️' }
 };
 
-// ✅ MOVED OUTSIDE: GreetingRenderer Component
+// =========================================================
+// SUB-COMPONENTS (Cleaned & Optimized)
+// =========================================================
+
+// --- Maintenance Screen ---
+const MaintenanceScreen = ({ settings }: any) => (
+  <div className="fixed inset-0 z-[9999] bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
+    <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 animate-pulse">
+      <Settings className="w-12 h-12 text-red-500 animate-spin" />
+    </div>
+    <h1 className="text-4xl font-black mb-4">{settings?.maintenance_title}</h1>
+    <p className="max-w-md text-slate-400 text-lg mb-8">{settings?.maintenance_msg}</p>
+    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+      <p className="text-sm text-slate-500 uppercase font-bold mb-2">Service Resumes At</p>
+      <p className="text-2xl font-mono text-green-400">
+        {settings?.maintenance_end ? new Date(settings.maintenance_end).toLocaleString() : 'Soon'}
+      </p>
+    </div>
+  </div>
+);
+
+// --- GreetingRenderer (Moved outside for stability) ---
 const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
   if (!activeBroadcast) return null;
 
@@ -133,15 +65,15 @@ const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
   const config = MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
   const currentAnim = activeBroadcast.animation_type; 
 
-  // 🚀 STEP 1: Calculate Background Class separately
+  // Determine Background Style
   let bgStyleClass = "bg-[#1e2d7a]"; // Default
   if (config.style === 'GOLDEN') bgStyleClass = "bg-[#090d1f]";
   else if (config.style === 'VIBRANT') bgStyleClass = "bg-[#7928ca]";
   else if (config.style === 'WINTER') bgStyleClass = "bg-[#b71c1c]";
 
-  const containerClassName = "relative w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 " + bgStyleClass;
+  const containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 " + bgStyleClass;
 
-  // 🚀 STEP 2: Calculate Title Class separately
+  // Determine Title Style
   const titleTypeClass = config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant';
   const fullTitleClass = titleTypeClass + " text-5xl font-black italic";
 
@@ -194,7 +126,7 @@ const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
   );
 };
 
-// ✅ MOVED OUTSIDE: RenderAnimations Component
+// --- RenderAnimations (Moved outside) ---
 const RenderAnimations = ({ showPopup, activeBroadcast }: any) => {
   if (!showPopup || !activeBroadcast) return null;
 
@@ -203,9 +135,9 @@ const RenderAnimations = ({ showPopup, activeBroadcast }: any) => {
       <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
         {/* Top Corners Pe Decoration */}
         <div className="absolute top-4 right-10 text-6xl diya-glow">🪔</div>
-        <div className="absolute top-4 left-[300px] text-6xl diya-glow">🪔</div>
+        <div className="absolute top-4 left-[300px] text-6xl diya-glow hidden md:block">🪔</div>
         
-        {/* Subtle Background Particles (Aapka Floating Gold) */}
+        {/* Subtle Background Particles */}
         {[...Array(5)].map((_, i) => (
             <div key={i} className="gold-particle" style={{ left: `${20*i}%`, bottom: '0', animationDuration: `${7+i}s` }}></div>
         ))}
@@ -215,7 +147,9 @@ const RenderAnimations = ({ showPopup, activeBroadcast }: any) => {
   return null;
 };
 
-
+// =========================================================
+// MAIN LAYOUT COMPONENT
+// =========================================================
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -283,18 +217,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
     
     if (data) {
-      console.log("🔥 ACTIVE BROADCAST FOUND", data);
-
       setActiveBroadcast(data);
-
-      const sessionSeen = sessionStorage.getItem(
-        `seen_broadcast_${data.id}`
-      );
-
-      console.log("SESSION SEEN =", sessionSeen);
-
+      const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
       if (!sessionSeen && !hasSeenPopup) {
-        console.log("🔥 OPENING POPUP");
         setShowPopup(true);
       } else {
         setShowPopup(false);
@@ -303,13 +228,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setActiveBroadcast(null);
       setShowPopup(false);
     }
-  }, []);
+  }, [hasSeenPopup]);
 
   useEffect(() => {
     fetchBroadcasts();
     const channel = supabase.channel('broadcast-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => {
-        console.log("📢 Broadcast Update Detected");
         fetchBroadcasts(); 
       })
       .subscribe();
@@ -338,16 +262,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         if (pError) console.error("❌ View Error:", pError);
 
-        if (!profile) {
-          console.error("🚫 REDIRECT: Profile is NULL");
+        if (!profile || profile.status !== 'ACTIVE') {
           router.replace('/login');
           return;
-        }
-
-        if (profile.status !== 'ACTIVE') {
-           console.error("🚫 REDIRECT: Account Status is:", profile.status);
-           router.replace('/login');
-           return;
         }
 
         localStorage.setItem('current_user', JSON.stringify(profile)); 
@@ -363,19 +280,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         setIsImpersonating(session.user.id !== profile.id);
-
-        console.log("🎉 SUCCESS: Dashboard loaded for", profile.society_name);
         setIsChecking(false);
 
       } catch (err) {
         console.error(err);
-      } finally {
         setIsChecking(false);
       }
     };
 
     performAuthSync();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router]);
 
   // ━━━ REALTIME PERMISSION SYNC ━━━
   useEffect(() => {
@@ -394,16 +308,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           filter: `id=eq.${ownerId}`
         },
         (payload) => {
-          console.log('🔥 Permission Realtime Update');
           const updated = payload.new as any;
-          
           const currentStored = localStorage.getItem('current_user');
           if (currentStored) {
             const parsed = JSON.parse(currentStored);
             parsed.role_permissions = updated.role_permissions;
             localStorage.setItem('current_user', JSON.stringify(parsed));
           }
-
           setUserProfile((prev: any) => ({
             ...prev,
             role_permissions: updated.role_permissions
@@ -424,7 +335,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       : [];
 
     const path = pathname.toLowerCase();
-
     const permissionMap: Record<string, string> = {
       'members': 'View Members',
       'passbook': 'View Passbook',
@@ -439,7 +349,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     if (path !== '/dashboard') {
       const requiredPerm = Object.entries(permissionMap).find(([key]) => path.includes(key))?.[1];
-
       if (requiredPerm && !perms.includes(requiredPerm)) {
         toast.error("Access Restricted: Permission required");
         router.push('/dashboard');
@@ -457,7 +366,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
 
       document.documentElement.classList.remove('dark');
-      
       localStorage.removeItem('is_admin_viewing');
       localStorage.removeItem('viewing_client_id');
       localStorage.removeItem('is_admin_impersonating');
@@ -467,7 +375,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
 
       toast.success("Welcome back Admin", { id: toastId });
-      
       window.location.href = '/admin/clients';
 
     } catch (err) {
@@ -495,10 +402,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* 2. Full Lockout Check */}
+      {/* FULL LOCKOUT */}
       {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
 
-      {/* 3. Upcoming Notice Banner */}
+      {/* SCHEDULED MAINTENANCE BANNER */}
       {sysSettings?.is_maintenance_scheduled && !isMaintenanceActive && (
         <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top duration-500 z-[1000] sticky top-0">
           <span>
@@ -507,7 +414,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━ IMPERSONATION BANNER ━━ */}
+      {/* IMPERSONATION BANNER */}
       {isImpersonating && (
         <div className="w-full bg-gradient-to-r from-purple-700 via-purple-800 to-indigo-800 text-white px-4 md:px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[1000]">
           <div className="flex items-center gap-2 min-w-0">
@@ -525,15 +432,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━ ANIMATIONS & POPUP SECTION ━━ */}
+      {/* ANIMATIONS & POPUP */}
       <RenderAnimations showPopup={showPopup} activeBroadcast={activeBroadcast} />
 
-      {/* 🚀 MODERN BRANDED BANNER (Dismissal ke baad) - CENTERED & ATTRACTIVE */}
+      {/* ACTIVE BROADCAST BANNER (Dismissible) */}
       {activeBroadcast && !showPopup && (
         <div className={`sticky top-0 z-[1001] w-full py-3 px-6 shadow-2xl transition-all duration-700 banner-shine
           ${activeBroadcast.theme_color === 'GOLD' 
             ? 'bg-gradient-to-r from-amber-700 via-yellow-500 to-amber-700 text-slate-900' 
-            : 'bg-gradient-to-r from-blue-800 via-indigo-600 to-blue-800 text-white'}>
+            : 'bg-gradient-to-r from-blue-800 via-indigo-600 to-blue-800 text-white'}`}>
         
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4 flex-1 justify-center">
@@ -541,7 +448,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Sparkles className="w-4 h-4" />
               </div>
               
-              {/* Professional Bilingual Text */}
               <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
                 <span className="bg-black/10 px-2 py-0.5 rounded text-[10px] font-black uppercase italic w-fit">
                   Saanify Pariwar:
@@ -559,21 +465,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 MODERN HERO POPUP (Center Modal) */}
+      {/* HERO POPUP MODAL */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
            <GreetingRenderer activeBroadcast={activeBroadcast} handleDismissPopup={handleDismissPopup} />
         </DialogContent>
       </Dialog>
 
-      {/* Existing Layout Structure... */}
+      {/* DASHBOARD LAYOUT STRUCTURE */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
-        {/* ━━ DESKTOP SIDEBAR ━━ */}
+        
+        {/* DESKTOP SIDEBAR */}
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
         </div>
 
-        {/* ━━ MOBILE SIDEBAR OVERLAY ━━ */}
+        {/* MOBILE SIDEBAR OVERLAY */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-[60] md:hidden">
             <div
@@ -592,14 +499,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         )}
 
-        {/* ━━ MAIN CONTENT ━━ */}
-        <main className="flex-1 overflow-y-auto relative">
+        {/* MAIN CONTENT AREA */}
+        <main className="flex-1 overflow-y-auto relative w-full">
           <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
             {children}
           </div>
         </main>
 
-        {/* ━━ MOBILE BOTTOM NAV ━━ */}
+        {/* MOBILE BOTTOM NAV */}
         <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
       </div>
     </>
