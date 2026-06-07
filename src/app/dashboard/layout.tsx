@@ -84,63 +84,76 @@ const MaintenanceScreen = ({ settings }: any) => (
   </div>
 );
 
-// --- GreetingRenderer (Updated with 5-part Logic) ---
+// --- GreetingRenderer (Updated with Specific Particles) ---
 const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
   if (!activeBroadcast) return null;
-  
-  const config = MASTER_CONFIG[activeBroadcast.festival_key || activeBroadcast.type] || MASTER_CONFIG.UPDATE;
+  const config = getConfig(activeBroadcast);
   const currentAnim = activeBroadcast.animation_type || config.defaultAnim;
   const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
 
-  // 🚀 Logic for Dynamic Backgrounds & Particle Layers
-  let layoutTheme = {
-    container: "bg-[#0f172a] text-white", // Default
-    title: "holi-title-animated",
-    particles: null as any
-  };
+  // Determine Container Styles (Original Logic Preserved)
+  let containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-[#0f172a] text-white";
+  let titleClassName = "text-white font-black";
+  let buttonClassName = "bg-blue-600 text-white";
 
   if (config.style === 'GOLDEN') {
-    layoutTheme.container = "bg-[radial-gradient(circle_at_top,#1e2d7a_0%,#090d1f_50%,#03040b_100%)] border-amber-400/30";
-    layoutTheme.title = "festival-title-gold";
-    layoutTheme.particles = [...Array(6)].map((_, i) => (
-      <div key={i} className="gold-particle w-2 h-2" style={{ left: (15*i+5) + "%", bottom: "-20px", animationDuration: (6+i) + "s" }}></div>
-    ));
+    containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-[radial-gradient(circle_at_top,#1e2d7a_0%,#090d1f_50%,#03040b_100%)] border-amber-400/30 text-white";
+    titleClassName = "festival-title-gold";
+    buttonClassName = "bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-500 text-white";
   } 
   else if (config.style === 'VIBRANT') {
-    layoutTheme.container = "bg-white text-slate-900";
-    layoutTheme.title = "holi-title-animated";
-    layoutTheme.particles = (
-      <>
-        <div className="color-splash bg-pink-500 w-40 h-40 top-10 left-10" style={{"--tx":"-40px", "--ty":"-40px"} as any}></div>
-        <div className="color-splash bg-green-400 w-48 h-48 bottom-10 right-10" style={{"--tx":"40px", "--ty":"40px", "animationDelay":"1s"} as any}></div>
-        <div className="color-splash bg-blue-400 w-32 h-32 top-1/2 right-1/4" style={{"--tx":"30px", "--ty":"-20px", "animationDelay":".5s"} as any}></div>
-      </>
-    );
+    containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-white text-slate-900";
+    titleClassName = "holi-title-animated text-slate-900";
+    buttonClassName = "bg-blue-600 text-white";
   }
   else if (config.style === 'WINTER') {
-    layoutTheme.container = "bg-[#b71c1c]";
-    layoutTheme.title = "text-white drop-shadow-2xl";
-    layoutTheme.particles = [...Array(15)].map((_, i) => (
-      <div key={i} className="snow-particle w-1.5 h-1.5" style={{ left: (Math.random()*100) + "%", top: "-10px", animationDelay: (Math.random()*5) + "s" }}></div>
-    ));
+    containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-[#b71c1c] text-white";
+    titleClassName = "text-white drop-shadow-2xl";
+    buttonClassName = "bg-white text-red-600";
   }
   else if (config.style === 'NATIONAL') {
-    layoutTheme.container = "bg-gradient-to-b from-[#ff9933] via-white to-[#138808] text-slate-900";
-    layoutTheme.title = "text-slate-900 font-black";
-    layoutTheme.particles = null;
+    containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-gradient-to-b from-[#ff9933] via-white to-[#138808] text-slate-900";
+    titleClassName = "text-slate-900 font-black";
+    buttonClassName = "bg-white text-slate-900 border border-slate-300";
   }
 
   return (
-    <div className={`relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border ${layoutTheme.container} mx-auto`}>
-      
-      {/* 1. DYNAMIC PARTICLE LAYER */}
+    <div className={containerClassName}>
+      {/* 🚀 DYNAMIC ENGINE: Har section ka apna animation */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {layoutTheme.particles}
+        
+        {/* Section 1: SNOW (For Christmas/Winter) */}
+        {currentAnim === 'SNOW' && [...Array(20)].map((_, i) => (
+           <div key={i} className="snow-particle w-2 h-2" style={{ left: (Math.random()*100)+"%", animationDuration: (3+Math.random()*5)+"s", animationDelay: (Math.random()*5)+"s" }}></div>
+        ))}
+
+        {/* Section 2: FLOWERS (For Navratri/Onam/Ganesh Chaturthi) */}
+        {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
+           <div key={i} className="flower-particle" style={{ left: (Math.random()*100)+"%", bottom: "-40px", animationDuration: (4+Math.random()*4)+"s" }}>🌸</div>
+        ))}
+
+        {/* Section 3: GOLD (For Diwali/Golden Style) */}
+        {(currentAnim === 'DIYA' || config.style === 'GOLDEN') && (
+           <>
+             {[...Array(6)].map((_, i) => (
+               <div key={i} className="gold-particle w-2 h-2" style={{ left: (15*i+5)+"%", bottom: "-20px", animationDuration: (6+i)+"s" }}></div>
+             ))}
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />
+           </>
+        )}
+
+        {/* Section 4: SPLASH (For Holi/Vibrant Style) */}
+        {config.style === 'VIBRANT' && (
+           <>
+             <div className="color-splash bg-pink-500 w-40 h-40 top-10 left-10" style={{"--tx":"-40px", "--ty":"-40px"} as any}></div>
+             <div className="color-splash bg-blue-400 w-32 h-32 bottom-20 right-20" style={{"--tx":"40px", "--ty":"40px"} as any}></div>
+           </>
+        )}
       </div>
 
-      <div className={`relative z-10 uppercase tracking-[10px] font-black text-[10px] mb-8 ${config.style === 'GOLDEN' ? 'text-amber-400/50' : 'text-slate-400'}`}>SAANIFY</div>
+      {/* Brand & Content Section as before... */}
+      <div className="relative z-10 uppercase tracking-[10px] font-black text-[10px] mb-8 opacity-50">SAANIFY</div>
 
-      {/* 2. DYNAMIC HERO SECTION (Diya or Icon) */}
       <div className="relative z-10 mt-4">
          {currentAnim === 'DIYA' ? (
            <div className="relative scale-125 flex flex-col items-center">
@@ -154,9 +167,8 @@ const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
          )}
       </div>
 
-      {/* 3. CONTENT LAYER */}
       <div className="relative z-10 text-center mt-12 w-full px-4">
-        <h1 className={`${layoutTheme.title} text-5xl font-black leading-tight uppercase italic`}>
+        <h1 className={`${titleClassName} text-5xl font-black leading-tight uppercase italic`}>
           {activeBroadcast.title}
         </h1>
         <p className={`mt-6 text-sm leading-relaxed font-bold px-2 ${config.style === 'GOLDEN' || config.style === 'WINTER' ? 'text-slate-200' : 'text-slate-700'}`}>
@@ -164,10 +176,7 @@ const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
         </p>
       </div>
 
-      {/* 4. DYNAMIC BUTTON */}
-      <Button onClick={handleDismissPopup} className={`relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white shadow-2xl transition-all hover:scale-105
-        ${config.style === 'GOLDEN' ? 'bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-500' : 
-          config.style === 'WINTER' ? 'bg-white text-red-600' : 'bg-blue-600'}`}>
+      <Button onClick={handleDismissPopup} className={`relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl shadow-2xl transition-all hover:scale-105 ${buttonClassName}`}>
         {activeBroadcast.cta_text || 'CONTINUE 🚀'}
       </Button>
 
