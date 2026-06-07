@@ -25,7 +25,8 @@ const MASTER_CONFIG: any = {
   CHHATH_PUJA: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '☀️' },
   KARWA_CHAUTH: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🌙' },
   HANUMAN_JAYANTI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🔱' },
-
+  MAKAR_SANKRANTI: { style: 'GOLDEN', defaultAnim: 'SPARKLES', icon: '🪁' },
+  
   // --- VIBRANT STYLE ---
   HOLI: { style: 'VIBRANT', defaultAnim: 'HOLI', icon: '🎨' },
   NAVRATRI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '💃' },
@@ -56,9 +57,9 @@ const MASTER_CONFIG: any = {
   EVENT: { style: 'CORPORATE', defaultAnim: 'CONFETTI', icon: '🗓️' }
 };
 
-// --- Helper: Get Style for Type/Key ---
+// --- Helper: Get Style for Type/Key (Using Block 1's safer Uppercase check) ---
 const getConfig = (b: any) => {
-  const key = b?.festival_key || b?.type || 'UPDATE';
+  const key = (b?.festival_key || b?.type || 'UPDATE').toUpperCase();
   return MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
 };
 
@@ -91,7 +92,7 @@ const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
 
   let bgClass = "bg-[#1e2d7a]";
   
-  // Merged Background Logic from both codes
+  // Merged Background Logic
   if (config.style === 'GOLDEN') bgClass = "bg-[#090d1f]";
   else if (config.style === 'VIBRANT') bgClass = "bg-[#7928ca]";
   else if (config.style === 'WINTER') bgClass = "bg-[#b71c1c]";
@@ -114,17 +115,14 @@ const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
               <div key={i} className="flower-particle text-3xl" style={{ left: (Math.random() * 90) + "%", bottom: "0px", animationDelay: (Math.random() * 4) + "s" }}>🌸</div>
           ))}
         </div>
-
         <div className="relative z-10 text-white uppercase tracking-[10px] font-black text-[10px] mb-12 opacity-50">SAANIFY</div>
         <div className="relative z-10 bg-white/10 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/20 shadow-2xl rotate-6">
           <span className="text-7xl">{config.icon}</span>
         </div>
-
         <div className="relative z-10 text-center mt-10 w-full">
           <h1 className={titleClass}>{activeBroadcast.title}</h1>
           <p className="mt-6 text-white/90 font-bold px-4 leading-relaxed">{msgParts[0]}</p>
         </div>
-
         <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white bg-gradient-to-r from-white/20 to-white/5 backdrop-blur-md border border-white/20">
           {activeBroadcast.cta_text || 'CONTINUE'}
         </Button>
@@ -239,7 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  // ━━━ 3. AUTH + PROFILE SYNC ━━━
+  // ━━━ 3. AUTH + PROFILE SYNC (Using Restored Logic) ━━━
   useEffect(() => {
     const performAuthSync = async () => {
       try {
@@ -266,9 +264,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           document.documentElement.classList.remove('dark');
         }
 
-        // Admin Check
-        const adminFlag = localStorage.getItem('is_admin_impersonating') === 'true';
-        setIsImpersonating(adminFlag);
+        // 🔥 RESTORED: Admin View logic from old code (Block 1)
+        // Agar login session wali user ID aur fetch hui profile ID alag hai, toh Admin view hai
+        const isAdminViewing = session.user.id !== profile.id;
+        const localFlag = localStorage.getItem('is_admin_impersonating') === 'true';
+        setIsImpersonating(isAdminViewing || localFlag);
 
         setIsChecking(false);
       } catch (err) {
