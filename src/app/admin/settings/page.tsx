@@ -17,6 +17,44 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+// =========================================================
+// 1. MASTER LIBRARY (Component ke bahar)
+// =========================================================
+const FESTIVAL_MASTER_LIST: any = {
+  // GOLDEN STYLE
+  DIWALI: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'SHUBH DEEPAWALI', icon: '🪔' },
+  DUSSEHRA: { style: 'GOLDEN', anim: 'SPARKLES', color: 'GOLD', title: 'HAPPY DUSSEHRA', icon: '🏹' },
+  MAHASHIVRATRI: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'MAHA SHIVRATRI', icon: '🕉️' },
+  CHHATH_PUJA: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'SHUBH CHHATH PUJA', icon: '☀️' },
+  MAKAR_SANKRANTI: { style: 'GOLDEN', anim: 'SPARKLES', color: 'GOLD', title: 'MAKAR SANKRANTI', icon: '🪁' },
+  RAM_NAVAMI: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'RAM NAVAMI', icon: '🚩' },
+  HANUMAN_JAYANTI: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'HANUMAN JAYANTI', icon: '🔱' },
+  GURU_PURNIMA: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'GURU PURNIMA', icon: '🙏' },
+  KARWA_CHAUTH: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'KARWA CHAUTH', icon: '🌙' },
+  
+  // VIBRANT STYLE
+  HOLI: { style: 'VIBRANT', anim: 'HOLI', color: 'RED', title: 'HAPPY HOLI', icon: '🎨' },
+  NAVRATRI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'PURPLE', title: 'SHUBH NAVRATRI', icon: '💃' },
+  RAKSHA_BANDHAN: { style: 'VIBRANT', anim: 'CONFETTI', color: 'BLUE', title: 'RAKSHA BANDHAN', icon: '🎁' },
+  ONAM: { style: 'VIBRANT', anim: 'FLOWERS', color: 'GREEN', title: 'HAPPY ONAM', icon: '🌸' },
+  GANESH_CHATURTHI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'PURPLE', title: 'GANESH CHATURTHI', icon: '🐘' },
+  JANMASHTAMI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'BLUE', title: 'JANMASHTAMI', icon: '🏺' },
+  LOHRI: { style: 'VIBRANT', anim: 'SPARKLES', color: 'ORANGE', title: 'LOHRI', icon: '🔥' },
+  PONGAL: { style: 'VIBRANT', anim: 'FLOWERS', color: 'GREEN', title: 'PONGAL', icon: '🌾' },
+  BAISAKHI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'YELLOW', title: 'BAISAKHI', icon: '🥁' },
+  UGADI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'YELLOW', title: 'UGADI', icon: '🪔' },
+
+  // WINTER/PEACEFUL
+  CHRISTMAS: { style: 'WINTER', anim: 'SNOW', color: 'RED', title: 'MERRY CHRISTMAS', icon: '🎄' },
+  NEW_YEAR: { style: 'WINTER', anim: 'FIREWORKS', color: 'GOLD', title: 'HAPPY NEW YEAR', icon: '🎆' },
+  EID_AL_FITR: { style: 'PEACEFUL', anim: 'MOON', color: 'GREEN', title: 'EID MUBARAK', icon: '🌙' },
+  EID_AL_ADHA: { style: 'PEACEFUL', anim: 'MOON', color: 'GREEN', title: 'EID AL-ADHA', icon: '🕌' },
+
+  // NATIONAL
+  REPUBLIC_DAY: { style: 'NATIONAL', anim: 'CONFETTI', color: 'ORANGE', title: 'HAPPY REPUBLIC DAY', icon: '🇮🇳' },
+  INDEPENDENCE_DAY: { style: 'NATIONAL', anim: 'CONFETTI', color: 'ORANGE', title: 'INDEPENDENCE DAY', icon: '🇮🇳' },
+};
+
 export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,12 +86,11 @@ export default function AdminSettings() {
     is_maintenance_scheduled: false,
   });
 
-  // Broadcast Form State (UPDATED: Added content_mode)
+  // Broadcast Form State
   const [broadcastForm, setBroadcastForm] = useState({
     title: '', message: '', image_url: '', 
     type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '',
     target_audience: 'BOTH', animation_type: 'NONE',
-    // New Fields Added
     festival_key: '',
     priority: 'MEDIUM',
     display_mode: 'TOP_BANNER',
@@ -62,11 +99,24 @@ export default function AdminSettings() {
     cta_link: '',
     is_recurring: false,
     recurring_type: 'NONE',
-    content_mode: 'AUTO', // 👈 NEW: 'AUTO' (CSS Template) ya 'MANUAL' (Upload)
+    content_mode: 'AUTO',
   });
 
   // Broadcast List State
   const [activeBroadcasts, setActiveBroadcasts] = useState<any[]>([]);
+
+  // Helper for Smart Preview
+  const getConfig = (form: any) => {
+    const key = form.festival_key || 'DEFAULT';
+    // Fallback for manual mode or missing keys
+    return FESTIVAL_MASTER_LIST[key] || { 
+      style: 'CORPORATE', 
+      anim: 'SPARKLES', 
+      color: 'BLUE', 
+      title: form.title || 'PREVIEW', 
+      icon: '📢' 
+    };
+  };
 
   // 1. INITIAL FETCH
   useEffect(() => {
@@ -133,7 +183,6 @@ export default function AdminSettings() {
     }
   };
 
-  // AI Suggest Logic (Kept for manual suggestions)
   const handleAISuggest = () => {
     const title = broadcastForm.title.toLowerCase();
     const festivalName = broadcastForm.festival_key || 'festival';
@@ -145,7 +194,7 @@ export default function AdminSettings() {
     setBroadcastForm(prev => ({
       ...prev,
       image_url: generatedUrl,
-      content_mode: 'MANUAL' // Switch to manual if generating AI image
+      content_mode: 'MANUAL'
     }));
 
     toast.promise(
@@ -158,41 +207,30 @@ export default function AdminSettings() {
     );
   };
 
-  // Festival Presets Handler (UPDATED: Master Library Applied)
+  // =========================================================
+  // 2. applyPreset Function Update
+  // =========================================================
   const applyPreset = (key: string) => {
-    const library: any = {
-      DIWALI: {
-        title: "SHUBH DEEPAWALI",
-        message: "Saanify Pariwar ki taraf se aap sabhi ko samriddhi aur prakashmay jeevan ki hardik shubhkamnayein.",
-        anim: "DIYA", color: "GOLD"
-      },
-      HOLI: {
-        title: "HAPPY HOLI",
-        message: "Rangon, khushiyon aur pyar se bhari Holi ki hardik shubhkamnayein.",
-        anim: "HOLI", color: "RED"
-      },
-      // Baaki festivals ke liye bhi aise hi objects jodh sakte hain
-      DEFAULT: {
-        title: "HAPPY FESTIVAL",
-        message: "Saanify Pariwar ki taraf shubhkamnayein.",
-        anim: "CONFETTI", color: "BLUE"
-      }
+    const data = FESTIVAL_MASTER_LIST[key] || { 
+      style: 'CORPORATE', 
+      anim: 'SPARKLES', 
+      color: 'BLUE', 
+      title: `HAPPY ${key}`,
+      icon: '📢'
     };
 
-    if (library[key]) {
-      const data = library[key];
-      setBroadcastForm({
-        ...broadcastForm,
-        title: data.title,
-        message: data.message,
-        animation_type: data.anim,
-        theme_color: data.color,
-        festival_key: key,
-        content_mode: 'AUTO', // Automatically switch to Auto Template
-        image_url: '' // Clear manual image
-      });
-      toast.success(`${key} Premium Template Applied!`);
-    }
+    setBroadcastForm({
+      ...broadcastForm,
+      title: data.title,
+      message: `Saanify Pariwar ki taraf se aap sabhi ko ${key.toLowerCase().replace('_', ' ')} ki hardik shubhkamnayein! | Wishing you joy and prosperity.`,
+      animation_type: data.anim,
+      theme_color: data.color,
+      festival_key: key,
+      content_mode: 'AUTO',
+      image_url: '',
+      display_mode: 'POPUP'
+    });
+    toast.success(`${key} Premium Template Applied!`);
   };
 
   const handleSave = async () => {
@@ -256,7 +294,7 @@ export default function AdminSettings() {
         cta_link: '',
         is_recurring: false,
         recurring_type: 'NONE',
-        content_mode: 'AUTO' // Reset to Auto
+        content_mode: 'AUTO'
       });
 
     } else {
@@ -584,31 +622,9 @@ export default function AdminSettings() {
                    <Select disabled={isReadOnly} value={broadcastForm.festival_key} onValueChange={v => setBroadcastForm({...broadcastForm, festival_key: v})}>
                         <SelectTrigger className="w-full"><SelectValue placeholder="Select Festival..." /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="DIWALI">Diwali</SelectItem>
-                            <SelectItem value="HOLI">Holi</SelectItem>
-                            <SelectItem value="NAVRATRI">Navratri</SelectItem>
-                            <SelectItem value="DUSSEHRA">Dussehra</SelectItem>
-                            <SelectItem value="GANESH_CHATURTHI">Ganesh Chaturthi</SelectItem>
-                            <SelectItem value="JANMASHTAMI">Janmashtami</SelectItem>
-                            <SelectItem value="RAKSHA_BANDHAN">Raksha Bandhan</SelectItem>
-                            <SelectItem value="MAKAR_SANKRANTI">Makar Sankranti</SelectItem>
-                            <SelectItem value="LOHRI">Lohri</SelectItem>
-                            <SelectItem value="MAHASHIVRATRI">Maha Shivratri</SelectItem>
-                            <SelectItem value="RAM_NAVAMI">Ram Navami</SelectItem>
-                            <SelectItem value="HANUMAN_JAYANTI">Hanuman Jayanti</SelectItem>
-                            <SelectItem value="KARWA_CHAUTH">Karwa Chauth</SelectItem>
-                            <SelectItem value="CHHATH_PUJA">Chhath Puja</SelectItem>
-                            <SelectItem value="GURU_PURNIMA">Guru Purnima</SelectItem>
-                            <SelectItem value="ONAM">Onam</SelectItem>
-                            <SelectItem value="PONGAL">Pongal</SelectItem>
-                            <SelectItem value="UGADI">Ugadi</SelectItem>
-                            <SelectItem value="BAISAKHI">Baisakhi</SelectItem>
-                            <SelectItem value="EID_AL_FITR">Eid al-Fitr</SelectItem>
-                            <SelectItem value="EID_AL_ADHA">Eid al-Adha</SelectItem>
-                            <SelectItem value="CHRISTMAS">Christmas</SelectItem>
-                            <SelectItem value="NEW_YEAR">New Year</SelectItem>
-                            <SelectItem value="REPUBLIC_DAY">Republic Day</SelectItem>
-                            <SelectItem value="INDEPENDENCE_DAY">Independence Day</SelectItem>
+                            {Object.keys(FESTIVAL_MASTER_LIST).map(key => (
+                                <SelectItem key={key} value={key}>{key.replace('_', ' ')}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                     <Button variant="secondary" size="icon" onClick={() => applyPreset(broadcastForm.festival_key)} title="Auto Fill Settings" disabled={isReadOnly || !broadcastForm.festival_key}><RefreshCw className="w-4 h-4"/></Button>
@@ -696,37 +712,31 @@ export default function AdminSettings() {
             <div className="space-y-2 lg:col-span-3">
                 <Label className="text-xs font-black uppercase">Live Greeting Preview</Label>
                 
-                {/* Mode Selector */}
-                <div className="flex gap-2 mb-4 bg-slate-100 p-1 rounded-xl w-fit">
-                    <Button 
-                        variant={broadcastForm.content_mode === 'AUTO' ? 'default' : 'ghost'} 
-                        size="sm" 
-                        onClick={() => setBroadcastForm({...broadcastForm, content_mode: 'AUTO'})}
-                    >Auto Template</Button>
-                    <Button 
-                        variant={broadcastForm.content_mode === 'MANUAL' ? 'default' : 'ghost'} 
-                        size="sm" 
-                        onClick={() => setBroadcastForm({...broadcastForm, content_mode: 'MANUAL'})}
-                    >Manual Upload</Button>
-                </div>
-
                 <div className="border-2 border-dashed rounded-[3rem] h-[500px] flex items-center justify-center overflow-hidden bg-slate-900 relative scale-[0.8] origin-top">
                     {broadcastForm.content_mode === 'MANUAL' && broadcastForm.image_url ? (
                         <img src={broadcastForm.image_url} className="w-full h-full object-cover" />
-                    ) : broadcastForm.content_mode === 'AUTO' && broadcastForm.festival_key === 'DIWALI' ? (
-                        /* --- DIWALI PREVIEW CODE --- */
-                        <div className="relative w-full h-full flex flex-col items-center p-10">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,#090d1f_60%)]"></div>
-                            <div className="relative z-10 text-amber-400 tracking-[8px] font-bold text-[10px] mb-10">SAANIFY</div>
-                            <div className="relative z-10">
-                                <div className="w-16 h-20 bg-gradient-to-t from-orange-500 via-yellow-400 to-white rounded-full blur-[1px] shadow-[0_0_50px_orange]"></div>
-                                <div className="w-24 h-12 bg-gradient-to-b from-amber-800 to-amber-950 rounded-b-full mt-[-10px]"></div>
-                            </div>
-                            <h1 className="relative z-10 text-5xl font-black text-amber-400 text-center mt-10 italic">{broadcastForm.title}</h1>
-                            <p className="relative z-10 text-slate-300 text-center mt-4 px-10">{broadcastForm.message}</p>
-                        </div>
                     ) : (
-                        <span className="text-slate-500">Select a preset to see preview</span>
+                        /* DYNAMIC PREVIEW BASED ON STYLE */
+                        <div className={`relative w-full h-full flex flex-col items-center p-10 
+                            ${getConfig(broadcastForm).style === 'GOLDEN' ? 'bg-[#090d1f]' : 
+                              getConfig(broadcastForm).style === 'VIBRANT' ? 'bg-[#7928ca]' : 
+                              getConfig(broadcastForm).style === 'WINTER' ? 'bg-[#b71c1c]' : 
+                              getConfig(broadcastForm).style === 'NATIONAL' ? 'bg-[#138808]' :
+                              getConfig(broadcastForm).style === 'PEACEFUL' ? 'bg-[#0f766e]' : 'bg-[#1e2d7a]'}`}>
+                            
+                            <div className="relative z-10 text-white/50 tracking-[8px] font-bold text-[10px] mb-10">SAANIFY</div>
+                            
+                            <div className="relative z-10 bg-white/10 p-6 rounded-[2rem] border border-white/20 rotate-6">
+                                <span className="text-6xl">{getConfig(broadcastForm).icon || '📢'}</span>
+                            </div>
+
+                            <h1 className="relative z-10 text-4xl font-black text-white text-center mt-10 italic uppercase px-4">
+                                {broadcastForm.title}
+                            </h1>
+                            <p className="relative z-10 text-white/80 text-center mt-4 px-10 text-sm">
+                                {broadcastForm.message.split('|')[0]}
+                            </p>
+                        </div>
                     )}
                 </div>
             </div>
