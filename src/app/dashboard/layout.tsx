@@ -57,7 +57,7 @@ const MASTER_CONFIG: any = {
   EVENT: { style: 'CORPORATE', defaultAnim: 'CONFETTI', icon: '🗓️' }
 };
 
-// --- Helper: Get Style for Type/Key (Using Block 1's safer Uppercase check) ---
+// --- Helper: Get Style for Type/Key ---
 const getConfig = (b: any) => {
   const key = (b?.festival_key || b?.type || 'UPDATE').toUpperCase();
   return MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
@@ -84,48 +84,96 @@ const MaintenanceScreen = ({ settings }: any) => (
   </div>
 );
 
-// --- GreetingRenderer ---
+// --- GreetingRenderer (Updated with 5-part Logic) ---
 const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
   if (!activeBroadcast) return null;
-  const config = getConfig(activeBroadcast);
-  const currentAnim = activeBroadcast.animation_type || config.defaultAnim;
-
-  let bgClass = "bg-[#1e2d7a]";
   
-  // Merged Background Logic
-  if (config.style === 'GOLDEN') bgClass = "bg-[#090d1f]";
-  else if (config.style === 'VIBRANT') bgClass = "bg-[#7928ca]";
-  else if (config.style === 'WINTER') bgClass = "bg-[#b71c1c]";
-  else if (config.style === 'NATIONAL') bgClass = "bg-[#138808]";
-  else if (config.style === 'PEACEFUL') bgClass = "bg-[#0f766e]";
-  else if (config.style === 'CORPORATE') bgClass = "bg-[#0f172a]";
-  else if (config.style === 'ALERT') bgClass = "bg-[#dc2626]";
-
-  const titleClass = (config.style === 'GOLDEN' ? 'diwali-title-vibrant' : 'holi-title-vibrant') + " text-4xl sm:text-5xl font-black italic text-center px-4";
+  const config = MASTER_CONFIG[activeBroadcast.festival_key || activeBroadcast.type] || MASTER_CONFIG.UPDATE;
+  const currentAnim = activeBroadcast.animation_type || config.defaultAnim;
   const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
 
+  // 🚀 Logic for Dynamic Backgrounds & Particle Layers
+  let layoutTheme = {
+    container: "bg-[#0f172a] text-white", // Default
+    title: "holi-title-animated",
+    particles: null as any
+  };
+
+  if (config.style === 'GOLDEN') {
+    layoutTheme.container = "bg-[radial-gradient(circle_at_top,#1e2d7a_0%,#090d1f_50%,#03040b_100%)] border-amber-400/30";
+    layoutTheme.title = "festival-title-gold";
+    layoutTheme.particles = [...Array(6)].map((_, i) => (
+      <div key={i} className="gold-particle w-2 h-2" style={{ left: (15*i+5) + "%", bottom: "-20px", animationDuration: (6+i) + "s" }}></div>
+    ));
+  } 
+  else if (config.style === 'VIBRANT') {
+    layoutTheme.container = "bg-white text-slate-900";
+    layoutTheme.title = "holi-title-animated";
+    layoutTheme.particles = (
+      <>
+        <div className="color-splash bg-pink-500 w-40 h-40 top-10 left-10" style={{"--tx":"-40px", "--ty":"-40px"} as any}></div>
+        <div className="color-splash bg-green-400 w-48 h-48 bottom-10 right-10" style={{"--tx":"40px", "--ty":"40px", "animationDelay":"1s"} as any}></div>
+        <div className="color-splash bg-blue-400 w-32 h-32 top-1/2 right-1/4" style={{"--tx":"30px", "--ty":"-20px", "animationDelay":".5s"} as any}></div>
+      </>
+    );
+  }
+  else if (config.style === 'WINTER') {
+    layoutTheme.container = "bg-[#b71c1c]";
+    layoutTheme.title = "text-white drop-shadow-2xl";
+    layoutTheme.particles = [...Array(15)].map((_, i) => (
+      <div key={i} className="snow-particle w-1.5 h-1.5" style={{ left: (Math.random()*100) + "%", top: "-10px", animationDelay: (Math.random()*5) + "s" }}></div>
+    ));
+  }
+  else if (config.style === 'NATIONAL') {
+    layoutTheme.container = "bg-gradient-to-b from-[#ff9933] via-white to-[#138808] text-slate-900";
+    layoutTheme.title = "text-slate-900 font-black";
+    layoutTheme.particles = null;
+  }
+
   return (
-    <div className={"relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3.5rem] overflow-hidden shadow-2xl flex flex-col items-center p-10 border border-white/10 " + bgClass}>
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {currentAnim === 'SNOW' && [...Array(15)].map((_, i) => (
-              <div key={i} className="snow-particle text-2xl" style={{ left: (Math.random() * 90) + "%", animationDelay: (Math.random() * 5) + "s" }}>❄️</div>
-          ))}
-          {currentAnim === 'DIYA' && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />}
-          {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
-              <div key={i} className="flower-particle text-3xl" style={{ left: (Math.random() * 90) + "%", bottom: "0px", animationDelay: (Math.random() * 4) + "s" }}>🌸</div>
-          ))}
-        </div>
-        <div className="relative z-10 text-white uppercase tracking-[10px] font-black text-[10px] mb-12 opacity-50">SAANIFY</div>
-        <div className="relative z-10 bg-white/10 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/20 shadow-2xl rotate-6">
-          <span className="text-7xl">{config.icon}</span>
-        </div>
-        <div className="relative z-10 text-center mt-10 w-full">
-          <h1 className={titleClass}>{activeBroadcast.title}</h1>
-          <p className="mt-6 text-white/90 font-bold px-4 leading-relaxed">{msgParts[0]}</p>
-        </div>
-        <Button onClick={handleDismissPopup} className="relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white bg-gradient-to-r from-white/20 to-white/5 backdrop-blur-md border border-white/20">
-          {activeBroadcast.cta_text || 'CONTINUE'}
-        </Button>
+    <div className={`relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border ${layoutTheme.container} mx-auto`}>
+      
+      {/* 1. DYNAMIC PARTICLE LAYER */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {layoutTheme.particles}
+      </div>
+
+      <div className={`relative z-10 uppercase tracking-[10px] font-black text-[10px] mb-8 ${config.style === 'GOLDEN' ? 'text-amber-400/50' : 'text-slate-400'}`}>SAANIFY</div>
+
+      {/* 2. DYNAMIC HERO SECTION (Diya or Icon) */}
+      <div className="relative z-10 mt-4">
+         {currentAnim === 'DIYA' ? (
+           <div className="relative scale-125 flex flex-col items-center">
+              <div className="diya-flame w-14 h-18 bg-gradient-to-t from-orange-500 via-yellow-400 to-white rounded-full blur-[1px]" style={{boxShadow: '0 0 40px orange'}}></div>
+              <div className="mt-[-10px] w-24 h-12 rounded-b-full bg-gradient-to-b from-amber-700 to-amber-950"></div>
+           </div>
+         ) : (
+           <div className="bg-white/20 backdrop-blur-xl p-8 rounded-[3rem] shadow-xl border border-white/30 rotate-6 transform hover:rotate-0 transition-all duration-700">
+              <span className="text-7xl drop-shadow-2xl">{config.icon}</span>
+           </div>
+         )}
+      </div>
+
+      {/* 3. CONTENT LAYER */}
+      <div className="relative z-10 text-center mt-12 w-full px-4">
+        <h1 className={`${layoutTheme.title} text-5xl font-black leading-tight uppercase italic`}>
+          {activeBroadcast.title}
+        </h1>
+        <p className={`mt-6 text-sm leading-relaxed font-bold px-2 ${config.style === 'GOLDEN' || config.style === 'WINTER' ? 'text-slate-200' : 'text-slate-700'}`}>
+          {msgParts[0]}
+        </p>
+      </div>
+
+      {/* 4. DYNAMIC BUTTON */}
+      <Button onClick={handleDismissPopup} className={`relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl text-white shadow-2xl transition-all hover:scale-105
+        ${config.style === 'GOLDEN' ? 'bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-500' : 
+          config.style === 'WINTER' ? 'bg-white text-red-600' : 'bg-blue-600'}`}>
+        {activeBroadcast.cta_text || 'CONTINUE 🚀'}
+      </Button>
+
+      <div className="relative z-10 mt-4 text-[9px] uppercase tracking-[4px] font-bold opacity-40">
+         Premium Saanify Greeting
+      </div>
     </div>
   );
 };
@@ -265,7 +313,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         // 🔥 RESTORED: Admin View logic from old code (Block 1)
-        // Agar login session wali user ID aur fetch hui profile ID alag hai, toh Admin view hai
         const isAdminViewing = session.user.id !== profile.id;
         const localFlag = localStorage.getItem('is_admin_impersonating') === 'true';
         setIsImpersonating(isAdminViewing || localFlag);
