@@ -29,6 +29,51 @@ export default function BroadcastPreviewPage() {
     }
   };
 
+  // Step 3: Animation test
+  const renderParticles = (theme: string) => {
+    if (theme === 'GOLDEN_PARTICLES') {
+      return (
+        <>
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-pulse"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`
+              }}
+            />
+          ))}
+        </>
+      );
+    }
+
+    return null;
+  };
+
+  // Step 1: Render Hero Function
+  const renderHero = (hero: string) => {
+    switch (hero) {
+      case 'ROYAL_DIYA':
+        return <div className="text-8xl">🪔</div>;
+
+      case 'GANESHA':
+        return <div className="text-8xl">🐘</div>;
+
+      case 'TRISHUL_DAMRU':
+        return <div className="text-8xl">🔱</div>;
+
+      case 'CRESCENT_MOON':
+        return <div className="text-8xl">🌙</div>;
+
+      case 'CHRISTMAS_TREE':
+        return <div className="text-8xl">🎄</div>;
+
+      default:
+        return <div className="text-8xl">✨</div>;
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -46,7 +91,11 @@ export default function BroadcastPreviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-10">
+    // Step 4: Added 'relative' class
+    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-10 relative">
+      
+      {/* Step 5: Render Particles */}
+      {renderParticles(broadcast.animation_theme)}
 
       <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-slate-900 p-10">
 
@@ -61,6 +110,11 @@ export default function BroadcastPreviewPage() {
         </div>
 
         <div className="space-y-4">
+          
+          {/* Step 2: Added Hero Visual */}
+          <div className="flex justify-center mb-8">
+            {renderHero(broadcast.hero_visual)}
+          </div>
 
           <div>
             <span className="text-slate-500">
@@ -138,16 +192,16 @@ export default function BroadcastPreviewPage() {
 
           <div className="mt-8 flex gap-3 flex-wrap">
 
+            {/* Step 6: Overlay Test */}
             {broadcast.dashboard_overlay && (
-              <span className="px-4 py-2 rounded-full bg-green-600">
-                Dashboard Overlay ON
-              </span>
+              <div className="fixed inset-0 pointer-events-none bg-yellow-500/5" />
             )}
 
+            {/* Step 7: Fullscreen Test */}
             {broadcast.full_screen_animation && (
-              <span className="px-4 py-2 rounded-full bg-blue-600">
-                Full Screen Animation ON
-              </span>
+              <div className="mt-6 p-6 rounded-2xl bg-yellow-600 text-black font-black text-center">
+                FULL SCREEN FESTIVAL MODE ENABLED
+              </div>
             )}
 
           </div>
