@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Users, CreditCard, BarChart2, 
-  Zap, Settings, LogOut, Shield, Menu, X 
+  Zap, Settings, LogOut, Shield, Menu, X, Sparkles // ✅ Added Sparkles import
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase'; // ✅ Added supabase import
@@ -16,6 +16,14 @@ const navItems = [
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart2 },
   { label: 'Activity & Audit', href: '/admin/activity', icon: Shield },
   { label: 'Automation Center', href: '/admin/automation', icon: Zap },
+
+  // 👇 NEW ADD: Greeting Studio
+  {
+    label: 'Greeting Studio',
+    href: '/admin/broadcast-lab',
+    icon: Sparkles
+  },
+
   { label: 'System Settings', href: '/admin/settings', icon: Settings },
 ];
 
