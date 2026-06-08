@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+// Input and Textarea removed as they are unused now
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -18,23 +17,14 @@ import { Sparkles, Globe } from 'lucide-react';
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
 
-  // Change #2: Form state updated with new fields
+  // Updated Form state: Removed title, message, animation_type, theme_color, display_mode
   const [form, setForm] = useState({
-    title: '',
-    message: '',
     festival_key: 'DIWALI',
-    animation_type: 'DIYA',
-    display_mode: 'POPUP',
-    theme_color: 'GOLD',
-    target_audience: 'BOTH',
-    image_url: '',
-
     language_mode: 'BOTH',
     full_screen_animation: true,
     dashboard_overlay: true
   });
 
-  // Change #3: Publish function replaced with new logic
   const publishBroadcast = async () => {
     try {
       setLoading(true);
@@ -46,7 +36,6 @@ export default function BroadcastLabPage() {
         dashboard_overlay: form.dashboard_overlay
       };
 
-      // Change #1: URL updated to broadcast-lab
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: {
@@ -88,7 +77,6 @@ export default function BroadcastLabPage() {
       <div className="grid lg:grid-cols-2 gap-6">
 
         {/* FORM */}
-
         <Card>
           <CardHeader>
             <CardTitle>
@@ -98,38 +86,8 @@ export default function BroadcastLabPage() {
 
           <CardContent className="space-y-4">
 
-            <div>
-              <label className="text-sm font-medium">
-                Title
-              </label>
-
-              <Input
-                value={form.title}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    title: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">
-                Message
-              </label>
-
-              <Textarea
-                rows={4}
-                value={form.message}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    message: e.target.value,
-                  })
-                }
-              />
-            </div>
+            {/* REMOVED: Title Input */}
+            {/* REMOVED: Message Input */}
 
             <div>
               <label className="text-sm font-medium">
@@ -159,38 +117,8 @@ export default function BroadcastLabPage() {
               </Select>
             </div>
 
-            <div>
-              <label className="text-sm font-medium">
-                Animation
-              </label>
+            {/* REMOVED: Animation Select */}
 
-              <Select
-                value={form.animation_type}
-                onValueChange={(v) =>
-                  setForm({
-                    ...form,
-                    animation_type: v,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="DIYA">Diya</SelectItem>
-                  <SelectItem value="FIREWORKS">Fireworks</SelectItem>
-                  <SelectItem value="HOLI">Holi Color</SelectItem>
-                  <SelectItem value="SNOW">Snow</SelectItem>
-                  <SelectItem value="MOON">Moon</SelectItem>
-                  <SelectItem value="FLOWERS">Flowers</SelectItem>
-                  <SelectItem value="CONFETTI">Confetti</SelectItem>
-                  <SelectItem value="SPARKLES">Sparkles</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Change #4: Language Selector added below Animation */}
             <div>
               <label className="text-sm font-medium">
                 Language
@@ -217,7 +145,6 @@ export default function BroadcastLabPage() {
               </Select>
             </div>
 
-            {/* Change #5: Testing Switches added */}
             <div className="flex items-center justify-between border rounded-lg p-3">
               <span>Dashboard Overlay</span>
 
@@ -248,43 +175,7 @@ export default function BroadcastLabPage() {
               />
             </div>
 
-            <div>
-              <label className="text-sm font-medium">
-                Display Mode
-              </label>
-
-              <Select
-                value={form.display_mode}
-                onValueChange={(v) =>
-                  setForm({
-                    ...form,
-                    display_mode: v,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="TOP_BANNER">
-                    Top Banner
-                  </SelectItem>
-
-                  <SelectItem value="BOTTOM_BANNER">
-                    Bottom Banner
-                  </SelectItem>
-
-                  <SelectItem value="POPUP">
-                    Popup
-                  </SelectItem>
-
-                  <SelectItem value="FULLSCREEN">
-                    Fullscreen
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* REMOVED: Display Mode Select (as it's not being sent in the payload) */}
 
             <Button
               className="w-full"
@@ -299,7 +190,6 @@ export default function BroadcastLabPage() {
         </Card>
 
         {/* PREVIEW */}
-
         <Card>
           <CardHeader>
             <CardTitle>
@@ -313,6 +203,7 @@ export default function BroadcastLabPage() {
 
               <Sparkles className="w-12 h-12 mb-4 text-yellow-400" />
 
+              {/* Preview will show defaults since title/message are now automated */}
               <div className="text-4xl font-black text-center uppercase">
                 {form.title || 'Greeting Title'}
               </div>
@@ -328,11 +219,7 @@ export default function BroadcastLabPage() {
                 </span>
 
                 <span className="px-3 py-1 rounded-full bg-white/10 text-xs">
-                  {form.animation_type}
-                </span>
-
-                <span className="px-3 py-1 rounded-full bg-white/10 text-xs">
-                  {form.display_mode}
+                  {form.language_mode}
                 </span>
 
               </div>
