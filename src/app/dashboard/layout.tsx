@@ -217,6 +217,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
+  
+  // Step 4: New state added
+  const [previewBroadcast, setPreviewBroadcast] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -255,6 +259,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ 2. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
+    // Client Dashboard me existing query: Isko mat chhedo.
     const now = new Date().toISOString();
     const { data } = await supabase.from('broadcasts').select('*')
       .eq('is_active', true)
@@ -278,10 +283,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [hasSeenPopup]);
 
+  // Step 3: New Preview Fetch Function
+  const fetchPreviewBroadcast = async () => {
+    const { data } = await supabase
+      .from('broadcasts')
+      .select('*')
+      .eq('preview_mode', true)
+      .eq('is_active', true)
+      .order('created_at', { ascending:false })
+      .limit(1)
+      .maybeSingle();
+
+    if(data){
+      setPreviewBroadcast(data);
+      setShowPreview(true);
+    }
+  };
+
   useEffect(() => {
     fetchBroadcasts();
+    // Step 5: Login ke baad fetch karwao
+    fetchPreviewBroadcast();
+
+    // Step 6: Realtime bhi add kar do
     const channel = supabase.channel('broadcast-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => fetchBroadcasts())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => {
+        fetchBroadcasts();
+        fetchPreviewBroadcast();
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchBroadcasts]);
@@ -488,6 +517,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
            <GreetingRenderer activeBroadcast={activeBroadcast} handleDismissPopup={handleDismissPopup} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Step 7: Ab popup render karo (Preview) */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none">
+          <GreetingRenderer
+            activeBroadcast={previewBroadcast}
+            handleDismissPopup={() => setShowPreview(false)}
+          />
         </DialogContent>
       </Dialog>
 
