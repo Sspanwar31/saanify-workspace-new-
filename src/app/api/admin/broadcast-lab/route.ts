@@ -27,38 +27,50 @@ export async function POST(req: Request) {
 
     client = await getDbClient();
 
-    const title = body.title || 'Broadcast Lab';
-    const message = body.message || 'Testing Broadcast';
-    const festivalKey = body.festival_key || 'GENERAL';
+    // Step 1: Sirf ye lo request body se
+    const festivalKey = body.festival_key;
+    const language_mode = body.language_mode;
+    const full_screen_animation = body.full_screen_animation;
+    const dashboard_overlay = body.dashboard_overlay;
 
-    const animationType = body.animation_type || 'NONE';
-    const displayMode = body.display_mode || 'POPUP';
+    // Step 2: festival_assets se data fetch karo
+    const assetResult = await client.query(
+      `
+      SELECT *
+      FROM festival_assets
+      WHERE festival_key = $1
+      LIMIT 1
+      `,
+      [festivalKey]
+    );
 
-    const themeColor = body.theme_color || 'DEFAULT';
-    const targetAudience = body.target_audience || 'BOTH';
+    const asset = assetResult.rows[0];
 
-    // Removed: const imageUrl = body.image_url || null;
+    // Step 3: festival_messages se content fetch karo
+    const messageResult = await client.query(
+      `
+      SELECT *
+      FROM festival_messages
+      WHERE festival_key = $1
+      LIMIT 1
+      `,
+      [festivalKey]
+    );
 
-    const ctaText = body.cta_text || null;
-    const ctaLink = body.cta_link || null;
+    const festivalMessage = messageResult.rows[0];
 
-    const startsAt = body.starts_at || null;
-    const endsAt = body.ends_at || null;
-
+    // Step 4: broadcasts table me automation data save karo
     const insertQuery = `
       INSERT INTO broadcasts (
-        title,
-        message,
-        type,
-        style,
         festival_key,
+        language_mode,
+        full_screen_animation,
+        dashboard_overlay,
+        hero_visual,
         animation_theme,
         theme_color,
-        target_audience,
-        cta_text,
-        cta_link,
-        starts_at,
-        ends_at,
+        resolved_title,
+        resolved_message,
         preview_mode,
         is_active,
         auto_generated,
@@ -67,7 +79,6 @@ export async function POST(req: Request) {
       VALUES (
         $1,
         $2,
-        'LAB',
         $3,
         $4,
         $5,
@@ -75,8 +86,6 @@ export async function POST(req: Request) {
         $7,
         $8,
         $9,
-        $10,
-        $11,
         true,
         true,
         false,
@@ -86,17 +95,16 @@ export async function POST(req: Request) {
     `;
 
     const values = [
-      title,
-      message,
-      displayMode,
       festivalKey,
-      animationType,
-      themeColor,
-      targetAudience,
-      ctaText,
-      ctaLink,
-      startsAt,
-      endsAt,
+      language_mode,
+      full_screen_animation,
+      dashboard_overlay,
+      // Ye sab assets/messages se aayega
+      asset?.hero_visual || null, 
+      asset?.animation_theme || 'NONE',
+      asset?.theme_color || 'DEFAULT',
+      festivalMessage?.title || 'Greeting',
+      festivalMessage?.message || 'Wishing you happiness',
     ];
 
     const result = await client.query(
@@ -106,7 +114,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Broadcast Lab Entry Created',
+      message: 'Broadcast Lab Entry Created via Automation',
       data: result.rows[0],
     });
   } catch (error: any) {
