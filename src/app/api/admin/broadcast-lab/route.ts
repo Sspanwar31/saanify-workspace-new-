@@ -59,9 +59,22 @@ export async function POST(req: Request) {
 
     const festivalMessage = messageResult.rows[0];
 
-    // Define variables for title and message using default fields
-    const title = festivalMessage?.default_title || 'Greeting';
-    const message = festivalMessage?.default_message || 'Wishing you happiness';
+    // Problem 1 Fix: Language Logic
+    let title;
+    let message;
+
+    if (language_mode === 'HI') {
+      title = festivalMessage?.title_hi || 'Greeting';
+      message = festivalMessage?.message_hi || 'Wishing you happiness';
+    }
+    else if (language_mode === 'EN') {
+      title = festivalMessage?.title_en || 'Greeting';
+      message = festivalMessage?.message_en || 'Wishing you happiness';
+    }
+    else {
+      title = festivalMessage?.default_title || 'Greeting';
+      message = festivalMessage?.default_message || 'Wishing you happiness';
+    }
 
     // Step 4: broadcasts table me automation data save karo
     const insertQuery = `
@@ -112,8 +125,8 @@ export async function POST(req: Request) {
       asset?.hero_visual || null,
       asset?.animation_theme || 'NONE',
       asset?.theme_color || 'DEFAULT',
-      title,
-      message
+      title, // resolved_title
+      message // resolved_message
     ];
 
     const result = await client.query(
