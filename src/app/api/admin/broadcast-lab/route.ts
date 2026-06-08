@@ -60,6 +60,7 @@ export async function POST(req: Request) {
         cta_link,
         starts_at,
         ends_at,
+        preview_mode,
         is_active,
         auto_generated,
         created_at
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
         $10,
         $11,
         $12,
+        true,
         true,
         false,
         NOW()
