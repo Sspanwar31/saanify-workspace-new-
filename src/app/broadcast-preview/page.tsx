@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import FestivalAnimationEngine from '@/components/festival/FestivalAnimationEngine';
+import FestivalHeroEngine from '@/components/festival/FestivalHeroEngine';
 
 export default function BroadcastPreviewPage() {
   const [broadcast, setBroadcast] = useState<any>(null);
@@ -29,51 +31,6 @@ export default function BroadcastPreviewPage() {
     }
   };
 
-  // Step 3: Animation test
-  const renderParticles = (theme: string) => {
-    if (theme === 'GOLDEN_PARTICLES') {
-      return (
-        <>
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-pulse"
-              style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`
-              }}
-            />
-          ))}
-        </>
-      );
-    }
-
-    return null;
-  };
-
-  // Step 1: Render Hero Function
-  const renderHero = (hero: string) => {
-    switch (hero) {
-      case 'ROYAL_DIYA':
-        return <div className="text-8xl">🪔</div>;
-
-      case 'GANESHA':
-        return <div className="text-8xl">🐘</div>;
-
-      case 'TRISHUL_DAMRU':
-        return <div className="text-8xl">🔱</div>;
-
-      case 'CRESCENT_MOON':
-        return <div className="text-8xl">🌙</div>;
-
-      case 'CHRISTMAS_TREE':
-        return <div className="text-8xl">🎄</div>;
-
-      default:
-        return <div className="text-8xl">✨</div>;
-    }
-  };
-
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -94,8 +51,10 @@ export default function BroadcastPreviewPage() {
     // Step 4: Added 'relative' class
     <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-10 relative">
       
-      {/* Step 5: Render Particles */}
-      {renderParticles(broadcast.animation_theme)}
+      {/* Step 6: Replaced renderParticles with FestivalAnimationEngine */}
+      <FestivalAnimationEngine
+        animationTheme={broadcast.animation_theme}
+      />
 
       <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-slate-900 p-10">
 
@@ -111,9 +70,11 @@ export default function BroadcastPreviewPage() {
 
         <div className="space-y-4">
           
-          {/* Step 2: Added Hero Visual */}
+          {/* Step 7: Replaced renderHero with FestivalHeroEngine */}
           <div className="flex justify-center mb-8">
-            {renderHero(broadcast.hero_visual)}
+            <FestivalHeroEngine
+              heroVisual={broadcast.hero_visual}
+            />
           </div>
 
           <div>
