@@ -18,6 +18,7 @@ import { Sparkles, Globe } from 'lucide-react';
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
 
+  // Change #2: Form state updated with new fields
   const [form, setForm] = useState({
     title: '',
     message: '',
@@ -27,27 +28,45 @@ export default function BroadcastLabPage() {
     theme_color: 'GOLD',
     target_audience: 'BOTH',
     image_url: '',
+
+    language_mode: 'BOTH',
+    full_screen_animation: true,
+    dashboard_overlay: true
   });
 
+  // Change #3: Publish function replaced with new logic
   const publishBroadcast = async () => {
     try {
       setLoading(true);
 
-      const res = await fetch('/api/admin/broadcasts-v2', {
+      const payload = {
+        festival_key: form.festival_key,
+        language_mode: form.language_mode,
+        full_screen_animation: form.full_screen_animation,
+        dashboard_overlay: form.dashboard_overlay
+      };
+
+      // Change #1: URL updated to broadcast-lab
+      const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload)
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error('Publish failed');
+        throw new Error(data.error);
       }
 
-      toast.success('Broadcast Published');
-    } catch (err) {
-      toast.error('Publish Failed');
+      toast.success('Broadcast Generated');
+
+      console.log(data);
+
+    } catch (err:any) {
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -169,6 +188,64 @@ export default function BroadcastLabPage() {
                   <SelectItem value="SPARKLES">Sparkles</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Change #4: Language Selector added below Animation */}
+            <div>
+              <label className="text-sm font-medium">
+                Language
+              </label>
+
+              <Select
+                value={form.language_mode}
+                onValueChange={(v) =>
+                  setForm({
+                    ...form,
+                    language_mode: v,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="HI">Hindi</SelectItem>
+                  <SelectItem value="EN">English</SelectItem>
+                  <SelectItem value="BOTH">Hindi + English</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Change #5: Testing Switches added */}
+            <div className="flex items-center justify-between border rounded-lg p-3">
+              <span>Dashboard Overlay</span>
+
+              <input
+                type="checkbox"
+                checked={form.dashboard_overlay}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    dashboard_overlay: e.target.checked
+                  })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between border rounded-lg p-3">
+              <span>Full Screen Animation</span>
+
+              <input
+                type="checkbox"
+                checked={form.full_screen_animation}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    full_screen_animation: e.target.checked
+                  })
+                }
+              />
             </div>
 
             <div>
