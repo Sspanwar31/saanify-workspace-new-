@@ -2,18 +2,39 @@
 
 export default function GoldenParticles() {
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
-      {[...Array(40)].map((_, i) => (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-50">
+      {[...Array(60)].map((_, i) => (
         <div
           key={i}
-          className="absolute w-2 h-2 rounded-full bg-yellow-400 animate-pulse"
+          className="absolute rounded-full bg-yellow-400 opacity-80"
           style={{
-            top: `${Math.random() * 100}%`,
+            width: `${2 + Math.random() * 6}px`,
+            height: `${2 + Math.random() * 6}px`,
             left: `${Math.random() * 100}%`,
-            animationDuration: `${2 + Math.random() * 4}s`,
+            top: `-20px`,
+            animation: `fall ${4 + Math.random() * 6}s linear infinite`,
+            animationDelay: `${Math.random() * 5}s`,
           }}
         />
       ))}
+
+      <style jsx>{`
+        @keyframes fall {
+          0% {
+            transform: translateY(0px);
+            opacity: 0;
+          }
+
+          10% {
+            opacity: 1;
+          }
+
+          100% {
+            transform: translateY(120vh);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }
