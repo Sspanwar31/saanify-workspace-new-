@@ -59,9 +59,15 @@ export async function POST(req: Request) {
 
     const festivalMessage = messageResult.rows[0];
 
+    // Define variables for title and message using default fields
+    const title = festivalMessage?.default_title || 'Greeting';
+    const message = festivalMessage?.default_message || 'Wishing you happiness';
+
     // Step 4: broadcasts table me automation data save karo
     const insertQuery = `
       INSERT INTO broadcasts (
+        title,
+        message,
         festival_key,
         language_mode,
         full_screen_animation,
@@ -86,6 +92,8 @@ export async function POST(req: Request) {
         $7,
         $8,
         $9,
+        $10,
+        $11,
         true,
         true,
         false,
@@ -95,16 +103,17 @@ export async function POST(req: Request) {
     `;
 
     const values = [
+      title,
+      message,
       festivalKey,
       language_mode,
       full_screen_animation,
       dashboard_overlay,
-      // Ye sab assets/messages se aayega
-      asset?.hero_visual || null, 
+      asset?.hero_visual || null,
       asset?.animation_theme || 'NONE',
       asset?.theme_color || 'DEFAULT',
-      festivalMessage?.title || 'Greeting',
-      festivalMessage?.message || 'Wishing you happiness',
+      title,
+      message
     ];
 
     const result = await client.query(
