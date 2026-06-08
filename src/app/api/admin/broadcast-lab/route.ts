@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const themeColor = body.theme_color || 'DEFAULT';
     const targetAudience = body.target_audience || 'BOTH';
 
-    const imageUrl = body.image_url || null;
+    // Removed: const imageUrl = body.image_url || null;
 
     const ctaText = body.cta_text || null;
     const ctaLink = body.cta_link || null;
@@ -55,7 +55,6 @@ export async function POST(req: Request) {
         animation_theme,
         theme_color,
         target_audience,
-        background_image,
         cta_text,
         cta_link,
         starts_at,
@@ -78,7 +77,6 @@ export async function POST(req: Request) {
         $9,
         $10,
         $11,
-        $12,
         true,
         true,
         false,
@@ -95,7 +93,6 @@ export async function POST(req: Request) {
       animationType,
       themeColor,
       targetAudience,
-      imageUrl,
       ctaText,
       ctaLink,
       startsAt,
