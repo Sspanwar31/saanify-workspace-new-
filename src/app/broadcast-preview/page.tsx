@@ -55,6 +55,19 @@ export default function BroadcastPreviewPage() {
           'linear-gradient(to bottom, #050816, #0f172a, #1e293b)',
       }}
     >
+      {/* 2. Full Background Image Add Karo */}
+      {broadcast.image_url && (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-20"
+          style={{
+            backgroundImage: `url(${broadcast.image_url})`,
+          }}
+        />
+      )}
+
+      {/* 3. Gradient Overlay Add Karo */}
+      <div className="absolute inset-0 bg-black/40 z-[1]" />
+
       {/* Animation */}
       <FestivalAnimationEngine
         animationTheme={broadcast.animation_theme}
@@ -68,11 +81,19 @@ export default function BroadcastPreviewPage() {
       {/* Main Greeting */}
       <div className="relative z-20 text-center max-w-4xl px-8">
 
-        {/* Hero */}
+        {/* 1. Hero Section Replacement */}
         <div className="mb-10 flex justify-center">
-          <FestivalHeroEngine
-            heroVisual={broadcast.hero_visual}
-          />
+          {broadcast.image_url ? (
+            <img
+              src={broadcast.image_url}
+              alt="Festival Hero"
+              className="w-[320px] md:w-[500px] rounded-3xl drop-shadow-[0_0_50px_rgba(255,255,255,0.25)]"
+            />
+          ) : (
+            <FestivalHeroEngine
+              heroVisual={broadcast.hero_visual}
+            />
+          )}
         </div>
 
         {/* Title */}
