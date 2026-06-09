@@ -139,7 +139,7 @@
 @keyframes gold-float-up { from{transform:translateY(0); opacity:0;} 30%{opacity:1;} to{transform:translateY(-450px); opacity:0;} }
 
 /* 2. HOLI / VIBRANT: Splash & Flowers */
-@keyframes splash-boom { 0%{transform:scale(0); opacity:0;} 50%{opacity:0.8;} 100%{transform:scale(2) translate(var(--tx),var(--ty)); opacity:0;} }
+@keyframes splash-boom { 0% { transform: scale(0); opacity: 0; } 50% { opacity: 0.6; } 100% { transform: scale(1.5) translate(var(--tx), var(--ty)); opacity: 0; } }
 @keyframes flower-dance { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(-400px) rotate(360deg); opacity: 0; } }
 
 /* 3. CHRISTMAS / WINTER: Real Snowfall */
@@ -157,7 +157,13 @@
   .gold-particle { animation: gold-float-up linear infinite; position: absolute; border-radius: 50%; background: #ffd54f; filter: blur(1px); }
 
   /* Holi & Flowers Logic */
-  .color-splash { animation: splash-boom 3s infinite; position: absolute; border-radius: 50%; filter: blur(40px); }
+  .color-splash { 
+    animation: splash-boom 3s infinite ease-out; 
+    position: absolute; 
+    border-radius: 50%; 
+    filter: blur(50px); 
+    opacity: 0;
+  }
   .flower-particle { animation: flower-dance linear infinite; position: absolute; font-size: 24px; pointer-events: none; }
 
   /* Christmas Logic */
