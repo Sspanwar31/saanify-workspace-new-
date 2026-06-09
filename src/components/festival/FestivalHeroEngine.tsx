@@ -1,8 +1,12 @@
+'use client';
+
 import RoyalDiya from './heroes/RoyalDiya';
 import GaneshaHero from './heroes/GaneshaHero';
 import DurgaHero from './heroes/DurgaHero';
 import MoonHero from './heroes/MoonHero';
 import ChristmasHero from './heroes/ChristmasHero';
+// 🚀 NEW IMPORT
+import HoliPalette from './heroes/HoliPalette'; 
 
 export default function FestivalHeroEngine({
   heroVisual
@@ -27,7 +31,12 @@ export default function FestivalHeroEngine({
     case 'CHRISTMAS_TREE':
       return <ChristmasHero />;
 
+    // 🚀 NEW CASE ADDED (Matches your DB value)
+    case 'VIBRANT_PALETTE':
+      return <HoliPalette />;
+
     default:
-      return null;
+      // Fallback: Agar kuch match na kare toh default icon dikhao
+      return <div className="text-6xl animate-bounce">✨</div>;
   }
 }
