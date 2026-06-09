@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import FestivalAnimationEngine from '@/components/festival/FestivalAnimationEngine';
 import FestivalHeroEngine from '@/components/festival/FestivalHeroEngine';
-import { X, Sparkles, ShieldCheck, PartyPopper } from 'lucide-react';
+import { X, Sparkles, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function BroadcastPreviewPage() {
@@ -27,7 +27,7 @@ export default function BroadcastPreviewPage() {
 
   const isHoli = broadcast.festival_key === 'HOLI';
   
-  // 🔥 Theme Color Logic (Agar admin ne color set kiya to wo, nahi to default)
+  // Theme Color Logic
   const themeColor = broadcast.theme_color || (isHoli ? '#db2777' : '#fbbf24');
   
   // Gradient for Buttons and Borders
@@ -37,6 +37,9 @@ export default function BroadcastPreviewPage() {
 
   const titleParts = (broadcast.resolved_title || broadcast.title)?.split('|') || [];
   const msgParts = (broadcast.resolved_message || broadcast.message)?.split('|') || [];
+  
+  // Dynamic CTA Text
+  const ctaText = broadcast.resolved_cta || broadcast.cta_text || 'CELEBRATE NOW';
 
   const handleCelebrate = () => {
     setShowTopBanner(true);
@@ -50,16 +53,16 @@ export default function BroadcastPreviewPage() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#020617] to-[#020617]" />
       <FestivalAnimationEngine animationTheme={broadcast.animation_theme} />
 
-      {/* 2. TOP SUCCESS BANNER (Theme Color Applied) */}
+      {/* 2. TOP SUCCESS BANNER (Clean & Direct Message) */}
       {showTopBanner && (
         <div 
-          className="fixed top-0 left-0 w-full z-[50] py-3 px-6 shadow-2xl animate-in slide-in-from-top duration-500 backdrop-blur-md border-b border-white/20"
-          style={{ backgroundColor: themeColor }} // ✅ Theme Color
+          className="fixed top-0 left-0 w-full z-[50] py-4 px-6 shadow-2xl animate-in slide-in-from-top duration-500 backdrop-blur-md border-b border-white/20"
+          style={{ backgroundColor: themeColor }}
         >
           <div className="max-w-4xl mx-auto flex items-center justify-center gap-3">
-             <PartyPopper className="w-6 h-6 text-white animate-bounce" />
-             <p className="text-white font-bold tracking-wide text-sm md:text-base uppercase text-center">
-                Celebration Mode Activated: {msgParts[0] || 'Enjoy the Festival!'}
+             <Sparkles className="w-6 h-6 text-white animate-spin-slow" />
+             <p className="text-white font-bold text-lg md:text-xl tracking-wide text-center leading-tight">
+                {broadcast.resolved_message || msgParts[0] || 'Enjoy the Festival!'}
              </p>
           </div>
         </div>
@@ -80,13 +83,12 @@ export default function BroadcastPreviewPage() {
               {broadcast.image_url ? (
                 <img 
                   src={broadcast.image_url} 
-                  // ✅ Animation Added: Gentle Float
-                  className="hero-anim w-full h-full object-cover" 
+                  className="hero-anim w-full h-full object-cover pt-16" 
                   alt="Festival" 
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                   {/* ✅ Animation Added to Engine Wrapper */}
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 pt-16">
+                   {/* Hero Engine Wrapper with Padding */}
                    <div className="hero-anim scale-150">
                       <FestivalHeroEngine heroVisual={broadcast.hero_visual} />
                    </div>
@@ -96,13 +98,13 @@ export default function BroadcastPreviewPage() {
               {/* Gradient Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent" />
               
-              {/* Brand Badge (Theme Color Applied) */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-lg">
+              {/* Brand Badge (Modern Typography & Theme Color) */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 px-5 py-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 shadow-lg z-50">
                   <span 
-                      className="text-[10px] md:text-xs font-extrabold tracking-[0.2em] uppercase drop-shadow-md"
-                      style={{ color: themeColor }} // ✅ Theme Color
+                      className="text-xs md:text-sm font-bold tracking-wide capitalize drop-shadow-md"
+                      style={{ color: themeColor }} 
                   >
-                      SAANIFY PARIVAR
+                      Saanify Parivar
                   </span>
               </div>
           </div>
@@ -111,43 +113,32 @@ export default function BroadcastPreviewPage() {
           <div className="p-6 md:p-8 text-center relative z-10 flex flex-col items-center -mt-12">
             
             {/* Icon Circle */}
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-300 shadow-xl flex items-center justify-center border-4 border-[#0f172a] mb-4 relative z-20">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-300 shadow-xl flex items-center justify-center border-4 border-[#0f172a] mb-5 relative z-20">
                <ShieldCheck className="w-10 h-10 text-slate-900" strokeWidth={2.5} />
             </div>
 
-            <div className="space-y-3 w-full">
-                {/* Main Title (Theme Color Applied) */}
-                <div>
-                    <h1 
-                        className="text-3xl md:text-4xl font-extrabold leading-tight mb-1 drop-shadow-sm"
-                        style={{ color: themeColor }} // ✅ Theme Color Title
-                    >
-                        {titleParts[0]}
-                    </h1>
-                    {/* Subtitle */}
-                    {titleParts[1] && (
-                        <h2 className="text-sm md:text-base font-medium text-white/50 tracking-wide uppercase">
-                            {titleParts[1]}
-                        </h2>
-                    )}
-                </div>
+            <div className="space-y-4 w-full">
+                {/* Main Title Only (Removed Subtitle) */}
+                <h1 
+                    className="text-3xl md:text-4xl font-extrabold leading-tight drop-shadow-sm"
+                    style={{ color: themeColor }} 
+                >
+                    {titleParts[0]}
+                </h1>
                 
                 {/* Message Body */}
-                <div className="py-2">
-                    <p className="text-slate-300 text-base md:text-lg font-normal leading-relaxed">
-                        {msgParts[0]}
-                    </p>
-                    {msgParts[1] && <p className="text-slate-400 text-sm mt-1 italic">{msgParts[1]}</p>}
-                </div>
+                <p className="text-slate-300 text-base md:text-lg font-normal leading-relaxed px-2">
+                    {msgParts[0]}
+                </p>
             </div>
 
-            {/* Action Button */}
+            {/* Action Button (Dynamic Text) */}
             <Button 
               onClick={handleCelebrate}
-              className="w-full h-14 mt-4 rounded-2xl text-lg font-black text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl active:scale-95 border-b-4 border-white/20"
+              className="w-full h-14 mt-6 rounded-2xl text-lg font-black text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl active:scale-95 border-b-4 border-white/20"
               style={{ background: themeGradient }}
             >
-              CELEBRATE NOW <Sparkles className="w-5 h-5 ml-2 animate-pulse" />
+              {ctaText} <Sparkles className="w-5 h-5 ml-2 animate-pulse" />
             </Button>
 
           </div>
@@ -173,7 +164,7 @@ export default function BroadcastPreviewPage() {
           line-height: 1.5; 
         }
 
-        /* ✅ Hero Animation: Gentle Float */
+        /* Hero Animation: Gentle Float */
         .hero-anim {
           animation: hero-float 6s ease-in-out infinite;
         }
@@ -182,6 +173,15 @@ export default function BroadcastPreviewPage() {
           0% { transform: scale(1) translateY(0px); }
           50% { transform: scale(1.03) translateY(-10px); }
           100% { transform: scale(1) translateY(0px); }
+        }
+        
+        /* Slow spin for icon */
+        .animate-spin-slow {
+          animation: spin 3s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>
