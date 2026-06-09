@@ -6,7 +6,8 @@ import DurgaHero from './heroes/DurgaHero';
 import MoonHero from './heroes/MoonHero';
 import ChristmasHero from './heroes/ChristmasHero';
 // 🚀 NEW IMPORT
-import HoliPalette from './heroes/HoliPalette'; 
+import HoliPalette from './heroes/HoliPalette';
+import AshokaChakra from './heroes/AshokaChakra';
 
 export default function FestivalHeroEngine({
   heroVisual
@@ -34,6 +35,9 @@ export default function FestivalHeroEngine({
     // 🚀 NEW CASE ADDED (Matches your DB value)
     case 'VIBRANT_PALETTE':
       return <HoliPalette />;
+
+      case 'ASHOKA_CHAKRA':
+  return <AshokaChakra />;
 
     default:
       // Fallback: Agar kuch match na kare toh default icon dikhao
