@@ -22,148 +22,141 @@ export default function BroadcastPreviewPage() {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white font-bold tracking-widest animate-pulse">LOADING LAB V2...</div>;
+  if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white font-black tracking-widest animate-pulse">SAANIFY LAB V2...</div>;
   if (!broadcast) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white">No Active Preview Found</div>;
 
   const isHoli = broadcast.festival_key === 'HOLI';
-  // Holi ke liye vibrant colors, nahi toh Gold/Amber theme
-  const themeColor = broadcast.theme_color || (isHoli ? '#db2777' : '#fbbf24');
+  
+  // 🎨 MASTER THEME COLORS
+  const themeColor = broadcast.theme_color || (isHoli ? '#ff0080' : '#fbbf24');
   const themeGradient = isHoli 
-    ? 'linear-gradient(135deg, #db2777 0%, #7c3aed 100%)'
-    : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+    ? 'linear-gradient(135deg, #ff0080 0%, #7c3aed 100%)'
+    : 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)';
 
-  // Text splitting logic
   const titleParts = (broadcast.resolved_title || broadcast.title)?.split('|') || [];
   const msgParts = (broadcast.resolved_message || broadcast.message)?.split('|') || [];
 
   const handleCelebrate = () => {
     setShowTopBanner(true);
-    setIsCardVisible(false); // Card smooth fade out hoga animation ke saath
+    setIsCardVisible(false);
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins selection:bg-pink-500/30">
+    <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins">
       
-      {/* 1. BACKGROUND AMBIANCE & ANIMATION */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#020617] to-[#020617]" />
+      {/* 1. ANIMATION ENGINE */}
       <FestivalAnimationEngine animationTheme={broadcast.animation_theme} />
 
-      {/* 2. TOP SUCCESS BANNER */}
+      {/* 2. TOP BRANDED BANNER (Visible after Celebrate) */}
       {showTopBanner && (
-        <div className="fixed top-0 left-0 w-full z-[50] py-3 px-6 shadow-2xl animate-in slide-in-from-top duration-500 backdrop-blur-md border-b border-white/10"
-          style={{ background: isHoli ? 'rgba(219, 39, 119, 0.9)' : 'rgba(245, 158, 11, 0.9)' }}>
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-3">
-             <PartyPopper className="w-6 h-6 text-white animate-bounce" />
-             <p className="text-white font-bold tracking-wide text-sm md:text-base uppercase text-center">
-                Celebration Mode Activated: {msgParts[0] || 'Enjoy the Festival!'}
+        <div className="fixed top-0 left-0 w-full z-[100] py-4 px-6 shadow-[0_10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-top duration-700 border-b border-white/20"
+          style={{ background: themeGradient }}>
+          <div className="max-w-6xl mx-auto flex items-center justify-center gap-4">
+             <PartyPopper className="w-7 h-7 text-white animate-bounce" />
+             <p className="text-white font-black tracking-wider text-base md:text-xl uppercase italic drop-shadow-lg">
+                SAANIFY PARIVAR: {msgParts[0]}
              </p>
           </div>
         </div>
       )}
 
-      {/* 3. THE MASTER CARD (Redesigned) */}
-      <div className={`relative w-full max-w-md transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isCardVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-10'}`}>
+      {/* 3. THE PREMIUM CARD */}
+      <div className={`relative w-full max-w-md transition-all duration-1000 ease-out ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
         
-        {/* Decorative Glow Behind Card */}
-        <div className="absolute -inset-1 rounded-[2.5rem] opacity-30 blur-xl transition duration-1000 group-hover:duration-200"
+        {/* Outer Glow Ambiance */}
+        <div className="absolute -inset-2 rounded-[3rem] opacity-20 blur-2xl animate-pulse"
              style={{ background: themeGradient }} />
 
-        {/* Main Card Container */}
-        <div className="relative bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+        <div className="relative bg-slate-950/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden">
           
-          {/* --- HERO IMAGE SECTION --- */}
-          <div className="relative w-full aspect-[4/3] overflow-hidden bg-slate-900">
+          {/* --- HERO SECTION --- */}
+          <div className="relative w-full h-80 overflow-hidden flex items-center justify-center">
               {broadcast.image_url ? (
                 <img 
                   src={broadcast.image_url} 
-                  className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700 ease-out" 
+                  className="w-full h-full object-cover object-top transform hover:scale-110 transition-transform duration-10000" 
                   alt="Festival" 
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                /* 🚀 ANIMATED HERO ENGINE (No more static) */
+                <div className="animate-hero-breathe flex items-center justify-center scale-150">
                    <FestivalHeroEngine heroVisual={broadcast.hero_visual} />
                 </div>
               )}
               
-              {/* Gradient Overlay for Text Legibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
               
-              {/* Badge */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10">
-                  <span className="text-[10px] md:text-xs font-extrabold tracking-[0.2em] text-white/90 uppercase">
+              {/* BRAND TEXT IN THEME COLOR */}
+              <div className="absolute top-8 w-full text-center">
+                  <span className="themed-text uppercase tracking-[12px] text-xs font-black italic drop-shadow-md">
                       SAANIFY PARIVAR
                   </span>
               </div>
           </div>
 
           {/* --- CONTENT SECTION --- */}
-          <div className="p-6 md:p-8 text-center relative z-10 flex flex-col items-center -mt-12">
+          <div className="p-8 text-center -mt-16 relative z-10 flex flex-col items-center">
             
-            {/* Icon Circle */}
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-300 shadow-xl flex items-center justify-center border-4 border-[#0f172a] mb-4 relative z-20">
-               <ShieldCheck className="w-10 h-10 text-slate-900" strokeWidth={2.5} />
+            {/* Branded Badge Icon */}
+            <div className="w-20 h-20 rounded-[1.5rem] bg-gradient-to-br from-white to-slate-200 shadow-2xl flex items-center justify-center border-4 border-slate-950 mb-6 rotate-3">
+               <ShieldCheck className="w-10 h-10 text-blue-900" strokeWidth={3} />
             </div>
 
-            <div className="space-y-3 w-full">
-                {/* Main Title - Better Typography for Hindi/English */}
-                <div>
-                    <h1 className="text-3xl md:text-4xl font-extrabold leading-tight text-white mb-1 premium-text-shadow">
+            <div className="space-y-4 w-full">
+                {/* 🏆 THEMED GRADIENT TITLE */}
+                <div className="px-2">
+                    <h1 className="themed-text text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none italic mb-2">
                         {titleParts[0]}
                     </h1>
-                    {/* Subtitle / Second Line */}
                     {titleParts[1] && (
-                        <h2 className="text-sm md:text-base font-medium text-white/60 tracking-wide uppercase">
+                        <h2 className="text-sm font-bold text-white/40 tracking-[6px] uppercase px-4">
                             {titleParts[1]}
                         </h2>
                     )}
                 </div>
                 
-                {/* Message Body - Line Height improved for Hindi */}
-                <div className="py-2">
-                    <p className="text-slate-300 text-base md:text-lg font-normal leading-relaxed">
-                        {msgParts[0]}
-                    </p>
-                    {msgParts[1] && <p className="text-slate-400 text-sm mt-1 italic">{msgParts[1]}</p>}
-                </div>
+                <p className="text-slate-300 text-base md:text-lg font-bold leading-relaxed px-6 opacity-90">
+                    {msgParts[0]}
+                </p>
             </div>
 
-            {/* Action Button */}
+            {/* BUTTON IN THEME COLOR */}
             <Button 
               onClick={handleCelebrate}
-              className="w-full h-14 mt-4 rounded-2xl text-lg font-black text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl active:scale-95 border-b-4 border-white/20"
+              className="w-full h-16 mt-8 rounded-[2rem] text-2xl font-black text-white shadow-2xl border-t border-white/20 transition-all hover:scale-105 active:scale-95"
               style={{ background: themeGradient }}
             >
-              CELEBRATE NOW <Sparkles className="w-5 h-5 ml-2 animate-pulse" />
+              CELEBRATE NOW 🚀
             </Button>
-
           </div>
           
-          {/* Close Button */}
-          <button 
-            onClick={() => setIsCardVisible(false)} 
-            className="absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-all backdrop-blur-sm"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
+          <button onClick={() => setIsCardVisible(false)} className="absolute top-6 right-6 p-1 text-white/30 hover:text-white transition-colors">
+            <X className="w-7 h-7" />
           </button>
-
         </div>
       </div>
 
-      {/* --- GLOBAL STYLES & FONTS --- */}
+      {/* --- MASTER THEMED STYLES --- */}
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
         
-        body, html {
-          font-family: 'Poppins', sans-serif;
-          /* Hindi ke liye line height zaroori hai */
-          line-height: 1.5; 
+        .themed-text {
+          background: ${themeGradient};
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
 
-        /* Text Shadow for better readability against busy backgrounds */
-        .premium-text-shadow {
-          text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        @keyframes hero-breathe {
+          0%, 100% { transform: scale(1.4); filter: drop-shadow(0 0 20px rgba(255,255,255,0.2)); }
+          50% { transform: scale(1.6); filter: drop-shadow(0 0 50px ${themeColor}); }
         }
+
+        .animate-hero-breathe {
+          animation: hero-breathe 4s infinite ease-in-out;
+        }
+
+        /* Responsive spacing for Hindi characters */
+        h1 { padding-bottom: 5px; }
       `}</style>
     </div>
   );
