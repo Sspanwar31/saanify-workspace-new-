@@ -20,89 +20,141 @@ export async function POST(req: Request) {
     client = await getDbClient();
 
     const festivalKey = body.festival_key;
+    const broadcastType = body.broadcast_type; // ✅ Added broadcast_type extraction
     const language_mode = body.language_mode;
     const full_screen_animation = body.full_screen_animation;
     const dashboard_overlay = body.dashboard_overlay;
 
-    // 🚀 STEP 1: Corporate types ki list
-    const corporateTypes = ['ANNOUNCEMENT', 'SYSTEM_UPDATE', 'SPECIAL_OFFER', 'MAINTENANCE', 'EMERGENCY', 'EVENT'];
-    const isCorporate = corporateTypes.includes(festival_key);
+    // ━━━ DEBUG LOGS ━━━
+    console.log('festivalKey=', festivalKey);
+    console.log('broadcastType=', broadcastType);
 
-    let finalAssets: any = null;
-    let dbContent: any = null;
+    // ━━━ ASSET FETCH SECTION ━━━
+    let asset = null;
 
-    if (isCorporate) {
-      // ━━━ PATH A: CORPORATE LOGIC (Fetching from broadcast tables) ━━━
-      const assetRes = await client.query(
-        'SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1',
+    if (festivalKey) {
+      const assetResult = await client.query(
+        `
+        SELECT *
+        FROM festival_assets
+        WHERE festival_key = $1
+        LIMIT 1
+        `,
         [festivalKey]
       );
-      finalAssets = assetRes.rows[0];
-
-      const msgRes = await client.query(
-        'SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1',
-        [festivalKey]
-      );
-      dbContent = msgRes.rows[0];
-
-      if (!dbContent) throw new Error(`Corporate message not found for: ${festivalKey}`);
-
-    } else {
-      // ━━━ PATH B: FESTIVAL LOGIC (Fetching from festival tables) ━━━
-      const assetRes = await client.query(
-        'SELECT * FROM festival_assets WHERE festival_key = $1 LIMIT 1',
-        [festivalKey]
-      );
-      finalAssets = assetRes.rows[0];
-
-      const msgRes = await client.query(
-        'SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1',
-        [festivalKey]
-      );
-      dbContent = msgRes.rows[0];
-
-      if (!dbContent) throw new Error(`Festival message not found for: ${festivalKey}`);
+      asset = assetResult.rows[0];
     }
 
-    // 🚀 STEP 2: DYNAMIC LANGUAGE RESOLUTION (Using DB columns)
+    if (broadcastType) {
+      const assetResult = await client.query(
+        `
+        SELECT *
+        FROM broadcast_assets
+        WHERE broadcast_type = $1
+        LIMIT 1
+        `,
+        [broadcastType]
+      );
+      asset = assetResult.rows[0];
+    }
+
+    // ━━━ MESSAGE FETCH SECTION ━━━
+    let content = null;
+
+    if (festivalKey) {
+      const result = await client.query(
+        `
+        SELECT *
+        FROM festival_messages
+        WHERE festival_key = $1
+        LIMIT 1
+        `,
+        [festivalKey]
+      );
+      content = result.rows[0];
+    }
+
+    if (broadcastType) {
+      const result = await client.query(
+        `
+        SELECT *
+        FROM broadcast_messages
+        WHERE broadcast_type = $1
+        LIMIT 1
+        `,
+        [broadcastType]
+      );
+      content = result.rows[0];
+    }
+
+    console.log('asset=', asset);
+    console.log('content=', content);
+
+    if (!content) {
+        throw new Error(`Content not found for Festival: ${festivalKey} or Type: ${broadcastType}`);
+    }
+
+    // ━━━ TITLE & MESSAGE LOGIC ━━━
     let title;
     let message;
 
     if (language_mode === 'HI') {
-      title = dbContent.title_hi || dbContent.default_title;
-      message = dbContent.message_hi || dbContent.default_message;
+      title =
+        content?.title_hi ||
+        'Greeting';
+
+      message =
+        content?.message_hi ||
+        'Message';
     } else if (language_mode === 'EN') {
-      title = dbContent.title_en || dbContent.default_title;
-      message = dbContent.message_en || dbContent.default_message;
+      title =
+        content?.title_en ||
+        'Greeting';
+
+      message =
+        content?.message_en ||
+        'Message';
     } else {
-      // BOTH Mode: Formatting for the Dashboard split logic
-      title = (dbContent.title_hi || '') + " | " + (dbContent.title_en || '');
-      message = (dbContent.message_hi || '') + " | " + (dbContent.message_en || '');
+      // BOTH Mode logic
+      title =
+        content?.title_hi ||
+        content?.title_en ||
+        'Greeting';
+
+      message =
+        content?.message_hi ||
+        content?.message_en ||
+        'Message';
     }
 
-    // 🚀 STEP 3: MASTER INSERT (Pura data ab DB se hai, koi hardcoding nahi)
+    // ━━━ INSERT QUERY ━━━
+    // Added image_url, broadcast_type, layout_template in SQL and Values
     const insertQuery = `
       INSERT INTO broadcasts (
         title, message, festival_key, language_mode,
         full_screen_animation, dashboard_overlay,
-        hero_visual, animation_theme, theme_color,
+        hero_visual, image_url, broadcast_type, layout_template,
+        animation_theme, theme_color,
         resolved_title, resolved_message,
         preview_mode, is_active, auto_generated, content_mode, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, true, true, 'AUTO', NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, true, true, true, 'AUTO', NOW())
       RETURNING *;
     `;
 
     const values = [
       title,
       message,
-      festivalKey,
+      festivalKey || broadcastType, // Fallback key for festival_key column
       language_mode,
       full_screen_animation,
       dashboard_overlay,
-      finalAssets?.hero_visual || 'GEAR_ICON',
-      finalAssets?.animation_theme || 'NONE',
-      finalAssets?.theme_color || '#2563EB',
+      asset?.hero_visual || 'GEAR_ICON',
+      asset?.background_image || asset?.web_image || asset?.asset_url || null, // ✅ image_url
+      broadcastType, // ✅ broadcast_type
+      asset?.layout_template || null, // ✅ layout_template
+      asset?.animation_theme || 'NONE',
+      asset?.theme_color || '#2563EB',
       title, 
       message 
     ];
@@ -111,7 +163,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Generated from ${isCorporate ? 'broadcast_messages' : 'festival_messages'} table`,
+      message: `Generated broadcast successfully`,
       data: result.rows[0],
     });
 
