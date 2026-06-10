@@ -127,36 +127,52 @@ export async function POST(req: Request) {
         'Message';
     }
 
-    // ━━━ INSERT QUERY ━━━
-    // Added image_url, broadcast_type, layout_template in SQL and Values
+    // ━━━ INSERT QUERY (Fixed #1) ━━━
     const insertQuery = `
-      INSERT INTO broadcasts (
-        title, message, festival_key, language_mode,
-        full_screen_animation, dashboard_overlay,
-        hero_visual, image_url, broadcast_type, layout_template,
-        animation_theme, theme_color,
-        resolved_title, resolved_message,
-        preview_mode, is_active, auto_generated, content_mode, created_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, true, true, true, 'AUTO', NOW())
-      RETURNING *;
-    `;
+INSERT INTO broadcasts (
+  title,
+  message,
+  festival_key,
+  language_mode,
+  full_screen_animation,
+  dashboard_overlay,
+  hero_visual,
+  image_url,
+  layout_template,
+  animation_theme,
+  theme_color,
+  resolved_title,
+  resolved_message,
+  preview_mode,
+  is_active,
+  auto_generated,
+  content_mode,
+  created_at
+)
+VALUES (
+  $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+  true,true,true,'AUTO',NOW()
+)
+RETURNING *;
+`;
 
     const values = [
       title,
       message,
-      festivalKey || broadcastType, // Fallback key for festival_key column
+      festivalKey || broadcastType,
       language_mode,
       full_screen_animation,
       dashboard_overlay,
       asset?.hero_visual || 'GEAR_ICON',
-      asset?.background_image || asset?.web_image || asset?.asset_url || null, // ✅ image_url
-      broadcastType, // ✅ broadcast_type
-      asset?.layout_template || null, // ✅ layout_template
+      asset?.background_image ||
+        asset?.web_image ||
+        asset?.asset_url ||
+        null,
+      asset?.layout_template || null,
       asset?.animation_theme || 'NONE',
       asset?.theme_color || '#2563EB',
-      title, 
-      message 
+      title,
+      message
     ];
 
     const result = await client.query(insertQuery, values);
