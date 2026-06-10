@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge'; // 🚀 YE IMPORT MISSING THA
+import { Badge } from '@/components/ui/badge'; 
 import { toast } from 'sonner';
-import { Sparkles, Globe, FlaskConical, Trash2, ExternalLink } from 'lucide-react';
+import { Sparkles, Globe, FlaskConical, ExternalLink, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 // ━━━ MASTER LISTS (For Selection) ━━━
@@ -140,8 +140,12 @@ export default function BroadcastLabPage() {
               </div>
             </div>
 
-            <Button className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xl font-black shadow-lg shadow-blue-500/20" onClick={publishBroadcast} disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : <><Globe className="mr-2 h-5 w-5" /> GENERATE V2 PREVIEW</>}
+            <Button 
+              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xl font-black shadow-lg shadow-blue-500/20" 
+              onClick={publishBroadcast} 
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <><Globe className="mr-2 h-5 w-5" /> GENERATE V2 PREVIEW</>}
             </Button>
           </CardContent>
         </Card>
