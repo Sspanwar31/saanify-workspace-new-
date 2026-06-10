@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge'; // 🚀 YE IMPORT MISSING THA
 import { toast } from 'sonner';
 import { Sparkles, Globe, FlaskConical, Trash2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
