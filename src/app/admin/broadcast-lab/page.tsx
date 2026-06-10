@@ -1,112 +1,106 @@
-import { NextResponse } from 'next/server';
-import { Client } from 'pg';
+'use client';
 
-const getDbClient = async () => {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
-  const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
-  await client.connect();
-  return client;
-};
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge'; 
+import { toast } from 'sonner';
+import { Sparkles, Globe, FlaskConical, ExternalLink, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
-export async function POST(req: Request) {
-  let client;
-  try {
-    const body = await req.json();
-    const { festival_key, language_mode, preview_mode } = body;
-    client = await getDbClient();
+const BROADCAST_TYPES = [
+  "FESTIVAL", "ANNOUNCEMENT", "SYSTEM_UPDATE", "SPECIAL_OFFER", "MAINTENANCE", "EMERGENCY", "EVENT"
+];
 
-    if (!client) return NextResponse.json({ error: 'DB Connection Failed' }, { status: 500 });
+const FESTIVALS = [
+  "DIWALI", "HOLI", "NAVRATRI", "DUSSEHRA", "GANESH_CHATURTHI", "JANMASHTAMI", 
+  "RAKSHA_BANDHAN", "MAKAR_SANKRANTI", "LOHRI", "MAHASHIVRATRI", "RAM_NAVAMI", 
+  "HANUMAN_JAYANTI", "KARWA_CHAUTH", "CHHATH_PUJA", "GURU_PURNIMA", "ONAM", 
+  "PONGAL", "UGADI", "BAISAKHI", "EID_AL_FITR", "EID_AL_ADHA", "CHRISTMAS", 
+  "NEW_YEAR", "REPUBLIC_DAY", "INDEPENDENCE_DAY"
+];
 
-    // 🚀 STEP 1: Determine if it's a Corporate Update or a Festival
-    const corporateTypes = ['ANNOUNCEMENT', 'SYSTEM_UPDATE', 'SPECIAL_OFFER', 'MAINTENANCE', 'EMERGENCY', 'EVENT'];
-    
-    // Yahan check kar rahe hain ki kya jo key aayi hai wo corporate type mein hai?
-    const isCorporate = corporateTypes.includes(festival_key);
+export default function BroadcastLabPage() {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    type: 'FESTIVAL',
+    festival_key: 'DIWALI',
+    language_mode: 'BOTH',
+    full_screen_animation: true,
+    dashboard_overlay: true
+  });
 
-    let finalAssets: any = {};
-    let finalTitle = "";
-    let finalMsg = "";
-
-    if (isCorporate) {
-      // ━━━ PATH A: CORPORATE UPDATES ━━━
-      
-      // 1. Corporate Database table se assets (animation, colors) nikalo
-      const assetRes = await client.query('SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1', [festival_key]);
-      finalAssets = assetRes.rows[0] || {};
-      
-      // 2. 🚀 CRITICAL FIX: Hardcoded Corporate Messages
-      // Kyunki corporate message database ke 'festival_messages' table mein nahi hote.
-      const corporateMsgs: any = {
-        SYSTEM_UPDATE: { t: "New System Update 🚀", m: "We have upgraded our servers for a faster experience. | Humne system ko behtar banaya hai." },
-        MAINTENANCE: { t: "Maintenance Alert ⚙️", m: "We are performing routine maintenance for better stability. | System ki safai chal rahi hai." },
-        EMERGENCY: { t: "Emergency Alert ⚠️", m: "Please take immediate note of this critical system message. | Mahatvapurn suchna." },
-        SPECIAL_OFFER: { t: "Exclusive Offer 🎁", m: "Unlock premium features at special prices today! | Naye offers ka labh uthayein." },
-        ANNOUNCEMENT: { t: "Announcement 📢", m: "Important update for all society members. Check details below. | Sabhi ke liye sandesh." }
+  const publishBroadcast = async () => {
+    try {
+      setLoading(true);
+      const finalKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
+      const payload = {
+        festival_key: finalKey,
+        language_mode: form.language_mode,
+        full_screen_animation: form.full_screen_animation,
+        dashboard_overlay: form.dashboard_overlay,
+        preview_mode: true 
       };
 
-      // 3. Set Final Message based on type
-      const msg = corporateMsgs[festival_key] || corporateMsgs.ANNOUNCEMENT;
-      finalTitle = msg.t;
-      finalMsg = msg.m;
+      const res = await fetch('/api/admin/broadcast-lab', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-    } else {
-      // ━━━ PATH B: FESTIVALS ━━━
-      const msgRes = await client.query('SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1', [festival_key]);
-      const assetRes = await client.query('SELECT * FROM festival_assets WHERE festival_key = $1 LIMIT 1', [festival_key]);
-      
-      if (!msgRes.rows.length) throw new Error(`Message not found for ${festival_key}`);
-      
-      const festMsg = msgRes.rows[0];
-      finalAssets = assetRes.rows[0] || {};
-      
-      if (language_mode === 'HI') {
-        finalTitle = festMsg.title_hi || festMsg.default_title;
-        finalMsg = festMsg.message_hi || festMsg.default_message;
-      } else if (language_mode === 'EN') {
-        finalTitle = festMsg.title_en || festMsg.default_title;
-        finalMsg = festMsg.message_en || festMsg.default_message;
-      } else {
-        finalTitle = (festMsg.title_hi || '') + " | " + (festMsg.title_en || '');
-        finalMsg = (festMsg.message_hi || '') + " | " + (festMsg.message_en || '');
-      }
+      if (!res.ok) throw new Error("API Error");
+      toast.success(`${finalKey} Generated!`);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // 🚀 STEP 2: MASTER INSERT INTO BROADCASTS TABLE
-    const insertQuery = `
-      INSERT INTO broadcasts (
-        title, message, festival_key, type, style, theme_color,
-        hero_visual, animation_theme, layout_template,
-        resolved_title, resolved_message, is_active, 
-        hero_enabled, preview_mode, created_at, content_mode
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, true, $12, NOW(), 'AUTO')
-      RETURNING *;
-    `;
+  return (
+    <div className="p-8 space-y-8 bg-slate-50 min-h-screen">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 flex items-center gap-3">
+            <FlaskConical className="text-blue-600" /> Broadcast Lab V2
+          </h1>
+        </div>
+        <Link href="/broadcast-preview" target="_blank">
+          <Button variant="outline" className="gap-2">Preview <ExternalLink className="w-4 h-4" /></Button>
+        </Link>
+      </div>
 
-    const values = [
-      finalTitle,
-      finalMsg,
-      festival_key,
-      isCorporate ? 'INFO' : 'FESTIVAL',
-      isCorporate ? 'BANNER' : 'POPUP',
-      finalAssets.theme_color || '#2563EB',
-      finalAssets.hero_visual || 'GEAR_ICON',
-      finalAssets.animation_theme || 'NONE',
-      finalAssets.layout_template || 'CORPORATE_BANNER',
-      finalTitle,
-      finalMsg,
-      preview_mode ?? true
-    ];
+      <div className="grid lg:grid-cols-2 gap-8">
+        <Card className="shadow-xl rounded-[2rem] overflow-hidden">
+          <CardHeader className="bg-slate-900 text-white"><CardTitle>Configuration</CardTitle></CardHeader>
+          <CardContent className="p-8 space-y-6">
+            <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                <SelectContent>{BROADCAST_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            </Select>
 
-    const result = await client.query(insertQuery, values);
-    await client.end();
+            {form.type === 'FESTIVAL' && (
+              <Select value={form.festival_key} onValueChange={(v) => setForm({ ...form, festival_key: v })}>
+                <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                <SelectContent className="max-h-60">{FESTIVALS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
 
-    return NextResponse.json({ success: true, data: result.rows[0] });
+            <Button className="w-full h-16 bg-blue-600 rounded-2xl text-xl font-bold" onClick={publishBroadcast} disabled={loading}>
+              {loading ? <Loader2 className="animate-spin" /> : 'GENERATE PREVIEW'}
+            </Button>
+          </CardContent>
+        </Card>
 
-  } catch (error: any) {
-    if (client) await client.end();
-    console.error("Lab API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+        <Card className="rounded-[2rem] bg-slate-900 text-white flex items-center justify-center p-12 text-center">
+            <div className="space-y-4">
+              <Sparkles className="w-12 h-12 mx-auto text-yellow-400" />
+              <h2 className="text-3xl font-black uppercase italic text-blue-400">{form.type === 'FESTIVAL' ? form.festival_key : form.type}</h2>
+              <p className="text-slate-400">Ready to test in V2 Engine.</p>
+            </div>
+        </Card>
+      </div>
+    </div>
+  );
 }
