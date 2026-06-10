@@ -35,15 +35,26 @@ export default function BroadcastLabPage() {
   const publishBroadcast = async () => {
     try {
       setLoading(true);
-      const finalKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
 
-      const payload = {
-        festival_key: finalKey,
-        language_mode: form.language_mode,
-        full_screen_animation: form.full_screen_animation,
-        dashboard_overlay: form.dashboard_overlay,
-        preview_mode: true 
-      };
+      // ✅ UPDATED PAYLOAD LOGIC
+      const payload =
+        form.type === 'FESTIVAL'
+          ? {
+              festival_key: form.festival_key,
+              language_mode: form.language_mode,
+              full_screen_animation: form.full_screen_animation,
+              dashboard_overlay: form.dashboard_overlay,
+              preview_mode: true
+            }
+          : {
+              broadcast_type: form.type,
+              language_mode: form.language_mode,
+              full_screen_animation: form.full_screen_animation,
+              dashboard_overlay: form.dashboard_overlay,
+              preview_mode: true
+            };
+      
+      console.log('PAYLOAD =>', payload); // ✅ DEBUG LOG
 
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
@@ -56,7 +67,13 @@ export default function BroadcastLabPage() {
         throw new Error(errData.error || "Generation failed");
       }
 
-      toast.success(`${finalKey} Generated! Check Preview.`);
+      // ✅ UPDATED TOAST MESSAGE
+      toast.success(
+        `${form.type === 'FESTIVAL'
+            ? form.festival_key
+            : form.type
+         } Generated! Check Preview.`
+      );
     } catch (err: any) {
       console.error(err);
       toast.error(err.message);
