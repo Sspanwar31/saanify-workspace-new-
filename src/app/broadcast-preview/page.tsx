@@ -2,187 +2,166 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import FestivalAnimationEngine from '@/components/festival/FestivalAnimationEngine';
-import FestivalHeroEngine from '@/components/festival/FestivalHeroEngine';
-import { X, Sparkles, ShieldCheck } from 'lucide-react';
+// 🚀 V2 ENGINES IMPORT
+import AnimationFactory from '@/components/festival/v2/AnimationFactory';
+import HeroFactory from '@/components/festival/v2/HeroFactory';
+import { X, Sparkles, ShieldCheck, Trash2, RefreshCw, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export default function BroadcastPreviewPage() {
   const [broadcast, setBroadcast] = useState<any>(null);
+  const [allPreviews, setAllPreviews] = useState<any[]>([]); // 👈 List of all test broadcasts
   const [loading, setLoading] = useState(true);
   const [showTopBanner, setShowTopBanner] = useState(false);
   const [isCardVisible, setIsCardVisible] = useState(true);
 
-  useEffect(() => { loadBroadcast(); }, []);
+  useEffect(() => { loadBroadcasts(); }, []);
 
-  const loadBroadcast = async () => {
+  // ━━━ 1. LOAD ALL PREVIEWS ━━━
+  const loadBroadcasts = async () => {
     try {
-      const { data } = await supabase.from('broadcasts').select('*').eq('preview_mode', true).order('created_at', { ascending: false }).limit(1).single();
-      setBroadcast(data);
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+      const { data } = await supabase.from('broadcasts')
+        .select('*')
+        .eq('preview_mode', true)
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        setAllPreviews(data);
+        setBroadcast(data[0]); // Default to latest
+      }
+    } catch (err) { console.error(err); } 
+    finally { setLoading(false); }
   };
 
-  if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white font-bold tracking-widest animate-pulse">LOADING LAB V2...</div>;
-  if (!broadcast) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white">No Active Preview Found</div>;
+  // ━━━ 2. DELETE LOGIC (Clean up the table) ━━━
+  const clearLabData = async () => {
+    if(!confirm("Are you sure? This will delete ALL test previews from database.")) return;
+    
+    const { error } = await supabase.from('broadcasts').delete().eq('preview_mode', true);
+    if (!error) {
+      toast.success("Lab V2 Cleared!");
+      setBroadcast(null);
+      setAllPreviews([]);
+    } else {
+      toast.error("Failed to clear data");
+    }
+  };
 
-  const isHoli = broadcast.festival_key === 'HOLI';
+  if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white font-bold animate-pulse">SAANIFY LAB V2 LOADING...</div>;
   
-  // Theme Color Logic
-  const themeColor = broadcast.theme_color || (isHoli ? '#db2777' : '#fbbf24');
-  
-  // Gradient for Buttons and Borders
-  const themeGradient = isHoli 
-    ? 'linear-gradient(135deg, #db2777 0%, #7c3aed 100%)'
-    : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+  if (!broadcast) return (
+    <div className="h-screen bg-[#020617] flex flex-col items-center justify-center text-white gap-4">
+      <p>No active previews found in the Lab.</p>
+      <Button onClick={loadBroadcasts} variant="outline">Retry <RefreshCw className="ml-2 w-4 h-4"/></Button>
+    </div>
+  );
 
-  const titleParts = (broadcast.resolved_title || broadcast.title)?.split('|') || [];
+  // ━━━ THEME LOGIC ━━━
+  const themeColor = broadcast.theme_color || '#fbbf24';
+  const themeGradient = `linear-gradient(135deg, ${themeColor} 0%, #4f46e5 100%)`;
   const msgParts = (broadcast.resolved_message || broadcast.message)?.split('|') || [];
-  
-  // Dynamic CTA Text
-  const ctaText = broadcast.resolved_cta || broadcast.cta_text || 'CELEBRATE NOW';
-
-  const handleCelebrate = () => {
-    setShowTopBanner(true);
-    setIsCardVisible(false);
-  };
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins selection:bg-pink-500/30">
+    <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins">
       
-      {/* 1. BACKGROUND AMBIANCE & ANIMATION */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#020617] to-[#020617]" />
-      <FestivalAnimationEngine animationTheme={broadcast.animation_theme} />
+      {/* 🚀 V2 ANIMATION ENGINE (Called from Factory) */}
+      <AnimationFactory theme={broadcast.animation_theme} />
 
-      {/* 2. TOP SUCCESS BANNER (Clean & Direct Message) */}
+      {/* TOP SUCCESS BANNER */}
       {showTopBanner && (
-        <div 
-          className="fixed top-0 left-0 w-full z-[50] py-4 px-6 shadow-2xl animate-in slide-in-from-top duration-500 backdrop-blur-md border-b border-white/20"
-          style={{ backgroundColor: themeColor }}
-        >
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-3">
-             <Sparkles className="w-6 h-6 text-white animate-spin-slow" />
-             <p className="text-white font-bold text-lg md:text-xl tracking-wide text-center leading-tight">
-                {broadcast.resolved_message || msgParts[0] || 'Enjoy the Festival!'}
-             </p>
+        <div className="fixed top-0 left-0 w-full z-[100] py-4 px-6 animate-in slide-in-from-top duration-700 shadow-2xl"
+          style={{ background: themeGradient }}>
+          <p className="text-white font-black text-center uppercase italic drop-shadow-md">
+             SAANIFY PARIVAR: {msgParts[0]}
+          </p>
+        </div>
+      )}
+
+      {/* 🚀 THE MASTER CARD */}
+      {isCardVisible && (
+        <div className="relative w-full max-w-md transition-all duration-1000 animate-in zoom-in-95">
+          <div className="absolute -inset-2 rounded-[3rem] opacity-20 blur-2xl animate-pulse" style={{ background: themeGradient }} />
+          
+          <div className="relative bg-slate-950/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden">
+            
+            {/* HERO SECTION */}
+            <div className="relative w-full h-80 overflow-hidden flex items-center justify-center">
+                {broadcast.image_url ? (
+                  <img src={broadcast.image_url} className="w-full h-full object-cover pt-16 animate-hero-breathe" alt="Hero" />
+                ) : (
+                  /* 🚀 V2 HERO ENGINE (Called from Factory) */
+                  <div className="scale-150 pt-16">
+                     <HeroFactory visual={broadcast.hero_visual} />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent" />
+            </div>
+
+            {/* CONTENT */}
+            <div className="p-8 text-center -mt-16 relative z-10 flex flex-col items-center">
+              <div className="w-20 h-20 rounded-[1.5rem] bg-white shadow-2xl flex items-center justify-center border-4 border-slate-950 mb-6 rotate-3">
+                 <ShieldCheck className="w-10 h-10 text-blue-900" strokeWidth={3} />
+              </div>
+
+              <h1 className="text-4xl font-black uppercase italic mb-4" style={{ color: themeColor }}>
+                {broadcast.resolved_title?.split('|')[0] || broadcast.title}
+              </h1>
+              
+              <p className="text-slate-300 text-lg font-bold leading-tight opacity-90 px-4">
+                {msgParts[0]}
+              </p>
+
+              <Button 
+                onClick={() => { setShowTopBanner(true); setIsCardVisible(false); }}
+                className="w-full h-16 mt-8 rounded-[2rem] text-2xl font-black text-white shadow-2xl transition-all hover:scale-105"
+                style={{ background: themeGradient }}
+              >
+                CELEBRATE NOW 🚀
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 3. THE MASTER CARD */}
-      <div className={`relative w-full max-w-md transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isCardVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-10'}`}>
-        
-        {/* Decorative Glow Behind Card */}
-        <div className="absolute -inset-1 rounded-[2.5rem] opacity-40 blur-xl transition duration-1000"
-             style={{ background: themeGradient }} />
-
-        {/* Main Card Container */}
-        <div className="relative bg-[#0f172a]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
-          
-          {/* --- HERO IMAGE SECTION --- */}
-          <div className="relative w-full aspect-[4/3] overflow-hidden bg-slate-900">
-              {broadcast.image_url ? (
-                <img 
-                  src={broadcast.image_url} 
-                  className="hero-anim w-full h-full object-cover pt-16" 
-                  alt="Festival" 
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 pt-16">
-                   {/* Hero Engine Wrapper with Padding */}
-                   <div className="hero-anim scale-150">
-                      <FestivalHeroEngine heroVisual={broadcast.hero_visual} />
-                   </div>
-                </div>
-              )}
-              
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent" />
-              
-              {/* Brand Badge (Modern Typography & Theme Color) */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 px-5 py-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 shadow-lg z-50">
-                  <span 
-                      className="text-xs md:text-sm font-bold tracking-wide capitalize drop-shadow-md"
-                      style={{ color: themeColor }} 
-                  >
-                      Saanify Parivar
-                  </span>
-              </div>
-          </div>
-
-          {/* --- CONTENT SECTION --- */}
-          <div className="p-6 md:p-8 text-center relative z-10 flex flex-col items-center -mt-12">
-            
-            {/* Icon Circle */}
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-300 shadow-xl flex items-center justify-center border-4 border-[#0f172a] mb-5 relative z-20">
-               <ShieldCheck className="w-10 h-10 text-slate-900" strokeWidth={2.5} />
-            </div>
-
-            <div className="space-y-4 w-full">
-                {/* Main Title Only (Removed Subtitle) */}
-                <h1 
-                    className="text-3xl md:text-4xl font-extrabold leading-tight drop-shadow-sm"
-                    style={{ color: themeColor }} 
-                >
-                    {titleParts[0]}
-                </h1>
-                
-                {/* Message Body */}
-                <p className="text-slate-300 text-base md:text-lg font-normal leading-relaxed px-2">
-                    {msgParts[0]}
-                </p>
-            </div>
-
-            {/* Action Button (Dynamic Text) */}
-            <Button 
-              onClick={handleCelebrate}
-              className="w-full h-14 mt-6 rounded-2xl text-lg font-black text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl active:scale-95 border-b-4 border-white/20"
-              style={{ background: themeGradient }}
+      {/* ━━━ 🛠️ LAB V2 ADMIN TOOLBAR (Bottom Fixed) ━━━ */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 bg-white/10 backdrop-blur-xl border border-white/20 p-2 rounded-2xl shadow-2xl">
+         
+         {/* Switch Previews */}
+         <div className="flex items-center gap-2 px-3 border-r border-white/10 mr-2">
+            <Layers className="w-4 h-4 text-blue-400" />
+            <select 
+              className="bg-transparent text-white text-xs font-bold outline-none cursor-pointer"
+              onChange={(e) => setBroadcast(allPreviews.find(p => p.id === e.target.value))}
             >
-              {ctaText} <Sparkles className="w-5 h-5 ml-2 animate-pulse" />
-            </Button>
+              {allPreviews.map((p, idx) => (
+                <option key={p.id} value={p.id} className="bg-slate-900">Preview #{allPreviews.length - idx} ({p.festival_key})</option>
+              ))}
+            </select>
+         </div>
 
-          </div>
-          
-          {/* Close Button */}
-          <button 
-            onClick={() => setIsCardVisible(false)} 
-            className="absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-all backdrop-blur-sm"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+         {/* Refresh Button */}
+         <Button variant="ghost" size="icon" onClick={loadBroadcasts} className="text-white hover:bg-white/10">
+            <RefreshCw className="w-4 h-4" />
+         </Button>
 
-        </div>
+         {/* CLEAR ALL BUTTON */}
+         <Button 
+            onClick={clearLabData}
+            className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/30 rounded-xl px-4 py-2 flex items-center gap-2 transition-all font-bold text-xs"
+         >
+            <Trash2 className="w-4 h-4" /> Clear Lab V2 Data
+         </Button>
+
+         <button onClick={() => window.history.back()} className="p-2 text-white/50 hover:text-white"><X className="w-5 h-5"/></button>
       </div>
 
-      {/* --- GLOBAL STYLES & FONTS --- */}
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        
-        body, html {
-          font-family: 'Poppins', sans-serif;
-          line-height: 1.5; 
+        @keyframes hero-breathe {
+          0%, 100% { transform: scale(1.4); }
+          50% { transform: scale(1.6); }
         }
-
-        /* Hero Animation: Gentle Float */
-        .hero-anim {
-          animation: hero-float 6s ease-in-out infinite;
-        }
-
-        @keyframes hero-float {
-          0% { transform: scale(1) translateY(0px); }
-          50% { transform: scale(1.03) translateY(-10px); }
-          100% { transform: scale(1) translateY(0px); }
-        }
-        
-        /* Slow spin for icon */
-        .animate-spin-slow {
-          animation: spin 3s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        .animate-hero-breathe { animation: hero-breathe 4s infinite ease-in-out; }
       `}</style>
     </div>
   );
