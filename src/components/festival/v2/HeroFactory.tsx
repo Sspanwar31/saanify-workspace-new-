@@ -1,6 +1,6 @@
 'use client';
-import dynamic from 'next/dynamic';
-import * as LucideIcons from 'lucide-react'; // Saare icons ek saath le liye
+
+import * as LucideIcons from 'lucide-react';
 import RoyalDiya from '../heroes/RoyalDiya';
 import GaneshaHero from '../heroes/GaneshaHero';
 import DurgaHero from '../heroes/DurgaHero';
@@ -10,8 +10,9 @@ import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
 
 export default function HeroFactory({ visual }: { visual: string }) {
-  // 1. PREMIUM CUSTOM COMPONENTS MAP
-  const CustomComponents: any = {
+  
+  // 1. 🏆 PREMIUM CUSTOM COMPONENTS (Exact DB Keys)
+  const PremiumComponents: any = {
     'ROYAL_DIYA': <RoyalDiya />,
     'GANESHA': <GaneshaHero />,
     'MAA_DURGA': <DurgaHero />,
@@ -22,19 +23,60 @@ export default function HeroFactory({ visual }: { visual: string }) {
     'MOON_SIEVE': <MoonHero />,
   };
 
-  // 2. CHECK FOR CUSTOM COMPONENT FIRST
-  if (CustomComponents[visual]) {
-    return <div className="scale-125 animate-hero-breathe">{CustomComponents[visual]}</div>;
+  if (PremiumComponents[visual]) {
+    return <div className="scale-125 animate-hero-breathe">{PremiumComponents[visual]}</div>;
   }
 
-  // 3. 🚀 AUTOMATIC LUCIDE MAPPING (No Hardcoding Needed)
-  // Agar visual 'FLAME' hai, toh ye Lucide se 'Flame' icon utha lega
-  const IconName = visual.charAt(0).toUpperCase() + visual.slice(1).toLowerCase().replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-  const DynamicIcon = (LucideIcons as any)[IconName] || (LucideIcons as any)[visual] || LucideIcons.Sparkles;
+  // 2. 🕉️ CULTURAL SYMBOL MAPPING (For 31 Festivals)
+  // Yeh section ensure karega ki Star ki jagah sahi icon dikhe
+  const CulturalMap: any = {
+    'KRISHNA_FLUTE': '🪈',
+    'BOW_ARROW': '🏹',
+    'LORD_RAM': '🏹',
+    'RAKHI': '🎁',
+    'KITES': '🪁',
+    'FIREWORKS': '🎆',
+    'SUN_GOD': '☀️',
+    'SUGARCANE_POT': '🏺',
+    'HANUMAN_GADA': '🔱',
+    'TRISHUL_DAMRU': '🔱',
+    'KHANDA': '☬',
+    'INDIA_GATE': '🏛️'
+  };
+
+  if (CulturalMap[visual]) {
+    return (
+      <div className="flex items-center justify-center p-6 bg-white/10 backdrop-blur-2xl rounded-[3rem] border border-white/20 shadow-2xl rotate-3 animate-hero-breathe">
+        <span className="text-8xl drop-shadow-2xl filter brightness-110">{CulturalMap[visual]}</span>
+      </div>
+    );
+  }
+
+  // 3. 🚀 CORPORATE & BROADCAST MAPPING (Lucide Icons)
+  // Automatic mapping to Lucide Library
+  const LucideMap: any = {
+    'BONFIRE': LucideIcons.Flame,
+    'MEGAPHONE': LucideIcons.Megaphone,
+    'SIREN': LucideIcons.AlertTriangle,
+    'GEAR_ICON': LucideIcons.Settings,
+    'GIFT_BOX': LucideIcons.Gift,
+    'CALENDAR_STAR': LucideIcons.Calendar,
+    'TOOLS_ICON': LucideIcons.Wrench
+  };
+
+  const DynamicIcon = LucideMap[visual] || LucideIcons.Sparkles;
+
+  // Icon Color logic based on visual name
+  const getIconColor = () => {
+    if(visual === 'SIREN') return 'text-red-500';
+    if(visual === 'BONFIRE') return 'text-orange-500';
+    if(visual === 'GIFT_BOX') return 'text-pink-500';
+    return 'text-white';
+  };
 
   return (
-    <div className="flex items-center justify-center p-4 bg-white/10 backdrop-blur-xl rounded-[2.5rem] border border-white/20 shadow-2xl rotate-3 animate-hero-breathe">
-       <DynamicIcon size={80} strokeWidth={1.5} className="text-white drop-shadow-2xl" />
+    <div className="flex items-center justify-center p-6 bg-white/10 backdrop-blur-2xl rounded-[3rem] border border-white/20 shadow-2xl rotate-3 animate-hero-breathe">
+       <DynamicIcon size={80} strokeWidth={1.5} className={`${getIconColor()} drop-shadow-2xl`} />
     </div>
   );
 }
