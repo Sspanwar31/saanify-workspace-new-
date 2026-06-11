@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     client = await getDbClient();
 
     const festivalKey = body.festival_key;
-    const broadcastType = body.broadcast_type; // ✅ Added broadcast_type extraction
+    const broadcastType = body.broadcast_type;
     const language_mode = body.language_mode;
     const full_screen_animation = body.full_screen_animation;
     const dashboard_overlay = body.dashboard_overlay;
@@ -127,7 +127,12 @@ export async function POST(req: Request) {
         'Message';
     }
 
-    // ━━━ INSERT QUERY (Fixed #1) ━━━
+    // ━━━ CTA LOGIC (From DB Assets) ━━━
+    const resolved_cta = language_mode === 'HI' 
+      ? (asset?.cta_hi || 'अभी मनाएं') 
+      : (asset?.cta_en || 'CELEBRATE NOW');
+
+    // ━━━ INSERT QUERY ━━━
     const insertQuery = `
 INSERT INTO broadcasts (
   title,
@@ -141,6 +146,7 @@ INSERT INTO broadcasts (
   layout_template,
   animation_theme,
   theme_color,
+  resolved_cta,
   resolved_title,
   resolved_message,
   preview_mode,
@@ -150,7 +156,7 @@ INSERT INTO broadcasts (
   created_at
 )
 VALUES (
-  $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+  $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
   true,true,true,'AUTO',NOW()
 )
 RETURNING *;
@@ -163,14 +169,15 @@ RETURNING *;
       language_mode,
       full_screen_animation,
       dashboard_overlay,
-      asset?.hero_visual || 'GEAR_ICON',
+      asset?.hero_visual || 'SPARKLES', // 👈 Updated default
       asset?.background_image ||
         asset?.web_image ||
         asset?.asset_url ||
         null,
       asset?.layout_template || null,
       asset?.animation_theme || 'NONE',
-      asset?.theme_color || '#2563EB',
+      asset?.theme_color || '#fbbf24', // 👈 Updated default
+      resolved_cta, // 👈 Added from DB logic
       title,
       message
     ];
