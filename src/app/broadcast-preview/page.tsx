@@ -38,9 +38,11 @@ return (
 <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins selection:bg-pink-500/30">
 code
 Code
-{/* 1. BACKGROUND AMBIANCE & ANIMATION */}
-  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#020617] to-[#020617]" />
-  <FestivalAnimationEngine animationTheme={broadcast.animation_theme} />
+ {/* 1. BACKGROUND AMBIANCE & ANIMATION */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#020617] to-[#020617]" />
+      
+      {/* 🚀 FIXED: Ab yahan AnimationFactory call ho rahi hai */}
+      <AnimationFactory theme={broadcast.animation_theme} />
 
   {/* 2. TOP SUCCESS BANNER (Clean & Direct Message) */}
   {showTopBanner && (
@@ -79,11 +81,11 @@ Code
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 pt-16">
                {/* Hero Engine Wrapper with Padding */}
                <div className="hero-anim scale-150">
-                  <FestivalHeroEngine heroVisual={broadcast.hero_visual} />
-               </div>
-            </div>
-          )}
-          
+                 {/* 🚀 FIXED: Ab yahan HeroFactory call ho rahi hai */}
+                      <HeroFactory visual={broadcast.hero_visual} />
+                   </div>
+                </div>
+              )}
           {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent" />
           
