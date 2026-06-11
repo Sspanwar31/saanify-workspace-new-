@@ -1,8 +1,8 @@
   'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import FestivalAnimationEngine from '@/components/festival/FestivalAnimationEngine';
-import FestivalHeroEngine from '@/components/festival/FestivalHeroEngine';
+import AnimationFactory from '@/components/festival/v2/AnimationFactory';
+import HeroFactory from '@/components/festival/v2/HeroFactory';
 import { X, Sparkles, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 export default function BroadcastPreviewPage() {
