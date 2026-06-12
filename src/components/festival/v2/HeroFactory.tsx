@@ -31,7 +31,7 @@ export default function HeroFactory({ visual }: { visual: string }) {
 
   // 1. 🏆 PREMIUM CUSTOM COMPONENTS (SVGs)
   const PremiumComponents: any = {
-    'ROYAL_DIYA': <div className="scale-[1.8] drop-shadow-[0_0_30px_rgba(255,165,0,0.5)]"><RoyalDiya /></div>,
+    'ROYAL_DIYA': <div className="scale-110" drop-shadow-[0_0_30px_rgba(255,165,0,0.5)]"><RoyalDiya /></div>,
     'GANESHA': <div className="scale-[1.8] drop-shadow-[0_0_30px_rgba(255,165,0,0.5)]"><GaneshaHero /></div>,
     'MAA_DURGA': <div className="scale-[1.8] drop-shadow-[0_0_30px_rgba(255,0,0,0.5)]"><DurgaHero /></div>,
     'VIBRANT_PALETTE': <div className="scale-[1.8] drop-shadow-[0_0_30px_rgba(255,0,100,0.5)]"><HoliPalette /></div>,
