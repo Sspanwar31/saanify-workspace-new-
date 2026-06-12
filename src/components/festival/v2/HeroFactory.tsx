@@ -1,5 +1,4 @@
 'use client';
-
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import RoyalDiya from '../heroes/RoyalDiya';
@@ -13,10 +12,16 @@ import MoonHero from '../heroes/MoonHero';
 export default function HeroFactory({ config }: { config: any }) {
   if (!config) return null;
 
-  const { render_type, visual_key, image_url, scale = 1, glow } = config;
-  const glowColor = glow?.color || "rgba(255,255,255,0.15)";
+  const { render_type, visual_key, image_url, scale = 1 } = config;
 
-  // ━━━ 1. MODE: COMPONENT (Aapka purana animated code) ━━━
+  // 🚀 MASTER SCALE WRAPPER (Apply scale to everything)
+  const Wrapper = ({ children }: any) => (
+    <div style={{ transform: `scale(${scale})` }} className="transition-all duration-500 ease-out flex items-center justify-center">
+      {children}
+    </div>
+  );
+
+  // 1. COMPONENT MODE
   if (render_type === 'COMPONENT') {
     const PremiumMap: any = {
       'ROYAL_DIYA': <RoyalDiya />,
@@ -26,43 +31,36 @@ export default function HeroFactory({ config }: { config: any }) {
       'ASHOKA_CHAKRA': <AshokaChakra />,
       'CHRISTMAS_TREE': <ChristmasHero />,
       'CRESCENT_MOON': <MoonHero />,
+      'MOON_SIEVE': <MoonHero />,
     };
+    return <Wrapper>{PremiumMap[visual_key] || <div className="text-4xl text-white">Select Template</div>}</Wrapper>;
+  }
 
+  // 2. LUCIDE MODE (Auto-Fix Case Sensitivity)
+  if (render_type === 'LUCIDE') {
+    // Force PascalCase (flame -> Flame)
+    const formattedKey = visual_key ? visual_key.charAt(0).toUpperCase() + visual_key.slice(1).toLowerCase() : 'Sparkles';
+    const DynamicIcon = (LucideIcons as any)[formattedKey] || LucideIcons.Sparkles;
+    
     return (
-      <div className="relative flex items-center justify-center scale-125 animate-hero-breathe">
-         {PremiumMap[visual_key] || <div className="text-7xl">✨</div>}
-      </div>
+      <Wrapper>
+        <div className="p-8 bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/20 shadow-2xl">
+           <DynamicIcon size={100} strokeWidth={1} className="text-white drop-shadow-2xl" />
+        </div>
+      </Wrapper>
     );
   }
 
-  // ━━━ 2. MODE: IMAGE (Directly from Database URL) ━━━
+  // 3. IMAGE MODE
   if (render_type === 'IMAGE' && image_url) {
     return (
-      <div className="relative group">
-        <div className="absolute inset-0 blur-3xl opacity-30 bg-white/20 rounded-full" />
-        <div className="relative z-10 w-64 h-64 rounded-[3rem] overflow-hidden border-4 border-white/10 shadow-2xl animate-hero-breathe">
-           <img 
-             src={image_url} 
-             className="w-full h-full object-cover" 
-             style={{ transform: `scale(${scale})` }}
-             alt="Festival Visual" 
-           />
+      <Wrapper>
+        <div className="w-64 h-64 rounded-[3.5rem] overflow-hidden border-4 border-white/10 shadow-2xl">
+           <img src={image_url} className="w-full h-full object-cover" alt="Festival" />
         </div>
-      </div>
+      </Wrapper>
     );
   }
 
-  // ━━━ 3. MODE: LUCIDE (Dynamic Library Load) ━━━
-  if (render_type === 'LUCIDE') {
-    const DynamicIcon = (LucideIcons as any)[visual_key] || LucideIcons.Sparkles;
-    return (
-      <div className="relative flex items-center justify-center p-8 bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-2xl animate-hero-breathe"
-           style={{ transform: `scale(${scale})` }}>
-         <div className="absolute inset-0 blur-3xl opacity-20 bg-blue-500 rounded-full" />
-         <DynamicIcon size={100} strokeWidth={1} className="text-white drop-shadow-2xl" />
-      </div>
-    );
-  }
-
-  return <div className="text-6xl animate-pulse">✨</div>;
+  return <div className="text-4xl animate-pulse text-white/20">✨</div>;
 }
