@@ -32,8 +32,8 @@ export default function HeroFactory({ visual }: { visual: string }) {
 
   // 1. 🏆 PREMIUM CUSTOM COMPONENTS (Scales Adjusted to prevent "Too Big" issue)
   const PremiumComponents: any = {
-    // Diya ko scale-110 rakha hai kyunki wo pehle se bada tha
-    'ROYAL_DIYA': <div className="transform scale-110 transition-transform"><RoyalDiya /></div>,
+    // Diya ko scale-100 rakha hai kyunki wo pehle se bada tha
+    'ROYAL_DIYA': <div className="transform scale-100 transition-transform"><RoyalDiya /></div>,
     
     // Baaki components ko scale-150 (1.5x) rakha hai, scale-180 nahi
     'GANESHA': <div className="transform scale-150"><GaneshaHero /></div>,
@@ -41,10 +41,10 @@ export default function HeroFactory({ visual }: { visual: string }) {
     'VIBRANT_PALETTE': <div className="transform scale-150"><HoliPalette /></div>,
     
     // Normal size components
-    'ASHOKA_CHAKRA': <div className="transform scale-125"><AshokaChakra /></div>,
-    'CHRISTMAS_TREE': <div className="transform scale-125"><ChristmasHero /></div>,
-    'CRESCENT_MOON': <div className="transform scale-125"><MoonHero /></div>,
-    'MOON_SIEVE': <div className="transform scale-125"><MoonHero /></div>,
+    'ASHOKA_CHAKRA': <div className="transform scale-100"><AshokaChakra /></div>,
+    'CHRISTMAS_TREE': <div className="transform scale-100"><ChristmasHero /></div>,
+    'CRESCENT_MOON': <div className="transform scale-100"><MoonHero /></div>,
+    'MOON_SIEVE': <div className="transform scale-100"><MoonHero /></div>,
   };
 
   if (PremiumComponents[visual]) {
