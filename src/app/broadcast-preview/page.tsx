@@ -6,7 +6,7 @@ import AnimationFactory from '@/components/festival/v2/AnimationFactory';
 import HeroFactory from '@/components/festival/v2/HeroFactory';
 import { X, Sparkles, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner'; // ✅ Added import for the new error handling
+import { toast } from 'sonner';
 
 export default function BroadcastPreviewPage() {
   const [broadcast, setBroadcast] = useState<any>(null);
@@ -102,18 +102,17 @@ export default function BroadcastPreviewPage() {
               {broadcast.image_url ? (
                 <img 
                   src={broadcast.image_url} 
-                  className="hero-anim w-full h-full object-cover pt-16" 
+                  className="hero-anim w-full h-full object-cover" 
                   alt="Festival" 
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 pt-16">
-                   {/* Hero Engine Wrapper with Padding */}
-                   <div className="hero-anim scale-150">
-                     {/* 🚀 FIXED: Ab yahan HeroFactory call ho rahi hai */}
-                          <HeroFactory visual={broadcast.hero_visual} />
-                       </div>
-                    </div>
-                  )}
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 relative">
+                   {/* ✅ FIXED: Removed pt-16 & scale-150. Now it centers perfectly. */}
+                   <div className="hero-anim scale-110">
+                        <HeroFactory visual={broadcast.hero_visual} />
+                   </div>
+                </div>
+              )}
               
               {/* Gradient Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent" />
