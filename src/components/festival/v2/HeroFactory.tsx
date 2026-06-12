@@ -35,10 +35,10 @@ export default function HeroFactory({ visual }: { visual: string }) {
     // Diya ko scale-100 rakha hai kyunki wo pehle se bada tha
     'ROYAL_DIYA': <div className="transform scale-100 transition-transform"><RoyalDiya /></div>,
     
-    // Baaki components ko scale-150 (1.5x) rakha hai, scale-180 nahi
-    'GANESHA': <div className="transform scale-150"><GaneshaHero /></div>,
-    'MAA_DURGA': <div className="transform scale-150"><DurgaHero /></div>,
-    'VIBRANT_PALETTE': <div className="transform scale-150"><HoliPalette /></div>,
+    // Baaki components ko scale-100 (1.5x) rakha hai, scale-150 nahi
+    'GANESHA': <div className="transform scale-100"><GaneshaHero /></div>,
+    'MAA_DURGA': <div className="transform scale-100"><DurgaHero /></div>,
+    'VIBRANT_PALETTE': <div className="transform scale-100"><HoliPalette /></div>,
     
     // Normal size components
     'ASHOKA_CHAKRA': <div className="transform scale-100"><AshokaChakra /></div>,
