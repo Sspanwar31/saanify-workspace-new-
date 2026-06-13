@@ -9,67 +9,78 @@ import AshokaChakra from '../heroes/AshokaChakra';
 import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
 
-export default function HeroFactory({ config }: { config: any }) {
+// themeColor ko optional (?) rakha hai taaki purane code mein error na aaye
+export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config: any, themeColor?: string }) {
   if (!config) return null;
 
-  const { render_type, visual_key, image_url, scale = 1 } = config;
+  const { render_type, visual_key, image_url, scale = 1, speed = 4 } = config;
 
-  // 🚀 MASTER SCALE WRAPPER (Apply scale to everything)
-  const Wrapper = ({ children }: any) => (
-    <div style={{ transform: `scale(${scale})` }} className="transition-all duration-500 ease-out flex items-center justify-center">
-      {children}
+  // 🚀 Har mode ke liye animation duration fix kar di
+  const animationStyle = { 
+    animationDuration: `${speed}s`,
+    transform: `scale(${scale})`
+  };
+
+  return (
+    <div className="relative flex flex-col items-center justify-center w-full h-full p-6 overflow-visible">
+      
+      {/* 🏆 LUXURY BRANDING: Golden Gradient & Floating Style */}
+      <div className="absolute top-0 w-full flex justify-center -translate-y-8 z-50">
+          <span className="text-[9px] font-black uppercase tracking-[12px] italic text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-500 to-amber-200 drop-shadow-[0_0_15px_rgba(245,158,11,0.6)]">
+              SAANIFY PARIVAR
+          </span>
+      </div>
+
+      {/* 🌈 DYNAMIC AURA: Piche ka glow theme color ke hisaab se badlega */}
+      <div 
+        className="absolute inset-0 blur-[80px] opacity-40 animate-pulse" 
+        style={{ 
+          background: `radial-gradient(circle, ${themeColor} 0%, transparent 70%)`,
+          animationDuration: `${speed}s` 
+        }} 
+      />
+      
+      {/* 🚀 THE HERO WRAPPER (Works for all 3 modes) */}
+      <div className="relative z-10 w-72 h-72 flex items-center justify-center animate-hero-breathe transition-all duration-500"
+           style={animationStyle}>
+         
+         {/* MODE 1: COMPONENT */}
+         {render_type === 'COMPONENT' && (
+           <div className="scale-125">
+              {{
+                'ROYAL_DIYA': <RoyalDiya />,
+                'GANESHA': <GaneshaHero />,
+                'MAA_DURGA': <DurgaHero />,
+                'VIBRANT_PALETTE': <HoliPalette />,
+                'ASHOKA_CHAKRA': <AshokaChakra />,
+                'CHRISTMAS_TREE': <ChristmasHero />,
+                'CRESCENT_MOON': <MoonHero />
+              }[visual_key] || <LucideIcons.Sparkles size={100} className="text-white" />}
+           </div>
+         )}
+
+         {/* MODE 2: LUCIDE */}
+         {render_type === 'LUCIDE' && (() => {
+            const formatted = visual_key ? visual_key.charAt(0).toUpperCase() + visual_key.slice(1).toLowerCase() : 'Sparkles';
+            const Icon = (LucideIcons as any)[formatted] || LucideIcons.Sparkles;
+            return <Icon size={120} strokeWidth={1} className="text-white drop-shadow-2xl" />;
+         })()}
+
+         {/* MODE 3: IMAGE */}
+         {render_type === 'IMAGE' && image_url && (
+           <div className="w-full h-full p-4">
+             <img src={image_url} className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]" alt="Festival" />
+           </div>
+         )}
+      </div>
+
+      <style jsx global>{`
+        @keyframes hero-breathe {
+          0%, 100% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(1.08); filter: brightness(1.2); }
+        }
+        .animate-hero-breathe { animation: hero-breathe linear infinite; }
+      `}</style>
     </div>
   );
-
-  // 1. COMPONENT MODE
-  if (render_type === 'COMPONENT') {
-    const PremiumMap: any = {
-      'ROYAL_DIYA': <RoyalDiya />,
-      'GANESHA': <GaneshaHero />,
-      'MAA_DURGA': <DurgaHero />,
-      'VIBRANT_PALETTE': <HoliPalette />,
-      'ASHOKA_CHAKRA': <AshokaChakra />,
-      'CHRISTMAS_TREE': <ChristmasHero />,
-      'CRESCENT_MOON': <MoonHero />,
-      'MOON_SIEVE': <MoonHero />,
-    };
-    return <Wrapper>{PremiumMap[visual_key] || <div className="text-4xl text-white">Select Template</div>}</Wrapper>;
-  }
-
-  // 2. LUCIDE MODE (Auto-Fix Case Sensitivity)
-  if (render_type === 'LUCIDE') {
-    // Force PascalCase (flame -> Flame)
-    const formattedKey = visual_key ? visual_key.charAt(0).toUpperCase() + visual_key.slice(1).toLowerCase() : 'Sparkles';
-    const DynamicIcon = (LucideIcons as any)[formattedKey] || LucideIcons.Sparkles;
-    
-    return (
-      <Wrapper>
-        <div className="p-8 bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/20 shadow-2xl">
-           <DynamicIcon size={100} strokeWidth={1} className="text-white drop-shadow-2xl" />
-        </div>
-      </Wrapper>
-    );
-  }
-
-  // ━━━ 3. MODE: IMAGE (Updated for Auto-Fit & Animation) ━━━
-  if (render_type === 'IMAGE' && image_url) {
-    return (
-      <div className="relative flex items-center justify-center w-full h-full p-4">
-        {/* 🚀 Background Glow (Image ke piche ka rang) */}
-        <div className="absolute inset-0 blur-[60px] opacity-30 bg-white/20 rounded-full animate-pulse" />
-        
-        {/* 🚀 The Image Wrapper with Breathing Animation */}
-        <div className="relative z-10 w-72 h-72 flex items-center justify-center animate-hero-breathe overflow-visible">
-           <img 
-             src={image_url} 
-             className="max-w-full max-h-full object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.3)]" 
-             style={{ transform: `scale(${scale})` }}
-             alt="Festival Visual" 
-           />
-        </div>
-      </div>
-    );
-  }
-
-  return <div className="text-4xl animate-pulse text-white/20">✨</div>;
 }
