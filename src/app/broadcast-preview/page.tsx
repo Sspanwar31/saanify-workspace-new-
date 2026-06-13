@@ -55,6 +55,8 @@ export default function BroadcastPreviewPage() {
 
   const titleParts = (broadcast.resolved_title || broadcast.title)?.split('|') || [];
   const msgParts = (broadcast.resolved_message || broadcast.message)?.split('|') || [];
+  
+  // Language Logic: Admin panel se jo language select hogi wo ayega
   const ctaText = broadcast.resolved_cta || broadcast.cta_text || 'CELEBRATE NOW';
 
   const handleCelebrate = () => {
@@ -73,16 +75,18 @@ export default function BroadcastPreviewPage() {
       {/* 🚀 V2: Animation Engine ab JSON 'animation' key se chalega */}
       <AnimationFactory theme={heroConfig.animation || broadcast.animation_theme} />
 
-      {/* 2. TOP SUCCESS BANNER (Modernized) */}
+      {/* 2. TOP SUCCESS BANNER (Fixed Layout & Spinning Icon) */}
       {showTopBanner && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-lg z-[50] py-3 px-6 shadow-2xl animate-in slide-in-from-top duration-500 backdrop-blur-xl rounded-full border border-white/10"
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-lg z-[50] py-3 px-6 shadow-2xl animate-in slide-in-from-top duration-500 backdrop-blur-xl rounded-full border border-white/10 flex-row items-center justify-center gap-3"
              style={{ backgroundColor: `${themeColor}15`, borderColor: `${themeColor}50` }}>
-          <div className="flex items-center justify-center gap-3">
-             <Sparkles className="w-5 h-5" style={{ color: themeColor }} />
-             <p className="text-white font-bold text-sm text-center uppercase tracking-widest">
+             
+             {/* ✨ Spinning Icon Added */}
+             <Sparkles className="w-5 h-5 animate-spin-slow" style={{ color: themeColor }} />
+             
+             {/* Text: Truncate & No Wrap for Single Line */}
+             <p className="text-white font-bold text-sm text-center uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]" style={{ color: themeColor }}>
                 {msgParts[0] || 'Enjoy the Festival!'}
              </p>
-          </div>
         </div>
       )}
 
@@ -99,7 +103,6 @@ export default function BroadcastPreviewPage() {
           <div className="relative w-full aspect-[4/5] md:aspect-[4/3] overflow-hidden bg-slate-900 flex items-center justify-center group">
               
               {/* 🎨 FESTIVAL GLOW (Theme Color Shadow) */}
-              {/* Yeh div image ke peeche glow karega theme color mein */}
               <div className="absolute inset-0 opacity-40 mix-blend-screen" 
                    style={{ 
                      background: `radial-gradient(circle at 50% 30%, ${themeColor} 0%, transparent 65%)`,
@@ -111,25 +114,16 @@ export default function BroadcastPreviewPage() {
                 <img src={broadcast.image_url} className="hero-anim w-full h-full object-cover relative z-10" alt="Festival" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center relative z-10">
-                   <HeroFactory config={heroConfig} />
+                   {/* HeroFactory internal branding (SAANIFY PARIVAR) dikhega yahan */}
+                   <HeroFactory config={heroConfig} themeColor={themeColor} />
                 </div>
               )}
               
               {/* Gradient Overlay for Text Readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent/60 to-transparent z-20 pointer-events-none" />
               
-              {/* 🚀 BRAND NAME (Transparent & Modern) */}
-              {/* Black background hata diya. Direct text with heavy shadow/glows. */}
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50">
-                  <div className="relative px-6 py-2 rounded-full border border-white/10 backdrop-blur-[2px]">
-                      {/* Glow Effect Behind Text */}
-                      <div className="absolute inset-0 blur-md rounded-full opacity-70" style={{ backgroundColor: themeColor }} />
-                      {/* Text Itself */}
-                      <span className="relative block text-[11px] font-black tracking-[0.3em] uppercase text-white drop-shadow-md mix-blend-overlay">
-                          SAANIFY
-                      </span>
-                  </div>
-              </div>
+              {/* ❌ DUPLICATE BRANDING REMOVED */}
+              {/* 'SAANIFY' ka extra text yahan se hata diya gaya hai kyunki HeroFactory mein hai */}
           </div>
 
           {/* CONTENT SECTION */}
@@ -141,14 +135,16 @@ export default function BroadcastPreviewPage() {
             </div>
 
             <div className="space-y-3 w-full">
-                <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-white leading-none">
-                    <span style={{ color: themeColor }}>{titleParts[0]?.split(' ')[0]}</span> {titleParts[0]?.split(' ').slice(1).join(' ')}
+                {/* 🎨 TITLE: Ab pura title themeColor lega (Divine/Modern feel) */}
+                <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-none" style={{ color: themeColor }}>
+                    {titleParts[0]}
                 </h1>
                 <p className="text-slate-400 text-sm md:text-base font-medium leading-relaxed px-2">
                     {msgParts[0]}
                 </p>
             </div>
 
+            {/* 🎨 BUTTON: Gradient dynamic hai */}
             <Button 
               onClick={handleCelebrate}
               className="w-full h-14 mt-8 rounded-full text-lg font-bold text-white shadow-xl transition-all hover:scale-105 active:scale-95 border border-white/20 group relative overflow-hidden"
