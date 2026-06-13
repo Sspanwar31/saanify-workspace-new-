@@ -15,7 +15,6 @@ export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config
 
   const { render_type, visual_key, image_url, scale = 1, speed = 4 } = config;
 
-  // 🚀 Animation Logic: Same as before
   const animationStyle = { 
     animationDuration: `${speed}s`,
     transform: `scale(${scale})`
@@ -24,31 +23,24 @@ export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config
   return (
     <div className="relative flex flex-col items-center justify-center w-full h-full p-6 overflow-visible">
       
-      {/* 🏷️ MODERN BRAND TAG (Left Side Fix) */}
-      {/* Position: Top-Left (top-6 left-6). Design: Glass Badge Style. */}
-      <div className="absolute top-6 left-6 z-50 flex items-center gap-2 pointer-events-none">
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-black/20 backdrop-blur-md shadow-lg">
-              {/* Glowing Indicator Dot */}
-              <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse" />
-              
-              {/* Brand Text */}
-              <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/90 leading-none">
-                  SAANIFY PARIVAR
-              </span>
-          </div>
+      {/* ✨ MINIMALIST BRAND TAG (Clean & Spaced) */}
+      {/* 1. Box hata diya. 2. Letter spacing badha di (tracking-[0.4em]). */}
+      <div className="absolute top-6 left-6 z-50 select-none pointer-events-none">
+          <span className="block text-[10px] font-black uppercase tracking-[0.4em] text-white/80 drop-shadow-md leading-none">
+              SAANIFY PARIVAR
+          </span>
       </div>
 
-      {/* 🌈 DYNAMIC FESTIVAL AURA (Theme Color Fix) */}
-      {/* Yeh ab themeColor use karke festival ke mood ka glow banayega. */}
+      {/* 🌈 DYNAMIC FESTIVAL AURA */}
       <div 
         className="absolute inset-0 blur-[100px] opacity-60 animate-pulse mix-blend-screen" 
         style={{ 
           background: `radial-gradient(circle at center, ${themeColor} 0%, transparent 75%)`,
-          animationDuration: `${speed * 1.5}s` // Thoda slow hoga taaki soothing lage
+          animationDuration: `${speed * 1.5}s`
         }} 
       />
       
-      {/* 🚀 THE HERO WRAPPER (Logic Unchanged) */}
+      {/* 🚀 THE HERO WRAPPER */}
       <div className="relative z-10 w-72 h-72 flex items-center justify-center animate-hero-breathe transition-all duration-500"
            style={animationStyle}>
          
