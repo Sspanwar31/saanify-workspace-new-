@@ -42,45 +42,74 @@ export async function POST(req: Request) {
       );
       content = result.rows[0];
     }
-    // ... logic for broadcastType same ...
 
     if (!content) throw new Error(`Content not found for: ${festivalKey}`);
 
-    // ━━━ 3. TITLE & MESSAGE LOGIC ━━━
-    let title = content.title_hi || content.default_title;
-    let message = content.message_hi || content.default_message;
-    // ... apply language_mode logic as you had before ...
+    // ━━━ 3. ADVANCED LANGUAGE RESOLUTION (Updated Logic) ━━━
+    let resolvedTitle = "";
+    let resolvedMessage = "";
+    let resolvedCta = "";
 
-    // ━━━ 4. MASTER V2 INSERT ━━━
+    if (language_mode === 'HI') {
+      resolvedTitle = content.title_hi || content.default_title || 'शुभकामनाएं';
+      resolvedMessage = content.message_hi || content.default_message || 'बधाई हो';
+      resolvedCta = content.cta_hi || content.cta_text || 'अभी मनाएं';
+    } 
+    else if (language_mode === 'EN') {
+      resolvedTitle = content.title_en || content.default_title || 'Greetings';
+      resolvedMessage = content.message_en || content.default_message || 'Congratulations';
+      resolvedCta = content.cta_en || content.cta_text || 'CELEBRATE NOW';
+    } 
+    else if (language_mode === 'BOTH') {
+      // 🚀 PROFESSIONAL BILINGUAL FORMAT: Using '|' for Frontend Splitting
+      resolvedTitle = `${content.title_hi || ''} | ${content.title_en || ''}`;
+      resolvedMessage = `${content.message_hi || ''} | ${content.message_en || ''}`;
+      // Button par bhi dono bhashayein dikhane ke liye:
+      resolvedCta = `${content.cta_hi || ''} | ${content.cta_en || ''}`;
+    }
+
+    // ━━━ 4. MASTER V2 INSERT (100% Correct Column Mapping) ━━━
     const insertQuery = `
       INSERT INTO broadcasts (
-        title, message, festival_key, language_mode,
+        title, 
+        message, 
+        festival_key, 
+        language_mode,
         hero_visual, 
-        hero_config,  -- 🚀 NEW JSON COLUMN
-        theme_config, -- 🚀 NEW JSON COLUMN
+        hero_config, 
+        theme_config, 
         image_url,
-        animation_theme,
+        animation_theme, 
         theme_color,
-        resolved_title, resolved_message,
-        preview_mode, is_active, content_mode, created_at
+        resolved_title, 
+        resolved_message, 
+        resolved_cta,
+        preview_mode, 
+        is_active, 
+        content_mode, 
+        created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, true, 'AUTO', NOW())
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 
+        true, true, 'AUTO', NOW()
+      )
       RETURNING *;
     `;
 
     const values = [
-      title,
-      message,
-      festivalKey || broadcastType,
-      language_mode,
-      asset?.hero_config?.visual_key || 'SPARKLES', // Fallback for old engines
-      asset?.hero_config || {},   // 🚀 Saving full JSON to DB
-      asset?.theme_config || {},  // 🚀 Saving full JSON to DB
-      asset?.media_config?.web_image || null,
-      asset?.hero_config?.animation || 'NONE',
-      asset?.theme_config?.primary_color || '#fbbf24',
-      title,
-      message
+      resolvedTitle,               // $1
+      resolvedMessage,             // $2
+      festivalKey || broadcastType,// $3
+      language_mode,               // $4
+      asset?.hero_config?.visual_key || 'SPARKLES', // $5
+      asset?.hero_config || {},    // $6
+      asset?.theme_config || {},   // $7
+      asset?.media_config?.web_image || null, // $8
+      asset?.hero_config?.animation || 'NONE', // $9
+      asset?.theme_config?.primary_color || '#fbbf24', // $10
+      resolvedTitle,               // $11
+      resolvedMessage,             // $12
+      resolvedCta                  // $13 (New Fixed Column)
     ];
 
     const result = await client.query(insertQuery, values);
