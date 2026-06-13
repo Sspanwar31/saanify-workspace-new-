@@ -51,14 +51,23 @@ export default function HeroFactory({ config }: { config: any }) {
     );
   }
 
-  // 3. IMAGE MODE
+  // ━━━ 3. MODE: IMAGE (Updated for Auto-Fit & Animation) ━━━
   if (render_type === 'IMAGE' && image_url) {
     return (
-      <Wrapper>
-        <div className="w-64 h-64 rounded-[3.5rem] overflow-hidden border-4 border-white/10 shadow-2xl">
-           <img src={image_url} className="w-full h-full object-cover" alt="Festival" />
+      <div className="relative flex items-center justify-center w-full h-full p-4">
+        {/* 🚀 Background Glow (Image ke piche ka rang) */}
+        <div className="absolute inset-0 blur-[60px] opacity-30 bg-white/20 rounded-full animate-pulse" />
+        
+        {/* 🚀 The Image Wrapper with Breathing Animation */}
+        <div className="relative z-10 w-72 h-72 flex items-center justify-center animate-hero-breathe overflow-visible">
+           <img 
+             src={image_url} 
+             className="max-w-full max-h-full object-contain drop-shadow-[0_20px_50px_rgba(255,255,255,0.3)]" 
+             style={{ transform: `scale(${scale})` }}
+             alt="Festival Visual" 
+           />
         </div>
-      </Wrapper>
+      </div>
     );
   }
 
