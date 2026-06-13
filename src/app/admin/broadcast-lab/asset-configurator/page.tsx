@@ -17,12 +17,13 @@ export default function AssetConfigurator() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  // 🚀 V3 Logic State
+  // 🚀 V3 Logic State (Added speed: 4)
   const [config, setConfig] = useState({
     render_type: 'COMPONENT',
     visual_key: 'ROYAL_DIYA',
     image_url: '',
     scale: 1.2,
+    speed: 4, // 🚀 NEW: Default Speed
     glow: { color: 'rgba(251, 191, 36, 0.4)' }
   });
 
@@ -38,6 +39,7 @@ export default function AssetConfigurator() {
           visual_key: dbConfig.visual_key || dbConfig.component_key || 'SPARKLES',
           image_url: dbConfig.image_url || '',
           scale: dbConfig.scale || 1.2,
+          speed: dbConfig.speed || 4, // 🚀 NEW: Load speed from DB or default to 4
           glow: dbConfig.glow || { color: 'rgba(255,255,255,0.2)' }
         });
       }
@@ -53,7 +55,7 @@ export default function AssetConfigurator() {
         method: 'PATCH',
         body: JSON.stringify({
           festival_key: selectedKey,
-          hero_config: config,
+          hero_config: config, // Ab isme speed bhi save hoga
           theme_config: { primary_color: config.glow.color.includes('rgba') ? '#fbbf24' : config.glow.color }
         })
       });
@@ -99,7 +101,6 @@ export default function AssetConfigurator() {
                      onClick={() => setConfig({
                        ...config, 
                        render_type: m, 
-                       // Smart reset: Switching mode sets a default visual key so preview doesn't break
                        visual_key: m === 'COMPONENT' ? 'ROYAL_DIYA' : (m === 'LUCIDE' ? 'Sparkles' : '')
                      })}
                    >
@@ -159,26 +160,39 @@ export default function AssetConfigurator() {
                  </div>
                )}
 
-               {/* Scale Slider (From Code 1) */}
-               <div className="mt-6 space-y-2 border-t pt-4">
+               {/* 🚀 UPDATED: Sliders Section (Scale + Speed) */}
+               <div className="space-y-4 border-t pt-6">
+                  
+                  {/* SCALE SLIDER */}
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold uppercase">Size Scale: {config.scale}x</label>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setConfig({...config, scale: 1.2})}
-                      className="text-xs h-8 px-3"
-                    >
-                      Reset
-                    </Button>
+                    <label className="text-xs font-bold uppercase">Icon Scale: {config.scale}x</label>
+                    <input 
+                      type="range" 
+                      min="0.5" 
+                      max="2.5" 
+                      step="0.1" 
+                      value={config.scale} 
+                      onChange={(e) => setConfig({...config, scale: parseFloat(e.target.value)})} 
+                      className="w-1/2 accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" 
+                    />
                   </div>
-                  <input 
-                    type="range" min="0.5" max="3.0" step="0.1" 
-                    value={config.scale} 
-                    onChange={(e) => setConfig({...config, scale: parseFloat(e.target.value)})} 
-                    className="w-full h-2 bg-blue-100 rounded-lg appearance-none cursor-pointer accent-blue-600" 
-                  />
+
+                  {/* 🚀 NEW: SPEED SLIDER */}
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold uppercase">Breathe Speed: {config.speed}s</label>
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="10" 
+                      step="1" 
+                      value={config.speed || 4} 
+                      onChange={(e) => setConfig({...config, speed: parseInt(e.target.value)})} 
+                      className="w-1/2 accent-orange-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" 
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Lower is faster, Higher is slower (Smoother).</p>
                </div>
+
             </div>
 
             <Button onClick={handleSave} disabled={saving} className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-3xl text-xl font-black shadow-xl transition-all">
