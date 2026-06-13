@@ -19,42 +19,44 @@ export default function BroadcastPreviewPage() {
   const loadBroadcast = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('broadcasts')
-        .select('*')
-        .eq('preview_mode', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
+      const { data, error } = await supabase.from('broadcasts').select('*').eq('preview_mode', true).order('created_at', { ascending: false }).limit(1).single();
       if (error) throw error;
       setBroadcast(data);
-    } catch (err) { 
-      toast.error("No preview found.");
-    } finally { 
-      setLoading(false); 
-    }
+    } catch (err) { toast.error("No preview found."); } 
+    finally { setLoading(false); }
   };
 
   if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white font-bold animate-pulse tracking-[10px]">SAANIFY LAB V2</div>;
   if (!broadcast) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white">No Active Preview</div>;
 
-  // ━━━ 🚀 V2 MAPPING ━━━
-  const themeConfig = broadcast.theme_config || {};
-  const heroConfig = broadcast.hero_config || {};
-  const isHoli = broadcast.festival_key === 'HOLI';
+  // 🚀 1. UNIVERSAL THEME COLOR LOGIC
+  const getFestivalTheme = () => {
+    const key = broadcast.festival_key;
+    const dbColor = broadcast.theme_config?.primary_color || broadcast.theme_color;
+    
+    if (dbColor && dbColor !== 'DEFAULT' && dbColor !== 'default') return dbColor;
+
+    // Default Mapping agar DB mein color nahi hai
+    const colorMap: any = {
+      HOLI: '#ff0080',
+      CHRISTMAS: '#ef4444', // Red for Christmas
+      EID_UL_FITR: '#10b981',
+      EID_AL_ADHA: '#10b981',
+      REPUBLIC_DAY: '#FF9933',
+      INDEPENDENCE_DAY: '#16a34a',
+      DIWALI: '#fbbf24',
+      NEW_YEAR: '#8b5cf6'
+    };
+    return colorMap[key] || '#fbbf24'; // Default Gold
+  };
+
+  const themeColor = getFestivalTheme();
   
-  // Theme Color Base (From DB or Default)
-  const themeColor = themeConfig.primary_color || broadcast.theme_color || (isHoli ? '#ff0080' : '#fbbf24');
-  
-  const themeGradient = isHoli 
-    ? 'linear-gradient(135deg, #ff0080 0%, #7c3aed 100%)'
-    : `linear-gradient(135deg, ${themeColor} 0%, #ea580c 100%)`;
+  // 🚀 2. DYNAMIC GRADIENT (Based on Festival Mood)
+  const themeGradient = `linear-gradient(135deg, ${themeColor} 0%, #1e1b4b 100%)`;
 
   const titleParts = (broadcast.resolved_title || broadcast.title)?.split('|') || [];
   const msgParts = (broadcast.resolved_message || broadcast.message)?.split('|') || [];
-  
-  // Resolve Language-based CTA from DB
   const ctaText = broadcast.resolved_cta || 'CELEBRATE NOW';
 
   const handleCelebrate = () => {
@@ -65,35 +67,32 @@ export default function BroadcastPreviewPage() {
   return (
     <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins">
       
-      {/* 1. ANIMATION ENGINE (Always active in background) */}
-      <AnimationFactory theme={heroConfig.animation || broadcast.animation_theme} />
+      {/* BACKGROUND ANIMATION */}
+      <AnimationFactory theme={broadcast.hero_config?.animation || broadcast.animation_theme} />
 
-      {/* 2. TOP SUCCESS BANNER (Modern Floating Pill Style) */}
+      {/* 🚀 3. TOP SUCCESS BANNER (Theme-based Animation & Color) */}
       {showTopBanner && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-auto max-w-[90vw] py-4 px-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-top duration-700 backdrop-blur-2xl rounded-full border border-white/10 flex items-center gap-4"
-             style={{ background: `linear-gradient(90deg, ${themeColor}22, ${themeColor}11)`, borderColor: `${themeColor}44` }}>
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-auto max-w-[90vw] py-4 px-8 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-in slide-in-from-top duration-700 backdrop-blur-3xl rounded-full border border-white/10 flex items-center gap-4"
+             style={{ background: `${themeColor}22`, borderColor: `${themeColor}50` }}>
              
-             {/* ✨ Rotating Icon Fix */}
              <Sparkles className="w-6 h-6 animate-spin-slow shrink-0" style={{ color: themeColor }} />
              
-             {/* Single Line Centered Message */}
-             <p className="text-white font-black text-sm md:text-lg uppercase tracking-wider whitespace-nowrap overflow-hidden text-ellipsis"
+             <p className="text-white font-black text-sm md:text-lg uppercase tracking-wider whitespace-nowrap"
                 style={{ textShadow: `0 0 10px ${themeColor}66` }}>
                 SAANIFY PARIVAR: {msgParts[0]}
              </p>
         </div>
       )}
 
-      {/* 3. THE MASTER CARD */}
+      {/* 4. THE MASTER CARD */}
       <div className={`relative w-full max-w-md transition-all duration-1000 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}>
         
-        {/* Themed Outer Glow */}
-        <div className="absolute -inset-2 rounded-[3.5rem] opacity-30 blur-3xl animate-pulse"
-             style={{ background: themeGradient }} />
+        <div className="absolute -inset-2 rounded-[3.5rem] opacity-30 blur-2xl animate-pulse"
+             style={{ background: themeColor }} />
 
-        <div className="relative bg-[#020617]/80 backdrop-blur-3xl border border-white/5 rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
+        <div className="relative bg-[#020617]/90 backdrop-blur-3xl border border-white/5 rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
           
-          {/* HERO SECTION (Self-adjusting based on HeroFactory V3.2) */}
+          {/* HERO SECTION */}
           <div className="relative w-full aspect-[4/5] overflow-hidden flex items-center justify-center">
               {broadcast.image_url ? (
                 <div className="w-full h-full relative group">
@@ -101,22 +100,21 @@ export default function BroadcastPreviewPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent z-20" />
                 </div>
               ) : (
-                <HeroFactory config={heroConfig} themeColor={themeColor} />
+                <HeroFactory config={broadcast.hero_config} themeColor={themeColor} />
               )}
           </div>
 
           {/* CONTENT SECTION */}
           <div className="p-10 pt-0 text-center -mt-12 relative z-30 flex flex-col items-center">
             
-            {/* Branded Shield Icon */}
             <div className="w-20 h-20 rounded-[1.5rem] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl flex items-center justify-center mb-8 rotate-3">
                <ShieldCheck className="w-10 h-10" style={{ color: themeColor }} strokeWidth={2.5} />
             </div>
 
             <div className="space-y-4 w-full">
-                {/* 🎨 THEMED TITLE (Dynamic Gradient or Color) */}
+                {/* 🎨 FIXED THEME COLOR TITLE */}
                 <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none italic" 
-                    style={{ color: themeColor, filter: `drop-shadow(0 0 10px ${themeColor}44)` }}>
+                    style={{ color: themeColor, filter: `drop-shadow(0 0 15px ${themeColor}66)` }}>
                     {titleParts[0]}
                 </h1>
                 
@@ -125,11 +123,11 @@ export default function BroadcastPreviewPage() {
                 </p>
             </div>
 
-            {/* 🎨 THEMED BUTTON */}
+            {/* 🎨 FIXED THEME COLOR BUTTON */}
             <Button 
               onClick={handleCelebrate}
               className="w-full h-16 mt-10 rounded-[2rem] text-xl font-black text-white shadow-2xl transition-all hover:scale-105 active:scale-95 border border-white/20"
-              style={{ background: themeGradient }}
+              style={{ background: `linear-gradient(135deg, ${themeColor}, #4f46e5)` }}
             >
               {ctaText} 🚀
             </Button>
@@ -141,19 +139,9 @@ export default function BroadcastPreviewPage() {
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;900&display=swap');
-        
         body, html { font-family: 'Poppins', sans-serif !important; }
-
-        .hero-anim { 
-          animation: hero-float 6s ease-in-out infinite; 
-          animation-duration: ${heroConfig.speed || 4}s;
-        }
-
-        @keyframes hero-float { 
-          0%, 100% { transform: scale(1) translateY(0); } 
-          50% { transform: scale(1.05) translateY(-15px); } 
-        }
-        
+        .hero-anim { animation: hero-float 6s ease-in-out infinite; }
+        @keyframes hero-float { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.05) translateY(-15px); } }
         .animate-spin-slow { animation: spin 4s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
