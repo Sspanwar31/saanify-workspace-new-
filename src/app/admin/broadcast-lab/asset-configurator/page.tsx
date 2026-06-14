@@ -47,22 +47,36 @@ const VISUAL_COMPONENTS = [
   { label: "Sikh Khanda", value: "SIKH_KHANDA" }
 ];
 
-// 🚀 3. AUTO-CONFIG PRESETS (The Intelligence)
+// 🚀 3. AUTO-CONFIG PRESETS (Updated Master List - Step 1)
 const AUTO_PRESETS: any = {
   DIWALI: { bg: 'DARK_GOLD', part: 'GOLDEN_PARTICLES', comp: 'ROYAL_DIYA' },
   HOLI: { bg: 'RAINBOW', part: 'COLOR_BURST', comp: 'VIBRANT_PALETTE' },
   JANMASHTAMI: { bg: 'ROYAL_BLUE', part: 'PEACOCK_PARTICLES', comp: 'BABY_KRISHNA' },
   CHRISTMAS: { bg: 'WINTER', part: 'SNOW_PARTICLES', comp: 'XMAS_TREE' },
   REPUBLIC_DAY: { bg: 'TRICOLOR', part: 'FLAG_MOTION', comp: 'DHARMA_CHAKRA' },
+  INDEPENDENCE_DAY: { bg: 'TRICOLOR', part: 'FLAG_MOTION', comp: 'NATIONAL_PRIDE' },
+  MAKAR_SANKRANTI: { bg: 'SKY', part: 'WIND_EFFECT', comp: 'KITES_FLYING' },
   LOHRI: { bg: 'FIRE', part: 'FIRE_EMBERS', comp: 'REAL_BONFIRE' },
   MAHASHIVRATRI: { bg: 'DARK_BLUE', part: 'SMOKE_GLOW', comp: 'SHIVA_POWER' },
   DUSSEHRA: { bg: 'ORANGE_RED', part: 'FIRE_SPARKS', comp: 'RAVAN_DAHAN' },
   NAVRATRI: { bg: 'DIVINE_RED', part: 'LOTUS_PARTICLES', comp: 'DANDIYA_BEAT' },
-  EID_UL_FITR: { bg: 'EMERALD', part: 'LIGHT_RAYS', comp: 'EID_MUBARAK' }
+  DURGA_PUJA: { bg: 'DIVINE_RED', part: 'DIVINE_AURA', comp: 'DIVINE_TRISHUL' },
+  GANESH_CHATURTHI: { bg: 'SAFFRON', part: 'LOTUS_PARTICLES', comp: 'ROYAL_GANESHA' },
+  RAM_NAVAMI: { bg: 'SAFFRON', part: 'GOLDEN_AURA', comp: 'RAM_DHARMA' },
+  HANUMAN_JAYANTI: { bg: 'FIRE', part: 'DIVINE_LIGHT', comp: 'HANUMAN_GADA' },
+  KARWA_CHAUTH: { bg: 'SOFT_GOLD', part: 'ROMANTIC_LIGHTS', comp: 'MOON_SIEVE' },
+  CHHATH_PUJA: { bg: 'SUNSET', part: 'WATER_GLOW', comp: 'SUN_ARGHYA' },
+  PONGAL: { bg: 'HARVEST_GOLD', part: 'FLOATING_GRAINS', comp: 'HARVEST_POT' },
+  EID_UL_FITR: { bg: 'EMERALD', part: 'LIGHT_RAYS', comp: 'EID_MUBARAK' },
+  EID_AL_ADHA: { bg: 'EMERALD', part: 'DIVINE_AURA', comp: 'HOLY_KAABA' },
+  GURU_NANAK_JAYANTI: { bg: 'SOFT_GOLD', part: 'GOLDEN_LIGHT', comp: 'SIKH_KHANDA' },
+  NEW_YEAR: { bg: 'NIGHT', part: 'COUNTDOWN', comp: 'NY_COUNTDOWN' },
+  DEV_DEEPAWALI: { bg: 'DARK_GOLD', part: 'SPARKLES', comp: 'GANGA_GHAT_DIYA' }
 };
 
-const BACKGROUND_STYLES = ["FIRE", "SOFT_GOLD", "SOFT_PINK", "WINTER", "DARK_GOLD", "ROYAL_BLUE", "DIVINE_RED", "SAFFRON", "DIVINE_LIGHT", "EMERALD", "SKY", "RAINBOW", "NIGHT", "TRICOLOR", "HARVEST_GOLD", "SUNSET", "DARK_BLUE"];
-const OVERLAY_EFFECTS = ["FIRE_EMBERS", "ROMANTIC_LIGHTS", "THREAD_GLOW", "SNOW_PARTICLES", "FLOATING_LIGHTS", "PEACOCK_PARTICLES", "DIVINE_AURA", "GOLDEN_AURA", "COLOR_BURST", "LOTUS_PARTICLES", "FLAG_MOTION", "COUNTDOWN", "LIGHT_RAYS", "SMOKE_GLOW", "FIRE_SPARKS", "TRICOLOR_WAVES"];
+// Added missing keys to support AUTO_PRESETS logic
+const BACKGROUND_STYLES = ["FIRE", "SOFT_GOLD", "SOFT_PINK", "WINTER", "DARK_GOLD", "ROYAL_BLUE", "DIVINE_RED", "SAFFRON", "DIVINE_LIGHT", "EMERALD", "SKY", "RAINBOW", "NIGHT", "TRICOLOR", "HARVEST_GOLD", "SUNSET", "DARK_BLUE", "ORANGE_RED"];
+const OVERLAY_EFFECTS = ["FIRE_EMBERS", "ROMANTIC_LIGHTS", "THREAD_GLOW", "SNOW_PARTICLES", "FLOATING_LIGHTS", "PEACOCK_PARTICLES", "DIVINE_AURA", "GOLDEN_AURA", "COLOR_BURST", "LOTUS_PARTICLES", "FLAG_MOTION", "COUNTDOWN", "LIGHT_RAYS", "SMOKE_GLOW", "FIRE_SPARKS", "TRICOLOR_WAVES", "GOLDEN_PARTICLES", "WIND_EFFECT", "DIVINE_LIGHT", "WATER_GLOW", "FLOATING_GRAINS", "SPARKLES"];
 
 export default function AssetConfigurator() {
   const [selectedKey, setSelectedKey] = useState('DIWALI');
@@ -79,10 +93,11 @@ export default function AssetConfigurator() {
     overlay_effect: 'GOLDEN_PARTICLES'
   });
 
-  // 🔄 handle Festival Selection (Auto-Fill Logic)
+  // 🔄 handle Festival Selection (Auto-Fill Logic - Step 3)
   const handleFestivalChange = (key: string) => {
     setSelectedKey(key);
-    const preset = AUTO_PRESETS[key] || { bg: 'SOFT_GOLD', part: 'GOLDEN_PARTICLES', comp: 'ROYAL_DIYA' };
+    // Agar list mein festival mil jaye toh wo lo, warna Default Blue template dikhao
+    const preset = AUTO_PRESETS[key] || { bg: 'ROYAL_BLUE', part: 'SPARKLES', comp: 'ROYAL_DIYA' };
     
     setConfig((prev: any) => ({
       ...prev,
