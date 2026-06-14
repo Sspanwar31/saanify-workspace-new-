@@ -9,7 +9,7 @@ import AshokaChakra from '../heroes/AshokaChakra';
 import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
 
-// 🚀 1. MODERN ICON LIBRARY (Aapka Diya hua data + Premium Sizes)
+// 🚀 1. MODERN ICON LIBRARY (New Change)
 const ModernFestivalIconMap: any = {
   fire: <LucideIcons.Flame className="w-24 h-24 text-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]" />,
   moon: <LucideIcons.MoonStar className="w-24 h-24 text-indigo-300 drop-shadow-[0_0_12px_rgba(165,180,252,0.5)]" />,
@@ -63,8 +63,8 @@ export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config
   if (!config) return null;
   const { render_type, visual_key, image_url, scale = 1, speed = 4, icon_name } = config;
 
-  // 🚀 2. DYNAMIC WRAPPER
-  const LayoutWrapper = ({ children, customGlow }: any) => (
+  // 🚀 2. DYNAMIC WRAPPER (New Change - Saanify Tag Added)
+  const LayoutWrapper = ({ children }: any) => (
     <div className="relative flex flex-col items-center justify-center w-full h-full p-6 overflow-visible">
       {/* Golden Saanify Tag */}
       <div className="absolute top-6 left-8 z-50 select-none">
@@ -83,18 +83,43 @@ export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config
     </div>
   );
 
-  // ━━━ LOGIC 1: CUSTOM COMPONENTS ━━━
+  // ━━━ LOGIC 1: CUSTOM COMPONENTS (Merged Old & New for Compatibility) ━━━
   const PremiumComponents: any = {
-    'ROYAL_DIYA': <RoyalDiya />, 'GANESHA': <GaneshaHero />, 'MAA_DURGA': <DurgaHero />,
-    'VIBRANT_PALETTE': <HoliPalette />, 'ASHOKA_CHAKRA': <AshokaChakra />,
-    'CHRISTMAS_TREE': <ChristmasHero />, 'CRESCENT_MOON': <MoonHero />
+    // From New Code
+    'ROYAL_DIYA': <RoyalDiya />,
+    'GANESHA': <GaneshaHero />,
+    'MAA_DURGA': <DurgaHero />,
+    'VIBRANT_PALETTE': <HoliPalette />,
+    'ASHOKA_CHAKRA': <AshokaChakra />,
+    'CHRISTMAS_TREE': <ChristmasHero />,
+    'CRESCENT_MOON': <MoonHero />,
+    
+    // From Old Code (Aliases & Emojis Preserved)
+    'GANGA_GHAT_DIYA': <RoyalDiya />,
+    'GANESH_MURTI': <GaneshaHero />,
+    'DURGA_FACE_ART': <DurgaHero />,
+    'GULAL_EXPLOSION': <HoliPalette />,
+    'MOSQUE_CRESCENT': <MoonHero />,
+    'FULL_MOON_SIEVE': <MoonHero />,
+    
+    // High-End Branded Emojis (Preserved)
+    'BABY_KRISHNA': <span className="text-[120px] drop-shadow-2xl">🪈</span>,
+    'RAVAN_DAHAN': <span className="text-[120px] drop-shadow-2xl">🏹</span>,
+    'PREMIUM_RAKHI': <span className="text-[120px] drop-shadow-2xl">🎁</span>,
+    'KITES': <span className="text-[120px] drop-shadow-2xl">🪁</span>,
+    'REAL_BONFIRE': <span className="text-[120px] drop-shadow-2xl">🔥</span>,
+    'SUN_ARGHYA': <span className="text-[120px] drop-shadow-2xl">☀️</span>,
+    'KHANDA': <span className="text-[120px] drop-shadow-2xl">☬</span>,
+    'FIREWORKS': <span className="text-[120px] drop-shadow-2xl">🎆</span>,
+    'WAVING_TRICOLOR': <span className="text-[120px] drop-shadow-2xl">🇮🇳</span>,
+    'GOLDEN_CLOCK_2027': <span className="text-[120px] drop-shadow-2xl">🕰️</span>,
   };
 
   if (render_type === 'COMPONENT' && PremiumComponents[visual_key]) {
     return <LayoutWrapper><div className="scale-125">{PremiumComponents[visual_key]}</div></LayoutWrapper>;
   }
 
-  // ━━━ LOGIC 2: MODERN ICON MAP (THE NEW STUFF) ━━━
+  // ━━━ LOGIC 2: MODERN ICON MAP (New SVG Logic) ━━━
   const targetIcon = icon_name || visual_key?.toLowerCase();
   if (ModernFestivalIconMap[targetIcon]) {
     return <LayoutWrapper>{ModernFestivalIconMap[targetIcon]}</LayoutWrapper>;
