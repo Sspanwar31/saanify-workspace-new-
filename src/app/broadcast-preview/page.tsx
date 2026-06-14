@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
 import HeroFactory from '@/components/festival/v2/HeroFactory';
-import { X, Sparkles, ShieldCheck } from 'lucide-react';
+import { X, Sparkles, ShieldCheck, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -70,30 +70,37 @@ export default function BroadcastPreviewPage() {
       {/* BACKGROUND ANIMATION */}
       <AnimationFactory theme={broadcast.hero_config?.animation || broadcast.animation_theme} />
 
-      {/* 🚀 3. TOP SUCCESS BANNER (Theme-based Animation & Color) */}
+      {/* 🚀 3. TOP SUCCESS BANNER (Fixed Overflow & Positioning) */}
       {showTopBanner && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-auto max-w-[90vw] py-4 px-8 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-in slide-in-from-top duration-700 backdrop-blur-3xl rounded-full border border-white/10 flex items-center gap-4"
-             style={{ background: `${themeColor}22`, borderColor: `${themeColor}50` }}>
+        <div 
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-lg py-3.5 px-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)] animate-in slide-in-from-top duration-500 backdrop-blur-2xl rounded-2xl border border-white/10 flex items-center justify-center gap-3"
+          style={{ 
+            background: `linear-gradient(90deg, ${themeColor}22 0%, rgba(2,6,23,0.8) 100%)`,
+            borderColor: `${themeColor}40`,
+            boxShadow: `0 0 20px ${themeColor}20`
+          }}>
              
              <Sparkles className="w-6 h-6 animate-spin-slow shrink-0" style={{ color: themeColor }} />
              
-             <p className="text-white font-black text-sm md:text-lg uppercase tracking-wider whitespace-nowrap"
-                style={{ textShadow: `0 0 10px ${themeColor}66` }}>
+             {/* ✨ FIX: 'whitespace-normal' allows text to wrap, preventing overflow */}
+             <p className="text-white font-black text-sm md:text-base uppercase tracking-wide text-center leading-tight"
+                style={{ textShadow: `0 0 8px ${themeColor}88` }}>
                 SAANIFY PARIVAR: {msgParts[0]}
              </p>
         </div>
       )}
 
-      {/* 4. THE MASTER CARD */}
+      {/* 4. THE MASTER CARD (2027 Modern Glassmorphism) */}
       <div className={`relative w-full max-w-md transition-all duration-1000 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}>
         
-        <div className="absolute -inset-2 rounded-[3.5rem] opacity-30 blur-2xl animate-pulse"
+        {/* ✨ Modern Glow Effect behind card */}
+        <div className="absolute -inset-4 rounded-[3.5rem] opacity-20 blur-2xl transition-all duration-1000 animate-pulse"
              style={{ background: themeColor }} />
 
-        <div className="relative bg-[#020617]/90 backdrop-blur-3xl border border-white/5 rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
+        <div className="relative bg-[#020617]/80 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col">
           
           {/* HERO SECTION */}
-          <div className="relative w-full aspect-[4/5] overflow-hidden flex items-center justify-center">
+          <div className="relative w-full aspect-square overflow-hidden flex items-center justify-center">
               {broadcast.image_url ? (
                 <div className="w-full h-full relative group">
                   <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain p-8 relative z-10" alt="Hero" />
@@ -105,45 +112,54 @@ export default function BroadcastPreviewPage() {
           </div>
 
           {/* CONTENT SECTION */}
-          <div className="p-10 pt-0 text-center -mt-12 relative z-30 flex flex-col items-center">
+          <div className="p-8 pt-4 text-center relative z-30 flex flex-col items-center">
             
-            <div className="w-20 h-20 rounded-[1.5rem] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl flex items-center justify-center mb-8 rotate-3">
-               <ShieldCheck className="w-10 h-10" style={{ color: themeColor }} strokeWidth={2.5} />
+            {/* Modern Icon Badge */}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-[0_0_30px_rgba(255,255,255,0.1)] flex items-center justify-center mb-6">
+               <PartyPopper className="w-8 h-8 text-white" />
             </div>
 
-            <div className="space-y-4 w-full">
-                {/* 🎨 FIXED THEME COLOR TITLE */}
-                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none italic" 
-                    style={{ color: themeColor, filter: `drop-shadow(0 0 15px ${themeColor}66)` }}>
+            <div className="space-y-3 w-full">
+                {/* 🎨 THEME COLOR TITLE with Glow */}
+                <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none italic bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/50 drop-shadow-2xl"
+                    style={{ filter: `drop-shadow(0 0 20px ${themeColor}60)` }}>
                     {titleParts[0]}
                 </h1>
                 
-                <p className="text-slate-300 text-base md:text-lg font-bold leading-relaxed px-4 opacity-80">
+                <p className="text-slate-300 text-base md:text-lg font-medium leading-relaxed px-2">
                     {msgParts[0]}
                 </p>
             </div>
 
-            {/* 🎨 FIXED THEME COLOR BUTTON */}
+            {/* 🎨 MODERN BUTTON with Shine */}
             <Button 
               onClick={handleCelebrate}
-              className="w-full h-16 mt-10 rounded-[2rem] text-xl font-black text-white shadow-2xl transition-all hover:scale-105 active:scale-95 border border-white/20"
+              className="w-full h-16 mt-8 rounded-[1.5rem] text-xl font-black text-white shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5)] transition-all hover:scale-[1.02] active:scale-[0.98] border border-white/20 overflow-hidden relative group"
               style={{ background: `linear-gradient(135deg, ${themeColor}, #4f46e5)` }}
             >
-              {ctaText} 🚀
+              <span className="relative z-10">{ctaText} ✨</span>
+              <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
             </Button>
           </div>
           
-          <button onClick={() => setIsCardVisible(false)} className="absolute top-6 right-8 text-white/20 hover:text-white transition-all"><X className="w-7 h-7" /></button>
+          <button onClick={() => setIsCardVisible(false)} className="absolute top-4 right-4 text-white/30 hover:text-white transition-all p-2 rounded-full hover:bg-white/10"><X className="w-6 h-6" /></button>
         </div>
       </div>
 
+      {/* Modern Animation Keyframes */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;900&display=swap');
         body, html { font-family: 'Poppins', sans-serif !important; }
+        
         .hero-anim { animation: hero-float 6s ease-in-out infinite; }
-        @keyframes hero-float { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.05) translateY(-15px); } }
+        @keyframes hero-float { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.02) translateY(-10px); } }
+        
         .animate-spin-slow { animation: spin 4s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        @keyframes shimmer {
+          100% { transform: translateX(100%); }
+        }
       `}</style>
     </div>
   );
