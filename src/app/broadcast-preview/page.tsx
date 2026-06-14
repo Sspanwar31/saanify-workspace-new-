@@ -66,47 +66,50 @@ export default function BroadcastPreviewPage() {
       {/* BACKGROUND ANIMATION */}
       <AnimationFactory theme={broadcast.hero_config?.animation || broadcast.animation_theme} />
 
-      {/* 🚀 2. MODERN TOP BANNER (Fixed to Top Edge) */}
+      {/* 🚀 2. MODERN TOP BANNER (Dynamic Theme + Left Aligned) */}
       {showTopBanner && (
         <div 
-          className="fixed top-0 left-0 w-full z-[100] h-16 backdrop-blur-xl border-b border-white/5 bg-black/40 flex items-center justify-center animate-in slide-in-from-top duration-500">
-            {/* Theme Color Glow Line at bottom */}
-            <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#fbbf24] to-transparent opacity-50 animate-pulse" 
-                 style={{ backgroundImage: `linear-gradient(90deg, transparent, ${themeColor}, transparent)` }} />
+          className="fixed top-0 left-0 w-full z-[100] h-16 border-b border-white/10 flex items-center justify-start px-4 gap-3 animate-in slide-in-from-top duration-500 backdrop-blur-md"
+          style={{ 
+            // ✨ Dynamic Background: Black + Theme Color Glow Animation
+            background: `linear-gradient(90deg, rgba(2,6,23,0.9) 0%, ${themeColor}15 50%, rgba(2,6,23,0.9) 100%)`,
+            backgroundSize: '200% 100%',
+            animation: 'shimmer-bg 3s linear infinite'
+          }}>
             
-            <div className="flex items-center gap-3 px-4 w-full max-w-4xl">
-                <div className="w-2 h-2 rounded-full bg-[#fbbf24] animate-pulse shadow-[0_0_10px_#fbbf24]" 
-                     style={{ backgroundColor: themeColor, boxShadow: `0 0 10px ${themeColor}` }} />
-                
-                <p className="text-white font-bold text-xs md:text-sm uppercase tracking-[0.25em] text-center truncate w-full"
-                   style={{ textShadow: `0 0 10px ${themeColor}66` }}>
-                  SAANIFY PARIVAR: {msgParts[0]}
-                </p>
-            </div>
+            {/* Indicator Dot */}
+            <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-lg" 
+                 style={{ backgroundColor: themeColor, boxShadow: `0 0 10px ${themeColor}` }} />
+            
+            {/* ✨ Text: Left Aligned, No Truncate on container, Allow wrapping if needed but prioritize single line */}
+            <p className="text-white font-bold text-xs md:text-sm uppercase tracking-[0.2em] text-left leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
+               style={{ textShadow: `0 0 10px ${themeColor}44` }}>
+              SAANIFY PARIVAR: {msgParts[0]}
+            </p>
         </div>
       )}
 
-      {/* 3. THE MASTER CARD (Premium 2027 Glassmorphism) */}
-      <div className={`relative w-full max-w-lg transition-all duration-1000 ${isCardVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10'}`}>
+      {/* 3. THE COMPACT CARD (2027 Notification Style) */}
+      {/* Changed: max-w-lg -> max-w-sm (Small), aspect-square -> aspect-[3/4] (Portrait) */}
+      <div className={`relative w-full max-w-sm transition-all duration-700 ${isCardVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-10'}`}>
         
-        {/* 🔥 Outer Ambient Glow */}
-        <div className="absolute -inset-1 rounded-[3.5rem] opacity-30 blur-3xl animate-pulse transition-all duration-1000"
+        {/* 🔥 Outer Glow (Subtle) */}
+        <div className="absolute -inset-1 rounded-[2.5rem] opacity-20 blur-2xl animate-pulse transition-all duration-1000"
              style={{ background: themeColor }} />
 
-        <div className="relative bg-[#0f172a]/60 backdrop-blur-2xl border border-white/10 rounded-[3rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col">
+        <div className="relative bg-[#0f172a]/70 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] shadow-[0_20px_40px_-12px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
           
-          {/* HERO SECTION (Image/Component) */}
-          <div className="relative w-full aspect-square overflow-hidden flex items-center justify-center bg-gradient-to-b from-[#1e293b] to-[#0f172a]">
+          {/* HERO SECTION (Reduced Height) */}
+          <div className="relative w-full aspect-[3/4] overflow-hidden flex items-center justify-center bg-gradient-to-b from-[#1e293b] to-[#0f172a]">
               
-              {/* ✨ Divine Aura Behind Hero */}
-              <div className="absolute inset-0 opacity-40 mix-blend-screen" 
-                   style={{ background: `radial-gradient(circle at 50% 40%, ${themeColor} 0%, transparent 60%)`, filter: 'blur(40px)' }} 
+              {/* ✨ Divine Aura */}
+              <div className="absolute inset-0 opacity-30 mix-blend-screen" 
+                   style={{ background: `radial-gradient(circle at 50% 40%, ${themeColor} 0%, transparent 60%)`, filter: 'blur(30px)' }} 
               />
 
               {broadcast.image_url ? (
                 <div className="w-full h-full relative group">
-                  <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain p-8 relative z-10 drop-shadow-2xl" alt="Hero" />
-                  {/* Gradient Overlay for smooth transition to content */}
+                  <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain p-6 relative z-10 drop-shadow-xl" alt="Hero" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent z-20" />
                 </div>
               ) : (
@@ -114,43 +117,42 @@ export default function BroadcastPreviewPage() {
               )}
           </div>
 
-          {/* CONTENT SECTION */}
-          <div className="p-8 pt-2 text-center relative z-30 flex flex-col items-center">
+          {/* CONTENT SECTION (Compact) */}
+          <div className="p-6 pb-8 text-center relative z-30 flex flex-col items-center">
             
-            {/* Modern Shield Icon */}
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-md border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)] flex items-center justify-center mb-6">
-               <ShieldCheck className="w-6 h-6 text-white/80" />
+            {/* Icon */}
+            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4 shadow-inner">
+               <PartyPopper className="w-5 h-5 text-white/90" />
             </div>
 
-            <div className="space-y-4 w-full">
-                {/* 🎨 HEADLINE: Fade-out Gradient Text */}
-                <h1 className="text-5xl md:text-6xl font-black uppercase tracking-tighter leading-[0.9] italic bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/20"
-                    style={{ filter: `drop-shadow(0 4px 20px ${themeColor}30)` }}>
+            <div className="space-y-2 w-full">
+                {/* HEADLINE (Smaller but Bold) */}
+                <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight leading-none italic text-white drop-shadow-md">
                     {titleParts[0]}
                 </h1>
                 
-                <p className="text-slate-400 text-sm md:text-base font-medium leading-relaxed px-4 max-w-[90%] mx-auto">
+                <p className="text-slate-400 text-xs md:text-sm font-medium leading-snug px-2">
                     {msgParts[0]}
                 </p>
             </div>
 
-            {/* 🎨 ACTION BUTTON (Glassmorphic) */}
+            {/* BUTTON (Pill Shape) */}
             <Button 
               onClick={handleCelebrate}
-              className="w-full h-16 mt-10 rounded-[2rem] text-lg font-black text-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] transition-all hover:scale-[1.03] active:scale-[0.97] border border-white/10 overflow-hidden relative group bg-white/5"
+              className="w-full h-12 mt-6 rounded-full text-sm font-bold text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.05] active:scale-[0.95] border border-white/10 overflow-hidden relative group bg-white/5"
             >
-              <span className="relative z-10 flex items-center gap-2" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                {ctaText} <Sparkles className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <span className="relative z-10 flex items-center gap-2">
+                {ctaText} <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
               </span>
               
-              {/* Inner Gradient Background */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              {/* Hover Gradient Shine */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                    style={{ background: `linear-gradient(90deg, transparent, ${themeColor}40, transparent)` }} 
               />
             </Button>
           </div>
           
-          <button onClick={() => setIsCardVisible(false)} className="absolute top-4 right-4 text-white/20 hover:text-white hover:bg-white/10 transition-all p-2 rounded-full"><X className="w-5 h-5" /></button>
+          <button onClick={() => setIsCardVisible(false)} className="absolute top-3 right-3 text-white/20 hover:text-white hover:bg-white/10 transition-all p-1 rounded-full"><X className="w-4 h-4" /></button>
         </div>
       </div>
 
@@ -160,11 +162,12 @@ export default function BroadcastPreviewPage() {
         body, html { font-family: 'Poppins', sans-serif !important; }
         
         .hero-anim { animation: hero-float 6s ease-in-out infinite; }
-        @keyframes hero-float { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.03) translateY(-8px); } }
+        @keyframes hero-float { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.02) translateY(-5px); } }
         
-        @keyframes shimmer {
-          0% { background-position: -1000px 0; }
-          100% { background-position: 1000px 0; }
+        /* ✨ Banner Background Animation */
+        @keyframes shimmer-bg {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
       `}</style>
     </div>
