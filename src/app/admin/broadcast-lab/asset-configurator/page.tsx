@@ -55,6 +55,7 @@ const AUTO_PRESETS: any = {
   CHRISTMAS: { bg: 'WINTER', part: 'SNOW_PARTICLES', comp: 'XMAS_TREE' },
   REPUBLIC_DAY: { bg: 'TRICOLOR', part: 'FLAG_MOTION', comp: 'DHARMA_CHAKRA' },
   INDEPENDENCE_DAY: { bg: 'TRICOLOR', part: 'FLAG_MOTION', comp: 'NATIONAL_PRIDE' },
+  RAKSHA_BANDHAN: { bg: 'SOFT_PINK', part: 'THREAD_GLOW', comp: 'BROTHER_BOND' }, // 👈 Added
   MAKAR_SANKRANTI: { bg: 'SKY', part: 'WIND_EFFECT', comp: 'KITES_FLYING' },
   LOHRI: { bg: 'FIRE', part: 'FIRE_EMBERS', comp: 'REAL_BONFIRE' },
   MAHASHIVRATRI: { bg: 'DARK_BLUE', part: 'SMOKE_GLOW', comp: 'SHIVA_POWER' },
