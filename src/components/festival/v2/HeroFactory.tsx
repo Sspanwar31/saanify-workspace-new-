@@ -12,23 +12,25 @@ import MoonHero from '../heroes/MoonHero';
 
 export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config: any, themeColor?: string }) {
   if (!config) return null;
-  const { render_type, visual_key, image_url, scale = 1, speed = 4, icon_name } = config;
+  // Removed 'icon_name' from destructuring as per new logic to keep it simple
+  const { render_type, visual_key, image_url, scale = 1, speed = 4 } = config;
 
-  // 🚀 DYNAMIC WRAPPER
+  // 🚀 MASTER WRAPPER: Scaling yahan apply hogi (100% Guaranteed)
   const LayoutWrapper = ({ children }: any) => (
-    <div className="relative flex flex-col items-center justify-center w-full h-full p-6 overflow-visible">
-      {/* Golden Saanify Tag */}
-      <div className="absolute top-6 left-8 z-50 select-none">
-          <span className="text-[9px] font-black uppercase tracking-[0.5em] italic text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-500 to-amber-200 drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]">
-              SAANIFY PARIVAR
-          </span>
-      </div>
-      {/* Background Aura */}
+    <div className="relative flex flex-col items-center justify-center w-full h-full overflow-visible">
+      {/* Dynamic Background Aura */}
       <div className="absolute inset-0 blur-[100px] opacity-50 animate-pulse mix-blend-screen" 
            style={{ background: `radial-gradient(circle at center, ${themeColor} 0%, transparent 75%)`, animationDuration: `${speed * 1.5}s` }} />
-      {/* Icon Frame */}
-      <div className="relative z-10 w-72 h-72 flex items-center justify-center animate-hero-breathe transition-all duration-500"
-           style={{ transform: `scale(${scale})`, animationDuration: `${speed}s` }}>
+      
+      {/* 🎯 SCALE BOX: Isme scale aur animation dono handle honge */}
+      <div 
+        className="relative z-10 w-full h-full flex items-center justify-center animate-hero-breathe"
+        style={{ 
+           transform: `scale(${scale})`, 
+           transition: 'transform 0.3s ease-out', // ✨ Smooth transition added
+           animationDuration: `${speed}s`
+        }}
+      >
          {children}
       </div>
     </div>
@@ -66,16 +68,15 @@ export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config
   };
 
   if (render_type === 'COMPONENT' && PremiumComponents[visual_key]) {
-    return <LayoutWrapper><div className="scale-125">{PremiumComponents[visual_key]}</div></LayoutWrapper>;
+    // Removed 'scale-125' wrapper to rely on parent LayoutWrapper scale
+    return <LayoutWrapper>{PremiumComponents[visual_key]}</LayoutWrapper>;
   }
 
   // ━━━ LOGIC 2: IMAGE OVERRIDE (For custom upload PNGs) ━━━
   if (render_type === 'IMAGE' && image_url) {
     return (
       <LayoutWrapper>
-         <div className="w-full h-full p-4 flex items-center justify-center">
-           <img src={image_url} className="max-w-full max-h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]" alt="Hero" />
-         </div>
+         <img src={image_url} className="max-w-full max-h-full object-contain drop-shadow-2xl" alt="Hero" />
       </LayoutWrapper>
     );
   }
