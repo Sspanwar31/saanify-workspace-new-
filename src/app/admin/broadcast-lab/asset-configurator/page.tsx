@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge'; 
 import { toast } from 'sonner';
-import { Save, Loader2, Palette, Wind, Zap } from 'lucide-react';
+import { Save, Loader2, Palette, Wind } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import HeroFactory from '@/components/festival/v2/HeroFactory';
 
@@ -55,7 +55,7 @@ const AUTO_PRESETS: any = {
   CHRISTMAS: { bg: 'WINTER', part: 'SNOW_PARTICLES', comp: 'XMAS_TREE' },
   REPUBLIC_DAY: { bg: 'TRICOLOR', part: 'FLAG_MOTION', comp: 'DHARMA_CHAKRA' },
   INDEPENDENCE_DAY: { bg: 'TRICOLOR', part: 'FLAG_MOTION', comp: 'NATIONAL_PRIDE' },
-  RAKSHA_BANDHAN: { bg: 'SOFT_PINK', part: 'THREAD_GLOW', comp: 'BROTHER_BOND' }, // 👈 Added
+  RAKSHA_BANDHAN: { bg: 'SOFT_PINK', part: 'THREAD_GLOW', comp: 'BROTHER_BOND' }, // Added
   MAKAR_SANKRANTI: { bg: 'SKY', part: 'WIND_EFFECT', comp: 'KITES_FLYING' },
   LOHRI: { bg: 'FIRE', part: 'FIRE_EMBERS', comp: 'REAL_BONFIRE' },
   MAHASHIVRATRI: { bg: 'DARK_BLUE', part: 'SMOKE_GLOW', comp: 'SHIVA_POWER' },
@@ -161,9 +161,9 @@ export default function AssetConfigurator() {
           <CardHeader className="bg-slate-900 text-white p-6"><CardTitle className="text-lg">Design Controls</CardTitle></CardHeader>
           <CardContent className="p-8 space-y-8">
             
-            {/* Festival Selector with Auto-Logic */}
+            {/* Festival Picker */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-slate-400">Target Festival (Auto-Sync On)</label>
+              <label className="text-[10px] font-black uppercase text-slate-400">Target Festival</label>
               <Select value={selectedKey} onValueChange={handleFestivalChange}>
                 <SelectTrigger className="h-14 rounded-2xl border-slate-100 font-bold text-lg"><SelectValue /></SelectTrigger>
                 <SelectContent className="max-h-80">
@@ -190,12 +190,12 @@ export default function AssetConfigurator() {
                 </div>
             </div>
 
-            {/* Mode Specific Inputs */}
+            {/* Mode Specific Inputs (LUCIDE REMOVED) */}
             <div className="p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 space-y-6">
                 
-                {/* Mode Toggles */}
+                {/* 🚀 MODE TOGGLES: ONLY COMPONENT & IMAGE */}
                 <div className="flex gap-2 p-1 bg-white rounded-2xl shadow-sm border border-slate-100">
-                    {['COMPONENT', 'IMAGE', 'LUCIDE'].map((m) => (
+                    {['COMPONENT', 'IMAGE'].map((m) => (
                         <Button key={m} variant={config.render_type === m ? 'default' : 'ghost'} size="sm" className="flex-1 rounded-xl h-10 font-black text-[10px]"
                                 onClick={() => setConfig({...config, render_type: m})}>{m}</Button>
                     ))}
@@ -205,7 +205,7 @@ export default function AssetConfigurator() {
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-500">Select Visual Component</label>
                         <Select value={config.visual_key} onValueChange={(v) => setConfig({...config, visual_key: v})}>
-                            <SelectTrigger className="h-12 rounded-xl bg-white border-slate-200 shadow-sm font-medium"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-12 rounded-xl bg-white border-slate-200 font-medium"><SelectValue /></SelectTrigger>
                             <SelectContent className="max-h-80">
                                 {VISUAL_COMPONENTS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                             </SelectContent>
@@ -217,15 +217,19 @@ export default function AssetConfigurator() {
                     <Input placeholder="Paste Image URL..." value={config.image_url} onChange={(e) => setConfig({...config, image_url: e.target.value})} className="h-12 rounded-xl bg-white border-slate-200" />
                 )}
 
-                {/* Scaling & Speed */}
+                {/* 🚀 SCALE & SPEED SLIDERS (Linked to HeroFactory) */}
                 <div className="grid grid-cols-2 gap-6 pt-4">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400">SCALE: {config.scale}x</label>
-                        <input type="range" min="0.5" max="2.5" step="0.1" value={config.scale} onChange={(e) => setConfig({...config, scale: parseFloat(e.target.value)})} className="w-full accent-blue-600" />
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Size Scale: {config.scale}x</label>
+                        <input type="range" min="0.1" max="2.5" step="0.1" value={config.scale} 
+                               onChange={(e) => setConfig({...config, scale: parseFloat(e.target.value)})} 
+                               className="w-full accent-blue-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400">SPEED: {config.speed}s</label>
-                        <input type="range" min="1" max="10" step="1" value={config.speed} onChange={(e) => setConfig({...config, speed: parseInt(e.target.value)})} className="w-full accent-orange-500" />
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Speed: {config.speed}s</label>
+                        <input type="range" min="1" max="15" step="1" value={config.speed} 
+                               onChange={(e) => setConfig({...config, speed: parseInt(e.target.value)})} 
+                               className="w-full accent-orange-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
                     </div>
                 </div>
             </div>
@@ -239,11 +243,13 @@ export default function AssetConfigurator() {
         {/* RIGHT: LIVE STUDIO PREVIEW */}
         <Card className="lg:col-span-7 rounded-[3.5rem] bg-black flex flex-col items-center justify-center relative overflow-hidden h-[750px] shadow-2xl border-4 border-white/10">
            {loading ? <Loader2 className="animate-spin text-blue-500 w-12 h-12" /> : (
-             <div className="relative w-full h-full flex flex-col items-center justify-center">
+             <div className="relative w-full h-full flex items-center justify-center p-20">
+                {/* 🚀 FIXED: No double-scaling here, HeroFactory handles it internally now */}
                 <HeroFactory config={config} themeColor="#fbbf24" />
+                
                 <div className="absolute bottom-12 text-center z-50 pointer-events-none space-y-4">
                    <h2 className="text-white text-5xl font-black italic tracking-tighter uppercase drop-shadow-2xl">{selectedKey.replace('_', ' ')}</h2>
-                   <Badge className="bg-blue-600/20 text-blue-400 tracking-[5px] font-black py-1.5 px-6 rounded-full border-blue-500/30">V4.2 STUDIO READY</Badge>
+                   <Badge className="bg-blue-600/20 text-blue-400 tracking-[5px] font-black py-1.5 px-6 rounded-full border-blue-500/30">STUDIO V4.2</Badge>
                 </div>
              </div>
            )}
