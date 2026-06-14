@@ -28,65 +28,75 @@ export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config
       <div className="absolute inset-0 blur-[100px] opacity-40 animate-pulse mix-blend-screen" 
            style={{ background: `radial-gradient(circle at center, ${themeColor} 0%, transparent 75%)`, animationDuration: `${speed * 1.5}s` }} />
       
-      {/* 🚀 3. THE HERO CONTENT (Scale Fix + Bouncy Transition) */}
+      {/* 🚀 3. THE HERO CONTENT (FIXED: Separated Scale & Animation) */}
+      
+      {/* Step A: Apply 'Breathing' Animation here (Movement up/down) */}
       <div 
         className="relative z-10 flex items-center justify-center animate-hero-breathe"
         style={{ 
-           transform: `scale(${scale})`, // 🎯 Direct Scaling
-           transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)', // ✨ Bouncy Effect
            animationDuration: `${speed}s`,
-           width: '100%', height: '100%'
+           width: '100%', 
+           height: '100%'
         }}
       >
-         {render_type === 'COMPONENT' && (
-           <div className="flex items-center justify-center">
-              {(() => {
-                const map: any = {
-                  // Premium React Components
-                  'ROYAL_DIYA': <RoyalDiya />,
-                  'GANESHA': <GaneshaHero />,
-                  'ROYAL_GANESHA': <GaneshaHero />,
-                  'MAA_DURGA': <DurgaHero />,
-                  'DIVINE_TRISHUL': <DurgaHero />,
-                  'VIBRANT_PALETTE': <HoliPalette />,
-                  'ASHOKA_CHAKRA': <AshokaChakra />,
-                  'DHARMA_CHAKRA': <AshokaChakra />,
-                  'CHRISTMAS_TREE': <ChristmasHero />,
-                  'XMAS_TREE': <ChristmasHero />,
-                  'MOON_HERO': <MoonHero />,
-                  'CRESCENT_MOON': <MoonHero />,
-                  'EID_MUBARAK': <MoonHero />,
-                  
-                  // Aliases
-                  'GANGA_GHAT_DIYA': <RoyalDiya />,
+        {/* Step B: Apply 'Scaling' here (Zoom In/Out) */}
+        <div 
+           className="flex items-center justify-center"
+           style={{ 
+              transform: `scale(${scale})`, // ✅ Scale ab alag div mein hai, conflict nahi hoga
+              transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' // ✨ Smooth Transition
+           }}
+        >
+           {render_type === 'COMPONENT' && (
+             <div className="flex items-center justify-center">
+                {(() => {
+                  const map: any = {
+                    // Premium React Components
+                    'ROYAL_DIYA': <RoyalDiya />,
+                    'GANESHA': <GaneshaHero />,
+                    'ROYAL_GANESHA': <GaneshaHero />,
+                    'MAA_DURGA': <DurgaHero />,
+                    'DIVINE_TRISHUL': <DurgaHero />,
+                    'VIBRANT_PALETTE': <HoliPalette />,
+                    'ASHOKA_CHAKRA': <AshokaChakra />,
+                    'DHARMA_CHAKRA': <AshokaChakra />,
+                    'CHRISTMAS_TREE': <ChristmasHero />,
+                    'XMAS_TREE': <ChristmasHero />,
+                    'MOON_HERO': <MoonHero />,
+                    'CRESCENT_MOON': <MoonHero />,
+                    'EID_MUBARAK': <MoonHero />,
+                    
+                    // Aliases
+                    'GANGA_GHAT_DIYA': <RoyalDiya />,
 
-                  // High-End Branded Emojis
-                  'DANDIYA_BEAT': <span className="text-[110px] drop-shadow-2xl">🥁</span>,
-                  'RAVAN_DAHAN': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
-                  'BABY_KRISHNA': <span className="text-[110px] drop-shadow-2xl">🪈</span>,
-                  'BROTHER_BOND': <span className="text-[110px] drop-shadow-2xl">🎁</span>,
-                  'KITES_FLYING': <span className="text-[110px] drop-shadow-2xl">🪁</span>,
-                  'REAL_BONFIRE': <span className="text-[110px] drop-shadow-2xl">🔥</span>,
-                  'SHIVA_POWER': <span className="text-[110px] drop-shadow-2xl">🔱</span>,
-                  'RAM_DHARMA': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
-                  'HANUMAN_GADA': <span className="text-[110px] drop-shadow-2xl">🔱</span>,
-                  'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
-                  'SUN_ARGHYA': <span className="text-[110px] drop-shadow-2xl">☀️</span>,
-                  'HARVEST_POT': <span className="text-[110px] drop-shadow-2xl">🏺</span>,
-                  'EID_MUBARAK': <span className="text-[110px] drop-shadow-2xl">🌙</span>,
-                  'HOLY_KAABA': <span className="text-[110px] drop-shadow-2xl">🕋</span>,
-                  'NY_COUNTDOWN': <span className="text-[110px] drop-shadow-2xl">🕰️</span>,
-                  'NATIONAL_PRIDE': <span className="text-[110px] drop-shadow-2xl">🏛️</span>,
-                  'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
-                };
-                return map[visual_key] || <LucideIcons.Sparkles size={80} className="text-white opacity-20" />;
-              })()}
-           </div>
-         )}
+                    // High-End Branded Emojis
+                    'DANDIYA_BEAT': <span className="text-[110px] drop-shadow-2xl">🥁</span>,
+                    'RAVAN_DAHAN': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
+                    'BABY_KRISHNA': <span className="text-[110px] drop-shadow-2xl">🪈</span>,
+                    'BROTHER_BOND': <span className="text-[110px] drop-shadow-2xl">🎁</span>,
+                    'KITES_FLYING': <span className="text-[110px] drop-shadow-2xl">🪁</span>,
+                    'REAL_BONFIRE': <span className="text-[110px] drop-shadow-2xl">🔥</span>,
+                    'SHIVA_POWER': <span className="text-[110px] drop-shadow-2xl">🔱</span>,
+                    'RAM_DHARMA': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
+                    'HANUMAN_GADA': <span className="text-[110px] drop-shadow-2xl">🔱</span>,
+                    'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
+                    'SUN_ARGHYA': <span className="text-[110px] drop-shadow-2xl">☀️</span>,
+                    'HARVEST_POT': <span className="text-[110px] drop-shadow-2xl">🏺</span>,
+                    'EID_MUBARAK': <span className="text-[110px] drop-shadow-2xl">🌙</span>,
+                    'HOLY_KAABA': <span className="text-[110px] drop-shadow-2xl">🕋</span>,
+                    'NY_COUNTDOWN': <span className="text-[110px] drop-shadow-2xl">🕰️</span>,
+                    'NATIONAL_PRIDE': <span className="text-[110px] drop-shadow-2xl">🏛️</span>,
+                    'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
+                  };
+                  return map[visual_key] || <LucideIcons.Sparkles size={80} className="text-white opacity-20" />;
+                })()}
+             </div>
+           )}
 
-         {render_type === 'IMAGE' && image_url && (
-           <img src={image_url} className="max-w-[280px] max-h-[280px] object-contain drop-shadow-2xl" alt="Festival" />
-         )}
+           {render_type === 'IMAGE' && image_url && (
+             <img src={image_url} className="max-w-[280px] max-h-[280px] object-contain drop-shadow-2xl" alt="Festival" />
+           )}
+        </div>
       </div>
     </div>
   );
