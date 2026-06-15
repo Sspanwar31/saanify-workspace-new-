@@ -45,33 +45,32 @@ export default function BroadcastPreviewPage() {
       {/* 🚀 1. FULL SCREEN ATMOSPHERE */}
       <AnimationFactory theme={broadcast.hero_config?.animation || broadcast.animation_theme} />
 
-      {/* 🚀 2. TOP BANNER (Patti) - PREMIUM FULL WIDTH STYLE */}
+      {/* 🚀 2. TOP BANNER (Patti) - THIN & SOLID COLOR STYLE */}
       {showTopBanner && (
-        <div className="fixed top-0 left-0 w-full z-[1000] py-3 px-6 shadow-2xl animate-in slide-in-from-top duration-700 backdrop-blur-xl border-b border-white/10 flex items-center justify-between"
-             style={{ background: `linear-gradient(90deg, ${themeColor}33, #020617)` }}>
+        <div className="fixed top-0 left-0 w-full z-[1000] h-12 md:h-14 flex items-center justify-between px-6 shadow-2xl animate-in slide-in-from-top duration-700 border-b border-white/10"
+             style={{ backgroundColor: themeColor }}> {/* 🎨 Patti ab theme color ki hogi */}
              
-             <div className="flex items-center gap-4 flex-1 justify-center">
-                {/* 🎯 Rotating Icon (Branding hidden logic added) */}
-                <div className="w-12 h-12 flex items-center justify-center animate-spin-slow">
+             <div className="flex items-center gap-4 flex-1 justify-center overflow-hidden">
+                
+                {/* 🎯 ONLY ICON: No Box, No Breathe, Only Slow Spin */}
+                <div className="animate-spin-slow shrink-0 flex items-center justify-center">
                    <HeroFactory 
-                     config={{...broadcast.hero_config, scale: 0.3}} 
-                     themeColor={themeColor} 
-                     hideBranding={true} // 🚀 Isse patti wala "Saanify" hat jayega
+                      config={broadcast.hero_config} 
+                      themeColor={themeColor} 
+                      minimal={true} // 🚀 Sirf icon aayega
                    />
                 </div>
 
-                <div className="flex flex-col items-center">
-                   <span className="text-[9px] font-black uppercase tracking-[5px] text-white/40">SAANIFY PARIVAR</span>
-                   <p className="text-white font-black text-sm md:text-lg uppercase tracking-wider drop-shadow-md"
-                      style={{ color: themeColor }}>
-                     {msgParts[0]}
+                <div className="flex items-center gap-3">
+                   <span className="text-[10px] font-black uppercase tracking-widest text-black/40 hidden sm:inline">SAANIFY PARIVAR:</span>
+                   <p className="text-black font-black text-xs md:text-sm uppercase tracking-tight truncate max-w-[60vw]">
+                      {msgParts[0]}
                    </p>
                 </div>
              </div>
 
-             {/* Close Button for Banner */}
-             <button onClick={() => setShowTopBanner(false)} className="p-1 hover:bg-white/10 rounded-full">
-               <X className="w-5 h-5 text-white/30" />
+             <button onClick={() => setShowTopBanner(false)} className="p-1 hover:bg-black/10 rounded-full">
+               <X className="w-4 h-4 text-black/50" />
              </button>
         </div>
       )}
