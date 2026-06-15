@@ -76,7 +76,7 @@ export default function BroadcastPreviewPage() {
       )}
 
       {/* 🚀 3. THE LARGE MASTER CARD (Image 3 Size) */}
-      <div className={`relative w-full max-w-md md:max-w-[400px] transition-all duration-1000 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
+      <div className={`relative w-full max-w-md md:max-w-[360px] transition-all duration-1000 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
         
         {/* Luxury Glow behind the Card */}
         <div className="absolute -inset-4 rounded-[4rem] opacity-20 blur-3xl animate-pulse"
