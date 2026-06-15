@@ -110,31 +110,3 @@ export default function HeroFactory({
     </div>
   );
 }
-```
-
-### 2. Updated `RoyalDiya.tsx` (Step 2)
-
-```tsx
-'use client';
-
-export default function RoyalDiya() {
-  return (
-    <div className="relative flex flex-col items-center justify-center">
-      {/* 🪔 Background Glow */}
-      <div className="absolute inset-0 bg-amber-500/20 blur-[50px] rounded-full" />
-
-      {/* 🪔 The Diya */}
-      <div className="relative z-10 drop-shadow-[0_0_30px_rgba(245,158,11,0.8)]">
-         <div className="text-8xl leading-none">🪔</div>
-         <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-10 h-10 bg-orange-400 blur-xl rounded-full animate-pulse opacity-60" />
-      </div>
-
-      {/* 🚀 FIXED: Removed the box/bracket style. Now it's clean text. */}
-      <div className="mt-8 select-none pointer-events-none">
-         <span className="text-amber-400/60 font-black text-[9px] tracking-[6px] uppercase italic">
-            Festival of Lights
-         </span>
-      </div>
-    </div>
-  );
-}
