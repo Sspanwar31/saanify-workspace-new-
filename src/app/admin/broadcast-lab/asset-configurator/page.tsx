@@ -45,11 +45,39 @@ const VISUAL_COMPONENTS = [
 ];
 
 const AUTO_PRESETS: any = {
+  // 1. Traditional / Golden Style
   DIWALI: { bg: 'DARK_GOLD', anim: 'GOLDEN_PARTICLES', comp: 'ROYAL_DIYA' },
-  HOLI: { bg: 'RAINBOW', anim: 'COLOR_SPLASH', comp: 'VIBRANT_PALETTE' },
-  CHRISTMAS: { bg: 'WINTER', anim: 'SNOW_FALL', comp: 'XMAS_TREE' },
-  MAKAR_SANKRANTI: { bg: 'SKY', anim: 'WIND_EFFECT', comp: 'KITES_FLYING' },
+  DEV_DEEPAWALI: { bg: 'DARK_GOLD', anim: 'SPARKLES', comp: 'GANGA_GHAT_DIYA' },
+  DUSSEHRA: { bg: 'ORANGE_RED', anim: 'FIRE_SPARKS', comp: 'RAVAN_DAHAN' },
   MAHASHIVRATRI: { bg: 'DARK_BLUE', anim: 'BLUE_AURA', comp: 'SHIVA_POWER' },
+  GURU_NANAK_JAYANTI: { bg: 'SOFT_GOLD', anim: 'GOLDEN_LIGHT', comp: 'SIKH_KHANDA' },
+  RAM_NAVAMI: { bg: 'SAFFRON', anim: 'TEMPLE_GLOW', comp: 'RAM_DHARMA' },
+  HANUMAN_JAYANTI: { bg: 'FIRE', anim: 'DIVINE_LIGHT', comp: 'HANUMAN_GADA' },
+  KARWA_CHAUTH: { bg: 'SOFT_GOLD', anim: 'ROMANTIC_LIGHTS', comp: 'MOON_SIEVE' },
+
+  // 2. Vibrant / Colorful Style
+  HOLI: { bg: 'RAINBOW', anim: 'COLOR_SPLASH', comp: 'VIBRANT_PALETTE' },
+  NAVRATRI: { bg: 'DIVINE_RED', anim: 'LOTUS_PARTICLES', comp: 'DANDIYA_BEAT' },
+  DURGA_PUJA: { bg: 'DIVINE_RED', anim: 'DIVINE_AURA', comp: 'DIVINE_TRISHUL' },
+  GANESH_CHATURTHI: { bg: 'SAFFRON', anim: 'LOTUS_PARTICLES', comp: 'ROYAL_GANESHA' },
+  JANMASHTAMI: { bg: 'ROYAL_BLUE', anim: 'PEACOCK_PARTICLES', comp: 'BABY_KRISHNA' },
+  RAKSHA_BANDHAN: { bg: 'SOFT_PINK', anim: 'THREAD_GLOW', comp: 'BROTHER_BOND' },
+  LOHRI: { bg: 'FIRE', anim: 'FIRE_EMBERS', comp: 'REAL_BONFIRE' },
+  PONGAL: { bg: 'HARVEST_GOLD', anim: 'FLOATING_GRAINS', comp: 'HARVEST_POT' },
+  BAISAKHI: { bg: 'HARVEST_GOLD', anim: 'HARVEST_SPARKS', comp: 'HARVEST_POT' },
+  ONAM: { bg: 'EMERALD', anim: 'LOTUS_GLOW', comp: 'HARVEST_POT' },
+  UGADI: { bg: 'EMERALD', anim: 'DIVINE_LIGHT', comp: 'HARVEST_POT' },
+
+  // 3. Winter / Events Style
+  CHRISTMAS: { bg: 'WINTER', anim: 'SNOW_FALL', comp: 'XMAS_TREE' },
+  NEW_YEAR: { bg: 'NIGHT', anim: 'COUNTDOWN', comp: 'NY_COUNTDOWN' },
+
+  // 4. National / Peaceful Style
+  REPUBLIC_DAY: { bg: 'TRICOLOR', anim: 'FLAG_MOTION', comp: 'DHARMA_CHAKRA' },
+  INDEPENDENCE_DAY: { bg: 'TRICOLOR', anim: 'TRICOLOR_WAVES', comp: 'NATIONAL_PRIDE' },
+  EID_UL_FITR: { bg: 'EMERALD', anim: 'MOON_GLOW', comp: 'EID_MUBARAK' },
+  EID_AL_ADHA: { bg: 'EMERALD', anim: 'LIGHT_RAYS', comp: 'HOLY_KAABA' },
+  MAKAR_SANKRANTI: { bg: 'SKY', anim: 'WIND_EFFECT', comp: 'KITES_FLYING' }
 };
 
 export default function AssetConfigurator() {
