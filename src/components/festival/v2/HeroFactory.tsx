@@ -10,19 +10,30 @@ import AshokaChakra from '../heroes/AshokaChakra';
 import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
 
-export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config: any, themeColor?: string }) {
+// 🚀 Function Signature update: hideBranding prop added
+export default function HeroFactory({ 
+  config, 
+  themeColor = '#fbbf24', 
+  hideBranding = false 
+}: { 
+  config: any, 
+  themeColor?: string, 
+  hideBranding?: boolean 
+}) {
   if (!config) return null;
   const { render_type, visual_key, image_url, scale = 1, speed = 4 } = config;
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full h-full overflow-visible">
       
-      {/* 🏆 1. BRAND NAME: Top-Left (Fixed) */}
-      <div className="absolute top-0 left-0 z-50 pointer-events-none p-6">
-          <span className="text-[10px] font-black uppercase tracking-[0.5em] italic text-white/40 drop-shadow-md">
-              SAANIFY
-          </span>
-      </div>
+      {/* 🏆 1. BRAND NAME: Top-Left (Now Controlled by hideBranding) */}
+      {!hideBranding && (
+        <div className="absolute top-0 left-0 z-50 pointer-events-none p-6">
+            <span className="text-[10px] font-black uppercase tracking-[0.5em] italic text-white/40 drop-shadow-md">
+                SAANIFY
+            </span>
+        </div>
+      )}
 
       {/* 🌈 2. DYNAMIC BACKGROUND AURA */}
       <div className="absolute inset-0 blur-[100px] opacity-40 animate-pulse mix-blend-screen" 
@@ -43,8 +54,8 @@ export default function HeroFactory({ config, themeColor = '#fbbf24' }: { config
         <div 
            className="flex items-center justify-center"
            style={{ 
-              transform: `scale(${scale})`, // ✅ Scale ab alag div mein hai, conflict nahi hoga
-              transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' // ✨ Smooth Transition
+              transform: `scale(${scale})`, 
+              transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
            }}
         >
            {render_type === 'COMPONENT' && (
