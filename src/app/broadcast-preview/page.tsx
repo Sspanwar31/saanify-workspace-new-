@@ -45,26 +45,34 @@ export default function BroadcastPreviewPage() {
       {/* 🚀 1. FULL SCREEN ATMOSPHERE */}
       <AnimationFactory theme={broadcast.hero_config?.animation || broadcast.animation_theme} />
 
-      {/* 🚀 2. TOP BANNER (Patti) - PREMIUM FLOATING PILL */}
+      {/* 🚀 2. TOP BANNER (Patti) - PREMIUM FULL WIDTH STYLE */}
       {showTopBanner && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] w-auto max-w-[95vw] min-w-[300px] animate-in slide-in-from-top duration-1000">
-           <div className="relative bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full px-8 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center justify-center gap-5">
-              
-              {/* 🎯 Rotating Festival Icon (Same as Hero) */}
-              <div className="w-10 h-10 flex items-center justify-center animate-spin-slow scale-125">
-                 <HeroFactory config={{...broadcast.hero_config, scale: 0.4}} themeColor={themeColor} />
-              </div>
+        <div className="fixed top-0 left-0 w-full z-[1000] py-3 px-6 shadow-2xl animate-in slide-in-from-top duration-700 backdrop-blur-xl border-b border-white/10 flex items-center justify-between"
+             style={{ background: `linear-gradient(90deg, ${themeColor}33, #020617)` }}>
+             
+             <div className="flex items-center gap-4 flex-1 justify-center">
+                {/* 🎯 Rotating Icon (Branding hidden logic added) */}
+                <div className="w-12 h-12 flex items-center justify-center animate-spin-slow">
+                   <HeroFactory 
+                     config={{...broadcast.hero_config, scale: 0.3}} 
+                     themeColor={themeColor} 
+                     hideBranding={true} // 🚀 Isse patti wala "Saanify" hat jayega
+                   />
+                </div>
 
-              {/* 🎯 Self-Adjusting Message */}
-              <div className="flex flex-col items-center text-center">
-                 <span className="text-[9px] font-black uppercase tracking-[5px] text-white/40 mb-1">SAANIFY PARIVAR</span>
-                 <p className={`text-white font-bold leading-tight uppercase tracking-wide drop-shadow-md whitespace-normal
-                    ${msgParts[0].length > 30 ? 'text-xs md:text-sm' : 'text-sm md:text-lg'}`}
-                    style={{ color: themeColor }}>
-                   {msgParts[0]}
-                 </p>
-              </div>
-           </div>
+                <div className="flex flex-col items-center">
+                   <span className="text-[9px] font-black uppercase tracking-[5px] text-white/40">SAANIFY PARIVAR</span>
+                   <p className="text-white font-black text-sm md:text-lg uppercase tracking-wider drop-shadow-md"
+                      style={{ color: themeColor }}>
+                     {msgParts[0]}
+                   </p>
+                </div>
+             </div>
+
+             {/* Close Button for Banner */}
+             <button onClick={() => setShowTopBanner(false)} className="p-1 hover:bg-white/10 rounded-full">
+               <X className="w-5 h-5 text-white/30" />
+             </button>
         </div>
       )}
 
@@ -90,10 +98,7 @@ export default function BroadcastPreviewPage() {
                 </div>
               )}
 
-              {/* BRAND TAG (Top Left - Professional) */}
-              <div className="absolute top-10 left-10 z-50">
-                  <span className="text-[10px] font-black uppercase tracking-[8px] italic text-white/30 drop-shadow-md">SAANIFY</span>
-              </div>
+              {/* 🚀 BRAND TAG (Top Left - REMOVED AS PER REQUEST) */}
           </div>
 
           {/* CONTENT SECTION (Large & Clear) */}
