@@ -76,7 +76,7 @@ export default function HeroFactory({
   return (
     <div className="relative flex flex-col items-center justify-center w-full h-full p-6 overflow-visible">
       
-      {/* ✨ MASTER BRAND TAG (Absolute Corner - Updated as per Step 1) */}
+      {/* ✨ MASTER BRAND TAG (Absolute Corner) */}
       {!hideBranding && (
         <div className="absolute top-4 left-4 z-50 select-none pointer-events-none opacity-40">
             <span className="block text-[8px] font-black uppercase tracking-[0.8em] text-white leading-none italic">
@@ -89,9 +89,9 @@ export default function HeroFactory({
       <div className="absolute inset-0 blur-[100px] opacity-40 animate-pulse mix-blend-screen" 
            style={{ background: `radial-gradient(circle at center, ${themeColor} 0%, transparent 75%)`, animationDuration: `${speed * 1.5}s` }} />
       
-      {/* 🚀 THE HERO WRAPPER (Animation & Scaling) */}
+      {/* 🚀 THE HERO WRAPPER (Updated: pt-16 added to shift hero down) */}
       <div 
-        className="relative z-10 flex items-center justify-center animate-hero-breathe"
+        className="relative z-10 flex items-center justify-center animate-hero-breathe pt-16"
         style={{ animationDuration: `${speed}s`, width: '100%', height: '100%' }}
       >
         <div className="flex items-center justify-center"
