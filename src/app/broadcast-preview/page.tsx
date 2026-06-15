@@ -29,7 +29,7 @@ export default function BroadcastPreviewPage() {
   if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white font-black animate-pulse tracking-[15px]">SAANIFY V2</div>;
   if (!broadcast) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white">No Active Preview</div>;
 
-  // ━━━ 🚀 MASTER THEME CONFIG ━━━
+  // 🚀 THEME CONFIG
   const themeColor = broadcast.theme_config?.primary_color || broadcast.theme_color || '#fbbf24';
   const themeGradient = `linear-gradient(135deg, ${themeColor} 0%, #1e1b4b 100%)`;
   const msgParts = (broadcast.resolved_message || broadcast.message)?.split('|') || [];
@@ -42,114 +42,104 @@ export default function BroadcastPreviewPage() {
   return (
     <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins">
       
-      {/* 🚀 1. FULL SCREEN ATMOSPHERE */}
+      {/* BACKGROUND ANIMATION */}
       <AnimationFactory theme={broadcast.hero_config?.animation || broadcast.animation_theme} />
 
-      {/* 🚀 2. TOP BANNER (Patti) - THIN & SOLID COLOR STYLE */}
+      {/* 🚀 TOP BANNER (Slim & Modern) */}
       {showTopBanner && (
-        <div className="fixed top-0 left-0 w-full z-[1000] h-12 md:h-14 flex items-center justify-between px-6 shadow-2xl animate-in slide-in-from-top duration-700 border-b border-white/10"
-             style={{ backgroundColor: themeColor }}> {/* 🎨 Patti ab theme color ki hogi */}
+        <div className="fixed top-0 left-0 w-full z-[1000] h-12 flex items-center justify-center px-4 gap-3 shadow-lg animate-in slide-in-from-top duration-500"
+             style={{ backgroundColor: themeColor }}>
              
-             <div className="flex items-center gap-4 flex-1 justify-center overflow-hidden">
-                
-                {/* 🎯 ONLY ICON: No Box, No Breathe, Only Slow Spin */}
-                <div className="animate-spin-slow shrink-0 flex items-center justify-center">
-                   <HeroFactory 
-                      config={broadcast.hero_config} 
-                      themeColor={themeColor} 
-                      minimal={true} // 🚀 Sirf icon aayega
-                   />
-                </div>
+             {/* Simple Sparkle Icon */}
+             <Sparkles className="w-4 h-4 text-white/80 shrink-0" />
+             
+             {/* Centered Message (No Heading) */}
+             <p className="text-white font-black text-xs md:text-sm uppercase tracking-[0.2em] text-center truncate max-w-[90vw]">
+                {msgParts[0]}
+             </p>
 
-                <div className="flex items-center gap-3">
-                   <span className="text-[10px] font-black uppercase tracking-widest text-black/40 hidden sm:inline">SAANIFY PARIVAR:</span>
-                   <p className="text-black font-black text-xs md:text-sm uppercase tracking-tight truncate max-w-[60vw]">
-                      {msgParts[0]}
-                   </p>
-                </div>
-             </div>
-
-             <button onClick={() => setShowTopBanner(false)} className="p-1 hover:bg-black/10 rounded-full">
-               <X className="w-4 h-4 text-black/50" />
+             {/* Close Button */}
+             <button onClick={() => setShowTopBanner(false)} className="absolute right-4 p-1">
+               <X className="w-4 h-4 text-black/20" />
              </button>
         </div>
       )}
 
-      {/* 🚀 3. THE LARGE MASTER CARD (Image 3 Size) */}
-      <div className={`relative w-full max-w-md md:max-w-[360px] transition-all duration-1000 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
+      {/* 🚀 THE COMPACT MASTER CARD */}
+      <div className={`relative w-full max-w-[320px] transition-all duration-700 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
         
-        {/* Luxury Glow behind the Card */}
-        <div className="absolute -inset-4 rounded-[4rem] opacity-20 blur-3xl animate-pulse"
+        {/* Subtle Glow */}
+        <div className="absolute -inset-2 rounded-[2rem] opacity-20 blur-2xl animate-pulse"
              style={{ background: themeColor }} />
 
-        <div className="relative bg-slate-950/80 backdrop-blur-3xl border border-white/5 rounded-[3.5rem] shadow-[0_50px_150px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
+        <div className="relative bg-slate-950/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col">
           
-          {/* HERO SECTION - Height increased for Better Vision */}
-          <div className="relative w-full aspect-[3/4] overflow-hidden flex items-center justify-center bg-slate-900 group">
+          {/* HERO SECTION (Fixed Height 50%) */}
+          <div className="relative w-full h-1/2 overflow-hidden flex items-center justify-center bg-slate-900">
+              {/* Divine Glow */}
+              <div className="absolute inset-0 opacity-30 mix-blend-screen" 
+                   style={{ background: `radial-gradient(circle at 50% 50%, ${themeColor} 0%, transparent 70%)`, filter: 'blur(20px)' }} 
+              />
+
               {broadcast.image_url ? (
                 <div className="w-full h-full relative">
-                  <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain p-6 relative z-10" alt="Festival Hero" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent z-20" />
+                  <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain p-5 relative z-10 drop-shadow-2xl" alt="Festival Hero" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-20" />
                 </div>
               ) : (
-                <div className="scale-125 md:scale-150">
+                <div className="scale-110">
                    <HeroFactory config={broadcast.hero_config} themeColor={themeColor} />
                 </div>
               )}
-
-              {/* 🚀 BRAND TAG (Top Left - REMOVED AS PER REQUEST) */}
           </div>
 
-          {/* CONTENT SECTION (Large & Clear) */}
-          <div className="p-10 pt-0 text-center -mt-20 relative z-30 flex flex-col items-center">
+          {/* CONTENT SECTION (Compact) */}
+          <div className="h-1/2 p-6 pt-2 text-center relative z-30 flex flex-col items-center justify-center">
             
-            {/* Branded Shield Badge */}
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl flex items-center justify-center mb-8 rotate-6">
-               <ShieldCheck className="w-10 h-10" style={{ color: themeColor }} strokeWidth={2} />
+            {/* Modern Icon Badge */}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center mb-3 shadow-lg">
+               <ShieldCheck className="w-5 h-5" style={{ color: themeColor }} strokeWidth={2.5} />
             </div>
 
-            <div className="space-y-5 w-full">
-                {/* HEADLINE: Dynamic Color from Theme */}
-                <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none italic drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" 
+            <div className="space-y-3 w-full">
+                {/* Headline */}
+                <h1 className="text-3xl font-black uppercase tracking-tight leading-none italic text-white drop-shadow-md" 
                     style={{ color: themeColor }}>
                     {broadcast.resolved_title?.split('|')[0] || broadcast.title}
                 </h1>
                 
-                <p className="text-slate-200 text-lg md:text-xl font-bold leading-relaxed px-2 opacity-90">
+                <p className="text-slate-400 text-xs md:text-sm font-medium leading-snug">
                     {msgParts[0]}
                 </p>
             </div>
 
-            {/* CTA BUTTON */}
+            {/* CTA Button */}
             <Button 
               onClick={handleCelebrate}
-              className="w-full h-18 mt-10 rounded-[2.5rem] text-2xl font-black text-white shadow-2xl transition-all hover:scale-105 active:scale-95 border-t border-white/20"
-              style={{ background: `linear-gradient(135deg, ${themeColor}, #4f46e5)` }}
+              className="w-full h-11 mt-4 rounded-full text-sm font-bold text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.95] border border-white/10"
+              style={{ background: themeGradient }}
             >
-              {broadcast.resolved_cta || 'CELEBRATE NOW 🚀'}
+              {broadcast.resolved_cta || 'CELEBRATE'}
             </Button>
           </div>
           
-          <button onClick={() => setIsCardVisible(false)} className="absolute top-8 right-10 p-2 text-white/20 hover:text-white transition-all"><X className="w-8 h-8" /></button>
+          <button onClick={() => setIsCardVisible(false)} className="absolute top-3 right-3 text-white/20 hover:text-white transition-all p-1 rounded-full"><X className="w-4 h-4" /></button>
         </div>
       </div>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;900&display=swap');
         body, html { font-family: 'Poppins', sans-serif !important; }
         
         .hero-anim { 
            animation: hero-float ${broadcast?.hero_config?.speed || 4}s ease-in-out infinite; 
-           filter: drop-shadow(0 20px 40px rgba(0,0,0,0.4));
+           filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
         }
 
         @keyframes hero-float { 
           0%, 100% { transform: scale(1) translateY(0); } 
-          50% { transform: scale(1.05) translateY(-15px); } 
+          50% { transform: scale(1.03) translateY(-5px); } 
         }
-
-        .animate-spin-slow { animation: spin 8s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
