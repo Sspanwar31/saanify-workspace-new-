@@ -75,7 +75,7 @@ export default function BroadcastPreviewPage() {
         <div className="relative bg-slate-950/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col">
           
           {/* HERO SECTION (Fixed Height 50%) */}
-          <div className="relative w-full h-1/2 overflow-hidden flex items-center justify-center bg-slate-900">
+          <div className="relative w-full h-2/3 overflow-hidden flex items-center justify-center bg-slate-900">
               {/* Divine Glow */}
               <div className="absolute inset-0 opacity-30 mix-blend-screen" 
                    style={{ background: `radial-gradient(circle at 50% 50%, ${themeColor} 0%, transparent 70%)`, filter: 'blur(20px)' }} 
