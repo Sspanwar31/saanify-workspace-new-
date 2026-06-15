@@ -16,12 +16,6 @@ export default function RoyalDiya() {
          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-12 h-12 bg-orange-400 blur-xl rounded-full animate-pulse" />
       </div>
 
-      {/* 🏷️ Text Badge */}
-      <div className="px-6 py-2 rounded-full bg-white/10 backdrop-blur-md border border-amber-400/30 shadow-lg">
-         <span className="text-amber-300 font-bold text-sm tracking-widest uppercase">
-            Festival of Lights
-         </span>
-      </div>
     </div>
   );
 }
