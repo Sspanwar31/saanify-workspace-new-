@@ -89,7 +89,7 @@ export default function HeroFactory({
       <div className="absolute inset-0 blur-[100px] opacity-40 animate-pulse mix-blend-screen" 
            style={{ background: `radial-gradient(circle at center, ${themeColor} 0%, transparent 75%)`, animationDuration: `${speed * 1.5}s` }} />
       
-      {/* 🚀 THE HERO WRAPPER (Updated: pt-16 added to shift hero down) */}
+      {/* 🚀 THE HERO WRAPPER (Updated: pt-12 added to shift hero down) */}
       <div 
         className="relative z-10 flex items-center justify-center animate-hero-breathe pt-12"
         style={{ animationDuration: `${speed}s`, width: '100%', height: '100%' }}
