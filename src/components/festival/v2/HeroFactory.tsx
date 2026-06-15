@@ -10,7 +10,6 @@ import AshokaChakra from '../heroes/AshokaChakra';
 import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
 
-// 🚀 Function Signature update: minimal prop added
 export default function HeroFactory({ 
   config, 
   themeColor = '#fbbf24', 
@@ -25,9 +24,8 @@ export default function HeroFactory({
   if (!config) return null;
   const { render_type, visual_key, image_url, scale = 1, speed = 4 } = config;
 
-  // ━━━ MASTER COMPONENT MAP (Reusable for both modes) ━━━
+  // ━━━ MASTER COMPONENT MAP ━━━
   const ComponentMap: any = {
-    // Premium React Components
     'ROYAL_DIYA': <RoyalDiya />,
     'GANESHA': <GaneshaHero />,
     'ROYAL_GANESHA': <GaneshaHero />,
@@ -42,8 +40,6 @@ export default function HeroFactory({
     'CRESCENT_MOON': <MoonHero />,
     'EID_MUBARAK': <MoonHero />,
     'GANGA_GHAT_DIYA': <RoyalDiya />,
-    
-    // High-End Branded Emojis
     'DANDIYA_BEAT': <span className="text-[110px] drop-shadow-2xl">🥁</span>,
     'RAVAN_DAHAN': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
     'BABY_KRISHNA': <span className="text-[110px] drop-shadow-2xl">🪈</span>,
@@ -63,7 +59,6 @@ export default function HeroFactory({
     'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
   };
 
-  // ━━━ MODE A: MINIMAL (Sirf Banner ke liye) ━━━
   if (minimal) {
     return (
       <div className="flex items-center justify-center">
@@ -73,49 +68,35 @@ export default function HeroFactory({
            </div>
         ) : render_type === 'IMAGE' && image_url ? (
            <img src={image_url} className="h-16 w-16 object-contain" alt="Festival" />
-        ) : (
-           <span className="text-xl">🪔</span> // Fallback for emojis
-        )}
+        ) : <span className="text-xl">🪔</span>}
       </div>
     );
   }
 
-  // ━━━ MODE B: FULL PREMIUM CARD ━━━
   return (
-    <div className="relative flex flex-col items-center justify-center w-full h-full overflow-visible">
+    <div className="relative flex flex-col items-center justify-center w-full h-full p-6 overflow-visible">
       
-      {/* 🏆 BRANDING: Absolute Top-Left (Updated Text Style) */}
+      {/* ✨ MODERN BRAND TAG (Left-Top Corner) */}
+      {/* 1. Box hata diya. 2. Letter spacing badha di (tracking-[0.4em]). 3. Position top-6 left-6 fix ki. */}
       {!hideBranding && (
-        <div className="absolute top-0 left-0 z-50 pointer-events-none p-6">
-            <span className="text-[8px] font-black uppercase tracking-[0.6em] text-white/20 italic">
-                S A A N I F Y
+        <div className="absolute top-6 left-8 z-50 select-none pointer-events-none">
+            <span className="block text-[10px] font-black uppercase tracking-[0.4em] text-white/20 drop-shadow-md leading-none italic">
+                SAANIFY
             </span>
         </div>
       )}
 
-      {/* 🌈 DYNAMIC AURA */}
+      {/* 🌈 DYNAMIC FESTIVAL AURA */}
       <div className="absolute inset-0 blur-[100px] opacity-40 animate-pulse mix-blend-screen" 
            style={{ background: `radial-gradient(circle at center, ${themeColor} 0%, transparent 75%)`, animationDuration: `${speed * 1.5}s` }} />
       
-      {/* 🚀 3. THE HERO CONTENT (FIXED: Separated Scale & Animation) */}
-      
-      {/* Step A: Apply 'Breathing' Animation here (Movement up/down) */}
+      {/* 🚀 THE HERO WRAPPER (Animation & Scaling) */}
       <div 
         className="relative z-10 flex items-center justify-center animate-hero-breathe"
-        style={{ 
-           animationDuration: `${speed}s`,
-           width: '100%', 
-           height: '100%'
-        }}
+        style={{ animationDuration: `${speed}s`, width: '100%', height: '100%' }}
       >
-        {/* Step B: Apply 'Scaling' here (Zoom In/Out) */}
-        <div 
-           className="flex items-center justify-center"
-           style={{ 
-              transform: `scale(${scale})`, 
-              transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
-           }}
-        >
+        <div className="flex items-center justify-center"
+             style={{ transform: `scale(${scale})`, transition: 'transform 0.4s ease-out' }}>
            {render_type === 'COMPONENT' && (
              <div className="flex items-center justify-center">
                 {ComponentMap[visual_key] || <LucideIcons.Sparkles size={80} className="text-white opacity-20" />}
@@ -123,7 +104,7 @@ export default function HeroFactory({
            )}
 
            {render_type === 'IMAGE' && image_url && (
-             <img src={image_url} className="max-w-[280px] max-h-[280px] object-contain drop-shadow-2xl" alt="Festival" />
+             <img src={image_url} className="max-w-[280px] max-h-[280px] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]" alt="Hero" />
            )}
         </div>
       </div>
