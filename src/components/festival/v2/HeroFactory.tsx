@@ -91,7 +91,7 @@ export default function HeroFactory({
       
       {/* 🚀 THE HERO WRAPPER (Updated: pt-16 added to shift hero down) */}
       <div 
-        className="relative z-10 flex items-center justify-center animate-hero-breathe pt-16"
+        className="relative z-10 flex items-center justify-center animate-hero-breathe pt-12"
         style={{ animationDuration: `${speed}s`, width: '100%', height: '100%' }}
       >
         <div className="flex items-center justify-center"
