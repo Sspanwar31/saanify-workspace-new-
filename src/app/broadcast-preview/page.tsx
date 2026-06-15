@@ -53,7 +53,7 @@ export default function BroadcastPreviewPage() {
              {/* Simple Sparkle Icon */}
              <Sparkles className="w-4 h-4 text-white/80 shrink-0" />
              
-             {/* Centered Message (No Heading) */}
+             {/* Centered Message */}
              <p className="text-white font-black text-xs md:text-sm uppercase tracking-[0.2em] text-center truncate max-w-[90vw]">
                 {msgParts[0]}
              </p>
@@ -65,65 +65,66 @@ export default function BroadcastPreviewPage() {
         </div>
       )}
 
-      {/* 🚀 THE COMPACT MASTER CARD */}
-      <div className={`relative w-full max-w-[320px] transition-all duration-700 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
+      {/* 🚀 THE MODERN CARD (Increased Size) */}
+      {/* Width: max-w-[380px] (Increased from 320px) */}
+      <div className={`relative w-full max-w-[380px] transition-all duration-700 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
         
-        {/* Subtle Glow */}
-        <div className="absolute -inset-2 rounded-[2rem] opacity-20 blur-2xl animate-pulse"
+        {/* Stronger Glow for bigger card */}
+        <div className="absolute -inset-3 rounded-[2.5rem] opacity-25 blur-2xl animate-pulse"
              style={{ background: themeColor }} />
 
-        <div className="relative bg-slate-950/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col">
+        <div className="relative bg-slate-950/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col">
           
-          {/* HERO SECTION (Fixed Height 50%) */}
-          <div className="relative w-full h-2/3 overflow-hidden flex items-center justify-center bg-slate-900">
+          {/* HERO SECTION (Height 55%) */}
+          <div className="relative w-full h-[55%] overflow-hidden flex items-center justify-center bg-slate-900">
               {/* Divine Glow */}
               <div className="absolute inset-0 opacity-30 mix-blend-screen" 
-                   style={{ background: `radial-gradient(circle at 50% 50%, ${themeColor} 0%, transparent 70%)`, filter: 'blur(20px)' }} 
+                   style={{ background: `radial-gradient(circle at 50% 50%, ${themeColor} 0%, transparent 70%)`, filter: 'blur(25px)' }} 
               />
 
               {broadcast.image_url ? (
                 <div className="w-full h-full relative">
-                  <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain p-5 relative z-10 drop-shadow-2xl" alt="Festival Hero" />
+                  <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain p-6 relative z-10 drop-shadow-2xl" alt="Festival Hero" />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-20" />
                 </div>
               ) : (
-                <div className="scale-110">
+                <div className="scale-125">
                    <HeroFactory config={broadcast.hero_config} themeColor={themeColor} />
                 </div>
               )}
           </div>
 
-          {/* CONTENT SECTION (Compact) */}
-          <div className="h-1/2 p-6 pt-2 text-center relative z-30 flex flex-col items-center justify-center">
+          {/* CONTENT SECTION (Flex-1 takes remaining height) */}
+          <div className="flex-1 p-8 pt-2 text-center relative z-30 flex flex-col items-center justify-center">
             
-            {/* Modern Icon Badge */}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center mb-3 shadow-lg">
-               <ShieldCheck className="w-5 h-5" style={{ color: themeColor }} strokeWidth={2.5} />
+            {/* Modern Icon Badge (Larger) */}
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center mb-4 shadow-xl">
+               <ShieldCheck className="w-6 h-6" style={{ color: themeColor }} strokeWidth={2.5} />
             </div>
 
-            <div className="space-y-3 w-full">
-                {/* Headline */}
-                <h1 className="text-3xl font-black uppercase tracking-tight leading-none italic text-white drop-shadow-md" 
+            <div className="space-y-4 w-full">
+                {/* Headline (Larger) */}
+                <h1 className="text-4xl font-black uppercase tracking-tight leading-none italic text-white drop-shadow-md" 
                     style={{ color: themeColor }}>
                     {broadcast.resolved_title?.split('|')[0] || broadcast.title}
                 </h1>
                 
-                <p className="text-slate-400 text-xs md:text-sm font-medium leading-snug">
+                <p className="text-slate-400 text-sm md:text-base font-medium leading-relaxed px-1">
                     {msgParts[0]}
                 </p>
             </div>
 
-            {/* CTA Button */}
+            {/* CTA Button (Larger) */}
             <Button 
               onClick={handleCelebrate}
-              className="w-full h-11 mt-4 rounded-full text-sm font-bold text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.95] border border-white/10"
+              className="w-full h-12 mt-6 rounded-full text-base font-bold text-white shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.95] border border-white/10"
               style={{ background: themeGradient }}
             >
               {broadcast.resolved_cta || 'CELEBRATE'}
             </Button>
           </div>
           
-          <button onClick={() => setIsCardVisible(false)} className="absolute top-3 right-3 text-white/20 hover:text-white transition-all p-1 rounded-full"><X className="w-4 h-4" /></button>
+          <button onClick={() => setIsCardVisible(false)} className="absolute top-3 right-3 text-white/20 hover:text-white transition-all p-1 rounded-full"><X className="w-5 h-5" /></button>
         </div>
       </div>
 
