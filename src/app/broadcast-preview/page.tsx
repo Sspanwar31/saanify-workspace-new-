@@ -85,7 +85,7 @@ export default function BroadcastPreviewPage() {
         <div className="relative bg-slate-950/80 backdrop-blur-3xl border border-white/5 rounded-[3.5rem] shadow-[0_50px_150px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
           
           {/* HERO SECTION - Height increased for Better Vision */}
-          <div className="relative w-full aspect-[4/5] overflow-hidden flex items-center justify-center bg-slate-900 group">
+          <div className="relative w-full aspect-[3/4] overflow-hidden flex items-center justify-center bg-slate-900 group">
               {broadcast.image_url ? (
                 <div className="w-full h-full relative">
                   <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain p-6 relative z-10" alt="Festival Hero" />
