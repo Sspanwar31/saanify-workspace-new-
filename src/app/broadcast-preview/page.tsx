@@ -53,7 +53,6 @@ export default function BroadcastPreviewPage() {
              
              <Sparkles className="w-4 h-4 text-white/80 shrink-0" />
              
-             {/* Text Color: White (Premium & Readable on all themes) */}
              <p className="text-white font-black text-xs md:text-sm uppercase tracking-[0.2em] text-center truncate max-w-[90vw] drop-shadow-sm">
                 {msgParts[0]}
              </p>
@@ -67,11 +66,9 @@ export default function BroadcastPreviewPage() {
       {/* 🚀 THE MODERN CARD */}
       <div className={`relative w-full max-w-[380px] transition-all duration-700 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
         
-        {/* Outer Glow (STATIC - No Pulse) */}
-        <div className="absolute -inset-3 rounded-[2.5rem] opacity-20 blur-2xl"
-             style={{ background: themeColor }} />
-
-        <div className="relative bg-slate-950/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col">
+        {/* ❌ GOLDEN SHADOW REMOVED (The background glow div is deleted) */}
+        
+        <div className="relative bg-slate-950/80 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col">
           
           {/* HERO SECTION (Height 65%) */}
           <div className="relative w-full h-[65%] overflow-hidden flex items-center justify-center bg-slate-900 p-6">
@@ -90,7 +87,7 @@ export default function BroadcastPreviewPage() {
                    backgroundSize: '200% 200%'
                  }}
               >
-                 {/* 🎨 ANIMATION: Only on Image/Component (Scales & Moves) */}
+                 {/* 🎨 ANIMATION: Only on Image/Component */}
                  {broadcast.image_url ? (
                    <img src={broadcast.image_url} className="hero-anim w-full h-full object-contain relative z-10 drop-shadow-xl" alt="Festival Hero" />
                  ) : (
@@ -140,9 +137,8 @@ export default function BroadcastPreviewPage() {
         body, html { font-family: 'Poppins', sans-serif !important; }
         
         .hero-anim { 
-           /* ✨ Only Image moves, no shadow breathing on container */
            animation: hero-float ${broadcast?.hero_config?.speed || 4}s ease-in-out infinite; 
-           filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); /* Shadow moves WITH image */
+           filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); 
         }
 
         @keyframes hero-float { 
