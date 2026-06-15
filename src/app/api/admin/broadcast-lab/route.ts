@@ -45,31 +45,36 @@ export async function POST(req: Request) {
 
     if (!content) throw new Error(`Content not found for: ${festivalKey}`);
 
-    // ━━━ 3. LANGUAGE RESOLUTION (FIXED FOR BOL-CHAAL LANGUAGE) ━━━
-    let resolvedTitle = "";
-    let resolvedMessage = "";
-    let resolvedCta = "";
+    // ━━━ 3. LANGUAGE RESOLUTION (BOL-CHAAL) ━━━
+    let resolvedTitle = content.default_title;
+    let resolvedMessage = content.default_message;
+    let resolvedCta = content.cta_text;
 
     if (language_mode === 'HI') {
-      // Sirf Hindi
       resolvedTitle = content.title_hi || content.default_title;
       resolvedMessage = content.message_hi || content.default_message;
       resolvedCta = content.cta_hi || content.cta_text;
-    } 
-    else if (language_mode === 'EN') {
-      // Sirf English
+    } else if (language_mode === 'EN') {
       resolvedTitle = content.title_en || content.default_title;
       resolvedMessage = content.message_en || content.default_message;
       resolvedCta = content.cta_en || content.cta_text;
-    } 
-    else if (language_mode === 'BOTH') {
-      // 🚀 BOL-CHAAL MODE: Seedha Default columns use karein (Jaise: 'Happy Durga Puja')
-      resolvedTitle = content.default_title;
-      resolvedMessage = content.default_message;
-      resolvedCta = content.cta_text;
     }
 
-    // ━━━ 4. MASTER V2 INSERT ━━━
+    // ━━━ 4. 🚀 SMART CONFIG EXTRACTION (JSON to Flat) ━━━
+    const themeConfig = asset?.theme_config || {};
+    const heroConfig = asset?.hero_config || {};
+    const mediaConfig = asset?.media_config || {};
+
+    // 🎨 Color Logic: JSON Primary > Style Map > Default Gold
+    const bgStyle = themeConfig.background_style || 'DARK_GOLD';
+    const autoColorMap: any = {
+        'SKY': '#38bdf8', 'FIRE': '#f97316', 'RAINBOW': '#ff0080', 
+        'WINTER': '#60a5fa', 'EMERALD': '#10b981', 'SAFFRON': '#ff9933', 
+        'DARK_BLUE': '#3b82f6', 'DARK_GOLD': '#fbbf24'
+    };
+    const finalThemeColor = themeConfig.primary_color || autoColorMap[bgStyle] || '#fbbf24';
+
+    // ━━━ 5. MASTER V2 INSERT ━━━
     const insertQuery = `
       INSERT INTO broadcasts (
         title, message, festival_key, language_mode,
@@ -86,19 +91,19 @@ export async function POST(req: Request) {
     `;
 
     const values = [
-      resolvedTitle,               // $1
-      resolvedMessage,             // $2
-      festivalKey || broadcastType,// $3
-      language_mode,               // $4
-      asset?.hero_config?.visual_key || 'SPARKLES', // $5
-      asset?.hero_config || {},    // $6
-      asset?.theme_config || {},   // $7
-      asset?.media_config?.web_image || null, // $8
-      asset?.hero_config?.animation || 'NONE', // $9
-      asset?.theme_config?.primary_color || '#fbbf24', // $10
-      resolvedTitle,               // $11
-      resolvedMessage,             // $12
-      resolvedCta                  // $13
+      resolvedTitle,                               // $1
+      resolvedMessage,                             // $2
+      festivalKey || broadcastType,                // $3
+      language_mode,                               // $4
+      heroConfig.visual_key || 'SPARKLES',         // $5 (hero_visual flat column)
+      heroConfig,                                  // $6 (Full Hero JSON)
+      themeConfig,                                 // $7 (Full Theme JSON)
+      mediaConfig.web_image || null,               // $8 (Flat Image URL)
+      heroConfig.animation || 'GOLDEN_PARTICLES',  // 🚀 $9: animation_theme (Mapping from JSON)
+      finalThemeColor,                             // 🚀 $10: theme_color (Mapping from JSON/Auto)
+      resolvedTitle,                               // $11
+      resolvedMessage,                             // $12
+      resolvedCta                                  // $13
     ];
 
     const result = await client.query(insertQuery, values);
