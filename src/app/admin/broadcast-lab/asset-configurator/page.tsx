@@ -34,7 +34,7 @@ const ANIMATION_THEMES = [
   "SUNRISE_RAYS", "HARVEST_SPARKS", "BONFIRE_SPARKS", "RED_GOLD_PARTICLES", 
   "CONFETTI_BLAST", "SPARKLES", "WIND_EFFECT", "FLYING_KITES", "SMOKE_GLOW", 
   "FLOATING_GRAINS", "FLAG_MOTION", "COUNTDOWN", "LIGHT_RAYS", "PEACOCK_PARTICLES", 
-  "THREAD_GLOW", "LOTUS_PARTICLES", "LOTUS_GLOW", "FIRE_SPARKS", "VICTORY_RAYS", "GOLDEN_LIGHT"
+  "THREAD_GLOW", "LOTUS_PARTICLES", "LOTUS_GLOW", "FIRE_SPARKS", "VICTORY_RAYS", "ROMANTIC_LIGHTS", "GOLDEN_LIGHT"
 ];
 const VISUAL_COMPONENTS = [
 
@@ -79,6 +79,10 @@ const VISUAL_COMPONENTS = [
   { label: "NY Countdown", value: "NY_COUNTDOWN" },
 
   { label: "National Pride", value: "NATIONAL_PRIDE" },
+
+  { label: "Dandiya Beat (Navratri)", value: "DANDIYA_BEAT" },
+
+  { label: "Ganga Ghat Diya (Dev Deepawali)", value: "GANGA_GHAT_DIYA" },
 
   { label: "Sikh Khanda", value: "SIKH_KHANDA" }
 
