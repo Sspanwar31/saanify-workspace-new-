@@ -114,7 +114,7 @@ const AUTO_PRESETS: any = {
 
   NAVRATRI: { bg: 'DIVINE_RED', anim: 'LOTUS_PARTICLES', comp: 'DANDIYA_BEAT' },
 
-  DURGA_PUJA: { bg: 'DIVINE_RED', anim: 'DIVINE_AURA', comp: 'DIVINE_TRISHUL' },
+  DURGA_PUJA: { bg: 'DIVINE_RED', anim: 'RED_GOLD_PARTICLES', comp: 'DIVINE_TRISHUL' },
 
   GANESH_CHATURTHI: { bg: 'SAFFRON', anim: 'LOTUS_PARTICLES', comp: 'ROYAL_GANESHA' },
 
