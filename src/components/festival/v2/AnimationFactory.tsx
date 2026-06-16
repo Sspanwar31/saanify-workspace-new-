@@ -16,6 +16,7 @@ export default function AnimationFactory({ theme }: { theme: string }) {
     case 'VICTORY_RAYS':     // 🚀 Fixed for DUSSEHRA
     case 'SUNRISE_RAYS':     // 🚀 Fixed for CHHATH_PUJA
     case 'HARVEST_SPARKS':   // 🚀 Fixed for PONGAL
+    case 'LOTUS_PARTICLES': 
     case 'DIVINE_LIGHT':
     case 'GOLDEN_LIGHT':
     case 'SPARKLES':
@@ -25,7 +26,6 @@ export default function AnimationFactory({ theme }: { theme: string }) {
     case 'COLOR_SPLASH':
     case 'COLOR_BURST':
     case 'RED_GOLD_PARTICLES': // 🚀 Fixed for DURGA_PUJA
-    case 'LOTUS_PARTICLES':    // 🚀 Fixed for GANESH_CHATURTHI
     case 'FLOATING_PETALS':    // 🚀 Fixed for RAKSHA_BANDHAN
     case 'CONFETTI_BLAST':
       return <ColorSplash />;
