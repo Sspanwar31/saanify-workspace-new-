@@ -60,17 +60,22 @@ export async function POST(req: Request) {
       resolvedCta = content.cta_en || content.cta_text;
     }
 
-    // ━━━ 4. 🚀 SMART CONFIG EXTRACTION (JSON to Flat) ━━━
-    const themeConfig = asset?.theme_config || {};
-    const heroConfig = asset?.hero_config || {};
-    const mediaConfig = asset?.media_config || {};
+    // ━━━ 4. 🚀 CRITICAL FIX: SMART JSON PARSING ━━━
+    // Kabhi-kabhi PG JSON ko string ki tarah bhejta hai, isliye hum safety check karenge
+    const themeConfig = typeof asset?.theme_config === 'string' ? JSON.parse(asset.theme_config) : (asset?.theme_config || {});
+    const heroConfig = typeof asset?.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset?.hero_config || {});
+    const mediaConfig = typeof asset?.media_config === 'string' ? JSON.parse(asset.media_config) : (asset?.media_config || {});
 
-    // 🎨 Color Logic: JSON Primary > Style Map > Default Gold
+    // 🎯 1. Animation Logic: hero_config ke andar se dhoondo
+    // Hum 'animation' aur 'overlay' dono check karenge taaki Lohri ya Diwali miss na ho
+    const finalAnimation = heroConfig.animation || heroConfig.overlay || 'GOLDEN_PARTICLES';
+
+    // 🎯 2. Color Logic: theme_config se dhoondo
     const bgStyle = themeConfig.background_style || 'DARK_GOLD';
     const autoColorMap: any = {
         'SKY': '#38bdf8', 'FIRE': '#f97316', 'RAINBOW': '#ff0080', 
         'WINTER': '#60a5fa', 'EMERALD': '#10b981', 'SAFFRON': '#ff9933', 
-        'DARK_BLUE': '#3b82f6', 'DARK_GOLD': '#fbbf24'
+        'DARK_BLUE': '#3b82f6', 'DARK_GOLD': '#fbbf24', 'GOLD': '#fbbf24'
     };
     const finalThemeColor = themeConfig.primary_color || autoColorMap[bgStyle] || '#fbbf24';
 
@@ -95,12 +100,12 @@ export async function POST(req: Request) {
       resolvedMessage,                             // $2
       festivalKey || broadcastType,                // $3
       language_mode,                               // $4
-      heroConfig.visual_key || 'SPARKLES',         // $5 (hero_visual flat column)
-      heroConfig,                                  // $6 (Full Hero JSON)
-      themeConfig,                                 // $7 (Full Theme JSON)
-      mediaConfig.web_image || null,               // $8 (Flat Image URL)
-      heroConfig.animation || 'GOLDEN_PARTICLES',  // 🚀 $9: animation_theme (Mapping from JSON)
-      finalThemeColor,                             // 🚀 $10: theme_color (Mapping from JSON/Auto)
+      heroConfig.visual_key || 'SPARKLES',         // $5
+      heroConfig,                                  // $6 (Poora Hero JSON)
+      themeConfig,                                 // $7 (Poora Theme JSON)
+      mediaConfig.web_image || null,               // $8
+      finalAnimation,                              // 🚀 $9: FIXED (Ab 'animation' key se data aayega)
+      finalThemeColor,                             // 🚀 $10: FIXED (Ab 'theme_config' se color aayega)
       resolvedTitle,                               // $11
       resolvedMessage,                             // $12
       resolvedCta                                  // $13
