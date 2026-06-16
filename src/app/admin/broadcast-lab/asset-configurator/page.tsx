@@ -7,85 +7,44 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge'; 
 import { toast } from 'sonner';
-import { Save, Loader2, Palette, Wind, Zap } from 'lucide-react';
+import { Save, Loader2, Palette, Wind } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import HeroFactory from '@/components/festival/v2/HeroFactory';
 
-// 🚀 1. LISTS & PRESETS (Same as before but mapped to 'animation')
+// 🚀 1. SAARE 24 FESTIVALS (Matches DB)
 const FESTIVAL_LIST = ["DIWALI", "HOLI", "JANMASHTAMI", "CHRISTMAS", "NEW_YEAR", "REPUBLIC_DAY", "INDEPENDENCE_DAY", "MAHASHIVRATRI", "DUSSEHRA", "NAVRATRI", "DURGA_PUJA", "GANESH_CHATURTHI", "RAKSHA_BANDHAN", "MAKAR_SANKRANTI", "LOHRI", "RAM_NAVAMI", "HANUMAN_JAYANTI", "KARWA_CHAUTH", "CHHATH_PUJA", "PONGAL", "EID_UL_FITR", "EID_AL_ADHA", "DEV_DEEPAWALI", "GURU_NANAK_JAYANTI"];
+
+// 🚀 2. SAARE PARTICLE ENGINES (Matches HeroFactory)
+const ANIMATION_THEMES = ["GOLDEN_PARTICLES", "COLOR_SPLASH", "SNOW_FALL", "TRICOLOR_WAVES", "MOON_GLOW", "BLUE_AURA", "FIRE_EMBERS", "DIVINE_LIGHT", "DIVINE_GLOW", "TEMPLE_GLOW", "SUNRISE_RAYS", "HARVEST_SPARKS", "BONFIRE_SPARKS", "RED_GOLD_PARTICLES", "CONFETTI_BLAST", "SPARKLES", "WIND_EFFECT", "FLYING_KITES", "SMOKE_GLOW", "FLOATING_GRAINS", "FLAG_MOTION", "COUNTDOWN", "LIGHT_RAYS"];
 
 const BACKGROUND_STYLES = ["FIRE", "SOFT_GOLD", "SOFT_PINK", "WINTER", "DARK_GOLD", "ROYAL_BLUE", "DIVINE_RED", "SAFFRON", "DIVINE_LIGHT", "EMERALD", "SKY", "RAINBOW", "NIGHT", "TRICOLOR", "HARVEST_GOLD", "SUNSET", "DARK_BLUE", "ORANGE_RED"];
 
-// 🚀 Key Name is now 'animation' to match DB exactly
-const ANIMATION_THEMES = ["GOLDEN_PARTICLES", "COLOR_SPLASH", "SNOW_FALL", "TRICOLOR_WAVES", "MOON_GLOW", "BLUE_AURA", "FIRE_EMBERS", "DIVINE_LIGHT", "DIVINE_GLOW", "TEMPLE_GLOW", "SUNRISE_RAYS", "HARVEST_SPARKS", "BONFIRE_SPARKS", "RED_GOLD_PARTICLES", "CONFETTI_BLAST", "SPARKLES", "WIND_EFFECT", "FLYING_KITES", "SMOKE_GLOW", "FLOATING_GRAINS", "FLAG_MOTION", "COUNTDOWN", "LIGHT_RAYS"];
+// 🚀 3. MASTER PRESETS (Only used if DB is empty)
+const AUTO_PRESETS: any = {
+  DIWALI: { bg: 'DARK_GOLD', anim: 'GOLDEN_PARTICLES', comp: 'ROYAL_DIYA' },
+  HOLI: { bg: 'RAINBOW', anim: 'COLOR_SPLASH', comp: 'VIBRANT_PALETTE' },
+  CHRISTMAS: { bg: 'WINTER', anim: 'SNOW_FALL', comp: 'XMAS_TREE' },
+  MAKAR_SANKRANTI: { bg: 'SKY', anim: 'WIND_EFFECT', comp: 'KITES_FLYING' },
+  LOHRI: { bg: 'FIRE', anim: 'BONFIRE_SPARKS', comp: 'REAL_BONFIRE' }
+};
 
 const VISUAL_COMPONENTS = [
   { label: "Royal Diya (Diwali)", value: "ROYAL_DIYA" },
   { label: "Holi Palette", value: "VIBRANT_PALETTE" },
-  { label: "Ganesha Murti", value: "ROYAL_GANESHA" },
-  { label: "Maa Durga", value: "DIVINE_TRISHUL" },
-  { label: "Christmas Tree", value: "XMAS_TREE" },
-  { label: "Ashoka Chakra", value: "DHARMA_CHAKRA" },
+  { label: "Makar Sankranti Kite", value: "KITES_FLYING" },
   { label: "Baby Krishna", value: "BABY_KRISHNA" },
   { label: "Ravan Dahan", value: "RAVAN_DAHAN" },
-  { label: "Brother Bond", value: "BROTHER_BOND" },
-  { label: "Kites Flying", value: "KITES_FLYING" },
-  { label: "Real Bonfire", value: "REAL_BONFIRE" },
   { label: "Shiva Power", value: "SHIVA_POWER" },
-  { label: "Ram Dharma", value: "RAM_DHARMA" },
-  { label: "Hanuman Gada", value: "HANUMAN_GADA" },
-  { label: "Moon Sieve", value: "MOON_SIEVE" },
-  { label: "Sun Arghya", value: "SUN_ARGHYA" },
-  { label: "Harvest Pot", value: "HARVEST_POT" },
-  { label: "Eid Mubarak", value: "EID_MUBARAK" },
-  { label: "Holy Kaaba", value: "HOLY_KAABA" },
-  { label: "NY Countdown", value: "NY_COUNTDOWN" },
   { label: "National Pride", value: "NATIONAL_PRIDE" },
-  { label: "Sikh Khanda", value: "SIKH_KHANDA" }
+  { label: "Xmas Tree", value: "XMAS_TREE" },
+  { label: "Ganga Ghat Diya", value: "GANGA_GHAT_DIYA" }
 ];
-
-const AUTO_PRESETS: any = {
-  // 1. Traditional / Golden Style
-  DIWALI: { bg: 'DARK_GOLD', anim: 'GOLDEN_PARTICLES', comp: 'ROYAL_DIYA' },
-  DEV_DEEPAWALI: { bg: 'DARK_GOLD', anim: 'SPARKLES', comp: 'GANGA_GHAT_DIYA' },
-  DUSSEHRA: { bg: 'ORANGE_RED', anim: 'FIRE_SPARKS', comp: 'RAVAN_DAHAN' },
-  MAHASHIVRATRI: { bg: 'DARK_BLUE', anim: 'BLUE_AURA', comp: 'SHIVA_POWER' },
-  GURU_NANAK_JAYANTI: { bg: 'SOFT_GOLD', anim: 'GOLDEN_LIGHT', comp: 'SIKH_KHANDA' },
-  RAM_NAVAMI: { bg: 'SAFFRON', anim: 'TEMPLE_GLOW', comp: 'RAM_DHARMA' },
-  HANUMAN_JAYANTI: { bg: 'FIRE', anim: 'DIVINE_LIGHT', comp: 'HANUMAN_GADA' },
-  KARWA_CHAUTH: { bg: 'SOFT_GOLD', anim: 'ROMANTIC_LIGHTS', comp: 'MOON_SIEVE' },
-
-  // 2. Vibrant / Colorful Style
-  HOLI: { bg: 'RAINBOW', anim: 'COLOR_SPLASH', comp: 'VIBRANT_PALETTE' },
-  NAVRATRI: { bg: 'DIVINE_RED', anim: 'LOTUS_PARTICLES', comp: 'DANDIYA_BEAT' },
-  DURGA_PUJA: { bg: 'DIVINE_RED', anim: 'DIVINE_AURA', comp: 'DIVINE_TRISHUL' },
-  GANESH_CHATURTHI: { bg: 'SAFFRON', anim: 'LOTUS_PARTICLES', comp: 'ROYAL_GANESHA' },
-  JANMASHTAMI: { bg: 'ROYAL_BLUE', anim: 'PEACOCK_PARTICLES', comp: 'BABY_KRISHNA' },
-  RAKSHA_BANDHAN: { bg: 'SOFT_PINK', anim: 'THREAD_GLOW', comp: 'BROTHER_BOND' },
-  LOHRI: { bg: 'FIRE', anim: 'FIRE_EMBERS', comp: 'REAL_BONFIRE' },
-  PONGAL: { bg: 'HARVEST_GOLD', anim: 'FLOATING_GRAINS', comp: 'HARVEST_POT' },
-  BAISAKHI: { bg: 'HARVEST_GOLD', anim: 'HARVEST_SPARKS', comp: 'HARVEST_POT' },
-  ONAM: { bg: 'EMERALD', anim: 'LOTUS_GLOW', comp: 'HARVEST_POT' },
-  UGADI: { bg: 'EMERALD', anim: 'DIVINE_LIGHT', comp: 'HARVEST_POT' },
-
-  // 3. Winter / Events Style
-  CHRISTMAS: { bg: 'WINTER', anim: 'SNOW_FALL', comp: 'XMAS_TREE' },
-  NEW_YEAR: { bg: 'NIGHT', anim: 'COUNTDOWN', comp: 'NY_COUNTDOWN' },
-
-  // 4. National / Peaceful Style
-  REPUBLIC_DAY: { bg: 'TRICOLOR', anim: 'FLAG_MOTION', comp: 'DHARMA_CHAKRA' },
-  INDEPENDENCE_DAY: { bg: 'TRICOLOR', anim: 'TRICOLOR_WAVES', comp: 'NATIONAL_PRIDE' },
-  EID_UL_FITR: { bg: 'EMERALD', anim: 'MOON_GLOW', comp: 'EID_MUBARAK' },
-  EID_AL_ADHA: { bg: 'EMERALD', anim: 'LIGHT_RAYS', comp: 'HOLY_KAABA' },
-  MAKAR_SANKRANTI: { bg: 'SKY', anim: 'WIND_EFFECT', comp: 'KITES_FLYING' }
-};
 
 export default function AssetConfigurator() {
   const [selectedKey, setSelectedKey] = useState('DIWALI');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  // 🚀 FIXED STATE: Uses 'animation' key
   const [config, setConfig] = useState<any>({
     render_type: 'COMPONENT',
     visual_key: 'ROYAL_DIYA',
@@ -93,40 +52,31 @@ export default function AssetConfigurator() {
     scale: 1.2,
     speed: 4,
     background_style: 'DARK_GOLD',
-    animation: 'GOLDEN_PARTICLES' // 👈 Fixed Key Name
+    animation: 'GOLDEN_PARTICLES' // 👈 Always use 'animation'
   });
 
-  // 🔄 handle Festival Selection (Presets are just a starting point)
+  // 🔄 handle Festival Selection (Preset Fallback)
   const handleFestivalChange = (key: string) => {
     setSelectedKey(key);
     const p = AUTO_PRESETS[key] || { bg: 'DARK_GOLD', anim: 'GOLDEN_PARTICLES', comp: 'ROYAL_DIYA' };
-    
-    setConfig((prev: any) => ({
-      ...prev,
-      visual_key: p.comp,
-      background_style: p.bg,
-      animation: p.anim
-    }));
+    setConfig((prev: any) => ({ ...prev, visual_key: p.comp, background_style: p.bg, animation: p.anim }));
   };
 
-  // 🔄 PRIORITY FETCH: Database data always overrides presets
+  // 🔄 PRIORITY FETCH: Database always wins
   useEffect(() => {
     async function fetchAsset() {
       setLoading(true);
       const { data } = await supabase.from('festival_assets_v2').select('*').eq('festival_key', selectedKey).maybeSingle();
-      
       if (data) {
         const dbHero = typeof data.hero_config === 'string' ? JSON.parse(data.hero_config) : (data.hero_config || {});
         const dbTheme = typeof data.theme_config === 'string' ? JSON.parse(data.theme_config) : (data.theme_config || {});
         
         setConfig({
-          render_type: dbHero.render_type || 'COMPONENT',
-          visual_key: dbHero.visual_key || 'ROYAL_DIYA',
-          image_url: dbHero.image_url || '',
-          scale: dbHero.scale || 1.2,
-          speed: dbHero.speed || 4,
+          ...config,
+          ...dbHero,
           background_style: dbTheme.background_style || 'DARK_GOLD',
-          animation: dbHero.animation || 'GOLDEN_PARTICLES' // 🚀 Fetching correctly from DB
+          // 🚀 FIX: Mapping 'animation' correctly
+          animation: dbHero.animation || dbHero.overlay || 'GOLDEN_PARTICLES' 
         });
       }
       setLoading(false);
@@ -139,31 +89,21 @@ export default function AssetConfigurator() {
     try {
       const payload = {
         festival_key: selectedKey,
-        hero_config: config, // 🎯 Config now contains 'animation' key perfectly
-        theme_config: { 
-            background_style: config.background_style, 
-            primary_color: config.background_style === 'SKY' ? '#38bdf8' : '#fbbf24' // Simple auto-color logic
-        }
+        hero_config: config, 
+        theme_config: { background_style: config.background_style, primary_color: '#fbbf24' }
       };
-
-      await fetch('/api/admin/festival-assets', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      toast.success(`${selectedKey} Published to V2!`);
-    } catch (e) { toast.error("Database Error"); }
+      await fetch('/api/admin/festival-assets', { method: 'PATCH', body: JSON.stringify(payload) });
+      toast.success(`${selectedKey} Design Updated!`);
+    } catch (e) { toast.error("Database Sync Error"); }
     finally { setSaving(false); }
   };
 
   return (
-    <div className="p-8 space-y-8 bg-slate-50 min-h-screen font-poppins">
+    <div className="p-8 space-y-8 bg-slate-50 min-h-screen">
       <div className="grid lg:grid-cols-12 gap-8 items-start">
-        
         <Card className="lg:col-span-5 shadow-2xl rounded-[2rem] bg-white border-none overflow-hidden">
           <CardHeader className="bg-slate-900 text-white p-6"><CardTitle className="text-lg">Appearance Controls</CardTitle></CardHeader>
           <CardContent className="p-8 space-y-8">
-            
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-slate-400">Target Festival</label>
               <Select value={selectedKey} onValueChange={handleFestivalChange}>
@@ -198,7 +138,6 @@ export default function AssetConfigurator() {
                                 onClick={() => setConfig({...config, render_type: m})}>{m}</Button>
                     ))}
                 </div>
-
                 {config.render_type === 'COMPONENT' && (
                     <Select value={config.visual_key} onValueChange={(v) => setConfig({...config, visual_key: v})}>
                         <SelectTrigger className="h-12 rounded-xl bg-white border-slate-200 font-medium"><SelectValue /></SelectTrigger>
@@ -230,11 +169,11 @@ export default function AssetConfigurator() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-7 rounded-[3.5rem] bg-black flex flex-col items-center justify-center relative overflow-hidden h-[750px] shadow-2xl border-4 border-white/10">
+        {/* RIGHT: LIVE STUDIO PREVIEW */}
+        <Card className="lg:col-span-7 rounded-[3.5rem] bg-black flex items-center justify-center relative overflow-hidden h-[750px] shadow-2xl border-4 border-white/10">
            {loading ? <Loader2 className="animate-spin text-blue-500 w-12 h-12" /> : (
              <div className="relative w-full h-full flex flex-col items-center justify-center">
-                {/* 🚀 HeroFactory now receives 'animation' correctly in the config object */}
-                <HeroFactory config={config} themeColor={config.background_style === 'SKY' ? '#38bdf8' : '#fbbf24'} />
+                <HeroFactory config={config} themeColor="#fbbf24" />
                 <div className="absolute bottom-12 text-center z-50 pointer-events-none space-y-4">
                    <h2 className="text-white text-5xl font-black italic tracking-tighter uppercase drop-shadow-2xl">{selectedKey.replace('_', ' ')}</h2>
                    <Badge className="bg-blue-600/20 text-blue-400 tracking-[5px] font-black py-1.5 px-6 rounded-full border-blue-500/30">V2 SYNC ACTIVE</Badge>
