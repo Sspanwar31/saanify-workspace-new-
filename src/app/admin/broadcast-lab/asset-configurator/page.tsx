@@ -1,3 +1,4 @@
+```tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -46,127 +47,151 @@ const VISUAL_COMPONENTS = [
   { label: "Sikh Khanda", value: "SIKH_KHANDA" }
 ];
 
-// 🚀 2. MASTER AUTO PRESETS (Updated with all state keys)
+// 🚀 2. MASTER AUTO PRESETS (100% Unique Colors for 24 Festivals)
 const AUTO_PRESETS: any = {
   DIWALI: { 
     background_style: 'DARK_GOLD', animation: 'GOLDEN_PARTICLES', visual_key: 'ROYAL_DIYA', 
     banner_visual_key: 'ROYAL_DIYA', particle_variant: 'royal', design_preset: 'luxury', 
-    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold',
+    primary_color: '#fbbf24' // Gold
   },
   HOLI: { 
     background_style: 'RAINBOW', animation: 'COLOR_SPLASH', visual_key: 'VIBRANT_PALETTE', 
     banner_visual_key: 'VIBRANT_PALETTE', particle_variant: 'festival', design_preset: 'modern', 
-    title_variant: 'gradient', cta_variant: 'gradient', banner_variant: 'glass', card_glow: 'premium' 
+    title_variant: 'gradient', cta_variant: 'gradient', banner_variant: 'glass', card_glow: 'premium',
+    primary_color: '#ff0080' // Pink
   },
   JANMASHTAMI: { 
     background_style: 'ROYAL_BLUE', animation: 'PEACOCK_PARTICLES', visual_key: 'BABY_KRISHNA', 
     banner_visual_key: 'BABY_KRISHNA', particle_variant: 'premium', design_preset: 'royal', 
-    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'premium', card_glow: 'theme' 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'premium', card_glow: 'theme',
+    primary_color: '#3b82f6' // Blue
   },
   CHRISTMAS: { 
     background_style: 'WINTER', animation: 'SNOW_FALL', visual_key: 'XMAS_TREE', 
     banner_visual_key: 'XMAS_TREE', particle_variant: 'soft', design_preset: 'glass', 
-    title_variant: 'glow', cta_variant: 'glass', banner_variant: 'glass', card_glow: 'white' 
+    title_variant: 'glow', cta_variant: 'glass', banner_variant: 'glass', card_glow: 'white',
+    primary_color: '#ef4444' // Red
   },
   EID_UL_FITR: { 
     background_style: 'EMERALD', animation: 'MOON_GLOW', visual_key: 'EID_MUBARAK', 
     banner_visual_key: 'EID_MUBARAK', particle_variant: 'premium', design_preset: 'premium', 
-    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'premium', card_glow: 'theme' 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'premium', card_glow: 'theme',
+    primary_color: '#10b981' // Green
   },
   MAHASHIVRATRI: { 
     background_style: 'DARK_BLUE', animation: 'BLUE_AURA', visual_key: 'SHIVA_POWER', 
     banner_visual_key: 'SHIVA_POWER', particle_variant: 'royal', design_preset: 'luxury', 
-    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'premium', card_glow: 'theme' 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'premium', card_glow: 'theme',
+    primary_color: '#6366f1' // Shiva Blue/Indigo
   },
   REPUBLIC_DAY: { 
     background_style: 'TRICOLOR', animation: 'FLAG_MOTION', visual_key: 'DHARMA_CHAKRA', 
     banner_visual_key: 'DHARMA_CHAKRA', particle_variant: 'premium', design_preset: 'standard', 
-    title_variant: 'modern', cta_variant: 'solid', banner_variant: 'solid', card_glow: 'white' 
+    title_variant: 'modern', cta_variant: 'solid', banner_variant: 'solid', card_glow: 'white',
+    primary_color: '#FF9933' // Saffron
   },
   DUSSEHRA: { 
     background_style: 'ORANGE_RED', animation: 'FIRE_SPARKS', visual_key: 'RAVAN_DAHAN', 
     banner_visual_key: 'RAVAN_DAHAN', particle_variant: 'festival', design_preset: 'luxury', 
-    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold',
+    primary_color: '#B45309' // Burnt Orange
   },
   NAVRATRI: { 
     background_style: 'DIVINE_RED', animation: 'LOTUS_PARTICLES', visual_key: 'DANDIYA_BEAT', 
     banner_visual_key: 'DANDIYA_BEAT', particle_variant: 'festival', design_preset: 'modern', 
-    title_variant: 'gradient', cta_variant: 'neon', banner_variant: 'glass', card_glow: 'premium' 
+    title_variant: 'gradient', cta_variant: 'neon', banner_variant: 'glass', card_glow: 'premium',
+    primary_color: '#DC2626' // Red
   },
   DURGA_PUJA: { 
     background_style: 'DIVINE_RED', animation: 'DIVINE_AURA', visual_key: 'DIVINE_TRISHUL', 
     banner_visual_key: 'DIVINE_TRISHUL', particle_variant: 'royal', design_preset: 'luxury', 
-    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold',
+    primary_color: '#DC2626' // Durga Red
   },
   NEW_YEAR: { 
     background_style: 'NIGHT', animation: 'COUNTDOWN', visual_key: 'NY_COUNTDOWN', 
     banner_visual_key: 'NY_COUNTDOWN', particle_variant: 'festival', design_preset: 'modern', 
-    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'glass', card_glow: 'premium' 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'glass', card_glow: 'premium',
+    primary_color: '#8b5cf6' // Purple
   },
   RAKSHA_BANDHAN: { 
     background_style: 'SOFT_PINK', animation: 'THREAD_GLOW', visual_key: 'BROTHER_BOND', 
     banner_visual_key: 'BROTHER_BOND', particle_variant: 'soft', design_preset: 'glass', 
-    title_variant: 'gradient', cta_variant: 'premium', banner_variant: 'glass', card_glow: 'theme' 
+    title_variant: 'gradient', cta_variant: 'premium', banner_variant: 'glass', card_glow: 'theme',
+    primary_color: '#db2777' // Rose/Pink
   },
   LOHRI: { 
     background_style: 'FIRE', animation: 'FIRE_EMBERS', visual_key: 'REAL_BONFIRE', 
     banner_visual_key: 'REAL_BONFIRE', particle_variant: 'festival', design_preset: 'modern', 
-    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'solid', card_glow: 'gold' 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'solid', card_glow: 'gold',
+    primary_color: '#f97316' // Flame Orange
   },
   MAKAR_SANKRANTI: { 
     background_style: 'SKY', animation: 'WIND_EFFECT', visual_key: 'KITES_FLYING', 
     banner_visual_key: 'KITES_FLYING', particle_variant: 'soft', design_preset: 'minimal', 
-    title_variant: 'modern', cta_variant: 'glass', banner_variant: 'minimal', card_glow: 'white' 
+    title_variant: 'modern', cta_variant: 'glass', banner_variant: 'minimal', card_glow: 'white',
+    primary_color: '#38bdf8' // Sky Blue
   },
   GANESH_CHATURTHI: { 
     background_style: 'SAFFRON', animation: 'LOTUS_PARTICLES', visual_key: 'ROYAL_GANESHA', 
     banner_visual_key: 'ROYAL_GANESHA', particle_variant: 'premium', design_preset: 'royal', 
-    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'premium', card_glow: 'theme' 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'premium', card_glow: 'theme',
+    primary_color: '#f97316' // Orange
   },
   RAM_NAVAMI: { 
     background_style: 'SAFFRON', animation: 'GOLDEN_AURA', visual_key: 'RAM_DHARMA', 
     banner_visual_key: 'RAM_DHARMA', particle_variant: 'royal', design_preset: 'luxury', 
-    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold',
+    primary_color: '#f59e0b' // Saffron Yellow
   },
   HANUMAN_JAYANTI: { 
     background_style: 'FIRE', animation: 'DIVINE_LIGHT', visual_key: 'HANUMAN_GADA', 
     banner_visual_key: 'HANUMAN_GADA', particle_variant: 'premium', design_preset: 'premium', 
-    title_variant: 'glow', cta_variant: 'solid', banner_variant: 'premium', card_glow: 'theme' 
+    title_variant: 'glow', cta_variant: 'solid', banner_variant: 'premium', card_glow: 'theme',
+    primary_color: '#ea580c' // Deep Orange
   },
   KARWA_CHAUTH: { 
     background_style: 'SOFT_GOLD', animation: 'ROMANTIC_LIGHTS', visual_key: 'MOON_SIEVE', 
     banner_visual_key: 'MOON_SIEVE', particle_variant: 'soft', design_preset: 'glass', 
-    title_variant: 'glow', cta_variant: 'premium', banner_variant: 'glass', card_glow: 'gold' 
+    title_variant: 'glow', cta_variant: 'premium', banner_variant: 'glass', card_glow: 'gold',
+    primary_color: '#f59e0b' // Moon Gold
   },
   CHHATH_PUJA: { 
     background_style: 'SUNSET', animation: 'WATER_GLOW', visual_key: 'SUN_ARGHYA', 
     banner_visual_key: 'SUN_ARGHYA', particle_variant: 'soft', design_preset: 'modern', 
-    title_variant: 'gradient', cta_variant: 'solid', banner_variant: 'glass', card_glow: 'theme' 
+    title_variant: 'gradient', cta_variant: 'solid', banner_variant: 'glass', card_glow: 'theme',
+    primary_color: '#F97316' // Sunset Orange
   },
   PONGAL: { 
     background_style: 'HARVEST_GOLD', animation: 'FLOATING_GRAINS', visual_key: 'HARVEST_POT', 
     banner_visual_key: 'HARVEST_POT', particle_variant: 'soft', design_preset: 'standard', 
-    title_variant: 'modern', cta_variant: 'premium', banner_variant: 'minimal', card_glow: 'white' 
+    title_variant: 'modern', cta_variant: 'premium', banner_variant: 'minimal', card_glow: 'white',
+    primary_color: '#22c55e' // Harvest Green
   },
   GURU_NANAK_JAYANTI: { 
     background_style: 'SOFT_GOLD', animation: 'GOLDEN_LIGHT', visual_key: 'SIKH_KHANDA', 
     banner_visual_key: 'SIKH_KHANDA', particle_variant: 'royal', design_preset: 'luxury', 
-    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold',
+    primary_color: '#fbbf24' // Gurudwara Gold
   },
   DEV_DEEPAWALI: { 
     background_style: 'DARK_GOLD', animation: 'SPARKLES', visual_key: 'GANGA_GHAT_DIYA', 
     banner_visual_key: 'GANGA_GHAT_DIYA', particle_variant: 'royal', design_preset: 'luxury', 
-    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'luxury', card_glow: 'gold' 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'luxury', card_glow: 'gold',
+    primary_color: '#fbbf24'
   },
   EID_AL_ADHA: { 
     background_style: 'EMERALD', animation: 'LIGHT_RAYS', visual_key: 'HOLY_KAABA', 
     banner_visual_key: 'HOLY_KAABA', particle_variant: 'premium', design_preset: 'standard', 
-    title_variant: 'royal', cta_variant: 'solid', banner_variant: 'premium', card_glow: 'theme' 
+    title_variant: 'royal', cta_variant: 'solid', banner_variant: 'premium', card_glow: 'theme',
+    primary_color: '#10b981'
   },
   INDEPENDENCE_DAY: { 
     background_style: 'TRICOLOR', animation: 'TRICOLOR_WAVES', visual_key: 'NATIONAL_PRIDE', 
     banner_visual_key: 'NATIONAL_PRIDE', particle_variant: 'premium', design_preset: 'standard', 
-    title_variant: 'modern', cta_variant: 'solid', banner_variant: 'solid', card_glow: 'white' 
+    title_variant: 'modern', cta_variant: 'solid', banner_variant: 'solid', card_glow: 'white',
+    primary_color: '#16a34a' // India Green
   }
 };
 
@@ -210,7 +235,9 @@ export default function AssetConfigurator() {
       title_variant: p.title_variant,
       cta_variant: p.cta_variant,
       banner_variant: p.banner_variant,
-      card_glow: p.card_glow
+      card_glow: p.card_glow,
+      // 🚀 YE LINE ADD KAREIN:
+      primary_color: p.primary_color 
     }));
   };
 
