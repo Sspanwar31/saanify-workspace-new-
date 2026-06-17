@@ -66,18 +66,52 @@ export async function POST(req: Request) {
     const heroConfig = typeof asset?.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset?.hero_config || {});
     const mediaConfig = typeof asset?.media_config === 'string' ? JSON.parse(asset.media_config) : (asset?.media_config || {});
 
+    // ━━━ 2. HERO CONFIG KO NORMALIZE KAR DO ━━━
+    const normalizedHeroConfig = {
+      render_type: heroConfig.render_type || 'COMPONENT',
+      visual_key: heroConfig.visual_key || 'ROYAL_DIYA',
+      banner_visual_key:
+        heroConfig.banner_visual_key ||
+        heroConfig.visual_key ||
+        'ROYAL_DIYA',
+      particle_variant:
+        heroConfig.particle_variant || 'default',
+      design_preset:
+        heroConfig.design_preset || 'standard',
+      animation:
+        heroConfig.animation ||
+        heroConfig.overlay ||
+        'GOLDEN_PARTICLES',
+      image_url: heroConfig.image_url || '',
+      scale: heroConfig.scale || 1.2,
+      speed: heroConfig.speed || 4
+    };
+
+    // ━━━ 3. THEME CONFIG KO BHI NORMALIZE KAR DO ━━━
+    const normalizedThemeConfig = {
+      ...themeConfig,
+      title_variant:
+        themeConfig.title_variant || 'royal',
+      cta_variant:
+        themeConfig.cta_variant || 'premium',
+      banner_variant:
+        themeConfig.banner_variant || 'glass',
+      card_glow:
+        themeConfig.card_glow || 'theme'
+    };
+
     // 🎯 1. Animation Logic: hero_config ke andar se dhoondo
     // Hum 'animation' aur 'overlay' dono check karenge taaki Lohri ya Diwali miss na ho
     const finalAnimation = heroConfig.animation || heroConfig.overlay || 'GOLDEN_PARTICLES';
 
-    // 🎯 2. Color Logic: theme_config se dhoondo
-    const bgStyle = themeConfig.background_style || 'DARK_GOLD';
+    // 🎯 2. Color Logic: theme_config se dhoondo (Updated to use normalizedThemeConfig)
+    const bgStyle = normalizedThemeConfig.background_style || 'DARK_GOLD';
     const autoColorMap: any = {
         'SKY': '#38bdf8', 'FIRE': '#f97316', 'RAINBOW': '#ff0080', 
         'WINTER': '#60a5fa', 'EMERALD': '#10b981', 'SAFFRON': '#ff9933', 
         'DARK_BLUE': '#3b82f6', 'DARK_GOLD': '#fbbf24', 'GOLD': '#fbbf24'
     };
-    const finalThemeColor = themeConfig.primary_color || autoColorMap[bgStyle] || '#fbbf24';
+    const finalThemeColor = normalizedThemeConfig.primary_color || autoColorMap[bgStyle] || '#fbbf24';
 
     // ━━━ 5. MASTER V2 INSERT ━━━
     const insertQuery = `
@@ -96,19 +130,19 @@ export async function POST(req: Request) {
     `;
 
     const values = [
-      resolvedTitle,                               // $1
-      resolvedMessage,                             // $2
-      festivalKey || broadcastType,                // $3
-      language_mode,                               // $4
-      heroConfig.visual_key || 'SPARKLES',         // $5
-      heroConfig,                                  // $6 (Poora Hero JSON)
-      themeConfig,                                 // $7 (Poora Theme JSON)
-      mediaConfig.web_image || null,               // $8
-      finalAnimation,                              // 🚀 $9: FIXED (Ab 'animation' key se data aayega)
-      finalThemeColor,                             // 🚀 $10: FIXED (Ab 'theme_config' se color aayega)
-      resolvedTitle,                               // $11
-      resolvedMessage,                             // $12
-      resolvedCta                                  // $13
+      resolvedTitle,                                                               // $1
+      resolvedMessage,                                                             // $2
+      festivalKey || broadcastType,                                                // $3
+      language_mode,                                                               // $4
+      heroConfig.banner_visual_key || heroConfig.visual_key || 'SPARKLES',         // $5 (CHANGED)
+      normalizedHeroConfig,                                                        // $6 (CHANGED)
+      normalizedThemeConfig,                                                       // $7 (CHANGED)
+      mediaConfig.web_image || null,                                               // $8
+      finalAnimation,                                                              // $9
+      finalThemeColor,                                                             // $10
+      resolvedTitle,                                                               // $11
+      resolvedMessage,                                                             // $12
+      resolvedCta                                                                  // $13
     ];
 
     const result = await client.query(insertQuery, values);
