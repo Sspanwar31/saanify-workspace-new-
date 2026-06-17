@@ -243,15 +243,13 @@ export default function AssetConfigurator() {
                     <Input placeholder="Paste Image URL..." value={config.image_url} onChange={(e) => setConfig({...config, image_url: e.target.value})} className="h-12 rounded-xl bg-white border-slate-200" />
                 )}
 
-                {/* 🚀 NEW: Banner Visual */}
+                {/* 🚀 NEW: Banner Visual (FIXED MAP LOGIC) */}
                 <div className="space-y-2">
                     <Label>Banner Visual</Label>
                     <Select value={config.banner_visual_key || config.visual_key} onValueChange={(v) => setConfig({...config, banner_visual_key: v})}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            {VISUAL_COMPONENTS.map(([key, label]) => (
-                                <SelectItem key={key} value={key}>{label}</SelectItem>
-                            ))}
+                            {VISUAL_COMPONENTS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)} {/* ✅ Fixed: Changed from Object.entries to map for Banner */}
                         </SelectContent>
                     </Select>
                 </div>
@@ -374,9 +372,9 @@ export default function AssetConfigurator() {
         </Card>
 
         {/* RIGHT: LIVE STUDIO PREVIEW */}
-        <Card className="lg:col-span-7 rounded-[3.5rem] bg-black flex flex-col items-center justify-center relative overflow-hidden h-[750px] shadow-2xl border-4 border-white/10">
+        <Card className="lg:col-span-7 rounded-[3.5rem] bg-black flex flex flex-col items-center justify-center relative overflow-hidden h-[750px] shadow-2xl border-4 border-white/10">
            {loading ? <Loader2 className="animate-spin text-blue-500 w-12 h-12" /> : (
-             <div className="relative w-full h-full flex flex-col items-center justify-center">
+             <div className="relative w-full h-full flex flex flex-col items-center justify-center">
                 <HeroFactory config={config} themeColor={config.background_style === 'SKY' ? '#38bdf8' : '#fbbf24'} />
                 <div className="absolute bottom-12 text-center z-50 pointer-events-none space-y-4">
                    <h2 className="text-white text-5xl font-black italic tracking-tighter uppercase drop-shadow-2xl">{selectedKey.replace('_', ' ')}</h2>
