@@ -12,7 +12,7 @@ import { Save, Loader2, Palette, Wind, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import HeroFactory from '@/components/festival/v2/HeroFactory';
 
-// 🚀 1. LISTS & PRESETS
+// 🚀 1. LISTS & CONSTANTS
 const FESTIVAL_LIST = ["DIWALI", "HOLI", "JANMASHTAMI", "CHRISTMAS", "NEW_YEAR", "REPUBLIC_DAY", "INDEPENDENCE_DAY", "MAHASHIVRATRI", "DUSSEHRA", "NAVRATRI", "DURGA_PUJA", "GANESH_CHATURTHI", "RAKSHA_BANDHAN", "MAKAR_SANKRANTI", "LOHRI", "RAM_NAVAMI", "HANUMAN_JAYANTI", "KARWA_CHAUTH", "CHHATH_PUJA", "PONGAL", "EID_UL_FITR", "EID_AL_ADHA", "DEV_DEEPAWALI", "GURU_NANAK_JAYANTI"];
 
 const BACKGROUND_STYLES = ["FIRE", "SOFT_GOLD", "SOFT_PINK", "WINTER", "DARK_GOLD", "ROYAL_BLUE", "DIVINE_RED", "SAFFRON", "DIVINE_LIGHT", "EMERALD", "SKY", "RAINBOW", "NIGHT", "TRICOLOR", "HARVEST_GOLD", "SUNSET", "DARK_BLUE", "ORANGE_RED"];
@@ -46,30 +46,128 @@ const VISUAL_COMPONENTS = [
   { label: "Sikh Khanda", value: "SIKH_KHANDA" }
 ];
 
+// 🚀 2. MASTER AUTO PRESETS (Updated with all state keys)
 const AUTO_PRESETS: any = {
-  DIWALI: { bg: 'DARK_GOLD', anim: 'GOLDEN_PARTICLES', comp: 'ROYAL_DIYA' },
-  DEV_DEEPAWALI: { bg: 'DARK_GOLD', anim: 'SPARKLES', comp: 'GANGA_GHAT_DIYA' },
-  DUSSEHRA: { bg: 'ORANGE_RED', anim: 'FIRE_SPARKS', comp: 'RAVAN_DAHAN' },
-  MAHASHIVRATRI: { bg: 'DARK_BLUE', anim: 'BLUE_AURA', comp: 'SHIVA_POWER' },
-  GURU_NANAK_JAYANTI: { bg: 'SOFT_GOLD', anim: 'GOLDEN_LIGHT', comp: 'SIKH_KHANDA' },
-  RAM_NAVAMI: { bg: 'SAFFRON', anim: 'TEMPLE_GLOW', comp: 'RAM_DHARMA' },
-  HANUMAN_JAYANTI: { bg: 'FIRE', anim: 'DIVINE_LIGHT', comp: 'HANUMAN_GADA' },
-  KARWA_CHAUTH: { bg: 'SOFT_GOLD', anim: 'ROMANTIC_LIGHTS', comp: 'MOON_SIEVE' },
-  HOLI: { bg: 'RAINBOW', anim: 'COLOR_SPLASH', comp: 'VIBRANT_PALETTE' },
-  NAVRATRI: { bg: 'DIVINE_RED', anim: 'LOTUS_PARTICLES', comp: 'DANDIYA_BEAT' },
-  DURGA_PUJA: { bg: 'DIVINE_RED', anim: 'RED_GOLD_PARTICLES', comp: 'DIVINE_TRISHUL' },
-  GANESH_CHATURTHI: { bg: 'SAFFRON', anim: 'LOTUS_PARTICLES', comp: 'ROYAL_GANESHA' },
-  JANMASHTAMI: { bg: 'ROYAL_BLUE', anim: 'PEACOCK_PARTICLES', comp: 'BABY_KRISHNA' },
-  RAKSHA_BANDHAN: { bg: 'SOFT_PINK', anim: 'THREAD_GLOW', comp: 'BROTHER_BOND' },
-  LOHRI: { bg: 'FIRE', anim: 'FIRE_EMBERS', comp: 'REAL_BONFIRE' },
-  PONGAL: { bg: 'HARVEST_GOLD', anim: 'FLOATING_GRAINS', comp: 'HARVEST_POT' },
-  REPUBLIC_DAY: { bg: 'TRICOLOR', anim: 'FLAG_MOTION', comp: 'DHARMA_CHAKRA' },
-  NEW_YEAR: { bg: 'NIGHT', anim: 'COUNTDOWN', comp: 'NY_COUNTDOWN' },
-  CHHATH_PUJA: { bg: 'SUNSET', anim: 'SUNRISE_RAYS', comp: 'SUN_ARGHYA' },
-  INDEPENDENCE_DAY: { bg: 'TRICOLOR', anim: 'TRICOLOR_WAVES', comp: 'NATIONAL_PRIDE' },
-  EID_UL_FITR: { bg: 'EMERALD', anim: 'MOON_GLOW', comp: 'EID_MUBARAK' },
-  EID_AL_ADHA: { bg: 'EMERALD', anim: 'LIGHT_RAYS', comp: 'HOLY_KAABA' },
-  MAKAR_SANKRANTI: { bg: 'SKY', anim: 'WIND_EFFECT', comp: 'KITES_FLYING' }
+  DIWALI: { 
+    background_style: 'DARK_GOLD', animation: 'GOLDEN_PARTICLES', visual_key: 'ROYAL_DIYA', 
+    banner_visual_key: 'ROYAL_DIYA', particle_variant: 'royal', design_preset: 'luxury', 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+  },
+  HOLI: { 
+    background_style: 'RAINBOW', animation: 'COLOR_SPLASH', visual_key: 'VIBRANT_PALETTE', 
+    banner_visual_key: 'VIBRANT_PALETTE', particle_variant: 'festival', design_preset: 'modern', 
+    title_variant: 'gradient', cta_variant: 'gradient', banner_variant: 'glass', card_glow: 'premium' 
+  },
+  JANMASHTAMI: { 
+    background_style: 'ROYAL_BLUE', animation: 'PEACOCK_PARTICLES', visual_key: 'BABY_KRISHNA', 
+    banner_visual_key: 'BABY_KRISHNA', particle_variant: 'premium', design_preset: 'royal', 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'premium', card_glow: 'theme' 
+  },
+  CHRISTMAS: { 
+    background_style: 'WINTER', animation: 'SNOW_FALL', visual_key: 'XMAS_TREE', 
+    banner_visual_key: 'XMAS_TREE', particle_variant: 'soft', design_preset: 'glass', 
+    title_variant: 'glow', cta_variant: 'glass', banner_variant: 'glass', card_glow: 'white' 
+  },
+  EID_UL_FITR: { 
+    background_style: 'EMERALD', animation: 'MOON_GLOW', visual_key: 'EID_MUBARAK', 
+    banner_visual_key: 'EID_MUBARAK', particle_variant: 'premium', design_preset: 'premium', 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'premium', card_glow: 'theme' 
+  },
+  MAHASHIVRATRI: { 
+    background_style: 'DARK_BLUE', animation: 'BLUE_AURA', visual_key: 'SHIVA_POWER', 
+    banner_visual_key: 'SHIVA_POWER', particle_variant: 'royal', design_preset: 'luxury', 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'premium', card_glow: 'theme' 
+  },
+  REPUBLIC_DAY: { 
+    background_style: 'TRICOLOR', animation: 'FLAG_MOTION', visual_key: 'DHARMA_CHAKRA', 
+    banner_visual_key: 'DHARMA_CHAKRA', particle_variant: 'premium', design_preset: 'standard', 
+    title_variant: 'modern', cta_variant: 'solid', banner_variant: 'solid', card_glow: 'white' 
+  },
+  DUSSEHRA: { 
+    background_style: 'ORANGE_RED', animation: 'FIRE_SPARKS', visual_key: 'RAVAN_DAHAN', 
+    banner_visual_key: 'RAVAN_DAHAN', particle_variant: 'festival', design_preset: 'luxury', 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+  },
+  NAVRATRI: { 
+    background_style: 'DIVINE_RED', animation: 'LOTUS_PARTICLES', visual_key: 'DANDIYA_BEAT', 
+    banner_visual_key: 'DANDIYA_BEAT', particle_variant: 'festival', design_preset: 'modern', 
+    title_variant: 'gradient', cta_variant: 'neon', banner_variant: 'glass', card_glow: 'premium' 
+  },
+  DURGA_PUJA: { 
+    background_style: 'DIVINE_RED', animation: 'DIVINE_AURA', visual_key: 'DIVINE_TRISHUL', 
+    banner_visual_key: 'DIVINE_TRISHUL', particle_variant: 'royal', design_preset: 'luxury', 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+  },
+  NEW_YEAR: { 
+    background_style: 'NIGHT', animation: 'COUNTDOWN', visual_key: 'NY_COUNTDOWN', 
+    banner_visual_key: 'NY_COUNTDOWN', particle_variant: 'festival', design_preset: 'modern', 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'glass', card_glow: 'premium' 
+  },
+  RAKSHA_BANDHAN: { 
+    background_style: 'SOFT_PINK', animation: 'THREAD_GLOW', visual_key: 'BROTHER_BOND', 
+    banner_visual_key: 'BROTHER_BOND', particle_variant: 'soft', design_preset: 'glass', 
+    title_variant: 'gradient', cta_variant: 'premium', banner_variant: 'glass', card_glow: 'theme' 
+  },
+  LOHRI: { 
+    background_style: 'FIRE', animation: 'FIRE_EMBERS', visual_key: 'REAL_BONFIRE', 
+    banner_visual_key: 'REAL_BONFIRE', particle_variant: 'festival', design_preset: 'modern', 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'solid', card_glow: 'gold' 
+  },
+  MAKAR_SANKRANTI: { 
+    background_style: 'SKY', animation: 'WIND_EFFECT', visual_key: 'KITES_FLYING', 
+    banner_visual_key: 'KITES_FLYING', particle_variant: 'soft', design_preset: 'minimal', 
+    title_variant: 'modern', cta_variant: 'glass', banner_variant: 'minimal', card_glow: 'white' 
+  },
+  GANESH_CHATURTHI: { 
+    background_style: 'SAFFRON', animation: 'LOTUS_PARTICLES', visual_key: 'ROYAL_GANESHA', 
+    banner_visual_key: 'ROYAL_GANESHA', particle_variant: 'premium', design_preset: 'royal', 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'premium', card_glow: 'theme' 
+  },
+  RAM_NAVAMI: { 
+    background_style: 'SAFFRON', animation: 'GOLDEN_AURA', visual_key: 'RAM_DHARMA', 
+    banner_visual_key: 'RAM_DHARMA', particle_variant: 'royal', design_preset: 'luxury', 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+  },
+  HANUMAN_JAYANTI: { 
+    background_style: 'FIRE', animation: 'DIVINE_LIGHT', visual_key: 'HANUMAN_GADA', 
+    banner_visual_key: 'HANUMAN_GADA', particle_variant: 'premium', design_preset: 'premium', 
+    title_variant: 'glow', cta_variant: 'solid', banner_variant: 'premium', card_glow: 'theme' 
+  },
+  KARWA_CHAUTH: { 
+    background_style: 'SOFT_GOLD', animation: 'ROMANTIC_LIGHTS', visual_key: 'MOON_SIEVE', 
+    banner_visual_key: 'MOON_SIEVE', particle_variant: 'soft', design_preset: 'glass', 
+    title_variant: 'glow', cta_variant: 'premium', banner_variant: 'glass', card_glow: 'gold' 
+  },
+  CHHATH_PUJA: { 
+    background_style: 'SUNSET', animation: 'WATER_GLOW', visual_key: 'SUN_ARGHYA', 
+    banner_visual_key: 'SUN_ARGHYA', particle_variant: 'soft', design_preset: 'modern', 
+    title_variant: 'gradient', cta_variant: 'solid', banner_variant: 'glass', card_glow: 'theme' 
+  },
+  PONGAL: { 
+    background_style: 'HARVEST_GOLD', animation: 'FLOATING_GRAINS', visual_key: 'HARVEST_POT', 
+    banner_visual_key: 'HARVEST_POT', particle_variant: 'soft', design_preset: 'standard', 
+    title_variant: 'modern', cta_variant: 'premium', banner_variant: 'minimal', card_glow: 'white' 
+  },
+  GURU_NANAK_JAYANTI: { 
+    background_style: 'SOFT_GOLD', animation: 'GOLDEN_LIGHT', visual_key: 'SIKH_KHANDA', 
+    banner_visual_key: 'SIKH_KHANDA', particle_variant: 'royal', design_preset: 'luxury', 
+    title_variant: 'royal', cta_variant: 'premium', banner_variant: 'luxury', card_glow: 'gold' 
+  },
+  DEV_DEEPAWALI: { 
+    background_style: 'DARK_GOLD', animation: 'SPARKLES', visual_key: 'GANGA_GHAT_DIYA', 
+    banner_visual_key: 'GANGA_GHAT_DIYA', particle_variant: 'royal', design_preset: 'luxury', 
+    title_variant: 'glow', cta_variant: 'neon', banner_variant: 'luxury', card_glow: 'gold' 
+  },
+  EID_AL_ADHA: { 
+    background_style: 'EMERALD', animation: 'LIGHT_RAYS', visual_key: 'HOLY_KAABA', 
+    banner_visual_key: 'HOLY_KAABA', particle_variant: 'premium', design_preset: 'standard', 
+    title_variant: 'royal', cta_variant: 'solid', banner_variant: 'premium', card_glow: 'theme' 
+  },
+  INDEPENDENCE_DAY: { 
+    background_style: 'TRICOLOR', animation: 'TRICOLOR_WAVES', visual_key: 'NATIONAL_PRIDE', 
+    banner_visual_key: 'NATIONAL_PRIDE', particle_variant: 'premium', design_preset: 'standard', 
+    title_variant: 'modern', cta_variant: 'solid', banner_variant: 'solid', card_glow: 'white' 
+  }
 };
 
 export default function AssetConfigurator() {
@@ -77,7 +175,6 @@ export default function AssetConfigurator() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  // 🚀 FIXED STATE: Added new keys
   const [config, setConfig] = useState<any>({
     render_type: 'COMPONENT',
     visual_key: 'ROYAL_DIYA',
@@ -86,28 +183,34 @@ export default function AssetConfigurator() {
     speed: 4,
     background_style: 'DARK_GOLD',
     animation: 'GOLDEN_PARTICLES',
-    // 🚀 New Visual Configs
+    // Visual Configs
     banner_visual_key: 'ROYAL_DIYA',
     particle_variant: 'default',
     design_preset: 'standard',
-    // 🚀 New Theme Configs
+    // Theme Configs
     title_variant: 'royal',
     cta_variant: 'premium',
     banner_variant: 'glass',
     card_glow: 'theme'
   });
 
-  // 🔄 handle Festival Selection (Presets override current)
+  // 🔄 handle Festival Selection (Apply Full Preset)
   const handleFestivalChange = (key: string) => {
     setSelectedKey(key);
-    const p = AUTO_PRESETS[key] || { bg: 'DARK_GOLD', anim: 'GOLDEN_PARTICLES', comp: 'ROYAL_DIYA' };
+    const p = AUTO_PRESETS[key] || AUTO_PRESETS.DIWALI;
     
     setConfig((prev: any) => ({
       ...prev,
-      visual_key: p.comp,
-      background_style: p.bg,
-      animation: p.anim
-      // Note: Theme presets like 'royal' could also be set here if needed
+      visual_key: p.visual_key,
+      background_style: p.background_style,
+      animation: p.animation,
+      banner_visual_key: p.banner_visual_key,
+      particle_variant: p.particle_variant,
+      design_preset: p.design_preset,
+      title_variant: p.title_variant,
+      cta_variant: p.cta_variant,
+      banner_variant: p.banner_variant,
+      card_glow: p.card_glow
     }));
   };
 
@@ -129,15 +232,15 @@ export default function AssetConfigurator() {
           speed: dbHero.speed || 4,
           background_style: dbTheme.background_style || 'DARK_GOLD',
           animation: dbHero.animation || dbHero.overlay || 'GOLDEN_PARTICLES',
-          // 🚀 Fetching visual config overrides
-          banner_visual_key: dbHero.banner_visual_key || prev.banner_visual_key,
-          particle_variant: dbHero.particle_variant || prev.particle_variant,
-          design_preset: dbHero.design_preset || prev.design_preset,
+          // 🚀 Fixed: Using safe fallbacks instead of 'prev'
+          banner_visual_key: dbHero.banner_visual_key || dbHero.visual_key || 'ROYAL_DIYA',
+          particle_variant: dbHero.particle_variant || 'default',
+          design_preset: dbHero.design_preset || 'standard',
           // 🚀 Fetching theme config overrides
-          title_variant: dbTheme.title_variant || prev.title_variant,
-          cta_variant: dbTheme.cta_variant || prev.cta_variant,
-          banner_variant: dbTheme.banner_variant || prev.banner_variant,
-          card_glow: dbTheme.card_glow || prev.card_glow
+          title_variant: dbTheme.title_variant || 'royal',
+          cta_variant: dbTheme.cta_variant || 'premium',
+          banner_variant: dbTheme.banner_variant || 'glass',
+          card_glow: dbTheme.card_glow || 'theme'
         });
       }
       setLoading(false);
@@ -148,7 +251,6 @@ export default function AssetConfigurator() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // 🚀 Splitting Payload as requested
       const payload = {
         festival_key: selectedKey,
         hero_config: {
@@ -157,7 +259,6 @@ export default function AssetConfigurator() {
         theme_config: { 
             background_style: config.background_style, 
             primary_color: config.background_style === 'SKY' ? '#38bdf8' : '#fbbf24',
-            // 🚀 Saving Theme Variants
             title_variant: config.title_variant,
             cta_variant: config.cta_variant,
             banner_variant: config.banner_variant,
@@ -183,7 +284,7 @@ export default function AssetConfigurator() {
         {/* LEFT: MASTER CONTROLS */}
         <Card className="lg:col-span-5 shadow-2xl rounded-[2rem] bg-white border-none overflow-hidden">
           <CardHeader className="bg-slate-900 text-white p-6"><CardTitle className="text-lg">Appearance Controls</CardTitle></CardHeader>
-          <CardContent className="p-8 space-y-8">
+          <CardContent className="p-8 space-y-8 max-h-[85vh] overflow-y-auto custom-scrollbar">
             
             {/* Festival Selector */}
             <div className="space-y-2">
@@ -214,9 +315,8 @@ export default function AssetConfigurator() {
                 </div>
             </div>
 
-            {/* 🚀 HERO CONFIG SECTION (Visuals) */}
+            {/* HERO CONFIG SECTION */}
             <div className="p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 space-y-6">
-                
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Hero Assets</h3>
                 
                 {/* Mode Toggles */}
@@ -243,18 +343,18 @@ export default function AssetConfigurator() {
                     <Input placeholder="Paste Image URL..." value={config.image_url} onChange={(e) => setConfig({...config, image_url: e.target.value})} className="h-12 rounded-xl bg-white border-slate-200" />
                 )}
 
-                {/* 🚀 NEW: Banner Visual (FIXED MAP LOGIC) */}
+                {/* Banner Visual */}
                 <div className="space-y-2">
                     <Label>Banner Visual</Label>
-                    <Select value={config.banner_visual_key || config.visual_key} onValueChange={(v) => setConfig({...config, banner_visual_key: v})}>
+                    <Select value={config.banner_visual_key} onValueChange={(v) => setConfig({...config, banner_visual_key: v})}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            {VISUAL_COMPONENTS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)} {/* ✅ Fixed: Changed from Object.entries to map for Banner */}
+                            {VISUAL_COMPONENTS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
 
-                {/* 🚀 NEW: Particle Variant */}
+                {/* Particle Variant */}
                 <div className="space-y-2">
                     <Label>Particle Variant</Label>
                     <Select value={config.particle_variant || 'default'} onValueChange={(v) => setConfig({...config, particle_variant: v})}>
@@ -270,7 +370,7 @@ export default function AssetConfigurator() {
                     </Select>
                 </div>
 
-                {/* 🚀 NEW: Design Preset */}
+                {/* Design Preset */}
                 <div className="space-y-2">
                     <Label>Design Preset</Label>
                     <Select value={config.design_preset || 'standard'} onValueChange={(v) => setConfig({...config, design_preset: v})}>
@@ -300,7 +400,7 @@ export default function AssetConfigurator() {
                 </div>
             </div>
 
-            {/* 🚀 THEME CONFIG SECTION */}
+            {/* THEME CONFIG SECTION */}
             <div className="p-6 bg-slate-100 rounded-[2rem] border border-slate-200 space-y-6">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Theme Styling</h3>
                 
@@ -372,9 +472,9 @@ export default function AssetConfigurator() {
         </Card>
 
         {/* RIGHT: LIVE STUDIO PREVIEW */}
-        <Card className="lg:col-span-7 rounded-[3.5rem] bg-black flex flex flex-col items-center justify-center relative overflow-hidden h-[750px] shadow-2xl border-4 border-white/10">
+        <Card className="lg:col-span-7 rounded-[3.5rem] bg-black flex flex-col items-center justify-center relative overflow-hidden h-[750px] shadow-2xl border-4 border-white/10">
            {loading ? <Loader2 className="animate-spin text-blue-500 w-12 h-12" /> : (
-             <div className="relative w-full h-full flex flex flex-col items-center justify-center">
+             <div className="relative w-full h-full flex flex-col items-center justify-center">
                 <HeroFactory config={config} themeColor={config.background_style === 'SKY' ? '#38bdf8' : '#fbbf24'} />
                 <div className="absolute bottom-12 text-center z-50 pointer-events-none space-y-4">
                    <h2 className="text-white text-5xl font-black italic tracking-tighter uppercase drop-shadow-2xl">{selectedKey.replace('_', ' ')}</h2>
