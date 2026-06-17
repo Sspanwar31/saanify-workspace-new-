@@ -20,9 +20,13 @@ export default function AnimationFactory({ theme }: { theme: string }) {
     case 'SUNRISE_RAYS':
     case 'HARVEST_SPARKS':
     case 'LOTUS_PARTICLES':
+    case 'LOTUS_GLOW':          // ✅ Added
     case 'DIVINE_LIGHT':
     case 'GOLDEN_LIGHT':
     case 'SPARKLES':
+    case 'FLOATING_GRAINS':     // ✅ Added
+    case 'LIGHT_RAYS':          // ✅ Added
+    case 'COUNTDOWN':           // ✅ Added
 
       return (
         <GoldenParticles preset={theme} />
@@ -83,6 +87,7 @@ export default function AnimationFactory({ theme }: { theme: string }) {
 
     // ━━━━━━━━━ WIND ENGINE ━━━━━━━━━
     case 'WIND_EFFECT':
+    case 'FLYING_KITES':         // ✅ Added (Makar Sankranti mapping)
 
       return (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -99,6 +104,8 @@ export default function AnimationFactory({ theme }: { theme: string }) {
       );
 
     default:
+      // ✅ Better Debugging
+      console.warn('Unknown animation:', theme);
 
       return (
         <GoldenParticles preset="GOLDEN_PARTICLES" />
