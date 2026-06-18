@@ -40,10 +40,12 @@ WHERE table_schema='public'
       types: corpRes.rows?.map((r) => r.broadcast_type) || []
     });
   } catch (e: any) {
-    if (client) await client.end();
-    console.error("GET Error:", e.message);
-    // Return empty arrays on error instead of crashing
-    return NextResponse.json({ festivals: [], types: [] }, { status: 200 });
+    console.error("GET ERROR =", e);
+
+    return NextResponse.json({
+      error: e.message,
+      stack: e.stack
+    }, { status: 500 });
   }
 }
 
