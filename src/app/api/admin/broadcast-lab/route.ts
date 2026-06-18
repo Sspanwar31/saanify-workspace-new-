@@ -173,8 +173,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: result.rows[0] });
 
-  } catch (error: any) {
-    if (client) await client.end();
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error:any) {
+    console.error("POST ERROR =", error);
+
+    return NextResponse.json({
+      message: error.message,
+      detail: error.detail,
+      code: error.code,
+      constraint: error.constraint
+    }, { status: 500 });
   }
 }
