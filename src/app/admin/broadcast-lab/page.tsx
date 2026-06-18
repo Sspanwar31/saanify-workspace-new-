@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,21 +9,10 @@ import { toast } from 'sonner';
 import { Sparkles, Globe, FlaskConical, ExternalLink, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-// ━━━ MASTER LISTS (Moved outside for better build stability) ━━━
-const BROADCAST_TYPES = [
-  "FESTIVAL", "ANNOUNCEMENT", "SYSTEM_UPDATE", "SPECIAL_OFFER", "MAINTENANCE", "EMERGENCY", "EVENT"
-];
-
-const FESTIVALS = [
-  "DIWALI", "HOLI", "NAVRATRI", "DUSSEHRA", "GANESH_CHATURTHI", "JANMASHTAMI", 
-  "RAKSHA_BANDHAN", "MAKAR_SANKRANTI", "LOHRI", "MAHASHIVRATRI", "RAM_NAVAMI", 
-  "HANUMAN_JAYANTI", "KARWA_CHAUTH", "CHHATH_PUJA", "GURU_PURNIMA", "ONAM", 
-  "PONGAL", "UGADI", "BAISAKHI", "EID_AL_FITR", "EID_AL_ADHA", "CHRISTMAS", 
-  "NEW_YEAR", "REPUBLIC_DAY", "INDEPENDENCE_DAY"
-];
-
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
+  const [dbLists, setDbLists] = useState({ festivals: [], types: [] }); // 🚀 Naya state
+  
   const [form, setForm] = useState({
     type: 'FESTIVAL',
     festival_key: 'DIWALI',
@@ -31,6 +20,14 @@ export default function BroadcastLabPage() {
     full_screen_animation: true,
     dashboard_overlay: true
   });
+
+  // 🚀 1. Fetch Dynamic Lists on Mount
+  useEffect(() => {
+    fetch('/api/admin/broadcast-lab')
+      .then(res => res.json())
+      .then(data => setDbLists(data))
+      .catch(err => console.error('Failed to fetch lists:', err));
+  }, []);
 
   const publishBroadcast = async () => {
     try {
@@ -114,7 +111,8 @@ export default function BroadcastLabPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {BROADCAST_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>)}
+                  {/* 🚀 Corporate Types from DB */}
+                  {dbLists.types.map(t => <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -127,7 +125,8 @@ export default function BroadcastLabPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
-                    {FESTIVALS.map(f => <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>)}
+                    {/* 🚀 Festivals from DB */}
+                    {dbLists.festivals.map(f => <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
