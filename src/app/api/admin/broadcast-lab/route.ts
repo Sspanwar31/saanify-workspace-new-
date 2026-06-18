@@ -6,12 +6,41 @@ const getDbClient = async () => {
   if (!connectionString) throw new Error('DATABASE_URL missing');
   const client = new Client({
     connectionString,
-    ssl: { rejectUnauthorized: false },
+    ssl: { rejectAuthorized: false },
   });
   await client.connect();
   return client;
 };
 
+// ━━━ 1. GET: Database se saari keys fetch karein (Dropdown ke liye)
+export async function GET() {
+  let client: Client | null = null;
+  try {
+    client = await getDbClient();
+
+    // Festival keys laao (Active ones only)
+    const festRes = await client.query(
+      'SELECT festival_key FROM festival_assets_v2 WHERE is_active = true ORDER BY festival_key ASC'
+    );
+    
+    // Corporate types laao (System, Announcement etc)
+    const corpRes = await client.query(
+      'SELECT broadcast_type FROM broadcast_assets ORDER BY broadcast_type ASC'
+    );
+
+    await client.end();
+
+    return NextResponse.json({
+      festivals: festRes.rows.map((r) => r.festival_key),
+      types: corpRes.rows.map((r) => r.broadcast_type)
+    });
+  } catch (e: any) {
+    if (client) await client.end();
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+// ━━━ 2. POST: Publish Logic (Corporate vs Festival Check)
 export async function POST(req: Request) {
   let client: Client | null = null;
 
@@ -24,14 +53,45 @@ export async function POST(req: Request) {
     const language_mode = body.language_mode;
     const preview_mode = body.preview_mode;
 
-    // ━━━ 1. ASSET & MESSAGE FETCH ━━━
-    const assetResult = await client.query(`SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1`, [festivalKey]);
-    const asset = assetResult.rows[0];
+    // 🚀 Logic: Corporate check karein agar festival key nahi mili
+    // Hum priority dete hain broadcastType ko agar wo diya hai, warna festivalKey use hoga
+    const targetKey = broadcastType || festivalKey;
 
-    const messageResult = await client.query(`SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1`, [festivalKey]);
-    const content = messageResult.rows[0];
+    let asset, content, resolvedFestivalKey;
 
-    if (!content) throw new Error(`Content not found for: ${festivalKey}`);
+    // ━━━ Step A: Corporate Check ━━━
+    // Pehle check karein kya ye Corporate table mein hai
+    const corpCheck = await client.query(
+      'SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1',
+      [targetKey]
+    );
+
+    if (corpCheck.rows.length > 0) {
+      // ━━━ Corporate Path ━━━
+      asset = corpCheck.rows[0];
+      const msgRes = await client.query(
+        'SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1',
+        [targetKey]
+      );
+      content = msgRes.rows[0];
+      resolvedFestivalKey = targetKey; // Corporate ko bhi key ke roop mein store karenge
+    } else {
+      // ━━━ Festival Path (Fallback) ━━━
+      const assetResult = await client.query(
+        `SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1`,
+        [festivalKey]
+      );
+      asset = assetResult.rows[0];
+
+      const messageResult = await client.query(
+        `SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1`,
+        [festivalKey]
+      );
+      content = messageResult.rows[0];
+      resolvedFestivalKey = festivalKey;
+    }
+
+    if (!content) throw new Error(`Data not found in DB for: ${targetKey}`);
 
     // ━━━ 2. 🚀 MASTER COLOR & THEME MAP (24 Festivals) ━━━
     const MASTER_THEME_MAP: any = {
@@ -51,7 +111,7 @@ export async function POST(req: Request) {
     const mediaConfig = typeof asset?.media_config === 'string' ? JSON.parse(asset.media_config) : (asset?.media_config || {});
 
     // Resolve Final Color (Priority: Master Map > JSON > Default Gold)
-    const finalThemeColor = MASTER_THEME_MAP[festivalKey] || themeConfig.primary_color || '#fbbf24';
+    const finalThemeColor = MASTER_THEME_MAP[resolvedFestivalKey] || themeConfig.primary_color || '#fbbf24';
 
     const normalizedHeroConfig = {
       render_type: heroConfig.render_type || 'COMPONENT',
@@ -88,7 +148,7 @@ export async function POST(req: Request) {
     `;
 
     const values = [
-      resTitle, resMsg, festivalKey, language_mode,
+      resTitle, resMsg, resolvedFestivalKey, language_mode,
       normalizedHeroConfig.visual_key,
       normalizedHeroConfig,
       normalizedThemeConfig,
