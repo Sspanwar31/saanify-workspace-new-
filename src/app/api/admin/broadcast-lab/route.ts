@@ -21,10 +21,11 @@ export async function GET() {
 
     // Fetch Festival Keys (Updated to list all tables)
     const festRes = await client.query(`
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema='public'
-`);
+      SELECT festival_key
+      FROM festival_assets_v2
+      WHERE is_active = true
+      ORDER BY festival_key ASC
+    `);
     
     // Fetch Corporate Types
     const corpRes = await client.query(
@@ -36,7 +37,7 @@ WHERE table_schema='public'
     // 🚀 SAFETY: Always return arrays, never undefined
     // Note: Mapped to table_name to match the new query result
     return NextResponse.json({
-      festivals: festRes.rows?.map((r) => r.table_name) || [],
+      festivals: festRes.rows?.map((r) => r.festival_key) || [],
       types: corpRes.rows?.map((r) => r.broadcast_type) || []
     });
   } catch (e: any) {
