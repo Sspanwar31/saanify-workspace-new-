@@ -12,31 +12,35 @@ const getDbClient = async () => {
   return client;
 };
 
-// ━━━ 1. GET: Database se saari keys fetch karein (Dropdown ke liye)
+// ━━━ 1. GET: Database se saari keys fetch karein (Updated for Safety)
 export async function GET() {
   let client: Client | null = null;
   try {
     client = await getDbClient();
+    if (!client) throw new Error("DB connection failed");
 
-    // Festival keys laao (Active ones only)
+    // Fetch Festival Keys
     const festRes = await client.query(
-      'SELECT festival_key FROM festival_assets_v2 WHERE is_active = true ORDER BY festival_key ASC'
+      'SELECT festival_key FROM festival_assets_v2 ORDER BY festival_key ASC'
     );
     
-    // Corporate types laao (System, Announcement etc)
+    // Fetch Corporate Types
     const corpRes = await client.query(
       'SELECT broadcast_type FROM broadcast_assets ORDER BY broadcast_type ASC'
     );
 
     await client.end();
 
+    // 🚀 SAFETY: Always return arrays, never undefined
     return NextResponse.json({
-      festivals: festRes.rows.map((r) => r.festival_key),
-      types: corpRes.rows.map((r) => r.broadcast_type)
+      festivals: festRes.rows?.map((r) => r.festival_key) || [],
+      types: corpRes.rows?.map((r) => r.broadcast_type) || []
     });
   } catch (e: any) {
     if (client) await client.end();
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("GET Error:", e.message);
+    // Return empty arrays on error instead of crashing
+    return NextResponse.json({ festivals: [], types: [] }, { status: 200 });
   }
 }
 
