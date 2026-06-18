@@ -141,8 +141,13 @@ export async function POST(req: Request) {
     // ━━━ 4. LANGUAGE RESOLUTION ━━━
     let resTitle = content.default_title;
     let resMsg = content.default_message;
+
     if (language_mode === 'HI') { resTitle = content.title_hi; resMsg = content.message_hi; }
     else if (language_mode === 'EN') { resTitle = content.title_en; resMsg = content.message_en; }
+
+    // 🚀 SAFETY FIX: Fallback agar title/message null ho (Prevents DB Constraint Error)
+    if (!resTitle) resTitle = content.title_en || "Untitled Broadcast";
+    if (!resMsg) resMsg = content.message_en || "No message content available.";
 
     // ━━━ 5. MASTER INSERT ━━━
     const insertQuery = `
