@@ -43,6 +43,12 @@ const ComponentMap: any = {
   'NY_COUNTDOWN': <span className="text-[110px] drop-shadow-2xl">🕰️</span>,
   'NATIONAL_PRIDE': <span className="text-[110px] drop-shadow-2xl">🏛️</span>,
   'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
+MEGAPHONE: <span className="text-[110px]">📢</span>,
+  SIREN: <span className="text-[110px]">🚨</span>,
+  GEAR_ICON: <span className="text-[110px]">⚙️</span>,
+  TOOLS_ICON: <span className="text-[110px]">🛠️</span>,
+  GIFT_BOX: <span className="text-[110px]">🎁</span>,
+  CALENDAR_STAR: <span className="text-[110px]">📅</span>,  
 };
 
 export default function HeroFactory({ 
