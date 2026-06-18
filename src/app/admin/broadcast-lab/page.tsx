@@ -23,10 +23,23 @@ export default function BroadcastLabPage() {
 
   // 🚀 1. Fetch Dynamic Lists on Mount
   useEffect(() => {
-    fetch('/api/admin/broadcast-lab')
-      .then(res => res.json())
-      .then(data => setDbLists(data))
-      .catch(err => console.error('Failed to fetch lists:', err));
+    const loadLists = async () => {
+      try {
+        const res = await fetch('/api/admin/broadcast-lab');
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        
+        // 🚀 SAFETY: Ensure data has the right structure before setting state
+        setDbLists({
+          festivals: data.festivals || [],
+          types: data.types || []
+        });
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        toast.error("Database se list nahi mil saki.");
+      }
+    };
+    loadLists();
   }, []);
 
   const publishBroadcast = async () => {
@@ -112,7 +125,10 @@ export default function BroadcastLabPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {/* 🚀 Corporate Types from DB */}
-                  {dbLists.types.map(t => <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>)}
+                  {dbLists.types?.map(t => (
+                    <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
+                  ))}
+                  <SelectItem value="FESTIVAL">FESTIVAL</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -126,7 +142,9 @@ export default function BroadcastLabPage() {
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
                     {/* 🚀 Festivals from DB */}
-                    {dbLists.festivals.map(f => <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>)}
+                    {dbLists.festivals?.map(f => (
+                      <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
