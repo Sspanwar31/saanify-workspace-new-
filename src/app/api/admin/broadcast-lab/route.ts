@@ -6,7 +6,7 @@ const getDbClient = async () => {
   if (!connectionString) throw new Error('DATABASE_URL missing');
   const client = new Client({
     connectionString,
-    ssl: { rejectAuthorized: false },
+    ssl: { rejectUnauthorized: false },
   });
   await client.connect();
   return client;
