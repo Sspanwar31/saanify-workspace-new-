@@ -19,10 +19,12 @@ export async function GET() {
     client = await getDbClient();
     if (!client) throw new Error("DB connection failed");
 
-    // Fetch Festival Keys
-    const festRes = await client.query(
-      'SELECT festival_key FROM festival_assets_v2 ORDER BY festival_key ASC'
-    );
+    // Fetch Festival Keys (Updated to list all tables)
+    const festRes = await client.query(`
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema='public'
+`);
     
     // Fetch Corporate Types
     const corpRes = await client.query(
@@ -32,8 +34,9 @@ export async function GET() {
     await client.end();
 
     // 🚀 SAFETY: Always return arrays, never undefined
+    // Note: Mapped to table_name to match the new query result
     return NextResponse.json({
-      festivals: festRes.rows?.map((r) => r.festival_key) || [],
+      festivals: festRes.rows?.map((r) => r.table_name) || [],
       types: corpRes.rows?.map((r) => r.broadcast_type) || []
     });
   } catch (e: any) {
