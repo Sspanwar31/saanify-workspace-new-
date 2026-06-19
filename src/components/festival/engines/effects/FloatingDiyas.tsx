@@ -1,5 +1,5 @@
 'use client';
-
+console.log('FloatingDiyas Loaded');
 export default function FloatingDiyas() {
   return (
     <>
