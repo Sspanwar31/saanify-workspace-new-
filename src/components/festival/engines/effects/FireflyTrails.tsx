@@ -1,5 +1,5 @@
 'use client';
-
+console.log('FireflyTrails Loaded');
 export default function FireflyTrails() {
   return (
     <>
