@@ -6,6 +6,7 @@ import FloatingTempleLamps from '../effects/FloatingTempleLamps';
 import FireflyTrails from '../effects/FireflyTrails';
 import RiverReflection from '../effects/RiverReflection';
 import MistLayer from '../effects/MistLayer';
+import GhatLightRows from '../effects/GhatLightRows';
 
 export default function DevDeepawaliScene() {
   return (
@@ -14,6 +15,8 @@ export default function DevDeepawaliScene() {
       <MistLayer />
       
       <RiverReflection />
+
+      <GhatLightRows />
 
       <GoldenParticles preset="DEV_DEEPAWALI" />
 
