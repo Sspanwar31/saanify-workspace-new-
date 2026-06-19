@@ -144,8 +144,8 @@ export default function BroadcastPreviewPage() {
       
       {/* BACKGROUND ANIMATION (Passing Variant) */}
       <AnimationFactory 
-        theme={broadcast.hero_config?.animation || broadcast.animation_theme} 
-        variant={particleVariant}
+        engine="SPIRITUAL_ENGINE"
+        preset="DIWALI"
       />
 
       {/* 🚀 1. TOP BANNER */}
