@@ -1,5 +1,5 @@
 'use client';
-
+console.log('LuxuryGlow Loaded');
 export default function LuxuryGlow() {
   return (
     <div
