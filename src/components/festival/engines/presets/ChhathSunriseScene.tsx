@@ -6,18 +6,20 @@ import FloatingTempleLamps from '../effects/FloatingTempleLamps';
 import RiverReflection from '../effects/RiverReflection';
 import ArghyaReflection from '../effects/ArghyaReflection';
 
-return (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+export default function ChhathSunriseScene() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
 
-    <SunriseRays />
+      <SunriseRays />
 
-    <SunGlow />
+      <SunGlow />
 
-    <FloatingTempleLamps />
+      <FloatingTempleLamps />
 
-    <RiverReflection />
+      <RiverReflection />
 
-    <ArghyaReflection />
+      <ArghyaReflection />
 
-  </div>
-);
+    </div>
+  );
+}
