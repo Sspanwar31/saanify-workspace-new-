@@ -143,10 +143,10 @@ export default function BroadcastPreviewPage() {
     <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins">
       
       {/* BACKGROUND ANIMATION (Passing Variant) */}
-      <AnimationFactory 
-        engine="SPIRITUAL_ENGINE"
-        preset="DIWALI"
-      />
+     <AnimationFactory
+  engine={broadcast?.hero_config?.engine}
+  preset={broadcast?.hero_config?.preset}
+/>
 
       {/* 🚀 1. TOP BANNER */}
       {showTopBanner && (
