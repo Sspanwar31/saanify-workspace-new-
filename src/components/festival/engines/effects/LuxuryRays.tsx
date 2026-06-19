@@ -19,8 +19,8 @@ export default function LuxuryRays() {
           top: -20%;
           width: 220px;
           height: 160%;
-          opacity: 0.18;
-          filter: blur(50px);
+          opacity: 0.35;
+          filter: blur(80px);
 
           background: linear-gradient(
             to bottom,
