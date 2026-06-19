@@ -1,27 +1,27 @@
 'use client';
 
+import DiwaliScene from './presets/DiwaliScene';
+import DevDeepawaliScene from './presets/DevDeepawaliScene';
+import ChhathScene from './presets/ChhathScene';
+
 export default function SpiritualEngine({
   preset,
 }: {
   preset?: string;
 }) {
-  console.log('SpiritualEngine Mounted =>', preset);
 
-  return (
-    <div className="absolute inset-0 pointer-events-none z-0">
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(circle at center, rgba(255,215,0,0.20) 0%, transparent 70%)',
-        }}
-      />
+  switch (preset) {
 
-      <div
-        className="absolute top-10 left-10 text-yellow-400 font-bold"
-      >
-        {preset}
-      </div>
-    </div>
-  );
+    case 'DIWALI':
+      return <DiwaliScene />;
+
+    case 'DEV_DEEPAWALI':
+      return <DevDeepawaliScene />;
+
+    case 'CHHATH_PUJA':
+      return <ChhathScene />;
+
+    default:
+      return null;
+  }
 }
