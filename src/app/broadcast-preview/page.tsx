@@ -144,8 +144,8 @@ export default function BroadcastPreviewPage() {
       
       {/* BACKGROUND ANIMATION (Passing Variant) */}
      <AnimationFactory
-  engine={broadcast?.hero_config?.engine}
-  preset={broadcast?.hero_config?.preset}
+  engine={broadcast?.hero_config?.animation}
+  preset={broadcast?.festival_key}
 />
 
       {/* 🚀 1. TOP BANNER */}
