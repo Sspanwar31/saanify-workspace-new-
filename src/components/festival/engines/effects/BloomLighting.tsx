@@ -1,5 +1,5 @@
 'use client';
-
+console.log('BloomLighting Loaded');
 export default function BloomLighting() {
   return (
     <div
