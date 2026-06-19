@@ -6,6 +6,7 @@ import FloatingDiyas from '../effects/FloatingDiyas';
 import FireflyTrails from '../effects/FireflyTrails';
 import LuxuryGlow from '../effects/LuxuryGlow';
 import BloomLighting from '../effects/BloomLighting';
+import LuxuryRays from '../effects/LuxuryRays';
 
 export default function DiwaliScene() {
   return (
@@ -13,7 +14,8 @@ export default function DiwaliScene() {
 
       {/* Base Luxury Glow */}
       <LuxuryGlow />
-
+      <LuxuryRays />
+      
       {/* Bloom Lighting */}
       <BloomLighting />
 
