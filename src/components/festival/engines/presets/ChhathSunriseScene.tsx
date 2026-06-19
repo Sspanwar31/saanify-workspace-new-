@@ -1,6 +1,7 @@
 'use client';
 
 import RiverReflection from '../effects/RiverReflection';
+import ArghyaReflection from '../effects/ArghyaReflection';
 
 export default function ChhathSunriseScene() {
   return (
