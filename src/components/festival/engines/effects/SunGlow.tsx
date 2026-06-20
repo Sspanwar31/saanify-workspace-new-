@@ -52,8 +52,8 @@ export default function SunGlow() {
       <div
         className="absolute left-1/2 -translate-x-1/2 rounded-full"
         style={{
-          top: '160px',
-          width: '150px',
+          top: '130px',
+          width: '140px',
           height: '140px',
           background:
             'radial-gradient(circle, #FFE28A 0%, #FFC857 65%, #FFB347 100%)',
