@@ -9,6 +9,7 @@ import HoliPalette from '../heroes/HoliPalette';
 import AshokaChakra from '../heroes/AshokaChakra';
 import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
+import SunGlow from '../heroes/SunGlow'; // 🚀 Naya Pinterest style Sun
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
 const ComponentMap: any = {
@@ -36,14 +37,18 @@ const ComponentMap: any = {
   'RAM_DHARMA': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
   'HANUMAN_GADA': <span className="text-[110px] drop-shadow-2xl">🪓</span>, // ✅ Fixed Icon
   'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
-  'SUN_ARGHYA': <span className="text-[110px] drop-shadow-2xl">☀️</span>,
+  
+  // 🚀 FIXED: Ab ye simple emoji nahi, asli animated SunGlow dikhayega
+  'SUN_ARGHYA': <SunGlow />, 
+  'SUN_GOD': <SunGlow />,
+  
   'HARVEST_POT': <span className="text-[110px] drop-shadow-2xl">🏺</span>,
   // Duplicate 'EID_MUBARAK' removed here
   'HOLY_KAABA': <span className="text-[110px] drop-shadow-2xl">🕋</span>,
   'NY_COUNTDOWN': <span className="text-[110px] drop-shadow-2xl">🕰️</span>,
   'NATIONAL_PRIDE': <span className="text-[110px] drop-shadow-2xl">🏛️</span>,
   'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
-MEGAPHONE: <span className="text-[110px]">📢</span>,
+  MEGAPHONE: <span className="text-[110px]">📢</span>,
   SIREN: <span className="text-[110px]">🚨</span>,
   GEAR_ICON: <span className="text-[110px]">⚙️</span>,
   TOOLS_ICON: <span className="text-[110px]">🛠️</span>,
