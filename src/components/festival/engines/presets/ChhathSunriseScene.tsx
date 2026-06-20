@@ -5,6 +5,7 @@ import SunGlow from '../effects/SunGlow';
 import FloatingTempleLamps from '../effects/FloatingTempleLamps';
 import RiverReflection from '../effects/RiverReflection';
 import ArghyaReflection from '../effects/ArghyaReflection';
+import GhatLampRows from '../effects/GhatLampRows';
 
 export default function ChhathSunriseScene() {
   return (
@@ -13,6 +14,8 @@ export default function ChhathSunriseScene() {
       <SunriseRays />
 
       <SunGlow />
+
+      <GhatLampRows />
 
       <FloatingTempleLamps />
 
