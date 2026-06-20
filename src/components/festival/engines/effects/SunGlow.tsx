@@ -2,42 +2,61 @@
 
 export default function SunGlow() {
   return (
-    // 🚀 FIXED: Removed negative translate and ensured it fills the hero container
-    <div className="relative w-full h-full flex items-center justify-center overflow-visible select-none pointer-events-none z-20">
+    <div className="relative flex items-center justify-center w-full h-full overflow-visible select-none pointer-events-none z-20 scale-110">
       <style jsx>{`
-        @keyframes sun-breathe {
-          0%, 100% { transform: scale(1.3); filter: brightness(1); }
-          50% { transform: scale(1.45); filter: brightness(1.2); }
+        @keyframes sun-pulsar {
+          0%, 100% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(1.1); filter: brightness(1.3); }
         }
-        @keyframes aura-rotate {
-          0% { transform: rotate(0deg) scale(1); opacity: 0.4; }
-          50% { transform: rotate(180deg) scale(1.2); opacity: 0.6; }
-          100% { transform: rotate(360deg) scale(1); opacity: 0.4; }
+        @keyframes ray-rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
-        .sun-main { animation: sun-breathe 5s ease-in-out infinite; }
-        .sun-aura { animation: aura-rotate 8s linear infinite; }
+        @keyframes aura-flow {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.2); }
+        }
+        .sun-core-v4 { animation: sun-pulsar 4s infinite ease-in-out; }
+        .sun-rays-v4 { animation: ray-rotate 20s linear infinite; }
+        .sun-aura-v4 { animation: aura-flow 6s infinite ease-in-out; }
       `}</style>
 
-      {/* 🚀 1. INTERNAL CARD GLOW */}
-      <div className="absolute w-[200px] h-[200px] bg-orange-500/20 rounded-full blur-[40px]" />
+      {/* 🚀 1. DEEP ATMOSPHERIC GLOW (Background) */}
+      <div className="sun-aura-v4 absolute w-[350px] h-[350px] bg-orange-600/30 rounded-full blur-[80px]" />
 
-      {/* 🚀 2. DYNAMIC SUN AURA */}
-      <div className="sun-aura absolute w-[220px] h-[220px] rounded-full opacity-50 blur-[30px]"
-           style={{ background: 'conic-gradient(from 0deg, #fbbf24, #f59e0b, #ea580c, #fbbf24)' }} />
+      {/* 🚀 2. RADIANT RAYS (Pinterest Style Kiran) */}
+      <div className="sun-rays-v4 absolute flex items-center justify-center w-full h-full opacity-60">
+        {[...Array(24)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-[2px] h-[220px] bg-gradient-to-t from-transparent via-yellow-400 to-transparent"
+            style={{ transform: `rotate(${i * 15}deg)` }}
+          />
+        ))}
+      </div>
 
-      {/* 🚀 3. THE ACTUAL SUN */}
-      <div className="sun-main relative z-10 flex items-center justify-center">
+      {/* 🚀 3. THE GOLDEN HALO (Ghumne wala ghera) */}
+      <div className="sun-rays-v4 absolute w-48 h-48 border-2 border-dashed border-yellow-500/30 rounded-full" />
+
+      {/* 🚀 4. MAIN SUN BODY (The Masterpiece) */}
+      <div className="sun-core-v4 relative flex items-center justify-center">
          {/* Sharp Center Glow */}
-         <div className="absolute w-[100px] h-[100px] bg-yellow-400 rounded-full blur-xl opacity-60" />
+         <div className="absolute w-[140px] h-[140px] bg-yellow-300 rounded-full blur-2xl opacity-70" />
          
-         {/* Sun Body */}
-         <div className="relative w-28 h-28 rounded-full border-2 border-white/20 shadow-[0_0_40px_rgba(251,191,36,0.8)] overflow-hidden"
-              style={{ background: 'radial-gradient(circle at 30% 30%, #fff7d6 0%, #ffd54f 40%, #ff9800 100%)' }}>
+         {/* Sun Core with 3D Gradient */}
+         <div className="relative w-36 h-36 rounded-full border-2 border-white/20 shadow-[0_0_80px_rgba(251,191,36,1)] overflow-hidden"
+              style={{ background: 'radial-gradient(circle at 30% 30%, #FFFFFF 0%, #FFE28A 20%, #FFC857 60%, #EA580C 100%)' }}>
             
-            {/* 3D Glossy Shine */}
-            <div className="absolute top-2 left-4 w-10 h-5 bg-white/40 rounded-full blur-sm -rotate-45" />
+            {/* Mirror Reflection (Glass Look) */}
+            <div className="absolute top-2 left-6 w-16 h-8 bg-white/40 rounded-full blur-sm -rotate-45" />
+            
+            {/* Bottom Shadow for Depth */}
+            <div className="absolute bottom-0 w-full h-1/2 bg-black/10 blur-md" />
          </div>
       </div>
+
+      {/* 🚀 5. HORIZONTAL LENS FLARE */}
+      <div className="absolute w-[500px] h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent rotate-6 blur-[1px]" />
     </div>
   );
 }
