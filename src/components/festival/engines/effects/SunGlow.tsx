@@ -5,15 +5,18 @@ export default function SunGlow() {
     <>
       {/* Core Sun */}
       <div
-        className="absolute left-1/2 top-[6%] -translate-x-1/2 rounded-full"
-        style={{
-          width: '120px',
-          height: '120px',
-          background:
-            'radial-gradient(circle, #FFE28A 0%, #FFC857 70%, #FFB347 100%)',
-          zIndex: 2,
-        }}
-      />
+  className="absolute left-1/2 -translate-x-1/2"
+  style={{
+    top: '130px',
+    width: '180px',
+    height: '180px',
+    borderRadius: '50%',
+    background:
+      'radial-gradient(circle,#FFD36A 0%,#FFB347 60%,#FF8C00 100%)',
+    boxShadow:
+      '0 0 40px rgba(255,211,106,.8),0 0 80px rgba(255,179,71,.5)',
+  }}
+/>
 
       {/* Outer Glow */}
       <div
