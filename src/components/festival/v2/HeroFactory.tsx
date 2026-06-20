@@ -9,7 +9,7 @@ import HoliPalette from '../heroes/HoliPalette';
 import AshokaChakra from '../heroes/AshokaChakra';
 import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
-import SunGlow from '../heroes/SunGlow'; // 🚀 Naya Pinterest style Sun
+import SunGlow from '../engines/effects/SunGlow'; // 🚀 Correct Path
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
 const ComponentMap: any = {
