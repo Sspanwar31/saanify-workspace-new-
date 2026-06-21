@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
-import CryptoJS from 'crypto-js'; // For encryption
+import CryptoJS from 'crypto-js';
 
 // --- SECURITY: ENCRYPTION KEY ---
 const getEncryptionKey = () => {
@@ -14,18 +14,53 @@ const getEncryptionKey = () => {
 
 // --- ENCRYPTION/DECRYPTION FUNCTIONS ---
 const encryptToken = (token: string): string => {
-  if (!token || token === "••••••••••••") return token; // Don't encrypt mask or empty
+  if (!token || token === "••••••••••••") return token;
   return CryptoJS.AES.encrypt(token, getEncryptionKey()).toString();
 };
 
 const decryptToken = (encryptedToken: string): string => {
-  if (!encryptedToken || encryptedToken.startsWith("••••")) return encryptedToken; // Don't decrypt mask
+  if (!encryptedToken || encryptedToken.startsWith("••••")) return encryptedToken;
   try {
     const bytes = CryptoJS.AES.decrypt(encryptedToken, getEncryptionKey());
-    return bytes.toString(CryptoJS.enc.Utf8);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decrypted) {
+      console.warn("Token decryption returned empty - possibly not encrypted");
+      return encryptedToken; // Return as-is if not actually encrypted
+    }
+    return decrypted;
   } catch (e) {
     console.error("Decryption failed:", e);
-    return ""; // Return empty string on failure
+    return "";
+  }
+};
+
+// ✅ NEW: Proper boolean converter
+const toBoolean = (value: any, defaultValue: boolean): boolean => {
+  if (value === null || value === undefined) return defaultValue;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true' || value === '1';
+  }
+  if (typeof value === 'number') return value === 1;
+  return defaultValue;
+};
+
+// ✅ NEW: Proper date converter
+const toPostgresTimestamp = (value: any): string | null => {
+  if (!value) return null;
+  if (value === '' || value === 'null' || value === 'undefined') return null;
+  
+  try {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      console.warn("Invalid date value:", value);
+      return null;
+    }
+    // PostgreSQL compatible ISO format
+    return date.toISOString();
+  } catch (e) {
+    console.warn("Date parse error:", e);
+    return null;
   }
 };
 
@@ -53,9 +88,17 @@ export async function GET() {
     
     // SECURITY: Decrypt token then Mask for UI
     if (data.github_token) {
-        data.github_token = decryptToken(data.github_token); // Decrypt first
-        data.github_token = "••••••••••••"; // Then mask for UI
+        data.github_token = decryptToken(data.github_token);
+        data.github_token = "••••••••••••";
     }
+
+    // ✅ Log maintenance mode status for debugging
+    console.log("⚙️ Maintenance Mode Status:", {
+      is_maintenance_mode: data.is_maintenance_mode,
+      is_maintenance_scheduled: data.is_maintenance_scheduled,
+      maintenance_start: data.maintenance_start,
+      maintenance_end: data.maintenance_end
+    });
 
     await client.end();
     return NextResponse.json(data);
@@ -71,20 +114,33 @@ export async function POST(req: Request) {
   let client;
   try {
     const body = await req.json();
+    
+    // ✅ Debug log - kya data aa raha hai
+    console.log("📝 Incoming Settings Data:", {
+      is_maintenance_mode: body.is_maintenance_mode,
+      is_maintenance_scheduled: body.is_maintenance_scheduled,
+      maintenance_start: body.maintenance_start,
+      maintenance_end: body.maintenance_end,
+      type_maintenance_mode: typeof body.is_maintenance_mode
+    });
+
     client = await getDbClient();
     if (!client) return NextResponse.json({ success: true, message: "Preview Mode: Simulated Save" });
 
-    // 1. Handle Token Logic (Don't overwrite with stars)
+    // 1. Handle Token Logic
     let tokenValue = body.github_token;
     if (tokenValue === "••••••••••••") {
         const existing = await client.query('SELECT github_token FROM system_settings WHERE id = 1');
         tokenValue = existing.rows[0]?.github_token;
+        // ✅ Check if already encrypted (don't double encrypt)
+        if (tokenValue && !tokenValue.startsWith("U2FsdGVk")) {
+          tokenValue = encryptToken(tokenValue);
+        }
+    } else if (tokenValue) {
+      tokenValue = encryptToken(tokenValue);
     }
-    
-    // 2. SECURITY: Encrypt token before saving
-    tokenValue = encryptToken(tokenValue);
 
-    // 3. Updated SQL Upsert (Added Maintenance Fields)
+    // 2. SQL Upsert with maintenance fields
     const query = `
       INSERT INTO system_settings (
         id, 
@@ -118,34 +174,57 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
 
-    // 4. Map values from frontend body to SQL parameters
+    // 3. ✅ FIXED: Map values with proper type conversion
     const values = [
       body.github_username || null,
       body.github_repo || null,
       tokenValue || null,
       body.github_branch || 'main',
-      body.is_maintenance_mode ?? false,
-      body.trial_days || 10,
-      body.max_users_basic || 200,
-      body.max_users_pro || 500,
-      body.auto_renewal ?? true,
-      body.email_notify ?? true,
-      // Naye fields yahan se hain:
+      
+      // ✅ FIXED: Proper boolean conversion
+      toBoolean(body.is_maintenance_mode, false),
+      
+      parseInt(body.trial_days) || 10,
+      parseInt(body.max_users_basic) || 200,
+      parseInt(body.max_users_pro) || 500,
+      
+      // ✅ FIXED: Proper boolean conversion
+      toBoolean(body.auto_renewal, true),
+      toBoolean(body.email_notify, true),
+      
+      // ✅ FIXED: Maintenance fields with proper conversion
       body.maintenance_title || 'Saanify Maintenance Mode',
       body.maintenance_msg || 'We are currently upgrading our systems...',
-      body.maintenance_start || null,
-      body.maintenance_end || null,
-      body.is_maintenance_scheduled ?? false
+      
+      // ✅ FIXED: Proper date conversion
+      toPostgresTimestamp(body.maintenance_start),
+      toPostgresTimestamp(body.maintenance_end),
+      
+      // ✅ FIXED: Proper boolean conversion
+      toBoolean(body.is_maintenance_scheduled, false)
     ];
 
-    await client.query(query, values);
+    console.log("📋 SQL Values:", values);
+
+    const result = await client.query(query, values);
+    
+    // ✅ Verify what was saved
+    console.log("✅ Saved Successfully:", {
+      is_maintenance_mode: result.rows[0]?.is_maintenance_mode,
+      is_maintenance_scheduled: result.rows[0]?.is_maintenance_scheduled
+    });
+
     await client.end();
 
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
-    console.error("Settings Save Error:", error);
+    console.error("❌ Settings Save Error:", error.message);
+    console.error("❌ Full Error:", error);
     if (client) await client.end();
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
   }
 }
