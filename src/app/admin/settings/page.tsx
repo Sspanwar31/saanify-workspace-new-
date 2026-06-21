@@ -13,53 +13,14 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Loader2, Save, Github, Database, Shield, UserPlus, Trash2, 
-  Settings, RefreshCw, Globe, Edit, CheckCircle, AlertTriangle, Lock, Sparkles 
+  Settings, Globe, Edit, CheckCircle, AlertTriangle, Lock
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-
-// =========================================================
-// 1. MASTER LIBRARY (Component ke bahar)
-// =========================================================
-const FESTIVAL_MASTER_LIST: any = {
-  // GOLDEN STYLE
-  DIWALI: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'SHUBH DEEPAWALI', icon: '🪔' },
-  DUSSEHRA: { style: 'GOLDEN', anim: 'SPARKLES', color: 'GOLD', title: 'HAPPY DUSSEHRA', icon: '🏹' },
-  MAHASHIVRATRI: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'MAHA SHIVRATRI', icon: '🕉️' },
-  CHHATH_PUJA: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'SHUBH CHHATH PUJA', icon: '☀️' },
-  MAKAR_SANKRANTI: { style: 'GOLDEN', anim: 'SPARKLES', color: 'GOLD', title: 'MAKAR SANKRANTI', icon: '🪁' },
-  RAM_NAVAMI: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'RAM NAVAMI', icon: '🚩' },
-  HANUMAN_JAYANTI: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'HANUMAN JAYANTI', icon: '🔱' },
-  GURU_PURNIMA: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'GURU PURNIMA', icon: '🙏' },
-  KARWA_CHAUTH: { style: 'GOLDEN', anim: 'DIYA', color: 'GOLD', title: 'KARWA CHAUTH', icon: '🌙' },
-  
-  // VIBRANT STYLE
-  HOLI: { style: 'VIBRANT', anim: 'HOLI', color: 'RED', title: 'HAPPY HOLI', icon: '🎨' },
-  NAVRATRI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'PURPLE', title: 'SHUBH NAVRATRI', icon: '💃' },
-  RAKSHA_BANDHAN: { style: 'VIBRANT', anim: 'CONFETTI', color: 'BLUE', title: 'RAKSHA BANDHAN', icon: '🎁' },
-  ONAM: { style: 'VIBRANT', anim: 'FLOWERS', color: 'GREEN', title: 'HAPPY ONAM', icon: '🌸' },
-  GANESH_CHATURTHI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'PURPLE', title: 'GANESH CHATURTHI', icon: '🐘' },
-  JANMASHTAMI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'BLUE', title: 'JANMASHTAMI', icon: '🏺' },
-  LOHRI: { style: 'VIBRANT', anim: 'SPARKLES', color: 'ORANGE', title: 'LOHRI', icon: '🔥' },
-  PONGAL: { style: 'VIBRANT', anim: 'FLOWERS', color: 'GREEN', title: 'PONGAL', icon: '🌾' },
-  BAISAKHI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'YELLOW', title: 'BAISAKHI', icon: '🥁' },
-  UGADI: { style: 'VIBRANT', anim: 'FLOWERS', color: 'YELLOW', title: 'UGADI', icon: '🪔' },
-
-  // WINTER/PEACEFUL
-  CHRISTMAS: { style: 'WINTER', anim: 'SNOW', color: 'RED', title: 'MERRY CHRISTMAS', icon: '🎄' },
-  NEW_YEAR: { style: 'WINTER', anim: 'FIREWORKS', color: 'GOLD', title: 'HAPPY NEW YEAR', icon: '🎆' },
-  EID_AL_FITR: { style: 'PEACEFUL', anim: 'MOON', color: 'GREEN', title: 'EID MUBARAK', icon: '🌙' },
-  EID_AL_ADHA: { style: 'PEACEFUL', anim: 'MOON', color: 'GREEN', title: 'EID AL-ADHA', icon: '🕌' },
-
-  // NATIONAL
-  REPUBLIC_DAY: { style: 'NATIONAL', anim: 'CONFETTI', color: 'ORANGE', title: 'HAPPY REPUBLIC DAY', icon: '🇮🇳' },
-  INDEPENDENCE_DAY: { style: 'NATIONAL', anim: 'CONFETTI', color: 'ORANGE', title: 'INDEPENDENCE DAY', icon: '🇮🇳' },
-};
 
 export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   
   // Data State
   const [admins, setAdmins] = useState<any[]>([]);
@@ -86,43 +47,12 @@ export default function AdminSettings() {
     is_maintenance_scheduled: false,
   });
 
-  // Broadcast Form State
-  const [broadcastForm, setBroadcastForm] = useState({
-    title: '', message: '', image_url: '', 
-    type: 'FESTIVAL', style: 'POPUP', starts_at: '', ends_at: '',
-    target_audience: 'BOTH', animation_type: 'NONE',
-    festival_key: '',
-    priority: 'MEDIUM',
-    display_mode: 'TOP_BANNER',
-    theme_color: 'DEFAULT',
-    cta_text: '',
-    cta_link: '',
-    is_recurring: false,
-    recurring_type: 'NONE',
-    content_mode: 'AUTO',
-  });
-
-  // Broadcast List State
-  const [activeBroadcasts, setActiveBroadcasts] = useState<any[]>([]);
-
-  // Helper for Smart Preview
-  const getConfig = (form: any) => {
-    const key = form.festival_key || 'DEFAULT';
-    return FESTIVAL_MASTER_LIST[key] || { 
-      style: 'CORPORATE', 
-      anim: 'SPARKLES', 
-      color: 'BLUE', 
-      title: form.title || 'PREVIEW', 
-      icon: '📢' 
-    };
-  };
-
   // 1. INITIAL FETCH
   useEffect(() => {
     const init = async () => {
       const email = localStorage.getItem('admin_email');
       if (email) setCurrentEmail(email);
-      await Promise.all([fetchSettings(), fetchAdmins(), fetchBroadcasts()]);
+      await Promise.all([fetchSettings(), fetchAdmins()]);
       setLoading(false);
     };
     init();
@@ -150,85 +80,6 @@ export default function AdminSettings() {
     if (data) setAdmins(data);
   };
 
-  const fetchBroadcasts = async () => {
-    const res = await fetch('/api/admin/broadcasts');
-    const data = await res.json();
-    if (Array.isArray(data)) setActiveBroadcasts(data);
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `broadcast-images/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-            .from('broadcasts')
-            .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data } = supabase.storage.from('broadcasts').getPublicUrl(filePath);
-        setBroadcastForm({ ...broadcastForm, image_url: data.publicUrl, content_mode: 'MANUAL' });
-        toast.success("Image Uploaded Successfully!");
-    } catch (error) {
-        toast.error("Upload failed");
-    } finally {
-        setIsUploading(false);
-    }
-  };
-
-  const handleAISuggest = () => {
-    const title = broadcastForm.title.toLowerCase();
-    const festivalName = broadcastForm.festival_key || 'festival';
-    
-    const prompt = `luxury ${festivalName} celebration, cinematic lighting, 8k resolution, premium gold and deep blue colors, professional fintech dashboard banner style, no text, minimal design`;
-    
-    const generatedUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1200&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
-
-    setBroadcastForm(prev => ({
-      ...prev,
-      image_url: generatedUrl,
-      content_mode: 'MANUAL'
-    }));
-
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 2000)), 
-      {
-        loading: 'AI is generating a professional banner...',
-        success: 'AI Banner Generated! Check the preview below.',
-        error: 'AI Busy, try again.',
-      }
-    );
-  };
-
-  const applyPreset = (key: string) => {
-    const data = FESTIVAL_MASTER_LIST[key] || { 
-      style: 'CORPORATE', 
-      anim: 'SPARKLES', 
-      color: 'BLUE', 
-      title: `HAPPY ${key}`,
-      icon: '📢'
-    };
-
-    setBroadcastForm({
-      ...broadcastForm,
-      title: data.title,
-      message: `Saanify Pariwar ki taraf se aap sabhi ko ${key.toLowerCase().replace('_', ' ')} ki hardik shubhkamnayein! | Wishing you joy and prosperity.`,
-      animation_type: data.anim,
-      theme_color: data.color,
-      festival_key: key,
-      content_mode: 'AUTO',
-      image_url: '',
-      display_mode: 'POPUP'
-    });
-    toast.success(`${key} Premium Template Applied!`);
-  };
-
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -243,74 +94,6 @@ export default function AdminSettings() {
       setIsGithubDialogOpen(false);
     } catch (e) { toast.error("Failed"); } 
     finally { setSaving(false); }
-  };
-
-  const priorityMap: any = {
-    LOW: 1,
-    MEDIUM: 2,
-    HIGH: 3,
-    CRITICAL: 4
-  };
-
-  const handlePublishBroadcast = async () => {
-    if(!broadcastForm.title || !broadcastForm.message) {
-      return toast.error("Required fields!");
-    }
-
-    const res = await fetch('/api/admin/broadcasts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...broadcastForm,
-        priority: priorityMap[broadcastForm.priority]
-      })
-    });
-
-    if (res.ok) {
-      toast.success("Broadcast Published!");
-      fetchBroadcasts();
-
-      setBroadcastForm({
-        title:'',
-        message:'',
-        image_url:'',
-        type:'FESTIVAL',
-        style:'POPUP',
-        starts_at:'',
-        ends_at:'',
-        target_audience: 'BOTH',
-        animation_type: 'NONE',
-        festival_key: '',
-        priority: 'MEDIUM',
-        display_mode: 'TOP_BANNER',
-        theme_color: 'DEFAULT',
-        cta_text: '',
-        cta_link: '',
-        is_recurring: false,
-        recurring_type: 'NONE',
-        content_mode: 'AUTO'
-      });
-
-    } else {
-      toast.error("Publish failed");
-    }
-  };
-
-  const toggleBroadcast = async (id: string, currentStatus: boolean) => {
-    const res = await fetch('/api/admin/broadcasts', {
-      method: 'PATCH',
-      body: JSON.stringify({ id, is_active: !currentStatus })
-    });
-    if (res.ok) fetchBroadcasts();
-  };
-
-  const handleDeleteBroadcast = async (id: string) => {
-    if(confirm("Delete?")) {
-      const res = await fetch(`/api/admin/broadcasts?id=${id}`, { method: 'DELETE' });
-      if (res.ok) fetchBroadcasts();
-    }
   };
 
   const handleSaveAdmin = async () => {
