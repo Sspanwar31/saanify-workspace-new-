@@ -1,5 +1,7 @@
 'use client';
 
+import GoldenParticles from '../../animations/GoldenParticles';
+
 import SunriseRays from '../effects/SunriseRays';
 import FloatingTempleLamps from '../effects/FloatingTempleLamps';
 import RiverReflection from '../effects/RiverReflection';
@@ -11,7 +13,9 @@ export default function ChhathSunriseScene() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
 
-    <SunriseRays />
+  <SunriseRays />
+
+<GoldenParticles preset="CHHATH_PUJA" />
 
 <GhatLampRows />
 
