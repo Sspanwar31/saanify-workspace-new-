@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+// Helper — dates ko safely ISO mein convert karo
+const toISO = (val: string) => val ? new Date(val).toISOString() : '';
+
 export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -59,7 +62,7 @@ export default function AdminSettings() {
     init();
   }, []);
 
-  // 2. REALTIME SUBSCRIPTION — Supabase se live sync
+  // 2. REALTIME SUBSCRIPTION
   useEffect(() => {
     const channel = supabase
       .channel('settings-maintenance-live')
@@ -111,12 +114,12 @@ export default function AdminSettings() {
   };
 
   // =========================================================
-  // REALTIME MAINTENANCE TOGGLE — Instant backend sync
+  // REALTIME MAINTENANCE TOGGLE — Fixed payload
   // =========================================================
   const handleMaintenanceToggle = async (value: boolean) => {
     if (isReadOnly || togglingMaintenance) return;
 
-    // Optimistic UI update (turant switch dikhao)
+    // Optimistic UI
     setFormData(prev => ({ ...prev, is_maintenance_mode: value }));
     setTogglingMaintenance(true);
 
@@ -124,27 +127,37 @@ export default function AdminSettings() {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, is_maintenance_mode: value }),
+        // FIX: Dates ko ISO mein convert karo, exact same format jaise handleSave bhejta hai
+        body: JSON.stringify({
+          ...formData,
+          is_maintenance_mode: value,
+          maintenance_start: toISO(formData.maintenance_start),
+          maintenance_end: toISO(formData.maintenance_end),
+        }),
       });
 
-      if (!res.ok) throw new Error('Failed');
+      // FIX: Backend ka actual error message catch karo
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server Error (${res.status})`);
+      }
 
       toast.success(
         value 
           ? '🚨 Maintenance Mode ACTIVATED — Live!' 
           : '✅ Maintenance Mode DEACTIVATED — Live!'
       );
-    } catch (e) {
-      // Fail hua toh wapas revert karo
+    } catch (e: any) {
+      // Revert
       setFormData(prev => ({ ...prev, is_maintenance_mode: !value }));
-      toast.error('Toggle failed! Check connection.');
+      toast.error(e.message || 'Toggle failed!');
     } finally {
       setTogglingMaintenance(false);
     }
   };
 
   // =========================================================
-  // SCHEDULED BANNER TOGGLE — Bhi realtime
+  // SCHEDULED BANNER TOGGLE — Fixed payload
   // =========================================================
   const handleScheduledToggle = async (value: boolean) => {
     if (isReadOnly) return;
@@ -152,15 +165,27 @@ export default function AdminSettings() {
     setFormData(prev => ({ ...prev, is_maintenance_scheduled: value }));
 
     try {
-      await fetch('/api/admin/settings', {
+      const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, is_maintenance_scheduled: value }),
+        // FIX: Same date conversion
+        body: JSON.stringify({
+          ...formData,
+          is_maintenance_scheduled: value,
+          maintenance_start: toISO(formData.maintenance_start),
+          maintenance_end: toISO(formData.maintenance_end),
+        }),
       });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server Error (${res.status})`);
+      }
+
       toast.success(value ? 'Scheduled Banner ON' : 'Scheduled Banner OFF');
-    } catch (e) {
+    } catch (e: any) {
       setFormData(prev => ({ ...prev, is_maintenance_scheduled: !value }));
-      toast.error('Failed');
+      toast.error(e.message || 'Failed');
     }
   };
 
@@ -169,8 +194,8 @@ export default function AdminSettings() {
     try {
       const payload = {
         ...formData,
-        maintenance_start: formData.maintenance_start ? new Date(formData.maintenance_start).toISOString() : '',
-        maintenance_end: formData.maintenance_end ? new Date(formData.maintenance_end).toISOString() : '',
+        maintenance_start: toISO(formData.maintenance_start),
+        maintenance_end: toISO(formData.maintenance_end),
       };
 
       await fetch('/api/admin/settings', { method: 'POST', body: JSON.stringify(payload) });
