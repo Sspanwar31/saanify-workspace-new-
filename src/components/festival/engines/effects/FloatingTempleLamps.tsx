@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 
-// Deterministic random — har render pe same positions, no flicker
 function sr(seed: number) {
   const x = Math.sin(seed * 9301 + 49297) * 233280;
   return x - Math.floor(x);
@@ -11,47 +10,44 @@ function sr(seed: number) {
 export default function FloatingTempleLamps() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  /* ── Lamp Data Generation ── */
-  const lamps = Array.from({ length: 26 }, (_, i) => ({
+  const lamps = Array.from({ length: 20 }, (_, i) => ({
     id: i,
-    left: sr(i * 7 + 3) * 94 + 3,
-    bottom: 2 + sr(i * 13 + 5) * 52,
-    size: 6 + sr(i * 17 + 11) * 28,
-    floatDur: 5 + sr(i * 23 + 7) * 10,
-    floatDist: 8 + sr(i * 29 + 13) * 35,
-    glowDur: 2.5 + sr(i * 31 + 17) * 5,
-    breatheDur: 3 + sr(i * 37 + 19) * 7,
-    hue: -20 + sr(i * 41 + 23) * 40,
-    driftX: (sr(i * 43 + 29) - 0.5) * 25,
-    driftDur: 4 + sr(i * 71 + 53) * 9,
+    left: sr(i * 7 + 3) * 90 + 5,
+    bottom: 1 + sr(i * 13 + 5) * 28,           // ✅ sirf bottom 30% me
+    size: 3 + sr(i * 17 + 11) * 10,            // ✅ chhota size (3-13px)
+    floatDur: 5 + sr(i * 23 + 7) * 8,
+    floatDist: 4 + sr(i * 29 + 13) * 14,       // ✅ kam float distance
+    glowDur: 2.5 + sr(i * 31 + 17) * 4,
+    breatheDur: 3 + sr(i * 37 + 19) * 5,
+    hue: -20 + sr(i * 41 + 23) * 35,
+    driftX: (sr(i * 43 + 29) - 0.5) * 12,     // ✅ kam horizontal drift
+    driftDur: 4 + sr(i * 71 + 53) * 7,
     delay: sr(i * 47 + 31) * 10,
     layer: Math.floor(sr(i * 53 + 37) * 3),
-    flickerDur: 0.4 + sr(i * 59 + 41) * 2,
-    baseOpacity: 0.3 + sr(i * 73 + 59) * 0.7,
+    flickerDur: 0.4 + sr(i * 59 + 41) * 1.5,
+    baseOpacity: 0.25 + sr(i * 73 + 59) * 0.55, // ✅ thoda subtle
     sparkles: Array.from(
-      { length: 2 + Math.floor(sr(i * 79 + 61) * 6) },
+      { length: 1 + Math.floor(sr(i * 79 + 61) * 3) }, // ✅ kam sparkles
       (_, j) => ({
         angle: sr(i * 83 + j * 97 + 67) * Math.PI * 2,
-        dist: 0.7 + sr(i * 89 + j * 101 + 71) * 1.8,
-        size: 1 + sr(i * 97 + j * 103 + 79) * 2.5,
-        dur: 1.5 + sr(i * 107 + j * 109 + 83) * 4,
+        dist: 0.6 + sr(i * 89 + j * 101 + 71) * 1.2,
+        size: 0.8 + sr(i * 97 + j * 103 + 79) * 1.5,   // ✅ chhote sparkles
+        dur: 1.5 + sr(i * 107 + j * 109 + 83) * 3,
         delay: sr(i * 113 + j * 127 + 89) * 3,
       })
     ),
   }));
 
-  /* ── Rising Embers ── */
-  const embers = Array.from({ length: 18 }, (_, i) => ({
+  const embers = Array.from({ length: 10 }, (_, i) => ({
     id: i,
     left: sr(i * 131 + 151) * 100,
-    size: 1.5 + sr(i * 137 + 157) * 3,
-    dur: 7 + sr(i * 139 + 163) * 11,
-    delay: sr(i * 149 + 167) * 14,
-    driftX: (sr(i * 151 + 173) - 0.5) * 45,
-    maxOpacity: 0.25 + sr(i * 157 + 179) * 0.55,
+    size: 1 + sr(i * 137 + 157) * 2,          // ✅ chhote embers
+    dur: 6 + sr(i * 139 + 163) * 8,
+    delay: sr(i * 149 + 167) * 12,
+    driftX: (sr(i * 151 + 173) - 0.5) * 20,   // ✅ kam drift
+    maxOpacity: 0.15 + sr(i * 157 + 179) * 0.3, // ✅ subtle
   }));
 
-  /* ── Mouse Parallax ── */
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -68,8 +64,8 @@ export default function FloatingTempleLamps() {
     return () => el.removeEventListener('mousemove', handleMouseMove);
   }, [handleMouseMove]);
 
-  const layerPS = [5, 13, 24]; // parallax strength per layer
-  const layerBlur = [1.8, 0.6, 0]; // depth-of-field blur
+  const layerPS = [3, 7, 14];    // ✅ reduced parallax strength
+  const layerBlur = [1.2, 0.4, 0];
 
   return (
     <>
@@ -78,39 +74,38 @@ export default function FloatingTempleLamps() {
         className="absolute inset-0 overflow-hidden pointer-events-none select-none"
         style={{ '--mx': '0', '--my': '0' } as React.CSSProperties}
       >
-        {/* ══════ Atmospheric Base Glow ══════ */}
+        {/* ✅ Top fade mask — upar se lamps dhunde dhunde fade out */}
+        <div
+          className="absolute inset-x-0 top-0 pointer-events-none"
+          style={{
+            height: '55%',
+            background: 'linear-gradient(to bottom, var(--mask-bg, #0a0a0a) 30%, transparent 100%)',
+            zIndex: 50,
+          }}
+        />
+
+        {/* ✅ Atmosphere glow — sirf niche, chhota */}
         <div
           className="absolute bottom-0 left-1/2 pointer-events-none"
           style={{
-            width: '140%',
-            height: '60%',
+            width: '120%',
+            height: '35%',                           // ✅ reduced height
             transform: 'translateX(-50%)',
             background:
-              'radial-gradient(ellipse at 50% 100%, rgba(255,155,35,0.22) 0%, rgba(255,95,15,0.07) 45%, transparent 72%)',
-            filter: 'blur(55px)',
+              'radial-gradient(ellipse at 50% 100%, rgba(255,155,35,0.18) 0%, rgba(255,95,15,0.05) 50%, transparent 75%)',
+            filter: 'blur(35px)',                     // ✅ less blur
             animation: 'atmosPulse 9s ease-in-out infinite',
           }}
         />
         <div
-          className="absolute bottom-[8%] left-[25%] pointer-events-none"
+          className="absolute bottom-0 left-[30%] pointer-events-none"
           style={{
-            width: '55%',
-            height: '45%',
+            width: '40%',
+            height: '25%',
             background:
-              'radial-gradient(ellipse, rgba(255,115,15,0.09) 0%, transparent 65%)',
-            filter: 'blur(65px)',
+              'radial-gradient(ellipse, rgba(255,115,15,0.08) 0%, transparent 65%)',
+            filter: 'blur(40px)',
             animation: 'atmosPulse 12s ease-in-out 4s infinite',
-          }}
-        />
-        <div
-          className="absolute bottom-[15%] right-[15%] pointer-events-none"
-          style={{
-            width: '35%',
-            height: '35%',
-            background:
-              'radial-gradient(ellipse, rgba(255,180,60,0.07) 0%, transparent 60%)',
-            filter: 'blur(50px)',
-            animation: 'atmosPulse 10s ease-in-out 2s infinite',
           }}
         />
 
@@ -119,7 +114,6 @@ export default function FloatingTempleLamps() {
           const ps = layerPS[l.layer];
           const blur = layerBlur[l.layer];
           return (
-            /* ── Layer 0: Parallax Wrapper ── */
             <div
               key={l.id}
               className="absolute pointer-events-none"
@@ -136,7 +130,7 @@ export default function FloatingTempleLamps() {
                 filter: blur > 0 ? `blur(${blur}px)` : 'none',
               }}
             >
-              {/* ── Layer 1: X-Axis Drift ── */}
+              {/* X-Axis Drift */}
               <div
                 style={
                   {
@@ -145,7 +139,7 @@ export default function FloatingTempleLamps() {
                   } as React.CSSProperties
                 }
               >
-                {/* ── Layer 2: Y-Float + Breathe + Flicker ── */}
+                {/* Y-Float + Breathe + Flicker */}
                 <div
                   className="relative"
                   style={
@@ -161,7 +155,7 @@ export default function FloatingTempleLamps() {
                     } as React.CSSProperties
                   }
                 >
-                  {/* Core — main lamp body */}
+                  {/* Core */}
                   <div
                     className="absolute inset-0 rounded-full"
                     style={{
@@ -175,69 +169,61 @@ export default function FloatingTempleLamps() {
                     }}
                   />
 
-                  {/* Hot-spot highlight */}
+                  {/* Hot-spot */}
                   <div
                     className="absolute rounded-full"
                     style={{
-                      width: '35%',
-                      height: '35%',
-                      top: '18%',
-                      left: '20%',
+                      width: '30%',
+                      height: '30%',
+                      top: '20%',
+                      left: '22%',
                       background:
-                        'radial-gradient(circle, rgba(255,255,240,0.9) 0%, rgba(255,240,180,0.3) 60%, transparent 100%)',
-                      filter: `blur(${Math.max(0.5, l.size * 0.06)}px)`,
+                        'radial-gradient(circle, rgba(255,255,240,0.85) 0%, rgba(255,240,180,0.2) 60%, transparent 100%)',
+                      filter: `blur(${Math.max(0.3, l.size * 0.05)}px)`,
                     }}
                   />
 
-                  {/* Inner glow ring */}
+                  {/* ✅ Inner glow — reduced spread */}
                   <div
                     className="absolute rounded-full"
                     style={{
-                      inset: '-40%',
+                      inset: '-50%',                                     // ✅ was -40%, still tight
                       background: `radial-gradient(circle,
-                        rgba(255,195,65,0.45) 0%,
-                        rgba(255,140,0,0.12) 55%,
+                        rgba(255,195,65,0.4) 0%,
+                        rgba(255,140,0,0.1) 55%,
                         transparent 80%)`,
-                      filter: `blur(${Math.max(1, l.size * 0.28)}px) hue-rotate(${l.hue}deg)`,
+                      filter: `blur(${Math.max(1, l.size * 0.22)}px) hue-rotate(${l.hue}deg)`,
                       animation: `glowPulse ${l.glowDur}s ease-in-out ${l.delay}s infinite`,
                     }}
                   />
 
-                  {/* Outer atmospheric glow */}
+                  {/* ✅ Outer glow — much smaller */}
                   <div
                     className="absolute rounded-full"
                     style={{
-                      inset: '-100%',
+                      inset: '-120%',                                    // ✅ contained
                       background: `radial-gradient(circle,
-                        rgba(255,145,25,0.1) 0%,
-                        rgba(255,95,0,0.03) 45%,
-                        transparent 68%)`,
-                      filter: `blur(${Math.max(2, l.size * 0.45)}px) hue-rotate(${l.hue}deg)`,
+                        rgba(255,145,25,0.08) 0%,
+                        rgba(255,95,0,0.02) 45%,
+                        transparent 60%)`,
+                      filter: `blur(${Math.max(1.5, l.size * 0.3)}px) hue-rotate(${l.hue}deg)`,
                       animation: `glowPulse ${l.glowDur * 1.5}s ease-in-out ${l.delay + 0.9}s infinite`,
                     }}
                   />
 
-                  {/* Expanding light ring */}
-                  <div
-                    className="absolute rounded-full"
-                    style={{
-                      inset: '-25%',
-                      border: '1px solid rgba(255,200,80,0.12)',
-                      animation: `ringPulse ${l.floatDur * 0.7}s ease-out ${l.delay + 2}s infinite`,
-                    }}
-                  />
+                  {/* ✅ Ring — only on bigger lamps */}
+                  {l.size > 8 && (
+                    <div
+                      className="absolute rounded-full"
+                      style={{
+                        inset: '-30%',
+                        border: '1px solid rgba(255,200,80,0.1)',
+                        animation: `ringPulse ${l.floatDur * 0.7}s ease-out ${l.delay + 2}s infinite`,
+                      }}
+                    />
+                  )}
 
-                  {/* Second ring — offset timing */}
-                  <div
-                    className="absolute rounded-full"
-                    style={{
-                      inset: '-15%',
-                      border: '1px solid rgba(255,220,120,0.08)',
-                      animation: `ringPulse ${l.floatDur * 0.9}s ease-out ${l.delay + 5}s infinite`,
-                    }}
-                  />
-
-                  {/* ✨ Sparkles */}
+                  {/* Sparkles */}
                   {l.sparkles.map((s, j) => (
                     <div
                       key={j}
@@ -248,7 +234,7 @@ export default function FloatingTempleLamps() {
                         left: `${50 + Math.cos(s.angle) * s.dist * 50}%`,
                         top: `${50 + Math.sin(s.angle) * s.dist * 50}%`,
                         background: 'radial-gradient(circle, #fff8e1, #ffe08a)',
-                        boxShadow: '0 0 3px rgba(255,200,80,0.9), 0 0 6px rgba(255,160,40,0.4)',
+                        boxShadow: '0 0 2px rgba(255,200,80,0.8)',
                         animation: `sparkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
                         transform: 'translate(-50%, -50%)',
                       }}
@@ -260,7 +246,7 @@ export default function FloatingTempleLamps() {
           );
         })}
 
-        {/* ══════ RISING EMBERS ══════ */}
+        {/* ══════ EMBERS ══════ */}
         {embers.map((e) => (
           <div
             key={`em-${e.id}`}
@@ -268,12 +254,12 @@ export default function FloatingTempleLamps() {
             style={
               {
                 left: `${e.left}%`,
-                bottom: '-3%',
+                bottom: '-2%',
                 width: `${e.size}px`,
                 height: `${e.size}px`,
                 background:
-                  'radial-gradient(circle, #ffcc02, rgba(255,140,0,0.5))',
-                boxShadow: '0 0 4px rgba(255,160,30,0.5), 0 0 8px rgba(255,100,0,0.2)',
+                  'radial-gradient(circle, #ffcc02, rgba(255,140,0,0.4))',
+                boxShadow: '0 0 3px rgba(255,160,30,0.4)',
                 animation: `emberRise ${e.dur}s ease-out ${e.delay}s infinite`,
                 '--ember-drift': `${e.driftX}px`,
                 '--ember-peak': `${e.maxOpacity}`,
@@ -283,34 +269,29 @@ export default function FloatingTempleLamps() {
         ))}
       </div>
 
-      {/* ══════ KEYFRAMES ══════ */}
       <style jsx>{`
-        /* Y-axis organic float — asymmetric keyframes for natural feel */
         @keyframes lampFloat {
           0%, 100% { translate: 0 0; }
-          15%  { translate: 0 calc(var(--float-dist, 20px) * -0.3); }
-          35%  { translate: 0 calc(var(--float-dist, 20px) * -0.85); }
-          55%  { translate: 0 calc(var(--float-dist, 20px) * -1); }
-          75%  { translate: 0 calc(var(--float-dist, 20px) * -0.55); }
-          90%  { translate: 0 calc(var(--float-dist, 20px) * -0.15); }
+          15%  { translate: 0 calc(var(--float-dist, 15px) * -0.3); }
+          35%  { translate: 0 calc(var(--float-dist, 15px) * -0.85); }
+          55%  { translate: 0 calc(var(--float-dist, 15px) * -1); }
+          75%  { translate: 0 calc(var(--float-dist, 15px) * -0.55); }
+          90%  { translate: 0 calc(var(--float-dist, 15px) * -0.15); }
         }
 
-        /* X-axis drift — independent from Y for Lissajous paths */
         @keyframes lampDrift {
           0%, 100% { translate: 0 0; }
-          25%  { translate: calc(var(--drift-x, 10px) * 0.7) 0; }
-          50%  { translate: calc(var(--drift-x, 10px) * -0.3) 0; }
-          75%  { translate: calc(var(--drift-x, 10px) * -0.8) 0; }
-          90%  { translate: calc(var(--drift-x, 10px) * 0.15) 0; }
+          25%  { translate: calc(var(--drift-x, 8px) * 0.7) 0; }
+          50%  { translate: calc(var(--drift-x, 8px) * -0.3) 0; }
+          75%  { translate: calc(var(--drift-x, 8px) * -0.8) 0; }
+          90%  { translate: calc(var(--drift-x, 8px) * 0.15) 0; }
         }
 
-        /* Scale breathing — separate CSS property, no transform conflict */
         @keyframes lampBreathe {
           0%, 100% { scale: 1; }
-          50%      { scale: 1.2; }
+          50%      { scale: 1.15; }
         }
 
-        /* Flame flicker — stepped for sharp on/off like real fire */
         @keyframes lampFlicker {
           0%   { opacity: 1; }
           12%  { opacity: 0.78; }
@@ -327,33 +308,28 @@ export default function FloatingTempleLamps() {
           95%  { opacity: 1; }
         }
 
-        /* Glow intensity pulse */
         @keyframes glowPulse {
           0%, 100% { opacity: 0.6; scale: 1; }
-          50%      { opacity: 1; scale: 1.3; }
+          50%      { opacity: 1; scale: 1.2; }
         }
 
-        /* Expanding ring of light */
         @keyframes ringPulse {
-          0%   { transform: scale(1); opacity: 0.35; }
-          100% { transform: scale(4); opacity: 0; }
+          0%   { transform: scale(1); opacity: 0.3; }
+          100% { transform: scale(3.5); opacity: 0; }
         }
 
-        /* Sparkle twinkle */
         @keyframes sparkle {
           0%, 100% { opacity: 0; scale: 0; }
-          20%  { opacity: 1; scale: 1.3; }
-          50%  { opacity: 0.8; scale: 0.9; }
-          75%  { opacity: 0.3; scale: 0.4; }
+          20%  { opacity: 1; scale: 1.2; }
+          50%  { opacity: 0.7; scale: 0.8; }
+          75%  { opacity: 0.2; scale: 0.3; }
         }
 
-        /* Background atmosphere breathing */
         @keyframes atmosPulse {
           0%, 100% { opacity: 0.65; transform: translateX(-50%) scale(1); }
-          50%      { opacity: 1; transform: translateX(-50%) scale(1.07); }
+          50%      { opacity: 1; transform: translateX(-50%) scale(1.05); }
         }
 
-        /* Ember rise with drift + fade */
         @keyframes emberRise {
           0% {
             translate: 0 0;
@@ -361,21 +337,21 @@ export default function FloatingTempleLamps() {
             scale: 0.4;
           }
           8% {
-            opacity: var(--ember-peak, 0.4);
+            opacity: var(--ember-peak, 0.3);
             scale: 1;
           }
-          40% {
-            opacity: calc(var(--ember-peak, 0.4) * 0.8);
-            translate: calc(var(--ember-drift, 0px) * 0.4) -220px;
+          35% {
+            opacity: calc(var(--ember-peak, 0.3) * 0.7);
+            translate: calc(var(--ember-drift, 0px) * 0.4) -120px;
           }
-          70% {
-            opacity: calc(var(--ember-peak, 0.4) * 0.4);
-            translate: calc(var(--ember-drift, 0px) * 0.75) -420px;
+          65% {
+            opacity: calc(var(--ember-peak, 0.3) * 0.3);
+            translate: calc(var(--ember-drift, 0px) * 0.7) -200px;
             scale: 0.5;
           }
           100% {
             opacity: 0;
-            translate: var(--ember-drift, 0px) -600px;
+            translate: var(--ember-drift, 0px) -280px;
             scale: 0;
           }
         }
