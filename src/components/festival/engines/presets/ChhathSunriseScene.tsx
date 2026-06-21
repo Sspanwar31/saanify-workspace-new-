@@ -13,8 +13,6 @@ export default function ChhathSunriseScene() {
 
     <SunriseRays />
 
-<GoldenParticles preset="CHHATH_PUJA" />
-
 <GhatLampRows />
 
 <FloatingTempleLamps />
