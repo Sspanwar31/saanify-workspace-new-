@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Loader2, Save, Github, Database, Shield, UserPlus, Trash2, 
-  Settings, Globe, Edit, CheckCircle, AlertTriangle, Lock
+  Settings, Globe, Edit, CheckCircle, AlertTriangle, Lock, Radio
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -21,6 +21,7 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
+  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
   
   // Data State
   const [admins, setAdmins] = useState<any[]>([]);
@@ -58,6 +59,35 @@ export default function AdminSettings() {
     init();
   }, []);
 
+  // 2. REALTIME SUBSCRIPTION — Supabase se live sync
+  useEffect(() => {
+    const channel = supabase
+      .channel('settings-maintenance-live')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'site_settings' },
+        (payload: any) => {
+          const updated = payload.new;
+          if (!updated) return;
+
+          setFormData(prev => ({
+            ...prev,
+            is_maintenance_mode: updated.is_maintenance_mode ?? prev.is_maintenance_mode,
+            is_maintenance_scheduled: updated.is_maintenance_scheduled ?? prev.is_maintenance_scheduled,
+            maintenance_title: updated.maintenance_title ?? prev.maintenance_title,
+            maintenance_msg: updated.maintenance_msg ?? prev.maintenance_msg,
+            maintenance_start: updated.maintenance_start ?? prev.maintenance_start,
+            maintenance_end: updated.maintenance_end ?? prev.maintenance_end,
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   useEffect(() => {
     if (currentEmail && admins.length > 0) {
         const me = admins.find(a => a.email === currentEmail);
@@ -78,6 +108,60 @@ export default function AdminSettings() {
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at');
     if (data) setAdmins(data);
+  };
+
+  // =========================================================
+  // REALTIME MAINTENANCE TOGGLE — Instant backend sync
+  // =========================================================
+  const handleMaintenanceToggle = async (value: boolean) => {
+    if (isReadOnly || togglingMaintenance) return;
+
+    // Optimistic UI update (turant switch dikhao)
+    setFormData(prev => ({ ...prev, is_maintenance_mode: value }));
+    setTogglingMaintenance(true);
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, is_maintenance_mode: value }),
+      });
+
+      if (!res.ok) throw new Error('Failed');
+
+      toast.success(
+        value 
+          ? '🚨 Maintenance Mode ACTIVATED — Live!' 
+          : '✅ Maintenance Mode DEACTIVATED — Live!'
+      );
+    } catch (e) {
+      // Fail hua toh wapas revert karo
+      setFormData(prev => ({ ...prev, is_maintenance_mode: !value }));
+      toast.error('Toggle failed! Check connection.');
+    } finally {
+      setTogglingMaintenance(false);
+    }
+  };
+
+  // =========================================================
+  // SCHEDULED BANNER TOGGLE — Bhi realtime
+  // =========================================================
+  const handleScheduledToggle = async (value: boolean) => {
+    if (isReadOnly) return;
+
+    setFormData(prev => ({ ...prev, is_maintenance_scheduled: value }));
+
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, is_maintenance_scheduled: value }),
+      });
+      toast.success(value ? 'Scheduled Banner ON' : 'Scheduled Banner OFF');
+    } catch (e) {
+      setFormData(prev => ({ ...prev, is_maintenance_scheduled: !value }));
+      toast.error('Failed');
+    }
   };
 
   const handleSave = async () => {
@@ -290,18 +374,35 @@ export default function AdminSettings() {
               <Label className="text-sm">Email Alerts</Label>
               <Switch disabled={isReadOnly} checked={formData.email_notify} onCheckedChange={v => setFormData({...formData, email_notify: v})}/>
            </div>
-           <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg md:col-span-1">
-              <Label className="text-sm text-red-700 font-bold">Maintenance</Label>
-              <Switch disabled={isReadOnly} checked={formData.is_maintenance_mode} onCheckedChange={v => setFormData({...formData, is_maintenance_mode: v})}/>
+           
+           {/* REALTIME MAINTENANCE SWITCH */}
+           <div className={`flex items-center justify-between p-3 rounded-lg md:col-span-1 transition-colors duration-300 ${formData.is_maintenance_mode ? 'bg-red-50 border-2 border-red-400' : 'bg-red-50/50 border border-red-200'}`}>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-red-700 font-bold">Maintenance</Label>
+                {formData.is_maintenance_mode && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
+                    <Radio className="w-3 h-3 animate-pulse"/> LIVE
+                  </span>
+                )}
+              </div>
+              <Switch 
+                disabled={isReadOnly || togglingMaintenance} 
+                checked={formData.is_maintenance_mode} 
+                onCheckedChange={handleMaintenanceToggle}
+              />
            </div>
         </CardContent>
       </Card>
 
       {/* MAINTENANCE CONTROL CENTER */}
-      <Card className="border-t-4 border-t-red-600">
+      <Card className={`border-t-4 transition-colors duration-300 ${formData.is_maintenance_mode ? 'border-t-red-600 bg-red-50/30' : 'border-t-red-300'}`}>
         <CardHeader>
-            <CardTitle className="text-red-700 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5"/> Maintenance Control Center
+            <CardTitle className={`flex items-center gap-2 ${formData.is_maintenance_mode ? 'text-red-600' : 'text-red-700'}`}>
+                <AlertTriangle className={`w-5 h-5 ${formData.is_maintenance_mode ? 'animate-pulse' : ''}`}/> 
+                Maintenance Control Center
+                {formData.is_maintenance_mode && (
+                  <Badge className="bg-red-600 text-white text-[10px] ml-2">⚠ ACTIVE NOW</Badge>
+                )}
             </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 p-6">
@@ -313,7 +414,7 @@ export default function AdminSettings() {
                 <div className="space-y-2 flex flex-col justify-end">
                     <Label>Schedule Notice</Label>
                     <div className="flex items-center space-x-2">
-                        <Switch disabled={isReadOnly} checked={formData.is_maintenance_scheduled} onCheckedChange={v => setFormData({...formData, is_maintenance_scheduled: v})} />
+                        <Switch disabled={isReadOnly} checked={formData.is_maintenance_scheduled} onCheckedChange={handleScheduledToggle} />
                         <span className="text-xs text-gray-500">Enable banner</span>
                     </div>
                 </div>
