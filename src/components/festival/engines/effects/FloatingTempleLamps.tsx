@@ -1,54 +1,19 @@
 'use client';
 
 export default function FloatingTempleLamps() {
-  const lamps = Array.from({ length: 18 });
-
   return (
-    <>
-      {lamps.map((_, i) => {
-        const left = Math.random() * 100;
-        const size = 12 + Math.random() * 18;
-        const bottom = 5 + Math.random() * 40;
-        const delay = Math.random() * 10;
-
-        return (
-          <div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              left: `${left}%`,
-              bottom: `${bottom}%`,
-              width: `${size}px`,
-              height: `${size}px`,
-              background:
-                'radial-gradient(circle, #ffe08a 0%, #ffb347 40%, rgba(255,140,0,0.15) 80%, transparent 100%)',
-              boxShadow:
-                '0 0 12px rgba(255,180,0,0.8), 0 0 30px rgba(255,140,0,0.5)',
-              animation: `lampFloat 10s ease-in-out infinite`,
-              animationDelay: `${delay}s`,
-            }}
-          />
-        );
-      })}
-
-      <style jsx>{`
-        @keyframes lampFloat {
-          0% {
-            transform: translateY(0px);
-            opacity: 0.8;
-          }
-
-          50% {
-            transform: translateY(-20px);
-            opacity: 1;
-          }
-
-          100% {
-            transform: translateY(0px);
-            opacity: 0.8;
-          }
-        }
-      `}</style>
-    </>
+    <div
+      style={{
+        position: 'absolute',
+        top: '220px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '120px',
+        height: '120px',
+        background: 'yellow',
+        borderRadius: '50%',
+        zIndex: 9999,
+      }}
+    />
   );
 }
