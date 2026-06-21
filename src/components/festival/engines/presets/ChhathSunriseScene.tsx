@@ -12,7 +12,18 @@ import WaterShimmer from '../effects/WaterShimmer';
 export default function ChhathSunriseScene() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-
+ <div
+        style={{
+          position: 'absolute',
+          bottom: '100px',
+          left: '100px',
+          width: '100px',
+          height: '100px',
+          background: 'red',
+          zIndex: 99999,
+        }}
+      />
+      
   <SunriseRays />
 
 <GoldenParticles preset="CHHATH_PUJA" />
