@@ -1,8 +1,7 @@
 'use client';
 
-import GoldenParticles from '../../animations/GoldenParticles';
-
 import SunriseRays from '../effects/SunriseRays';
+import GoldenParticles from '../../animations/GoldenParticles';
 import FloatingTempleLamps from '../effects/FloatingTempleLamps';
 import RiverReflection from '../effects/RiverReflection';
 import ArghyaReflection from '../effects/ArghyaReflection';
@@ -11,21 +10,43 @@ import WaterShimmer from '../effects/WaterShimmer';
 
 export default function ChhathSunriseScene() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
- 
-  <SunriseRays />
+    <div
+      className="absolute inset-0 overflow-hidden pointer-events-none"
+      style={{ zIndex: 1 }}
+    >
+      {/* ══════ DEBUG MODE — har effect ko bright color se mark karo ══════ */}
 
-<GoldenParticles preset="CHHATH_PUJA" />
+      {/* SunriseRays ko RED tint do */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(255,0,0,0.15)', zIndex: 0 }}>
+        <SunriseRays />
+      </div>
 
-<GhatLampRows />
+      <GoldenParticles preset="CHHATH_PUJA" />
 
-<FloatingTempleLamps />
+      {/* GhatLampRows ko GREEN tint do */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(0,255,0,0.15)', zIndex: 0 }}>
+        <GhatLampRows />
+      </div>
 
-<WaterShimmer />
+      {/* FloatingTempleLamps ko BLUE tint do */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(0,100,255,0.15)', zIndex: 0 }}>
+        <FloatingTempleLamps />
+      </div>
 
-<RiverReflection />
+      {/* WaterShimmer ko YELLOW tint do */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(255,255,0,0.15)', zIndex: 0 }}>
+        <WaterShimmer />
+      </div>
 
-<ArghyaReflection />
+      {/* RiverReflection ko PINK tint do */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(255,0,255,0.15)', zIndex: 0 }}>
+        <RiverReflection />
+      </div>
+
+      {/* ArghyaReflection ko CYAN tint do */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(0,255,255,0.15)', zIndex: 0 }}>
+        <ArghyaReflection />
+      </div>
 
     </div>
   );
