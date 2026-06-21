@@ -1,63 +1,44 @@
 'use client';
 
 export default function GhatLampRows() {
+  const rows = [
+    { count: 10, size: 10, bottom: '16%', opacity: 0.85, gap: 'gap-3' },
+    { count: 8, size: 8, bottom: '12%', opacity: 0.65, gap: 'gap-4' },
+    { count: 6, size: 6, bottom: '8%', opacity: 0.45, gap: 'gap-5' },
+  ];
+
   return (
-    <div className="absolute bottom-[12%] left-0 w-full pointer-events-none overflow-hidden">
+    <>
+      {rows.map((row, ri) => (
+        <div
+          key={ri}
+          className={`absolute left-0 w-full flex justify-evenly ${row.gap} pointer-events-none`}
+          style={{ bottom: row.bottom, opacity: row.opacity }}
+        >
+          {Array.from({ length: row.count }, (_, i) => (
+            <div
+              key={i}
+              className="rounded-full"
+              style={{
+                width: `${row.size}px`,
+                height: `${row.size}px`,
+                background: 'radial-gradient(circle at 35% 35%, #fff8e1, #FFD36A 50%, #e6a800)',
+                boxShadow: `0 0 ${row.size}px #FFD36A, 0 0 ${row.size * 2}px rgba(255,211,106,.6), 0 0 ${row.size * 3.5}px rgba(255,180,60,.3)`,
+                animation: `ghatLampFlicker ${2.5 + (i * 0.3) % 2}s ease-in-out ${(i * 0.4 + ri * 0.7) % 4}s infinite`,
+              }}
+            />
+          ))}
+        </div>
+      ))}
 
-      {/* Row 1 */}
-      <div className="flex justify-evenly mb-4 opacity-90">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <Lamp key={`r1-${i}`} size={12} />
-        ))}
-      </div>
-
-      {/* Row 2 */}
-      <div className="flex justify-evenly mb-4 opacity-75">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <Lamp key={`r2-${i}`} size={10} />
-        ))}
-      </div>
-
-      {/* Row 3 */}
-      <div className="flex justify-evenly opacity-60">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Lamp key={`r3-${i}`} size={8} />
-        ))}
-      </div>
-
-    </div>
-  );
-}
-
-function Lamp({ size }: { size: number }) {
-  return (
-    <div
-      className="relative rounded-full"
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        background: '#FFD36A',
-        boxShadow: `
-          0 0 10px #FFD36A,
-          0 0 20px rgba(255,211,106,.7),
-          0 0 40px rgba(255,180,60,.5)
-        `,
-        animation: 'lampFlicker 3s ease-in-out infinite',
-      }}
-    >
       <style jsx>{`
-        @keyframes lampFlicker {
-          0%,100% {
-            opacity: 0.8;
-            transform: scale(1);
-          }
-
-          50% {
-            opacity: 1;
-            transform: scale(1.15);
-          }
+        @keyframes ghatLampFlicker {
+          0%, 100% { opacity: 0.75; transform: scale(1); }
+          30%      { opacity: 1; transform: scale(1.12); }
+          60%      { opacity: 0.85; transform: scale(1.04); }
+          80%      { opacity: 1; transform: scale(1.08); }
         }
       `}</style>
-    </div>
+    </>
   );
 }
