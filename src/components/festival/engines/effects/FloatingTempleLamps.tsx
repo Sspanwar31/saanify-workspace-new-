@@ -8,9 +8,9 @@ export default function FloatingTempleLamps() {
       {lamps.map((_, i) => {
         const left = Math.random() * 100;
 
-        const size = 20 + Math.random() * 30;
+        const size = 12 + Math.random() * 18;
 
-        const bottom = 10 + Math.random() * 55;
+        const bottom = 5 + Math.random() * 45;
 
         const delay = Math.random() * 10;
 
