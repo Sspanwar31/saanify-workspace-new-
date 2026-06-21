@@ -13,39 +13,39 @@ export default function FloatingTempleLamps() {
   const lamps = Array.from({ length: 20 }, (_, i) => ({
     id: i,
     left: sr(i * 7 + 3) * 90 + 5,
-    bottom: 1 + sr(i * 13 + 5) * 28,           // ✅ sirf bottom 30% me
-    size: 3 + sr(i * 17 + 11) * 10,            // ✅ chhota size (3-13px)
+    bottom: 1 + sr(i * 13 + 5) * 22,             // ✅ bottom 23% only
+    size: 3 + sr(i * 17 + 11) * 10,
     floatDur: 5 + sr(i * 23 + 7) * 8,
-    floatDist: 4 + sr(i * 29 + 13) * 14,       // ✅ kam float distance
+    floatDist: 3 + sr(i * 29 + 13) * 10,          // ✅ less float
     glowDur: 2.5 + sr(i * 31 + 17) * 4,
     breatheDur: 3 + sr(i * 37 + 19) * 5,
     hue: -20 + sr(i * 41 + 23) * 35,
-    driftX: (sr(i * 43 + 29) - 0.5) * 12,     // ✅ kam horizontal drift
+    driftX: (sr(i * 43 + 29) - 0.5) * 10,
     driftDur: 4 + sr(i * 71 + 53) * 7,
     delay: sr(i * 47 + 31) * 10,
     layer: Math.floor(sr(i * 53 + 37) * 3),
     flickerDur: 0.4 + sr(i * 59 + 41) * 1.5,
-    baseOpacity: 0.25 + sr(i * 73 + 59) * 0.55, // ✅ thoda subtle
+    baseOpacity: 0.3 + sr(i * 73 + 59) * 0.5,
     sparkles: Array.from(
-      { length: 1 + Math.floor(sr(i * 79 + 61) * 3) }, // ✅ kam sparkles
+      { length: 1 + Math.floor(sr(i * 79 + 61) * 3) },
       (_, j) => ({
         angle: sr(i * 83 + j * 97 + 67) * Math.PI * 2,
         dist: 0.6 + sr(i * 89 + j * 101 + 71) * 1.2,
-        size: 0.8 + sr(i * 97 + j * 103 + 79) * 1.5,   // ✅ chhote sparkles
+        size: 0.8 + sr(i * 97 + j * 103 + 79) * 1.5,
         dur: 1.5 + sr(i * 107 + j * 109 + 83) * 3,
         delay: sr(i * 113 + j * 127 + 89) * 3,
       })
     ),
   }));
 
-  const embers = Array.from({ length: 10 }, (_, i) => ({
+  const embers = Array.from({ length: 8 }, (_, i) => ({
     id: i,
     left: sr(i * 131 + 151) * 100,
-    size: 1 + sr(i * 137 + 157) * 2,          // ✅ chhote embers
-    dur: 6 + sr(i * 139 + 163) * 8,
-    delay: sr(i * 149 + 167) * 12,
-    driftX: (sr(i * 151 + 173) - 0.5) * 20,   // ✅ kam drift
-    maxOpacity: 0.15 + sr(i * 157 + 179) * 0.3, // ✅ subtle
+    size: 1 + sr(i * 137 + 157) * 2,
+    dur: 5 + sr(i * 139 + 163) * 7,
+    delay: sr(i * 149 + 167) * 10,
+    driftX: (sr(i * 151 + 173) - 0.5) * 15,
+    maxOpacity: 0.12 + sr(i * 157 + 179) * 0.25,
   }));
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -64,7 +64,7 @@ export default function FloatingTempleLamps() {
     return () => el.removeEventListener('mousemove', handleMouseMove);
   }, [handleMouseMove]);
 
-  const layerPS = [3, 7, 14];    // ✅ reduced parallax strength
+  const layerPS = [3, 7, 14];
   const layerBlur = [1.2, 0.4, 0];
 
   return (
@@ -72,28 +72,29 @@ export default function FloatingTempleLamps() {
       <div
         ref={containerRef}
         className="absolute inset-0 overflow-hidden pointer-events-none select-none"
-        style={{ '--mx': '0', '--my': '0' } as React.CSSProperties}
+        style={
+          {
+            '--mx': '0',
+            '--my': '0',
+            // ✅ CSS mask — sirf is layer ke andar ke elements fade honge,
+            //    baaki sab content (greeting card) bilkul unaffected
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 50%, black 78%)',
+            maskImage: 'linear-gradient(to bottom, transparent 50%, black 78%)',
+          } as React.CSSProperties
+        }
       >
-        {/* ✅ Top fade mask — upar se lamps dhunde dhunde fade out */}
-        <div
-          className="absolute inset-x-0 top-0 pointer-events-none"
-          style={{
-            height: '55%',
-            background: 'linear-gradient(to bottom, var(--mask-bg, #0a0a0a) 30%, transparent 100%)',
-            zIndex: 50,
-          }}
-        />
+        {/* ❌ TOP FADE MASK HATA DIYA — ye card hide kar raha tha */}
 
-        {/* ✅ Atmosphere glow — sirf niche, chhota */}
+        {/* Atmosphere glow — bottom only */}
         <div
           className="absolute bottom-0 left-1/2 pointer-events-none"
           style={{
             width: '120%',
-            height: '35%',                           // ✅ reduced height
+            height: '32%',
             transform: 'translateX(-50%)',
             background:
               'radial-gradient(ellipse at 50% 100%, rgba(255,155,35,0.18) 0%, rgba(255,95,15,0.05) 50%, transparent 75%)',
-            filter: 'blur(35px)',                     // ✅ less blur
+            filter: 'blur(35px)',
             animation: 'atmosPulse 9s ease-in-out infinite',
           }}
         />
@@ -101,7 +102,7 @@ export default function FloatingTempleLamps() {
           className="absolute bottom-0 left-[30%] pointer-events-none"
           style={{
             width: '40%',
-            height: '25%',
+            height: '22%',
             background:
               'radial-gradient(ellipse, rgba(255,115,15,0.08) 0%, transparent 65%)',
             filter: 'blur(40px)',
@@ -130,7 +131,6 @@ export default function FloatingTempleLamps() {
                 filter: blur > 0 ? `blur(${blur}px)` : 'none',
               }}
             >
-              {/* X-Axis Drift */}
               <div
                 style={
                   {
@@ -139,7 +139,6 @@ export default function FloatingTempleLamps() {
                   } as React.CSSProperties
                 }
               >
-                {/* Y-Float + Breathe + Flicker */}
                 <div
                   className="relative"
                   style={
@@ -183,11 +182,11 @@ export default function FloatingTempleLamps() {
                     }}
                   />
 
-                  {/* ✅ Inner glow — reduced spread */}
+                  {/* Inner glow */}
                   <div
                     className="absolute rounded-full"
                     style={{
-                      inset: '-50%',                                     // ✅ was -40%, still tight
+                      inset: '-50%',
                       background: `radial-gradient(circle,
                         rgba(255,195,65,0.4) 0%,
                         rgba(255,140,0,0.1) 55%,
@@ -197,11 +196,11 @@ export default function FloatingTempleLamps() {
                     }}
                   />
 
-                  {/* ✅ Outer glow — much smaller */}
+                  {/* Outer glow */}
                   <div
                     className="absolute rounded-full"
                     style={{
-                      inset: '-120%',                                    // ✅ contained
+                      inset: '-120%',
                       background: `radial-gradient(circle,
                         rgba(255,145,25,0.08) 0%,
                         rgba(255,95,0,0.02) 45%,
@@ -211,7 +210,7 @@ export default function FloatingTempleLamps() {
                     }}
                   />
 
-                  {/* ✅ Ring — only on bigger lamps */}
+                  {/* Ring — only on bigger lamps */}
                   {l.size > 8 && (
                     <div
                       className="absolute rounded-full"
@@ -342,16 +341,16 @@ export default function FloatingTempleLamps() {
           }
           35% {
             opacity: calc(var(--ember-peak, 0.3) * 0.7);
-            translate: calc(var(--ember-drift, 0px) * 0.4) -120px;
+            translate: calc(var(--ember-drift, 0px) * 0.4) -100px;
           }
           65% {
             opacity: calc(var(--ember-peak, 0.3) * 0.3);
-            translate: calc(var(--ember-drift, 0px) * 0.7) -200px;
+            translate: calc(var(--ember-drift, 0px) * 0.7) -160px;
             scale: 0.5;
           }
           100% {
             opacity: 0;
-            translate: var(--ember-drift, 0px) -280px;
+            translate: var(--ember-drift, 0px) -220px;
             scale: 0;
           }
         }
