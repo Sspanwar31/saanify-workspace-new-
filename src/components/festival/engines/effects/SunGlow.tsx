@@ -51,7 +51,7 @@ export default function SunGlow() {
             <div className="absolute top-2 left-6 w-16 h-8 bg-white/40 rounded-full blur-sm -rotate-45" />
             
             {/* Bottom Shadow for Depth */}
-            <div className="absolute bottom-0 w-full h-1/2 bg-black/10 blur-md" />
+        
          </div>
       </div>
 
