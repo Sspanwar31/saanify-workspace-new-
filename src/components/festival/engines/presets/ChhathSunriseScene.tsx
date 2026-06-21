@@ -5,20 +5,25 @@ import FloatingTempleLamps from '../effects/FloatingTempleLamps';
 import RiverReflection from '../effects/RiverReflection';
 import ArghyaReflection from '../effects/ArghyaReflection';
 import GhatLampRows from '../effects/GhatLampRows';
+import WaterShimmer from '../effects/WaterShimmer';
 
 export default function ChhathSunriseScene() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
 
-      <SunriseRays />
+    <SunriseRays />
 
-      <GhatLampRows />
+<GoldenParticles preset="CHHATH_PUJA" />
 
-      <FloatingTempleLamps />
+<GhatLampRows />
 
-      <RiverReflection />
+<FloatingTempleLamps />
 
-      <ArghyaReflection />
+<WaterShimmer />
+
+<RiverReflection />
+
+<ArghyaReflection />
 
     </div>
   );
