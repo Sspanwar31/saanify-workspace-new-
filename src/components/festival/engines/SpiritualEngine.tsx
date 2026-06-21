@@ -2,7 +2,6 @@
 
 import DiwaliScene from './presets/DiwaliScene';
 import DevDeepawaliScene from './presets/DevDeepawaliScene';
-import ChhathScene from './presets/ChhathScene';
 
 export default function SpiritualEngine({
   preset,
@@ -17,9 +16,6 @@ export default function SpiritualEngine({
 
     case 'DEV_DEEPAWALI':
       return <DevDeepawaliScene />;
-
-    case 'CHHATH_PUJA':
-      return <ChhathScene />;
 
     default:
       return null;
