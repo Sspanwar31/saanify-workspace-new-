@@ -2,13 +2,11 @@ import { NextResponse } from 'next/server';
 import { Pool } from 'pg'; // 🚀 Pool for better performance
 import CryptoJS from 'crypto-js';
 
-// --- DATABASE POOL SETUP (Global define karein taaki reuse ho sake) ---
+// 🚀 ZAROORI: Pool ko hamesha POST ke upar (GLOBAL) rakhein
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 2, // Serverless ke liye chota pool rakhein
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000, // 5 sec se zada wait na kare
+  max: 3, // Serverless ke liye chota pool
 });
 
 // --- SECURITY: ENCRYPTION KEY ---
