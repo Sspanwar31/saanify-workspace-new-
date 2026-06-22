@@ -12,6 +12,9 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
+// ✅ NEW: Import updated broadcast component
+import BroadcastPopup from '@/components/festival/v2/BroadcastPopup';
+
 // =========================================================
 // MASTER CONFIG: Supporting All 30+ Festivals & 7 Types
 // =========================================================
@@ -83,127 +86,6 @@ const MaintenanceScreen = ({ settings }: any) => (
     </div>
   </div>
 );
-
-// --- GreetingRenderer (Updated with Specific Particles) ---
-const GreetingRenderer = ({ activeBroadcast, handleDismissPopup }: any) => {
-  if (!activeBroadcast) return null;
-  const config = getConfig(activeBroadcast);
-  const currentAnim = activeBroadcast.animation_type || config.defaultAnim;
-  const msgParts = activeBroadcast.message?.split('|') || [activeBroadcast.message, ""];
-
-  // Determine Container Styles (Original Logic Preserved)
-  let containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-[#0f172a] text-white";
-  let titleClassName = "text-white font-black";
-  let buttonClassName = "bg-blue-600 text-white";
-
-  if (config.style === 'GOLDEN') {
-    containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-[radial-gradient(circle_at_top,#1e2d7a_0%,#090d1f_50%,#03040b_100%)] border-amber-400/30 text-white";
-    titleClassName = "festival-title-gold";
-    buttonClassName = "bg-gradient-to-r from-amber-600 via-yellow-500 to-orange-500 text-white";
-  } 
-  else if (config.style === 'VIBRANT') {
-    containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-white text-slate-900";
-    titleClassName = "holi-title-animated text-slate-900";
-    buttonClassName = "bg-blue-600 text-white";
-  }
-  else if (config.style === 'WINTER') {
-    containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-[#b71c1c] text-white";
-    titleClassName = "text-white drop-shadow-2xl";
-    buttonClassName = "bg-white text-red-600";
-  }
-  else if (config.style === 'NATIONAL') {
-    containerClassName = "relative w-[340px] sm:w-[420px] min-h-[580px] rounded-[3rem] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.7)] flex flex-col items-center p-8 border mx-auto bg-gradient-to-b from-[#ff9933] via-white to-[#138808] text-slate-900";
-    titleClassName = "text-slate-900 font-black";
-    buttonClassName = "bg-white text-slate-900 border border-slate-300";
-  }
-
-  return (
-    <div className={containerClassName}>
-      {/* 🚀 DYNAMIC ENGINE: Har section ka apna animation */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        
-        {/* Section 1: SNOW (For Christmas/Winter) */}
-        {currentAnim === 'SNOW' && [...Array(20)].map((_, i) => (
-           <div key={i} className="snow-particle w-2 h-2" style={{ left: (Math.random()*100)+"%", animationDuration: (3+Math.random()*5)+"s", animationDelay: (Math.random()*5)+"s" }}></div>
-        ))}
-
-        {/* Section 2: FLOWERS (For Navratri/Onam/Ganesh Chaturthi) */}
-        {currentAnim === 'FLOWERS' && [...Array(10)].map((_, i) => (
-           <div key={i} className="flower-particle" style={{ left: (Math.random()*100)+"%", bottom: "-40px", animationDuration: (4+Math.random()*4)+"s" }}>🌸</div>
-        ))}
-
-        {/* Section 3: GOLD (For Diwali/Golden Style) */}
-        {(currentAnim === 'DIYA' || config.style === 'GOLDEN') && (
-           <>
-             {[...Array(6)].map((_, i) => (
-               <div key={i} className="gold-particle w-2 h-2" style={{ left: (15*i+5)+"%", bottom: "-20px", animationDuration: (6+i)+"s" }}></div>
-             ))}
-             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-50" />
-           </>
-        )}
-
-        {/* Section 4: SPLASH (For Holi/Vibrant Style) */}
-        {config.style === 'VIBRANT' && (
-           <>
-             <div className="color-splash bg-pink-500 w-40 h-40 top-10 left-10" style={{"--tx":"-40px", "--ty":"-40px"} as any}></div>
-             <div className="color-splash bg-blue-400 w-32 h-32 bottom-20 right-20" style={{"--tx":"40px", "--ty":"40px"} as any}></div>
-           </>
-        )}
-      </div>
-
-      {/* Brand & Content Section as before... */}
-      <div className="relative z-10 uppercase tracking-[10px] font-black text-[10px] mb-8 opacity-50">SAANIFY</div>
-
-      <div className="relative z-10 mt-4">
-         {currentAnim === 'DIYA' ? (
-           <div className="relative scale-125 flex flex-col items-center">
-              <div className="diya-flame w-14 h-18 bg-gradient-to-t from-orange-500 via-yellow-400 to-white rounded-full blur-[1px]" style={{boxShadow: '0 0 40px orange'}}></div>
-              <div className="mt-[-10px] w-24 h-12 rounded-b-full bg-gradient-to-b from-amber-700 to-amber-950"></div>
-           </div>
-         ) : (
-           <div className="bg-white/20 backdrop-blur-xl p-8 rounded-[3rem] shadow-xl border border-white/30 rotate-6 transform hover:rotate-0 transition-all duration-700">
-              <span className="text-7xl drop-shadow-2xl">{config.icon}</span>
-           </div>
-         )}
-      </div>
-
-      <div className="relative z-10 text-center mt-12 w-full px-4">
-        <h1 className={`${titleClassName} text-5xl font-black leading-tight uppercase italic`}>
-          {activeBroadcast.title}
-        </h1>
-        <p className={`mt-6 text-sm leading-relaxed font-bold px-2 ${config.style === 'GOLDEN' || config.style === 'WINTER' ? 'text-slate-200' : 'text-slate-700'}`}>
-          {msgParts[0]}
-        </p>
-      </div>
-
-      <Button onClick={handleDismissPopup} className={`relative z-10 mt-auto w-full h-16 rounded-3xl font-black text-xl shadow-2xl transition-all hover:scale-105 ${buttonClassName}`}>
-        {activeBroadcast.cta_text || 'CONTINUE 🚀'}
-      </Button>
-
-      <div className="relative z-10 mt-4 text-[9px] uppercase tracking-[4px] font-bold opacity-40">
-         Premium Saanify Greeting
-      </div>
-    </div>
-  );
-};
-
-// --- RenderAnimations (Screen wide effects) ---
-const RenderAnimations = ({ showPopup, activeBroadcast }: any) => {
-  if (!showPopup || !activeBroadcast) return null;
-
-  if (activeBroadcast.animation_type === 'DIYA' || getConfig(activeBroadcast).defaultAnim === 'DIYA') {
-    return (
-      <div className="fixed inset-0 pointer-events-none z-[10000] overflow-hidden">
-        <div className="absolute top-4 right-10 text-6xl diya-glow">🪔</div>
-        <div className="absolute top-4 left-[300px] text-6xl diya-glow hidden md:block">🪔</div>
-        {[...Array(5)].map((_, i) => (
-            <div key={i} className="gold-particle" style={{ left: `${20*i}%`, bottom: '0', animationDuration: `${7+i}s` }}></div>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -496,9 +378,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ANIMATIONS & POPUP */}
-      <RenderAnimations showPopup={showPopup} activeBroadcast={activeBroadcast} />
-
       {/* ACTIVE BROADCAST BANNER */}
       {activeBroadcast && !showPopup && (
         <div className={"sticky top-0 z-[1001] w-full py-3 px-6 shadow-2xl " + bannerColorClass}>
@@ -516,16 +395,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* HERO POPUP MODAL */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
-           <GreetingRenderer activeBroadcast={activeBroadcast} handleDismissPopup={handleDismissPopup} />
+           {/* ✅ CHANGED: GreetingRenderer replaced with BroadcastPopup */}
+           <BroadcastPopup
+             broadcast={activeBroadcast}
+             onClose={handleDismissPopup}
+           />
         </DialogContent>
       </Dialog>
 
       {/* Step 7: Ab popup render karo (Preview) */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none">
-          <GreetingRenderer
-            activeBroadcast={previewBroadcast}
-            handleDismissPopup={() => setShowPreview(false)}
+          {/* ✅ CHANGED: GreetingRenderer replaced with BroadcastPopup */}
+          <BroadcastPopup
+            broadcast={previewBroadcast}
+            onClose={() => setShowPreview(false)}
           />
         </DialogContent>
       </Dialog>
