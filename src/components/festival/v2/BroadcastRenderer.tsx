@@ -1,6 +1,5 @@
 'use client';
 
-import AnimationFactory from '@/components/festival/v2/AnimationFactory';
 import HeroFactory from '@/components/festival/v2/HeroFactory';
 import { ShieldCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -114,12 +113,6 @@ export default function BroadcastPopup({
 
   return (
     <div className="relative min-h-[650px] flex items-center justify-center">
-
-      {/* BACKGROUND EFFECTS */}
-      <AnimationFactory
-        engine={broadcast?.hero_config?.animation}
-        preset={broadcast?.festival_key}
-      />
 
       {/* CARD */}
       <div className="relative w-full max-w-[350px] z-50">
