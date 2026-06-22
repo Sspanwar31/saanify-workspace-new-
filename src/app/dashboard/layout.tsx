@@ -12,59 +12,11 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// ✅ NEW: Import updated broadcast component
-import BroadcastPopup from '@/components/festival/v2/BroadcastPopup';
+// ✅ STEP 3: Renamed import to BroadcastRenderer
+import BroadcastRenderer from '@/components/festival/v2/BroadcastPopup';
 
-// =========================================================
-// MASTER CONFIG: Supporting All 30+ Festivals & 7 Types
-// =========================================================
-const MASTER_CONFIG: any = {
-  // --- GOLDEN STYLE ---
-  DIWALI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🪔' },
-  DUSSEHRA: { style: 'GOLDEN', defaultAnim: 'SPARKLES', icon: '🏹' },
-  MAHASHIVRATRI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🕉️' },
-  RAM_NAVAMI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🚩' },
-  GURU_PURNIMA: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🙏' },
-  CHHATH_PUJA: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '☀️' },
-  KARWA_CHAUTH: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🌙' },
-  HANUMAN_JAYANTI: { style: 'GOLDEN', defaultAnim: 'DIYA', icon: '🔱' },
-  MAKAR_SANKRANTI: { style: 'GOLDEN', defaultAnim: 'SPARKLES', icon: '🪁' },
-  
-  // --- VIBRANT STYLE ---
-  HOLI: { style: 'VIBRANT', defaultAnim: 'HOLI', icon: '🎨' },
-  NAVRATRI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '💃' },
-  GANESH_CHATURTHI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🐘' },
-  JANMASHTAMI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🏺' },
-  RAKSHA_BANDHAN: { style: 'VIBRANT', defaultAnim: 'CONFETTI', icon: '🎁' },
-  LOHRI: { style: 'VIBRANT', defaultAnim: 'SPARKLES', icon: '🔥' },
-  ONAM: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🌸' },
-  PONGAL: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🌾' },
-  BAISAKHI: { style: 'VIBRANT', defaultAnim: 'FLOWERS', icon: '🥁' },
-
-  // --- WINTER / PEACEFUL ---
-  CHRISTMAS: { style: 'WINTER', defaultAnim: 'SNOW', icon: '🎄' },
-  NEW_YEAR: { style: 'WINTER', defaultAnim: 'FIREWORKS', icon: '🎆' },
-  EID_AL_FITR: { style: 'PEACEFUL', defaultAnim: 'MOON', icon: '🌙' },
-  EID_AL_ADHA: { style: 'PEACEFUL', defaultAnim: 'MOON', icon: '🕌' },
-
-  // --- NATIONAL STYLE ---
-  REPUBLIC_DAY: { style: 'NATIONAL', defaultAnim: 'CONFETTI', icon: '🇮🇳' },
-  INDEPENDENCE_DAY: { style: 'NATIONAL', defaultAnim: 'CONFETTI', icon: '🇮🇳' },
-
-  // --- BROADCAST TYPES (Corporate) ---
-  ANNOUNCEMENT: { style: 'CORPORATE', defaultAnim: 'SPARKLES', icon: '📢' },
-  UPDATE: { style: 'CORPORATE', defaultAnim: 'SPARKLES', icon: '🚀' },
-  OFFER: { style: 'CORPORATE', defaultAnim: 'CONFETTI', icon: '💰' },
-  MAINTENANCE: { style: 'CORPORATE', defaultAnim: 'NONE', icon: '⚙️' },
-  EMERGENCY: { style: 'ALERT', defaultAnim: 'NONE', icon: '⚠️' },
-  EVENT: { style: 'CORPORATE', defaultAnim: 'CONFETTI', icon: '🗓️' }
-};
-
-// --- Helper: Get Style for Type/Key ---
-const getConfig = (b: any) => {
-  const key = (b?.festival_key || b?.type || 'UPDATE').toUpperCase();
-  return MASTER_CONFIG[key] || MASTER_CONFIG.UPDATE;
-};
+// ✅ NEW: Import Animation Factory for Background Effects
+import AnimationFactory from '@/components/festival/v2/AnimationFactory';
 
 // =========================================================
 // SUB-COMPONENTS
@@ -99,10 +51,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
-  
-  // Step 4: New state added
-  const [previewBroadcast, setPreviewBroadcast] = useState<any>(null);
-  const [showPreview, setShowPreview] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -165,33 +113,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [hasSeenPopup]);
 
-  // Step 3: New Preview Fetch Function
-  const fetchPreviewBroadcast = async () => {
-    const { data } = await supabase
-      .from('broadcasts')
-      .select('*')
-      .eq('preview_mode', true)
-      .eq('is_active', true)
-      .order('created_at', { ascending:false })
-      .limit(1)
-      .maybeSingle();
-
-    if(data){
-      setPreviewBroadcast(data);
-      setShowPreview(true);
-    }
-  };
-
   useEffect(() => {
     fetchBroadcasts();
-    // Step 5: Login ke baad fetch karwao
-    fetchPreviewBroadcast();
 
-    // Step 6: Realtime bhi add kar do
+    // Realtime listener
     const channel = supabase.channel('broadcast-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => {
         fetchBroadcasts();
-        fetchPreviewBroadcast();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -392,25 +320,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
+      {/* ✅ NEW: FULL SCREEN ANIMATIONS BEHIND POPUP */}
+      {activeBroadcast && (
+        <AnimationFactory
+          engine={activeBroadcast?.hero_config?.animation}
+          preset={activeBroadcast?.festival_key}
+        />
+      )}
+
       {/* HERO POPUP MODAL */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
-           {/* ✅ CHANGED: GreetingRenderer replaced with BroadcastPopup */}
-           <BroadcastPopup
+           <BroadcastRenderer
              broadcast={activeBroadcast}
              onClose={handleDismissPopup}
            />
-        </DialogContent>
-      </Dialog>
-
-      {/* Step 7: Ab popup render karo (Preview) */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none">
-          {/* ✅ CHANGED: GreetingRenderer replaced with BroadcastPopup */}
-          <BroadcastPopup
-            broadcast={previewBroadcast}
-            onClose={() => setShowPreview(false)}
-          />
         </DialogContent>
       </Dialog>
 
