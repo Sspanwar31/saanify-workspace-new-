@@ -1,14 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea'; 
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
@@ -16,17 +15,20 @@ import {
   Settings, Globe, Edit, CheckCircle, AlertTriangle, Lock, Radio
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Helper — dates ko safely ISO mein convert karo
-const toISO = (val: string) => val ? new Date(val).toISOString() : '';
+// ✅ Safe Date ISO conversion helper
+const toISO = (val: string) => {
+  if (!val) return null;
+  const date = new Date(val);
+  return isNaN(date.getTime()) ? null : date.toISOString();
+};
 
-// ✅ NEW: Helper — DB se aaye datetime ko datetime-local input ke liye format karo
+// ✅ Safe local date-time local helper
 const formatDateTimeLocal = (value: string | null) => {
   if (!value) return '';
-
-  return new Date(value)
-    .toISOString()
-    .slice(0, 16);
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 16);
 };
 
 export default function AdminSettings() {
@@ -60,18 +62,25 @@ export default function AdminSettings() {
     is_maintenance_scheduled: false,
   });
 
-  // 1. INITIAL FETCH
+  // 1. INITIAL FETCH — Safe error handling to avoid getting stuck on loading
   useEffect(() => {
     const init = async () => {
       const email = localStorage.getItem('admin_email');
       if (email) setCurrentEmail(email);
-      await Promise.all([fetchSettings(), fetchAdmins()]);
-      setLoading(false);
+      
+      try {
+        // Safe Promise.all that won't freeze the page if one call fails
+        await Promise.allSettled([fetchSettings(), fetchAdmins()]);
+      } catch (err) {
+        console.error("Initialization error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
     init();
   }, []);
 
-  // 2. REALTIME SUBSCRIPTION — ✅ FIXED: table name
+  // 2. REALTIME SUBSCRIPTION — Live updates from system_settings table
   useEffect(() => {
     const channel = supabase
       .channel('settings-maintenance-live')
@@ -107,45 +116,40 @@ export default function AdminSettings() {
     }
   }, [admins, currentEmail]);
 
-  // ✅ FIXED: fetchSettings with proper date formatting
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/admin/settings');
-
       if (res.ok) {
         const data = await res.json();
-
         setFormData(prev => ({
           ...prev,
           ...data,
-
-          maintenance_start: formatDateTimeLocal(
-            data.maintenance_start
-          ),
-
-          maintenance_end: formatDateTimeLocal(
-            data.maintenance_end
-          ),
+          maintenance_start: formatDateTimeLocal(data.maintenance_start),
+          maintenance_end: formatDateTimeLocal(data.maintenance_end),
         }));
       }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to fetch settings", e);
     }
   };
 
   const fetchAdmins = async () => {
-    const { data } = await supabase.from('admins').select('*').order('created_at');
-    if (data) setAdmins(data);
+    try {
+      const { data } = await supabase.from('admins').select('*').order('created_at');
+      if (data) setAdmins(data);
+    } catch (e) {
+      console.error("Failed to fetch admins", e);
+    }
   };
 
   // =========================================================
-  // ✅ NEW: REALTIME MAINTENANCE TOGGLE — Direct & Fast
+  // ✅ FIX: No more window.location.reload() for snappy performance
   // =========================================================
   const handleMaintenanceToggle = async (value: boolean) => {
     if (isReadOnly || togglingMaintenance) return;
 
     setTogglingMaintenance(true);
-    // Optimistic Update: Pehle UI badal do taaki fast lage
+    // Optimistic Update: UI ko turant badle bina reload kiye
     const previousMode = formData.is_maintenance_mode;
     setFormData(prev => ({ ...prev, is_maintenance_mode: value }));
 
@@ -154,23 +158,21 @@ export default function AdminSettings() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData, // Pura data bhej rahe hain taaki API crash na ho
+          ...formData,
           is_maintenance_mode: value,
-          // 🚀 CRITICAL FIX: Dates ko null ya valid ISO bhejna zaroori hai
-          maintenance_start: formData.maintenance_start ? new Date(formData.maintenance_start).toISOString() : null,
-          maintenance_end: formData.maintenance_end ? new Date(formData.maintenance_end).toISOString() : null,
+          maintenance_start: toISO(formData.maintenance_start),
+          maintenance_end: toISO(formData.maintenance_end),
         }),
       });
 
-      // 🚀 Force Refresh taaki maintenance card dikhne lage
       if (res.ok) {
         toast.success(value ? '🚨 Maintenance LIVE' : '✅ System ONLINE');
-        window.location.reload(); 
+        // REMOVED: window.location.reload() - isse page ab hang nahi hoga
       } else {
         throw new Error("Update Failed");
       }
     } catch (e: any) {
-      // Error aane par purana state wapas le aao
+      // Error hone par purana status wapas layein
       setFormData(prev => ({ ...prev, is_maintenance_mode: previousMode }));
       toast.error("Database connection slow. Try again.");
     } finally {
@@ -190,7 +192,6 @@ export default function AdminSettings() {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // FIX: Same date conversion
         body: JSON.stringify({
           ...formData,
           is_maintenance_scheduled: value,
@@ -211,7 +212,7 @@ export default function AdminSettings() {
     }
   };
 
-  // ✅ FIXED: handleSave with proper headers and error handling
+  // ✅ FIXED: handleSave with proper error handling
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -239,8 +240,9 @@ export default function AdminSettings() {
       setIsGithubDialogOpen(false);
     } catch (e: any) { 
       toast.error(e.message || "Failed to save"); 
-    } 
-    finally { setSaving(false); }
+    } finally { 
+      setSaving(false); 
+    }
   };
 
   const handleSaveAdmin = async () => {
@@ -293,13 +295,22 @@ export default function AdminSettings() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Backup Failed');
       toast.success("Backup Successful!");
-    } catch (e: any) { toast.error(e.message); }
-    finally { setBackupLoading(false); }
+    } catch (e: any) { 
+      toast.error(e.message); 
+    } finally { 
+      setBackupLoading(false); 
+    }
   };
 
   const isReadOnly = currentUserRole === 'SUPPORT';
 
-  if (loading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-blue-600"/></div>;
+  if (loading) {
+    return (
+      <div className="p-10 flex justify-center items-center min-h-[400px]">
+        <Loader2 className="animate-spin text-blue-600 w-10 h-10" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
