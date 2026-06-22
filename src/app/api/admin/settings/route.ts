@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
-import { Client } from 'pg';
+import { Pool } from 'pg'; // 🚀 Pool for better performance
 import CryptoJS from 'crypto-js';
+
+// --- DATABASE POOL SETUP (Global define karein taaki reuse ho sake) ---
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 2, // Serverless ke liye chota pool rakhein
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000, // 5 sec se zada wait na kare
+});
 
 // --- SECURITY: ENCRYPTION KEY ---
 const getEncryptionKey = () => {
@@ -23,9 +32,10 @@ const decryptToken = (encryptedToken: string): string => {
   try {
     const bytes = CryptoJS.AES.decrypt(encryptedToken, getEncryptionKey());
     const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    // ✅ FIX: Agar decrypt empty aaye toh assume karo ye encrypted nahi tha
     if (!decrypted) {
       console.warn("Token decryption returned empty - possibly not encrypted");
-      return encryptedToken; // Return as-is if not actually encrypted
+      return encryptedToken; 
     }
     return decrypted;
   } catch (e) {
@@ -34,7 +44,7 @@ const decryptToken = (encryptedToken: string): string => {
   }
 };
 
-// ✅ NEW: Proper boolean converter
+// ✅ ROBUST: Proper boolean converter
 const toBoolean = (value: any, defaultValue: boolean): boolean => {
   if (value === null || value === undefined) return defaultValue;
   if (typeof value === 'boolean') return value;
@@ -45,7 +55,7 @@ const toBoolean = (value: any, defaultValue: boolean): boolean => {
   return defaultValue;
 };
 
-// ✅ NEW: Proper date converter
+// ✅ ROBUST: Proper date converter for PostgreSQL
 const toPostgresTimestamp = (value: any): string | null => {
   if (!value) return null;
   if (value === '' || value === 'null' || value === 'undefined') return null;
@@ -56,7 +66,6 @@ const toPostgresTimestamp = (value: any): string | null => {
       console.warn("Invalid date value:", value);
       return null;
     }
-    // PostgreSQL compatible ISO format
     return date.toISOString();
   } catch (e) {
     console.warn("Date parse error:", e);
@@ -64,26 +73,9 @@ const toPostgresTimestamp = (value: any): string | null => {
   }
 };
 
-// Helper: Get DB Client
-const getDbClient = async () => {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return null;
-  
-  const client = new Client({
-    connectionString,
-    ssl: { rejectUnauthorized: false }
-  });
-  await client.connect();
-  return client;
-};
-
 export async function GET() {
-  let client;
   try {
-    client = await getDbClient();
-    if (!client) return NextResponse.json({ github_branch: 'main' });
-
-    const result = await client.query('SELECT * FROM system_settings WHERE id = 1');
+    const result = await pool.query('SELECT * FROM system_settings WHERE id = 1');
     const data = result.rows[0] || {};
     
     // SECURITY: Decrypt token then Mask for UI
@@ -92,7 +84,7 @@ export async function GET() {
         data.github_token = "••••••••••••";
     }
 
-    // ✅ Log maintenance mode status for debugging
+    // ✅ Debug log for maintenance mode
     console.log("⚙️ Maintenance Mode Status:", {
       is_maintenance_mode: data.is_maintenance_mode,
       is_maintenance_scheduled: data.is_maintenance_scheduled,
@@ -100,22 +92,19 @@ export async function GET() {
       maintenance_end: data.maintenance_end
     });
 
-    await client.end();
     return NextResponse.json(data);
 
   } catch (error: any) {
-    if (client) await client.end();
     console.error("Settings GET Error:", error);
     return NextResponse.json({}, { status: 200 });
   }
 }
 
 export async function POST(req: Request) {
-  let client;
   try {
     const body = await req.json();
     
-    // ✅ Debug log - kya data aa raha hai
+    // ✅ Debug log - incoming data check
     console.log("📝 Incoming Settings Data:", {
       is_maintenance_mode: body.is_maintenance_mode,
       is_maintenance_scheduled: body.is_maintenance_scheduled,
@@ -124,15 +113,12 @@ export async function POST(req: Request) {
       type_maintenance_mode: typeof body.is_maintenance_mode
     });
 
-    client = await getDbClient();
-    if (!client) return NextResponse.json({ success: true, message: "Preview Mode: Simulated Save" });
-
-    // 1. Handle Token Logic
+    // 1. Handle Token Logic (Double encryption protection)
     let tokenValue = body.github_token;
     if (tokenValue === "••••••••••••") {
-        const existing = await client.query('SELECT github_token FROM system_settings WHERE id = 1');
+        const existing = await pool.query('SELECT github_token FROM system_settings WHERE id = 1');
         tokenValue = existing.rows[0]?.github_token;
-        // ✅ Check if already encrypted (don't double encrypt)
+        // ✅ FIX: Check if already encrypted (don't double encrypt)
         if (tokenValue && !tokenValue.startsWith("U2FsdGVk")) {
           tokenValue = encryptToken(tokenValue);
         }
@@ -140,7 +126,7 @@ export async function POST(req: Request) {
       tokenValue = encryptToken(tokenValue);
     }
 
-    // 2. SQL Upsert with maintenance fields
+    // 2. Optimized SQL Upsert
     const query = `
       INSERT INTO system_settings (
         id, 
@@ -174,39 +160,37 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
 
-    // 3. ✅ FIXED: Map values with proper type conversion
+    // 3. Map values with proper type conversion
     const values = [
       body.github_username || null,
       body.github_repo || null,
       tokenValue || null,
       body.github_branch || 'main',
       
-      // ✅ FIXED: Proper boolean conversion
+      // ✅ Proper boolean conversion
       toBoolean(body.is_maintenance_mode, false),
       
       parseInt(body.trial_days) || 10,
       parseInt(body.max_users_basic) || 200,
       parseInt(body.max_users_pro) || 500,
       
-      // ✅ FIXED: Proper boolean conversion
+      // ✅ Proper boolean conversion
       toBoolean(body.auto_renewal, true),
       toBoolean(body.email_notify, true),
       
-      // ✅ FIXED: Maintenance fields with proper conversion
+      // ✅ Maintenance fields
       body.maintenance_title || 'Saanify Maintenance Mode',
       body.maintenance_msg || 'We are currently upgrading our systems...',
       
-      // ✅ FIXED: Proper date conversion
+      // ✅ Proper date conversion
       toPostgresTimestamp(body.maintenance_start),
       toPostgresTimestamp(body.maintenance_end),
       
-      // ✅ FIXED: Proper boolean conversion
+      // ✅ Proper boolean conversion
       toBoolean(body.is_maintenance_scheduled, false)
     ];
 
-    console.log("📋 SQL Values:", values);
-
-    const result = await client.query(query, values);
+    const result = await pool.query(query, values);
     
     // ✅ Verify what was saved
     console.log("✅ Saved Successfully:", {
@@ -214,14 +198,12 @@ export async function POST(req: Request) {
       is_maintenance_scheduled: result.rows[0]?.is_maintenance_scheduled
     });
 
-    await client.end();
-
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
     console.error("❌ Settings Save Error:", error.message);
-    console.error("❌ Full Error:", error);
-    if (client) await client.end();
+    if (error.code) console.error("❌ DB Error Code:", error.code);
+    
     return NextResponse.json({ 
       success: false, 
       error: error.message 
