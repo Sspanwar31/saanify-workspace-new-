@@ -20,6 +20,15 @@ import { supabase } from '@/lib/supabase';
 // Helper — dates ko safely ISO mein convert karo
 const toISO = (val: string) => val ? new Date(val).toISOString() : '';
 
+// ✅ NEW: Helper — DB se aaye datetime ko datetime-local input ke liye format karo
+const formatDateTimeLocal = (value: string | null) => {
+  if (!value) return '';
+
+  return new Date(value)
+    .toISOString()
+    .slice(0, 16);
+};
+
 export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,13 +71,13 @@ export default function AdminSettings() {
     init();
   }, []);
 
-  // 2. REALTIME SUBSCRIPTION
+  // 2. REALTIME SUBSCRIPTION — ✅ FIXED: table name
   useEffect(() => {
     const channel = supabase
       .channel('settings-maintenance-live')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'site_settings' },
+        { event: 'UPDATE', schema: 'public', table: 'system_settings' },
         (payload: any) => {
           const updated = payload.new;
           if (!updated) return;
@@ -79,8 +88,8 @@ export default function AdminSettings() {
             is_maintenance_scheduled: updated.is_maintenance_scheduled ?? prev.is_maintenance_scheduled,
             maintenance_title: updated.maintenance_title ?? prev.maintenance_title,
             maintenance_msg: updated.maintenance_msg ?? prev.maintenance_msg,
-            maintenance_start: updated.maintenance_start ?? prev.maintenance_start,
-            maintenance_end: updated.maintenance_end ?? prev.maintenance_end,
+            maintenance_start: formatDateTimeLocal(updated.maintenance_start),
+            maintenance_end: formatDateTimeLocal(updated.maintenance_end),
           }));
         }
       )
@@ -98,14 +107,30 @@ export default function AdminSettings() {
     }
   }, [admins, currentEmail]);
 
+  // ✅ FIXED: fetchSettings with proper date formatting
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/admin/settings');
+
       if (res.ok) {
         const data = await res.json();
-        setFormData(prev => ({ ...prev, ...data }));
+
+        setFormData(prev => ({
+          ...prev,
+          ...data,
+
+          maintenance_start: formatDateTimeLocal(
+            data.maintenance_start
+          ),
+
+          maintenance_end: formatDateTimeLocal(
+            data.maintenance_end
+          ),
+        }));
       }
-    } catch(e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const fetchAdmins = async () => {
@@ -189,6 +214,7 @@ export default function AdminSettings() {
     }
   };
 
+  // ✅ FIXED: handleSave with proper headers and error handling
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -198,10 +224,25 @@ export default function AdminSettings() {
         maintenance_end: toISO(formData.maintenance_end),
       };
 
-      await fetch('/api/admin/settings', { method: 'POST', body: JSON.stringify(payload) });
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error);
+      }
+
       toast.success("Settings Saved!");
       setIsGithubDialogOpen(false);
-    } catch (e) { toast.error("Failed"); } 
+    } catch (e: any) { 
+      toast.error(e.message || "Failed to save"); 
+    } 
     finally { setSaving(false); }
   };
 
