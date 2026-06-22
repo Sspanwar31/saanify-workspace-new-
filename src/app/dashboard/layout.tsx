@@ -13,7 +13,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 // ✅ STEP 3: Renamed import to BroadcastRenderer
-import BroadcastRenderer from '@/components/festival/v2/BroadcastPopup';
+import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
 
 // ✅ NEW: Import Animation Factory for Background Effects
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
