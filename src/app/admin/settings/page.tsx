@@ -139,43 +139,36 @@ export default function AdminSettings() {
   };
 
   // =========================================================
-  // REALTIME MAINTENANCE TOGGLE — Fixed payload
+  // ✅ NEW: REALTIME MAINTENANCE TOGGLE — Direct & Fast
   // =========================================================
   const handleMaintenanceToggle = async (value: boolean) => {
     if (isReadOnly || togglingMaintenance) return;
 
-    // Optimistic UI
-    setFormData(prev => ({ ...prev, is_maintenance_mode: value }));
     setTogglingMaintenance(true);
+    // Optimistic Update: Pehle UI badal do taaki fast lage
+    const previousMode = formData.is_maintenance_mode;
+    setFormData(prev => ({ ...prev, is_maintenance_mode: value }));
 
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // FIX: Dates ko ISO mein convert karo, exact same format jaise handleSave bhejta hai
         body: JSON.stringify({
-          ...formData,
+          ...formData, // Pura data bhej rahe hain taaki API crash na ho
           is_maintenance_mode: value,
-          maintenance_start: toISO(formData.maintenance_start),
-          maintenance_end: toISO(formData.maintenance_end),
+          // 🚀 CRITICAL FIX: Dates ko null ya valid ISO bhejna zaroori hai
+          maintenance_start: formData.maintenance_start ? new Date(formData.maintenance_start).toISOString() : null,
+          maintenance_end: formData.maintenance_end ? new Date(formData.maintenance_end).toISOString() : null,
         }),
       });
 
-      // FIX: Backend ka actual error message catch karo
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Server Error (${res.status})`);
-      }
+      if (!res.ok) throw new Error("Update Failed");
 
-      toast.success(
-        value 
-          ? '🚨 Maintenance Mode ACTIVATED — Live!' 
-          : '✅ Maintenance Mode DEACTIVATED — Live!'
-      );
+      toast.success(value ? '🚨 Maintenance LIVE' : '✅ System ONLINE');
     } catch (e: any) {
-      // Revert
-      setFormData(prev => ({ ...prev, is_maintenance_mode: !value }));
-      toast.error(e.message || 'Toggle failed!');
+      // Error aane par purana state wapas le aao
+      setFormData(prev => ({ ...prev, is_maintenance_mode: previousMode }));
+      toast.error("Database connection slow. Try again.");
     } finally {
       setTogglingMaintenance(false);
     }
