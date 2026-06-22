@@ -62,50 +62,68 @@ export default function AdminSettings() {
     is_maintenance_scheduled: false,
   });
 
-  // 1. INITIAL FETCH — Safe error handling to avoid getting stuck on loading
+  // =========================================================
+  // 🚀 FIX 1: SAFETY TIMEOUT ADDED (Infinite loading fix)
+  // =========================================================
   useEffect(() => {
+    const email = localStorage.getItem('admin_email');
+    if (email) setCurrentEmail(email);
+    
+    // Agar 3 second mein data na aaye, toh force loading false kardo
+    const safetyTimer = setTimeout(() => {
+      console.warn("⚠️ Force unblocking UI due to slow network/DB");
+      setLoading(false);
+    }, 3000);
+
     const init = async () => {
-      const email = localStorage.getItem('admin_email');
-      if (email) setCurrentEmail(email);
-      
       try {
-        // Safe Promise.all that won't freeze the page if one call fails
         await Promise.allSettled([fetchSettings(), fetchAdmins()]);
       } catch (err) {
         console.error("Initialization error:", err);
       } finally {
+        clearTimeout(safetyTimer); // Agar time pe aagaya toh timer cancel karo
         setLoading(false);
       }
     };
+    
     init();
   }, []);
 
-  // 2. REALTIME SUBSCRIPTION — Live updates from system_settings table
+  // =========================================================
+  // 🚀 FIX 2: REALTIME WRAPPED IN TRY-CATCH
+  // =========================================================
   useEffect(() => {
-    const channel = supabase
-      .channel('settings-maintenance-live')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'system_settings' },
-        (payload: any) => {
-          const updated = payload.new;
-          if (!updated) return;
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel('settings-maintenance-live')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'system_settings' },
+          (payload: any) => {
+            const updated = payload.new;
+            if (!updated) return;
 
-          setFormData(prev => ({
-            ...prev,
-            is_maintenance_mode: updated.is_maintenance_mode ?? prev.is_maintenance_mode,
-            is_maintenance_scheduled: updated.is_maintenance_scheduled ?? prev.is_maintenance_scheduled,
-            maintenance_title: updated.maintenance_title ?? prev.maintenance_title,
-            maintenance_msg: updated.maintenance_msg ?? prev.maintenance_msg,
-            maintenance_start: formatDateTimeLocal(updated.maintenance_start),
-            maintenance_end: formatDateTimeLocal(updated.maintenance_end),
-          }));
-        }
-      )
-      .subscribe();
+            setFormData(prev => ({
+              ...prev,
+              is_maintenance_mode: updated.is_maintenance_mode ?? prev.is_maintenance_mode,
+              is_maintenance_scheduled: updated.is_maintenance_scheduled ?? prev.is_maintenance_scheduled,
+              maintenance_title: updated.maintenance_title ?? prev.maintenance_title,
+              maintenance_msg: updated.maintenance_msg ?? prev.maintenance_msg,
+              maintenance_start: formatDateTimeLocal(updated.maintenance_start),
+              maintenance_end: formatDateTimeLocal(updated.maintenance_end),
+            }));
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      console.error("Realtime Subscription Error:", e);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        if (channel) supabase.removeChannel(channel);
+      } catch (e) {}
     };
   }, []);
 
@@ -133,9 +151,13 @@ export default function AdminSettings() {
     }
   };
 
+  // =========================================================
+  // 🚀 FIX 3: REMOVED .order() WHICH WAS CAUSING HANG
+  // =========================================================
   const fetchAdmins = async () => {
     try {
-      const { data } = await supabase.from('admins').select('*').order('created_at');
+      // .order('created_at') hata diya kyunki agar column issue kare toh hang ho jata tha
+      const { data } = await supabase.from('admins').select('*');
       if (data) setAdmins(data);
     } catch (e) {
       console.error("Failed to fetch admins", e);
@@ -149,7 +171,6 @@ export default function AdminSettings() {
     if (isReadOnly || togglingMaintenance) return;
 
     setTogglingMaintenance(true);
-    // Optimistic Update: UI ko turant badle bina reload kiye
     const previousMode = formData.is_maintenance_mode;
     setFormData(prev => ({ ...prev, is_maintenance_mode: value }));
 
@@ -167,12 +188,10 @@ export default function AdminSettings() {
 
       if (res.ok) {
         toast.success(value ? '🚨 Maintenance LIVE' : '✅ System ONLINE');
-        // REMOVED: window.location.reload() - isse page ab hang nahi hoga
       } else {
         throw new Error("Update Failed");
       }
     } catch (e: any) {
-      // Error hone par purana status wapas layein
       setFormData(prev => ({ ...prev, is_maintenance_mode: previousMode }));
       toast.error("Database connection slow. Try again.");
     } finally {
@@ -180,9 +199,6 @@ export default function AdminSettings() {
     }
   };
 
-  // =========================================================
-  // SCHEDULED BANNER TOGGLE — Fixed payload
-  // =========================================================
   const handleScheduledToggle = async (value: boolean) => {
     if (isReadOnly) return;
 
@@ -212,7 +228,6 @@ export default function AdminSettings() {
     }
   };
 
-  // ✅ FIXED: handleSave with proper error handling
   const handleSave = async () => {
     setSaving(true);
     try {
