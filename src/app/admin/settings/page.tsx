@@ -162,9 +162,13 @@ export default function AdminSettings() {
         }),
       });
 
-      if (!res.ok) throw new Error("Update Failed");
-
-      toast.success(value ? '🚨 Maintenance LIVE' : '✅ System ONLINE');
+      // 🚀 Force Refresh taaki maintenance card dikhne lage
+      if (res.ok) {
+        toast.success(value ? '🚨 Maintenance LIVE' : '✅ System ONLINE');
+        window.location.reload(); 
+      } else {
+        throw new Error("Update Failed");
+      }
     } catch (e: any) {
       // Error aane par purana state wapas le aao
       setFormData(prev => ({ ...prev, is_maintenance_mode: previousMode }));
