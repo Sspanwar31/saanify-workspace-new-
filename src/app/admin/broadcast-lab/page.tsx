@@ -12,6 +12,7 @@ import Link from 'next/link';
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
   const [dbLists, setDbLists] = useState({ festivals: [], types: [] }); // 🚀 Naya state
+  const [broadcastStatus, setBroadcastStatus] = useState('draft');
   
   const [form, setForm] = useState({
     type: 'FESTIVAL',
@@ -84,8 +85,55 @@ export default function BroadcastLabPage() {
             : form.type
          } Generated! Check Preview.`
       );
+
+      setBroadcastStatus('draft');
     } catch (err: any) {
       console.error(err);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBroadcastAction = async (
+    action: 'start' | 'stop' | 'delete'
+  ) => {
+    try {
+      setLoading(true);
+
+      const res = await fetch('/api/admin/broadcast-lab', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          festival_key: form.festival_key,
+          action
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Action failed');
+      }
+
+      if (action === 'start') {
+        setBroadcastStatus('active');
+        toast.success('Broadcast Started');
+      }
+
+      if (action === 'stop') {
+        setBroadcastStatus('stopped');
+        toast.success('Broadcast Stopped');
+      }
+
+      if (action === 'delete') {
+        setBroadcastStatus('draft');
+        toast.success('Broadcast Deleted');
+      }
+
+    } catch (err: any) {
       toast.error(err.message);
     } finally {
       setLoading(false);
@@ -172,6 +220,50 @@ export default function BroadcastLabPage() {
               <div className="flex items-center justify-between border border-slate-100 rounded-2xl p-4 bg-slate-50/50">
                 <span className="text-sm font-bold text-slate-600">Full Anim</span>
                 <input type="checkbox" className="w-5 h-5 rounded-md accent-blue-600 cursor-pointer" checked={form.full_screen_animation} onChange={(e) => setForm({ ...form, full_screen_animation: e.target.checked })} />
+              </div>
+            </div>
+
+            <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-slate-600">
+                    Broadcast Status
+                  </p>
+                  <Badge
+                    className={
+                      broadcastStatus === 'active'
+                        ? 'bg-green-600'
+                        : broadcastStatus === 'stopped'
+                        ? 'bg-red-600'
+                        : 'bg-yellow-500'
+                    }
+                  >
+                    {broadcastStatus.toUpperCase()}
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => handleBroadcastAction('start')}
+                  >
+                    Start
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleBroadcastAction('stop')}
+                  >
+                    Stop
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBroadcastAction('delete')}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
 
