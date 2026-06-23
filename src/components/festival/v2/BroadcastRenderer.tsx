@@ -43,6 +43,7 @@ export default function BroadcastPopup({
   const cardGlow =
     broadcast.theme_config?.card_glow || 'theme';
 
+  // ━━━ STEP 1: Kept these blocks as it is ━━━
   const titleStyles: any = {
     royal: 'font-black italic tracking-tight',
     modern: 'font-bold tracking-wide',
@@ -111,19 +112,40 @@ export default function BroadcastPopup({
     }
   };
 
+  // ━━━ STEP 2: Added Design Tweaks Logic ━━━
+  const getDesignTweaks = () => {
+    switch(designPreset) {
+      case 'premium': return 'scale-110';
+      case 'modern': return 'shadow-2xl shadow-black/50';
+      case 'minimal': return 'shadow-lg shadow-black/20';
+      case 'glass': return 'backdrop-blur-3xl';
+      default: return '';
+    }
+  };
+
   return (
     <div className="relative min-h-[650px] flex items-center justify-center">
 
       {/* CARD */}
-      <div className="relative w-full max-w-[320px] z-50">
+      {/* ━━━ STEP 3: Changed max-w-[320px] to max-w-[350px] ━━━ */}
+      <div className="relative w-full max-w-[350px] z-50">
 
         <div
           className={`relative rounded-[3rem] overflow-hidden flex flex-col border-[3px]
           shadow-[0_50px_120px_rgba(0,0,0,0.9)]
           ${cardClasses[bannerVariant]}`}
+          /* ━━━ STEP 6: Added Royal & Luxury glow logic ━━━ */
           style={{
-            borderColor: themeColor,
+            borderColor:
+              designPreset === 'royal'
+                ? '#ffd700'
+                : themeColor,
+
             boxShadow: getGlow(),
+
+            ...(designPreset === 'luxury' && {
+              boxShadow: `0 0 100px ${themeColor}60, 0 0 200px ${themeColor}20`
+            })
           }}
         >
 
@@ -139,10 +161,11 @@ export default function BroadcastPopup({
           <div className="relative w-full h-[320px] overflow-hidden flex items-center justify-center bg-slate-950/50 p-6 pt-16">
 
             {broadcast.image_url ? (
+              /* ━━━ STEP 5: Added hero-anim and getDesignTweaks() ━━━ */
               <img
                 src={broadcast.image_url}
                 alt="Hero"
-                className="w-full h-full object-contain relative z-10 drop-shadow-2xl"
+                className={`hero-anim w-full h-full object-contain relative z-10 drop-shadow-2xl ${getDesignTweaks()}`}
               />
             ) : (
               <HeroFactory
@@ -188,18 +211,37 @@ export default function BroadcastPopup({
 
             <Button
               onClick={onClose}
-              className="w-full h-14 mt-8 rounded-[1.5rem] text-lg font-black shadow-2xl hover:scale-105 transition-all"
+              /* ━━━ STEP 7: Updated CTA classes exactly like preview ━━━ */
+              className="w-full h-14 mt-8 rounded-[1.5rem] text-lg font-black shadow-2xl transition-all hover:scale-105 active:scale-95 border-t border-white/20"
               style={getCTAStyle()}
             >
               {broadcast.resolved_cta || 'CONTINUE'}
             </Button>
 
-            <div className="mt-5 text-[9px] uppercase tracking-[4px] font-bold opacity-40 text-white">
-              Premium Saanify Greeting
-            </div>
+            {/* ━━━ STEP 4: Removed "Premium Saanify Greeting" text ━━━ */}
+
           </div>
         </div>
       </div>
+
+      {/* ━━━ STEP 8: Added Hero Animation Global Styles ━━━ */}
+      <style jsx global>{`
+        .hero-anim {
+          animation: hero-float ${
+            broadcast?.hero_config?.speed || 4
+          }s ease-in-out infinite;
+        }
+
+        @keyframes hero-float {
+          0%,100% {
+            transform: scale(1) translateY(0);
+          }
+
+          50% {
+            transform: scale(1.05) translateY(-6px);
+          }
+        }
+      `}</style>
     </div>
   );
 }
