@@ -115,7 +115,7 @@ export default function BroadcastPopup({
     <div className="relative min-h-[650px] flex items-center justify-center">
 
       {/* CARD */}
-      <div className="relative w-full max-w-[350px] z-50">
+      <div className="relative w-full max-w-[320px] z-50">
 
         <div
           className={`relative rounded-[3rem] overflow-hidden flex flex-col border-[3px]
