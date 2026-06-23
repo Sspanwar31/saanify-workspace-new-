@@ -35,7 +35,6 @@ export async function GET() {
     await client.end();
 
     // 🚀 SAFETY: Always return arrays, never undefined
-    // Note: Mapped to table_name to match the new query result
     return NextResponse.json({
       festivals: festRes.rows?.map((r) => r.festival_key) || [],
       types: corpRes.rows?.map((r) => r.broadcast_type) || []
@@ -64,33 +63,48 @@ export async function POST(req: Request) {
     const preview_mode = body.preview_mode;
     const action = body.action || 'generate';
 
-    // START ACTION
-    if (action === 'start') {
+    // 🚀 Naya Flag: Agar start hua hai aur record nahi mila, to generate logic me status 'active' rakhna hai
+    let forceActive = false;
 
-      const result = await client.query(
-        `
-        UPDATE broadcasts
-        SET
-          status='active',
-          is_active=true,
-          manual_stop=false,
-          updated_at=NOW()
-        WHERE festival_key=$1
-        RETURNING *;
-        `,
+    // ━━━ START ACTION ━━━
+    if (action === 'start') {
+      
+      // STEP 1 → Existing broadcast check
+      const existing = await client.query(
+        `SELECT * FROM broadcasts WHERE festival_key=$1 LIMIT 1`,
         [body.festival_key]
       );
 
-      await client.end();
+      // Case 1: Record mila → Directly Update to Active
+      if (existing.rows.length > 0) {
+        const result = await client.query(
+          `
+          UPDATE broadcasts
+          SET
+            status='active',
+            is_active=true,
+            manual_stop=false,
+            updated_at=NOW()
+          WHERE festival_key=$1
+          RETURNING *;
+          `,
+          [body.festival_key]
+        );
 
-      return NextResponse.json({
-        success: true,
-        action: 'start',
-        data: result.rows[0]
-      });
+        await client.end();
+
+        return NextResponse.json({
+          success: true,
+          action: 'start',
+          data: result.rows[0]
+        });
+      } else {
+        // Case 2: Record nahi mila → Generate logic run karna hai with active status
+        forceActive = true;
+      }
     }
 
-    // STOP ACTION
+    // ━━━ STOP ACTION ━━━
     if (action === 'stop') {
 
       const result = await client.query(
@@ -116,14 +130,11 @@ export async function POST(req: Request) {
       });
     }
 
-    // DELETE ACTION
+    // ━━━ DELETE ACTION ━━━
     if (action === 'delete') {
 
       await client.query(
-        `
-        DELETE FROM broadcasts
-        WHERE festival_key=$1
-        `,
+        `DELETE FROM broadcasts WHERE festival_key=$1`,
         [body.festival_key]
       );
 
@@ -135,14 +146,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // 🚀 Logic: Corporate check karein agar festival key nahi mili
-    // Hum priority dete hain broadcastType ko agar wo diya hai, warna festivalKey use hoga
+    // ━━━ GENERATE LOGIC (Normal flow OR Start flow agar record nahi tha) ━━━
+    
     const targetKey = broadcastType || festivalKey;
 
     let asset, content, resolvedFestivalKey;
 
     // ━━━ Step A: Corporate Check ━━━
-    // Pehle check karein kya ye Corporate table mein hai
     const corpCheck = await client.query(
       'SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1',
       [targetKey]
@@ -156,7 +166,7 @@ export async function POST(req: Request) {
         [targetKey]
       );
       content = msgRes.rows[0];
-      resolvedFestivalKey = targetKey; // Corporate ko bhi key ke roop mein store karenge
+      resolvedFestivalKey = targetKey; 
     } else {
       // ━━━ Festival Path (Fallback) ━━━
       const assetResult = await client.query(
@@ -192,7 +202,6 @@ export async function POST(req: Request) {
     const heroConfig = typeof asset?.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset?.hero_config || {});
     const mediaConfig = typeof asset?.media_config === 'string' ? JSON.parse(asset.media_config) : (asset?.media_config || {});
 
-    // Resolve Final Color (Priority: Master Map > JSON > Default Gold)
     const finalThemeColor = MASTER_THEME_MAP[resolvedFestivalKey] || themeConfig.primary_color || '#fbbf24';
 
     const normalizedHeroConfig = {
@@ -206,7 +215,7 @@ export async function POST(req: Request) {
 
     const normalizedThemeConfig = {
       ...themeConfig,
-      primary_color: finalThemeColor, // 🚀 Syncing the Color
+      primary_color: finalThemeColor, 
       background_style: themeConfig.background_style || 'DARK_GOLD'
     };
 
@@ -217,7 +226,6 @@ export async function POST(req: Request) {
     if (language_mode === 'HI') { resTitle = content.title_hi; resMsg = content.message_hi; }
     else if (language_mode === 'EN') { resTitle = content.title_en; resMsg = content.message_en; }
 
-    // 🚀 SAFETY FIX: Fallback agar title/message null ho (Prevents DB Constraint Error)
     if (!resTitle) resTitle = content.title_en || "Untitled Broadcast";
     if (!resMsg) resMsg = content.message_en || "No message content available.";
 
@@ -225,16 +233,14 @@ export async function POST(req: Request) {
 
     // STEP 1 → Existing broadcast check
     const existingBroadcast = await client.query(
-      `
-      SELECT id
-      FROM broadcasts
-      WHERE festival_key = $1
-      LIMIT 1
-      `,
+      `SELECT id FROM broadcasts WHERE festival_key = $1 LIMIT 1`,
       [resolvedFestivalKey]
     );
 
     let result;
+
+    // 🚀 Dynamic Status: Agar start se aaya hai to 'active' warna 'draft'
+    const activeStatus = forceActive ? 'active' : 'draft';
 
     // STEP 2 → UPDATE if exists
     if (existingBroadcast.rows.length > 0) {
@@ -257,7 +263,7 @@ export async function POST(req: Request) {
           resolved_cta=$12,
           preview_mode=true,
           is_active=true,
-          status='draft',
+          status=$14,
           updated_at=NOW()
         WHERE id=$13
         RETURNING *;
@@ -275,7 +281,8 @@ export async function POST(req: Request) {
           resTitle,
           resMsg,
           content.cta_text,
-          existingBroadcast.rows[0].id
+          existingBroadcast.rows[0].id,
+          activeStatus // 🚀 $14 dynamic status
         ]
       );
 
@@ -310,7 +317,7 @@ export async function POST(req: Request) {
           true,
           true,
           'AUTO',
-          'draft',
+          $14,
           NOW()
         )
         RETURNING *;
@@ -328,14 +335,19 @@ export async function POST(req: Request) {
           finalThemeColor,
           resTitle,
           resMsg,
-          content.cta_text
+          content.cta_text,
+          activeStatus // 🚀 $14 dynamic status
         ]
       );
     }
 
     await client.end();
 
-    return NextResponse.json({ success: true, data: result.rows[0] });
+    return NextResponse.json({ 
+      success: true, 
+      action: forceActive ? 'start' : 'generate', // 🚀 Frontend ko sahi action bhejna
+      data: result.rows[0] 
+    });
 
   } catch (error: any) {
     console.error("POST ERROR =", error);
