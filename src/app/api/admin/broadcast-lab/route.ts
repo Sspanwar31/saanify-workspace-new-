@@ -149,31 +149,118 @@ export async function POST(req: Request) {
     if (!resTitle) resTitle = content.title_en || "Untitled Broadcast";
     if (!resMsg) resMsg = content.message_en || "No message content available.";
 
-    // ━━━ 5. MASTER INSERT ━━━
-    const insertQuery = `
-      INSERT INTO broadcasts (
-        title, message, festival_key, language_mode,
-        hero_visual, hero_config, theme_config, image_url,
-        animation_theme, theme_color,
-        resolved_title, resolved_message, resolved_cta,
-        preview_mode, is_active, content_mode, created_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', NOW())
-      RETURNING *;
-    `;
+    // ━━━ 5. UPSERT LOGIC ━━━
 
-    const values = [
-      resTitle, resMsg, resolvedFestivalKey, language_mode,
-      normalizedHeroConfig.visual_key,
-      normalizedHeroConfig,
-      normalizedThemeConfig,
-      mediaConfig.web_image || null,
-      normalizedHeroConfig.animation,
-      finalThemeColor, // 🚀 $10: theme_color (🎯 Correct Branded Color)
-      resTitle, resMsg, content.cta_text
-    ];
+    // STEP 1 → Existing broadcast check
+    const existingBroadcast = await client.query(
+      `
+      SELECT id
+      FROM broadcasts
+      WHERE festival_key = $1
+      LIMIT 1
+      `,
+      [resolvedFestivalKey]
+    );
 
-    const result = await client.query(insertQuery, values);
+    let result;
+
+    // STEP 2 → UPDATE if exists
+    if (existingBroadcast.rows.length > 0) {
+
+      result = await client.query(
+        `
+        UPDATE broadcasts
+        SET
+          title=$1,
+          message=$2,
+          language_mode=$3,
+          hero_visual=$4,
+          hero_config=$5,
+          theme_config=$6,
+          image_url=$7,
+          animation_theme=$8,
+          theme_color=$9,
+          resolved_title=$10,
+          resolved_message=$11,
+          resolved_cta=$12,
+          preview_mode=true,
+          is_active=true,
+          status='draft',
+          updated_at=NOW()
+        WHERE id=$13
+        RETURNING *;
+        `,
+        [
+          resTitle,
+          resMsg,
+          language_mode,
+          normalizedHeroConfig.visual_key,
+          JSON.stringify(normalizedHeroConfig),
+          JSON.stringify(normalizedThemeConfig),
+          mediaConfig.web_image || null,
+          normalizedHeroConfig.animation,
+          finalThemeColor,
+          resTitle,
+          resMsg,
+          content.cta_text,
+          existingBroadcast.rows[0].id
+        ]
+      );
+
+    } else {
+
+      // First time insert
+      result = await client.query(
+        `
+        INSERT INTO broadcasts (
+          title,
+          message,
+          festival_key,
+          language_mode,
+          hero_visual,
+          hero_config,
+          theme_config,
+          image_url,
+          animation_theme,
+          theme_color,
+          resolved_title,
+          resolved_message,
+          resolved_cta,
+          preview_mode,
+          is_active,
+          content_mode,
+          status,
+          created_at
+        )
+        VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+          $11,$12,$13,
+          true,
+          true,
+          'AUTO',
+          'draft',
+          NOW()
+        )
+        RETURNING *;
+        `,
+        [
+          resTitle,
+          resMsg,
+          resolvedFestivalKey,
+          language_mode,
+          normalizedHeroConfig.visual_key,
+          JSON.stringify(normalizedHeroConfig),
+          JSON.stringify(normalizedThemeConfig),
+          mediaConfig.web_image || null,
+          normalizedHeroConfig.animation,
+          finalThemeColor,
+          resTitle,
+          resMsg,
+          content.cta_text
+        ]
+      );
+    }
+
     await client.end();
 
     return NextResponse.json({ success: true, data: result.rows[0] });
