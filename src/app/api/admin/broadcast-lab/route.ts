@@ -62,6 +62,78 @@ export async function POST(req: Request) {
     const broadcastType = body.broadcast_type;
     const language_mode = body.language_mode;
     const preview_mode = body.preview_mode;
+    const action = body.action || 'generate';
+
+    // START ACTION
+    if (action === 'start') {
+
+      const result = await client.query(
+        `
+        UPDATE broadcasts
+        SET
+          status='active',
+          is_active=true,
+          manual_stop=false,
+          updated_at=NOW()
+        WHERE festival_key=$1
+        RETURNING *;
+        `,
+        [body.festival_key]
+      );
+
+      await client.end();
+
+      return NextResponse.json({
+        success: true,
+        action: 'start',
+        data: result.rows[0]
+      });
+    }
+
+    // STOP ACTION
+    if (action === 'stop') {
+
+      const result = await client.query(
+        `
+        UPDATE broadcasts
+        SET
+          status='stopped',
+          is_active=false,
+          manual_stop=true,
+          updated_at=NOW()
+        WHERE festival_key=$1
+        RETURNING *;
+        `,
+        [body.festival_key]
+      );
+
+      await client.end();
+
+      return NextResponse.json({
+        success: true,
+        action: 'stop',
+        data: result.rows[0]
+      });
+    }
+
+    // DELETE ACTION
+    if (action === 'delete') {
+
+      await client.query(
+        `
+        DELETE FROM broadcasts
+        WHERE festival_key=$1
+        `,
+        [body.festival_key]
+      );
+
+      await client.end();
+
+      return NextResponse.json({
+        success: true,
+        action: 'delete'
+      });
+    }
 
     // 🚀 Logic: Corporate check karein agar festival key nahi mili
     // Hum priority dete hain broadcastType ko agar wo diya hai, warna festivalKey use hoga
