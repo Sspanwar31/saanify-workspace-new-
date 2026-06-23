@@ -11,7 +11,7 @@ import Link from 'next/link';
 
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
-  const [dbLists, setDbLists] = useState({ festivals: [], types: [] }); // 🚀 Naya state
+  const [dbLists, setDbLists] = useState({ festivals: [], types: [] }); 
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   
   const [form, setForm] = useState({
@@ -30,7 +30,6 @@ export default function BroadcastLabPage() {
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         
-        // 🚀 SAFETY: Ensure data has the right structure before setting state
         setDbLists({
           festivals: data.festivals || [],
           types: data.types || []
@@ -42,58 +41,6 @@ export default function BroadcastLabPage() {
     };
     loadLists();
   }, []);
-
-  const publishBroadcast = async () => {
-    try {
-      setLoading(true);
-
-      // ✅ UPDATED PAYLOAD LOGIC
-      const payload =
-        form.type === 'FESTIVAL'
-          ? {
-              festival_key: form.festival_key,
-              language_mode: form.language_mode,
-              full_screen_animation: form.full_screen_animation,
-              dashboard_overlay: form.dashboard_overlay,
-              preview_mode: true
-            }
-          : {
-              broadcast_type: form.type,
-              language_mode: form.language_mode,
-              full_screen_animation: form.full_screen_animation,
-              dashboard_overlay: form.dashboard_overlay,
-              preview_mode: true
-            };
-      
-      console.log('PAYLOAD =>', payload); // ✅ DEBUG LOG
-
-      const res = await fetch('/api/admin/broadcast-lab', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Generation failed");
-      }
-
-      // ✅ UPDATED TOAST MESSAGE
-      toast.success(
-        `${form.type === 'FESTIVAL'
-            ? form.festival_key
-            : form.type
-         } Generated! Check Preview.`
-      );
-
-      setBroadcastStatus('draft');
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete'
@@ -172,7 +119,6 @@ export default function BroadcastLabPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* 🚀 Corporate Types from DB */}
                   {dbLists.types?.map(t => (
                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
                   ))}
@@ -189,7 +135,6 @@ export default function BroadcastLabPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
-                    {/* 🚀 Festivals from DB */}
                     {dbLists.festivals?.map(f => (
                       <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>
                     ))}
@@ -223,12 +168,14 @@ export default function BroadcastLabPage() {
               </div>
             </div>
 
-            <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50">
-              <div className="flex items-center justify-between">
+            <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50">
+              <div className="space-y-4">
+
                 <div>
                   <p className="text-sm font-bold text-slate-600">
                     Broadcast Status
                   </p>
+
                   <Badge
                     className={
                       broadcastStatus === 'active'
@@ -241,45 +188,45 @@ export default function BroadcastLabPage() {
                     {broadcastStatus.toUpperCase()}
                   </Badge>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="grid grid-cols-1 gap-3">
+
                   <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-green-600 hover:bg-green-700 h-12"
                     onClick={() => handleBroadcastAction('start')}
+                    disabled={loading}
                   >
-                    Start
+                    🚀 START BROADCAST
                   </Button>
+
                   <Button
-                    size="sm"
                     variant="destructive"
+                    className="h-12"
                     onClick={() => handleBroadcastAction('stop')}
+                    disabled={loading}
                   >
-                    Stop
+                    ⏹ STOP BROADCAST
                   </Button>
+
                   <Button
-                    size="sm"
                     variant="outline"
+                    className="h-12"
                     onClick={() => handleBroadcastAction('delete')}
+                    disabled={loading}
                   >
-                    Delete
+                    🗑 DELETE BROADCAST
                   </Button>
+
                 </div>
               </div>
             </div>
 
-            <Button 
-              className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xl font-black shadow-xl shadow-blue-500/20 transition-all active:scale-95" 
-              onClick={publishBroadcast} 
-              disabled={loading}
-            >
-              {loading ? <Loader2 className="animate-spin w-6 h-6" /> : <><Globe className="mr-2 h-6 w-6" /> GENERATE V2 PREVIEW</>}
-            </Button>
           </CardContent>
         </Card>
 
         {/* 👁️ PREVIEW CARD */}
         <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-slate-900 text-white relative">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent 70%)] opacity-40" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent_70%)] opacity-40" />
             <div className="relative p-12 h-full flex flex-col items-center justify-center text-center space-y-8">
                <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-[2.5rem] flex items-center justify-center border border-white/20 shadow-2xl rotate-6 animate-pulse">
                   <Sparkles className="w-12 h-12 text-yellow-400" />
