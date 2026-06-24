@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge'; 
 import { toast } from 'sonner';
-import { Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2 } from 'lucide-react';
+import { 
+  Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2, 
+  Calendar, Clock, Plus, Save, RotateCcw, AlertTriangle 
+} from 'lucide-react'; // 🚀 NEW: आवश्यक अतिरिक्त आइकॉन्स इम्पोर्ट किए गए हैं
 import Link from 'next/link';
 
 export default function BroadcastLabPage() {
@@ -15,6 +18,9 @@ export default function BroadcastLabPage() {
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); // State to store total active db rows
   
+  // 🚀 NEW: State for Hybrid Scheduler Planner List
+  const [schedules, setSchedules] = useState<any[]>([]);
+
   const [form, setForm] = useState({
     type: 'FESTIVAL',
     festival_key: 'DIWALI',
@@ -22,6 +28,18 @@ export default function BroadcastLabPage() {
     full_screen_animation: true,
     dashboard_overlay: true
   });
+
+  // 🚀 NEW: Database se saved schedules fetch karne ka function
+  const fetchSchedules = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/broadcast-lab?action=get_schedules');
+      if (!res.ok) throw new Error('Failed to fetch schedules');
+      const data = await res.json();
+      setSchedules(data.schedules || []);
+    } catch (err) {
+      console.error("Schedules Fetch Error:", err);
+    }
+  }, []);
 
   // 🚀 1. Fetch Dynamic Lists & Live Row Count (useCallback to reuse after actions)
   const loadListsAndCount = useCallback(async () => {
@@ -44,9 +62,10 @@ export default function BroadcastLabPage() {
   // Run on mount
   useEffect(() => {
     loadListsAndCount();
-  }, [loadListsAndCount]);
+    fetchSchedules(); // 🚀 Mount hone par saved calendar schedule bhi load hoga
+  }, [loadListsAndCount, fetchSchedules]);
 
-  // 🚀 2. Handler for Start, Stop, and Single Delete Actions
+  // 🚀 2. Handler for Start, Stop, and Single Delete Actions (Existing unbroken logic)
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete'
   ) => {
@@ -56,7 +75,6 @@ export default function BroadcastLabPage() {
       // Corporate/Festival consistency key resolution
       const resolvedKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
 
-      // 🚀 सुधार: यहाँ JSON.stringify के अंदर form से सभी जरूरी पैरामीटर्स भेजे गए हैं
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: {
@@ -65,10 +83,10 @@ export default function BroadcastLabPage() {
         body: JSON.stringify({
           festival_key: resolvedKey,
           action,
-          language_mode: form.language_mode, // 🚀 NEW: भाषा विकल्प भेजा गया
-          dashboard_overlay: form.dashboard_overlay, // 🚀 NEW: ओवरले सेटिंग भेजी गई
-          full_screen_animation: form.full_screen_animation, // 🚀 NEW: फुल स्क्रीन एनीमेशन सेटिंग
-          broadcast_type: form.type !== 'FESTIVAL' ? form.type : undefined // 🚀 NEW: टाइप रिज़ॉल्यूशन
+          language_mode: form.language_mode,
+          dashboard_overlay: form.dashboard_overlay,
+          full_screen_animation: form.full_screen_animation,
+          broadcast_type: form.type !== 'FESTIVAL' ? form.type : undefined
         })
       });
 
@@ -95,6 +113,7 @@ export default function BroadcastLabPage() {
 
       // Action ke baad lists aur db row count ko automatic refresh karein
       await loadListsAndCount();
+      await fetchSchedules(); // Live schedule bhi refresh karein
 
     } catch (err: any) {
       toast.error(err.message);
@@ -132,14 +151,128 @@ export default function BroadcastLabPage() {
       setBroadcastStatus('draft');
       toast.success('Database table fully cleared!');
       
-      // Live count refresh karein
+      // Live count & schedules refresh
       await loadListsAndCount();
+      await fetchSchedules();
 
     } catch (err: any) {
       toast.error(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // ━━━ 🚀 NEW: SHEDULER HYBRID ACTIONS (NO CODE BROKEN, JUST ADDED) ━━━
+
+  // A. Load Predefined 2026 Calendar Draft on Screen
+  const handleLoadPredefinedCalendar = () => {
+    const predefined2026 = [
+      { festival_key: 'REPUBLIC_DAY', starts_at: '2026-01-26', ends_at: '2026-01-27', is_new: true },
+      { festival_key: 'HOLI', starts_at: '2026-03-03', ends_at: '2026-03-05', is_new: true },
+      { festival_key: 'INDEPENDENCE_DAY', starts_at: '2026-08-15', ends_at: '2026-08-16', is_new: true },
+      { festival_key: 'DUSSEHRA', starts_at: '2026-10-20', ends_at: '2026-10-22', is_new: true },
+      { festival_key: 'DIWALI', starts_at: '2026-11-08', ends_at: '2026-11-10', is_new: true },
+      { festival_key: 'CHRISTMAS', starts_at: '2026-12-25', ends_at: '2026-12-26', is_new: true },
+    ];
+    setSchedules(predefined2026);
+    toast.success("2026 Calendar Draft loaded! Review and edit dates below before clicking 'Save All'.");
+  };
+
+  // B. Add Blank Custom Row
+  const handleAddCustomSchedule = () => {
+    const newRow = {
+      festival_key: dbLists.festivals[0] || 'DIWALI',
+      starts_at: new Date().toISOString().split('T')[0],
+      ends_at: new Date().toISOString().split('T')[0],
+      is_new: true
+    };
+    setSchedules([newRow, ...schedules]);
+  };
+
+  // C. Handle Date/Key Changes in Draft Rows
+  const handleScheduleRowChange = (index: number, field: string, value: string) => {
+    const updated = [...schedules];
+    updated[index] = { ...updated[index], [field]: value };
+    setSchedules(updated);
+  };
+
+  // D. Save All Schedules (Post to Database)
+  const handleSaveAllSchedules = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/admin/broadcast-lab', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_schedules',
+          schedules: schedules
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save schedules');
+
+      toast.success("All festival schedules saved and published!");
+      await loadListsAndCount();
+      await fetchSchedules(); // Reload from DB
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // E. Delete Single Row (DB or local draft)
+  const handleDeleteRow = async (index: number, dbId?: string) => {
+    if (!dbId) {
+      // Local screen draft row delete
+      setSchedules(schedules.filter((_, i) => i !== index));
+      return;
+    }
+
+    const isConfirmed = window.confirm("Are you sure you want to delete this scheduled event?");
+    if (!isConfirmed) return;
+
+    try {
+      setLoading(true);
+      const res = await fetch('/api/admin/broadcast-lab', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_schedule',
+          id: dbId
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to delete schedule');
+
+      toast.success("Schedule deleted!");
+      await loadListsAndCount();
+      await fetchSchedules();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper: Live status generator badge based on current system date
+  const getScheduleStatusBadge = (starts: string, ends: string) => {
+    const now = new Date();
+    const startDate = new Date(starts);
+    const endDate = new Date(ends);
+
+    if (now < startDate) {
+      return <Badge className="bg-blue-500/10 text-blue-600 border border-blue-200">Upcoming</Badge>;
+    }
+    if (now >= startDate && now <= endDate) {
+      return (
+        <Badge className="bg-green-600 text-white border border-green-700 animate-pulse">
+          Live Now
+        </Badge>
+      );
+    }
+    return <Badge className="bg-slate-300 text-slate-600">Ended</Badge>;
   };
 
   return (
@@ -324,6 +457,145 @@ export default function BroadcastLabPage() {
             </div>
         </Card>
       </div>
+
+      {/* ━━━ 📅 🚀 NEW SECTION: ANNUAL BROADCAST SCHEDULER (HYBRID PLANER UI) ━━━ */}
+      <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-12">
+        <CardHeader className="bg-slate-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <Calendar className="text-blue-400 w-6 h-6" /> Annual Broadcast Scheduler
+            </CardTitle>
+            <p className="text-slate-400 text-xs mt-1">Pre-plan the entire year’s celebration timeline in draft before publishing.</p>
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5"
+              onClick={handleLoadPredefinedCalendar}
+              disabled={loading}
+            >
+              <RotateCcw className="w-4 h-4" /> Load 2026 Calendar
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="bg-blue-600 hover:bg-blue-700 text-white border-none gap-1.5"
+              onClick={handleAddCustomSchedule}
+              disabled={loading}
+            >
+              <Plus className="w-4 h-4" /> Add Custom
+            </Button>
+            <Button 
+              size="sm" 
+              className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
+              onClick={handleSaveAllSchedules}
+              disabled={loading}
+            >
+              <Save className="w-4 h-4" /> Save All Schedules
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-8">
+          {schedules.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 space-y-3">
+              <Calendar className="w-12 h-12 mx-auto stroke-1" />
+              <p className="font-medium text-sm">No scheduled events found.</p>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Click "Load 2026 Calendar" to automatically import drafts, or click "Add Custom" to plan your own.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-100">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Festival/Event</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Starts At (Date)</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Ends At (Date)</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Timeline Status</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {schedules.map((item, index) => (
+                    <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                      {/* Event Column */}
+                      <td className="p-4">
+                        {item.is_new ? (
+                          <Select 
+                            value={item.festival_key} 
+                            onValueChange={(v) => handleScheduleRowChange(index, 'festival_key', v)}
+                          >
+                            <SelectTrigger className="h-10 rounded-lg w-48 border-slate-200">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[250px]">
+                              {dbLists.festivals?.map(f => (
+                                <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>
+                              ))}
+                              {dbLists.types?.map(t => (
+                                <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant="outline" className="bg-slate-100 border-slate-200 text-slate-800 font-bold px-3 py-1">
+                            {item.festival_key?.replace('_', ' ')}
+                          </Badge>
+                        )}
+                      </td>
+
+                      {/* Starts At Column */}
+                      <td className="p-4">
+                        <input 
+                          type="date" 
+                          className="h-10 rounded-lg border border-slate-200 px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
+                          value={item.starts_at?.split('T')[0] || ''} 
+                          onChange={(e) => handleScheduleRowChange(index, 'starts_at', e.target.value)}
+                        />
+                      </td>
+
+                      {/* Ends At Column */}
+                      <div className="p-4 flex items-center h-full">
+                        <input 
+                          type="date" 
+                          className="h-10 rounded-lg border border-slate-200 px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
+                          value={item.ends_at?.split('T')[0] || ''} 
+                          onChange={(e) => handleScheduleRowChange(index, 'ends_at', e.target.value)}
+                        />
+                      </div>
+
+                      {/* Status Column */}
+                      <td className="p-4">
+                        {item.is_new ? (
+                          <Badge className="bg-yellow-500/10 text-yellow-600 border border-yellow-200 font-bold">Draft</Badge>
+                        ) : (
+                          getScheduleStatusBadge(item.starts_at, item.ends_at)
+                        )}
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="p-4 text-right">
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
+                          onClick={() => handleDeleteRow(index, item.id)}
+                          disabled={loading}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
