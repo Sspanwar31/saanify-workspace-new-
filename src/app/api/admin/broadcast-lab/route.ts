@@ -191,7 +191,7 @@ export async function POST(req: Request) {
 
     if (!content) throw new Error(`Data not found in DB for: ${targetKey}`);
 
-    // Master map
+    // ━━━ MASTER THEME MAP (24 Festivals) ━━━
     const MASTER_THEME_MAP: any = {
       DIWALI: '#fbbf24', HOLI: '#ff0080', JANMASHTAMI: '#3b82f6', CHRISTMAS: '#ef4444',
       EID_UL_FITR: '#10b981', MAHASHIVRATRI: '#6366f1', REPUBLIC_DAY: '#FF9933',
