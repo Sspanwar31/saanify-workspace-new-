@@ -18,7 +18,7 @@ export default function BroadcastLabPage() {
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); // State to store total active db rows
   
-  // 🚀 NEW: Dynamic Year Generator (Current year se 15 saal aage tak automatic future proof)
+  // Dynamic Year Generator
   const currentYear = new Date().getFullYear();
   const yearsList = Array.from({ length: 15 }, (_, i) => (currentYear + i).toString());
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
@@ -220,7 +220,7 @@ export default function BroadcastLabPage() {
   // B. Add Blank Custom Row (Supports Festival & Corporate Double Selector)
   const handleAddCustomSchedule = () => {
     const newRow = {
-      type: 'FESTIVAL', // Default type
+      type: 'FESTIVAL', 
       festival_key: dbLists.festivals[0] || 'DIWALI',
       starts_at: `${selectedYear}-01-01T00:00`,
       ends_at: `${selectedYear}-01-02T00:00`,
@@ -313,6 +313,11 @@ export default function BroadcastLabPage() {
     return <Badge className="bg-slate-300 text-slate-600">Ended</Badge>;
   };
 
+  // 🚀 FALLBACK LISTS (ताकि डेटाबेस खाली होने पर भी आपके सेलेक्ट बॉक्स ब्लैंक न दिखें)
+  const safeTypesList = dbLists.types.length > 0 
+    ? dbLists.types 
+    : ['SYSTEM_UPDATE', 'MAINTENANCE', 'SPECIAL_OFFER', 'EMERGENCY', 'ANNOUNCEMENT', 'EVENT'];
+
   return (
     <div className="p-8 space-y-8 bg-slate-50 min-h-screen font-sans">
       {/* HEADER SECTION */}
@@ -345,7 +350,7 @@ export default function BroadcastLabPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {dbLists.types?.map(t => (
+                  {safeTypesList.map(t => (
                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
                   ))}
                   <SelectItem value="FESTIVAL">FESTIVAL</SelectItem>
@@ -582,7 +587,7 @@ export default function BroadcastLabPage() {
                             <Select 
                               value={item.type || 'FESTIVAL'} 
                               onValueChange={(v) => {
-                                const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (dbLists.types[0] || 'ANNOUNCEMENT');
+                                const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (safeTypesList[0] || 'ANNOUNCEMENT');
                                 handleScheduleRowChange(index, 'type', v);
                                 handleScheduleRowChange(index, 'festival_key', defaultKey);
                               }}
@@ -606,7 +611,7 @@ export default function BroadcastLabPage() {
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
                                 {item.type === 'CORPORATE' ? (
-                                  dbLists.types?.map(t => (
+                                  safeTypesList.map(t => (
                                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
                                   ))
                                 ) : (
