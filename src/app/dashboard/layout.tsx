@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -89,7 +88,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ 2. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
-    // Client Dashboard me existing query: Isko mat chhedo.
     const now = new Date().toISOString();
     const { data } = await supabase.from('broadcasts').select('*')
       .eq('is_active', true)
@@ -116,12 +114,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     fetchBroadcasts();
 
-    // Realtime listener
+    // 🚀 सुधार: यहाँ console.log जोड़ें ताकि हम लाइव इवेंट ट्रैक कर सकें
     const channel = supabase.channel('broadcast-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => {
-        fetchBroadcasts();
-      })
-      .subscribe();
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: 'broadcasts' }, 
+        (payload) => {
+          console.log("🔔 [Realtime Event Debug]:", payload.eventType, payload);
+          fetchBroadcasts();
+        }
+      )
+      .subscribe((status) => {
+        console.log("📡 [Realtime Connection Status]:", status);
+      });
+
     return () => { supabase.removeChannel(channel); };
   }, [fetchBroadcasts]);
 
