@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { 
   Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2, 
   Calendar, Clock, Plus, Save, RotateCcw, AlertTriangle 
-} from 'lucide-react'; // 🚀 NEW: आवश्यक अतिरिक्त आइकॉन्स इम्पोर्ट किए गए हैं
+} from 'lucide-react';
 import Link from 'next/link';
 
 export default function BroadcastLabPage() {
@@ -18,7 +18,10 @@ export default function BroadcastLabPage() {
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); // State to store total active db rows
   
-  // 🚀 NEW: State for Hybrid Scheduler Planner List
+  // 🚀 NEW: State for Selected Planning Year (Future Proof)
+  const [selectedYear, setSelectedYear] = useState('2026');
+  
+  // State for Hybrid Scheduler Planner List
   const [schedules, setSchedules] = useState<any[]>([]);
 
   const [form, setForm] = useState({
@@ -29,7 +32,7 @@ export default function BroadcastLabPage() {
     dashboard_overlay: true
   });
 
-  // 🚀 NEW: Database se saved schedules fetch karne ka function
+  // Database se saved schedules fetch karne ka function
   const fetchSchedules = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/broadcast-lab?action=get_schedules');
@@ -41,7 +44,7 @@ export default function BroadcastLabPage() {
     }
   }, []);
 
-  // 🚀 1. Fetch Dynamic Lists & Live Row Count (useCallback to reuse after actions)
+  // Fetch Dynamic Lists & Live Row Count
   const loadListsAndCount = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/broadcast-lab');
@@ -62,10 +65,10 @@ export default function BroadcastLabPage() {
   // Run on mount
   useEffect(() => {
     loadListsAndCount();
-    fetchSchedules(); // 🚀 Mount hone par saved calendar schedule bhi load hoga
+    fetchSchedules(); // Mount hone par saved calendar schedule bhi load hoga
   }, [loadListsAndCount, fetchSchedules]);
 
-  // 🚀 2. Handler for Start, Stop, and Single Delete Actions (Existing unbroken logic)
+  // Handler for Start, Stop, and Single Delete Actions (Existing unbroken logic)
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete'
   ) => {
@@ -111,7 +114,6 @@ export default function BroadcastLabPage() {
         toast.success('Broadcast Deleted');
       }
 
-      // Action ke baad lists aur db row count ko automatic refresh karein
       await loadListsAndCount();
       await fetchSchedules(); // Live schedule bhi refresh karein
 
@@ -122,7 +124,7 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // ━━━ 🚀 NEW: DELETE ALL ACTION (TABLE KHALLI KARNE KE LIYE) ━━━
+  // DELETE ALL ACTION
   const handleDeleteAllBroadcasts = async () => {
     const isConfirmed = window.confirm(
       "⚠️ चेतावनी: क्या आप सचमुच डेटाबेस के सभी (All) ब्रॉडकास्ट रिकॉर्ड्स को डिलीट करके टेबल को खाली करना चाहते हैं? इससे लाइव डैशबोर्ड्स से बैनर तुरंत हट जाएंगे।"
@@ -151,7 +153,6 @@ export default function BroadcastLabPage() {
       setBroadcastStatus('draft');
       toast.success('Database table fully cleared!');
       
-      // Live count & schedules refresh
       await loadListsAndCount();
       await fetchSchedules();
 
@@ -162,28 +163,55 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // ━━━ 🚀 NEW: SHEDULER HYBRID ACTIONS (NO CODE BROKEN, JUST ADDED) ━━━
+  // ━━━ 🚀 NEW: SHEDULER HYBRID DYNAMIC ACTIONS (FUTURE PROOF) ━━━
 
-  // A. Load Predefined 2026 Calendar Draft on Screen
-  const handleLoadPredefinedCalendar = () => {
-    const predefined2026 = [
-      { festival_key: 'REPUBLIC_DAY', starts_at: '2026-01-26', ends_at: '2026-01-27', is_new: true },
-      { festival_key: 'HOLI', starts_at: '2026-03-03', ends_at: '2026-03-05', is_new: true },
-      { festival_key: 'INDEPENDENCE_DAY', starts_at: '2026-08-15', ends_at: '2026-08-16', is_new: true },
-      { festival_key: 'DUSSEHRA', starts_at: '2026-10-20', ends_at: '2026-10-22', is_new: true },
-      { festival_key: 'DIWALI', starts_at: '2026-11-08', ends_at: '2026-11-10', is_new: true },
-      { festival_key: 'CHRISTMAS', starts_at: '2026-12-25', ends_at: '2026-12-26', is_new: true },
-    ];
-    setSchedules(predefined2026);
-    toast.success("2026 Calendar Draft loaded! Review and edit dates below before clicking 'Save All'.");
+  // A. Dynamic Year Preset Generator (No hardcoding!)
+  const handleLoadYearPreset = () => {
+    if (dbLists.festivals.length === 0) {
+      toast.error("Database se festivals ki list khali mili!");
+      return;
+    }
+
+    // 🚀 त्योहारों के लिए साल के अनुसार स्मार्ट ड्राफ्ट जनरेटर
+    const generatedDrafts = dbLists.festivals.map((fest) => {
+      let monthDayStart = '10-01'; // Default Fallback October 1st
+      let monthDayEnd = '10-02';
+
+      // त्योहार के अनुसार ड्राफ्ट तारीख सेट करें (एडमिन इसे बाद में कैलेंडर से बदल सकता है)
+      switch (fest.toUpperCase()) {
+        case 'REPUBLIC_DAY': monthDayStart = '01-26'; monthDayEnd = '01-27'; break;
+        case 'NEW_YEAR': monthDayStart = '01-01'; monthDayEnd = '01-02'; break;
+        case 'HOLI': monthDayStart = '03-03'; monthDayEnd = '03-05'; break;
+        case 'INDEPENDENCE_DAY': monthDayStart = '08-15'; monthDayEnd = '08-16'; break;
+        case 'DUSSEHRA': monthDayStart = '10-20'; monthDayEnd = '10-21'; break;
+        case 'DIWALI': monthDayStart = '11-08'; monthDayEnd = '11-10'; break;
+        case 'CHRISTMAS': monthDayStart = '12-25'; monthDayEnd = '12-26'; break;
+        case 'JANMASHTAMI': monthDayStart = '08-25'; monthDayEnd = '08-26'; break;
+        case 'GURU_NANAK_JAYANTI': monthDayStart = '11-25'; monthDayEnd = '11-26'; break;
+        case 'GANESH_CHATURTHI': monthDayStart = '09-15'; monthDayEnd = '09-17'; break;
+        case 'MAHASHIVRATRI': monthDayStart = '02-15'; monthDayEnd = '02-16'; break;
+        case 'EID_UL_FITR': monthDayStart = '04-10'; monthDayEnd = '04-11'; break;
+        case 'EID_AL_ADHA': monthDayStart = '06-16'; monthDayEnd = '06-17'; break;
+      }
+
+      return {
+        festival_key: fest,
+        starts_at: `${selectedYear}-${monthDayStart}`,
+        ends_at: `${selectedYear}-${monthDayEnd}`,
+        is_new: true
+      };
+    });
+
+    setSchedules(generatedDrafts);
+    toast.success(`Loaded all ${generatedDrafts.length} festivals for ${selectedYear}! Review and edit before saving.`);
   };
 
   // B. Add Blank Custom Row
   const handleAddCustomSchedule = () => {
     const newRow = {
       festival_key: dbLists.festivals[0] || 'DIWALI',
-      starts_at: new Date().toISOString().split('T')[0],
-      ends_at: new Date().toISOString().split('T')[0],
+      starts_at: `${selectedYear}-01-01`,
+      ends_at: `${selectedYear}-01-02`,
       is_new: true
     };
     setSchedules([newRow, ...schedules]);
@@ -225,7 +253,6 @@ export default function BroadcastLabPage() {
   // E. Delete Single Row (DB or local draft)
   const handleDeleteRow = async (index: number, dbId?: string) => {
     if (!dbId) {
-      // Local screen draft row delete
       setSchedules(schedules.filter((_, i) => i !== index));
       return;
     }
@@ -256,7 +283,6 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // Helper: Live status generator badge based on current system date
   const getScheduleStatusBadge = (starts: string, ends: string) => {
     const now = new Date();
     const startDate = new Date(starts);
@@ -458,24 +484,41 @@ export default function BroadcastLabPage() {
         </Card>
       </div>
 
-      {/* ━━━ 📅 🚀 NEW SECTION: ANNUAL BROADCAST SCHEDULER (HYBRID PLANER UI) ━━━ */}
+      {/* ━━━ 📅 🚀 UPGRADED SECTION: DYNAMIC ANNUAL BROADCAST SCHEDULER (FUTURE PROOF) ━━━ */}
       <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-12">
         <CardHeader className="bg-slate-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <CardTitle className="text-xl font-bold flex items-center gap-2">
               <Calendar className="text-blue-400 w-6 h-6" /> Annual Broadcast Scheduler
             </CardTitle>
-            <p className="text-slate-400 text-xs mt-1">Pre-plan the entire year’s celebration timeline in draft before publishing.</p>
+            <p className="text-slate-400 text-xs mt-1">Pre-plan any year's celebration timeline in draft before publishing.</p>
           </div>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* 🚀 NEW: Future Proof Year Selector */}
+            <div className="flex items-center gap-2 border border-white/10 bg-white/5 rounded-lg px-2">
+              <span className="text-xs text-slate-400 font-bold uppercase">Year:</span>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="h-8 w-24 border-none text-white bg-transparent font-bold text-xs focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 text-white border-slate-800">
+                  <SelectItem value="2026">2026</SelectItem>
+                  <SelectItem value="2027">2027</SelectItem>
+                  <SelectItem value="2028">2028</SelectItem>
+                  <SelectItem value="2029">2029</SelectItem>
+                  <SelectItem value="2030">2030</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button 
               size="sm" 
               variant="outline" 
               className="bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5"
-              onClick={handleLoadPredefinedCalendar}
+              onClick={handleLoadYearPreset}
               disabled={loading}
             >
-              <RotateCcw className="w-4 h-4" /> Load 2026 Calendar
+              <RotateCcw className="w-4 h-4" /> Load Preset
             </Button>
             <Button 
               size="sm" 
@@ -503,7 +546,7 @@ export default function BroadcastLabPage() {
               <Calendar className="w-12 h-12 mx-auto stroke-1" />
               <p className="font-medium text-sm">No scheduled events found.</p>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Click "Load 2026 Calendar" to automatically import drafts, or click "Add Custom" to plan your own.
+                Select a Year, click "Load Preset" to dynamically import database drafts, or click "Add Custom" to plan your own.
               </p>
             </div>
           ) : (
@@ -521,22 +564,20 @@ export default function BroadcastLabPage() {
                 <tbody className="divide-y divide-slate-100">
                   {schedules.map((item, index) => (
                     <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                      {/* Event Column */}
+                      {/* Event Column (Clean Festival-only dropdown) */}
                       <td className="p-4">
                         {item.is_new ? (
                           <Select 
                             value={item.festival_key} 
                             onValueChange={(v) => handleScheduleRowChange(index, 'festival_key', v)}
                           >
-                            <SelectTrigger className="h-10 rounded-lg w-48 border-slate-200">
+                            <SelectTrigger className="h-10 rounded-lg w-48 border-slate-200 font-bold text-slate-700">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-[250px]">
+                              {/* 🚀 Only Festivals are rendered here, no corporate clutter */}
                               {dbLists.festivals?.map(f => (
                                 <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>
-                              ))}
-                              {dbLists.types?.map(t => (
-                                <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -545,27 +586,27 @@ export default function BroadcastLabPage() {
                             {item.festival_key?.replace('_', ' ')}
                           </Badge>
                         )}
-                      </td>
+                      </div>
 
-                      {/* Starts At Column */}
-                      <td className="p-4">
-                        <input 
-                          type="date" 
-                          className="h-10 rounded-lg border border-slate-200 px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
+                      {/* Starts At (Custom Styled Date Picker) */}
+                      <td>
+                        <input
+                          type="date"
+                          className="border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
                           value={item.starts_at?.split('T')[0] || ''} 
                           onChange={(e) => handleScheduleRowChange(index, 'starts_at', e.target.value)}
                         />
                       </td>
 
-                      {/* Ends At Column */}
-                      <div className="p-4 flex items-center h-full">
-                        <input 
-                          type="date" 
-                          className="h-10 rounded-lg border border-slate-200 px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
+                      {/* Ends At (Custom Styled Date Picker) */}
+                      <td>
+                        <input
+                          type="date"
+                          className="border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
                           value={item.ends_at?.split('T')[0] || ''} 
                           onChange={(e) => handleScheduleRowChange(index, 'ends_at', e.target.value)}
                         />
-                      </div>
+                      </td>
 
                       {/* Status Column */}
                       <td className="p-4">
