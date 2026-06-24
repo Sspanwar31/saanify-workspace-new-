@@ -5,7 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles } from 'lucide-react';
+import { 
+  ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles,
+  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing 
+} from 'lucide-react'; // 🚀 NEW: आवश्यक आइकॉन्स इम्पोर्ट किए गए हैं
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -139,7 +142,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  // ━━━ 3. AUTH + PROFILE SYNC (Using Restored Logic) ━━━
+  // ━━━ 3. AUTH + PROFILE SYNC ━━━
   useEffect(() => {
     const performAuthSync = async () => {
       try {
@@ -278,11 +281,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // 🚀 Dynamic Color & Text Contrast Resolution
   const themeColor = activeBroadcast?.theme_color || '#3b82f6';
-  
-  // Checking if the theme is a bright color to apply darker contrast text
   const isLightColor = ['#fbbf24', '#f59e0b', '#fbbf24', 'GOLD'].includes(themeColor.toUpperCase());
-  const textColorClass = isLightColor ? 'text-slate-900' : 'text-white';
+  const textColorClass = isLightColor ? 'text-slate-950' : 'text-white';
   const badgeBgClass = isLightColor ? 'bg-black/10 border-black/10' : 'bg-white/10 border-white/15';
+
+  // 🚀 NEW: Dynamic Icon Resolver based on Active Broadcast Key
+  const renderBroadcastIcon = () => {
+    const key = activeBroadcast?.festival_key?.toUpperCase() || '';
+    switch (key) {
+      case 'MAINTENANCE':
+        return <Wrench className="w-5 h-5 animate-pulse shrink-0" />;
+      case 'EMERGENCY':
+        return <AlertOctagon className="w-5 h-5 animate-bounce shrink-0 text-red-100" />;
+      case 'ANNOUNCEMENT':
+        return <Megaphone className="w-5 h-5 shrink-0" />;
+      case 'SPECIAL_OFFER':
+        return <Gift className="w-5 h-5 animate-bounce shrink-0" />;
+      case 'EVENT':
+        return <Calendar className="w-5 h-5 shrink-0" />;
+      default:
+        // Festivals (Diwali, Holi, Dussehra, etc.) get smooth round-round spinning sparkles
+        return (
+          <Sparkles 
+            className="w-5 h-5 shrink-0 animate-[spin_4s_linear_infinite]" 
+            style={{ animationDuration: '4s' }} 
+          />
+        );
+    }
+  };
 
   return (
     <>
@@ -316,25 +342,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 UPGRADED: ACTIVE BROADCAST BANNER WITH DYNAMIC THEME COLOR & GLASSMORPHISM 🚀 */}
+      {/* ACTIVE BROADCAST BANNER (UPGRADED WITH DYNAMIC ICONS & HIGHLIGHTED TEXT) */}
       {activeBroadcast && !showPopup && (
         <div 
-          className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-500 border-b ${textColorClass}`}
+          className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
           style={{
-            background: `linear-gradient(90deg, ${themeColor}dd, ${themeColor}ff)`,
+            background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`,
             backdropFilter: 'blur(12px)',
             borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)'
           }}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between text-sm font-semibold tracking-wide">
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-sm tracking-wide">
             <div className="flex items-center gap-4 flex-1 justify-center min-w-0">
-              <Sparkles className="w-5 h-5 animate-pulse shrink-0" />
+              {/* Dynamic Icon */}
+              {renderBroadcastIcon()}
+
+              {/* Pill Badge */}
               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${badgeBgClass}`}>
-                Saanify Pariwar:
+                Saanify Pariwar
               </span>
-              <p className="truncate font-bold drop-shadow-sm">
-                {activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}
-              </p>
+
+              {/* 🚀 HIGHLIGHTED TEXT HIERARCHY: Bold Title + Normal Message separated by a clean bar */}
+              <div className="flex items-center gap-2.5 min-w-0 truncate text-xs md:text-sm">
+                <span className="font-black uppercase tracking-tight shrink-0 drop-shadow-sm">
+                  {activeBroadcast?.resolved_title || activeBroadcast?.title}
+                </span>
+                <span className="opacity-30 shrink-0 select-none">|</span>
+                <p className="truncate font-semibold opacity-95 tracking-wide drop-shadow-sm">
+                  {activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}
+                </p>
+              </div>
             </div>
             <button 
               onClick={() => setActiveBroadcast(null)} 
