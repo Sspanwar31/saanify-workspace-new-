@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 
+// 🚀 Vercel build error aur crash se bachne ke liye force-dynamic set karein
+export const dynamic = 'force-dynamic';
+
 const getDbClient = async () => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL missing');
@@ -22,8 +25,9 @@ export async function GET(req: Request) {
     // 🚀 NEW: Planner Grid ke liye saved schedules ki list return karein
     if (actionParam === 'get_schedules') {
       client = await getDbClient();
+      // 🚀 FIXED: 'FESTIVAL' as type ko hata diya kyoki 'type' column pehle se table me hai (conflict resolved)
       const res = await client.query(
-        `SELECT *, 'FESTIVAL' as type FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
+        `SELECT * FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
       );
       await client.end();
       return NextResponse.json({ schedules: res.rows });
@@ -127,7 +131,7 @@ export async function POST(req: Request) {
           content = msgRes.rows[0];
         }
 
-        if (!content || !asset) continue; // Agar database me data miss ho toh use skip karein
+        if (!content || !asset) continue; 
 
         const themeConfig = typeof asset.theme_config === 'string' ? JSON.parse(asset.theme_config) : (asset.theme_config || {});
         const heroConfig = typeof asset.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset.hero_config || {});
@@ -150,7 +154,7 @@ export async function POST(req: Request) {
           background_style: themeConfig.background_style || 'DARK_GOLD'
         };
 
-        // Aligned Language Resolution (Direct lookup from altered table structure)
+        // Aligned Language Resolution
         const resTitle = content.default_title || content.title_en;
         const resMsg = content.default_message || content.message_en;
         const resCta = content.cta_text || content.cta_en || 'Celebrate';
@@ -196,7 +200,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, action: 'save_schedules' });
     }
 
-    // 🚀 Bug Bypass Check: save_schedules aur delete_schedule ko is restriction se bahar rakhein
+    // Bug Bypass Check
     if (!targetKey && action !== 'save_schedules' && action !== 'delete_schedule') {
       throw new Error("festival_key or broadcast_type is required");
     }
@@ -275,22 +279,11 @@ export async function POST(req: Request) {
 
     if (!content) throw new Error(`Data not found in DB for: ${targetKey}`);
 
-    const MASTER_THEME_MAP: any = {
-      DIWALI: '#fbbf24', HOLI: '#ff0080', JANMASHTAMI: '#3b82f6', CHRISTMAS: '#ef4444',
-      EID_UL_FITR: '#10b981', MAHASHIVRATRI: '#6366f1', REPUBLIC_DAY: '#FF9933',
-      DUSSEHRA: '#B45309', NAVRATRI: '#DC2626', DURGA_PUJA: '#DC2626',
-      NEW_YEAR: '#8b5cf6', RAKSHA_BANDHAN: '#db2777', LOHRI: '#f97316',
-      MAKAR_SANKRANTI: '#38bdf8', GANESH_CHATURTHI: '#f97316', RAM_NAVAMI: '#f59e0b',
-      HANUMAN_JAYANTI: '#ea580c', KARWA_CHAUTH: '#f59e0b', CHHATH_PUJA: '#F97316',
-      PONGAL: '#22c55e', GURU_NANAK_JAYANTI: '#fbbf24', DEV_DEEPAWALI: '#fbbf24',
-      EID_AL_ADHA: '#10b981', INDEPENDENCE_DAY: '#16a34a'
-    };
-
     const themeConfig = typeof asset?.theme_config === 'string' ? JSON.parse(asset.theme_config) : (asset?.theme_config || {});
     const heroConfig = typeof asset?.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset?.hero_config || {});
     const mediaConfig = typeof asset?.media_config === 'string' ? JSON.parse(asset.media_config) : (asset?.media_config || {});
 
-    const finalThemeColor = MASTER_THEME_MAP[resolvedFestivalKey] || themeConfig.primary_color || '#fbbf24';
+    const finalThemeColor = themeConfig.primary_color || '#fbbf24';
 
     const normalizedHeroConfig = {
       render_type: heroConfig.render_type || 'COMPONENT',
