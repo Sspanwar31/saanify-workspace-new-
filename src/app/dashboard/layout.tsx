@@ -281,9 +281,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // 🚀 Dynamic Color & Text Contrast Resolution
   const themeColor = activeBroadcast?.theme_color || '#3b82f6';
-  const isLightColor = ['#fbbf24', '#f59e0b', '#fbbf24', 'GOLD'].includes(themeColor.toUpperCase());
+  
+  // 🚀 केसिंग बग का समाधान (Uppercase Hex Strings in array)
+  const isLightColor = ['#FBBF24', '#F59E0B', '#EAB308', 'GOLD', '#fbbf24', '#f59e0b', '#eab308'].includes(themeColor.toUpperCase());
+  
+  // Contrast Classes Setup
   const textColorClass = isLightColor ? 'text-slate-950' : 'text-white';
-  const badgeBgClass = isLightColor ? 'bg-black/10 border-black/10' : 'bg-white/10 border-white/15';
+  const badgeBgClass = isLightColor ? 'bg-black/10 border-black/10 text-slate-950' : 'bg-white/10 border-white/15 text-white';
 
   // 🚀 NEW: Dynamic Icon Resolver based on Active Broadcast Key
   const renderBroadcastIcon = () => {
@@ -342,7 +346,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ACTIVE BROADCAST BANNER (UPGRADED WITH DYNAMIC ICONS & HIGHLIGHTED TEXT) */}
+      {/* ACTIVE BROADCAST BANNER (UPGRADED WITH FIXED CONTRAST & DYNAMIC TEXT HIERARCHY) */}
       {activeBroadcast && !showPopup && (
         <div 
           className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
@@ -362,13 +366,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Saanify Pariwar
               </span>
 
-              {/* 🚀 HIGHLIGHTED TEXT HIERARCHY: Bold Title + Normal Message separated by a clean bar */}
+              {/* 🚀 TEXT HIERARCHY WITH DIFFERENT CONTRAST */}
               <div className="flex items-center gap-2.5 min-w-0 truncate text-xs md:text-sm">
+                {/* Title (Always Bold & Full Contrast) */}
                 <span className="font-black uppercase tracking-tight shrink-0 drop-shadow-sm">
                   {activeBroadcast?.resolved_title || activeBroadcast?.title}
                 </span>
-                <span className="opacity-30 shrink-0 select-none">|</span>
-                <p className="truncate font-semibold opacity-95 tracking-wide drop-shadow-sm">
+                
+                {/* Separator */}
+                <span className={`opacity-30 shrink-0 select-none ${isLightColor ? 'text-slate-950' : 'text-white'}`}>|</span>
+                
+                {/* Message (Slightly Soft Contrast on Bright/Dark Themes) */}
+                <p className={`truncate font-semibold tracking-wide drop-shadow-sm ${isLightColor ? 'text-slate-900' : 'text-slate-100'}`}>
                   {activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}
                 </p>
               </div>
