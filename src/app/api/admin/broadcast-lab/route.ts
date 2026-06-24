@@ -32,7 +32,7 @@ export async function GET() {
       'SELECT broadcast_type FROM broadcast_assets ORDER BY broadcast_type ASC'
     );
 
-    // 🚀 NEW: Get Total Count of Broadcasts currently in the DB
+    // Get Total Count of Broadcasts currently in the DB
     const countRes = await client.query('SELECT COUNT(*) as count FROM broadcasts');
     const totalCount = parseInt(countRes.rows[0]?.count || '0', 10);
 
@@ -41,7 +41,7 @@ export async function GET() {
     return NextResponse.json({
       festivals: festRes.rows?.map((r) => r.festival_key) || [],
       types: corpRes.rows?.map((r) => r.broadcast_type) || [],
-      totalCount: totalCount // 🚀 Frontend badge ke liye count bheja
+      totalCount: totalCount
     });
   } catch (e: any) {
     console.error("GET ERROR =", e);
@@ -63,14 +63,14 @@ export async function POST(req: Request) {
 
     const festivalKey = body.festival_key;
     const broadcastType = body.broadcast_type;
-    const language_mode = body.language_mode;
+    const language_mode = body.language_mode || 'BOTH'; // BOTH को डिफ़ॉल्ट मान कर चलें
     const preview_mode = body.preview_mode;
     const action = body.action || 'generate';
 
-    // 🚀 Consistent targetKey Resolution
+    // Consistent targetKey Resolution
     const targetKey = broadcastType || festivalKey;
 
-    // ━━━ 🚀 NEW: DELETE ALL ACTION (Table ko poora khali karne ke liye) ━━━
+    // DELETE ALL ACTION (Table ko poora khali karne ke liye)
     if (action === 'delete_all') {
       await client.query(`DELETE FROM broadcasts`);
       await client.end();
@@ -82,7 +82,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Iske neeche ke actions ke liye targetKey hona zaroori hai
     if (!targetKey && action !== 'delete_all') {
       throw new Error("festival_key or broadcast_type is required");
     }
@@ -92,7 +91,7 @@ export async function POST(req: Request) {
     // ━━━ START ACTION ━━━
     if (action === 'start') {
       
-      // 🚀 सुधार: Isko chalu karne se pehle baki sabhi active broadcasts ko automatic stop karein
+      // Isko chalu karne se pehle baki sabhi active broadcasts ko automatic stop karein
       await client.query(
         `
         UPDATE broadcasts
@@ -102,45 +101,22 @@ export async function POST(req: Request) {
         [targetKey]
       );
 
-      // STEP 1 → Existing broadcast check (Updated to use targetKey)
+      // STEP 1 → Existing broadcast check
       const existing = await client.query(
         `SELECT * FROM broadcasts WHERE festival_key=$1 LIMIT 1`,
         [targetKey]
       );
 
-      // Case 1: Record mila → Directly Update to Active
       if (existing.rows.length > 0) {
-        const result = await client.query(
-          `
-          UPDATE broadcasts
-          SET
-            status='active',
-            is_active=true,
-            manual_stop=false,
-            updated_at=NOW()
-          WHERE festival_key=$1
-          RETURNING *;
-          `,
-          [targetKey]
-        );
-
-        await client.end();
-
-        return NextResponse.json({
-          success: true,
-          action: 'start',
-          data: result.rows[0]
-        });
+        // डायरेक्ट स्टार्ट होने पर भी सही ट्रांसलेशन अपडेट हो, इसके लिए forceActive = true करेंगे
+        forceActive = true; 
       } else {
-        // Case 2: Record nahi mila → Generate logic run karna hai with active status
         forceActive = true;
       }
     }
 
     // ━━━ STOP ACTION ━━━
     if (action === 'stop') {
-
-      // Updated to use targetKey
       const result = await client.query(
         `
         UPDATE broadcasts
@@ -166,8 +142,6 @@ export async function POST(req: Request) {
 
     // ━━━ DELETE ACTION (Single Delete) ━━━
     if (action === 'delete') {
-
-      // Updated to use targetKey and RETURNING * for realtime events
       const result = await client.query(
         `DELETE FROM broadcasts WHERE festival_key=$1 RETURNING *`,
         [targetKey]
@@ -185,14 +159,13 @@ export async function POST(req: Request) {
     // ━━━ GENERATE LOGIC ━━━
     let asset, content, resolvedFestivalKey;
 
-    // ━━━ Step A: Corporate Check ━━━
+    // Step A: Corporate Check
     const corpCheck = await client.query(
       'SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1',
       [targetKey]
     );
 
     if (corpCheck.rows.length > 0) {
-      // ━━━ Corporate Path ━━━
       asset = corpCheck.rows[0];
       const msgRes = await client.query(
         'SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1',
@@ -201,7 +174,7 @@ export async function POST(req: Request) {
       content = msgRes.rows[0];
       resolvedFestivalKey = targetKey; 
     } else {
-      // ━━━ Festival Path ━━━
+      // Festival Path
       const assetResult = await client.query(
         `SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1`,
         [festivalKey]
@@ -218,7 +191,7 @@ export async function POST(req: Request) {
 
     if (!content) throw new Error(`Data not found in DB for: ${targetKey}`);
 
-    // Master map and parser
+    // Master map
     const MASTER_THEME_MAP: any = {
       DIWALI: '#fbbf24', HOLI: '#ff0080', JANMASHTAMI: '#3b82f6', CHRISTMAS: '#ef4444',
       EID_UL_FITR: '#10b981', MAHASHIVRATRI: '#6366f1', REPUBLIC_DAY: '#FF9933',
@@ -251,14 +224,30 @@ export async function POST(req: Request) {
       background_style: themeConfig.background_style || 'DARK_GOLD'
     };
 
-    let resTitle = content.default_title;
-    let resMsg = content.default_message;
+    // ━━━ 🚀 4. LANGUAGE RESOLUTION (FESTIVAL & CORPORATE NOW FULLY ALIGNED) ━━━
+    let resTitle = "";
+    let resMsg = "";
+    let resCta = "";
 
-    if (language_mode === 'HI') { resTitle = content.title_hi; resMsg = content.message_hi; }
-    else if (language_mode === 'EN') { resTitle = content.title_en; resMsg = content.message_en; }
+    if (language_mode === 'HI') {
+      resTitle = content.title_hi || content.default_title;
+      resMsg = content.message_hi || content.default_message;
+      resCta = content.cta_hi || content.cta_text || "विवरण";
+    } else if (language_mode === 'EN') {
+      resTitle = content.title_en || content.default_title;
+      resMsg = content.message_en || content.default_message;
+      resCta = content.cta_en || content.cta_text || "Celebrate";
+    } else {
+      // 'BOTH' (Hinglish/Default mix) - Ab dono tables se seedhe default_title aur default_message uthayega
+      resTitle = content.default_title || content.title_en || content.title_hi;
+      resMsg = content.default_message || content.message_en || content.message_hi;
+      resCta = content.cta_text || content.cta_en || content.cta_hi || "Celebrate";
+    }
 
-    if (!resTitle) resTitle = content.title_en || "Untitled Broadcast";
-    if (!resMsg) resMsg = content.message_en || "No message content available.";
+    // Safety fallback block
+    if (!resTitle) resTitle = "Untitled Broadcast";
+    if (!resMsg) resMsg = "No content available.";
+    if (!resCta) resCta = "Celebrate";
 
     // UPSERT LOGIC
     const existingBroadcast = await client.query(
@@ -269,7 +258,7 @@ export async function POST(req: Request) {
     let result;
     const activeStatus = forceActive ? 'active' : 'draft';
 
-    // 🚀 सुधार: Agar naya broadcast ACTIVE ban raha hai, toh baki sabhi ko automatic stop karein
+    // Agar naya broadcast ACTIVE ban raha hai, toh baki sabhi ko automatic stop karein
     if (activeStatus === 'active') {
       await client.query(
         `
@@ -316,9 +305,9 @@ export async function POST(req: Request) {
           mediaConfig.web_image || null,
           normalizedHeroConfig.animation,
           finalThemeColor,
-          resTitle,
-          resMsg,
-          content.cta_text,
+          resTitle,             // $10 resolved_title
+          resMsg,               // $11 resolved_message
+          resCta,               // $12 resolved_cta (Correct Translation!)
           existingBroadcast.rows[0].id,
           activeStatus
         ]
@@ -369,9 +358,9 @@ export async function POST(req: Request) {
           mediaConfig.web_image || null,
           normalizedHeroConfig.animation,
           finalThemeColor,
-          resTitle,
-          resMsg,
-          content.cta_text,
+          resTitle,             // $11 resolved_title (index shift handled correctly)
+          resMsg,               // $12 resolved_message
+          resCta,               // $13 resolved_cta (Correct Translation!)
           activeStatus
         ]
       );
