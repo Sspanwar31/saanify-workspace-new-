@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge'; 
 import { toast } from 'sonner';
-import { Sparkles, Globe, FlaskConical, ExternalLink, Loader2 } from 'lucide-react';
+import { Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
-  const [dbLists, setDbLists] = useState({ festivals: [], types: [] }); 
+  const [dbLists, setDbLists] = useState<{ festivals: string[]; types: string[] }>({ festivals: [], types: [] }); 
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
+  const [totalCount, setTotalCount] = useState(0); // 🚀 NEW: State to store total active db rows
   
   const [form, setForm] = useState({
     type: 'FESTIVAL',
@@ -22,31 +23,38 @@ export default function BroadcastLabPage() {
     dashboard_overlay: true
   });
 
-  // 🚀 1. Fetch Dynamic Lists on Mount
-  useEffect(() => {
-    const loadLists = async () => {
-      try {
-        const res = await fetch('/api/admin/broadcast-lab');
-        if (!res.ok) throw new Error('Failed to fetch');
-        const data = await res.json();
-        
-        setDbLists({
-          festivals: data.festivals || [],
-          types: data.types || []
-        });
-      } catch (err) {
-        console.error("Fetch Error:", err);
-        toast.error("Database se list nahi mil saki.");
-      }
-    };
-    loadLists();
+  // 🚀 1. Fetch Dynamic Lists & Live Row Count (useCallback to reuse after actions)
+  const loadListsAndCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/broadcast-lab');
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+      
+      setDbLists({
+        festivals: data.festivals || [],
+        types: data.types || []
+      });
+      setTotalCount(data.totalCount || 0); // Update the live DB count state
+    } catch (err) {
+      console.error("Fetch Error:", err);
+      toast.error("Database se sync nahi ho saka.");
+    }
   }, []);
 
+  // Run on mount
+  useEffect(() => {
+    loadListsAndCount();
+  }, [loadListsAndCount]);
+
+  // 🚀 2. Handler for Start, Stop, and Single Delete Actions
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete'
   ) => {
     try {
       setLoading(true);
+
+      // Corporate/Festival consistency bug fix (resolved key resolution)
+      const resolvedKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
 
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
@@ -54,7 +62,7 @@ export default function BroadcastLabPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          festival_key: form.festival_key,
+          festival_key: resolvedKey,
           action
         })
       });
@@ -79,6 +87,48 @@ export default function BroadcastLabPage() {
         setBroadcastStatus('draft');
         toast.success('Broadcast Deleted');
       }
+
+      // 🚀 Action ke baad lists aur db row count ko automatic refresh karein
+      await loadListsAndCount();
+
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ━━━ 🚀 NEW: DELETE ALL ACTION (TABLE KHALLI KARNE KE LIYE) ━━━
+  const handleDeleteAllBroadcasts = async () => {
+    const isConfirmed = window.confirm(
+      "⚠️ चेतावनी: क्या आप सचमुच डेटाबेस के सभी (All) ब्रॉडकास्ट रिकॉर्ड्स को डिलीट करके टेबल को खाली करना चाहते हैं? इससे लाइव डैशबोर्ड्स से बैनर तुरंत हट जाएंगे।"
+    );
+    if (!isConfirmed) return;
+
+    try {
+      setLoading(true);
+
+      const res = await fetch('/api/admin/broadcast-lab', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'delete_all'
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to clear broadcasts');
+      }
+
+      setBroadcastStatus('draft');
+      toast.success('Database table fully cleared!');
+      
+      // Live count refresh karein
+      await loadListsAndCount();
 
     } catch (err: any) {
       toast.error(err.message);
@@ -169,30 +219,42 @@ export default function BroadcastLabPage() {
             </div>
 
             <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50">
-              <div className="space-y-4">
+              <div className="space-y-6">
 
-                <div>
-                  <p className="text-sm font-bold text-slate-600">
-                    Broadcast Status
-                  </p>
+                {/* Status and Database Rows Info Block */}
+                <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
+                  <div>
+                    <p className="text-sm font-bold text-slate-600">
+                      Broadcast Status
+                    </p>
+                    <Badge
+                      className={
+                        broadcastStatus === 'active'
+                          ? 'bg-green-600 mt-1'
+                          : broadcastStatus === 'stopped'
+                          ? 'bg-red-600 mt-1'
+                          : 'bg-yellow-500 mt-1'
+                      }
+                    >
+                      {broadcastStatus.toUpperCase()}
+                    </Badge>
+                  </div>
 
-                  <Badge
-                    className={
-                      broadcastStatus === 'active'
-                        ? 'bg-green-600'
-                        : broadcastStatus === 'stopped'
-                        ? 'bg-red-600'
-                        : 'bg-yellow-500'
-                    }
-                  >
-                    {broadcastStatus.toUpperCase()}
-                  </Badge>
+                  {/* 🚀 NEW: Database live count display */}
+                  <div className="text-right">
+                    <p className="text-xs font-black uppercase text-slate-400 tracking-wider">
+                      Database Cleanliness
+                    </p>
+                    <span className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-bold leading-none text-blue-800 bg-blue-100 rounded-full mt-1.5 animate-pulse">
+                      {totalCount} Total Row(s)
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
 
                   <Button
-                    className="bg-green-600 hover:bg-green-700 h-12"
+                    className="bg-green-600 hover:bg-green-700 h-12 text-sm font-bold"
                     onClick={() => handleBroadcastAction('start')}
                     disabled={loading}
                   >
@@ -201,21 +263,33 @@ export default function BroadcastLabPage() {
 
                   <Button
                     variant="destructive"
-                    className="h-12"
+                    className="h-12 text-sm font-bold"
                     onClick={() => handleBroadcastAction('stop')}
                     disabled={loading}
                   >
                     ⏹ STOP BROADCAST
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    className="h-12"
-                    onClick={() => handleBroadcastAction('delete')}
-                    disabled={loading}
-                  >
-                    🗑 DELETE BROADCAST
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      className="h-12 text-xs font-black border-slate-200 hover:bg-slate-100"
+                      onClick={() => handleBroadcastAction('delete')}
+                      disabled={loading}
+                    >
+                      🗑️ DELETE SELECTED
+                    </Button>
+
+                    {/* 🚀 NEW: Delete All Clear Table Button */}
+                    <Button
+                      variant="outline"
+                      className="h-12 text-xs font-black border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                      onClick={handleDeleteAllBroadcasts}
+                      disabled={loading}
+                    >
+                      🔥 DELETE ALL
+                    </Button>
+                  </div>
 
                 </div>
               </div>
