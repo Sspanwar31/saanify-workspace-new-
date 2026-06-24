@@ -586,10 +586,10 @@ export default function BroadcastLabPage() {
                             {item.festival_key?.replace('_', ' ')}
                           </Badge>
                         )}
-                      </div>
+                      </td>
 
                       {/* Starts At (Custom Styled Date Picker) */}
-                      <td>
+                      <td className="p-4">
                         <input
                           type="date"
                           className="border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
@@ -599,7 +599,7 @@ export default function BroadcastLabPage() {
                       </td>
 
                       {/* Ends At (Custom Styled Date Picker) */}
-                      <td>
+                      <td className="p-4">
                         <input
                           type="date"
                           className="border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
