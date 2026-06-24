@@ -12,14 +12,14 @@ const getDbClient = async () => {
   return client;
 };
 
-// ━━━ 1. GET: Database se saari keys fetch karein (Updated for Safety)
+// ━━━ 1. GET: Database se saari keys + total count fetch karein
 export async function GET() {
   let client: Client | null = null;
   try {
     client = await getDbClient();
     if (!client) throw new Error("DB connection failed");
 
-    // Fetch Festival Keys (Updated to list all tables)
+    // Fetch Festival Keys
     const festRes = await client.query(`
       SELECT festival_key
       FROM festival_assets_v2
@@ -32,16 +32,20 @@ export async function GET() {
       'SELECT broadcast_type FROM broadcast_assets ORDER BY broadcast_type ASC'
     );
 
+    // 🚀 NEW: Get Total Count of Broadcasts currently in the DB
+    const countRes = await client.query('SELECT COUNT(*) as count FROM broadcasts');
+    const totalCount = parseInt(countRes.rows[0]?.count || '0', 10);
+
     await client.end();
 
-    // 🚀 SAFETY: Always return arrays, never undefined
     return NextResponse.json({
       festivals: festRes.rows?.map((r) => r.festival_key) || [],
-      types: corpRes.rows?.map((r) => r.broadcast_type) || []
+      types: corpRes.rows?.map((r) => r.broadcast_type) || [],
+      totalCount: totalCount // 🚀 Frontend badge ke liye count bheja
     });
   } catch (e: any) {
     console.error("GET ERROR =", e);
-
+    if (client) await client.end();
     return NextResponse.json({
       error: e.message,
       stack: e.stack
@@ -63,16 +67,45 @@ export async function POST(req: Request) {
     const preview_mode = body.preview_mode;
     const action = body.action || 'generate';
 
-    // 🚀 Naya Flag: Agar start hua hai aur record nahi mila, to generate logic me status 'active' rakhna hai
+    // 🚀 Consistent targetKey Resolution
+    const targetKey = broadcastType || festivalKey;
+
+    // ━━━ 🚀 NEW: DELETE ALL ACTION (Table ko poora khali karne ke liye) ━━━
+    if (action === 'delete_all') {
+      await client.query(`DELETE FROM broadcasts`);
+      await client.end();
+
+      return NextResponse.json({
+        success: true,
+        action: 'delete_all',
+        message: 'All broadcasts cleared successfully'
+      });
+    }
+
+    // Iske neeche ke actions ke liye targetKey hona zaroori hai
+    if (!targetKey && action !== 'delete_all') {
+      throw new Error("festival_key or broadcast_type is required");
+    }
+
     let forceActive = false;
 
     // ━━━ START ACTION ━━━
     if (action === 'start') {
       
-      // STEP 1 → Existing broadcast check
+      // 🚀 सुधार: Isko chalu karne se pehle baki sabhi active broadcasts ko automatic stop karein
+      await client.query(
+        `
+        UPDATE broadcasts
+        SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW()
+        WHERE festival_key != $1
+        `,
+        [targetKey]
+      );
+
+      // STEP 1 → Existing broadcast check (Updated to use targetKey)
       const existing = await client.query(
         `SELECT * FROM broadcasts WHERE festival_key=$1 LIMIT 1`,
-        [body.festival_key]
+        [targetKey]
       );
 
       // Case 1: Record mila → Directly Update to Active
@@ -88,7 +121,7 @@ export async function POST(req: Request) {
           WHERE festival_key=$1
           RETURNING *;
           `,
-          [body.festival_key]
+          [targetKey]
         );
 
         await client.end();
@@ -107,6 +140,7 @@ export async function POST(req: Request) {
     // ━━━ STOP ACTION ━━━
     if (action === 'stop') {
 
+      // Updated to use targetKey
       const result = await client.query(
         `
         UPDATE broadcasts
@@ -118,7 +152,7 @@ export async function POST(req: Request) {
         WHERE festival_key=$1
         RETURNING *;
         `,
-        [body.festival_key]
+        [targetKey]
       );
 
       await client.end();
@@ -126,30 +160,29 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         action: 'stop',
-        data: result.rows[0]
+        data: result.rows[0] || null
       });
     }
 
-    // ━━━ DELETE ACTION ━━━
+    // ━━━ DELETE ACTION (Single Delete) ━━━
     if (action === 'delete') {
 
-      await client.query(
-        `DELETE FROM broadcasts WHERE festival_key=$1`,
-        [body.festival_key]
+      // Updated to use targetKey and RETURNING * for realtime events
+      const result = await client.query(
+        `DELETE FROM broadcasts WHERE festival_key=$1 RETURNING *`,
+        [targetKey]
       );
 
       await client.end();
 
       return NextResponse.json({
         success: true,
-        action: 'delete'
+        action: 'delete',
+        data: result.rows[0] || null
       });
     }
 
-    // ━━━ GENERATE LOGIC (Normal flow OR Start flow agar record nahi tha) ━━━
-    
-    const targetKey = broadcastType || festivalKey;
-
+    // ━━━ GENERATE LOGIC ━━━
     let asset, content, resolvedFestivalKey;
 
     // ━━━ Step A: Corporate Check ━━━
@@ -168,7 +201,7 @@ export async function POST(req: Request) {
       content = msgRes.rows[0];
       resolvedFestivalKey = targetKey; 
     } else {
-      // ━━━ Festival Path (Fallback) ━━━
+      // ━━━ Festival Path ━━━
       const assetResult = await client.query(
         `SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1`,
         [festivalKey]
@@ -185,7 +218,7 @@ export async function POST(req: Request) {
 
     if (!content) throw new Error(`Data not found in DB for: ${targetKey}`);
 
-    // ━━━ 2. 🚀 MASTER COLOR & THEME MAP (24 Festivals) ━━━
+    // Master map and parser
     const MASTER_THEME_MAP: any = {
       DIWALI: '#fbbf24', HOLI: '#ff0080', JANMASHTAMI: '#3b82f6', CHRISTMAS: '#ef4444',
       EID_UL_FITR: '#10b981', MAHASHIVRATRI: '#6366f1', REPUBLIC_DAY: '#FF9933',
@@ -197,7 +230,6 @@ export async function POST(req: Request) {
       EID_AL_ADHA: '#10b981', INDEPENDENCE_DAY: '#16a34a'
     };
 
-    // ━━━ 3. JSON PARSING & NORMALIZATION ━━━
     const themeConfig = typeof asset?.theme_config === 'string' ? JSON.parse(asset.theme_config) : (asset?.theme_config || {});
     const heroConfig = typeof asset?.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset?.hero_config || {});
     const mediaConfig = typeof asset?.media_config === 'string' ? JSON.parse(asset.media_config) : (asset?.media_config || {});
@@ -219,7 +251,6 @@ export async function POST(req: Request) {
       background_style: themeConfig.background_style || 'DARK_GOLD'
     };
 
-    // ━━━ 4. LANGUAGE RESOLUTION ━━━
     let resTitle = content.default_title;
     let resMsg = content.default_message;
 
@@ -229,22 +260,29 @@ export async function POST(req: Request) {
     if (!resTitle) resTitle = content.title_en || "Untitled Broadcast";
     if (!resMsg) resMsg = content.message_en || "No message content available.";
 
-    // ━━━ 5. UPSERT LOGIC ━━━
-
-    // STEP 1 → Existing broadcast check
+    // UPSERT LOGIC
     const existingBroadcast = await client.query(
       `SELECT id FROM broadcasts WHERE festival_key = $1 LIMIT 1`,
       [resolvedFestivalKey]
     );
 
     let result;
-
-    // 🚀 Dynamic Status: Agar start se aaya hai to 'active' warna 'draft'
     const activeStatus = forceActive ? 'active' : 'draft';
 
-    // STEP 2 → UPDATE if exists
-    if (existingBroadcast.rows.length > 0) {
+    // 🚀 सुधार: Agar naya broadcast ACTIVE ban raha hai, toh baki sabhi ko automatic stop karein
+    if (activeStatus === 'active') {
+      await client.query(
+        `
+        UPDATE broadcasts
+        SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW()
+        WHERE festival_key != $1
+        `,
+        [resolvedFestivalKey]
+      );
+    }
 
+    // UPDATE if exists
+    if (existingBroadcast.rows.length > 0) {
       result = await client.query(
         `
         UPDATE broadcasts
@@ -282,12 +320,10 @@ export async function POST(req: Request) {
           resMsg,
           content.cta_text,
           existingBroadcast.rows[0].id,
-          activeStatus // 🚀 $14 dynamic status
+          activeStatus
         ]
       );
-
     } else {
-
       // First time insert
       result = await client.query(
         `
@@ -336,7 +372,7 @@ export async function POST(req: Request) {
           resTitle,
           resMsg,
           content.cta_text,
-          activeStatus // 🚀 $14 dynamic status
+          activeStatus
         ]
       );
     }
@@ -345,15 +381,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      action: forceActive ? 'start' : 'generate', // 🚀 Frontend ko sahi action bhejna
+      action: forceActive ? 'start' : 'generate', 
       data: result.rows[0] 
     });
 
   } catch (error: any) {
     console.error("POST ERROR =", error);
-
     if (client) await client.end();
-
     return NextResponse.json(
       {
         error: error.message,
