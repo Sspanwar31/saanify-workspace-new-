@@ -114,7 +114,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     fetchBroadcasts();
 
-    // 🚀 सुधार: यहाँ console.log जोड़ें ताकि हम लाइव इवेंट ट्रैक कर सकें
+    // Realtime listener
     const channel = supabase.channel('broadcast-realtime')
       .on(
         'postgres_changes', 
@@ -166,7 +166,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           document.documentElement.classList.remove('dark');
         }
 
-        // 🔥 RESTORED: Admin View logic from old code (Block 1)
         const isAdminViewing = session.user.id !== profile.id;
         const localFlag = localStorage.getItem('is_admin_impersonating') === 'true';
         setIsImpersonating(isAdminViewing || localFlag);
@@ -276,9 +275,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
-  const bannerColorClass = activeBroadcast?.theme_color === 'GOLD' 
-    ? 'bg-gradient-to-r from-amber-700 via-yellow-500 to-amber-700 text-slate-900' 
-    : 'bg-gradient-to-r from-blue-800 via-indigo-600 to-blue-800 text-white';
+
+  // 🚀 Dynamic Color & Text Contrast Resolution
+  const themeColor = activeBroadcast?.theme_color || '#3b82f6';
+  
+  // Checking if the theme is a bright color to apply darker contrast text
+  const isLightColor = ['#fbbf24', '#f59e0b', '#fbbf24', 'GOLD'].includes(themeColor.toUpperCase());
+  const textColorClass = isLightColor ? 'text-slate-900' : 'text-white';
+  const badgeBgClass = isLightColor ? 'bg-black/10 border-black/10' : 'bg-white/10 border-white/15';
 
   return (
     <>
@@ -312,16 +316,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ACTIVE BROADCAST BANNER */}
+      {/* 🚀 UPGRADED: ACTIVE BROADCAST BANNER WITH DYNAMIC THEME COLOR & GLASSMORPHISM 🚀 */}
       {activeBroadcast && !showPopup && (
-        <div className={"sticky top-0 z-[1001] w-full py-3 px-6 shadow-2xl " + bannerColorClass}>
-          <div className="max-w-7xl mx-auto flex items-center justify-between text-sm font-black italic">
-            <div className="flex items-center gap-4 flex-1 justify-center">
-              <Sparkles className="w-4 h-4 animate-pulse" />
-              <span className="bg-black/10 px-2 py-0.5 rounded text-[10px] font-black uppercase italic">Saanify Pariwar:</span>
-              <p>{activeBroadcast?.message?.split('|')?.[0]}</p>
+        <div 
+          className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-500 border-b ${textColorClass}`}
+          style={{
+            background: `linear-gradient(90deg, ${themeColor}dd, ${themeColor}ff)`,
+            backdropFilter: 'blur(12px)',
+            borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)'
+          }}
+        >
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-sm font-semibold tracking-wide">
+            <div className="flex items-center gap-4 flex-1 justify-center min-w-0">
+              <Sparkles className="w-5 h-5 animate-pulse shrink-0" />
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${badgeBgClass}`}>
+                Saanify Pariwar:
+              </span>
+              <p className="truncate font-bold drop-shadow-sm">
+                {activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}
+              </p>
             </div>
-            <button onClick={() => setActiveBroadcast(null)} className="p-1 hover:bg-black/5 rounded-full"><X className="w-5 h-5 opacity-70" /></button>
+            <button 
+              onClick={() => setActiveBroadcast(null)} 
+              className="p-1.5 hover:bg-black/10 rounded-full transition-colors duration-200 shrink-0 ml-3"
+            >
+              <X className="w-5 h-5 opacity-85" />
+            </button>
           </div>
         </div>
       )}
