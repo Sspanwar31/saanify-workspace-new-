@@ -18,8 +18,10 @@ export default function BroadcastLabPage() {
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); // State to store total active db rows
   
-  // 🚀 NEW: State for Selected Planning Year (Future Proof)
-  const [selectedYear, setSelectedYear] = useState('2026');
+  // 🚀 NEW: Dynamic Year Generator (Current year se 15 saal aage tak automatic future proof)
+  const currentYear = new Date().getFullYear();
+  const yearsList = Array.from({ length: 15 }, (_, i) => (currentYear + i).toString());
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
   
   // State for Hybrid Scheduler Planner List
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -31,6 +33,16 @@ export default function BroadcastLabPage() {
     full_screen_animation: true,
     dashboard_overlay: true
   });
+
+  // Timezone safe helper to format ISO timestamp to "YYYY-MM-DDTHH:MM" for datetime-local input
+  const formatForDateTimeLocal = (dateString?: string) => {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '';
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().slice(0, 16);
+  };
 
   // Database se saved schedules fetch karne ka function
   const fetchSchedules = useCallback(async () => {
@@ -163,38 +175,37 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // ━━━ 🚀 NEW: SHEDULER HYBRID DYNAMIC ACTIONS (FUTURE PROOF) ━━━
+  // ━━━ 🚀 SHEDULER HYBRID DYNAMIC ACTIONS (FUTURE PROOF) ━━━
 
-  // A. Dynamic Year Preset Generator (No hardcoding!)
+  // A. Dynamic Year Preset Generator
   const handleLoadYearPreset = () => {
     if (dbLists.festivals.length === 0) {
       toast.error("Database se festivals ki list khali mili!");
       return;
     }
 
-    // 🚀 त्योहारों के लिए साल के अनुसार स्मार्ट ड्राफ्ट जनरेटर
     const generatedDrafts = dbLists.festivals.map((fest) => {
-      let monthDayStart = '10-01'; // Default Fallback October 1st
-      let monthDayEnd = '10-02';
+      let monthDayStart = '10-01T00:00'; 
+      let monthDayEnd = '10-02T00:00';
 
-      // त्योहार के अनुसार ड्राफ्ट तारीख सेट करें (एडमिन इसे बाद में कैलेंडर से बदल सकता है)
       switch (fest.toUpperCase()) {
-        case 'REPUBLIC_DAY': monthDayStart = '01-26'; monthDayEnd = '01-27'; break;
-        case 'NEW_YEAR': monthDayStart = '01-01'; monthDayEnd = '01-02'; break;
-        case 'HOLI': monthDayStart = '03-03'; monthDayEnd = '03-05'; break;
+        case 'REPUBLIC_DAY': monthDayStart = '01-26T00:00'; monthDayEnd = '01-27T00:00'; break;
+        case 'NEW_YEAR': monthDayStart = '01-01T00:00'; monthDayEnd = '01-02T00:00'; break;
+        case 'HOLI': monthDayStart = '03-03T00:00'; monthDayEnd = '03-05T00:00'; break;
         case 'INDEPENDENCE_DAY': monthDayStart = '08-15'; monthDayEnd = '08-16'; break;
-        case 'DUSSEHRA': monthDayStart = '10-20'; monthDayEnd = '10-21'; break;
-        case 'DIWALI': monthDayStart = '11-08'; monthDayEnd = '11-10'; break;
-        case 'CHRISTMAS': monthDayStart = '12-25'; monthDayEnd = '12-26'; break;
-        case 'JANMASHTAMI': monthDayStart = '08-25'; monthDayEnd = '08-26'; break;
-        case 'GURU_NANAK_JAYANTI': monthDayStart = '11-25'; monthDayEnd = '11-26'; break;
-        case 'GANESH_CHATURTHI': monthDayStart = '09-15'; monthDayEnd = '09-17'; break;
-        case 'MAHASHIVRATRI': monthDayStart = '02-15'; monthDayEnd = '02-16'; break;
+        case 'DUSSEHRA': monthDayStart = '10-20T00:00'; monthDayEnd = '10-21T00:00'; break;
+        case 'DIWALI': monthDayStart = '11-08T00:00'; monthDayEnd = '11-10'; break;
+        case 'CHRISTMAS': monthDayStart = '12-25T00:00'; monthDayEnd = '12-26T00:00'; break;
+        case 'JANMASHTAMI': monthDayStart = '08-25T00:00'; monthDayEnd = '08-26T00:00'; break;
+        case 'GURU_NANAK_JAYANTI': monthDayStart = '11-25T00:00'; monthDayEnd = '11-26T00:00'; break;
+        case 'GANESH_CHATURTHI': monthDayStart = '09-15T00:00'; monthDayEnd = '09-17T00:00'; break;
+        case 'MAHASHIVRATRI': monthDayStart = '02-15T00:00'; monthDayEnd = '02-16T00:00'; break;
         case 'EID_UL_FITR': monthDayStart = '04-10'; monthDayEnd = '04-11'; break;
         case 'EID_AL_ADHA': monthDayStart = '06-16'; monthDayEnd = '06-17'; break;
       }
 
       return {
+        type: 'FESTIVAL',
         festival_key: fest,
         starts_at: `${selectedYear}-${monthDayStart}`,
         ends_at: `${selectedYear}-${monthDayEnd}`,
@@ -206,12 +217,13 @@ export default function BroadcastLabPage() {
     toast.success(`Loaded all ${generatedDrafts.length} festivals for ${selectedYear}! Review and edit before saving.`);
   };
 
-  // B. Add Blank Custom Row
+  // B. Add Blank Custom Row (Supports Festival & Corporate Double Selector)
   const handleAddCustomSchedule = () => {
     const newRow = {
+      type: 'FESTIVAL', // Default type
       festival_key: dbLists.festivals[0] || 'DIWALI',
-      starts_at: `${selectedYear}-01-01`,
-      ends_at: `${selectedYear}-01-02`,
+      starts_at: `${selectedYear}-01-01T00:00`,
+      ends_at: `${selectedYear}-01-02T00:00`,
       is_new: true
     };
     setSchedules([newRow, ...schedules]);
@@ -494,7 +506,7 @@ export default function BroadcastLabPage() {
             <p className="text-slate-400 text-xs mt-1">Pre-plan any year's celebration timeline in draft before publishing.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* 🚀 NEW: Future Proof Year Selector */}
+            {/* 🚀 Dynamic Future Proof Year Selector Selector */}
             <div className="flex items-center gap-2 border border-white/10 bg-white/5 rounded-lg px-2">
               <span className="text-xs text-slate-400 font-bold uppercase">Year:</span>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -502,11 +514,9 @@ export default function BroadcastLabPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 text-white border-slate-800">
-                  <SelectItem value="2026">2026</SelectItem>
-                  <SelectItem value="2027">2027</SelectItem>
-                  <SelectItem value="2028">2028</SelectItem>
-                  <SelectItem value="2029">2029</SelectItem>
-                  <SelectItem value="2030">2030</SelectItem>
+                  {yearsList.map((yr) => (
+                    <SelectItem key={yr} value={yr}>{yr}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -555,8 +565,8 @@ export default function BroadcastLabPage() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Festival/Event</th>
-                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Starts At (Date)</th>
-                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Ends At (Date)</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Starts At (Date/Time)</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Ends At (Date/Time)</th>
                     <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Timeline Status</th>
                     <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider text-right">Actions</th>
                   </tr>
@@ -564,46 +574,72 @@ export default function BroadcastLabPage() {
                 <tbody className="divide-y divide-slate-100">
                   {schedules.map((item, index) => (
                     <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                      {/* Event Column (Clean Festival-only dropdown) */}
+                      {/* Event Column (Clean Festival & Corporate selector) */}
                       <td className="p-4">
                         {item.is_new ? (
-                          <Select 
-                            value={item.festival_key} 
-                            onValueChange={(v) => handleScheduleRowChange(index, 'festival_key', v)}
-                          >
-                            <SelectTrigger className="h-10 rounded-lg w-48 border-slate-200 font-bold text-slate-700">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[250px]">
-                              {/* 🚀 Only Festivals are rendered here, no corporate clutter */}
-                              {dbLists.festivals?.map(f => (
-                                <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex flex-col gap-2">
+                            {/* A. Type Selector */}
+                            <Select 
+                              value={item.type || 'FESTIVAL'} 
+                              onValueChange={(v) => {
+                                const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (dbLists.types[0] || 'ANNOUNCEMENT');
+                                handleScheduleRowChange(index, 'type', v);
+                                handleScheduleRowChange(index, 'festival_key', defaultKey);
+                              }}
+                            >
+                              <SelectTrigger className="h-9 rounded-lg w-48 border-slate-200 text-xs font-black">
+                                <SelectValue placeholder="Select Type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="FESTIVAL">🌸 FESTIVAL</SelectItem>
+                                <SelectItem value="CORPORATE">🏢 CORPORATE</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            {/* B. Event Key Selector */}
+                            <Select 
+                              value={item.festival_key} 
+                              onValueChange={(v) => handleScheduleRowChange(index, 'festival_key', v)}
+                            >
+                              <SelectTrigger className="h-9 rounded-lg w-48 border-slate-200 font-bold text-xs text-slate-700">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[250px]">
+                                {item.type === 'CORPORATE' ? (
+                                  dbLists.types?.map(t => (
+                                    <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
+                                  ))
+                                ) : (
+                                  dbLists.festivals?.map(f => (
+                                    <SelectItem key={f} value={f}>{f.replace('_', ' ')}</SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         ) : (
-                          <Badge variant="outline" className="bg-slate-100 border-slate-200 text-slate-800 font-bold px-3 py-1">
+                          <Badge variant="outline" className={`font-bold px-3 py-1 ${item.type === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
                             {item.festival_key?.replace('_', ' ')}
                           </Badge>
                         )}
                       </td>
 
-                      {/* Starts At (Custom Styled Date Picker) */}
+                      {/* Starts At (Custom Styled Date-Time Picker) */}
                       <td className="p-4">
                         <input
-                          type="date"
-                          className="border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
-                          value={item.starts_at?.split('T')[0] || ''} 
+                          type="datetime-local"
+                          className="border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-xs font-semibold"
+                          value={formatForDateTimeLocal(item.starts_at)} 
                           onChange={(e) => handleScheduleRowChange(index, 'starts_at', e.target.value)}
                         />
                       </td>
 
-                      {/* Ends At (Custom Styled Date Picker) */}
+                      {/* Ends At (Custom Styled Date-Time Picker) */}
                       <td className="p-4">
                         <input
-                          type="date"
-                          className="border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-sm font-semibold"
-                          value={item.ends_at?.split('T')[0] || ''} 
+                          type="datetime-local"
+                          className="border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-slate-50/50 focus:bg-white transition-all text-xs font-semibold"
+                          value={formatForDateTimeLocal(item.ends_at)} 
                           onChange={(e) => handleScheduleRowChange(index, 'ends_at', e.target.value)}
                         />
                       </td>
