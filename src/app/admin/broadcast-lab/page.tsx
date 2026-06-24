@@ -13,7 +13,7 @@ export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
   const [dbLists, setDbLists] = useState<{ festivals: string[]; types: string[] }>({ festivals: [], types: [] }); 
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
-  const [totalCount, setTotalCount] = useState(0); // 🚀 NEW: State to store total active db rows
+  const [totalCount, setTotalCount] = useState(0); // State to store total active db rows
   
   const [form, setForm] = useState({
     type: 'FESTIVAL',
@@ -53,9 +53,10 @@ export default function BroadcastLabPage() {
     try {
       setLoading(true);
 
-      // Corporate/Festival consistency bug fix (resolved key resolution)
+      // Corporate/Festival consistency key resolution
       const resolvedKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
 
+      // 🚀 सुधार: यहाँ JSON.stringify के अंदर form से सभी जरूरी पैरामीटर्स भेजे गए हैं
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: {
@@ -63,7 +64,11 @@ export default function BroadcastLabPage() {
         },
         body: JSON.stringify({
           festival_key: resolvedKey,
-          action
+          action,
+          language_mode: form.language_mode, // 🚀 NEW: भाषा विकल्प भेजा गया
+          dashboard_overlay: form.dashboard_overlay, // 🚀 NEW: ओवरले सेटिंग भेजी गई
+          full_screen_animation: form.full_screen_animation, // 🚀 NEW: फुल स्क्रीन एनीमेशन सेटिंग
+          broadcast_type: form.type !== 'FESTIVAL' ? form.type : undefined // 🚀 NEW: टाइप रिज़ॉल्यूशन
         })
       });
 
@@ -88,7 +93,7 @@ export default function BroadcastLabPage() {
         toast.success('Broadcast Deleted');
       }
 
-      // 🚀 Action ke baad lists aur db row count ko automatic refresh karein
+      // Action ke baad lists aur db row count ko automatic refresh karein
       await loadListsAndCount();
 
     } catch (err: any) {
@@ -240,7 +245,7 @@ export default function BroadcastLabPage() {
                     </Badge>
                   </div>
 
-                  {/* 🚀 NEW: Database live count display */}
+                  {/* Database live count display */}
                   <div className="text-right">
                     <p className="text-xs font-black uppercase text-slate-400 tracking-wider">
                       Database Cleanliness
@@ -280,7 +285,6 @@ export default function BroadcastLabPage() {
                       🗑️ DELETE SELECTED
                     </Button>
 
-                    {/* 🚀 NEW: Delete All Clear Table Button */}
                     <Button
                       variant="outline"
                       className="h-12 text-xs font-black border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
