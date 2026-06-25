@@ -151,7 +151,7 @@ export default function ActivityPage() {
     return Math.floor(seconds) + " seconds ago";
   };
 
-  // ✅ Safe Wrapper added
+  // Safe Wrapper added
   const getIcon = (action: any) => {
     const lower = String(action || '').toLowerCase();
     if (lower.includes('login') || lower.includes('auth')) return Shield;
@@ -173,7 +173,7 @@ export default function ActivityPage() {
     return { total, failed, successRate, uniqueClients };
   }, [logs]);
 
-  // ✅ Safe Wrappers added
+  // Safe Wrappers added
   const filteredLogs = logs.filter(log => {
     const search = String(searchTerm).toLowerCase();
     const clientName = String(log?.client_name || 'System').toLowerCase();
@@ -193,7 +193,7 @@ export default function ActivityPage() {
     const q = String(query || '').toLowerCase();
     const durStr = String(duration || '');
 
-    // 🚀 internal safe system processes ko leak na maanein
+    // internal safe system processes ko leak na maanein
     if (
       app.includes('postgrest') || 
       app.includes('realtime') || 
@@ -294,7 +294,6 @@ export default function ActivityPage() {
                          <div className="flex-1 bg-slate-50 p-4 rounded-xl border border-slate-100 hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-center text-sm">
                               <div className="min-w-0">
-                                {/* ✅ Safe Wrappers Applied */}
                                 <span className="font-bold text-slate-800 text-base">{String(log.action || 'Action')}</span>
                                 <p className="text-sm text-slate-600 mt-1">
                                   Performed by <span className="font-semibold text-blue-600">{String(log.actor_name || 'Unknown')}</span> 
@@ -305,7 +304,6 @@ export default function ActivityPage() {
                                 {timeAgo(log.created_at)}
                               </Badge>
                             </div>
-                            {/* ✅ Safe Wrapper Applied */}
                             <div className="mt-2 text-xs font-mono bg-white px-2 py-1 inline-block rounded border">
                               Target: {String(log.resource || 'N/A')}
                             </div>
@@ -359,21 +357,17 @@ export default function ActivityPage() {
                   ) : filteredLogs.map((log) => (
                     <TableRow key={log.id} className="hover:bg-slate-50">
                       <TableCell>
-                        {/* ✅ Safe Wrappers Applied */}
                         <div className="font-bold text-slate-800">{String(log.client_name || 'Unknown')}</div>
                         <div className="text-xs text-blue-600 font-medium">{String(log.actor_name || 'Unknown')} <span className='text-gray-400'>({String(log.actor_role || 'N/A')})</span></div>
                       </TableCell>
-                      {/* ✅ Safe Wrapper Applied */}
                       <TableCell><span className="font-medium text-slate-700">{String(log.action || 'Action')}</span></TableCell>
-                      {/* ✅ Safe Wrapper Applied */}
                       <TableCell><code className="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200 text-gray-600">{String(log.resource || 'N/A')}</code></TableCell>
-                      {/* ✅ Safe Wrapper Applied */}
                       <TableCell className="font-mono text-xs text-slate-500">{String(log.ip_address || '0.0.0.0')}</TableCell>
                       <TableCell>
                         <Badge className={
                            log.status==='SUCCESS'?'bg-green-100 text-green-700 hover:bg-green-100 border-green-200': 
                            log.status==='FAILED'?'bg-red-100 text-red-700 hover:bg-red-100 border-red-200':'bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200'
-                        /* ✅ Safe Wrapper Applied */}>{String(log.status || 'UNKNOWN')}</Badge>
+                        }>{String(log.status || 'UNKNOWN')}</Badge>
                       </TableCell>
                       <TableCell className="text-right text-gray-500 text-sm">
                         {new Date(log.created_at).toLocaleString()}
@@ -386,13 +380,13 @@ export default function ActivityPage() {
           </Card>
         </TabsContent>
 
-        {/* 🚀 NEW TAB 3: SYSTEM DIAGNOSTICS & DB HEALTH (UPGRADED METRICS) 🚀 */}
+        {/* TAB 3: SYSTEM DIAGNOSTICS & DB HEALTH (UPGRADED METRICS) */}
         <TabsContent value="health">
            <div className="space-y-6 animate-in slide-in-from-bottom duration-300">
               
               {/* Health Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 {/* 🚀 UPGRADED: Database Size Progress Meter */}
+                 {/* UPGRADED: Database Size Progress Meter */}
                  <Card className="border-none shadow-md bg-white rounded-2xl overflow-hidden">
                     <CardContent className="p-6">
                        <div className="flex items-center justify-between">
@@ -493,7 +487,6 @@ export default function ActivityPage() {
                           return (
                             <TableRow key={conn.pid} className={`hover:bg-slate-50/50 ${hanging ? 'bg-red-50/20' : ''}`}>
                                {/* App Source */}
-                               {/* ✅ Safe Wrapper Applied */}
                                <TableCell className="font-bold text-slate-800">
                                   {String(conn.application_name || 'Generic API / Connection String')}
                                </TableCell>
@@ -508,7 +501,6 @@ export default function ActivityPage() {
                                        ? 'bg-green-100 text-green-700 hover:bg-green-100 border border-green-200 animate-pulse' 
                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200'
                                   }>
-                                     {/* ✅ Safe Wrapper Applied */}
                                      {String(conn.state || 'UNKNOWN').toUpperCase()}
                                   </Badge>
                                </TableCell>
@@ -516,17 +508,15 @@ export default function ActivityPage() {
                                <TableCell className="font-mono text-xs text-slate-600">
                                   {hanging ? (
                                     <span className="text-red-600 font-bold flex items-center gap-1 animate-pulse">
-                                       <AlertTriangle className="w-3.5 h-3.5" /> {/* ✅ Safe Wrapper Applied */}{String(conn.duration)} (Leak!)
+                                       <AlertTriangle className="w-3.5 h-3.5" /> {String(conn.duration)} (Leak!)
                                     </span>
                                   ) : (
-                                    {/* ✅ Safe Wrapper Applied */}
                                     <span>{String(conn.duration || 'N/A')}</span>
                                   )}
                                </TableCell>
                                {/* Current Query */}
                                <TableCell className="max-w-xs">
                                   <code className="text-xs bg-slate-100 px-2 py-1 rounded border block overflow-x-auto whitespace-pre font-mono text-slate-500 max-h-16">
-                                     {/* ✅ Safe Wrapper Applied */}
                                      {String(conn.query || 'IDLE')}
                                   </code>
                                </TableCell>
