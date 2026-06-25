@@ -6,22 +6,28 @@ export const dynamic = 'force-dynamic';
 const getDbClient = async () => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL missing');
+
+  // 🚀 स्तर 1: ऐप्लीकेशन का नाम सेट करना (API_System_Health)
+  const urlWithAppName = connectionString.includes('?') 
+    ? `${connectionString}&application_name=API_System_Health`
+    : `${connectionString}?application_name=API_System_Health`;
+
   const client = new Client({
-    connectionString,
+    connectionString: urlWithAppName,
     ssl: { rejectUnauthorized: false },
   });
   await client.connect();
   return client;
 };
 
-// 1. GET: Active Connections aur Database Size lekar aayein
+// 1. GET: Active Connections aur Database Size metrics lekar aayein
 export async function GET() {
   let client: Client | null = null;
   try {
     client = await getDbClient();
 
-    // Active Connections list (Postgres Exporter ko chhod kar jo systemic hai)
-const connRes = await client.query(`
+    // Active Connections list
+    const connRes = await client.query(`
       SELECT 
         pid, 
         state, 
@@ -33,16 +39,25 @@ const connRes = await client.query(`
       ORDER BY duration DESC;
     `);
 
-    // Live Database Size pretty string
+    // Live Database Size raw bytes + pretty string (Conflict resolved)
     const sizeRes = await client.query(`
-      SELECT pg_size_pretty(pg_database_size(current_database())) AS size;
+      SELECT 
+        pg_database_size(current_database()) AS size_bytes,
+        pg_size_pretty(pg_database_size(current_database())) AS size_pretty;
     `);
 
     await client.end();
 
+    const rawBytes = parseInt(sizeRes.rows[0]?.size_bytes || '0', 10);
+    const freePlanLimitBytes = 524288000; // 500 MB in Bytes (Supabase Free Plan Limit)
+    const usagePercentage = parseFloat(((rawBytes / freePlanLimitBytes) * 100).toFixed(2));
+
     return NextResponse.json({
       connections: connRes.rows || [],
-      dbSize: sizeRes.rows[0]?.size || 'Unknown'
+      dbSize: sizeRes.rows[0]?.size_pretty || 'Unknown',
+      dbSizeBytes: rawBytes,
+      dbPercentage: usagePercentage > 100 ? 100 : usagePercentage,
+      dbLimit: '500 MB'
     });
   } catch (err: any) {
     console.error("Health GET Error:", err);
