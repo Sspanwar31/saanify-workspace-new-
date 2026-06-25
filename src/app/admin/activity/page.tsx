@@ -1,9 +1,8 @@
 'use client';
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Shield, Activity, Search, Filter, Download, Zap,
-  AlertTriangle, User, Database, RefreshCw, XCircle, HardDrive, Clock
+  AlertTriangle, User, Database, RefreshCw, XCircle, HardDrive, Clock, Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 
-// ✅ 1. MASTER IMPORT
+// MASTER IMPORT
 import { supabase } from '@/lib/supabase';
 
 // DATABASE ROW TYPE DEFINITION
@@ -34,11 +33,23 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 🚀 NEW: Health Monitor States
-  const [healthData, setHealthData] = useState<{ connections: any[], dbSize: string }>({ connections: [], dbSize: 'Loading...' });
+  // Health Monitor States with extended parameters
+  const [healthData, setHealthData] = useState<{ 
+    connections: any[]; 
+    dbSize: string;
+    dbSizeBytes: number;
+    dbPercentage: number;
+    dbLimit: string;
+  }>({ 
+    connections: [], 
+    dbSize: '0 MB', 
+    dbSizeBytes: 0, 
+    dbPercentage: 0, 
+    dbLimit: '500 MB' 
+  });
   const [fetchingHealth, setFetchingHealth] = useState(false);
 
-  // 🚀 NEW: Fetch Database Live Health logs
+  // Fetch Database Live Health logs
   const fetchSystemHealth = useCallback(async () => {
     try {
       setFetchingHealth(true);
@@ -54,7 +65,7 @@ export default function ActivityPage() {
   }, []);
 
   useEffect(() => {
-    // 1. Pehle purane logs fetch karein
+    // Pehle purane logs fetch karein
     const fetchLogs = async () => {
       try {
         const { data, error } = await supabase
@@ -67,7 +78,7 @@ export default function ActivityPage() {
           console.error("Supabase Error:", error.message);
           return;
         }
-  
+        
         if (data) setLogs(data);
       } catch (error) {
         console.error('Fetch Error:', error);
@@ -79,7 +90,7 @@ export default function ActivityPage() {
     fetchLogs();
     fetchSystemHealth(); // Live database diagnostics load hoga
 
-    // 2. ✅ UPDATED REALTIME LISTENER
+    // Realtime Listener
     const channel = supabase
       .channel('audit-logs-global')
       .on('postgres_changes', 
@@ -102,7 +113,7 @@ export default function ActivityPage() {
     };
   }, [fetchSystemHealth]);
 
-  // 🚀 NEW: Terminate hanging connection (Kill connection action)
+  // Terminate hanging connection
   const handleKillConnection = async (pid: number) => {
     const confirmKill = window.confirm(`⚠️ चेतावनी: क्या आप सचमुच डेटाबेस कनेक्शन (PID: ${pid}) को जबरन बंद (Terminate) करना चाहते हैं?`);
     if (!confirmKill) return;
@@ -140,7 +151,7 @@ export default function ActivityPage() {
     return Math.floor(seconds) + " seconds ago";
   };
 
-  // ✅ FIX: Added String() wrapper to prevent crash if DB returns objects/null
+  // ✅ Safe Wrapper added
   const getIcon = (action: any) => {
     const lower = String(action || '').toLowerCase();
     if (lower.includes('login') || lower.includes('auth')) return Shield;
@@ -162,7 +173,7 @@ export default function ActivityPage() {
     return { total, failed, successRate, uniqueClients };
   }, [logs]);
 
-  // ✅ FIX: Added String() wrapper to prevent crash if DB returns objects/null
+  // ✅ Safe Wrappers added
   const filteredLogs = logs.filter(log => {
     const search = String(searchTerm).toLowerCase();
     const clientName = String(log?.client_name || 'System').toLowerCase();
@@ -174,10 +185,26 @@ export default function ActivityPage() {
            action.includes(search);
   });
 
-  // ✅ FIX: Helper to check if connection is idle for too long (Safe type checking)
-  const isHangingConnection = (duration: any, state: any) => {
+  // Helper: check if connection is idle for too long (System safe filters)
+  const isHangingConnection = (duration: any, state: any, appName: any, query: any) => {
     if (state !== 'idle') return false;
-    const durStr = String(duration || ''); // Safely convert to string
+
+    const app = String(appName || '').toLowerCase();
+    const q = String(query || '').toLowerCase();
+    const durStr = String(duration || '');
+
+    // 🚀 internal safe system processes ko leak na maanein
+    if (
+      app.includes('postgrest') || 
+      app.includes('realtime') || 
+      app.includes('supavisor') || 
+      app.includes('postgres_exporter') ||
+      q.includes('listen "pgrst"') ||
+      q.includes('show archive_mode')
+    ) {
+      return false;
+    }
+    
     if (durStr.includes('days') || durStr.includes('hours') || durStr.includes('mins')) return true;
     const match = durStr.match(/(\d{2}):(\d{2}):(\d{2})/);
     if (match) {
@@ -185,6 +212,13 @@ export default function ActivityPage() {
       if (mins >= 3) return true;
     }
     return false;
+  };
+
+  // Helper to calculate free megabytes
+  const getFreeMegabytes = () => {
+    const usedMB = (healthData.dbSizeBytes || 0) / 1048576; // Convert bytes to MB
+    const freeMB = 500 - usedMB;
+    return freeMB > 0 ? freeMB.toFixed(1) : '0';
   };
 
   return (
@@ -260,6 +294,7 @@ export default function ActivityPage() {
                          <div className="flex-1 bg-slate-50 p-4 rounded-xl border border-slate-100 hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-center text-sm">
                               <div className="min-w-0">
+                                {/* ✅ Safe Wrappers Applied */}
                                 <span className="font-bold text-slate-800 text-base">{String(log.action || 'Action')}</span>
                                 <p className="text-sm text-slate-600 mt-1">
                                   Performed by <span className="font-semibold text-blue-600">{String(log.actor_name || 'Unknown')}</span> 
@@ -270,6 +305,7 @@ export default function ActivityPage() {
                                 {timeAgo(log.created_at)}
                               </Badge>
                             </div>
+                            {/* ✅ Safe Wrapper Applied */}
                             <div className="mt-2 text-xs font-mono bg-white px-2 py-1 inline-block rounded border">
                               Target: {String(log.resource || 'N/A')}
                             </div>
@@ -323,17 +359,21 @@ export default function ActivityPage() {
                   ) : filteredLogs.map((log) => (
                     <TableRow key={log.id} className="hover:bg-slate-50">
                       <TableCell>
+                        {/* ✅ Safe Wrappers Applied */}
                         <div className="font-bold text-slate-800">{String(log.client_name || 'Unknown')}</div>
                         <div className="text-xs text-blue-600 font-medium">{String(log.actor_name || 'Unknown')} <span className='text-gray-400'>({String(log.actor_role || 'N/A')})</span></div>
                       </TableCell>
+                      {/* ✅ Safe Wrapper Applied */}
                       <TableCell><span className="font-medium text-slate-700">{String(log.action || 'Action')}</span></TableCell>
+                      {/* ✅ Safe Wrapper Applied */}
                       <TableCell><code className="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200 text-gray-600">{String(log.resource || 'N/A')}</code></TableCell>
+                      {/* ✅ Safe Wrapper Applied */}
                       <TableCell className="font-mono text-xs text-slate-500">{String(log.ip_address || '0.0.0.0')}</TableCell>
                       <TableCell>
                         <Badge className={
                            log.status==='SUCCESS'?'bg-green-100 text-green-700 hover:bg-green-100 border-green-200': 
                            log.status==='FAILED'?'bg-red-100 text-red-700 hover:bg-red-100 border-red-200':'bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200'
-                        }>{String(log.status || 'UNKNOWN')}</Badge>
+                        /* ✅ Safe Wrapper Applied */}>{String(log.status || 'UNKNOWN')}</Badge>
                       </TableCell>
                       <TableCell className="text-right text-gray-500 text-sm">
                         {new Date(log.created_at).toLocaleString()}
@@ -346,20 +386,39 @@ export default function ActivityPage() {
           </Card>
         </TabsContent>
 
-        {/* 🚀 NEW TAB 3: SYSTEM DIAGNOSTICS & DB HEALTH 🚀 */}
+        {/* 🚀 NEW TAB 3: SYSTEM DIAGNOSTICS & DB HEALTH (UPGRADED METRICS) 🚀 */}
         <TabsContent value="health">
            <div className="space-y-6 animate-in slide-in-from-bottom duration-300">
               
               {/* Health Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <Card className="border-none shadow-md bg-white rounded-2xl">
-                    <CardContent className="p-6 flex items-center justify-between">
-                       <div>
-                          <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Database Size</p>
-                          <h4 className="text-2xl font-bold text-slate-800 mt-1">{String(healthData.dbSize || 'Calculating...')}</h4>
+                 {/* 🚀 UPGRADED: Database Size Progress Meter */}
+                 <Card className="border-none shadow-md bg-white rounded-2xl overflow-hidden">
+                    <CardContent className="p-6">
+                       <div className="flex items-center justify-between">
+                         <div>
+                            <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Database Size</p>
+                            <h4 className="text-2xl font-bold text-slate-800 mt-1">
+                              {healthData.dbSize} <span className="text-xs text-slate-400 font-bold">/ {healthData.dbLimit}</span>
+                            </h4>
+                         </div>
+                         <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
+                            <HardDrive className="w-6 h-6" />
+                         </div>
                        </div>
-                       <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
-                          <HardDrive className="w-6 h-6" />
+
+                       {/* Visual Progress Bar */}
+                       <div className="mt-4 space-y-1.5">
+                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                             <div 
+                               className="bg-blue-600 h-full rounded-full transition-all duration-500" 
+                               style={{ width: `${healthData.dbPercentage || 0}%` }}
+                             />
+                          </div>
+                          <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                             <span>{healthData.dbPercentage || 0}% Used</span>
+                             <span>{getFreeMegabytes()} MB Free</span>
+                          </div>
                        </div>
                     </CardContent>
                  </Card>
@@ -369,7 +428,7 @@ export default function ActivityPage() {
                        <div>
                           <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Active Connections</p>
                           <h4 className="text-2xl font-bold text-slate-800 mt-1">
-                            {healthData.connections?.filter((c: any) => c.state === 'active').length || 0} Open
+                            {healthData.connections?.filter(c => c.state === 'active').length || 0} Open
                           </h4>
                        </div>
                        <div className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center border border-green-100">
@@ -383,7 +442,7 @@ export default function ActivityPage() {
                        <div>
                           <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Hanging Leaks</p>
                           <h4 className="text-2xl font-bold text-slate-800 mt-1">
-                            {healthData.connections?.filter((c: any) => isHangingConnection(c.duration, c.state)).length || 0} Leak(s)
+                            {healthData.connections?.filter(c => isHangingConnection(c.duration, c.state, c.application_name, c.query)).length || 0} Leak(s)
                           </h4>
                        </div>
                        <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center border border-red-100">
@@ -409,7 +468,7 @@ export default function ActivityPage() {
                     onClick={fetchSystemHealth}
                     disabled={fetchingHealth}
                   >
-                    {fetchingHealth ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh
+                    {fetchingHealth ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Refresh
                   </Button>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -429,11 +488,12 @@ export default function ActivityPage() {
                           <TableRow><TableCell colSpan={6} className="text-center h-24">Refreshing diagnostics...</TableCell></TableRow>
                         ) : healthData.connections?.length === 0 ? (
                           <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-400">No active database connections.</TableCell></TableRow>
-                        ) : healthData.connections?.map((conn: any) => {
-                          const hanging = isHangingConnection(conn.duration, conn.state);
+                        ) : healthData.connections?.map((conn) => {
+                          const hanging = isHangingConnection(conn.duration, conn.state, conn.application_name, conn.query);
                           return (
                             <TableRow key={conn.pid} className={`hover:bg-slate-50/50 ${hanging ? 'bg-red-50/20' : ''}`}>
                                {/* App Source */}
+                               {/* ✅ Safe Wrapper Applied */}
                                <TableCell className="font-bold text-slate-800">
                                   {String(conn.application_name || 'Generic API / Connection String')}
                                </TableCell>
@@ -448,35 +508,38 @@ export default function ActivityPage() {
                                        ? 'bg-green-100 text-green-700 hover:bg-green-100 border border-green-200 animate-pulse' 
                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200'
                                   }>
+                                     {/* ✅ Safe Wrapper Applied */}
                                      {String(conn.state || 'UNKNOWN').toUpperCase()}
                                   </Badge>
                                </TableCell>
                                {/* Duration */}
                                <TableCell className="font-mono text-xs text-slate-600">
                                   {hanging ? (
-                                    <span className="text-red-600 font-bold flex items-center gap-1">
-                                       <AlertTriangle className="w-3.5 h-3.5" /> {String(conn.duration)} (Leak!)
+                                    <span className="text-red-600 font-bold flex items-center gap-1 animate-pulse">
+                                       <AlertTriangle className="w-3.5 h-3.5" /> {/* ✅ Safe Wrapper Applied */}{String(conn.duration)} (Leak!)
                                     </span>
                                   ) : (
+                                    {/* ✅ Safe Wrapper Applied */}
                                     <span>{String(conn.duration || 'N/A')}</span>
                                   )}
                                </TableCell>
                                {/* Current Query */}
                                <TableCell className="max-w-xs">
                                   <code className="text-xs bg-slate-100 px-2 py-1 rounded border block overflow-x-auto whitespace-pre font-mono text-slate-500 max-h-16">
+                                     {/* ✅ Safe Wrapper Applied */}
                                      {String(conn.query || 'IDLE')}
                                   </code>
                                </TableCell>
                                {/* Action */}
                                <TableCell className="text-right">
                                   <Button 
-                                    size="sm" 
+                                    size="icon" 
                                     variant="ghost" 
-                                    className="h-9 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 font-bold gap-1 rounded-lg"
+                                    className="h-9 w-9 text-red-500 hover:text-red-700 hover:bg-red-50 font-bold rounded-lg"
                                     onClick={() => handleKillConnection(conn.pid)}
                                     disabled={fetchingHealth}
                                   >
-                                     <XCircle className="w-4 h-4" /> Force Kill
+                                     <XCircle className="w-5 h-5" />
                                   </Button>
                                </TableCell>
                             </TableRow>
