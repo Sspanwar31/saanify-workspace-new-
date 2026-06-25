@@ -21,12 +21,12 @@ export async function GET() {
     client = await getDbClient();
 
     // Active Connections list (Postgres Exporter ko chhod kar jo systemic hai)
-    const connRes = await client.query(`
+const connRes = await client.query(`
       SELECT 
         pid, 
         state, 
         query, 
-        age(clock_timestamp(), query_start) AS duration,
+        age(clock_timestamp(), query_start)::text AS duration,
         application_name
       FROM pg_stat_activity 
       WHERE state IS NOT NULL AND application_name != 'postgres_exporter'
