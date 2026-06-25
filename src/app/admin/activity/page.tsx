@@ -140,8 +140,9 @@ export default function ActivityPage() {
     return Math.floor(seconds) + " seconds ago";
   };
 
-  const getIcon = (action: string) => {
-    const lower = action ? action.toLowerCase() : '';
+  // ✅ FIX: Added String() wrapper to prevent crash if DB returns objects/null
+  const getIcon = (action: any) => {
+    const lower = String(action || '').toLowerCase();
     if (lower.includes('login') || lower.includes('auth')) return Shield;
     if (lower.includes('backup') || lower.includes('database')) return Database;
     if (lower.includes('update') || lower.includes('setting')) return Zap;
@@ -161,23 +162,24 @@ export default function ActivityPage() {
     return { total, failed, successRate, uniqueClients };
   }, [logs]);
 
+  // ✅ FIX: Added String() wrapper to prevent crash if DB returns objects/null
   const filteredLogs = logs.filter(log => {
-    const search = searchTerm.toLowerCase();
-    const clientName = (log?.client_name || 'System').toLowerCase();
-    const actorName = (log?.actor_name || 'Unknown').toLowerCase();
-    const action = (log?.action || 'Action').toLowerCase();
+    const search = String(searchTerm).toLowerCase();
+    const clientName = String(log?.client_name || 'System').toLowerCase();
+    const actorName = String(log?.actor_name || 'Unknown').toLowerCase();
+    const action = String(log?.action || 'Action').toLowerCase();
 
     return clientName.includes(search) || 
            actorName.includes(search) || 
            action.includes(search);
   });
 
-  // Helper: check if connection is idle for too long (Potential leak check)
-  const isHangingConnection = (duration: string, state: string) => {
+  // ✅ FIX: Helper to check if connection is idle for too long (Safe type checking)
+  const isHangingConnection = (duration: any, state: any) => {
     if (state !== 'idle') return false;
-    // If connection is idle and duration is more than 3 minutes, raise concern
-    if (duration.includes('days') || duration.includes('hours') || duration.includes('mins')) return true;
-    const match = duration.match(/(\d{2}):(\d{2}):(\d{2})/);
+    const durStr = String(duration || ''); // Safely convert to string
+    if (durStr.includes('days') || durStr.includes('hours') || durStr.includes('mins')) return true;
+    const match = durStr.match(/(\d{2}):(\d{2}):(\d{2})/);
     if (match) {
       const mins = parseInt(match[2], 10);
       if (mins >= 3) return true;
@@ -258,10 +260,10 @@ export default function ActivityPage() {
                          <div className="flex-1 bg-slate-50 p-4 rounded-xl border border-slate-100 hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-center text-sm">
                               <div className="min-w-0">
-                                <span className="font-bold text-slate-800 text-base">{log.action}</span>
+                                <span className="font-bold text-slate-800 text-base">{String(log.action || 'Action')}</span>
                                 <p className="text-sm text-slate-600 mt-1">
-                                  Performed by <span className="font-semibold text-blue-600">{log.actor_name}</span> 
-                                  <span className="text-gray-400"> ({log.client_name})</span>
+                                  Performed by <span className="font-semibold text-blue-600">{String(log.actor_name || 'Unknown')}</span> 
+                                  <span className="text-gray-400"> ({String(log.client_name || 'System')})</span>
                                 </p>
                               </div>
                               <Badge variant="outline" className="text-xs bg-white shrink-0 ml-3">
@@ -269,7 +271,7 @@ export default function ActivityPage() {
                               </Badge>
                             </div>
                             <div className="mt-2 text-xs font-mono bg-white px-2 py-1 inline-block rounded border">
-                              Target: {log.resource}
+                              Target: {String(log.resource || 'N/A')}
                             </div>
                             {log.status === 'FAILED' && (
                                <div className="mt-3 text-xs text-red-700 bg-red-50 p-2 rounded-lg flex items-center gap-2 border border-red-100">
@@ -321,17 +323,17 @@ export default function ActivityPage() {
                   ) : filteredLogs.map((log) => (
                     <TableRow key={log.id} className="hover:bg-slate-50">
                       <TableCell>
-                        <div className="font-bold text-slate-800">{log.client_name}</div>
-                        <div className="text-xs text-blue-600 font-medium">{log.actor_name} <span className='text-gray-400'>({log.actor_role})</span></div>
+                        <div className="font-bold text-slate-800">{String(log.client_name || 'Unknown')}</div>
+                        <div className="text-xs text-blue-600 font-medium">{String(log.actor_name || 'Unknown')} <span className='text-gray-400'>({String(log.actor_role || 'N/A')})</span></div>
                       </TableCell>
-                      <TableCell><span className="font-medium text-slate-700">{log.action}</span></TableCell>
-                      <TableCell><code className="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200 text-gray-600">{log.resource}</code></TableCell>
-                      <TableCell className="font-mono text-xs text-slate-500">{log.ip_address}</TableCell>
+                      <TableCell><span className="font-medium text-slate-700">{String(log.action || 'Action')}</span></TableCell>
+                      <TableCell><code className="bg-slate-100 px-2 py-1 rounded text-xs border border-slate-200 text-gray-600">{String(log.resource || 'N/A')}</code></TableCell>
+                      <TableCell className="font-mono text-xs text-slate-500">{String(log.ip_address || '0.0.0.0')}</TableCell>
                       <TableCell>
                         <Badge className={
                            log.status==='SUCCESS'?'bg-green-100 text-green-700 hover:bg-green-100 border-green-200': 
                            log.status==='FAILED'?'bg-red-100 text-red-700 hover:bg-red-100 border-red-200':'bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200'
-                        }>{log.status}</Badge>
+                        }>{String(log.status || 'UNKNOWN')}</Badge>
                       </TableCell>
                       <TableCell className="text-right text-gray-500 text-sm">
                         {new Date(log.created_at).toLocaleString()}
@@ -354,7 +356,7 @@ export default function ActivityPage() {
                     <CardContent className="p-6 flex items-center justify-between">
                        <div>
                           <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Database Size</p>
-                          <h4 className="text-2xl font-bold text-slate-800 mt-1">{healthData.dbSize}</h4>
+                          <h4 className="text-2xl font-bold text-slate-800 mt-1">{String(healthData.dbSize || 'Calculating...')}</h4>
                        </div>
                        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
                           <HardDrive className="w-6 h-6" />
@@ -367,7 +369,7 @@ export default function ActivityPage() {
                        <div>
                           <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Active Connections</p>
                           <h4 className="text-2xl font-bold text-slate-800 mt-1">
-                            {healthData.connections?.filter(c => c.state === 'active').length || 0} Open
+                            {healthData.connections?.filter((c: any) => c.state === 'active').length || 0} Open
                           </h4>
                        </div>
                        <div className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center border border-green-100">
@@ -381,7 +383,7 @@ export default function ActivityPage() {
                        <div>
                           <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Hanging Leaks</p>
                           <h4 className="text-2xl font-bold text-slate-800 mt-1">
-                            {healthData.connections?.filter(c => isHangingConnection(c.duration, c.state)).length || 0} Leak(s)
+                            {healthData.connections?.filter((c: any) => isHangingConnection(c.duration, c.state)).length || 0} Leak(s)
                           </h4>
                        </div>
                        <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center border border-red-100">
@@ -427,13 +429,13 @@ export default function ActivityPage() {
                           <TableRow><TableCell colSpan={6} className="text-center h-24">Refreshing diagnostics...</TableCell></TableRow>
                         ) : healthData.connections?.length === 0 ? (
                           <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-400">No active database connections.</TableCell></TableRow>
-                        ) : healthData.connections?.map((conn) => {
+                        ) : healthData.connections?.map((conn: any) => {
                           const hanging = isHangingConnection(conn.duration, conn.state);
                           return (
                             <TableRow key={conn.pid} className={`hover:bg-slate-50/50 ${hanging ? 'bg-red-50/20' : ''}`}>
                                {/* App Source */}
                                <TableCell className="font-bold text-slate-800">
-                                  {conn.application_name || 'Generic API / Connection String'}
+                                  {String(conn.application_name || 'Generic API / Connection String')}
                                </TableCell>
                                {/* PID */}
                                <TableCell>
@@ -446,23 +448,23 @@ export default function ActivityPage() {
                                        ? 'bg-green-100 text-green-700 hover:bg-green-100 border border-green-200 animate-pulse' 
                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200'
                                   }>
-                                     {conn.state?.toUpperCase()}
+                                     {String(conn.state || 'UNKNOWN').toUpperCase()}
                                   </Badge>
                                </TableCell>
                                {/* Duration */}
                                <TableCell className="font-mono text-xs text-slate-600">
                                   {hanging ? (
                                     <span className="text-red-600 font-bold flex items-center gap-1">
-                                       <AlertTriangle className="w-3.5 h-3.5" /> {conn.duration} (Leak!)
+                                       <AlertTriangle className="w-3.5 h-3.5" /> {String(conn.duration)} (Leak!)
                                     </span>
                                   ) : (
-                                    <span>{conn.duration}</span>
+                                    <span>{String(conn.duration || 'N/A')}</span>
                                   )}
                                </TableCell>
                                {/* Current Query */}
                                <TableCell className="max-w-xs">
                                   <code className="text-xs bg-slate-100 px-2 py-1 rounded border block overflow-x-auto whitespace-pre font-mono text-slate-500 max-h-16">
-                                     {conn.query}
+                                     {String(conn.query || 'IDLE')}
                                   </code>
                                </TableCell>
                                {/* Action */}
