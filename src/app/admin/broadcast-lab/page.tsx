@@ -249,6 +249,20 @@ export default function BroadcastLabPage() {
   const handleSaveAllSchedules = async () => {
     try {
       setLoading(true);
+
+      // 🚀 DEBUG LOGS ADDED BEFORE FETCH
+      console.log("SAVE SCHEDULES PAYLOAD =", schedules);
+      console.log(
+        JSON.stringify(
+          {
+            action: "save_schedules",
+            schedules,
+          },
+          null,
+          2
+        )
+      );
+
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
