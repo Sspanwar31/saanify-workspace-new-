@@ -112,14 +112,17 @@ export async function POST(req: Request) {
 
       for (const item of schedulesArray) {
         const key = item.festival_key;
-        // 🚀 FIX: type ki jagah category use kar rahe (DB me type = INFO hai, category me FESTIVAL/CORPORATE save hoga)
-        const category = item.type === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
+        
+        // 🚀 FIX: Frontend ab 'category' bhej raha hai, isliye item.category read karo
+        const category = item.category === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
+        
         const startsAt = item.starts_at;
         const endsAt = item.ends_at;
 
         let asset, content;
 
-        if (item.type === 'CORPORATE') {
+        // 🚀 FIX: item.type ki jagah 'category' variable use karo
+        if (category === 'CORPORATE') {
           const assetRes = await client.query('SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1', [key]);
@@ -162,7 +165,7 @@ export async function POST(req: Request) {
         const existing = await client.query('SELECT id FROM broadcasts WHERE festival_key = $1 LIMIT 1', [key]);
 
         if (existing.rows.length > 0) {
-          // 🚀 FIXED: category=$1 use kar rahe (type nahi)
+          // 🚀 FIXED: category=$1 use kar rahe
           await client.query(
             `
             UPDATE broadcasts
@@ -179,7 +182,7 @@ export async function POST(req: Request) {
             ]
           );
         } else {
-          // 🚀 FIXED: category=$1 use kar rahe (type nahi)
+          // 🚀 FIXED: category=$1 use kar rahe
           await client.query(
             `
             INSERT INTO broadcasts (
