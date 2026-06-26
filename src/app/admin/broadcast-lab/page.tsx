@@ -18,8 +18,7 @@ export default function BroadcastLabPage() {
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); 
 
-  // 🚀 NEW: Real-time clock state — har 30 sec me update hoga
-  // Isse "Live Now" / "Ended" badge auto-refresh hoga bina page reload kiye
+  // 🚀 Real-time clock state — har 30 sec me update hoga
   const [currentTime, setCurrentTime] = useState(new Date());
   
   // Dynamic Year Generator
@@ -38,7 +37,7 @@ export default function BroadcastLabPage() {
     dashboard_overlay: true
   });
 
-  // Timezone safe helper to format ISO timestamp to "YYYY-MM-DDTHH:MM" for datetime-local input
+  // Timezone safe helper
   const formatForDateTimeLocal = (dateString?: string) => {
     if (!dateString) return '';
     const d = new Date(dateString);
@@ -53,7 +52,7 @@ export default function BroadcastLabPage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // GET Request with 'no-store' cache and Timestamp to bypass NextJS Cache
+  // GET Request with cache bypass
   const fetchSchedules = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/broadcast-lab?action=get_schedules&t=${Date.now()}`, {
@@ -67,7 +66,6 @@ export default function BroadcastLabPage() {
     }
   }, []);
 
-  // GET Request with 'no-store' cache and Timestamp
   const loadListsAndCount = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/broadcast-lab?t=${Date.now()}`, {
@@ -87,23 +85,23 @@ export default function BroadcastLabPage() {
     }
   }, []);
 
-  // 🚀 FIX 1: Initial load
+  // Initial load
   useEffect(() => {
     loadListsAndCount();
     fetchSchedules(); 
   }, [loadListsAndCount, fetchSchedules]);
 
-  // 🚀 FIX 2: Real-time auto-refresh — har 30 second me clock aur schedules dono update
+  // Real-time auto-refresh — har 30 second
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(new Date()); // Badge re-render ke liye
-      fetchSchedules();            // DB se latest status lene ke liye
-    }, 30000); // 30 seconds
+      setCurrentTime(new Date());
+      fetchSchedules();
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [fetchSchedules]);
 
-  // Handler for Start, Stop, and Single Delete Actions (Existing unbroken logic)
+  // Handler for Start, Stop, and Single Delete Actions
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete'
   ) => {
@@ -197,7 +195,7 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // ━━━ 🚀 SHEDULER HYBRID DYNAMIC ACTIONS (FUTURE PROOF) ━━━
+  // ━━━ SCHEDULER HYBRID DYNAMIC ACTIONS ━━━
 
   // A. Dynamic Year Preset Generator
   const handleLoadYearPreset = () => {
@@ -239,7 +237,7 @@ export default function BroadcastLabPage() {
     toast.success(`Loaded all ${generatedDrafts.length} festivals for ${selectedYear}! Review and edit before saving.`);
   };
 
-  // B. Add Blank Custom Row (Supports Festival & Corporate Double Selector)
+  // B. Add Blank Custom Row
   const handleAddCustomSchedule = () => {
     const newRow = {
       type: 'FESTIVAL', 
@@ -263,8 +261,6 @@ export default function BroadcastLabPage() {
     try {
       setLoading(true);
 
-      // 🚀 CRITICAL FIX: datetime-local se aayi value me koi timezone nahi hoti
-      // Hum explicitly "+05:30" lagate hain taaki koi confusion na ho
       const sanitizedSchedules = schedules.map(item => {
         let startsAt = item.starts_at;
         let endsAt = item.ends_at;
@@ -279,7 +275,6 @@ export default function BroadcastLabPage() {
           endsAt = endsAt + '+05:30';
         }
 
-        // Agar pehle se UTC string hai (Z ya +00:00) toh waise hi chhod do
         return {
           ...item,
           starts_at: startsAt,
@@ -342,13 +337,25 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // 🚀 FIX 3: Ab `currentTime` state use kar rahe — har 30 sec me auto-update
-  const getScheduleStatusBadge = (starts: string, ends: string, manual_stop?: boolean) => {
+  // ╔══════════════════════════════════════════════════════════════════╗
+  // ║  🔥 CRITICAL FIX: STRICT BOOLEAN CHECK FOR manual_stop         ║
+  // ║                                                                  ║
+  // ║  PROBLEM: `if (manual_stop)` sab kuch truthy treat kar raha tha ║
+  // ║  - undefined → truthy? NAHI, but DB se 0, "false", null a sakta ║
+  // ║  - Database me column ka type INT ho toh 0 = false, 1 = true   ║
+  // ║  - Agar string "false" aaya toh wo bhi truthy hai JS me!       ║
+  // ║                                                                  ║
+  // ║  FIX: Sirf `true` (boolean) ya `1` (integer) ko hi stop maano  ║
+  // ╚══════════════════════════════════════════════════════════════════╝
+  const getScheduleStatusBadge = (starts: string, ends: string, manual_stop?: boolean | number | string | null) => {
     const startDate = new Date(starts);
     const endDate = new Date(ends);
 
-    // Agar manually stop kiya hai toh "Stopped" dikhao
-    if (manual_stop) {
+    // ✅ STRICT CHECK: Sirf explicitly `true` ya `1` hone par hi "Stopped" dikhao
+    // "false", 0, null, undefined, "", "0" — sab ko "NOT stopped" maano
+    const isActuallyStopped = manual_stop === true || manual_stop === 1;
+    
+    if (isActuallyStopped) {
       return <Badge className="bg-red-100 text-red-600 border border-red-200 font-bold">Stopped</Badge>;
     }
 
@@ -388,7 +395,7 @@ export default function BroadcastLabPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
-        {/* 🛠 CONFIGURATION CARD */}
+        {/* CONFIGURATION CARD */}
         <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-900 text-white p-6">
             <CardTitle className="text-lg font-bold">Broadcast Configuration</CardTitle>
@@ -454,12 +461,9 @@ export default function BroadcastLabPage() {
             <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50">
               <div className="space-y-6">
 
-                {/* Status and Database Rows Info Block */}
                 <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
                   <div>
-                    <p className="text-sm font-bold text-slate-600">
-                      Broadcast Status
-                    </p>
+                    <p className="text-sm font-bold text-slate-600">Broadcast Status</p>
                     <Badge
                       className={
                         broadcastStatus === 'active'
@@ -473,11 +477,8 @@ export default function BroadcastLabPage() {
                     </Badge>
                   </div>
 
-                  {/* Database live count display */}
                   <div className="text-right">
-                    <p className="text-xs font-black uppercase text-slate-400 tracking-wider">
-                      Database Cleanliness
-                    </p>
+                    <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Database Cleanliness</p>
                     <span className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-bold leading-none text-blue-800 bg-blue-100 rounded-full mt-1.5 animate-pulse">
                       {totalCount} Total Row(s)
                     </span>
@@ -485,7 +486,6 @@ export default function BroadcastLabPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
-
                   <Button
                     className="bg-green-600 hover:bg-green-700 h-12 text-sm font-bold"
                     onClick={() => handleBroadcastAction('start')}
@@ -522,7 +522,6 @@ export default function BroadcastLabPage() {
                       🔥 DELETE ALL
                     </Button>
                   </div>
-
                 </div>
               </div>
             </div>
@@ -530,7 +529,7 @@ export default function BroadcastLabPage() {
           </CardContent>
         </Card>
 
-        {/* 👁️ PREVIEW CARD */}
+        {/* PREVIEW CARD */}
         <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-slate-900 text-white relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent_70%)] opacity-40" />
             <div className="relative p-12 h-full flex flex-col items-center justify-center text-center space-y-8">
@@ -553,7 +552,7 @@ export default function BroadcastLabPage() {
         </Card>
       </div>
 
-      {/* ━━━ 📅 🚀 UPGRADED SECTION: DYNAMIC ANNUAL BROADCAST SCHEDULER (FUTURE PROOF) ━━━ */}
+      {/* ANNUAL BROADCAST SCHEDULER */}
       <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-12">
         <CardHeader className="bg-slate-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -563,7 +562,6 @@ export default function BroadcastLabPage() {
             <p className="text-slate-400 text-xs mt-1">Auto-refreshes every 30s. Pre-plan any year's celebration timeline in draft before publishing.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* 🚀 Dynamic Future Proof Year Selector Selector */}
             <div className="flex items-center gap-2 border border-white/10 bg-white/5 rounded-lg px-2">
               <span className="text-xs text-slate-400 font-bold uppercase">Year:</span>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -631,17 +629,13 @@ export default function BroadcastLabPage() {
                 <tbody className="divide-y divide-slate-100">
                   {schedules.map((item, index) => (
                     <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                      {/* Event Column (Clean Festival & Corporate selector) */}
                       <td className="p-4">
                         {item.is_new ? (
                           <div className="flex flex-col gap-2">
-                            {/* A. Type Selector */}
                             <Select 
                               value={item.type || 'FESTIVAL'} 
                               onValueChange={(v) => {
                                 const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (safeTypesList[0] || 'ANNOUNCEMENT');
-                                
-                                // 🚀 Direct State Update instead of two separate async calls
                                 const updated = [...schedules];
                                 updated[index] = {
                                   ...updated[index],
@@ -660,7 +654,6 @@ export default function BroadcastLabPage() {
                               </SelectContent>
                             </Select>
 
-                            {/* B. Event Key Selector */}
                             <Select 
                               value={item.festival_key} 
                               onValueChange={(v) => handleScheduleRowChange(index, 'festival_key', v)}
@@ -688,7 +681,6 @@ export default function BroadcastLabPage() {
                         )}
                       </td>
 
-                      {/* Starts At (Custom Styled Date-Time Picker) */}
                       <td className="p-4">
                         <input
                           type="datetime-local"
@@ -698,7 +690,6 @@ export default function BroadcastLabPage() {
                         />
                       </td>
 
-                      {/* Ends At (Custom Styled Date-Time Picker) */}
                       <td className="p-4">
                         <input
                           type="datetime-local"
@@ -708,7 +699,6 @@ export default function BroadcastLabPage() {
                         />
                       </td>
 
-                      {/* Status Column */}
                       <td className="p-4">
                         {item.is_new ? (
                           <Badge className="bg-yellow-500/10 text-yellow-600 border border-yellow-200 font-bold">Draft</Badge>
@@ -717,7 +707,6 @@ export default function BroadcastLabPage() {
                         )}
                       </td>
 
-                      {/* Actions Column */}
                       <td className="p-4 text-right">
                         <Button 
                           size="icon" 
