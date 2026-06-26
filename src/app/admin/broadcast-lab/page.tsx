@@ -10,7 +10,7 @@ import {
   Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2, 
   Calendar, Clock, Plus, Save, RotateCcw, AlertTriangle 
 } from 'lucide-react';
-import Link from 'next/link';
+import Link from 'next/navigation';
 
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
@@ -34,13 +34,12 @@ export default function BroadcastLabPage() {
     dashboard_overlay: true
   });
 
-  // 🚀 बिल्कुल सही और टाइमज़ोन-सुरक्षित लोकल डेट-टाइम फ़ॉर्मेटर
+  // 🚀 FIXED: Off-set proof local date-time formatter
   const formatForDateTimeLocal = (dateString?: string) => {
     if (!dateString) return '';
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return '';
     
-    // लोकल ब्राउज़र टाइम के अनुसार सीधे वर्ष, महीना, दिन और समय निकालें (इससे टाइमज़ोन कभी शिफ्ट नहीं होगा)
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -50,10 +49,12 @@ export default function BroadcastLabPage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // Database se saved schedules fetch karne ka function
+  // 🚀 FIXED: GET Request with 'no-store' cache and Timestamp to bypass NextJS Cache
   const fetchSchedules = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/broadcast-lab?action=get_schedules');
+      const res = await fetch(`/api/admin/broadcast-lab?action=get_schedules&t=${Date.now()}`, {
+        cache: 'no-store' // 🚀 NextJS cache ko bypass karein
+      });
       if (!res.ok) throw new Error('Failed to fetch schedules');
       const data = await res.json();
       setSchedules(data.schedules || []);
@@ -62,10 +63,12 @@ export default function BroadcastLabPage() {
     }
   }, []);
 
-  // Fetch Dynamic Lists & Live Row Count
+  // 🚀 FIXED: GET Request with 'no-store' cache and Timestamp
   const loadListsAndCount = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/broadcast-lab');
+      const res = await fetch(`/api/admin/broadcast-lab?t=${Date.now()}`, {
+        cache: 'no-store' // 🚀 NextJS cache ko bypass karein
+      });
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       
@@ -225,21 +228,13 @@ export default function BroadcastLabPage() {
 
   // B. Add Blank Custom Row (Supports Festival & Corporate Double Selector)
   const handleAddCustomSchedule = () => {
-    // DEBUG 1
-    console.log("DEBUG TYPES =", dbLists.types);
-    console.log("DEBUG FESTIVALS =", dbLists.festivals);
-
     const newRow = {
-      type: 'FESTIVAL', 
+      type: 'FESTIVAL', // Default type
       festival_key: dbLists.festivals[0] || 'DIWALI',
       starts_at: `${selectedYear}-01-01T00:00`,
       ends_at: `${selectedYear}-01-02T00:00`,
       is_new: true
     };
-
-    // DEBUG 1 (Part 2)
-    console.log("NEW ROW =", newRow);
-
     setSchedules([newRow, ...schedules]);
   };
 
@@ -327,7 +322,7 @@ export default function BroadcastLabPage() {
     return <Badge className="bg-slate-300 text-slate-600">Ended</Badge>;
   };
 
-  // 🚀 FALLBACK LISTS (ताकि डेटाबेस खाली होने पर भी आपके सेलेक्ट बॉक्स ब्लैंक न दिखें)
+  // FALLBACK LISTS
   const safeTypesList = dbLists.types.length > 0 
     ? dbLists.types 
     : ['SYSTEM_UPDATE', 'MAINTENANCE', 'SPECIAL_OFFER', 'EMERGENCY', 'ANNOUNCEMENT', 'EVENT'];
@@ -525,7 +520,7 @@ export default function BroadcastLabPage() {
             <p className="text-slate-400 text-xs mt-1">Pre-plan any year's celebration timeline in draft before publishing.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* 🚀 Dynamic Future Proof Year Selector Selector */}
+            {/* 🚀 Dynamic Future Proof Year Selector */}
             <div className="flex items-center gap-2 border border-white/10 bg-white/5 rounded-lg px-2">
               <span className="text-xs text-slate-400 font-bold uppercase">Year:</span>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -591,10 +586,7 @@ export default function BroadcastLabPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {schedules.map((item, index) => {
-                    // DEBUG 2
-                    console.log("ROW DATA", index, item);
-                    return (
+                  {schedules.map((item, index) => (
                     <tr key={index} className="hover:bg-slate-50/50 transition-colors">
                       {/* Event Column (Clean Festival & Corporate selector) */}
                       <td className="p-4">
@@ -605,15 +597,8 @@ export default function BroadcastLabPage() {
                               value={item.type || 'FESTIVAL'} 
                               onValueChange={(v) => {
                                 const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (safeTypesList[0] || 'ANNOUNCEMENT');
-                                
-                                // 🚀 80% BUG FIX: Direct State Update instead of two separate async calls
-                                const updated = [...schedules];
-                                updated[index] = {
-                                  ...updated[index],
-                                  type: v,
-                                  festival_key: defaultKey
-                                };
-                                setSchedules(updated);
+                                handleScheduleRowChange(index, 'type', v);
+                                handleScheduleRowChange(index, 'festival_key', defaultKey);
                               }}
                             >
                               <SelectTrigger className="h-9 rounded-lg w-48 border-slate-200 text-xs font-black">
@@ -634,21 +619,6 @@ export default function BroadcastLabPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
-                                
-                                {/* DEBUG 3 */}
-                                {console.log("TYPE CHECK", item.type, item.type === 'CORPORATE', safeTypesList)}
-
-                                {/* DEBUG 4: TEMP PRE BLOCK */}
-                                <div>
-                                  <pre className="text-[10px] bg-red-50 p-2 mb-2 rounded border border-red-200 overflow-x-auto">
-                                    {JSON.stringify({
-                                      type: item.type,
-                                      festival_key: item.festival_key,
-                                      safeTypesList
-                                    }, null, 2)}
-                                  </pre>
-                                </div>
-
                                 {item.type === 'CORPORATE' ? (
                                   safeTypesList.map(t => (
                                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
@@ -710,8 +680,7 @@ export default function BroadcastLabPage() {
                         </Button>
                       </td>
                     </tr>
-                    )
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>
