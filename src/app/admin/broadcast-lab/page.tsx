@@ -10,15 +10,15 @@ import {
   Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2, 
   Calendar, Clock, Plus, Save, RotateCcw, AlertTriangle 
 } from 'lucide-react';
-import Link from 'next/link'; // 🚀 FIXED: Imported correctly from 'next/link'
+import Link from 'next/link';
 
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
   const [dbLists, setDbLists] = useState<{ festivals: string[]; types: string[] }>({ festivals: [], types: [] }); 
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
-  const [totalCount, setTotalCount] = useState(0); // State to store total active db rows
+  const [totalCount, setTotalCount] = useState(0); 
   
-  // Dynamic Year Generator (Current year se 15 saal aage tak automatic future proof)
+  // Dynamic Year Generator
   const currentYear = new Date().getFullYear();
   const yearsList = Array.from({ length: 15 }, (_, i) => (currentYear + i).toString());
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
@@ -76,7 +76,7 @@ export default function BroadcastLabPage() {
         festivals: data.festivals || [],
         types: data.types || []
       });
-      setTotalCount(data.totalCount || 0); // Update the live DB count state
+      setTotalCount(data.totalCount || 0); 
     } catch (err) {
       console.error("Fetch Error:", err);
       toast.error("Database se sync nahi ho saka.");
@@ -86,7 +86,7 @@ export default function BroadcastLabPage() {
   // Run on mount
   useEffect(() => {
     loadListsAndCount();
-    fetchSchedules(); // Mount hone par saved calendar schedule bhi load hoga
+    fetchSchedules(); 
   }, [loadListsAndCount, fetchSchedules]);
 
   // Handler for Start, Stop, and Single Delete Actions (Existing unbroken logic)
@@ -96,7 +96,6 @@ export default function BroadcastLabPage() {
     try {
       setLoading(true);
 
-      // Corporate/Festival consistency key resolution
       const resolvedKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
 
       const res = await fetch('/api/admin/broadcast-lab', {
@@ -136,7 +135,7 @@ export default function BroadcastLabPage() {
       }
 
       await loadListsAndCount();
-      await fetchSchedules(); // Live schedule bhi refresh karein
+      await fetchSchedules(); 
 
     } catch (err: any) {
       toast.error(err.message);
@@ -172,7 +171,7 @@ export default function BroadcastLabPage() {
       }
 
       setBroadcastStatus('draft');
-      toast.success('Database table fully cleared!');
+      toast.success("Database table fully cleared!");
       
       await loadListsAndCount();
       await fetchSchedules();
@@ -250,26 +249,33 @@ export default function BroadcastLabPage() {
     try {
       setLoading(true);
 
-      // 🚀 DEBUG LOGS ADDED BEFORE FETCH
-      console.log("SAVE SCHEDULES PAYLOAD =", schedules);
-      console.log("BEFORE SAVE = ", schedules[0].starts_at);
-      console.log(
-        JSON.stringify(
-          {
-            action: "save_schedules",
-            schedules,
-          },
-          null,
-          2
-        )
-      );
+      // 🚀 CRITICAL FIX: Convert Local UI time back to UTC ISO String before sending to DB
+      const sanitizedSchedules = schedules.map(item => {
+        let startsAt = item.starts_at;
+        let endsAt = item.ends_at;
+
+        // Agar time string me 'Z' ya '+' nahi hai, matlab ye UI se aaya hai (Local Time).
+        // Hum isko wapas UTC me convert kar rahe hain taaki DB me time shift na ho.
+        if (startsAt && !startsAt.endsWith('Z') && !startsAt.includes('+')) {
+          startsAt = new Date(startsAt).toISOString();
+        }
+        if (endsAt && !endsAt.endsWith('Z') && !endsAt.includes('+')) {
+          endsAt = new Date(endsAt).toISOString();
+        }
+
+        return {
+          ...item,
+          starts_at: startsAt,
+          ends_at: endsAt
+        };
+      });
 
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_schedules',
-          schedules: schedules
+          schedules: sanitizedSchedules
         })
       });
 
@@ -278,7 +284,7 @@ export default function BroadcastLabPage() {
 
       toast.success("All festival schedules saved and published!");
       await loadListsAndCount();
-      await fetchSchedules(); // Reload from DB
+      await fetchSchedules(); 
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -406,7 +412,7 @@ export default function BroadcastLabPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="HI">Hindi Only</SelectItem>
-                  <SelectItem value="EN">English Only</SelectItem>
+                  <selectitem value="EN">English Only</SelectItem>
                   <SelectItem value="BOTH">Bilingual (HI + EN)</SelectItem>
                 </SelectContent>
               </Select>
