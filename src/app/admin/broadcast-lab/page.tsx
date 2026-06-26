@@ -215,8 +215,8 @@ export default function BroadcastLabPage() {
       return {
         type: 'FESTIVAL',
         festival_key: fest,
-        starts_at: `${selectedYear}-${monthDayStart}`,
-        ends_at: `${selectedYear}-${monthDayEnd}`,
+        starts_at: `${selectedYear}-${monthDayStart}+05:30`,
+        ends_at: `${selectedYear}-${monthDayEnd}+05:30`,
         is_new: true
       };
     });
@@ -230,8 +230,8 @@ export default function BroadcastLabPage() {
     const newRow = {
       type: 'FESTIVAL', 
       festival_key: dbLists.festivals[0] || 'DIWALI',
-      starts_at: `${selectedYear}-01-01T00:00`,
-      ends_at: `${selectedYear}-01-02T00:00`,
+      starts_at: `${selectedYear}-01-01T00:00+05:30`,
+      ends_at: `${selectedYear}-01-02T00:00+05:30`,
       is_new: true
     };
     setSchedules([newRow, ...schedules]);
@@ -249,20 +249,23 @@ export default function BroadcastLabPage() {
     try {
       setLoading(true);
 
-      // 🚀 CRITICAL FIX: Convert Local UI time back to UTC ISO String before sending to DB
+      // 🚀 CRITICAL FIX: datetime-local se aayi value me koi timezone nahi hoti
+      // Hum explicitly "+05:30" lagate hain taaki koi confusion na ho
       const sanitizedSchedules = schedules.map(item => {
         let startsAt = item.starts_at;
         let endsAt = item.ends_at;
 
-        // Agar time string me 'Z' ya '+' nahi hai, matlab ye UI se aaya hai (Local Time).
-        // Hum isko wapas UTC me convert kar rahe hain taaki DB me time shift na ho.
-        if (startsAt && !startsAt.endsWith('Z') && !startsAt.includes('+')) {
-          startsAt = new Date(startsAt).toISOString();
-        }
-        if (endsAt && !endsAt.endsWith('Z') && !endsAt.includes('+')) {
-          endsAt = new Date(endsAt).toISOString();
+        const isLocalDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt || '');
+        if (isLocalDateTime) {
+          startsAt = startsAt + '+05:30';
         }
 
+        const isLocalDateTimeEnd = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsAt || '');
+        if (isLocalDateTimeEnd) {
+          endsAt = endsAt + '+05:30';
+        }
+
+        // Agar pehle se UTC string hai (Z ya +00:00) toh waise hi chhod do
         return {
           ...item,
           starts_at: startsAt,
