@@ -228,6 +228,10 @@ export default function BroadcastLabPage() {
 
   // B. Add Blank Custom Row (Supports Festival & Corporate Double Selector)
   const handleAddCustomSchedule = () => {
+    // DEBUG 1
+    console.log("DEBUG TYPES =", dbLists.types);
+    console.log("DEBUG FESTIVALS =", dbLists.festivals);
+
     const newRow = {
       type: 'FESTIVAL', // Default type
       festival_key: dbLists.festivals[0] || 'DIWALI',
@@ -235,6 +239,10 @@ export default function BroadcastLabPage() {
       ends_at: `${selectedYear}-01-02T00:00`,
       is_new: true
     };
+
+    // DEBUG 1 (Part 2)
+    console.log("NEW ROW =", newRow);
+
     setSchedules([newRow, ...schedules]);
   };
 
@@ -586,7 +594,10 @@ export default function BroadcastLabPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {schedules.map((item, index) => (
+                  {schedules.map((item, index) => {
+                    // DEBUG 2
+                    console.log("ROW DATA", index, item);
+                    return (
                     <tr key={index} className="hover:bg-slate-50/50 transition-colors">
                       {/* Event Column (Clean Festival & Corporate selector) */}
                       <td className="p-4">
@@ -597,8 +608,15 @@ export default function BroadcastLabPage() {
                               value={item.type || 'FESTIVAL'} 
                               onValueChange={(v) => {
                                 const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (safeTypesList[0] || 'ANNOUNCEMENT');
-                                handleScheduleRowChange(index, 'type', v);
-                                handleScheduleRowChange(index, 'festival_key', defaultKey);
+                                
+                                // 🚀 80% BUG FIX: Direct State Update instead of two separate async calls
+                                const updated = [...schedules];
+                                updated[index] = {
+                                  ...updated[index],
+                                  type: v,
+                                  festival_key: defaultKey
+                                };
+                                setSchedules(updated);
                               }}
                             >
                               <SelectTrigger className="h-9 rounded-lg w-48 border-slate-200 text-xs font-black">
@@ -619,6 +637,21 @@ export default function BroadcastLabPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
+                                
+                                {/* DEBUG 3 */}
+                                {console.log("TYPE CHECK", item.type, item.type === 'CORPORATE', safeTypesList)}
+
+                                {/* DEBUG 4: TEMP PRE BLOCK */}
+                                <div>
+                                  <pre className="text-[10px] bg-red-50 p-2 mb-2 rounded border border-red-200 overflow-x-auto">
+                                    {JSON.stringify({
+                                      type: item.type,
+                                      festival_key: item.festival_key,
+                                      safeTypesList
+                                    }, null, 2)}
+                                  </pre>
+                                </div>
+
                                 {item.type === 'CORPORATE' ? (
                                   safeTypesList.map(t => (
                                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
@@ -680,7 +713,8 @@ export default function BroadcastLabPage() {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
