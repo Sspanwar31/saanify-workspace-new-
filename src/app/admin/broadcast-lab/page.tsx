@@ -638,19 +638,8 @@ export default function BroadcastLabPage() {
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
                                 
-                                {/* DEBUG 3 */}
+                                {/* DEBUG 3: Only console.log is safe here, DOM elements crash Radix UI */}
                                 {console.log("TYPE CHECK", item.type, item.type === 'CORPORATE', safeTypesList)}
-
-                                {/* DEBUG 4: TEMP PRE BLOCK */}
-                                <div>
-                                  <pre className="text-[10px] bg-red-50 p-2 mb-2 rounded border border-red-200 overflow-x-auto">
-                                    {JSON.stringify({
-                                      type: item.type,
-                                      festival_key: item.festival_key,
-                                      safeTypesList
-                                    }, null, 2)}
-                                  </pre>
-                                </div>
 
                                 {item.type === 'CORPORATE' ? (
                                   safeTypesList.map(t => (
