@@ -10,7 +10,7 @@ import {
   Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2, 
   Calendar, Clock, Plus, Save, RotateCcw, AlertTriangle 
 } from 'lucide-react';
-import Link from 'next/navigation';
+import Link from 'next/link'; // 🚀 FIXED: Imported correctly from 'next/link'
 
 export default function BroadcastLabPage() {
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export default function BroadcastLabPage() {
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); // State to store total active db rows
   
-  // Dynamic Year Generator
+  // Dynamic Year Generator (Current year se 15 saal aage tak automatic future proof)
   const currentYear = new Date().getFullYear();
   const yearsList = Array.from({ length: 15 }, (_, i) => (currentYear + i).toString());
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
@@ -34,7 +34,7 @@ export default function BroadcastLabPage() {
     dashboard_overlay: true
   });
 
-  // 🚀 FIXED: Off-set proof local date-time formatter
+  // Timezone safe helper to format ISO timestamp to "YYYY-MM-DDTHH:MM" for datetime-local input
   const formatForDateTimeLocal = (dateString?: string) => {
     if (!dateString) return '';
     const d = new Date(dateString);
@@ -49,11 +49,11 @@ export default function BroadcastLabPage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // 🚀 FIXED: GET Request with 'no-store' cache and Timestamp to bypass NextJS Cache
+  // GET Request with 'no-store' cache and Timestamp to bypass NextJS Cache
   const fetchSchedules = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/broadcast-lab?action=get_schedules&t=${Date.now()}`, {
-        cache: 'no-store' // 🚀 NextJS cache ko bypass karein
+        cache: 'no-store'
       });
       if (!res.ok) throw new Error('Failed to fetch schedules');
       const data = await res.json();
@@ -63,11 +63,11 @@ export default function BroadcastLabPage() {
     }
   }, []);
 
-  // 🚀 FIXED: GET Request with 'no-store' cache and Timestamp
+  // GET Request with 'no-store' cache and Timestamp
   const loadListsAndCount = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/broadcast-lab?t=${Date.now()}`, {
-        cache: 'no-store' // 🚀 NextJS cache ko bypass karein
+        cache: 'no-store'
       });
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
@@ -228,21 +228,13 @@ export default function BroadcastLabPage() {
 
   // B. Add Blank Custom Row (Supports Festival & Corporate Double Selector)
   const handleAddCustomSchedule = () => {
-    // DEBUG 1
-    console.log("DEBUG TYPES =", dbLists.types);
-    console.log("DEBUG FESTIVALS =", dbLists.festivals);
-
     const newRow = {
-      type: 'FESTIVAL', // Default type
+      type: 'FESTIVAL', 
       festival_key: dbLists.festivals[0] || 'DIWALI',
       starts_at: `${selectedYear}-01-01T00:00`,
       ends_at: `${selectedYear}-01-02T00:00`,
       is_new: true
     };
-
-    // DEBUG 1 (Part 2)
-    console.log("NEW ROW =", newRow);
-
     setSchedules([newRow, ...schedules]);
   };
 
@@ -528,7 +520,7 @@ export default function BroadcastLabPage() {
             <p className="text-slate-400 text-xs mt-1">Pre-plan any year's celebration timeline in draft before publishing.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* 🚀 Dynamic Future Proof Year Selector */}
+            {/* 🚀 Dynamic Future Proof Year Selector Selector */}
             <div className="flex items-center gap-2 border border-white/10 bg-white/5 rounded-lg px-2">
               <span className="text-xs text-slate-400 font-bold uppercase">Year:</span>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -594,10 +586,7 @@ export default function BroadcastLabPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {schedules.map((item, index) => {
-                    // DEBUG 2
-                    console.log("ROW DATA", index, item);
-                    return (
+                  {schedules.map((item, index) => (
                     <tr key={index} className="hover:bg-slate-50/50 transition-colors">
                       {/* Event Column (Clean Festival & Corporate selector) */}
                       <td className="p-4">
@@ -609,7 +598,7 @@ export default function BroadcastLabPage() {
                               onValueChange={(v) => {
                                 const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (safeTypesList[0] || 'ANNOUNCEMENT');
                                 
-                                // 🚀 80% BUG FIX: Direct State Update instead of two separate async calls
+                                // 🚀 Direct State Update instead of two separate async calls
                                 const updated = [...schedules];
                                 updated[index] = {
                                   ...updated[index],
@@ -637,10 +626,6 @@ export default function BroadcastLabPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
-                                
-                                {/* DEBUG 3: Only console.log is safe here, DOM elements crash Radix UI */}
-                                {console.log("TYPE CHECK", item.type, item.type === 'CORPORATE', safeTypesList)}
-
                                 {item.type === 'CORPORATE' ? (
                                   safeTypesList.map(t => (
                                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
@@ -702,8 +687,7 @@ export default function BroadcastLabPage() {
                         </Button>
                       </td>
                     </tr>
-                    )
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>
