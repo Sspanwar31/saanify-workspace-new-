@@ -412,7 +412,7 @@ export default function BroadcastLabPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="HI">Hindi Only</SelectItem>
-                  <selectitem value="EN">English Only</SelectItem>
+                  <SelectItem value="EN">English Only</SelectItem>
                   <SelectItem value="BOTH">Bilingual (HI + EN)</SelectItem>
                 </SelectContent>
               </Select>
