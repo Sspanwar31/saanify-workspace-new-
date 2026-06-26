@@ -112,13 +112,14 @@ export async function POST(req: Request) {
 
       for (const item of schedulesArray) {
         const key = item.festival_key;
-        const type = item.type || 'FESTIVAL';
+        // 🚀 FIX: type ki jagah category use kar rahe (DB me type = INFO hai, category me FESTIVAL/CORPORATE save hoga)
+        const category = item.type === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
         const startsAt = item.starts_at;
         const endsAt = item.ends_at;
 
         let asset, content;
 
-        if (type === 'CORPORATE') {
+        if (item.type === 'CORPORATE') {
           const assetRes = await client.query('SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1', [key]);
@@ -161,35 +162,35 @@ export async function POST(req: Request) {
         const existing = await client.query('SELECT id FROM broadcasts WHERE festival_key = $1 LIMIT 1', [key]);
 
         if (existing.rows.length > 0) {
-          // 🚀 FIXED: type=$1 add kiya aur saare placeholders shift kiye
+          // 🚀 FIXED: category=$1 use kar rahe (type nahi)
           await client.query(
             `
             UPDATE broadcasts
             SET
-              type=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
+              category=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
               image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
               resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='active', manual_stop=false, updated_at=NOW()
             WHERE id=$15;
             `,
             [
-              type, resTitle, resMsg, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
+              category, resTitle, resMsg, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
               mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
               resCta, startsAt, endsAt, existing.rows[0].id
             ]
           );
         } else {
-          // 🚀 FIXED: type=$1 add kiya aur saare placeholders shift kiye
+          // 🚀 FIXED: category=$1 use kar rahe (type nahi)
           await client.query(
             `
             INSERT INTO broadcasts (
-              type, title, message, festival_key, hero_visual, hero_config, theme_config,
+              category, title, message, festival_key, hero_visual, hero_config, theme_config,
               image_url, animation_theme, theme_color, resolved_title, resolved_message,
               resolved_cta, starts_at, ends_at, is_active, status, manual_stop, created_at
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'active', false, NOW());
             `,
             [
-              type, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
+              category, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
               mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
               resCta, startsAt, endsAt
             ]
