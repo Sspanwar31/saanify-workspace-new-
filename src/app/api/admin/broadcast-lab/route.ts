@@ -25,7 +25,6 @@ export async function GET(req: Request) {
     // 🚀 NEW: Planner Grid ke liye saved schedules ki list return karein
     if (actionParam === 'get_schedules') {
       client = await getDbClient();
-      // 🚀 FIXED: 'FESTIVAL' as type ko hata diya kyoki 'type' column pehle se table me hai (conflict resolved)
       const res = await client.query(
         `SELECT * FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
       );
@@ -162,33 +161,35 @@ export async function POST(req: Request) {
         const existing = await client.query('SELECT id FROM broadcasts WHERE festival_key = $1 LIMIT 1', [key]);
 
         if (existing.rows.length > 0) {
+          // 🚀 FIXED: type=$1 add kiya aur saare placeholders shift kiye
           await client.query(
             `
             UPDATE broadcasts
             SET
-              title=$1, message=$2, hero_visual=$3, hero_config=$4, theme_config=$5,
-              image_url=$6, animation_theme=$7, theme_color=$8, resolved_title=$9, resolved_message=$10,
-              resolved_cta=$11, starts_at=$12, ends_at=$13, is_active=true, status='active', updated_at=NOW()
-            WHERE id=$14;
+              type=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
+              image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
+              resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='active', manual_stop=false, updated_at=NOW()
+            WHERE id=$15;
             `,
             [
-              resTitle, resMsg, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
+              type, resTitle, resMsg, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
               mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
               resCta, startsAt, endsAt, existing.rows[0].id
             ]
           );
         } else {
+          // 🚀 FIXED: type=$1 add kiya aur saare placeholders shift kiye
           await client.query(
             `
             INSERT INTO broadcasts (
-              title, message, festival_key, hero_visual, hero_config, theme_config,
+              type, title, message, festival_key, hero_visual, hero_config, theme_config,
               image_url, animation_theme, theme_color, resolved_title, resolved_message,
-              resolved_cta, starts_at, ends_at, is_active, status, created_at
+              resolved_cta, starts_at, ends_at, is_active, status, manual_stop, created_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, true, 'active', NOW());
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'active', false, NOW());
             `,
             [
-              resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
+              type, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
               mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
               resCta, startsAt, endsAt
             ]
