@@ -339,20 +339,11 @@ export default function BroadcastLabPage() {
 
   // ╔══════════════════════════════════════════════════════════════════╗
   // ║  🔥 CRITICAL FIX: STRICT BOOLEAN CHECK FOR manual_stop         ║
-  // ║                                                                  ║
-  // ║  PROBLEM: `if (manual_stop)` sab kuch truthy treat kar raha tha ║
-  // ║  - undefined → truthy? NAHI, but DB se 0, "false", null a sakta ║
-  // ║  - Database me column ka type INT ho toh 0 = false, 1 = true   ║
-  // ║  - Agar string "false" aaya toh wo bhi truthy hai JS me!       ║
-  // ║                                                                  ║
-  // ║  FIX: Sirf `true` (boolean) ya `1` (integer) ko hi stop maano  ║
   // ╚══════════════════════════════════════════════════════════════════╝
   const getScheduleStatusBadge = (starts: string, ends: string, manual_stop?: boolean | number | string | null) => {
     const startDate = new Date(starts);
     const endDate = new Date(ends);
 
-    // ✅ STRICT CHECK: Sirf explicitly `true` ya `1` hone par hi "Stopped" dikhao
-    // "false", 0, null, undefined, "", "0" — sab ko "NOT stopped" maano
     const isActuallyStopped = manual_stop === true || manual_stop === 1;
     
     if (isActuallyStopped) {
@@ -662,7 +653,8 @@ export default function BroadcastLabPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
-                                {item.type === 'CORPORATE' ? (
+                                {/* ✅ FIX: Draft me item.type, DB me item.category — dono handle ho rahe */}
+                                {(item.category || item.type) === 'CORPORATE' ? (
                                   safeTypesList.map(t => (
                                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
                                   ))
@@ -675,7 +667,8 @@ export default function BroadcastLabPage() {
                             </Select>
                           </div>
                         ) : (
-                          <Badge variant="outline" className={`font-bold px-3 py-1 ${item.type === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
+                          {/* ✅ FIX: DB se aaya hai toh item.category check karo (type me INFO aata hai) */}
+                          <Badge variant="outline" className={`font-bold px-3 py-1 ${item.category === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
                             {item.festival_key?.replace('_', ' ')}
                           </Badge>
                         )}
