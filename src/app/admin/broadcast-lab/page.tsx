@@ -252,6 +252,7 @@ export default function BroadcastLabPage() {
 
       // 🚀 DEBUG LOGS ADDED BEFORE FETCH
       console.log("SAVE SCHEDULES PAYLOAD =", schedules);
+      console.log("BEFORE SAVE = ", schedules[0].starts_at);
       console.log(
         JSON.stringify(
           {
