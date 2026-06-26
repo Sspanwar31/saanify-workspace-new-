@@ -17,6 +17,10 @@ export default function BroadcastLabPage() {
   const [dbLists, setDbLists] = useState<{ festivals: string[]; types: string[] }>({ festivals: [], types: [] }); 
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); 
+
+  // 🚀 NEW: Real-time clock state — har 30 sec me update hoga
+  // Isse "Live Now" / "Ended" badge auto-refresh hoga bina page reload kiye
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Dynamic Year Generator
   const currentYear = new Date().getFullYear();
@@ -83,11 +87,21 @@ export default function BroadcastLabPage() {
     }
   }, []);
 
-  // Run on mount
+  // 🚀 FIX 1: Initial load
   useEffect(() => {
     loadListsAndCount();
     fetchSchedules(); 
   }, [loadListsAndCount, fetchSchedules]);
+
+  // 🚀 FIX 2: Real-time auto-refresh — har 30 second me clock aur schedules dono update
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date()); // Badge re-render ke liye
+      fetchSchedules();            // DB se latest status lene ke liye
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [fetchSchedules]);
 
   // Handler for Start, Stop, and Single Delete Actions (Existing unbroken logic)
   const handleBroadcastAction = async (
@@ -200,16 +214,16 @@ export default function BroadcastLabPage() {
         case 'REPUBLIC_DAY': monthDayStart = '01-26T00:00'; monthDayEnd = '01-27T00:00'; break;
         case 'NEW_YEAR': monthDayStart = '01-01T00:00'; monthDayEnd = '01-02T00:00'; break;
         case 'HOLI': monthDayStart = '03-03T00:00'; monthDayEnd = '03-05T00:00'; break;
-        case 'INDEPENDENCE_DAY': monthDayStart = '08-15'; monthDayEnd = '08-16'; break;
+        case 'INDEPENDENCE_DAY': monthDayStart = '08-15T00:00'; monthDayEnd = '08-16T00:00'; break;
         case 'DUSSEHRA': monthDayStart = '10-20T00:00'; monthDayEnd = '10-21T00:00'; break;
-        case 'DIWALI': monthDayStart = '11-08T00:00'; monthDayEnd = '11-10'; break;
+        case 'DIWALI': monthDayStart = '11-08T00:00'; monthDayEnd = '11-10T00:00'; break;
         case 'CHRISTMAS': monthDayStart = '12-25T00:00'; monthDayEnd = '12-26T00:00'; break;
         case 'JANMASHTAMI': monthDayStart = '08-25T00:00'; monthDayEnd = '08-26T00:00'; break;
         case 'GURU_NANAK_JAYANTI': monthDayStart = '11-25T00:00'; monthDayEnd = '11-26T00:00'; break;
         case 'GANESH_CHATURTHI': monthDayStart = '09-15T00:00'; monthDayEnd = '09-17T00:00'; break;
         case 'MAHASHIVRATRI': monthDayStart = '02-15T00:00'; monthDayEnd = '02-16T00:00'; break;
-        case 'EID_UL_FITR': monthDayStart = '04-10'; monthDayEnd = '04-11'; break;
-        case 'EID_AL_ADHA': monthDayStart = '06-16'; monthDayEnd = '06-17'; break;
+        case 'EID_UL_FITR': monthDayStart = '04-10T00:00'; monthDayEnd = '04-11T00:00'; break;
+        case 'EID_AL_ADHA': monthDayStart = '06-16T00:00'; monthDayEnd = '06-17T00:00'; break;
       }
 
       return {
@@ -328,15 +342,20 @@ export default function BroadcastLabPage() {
     }
   };
 
-  const getScheduleStatusBadge = (starts: string, ends: string) => {
-    const now = new Date();
+  // 🚀 FIX 3: Ab `currentTime` state use kar rahe — har 30 sec me auto-update
+  const getScheduleStatusBadge = (starts: string, ends: string, manual_stop?: boolean) => {
     const startDate = new Date(starts);
     const endDate = new Date(ends);
 
-    if (now < startDate) {
+    // Agar manually stop kiya hai toh "Stopped" dikhao
+    if (manual_stop) {
+      return <Badge className="bg-red-100 text-red-600 border border-red-200 font-bold">Stopped</Badge>;
+    }
+
+    if (currentTime < startDate) {
       return <Badge className="bg-blue-500/10 text-blue-600 border border-blue-200">Upcoming</Badge>;
     }
-    if (now >= startDate && now <= endDate) {
+    if (currentTime >= startDate && currentTime <= endDate) {
       return (
         <Badge className="bg-green-600 text-white border border-green-700 animate-pulse">
           Live Now
@@ -541,7 +560,7 @@ export default function BroadcastLabPage() {
             <CardTitle className="text-xl font-bold flex items-center gap-2">
               <Calendar className="text-blue-400 w-6 h-6" /> Annual Broadcast Scheduler
             </CardTitle>
-            <p className="text-slate-400 text-xs mt-1">Pre-plan any year's celebration timeline in draft before publishing.</p>
+            <p className="text-slate-400 text-xs mt-1">Auto-refreshes every 30s. Pre-plan any year's celebration timeline in draft before publishing.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
             {/* 🚀 Dynamic Future Proof Year Selector Selector */}
@@ -583,7 +602,7 @@ export default function BroadcastLabPage() {
               onClick={handleSaveAllSchedules}
               disabled={loading}
             >
-              <Save className="w-4 h-4" /> Save All Schedules
+              <Save className="w-4 h-4" /> Save All
             </Button>
           </div>
         </CardHeader>
@@ -603,9 +622,9 @@ export default function BroadcastLabPage() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
                     <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Festival/Event</th>
-                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Starts At (Date/Time)</th>
-                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Ends At (Date/Time)</th>
-                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Timeline Status</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Starts At</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Ends At</th>
+                    <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider">Status</th>
                     <th className="p-4 text-xs font-black uppercase text-slate-400 tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
@@ -694,7 +713,7 @@ export default function BroadcastLabPage() {
                         {item.is_new ? (
                           <Badge className="bg-yellow-500/10 text-yellow-600 border border-yellow-200 font-bold">Draft</Badge>
                         ) : (
-                          getScheduleStatusBadge(item.starts_at, item.ends_at)
+                          getScheduleStatusBadge(item.starts_at, item.ends_at, item.manual_stop)
                         )}
                       </td>
 
