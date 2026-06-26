@@ -18,15 +18,12 @@ export default function BroadcastLabPage() {
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); 
 
-  // 🚀 Real-time clock state — har 30 sec me update hoga
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  // Dynamic Year Generator
   const currentYear = new Date().getFullYear();
   const yearsList = Array.from({ length: 15 }, (_, i) => (currentYear + i).toString());
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
   
-  // State for Hybrid Scheduler Planner List
   const [schedules, setSchedules] = useState<any[]>([]);
 
   const [form, setForm] = useState({
@@ -37,7 +34,6 @@ export default function BroadcastLabPage() {
     dashboard_overlay: true
   });
 
-  // Timezone safe helper
   const formatForDateTimeLocal = (dateString?: string) => {
     if (!dateString) return '';
     const d = new Date(dateString);
@@ -52,7 +48,6 @@ export default function BroadcastLabPage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // GET Request with cache bypass
   const fetchSchedules = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/broadcast-lab?action=get_schedules&t=${Date.now()}`, {
@@ -85,13 +80,11 @@ export default function BroadcastLabPage() {
     }
   }, []);
 
-  // Initial load
   useEffect(() => {
     loadListsAndCount();
     fetchSchedules(); 
   }, [loadListsAndCount, fetchSchedules]);
 
-  // Real-time auto-refresh — har 30 second
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
@@ -101,7 +94,6 @@ export default function BroadcastLabPage() {
     return () => clearInterval(interval);
   }, [fetchSchedules]);
 
-  // Handler for Start, Stop, and Single Delete Actions
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete'
   ) => {
@@ -156,7 +148,6 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // DELETE ALL ACTION
   const handleDeleteAllBroadcasts = async () => {
     const isConfirmed = window.confirm(
       "⚠️ चेतावनी: क्या आप सचमुच डेटाबेस के सभी (All) ब्रॉडकास्ट रिकॉर्ड्स को डिलीट करके टेबल को खाली करना चाहते हैं? इससे लाइव डैशबोर्ड्स से बैनर तुरंत हट जाएंगे।"
@@ -195,9 +186,6 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // ━━━ SCHEDULER HYBRID DYNAMIC ACTIONS ━━━
-
-  // A. Dynamic Year Preset Generator
   const handleLoadYearPreset = () => {
     if (dbLists.festivals.length === 0) {
       toast.error("Database se festivals ki list khali mili!");
@@ -237,7 +225,6 @@ export default function BroadcastLabPage() {
     toast.success(`Loaded all ${generatedDrafts.length} festivals for ${selectedYear}! Review and edit before saving.`);
   };
 
-  // B. Add Blank Custom Row
   const handleAddCustomSchedule = () => {
     const newRow = {
       type: 'FESTIVAL', 
@@ -249,14 +236,12 @@ export default function BroadcastLabPage() {
     setSchedules([newRow, ...schedules]);
   };
 
-  // C. Handle Date/Key Changes in Draft Rows
   const handleScheduleRowChange = (index: number, field: string, value: string) => {
     const updated = [...schedules];
     updated[index] = { ...updated[index], [field]: value };
     setSchedules(updated);
   };
 
-  // D. Save All Schedules (Post to Database)
   const handleSaveAllSchedules = async () => {
     try {
       setLoading(true);
@@ -304,7 +289,6 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // E. Delete Single Row (DB or local draft)
   const handleDeleteRow = async (index: number, dbId?: string) => {
     if (!dbId) {
       setSchedules(schedules.filter((_, i) => i !== index));
@@ -337,9 +321,6 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // ╔══════════════════════════════════════════════════════════════════╗
-  // ║  🔥 CRITICAL FIX: STRICT BOOLEAN CHECK FOR manual_stop         ║
-  // ╚══════════════════════════════════════════════════════════════════╝
   const getScheduleStatusBadge = (starts: string, ends: string, manual_stop?: boolean | number | string | null) => {
     const startDate = new Date(starts);
     const endDate = new Date(ends);
@@ -363,14 +344,12 @@ export default function BroadcastLabPage() {
     return <Badge className="bg-slate-300 text-slate-600">Ended</Badge>;
   };
 
-  // FALLBACK LISTS
   const safeTypesList = dbLists.types.length > 0 
     ? dbLists.types 
     : ['SYSTEM_UPDATE', 'MAINTENANCE', 'SPECIAL_OFFER', 'EMERGENCY', 'ANNOUNCEMENT', 'EVENT'];
 
   return (
     <div className="p-8 space-y-8 bg-slate-50 min-h-screen font-sans">
-      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 flex items-center gap-3">
@@ -386,7 +365,6 @@ export default function BroadcastLabPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
-        {/* CONFIGURATION CARD */}
         <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-900 text-white p-6">
             <CardTitle className="text-lg font-bold">Broadcast Configuration</CardTitle>
@@ -520,7 +498,6 @@ export default function BroadcastLabPage() {
           </CardContent>
         </Card>
 
-        {/* PREVIEW CARD */}
         <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-slate-900 text-white relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent_70%)] opacity-40" />
             <div className="relative p-12 h-full flex flex-col items-center justify-center text-center space-y-8">
@@ -543,7 +520,6 @@ export default function BroadcastLabPage() {
         </Card>
       </div>
 
-      {/* ANNUAL BROADCAST SCHEDULER */}
       <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-12">
         <CardHeader className="bg-slate-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -653,7 +629,6 @@ export default function BroadcastLabPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
-                                {/* ✅ FIX: Draft me item.type, DB me item.category — dono handle ho rahe */}
                                 {(item.category || item.type) === 'CORPORATE' ? (
                                   safeTypesList.map(t => (
                                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
@@ -667,8 +642,8 @@ export default function BroadcastLabPage() {
                             </Select>
                           </div>
                         ) : (
-                          {/* ✅ FIX: DB se aaya hai toh item.category check karo (type me INFO aata hai) */}
-                          <Badge variant="outline" className={'font-bold px-3 py-1 ' + (item.category === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800')}>                       {item.festival_key?.replace('_', ' ')}
+                          <Badge variant="outline" className={`font-bold px-3 py-1 ${item.category === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
+                            {item.festival_key?.replace('_', ' ')}
                           </Badge>
                         )}
                       </td>
