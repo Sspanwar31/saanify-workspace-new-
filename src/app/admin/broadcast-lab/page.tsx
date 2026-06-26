@@ -34,14 +34,20 @@ export default function BroadcastLabPage() {
     dashboard_overlay: true
   });
 
-  // Timezone safe helper to format ISO timestamp to "YYYY-MM-DDTHH:MM" for datetime-local input
+  // 🚀 बिल्कुल सही और टाइमज़ोन-सुरक्षित लोकल डेट-टाइम फ़ॉर्मेटर
   const formatForDateTimeLocal = (dateString?: string) => {
     if (!dateString) return '';
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return '';
-    const offset = d.getTimezoneOffset();
-    const localDate = new Date(d.getTime() - (offset * 60 * 1000));
-    return localDate.toISOString().slice(0, 16);
+    
+    // लोकल ब्राउज़र टाइम के अनुसार सीधे वर्ष, महीना, दिन और समय निकालें (इससे टाइमज़ोन कभी शिफ्ट नहीं होगा)
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   // Database se saved schedules fetch karne ka function
