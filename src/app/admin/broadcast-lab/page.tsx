@@ -668,8 +668,7 @@ export default function BroadcastLabPage() {
                           </div>
                         ) : (
                           {/* ✅ FIX: DB se aaya hai toh item.category check karo (type me INFO aata hai) */}
-                          <Badge variant="outline" className={`font-bold px-3 py-1 ${item.category === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
-                            {item.festival_key?.replace('_', ' ')}
+                          <Badge variant="outline" className={'font-bold px-3 py-1 ' + (item.category === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800')}>                       {item.festival_key?.replace('_', ' ')}
                           </Badge>
                         )}
                       </td>
