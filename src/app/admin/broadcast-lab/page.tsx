@@ -213,7 +213,7 @@ export default function BroadcastLabPage() {
       }
 
       return {
-        type: 'FESTIVAL',
+        category: 'FESTIVAL', // 🚀 FIX 1: DB me column 'category' hai, 'type' nahi
         festival_key: fest,
         starts_at: `${selectedYear}-${monthDayStart}+05:30`,
         ends_at: `${selectedYear}-${monthDayEnd}+05:30`,
@@ -227,7 +227,7 @@ export default function BroadcastLabPage() {
 
   const handleAddCustomSchedule = () => {
     const newRow = {
-      type: 'FESTIVAL', 
+      category: 'FESTIVAL', // 🚀 FIX 1: DB me column 'category' hai
       festival_key: dbLists.festivals[0] || 'DIWALI',
       starts_at: `${selectedYear}-01-01T00:00+05:30`,
       ends_at: `${selectedYear}-01-02T00:00+05:30`,
@@ -279,7 +279,7 @@ export default function BroadcastLabPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save schedules');
 
-      toast.success("All festival schedules saved and published!");
+      toast.success("All schedules saved and published!");
       await loadListsAndCount();
       await fetchSchedules(); 
     } catch (err: any) {
@@ -578,7 +578,7 @@ export default function BroadcastLabPage() {
               <Calendar className="w-12 h-12 mx-auto stroke-1" />
               <p className="font-medium text-sm">No scheduled events found.</p>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Select a Year, click "Load Preset" to dynamically import database drafts, or click "Add Custom" to plan your own.
+                Select a Year, click &quot;Load Preset&quot; to dynamically import database drafts, or click &quot;Add Custom&quot; to plan your own.
               </p>
             </div>
           ) : (
@@ -600,13 +600,13 @@ export default function BroadcastLabPage() {
                         {item.is_new ? (
                           <div className="flex flex-col gap-2">
                             <Select 
-                              value={item.type || 'FESTIVAL'} 
+                              value={item.category || 'FESTIVAL'} 
                               onValueChange={(v) => {
                                 const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (safeTypesList[0] || 'ANNOUNCEMENT');
                                 const updated = [...schedules];
                                 updated[index] = {
                                   ...updated[index],
-                                  type: v,
+                                  category: v, // 🚀 FIX 2: State update me 'category' use karo
                                   festival_key: defaultKey
                                 };
                                 setSchedules(updated);
@@ -629,7 +629,8 @@ export default function BroadcastLabPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
-                                {(item.category || item.type) === 'CORPORATE' ? (
+                                {/* 🚀 FIX 3: Dropdown toggle me bhi 'category' check karo */}
+                                {item.category === 'CORPORATE' ? (
                                   safeTypesList.map(t => (
                                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
                                   ))
