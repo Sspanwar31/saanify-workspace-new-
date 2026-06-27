@@ -88,11 +88,10 @@ export default function BroadcastLabPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
-      fetchSchedules();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [fetchSchedules]);
+  }, []);
 
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete'
