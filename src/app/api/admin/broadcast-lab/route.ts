@@ -118,10 +118,15 @@ export async function POST(req: Request) {
       const schedulesArray = body.schedules || [];
 
       for (const item of schedulesArray) {
-        const key = item.festival_key;
-        
-        // 🚀 FIX: Frontend ab 'category' bhej raha hai, isliye item.category read karo
-        const category = item.category === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
+        const category =
+          item.category === 'CORPORATE'
+            ? 'CORPORATE'
+            : 'FESTIVAL';
+
+        const key =
+          category === 'CORPORATE'
+            ? (item.broadcast_type || item.festival_key)
+            : item.festival_key;
         
         const startsAt = item.starts_at;
         const endsAt = item.ends_at;
@@ -141,7 +146,13 @@ export async function POST(req: Request) {
           content = msgRes.rows[0];
         }
 
-        if (!content || !asset) continue; 
+        if (!content || !asset) {
+          console.error(
+            'Missing asset/content',
+            { key, category }
+          );
+          continue;
+        }
 
         const themeConfig = typeof asset.theme_config === 'string' ? JSON.parse(asset.theme_config) : (asset.theme_config || {});
         const heroConfig = typeof asset.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset.hero_config || {});
@@ -169,7 +180,16 @@ export async function POST(req: Request) {
         const resMsg = content.default_message || content.message_en;
         const resCta = content.cta_text || content.cta_en || 'Celebrate';
 
-        const existing = await client.query('SELECT id FROM broadcasts WHERE festival_key = $1 LIMIT 1', [key]);
+        const existing = await client.query(
+          `
+          SELECT id
+          FROM broadcasts
+          WHERE festival_key = $1
+            AND category = $2
+          LIMIT 1
+          `,
+          [key, category]
+        );
 
         if (existing.rows.length > 0) {
           // 🚀 FIXED: category=$1 use kar rahe
@@ -189,7 +209,7 @@ export async function POST(req: Request) {
             ]
           );
         } else {
-          // 🚀 FIXED: category=$1 use kar rahe
+          // 🚀 FIXED: category=$1 use kar rahe, festival_key = key (not item.festival_key)
           await client.query(
             `
             INSERT INTO broadcasts (
