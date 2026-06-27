@@ -82,6 +82,7 @@ export async function POST(req: Request) {
     const broadcastType = body.broadcast_type;
     const language_mode = body.language_mode || 'BOTH';
     const action = body.action || 'generate';
+    const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
 
     // Consistent targetKey Resolution
     const targetKey = broadcastType || festivalKey;
@@ -186,6 +187,7 @@ export async function POST(req: Request) {
           FROM broadcasts
           WHERE festival_key = $1
             AND category = $2
+            AND broadcast_mode = 'SCHEDULED'
           LIMIT 1
           `,
           [key, category]
@@ -241,9 +243,6 @@ export async function POST(req: Request) {
 
     // ━━━ START ACTION ━━━
     if (action === 'start') {
-      // 🚀 NEW: broadcastMode set based on action
-      const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
-
       // 🚀 FIXED: Sirf MANUAL broadcasts ko stop karo
       await client.query(
         `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE broadcast_mode='MANUAL' AND festival_key != $1`,
@@ -361,15 +360,12 @@ export async function POST(req: Request) {
     if (!resCta) resCta = "Celebrate";
 
     const existingBroadcast = await client.query(
-      `SELECT id FROM broadcasts WHERE festival_key = $1 LIMIT 1`,
-      [resolvedFestivalKey]
+      `SELECT id FROM broadcasts WHERE festival_key = $1 AND broadcast_mode = $2 LIMIT 1`,
+      [resolvedFestivalKey, broadcastMode]
     );
 
     let result;
     const activeStatus = forceActive ? 'active' : 'draft';
-
-    // 🚀 NEW: broadcastMode set based on action
-    const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
 
     if (activeStatus === 'active') {
       // 🚀 FIXED: Sirf MANUAL broadcasts ko stop karo
