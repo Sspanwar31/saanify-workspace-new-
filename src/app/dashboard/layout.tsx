@@ -114,6 +114,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [hasSeenPopup]);
 
+  const checkBroadcastExpiry = useCallback(() => {
+    if (!activeBroadcast?.ends_at) return;
+
+    const now = Date.now();
+    const endTime = new Date(activeBroadcast.ends_at).getTime();
+
+    if (now >= endTime) {
+      console.log('⏰ Broadcast expired locally');
+
+      setActiveBroadcast(null);
+      setShowPopup(false);
+    }
+  }, [activeBroadcast]);
+
   useEffect(() => {
     fetchBroadcasts();
 
@@ -133,6 +147,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return () => { supabase.removeChannel(channel); };
   }, [fetchBroadcasts]);
+
+  useEffect(() => {
+    if (!activeBroadcast?.ends_at) return;
+
+    const interval = setInterval(() => {
+      checkBroadcastExpiry();
+    }, 30000); // 30 sec
+
+    return () => clearInterval(interval);
+  }, [activeBroadcast, checkBroadcastExpiry]);
 
   const handleDismissPopup = () => {
     setShowPopup(false);
