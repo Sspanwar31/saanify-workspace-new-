@@ -260,11 +260,22 @@ export default function BroadcastLabPage() {
           endsAt = endsAt + '+05:30';
         }
 
-        return {
-          ...item,
-          starts_at: startsAt,
-          ends_at: endsAt
-        };
+        // 🚀 FIX: Exact payload format for backend
+        if (item.category === 'CORPORATE') {
+          return {
+            category: 'CORPORATE',
+            broadcast_type: item.festival_key, // UI saves selected corporate type in festival_key
+            starts_at: startsAt,
+            ends_at: endsAt
+          };
+        } else {
+          return {
+            category: 'FESTIVAL',
+            festival_key: item.festival_key,
+            starts_at: startsAt,
+            ends_at: endsAt
+          };
+        }
       });
 
       const res = await fetch('/api/admin/broadcast-lab', {
