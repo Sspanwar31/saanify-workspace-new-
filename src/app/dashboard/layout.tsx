@@ -92,13 +92,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ━━━ 2. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
-    const { data } = await supabase.from('broadcasts').select('*')
-      .eq('is_active', true)
+    const { data } = await supabase
+      .from('broadcasts')
+      .select('*')
       .or('target_audience.eq.BOTH,target_audience.eq.CLIENT')
       .lte('starts_at', now)
       .or(`ends_at.is.null,ends_at.gte.${now}`)
-      .order('priority', { ascending: false }).order('created_at', { ascending: false })
-      .limit(1).maybeSingle();
+      .eq('manual_stop', false)
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     
     if (data) {
       setActiveBroadcast(data);
@@ -146,6 +150,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
 
     return () => { supabase.removeChannel(channel); };
+  }, [fetchBroadcasts]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchBroadcasts();
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, [fetchBroadcasts]);
 
   useEffect(() => {
