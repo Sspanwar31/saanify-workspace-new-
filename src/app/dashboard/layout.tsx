@@ -95,6 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { data } = await supabase
       .from('broadcasts')
       .select('*')
+      .in('broadcast_mode', ['MANUAL', 'SCHEDULED'])
       .or('target_audience.eq.BOTH,target_audience.eq.CLIENT')
       .lte('starts_at', now)
       .or(`ends_at.is.null,ends_at.gte.${now}`)
