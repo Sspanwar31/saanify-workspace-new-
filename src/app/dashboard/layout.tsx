@@ -8,16 +8,13 @@ import ClientSidebar from '@/components/layout/ClientSidebar';
 import { 
   ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles,
   Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing 
-} from 'lucide-react'; // 🚀 NEW: आवश्यक आइकॉन्स इम्पोर्ट किए गए हैं
+} from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// ✅ STEP 3: Renamed import to BroadcastRenderer
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
-
-// ✅ NEW: Import Animation Factory for Background Effects
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
 
 // =========================================================
@@ -100,6 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .lte('starts_at', now)
       .or(`ends_at.is.null,ends_at.gte.${now}`)
       .eq('manual_stop', false)
+      .eq('is_active', true)
       .order('priority', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(1)
@@ -166,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const interval = setInterval(() => {
       checkBroadcastExpiry();
-    }, 5000); // 5 sec
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
@@ -341,7 +339,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       case 'EVENT':
         return <Calendar className="w-5 h-5 shrink-0" />;
       default:
-        // Festivals (Diwali, Holi, Dussehra, etc.) get smooth round-round spinning sparkles
         return (
           <Sparkles 
             className="w-5 h-5 shrink-0 animate-[spin_4s_linear_infinite]" 
@@ -395,25 +392,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           <div className="max-w-7xl mx-auto flex items-center justify-between text-sm tracking-wide">
             <div className="flex items-center gap-4 flex-1 justify-center min-w-0">
-              {/* Dynamic Icon */}
               {renderBroadcastIcon()}
 
-              {/* Pill Badge */}
               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${badgeBgClass}`}>
                 Saanify Pariwar
               </span>
 
-              {/* 🚀 TEXT HIERARCHY WITH DIFFERENT CONTRAST */}
               <div className="flex items-center gap-2.5 min-w-0 truncate text-xs md:text-sm">
-                {/* Title (Always Bold & Full Contrast) */}
                 <span className="font-black uppercase tracking-tight shrink-0 drop-shadow-sm">
                   {activeBroadcast?.resolved_title || activeBroadcast?.title}
                 </span>
                 
-                {/* Separator */}
                 <span className={`opacity-30 shrink-0 select-none ${isLightColor ? 'text-slate-950' : 'text-white'}`}>|</span>
                 
-                {/* Message (Slightly Soft Contrast on Bright/Dark Themes) */}
                 <p className={`truncate font-semibold tracking-wide drop-shadow-sm ${isLightColor ? 'text-slate-900' : 'text-slate-100'}`}>
                   {activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}
                 </p>
