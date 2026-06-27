@@ -199,7 +199,7 @@ export async function POST(req: Request) {
             SET
               category=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
               image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
-              resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='active', manual_stop=false, updated_at=NOW()
+              resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=false, status='scheduled', manual_stop=false, updated_at=NOW()
             WHERE id=$15;
             `,
             [
@@ -217,7 +217,7 @@ export async function POST(req: Request) {
               image_url, animation_theme, theme_color, resolved_title, resolved_message,
               resolved_cta, starts_at, ends_at, is_active, status, manual_stop, created_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'active', false, NOW());
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, false, 'scheduled', false, NOW());
             `,
             [
               category, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
