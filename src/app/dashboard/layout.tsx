@@ -155,7 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const interval = setInterval(() => {
       fetchBroadcasts();
-    }, 15000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [fetchBroadcasts]);
@@ -165,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const interval = setInterval(() => {
       checkBroadcastExpiry();
-    }, 30000); // 30 sec
+    }, 5000); // 5 sec
 
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
