@@ -192,14 +192,14 @@ export async function POST(req: Request) {
         );
 
         if (existing.rows.length > 0) {
-          // 🚀 FIXED: category=$1 use kar rahe
+          // 🚀 FIXED: broadcast_mode='SCHEDULED' force set
           await client.query(
             `
             UPDATE broadcasts
             SET
               category=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
               image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
-              resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=false, status='scheduled', manual_stop=false, updated_at=NOW()
+              resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=false, status='scheduled', broadcast_mode='SCHEDULED', manual_stop=false, updated_at=NOW()
             WHERE id=$15;
             `,
             [
@@ -209,15 +209,15 @@ export async function POST(req: Request) {
             ]
           );
         } else {
-          // 🚀 FIXED: category=$1 use kar rahe, festival_key = key (not item.festival_key)
+          // 🚀 FIXED: broadcast_mode='SCHEDULED' force set
           await client.query(
             `
             INSERT INTO broadcasts (
               category, title, message, festival_key, hero_visual, hero_config, theme_config,
               image_url, animation_theme, theme_color, resolved_title, resolved_message,
-              resolved_cta, starts_at, ends_at, is_active, status, manual_stop, created_at
+              resolved_cta, starts_at, ends_at, is_active, status, broadcast_mode, manual_stop, created_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, false, 'scheduled', false, NOW());
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, false, 'scheduled', 'SCHEDULED', false, NOW());
             `,
             [
               category, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
@@ -241,8 +241,12 @@ export async function POST(req: Request) {
 
     // ━━━ START ACTION ━━━
     if (action === 'start') {
+      // 🚀 NEW: broadcastMode set based on action
+      const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
+
+      // 🚀 FIXED: Sirf MANUAL broadcasts ko stop karo
       await client.query(
-        `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE festival_key != $1`,
+        `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE broadcast_mode='MANUAL' AND festival_key != $1`,
         [targetKey]
       );
 
@@ -260,8 +264,9 @@ export async function POST(req: Request) {
 
     // ━━━ STOP ACTION ━━━
     if (action === 'stop') {
+      // 🚀 FIXED: Sirf MANUAL broadcasts ko stop karo
       const result = await client.query(
-        `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE festival_key=$1 RETURNING *;`,
+        `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE festival_key=$1 AND broadcast_mode='MANUAL' RETURNING *;`,
         [targetKey]
       );
       await client.end();
@@ -363,9 +368,13 @@ export async function POST(req: Request) {
     let result;
     const activeStatus = forceActive ? 'active' : 'draft';
 
+    // 🚀 NEW: broadcastMode set based on action
+    const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
+
     if (activeStatus === 'active') {
+      // 🚀 FIXED: Sirf MANUAL broadcasts ko stop karo
       await client.query(
-        `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE festival_key != $1`,
+        `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE broadcast_mode='MANUAL' AND festival_key != $1`,
         [resolvedFestivalKey]
       );
     }
@@ -377,14 +386,16 @@ export async function POST(req: Request) {
         SET
           title=$1, message=$2, language_mode=$3, hero_visual=$4, hero_config=$5,
           theme_config=$6, image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10,
-          resolved_message=$11, resolved_cta=$12, preview_mode=true, is_active=true, status=$14, updated_at=NOW()
+          resolved_message=$11, resolved_cta=$12, preview_mode=true, is_active=true, status=$14,
+          broadcast_mode=$15,
+          updated_at=NOW()
         WHERE id=$13
         RETURNING *;
         `,
         [
           resTitle, resMsg, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus
+          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, broadcastMode
         ]
       );
     } else {
@@ -393,15 +404,15 @@ export async function POST(req: Request) {
         INSERT INTO broadcasts (
           title, message, festival_key, language_mode, hero_visual, hero_config,
           theme_config, image_url, animation_theme, theme_color, resolved_title, resolved_message,
-          resolved_cta, preview_mode, is_active, content_mode, status, created_at
+          resolved_cta, preview_mode, is_active, content_mode, status, broadcast_mode, created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', $14, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', $14, $15, NOW())
         RETURNING *;
         `,
         [
           resTitle, resMsg, resolvedFestivalKey, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, activeStatus
+          resTitle, resMsg, resCta, activeStatus, broadcastMode
         ]
       );
     }
