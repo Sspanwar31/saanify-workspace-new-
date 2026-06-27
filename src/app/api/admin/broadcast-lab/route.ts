@@ -108,6 +108,13 @@ export async function POST(req: Request) {
 
     // C. SAVE ALL SCHEDULES ACTION (Bulk Scheduler Upsert)
     if (action === 'save_schedules') {
+      console.log(
+        JSON.stringify(
+          body.schedules,
+          null,
+          2
+        )
+      );
       const schedulesArray = body.schedules || [];
 
       for (const item of schedulesArray) {
