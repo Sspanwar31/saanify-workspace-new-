@@ -93,7 +93,7 @@ export default function BroadcastLabPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ STEP 1: id accept karna hoga
+  // ✅ FIXED: ID aur Key Dono ko Support karne wala action handler
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete',
     id?: string
@@ -101,15 +101,20 @@ export default function BroadcastLabPage() {
     try {
       setLoading(true);
 
-      // ✅ STEP 2: API payload me id bhejo
+      // Corporate/Festival consistency key resolution (Manual flow ke liye)
+      const resolvedKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
+
+      // 🚀 FIXED: API payload me ID ke sath festival_key aur broadcast_type ko wapas joda gaya hai
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          id,
+          id, // शेड्यूलर से चलने पर ID जाएगी, मैन्युअल पर undefined रहेगी
           action,
+          festival_key: resolvedKey, // 🚀 RE-ADDED: मैन्युअल पैनल के लिए आवश्यक
+          broadcast_type: form.type !== 'FESTIVAL' ? form.type : undefined, // 🚀 RE-ADDED
           language_mode: form.language_mode,
           dashboard_overlay: form.dashboard_overlay,
           full_screen_animation: form.full_screen_animation
@@ -212,7 +217,7 @@ export default function BroadcastLabPage() {
       }
 
       return {
-        category: 'FESTIVAL', // 🚀 FIX 1: DB me column 'category' hai, 'type' nahi
+        category: 'FESTIVAL', 
         festival_key: fest,
         starts_at: `${selectedYear}-${monthDayStart}+05:30`,
         ends_at: `${selectedYear}-${monthDayEnd}+05:30`,
@@ -226,7 +231,7 @@ export default function BroadcastLabPage() {
 
   const handleAddCustomSchedule = () => {
     const newRow = {
-      category: 'FESTIVAL', // 🚀 FIX 1: DB me column 'category' hai
+      category: 'FESTIVAL', 
       festival_key: dbLists.festivals[0] || 'DIWALI',
       starts_at: `${selectedYear}-01-01T00:00+05:30`,
       ends_at: `${selectedYear}-01-02T00:00+05:30`,
@@ -259,11 +264,10 @@ export default function BroadcastLabPage() {
           endsAt = endsAt + '+05:30';
         }
 
-        // 🚀 FIX: Exact payload format for backend
         if (item.category === 'CORPORATE') {
           return {
             category: 'CORPORATE',
-            broadcast_type: item.festival_key, // UI saves selected corporate type in festival_key
+            broadcast_type: item.festival_key, 
             starts_at: startsAt,
             ends_at: endsAt
           };
@@ -501,6 +505,7 @@ export default function BroadcastLabPage() {
                       🔥 DELETE ALL
                     </Button>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -508,6 +513,7 @@ export default function BroadcastLabPage() {
           </CardContent>
         </Card>
 
+        {/* 👁️ PREVIEW CARD */}
         <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-slate-900 text-white relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1e2d7a_0%,transparent_70%)] opacity-40" />
             <div className="relative p-12 h-full flex flex-col items-center justify-center text-center space-y-8">
@@ -530,6 +536,7 @@ export default function BroadcastLabPage() {
         </Card>
       </div>
 
+      {/* ━━━ 📅 🚀 UPGRADED SECTION: DYNAMIC ANNUAL BROADCAST SCHEDULER (FUTURE PROOF) ━━━ */}
       <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-12">
         <CardHeader className="bg-slate-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -539,6 +546,7 @@ export default function BroadcastLabPage() {
             <p className="text-slate-400 text-xs mt-1">Auto-refreshes every 30s. Pre-plan any year's celebration timeline in draft before publishing.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* 🚀 Dynamic Future Proof Year Selector Selector */}
             <div className="flex items-center gap-2 border border-white/10 bg-white/5 rounded-lg px-2">
               <span className="text-xs text-slate-400 font-bold uppercase">Year:</span>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -640,7 +648,6 @@ export default function BroadcastLabPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="max-h-[250px]">
-                                {/* 🚀 FIX 3: Dropdown toggle me bhi 'category' check karo */}
                                 {item.category === 'CORPORATE' ? (
                                   safeTypesList.map(t => (
                                     <SelectItem key={t} value={t}>{t.replace('_', ' ')}</SelectItem>
@@ -657,7 +664,7 @@ export default function BroadcastLabPage() {
                           <Badge variant="outline" className={`font-bold px-3 py-1 ${item.category === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
                             {item.festival_key?.replace('_', ' ')}
                           </Badge>
-                        ) }
+                        )}
                       </td>
 
                       <td className="p-4">
