@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     const actionParam = url.searchParams.get('action');
 
     // Planner Grid ke liye saved schedules ki list return karein
-    if (actionParam === 'get_schedules') {
+   if (actionParam === 'get_schedules' || actionParam === 'list_schedules') {
       client = await getDbClient('API_System_Health');
       const res = await client.query(
         `SELECT * FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
