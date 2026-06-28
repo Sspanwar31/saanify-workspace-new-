@@ -244,9 +244,11 @@ export async function POST(req: Request) {
         [targetKey]
       );
 
+      const broadcastId = body.id;
+
       const existing = await client.query(
-        `SELECT * FROM broadcasts WHERE festival_key=$1 LIMIT 1`,
-        [targetKey]
+        `SELECT * FROM broadcasts WHERE id=$1 LIMIT 1`,
+        [broadcastId]
       );
 
       if (existing.rows.length > 0) {
@@ -258,22 +260,47 @@ export async function POST(req: Request) {
 
     // ━━━ STOP ACTION ━━━
     if (action === 'stop') {
+      const broadcastId = body.id;
+
       const result = await client.query(
-        `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE festival_key=$1 AND broadcast_mode='MANUAL' RETURNING *;`,
-        [targetKey]
+        `
+        UPDATE broadcasts
+        SET
+          status='stopped',
+          is_active=false,
+          manual_stop=true,
+          updated_at=NOW()
+        WHERE id=$1
+        RETURNING *;
+        `,
+        [broadcastId]
       );
+
       await client.end();
-      return NextResponse.json({ success: true, action: 'stop', data: result.rows[0] || null });
+
+      return NextResponse.json({
+        success: true,
+        action: 'stop',
+        data: result.rows[0] || null
+      });
     }
 
     // ━━━ DELETE ACTION (Single Delete) ━━━
     if (action === 'delete') {
+      const broadcastId = body.id;
+
       const result = await client.query(
-        `DELETE FROM broadcasts WHERE festival_key=$1 RETURNING *`,
-        [targetKey]
+        `DELETE FROM broadcasts WHERE id=$1 RETURNING *`,
+        [broadcastId]
       );
+
       await client.end();
-      return NextResponse.json({ success: true, action: 'delete', data: result.rows[0] || null });
+
+      return NextResponse.json({
+        success: true,
+        action: 'delete',
+        data: result.rows[0] || null
+      });
     }
 
     // ━━━ GENERATE LOGIC ━━━
