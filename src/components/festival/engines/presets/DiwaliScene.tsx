@@ -8,6 +8,8 @@ import BloomLighting from '../effects/BloomLighting';
 import RocketLaunch from '../effects/RocketLaunch';
 import FireworkBurst from '../effects/FireworkBurst';
 
+import /LuxuryRays from '../effects/LuxuryRays.tsx';
+
 export default function DiwaliScene() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
