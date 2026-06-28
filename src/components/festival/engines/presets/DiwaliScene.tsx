@@ -4,32 +4,40 @@ import GoldenParticles from '../../animations/GoldenParticles';
 
 import LuxuryGlow from '../effects/LuxuryGlow';
 import BloomLighting from '../effects/BloomLighting';
+import LuxuryRays from '../effects/LuxuryRays';
 
 import RocketLaunch from '../effects/RocketLaunch';
 import FireworkBurst from '../effects/FireworkBurst';
 
-import LuxuryRays from '../effects/LuxuryRays';
+export default function DiwaliScene({
+  phase,
+}: {
+  phase?: string;
+}) {
 
-export default function DiwaliScene() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
 
-      {/* Premium Ambient Glow */}
-      <LuxuryGlow />
+      {/* INTRO SEQUENCE */}
+      {phase === 'INTRO' && (
+        <>
+          <RocketLaunch />
+          <FireworkBurst />
+        </>
+      )}
 
-      <LuxuryRays />
+      {/* ACTIVE FESTIVAL MODE */}
+      {phase === 'ACTIVE' && (
+        <>
+          <LuxuryGlow />
 
-      {/* Soft Bloom Lighting */}
-      <BloomLighting />
+          <LuxuryRays />
 
-      {/* Festival Entry */}
-       <RocketLaunch />
+          <BloomLighting />
 
-    {/* Firework Celebration */}
-      <FireworkBurst />
-
-      {/* Golden Festival Atmosphere */}
-      <GoldenParticles preset="DIWALI" />
+          <GoldenParticles preset="DIWALI" />
+        </>
+      )}
 
     </div>
   );
