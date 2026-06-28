@@ -117,13 +117,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setActiveBroadcast(data);
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
       
-      // ━━━ STEP 2: Intro ke dauran popup block ━━━
+      // ━━━ UPDATED: Hero Enabled Check Before Intro ━━━
       if (!sessionSeen && !hasSeenPopup) {
-        setFestivalIntro(true);
-        setTimeout(() => {
-          setFestivalIntro(false);
+        if (data.hero_enabled) {
+          setFestivalIntro(true);
+          setTimeout(() => {
+            setFestivalIntro(false);
+            setShowPopup(true);
+          }, 5000);
+        } else {
           setShowPopup(true);
-        }, 5000);
+        }
       } else {
         setShowPopup(false);
       }
@@ -445,8 +449,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━━ STEP 5: AnimationFactory mein introMode pass ━━━ */}
-      {activeBroadcast && (
+      {/* ━━━ UPDATED: AnimationFactory sirf hero_enabled ho toh hi render hoga ━━━ */}
+      {activeBroadcast?.hero_enabled && (
         <AnimationFactory
           introMode={festivalIntro}
           engine={activeBroadcast?.hero_config?.animation}
