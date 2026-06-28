@@ -7,10 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'; 
 import { toast } from 'sonner';
 import { 
-  Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2, 
-  Calendar, Clock, Plus, Save, RotateCcw, AlertTriangle 
+  Sparkles, FlaskConical, ExternalLink, Trash2, 
+  Calendar, Plus, Save, RotateCcw, AlertTriangle 
 } from 'lucide-react';
-// ✅ FIX: next/navigation की जगह next/link use किया गया है
 import Link from 'next/link';
 
 export default function BroadcastLabPage() {
@@ -19,7 +18,6 @@ export default function BroadcastLabPage() {
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); 
   
-  // ✅ FIX: Performance के लिए currentTime state लिया गया है
   const [currentTime, setCurrentTime] = useState(new Date());
   
   const currentYear = new Date().getFullYear();
@@ -36,7 +34,6 @@ export default function BroadcastLabPage() {
     dashboard_overlay: true
   });
 
-  // ✅ FIX: 30 sec me ek bar time update hoga (har row render par nahi)
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
@@ -245,59 +242,124 @@ export default function BroadcastLabPage() {
     setSchedules(updated);
   };
 
+  // 🔍 DEBUG VERSION: Save All Schedules
   const handleSaveAllSchedules = async () => {
     try {
       setLoading(true);
 
-      const sanitizedSchedules = schedules.map(item => {
+      // ━━━ STEP 1: Raw schedules state check ━━━
+      console.log('%c🔍 [DEBUG SAVE] Step 1: Raw schedules state', 'color: #3b82f6; font-weight: bold; font-size: 14px;');
+      console.table(schedules);
+      console.log('Total rows in state:', schedules.length);
+
+      if (schedules.length === 0) {
+        toast.error("Koi schedule nahi hai save karne ke liye!");
+        setLoading(false);
+        return;
+      }
+
+      // ━━━ STEP 2: Sanitization process ━━━
+      console.log('%c🔍 [DEBUG SAVE] Step 2: Starting sanitization...', 'color: #3b82f6; font-weight: bold;');
+
+      const sanitizedSchedules = schedules.map((item, idx) => {
         let startsAt = item.starts_at;
         let endsAt = item.ends_at;
 
+        console.log(`%c  Row ${idx}: Raw starts_at = "${starts_at}" | Raw ends_at = "${endsAt}"`, 'color: #f59e0b;');
+
+        // Timezone fix
         const isLocalDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt || '');
         if (isLocalDateTime) {
           startsAt = startsAt + '+05:30';
+          console.log(`  Row ${idx}: ✅ Appended +05:30 to starts_at → "${startsAt}"`);
+        } else {
+          console.log(`  Row ${idx}: ⚠️ starts_at already has timezone or invalid format`);
         }
 
         const isLocalDateTimeEnd = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsAt || '');
         if (isLocalDateTimeEnd) {
           endsAt = endsAt + '+05:30';
+          console.log(`  Row ${idx}: ✅ Appended +05:30 to ends_at → "${endsAt}"`);
+        } else {
+          console.log(`  Row ${idx}: ⚠️ ends_at already has timezone or invalid format`);
         }
 
+        // Category resolution
         if (item.category === 'CORPORATE') {
-          return {
+          const result = {
             category: 'CORPORATE',
             broadcast_type: item.festival_key, 
             starts_at: startsAt,
             ends_at: endsAt
           };
+          console.log(`  Row ${idx}: 🏢 CORPORATE →`, result);
+          return result;
         } else {
-          return {
+          const result = {
             category: 'FESTIVAL',
             festival_key: item.festival_key,
             starts_at: startsAt,
             ends_at: endsAt
           };
+          console.log(`  Row ${idx}: 🌸 FESTIVAL →`, result);
+          return result;
         }
       });
+
+      // ━━━ STEP 3: Final payload assembly ━━━
+      const finalPayload = {
+        action: 'save_schedules',
+        schedules: sanitizedSchedules
+      };
+
+      console.log('%c🔍 [DEBUG SAVE] Step 3: FINAL PAYLOAD being sent to API', 'color: #10b981; font-weight: bold; font-size: 14px;');
+      console.log(JSON.stringify(finalPayload, null, 2));
+      console.table(sanitizedSchedules);
+
+      // ━━━ STEP 4: API Call ━━━
+      console.log('%c🔍 [DEBUG SAVE] Step 4: Calling /api/admin/broadcast-lab ...', 'color: #8b5cf6; font-weight: bold;');
 
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save_schedules',
-          schedules: sanitizedSchedules
-        })
+        body: JSON.stringify(finalPayload)
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save schedules');
+      // ━━━ STEP 5: Raw Response check ━━━
+      console.log('%c🔍 [DEBUG SAVE] Step 5: Raw Response received', 'color: #8b5cf6; font-weight: bold;');
+      console.log('HTTP Status:', res.status, res.statusText);
+      console.log('OK?', res.ok);
 
+      // Clone before reading (res.json() can only be read once)
+      const responseClone = res.clone();
+      const rawText = await responseClone.text();
+      console.log('Raw Response Body:', rawText);
+
+      const data = await res.json();
+      console.log('%c🔍 [DEBUG SAVE] Step 6: Parsed JSON Response', 'color: #8b5cf6; font-weight: bold;');
+      console.log(data);
+
+      if (!res.ok) {
+        console.error('%c❌ [DEBUG SAVE] API returned error!', 'color: #ef4444; font-weight: bold; font-size: 14px;');
+        console.error('Error from API:', data.error);
+        console.error('Full data object:', data);
+        throw new Error(data.error || 'Failed to save schedules');
+      }
+
+      // ━━━ STEP 7: Success ━━━
+      console.log('%c✅ [DEBUG SAVE] Step 7: SUCCESS! Refreshing lists...', 'color: #10b981; font-weight: bold; font-size: 14px;');
       toast.success("All schedules saved and published!");
       await loadListsAndCount();
       await fetchSchedules(); 
+
     } catch (err: any) {
+      console.error('%c💀 [DEBUG SAVE] CATCH BLOCK HIT!', 'color: #ef4444; font-weight: bold; font-size: 16px; background: #fee2e2; padding: 4px 8px; border-radius: 4px;');
+      console.error('Error message:', err.message);
+      console.error('Full error object:', err);
+      console.error('Error stack:', err.stack);
       toast.error(err.message);
     } finally {
+      console.log('%c🔍 [DEBUG SAVE] FINALLY: Setting loading false', 'color: #6b7280; font-style: italic;');
       setLoading(false);
     }
   };
@@ -334,7 +396,6 @@ export default function BroadcastLabPage() {
     }
   };
 
-  // ✅ FIX: currentTime state use kiya gaya
   const getScheduleStatusBadge = (starts: string, ends: string, manual_stop?: boolean | number | string | null) => {
     const startDate = new Date(starts);
     const endDate = new Date(ends);
@@ -597,7 +658,6 @@ export default function BroadcastLabPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {schedules.map((item, index) => (
-                    // ✅ FIX: Table key safe banaya gaya
                     <tr key={item.id || index} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4">
                         {item.is_new ? (
@@ -674,7 +734,6 @@ export default function BroadcastLabPage() {
                       </td>
 
                       <td className="p-4 text-right">
-                        {/* ✅ SAFE: Sirf Delete Button hai Scheduler Table me */}
                         <Button
                           size="icon"
                           variant="ghost"
