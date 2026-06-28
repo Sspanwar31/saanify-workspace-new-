@@ -12,12 +12,18 @@ export default function AnimationFactory({
   phase?: string;
 }) {
 
+  console.log('ENGINE =', engine);
+  console.log('PRESET =', preset);
+  console.log('PHASE =', phase);
+
   if (!engine) return null;
 
   const Engine =
     AnimationRegistry[
       engine as keyof typeof AnimationRegistry
     ];
+
+  console.log('ENGINE COMPONENT =', Engine);
 
   if (!Engine) return null;
 
