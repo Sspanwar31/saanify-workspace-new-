@@ -90,6 +90,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
+    const { data, error } = await supabase
       .from('broadcasts')
       .select('*')
       .in('broadcast_mode', ['MANUAL', 'SCHEDULED'])
@@ -102,7 +103,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    
+
+    console.log('===== BROADCAST DEBUG =====');
+    console.log('NOW:', now);
+    console.log('DATA:', data);
+    console.log('ERROR:', error);
+    console.log('===========================');
+
+    console.log('FOUND BROADCAST:', data);
     if (data) {
       setActiveBroadcast(data);
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
@@ -112,6 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setShowPopup(false);
       }
     } else {
+      console.log('NO ACTIVE BROADCAST FOUND');
       setActiveBroadcast(null);
       setShowPopup(false);
     }
@@ -381,6 +390,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* ACTIVE BROADCAST BANNER (UPGRADED WITH FIXED CONTRAST & DYNAMIC TEXT HIERARCHY) */}
+      {console.log('ACTIVE BROADCAST STATE =', activeBroadcast)}
       {activeBroadcast && !showPopup && (
         <div 
           className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
