@@ -41,8 +41,15 @@ export default function BroadcastLabPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // 🔧 FIXED: Ab sirf format karega, time shift nahi karega
   const formatForDateTimeLocal = (dateString?: string) => {
     if (!dateString) return '';
+    
+    // Agar already 'YYYY-MM-DDTHH:mm' format mein hai, toh waise hi return karo
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return '';
     
@@ -57,6 +64,7 @@ export default function BroadcastLabPage() {
 
   const fetchSchedules = useCallback(async () => {
     try {
+      // 🔧 FIXED: list_schedules ko bhi support karne diya
       const res = await fetch(`/api/admin/broadcast-lab?action=get_schedules&t=${Date.now()}`, {
         cache: 'no-store'
       });
@@ -242,15 +250,10 @@ export default function BroadcastLabPage() {
     setSchedules(updated);
   };
 
-  // 🔍 DEBUG VERSION: Save All Schedules
+  // 🔧 FIXED: Clean Payload Builder (Spread ...row hata diya)
   const handleSaveAllSchedules = async () => {
     try {
       setLoading(true);
-
-      // ━━━ STEP 1: Raw schedules state check ━━━
-      console.log('%c🔍 [DEBUG SAVE] Step 1: Raw schedules state', 'color: #3b82f6; font-weight: bold; font-size: 14px;');
-      console.table(schedules);
-      console.log('Total rows in state:', schedules.length);
 
       if (schedules.length === 0) {
         toast.error("Koi schedule nahi hai save karne ke liye!");
@@ -258,82 +261,48 @@ export default function BroadcastLabPage() {
         return;
       }
 
-      // ━━━ STEP 2: Sanitization process ━━━
-      console.log('%c🔍 [DEBUG SAVE] Step 2: Starting sanitization...', 'color: #3b82f6; font-weight: bold;');
-
+      // Sirf wahi fields bhejo jo backend chahiye (koi purana hidden field nahi)
       const sanitizedSchedules = schedules.map((item, idx) => {
         let startsAt = item.starts_at;
         let endsAt = item.ends_at;
 
-        // 🔒 Fix incomplete dates like '2026-06-28T17:23' → append ':00'
-        if (startsAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt) === false && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(startsAt || '') === false) {
-          if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt.replace(/\.\d+Z?$/, ''))) {
-            startsAt = startsAt.replace(/\.\d+Z?$/, '') + ':00';
-          }
+        // Agar user ne time change kiya hai toh woh `YYYY-MM-DDTHH:mm` format mein aayega
+        // Backend ko `YYYY-MM-DDTHH:mm:ss+05:30` chahiye
+        if (startsAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt)) {
+          startsAt = startsAt + ':00+05:30';
         }
-        if (endsAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsAt) === false && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(endsAt || '') === false) {
-          if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsAt.replace(/\.\d+Z?$/, ''))) {
-            endsAt = endsAt.replace(/\.\d+Z?$/, '') + ':00';
-          }
+        if (endsAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsAt)) {
+          endsAt = endsAt + ':00+05:30';
         }
 
-        // 🔒 Final fallback — if still invalid, use current time
+        // Fallback
         if (!startsAt || isNaN(new Date(startsAt).getTime())) startsAt = new Date().toISOString();
         if (!endsAt || isNaN(new Date(endsAt).getTime())) endsAt = new Date().toISOString();
 
-        console.log(`%c  Row ${idx}: Raw starts_at = "${startsAt}" | Raw ends_at = "${endsAt}"`, 'color: #f59e0b;');
-
-        // Timezone fix
-        const isLocalDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(startsAt || '');
-        if (isLocalDateTime) {
-          startsAt = startsAt + '+05:30';
-          console.log(`  Row ${idx}: ✅ Appended +05:30 to starts_at → "${startsAt}"`);
-        } else {
-          console.log(`  Row ${idx}: ⚠️ starts_at already has timezone or invalid format`);
-        }
-
-        const isLocalDateTimeEnd = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(endsAt || '');
-        if (isLocalDateTimeEnd) {
-          endsAt = endsAt + '+05:30';
-          console.log(`  Row ${idx}: ✅ Appended +05:30 to ends_at → "${endsAt}"`);
-        } else {
-          console.log(`  Row ${idx}: ⚠️ ends_at already has timezone or invalid format`);
-        }
-
-        // Category resolution
+        // Manual fields, koi spread nahi
         if (item.category === 'CORPORATE') {
-          const result = {
+          return {
             category: 'CORPORATE',
             broadcast_type: item.festival_key, 
             starts_at: startsAt,
             ends_at: endsAt
           };
-          console.log(`  Row ${idx}: 🏢 CORPORATE →`, result);
-          return result;
         } else {
-          const result = {
+          return {
             category: 'FESTIVAL',
             festival_key: item.festival_key,
             starts_at: startsAt,
             ends_at: endsAt
           };
-          console.log(`  Row ${idx}: 🌸 FESTIVAL →`, result);
-          return result;
         }
       });
 
-      // ━━━ STEP 3: Final payload assembly ━━━
+      console.log('%c📤 [SAVE PAYLOAD] Final data being sent:', 'color: green; font-weight: bold;', sanitizedSchedules);
+
       const finalPayload = {
         action: 'save_schedules',
         schedules: sanitizedSchedules
       };
-
-      console.log('%c🔍 [DEBUG SAVE] Step 3: FINAL PAYLOAD being sent to API', 'color: #10b981; font-weight: bold; font-size: 14px;');
-      console.log(JSON.stringify(finalPayload, null, 2));
-      console.table(sanitizedSchedules);
-
-      // ━━━ STEP 4: API Call ━━━
-      console.log('%c🔍 [DEBUG SAVE] Step 4: Calling /api/admin/broadcast-lab ...', 'color: #8b5cf6; font-weight: bold;');
 
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
@@ -341,41 +310,20 @@ export default function BroadcastLabPage() {
         body: JSON.stringify(finalPayload)
       });
 
-      // ━━━ STEP 5: Raw Response check ━━━
-      console.log('%c🔍 [DEBUG SAVE] Step 5: Raw Response received', 'color: #8b5cf6; font-weight: bold;');
-      console.log('HTTP Status:', res.status, res.statusText);
-      console.log('OK?', res.ok);
-
-      // Clone before reading (res.json() can only be read once)
-      const responseClone = res.clone();
-      const rawText = await responseClone.text();
-      console.log('Raw Response Body:', rawText);
-
       const data = await res.json();
-      console.log('%c🔍 [DEBUG SAVE] Step 6: Parsed JSON Response', 'color: #8b5cf6; font-weight: bold;');
-      console.log(data);
 
       if (!res.ok) {
-        console.error('%c❌ [DEBUG SAVE] API returned error!', 'color: #ef4444; font-weight: bold; font-size: 14px;');
-        console.error('Error from API:', data.error);
-        console.error('Full data object:', data);
         throw new Error(data.error || 'Failed to save schedules');
       }
 
-      // ━━━ STEP 7: Success ━━━
-      console.log('%c✅ [DEBUG SAVE] Step 7: SUCCESS! Refreshing lists...', 'color: #10b981; font-weight: bold; font-size: 14px;');
       toast.success("All schedules saved and published!");
       await loadListsAndCount();
       await fetchSchedules(); 
 
     } catch (err: any) {
-      console.error('%c💀 [DEBUG SAVE] CATCH BLOCK HIT!', 'color: #ef4444; font-weight: bold; font-size: 16px; background: #fee2e2; padding: 4px 8px; border-radius: 4px;');
-      console.error('Error message:', err.message);
-      console.error('Full error object:', err);
-      console.error('Error stack:', err.stack);
+      console.error("Save Error:", err);
       toast.error(err.message);
     } finally {
-      console.log('%c🔍 [DEBUG SAVE] FINALLY: Setting loading false', 'color: #6b7280; font-style: italic;');
       setLoading(false);
     }
   };
