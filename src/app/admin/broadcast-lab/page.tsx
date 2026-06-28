@@ -93,26 +93,26 @@ export default function BroadcastLabPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // ✅ STEP 1: id accept karna hoga
   const handleBroadcastAction = async (
-    action: 'start' | 'stop' | 'delete'
+    action: 'start' | 'stop' | 'delete',
+    id?: string
   ) => {
     try {
       setLoading(true);
 
-      const resolvedKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
-
+      // ✅ STEP 2: API payload me id bhejo
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          festival_key: resolvedKey,
+          id,
           action,
           language_mode: form.language_mode,
           dashboard_overlay: form.dashboard_overlay,
-          full_screen_animation: form.full_screen_animation,
-          broadcast_type: form.type !== 'FESTIVAL' ? form.type : undefined
+          full_screen_animation: form.full_screen_animation
         })
       });
 
@@ -605,7 +605,8 @@ export default function BroadcastLabPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {schedules.map((item, index) => (
-                    <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                    // ✅ STEP 6: Table key improve kiya
+                    <tr key={item.id || index} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4">
                         {item.is_new ? (
                           <div className="flex flex-col gap-2">
@@ -656,7 +657,7 @@ export default function BroadcastLabPage() {
                           <Badge variant="outline" className={`font-bold px-3 py-1 ${item.category === 'CORPORATE' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-100 border-slate-200 text-slate-800'}`}>
                             {item.festival_key?.replace('_', ' ')}
                           </Badge>
-                        )}
+                        ) }
                       </td>
 
                       <td className="p-4">
@@ -686,15 +687,32 @@ export default function BroadcastLabPage() {
                       </td>
 
                       <td className="p-4 text-right">
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
-                          onClick={() => handleDeleteRow(index, item.id)}
-                          disabled={loading}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {/* ✅ STEP 3: Table me row level Start/Stop/Delete add kiya */}
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleBroadcastAction('start', item.id)}
+                            disabled={loading}
+                          >
+                            Start
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleBroadcastAction('stop', item.id)}
+                            disabled={loading}
+                          >
+                            Stop
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeleteRow(index, item.id)}
+                            disabled={loading}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
