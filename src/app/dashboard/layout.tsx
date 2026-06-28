@@ -51,6 +51,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
 
+  // ━━━ STEP 1: Festival Intro State ━━━
+  const [festivalIntro, setFestivalIntro] = useState(false);
+
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
     const fetchInitialSettings = async () => {
@@ -113,15 +116,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (data) {
       setActiveBroadcast(data);
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
+      
+      // ━━━ STEP 2: Intro ke dauran popup block ━━━
       if (!sessionSeen && !hasSeenPopup) {
-        setShowPopup(true);
+        setFestivalIntro(true);
+        setTimeout(() => {
+          setFestivalIntro(false);
+          setShowPopup(true);
+        }, 5000);
       } else {
         setShowPopup(false);
       }
     } else {
       console.log('NO ACTIVE BROADCAST FOUND');
+      
+      // ━━━ STEP 3: Remove intro jab broadcast khatam ━━━
       setActiveBroadcast(null);
       setShowPopup(false);
+      setFestivalIntro(false);
     }
   }, [hasSeenPopup]);
 
@@ -134,8 +146,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (now >= endTime) {
       console.log('⏰ Broadcast expired locally');
 
+      // ━━━ STEP 4: Expiry par intro bhi remove ━━━
       setActiveBroadcast(null);
       setShowPopup(false);
+      setFestivalIntro(false);
     }
   }, [activeBroadcast]);
 
@@ -388,9 +402,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ACTIVE BROADCAST BANNER (UPGRADED WITH FIXED CONTRAST & DYNAMIC TEXT HIERARCHY) */}
+      {/* ━━━ STEP 7: Banner bhi intro ke time hide ━━━ */}
       {console.log('ACTIVE BROADCAST STATE =', activeBroadcast)}
-      {activeBroadcast && !showPopup && (
+      {activeBroadcast &&
+        !showPopup &&
+        !festivalIntro && (
         <div 
           className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
           style={{
@@ -429,16 +445,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ✅ NEW: FULL SCREEN ANIMATIONS BEHIND POPUP */}
+      {/* ━━━ STEP 5: AnimationFactory mein introMode pass ━━━ */}
       {activeBroadcast && (
         <AnimationFactory
+          introMode={festivalIntro}
           engine={activeBroadcast?.hero_config?.animation}
           preset={activeBroadcast?.festival_key}
         />
       )}
 
-      {/* HERO POPUP MODAL */}
-      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+      {/* ━━━ STEP 6: Popup intro ke dauran nahi khulna chahiye ━━━ */}
+      <Dialog
+        open={showPopup && !festivalIntro}
+        onOpenChange={setShowPopup}
+      >
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
            <BroadcastRenderer
              broadcast={activeBroadcast}
