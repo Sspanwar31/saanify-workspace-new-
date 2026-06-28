@@ -5,17 +5,27 @@ import DevDeepawaliScene from './presets/DevDeepawaliScene';
 
 export default function SpiritualEngine({
   preset,
+  phase,
 }: {
   preset?: string;
+  phase?: string;
 }) {
 
   switch (preset) {
 
     case 'DIWALI':
-      return <DiwaliScene />;
+      return (
+        <DiwaliScene
+          phase={phase}
+        />
+      );
 
     case 'DEV_DEEPAWALI':
-      return <DevDeepawaliScene />;
+      return (
+        <DevDeepawaliScene
+          phase={phase}
+        />
+      );
 
     default:
       return null;
