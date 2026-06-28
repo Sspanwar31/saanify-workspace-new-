@@ -3,6 +3,7 @@ import { Client } from 'pg';
 
 export const dynamic = 'force-dynamic';
 
+// ✅ MODERN CHANGE: DB Tracking ke liye application_name set karne wala client generator
 const getDbClient = async (appName: string = 'API_Broadcast_Lab') => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL missing');
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
     if (actionParam === 'get_schedules') {
       client = await getDbClient('API_System_Health');
       const res = await client.query(
-        `SELECT *, 'FESTIVAL' as type FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
+        `SELECT * FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
       );
       await client.end();
       return NextResponse.json({ schedules: res.rows });
@@ -79,6 +80,10 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
+    
+    // 🚀 DEBUG LOG: Takii agar koi payload mismatch ho, toh Vercel Logs me dikh jaye
+    console.log("📥 POST API BODY RECEIVED:", JSON.stringify(body, null, 2));
+
     client = await getDbClient('API_Broadcast_Lab');
 
     const festivalKey = body.festival_key;
@@ -115,7 +120,7 @@ export async function POST(req: Request) {
       const schedulesArray = body.schedules || [];
 
       for (const item of schedulesArray) {
-        // 🚀 "type" (from frontend) ko SQL "category" ke sath map karein
+        // "type" ko SQL "category" ke sath map karein
         const category = item.type === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
         const key = item.festival_key;
         const startsAt = item.starts_at;
@@ -129,7 +134,7 @@ export async function POST(req: Request) {
           const msgRes = await client.query('SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1', [key]);
           content = msgRes.rows[0];
         } else {
-          // 🚀 FIXED: Parameter array me [festivalKey] ki jagah sahi local variable [key] pass kiya (scoping resolved)
+          // 🚀 FIXED: Loop ke andar local key variable ka upayog kiya (database reference fix)
           const assetRes = await client.query('SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1', [key]);
@@ -137,7 +142,7 @@ export async function POST(req: Request) {
         }
 
         if (!content || !asset) {
-          console.error('Missing asset/content for schedule:', { key, category });
+          console.error('Missing asset/content for schedule row:', { key, category });
           continue;
         }
 
@@ -162,7 +167,6 @@ export async function POST(req: Request) {
           background_style: themeConfig.background_style || 'DARK_GOLD'
         };
 
-        // Aligned Language Resolution
         const resTitle = content.default_title || content.title_en;
         const resMsg = content.default_message || content.message_en;
         const resCta = content.cta_text || content.cta_en || 'Celebrate';
@@ -369,6 +373,7 @@ export async function POST(req: Request) {
 
     let result;
     const activeStatus = forceActive ? 'active' : 'draft';
+    const resolvedCategory = corpCheck.rows.length > 0 ? 'CORPORATE' : 'FESTIVAL'; // 🚀 NEW: Category check for manual flow
 
     if (activeStatus === 'active') {
       await client.query(
@@ -385,7 +390,7 @@ export async function POST(req: Request) {
           title=$1, message=$2, language_mode=$3, hero_visual=$4, hero_config=$5,
           theme_config=$6, image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10,
           resolved_message=$11, resolved_cta=$12, preview_mode=true, is_active=true, status=$14,
-          broadcast_mode=$15,
+          category=$15,
           updated_at=NOW()
         WHERE id=$13
         RETURNING *;
@@ -393,7 +398,7 @@ export async function POST(req: Request) {
         [
           resTitle, resMsg, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, broadcastMode
+          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, resolvedCategory // 🚀 Category parameter added
         ]
       );
     } else {
@@ -402,15 +407,15 @@ export async function POST(req: Request) {
         INSERT INTO broadcasts (
           title, message, festival_key, language_mode, hero_visual, hero_config,
           theme_config, image_url, animation_theme, theme_color, resolved_title, resolved_message,
-          resolved_cta, preview_mode, is_active, content_mode, status, broadcast_mode, created_at
+          resolved_cta, preview_mode, is_active, content_mode, status, broadcast_mode, category, created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', $14, $15, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', $14, $15, $16, NOW())
         RETURNING *;
         `,
         [
           resTitle, resMsg, resolvedFestivalKey, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, activeStatus, broadcastMode
+          resTitle, resMsg, resCta, activeStatus, broadcastMode, resolvedCategory // 🚀 Category parameter added
         ]
       );
     }
