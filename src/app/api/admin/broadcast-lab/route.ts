@@ -116,15 +116,40 @@ export async function POST(req: Request) {
     }
 
     // C. SAVE ALL SCHEDULES ACTION (Bulk Scheduler Upsert)
+    // 🔧 FIXED: category mapping, key resolution, aur debug logging
     if (action === 'save_schedules') {
       const schedulesArray = body.schedules || [];
+      
+      // 🐛 DEBUG: Track kya ho raha hai har row ke sath
+      const debugLog: string[] = [];
+      let insertedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
 
-      for (const item of schedulesArray) {
-        // "type" ko SQL "category" ke sath map karein
-        const category = item.type === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
-        const key = item.festival_key;
+      for (let i = 0; i < schedulesArray.length; i++) {
+        const item = schedulesArray[i];
+        
+        // 🔧 FIX 1: item.type nahi — item.category check karo (frontend category bhejta hai)
+        const category = item.category === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
+        
+        // 🔧 FIX 2: CORPORATE ke liye broadcast_type, FESTIVAL ke liye festival_key use karo
+        const key = category === 'CORPORATE' ? item.broadcast_type : item.festival_key;
         const startsAt = item.starts_at;
         const endsAt = item.ends_at;
+
+        debugLog.push(`[Row ${i}] category=${category}, key="${key}", starts="${startsAt}", ends="${endsAt}"`);
+
+        // Basic validation
+        if (!key) {
+          debugLog.push(`[Row ${i}] ❌ SKIPPED: key is empty/undefined`);
+          skippedCount++;
+          continue;
+        }
+        if (!startsAt || !endsAt) {
+          debugLog.push(`[Row ${i}] ❌ SKIPPED: missing dates`);
+          skippedCount++;
+          continue;
+        }
 
         let asset, content;
 
@@ -133,17 +158,34 @@ export async function POST(req: Request) {
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1', [key]);
           content = msgRes.rows[0];
+          debugLog.push(`[Row ${i}] CORPORATE lookup: asset_found=${!!asset}, content_found=${!!content}`);
         } else {
-          // 🚀 FIXED: Loop ke andar local key variable ka upayog kiya (database reference fix)
           const assetRes = await client.query('SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1', [key]);
           content = msgRes.rows[0];
+          debugLog.push(`[Row ${i}] FESTIVAL lookup: asset_found=${!!asset}, content_found=${!!content}`);
         }
 
+        // 🔧 FIX 3: Agar asset/content nahi mila toh basic default banao — skip mat karo
         if (!content || !asset) {
-          console.error('Missing asset/content for schedule row:', { key, category });
-          continue;
+          debugLog.push(`[Row ${i}] ⚠️ Asset/Content missing in DB for "${key}". Creating minimal entry...`);
+          
+          // Minimal fallback — database mein entry bana do agar nahi hai
+          if (!asset) {
+            asset = {
+              theme_config: { primary_color: '#fbbf24', background_style: 'DARK_GOLD' },
+              hero_config: { render_type: 'COMPONENT', visual_key: 'ROYAL_DIYA', animation: 'GOLDEN_PARTICLES', scale: 1.2, speed: 4 },
+              media_config: { web_image: null }
+            };
+          }
+          if (!content) {
+            content = {
+              default_title: key.replace(/_/g, ' '),
+              default_message: `${key.replace(/_/g, ' ')} broadcast scheduled.`,
+              cta_text: 'View'
+            };
+          }
         }
 
         const themeConfig = typeof asset.theme_config === 'string' ? JSON.parse(asset.theme_config) : (asset.theme_config || {});
@@ -167,8 +209,8 @@ export async function POST(req: Request) {
           background_style: themeConfig.background_style || 'DARK_GOLD'
         };
 
-        const resTitle = content.default_title || content.title_en;
-        const resMsg = content.default_message || content.message_en;
+        const resTitle = content.default_title || content.title_en || key.replace(/_/g, ' ');
+        const resMsg = content.default_message || content.message_en || `${key.replace(/_/g, ' ')} broadcast.`;
         const resCta = content.cta_text || content.cta_en || 'Celebrate';
 
         const existing = await client.query(
@@ -183,43 +225,64 @@ export async function POST(req: Request) {
           [key, category]
         );
 
-        if (existing.rows.length > 0) {
-          await client.query(
-            `
-            UPDATE broadcasts
-            SET
-              category=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
-              image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
-              resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='scheduled', broadcast_mode='SCHEDULED', manual_stop=false, updated_at=NOW()
-            WHERE id=$15;
-            `,
-            [
-              category, resTitle, resMsg, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
-              mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
-              resCta, startsAt, endsAt, existing.rows[0].id
-            ]
-          );
-        } else {
-          await client.query(
-            `
-            INSERT INTO broadcasts (
-              category, title, message, festival_key, hero_visual, hero_config, theme_config,
-              image_url, animation_theme, theme_color, resolved_title, resolved_message,
-              resolved_cta, starts_at, ends_at, is_active, status, broadcast_mode, manual_stop, created_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'scheduled', 'SCHEDULED', false, NOW());
-            `,
-            [
-              category, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
-              mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
-              resCta, startsAt, endsAt
-            ]
-          );
+        try {
+          if (existing.rows.length > 0) {
+            await client.query(
+              `
+              UPDATE broadcasts
+              SET
+                category=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
+                image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
+                resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='scheduled', broadcast_mode='SCHEDULED', manual_stop=false, updated_at=NOW()
+              WHERE id=$15;
+              `,
+              [
+                category, resTitle, resMsg, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
+                mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
+                resCta, startsAt, endsAt, existing.rows[0].id
+              ]
+            );
+            debugLog.push(`[Row ${i}] ✅ UPDATED existing id=${existing.rows[0].id}`);
+          } else {
+            const insertRes = await client.query(
+              `
+              INSERT INTO broadcasts (
+                category, title, message, festival_key, hero_visual, hero_config, theme_config,
+                image_url, animation_theme, theme_color, resolved_title, resolved_message,
+                resolved_cta, starts_at, ends_at, is_active, status, broadcast_mode, manual_stop, created_at
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'scheduled', 'SCHEDULED', false, NOW())
+              RETURNING id;
+              `,
+              [
+                category, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
+                mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
+                resCta, startsAt, endsAt
+              ]
+            );
+            debugLog.push(`[Row ${i}] ✅ INSERTED new id=${insertRes.rows[0]?.id}`);
+          }
+          insertedCount++;
+        } catch (dbErr: any) {
+          debugLog.push(`[Row ${i}] ❌ DB ERROR: ${dbErr.message}`);
+          errorCount++;
         }
       }
 
       await client.end();
-      return NextResponse.json({ success: true, action: 'save_schedules' });
+
+      // 🔧 FIX 4: Debug info bhi response mein bhejo taaki frontend console mein dikhe
+      return NextResponse.json({ 
+        success: true, 
+        action: 'save_schedules',
+        debug: {
+          total: schedulesArray.length,
+          inserted: insertedCount,
+          skipped: skippedCount,
+          errors: errorCount,
+          log: debugLog
+        }
+      });
     }
 
     // 🚀 FIXED: save_schedules aur baki table actions ko targetKey restriction se surakshit karein
@@ -373,7 +436,7 @@ export async function POST(req: Request) {
 
     let result;
     const activeStatus = forceActive ? 'active' : 'draft';
-    const resolvedCategory = corpCheck.rows.length > 0 ? 'CORPORATE' : 'FESTIVAL'; // 🚀 NEW: Category check for manual flow
+    const resolvedCategory = corpCheck.rows.length > 0 ? 'CORPORATE' : 'FESTIVAL';
 
     if (activeStatus === 'active') {
       await client.query(
@@ -398,7 +461,7 @@ export async function POST(req: Request) {
         [
           resTitle, resMsg, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, resolvedCategory // 🚀 Category parameter added
+          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, resolvedCategory
         ]
       );
     } else {
@@ -415,7 +478,7 @@ export async function POST(req: Request) {
         [
           resTitle, resMsg, resolvedFestivalKey, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, activeStatus, broadcastMode, resolvedCategory // 🚀 Category parameter added
+          resTitle, resMsg, resCta, activeStatus, broadcastMode, resolvedCategory
         ]
       );
     }
