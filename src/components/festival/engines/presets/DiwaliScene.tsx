@@ -8,7 +8,7 @@ import BloomLighting from '../effects/BloomLighting';
 import RocketLaunch from '../effects/RocketLaunch';
 import FireworkBurst from '../effects/FireworkBurst';
 
-import /LuxuryRays from '../effects/LuxuryRays.tsx';
+import LuxuryRays from '../effects/LuxuryRays';
 
 export default function DiwaliScene() {
   return (
