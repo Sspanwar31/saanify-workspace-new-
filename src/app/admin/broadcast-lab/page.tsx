@@ -265,10 +265,26 @@ export default function BroadcastLabPage() {
         let startsAt = item.starts_at;
         let endsAt = item.ends_at;
 
-        console.log(`%c  Row ${idx}: Raw starts_at = "${starts_at}" | Raw ends_at = "${endsAt}"`, 'color: #f59e0b;');
+        // 🔒 Fix incomplete dates like '2026-06-28T17:23' → append ':00'
+        if (startsAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt) === false && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(startsAt || '') === false) {
+          if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt.replace(/\.\d+Z?$/, ''))) {
+            startsAt = startsAt.replace(/\.\d+Z?$/, '') + ':00';
+          }
+        }
+        if (endsAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsAt) === false && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(endsAt || '') === false) {
+          if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsAt.replace(/\.\d+Z?$/, ''))) {
+            endsAt = endsAt.replace(/\.\d+Z?$/, '') + ':00';
+          }
+        }
+
+        // 🔒 Final fallback — if still invalid, use current time
+        if (!startsAt || isNaN(new Date(startsAt).getTime())) startsAt = new Date().toISOString();
+        if (!endsAt || isNaN(new Date(endsAt).getTime())) endsAt = new Date().toISOString();
+
+        console.log(`%c  Row ${idx}: Raw starts_at = "${startsAt}" | Raw ends_at = "${endsAt}"`, 'color: #f59e0b;');
 
         // Timezone fix
-        const isLocalDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsAt || '');
+        const isLocalDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(startsAt || '');
         if (isLocalDateTime) {
           startsAt = startsAt + '+05:30';
           console.log(`  Row ${idx}: ✅ Appended +05:30 to starts_at → "${startsAt}"`);
@@ -276,7 +292,7 @@ export default function BroadcastLabPage() {
           console.log(`  Row ${idx}: ⚠️ starts_at already has timezone or invalid format`);
         }
 
-        const isLocalDateTimeEnd = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsAt || '');
+        const isLocalDateTimeEnd = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(endsAt || '');
         if (isLocalDateTimeEnd) {
           endsAt = endsAt + '+05:30';
           console.log(`  Row ${idx}: ✅ Appended +05:30 to ends_at → "${endsAt}"`);
