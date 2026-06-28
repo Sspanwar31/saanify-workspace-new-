@@ -89,7 +89,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ━━━ 2. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
-    const { data } = await supabase
     const { data, error } = await supabase
       .from('broadcasts')
       .select('*')
