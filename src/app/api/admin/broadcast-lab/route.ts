@@ -4,11 +4,17 @@ import { Client } from 'pg';
 // 🚀 Vercel build error aur crash se bachne ke liye force-dynamic set karein
 export const dynamic = 'force-dynamic';
 
-const getDbClient = async () => {
+// ✅ MODERN CHANGE: DB Tracking ke liye application_name add kiya gaya
+const getDbClient = async (appName: string = 'API_Broadcast_Lab') => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL missing');
+  
+  const urlWithAppName = connectionString.includes('?') 
+    ? `${connectionString}&application_name=${appName}`
+    : `${connectionString}?application_name=${appName}`;
+
   const client = new Client({
-    connectionString,
+    connectionString: urlWithAppName,
     ssl: { rejectUnauthorized: false },
   });
   await client.connect();
@@ -24,7 +30,7 @@ export async function GET(req: Request) {
 
     // 🚀 NEW: Planner Grid ke liye saved schedules ki list return karein
     if (actionParam === 'get_schedules') {
-      client = await getDbClient();
+      client = await getDbClient('API_System_Health'); // ✅ MODERN CHANGE
       const res = await client.query(
         `SELECT * FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
       );
@@ -33,7 +39,7 @@ export async function GET(req: Request) {
     }
 
     // Default lists load karne ke liye code
-    client = await getDbClient();
+    client = await getDbClient('API_System_Health'); // ✅ MODERN CHANGE
     if (!client) throw new Error("DB connection failed");
 
     // Fetch Festival Keys
@@ -76,13 +82,13 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    client = await getDbClient();
+    client = await getDbClient('API_Broadcast_Lab'); // ✅ MODERN CHANGE
 
     const festivalKey = body.festival_key;
     const broadcastType = body.broadcast_type;
     const language_mode = body.language_mode || 'BOTH';
     const action = body.action || 'generate';
-    const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
+    const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED'; // ✅ SAFE: Variable readability ke liye waise hi rakha
 
     // Consistent targetKey Resolution
     const targetKey = broadcastType || festivalKey;
@@ -109,13 +115,7 @@ export async function POST(req: Request) {
 
     // C. SAVE ALL SCHEDULES ACTION (Bulk Scheduler Upsert)
     if (action === 'save_schedules') {
-      console.log(
-        JSON.stringify(
-          body.schedules,
-          null,
-          2
-        )
-      );
+      // ✅ SAFE CHANGE: Unnecessary heavy JSON.stringify log हटा दिया
       const schedulesArray = body.schedules || [];
 
       for (const item of schedulesArray) {
@@ -134,7 +134,7 @@ export async function POST(req: Request) {
 
         let asset, content;
 
-        // 🚀 FIX: item.type ki jagah 'category' variable use karo
+        // ✅ SAFE: 'category' variable hi use kiya (type नहीं जिससे error आता)
         if (category === 'CORPORATE') {
           const assetRes = await client.query('SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
@@ -147,11 +147,9 @@ export async function POST(req: Request) {
           content = msgRes.rows[0];
         }
 
+        // ✅ SAFE CHANGE: Useful error log रखा ताकि pata chale kyun skip hua
         if (!content || !asset) {
-          console.error(
-            'Missing asset/content',
-            { key, category }
-          );
+          console.error('Missing asset/content for schedule:', { key, category });
           continue;
         }
 
@@ -194,14 +192,13 @@ export async function POST(req: Request) {
         );
 
         if (existing.rows.length > 0) {
-          // 🚀 FIXED: broadcast_mode='SCHEDULED' force set
           await client.query(
             `
             UPDATE broadcasts
             SET
               category=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
               image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
-              resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=false, status='scheduled', broadcast_mode='SCHEDULED', manual_stop=false, updated_at=NOW()
+              resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='scheduled', broadcast_mode='SCHEDULED', manual_stop=false, updated_at=NOW()
             WHERE id=$15;
             `,
             [
@@ -211,7 +208,6 @@ export async function POST(req: Request) {
             ]
           );
         } else {
-          // 🚀 FIXED: broadcast_mode='SCHEDULED' force set
           await client.query(
             `
             INSERT INTO broadcasts (
@@ -219,7 +215,7 @@ export async function POST(req: Request) {
               image_url, animation_theme, theme_color, resolved_title, resolved_message,
               resolved_cta, starts_at, ends_at, is_active, status, broadcast_mode, manual_stop, created_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, false, 'scheduled', 'SCHEDULED', false, NOW());
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'scheduled', 'SCHEDULED', false, NOW());
             `,
             [
               category, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
@@ -243,7 +239,6 @@ export async function POST(req: Request) {
 
     // ━━━ START ACTION ━━━
     if (action === 'start') {
-      // 🚀 FIXED: Sirf MANUAL broadcasts ko stop karo
       await client.query(
         `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE broadcast_mode='MANUAL' AND festival_key != $1`,
         [targetKey]
@@ -263,7 +258,6 @@ export async function POST(req: Request) {
 
     // ━━━ STOP ACTION ━━━
     if (action === 'stop') {
-      // 🚀 FIXED: Sirf MANUAL broadcasts ko stop karo
       const result = await client.query(
         `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE festival_key=$1 AND broadcast_mode='MANUAL' RETURNING *;`,
         [targetKey]
@@ -368,7 +362,6 @@ export async function POST(req: Request) {
     const activeStatus = forceActive ? 'active' : 'draft';
 
     if (activeStatus === 'active') {
-      // 🚀 FIXED: Sirf MANUAL broadcasts ko stop karo
       await client.query(
         `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE broadcast_mode='MANUAL' AND festival_key != $1`,
         [resolvedFestivalKey]
