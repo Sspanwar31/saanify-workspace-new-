@@ -26,10 +26,11 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const actionParam = url.searchParams.get('action');
 
+    // Planner Grid ke liye saved schedules ki list return karein
     if (actionParam === 'get_schedules') {
       client = await getDbClient('API_System_Health');
       const res = await client.query(
-        `SELECT * FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
+        `SELECT *, 'FESTIVAL' as type FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
       );
       await client.end();
       return NextResponse.json({ schedules: res.rows });
@@ -114,8 +115,9 @@ export async function POST(req: Request) {
       const schedulesArray = body.schedules || [];
 
       for (const item of schedulesArray) {
-        const category = item.category === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
-        const key = category === 'CORPORATE' ? (item.broadcast_type || item.festival_key) : item.festival_key;
+        // 🚀 "type" (from frontend) ko SQL "category" ke sath map karein
+        const category = item.type === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
+        const key = item.festival_key;
         const startsAt = item.starts_at;
         const endsAt = item.ends_at;
 
@@ -127,6 +129,7 @@ export async function POST(req: Request) {
           const msgRes = await client.query('SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1', [key]);
           content = msgRes.rows[0];
         } else {
+          // 🚀 FIXED: Parameter array me [festivalKey] ki jagah sahi local variable [key] pass kiya (scoping resolved)
           const assetRes = await client.query('SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1', [key]);
@@ -159,6 +162,7 @@ export async function POST(req: Request) {
           background_style: themeConfig.background_style || 'DARK_GOLD'
         };
 
+        // Aligned Language Resolution
         const resTitle = content.default_title || content.title_en;
         const resMsg = content.default_message || content.message_en;
         const resCta = content.cta_text || content.cta_en || 'Celebrate';
@@ -214,8 +218,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, action: 'save_schedules' });
     }
 
-    // Bug Bypass Check
-    if (!targetKey && action !== 'save_schedules' && action !== 'delete_schedule') {
+    // 🚀 FIXED: save_schedules aur baki table actions ko targetKey restriction se surakshit karein
+    const isSchedulerAction = ['save_schedules', 'delete_schedule', 'delete_all'].includes(action);
+    if (!targetKey && !isSchedulerAction) {
       throw new Error("festival_key or broadcast_type is required");
     }
 
@@ -231,7 +236,6 @@ export async function POST(req: Request) {
       const broadcastId = body.id;
       let existing;
 
-      // 🚀 HYBRID FIX: ID ya targetKey dono me se jo bhi mile, uspar filter lagayein
       if (broadcastId) {
         existing = await client.query(`SELECT * FROM broadcasts WHERE id=$1 LIMIT 1`, [broadcastId]);
       } else {
@@ -250,7 +254,6 @@ export async function POST(req: Request) {
       const broadcastId = body.id;
       let result;
 
-      // 🚀 HYBRID FIX: ID agar nahi hai (Manual API), toh targetKey (festival_key) par update karein
       if (broadcastId) {
         result = await client.query(
           `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE id=$1 RETURNING *;`,
