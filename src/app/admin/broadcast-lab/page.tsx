@@ -10,6 +10,7 @@ import {
   Sparkles, Globe, FlaskConical, ExternalLink, Loader2, Trash2, 
   Calendar, Clock, Plus, Save, RotateCcw, AlertTriangle 
 } from 'lucide-react';
+// ✅ FIX: next/navigation की जगह next/link use किया गया है
 import Link from 'next/link';
 
 export default function BroadcastLabPage() {
@@ -17,7 +18,8 @@ export default function BroadcastLabPage() {
   const [dbLists, setDbLists] = useState<{ festivals: string[]; types: string[] }>({ festivals: [], types: [] }); 
   const [broadcastStatus, setBroadcastStatus] = useState('draft');
   const [totalCount, setTotalCount] = useState(0); 
-
+  
+  // ✅ FIX: Performance के लिए currentTime state लिया गया है
   const [currentTime, setCurrentTime] = useState(new Date());
   
   const currentYear = new Date().getFullYear();
@@ -33,6 +35,14 @@ export default function BroadcastLabPage() {
     full_screen_animation: true,
     dashboard_overlay: true
   });
+
+  // ✅ FIX: 30 sec me ek bar time update hoga (har row render par nahi)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const formatForDateTimeLocal = (dateString?: string) => {
     if (!dateString) return '';
@@ -85,15 +95,6 @@ export default function BroadcastLabPage() {
     fetchSchedules(); 
   }, [loadListsAndCount, fetchSchedules]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // ✅ FIXED: ID aur Key Dono ko Support karne wala action handler
   const handleBroadcastAction = async (
     action: 'start' | 'stop' | 'delete',
     id?: string
@@ -101,20 +102,18 @@ export default function BroadcastLabPage() {
     try {
       setLoading(true);
 
-      // Corporate/Festival consistency key resolution (Manual flow ke liye)
       const resolvedKey = form.type === 'FESTIVAL' ? form.festival_key : form.type;
 
-      // 🚀 FIXED: API payload me ID ke sath festival_key aur broadcast_type ko wapas joda gaya hai
       const res = await fetch('/api/admin/broadcast-lab', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          id, // शेड्यूलर से चलने पर ID जाएगी, मैन्युअल पर undefined रहेगी
+          id, 
           action,
-          festival_key: resolvedKey, // 🚀 RE-ADDED: मैन्युअल पैनल के लिए आवश्यक
-          broadcast_type: form.type !== 'FESTIVAL' ? form.type : undefined, // 🚀 RE-ADDED
+          festival_key: resolvedKey, 
+          broadcast_type: form.type !== 'FESTIVAL' ? form.type : undefined, 
           language_mode: form.language_mode,
           dashboard_overlay: form.dashboard_overlay,
           full_screen_animation: form.full_screen_animation
@@ -219,8 +218,8 @@ export default function BroadcastLabPage() {
       return {
         category: 'FESTIVAL', 
         festival_key: fest,
-        starts_at: `${selectedYear}-${monthDayStart}+05:30`,
-        ends_at: `${selectedYear}-${monthDayEnd}+05:30`,
+        starts_at: `${selectedYear}-${monthDayStart}`,
+        ends_at: `${selectedYear}-${monthDayEnd}`,
         is_new: true
       };
     });
@@ -233,8 +232,8 @@ export default function BroadcastLabPage() {
     const newRow = {
       category: 'FESTIVAL', 
       festival_key: dbLists.festivals[0] || 'DIWALI',
-      starts_at: `${selectedYear}-01-01T00:00+05:30`,
-      ends_at: `${selectedYear}-01-02T00:00+05:30`,
+      starts_at: `${selectedYear}-01-01T00:00`,
+      ends_at: `${selectedYear}-01-02T00:00`,
       is_new: true
     };
     setSchedules([newRow, ...schedules]);
@@ -335,6 +334,7 @@ export default function BroadcastLabPage() {
     }
   };
 
+  // ✅ FIX: currentTime state use kiya gaya
   const getScheduleStatusBadge = (starts: string, ends: string, manual_stop?: boolean | number | string | null) => {
     const startDate = new Date(starts);
     const endDate = new Date(ends);
@@ -364,6 +364,7 @@ export default function BroadcastLabPage() {
 
   return (
     <div className="p-8 space-y-8 bg-slate-50 min-h-screen font-sans">
+      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-slate-900 flex items-center gap-3">
@@ -379,6 +380,7 @@ export default function BroadcastLabPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
+        {/* 🛠 CONFIGURATION CARD */}
         <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-900 text-white p-6">
             <CardTitle className="text-lg font-bold">Broadcast Configuration</CardTitle>
@@ -536,7 +538,7 @@ export default function BroadcastLabPage() {
         </Card>
       </div>
 
-      {/* ━━━ 📅 🚀 UPGRADED SECTION: DYNAMIC ANNUAL BROADCAST SCHEDULER (FUTURE PROOF) ━━━ */}
+      {/* ━━━ 📅 ANNUAL BROADCAST SCHEDULER ━━━ */}
       <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-white mt-12">
         <CardHeader className="bg-slate-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -546,7 +548,6 @@ export default function BroadcastLabPage() {
             <p className="text-slate-400 text-xs mt-1">Auto-refreshes every 30s. Pre-plan any year's celebration timeline in draft before publishing.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* 🚀 Dynamic Future Proof Year Selector Selector */}
             <div className="flex items-center gap-2 border border-white/10 bg-white/5 rounded-lg px-2">
               <span className="text-xs text-slate-400 font-bold uppercase">Year:</span>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -561,30 +562,13 @@ export default function BroadcastLabPage() {
               </Select>
             </div>
 
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5"
-              onClick={handleLoadYearPreset}
-              disabled={loading}
-            >
+            <Button size="sm" variant="outline" className="bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5" onClick={handleLoadYearPreset} disabled={loading}>
               <RotateCcw className="w-4 h-4" /> Load Preset
             </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="bg-blue-600 hover:bg-blue-700 text-white border-none gap-1.5"
-              onClick={handleAddCustomSchedule}
-              disabled={loading}
-            >
+            <Button size="sm" variant="outline" className="bg-blue-600 hover:bg-blue-700 text-white border-none gap-1.5" onClick={handleAddCustomSchedule} disabled={loading}>
               <Plus className="w-4 h-4" /> Add Custom
             </Button>
-            <Button 
-              size="sm" 
-              className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
-              onClick={handleSaveAllSchedules}
-              disabled={loading}
-            >
+            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1.5" onClick={handleSaveAllSchedules} disabled={loading}>
               <Save className="w-4 h-4" /> Save All
             </Button>
           </div>
@@ -613,7 +597,7 @@ export default function BroadcastLabPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {schedules.map((item, index) => (
-                    // ✅ STEP 6: Table key improve kiya
+                    // ✅ FIX: Table key safe banaya gaya
                     <tr key={item.id || index} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4">
                         {item.is_new ? (
@@ -623,11 +607,7 @@ export default function BroadcastLabPage() {
                               onValueChange={(v) => {
                                 const defaultKey = v === 'FESTIVAL' ? (dbLists.festivals[0] || 'DIWALI') : (safeTypesList[0] || 'ANNOUNCEMENT');
                                 const updated = [...schedules];
-                                updated[index] = {
-                                  ...updated[index],
-                                  category: v, // 🚀 FIX 2: State update me 'category' use karo
-                                  festival_key: defaultKey
-                                };
+                                updated[index] = { ...updated[index], category: v, festival_key: defaultKey };
                                 setSchedules(updated);
                               }}
                             >
@@ -694,32 +674,16 @@ export default function BroadcastLabPage() {
                       </td>
 
                       <td className="p-4 text-right">
-                        {/* ✅ STEP 3: Table me row level Start/Stop/Delete add kiya */}
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleBroadcastAction('start', item.id)}
-                            disabled={loading}
-                          >
-                            Start
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleBroadcastAction('stop', item.id)}
-                            disabled={loading}
-                          >
-                            Stop
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleDeleteRow(index, item.id)}
-                            disabled={loading}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        {/* ✅ SAFE: Sirf Delete Button hai Scheduler Table me */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
+                          onClick={() => handleDeleteRow(index, item.id)}
+                          disabled={loading}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
