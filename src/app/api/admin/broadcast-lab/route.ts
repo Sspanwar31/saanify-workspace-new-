@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 
-// 🚀 Vercel build error aur crash se bachne ke liye force-dynamic set karein
 export const dynamic = 'force-dynamic';
 
-// ✅ MODERN CHANGE: DB Tracking ke liye application_name add kiya gaya
 const getDbClient = async (appName: string = 'API_Broadcast_Lab') => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL missing');
@@ -28,9 +26,8 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const actionParam = url.searchParams.get('action');
 
-    // 🚀 NEW: Planner Grid ke liye saved schedules ki list return karein
     if (actionParam === 'get_schedules') {
-      client = await getDbClient('API_System_Health'); // ✅ MODERN CHANGE
+      client = await getDbClient('API_System_Health');
       const res = await client.query(
         `SELECT * FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
       );
@@ -38,8 +35,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ schedules: res.rows });
     }
 
-    // Default lists load karne ke liye code
-    client = await getDbClient('API_System_Health'); // ✅ MODERN CHANGE
+    client = await getDbClient('API_System_Health');
     if (!client) throw new Error("DB connection failed");
 
     // Fetch Festival Keys
@@ -82,13 +78,13 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    client = await getDbClient('API_Broadcast_Lab'); // ✅ MODERN CHANGE
+    client = await getDbClient('API_Broadcast_Lab');
 
     const festivalKey = body.festival_key;
     const broadcastType = body.broadcast_type;
     const language_mode = body.language_mode || 'BOTH';
     const action = body.action || 'generate';
-    const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED'; // ✅ SAFE: Variable readability ke liye waise hi rakha
+    const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
 
     // Consistent targetKey Resolution
     const targetKey = broadcastType || festivalKey;
@@ -115,26 +111,16 @@ export async function POST(req: Request) {
 
     // C. SAVE ALL SCHEDULES ACTION (Bulk Scheduler Upsert)
     if (action === 'save_schedules') {
-      // ✅ SAFE CHANGE: Unnecessary heavy JSON.stringify log हटा दिया
       const schedulesArray = body.schedules || [];
 
       for (const item of schedulesArray) {
-        const category =
-          item.category === 'CORPORATE'
-            ? 'CORPORATE'
-            : 'FESTIVAL';
-
-        const key =
-          category === 'CORPORATE'
-            ? (item.broadcast_type || item.festival_key)
-            : item.festival_key;
-        
+        const category = item.category === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
+        const key = category === 'CORPORATE' ? (item.broadcast_type || item.festival_key) : item.festival_key;
         const startsAt = item.starts_at;
         const endsAt = item.ends_at;
 
         let asset, content;
 
-        // ✅ SAFE: 'category' variable hi use kiya (type नहीं जिससे error आता)
         if (category === 'CORPORATE') {
           const assetRes = await client.query('SELECT * FROM broadcast_assets WHERE broadcast_type = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
@@ -147,7 +133,6 @@ export async function POST(req: Request) {
           content = msgRes.rows[0];
         }
 
-        // ✅ SAFE CHANGE: Useful error log रखा ताकि pata chale kyun skip hua
         if (!content || !asset) {
           console.error('Missing asset/content for schedule:', { key, category });
           continue;
@@ -174,7 +159,6 @@ export async function POST(req: Request) {
           background_style: themeConfig.background_style || 'DARK_GOLD'
         };
 
-        // Aligned Language Resolution
         const resTitle = content.default_title || content.title_en;
         const resMsg = content.default_message || content.message_en;
         const resCta = content.cta_text || content.cta_en || 'Celebrate';
@@ -245,11 +229,14 @@ export async function POST(req: Request) {
       );
 
       const broadcastId = body.id;
+      let existing;
 
-      const existing = await client.query(
-        `SELECT * FROM broadcasts WHERE id=$1 LIMIT 1`,
-        [broadcastId]
-      );
+      // 🚀 HYBRID FIX: ID ya targetKey dono me se jo bhi mile, uspar filter lagayein
+      if (broadcastId) {
+        existing = await client.query(`SELECT * FROM broadcasts WHERE id=$1 LIMIT 1`, [broadcastId]);
+      } else {
+        existing = await client.query(`SELECT * FROM broadcasts WHERE festival_key=$1 AND broadcast_mode='MANUAL' LIMIT 1`, [targetKey]);
+      }
 
       if (existing.rows.length > 0) {
         forceActive = true; 
@@ -261,46 +248,38 @@ export async function POST(req: Request) {
     // ━━━ STOP ACTION ━━━
     if (action === 'stop') {
       const broadcastId = body.id;
+      let result;
 
-      const result = await client.query(
-        `
-        UPDATE broadcasts
-        SET
-          status='stopped',
-          is_active=false,
-          manual_stop=true,
-          updated_at=NOW()
-        WHERE id=$1
-        RETURNING *;
-        `,
-        [broadcastId]
-      );
+      // 🚀 HYBRID FIX: ID agar nahi hai (Manual API), toh targetKey (festival_key) par update karein
+      if (broadcastId) {
+        result = await client.query(
+          `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE id=$1 RETURNING *;`,
+          [broadcastId]
+        );
+      } else {
+        result = await client.query(
+          `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE festival_key=$1 AND broadcast_mode='MANUAL' RETURNING *;`,
+          [targetKey]
+        );
+      }
 
       await client.end();
-
-      return NextResponse.json({
-        success: true,
-        action: 'stop',
-        data: result.rows[0] || null
-      });
+      return NextResponse.json({ success: true, action: 'stop', data: result.rows[0] || null });
     }
 
     // ━━━ DELETE ACTION (Single Delete) ━━━
     if (action === 'delete') {
       const broadcastId = body.id;
+      let result;
 
-      const result = await client.query(
-        `DELETE FROM broadcasts WHERE id=$1 RETURNING *`,
-        [broadcastId]
-      );
+      if (broadcastId) {
+        result = await client.query(`DELETE FROM broadcasts WHERE id=$1 RETURNING *`, [broadcastId]);
+      } else {
+        result = await client.query(`DELETE FROM broadcasts WHERE festival_key=$1 AND broadcast_mode='MANUAL' RETURNING *`, [targetKey]);
+      }
 
       await client.end();
-
-      return NextResponse.json({
-        success: true,
-        action: 'delete',
-        data: result.rows[0] || null
-      });
+      return NextResponse.json({ success: true, action: 'delete', data: result.rows[0] || null });
     }
 
     // ━━━ GENERATE LOGIC ━━━
@@ -357,7 +336,7 @@ export async function POST(req: Request) {
       background_style: themeConfig.background_style || 'DARK_GOLD'
     };
 
-    // Aligned Language Resolution (Direct lookup from altered table structure)
+    // Aligned Language Resolution
     let resTitle = "";
     let resMsg = "";
     let resCta = "";
