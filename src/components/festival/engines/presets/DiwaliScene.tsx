@@ -14,6 +14,8 @@ export default function DiwaliScene({
 }: {
   phase?: string;
 }) {
+  console.log('DIWALI PHASE =', phase);
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
 
