@@ -16,23 +16,27 @@ export default function AnimationFactory({
   const Engine = AnimationRegistry[engine as keyof typeof AnimationRegistry];
   if (!Engine) return null;
 
-  // 🚀 2027 ADAPTER: Controller ki language -> Scene ki language
+  // ✅ FIXED: Har phase ko USI KA NAAM DO — translation mat karo
   const getScenePhase = (p?: string): string => {
     switch (p) {
       case 'FLASH':
+        return 'FLASH';       // ✅ Flash ko flash bhejo
       case 'ROCKET':
-        return 'ROCKET';     // Scene ka ROCKET block chalega
+        return 'ROCKET';      // ✅ Rocket ko rocket bhejo
       case 'FIREWORK':
-        return 'FIREWORK';   // Scene ka FIREWORK block chalega
-      case 'IDLE':
+        return 'FIREWORK';    // ✅ Firework ko firework bhejo
       case 'HANDOVER':
+        return 'HANDOVER';    // ✅ Handover ko handover bhejo (AMBIENT NAHI!)
+      case 'IDLE':
       case 'ACTIVE':
       default:
-        return 'AMBIENT';    // Normal particles chalega
+        return 'AMBIENT';     // ✅ Sirf idle pe ambient
     }
   };
 
   const finalPhase = getScenePhase(phase);
+
+  console.log('ANIMATION FACTORY:', phase, '→', finalPhase);
 
   return (
     <Engine
