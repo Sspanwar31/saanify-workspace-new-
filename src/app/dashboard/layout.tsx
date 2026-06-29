@@ -18,11 +18,13 @@ import { Button } from "@/components/ui/button";
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
 
+// 🚀 2027 UPGRADE: The Dictator Controller imported
+import FestivalIntroController from '@/components/festival/intro/FestivalIntroController';
+
 // =========================================================
 // SUB-COMPONENTS
 // =========================================================
 
-// --- Maintenance Screen ---
 const MaintenanceScreen = ({ settings }: any) => (
   <div className="fixed inset-0 z-[9999] bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
     <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 animate-pulse">
@@ -48,11 +50,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isChecking, setIsChecking] = useState(true);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Broadcast States
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
-
-  const [festivalIntro, setFestivalIntro] = useState(false);
+  
+  // 🚀 2027 UPGRADE: Layout ab sirf ek flag dega, timer nahi chalayega
+  const [isIntroActive, setIsIntroActive] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -61,37 +66,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/admin/settings');
         const data = await res.json();
         setSysSettings(data);
-      } catch (e) {
-        // Silent fail for settings
-      }
+      } catch (e) {}
     };
     fetchInitialSettings();
 
     const settingsChannel = supabase
       .channel('public:system_settings')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE', 
-          schema: 'public',
-          table: 'system_settings',
-          filter: 'id=eq.1'
-        },
-        (payload) => {
-          setSysSettings(payload.new); 
-        }
-      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings', filter: 'id=eq.1' }, (payload) => {
+        setSysSettings(payload.new); 
+      })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(settingsChannel);
-    };
+    return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. REALTIME BROADCAST LISTENER ━━━
+  // ━━━ 2. THE HANDOVER FUNCTION (Controller isko call karega) ━━━
+  const handleIntroHandover = useCallback(() => {
+    // Controller bol raha hai: "Main ho gaya, ab popup dikhao"
+    setIsIntroActive(false);
+    setShowPopup(true);
+  }, []);
+
+  // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('broadcasts')
       .select('*')
       .in('broadcast_mode', ['MANUAL', 'SCHEDULED'])
@@ -106,7 +105,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      // ✅ FIX: Agar same broadcast ID hai, toh state update mat karo (Warna animation restart hoga)
       if (activeBroadcast?.id === data.id) return;
 
       setActiveBroadcast(data);
@@ -114,71 +112,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       
       if (!sessionSeen && !hasSeenPopup) {
         if (data.hero_enabled) {
-          setFestivalIntro(true);
-          setTimeout(() => {
-            setFestivalIntro(false);
-            setShowPopup(true);
-          }, 5000);
+          // 🚀 UPGRADE: Sirf Controller ko flag do, baaki woh sambhalega
+          setIsIntroActive(true);
         } else {
+          // Agar hero nahi hai toh sidha popup
           setShowPopup(true);
         }
-      } else {
-        setShowPopup(false);
       }
     } else {
-      // ✅ FIX: Sirf tab null karo jab pehle koi active tha
       if (activeBroadcast) {
         setActiveBroadcast(null);
         setShowPopup(false);
-        setFestivalIntro(false);
+        setIsIntroActive(false);
       }
     }
   }, [hasSeenPopup, activeBroadcast?.id]);
 
   const checkBroadcastExpiry = useCallback(() => {
     if (!activeBroadcast?.ends_at) return;
-
-    const now = Date.now();
-    const endTime = new Date(activeBroadcast.ends_at).getTime();
-
-    if (now >= endTime) {
+    if (Date.now() >= new Date(activeBroadcast.ends_at).getTime()) {
       setActiveBroadcast(null);
       setShowPopup(false);
-      setFestivalIntro(false);
+      setIsIntroActive(false);
     }
   }, [activeBroadcast]);
 
   useEffect(() => {
     fetchBroadcasts();
-
     const channel = supabase.channel('broadcast-realtime')
-      .on(
-        'postgres_changes', 
-        { event: '*', schema: 'public', table: 'broadcasts' }, 
-        () => {
-          fetchBroadcasts();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => fetchBroadcasts())
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [fetchBroadcasts]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchBroadcasts();
-    }, 5000);
-
+    const interval = setInterval(fetchBroadcasts, 5000);
     return () => clearInterval(interval);
   }, [fetchBroadcasts]);
 
   useEffect(() => {
     if (!activeBroadcast?.ends_at) return;
-
-    const interval = setInterval(() => {
-      checkBroadcastExpiry();
-    }, 5000);
-
+    const interval = setInterval(checkBroadcastExpiry, 5000);
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
@@ -190,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  // ━━━ 3. AUTH + PROFILE SYNC ━━━
+  // ━━━ 4. AUTH + PROFILE SYNC ━━━
   useEffect(() => {
     const performAuthSync = async () => {
       try {
@@ -198,28 +172,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (!session) { router.replace('/login'); return; }
 
         const { data: profile } = await supabase.from('current_active_profile').select('*').maybeSingle();
-        
-        if (!profile || profile.status !== 'ACTIVE') {
-          router.replace('/login');
-          return;
-        }
+        if (!profile || profile.status !== 'ACTIVE') { router.replace('/login'); return; }
 
         localStorage.setItem('current_user', JSON.stringify(profile)); 
         localStorage.setItem('active_client_id', profile.id);
-
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
         
-        if (profile.theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
+        if (profile.theme === 'dark') document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
 
         const isAdminViewing = session.user.id !== profile.id;
         const localFlag = localStorage.getItem('is_admin_impersonating') === 'true';
         setIsImpersonating(isAdminViewing || localFlag);
-
         setIsChecking(false);
       } catch (err) {
         setIsChecking(false);
@@ -228,61 +193,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     performAuthSync();
   }, [router]);
 
-  // ━━━ 4. REALTIME PERMISSION SYNC ━━━
+  // ━━━ 5. REALTIME PERMISSION SYNC ━━━
   useEffect(() => {
     if (!userProfile) return;
-
     const ownerId = userProfile.role === 'treasurer' ? userProfile.client_id : userProfile.id;
 
     const channel: RealtimeChannel = supabase
       .channel(`client-perm-${ownerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'clients',
-          filter: `id=eq.${ownerId}`
-        },
-        (payload) => {
-          const updated = payload.new as any;
-          const currentStored = localStorage.getItem('current_user');
-          if (currentStored) {
-            const parsed = JSON.parse(currentStored);
-            parsed.role_permissions = updated.role_permissions;
-            localStorage.setItem('current_user', JSON.stringify(parsed));
-          }
-          setUserProfile((prev: any) => ({
-            ...prev,
-            role_permissions: updated.role_permissions
-          }));
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'clients', filter: `id=eq.${ownerId}` }, (payload) => {
+        const updated = payload.new as any;
+        const currentStored = localStorage.getItem('current_user');
+        if (currentStored) {
+          const parsed = JSON.parse(currentStored);
+          parsed.role_permissions = updated.role_permissions;
+          localStorage.setItem('current_user', JSON.stringify(parsed));
         }
-      )
+        setUserProfile((prev: any) => ({ ...prev, role_permissions: updated.role_permissions }));
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [userProfile?.id, userProfile?.client_id]);
 
-  // ━━━ 5. PERMISSION GUARD (Treasurer) ━━━
+  // ━━━ 6. PERMISSION GUARD ━━━
   useEffect(() => {
     if (!userProfile || userProfile.role !== 'treasurer') return;
-
-    const perms: string[] = Array.isArray(userProfile?.role_permissions?.treasurer)
-      ? userProfile.role_permissions.treasurer
-      : [];
-
+    const perms: string[] = Array.isArray(userProfile?.role_permissions?.treasurer) ? userProfile.role_permissions.treasurer : [];
     const path = pathname.toLowerCase();
-    const permissionMap: Record<string, string> = {
-      'members': 'View Members',
-      'passbook': 'View Passbook',
-      'loans': 'View Loans',
-      'expenses': 'Manage Expenses',
-      'reports': 'View Reports',
-      'maturity': 'View Dashboard',
-      'admin-fund': 'Manage Admin Fund',
-      'user-management': 'User Management Access',
-      'settings': 'View Settings'
-    };
+    const permissionMap: Record<string, string> = { 'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans', 'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard', 'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings' };
 
     if (path !== '/dashboard') {
       const requiredPerm = Object.entries(permissionMap).find(([key]) => path.includes(key))?.[1];
@@ -293,33 +231,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname, userProfile, router]);
 
-  // ━━━ 6. BACK TO ADMIN ━━━
+  // ━━━ 7. BACK TO ADMIN ━━━
   const handleBackToAdmin = useCallback(async () => {
     const toastId = toast.loading("Exiting view mode...");
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
-      }
-
+      if (user) await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
       document.documentElement.classList.remove('dark');
-      localStorage.removeItem('is_admin_viewing');
-      localStorage.removeItem('viewing_client_id');
-      localStorage.removeItem('is_admin_impersonating');
-      
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
-      });
-
+      localStorage.removeItem('is_admin_viewing'); localStorage.removeItem('viewing_client_id'); localStorage.removeItem('is_admin_impersonating');
+      Object.keys(localStorage).forEach(key => { if (key.startsWith('saanify-storage-')) localStorage.removeItem(key); });
       toast.success("Welcome back Admin", { id: toastId });
       window.location.href = '/admin/clients';
-
-    } catch (err) {
-      window.location.href = '/admin/clients';
-    }
+    } catch (err) { window.location.href = '/admin/clients'; }
   }, []);
 
-  // ━━━ LOADING SCREEN ━━━
   if (isChecking) return <div className="h-screen w-full flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
 
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
@@ -333,23 +258,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const renderBroadcastIcon = () => {
     const key = activeBroadcast?.festival_key?.toUpperCase() || '';
     switch (key) {
-      case 'MAINTENANCE':
-        return <Wrench className="w-5 h-5 animate-pulse shrink-0" />;
-      case 'EMERGENCY':
-        return <AlertOctagon className="w-5 h-5 animate-bounce shrink-0 text-red-100" />;
-      case 'ANNOUNCEMENT':
-        return <Megaphone className="w-5 h-5 shrink-0" />;
-      case 'SPECIAL_OFFER':
-        return <Gift className="w-5 h-5 animate-bounce shrink-0" />;
-      case 'EVENT':
-        return <Calendar className="w-5 h-5 shrink-0" />;
-      default:
-        return (
-          <Sparkles 
-            className="w-5 h-5 shrink-0 animate-[spin_4s_linear_infinite]" 
-            style={{ animationDuration: '4s' }} 
-          />
-        );
+      case 'MAINTENANCE': return <Wrench className="w-5 h-5 animate-pulse shrink-0" />;
+      case 'EMERGENCY': return <AlertOctagon className="w-5 h-5 animate-bounce shrink-0 text-red-100" />;
+      case 'ANNOUNCEMENT': return <Megaphone className="w-5 h-5 shrink-0" />;
+      case 'SPECIAL_OFFER': return <Gift className="w-5 h-5 animate-bounce shrink-0" />;
+      case 'EVENT': return <Calendar className="w-5 h-5 shrink-0" />;
+      default: return <Sparkles className="w-5 h-5 shrink-0 animate-[spin_4s_linear_infinite]" style={{ animationDuration: '4s' }} />;
     }
   };
 
@@ -359,9 +273,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {sysSettings?.is_maintenance_scheduled && !isMaintenanceActive && (
         <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top duration-500 z-[1000] sticky top-0">
-          <span>
-            ⚠️ SCHEDULED MAINTENANCE: {sysSettings.maintenance_title} ({new Date(sysSettings.maintenance_start).toLocaleString()} - {new Date(sysSettings.maintenance_end).toLocaleString()})
-          </span>
+          <span>⚠️ SCHEDULED MAINTENANCE: {sysSettings.maintenance_title} ({new Date(sysSettings.maintenance_start).toLocaleString()} - {new Date(sysSettings.maintenance_end).toLocaleString()})</span>
         </div>
       )}
 
@@ -369,97 +281,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="w-full bg-gradient-to-r from-purple-700 via-purple-800 to-indigo-800 text-white px-4 md:px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[1000]">
           <div className="flex items-center gap-2 min-w-0">
             <ShieldCheck className="w-4 h-4 text-purple-200 shrink-0" />
-            <span className="font-semibold tracking-wide truncate">
-              ADMIN VIEW: {userProfile?.society_name?.toUpperCase()}
-            </span>
+            <span className="font-semibold tracking-wide truncate">ADMIN VIEW: {userProfile?.society_name?.toUpperCase()}</span>
           </div>
-          <button
-            onClick={handleBackToAdmin}
-            className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ml-3"
-          >
+          <button onClick={handleBackToAdmin} className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ml-3">
             <ArrowLeft className="w-3 h-3" /> Exit View
           </button>
         </div>
       )}
 
-      {activeBroadcast &&
-        !showPopup &&
-        !festivalIntro && (
-        <div 
-          className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
-          style={{
-            background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`,
-            backdropFilter: 'blur(12px)',
-            borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)'
-          }}
-        >
+      {activeBroadcast && !showPopup && !isIntroActive && (
+        <div className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`} style={{ background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`, backdropFilter: 'blur(12px)', borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)' }}>
           <div className="max-w-7xl mx-auto flex items-center justify-between text-sm tracking-wide">
             <div className="flex items-center gap-4 flex-1 justify-center min-w-0">
               {renderBroadcastIcon()}
-
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${badgeBgClass}`}>
-                Saanify Pariwar
-              </span>
-
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${badgeBgClass}`}>Saanify Pariwar</span>
               <div className="flex items-center gap-2.5 min-w-0 truncate text-xs md:text-sm">
-                <span className="font-black uppercase tracking-tight shrink-0 drop-shadow-sm">
-                  {activeBroadcast?.resolved_title || activeBroadcast?.title}
-                </span>
-                
+                <span className="font-black uppercase tracking-tight shrink-0 drop-shadow-sm">{activeBroadcast?.resolved_title || activeBroadcast?.title}</span>
                 <span className={`opacity-30 shrink-0 select-none ${isLightColor ? 'text-slate-950' : 'text-white'}`}>|</span>
-                
-                <p className={`truncate font-semibold tracking-wide drop-shadow-sm ${isLightColor ? 'text-slate-900' : 'text-slate-100'}`}>
-                  {activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}
-                </p>
+                <p className={`truncate font-semibold tracking-wide drop-shadow-sm ${isLightColor ? 'text-slate-900' : 'text-slate-100'}`}>{activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}</p>
               </div>
             </div>
-            <button 
-              onClick={() => setActiveBroadcast(null)} 
-              className="p-1.5 hover:bg-black/10 rounded-full transition-colors duration-200 shrink-0 ml-3"
-            >
-              <X className="w-5 h-5 opacity-85" />
-            </button>
+            <button onClick={() => setActiveBroadcast(null)} className="p-1.5 hover:bg-black/10 rounded-full transition-colors duration-200 shrink-0 ml-3"><X className="w-5 h-5 opacity-85" /></button>
           </div>
         </div>
       )}
 
-      {activeBroadcast?.hero_enabled && (
-        <AnimationFactory
-          phase="INTRO"
-          engine={activeBroadcast?.hero_config?.animation}
-          preset={activeBroadcast?.festival_key}
-        />
-      )}
+      {/* 🚀 2027 UPGRADE: The Dictator Controller running the show */}
+      <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
+        {(phase) => (
+          activeBroadcast?.hero_enabled ? (
+            <AnimationFactory
+              // IDLE/HANDOVER pe normal ambient particles, baaki pe sequence chalao
+              phase={phase === 'IDLE' || phase === 'HANDOVER' ? 'ACTIVE' : phase}
+              engine={activeBroadcast?.hero_config?.animation}
+              preset={activeBroadcast?.festival_key}
+            />
+          ) : null
+        )}
+      </FestivalIntroController>
 
-      <Dialog
-        open={showPopup && !festivalIntro}
-        onOpenChange={setShowPopup}
-      >
+      {/* Popup ab sirf Controller ke handover pe khulega */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
         <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
-           <BroadcastRenderer
-             broadcast={activeBroadcast}
-             onClose={handleDismissPopup}
-           />
+           <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
         </DialogContent>
       </Dialog>
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
-        
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
         </div>
 
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-[60] md:hidden">
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
             <div className="relative w-72 h-full bg-white dark:bg-slate-900 shadow-2xl overflow-y-auto">
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="absolute top-4 right-4 z-10 p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-              >
+              <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 z-10 p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                 <X className="w-4 h-4 text-slate-600 dark:text-slate-400" />
               </button>
               <ClientSidebar profile={userProfile} />
@@ -468,9 +345,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         <main className="flex-1 overflow-y-auto relative w-full">
-          <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
-            {children}
-          </div>
+          <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">{children}</div>
         </main>
 
         <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
