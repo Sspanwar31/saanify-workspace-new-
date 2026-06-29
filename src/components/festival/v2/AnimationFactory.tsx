@@ -5,16 +5,19 @@ import { AnimationRegistry } from '@/config/AnimationRegistry';
 export default function AnimationFactory({
   engine,
   preset,
-  phase,
+  introMode, // ← Layout se boolean aayega
 }: {
   engine?: string;
   preset?: string;
-  phase?: string;
+  introMode?: boolean; // ← boolean accept karo
 }) {
+
+  // ✅ MAGIC: Boolean ko String mein convert karo
+  const phase = introMode ? 'INTRO' : 'ACTIVE';
 
   console.log('ENGINE =', engine);
   console.log('PRESET =', preset);
-  console.log('PHASE =', phase);
+  console.log('PHASE =', phase); // ← Ab "INTRO" ya "ACTIVE" aayega!
 
   if (!engine) return null;
 
@@ -30,7 +33,7 @@ export default function AnimationFactory({
   return (
     <Engine
       preset={preset}
-      phase={phase}
+      phase={phase} // ← Ab child components ko sahi string milega
     />
   );
 }
