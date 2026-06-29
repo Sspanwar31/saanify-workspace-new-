@@ -24,6 +24,7 @@ export default function AnimationFactory({
   console.log('ENGINE =', engine);
   console.log('PRESET =', preset);
   console.log('PHASE =', phase);
+  console.log('FACTORY PHASE =', phase);
 
   return (
     <Engine
