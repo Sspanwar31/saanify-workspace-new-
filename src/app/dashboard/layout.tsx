@@ -425,7 +425,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {activeBroadcast?.hero_enabled && (
         <AnimationFactory
-          introMode={festivalIntro}
+          phase="INTRO"
           engine={activeBroadcast?.hero_config?.animation}
           preset={activeBroadcast?.festival_key}
         />
