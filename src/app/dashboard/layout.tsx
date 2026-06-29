@@ -81,16 +81,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   // ━━━ 2. THE HANDOVER FUNCTION (Controller isko call karega) ━━━
-  const handleIntroHandover = useCallback(() => {
-    // Scene ko thoda time do ki firework complete ho
+ const handleIntroHandover = useCallback(() => {
+    // Step 1: HANDOVER phase me firework + ambient 1.5 sec chalne do
     setTimeout(() => {
-        setIsIntroActive(false);  // Ab band karo
-    }, 1000);  // 1 sec extra for firework to finish
-    
-    // Popup thoda delay se aao — firework ke baad
+        // Step 2: Ab scene band karo
+        setIsIntroActive(false);
+    }, 1500);
+
+    // Step 3: Popup thoda late aao (firework dikha ke)
     setTimeout(() => {
-        setShowPopup(true);  // Ab client panel
-    }, 500);  // 0.5 sec after handover signal
+        setShowPopup(true);
+    }, 800);
 }, []);
 
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
