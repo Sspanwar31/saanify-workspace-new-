@@ -37,28 +37,30 @@ export default function FestivalIntroController({
     let isCancelled = false;
 
     const runIntroSequence = async () => {
-      // 1. FLASH PHASE
-      setPhase('FLASH');
-      await delay(600); // 0.6 sec white flash
-      if (isCancelled) return;
+  // 1. FLASH
+  setPhase('FLASH');
+  await delay(600);
+  if (isCancelled) return;
 
-      // 2. ROCKET PHASE
-      setPhase('ROCKET');
-      await delay(1500); // 1.5 sec rocket launch
-      if (isCancelled) return;
+  // 2. ROCKET — Thoda extra time
+  setPhase('ROCKET');
+  await delay(2000);  // ✅ 1.5 se badha kar 2.0 kiya
+  if (isCancelled) return;
 
-      // 3. FIREWORK PHASE
-      setPhase('FIREWORK');
-      await delay(1500); // 1.5 sec fireworks burst
-      if (isCancelled) return;
+  // 3. FIREWORK — Zyada time chahiye burst ke liye
+  setPhase('FIREWORK');
+  await delay(2500);  // ✅ 1.5 se badha kar 2.5 kiya
+  if (isCancelled) return;
 
-      // 4. HANDOVER PHASE
-      setPhase('HANDOVER');
-      
-      // Layout ko signal do ki ab tu control le
-      onHandover();
-    };
+  // 4. HANDOVER — Ambient settle hone do
+  setPhase('HANDOVER');
+  await delay(800);   // ✅ NAYA — Ambient settle hone do
+  if (isCancelled) return;
 
+  // 5. Ab signal do
+  onHandover();
+};
+    
     runIntroSequence();
 
     // Cleanup function
