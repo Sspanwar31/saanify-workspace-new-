@@ -9,6 +9,15 @@ import LuxuryRays from '../effects/LuxuryRays';
 import RocketLaunch from '../effects/RocketLaunch';
 import FireworkBurst from '../effects/FireworkBurst';
 
+{phase === 'ACTIVE' && (
+  <>
+    <LuxuryGlow />
+    <LuxuryRays />
+    <BloomLighting />
+    <GoldenParticles preset="DIWALI" />
+  </>
+)}
+
 export default function DiwaliScene({
   phase,
 }: {
