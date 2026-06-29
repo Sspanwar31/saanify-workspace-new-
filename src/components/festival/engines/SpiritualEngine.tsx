@@ -11,6 +11,8 @@ export default function SpiritualEngine({
   phase?: string;
 }) {
 
+  console.log('SPIRITUAL ENGINE PHASE =', phase);
+
   switch (preset) {
 
     case 'DIWALI':
