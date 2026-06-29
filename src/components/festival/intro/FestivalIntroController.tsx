@@ -2,52 +2,70 @@
 
 import { useEffect, useState } from 'react';
 
+// Phases clearly defined
 export type FestivalPhase =
+  | 'IDLE'
   | 'FLASH'
   | 'ROCKET'
   | 'FIREWORK'
-  | 'POPUP'
-  | 'AMBIENT';
+  | 'HANDOVER';
 
 interface Props {
+  isActive: boolean;           // Layout bolega: "Start kar"
+  onHandover: () => void;      // Controller bolega: "Main ho gaya, ab tu le"
   children: (phase: FestivalPhase) => React.ReactNode;
 }
 
+// Modern Async Delay Helper (setTimeout ka clean alternative)
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export default function FestivalIntroController({
+  isActive,
+  onHandover,
   children,
 }: Props) {
-  const [phase, setPhase] =
-    useState<FestivalPhase>('FLASH');
+  const [phase, setPhase] = useState<FestivalPhase>('IDLE');
 
   useEffect(() => {
-    console.log('🚀 Intro Started');
+    // Agar layout ne start nahi kiya, toh idle raho
+    if (!isActive) {
+      setPhase('IDLE');
+      return;
+    }
 
-    const timers = [
-      setTimeout(() => {
-        console.log('PHASE → ROCKET');
-        setPhase('ROCKET');
-      }, 500),
+    // Cancellation flag (agar component unmount ho jaye toh sequence ruk jaye)
+    let isCancelled = false;
 
-      setTimeout(() => {
-        console.log('PHASE → FIREWORK');
-        setPhase('FIREWORK');
-      }, 2000),
+    const runIntroSequence = async () => {
+      // 1. FLASH PHASE
+      setPhase('FLASH');
+      await delay(600); // 0.6 sec white flash
+      if (isCancelled) return;
 
-      setTimeout(() => {
-        console.log('PHASE → POPUP');
-        setPhase('POPUP');
-      }, 3000),
+      // 2. ROCKET PHASE
+      setPhase('ROCKET');
+      await delay(1500); // 1.5 sec rocket launch
+      if (isCancelled) return;
 
-      setTimeout(() => {
-        console.log('PHASE → AMBIENT');
-        setPhase('AMBIENT');
-      }, 4000),
-    ];
+      // 3. FIREWORK PHASE
+      setPhase('FIREWORK');
+      await delay(1500); // 1.5 sec fireworks burst
+      if (isCancelled) return;
 
-    return () => {
-      timers.forEach(clearTimeout);
+      // 4. HANDOVER PHASE
+      setPhase('HANDOVER');
+      
+      // Layout ko signal do ki ab tu control le
+      onHandover();
     };
-  }, []);
+
+    runIntroSequence();
+
+    // Cleanup function
+    return () => {
+      isCancelled = true;
+    };
+  }, [isActive, onHandover]);
 
   return <>{children(phase)}</>;
 }
