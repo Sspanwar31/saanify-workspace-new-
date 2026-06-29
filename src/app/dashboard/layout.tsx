@@ -1,4 +1,5 @@
 'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -51,7 +52,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
 
-  // ━━━ STEP 1: Festival Intro State ━━━
   const [festivalIntro, setFestivalIntro] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const data = await res.json();
         setSysSettings(data);
       } catch (e) {
-        console.error("Failed to fetch system settings", e);
+        // Silent fail for settings
       }
     };
     fetchInitialSettings();
@@ -78,7 +78,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           filter: 'id=eq.1'
         },
         (payload) => {
-          console.log('🚀 REALTIME: System Settings Updated', payload.new);
           setSysSettings(payload.new); 
         }
       )
@@ -106,18 +105,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .limit(1)
       .maybeSingle();
 
-    console.log('===== BROADCAST DEBUG =====');
-    console.log('NOW:', now);
-    console.log('DATA:', data);
-    console.log('ERROR:', error);
-    console.log('===========================');
-
-    console.log('FOUND BROADCAST:', data);
     if (data) {
+      // ✅ FIX: Agar same broadcast ID hai, toh state update mat karo (Warna animation restart hoga)
+      if (activeBroadcast?.id === data.id) return;
+
       setActiveBroadcast(data);
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
       
-      // ━━━ UPDATED: Hero Enabled Check Before Intro ━━━
       if (!sessionSeen && !hasSeenPopup) {
         if (data.hero_enabled) {
           setFestivalIntro(true);
@@ -132,14 +126,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setShowPopup(false);
       }
     } else {
-      console.log('NO ACTIVE BROADCAST FOUND');
-      
-      // ━━━ STEP 3: Remove intro jab broadcast khatam ━━━
-      setActiveBroadcast(null);
-      setShowPopup(false);
-      setFestivalIntro(false);
+      // ✅ FIX: Sirf tab null karo jab pehle koi active tha
+      if (activeBroadcast) {
+        setActiveBroadcast(null);
+        setShowPopup(false);
+        setFestivalIntro(false);
+      }
     }
-  }, [hasSeenPopup]);
+  }, [hasSeenPopup, activeBroadcast?.id]);
 
   const checkBroadcastExpiry = useCallback(() => {
     if (!activeBroadcast?.ends_at) return;
@@ -148,9 +142,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const endTime = new Date(activeBroadcast.ends_at).getTime();
 
     if (now >= endTime) {
-      console.log('⏰ Broadcast expired locally');
-
-      // ━━━ STEP 4: Expiry par intro bhi remove ━━━
       setActiveBroadcast(null);
       setShowPopup(false);
       setFestivalIntro(false);
@@ -160,19 +151,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     fetchBroadcasts();
 
-    // Realtime listener
     const channel = supabase.channel('broadcast-realtime')
       .on(
         'postgres_changes', 
         { event: '*', schema: 'public', table: 'broadcasts' }, 
-        (payload) => {
-          console.log("🔔 [Realtime Event Debug]:", payload.eventType, payload);
+        () => {
           fetchBroadcasts();
         }
       )
-      .subscribe((status) => {
-        console.log("📡 [Realtime Connection Status]:", status);
-      });
+      .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [fetchBroadcasts]);
@@ -223,7 +210,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
         
-        // Theme Sync
         if (profile.theme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
@@ -236,7 +222,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         setIsChecking(false);
       } catch (err) {
-        console.error(err);
         setIsChecking(false);
       }
     };
@@ -340,17 +325,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  // 🚀 Dynamic Color & Text Contrast Resolution
   const themeColor = activeBroadcast?.theme_color || '#3b82f6';
-  
-  // 🚀 केसिंग बग का समाधान (Uppercase Hex Strings in array)
   const isLightColor = ['#FBBF24', '#F59E0B', '#EAB308', 'GOLD', '#fbbf24', '#f59e0b', '#eab308'].includes(themeColor.toUpperCase());
-  
-  // Contrast Classes Setup
   const textColorClass = isLightColor ? 'text-slate-950' : 'text-white';
   const badgeBgClass = isLightColor ? 'bg-black/10 border-black/10 text-slate-950' : 'bg-white/10 border-white/15 text-white';
 
-  // 🚀 NEW: Dynamic Icon Resolver based on Active Broadcast Key
   const renderBroadcastIcon = () => {
     const key = activeBroadcast?.festival_key?.toUpperCase() || '';
     switch (key) {
@@ -376,10 +355,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {/* FULL LOCKOUT */}
       {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
 
-      {/* SCHEDULED MAINTENANCE BANNER */}
       {sysSettings?.is_maintenance_scheduled && !isMaintenanceActive && (
         <div className="bg-orange-600 text-white py-2 text-center text-xs font-bold animate-in slide-in-from-top duration-500 z-[1000] sticky top-0">
           <span>
@@ -388,7 +365,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* IMPERSONATION BANNER */}
       {isImpersonating && (
         <div className="w-full bg-gradient-to-r from-purple-700 via-purple-800 to-indigo-800 text-white px-4 md:px-6 py-2.5 flex justify-between items-center text-sm shadow-xl sticky top-0 z-[1000]">
           <div className="flex items-center gap-2 min-w-0">
@@ -406,8 +382,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━━ STEP 7: Banner bhi intro ke time hide ━━━ */}
-      {console.log('ACTIVE BROADCAST STATE =', activeBroadcast)}
       {activeBroadcast &&
         !showPopup &&
         !festivalIntro && (
@@ -449,7 +423,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ━━━ UPDATED: AnimationFactory sirf hero_enabled ho toh hi render hoga ━━━ */}
       {activeBroadcast?.hero_enabled && (
         <AnimationFactory
           introMode={festivalIntro}
@@ -458,7 +431,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* ━━━ STEP 6: Popup intro ke dauran nahi khulna chahiye ━━━ */}
       <Dialog
         open={showPopup && !festivalIntro}
         onOpenChange={setShowPopup}
@@ -471,15 +443,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </DialogContent>
       </Dialog>
 
-      {/* DASHBOARD LAYOUT STRUCTURE */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         
-        {/* DESKTOP SIDEBAR */}
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
         </div>
 
-        {/* MOBILE SIDEBAR OVERLAY */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-[60] md:hidden">
             <div
@@ -498,14 +467,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         )}
 
-        {/* MAIN CONTENT AREA */}
         <main className="flex-1 overflow-y-auto relative w-full">
           <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
             {children}
           </div>
         </main>
 
-        {/* MOBILE BOTTOM NAV */}
         <MobileBottomNav onMenuClick={() => setIsMobileMenuOpen(true)} />
       </div>
     </>
