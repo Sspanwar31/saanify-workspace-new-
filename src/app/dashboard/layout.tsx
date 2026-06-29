@@ -312,7 +312,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           activeBroadcast?.hero_enabled ? (
             <AnimationFactory
               // IDLE/HANDOVER pe normal ambient particles, baaki pe sequence chalao
-              phase={phase === 'IDLE' || phase === 'HANDOVER' ? 'ACTIVE' : phase}
+              // ✅ NAYA (Seedha phase bhej do, Factory samajh jayega)
+               phase={phase}
               engine={activeBroadcast?.hero_config?.animation}
               preset={activeBroadcast?.festival_key}
             />
