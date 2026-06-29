@@ -2,10 +2,6 @@
 
 import { AnimationRegistry } from '@/config/AnimationRegistry';
 
-// ━━━ 2027 Modern Types ━━━
-type RawPhase = 'IDLE' | 'FLASH' | 'ROCKET' | 'FIREWORK' | 'HANDOVER' | 'ACTIVE';
-type ResolvedPhase = 'INTRO' | 'ACTIVE';
-
 export default function AnimationFactory({
   engine,
   preset,
@@ -13,32 +9,30 @@ export default function AnimationFactory({
 }: {
   engine?: string;
   preset?: string;
-  phase?: RawPhase;
+  phase?: string;
 }) {
   if (!engine) return null;
 
   const Engine = AnimationRegistry[engine as keyof typeof AnimationRegistry];
   if (!Engine) return null;
 
-  // 🚀 2027 ADAPTER PATTERN: 
-  // Controller granular phases bhejta hai (FLASH, ROCKET, FIREWORK).
-  // Lekin purane engine components (DiwaliScene) sirf 'INTRO' aur 'ACTIVE' samajhte hain.
-  // Factory inko smartly translate karta hai (Backward Compatibility).
-  const resolvePhase = (p?: string): ResolvedPhase => {
+  // 🚀 2027 ADAPTER: Controller ki language -> Scene ki language
+  const getScenePhase = (p?: string): string => {
     switch (p) {
       case 'FLASH':
       case 'ROCKET':
+        return 'ROCKET';     // Scene ka ROCKET block chalega
       case 'FIREWORK':
-        return 'INTRO'; // DiwaliScene ka INTRO block trigger hoga
+        return 'FIREWORK';   // Scene ka FIREWORK block chalega
       case 'IDLE':
       case 'HANDOVER':
       case 'ACTIVE':
       default:
-        return 'ACTIVE'; // DiwaliScene ka ACTIVE block trigger hoga
+        return 'AMBIENT';    // Normal particles chalega
     }
   };
 
-  const finalPhase = resolvePhase(phase);
+  const finalPhase = getScenePhase(phase);
 
   return (
     <Engine
