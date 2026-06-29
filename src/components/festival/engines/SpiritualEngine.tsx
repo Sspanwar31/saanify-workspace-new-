@@ -3,7 +3,8 @@
 import DiwaliScene from './presets/DiwaliScene';
 import DevDeepawaliScene from './presets/DevDeepawaliScene';
 
-import FestivalIntroController from '../intro/FestivalIntroController';
+// 🚀 2027 UPGRADE: Purana FestivalIntroController import HATA DO
+// import FestivalIntroController from '../intro/FestivalIntroController';
 
 export default function SpiritualEngine({
   preset,
@@ -16,33 +17,12 @@ export default function SpiritualEngine({
   console.log('SPIRITUAL ENGINE PHASE =', phase);
 
   switch (preset) {
-
     case 'DIWALI':
-
-      // INTRO MODE
-      if (phase === 'INTRO') {
-        return (
-          <FestivalIntroController>
-            {(introPhase) => {
-              console.log(
-                'INTRO PHASE =',
-                introPhase
-              );
-
-              return (
-                <DiwaliScene
-                  phase={introPhase}
-                />
-              );
-            }}
-          </FestivalIntroController>
-        );
-      }
-
-      // ACTIVE MODE
+      // ✅ SAHI: Jo phase aaya hai, seedha DiwaliScene ko bhej do. 
+      // Ab yahan koi INTRO/ACTIVE ka drama nahi hoga.
       return (
         <DiwaliScene
-          phase="AMBIENT"
+          phase={phase}
         />
       );
 
