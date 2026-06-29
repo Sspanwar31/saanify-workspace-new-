@@ -14,27 +14,22 @@ export default function DiwaliScene({
 }: {
   phase?: string;
 }) {
-
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
 
-      {/* INTRO SEQUENCE */}
-      {phase === 'INTRO' && (
-        <>
-          <RocketLaunch />
-          <FireworkBurst />
-        </>
+      {phase === 'ROCKET' && (
+        <RocketLaunch />
       )}
 
-      {/* ACTIVE FESTIVAL MODE */}
-      {phase === 'ACTIVE' && (
+      {phase === 'FIREWORK' && (
+        <FireworkBurst />
+      )}
+
+      {phase === 'AMBIENT' && (
         <>
           <LuxuryGlow />
-
           <LuxuryRays />
-
           <BloomLighting />
-
           <GoldenParticles preset="DIWALI" />
         </>
       )}
