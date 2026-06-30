@@ -11,7 +11,7 @@ export default function DiwaliScene({ phase }: { phase?: string }) {
 
   // ✅ ACCUMULATION LOGIC — Purana wala rehta hai, naya add hota hai
   const showFlash    = phase === 'FLASH';
- const showShooting = phase === 'SHOOTING' || phase === 'HANDOVER';
+ const showShooting = phase === 'SHOOTING'; 
   const showAmbient  = phase === 'HANDOVER' || phase === 'AMBIENT';
 
   return (
