@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
 import HeroFactory from '@/components/festival/v2/HeroFactory';
+import FestivalIntroController from '@/components/festival/intro/FestivalIntroController';
 import { X, Sparkles, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -13,6 +14,9 @@ export default function BroadcastPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [showTopBanner, setShowTopBanner] = useState(false);
   const [isCardVisible, setIsCardVisible] = useState(true);
+
+  // ✅ NAYA STATE: Intro sequence ke liye
+  const [isIntroActive, setIsIntroActive] = useState(true);
 
   useEffect(() => { loadBroadcast(); }, []);
 
@@ -142,11 +146,22 @@ export default function BroadcastPreviewPage() {
   return (
     <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins">
       
-      {/* BACKGROUND ANIMATION (Passing Variant) */}
-     <AnimationFactory
-  engine={broadcast?.hero_config?.animation}
-  preset={broadcast?.festival_key}
-/>
+      {/* ✅ NAYA - Full sequence chalayega */}
+      <FestivalIntroController 
+        isActive={isIntroActive} 
+        onHandover={() => {
+          // Preview page me hum sequence ko band NAHI karenge
+          // HANDOVER phase me rehne denge taaki sab effects dikhte rahe
+        }}
+      >
+        {(phase) => (
+          <AnimationFactory
+            engine={broadcast?.hero_config?.animation}
+            preset={broadcast?.festival_key}
+            phase={phase} // ✅ AB PHASE JA RAHA HAI!
+          />
+        )}
+      </FestivalIntroController>
 
       {/* 🚀 1. TOP BANNER */}
       {showTopBanner && (
