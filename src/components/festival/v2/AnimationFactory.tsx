@@ -21,10 +21,8 @@ export default function AnimationFactory({
     switch (p) {
       case 'FLASH':
         return 'FLASH';       // ✅ Flash ko flash bhejo
-      case 'ROCKET':
-        return 'ROCKET';      // ✅ Rocket ko rocket bhejo
-      case 'FIREWORK':
-        return 'FIREWORK';    // ✅ Firework ko firework bhejo
+       case 'SHOOTING':       // ← NEW
+        return 'SHOOTING';   // ← NEW
       case 'HANDOVER':
         return 'HANDOVER';    // ✅ Handover ko handover bhejo (AMBIENT NAHI!)
       case 'IDLE':
