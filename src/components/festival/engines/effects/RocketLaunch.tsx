@@ -22,6 +22,8 @@ interface Rocket {
   curveDir: number;
   speed: number;
   launched: boolean;
+  isDecoy: boolean;    // 🚀 NEW: Decoy aur Main rockets me antar karne ke liye
+  duration: number;   // 🚀 NEW: Har rocket ki speed ko individual control karne ke liye
 }
 
 export default function RocketLaunch() {
@@ -46,11 +48,14 @@ export default function RocketLaunch() {
   // Initialize rockets with staggered timing and different paths
   useEffect(() => {
     const rocketConfigs: Rocket[] = [
-      { id: 1, startX: 15, delay: 200, curveDir: -1, speed: 1, launched: false },
-      { id: 2, startX: 78, delay: 600, curveDir: 1, speed: 1.1, launched: false },
-      { id: 3, startX: 35, delay: 1000, curveDir: -0.5, speed: 0.95, launched: false },
-      { id: 4, startX: 62, delay: 1400, curveDir: 0.7, speed: 1.05, launched: false },
-      { id: 5, startX: 50, delay: 1800, curveDir: 0, speed: 1.2, launched: false },
+      // 🚀 Decoy Rockets: Ye fast udenge aur screen ke bahar nikal jayenge
+      { id: 1, startX: 18, delay: 100, curveDir: -1, speed: 1.1, launched: false, isDecoy: true, duration: 90 },
+      { id: 2, startX: 82, delay: 400, curveDir: 1, speed: 1.2, launched: false, isDecoy: true, duration: 90 },
+      
+      // 🚀 Main Rockets: Ye screen ke top (15% height) par pahuch kar fade out honge aur blast karenge
+      { id: 3, startX: 32, delay: 900, curveDir: -0.4, speed: 0.95, launched: false, isDecoy: false, duration: 110 },
+      { id: 4, startX: 68, delay: 1300, curveDir: 0.5, speed: 1.05, launched: false, isDecoy: false, duration: 110 },
+      { id: 5, startX: 50, delay: 1700, curveDir: 0, speed: 1.15, launched: false, isDecoy: false, duration: 110 },
     ];
 
     rocketsRef.current = rocketConfigs;
@@ -82,7 +87,6 @@ export default function RocketLaunch() {
 
     const animate = () => {
       const newParticles: Particle[] = [];
-      const now = performance.now();
 
       activeRockets.forEach((rocket) => {
         if (!rocket.launched) return;
@@ -90,14 +94,18 @@ export default function RocketLaunch() {
         const phase = rocketPhaseRef.current[rocket.id] || 0;
         rocketPhaseRef.current[rocket.id] = phase + 1;
 
-        const progress = Math.min(phase / 180, 1);
+        // 🚀 Dynamic duration ke hissab se progress nikalenge
+        const progress = Math.min(phase / rocket.duration, 1);
         const eased = 1 - Math.pow(1 - progress, 3);
 
         // Rocket position calculation
         const baseX = rocket.startX;
         const curve = Math.sin(progress * Math.PI * 2) * 3 * rocket.curveDir;
         const rocketX = baseX + curve;
-        const rocketY = 100 - eased * 140;
+        
+        // 🚀 Decoy screen ke bahar (130) jayega, Main aakash me (85) rukega
+        const heightFactor = rocket.isDecoy ? 130 : 85;
+        const rocketY = 100 - eased * heightFactor;
 
         // Hide rocket after it leaves
         if (progress >= 1) return;
@@ -232,13 +240,20 @@ export default function RocketLaunch() {
       {activeRockets.map((rocket) => {
         if (!rocket.launched) return null;
         const phase = rocketPhaseRef.current[rocket.id] || 0;
-        const progress = Math.min(phase / 180, 1);
+        
+        // 🚀 Dynamic progress calculation
+        const progress = Math.min(phase / rocket.duration, 1);
         const eased = 1 - Math.pow(1 - progress, 3);
         const curve = Math.sin(progress * Math.PI * 2) * 3 * rocket.curveDir;
         const x = rocket.startX + curve;
-        const y = 100 - eased * 140;
+        
+        const heightFactor = rocket.isDecoy ? 130 : 85;
+        const y = 100 - eased * heightFactor;
+
         const rotation = curve * 3 + (rocket.curveDir * -5);
         const scale = 0.8 + progress * 0.3;
+        
+        // 🚀 Rocket ke upar pahuchne par use smoothly adrishya (fade-out) karne ka logic
         const opacity = progress > 0.85 ? 1 - (progress - 0.85) / 0.15 : 1;
 
         if (progress >= 1) return null;
