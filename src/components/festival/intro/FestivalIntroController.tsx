@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-// Phases clearly defined
 export type FestivalPhase =
   | 'IDLE'
   | 'FLASH'
@@ -11,12 +10,11 @@ export type FestivalPhase =
   | 'HANDOVER';
 
 interface Props {
-  isActive: boolean;           // Layout bolega: "Start kar"
-  onHandover: () => void;      // Controller bolega: "Main ho gaya, ab tu le"
+  isActive: boolean;           
+  onHandover: () => void;      
   children: (phase: FestivalPhase) => React.ReactNode;
 }
 
-// Modern Async Delay Helper (setTimeout ka clean alternative)
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export default function FestivalIntroController({
@@ -27,43 +25,40 @@ export default function FestivalIntroController({
   const [phase, setPhase] = useState<FestivalPhase>('IDLE');
 
   useEffect(() => {
-    // Agar layout ne start nahi kiya, toh idle raho
     if (!isActive) {
       setPhase('IDLE');
       return;
     }
 
-    // Cancellation flag (agar component unmount ho jaye toh sequence ruk jaye)
     let isCancelled = false;
 
     const runIntroSequence = async () => {
-  // 1. FLASH
-  setPhase('FLASH');
-  await delay(600);
-  if (isCancelled) return;
+      // 1. FLASH (Starts instantly)
+      setPhase('FLASH');
+      await delay(600);
+      if (isCancelled) return;
 
-  // 2. ROCKET — Thoda extra time
-  setPhase('ROCKET');
-  await delay(2000);  // ✅ 1.5 se badha kar 2.0 kiya
-  if (isCancelled) return;
+      // 2. ROCKET — 🚀 3.3 Seconds (Perfect Sync with RocketLaunch Peak)
+      setPhase('ROCKET');
+      await delay(3300);  // 🚀 FIXED: wait exactly 3.3 seconds so all main rockets reach the sky and fade out
+      if (isCancelled) return;
 
-  // 3. FIREWORK — Zyada time chahiye burst ke liye
-  setPhase('FIREWORK');
-  await delay(2500);  // ✅ 1.5 se badha kar 2.5 kiya
-  if (isCancelled) return;
+      // 3. FIREWORK — 🎇 Fireworks burst instantly at the peak
+      setPhase('FIREWORK');
+      await delay(2500);  
+      if (isCancelled) return;
 
-  // 4. HANDOVER — Ambient settle hone do
-  setPhase('HANDOVER');
-  await delay(500);   // ✅ NAYA — Ambient settle hone do
-  if (isCancelled) return;
+      // 4. HANDOVER — Ambient settle
+      setPhase('HANDOVER');
+      await delay(500);   
+      if (isCancelled) return;
 
-  // 5. Ab signal do
-  onHandover();
-};
+      // 5. Signal to layout to render card
+      onHandover();
+    };
     
     runIntroSequence();
 
-    // Cleanup function
     return () => {
       isCancelled = true;
     };
