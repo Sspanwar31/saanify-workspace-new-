@@ -41,86 +41,160 @@ interface RocketState {
   cy: number;
 }
 
-/* ─────────────────── SOUND ENGINE ─────────────────── */
+/* ─────────────────── SOUND ENGINE (Realistic) ─────────────────── */
 
 class SoundEngine {
   private ctx: AudioContext | null = null;
+  private master: GainNode | null = null;
 
-  private getCtx(): AudioContext | null {
+  constructor() {
+    if (typeof window === 'undefined') return;
+
+    // 🔓 UNLOCK: Koi bhi user interaction pe AudioContext khul jaye
+    const unlock = () => { this.ensure(); };
+    const opts = { passive: true, capture: true } as AddEventListenerOptions;
+    ['pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
+      document.addEventListener(evt, unlock, opts);
+    });
+  }
+
+  private ensure(): AudioContext | null {
     try {
       if (!this.ctx) {
         const AC = window.AudioContext || (window as any).webkitAudioContext;
         if (!AC) return null;
         this.ctx = new AC();
+
+        // Master gain
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.55;
+
+        // Compressor: multiple booms overlap karne pe clipping na ho
+        const comp = this.ctx.createDynamicsCompressor();
+        comp.threshold.value = -18;
+        comp.knee.value = 12;
+        comp.ratio.value = 8;
+        comp.attack.value = 0.002;
+        comp.release.value = 0.2;
+
+        this.master.connect(comp);
+        comp.connect(this.ctx.destination);
       }
       if (this.ctx.state === 'suspended') this.ctx.resume();
       return this.ctx;
     } catch { return null; }
   }
 
-  whoosh() {
-    const ctx = this.getCtx();
-    if (!ctx) return;
+  /* ── SHUIII — Real rocket whoosh ── */
+  whoosh(variant: number = 0) {
+    const ctx = this.ensure();
+    if (!ctx || !this.master) return;
     const now = ctx.currentTime;
+    const dur = 0.7 + variant * 0.05;
 
-    const len = Math.floor(ctx.sampleRate * 0.35);
+    // White noise buffer
+    const len = Math.floor(ctx.sampleRate * dur);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.25;
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
 
     const src = ctx.createBufferSource();
     src.buffer = buf;
 
+    // Bandpass: LOW se HIGH sweep = "shuiii" sound
     const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass'; bp.Q.value = 3;
-    bp.frequency.setValueAtTime(400, now);
-    bp.frequency.exponentialRampToValueAtTime(2500, now + 0.28);
+    bp.type = 'bandpass';
+    bp.Q.value = 8 + variant * 1.2;
+    const fStart = 140 + variant * 25;
+    const fPeak = 3200 + variant * 400;
+    bp.frequency.setValueAtTime(fStart, now);
+    bp.frequency.exponentialRampToValueAtTime(fPeak, now + dur * 0.6);
+    bp.frequency.exponentialRampToValueAtTime(fPeak * 0.4, now + dur);
 
+    // Envelope: sharp rise → sustain → fade
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.001, now);
-    g.gain.exponentialRampToValueAtTime(0.12, now + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    g.gain.exponentialRampToValueAtTime(0.2, now + 0.04);
+    g.gain.setValueAtTime(0.2, now + dur * 0.35);
+    g.gain.exponentialRampToValueAtTime(0.001, now + dur);
 
-    src.connect(bp); bp.connect(g); g.connect(ctx.destination);
-    src.start(now); src.stop(now + 0.35);
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(this.master);
+    src.start(now);
+    src.stop(now + dur + 0.01);
   }
 
-  boom() {
-    const ctx = this.getCtx();
-    if (!ctx) return;
-    const now = ctx.currentTime;
+  /* ── BHOOOM — Real explosion (4 layers) ── */
+  boom(variant: number = 0, delay: number = 0) {
+    const ctx = this.ensure();
+    if (!ctx || !this.master) return;
+    const t = ctx.currentTime + delay;
+    const pitch = 0.85 + variant * 0.08;
 
-    // Sub bass
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(90, now);
-    osc.frequency.exponentialRampToValueAtTime(25, now + 0.55);
-    const og = ctx.createGain();
-    og.gain.setValueAtTime(0.35, now);
-    og.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-    osc.connect(og); og.connect(ctx.destination);
-    osc.start(now); osc.stop(now + 0.6);
+    // Layer 1: Sharp CRACK (15ms — initial impact)
+    const cLen = Math.floor(ctx.sampleRate * 0.015);
+    const cBuf = ctx.createBuffer(1, cLen, ctx.sampleRate);
+    const cd = cBuf.getChannelData(0);
+    for (let i = 0; i < cLen; i++) cd[i] = Math.random() * 2 - 1;
+    const cSrc = ctx.createBufferSource();
+    cSrc.buffer = cBuf;
+    const cG = ctx.createGain();
+    cG.gain.setValueAtTime(0.4, t);
+    cG.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
+    cSrc.connect(cG);
+    cG.connect(this.master);
+    cSrc.start(t);
+    cSrc.stop(t + 0.02);
 
-    // Crackle noise
-    const len = Math.floor(ctx.sampleRate * 0.45);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1);
+    // Layer 2: Sub-bass BHOOOM (0.8s — 75Hz → 18Hz)
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(75 * pitch, t);
+    sub.frequency.exponentialRampToValueAtTime(18, t + 0.8);
+    const sG = ctx.createGain();
+    sG.gain.setValueAtTime(0.5, t);
+    sG.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+    sub.connect(sG);
+    sG.connect(this.master);
+    sub.start(t);
+    sub.stop(t + 0.85);
 
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
+    // Layer 3: Mid thump (0.3s — 140Hz → 35Hz)
+    const mid = ctx.createOscillator();
+    mid.type = 'sine';
+    mid.frequency.setValueAtTime(140 * pitch, t);
+    mid.frequency.exponentialRampToValueAtTime(35, t + 0.3);
+    const mG = ctx.createGain();
+    mG.gain.setValueAtTime(0.22, t);
+    mG.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    mid.connect(mG);
+    mG.connect(this.master);
+    mid.start(t);
+    mid.stop(t + 0.35);
 
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(4000, now);
-    lp.frequency.exponentialRampToValueAtTime(150, now + 0.42);
-
-    const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0.2, now);
-    ng.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
-
-    src.connect(lp); lp.connect(ng); ng.connect(ctx.destination);
-    src.start(now); src.stop(now + 0.45);
+    // Layer 4: Sparse CRACKLE tail (0.7s — real "phata phata" but delayed)
+    const tkLen = Math.floor(ctx.sampleRate * 0.7);
+    const tkBuf = ctx.createBuffer(1, tkLen, ctx.sampleRate);
+    const tk = tkBuf.getChannelData(0);
+    for (let i = 0; i < tkLen; i++) {
+      // 65% silence, 35% random pop — this creates the "tak... tak... tak" feel
+      tk[i] = Math.random() > 0.65 ? (Math.random() * 2 - 1) * 0.6 : 0;
+    }
+    const tkSrc = ctx.createBufferSource();
+    tkSrc.buffer = tkBuf;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 900;
+    const tG = ctx.createGain();
+    tG.gain.setValueAtTime(0.001, t);
+    tG.gain.exponentialRampToValueAtTime(0.1, t + 0.05);
+    tG.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+    tkSrc.connect(hp);
+    hp.connect(tG);
+    tG.connect(this.master);
+    tkSrc.start(t);
+    tkSrc.stop(t + 0.75);
   }
 }
 
@@ -138,11 +212,9 @@ const TRAIL_RGB: [number, number, number][] = [
   [255, 170, 0], [255, 119, 0], [255, 68, 0], [255, 221, 68], [255, 255, 255], [255, 136, 0],
 ];
 
-/* ─────────────────── CONSTANTS ─────────────────── */
-
-const STEP = 1000 / 60;          // Fixed 60Hz physics
+const STEP = 1000 / 60;
 const ROCKET_COUNT = 5;
-const ROCKET_DELAYS = [0, 500, 1100, 1800, 2600]; // Natural stagger (ms in physics time)
+const ROCKET_DELAYS = [0, 500, 1100, 1800, 2600];
 
 /* ─────────────────── COMPONENT ─────────────────── */
 
@@ -155,16 +227,10 @@ export default function Shooting() {
   const uid = useRef(0);
   const alive = useRef(true);
   const sizeCache = useRef({ w: 0, h: 0, dpr: 1 });
-
-  // Delta time refs
   const lastTime = useRef(0);
   const acc = useRef(0);
   const physicsTime = useRef(0);
-
-  // Shake
   const shakeAmt = useRef(0);
-
-  // Sound tracking (play once per event)
   const whooshPlayed = useRef<Set<number>>(new Set());
   const boomPlayed = useRef<Set<number>>(new Set());
 
@@ -181,7 +247,7 @@ export default function Shooting() {
         startX: 12 + Math.random() * 76,
         targetY: 8 + Math.random() * 16,
         delay: ROCKET_DELAYS[i] + Math.random() * 200,
-        duration: 95 + Math.random() * 40,       // 🐢 SLOW: was 50+25, now 95-135 frames (1.6-2.25s)
+        duration: 95 + Math.random() * 40,
         drift: (Math.random() - 0.5) * 4,
         burstType: types[i % types.length],
         burstR: r, burstG: g, burstB: b,
@@ -211,7 +277,6 @@ export default function Shooting() {
     const out: Particle[] = [];
     const { burstR, burstG, burstB, burstSize, burstCount, burstType } = rk;
 
-    // Flash
     out.push({
       id: nid(), x, y, vx: 0, vy: 0,
       life: 0, maxLife: 12, size: 60 + burstSize * 8,
@@ -219,7 +284,6 @@ export default function Shooting() {
       type: 'flash', gravity: 0, friction: 1,
     });
 
-    // Afterglow
     out.push({
       id: nid(), x, y, vx: 0, vy: 0,
       life: 0, maxLife: 110, size: 45 + burstSize * 5,
@@ -227,10 +291,8 @@ export default function Shooting() {
       type: 'afterglow', gravity: 0, friction: 1,
     });
 
-    // Burst particles
     const count = burstType === 'willow' ? Math.floor(burstCount * 0.6)
-      : burstType === 'crackle' ? Math.floor(burstCount * 0.5)
-      : burstCount;
+      : burstType === 'crackle' ? Math.floor(burstCount * 0.5) : burstCount;
 
     for (let i = 0; i < count; i++) {
       const angle = burstType === 'ring'
@@ -245,7 +307,6 @@ export default function Shooting() {
         : burstType === 'chrysanthemum' ? 2.8 : 2.5;
       const speed = sBase + Math.random() * sRange;
 
-      // 🐢 SLOW: increased maxLife for all types
       const ml = burstType === 'willow' ? 170 + Math.random() * 50
         : burstType === 'chrysanthemum' ? 140 + Math.random() * 40
         : burstType === 'ring' ? 80 + Math.random() * 25
@@ -270,7 +331,6 @@ export default function Shooting() {
       });
     }
 
-    // Crackle sub-bursts
     if (burstType === 'crackle') {
       for (let i = 0; i < 12; i++) {
         const a = Math.random() * Math.PI * 2;
@@ -293,7 +353,7 @@ export default function Shooting() {
     particles.current.push(...out);
   }, []);
 
-  /* ── PHYSICS STEP (runs at fixed 60Hz) ── */
+  /* ── PHYSICS STEP ── */
   const physicsStep = useCallback(() => {
     physicsTime.current += STEP;
     const elapsed = physicsTime.current;
@@ -307,7 +367,7 @@ export default function Shooting() {
         st.launched = true;
         if (!whooshPlayed.current.has(rk.id)) {
           whooshPlayed.current.add(rk.id);
-          sound?.whoosh();
+          sound?.whoosh(rk.id - 1); // variant 0-4
         }
       }
       if (!st.launched) continue;
@@ -315,7 +375,6 @@ export default function Shooting() {
       st.phase++;
       const p = Math.min(st.phase / rk.duration, 1);
 
-      // Ease-in: slow start, fast end
       const e = p < 0.2
         ? (p / 0.2) * (p / 0.2) * 0.15
         : 0.15 + ((p - 0.2) / 0.8) * 0.85;
@@ -323,7 +382,6 @@ export default function Shooting() {
       st.cx = rk.startX + rk.drift * e;
       st.cy = 100 + (rk.targetY - 100) * e;
 
-      // Trail sparks
       if (st.phase % 2 === 0 && p < 1) {
         for (let i = 0; i < 3; i++) {
           const [tr, tg, tb] = TRAIL_RGB[Math.floor(Math.random() * TRAIL_RGB.length)];
@@ -333,7 +391,7 @@ export default function Shooting() {
             y: st.cy + 2 + Math.random() * 1.5,
             vx: (Math.random() - 0.5) * 0.45,
             vy: 0.35 + Math.random() * 0.9,
-            life: 0, maxLife: 22 + Math.random() * 14, // 🐢 SLOW: was 16+10
+            life: 0, maxLife: 22 + Math.random() * 14,
             size: 1.2 + Math.random() * 2.5,
             r: tr, g: tg, b: tb,
             type: 'trail', gravity: 0.055, friction: 0.94,
@@ -341,33 +399,31 @@ export default function Shooting() {
         }
       }
 
-      // White sparks
       if (st.phase % 4 === 0 && p < 0.85) {
         const a = Math.random() * Math.PI * 2;
         const s = 0.3 + Math.random() * 1.0;
         spawned.push({
           id: nid(), x: st.cx, y: st.cy + 0.5,
           vx: Math.cos(a) * s, vy: Math.sin(a) * s + 0.15,
-          life: 0, maxLife: 10 + Math.random() * 8, // 🐢 SLOW: was 7+6
+          life: 0, maxLife: 10 + Math.random() * 8,
           size: 0.6 + Math.random() * 0.8,
           r: 255, g: 255, b: 255,
           type: 'spark', gravity: 0.08, friction: 0.9,
         });
       }
 
-      // EXPLODE
       if (p >= 1 && !st.exploded) {
         st.exploded = true;
         spawnBurst(rk, st.cx, st.cy);
-        shakeAmt.current = 4; // screen shake trigger
+        shakeAmt.current = 4;
         if (!boomPlayed.current.has(rk.id)) {
           boomPlayed.current.add(rk.id);
-          sound?.boom();
+          // 80ms delay: light is faster than sound — feels more real
+          sound?.boom(rk.id - 1, 0.08);
         }
       }
     }
 
-    // Particle physics
     particles.current = particles.current
       .map(pt => {
         if (pt.life < 0) return { ...pt, life: pt.life + 1 };
@@ -383,8 +439,6 @@ export default function Shooting() {
       .filter(pt => pt.life < pt.maxLife);
 
     particles.current.push(...spawned);
-
-    // Decay shake
     shakeAmt.current *= 0.88;
     if (shakeAmt.current < 0.1) shakeAmt.current = 0;
   }, [spawnBurst]);
@@ -411,13 +465,11 @@ export default function Shooting() {
 
     ctx.clearRect(0, 0, cw, ch);
 
-    // Screen shake offset
     const sx = shakeAmt.current ? (Math.random() - 0.5) * shakeAmt.current * 2 : 0;
     const sy = shakeAmt.current ? (Math.random() - 0.5) * shakeAmt.current * 2 : 0;
     ctx.save();
     ctx.translate(sx, sy);
 
-    // Rockets
     for (const rk of rockets.current) {
       const st = rState.current[rk.id];
       if (!st || !st.launched || st.exploded) continue;
@@ -435,7 +487,6 @@ export default function Shooting() {
       ctx.beginPath(); ctx.arc(px, py, 2.8, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Particles
     for (const pt of particles.current) {
       if (pt.life < 0) continue;
       const px = (pt.x / 100) * cw;
@@ -548,7 +599,7 @@ export default function Shooting() {
     ctx.restore();
   }, []);
 
-  /* ── MAIN LOOP (delta time + fixed timestep) ── */
+  /* ── MAIN LOOP ── */
   useEffect(() => {
     const tick = (now: number) => {
       if (!alive.current) return;
