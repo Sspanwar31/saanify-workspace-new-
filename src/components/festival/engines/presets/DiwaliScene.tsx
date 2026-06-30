@@ -4,16 +4,14 @@ import GoldenParticles from '../../animations/GoldenParticles';
 import LuxuryGlow from '../effects/LuxuryGlow';
 import BloomLighting from '../effects/BloomLighting';
 import LuxuryRays from '../effects/LuxuryRays';
-import RocketLaunch from '../effects/RocketLaunch';
-import FireworkBurst from '../effects/FireworkBurst';
+import Shooting from '../effects/Shooting';
 
 export default function DiwaliScene({ phase }: { phase?: string }) {
   console.log('DIWALI SCENE PHASE =', phase);
 
   // ✅ ACCUMULATION LOGIC — Purana wala rehta hai, naya add hota hai
   const showFlash    = phase === 'FLASH';
-  const showRocket   = phase === 'ROCKET' || phase === 'FIREWORK' || phase === 'HANDOVER';
-  const showFirework = phase === 'FIREWORK' || phase === 'HANDOVER';
+ const showShooting = phase === 'SHOOTING' || phase === 'HANDOVER';
   const showAmbient  = phase === 'HANDOVER' || phase === 'AMBIENT';
 
   return (
@@ -29,12 +27,9 @@ export default function DiwaliScene({ phase }: { phase?: string }) {
         />
       )}
 
-      {/* ✅ ROCKET — ROCKET, FIREWORK, HANDOVER teeno me rehta hai */}
-      {showRocket && <RocketLaunch />}
-
-      {/* ✅ FIREWORK — FIREWORK aur HANDOVER me dikhta hai */}
-      {showFirework && <FireworkBurst />}
-
+     {/* SHOOTING — merged rocket + explosion */}
+      {showShooting && <Shooting />}
+      
       {/* ✅ AMBIENT — HANDOVER se shuru, AMBIENT me bhi rehta */}
       {showAmbient && (
         <>
