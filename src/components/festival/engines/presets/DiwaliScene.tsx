@@ -17,7 +17,7 @@ export default function DiwaliScene({ phase }: { phase?: string }) {
   const showAmbient  = phase === 'HANDOVER' || phase === 'AMBIENT';
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
 
       {/* ✅ FLASH — White flash overlay */}
       {showFlash && (
