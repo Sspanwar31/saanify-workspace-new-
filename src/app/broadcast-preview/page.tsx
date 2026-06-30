@@ -13,9 +13,11 @@ export default function BroadcastPreviewPage() {
   const [broadcast, setBroadcast] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showTopBanner, setShowTopBanner] = useState(false);
-  const [isCardVisible, setIsCardVisible] = useState(true);
+  
+  // 🚀 FIXED: starts_at aur ends_at timeline chalne tak card ko hidden (false) rakhein
+  const [isCardVisible, setIsCardVisible] = useState(false);
 
-  // ✅ NAYA STATE: Intro sequence ke liye
+  // Intro sequence starts automatically
   const [isIntroActive, setIsIntroActive] = useState(true);
 
   useEffect(() => { loadBroadcast(); }, []);
@@ -32,34 +34,20 @@ export default function BroadcastPreviewPage() {
   if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white font-black animate-pulse tracking-[15px]">SAANIFY V2</div>;
   if (!broadcast) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white">No Active Preview</div>;
 
-  // 🚀 DYNAMIC CONFIG EXTRACTION
+  // DYNAMIC CONFIG EXTRACTION
   const themeColor = broadcast.theme_config?.primary_color || broadcast.theme_color || '#fbbf24';
   const themeGradient = `linear-gradient(135deg, ${themeColor} 0%, #020617 100%)`;
   
-  // 1. Title Config
   const titleVariant = broadcast.theme_config?.title_variant || 'royal';
-  
-  // 2. CTA Config
   const ctaVariant = broadcast.theme_config?.cta_variant || 'premium';
-  
-  // 3. Banner Config
   const bannerVariant = broadcast.theme_config?.banner_variant || 'glass';
-  
-  // 4. Glow Config
   const cardGlow = broadcast.theme_config?.card_glow || 'theme';
-  
-  // 5. Particle Config
-  const particleVariant = broadcast.hero_config?.particle_variant || 'default';
-
-  // 6. Design Preset Config
   const designPreset = broadcast.hero_config?.design_preset || 'standard';
 
-  // Text Splitting
   const msgParts = (broadcast.resolved_message || broadcast.message)?.split('|') || [];
   const titleParts = (broadcast.resolved_title || broadcast.title)?.split('|') || [];
   const isHoli = broadcast.festival_key === 'HOLI';
 
-  // 🚀 1. DYNAMIC TITLE STYLES
   const titleStyles: any = {
     royal: 'font-black italic tracking-tight',
     modern: 'font-bold tracking-wide',
@@ -68,7 +56,6 @@ export default function BroadcastPreviewPage() {
     glow: 'font-black drop-shadow-[0_0_20px_currentColor]'
   };
 
-  // 🚀 2. DYNAMIC CTA STYLES
   const getCTAStyle = () => {
     switch(ctaVariant){
       case 'glass':
@@ -101,7 +88,6 @@ export default function BroadcastPreviewPage() {
     }
   };
 
-  // 🚀 3. DYNAMIC BANNER CLASSES
   const cardClasses: any = {
     glass: 'bg-[#0a0f1e]/90 backdrop-blur-3xl',
     premium: 'bg-[#0a0f1e]',
@@ -111,7 +97,6 @@ export default function BroadcastPreviewPage() {
     festival: 'bg-gradient-to-br from-slate-950 to-black'
   };
 
-  // 🚀 4. DYNAMIC GLOW
   const getGlow = () => {
     switch(cardGlow){
       case 'gold':
@@ -127,10 +112,9 @@ export default function BroadcastPreviewPage() {
     }
   };
 
-  // 🚀 5. DESIGN PRESET LOGIC
   const getDesignTweaks = () => {
     switch(designPreset) {
-      case 'premium': return 'scale-110'; // Bigger Hero
+      case 'premium': return 'scale-110'; 
       case 'modern': return 'shadow-2xl shadow-black/50';
       case 'minimal': return 'shadow-lg shadow-black/20';
       case 'glass': return 'backdrop-blur-3xl';
@@ -146,19 +130,19 @@ export default function BroadcastPreviewPage() {
   return (
     <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins">
       
-      {/* ✅ NAYA - Full sequence chalayega */}
+      {/* 🚀 FIXED: Intro Controller Timeline with Handover Callback */}
       <FestivalIntroController 
         isActive={isIntroActive} 
         onHandover={() => {
-          // Preview page me hum sequence ko band NAHI karenge
-          // HANDOVER phase me rehne denge taaki sab effects dikhte rahe
+          // 🚀 FIXED: Rocket aur Fireworks khatm hote hi (5.1s par) card ko visible karenge
+          setIsCardVisible(true);
         }}
       >
         {(phase) => (
           <AnimationFactory
             engine={broadcast?.hero_config?.animation}
             preset={broadcast?.festival_key}
-            phase={phase} // ✅ AB PHASE JA RAHA HAI!
+            phase={phase} 
           />
         )}
       </FestivalIntroController>
@@ -180,7 +164,7 @@ export default function BroadcastPreviewPage() {
         </div>
       )}
 
-      {/* 🚀 2. THE MASTER CARD CONTAINER */}
+      {/* 🚀 2. THE MASTER CARD CONTAINER (Fades in beautifully after intro) */}
       <div className={`relative w-full max-w-[350px] transition-all duration-1000 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
         
         <div 
@@ -188,7 +172,7 @@ export default function BroadcastPreviewPage() {
           style={{ 
             borderColor: designPreset === 'royal' ? '#ffd700' : (isHoli ? '#ff0080' : themeColor),
             boxShadow: getGlow(),
-            ...(designPreset === 'luxury' && { boxShadow: `0 0 100px ${themeColor}60, 0 0 200px ${themeColor}20` }) // Luxury Extra Glow
+            ...(designPreset === 'luxury' && { boxShadow: `0 0 100px ${themeColor}60, 0 0 200px ${themeColor}20` })
           }}
         >
           
@@ -200,7 +184,6 @@ export default function BroadcastPreviewPage() {
                 <img src={broadcast.image_url} className={`hero-anim w-full h-full object-contain relative z-10 drop-shadow-2xl ${getDesignTweaks()}`} alt="Hero" />
               ) : (
                 <div className={`transition-transform duration-500 ${getDesignTweaks()}`}>
-                   {/* HeroFactory now internally handles banner_visual_key logic */}
                    <HeroFactory config={broadcast.hero_config} themeColor={themeColor} />
                 </div>
               )}
@@ -217,7 +200,7 @@ export default function BroadcastPreviewPage() {
             </div>
 
             <div className="space-y-4 w-full">
-                {/* 🚀 DYNAMIC TITLE */}
+                {/* DYNAMIC TITLE */}
                 <h1
                  className={`text-3xl uppercase leading-none drop-shadow-lg ${titleStyles[titleVariant]}`}
                  style={{
@@ -239,7 +222,7 @@ export default function BroadcastPreviewPage() {
                 </p>
             </div>
 
-            {/* 🚀 DYNAMIC CTA */}
+            {/* DYNAMIC CTA */}
             <Button 
               onClick={handleCelebrate}
               className="w-full h-14 mt-8 rounded-[1.5rem] text-lg font-black shadow-2xl transition-all hover:scale-105 active:scale-95 border-t border-white/20"
