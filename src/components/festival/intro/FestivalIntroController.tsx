@@ -40,7 +40,7 @@ export default function FestivalIntroController({
       // 2. SHOOTING — Rockets launch + explode (component handles its own timing)
       //    4500ms = enough for 7 rockets to launch (0-1800ms) + reach top + explode + fade
       setPhase('SHOOTING');
-     await delay(7000);  // 🐢 5 rockets: last launch ~2800ms + flight ~2200ms + fade ~2000ms
+      await delay(7000);  // 🐢 5 rockets: last launch ~2800ms + flight ~2200ms + fade ~2000ms
       if (isCancelled) return;
 
       // 3. HANDOVER — Card appears
