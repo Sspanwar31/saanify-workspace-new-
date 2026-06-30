@@ -38,9 +38,9 @@ export default function FestivalIntroController({
       await delay(600);
       if (isCancelled) return;
 
-      // 2. ROCKET — 🚀 3.3 Seconds (Perfect Sync with RocketLaunch Peak)
+      // 2. ROCKET — 🚀 2.9 Seconds (Perfect Sync with RocketLaunch Peak)
       setPhase('ROCKET');
-      await delay(3300);  // 🚀 FIXED: wait exactly 3.3 seconds so all main rockets reach the sky and fade out
+      await delay(2900);  // 🚀 FIXED: wait exactly 2.9 seconds so all main rockets reach the sky and fade out
       if (isCancelled) return;
 
       // 3. FIREWORK — 🎇 Fireworks burst instantly at the peak
