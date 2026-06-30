@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
@@ -81,14 +80,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   // ━━━ 2. THE HANDOVER FUNCTION (Controller isko call karega) ━━━
- const handleIntroHandover = useCallback(() => {
-    setTimeout(() => {
-        setIsIntroActive(false);   // Step 1: Scene band karo
-        setTimeout(() => {
-            setShowPopup(true);    // Step 2: Tab popup kholo
-        }, 300);                   // 300ms gap — React ko render karne do
-    }, 1200);                      // 1200ms HANDOVER chalne do
-}, []);
+  // ✅ CHANGE 1: Simplified — Bas popup kholo, scene mat ruko
+  const handleIntroHandover = useCallback(() => {
+      setShowPopup(true);  // Bas popup kholo, scene mat ruko
+  }, []);
   
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
@@ -159,13 +154,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
-  const handleDismissPopup = () => {
+  // ✅ CHANGE 2: Scene bhi band karo + useCallback with dependency
+  const handleDismissPopup = useCallback(() => {
     setShowPopup(false);
     setHasSeenPopup(true);
+    setIsIntroActive(false);  // ← ADD: Ab scene band karo
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
-  };
+  }, [activeBroadcast]);
 
   // ━━━ 4. AUTH + PROFILE SYNC ━━━
   useEffect(() => {
@@ -324,12 +321,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* Popup ab sirf Controller ke handover pe khulega */}
-      <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
-           <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
-        </DialogContent>
-      </Dialog>
+      {/* ✅ CHANGE 3: Custom overlay instead of Dialog — z-index 9999 pe full control */}
+      {showPopup && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop — thoda transparent taaki fading fireworks peeche dikhein */}
+          <div 
+            className="absolute inset-0 bg-black/25 backdrop-blur-[2px]"
+            onClick={handleDismissPopup}
+          />
+          {/* Card — scale in animation ke saath */}
+          <div className="relative z-10 animate-in zoom-in-95 fade-in duration-500">
+            <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
+          </div>
+        </div>
+      )}
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
