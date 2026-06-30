@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
@@ -80,15 +79,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. THE HANDOVER FUNCTION (Controller isko call karega) ━━━
- const handleIntroHandover = useCallback(() => {
+  // ━━━ 2. THE HANDOVER FUNCTION ━━━
+  // ✅ FIX: 300ms gap — HANDOVER phase ko pehle render hone do, phir popup upar aaye
+  // 0ms se React dono ko batch kar deta tha → animation skip ho jata tha
+  const handleIntroHandover = useCallback(() => {
     setTimeout(() => {
-        setIsIntroActive(false);   // Step 1: Scene band karo
-        setTimeout(() => {
-            setShowPopup(true);    // Step 2: Tab popup kholo
-        }, 300);                   // 300ms gap — React ko render karne do
-    }, 1200);                      // 1200ms HANDOVER chalne do
-}, []);
+      setShowPopup(true);
+    }, 300);
+  }, []);
   
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
@@ -115,10 +113,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       
       if (!sessionSeen && !hasSeenPopup) {
         if (data.hero_enabled) {
-          // 🚀 UPGRADE: Sirf Controller ko flag do, baaki woh sambhalega
           setIsIntroActive(true);
         } else {
-          // Agar hero nahi hai toh sidha popup
           setShowPopup(true);
         }
       }
@@ -159,9 +155,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
+  // ✅ CHANGE 2: Scene bhi band karo jab user dismiss kare
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
+    setIsIntroActive(false);
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
@@ -309,7 +307,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-     {/* 🚀 UPGRADED: Dynamic Festival Intro Animations with High Z-Index & Pointer-Events-None */}
+      {/* 🚀 Dynamic Festival Intro Animations — z-9998 */}
       {activeBroadcast && activeBroadcast.hero_enabled && (
         <div className="fixed inset-0 z-[9998] pointer-events-none">
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
@@ -324,12 +322,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* Popup ab sirf Controller ke handover pe khulega */}
-      <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
-           <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
-        </DialogContent>
-      </Dialog>
+      {/* ✅ CHANGE 3: Custom overlay — z-9999, upar aayega animation se */}
+      {showPopup && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/25 backdrop-blur-[2px]"
+            onClick={handleDismissPopup}
+          />
+          <div className="relative z-10 animate-in zoom-in-95 fade-in duration-500">
+            <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
+          </div>
+        </div>
+      )}
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -356,4 +360,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
     </>
   );
-} 
+}
