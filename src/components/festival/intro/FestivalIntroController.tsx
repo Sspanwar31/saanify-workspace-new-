@@ -54,7 +54,7 @@ export default function FestivalIntroController({
 
   // 4. HANDOVER — Ambient settle hone do
   setPhase('HANDOVER');
-  await delay(800);   // ✅ NAYA — Ambient settle hone do
+  await delay(500);   // ✅ NAYA — Ambient settle hone do
   if (isCancelled) return;
 
   // 5. Ab signal do
