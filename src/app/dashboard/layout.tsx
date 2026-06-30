@@ -56,7 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
   
-  // 🚀 FIXED: isIntroActive state ko wapas joda gaya hai jo missing tha
+  // 🚀 2027 UPGRADE: Layout ab sirf ek flag dega, timer nahi chalayega
   const [isIntroActive, setIsIntroActive] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
@@ -80,16 +80,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. THE HANDOVER FUNCTION (🚀 FIXED: handleIntroHandover function ko wapas joda gaya hai) ━━━
-  const handleIntroHandover = useCallback(() => {
-    console.log("🎬 Intro sequence handover triggered");
+  // ━━━ 2. THE HANDOVER FUNCTION (Controller isko call karega) ━━━
+ const handleIntroHandover = useCallback(() => {
     setTimeout(() => {
         setIsIntroActive(false);   // Step 1: Scene band karo
         setTimeout(() => {
             setShowPopup(true);    // Step 2: Tab popup kholo
         }, 300);                   // 300ms gap — React ko render karne do
     }, 1200);                      // 1200ms HANDOVER chalne do
-  }, []);
+}, []);
   
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
@@ -160,15 +159,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
-  // ✅ FIXED: Dismiss popup hone par intro animation ko bhi false karein (Change 2)
-  const handleDismissPopup = useCallback(() => {
+  const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
-    setIsIntroActive(false); // 🚀 ADDED: Ab scene band ho jayega popup band hote hi
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
-  }, [activeBroadcast]);
+  };
 
   // ━━━ 4. AUTH + PROFILE SYNC ━━━
   useEffect(() => {
@@ -327,20 +324,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 FIXED: Dialog (Radix UI) ko hata kar Z-Index 9999 wala Custom Overlay lagaya gaya hai (Change 3) */}
-      {showPopup && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          {/* Backdrop — Fading fireworks ko peeche dekhne dene ke liye transparent rakha gaya hai */}
-          <div 
-            className="absolute inset-0 bg-black/35 backdrop-blur-[2px] transition-opacity duration-500"
-            onClick={handleDismissPopup}
-          />
-          {/* Greeting Card — Beautiful Scale-In & Fade-In Animation */}
-          <div className="relative z-10 animate-in zoom-in-95 fade-in duration-500">
-            <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
-          </div>
-        </div>
-      )}
+      {/* Popup ab sirf Controller ke handover pe khulega */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
+           <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
+        </DialogContent>
+      </Dialog>
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -367,4 +356,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
     </>
   );
-}
+} 
