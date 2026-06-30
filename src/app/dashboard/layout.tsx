@@ -79,10 +79,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. THE HANDOVER FUNCTION (Controller isko call karega) ━━━
-  // ✅ CHANGE 1: Simplified — Bas popup kholo, scene mat ruko
+  // ━━━ 2. THE HANDOVER FUNCTION ━━━
+  // ✅ FIX: 300ms gap — HANDOVER phase ko pehle render hone do, phir popup upar aaye
+  // 0ms se React dono ko batch kar deta tha → animation skip ho jata tha
   const handleIntroHandover = useCallback(() => {
-      setShowPopup(true);  // Bas popup kholo, scene mat ruko
+    setTimeout(() => {
+      setShowPopup(true);
+    }, 300);
   }, []);
   
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
@@ -110,10 +113,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       
       if (!sessionSeen && !hasSeenPopup) {
         if (data.hero_enabled) {
-          // 🚀 UPGRADE: Sirf Controller ko flag do, baaki woh sambhalega
           setIsIntroActive(true);
         } else {
-          // Agar hero nahi hai toh sidha popup
           setShowPopup(true);
         }
       }
@@ -154,15 +155,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
-  // ✅ CHANGE 2: Scene bhi band karo + useCallback with dependency
-  const handleDismissPopup = useCallback(() => {
+  // ✅ CHANGE 2: Scene bhi band karo jab user dismiss kare
+  const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
-    setIsIntroActive(false);  // ← ADD: Ab scene band karo
+    setIsIntroActive(false);
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
-  }, [activeBroadcast]);
+  };
 
   // ━━━ 4. AUTH + PROFILE SYNC ━━━
   useEffect(() => {
@@ -306,7 +307,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-     {/* 🚀 UPGRADED: Dynamic Festival Intro Animations with High Z-Index & Pointer-Events-None */}
+      {/* 🚀 Dynamic Festival Intro Animations — z-9998 */}
       {activeBroadcast && activeBroadcast.hero_enabled && (
         <div className="fixed inset-0 z-[9998] pointer-events-none">
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
@@ -321,15 +322,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ✅ CHANGE 3: Custom overlay instead of Dialog — z-index 9999 pe full control */}
+      {/* ✅ CHANGE 3: Custom overlay — z-9999, upar aayega animation se */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          {/* Backdrop — thoda transparent taaki fading fireworks peeche dikhein */}
           <div 
             className="absolute inset-0 bg-black/25 backdrop-blur-[2px]"
             onClick={handleDismissPopup}
           />
-          {/* Card — scale in animation ke saath */}
           <div className="relative z-10 animate-in zoom-in-95 fade-in duration-500">
             <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
           </div>
