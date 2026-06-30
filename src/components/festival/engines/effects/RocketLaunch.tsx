@@ -22,8 +22,9 @@ interface Rocket {
   curveDir: number;
   speed: number;
   launched: boolean;
-  isDecoy: boolean;    // 🚀 NEW: Decoy aur Main rockets me antar karne ke liye
-  duration: number;   // 🚀 NEW: Har rocket ki speed ko individual control karne ke liye
+  isDecoy: boolean;
+  duration: number;
+  finished?: boolean; // 🚀 NEW: State check to prevent freezing on screen
 }
 
 export default function RocketLaunch() {
@@ -48,14 +49,14 @@ export default function RocketLaunch() {
   // Initialize rockets with staggered timing and different paths
   useEffect(() => {
     const rocketConfigs: Rocket[] = [
-      // 🚀 Decoy Rockets: Ye fast udenge aur screen ke bahar nikal jayenge
+      // Decoy Rockets (Quick launch, fly all the way off screen)
       { id: 1, startX: 18, delay: 100, curveDir: -1, speed: 1.1, launched: false, isDecoy: true, duration: 90 },
       { id: 2, startX: 82, delay: 400, curveDir: 1, speed: 1.2, launched: false, isDecoy: true, duration: 90 },
       
-      // 🚀 Main Rockets: Ye screen ke top (15% height) par pahuch kar fade out honge aur blast karenge
-      { id: 3, startX: 32, delay: 900, curveDir: -0.4, speed: 0.95, launched: false, isDecoy: false, duration: 110 },
-      { id: 4, startX: 68, delay: 1300, curveDir: 0.5, speed: 1.05, launched: false, isDecoy: false, duration: 110 },
-      { id: 5, startX: 50, delay: 1700, curveDir: 0, speed: 1.15, launched: false, isDecoy: false, duration: 110 },
+      // Main Rockets (Staggered, fly to the top of the sky and explode - Faster flight speed)
+      { id: 3, startX: 32, delay: 800, curveDir: -0.4, speed: 0.95, launched: false, isDecoy: false, duration: 90 },
+      { id: 4, startX: 68, delay: 1100, curveDir: 0.5, speed: 1.05, launched: false, isDecoy: false, duration: 90 },
+      { id: 5, startX: 50, delay: 1400, curveDir: 0, speed: 1.15, launched: false, isDecoy: false, duration: 90 },
     ];
 
     rocketsRef.current = rocketConfigs;
@@ -87,28 +88,30 @@ export default function RocketLaunch() {
 
     const animate = () => {
       const newParticles: Particle[] = [];
+      let stateNeedsUpdate = false;
 
-      activeRockets.forEach((rocket) => {
-        if (!rocket.launched) return;
+      // 🚀 FIXED: Loop starts matching rocket state update to prevent freezing
+      const updatedRockets = activeRockets.map((rocket) => {
+        if (!rocket.launched || rocket.finished) return rocket;
 
         const phase = rocketPhaseRef.current[rocket.id] || 0;
-        rocketPhaseRef.current[rocket.id] = phase + 1;
-
-        // 🚀 Dynamic duration ke hissab se progress nikalenge
         const progress = Math.min(phase / rocket.duration, 1);
+
+        // If rocket finishes its journey, mark it as finished to force unrender
+        if (progress >= 1) {
+          stateNeedsUpdate = true;
+          return { ...rocket, finished: true };
+        }
+
+        rocketPhaseRef.current[rocket.id] = phase + 1;
         const eased = 1 - Math.pow(1 - progress, 3);
 
         // Rocket position calculation
         const baseX = rocket.startX;
         const curve = Math.sin(progress * Math.PI * 2) * 3 * rocket.curveDir;
         const rocketX = baseX + curve;
-        
-        // 🚀 Decoy screen ke bahar (130) jayega, Main aakash me (85) rukega
         const heightFactor = rocket.isDecoy ? 130 : 85;
         const rocketY = 100 - eased * heightFactor;
-
-        // Hide rocket after it leaves
-        if (progress >= 1) return;
 
         // --- EXHAUST PARTICLES ---
         if (phase % 2 === 0) {
@@ -179,7 +182,13 @@ export default function RocketLaunch() {
             type: 'trail',
           });
         }
+
+        return rocket;
       });
+
+      if (stateNeedsUpdate) {
+        setActiveRockets(updatedRockets);
+      }
 
       // Update existing particles
       setParticles((prev) => {
@@ -238,10 +247,8 @@ export default function RocketLaunch() {
 
       {/* Rocket elements */}
       {activeRockets.map((rocket) => {
-        if (!rocket.launched) return null;
+        if (!rocket.launched || rocket.finished) return null; // 🚀 FIXED: Finished status hone par rocket gayab ho jayega
         const phase = rocketPhaseRef.current[rocket.id] || 0;
-        
-        // 🚀 Dynamic progress calculation
         const progress = Math.min(phase / rocket.duration, 1);
         const eased = 1 - Math.pow(1 - progress, 3);
         const curve = Math.sin(progress * Math.PI * 2) * 3 * rocket.curveDir;
@@ -252,11 +259,7 @@ export default function RocketLaunch() {
 
         const rotation = curve * 3 + (rocket.curveDir * -5);
         const scale = 0.8 + progress * 0.3;
-        
-        // 🚀 Rocket ke upar pahuchne par use smoothly adrishya (fade-out) karne ka logic
         const opacity = progress > 0.85 ? 1 - (progress - 0.85) / 0.15 : 1;
-
-        if (progress >= 1) return null;
 
         return (
           <div
@@ -278,7 +281,6 @@ export default function RocketLaunch() {
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              {/* Body */}
               <defs>
                 <linearGradient id={`body-${rocket.id}`} x1="12" y1="0" x2="12" y2="48" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#e8edf2" />
@@ -299,30 +301,17 @@ export default function RocketLaunch() {
                 </linearGradient>
               </defs>
 
-              {/* Nose cone */}
               <path d="M12 0 L17 10 L7 10 Z" fill="url(#body-rocket-nose)" />
               <path d="M12 0 L17 10 L7 10 Z" fill="#d0dae6" />
-
-              {/* Main body */}
               <rect x="7" y="10" width="10" height="22" rx="1" fill={`url(#body-${rocket.id})`} />
-
-              {/* Body highlight stripe */}
               <rect x="8" y="10" width="3" height="22" rx="0.5" fill="rgba(255,255,255,0.25)" />
-
-              {/* Window */}
               <circle cx="12" cy="16" r="3.5" fill={`url(#window-${rocket.id})`} />
               <circle cx="12" cy="16" r="3.5" fill="none" stroke="#607890" strokeWidth="0.8" />
               <circle cx="11" cy="15" r="1" fill="rgba(255,255,255,0.5)" />
-
-              {/* Fins */}
               <path d="M7 26 L2 36 L7 32 Z" fill="#ff4444" />
               <path d="M17 26 L22 36 L17 32 Z" fill="#ff4444" />
               <path d="M7 26 L2 36 L7 32 Z" fill="url(#body-rocket-nose)" opacity="0.3" />
-
-              {/* Nozzle */}
               <path d="M9 32 L8 36 L16 36 L15 32 Z" fill="#445566" />
-
-              {/* Flame */}
               <path
                 d="M8 36 Q10 44 12 48 Q14 44 16 36 Z"
                 fill={`url(#flame-${rocket.id})`}
@@ -336,7 +325,6 @@ export default function RocketLaunch() {
               />
             </svg>
 
-            {/* Engine glow */}
             <div
               className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full animate-pulse"
               style={{
