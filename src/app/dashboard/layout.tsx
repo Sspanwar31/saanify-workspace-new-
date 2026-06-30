@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
@@ -47,15 +48,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [userProfile, setUserProfile] = useState<any>(null);
   const [sysSettings, setSysSettings] = useState<any>(null); 
   const [isChecking, setIsChecking] = useState(true);
-  const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
+  // Impersonating and admin view
+  const [isImpersonating, setIsImpersonating] = useState(false);
+
   // Broadcast States
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
   
-  // 🚀 2027 UPGRADE: Layout ab sirf ek flag dega, timer nahi chalayega
+  // 🚀 Layout starts with intro active set to false
   const [isIntroActive, setIsIntroActive] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
@@ -80,12 +83,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   // ━━━ 2. THE HANDOVER FUNCTION ━━━
-  // ✅ FIX: 300ms gap — HANDOVER phase ko pehle render hone do, phir popup upar aaye
-  // 0ms se React dono ko batch kar deta tha → animation skip ho jata tha
   const handleIntroHandover = useCallback(() => {
+    console.log("🎬 [Timeline Handover]: Rocket/Firework animation completed! Opening popup...");
     setTimeout(() => {
-      setShowPopup(true);
-    }, 300);
+        setShowPopup(true);    // Tab popup kholo
+    }, 300);                   // 300ms gap — React ko render karne do
   }, []);
   
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
@@ -106,12 +108,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      if (activeBroadcast?.id === data.id) return;
+      // Automatic replay detection on update
+      const wasUpdated = activeBroadcast && activeBroadcast.updated_at !== data.updated_at;
+      
+      if (wasUpdated) {
+        console.log("🔥 [Replay Detected]: Admin updated the broadcast. Resetting session cache...");
+        sessionStorage.removeItem(`seen_broadcast_${data.id}`);
+        setHasSeenPopup(false);
+      }
 
       setActiveBroadcast(data);
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
-      
-      if (!sessionSeen && !hasSeenPopup) {
+
+      if ((!sessionSeen && !hasSeenPopup) || wasUpdated) {
         if (data.hero_enabled) {
           setIsIntroActive(true);
         } else {
@@ -125,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setIsIntroActive(false);
       }
     }
-  }, [hasSeenPopup, activeBroadcast?.id]);
+  }, [hasSeenPopup, activeBroadcast]);
 
   const checkBroadcastExpiry = useCallback(() => {
     if (!activeBroadcast?.ends_at) return;
@@ -155,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
-  // ✅ CHANGE 2: Scene bhi band karo jab user dismiss kare
+  // Scene bhi band karo jab user dismiss kare
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
@@ -307,9 +316,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 Dynamic Festival Intro Animations — z-9998 */}
+     {/* 🚀 UPGRADED: Dynamic Festival Intro Animations with High Z-Index & Smart Opacity Dimming on Popup Open */}
       {activeBroadcast && activeBroadcast.hero_enabled && (
-        <div className="fixed inset-0 z-[9998] pointer-events-none">
+        <div 
+          className={`fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 ${
+            showPopup ? 'opacity-25 scale-95 saturate-[0.8]' : 'opacity-100 scale-100'
+          }`}
+        >
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
             {(phase) => (
               <AnimationFactory
@@ -322,18 +335,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ✅ CHANGE 3: Custom overlay — z-9999, upar aayega animation se */}
-      {showPopup && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-black/25 backdrop-blur-[2px]"
-            onClick={handleDismissPopup}
-          />
-          <div className="relative z-10 animate-in zoom-in-95 fade-in duration-500">
-            <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
-          </div>
-        </div>
-      )}
+      {/* Popup ab sirf Controller ke handover pe khulega */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent className="max-w-xl p-0 border-none bg-transparent shadow-none overflow-visible">
+           <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
+        </DialogContent>
+      </Dialog>
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
