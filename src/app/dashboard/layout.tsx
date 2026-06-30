@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
@@ -55,7 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
   
-  // 🚀 2027 UPGRADE: Layout ab sirf ek flag dega, timer nahi chalayega
+  // 🚀 FIXED: isIntroActive state ko wapas joda gaya hai jo missing tha
   const [isIntroActive, setIsIntroActive] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
@@ -79,13 +80,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. THE HANDOVER FUNCTION ━━━
-  // ✅ FIX: 300ms gap — HANDOVER phase ko pehle render hone do, phir popup upar aaye
-  // 0ms se React dono ko batch kar deta tha → animation skip ho jata tha
+  // ━━━ 2. THE HANDOVER FUNCTION (🚀 FIXED: handleIntroHandover function ko wapas joda gaya hai) ━━━
   const handleIntroHandover = useCallback(() => {
+    console.log("🎬 Intro sequence handover triggered");
     setTimeout(() => {
-      setShowPopup(true);
-    }, 300);
+        setIsIntroActive(false);   // Step 1: Scene band karo
+        setTimeout(() => {
+            setShowPopup(true);    // Step 2: Tab popup kholo
+        }, 300);                   // 300ms gap — React ko render karne do
+    }, 1200);                      // 1200ms HANDOVER chalne do
   }, []);
   
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
@@ -113,8 +116,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       
       if (!sessionSeen && !hasSeenPopup) {
         if (data.hero_enabled) {
+          // 🚀 UPGRADE: Sirf Controller ko flag do, baaki woh sambhalega
           setIsIntroActive(true);
         } else {
+          // Agar hero nahi hai toh sidha popup
           setShowPopup(true);
         }
       }
@@ -155,15 +160,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
-  // ✅ CHANGE 2: Scene bhi band karo jab user dismiss kare
-  const handleDismissPopup = () => {
+  // ✅ FIXED: Dismiss popup hone par intro animation ko bhi false karein (Change 2)
+  const handleDismissPopup = useCallback(() => {
     setShowPopup(false);
     setHasSeenPopup(true);
-    setIsIntroActive(false);
+    setIsIntroActive(false); // 🚀 ADDED: Ab scene band ho jayega popup band hote hi
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
-  };
+  }, [activeBroadcast]);
 
   // ━━━ 4. AUTH + PROFILE SYNC ━━━
   useEffect(() => {
@@ -307,7 +312,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 Dynamic Festival Intro Animations — z-9998 */}
+     {/* 🚀 UPGRADED: Dynamic Festival Intro Animations with High Z-Index & Pointer-Events-None */}
       {activeBroadcast && activeBroadcast.hero_enabled && (
         <div className="fixed inset-0 z-[9998] pointer-events-none">
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
@@ -322,13 +327,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ✅ CHANGE 3: Custom overlay — z-9999, upar aayega animation se */}
+      {/* 🚀 FIXED: Dialog (Radix UI) ko hata kar Z-Index 9999 wala Custom Overlay lagaya gaya hai (Change 3) */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop — Fading fireworks ko peeche dekhne dene ke liye transparent rakha gaya hai */}
           <div 
-            className="absolute inset-0 bg-black/25 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/35 backdrop-blur-[2px] transition-opacity duration-500"
             onClick={handleDismissPopup}
           />
+          {/* Greeting Card — Beautiful Scale-In & Fade-In Animation */}
           <div className="relative z-10 animate-in zoom-in-95 fade-in duration-500">
             <BroadcastRenderer broadcast={activeBroadcast} onClose={handleDismissPopup} />
           </div>
