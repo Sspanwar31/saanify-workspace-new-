@@ -82,18 +82,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ 2. THE HANDOVER FUNCTION (Controller isko call karega) ━━━
  const handleIntroHandover = useCallback(() => {
-    // Step 1: HANDOVER phase me firework + ambient 1.5 sec chalne do
     setTimeout(() => {
-        // Step 2: Ab scene band karo
-        setIsIntroActive(false);
-    }, 1500);
-
-    // Step 3: Popup thoda late aao (firework dikha ke)
-    setTimeout(() => {
-        setShowPopup(true);
-    }, 800);
+        setIsIntroActive(false);   // Step 1: Scene band karo
+        setTimeout(() => {
+            setShowPopup(true);    // Step 2: Tab popup kholo
+        }, 300);                   // 300ms gap — React ko render karne do
+    }, 1200);                      // 1200ms HANDOVER chalne do
 }, []);
-
+  
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
@@ -313,20 +309,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* 🚀 2027 UPGRADE: The Dictator Controller running the show */}
-      <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
-        {(phase) => (
-          activeBroadcast?.hero_enabled ? (
-            <AnimationFactory
-              // IDLE/HANDOVER pe normal ambient particles, baaki pe sequence chalao
-              // ✅ NAYA (Seedha phase bhej do, Factory samajh jayega)
-               phase={phase}
-              engine={activeBroadcast?.hero_config?.animation}
-              preset={activeBroadcast?.festival_key}
-            />
-          ) : null
-        )}
-      </FestivalIntroController>
+     {/* 🚀 UPGRADED: Dynamic Festival Intro Animations with High Z-Index & Pointer-Events-None */}
+      {activeBroadcast && activeBroadcast.hero_enabled && (
+        <div className="fixed inset-0 z-[9998] pointer-events-none">
+          <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
+            {(phase) => (
+              <AnimationFactory
+                phase={phase}
+                engine={activeBroadcast?.hero_config?.animation}
+                preset={activeBroadcast?.festival_key}
+              />
+            )}
+          </FestivalIntroController>
+        </div>
+      )}
 
       {/* Popup ab sirf Controller ke handover pe khulega */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
