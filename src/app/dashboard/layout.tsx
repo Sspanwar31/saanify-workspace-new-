@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -37,6 +37,144 @@ const MaintenanceScreen = ({ settings }: any) => (
   </div>
 );
 
+// =========================================================
+// ✅ NEW: INDEPENDENT GOLDEN PARTICLE CANVAS
+// Intro controller से पूरी तरह independent — जब तक 
+// showContinuousParticles true है, ये चलता रहेगा
+// =========================================================
+const GoldenParticleCanvas = memo(() => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<any[]>([]);
+  const animFrameRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let w = 0, h = 0;
+
+    const resize = () => {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles = particlesRef.current;
+
+    // एक golden particle बनाओ
+    const spawn = (randomY: boolean) => {
+      const maxLife = Math.random() * 350 + 150;
+      return {
+        x: Math.random() * w,
+        y: randomY ? Math.random() * h : h + Math.random() * 60,
+        vx: (Math.random() - 0.5) * 0.7,
+        vy: -(Math.random() * 1.2 + 0.4),
+        size: Math.random() * 2.5 + 0.8,
+        baseOpacity: Math.random() * 0.6 + 0.35,
+        life: 0,
+        maxLife,
+        // twinkle — हर particle अलग rhythm से chamkega
+        twinkleSpeed: Math.random() * 0.06 + 0.02,
+        twinklePhase: Math.random() * Math.PI * 2,
+        // सोने के shades — 40-55 hue range
+        hue: 40 + Math.random() * 15,
+        // slight horizontal sway
+        swayAmp: Math.random() * 0.4 + 0.1,
+        swayFreq: Math.random() * 0.015 + 0.008,
+      };
+    };
+
+    // पहले से 60 particles scattered across screen
+    for (let i = 0; i < 60; i++) {
+      const p = spawn(true);
+      p.life = Math.random() * p.maxLife * 0.6;
+      particles.push(p);
+    }
+
+    const animate = () => {
+      ctx.clearRect(0, 0, w, h);
+
+      // नए particles उत्पन्न करो — max 120 tak
+      if (particles.length < 120 && Math.random() > 0.55) {
+        particles.push(spawn(false));
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life++;
+
+        // movement with sway
+        p.x += p.vx + Math.sin(p.life * p.swayFreq) * p.swayAmp;
+        p.y += p.vy;
+
+        // life progress
+        const t = p.life / p.maxLife;
+        // fade-in → sustain → fade-out curve
+        const lifeFade = t < 0.08
+          ? t / 0.08
+          : t > 0.65
+            ? (1 - t) / 0.35
+            : 1;
+        // twinkle
+        const twinkle = 0.65 + 0.35 * Math.sin(p.life * p.twinkleSpeed + p.twinklePhase);
+        const alpha = p.baseOpacity * Math.max(0, lifeFade) * twinkle;
+
+        if (alpha > 0.008) {
+          // ---- outer glow ----
+          const glowR = p.size * 5;
+          const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
+          grad.addColorStop(0, `hsla(${p.hue}, 92%, 68%, ${alpha * 0.3})`);
+          grad.addColorStop(0.4, `hsla(${p.hue}, 88%, 58%, ${alpha * 0.08})`);
+          grad.addColorStop(1, `hsla(${p.hue}, 85%, 50%, 0)`);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, glowR, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // ---- core dot ----
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${p.hue}, 96%, 76%, ${alpha})`;
+          ctx.fill();
+
+          // ---- bright center ----
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 0.35, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${p.hue}, 100%, 92%, ${alpha * 0.9})`;
+          ctx.fill();
+        }
+
+        // remove dead particles
+        if (p.life >= p.maxLife || p.y < -40 || p.x < -40 || p.x > w + 40) {
+          particles.splice(i, 1);
+        }
+      }
+
+      animFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animFrameRef.current);
+      window.removeEventListener('resize', resize);
+      particles.length = 0;
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="block w-full h-full" />;
+});
+
+GoldenParticleCanvas.displayName = 'GoldenParticleCanvas';
+
+
+// =========================================================
+// MAIN LAYOUT
+// =========================================================
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -53,6 +191,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
   const [isIntroActive, setIsIntroActive] = useState(false);
 
+  // ✅ NEW: Independent particle state — intro controller se unrelated
+  const [showContinuousParticles, setShowContinuousParticles] = useState(false);
+
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
     const fetchInitialSettings = async () => {
@@ -60,7 +201,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/admin/settings');
         const data = await res.json();
         setSysSettings(data);
-      } catch (e) {}
+      } catch (e) { /* silent */ }
     };
     fetchInitialSettings();
 
@@ -76,6 +217,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ 2. THE HANDOVER FUNCTION ━━━
   const handleIntroHandover = useCallback(() => {
+    // ✅ FIX: Handover ke saath hi continuous particles ON karo
+    // Ye flag intro controller se completely independent hai
+    setShowContinuousParticles(true);
+
     setTimeout(() => {
       setShowPopup(true);
     }, 300);
@@ -148,10 +293,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
+  // ✅ FIX: Jab broadcast khatam ho toh particles bhi band ho jayein
+  useEffect(() => {
+    if (!activeBroadcast) {
+      setShowContinuousParticles(false);
+    }
+  }, [activeBroadcast]);
+
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
     setIsIntroActive(false);
+    // ⚠️ NOTE: showContinuousParticles ko yahan FALSE mat karo!
+    // Particles tab tak chalenge jab tak broadcast active hai
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
@@ -213,7 +367,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!userProfile || userProfile.role !== 'treasurer') return;
     const perms: string[] = Array.isArray(userProfile?.role_permissions?.treasurer) ? userProfile.role_permissions.treasurer : [];
     const path = pathname.toLowerCase();
-    const permissionMap: Record<string, string> = { 'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans', 'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard', 'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings' };
+    const permissionMap: Record<string, string> = {
+      'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans',
+      'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard',
+      'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings'
+    };
 
     if (path !== '/dashboard') {
       const requiredPerm = Object.entries(permissionMap).find(([key]) => path.includes(key))?.[1];
@@ -231,14 +389,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const { data: { user } } = await supabase.auth.getUser();
       if (user) await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
       document.documentElement.classList.remove('dark');
-      localStorage.removeItem('is_admin_viewing'); localStorage.removeItem('viewing_client_id'); localStorage.removeItem('is_admin_impersonating');
-      Object.keys(localStorage).forEach(key => { if (key.startsWith('saanify-storage-')) localStorage.removeItem(key); });
+      localStorage.removeItem('is_admin_viewing');
+      localStorage.removeItem('viewing_client_id');
+      localStorage.removeItem('is_admin_impersonating');
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
+      });
       toast.success("Welcome back Admin", { id: toastId });
       window.location.href = '/admin/clients';
-    } catch (err) { window.location.href = '/admin/clients'; }
+    } catch (err) {
+      window.location.href = '/admin/clients';
+    }
   }, []);
 
-  if (isChecking) return <div className="h-screen w-full flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
+  if (isChecking) return (
+    <div className="h-screen w-full flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
+    </div>
+  );
 
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
@@ -247,6 +415,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isLightColor = ['#FBBF24', '#F59E0B', '#EAB308', 'GOLD', '#fbbf24', '#f59e0b', '#eab308'].includes(themeColor.toUpperCase());
   const textColorClass = isLightColor ? 'text-slate-950' : 'text-white';
   const badgeBgClass = isLightColor ? 'bg-black/10 border-black/10 text-slate-950' : 'bg-white/10 border-white/15 text-white';
+
+  // ✅ Particle opacity: popup dikhaao toh zyada bright, dismiss ke baad subtle
+  const particleOpacity = showPopup ? 0.5 : 0.22;
 
   const renderBroadcastIcon = () => {
     const key = activeBroadcast?.festival_key?.toUpperCase() || '';
@@ -283,29 +454,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {activeBroadcast && !showPopup && !isIntroActive && (
-        <div className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`} style={{ background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`, backdropFilter: 'blur(12px)', borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)' }}>
+        <div
+          className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
+          style={{
+            background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`,
+            backdropFilter: 'blur(12px)',
+            borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)'
+          }}
+        >
           <div className="max-w-7xl mx-auto flex items-center justify-between text-sm tracking-wide">
             <div className="flex items-center gap-4 flex-1 justify-center min-w-0">
               {renderBroadcastIcon()}
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${badgeBgClass}`}>Saanify Pariwar</span>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 ${badgeBgClass}`}>
+                Saanify Pariwar
+              </span>
               <div className="flex items-center gap-2.5 min-w-0 truncate text-xs md:text-sm">
-                <span className="font-black uppercase tracking-tight shrink-0 drop-shadow-sm">{activeBroadcast?.resolved_title || activeBroadcast?.title}</span>
+                <span className="font-black uppercase tracking-tight shrink-0 drop-shadow-sm">
+                  {activeBroadcast?.resolved_title || activeBroadcast?.title}
+                </span>
                 <span className={`opacity-30 shrink-0 select-none ${isLightColor ? 'text-slate-950' : 'text-white'}`}>|</span>
-                <p className={`truncate font-semibold tracking-wide drop-shadow-sm ${isLightColor ? 'text-slate-900' : 'text-slate-100'}`}>{activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}</p>
+                <p className={`truncate font-semibold tracking-wide drop-shadow-sm ${isLightColor ? 'text-slate-900' : 'text-slate-100'}`}>
+                  {activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}
+                </p>
               </div>
             </div>
-            <button onClick={() => setActiveBroadcast(null)} className="p-1.5 hover:bg-black/10 rounded-full transition-colors duration-200 shrink-0 ml-3"><X className="w-5 h-5 opacity-85" /></button>
+            <button onClick={() => setActiveBroadcast(null)} className="p-1.5 hover:bg-black/10 rounded-full transition-colors duration-200 shrink-0 ml-3">
+              <X className="w-5 h-5 opacity-85" />
+            </button>
           </div>
         </div>
       )}
 
-      {/* ✅ FIX: Animation layer with controlled opacity — glow nahi dhudhala hoga */}
+      {/* ═══════════════════════════════════════════════════════
+          LAYER 1 (z-9997): Intro Animation — shooting, flash etc.
+          Handover ke baad ye layer 0.06 opacity pe aa jata hai
+          ═══════════════════════════════════════════════════════ */}
       {activeBroadcast && activeBroadcast.hero_enabled && isIntroActive && (
         <div
-          className={`fixed inset-0 z-[9998] pointer-events-none transition-opacity duration-700 ease-out ${
-            showPopup
-              ? 'opacity-[0.06]'   // Popup ke peeche — bas hint sa glow, panel clean rahe
-              : 'opacity-70'        // Intro chalte waqt — visible but not blinding
+          className={`fixed inset-0 z-[9997] pointer-events-none transition-opacity duration-700 ease-out ${
+            showPopup ? 'opacity-[0.06]' : 'opacity-70'
           }`}
         >
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
@@ -320,7 +507,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ✅ FIX: Darker backdrop taaki peeche ka halke glow merge na ho */}
+      {/* ═══════════════════════════════════════════════════════
+          LAYER 2 (z-10000): ✅ INDEPENDENT GOLDEN PARTICLES
+          - Intro controller se BILKUL independent
+          - Handover ke baad start hota hai
+          - Popup ke UPAR float karta hai (pointer-events-none)
+          - Popup dismiss hone ke baad bhi CHALTA RAHTA HAI
+          - Jab tak broadcast active hai, tab tak chalega
+          ═══════════════════════════════════════════════════════ */}
+      {showContinuousParticles && activeBroadcast && (
+        <div
+          className="fixed inset-0 z-[10000] pointer-events-none transition-opacity duration-1000 ease-out"
+          style={{ opacity: particleOpacity }}
+        >
+          <GoldenParticleCanvas />
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          LAYER 3 (z-9999): Greeting Popup
+          Particles iske upar (z-10000) float karenge ✨
+          ═══════════════════════════════════════════════════════ */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div
@@ -333,6 +540,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
+      {/* ═══════════════════════════════════════════════════════
+          MAIN DASHBOARD
+          ═══════════════════════════════════════════════════════ */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
@@ -342,7 +552,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="fixed inset-0 z-[60] md:hidden">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
             <div className="relative w-72 h-full bg-white dark:bg-slate-900 shadow-2xl overflow-y-auto">
-              <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 z-10 p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="absolute top-4 right-4 z-10 p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
                 <X className="w-4 h-4 text-slate-600 dark:text-slate-400" />
               </button>
               <ClientSidebar profile={userProfile} />
