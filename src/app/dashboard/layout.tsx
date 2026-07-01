@@ -6,15 +6,19 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import {
+import { 
   ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles,
-  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing
+  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing 
 } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
+
+// 🚀 2027 UPGRADE: The Dictator Controller imported
 import FestivalIntroController from '@/components/festival/intro/FestivalIntroController';
 
 // =========================================================
@@ -42,15 +46,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [sysSettings, setSysSettings] = useState<any>(null);
+  const [sysSettings, setSysSettings] = useState<any>(null); 
   const [isChecking, setIsChecking] = useState(true);
-  const [isImpersonating, setIsImpersonating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Impersonating and admin view
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   // Broadcast States
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
+  
+  // Layout starts with intro active set to false
   const [isIntroActive, setIsIntroActive] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
@@ -67,7 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const settingsChannel = supabase
       .channel('public:system_settings')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings', filter: 'id=eq.1' }, (payload) => {
-        setSysSettings(payload.new);
+        setSysSettings(payload.new); 
       })
       .subscribe();
 
@@ -76,11 +84,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ 2. THE HANDOVER FUNCTION ━━━
   const handleIntroHandover = useCallback(() => {
+    console.log("🎬 [Timeline Handover]: Rocket/Firework animation completed! Opening popup...");
     setTimeout(() => {
-      setShowPopup(true);
-    }, 300);
+        setShowPopup(true);    // Tab popup kholo
+    }, 300);                   // 300ms gap — React ko render karne do
   }, []);
-
+  
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
@@ -99,12 +108,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      if (activeBroadcast?.id === data.id) return;
+      // Automatic replay detection on update
+      const wasUpdated = activeBroadcast && activeBroadcast.updated_at !== data.updated_at;
+      
+      if (wasUpdated) {
+        console.log("🔥 [Replay Detected]: Admin updated the broadcast. Resetting session cache...");
+        sessionStorage.removeItem(`seen_broadcast_${data.id}`);
+        setHasSeenPopup(false);
+      }
 
       setActiveBroadcast(data);
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
 
-      if (!sessionSeen && !hasSeenPopup) {
+      // 🚀 TEMPORARY TESTING BYPASS:
+      // ✅ 'true' karne par har page reload/refresh par bina block hue UNLIMITED baar test hoga.
+      // Production me jate waqt ise bas 'false' kar dijiyega.
+      const isTestingBypass = true; 
+
+      if ((!sessionSeen && !hasSeenPopup) || wasUpdated || isTestingBypass) {
         if (data.hero_enabled) {
           setIsIntroActive(true);
         } else {
@@ -118,7 +139,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setIsIntroActive(false);
       }
     }
-  }, [hasSeenPopup, activeBroadcast?.id]);
+  }, [hasSeenPopup, activeBroadcast]);
 
   const checkBroadcastExpiry = useCallback(() => {
     if (!activeBroadcast?.ends_at) return;
@@ -148,10 +169,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
+  // Scene ko band mat karo, taaki background golden particles hamesha chalte rahein
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
-    setIsIntroActive(false);
+    // 🚀 FIXED: Intro band nahi karenge taaki AMBIENT particles background me sadbhaav se chalte rahein
+    // setIsIntroActive(false); 
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
@@ -167,11 +190,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data: profile } = await supabase.from('current_active_profile').select('*').maybeSingle();
         if (!profile || profile.status !== 'ACTIVE') { router.replace('/login'); return; }
 
-        localStorage.setItem('current_user', JSON.stringify(profile));
+        localStorage.setItem('current_user', JSON.stringify(profile)); 
         localStorage.setItem('active_client_id', profile.id);
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
-
+        
         if (profile.theme === 'dark') document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
 
@@ -299,28 +322,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ✅ FIX: Animation layer with controlled opacity — glow nahi dhudhala hoga */}
-      {activeBroadcast && activeBroadcast.hero_enabled && isIntroActive && (
-        <div
-          className={`fixed inset-0 z-[9998] pointer-events-none transition-opacity duration-700 ease-out ${
-            showPopup
-              ? 'opacity-[0.06]'   // Popup ke peeche — bas hint sa glow, panel clean rahe
-              : 'opacity-70'        // Intro chalte waqt — visible but not blinding
+      {/* 🚀 Dynamic Festival Intro Animations — z-9998 with persistent AMBIENT particles */}
+      {activeBroadcast && activeBroadcast.hero_enabled && (
+        <div 
+          className={`fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 ${
+            showPopup ? 'opacity-[0.06] scale-95 saturate-[0.8]' : 'opacity-100 scale-100'
           }`}
         >
-          <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
-            {(phase) => (
-              <AnimationFactory
-                phase={phase}
-                engine={activeBroadcast?.hero_config?.animation}
-                preset={activeBroadcast?.festival_key}
-              />
-            )}
-          </FestivalIntroController>
+          {isIntroActive ? (
+            <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
+              {(phase) => (
+                <AnimationFactory
+                  phase={phase}
+                  engine={activeBroadcast?.hero_config?.animation}
+                  preset={activeBroadcast?.festival_key}
+                />
+              )}
+            </FestivalIntroController>
+          ) : (
+            // 🚀 FIXED: Intro sequence band hone par use AMBIENT particles me daal diya gaya hai taaki particles background me sda chalte rahein
+            <AnimationFactory
+              phase="AMBIENT"
+              engine={activeBroadcast?.hero_config?.animation}
+              preset={activeBroadcast?.festival_key}
+            />
+          )}
         </div>
       )}
 
-      {/* ✅ FIX: Darker backdrop taaki peeche ka halke glow merge na ho */}
+      {/* Popup layout */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div
@@ -358,4 +388,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
     </>
   );
-} 
+}
