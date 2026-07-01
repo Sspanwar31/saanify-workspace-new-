@@ -160,12 +160,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
 
-  // ✅ INTRO LOCK — prevents re-trigger during active sequence
   const introLockRef = useRef(false);
 
-  // ✅ REF MIRROR — reads activeBroadcast without creating dependency cascade.
-  //    Updated on every render (zero cost), read inside callbacks (always fresh).
-  //    This breaks the: setActiveBroadcast → fetchBroadcasts changes → useEffect re-fires → loop
   const activeBroadcastRef = useRef<any>(null);
   activeBroadcastRef.current = activeBroadcast;
 
@@ -200,8 +196,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
-  // ✅ CRITICAL: Dependencies are [hasSeenPopup] ONLY.
-  //    activeBroadcast is read via ref → no cascade loop.
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -219,9 +213,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      // ✅ Read from REF — no dependency on activeBroadcast state
       const prev = activeBroadcastRef.current;
       const wasUpdated = prev && prev.updated_at !== data.updated_at;
+
+      // ✅ FIX: Different broadcast ID → fresh start, reset everything
+      const isNewBroadcast = !prev || prev.id !== data.id;
+      if (isNewBroadcast) {
+        setHasSeenPopup(false);
+        introLockRef.current = false;
+      }
 
       if (wasUpdated) {
         sessionStorage.removeItem(`seen_broadcast_${data.id}`);
@@ -229,10 +229,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         introLockRef.current = false;
       }
 
-      // Always keep broadcast data fresh for banner/popup
       setActiveBroadcast(data);
 
-      // ✅ LOCK GUARD
       if (introLockRef.current) return;
 
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
@@ -253,18 +251,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setIsAmbientActive(true);
       }
     } else {
-      // ✅ Read from REF
       if (activeBroadcastRef.current) {
         setActiveBroadcast(null);
         setShowPopup(false);
         setIsIntroActive(false);
         setIsAmbientActive(false);
         introLockRef.current = false;
+        setHasSeenPopup(false); // ✅ FIX: Reset for next broadcast
       }
     }
-  }, [hasSeenPopup]); // ✅ activeBroadcast REMOVED — cascade broken
+  }, [hasSeenPopup]);
 
-  // ✅ Also uses ref — no deps needed
   const checkBroadcastExpiry = useCallback(() => {
     const bc = activeBroadcastRef.current;
     if (!bc?.ends_at) return;
@@ -274,8 +271,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setIsIntroActive(false);
       setIsAmbientActive(false);
       introLockRef.current = false;
+      setHasSeenPopup(false); // ✅ FIX: Reset for next broadcast
     }
-  }, []); // ✅ No deps — reads from ref
+  }, []);
 
   useEffect(() => {
     fetchBroadcasts();
