@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 export type FestivalPhase =
   | 'IDLE'
   | 'FLASH'
-  | 'SHOOTING'      // ← NEW: rocket + explosion ek saath
+  | 'SHOOTING'
   | 'HANDOVER';
 
 interface Props {
@@ -34,18 +34,17 @@ export default function FestivalIntroController({
     const runIntroSequence = async () => {
       // 1. FLASH — White flash
       setPhase('FLASH');
-      await delay(600);
+      await delay(350);
       if (isCancelled) return;
 
-      // 2. SHOOTING — Rockets launch + explode (component handles its own timing)
-      //    4500ms = enough for 7 rockets to launch (0-1800ms) + reach top + explode + fade
+      // 2. SHOOTING — Rockets launch + explode
       setPhase('SHOOTING');
-      await delay(6000);  // 🐢 5 rockets: last launch ~2100ms + flight ~2000ms + fade ~1900ms
+      await delay(6000);
       if (isCancelled) return;
 
-      // 3. HANDOVER — Card appears
+      // 3. HANDOVER — Glow triggers
       setPhase('HANDOVER');
-      await delay(500);
+      await delay(150);
       if (isCancelled) return;
 
       // 4. Signal card to show
