@@ -16,19 +16,19 @@ export default function AnimationFactory({
   const Engine = AnimationRegistry[engine as keyof typeof AnimationRegistry];
   if (!Engine) return null;
 
-  // ✅ FIXED: Har phase ko USI KA NAAM DO — translation mat karo
   const getScenePhase = (p?: string): string => {
     switch (p) {
       case 'FLASH':
-        return 'FLASH';       // ✅ Flash ko flash bhejo
-       case 'SHOOTING':       // ← NEW
-        return 'SHOOTING';   // ← NEW
+        return 'FLASH';
+      case 'SHOOTING':
+        return 'SHOOTING';
       case 'HANDOVER':
-        return 'HANDOVER';    // ✅ Handover ko handover bhejo (AMBIENT NAHI!)
+        return 'HANDOVER';
+      case 'AMBIENT':
+        return 'AMBIENT';
       case 'IDLE':
-      case 'ACTIVE':
       default:
-        return 'AMBIENT';     // ✅ Sirf idle pe ambient
+        return 'IDLE';
     }
   };
 
