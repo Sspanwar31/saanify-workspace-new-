@@ -9,10 +9,16 @@ import Shooting from '../effects/Shooting';
 export default function DiwaliScene({ phase }: { phase?: string }) {
   console.log('DIWALI SCENE PHASE =', phase);
 
-  // ✅ ACCUMULATION LOGIC — Purana wala rehta hai, naya add hota hai
-  const showFlash    = phase === 'FLASH';
- const showShooting = phase === 'SHOOTING' || phase === 'HANDOVER'; 
-  const showAmbient  = phase === 'HANDOVER' || phase === 'AMBIENT';
+  const showFlash = phase === 'FLASH';
+
+  const showShooting =
+    phase === 'SHOOTING';
+
+  const showCelebration =
+    phase === 'HANDOVER';
+
+  const showAmbient =
+    phase === 'AMBIENT';
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -30,17 +36,23 @@ export default function DiwaliScene({ phase }: { phase?: string }) {
      {/* SHOOTING — merged rocket + explosion */}
       {showShooting && <Shooting />}
       
-      {/* ✅ AMBIENT — HANDOVER se shuru, AMBIENT me bhi rehta */}
-      {showAmbient && (
+      {/* Greeting ke piche luxury light */}
+      {showCelebration && (
         <>
           <LuxuryGlow />
           <LuxuryRays />
           <BloomLighting />
+        </>
+      )}
+
+      {/* Greeting close hone ke baad sirf particles */}
+      {showAmbient && (
+        <>
           <GoldenParticles preset="DIWALI" />
         </>
       )}
 
-      {/* Flash animation keyframes (inline daal diya, external CSS ki zaroorat nahi) */}
+      {/* Flash animation keyframes (inline daal diyo, external CSS ki zaroorat nahi) */}
       <style jsx>{`
         @keyframes flashFade {
           0%   { opacity: 1; }
