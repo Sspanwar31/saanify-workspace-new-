@@ -242,12 +242,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setActiveBroadcast(data);
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
 
-      // ✅ show_frequency — replaces isTestingBypass COMPLETELY
-      // ONCE: sirf ek baar dikhao (unless admin ne update kiya)
-      // ALWAYS: har refresh par dikhao
+      // ✅ show_frequency logic:
+      // ONCE:   sessionStorage check + hasSeenPopup check
+      // ALWAYS: sirf hasSeenPopup check (sessionStorage ignore)
       const frequency: string = data.show_frequency || 'ONCE';
       const shouldShow = frequency === 'ALWAYS'
-        ? true
+        ? !hasSeenPopup
         : (!sessionSeen && !hasSeenPopup);
 
       if (shouldShow || wasUpdated) {
@@ -257,8 +257,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setShowPopup(true);      // No hero — sirf popup
         }
       } else if (data.hero_enabled) {
-        // ✅ Already seen (ONCE mode) — skip intro & popup, but start ambient particles
-        // Second visit pe: golden particles + top banner
+        // ✅ Already seen — skip intro & popup, but start ambient particles
         setIsAmbientActive(true);
       }
     } else {
