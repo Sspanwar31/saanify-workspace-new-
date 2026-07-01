@@ -157,14 +157,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
 
-  // ✅ STATE SPLIT: Intro aur Ambient — completely independent lifecycles
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
 
-  // ✅ INTRO LOCK — Prevents polling from re-triggering intro while
-  //    sequence is playing or popup is showing.
-  //    Ref = no re-renders, no dependency array pollution, synchronous check.
+  // ✅ INTRO LOCK — prevents re-trigger during active sequence
   const introLockRef = useRef(false);
+
+  // ✅ REF MIRROR — reads activeBroadcast without creating dependency cascade.
+  //    Updated on every render (zero cost), read inside callbacks (always fresh).
+  //    This breaks the: setActiveBroadcast → fetchBroadcasts changes → useEffect re-fires → loop
+  const activeBroadcastRef = useRef<any>(null);
+  activeBroadcastRef.current = activeBroadcast;
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -187,17 +190,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. HANDOVER: Intro finishes → Ambient starts → Popup opens ━━━
+  // ━━━ 2. HANDOVER ━━━
   const handleIntroHandover = useCallback(() => {
     setTimeout(() => {
-      setIsIntroActive(false);   // ✅ Intro layer UNMOUNTS
-      setIsAmbientActive(true);  // ✅ Ambient layer MOUNTS
-      setShowPopup(true);        // ✅ Greeting card khul-ta hai
-      // NOTE: Lock stays TRUE — popup is still showing
+      setIsIntroActive(false);
+      setIsAmbientActive(true);
+      setShowPopup(true);
     }, 300);
   }, []);
 
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
+  // ✅ CRITICAL: Dependencies are [hasSeenPopup] ONLY.
+  //    activeBroadcast is read via ref → no cascade loop.
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -215,65 +219,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      // Admin ne update kiya → replay trigger
-      const wasUpdated = activeBroadcast && activeBroadcast.updated_at !== data.updated_at;
+      // ✅ Read from REF — no dependency on activeBroadcast state
+      const prev = activeBroadcastRef.current;
+      const wasUpdated = prev && prev.updated_at !== data.updated_at;
 
       if (wasUpdated) {
         sessionStorage.removeItem(`seen_broadcast_${data.id}`);
         setHasSeenPopup(false);
-        introLockRef.current = false; // ✅ Unlock — allow replay
+        introLockRef.current = false;
       }
 
-      // Always keep broadcast data fresh (message changes etc.)
+      // Always keep broadcast data fresh for banner/popup
       setActiveBroadcast(data);
 
-      // ✅ LOCK GUARD: If intro/popup is already playing, DON'T re-trigger
-      //    wasUpdated already unlocked above, so forced replays still work
+      // ✅ LOCK GUARD
       if (introLockRef.current) return;
 
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
 
-      // ✅ show_frequency logic:
-      // ONCE:   sessionStorage check + hasSeenPopup check
-      // ALWAYS: sirf hasSeenPopup check (sessionStorage ignore)
       const frequency: string = data.show_frequency || 'ONCE';
       const shouldShow = frequency === 'ALWAYS'
         ? !hasSeenPopup
         : (!sessionSeen && !hasSeenPopup);
 
       if (shouldShow || wasUpdated) {
-        introLockRef.current = true; // ✅ LOCK — polling ab skip karega
+        introLockRef.current = true;
         if (data.hero_enabled) {
-          setIsIntroActive(true);  // Full intro sequence start
+          setIsIntroActive(true);
         } else {
-          setShowPopup(true);      // No hero — sirf popup
+          setShowPopup(true);
         }
       } else if (data.hero_enabled) {
-        // ✅ Already seen — skip intro & popup, but start ambient particles
         setIsAmbientActive(true);
       }
     } else {
-      if (activeBroadcast) {
-        // ✅ Broadcast expired/stopped — STOP EVERYTHING
+      // ✅ Read from REF
+      if (activeBroadcastRef.current) {
         setActiveBroadcast(null);
         setShowPopup(false);
         setIsIntroActive(false);
         setIsAmbientActive(false);
-        introLockRef.current = false; // ✅ UNLOCK
+        introLockRef.current = false;
       }
     }
-  }, [hasSeenPopup, activeBroadcast]);
+  }, [hasSeenPopup]); // ✅ activeBroadcast REMOVED — cascade broken
 
+  // ✅ Also uses ref — no deps needed
   const checkBroadcastExpiry = useCallback(() => {
-    if (!activeBroadcast?.ends_at) return;
-    if (Date.now() >= new Date(activeBroadcast.ends_at).getTime()) {
+    const bc = activeBroadcastRef.current;
+    if (!bc?.ends_at) return;
+    if (Date.now() >= new Date(bc.ends_at).getTime()) {
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
       setIsAmbientActive(false);
-      introLockRef.current = false; // ✅ UNLOCK
+      introLockRef.current = false;
     }
-  }, [activeBroadcast]);
+  }, []); // ✅ No deps — reads from ref
 
   useEffect(() => {
     fetchBroadcasts();
@@ -292,26 +294,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!activeBroadcast?.ends_at) return;
     const interval = setInterval(checkBroadcastExpiry, 5000);
     return () => clearInterval(interval);
-  }, [activeBroadcast, checkBroadcastExpiry]);
+  }, [activeBroadcast?.ends_at, checkBroadcastExpiry]);
 
-  // ✅ Popup dismiss — ONLY close popup. DO NOT stop ambient particles.
-  //    UNLOCK here so next refresh (ALWAYS mode) can trigger again.
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
-    introLockRef.current = false; // ✅ UNLOCK
+    introLockRef.current = false;
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
   };
 
-  // ✅ Banner X button — user ne manually dismiss kiya, stop everything
   const handleDismissBanner = useCallback(() => {
     setActiveBroadcast(null);
     setShowPopup(false);
     setIsIntroActive(false);
     setIsAmbientActive(false);
-    introLockRef.current = false; // ✅ UNLOCK
+    introLockRef.current = false;
   }, []);
 
   // ━━━ 4. AUTH + PROFILE SYNC ━━━
@@ -453,7 +452,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* Top Broadcast Banner — hidden during intro & popup */}
+      {/* Top Broadcast Banner */}
       {activeBroadcast && !showPopup && !isIntroActive && (
         <div
           className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
@@ -480,9 +479,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          LAYER 1  ·  z-[9997]  ·  INTRO ANIMATIONS
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* LAYER 1 — INTRO ANIMATIONS */}
       {isIntroActive && activeBroadcast?.hero_enabled && (
         <div className="fixed inset-0 z-[9997] pointer-events-none">
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
@@ -497,18 +494,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          LAYER 2  ·  z-[9998]  ·  AMBIENT GOLDEN PARTICLES
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* LAYER 2 — AMBIENT GOLDEN PARTICLES */}
       {isAmbientActive && activeBroadcast && (
         <div className="fixed inset-0 z-[9998] pointer-events-none">
           <PremiumGoldenParticles />
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          LAYER 3  ·  z-[9999]  ·  GREETING POPUP
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* LAYER 3 — GREETING POPUP */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div
@@ -521,9 +514,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          MAIN DASHBOARD
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* MAIN DASHBOARD */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
