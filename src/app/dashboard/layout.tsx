@@ -1,24 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { 
+import {
   ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles,
-  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing 
+  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing
 } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
-
-// 🚀 2027 UPGRADE: The Dictator Controller imported
 import FestivalIntroController from '@/components/festival/intro/FestivalIntroController';
 
 // =========================================================
@@ -41,25 +37,151 @@ const MaintenanceScreen = ({ settings }: any) => (
   </div>
 );
 
+// =========================================================
+// PREMIUM GOLDEN PARTICLES — Floating Diwali Embers
+//
+// AnimationFactory se COMPLETELY independent.
+// Sirf golden particles — koi glow, rays, bloom NAHI.
+//
+// Har particle ke paas:
+//   - Random size: 2px → 8px
+//   - Random speed: 6s → 15s
+//   - Horizontal drift: random amplitude per particle
+//   - Rotation: 0° → 360°
+//   - Opacity pulsing: 0 → 1 → 0.75 → 1 → 0
+//   - Blur variation: 0px / 1px / 2px
+//
+// Feel: floating embers, luxury golden dust, premium sparks
+// NOT snowfall.
+// =========================================================
+const PremiumGoldenParticles = memo(() => {
+  const [particles, setParticles] = useState<any[]>([]);
+
+  useEffect(() => {
+    const count = 50;
+    const blurWeights = [0, 0, 0, 0, 1, 1, 2]; // zyada particles sharp, kuch blurred
+
+    const generated = Array.from({ length: count }, (_, i) => {
+      const size = Math.random() * 6 + 2; // 2–8px
+      const isLargeSpark = size > 6;
+      const isMediumEmber = size > 3.5 && !isLargeSpark;
+
+      return {
+        id: i,
+        size,
+        duration: Math.random() * 9 + 6, // 6–15s
+        delay: -(Math.random() * 15),    // negative = staggered start
+        left: Math.random() * 100,       // horizontal position %
+        blur: blurWeights[Math.floor(Math.random() * blurWeights.length)],
+        drift: Math.random() * 55 + 15,  // horizontal drift: 15–70px
+        // larger particles = brighter glow
+        glowMultiplier: isLargeSpark ? 3.5 : isMediumEmber ? 2.2 : 1.4,
+        brightness: isLargeSpark ? 1.3 : isMediumEmber ? 1.05 : 0.85,
+        // inner highlight offset for 3D look
+        highlightX: 30 + Math.random() * 15,
+        highlightY: 30 + Math.random() * 15,
+      };
+    });
+    setParticles(generated);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* ── Ember Rise Keyframe ──
+          Bottom se upar float, horizontal sway, rotation, opacity pulse */}
+      <style>{`
+        @keyframes ember-rise {
+          0% {
+            transform: translateY(0) translateX(0) rotate(0deg);
+            opacity: 0;
+          }
+          5% {
+            opacity: 0.85;
+          }
+          18% {
+            transform: translateY(-18vh) translateX(calc(var(--d) * -0.55px)) rotate(65deg);
+            opacity: 1;
+          }
+          35% {
+            transform: translateY(-35vh) translateX(calc(var(--d) * 0.4px)) rotate(130deg);
+            opacity: 0.7;
+          }
+          52% {
+            transform: translateY(-52vh) translateX(calc(var(--d) * -0.28px)) rotate(195deg);
+            opacity: 1;
+          }
+          70% {
+            transform: translateY(-70vh) translateX(calc(var(--d) * 0.18px)) rotate(260deg);
+            opacity: 0.55;
+          }
+          88% {
+            opacity: 0.25;
+          }
+          100% {
+            transform: translateY(-112vh) translateX(calc(var(--d) * -0.08px)) rotate(360deg);
+            opacity: 0;
+          }
+        }
+      `}</style>
+
+      {particles.map(p => {
+        const glowR = p.size * p.glowMultiplier;
+        const glowR2 = glowR * 1.8;
+
+        return (
+          <div
+            key={p.id}
+            className="absolute rounded-full will-change-transform"
+            style={{
+              width: p.size,
+              height: p.size,
+              left: `${p.left}%`,
+              bottom: '-4%',
+              // 3D-like radial gradient: bright highlight → gold → dark gold edge
+              background: `radial-gradient(circle at ${p.highlightX}% ${p.highlightY}%, #fef9c3 0%, #fbbf24 28%, #d97706 65%, #78350f 100%)`,
+              // dual-layer glow: inner sharp + outer soft
+              boxShadow: `
+                0 0 ${glowR}px ${glowR * 0.35}px rgba(251, 191, 36, 0.55),
+                0 0 ${glowR2}px ${glowR * 0.7}px rgba(217, 119, 6, 0.18)
+              `,
+              filter: `blur(${p.blur}px) brightness(${p.brightness})`,
+              animation: `ember-rise ${p.duration}s ${p.delay}s linear infinite`,
+              ['--d' as string]: p.drift,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+});
+
+PremiumGoldenParticles.displayName = 'PremiumGoldenParticles';
+
+
+// =========================================================
+// MAIN DASHBOARD LAYOUT
+// =========================================================
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [sysSettings, setSysSettings] = useState<any>(null); 
+  const [sysSettings, setSysSettings] = useState<any>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // Impersonating and admin view
   const [isImpersonating, setIsImpersonating] = useState(false);
 
   // Broadcast States
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
-  
-  // Layout starts with intro active set to false
+
+  // ✅ STATE SPLIT: Intro aur Ambient — completely independent lifecycles
+  // Intro: Flash → Rocket → Firework → Celebration Lights (AnimationFactory)
+  // Ambient: ONLY Golden Particles (PremiumGoldenParticles — custom, independent)
   const [isIntroActive, setIsIntroActive] = useState(false);
+  const [isAmbientActive, setIsAmbientActive] = useState(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -68,28 +190,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/admin/settings');
         const data = await res.json();
         setSysSettings(data);
-      } catch (e) {}
+      } catch (e) { /* silent */ }
     };
     fetchInitialSettings();
 
     const settingsChannel = supabase
       .channel('public:system_settings')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings', filter: 'id=eq.1' }, (payload) => {
-        setSysSettings(payload.new); 
+        setSysSettings(payload.new);
       })
       .subscribe();
 
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. THE HANDOVER FUNCTION ━━━
+  // ━━━ 2. HANDOVER: Intro finishes → Ambient starts → Popup opens ━━━
   const handleIntroHandover = useCallback(() => {
-    console.log("🎬 [Timeline Handover]: Rocket/Firework animation completed! Opening popup...");
     setTimeout(() => {
-        setShowPopup(true);    // Tab popup kholo
-    }, 300);                   // 300ms gap — React ko render karne do
+      setIsIntroActive(false);   // ✅ Intro layer UNMOUNTS — glow/rays/bloom sab hat jaate hain
+      setIsAmbientActive(true);  // ✅ Ambient layer MOUNTS — sirf golden particles
+      setShowPopup(true);        // ✅ Greeting card khul-ta hai
+    }, 300);
   }, []);
-  
+
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
@@ -108,11 +231,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      // Automatic replay detection on update
+      // Admin ne update kiya → replay trigger
       const wasUpdated = activeBroadcast && activeBroadcast.updated_at !== data.updated_at;
-      
+
       if (wasUpdated) {
-        console.log("🔥 [Replay Detected]: Admin updated the broadcast. Resetting session cache...");
         sessionStorage.removeItem(`seen_broadcast_${data.id}`);
         setHasSeenPopup(false);
       }
@@ -120,23 +242,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setActiveBroadcast(data);
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
 
-      // 🚀 TEMPORARY TESTING BYPASS:
-      // ✅ 'true' karne par har page reload/refresh par bina block hue UNLIMITED baar test hoga.
-      // Production me jate waqt ise bas 'false' kar dijiyega.
-      const isTestingBypass = true; 
+      // ✅ show_frequency — replaces isTestingBypass COMPLETELY
+      // ONCE: sirf ek baar dikhao (unless admin ne update kiya)
+      // ALWAYS: har refresh par dikhao
+      const frequency: string = data.show_frequency || 'ONCE';
+      const shouldShow = frequency === 'ALWAYS'
+        ? true
+        : (!sessionSeen && !hasSeenPopup);
 
-      if ((!sessionSeen && !hasSeenPopup) || wasUpdated || isTestingBypass) {
+      if (shouldShow || wasUpdated) {
         if (data.hero_enabled) {
-          setIsIntroActive(true);
+          setIsIntroActive(true);  // Full intro sequence start
         } else {
-          setShowPopup(true);
+          setShowPopup(true);      // No hero — sirf popup
         }
+      } else if (data.hero_enabled) {
+        // ✅ Already seen (ONCE mode) — skip intro & popup, but start ambient particles
+        // Second visit pe: golden particles + top banner
+        setIsAmbientActive(true);
       }
     } else {
       if (activeBroadcast) {
+        // ✅ Broadcast expired/stopped — STOP EVERYTHING
         setActiveBroadcast(null);
         setShowPopup(false);
         setIsIntroActive(false);
+        setIsAmbientActive(false);
       }
     }
   }, [hasSeenPopup, activeBroadcast]);
@@ -144,9 +275,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const checkBroadcastExpiry = useCallback(() => {
     if (!activeBroadcast?.ends_at) return;
     if (Date.now() >= new Date(activeBroadcast.ends_at).getTime()) {
+      // ✅ Broadcast expired — STOP EVERYTHING
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
+      setIsAmbientActive(false);
     }
   }, [activeBroadcast]);
 
@@ -169,16 +302,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast, checkBroadcastExpiry]);
 
-  // Scene ko band mat karo, taaki background golden particles hamesha chalte rahein
+  // ✅ Popup dismiss — ONLY close popup. DO NOT stop ambient particles.
+  // Particles tab tak chalenge jab tak broadcast active hai.
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
-    // 🚀 FIXED: Intro band nahi karenge taaki AMBIENT particles background me sadbhaav se chalte rahein
-    // setIsIntroActive(false); 
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
   };
+
+  // ✅ Banner X button — user ne manually dismiss kiya, stop everything
+  const handleDismissBanner = useCallback(() => {
+    setActiveBroadcast(null);
+    setShowPopup(false);
+    setIsIntroActive(false);
+    setIsAmbientActive(false);
+  }, []);
 
   // ━━━ 4. AUTH + PROFILE SYNC ━━━
   useEffect(() => {
@@ -190,11 +330,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data: profile } = await supabase.from('current_active_profile').select('*').maybeSingle();
         if (!profile || profile.status !== 'ACTIVE') { router.replace('/login'); return; }
 
-        localStorage.setItem('current_user', JSON.stringify(profile)); 
+        localStorage.setItem('current_user', JSON.stringify(profile));
         localStorage.setItem('active_client_id', profile.id);
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
-        
+
         if (profile.theme === 'dark') document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
 
@@ -236,7 +376,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!userProfile || userProfile.role !== 'treasurer') return;
     const perms: string[] = Array.isArray(userProfile?.role_permissions?.treasurer) ? userProfile.role_permissions.treasurer : [];
     const path = pathname.toLowerCase();
-    const permissionMap: Record<string, string> = { 'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans', 'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard', 'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings' };
+    const permissionMap: Record<string, string> = {
+      'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans',
+      'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard',
+      'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings'
+    };
 
     if (path !== '/dashboard') {
       const requiredPerm = Object.entries(permissionMap).find(([key]) => path.includes(key))?.[1];
@@ -254,14 +398,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const { data: { user } } = await supabase.auth.getUser();
       if (user) await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
       document.documentElement.classList.remove('dark');
-      localStorage.removeItem('is_admin_viewing'); localStorage.removeItem('viewing_client_id'); localStorage.removeItem('is_admin_impersonating');
-      Object.keys(localStorage).forEach(key => { if (key.startsWith('saanify-storage-')) localStorage.removeItem(key); });
+      localStorage.removeItem('is_admin_viewing');
+      localStorage.removeItem('viewing_client_id');
+      localStorage.removeItem('is_admin_impersonating');
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
+      });
       toast.success("Welcome back Admin", { id: toastId });
       window.location.href = '/admin/clients';
-    } catch (err) { window.location.href = '/admin/clients'; }
+    } catch (err) {
+      window.location.href = '/admin/clients';
+    }
   }, []);
 
-  if (isChecking) return <div className="h-screen w-full flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
+  if (isChecking) return (
+    <div className="h-screen w-full flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
+    </div>
+  );
 
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
@@ -305,8 +459,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
+      {/* Top Broadcast Banner — hidden during intro & popup */}
       {activeBroadcast && !showPopup && !isIntroActive && (
-        <div className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`} style={{ background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`, backdropFilter: 'blur(12px)', borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)' }}>
+        <div
+          className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
+          style={{
+            background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`,
+            backdropFilter: 'blur(12px)',
+            borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)'
+          }}
+        >
           <div className="max-w-7xl mx-auto flex items-center justify-between text-sm tracking-wide">
             <div className="flex items-center gap-4 flex-1 justify-center min-w-0">
               {renderBroadcastIcon()}
@@ -317,40 +479,66 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className={`truncate font-semibold tracking-wide drop-shadow-sm ${isLightColor ? 'text-slate-900' : 'text-slate-100'}`}>{activeBroadcast?.resolved_message || activeBroadcast?.message?.split('|')?.[0]}</p>
               </div>
             </div>
-            <button onClick={() => setActiveBroadcast(null)} className="p-1.5 hover:bg-black/10 rounded-full transition-colors duration-200 shrink-0 ml-3"><X className="w-5 h-5 opacity-85" /></button>
+            <button onClick={handleDismissBanner} className="p-1.5 hover:bg-black/10 rounded-full transition-colors duration-200 shrink-0 ml-3">
+              <X className="w-5 h-5 opacity-85" />
+            </button>
           </div>
         </div>
       )}
 
-      {/* 🚀 Dynamic Festival Intro Animations — z-9998 with persistent AMBIENT particles */}
-      {activeBroadcast && activeBroadcast.hero_enabled && (
-        <div 
-          className={`fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 ${
-            showPopup ? 'opacity-[0.06] scale-95 saturate-[0.8]' : 'opacity-100 scale-100'
-          }`}
-        >
-          {isIntroActive ? (
-            <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
-              {(phase) => (
-                <AnimationFactory
-                  phase={phase}
-                  engine={activeBroadcast?.hero_config?.animation}
-                  preset={activeBroadcast?.festival_key}
-                />
-              )}
-            </FestivalIntroController>
-          ) : (
-            // 🚀 FIXED: Intro sequence band hone par use AMBIENT particles me daal diya gaya hai taaki particles background me sda chalte rahein
-            <AnimationFactory
-              phase="AMBIENT"
-              engine={activeBroadcast?.hero_config?.animation}
-              preset={activeBroadcast?.festival_key}
-            />
-          )}
+      {/* ═══════════════════════════════════════════════════════════════
+          LAYER 1  ·  z-[9997]  ·  INTRO ANIMATIONS
+
+          Renders ONLY when isIntroActive === true.
+          Contains: Flash → Rocket → Firework → Celebration Lights
+                    (controlled by FestivalIntroController + AnimationFactory)
+
+          Handover ke baad ye layer COMPLETELY UNMOUNT hota hai.
+          → Koi glow leak nahi hoga. Koi rays nahi. Koi bloom nahi.
+          ═══════════════════════════════════════════════════════════════ */}
+      {isIntroActive && activeBroadcast?.hero_enabled && (
+        <div className="fixed inset-0 z-[9997] pointer-events-none">
+          <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
+            {(phase) => (
+              <AnimationFactory
+                phase={phase}
+                engine={activeBroadcast?.hero_config?.animation}
+                preset={activeBroadcast?.festival_key}
+              />
+            )}
+          </FestivalIntroController>
         </div>
       )}
 
-      {/* Popup layout */}
+      {/* ═══════════════════════════════════════════════════════════════
+          LAYER 2  ·  z-[9998]  ·  AMBIENT GOLDEN PARTICLES
+
+          Renders ONLY when isAmbientActive === true.
+          Contains: ONLY PremiumGoldenParticles
+                    (custom component — AnimationFactory se BILKUL independent)
+
+          → NO LuxuryGlow
+          → NO LuxuryRays
+          → NO BloomLighting
+          → NO RocketLaunch
+          → NO FireworkBurst
+
+          Sirf floating golden embers.
+          Popup close karne ke baad bhi CHALTA RAHEGA.
+          Broadcast expire hone par band hoga.
+          ═══════════════════════════════════════════════════════════════ */}
+      {isAmbientActive && activeBroadcast && (
+        <div className="fixed inset-0 z-[9998] pointer-events-none">
+          <PremiumGoldenParticles />
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          LAYER 3  ·  z-[9999]  ·  GREETING POPUP
+
+          Dark backdrop + BroadcastRenderer card.
+          Particles (z-9998) iske peeche dikhte hain through the backdrop.
+          ═══════════════════════════════════════════════════════════════ */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div
@@ -363,6 +551,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
+      {/* ═══════════════════════════════════════════════════════════════
+          MAIN DASHBOARD
+          ═══════════════════════════════════════════════════════════════ */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
