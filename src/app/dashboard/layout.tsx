@@ -39,45 +39,29 @@ const MaintenanceScreen = ({ settings }: any) => (
 
 // =========================================================
 // PREMIUM GOLDEN PARTICLES — Floating Diwali Embers
-//
-// AnimationFactory se COMPLETELY independent.
-// Sirf golden particles — koi glow, rays, bloom NAHI.
-//
-// Har particle ke paas:
-//   - Random size: 2px → 8px
-//   - Random speed: 6s → 15s
-//   - Horizontal drift: random amplitude per particle
-//   - Rotation: 0° → 360°
-//   - Opacity pulsing: 0 → 1 → 0.75 → 1 → 0
-//   - Blur variation: 0px / 1px / 2px
-//
-// Feel: floating embers, luxury golden dust, premium sparks
-// NOT snowfall.
 // =========================================================
 const PremiumGoldenParticles = memo(() => {
   const [particles, setParticles] = useState<any[]>([]);
 
   useEffect(() => {
     const count = 50;
-    const blurWeights = [0, 0, 0, 0, 1, 1, 2]; // zyada particles sharp, kuch blurred
+    const blurWeights = [0, 0, 0, 0, 1, 1, 2];
 
     const generated = Array.from({ length: count }, (_, i) => {
-      const size = Math.random() * 6 + 2; // 2–8px
+      const size = Math.random() * 6 + 2;
       const isLargeSpark = size > 6;
       const isMediumEmber = size > 3.5 && !isLargeSpark;
 
       return {
         id: i,
         size,
-        duration: Math.random() * 9 + 6, // 6–15s
-        delay: -(Math.random() * 15),    // negative = staggered start
-        left: Math.random() * 100,       // horizontal position %
+        duration: Math.random() * 9 + 6,
+        delay: -(Math.random() * 15),
+        left: Math.random() * 100,
         blur: blurWeights[Math.floor(Math.random() * blurWeights.length)],
-        drift: Math.random() * 55 + 15,  // horizontal drift: 15–70px
-        // larger particles = brighter glow
+        drift: Math.random() * 55 + 15,
         glowMultiplier: isLargeSpark ? 3.5 : isMediumEmber ? 2.2 : 1.4,
         brightness: isLargeSpark ? 1.3 : isMediumEmber ? 1.05 : 0.85,
-        // inner highlight offset for 3D look
         highlightX: 30 + Math.random() * 15,
         highlightY: 30 + Math.random() * 15,
       };
@@ -87,8 +71,6 @@ const PremiumGoldenParticles = memo(() => {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* ── Ember Rise Keyframe ──
-          Bottom se upar float, horizontal sway, rotation, opacity pulse */}
       <style>{`
         @keyframes ember-rise {
           0% {
@@ -137,9 +119,7 @@ const PremiumGoldenParticles = memo(() => {
               height: p.size,
               left: `${p.left}%`,
               bottom: '-4%',
-              // 3D-like radial gradient: bright highlight → gold → dark gold edge
               background: `radial-gradient(circle at ${p.highlightX}% ${p.highlightY}%, #fef9c3 0%, #fbbf24 28%, #d97706 65%, #78350f 100%)`,
-              // dual-layer glow: inner sharp + outer soft
               boxShadow: `
                 0 0 ${glowR}px ${glowR * 0.35}px rgba(251, 191, 36, 0.55),
                 0 0 ${glowR2}px ${glowR * 0.7}px rgba(217, 119, 6, 0.18)
@@ -178,10 +158,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
 
   // ✅ STATE SPLIT: Intro aur Ambient — completely independent lifecycles
-  // Intro: Flash → Rocket → Firework → Celebration Lights (AnimationFactory)
-  // Ambient: ONLY Golden Particles (PremiumGoldenParticles — custom, independent)
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
+
+  // ✅ INTRO LOCK — Prevents polling from re-triggering intro while
+  //    sequence is playing or popup is showing.
+  //    Ref = no re-renders, no dependency array pollution, synchronous check.
+  const introLockRef = useRef(false);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -207,9 +190,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ━━━ 2. HANDOVER: Intro finishes → Ambient starts → Popup opens ━━━
   const handleIntroHandover = useCallback(() => {
     setTimeout(() => {
-      setIsIntroActive(false);   // ✅ Intro layer UNMOUNTS — glow/rays/bloom sab hat jaate hain
-      setIsAmbientActive(true);  // ✅ Ambient layer MOUNTS — sirf golden particles
+      setIsIntroActive(false);   // ✅ Intro layer UNMOUNTS
+      setIsAmbientActive(true);  // ✅ Ambient layer MOUNTS
       setShowPopup(true);        // ✅ Greeting card khul-ta hai
+      // NOTE: Lock stays TRUE — popup is still showing
     }, 300);
   }, []);
 
@@ -237,9 +221,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (wasUpdated) {
         sessionStorage.removeItem(`seen_broadcast_${data.id}`);
         setHasSeenPopup(false);
+        introLockRef.current = false; // ✅ Unlock — allow replay
       }
 
+      // Always keep broadcast data fresh (message changes etc.)
       setActiveBroadcast(data);
+
+      // ✅ LOCK GUARD: If intro/popup is already playing, DON'T re-trigger
+      //    wasUpdated already unlocked above, so forced replays still work
+      if (introLockRef.current) return;
+
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
 
       // ✅ show_frequency logic:
@@ -251,6 +242,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         : (!sessionSeen && !hasSeenPopup);
 
       if (shouldShow || wasUpdated) {
+        introLockRef.current = true; // ✅ LOCK — polling ab skip karega
         if (data.hero_enabled) {
           setIsIntroActive(true);  // Full intro sequence start
         } else {
@@ -267,6 +259,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setShowPopup(false);
         setIsIntroActive(false);
         setIsAmbientActive(false);
+        introLockRef.current = false; // ✅ UNLOCK
       }
     }
   }, [hasSeenPopup, activeBroadcast]);
@@ -274,11 +267,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const checkBroadcastExpiry = useCallback(() => {
     if (!activeBroadcast?.ends_at) return;
     if (Date.now() >= new Date(activeBroadcast.ends_at).getTime()) {
-      // ✅ Broadcast expired — STOP EVERYTHING
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
       setIsAmbientActive(false);
+      introLockRef.current = false; // ✅ UNLOCK
     }
   }, [activeBroadcast]);
 
@@ -302,10 +295,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [activeBroadcast, checkBroadcastExpiry]);
 
   // ✅ Popup dismiss — ONLY close popup. DO NOT stop ambient particles.
-  // Particles tab tak chalenge jab tak broadcast active hai.
+  //    UNLOCK here so next refresh (ALWAYS mode) can trigger again.
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
+    introLockRef.current = false; // ✅ UNLOCK
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
@@ -317,6 +311,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setShowPopup(false);
     setIsIntroActive(false);
     setIsAmbientActive(false);
+    introLockRef.current = false; // ✅ UNLOCK
   }, []);
 
   // ━━━ 4. AUTH + PROFILE SYNC ━━━
@@ -487,13 +482,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* ═══════════════════════════════════════════════════════════════
           LAYER 1  ·  z-[9997]  ·  INTRO ANIMATIONS
-
-          Renders ONLY when isIntroActive === true.
-          Contains: Flash → Rocket → Firework → Celebration Lights
-                    (controlled by FestivalIntroController + AnimationFactory)
-
-          Handover ke baad ye layer COMPLETELY UNMOUNT hota hai.
-          → Koi glow leak nahi hoga. Koi rays nahi. Koi bloom nahi.
           ═══════════════════════════════════════════════════════════════ */}
       {isIntroActive && activeBroadcast?.hero_enabled && (
         <div className="fixed inset-0 z-[9997] pointer-events-none">
@@ -511,20 +499,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* ═══════════════════════════════════════════════════════════════
           LAYER 2  ·  z-[9998]  ·  AMBIENT GOLDEN PARTICLES
-
-          Renders ONLY when isAmbientActive === true.
-          Contains: ONLY PremiumGoldenParticles
-                    (custom component — AnimationFactory se BILKUL independent)
-
-          → NO LuxuryGlow
-          → NO LuxuryRays
-          → NO BloomLighting
-          → NO RocketLaunch
-          → NO FireworkBurst
-
-          Sirf floating golden embers.
-          Popup close karne ke baad bhi CHALTA RAHEGA.
-          Broadcast expire hone par band hoga.
           ═══════════════════════════════════════════════════════════════ */}
       {isAmbientActive && activeBroadcast && (
         <div className="fixed inset-0 z-[9998] pointer-events-none">
@@ -534,9 +508,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* ═══════════════════════════════════════════════════════════════
           LAYER 3  ·  z-[9999]  ·  GREETING POPUP
-
-          Dark backdrop + BroadcastRenderer card.
-          Particles (z-9998) iske peeche dikhte hain through the backdrop.
           ═══════════════════════════════════════════════════════════════ */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
