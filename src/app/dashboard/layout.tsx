@@ -18,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
 
-// 🚀 2027 UPGRADE: Controller and Clean Ambient Factory Imported
+// 🚀 2027 UPGRADE: The Dictator Controller imported
 import FestivalIntroController from '@/components/festival/intro/FestivalIntroController';
-import AmbientFactory from '@/components/festival/v2/ambient/AmbientFactory'; // ✅ NEW: Aligned Ambient Factory
+import AmbientFactory from '@/components/festival/v2/ambient/AmbientFactory';
 
 // =========================================================
 // SUB-COMPONENTS
@@ -42,10 +42,6 @@ const MaintenanceScreen = ({ settings }: any) => (
   </div>
 );
 
-// =========================================================
-// MAIN DASHBOARD LAYOUT
-// =========================================================
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -60,16 +56,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
-  
-  // Layout states for animation sequence
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
 
+  // 🚀 FIXED: Lock state and Ref Mirror setup to prevent React closure stale loops
   const introLockRef = useRef(false);
   const activeBroadcastRef = useRef<any>(null);
   activeBroadcastRef.current = activeBroadcast;
-
-  const lastBroadcastIdRef = useRef<string | null>(null);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -92,19 +85,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. THE HANDOVER FUNCTION ━━━
+  // ━━━ 2. THE HANDOVER FUNCTION (🚀 FIXED: Sets isIntroActive(false) and isAmbientActive(true)) ━━━
   const handleIntroHandover = useCallback(() => {
     console.log("🎬 [Timeline Handover]: Rocket/Firework animation completed! Opening popup...");
     setTimeout(() => {
-      setIsIntroActive(false);
-      setIsAmbientActive(true);
+      setIsIntroActive(false);      // Step 1: Rocket/Firework intro layer close
+      setIsAmbientActive(true);     // Step 2: Enable ambient golden dust particles in background
       setTimeout(() => {
-        setShowPopup(true);
+        setShowPopup(true);         // Step 3: Open Popup
       }, 300);
     }, 1200);
   }, []);
   
-  // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
+  // ━━━ 3. REALTIME BROADCAST LISTENER (🚀 FIXED: Stale state checks replaced with Ref Mirrors) ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -122,18 +115,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
+      // 🚀 FIXED: Stale activeBroadcast state check replaced with activeBroadcastRef.current to break infinite loops
       const prev = activeBroadcastRef.current;
-      const prevId = lastBroadcastIdRef.current;
-      
       const wasUpdated = prev && prev.updated_at !== data.updated_at;
-      const isNewBroadcast = !prev || prev.id !== data.id;
 
-      if (isNewBroadcast) {
-        setHasSeenPopup(false);
-        introLockRef.current = false;
+      if (prev && prev.id === data.id && !wasUpdated) {
+        return; // Same broadcast and no changes, skip updating to prevent loop
       }
 
       if (wasUpdated) {
+        console.log("🔥 [Replay Detected]: Admin updated the broadcast. Resetting session cache...");
         sessionStorage.removeItem(`seen_broadcast_${data.id}`);
         setHasSeenPopup(false);
         introLockRef.current = false;
@@ -145,7 +136,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
 
-      const isTestingBypass = true; // 🚀 TEST BYPASS ACTIVE
+      // 🚀 TEMPORARY TESTING BYPASS:
+      // 'true' karne par har page reload/refresh par bina block hue UNLIMITED baar test hoga.
+      // Production me jate waqt ise bas 'false' kar dijiyega.
+      const isTestingBypass = true; 
 
       const frequency: string = data.show_frequency || 'ONCE';
       const shouldShow = frequency === 'ALWAYS'
@@ -164,9 +158,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     } else {
       if (activeBroadcastRef.current) {
-        const endedId = activeBroadcastRef.current.id;
-        sessionStorage.removeItem(`seen_broadcast_${endedId}`);
-        
         setActiveBroadcast(null);
         setShowPopup(false);
         setIsIntroActive(false);
@@ -181,7 +172,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const bc = activeBroadcastRef.current;
     if (!bc?.ends_at) return;
     if (Date.now() >= new Date(bc.ends_at).getTime()) {
-      sessionStorage.removeItem(`seen_broadcast_${bc.id}`);
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
@@ -237,11 +227,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data: profile } = await supabase.from('current_active_profile').select('*').maybeSingle();
         if (!profile || profile.status !== 'ACTIVE') { router.replace('/login'); return; }
 
-        localStorage.setItem('current_user', JSON.stringify(profile));
+        localStorage.setItem('current_user', JSON.stringify(profile)); 
         localStorage.setItem('active_client_id', profile.id);
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
-
+        
         if (profile.theme === 'dark') document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
 
@@ -352,7 +342,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* Top Broadcast Banner */}
       {activeBroadcast && !showPopup && !isIntroActive && (
         <div className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`} style={{ background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`, backdropFilter: 'blur(12px)', borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)' }}>
           <div className="max-w-7xl mx-auto flex items-center justify-between text-sm tracking-wide">
@@ -372,7 +361,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* LAYER 1 — INTRO ANIMATIONS (z-9997) */}
+      {/* LAYER 1 — INTRO ANIMATIONS */}
       {isIntroActive && activeBroadcast?.hero_enabled && (
         <div className="fixed inset-0 z-[9997] pointer-events-none">
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
@@ -387,14 +376,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* LAYER 2 — DYNAMIC AMBIENT EFFECTS (🚀 FIXED: Cleanly calls AmbientFactory) */}
+      {/* LAYER 2 — DYNAMIC AMBIENT EFFECTS (Persistent in background) */}
       {isAmbientActive && activeBroadcast && (
-        <div className="fixed inset-0 z-[9998] pointer-events-none">
+        <div 
+          className={`fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 ${
+            showPopup ? 'opacity-[0.06] scale-95 saturate-[0.8]' : 'opacity-100 scale-100'
+          }`}
+        >
           <AmbientFactory festivalKey={activeBroadcast?.festival_key} />
         </div>
       )}
 
-      {/* LAYER 3 — GREETING POPUP (Custom overlay with glassmorphism) */}
+      {/* LAYER 3 — GREETING POPUP */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div
@@ -407,7 +400,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* MAIN DASHBOARD */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
