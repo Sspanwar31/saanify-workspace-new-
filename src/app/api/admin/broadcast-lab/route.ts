@@ -3,7 +3,6 @@ import { Client } from 'pg';
 
 export const dynamic = 'force-dynamic';
 
-// ✅ MODERN CHANGE: DB Tracking ke liye application_name set karne wala client generator
 const getDbClient = async (appName: string = 'API_Broadcast_Lab') => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL missing');
@@ -20,15 +19,13 @@ const getDbClient = async (appName: string = 'API_Broadcast_Lab') => {
   return client;
 };
 
-// ━━━ 1. GET: Keys, types, aur schedules (List Planner) fetch karein ━━━
 export async function GET(req: Request) {
   let client: Client | null = null;
   try {
     const url = new URL(req.url);
     const actionParam = url.searchParams.get('action');
 
-    // Planner Grid ke liye saved schedules ki list return karein
-   if (actionParam === 'get_schedules' || actionParam === 'list_schedules') {
+    if (actionParam === 'get_schedules' || actionParam === 'list_schedules') {
       client = await getDbClient('API_System_Health');
       const res = await client.query(
         `SELECT * FROM broadcasts WHERE starts_at IS NOT NULL ORDER BY starts_at ASC`
@@ -40,7 +37,6 @@ export async function GET(req: Request) {
     client = await getDbClient('API_System_Health');
     if (!client) throw new Error("DB connection failed");
 
-    // Fetch Festival Keys
     const festRes = await client.query(`
       SELECT festival_key
       FROM festival_assets_v2
@@ -48,12 +44,10 @@ export async function GET(req: Request) {
       ORDER BY festival_key ASC
     `);
     
-    // Fetch Corporate Types
     const corpRes = await client.query(
       'SELECT broadcast_type FROM broadcast_assets ORDER BY broadcast_type ASC'
     );
 
-    // Get Total Count of Broadcasts currently in the DB
     const countRes = await client.query('SELECT COUNT(*) as count FROM broadcasts');
     const totalCount = parseInt(countRes.rows[0]?.count || '0', 10);
 
@@ -74,14 +68,12 @@ export async function GET(req: Request) {
   }
 }
 
-// ━━━ 2. POST: Publish, Save, Delete aur Stop operations handle karein ━━━
 export async function POST(req: Request) {
   let client: Client | null = null;
 
   try {
     const body = await req.json();
     
-    // 🚀 DEBUG LOG
     console.log("📥 POST API BODY RECEIVED:", JSON.stringify(body, null, 2));
 
     client = await getDbClient('API_Broadcast_Lab');
@@ -92,22 +84,42 @@ export async function POST(req: Request) {
     const action = body.action || 'generate';
     const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
 
-    // ✅ FIX: hero_enabled resolve karo - direct ya overlay se
-    let heroEnabled = body.hero_enabled === true;
-    if (!heroEnabled && body.overlay) {
-      // "Full Anim" ya "FULL_ANIM" → hero_enabled = true
-      heroEnabled = ['full_anim', 'full anim', 'fullanim'].includes(String(body.overlay).toLowerCase().replace(/\s+/g, '_'));
+    // ============================================
+    // ✅✅✅ THE ACTUAL FIX - 3 CHECKS ✅✅✅
+    // ============================================
+    let heroEnabled = false;
+    
+    // Check 1: Direct field (future proof)
+    if (body.hero_enabled === true) {
+      heroEnabled = true;
     }
-    console.log("🔥 heroEnabled resolved:", heroEnabled, "from body.hero_enabled:", body.hero_enabled, "body.overlay:", body.overlay);
+    
+    // Check 2: FRONTEND ACTUALLY SENDS THIS FIELD
+    if (body.full_screen_animation === true) {
+      heroEnabled = true;
+    }
+    
+    // Check 3: String overlay (backward compatibility)
+    if (!heroEnabled && body.overlay) {
+      const overlayStr = String(body.overlay).toLowerCase().replace(/\s+/g, '_');
+      if (['full_anim', 'fullanim', 'full_anim'].includes(overlayStr)) {
+        heroEnabled = true;
+      }
+    }
+    
+    console.log("🔥 heroEnabled FINAL:", heroEnabled, 
+      "| full_screen_animation:", body.full_screen_animation, 
+      "| hero_enabled:", body.hero_enabled, 
+      "| overlay:", body.overlay
+    );
+    // ============================================
 
-    // Consistent targetKey Resolution
     const targetKey = broadcastType || festivalKey;
 
     // A. DELETE ALL ACTION
     if (action === 'delete_all') {
       await client.query(`DELETE FROM broadcasts`);
       await client.end();
-
       return NextResponse.json({
         success: true,
         action: 'delete_all',
@@ -123,10 +135,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, action: 'delete_schedule', data: result.rows[0] || null });
     }
 
-    // C. SAVE ALL SCHEDULES ACTION (Bulk Scheduler Upsert)
+    // C. SAVE ALL SCHEDULES ACTION
     if (action === 'save_schedules') {
       const schedulesArray = body.schedules || [];
-      
       const debugLog: string[] = [];
       let insertedCount = 0;
       let skippedCount = 0;
@@ -134,7 +145,6 @@ export async function POST(req: Request) {
 
       for (let i = 0; i < schedulesArray.length; i++) {
         const item = schedulesArray[i];
-        
         const category = item.category === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
         const key = category === 'CORPORATE' ? item.broadcast_type : item.festival_key;
         const startsAt = item.starts_at;
@@ -142,16 +152,8 @@ export async function POST(req: Request) {
 
         debugLog.push(`[Row ${i}] category=${category}, key="${key}", starts="${startsAt}", ends="${endsAt}"`);
 
-        if (!key) {
-          debugLog.push(`[Row ${i}] ❌ SKIPPED: key is empty/undefined`);
-          skippedCount++;
-          continue;
-        }
-        if (!startsAt || !endsAt) {
-          debugLog.push(`[Row ${i}] ❌ SKIPPED: missing dates`);
-          skippedCount++;
-          continue;
-        }
+        if (!key) { skippedCount++; continue; }
+        if (!startsAt || !endsAt) { skippedCount++; continue; }
 
         let asset, content;
 
@@ -160,18 +162,14 @@ export async function POST(req: Request) {
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1', [key]);
           content = msgRes.rows[0];
-          debugLog.push(`[Row ${i}] CORPORATE lookup: asset_found=${!!asset}, content_found=${!!content}`);
         } else {
           const assetRes = await client.query('SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1', [key]);
           content = msgRes.rows[0];
-          debugLog.push(`[Row ${i}] FESTIVAL lookup: asset_found=${!!asset}, content_found=${!!content}`);
         }
 
         if (!content || !asset) {
-          debugLog.push(`[Row ${i}] ⚠️ Asset/Content missing in DB for "${key}". Creating minimal entry...`);
-          
           if (!asset) {
             asset = {
               theme_config: { primary_color: '#fbbf24', background_style: 'DARK_GOLD' },
@@ -214,80 +212,58 @@ export async function POST(req: Request) {
         const resCta = content.cta_text || content.cta_en || 'Celebrate';
 
         const existing = await client.query(
-          `
-          SELECT id
-          FROM broadcasts
-          WHERE festival_key = $1
-            AND category = $2
-            AND broadcast_mode = 'SCHEDULED'
-          LIMIT 1
-          `,
+          `SELECT id FROM broadcasts WHERE festival_key = $1 AND category = $2 AND broadcast_mode = 'SCHEDULED' LIMIT 1`,
           [key, category]
         );
 
         try {
           if (existing.rows.length > 0) {
             await client.query(
-              `
-              UPDATE broadcasts
-              SET
+              `UPDATE broadcasts SET
                 category=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
                 image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
                 resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='scheduled', 
                 broadcast_mode='SCHEDULED', manual_stop=false, updated_at=NOW()
-              WHERE id=$15;
-              `,
+              WHERE id=$15;`,
               [
                 category, resTitle, resMsg, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
                 mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
                 resCta, startsAt, endsAt, existing.rows[0].id
               ]
             );
-            debugLog.push(`[Row ${i}] ✅ UPDATED existing id=${existing.rows[0].id}`);
+            debugLog.push(`[Row ${i}] ✅ UPDATED id=${existing.rows[0].id}`);
           } else {
             const insertRes = await client.query(
-              `
-              INSERT INTO broadcasts (
+              `INSERT INTO broadcasts (
                 category, title, message, festival_key, hero_visual, hero_config, theme_config,
                 image_url, animation_theme, theme_color, resolved_title, resolved_message,
                 resolved_cta, starts_at, ends_at, is_active, status, broadcast_mode, manual_stop, 
                 hero_enabled, created_at
-              )
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'scheduled', 
-                'SCHEDULED', false, false, NOW())
-              RETURNING id;
-              `,
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'scheduled', 
+                'SCHEDULED', false, false, NOW()) RETURNING id;`,
               [
                 category, resTitle, resMsg, key, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig), JSON.stringify(normalizedThemeConfig),
                 mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor, resTitle, resMsg,
                 resCta, startsAt, endsAt
               ]
             );
-            debugLog.push(`[Row ${i}] ✅ INSERTED new id=${insertRes.rows[0]?.id}`);
+            debugLog.push(`[Row ${i}] ✅ INSERTED id=${insertRes.rows[0]?.id}`);
           }
           insertedCount++;
         } catch (dbErr: any) {
-          debugLog.push(`[Row ${i}] ❌ DB ERROR: ${dbErr.message}`);
+          debugLog.push(`[Row ${i}] ❌ ERROR: ${dbErr.message}`);
           errorCount++;
         }
       }
 
       await client.end();
-
       return NextResponse.json({ 
         success: true, 
         action: 'save_schedules',
-        debug: {
-          total: schedulesArray.length,
-          inserted: insertedCount,
-          skipped: skippedCount,
-          errors: errorCount,
-          log: debugLog
-        }
+        debug: { total: schedulesArray.length, inserted: insertedCount, skipped: skippedCount, errors: errorCount, log: debugLog }
       });
     }
 
-    // Scheduler actions ko targetKey restriction se surakshit karein
     const isSchedulerAction = ['save_schedules', 'delete_schedule', 'delete_all'].includes(action);
     if (!targetKey && !isSchedulerAction) {
       throw new Error("festival_key or broadcast_type is required");
@@ -297,7 +273,6 @@ export async function POST(req: Request) {
 
     // ━━━ START ACTION ━━━
     if (action === 'start') {
-      // Pehle saare MANUAL broadcasts ko stop karo
       await client.query(
         `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE broadcast_mode='MANUAL' AND festival_key != $1`,
         [targetKey]
@@ -312,11 +287,7 @@ export async function POST(req: Request) {
         existing = await client.query(`SELECT * FROM broadcasts WHERE festival_key=$1 AND broadcast_mode='MANUAL' LIMIT 1`, [targetKey]);
       }
 
-      if (existing.rows.length > 0) {
-        forceActive = true; 
-      } else {
-        forceActive = true;
-      }
+      forceActive = true;
     }
 
     // ━━━ STOP ACTION ━━━
@@ -340,7 +311,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, action: 'stop', data: result.rows[0] || null });
     }
 
-    // ━━━ DELETE ACTION (Single Delete) ━━━
+    // ━━━ DELETE ACTION ━━━
     if (action === 'delete') {
       const broadcastId = body.id;
       let result;
@@ -365,23 +336,13 @@ export async function POST(req: Request) {
 
     if (corpCheck.rows.length > 0) {
       asset = corpCheck.rows[0];
-      const msgRes = await client.query(
-        'SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1',
-        [targetKey]
-      );
+      const msgRes = await client.query('SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1', [targetKey]);
       content = msgRes.rows[0];
       resolvedFestivalKey = targetKey; 
     } else {
-      const assetResult = await client.query(
-        `SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1`,
-        [festivalKey]
-      );
+      const assetResult = await client.query(`SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1`, [festivalKey]);
       asset = assetResult.rows[0];
-
-      const messageResult = await client.query(
-        `SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1`,
-        [festivalKey]
-      );
+      const messageResult = await client.query(`SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1`, [festivalKey]);
       content = messageResult.rows[0];
       resolvedFestivalKey = festivalKey;
     }
@@ -409,7 +370,6 @@ export async function POST(req: Request) {
       background_style: themeConfig.background_style || 'DARK_GOLD'
     };
 
-    // Aligned Language Resolution
     let resTitle = "";
     let resMsg = "";
     let resCta = "";
@@ -449,46 +409,38 @@ export async function POST(req: Request) {
     }
 
     if (existingBroadcast.rows.length > 0) {
-      // ✅ FIX: manual_stop aur hero_enabled add kiya
       result = await client.query(
-        `
-        UPDATE broadcasts
-        SET
+        `UPDATE broadcasts SET
           title=$1, message=$2, language_mode=$3, hero_visual=$4, hero_config=$5,
           theme_config=$6, image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10,
           resolved_message=$11, resolved_cta=$12, preview_mode=true, is_active=true, status=$14,
           category=$15, manual_stop=$16, hero_enabled=$17,
           updated_at=NOW()
         WHERE id=$13
-        RETURNING *;
-        `,
+        RETURNING *;`,
         [
           resTitle, resMsg, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
           resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, resolvedCategory,
-          forceActive ? false : true,  // ✅ FIX: manual_stop = false when starting
-          heroEnabled                    // ✅ FIX: hero_enabled from body
+          forceActive ? false : true,
+          heroEnabled
         ]
       );
     } else {
-      // ✅ FIX: manual_stop aur hero_enabled add kiya
       result = await client.query(
-        `
-        INSERT INTO broadcasts (
+        `INSERT INTO broadcasts (
           title, message, festival_key, language_mode, hero_visual, hero_config,
           theme_config, image_url, animation_theme, theme_color, resolved_title, resolved_message,
           resolved_cta, preview_mode, is_active, content_mode, status, broadcast_mode, category, 
           manual_stop, hero_enabled, created_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', $14, $15, $16, $17, $18, NOW())
-        RETURNING *;
-        `,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', $14, $15, $16, $17, $18, NOW())
+        RETURNING *;`,
         [
           resTitle, resMsg, resolvedFestivalKey, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
           resTitle, resMsg, resCta, activeStatus, broadcastMode, resolvedCategory,
-          forceActive ? false : true,  // ✅ FIX: manual_stop = false when starting
-          heroEnabled                    // ✅ FIX: hero_enabled from body
+          forceActive ? false : true,
+          heroEnabled
         ]
       );
     }
