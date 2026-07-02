@@ -60,6 +60,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
 
+  // ✅ NEW: Transition guard — prevents banner flash during intro→popup handover
+  const [isGreetingSequenceActive, setIsGreetingSequenceActive] = useState(false);
+
   // ✅ Lock state and Ref Mirror setup
   const introLockRef = useRef(false);
   const activeBroadcastRef = useRef<any>(null);
@@ -86,33 +89,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. THE HANDOVER FUNCTION ━━━
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ━━━ 2. THE HANDOVER FUNCTION — FIXED: No banner flash
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  //
+  // ❌ OLD BUG: setIsIntroActive(false) → 300ms gap → setShowPopup(true)
+  //              Banner flash hota tha us 300ms me
+  //
+  // ✅ NEW FIX: isGreetingSequenceActive flag use karo
+  //             Banner condition me bhi check karo
+  //
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const handleIntroHandover = useCallback(() => {
     setTimeout(() => {
-      setIsIntroActive(false);      // Step 1: Close intro animation layer
-      setIsAmbientActive(true);     // Step 2: Enable ambient particles in background
+      // ✅ Step 1: Close intro animation
+      setIsIntroActive(false);
+      // ✅ Step 2: Start ambient particles
+      setIsAmbientActive(true);
+      // ✅ Step 3: Small delay for smooth visual transition
       setTimeout(() => {
-        setShowPopup(true);         // Step 3: Open popup
+        // ✅ Step 4: Show popup — NOW banner won't flash because
+        //            isGreetingSequenceActive is still TRUE
+        setShowPopup(true);
+        // ✅ Step 5: Only AFTER popup is visible, release the guard
+        //            This ensures no frame where both are false
+        setTimeout(() => {
+          setIsGreetingSequenceActive(false);
+        }, 50); // Tiny buffer to ensure popup is painted
       }, 300);
     }, 1200);
   }, []);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // ━━━ 3. REALTIME BROADCAST LISTENER — FIXED FREQUENCY LOGIC
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 
-  // 📋 ONCE (or null): 
-  //    - 1 din me 1 baar dikhega (intro + popup)
-  //    - Refresh/logout karne par nahi dikhega
-  //    - Next day automatically dubara dikhega
-  //    - Admin stop→start kare to bhi dubara dikhega
-  //    - Admin update kare to bhi dubara dikhega
-  //    - Banner + Ambient hamesha dikhega (popup ke baad)
-  //
-  // 📋 ALWAYS:
-  //    - Har refresh par full sequence: intro → ambient → popup
-  //    - Banner + Ambient bhi hamesha dikhega
-  //
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
@@ -122,7 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .in('broadcast_mode', ['MANUAL', 'SCHEDULED'])
       .or('target_audience.eq.BOTH,target_audience.eq.CLIENT')
       .lte('starts_at', now)
-      .or(`ends_at.is.null,ends_at.gte.${now}`)  // ✅ FIXED: backticks add kiye
+      .or(`ends_at.is.null,ends_at.gte.${now}`)
       .eq('manual_stop', false)
       .eq('is_active', true)
       .order('priority', { ascending: false })
@@ -131,7 +140,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      // ✅ Ref se read karo — stale state loop se bachne ke liye
       const prev = activeBroadcastRef.current;
       const wasUpdated = prev && prev.updated_at !== data.updated_at;
 
@@ -153,37 +161,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Lock guard — intro chal raha hai to wait karo
       if (introLockRef.current) return;
 
-      const frequency: string = data.show_frequency || 'ONCE'; // ✅ null → ONCE
+      const frequency: string = data.show_frequency || 'ONCE';
       const storageKey = `seen_broadcast_${data.id}`;
       const storedData = sessionStorage.getItem(storageKey);
-      const today = new Date().toISOString().split('T')[0]; // "2024-01-15" format
+      const today = new Date().toISOString().split('T')[0];
 
       let shouldShow = false;
 
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 🔄 ALWAYS: Har refresh par dikhega — NO sessionStorage check
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 🔄 ALWAYS: Har refresh par dikhega
       if (frequency === 'ALWAYS') {
         shouldShow = true;
-      } 
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 📅 ONCE: Ek din me ek baar — Date-based check
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      }
+      // 📅 ONCE: Ek din me ek baar
       else {
         if (storedData) {
           try {
             const parsed = JSON.parse(storedData);
             if (parsed.date !== today) {
-              // ✅ Naya din — dubara dikhao
               shouldShow = true;
             }
-            // Same day — mat dikhao (banner + ambient dikhega)
           } catch {
-            // Corrupted data — dikhao
             shouldShow = true;
           }
         } else {
-          // ✅ Pehli baar dekh raha hai — dikhao
           shouldShow = true;
         }
       }
@@ -191,32 +191,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Show decision
       if (shouldShow || wasUpdated) {
         introLockRef.current = true;
+        
+        // ✅ IMPORTANT: Set greeting sequence guard BEFORE triggering intro/popup
+        setIsGreetingSequenceActive(true);
+        
         if (data.hero_enabled) {
           setIsIntroActive(true);
         } else {
+          // ✅ No hero — directly show popup, guard already set
           setShowPopup(true);
+          // ✅ For non-hero case, release guard after popup is visible
+          setTimeout(() => {
+            setIsGreetingSequenceActive(false);
+          }, 50);
         }
       } else if (data.hero_enabled) {
         // ✅ Already seen today — but ambient particles chalao if hero enabled
         setIsAmbientActive(true);
       }
     } else {
-      // ━━━ Broadcast ended (stopped, deleted, or expired) ━━━
+      // ━━━ Broadcast ended ━━━
       if (activeBroadcastRef.current) {
         const endedId = activeBroadcastRef.current.id;
-        
-        // ✅ sessionStorage clear karo — taaki restart par dubara dikhe
+
         sessionStorage.removeItem(`seen_broadcast_${endedId}`);
 
         setActiveBroadcast(null);
         setShowPopup(false);
         setIsIntroActive(false);
         setIsAmbientActive(false);
+        setIsGreetingSequenceActive(false); // ✅ Reset guard
         introLockRef.current = false;
         setHasSeenPopup(false);
       }
     }
-  }, []); // ✅ No dependencies — refs use kar rahe hain
+  }, []);
 
   // Check expiry
   const checkBroadcastExpiry = useCallback(() => {
@@ -224,11 +233,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!bc?.ends_at) return;
     if (Date.now() >= new Date(bc.ends_at).getTime()) {
       sessionStorage.removeItem(`seen_broadcast_${bc.id}`);
-      
+
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
       setIsAmbientActive(false);
+      setIsGreetingSequenceActive(false); // ✅ Reset guard
       introLockRef.current = false;
       setHasSeenPopup(false);
     }
@@ -253,25 +263,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast?.ends_at, checkBroadcastExpiry]);
 
-  // ━━━ POPUP DISMISS — Date-based storage for ONCE ━━━
+  // ━━━ POPUP DISMISS ━━━
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
     introLockRef.current = false;
-    
+    setIsGreetingSequenceActive(false); // ✅ Release guard
+
     if (activeBroadcast) {
       const frequency = activeBroadcast.show_frequency || 'ONCE';
-      const storageKey = `seen_broadcast_${activeBroadcast.id}`;  // ✅ FIXED: backticks
-      
+      const storageKey = `seen_broadcast_${activeBroadcast.id}`;
+
       if (frequency !== 'ALWAYS') {
-        // ✅ ONCE: Aaj ki date ke saath store karo
         const today = new Date().toISOString().split('T')[0];
         sessionStorage.setItem(storageKey, JSON.stringify({
           seenAt: new Date().toISOString(),
-          date: today  // "2024-01-15" — next day compare ke liye
+          date: today
         }));
       }
-      // ✅ ALWAYS: Kuch store mat karo — next refresh par dubara dikhega
     }
   };
 
@@ -280,6 +289,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setShowPopup(false);
     setIsIntroActive(false);
     setIsAmbientActive(false);
+    setIsGreetingSequenceActive(false); // ✅ Reset guard
     introLockRef.current = false;
   }, []);
 
@@ -400,6 +410,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
+  // ✅ FIXED: Banner visibility logic — greeting sequence active hone par mat dikhao
+  const shouldShowBanner = activeBroadcast && !showPopup && !isIntroActive && !isGreetingSequenceActive;
+
   return (
     <>
       {shouldShowLockout && <MaintenanceScreen settings={sysSettings} />}
@@ -422,8 +435,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* Top Broadcast Banner — Always shows if broadcast active */}
-      {activeBroadcast && !showPopup && !isIntroActive && (
+      {/* ✅ FIXED: Top Broadcast Banner — Only shows when greeting sequence is NOT active */}
+      {shouldShowBanner && (
         <div
           className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
           style={{
@@ -464,7 +477,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* LAYER 2 — DYNAMIC AMBIENT EFFECTS (Persistent in background) */}
+      {/* LAYER 2 — DYNAMIC AMBIENT EFFECTS */}
       {isAmbientActive && activeBroadcast && (
         <div
           className={`fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 ${
