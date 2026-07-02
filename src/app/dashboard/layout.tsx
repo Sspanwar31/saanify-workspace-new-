@@ -42,6 +42,10 @@ const MaintenanceScreen = ({ settings }: any) => (
   </div>
 );
 
+// =========================================================
+// MAIN DASHBOARD LAYOUT
+// =========================================================
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -56,13 +60,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
+  
+  // Layout states for animation sequence
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
 
-  // 🚀 FIXED: Lock state and Ref Mirror setup to prevent React closure stale loops
   const introLockRef = useRef(false);
   const activeBroadcastRef = useRef<any>(null);
   activeBroadcastRef.current = activeBroadcast;
+
+  const lastBroadcastIdRef = useRef<string | null>(null);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -85,19 +92,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. THE HANDOVER FUNCTION (🚀 FIXED: Sets isIntroActive(false) and isAmbientActive(true)) ━━━
+  // ━━━ 2. THE HANDOVER FUNCTION ━━━
   const handleIntroHandover = useCallback(() => {
     console.log("🎬 [Timeline Handover]: Rocket/Firework animation completed! Opening popup...");
     setTimeout(() => {
-      setIsIntroActive(false);      // Step 1: Rocket/Firework intro layer close
-      setIsAmbientActive(true);     // Step 2: Enable ambient golden dust particles in background
+      setIsIntroActive(false);
+      setIsAmbientActive(true);
       setTimeout(() => {
-        setShowPopup(true);         // Step 3: Open Popup
+        setShowPopup(true);
       }, 300);
     }, 1200);
   }, []);
   
-  // ━━━ 3. REALTIME BROADCAST LISTENER (🚀 FIXED: Stale state checks replaced with Ref Mirrors) ━━━
+  // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -115,17 +122,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      // 🚀 FIXED: Stale activeBroadcast state check replaced with activeBroadcastRef.current to break infinite loops
       const prev = activeBroadcastRef.current;
+      const prevId = lastBroadcastIdRef.current;
+      
       const wasUpdated = prev && prev.updated_at !== data.updated_at;
+      const isNewBroadcast = !prev || prev.id !== data.id;
 
-      if (prev && prev.id === data.id && !wasUpdated) {
-        return; // Same broadcast and no changes, skip updating to prevent loop
+      if (isNewBroadcast) {
+        setHasSeenPopup(false);
+        introLockRef.current = false;
       }
 
+      // 🚀 Admin ne update/restart kiya, to local cache ko saaf karein
       if (wasUpdated) {
-        console.log("🔥 [Replay Detected]: Admin updated the broadcast. Resetting session cache...");
-        sessionStorage.removeItem(`seen_broadcast_${data.id}`);
+        console.log("🔥 [Replay Detected]: Admin updated the broadcast. Resetting local storage cache...");
+        localStorage.removeItem(`seen_broadcast_time_${data.id}`);
         setHasSeenPopup(false);
         introLockRef.current = false;
       }
@@ -134,19 +145,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       if (introLockRef.current) return;
 
-      const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
+      // 🚀 24-HOUR LOCAL STORAGE CACHE LOGIC (ONCE/NULL ke liye)
+      const lastSeenTimeStr = localStorage.getItem(`seen_broadcast_time_${data.id}`);
+      let hasSeenInLast24Hours = false;
 
-      // 🚀 TEMPORARY TESTING BYPASS:
-      // 'true' karne par har page reload/refresh par bina block hue UNLIMITED baar test hoga.
-      // Production me jate waqt ise bas 'false' kar dijiyega.
-      const isTestingBypass = true; 
+      if (lastSeenTimeStr) {
+        const lastSeenTime = parseInt(lastSeenTimeStr, 10);
+        const hoursPassed = (Date.now() - lastSeenTime) / (1000 * 60 * 60);
+        if (hoursPassed < 24) {
+          hasSeenInLast24Hours = true; // 24 ghante ke bhitar dekha ja chuka hai
+        } else {
+          localStorage.removeItem(`seen_broadcast_time_${data.id}`); // Expiry clear karein
+        }
+      }
 
       const frequency: string = data.show_frequency || 'ONCE';
+      
+      // ALWAYS mode har reload par chalu hoga (React state ke sath reset hokar)
+      // ONCE/NULL mode 24 ghante tak block rahega
       const shouldShow = frequency === 'ALWAYS'
         ? !hasSeenPopup
-        : (!sessionSeen && !hasSeenPopup);
+        : (!hasSeenInLast24Hours && !hasSeenPopup);
 
-      if (shouldShow || wasUpdated || isTestingBypass) {
+      if (shouldShow || wasUpdated) {
         introLockRef.current = true;
         if (data.hero_enabled) {
           setIsIntroActive(true);
@@ -154,10 +175,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setShowPopup(true);
         }
       } else if (data.hero_enabled) {
-        setIsAmbientActive(true);
+        setIsAmbientActive(true); // Persist background ambient particles
       }
     } else {
       if (activeBroadcastRef.current) {
+        const endedId = activeBroadcastRef.current.id;
+        localStorage.removeItem(`seen_broadcast_time_${endedId}`);
+        
         setActiveBroadcast(null);
         setShowPopup(false);
         setIsIntroActive(false);
@@ -172,6 +196,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const bc = activeBroadcastRef.current;
     if (!bc?.ends_at) return;
     if (Date.now() >= new Date(bc.ends_at).getTime()) {
+      localStorage.removeItem(`seen_broadcast_time_${bc.id}`);
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
@@ -205,7 +230,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHasSeenPopup(true);
     introLockRef.current = false;
     if (activeBroadcast) {
-      sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
+      // 🚀 24 ghante ka timestamp save karein
+      localStorage.setItem(`seen_broadcast_time_${activeBroadcast.id}`, Date.now().toString());
     }
   };
 
@@ -227,11 +253,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data: profile } = await supabase.from('current_active_profile').select('*').maybeSingle();
         if (!profile || profile.status !== 'ACTIVE') { router.replace('/login'); return; }
 
-        localStorage.setItem('current_user', JSON.stringify(profile)); 
+        localStorage.setItem('current_user', JSON.stringify(profile));
         localStorage.setItem('active_client_id', profile.id);
         useClientStore.setState({ currentUser: profile, isLoggedIn: true });
         setUserProfile(profile);
-        
+
         if (profile.theme === 'dark') document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
 
