@@ -16,6 +16,8 @@ import IndustrialEngine from '@/components/festival/engines/IndustrialEngine';
 import PromoEngine from '@/components/festival/engines/PromoEngine';
 import EventEngine from '@/components/festival/engines/EventEngine';
 
+import ParticleEngine from '@/components/festival/engines/ParticleEngine';
+
 export const AnimationRegistry = {
 
   SPIRITUAL_ENGINE: SpiritualEngine,
@@ -47,5 +49,7 @@ export const AnimationRegistry = {
   PROMO_ENGINE: PromoEngine,
 
   EVENT_ENGINE: EventEngine,
+
+  PARTICLE_ENGINE: ParticleEngine,
 
 } as const;
