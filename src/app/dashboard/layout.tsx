@@ -1,21 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import {
+import { 
   ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles,
-  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing
+  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing 
 } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
+
+// 🚀 2027 UPGRADE: Controller and Clean Ambient Factory Imported
 import FestivalIntroController from '@/components/festival/intro/FestivalIntroController';
+import AmbientFactory from '@/components/festival/v2/ambient/AmbientFactory'; // ✅ NEW: Aligned Ambient Factory
 
 // =========================================================
 // SUB-COMPONENTS
@@ -38,107 +43,6 @@ const MaintenanceScreen = ({ settings }: any) => (
 );
 
 // =========================================================
-// PREMIUM GOLDEN PARTICLES — Floating Diwali Embers
-// =========================================================
-const PremiumGoldenParticles = memo(() => {
-  const [particles, setParticles] = useState<any[]>([]);
-
-  useEffect(() => {
-    const count = 50;
-    const blurWeights = [0, 0, 0, 0, 1, 1, 2];
-
-    const generated = Array.from({ length: count }, (_, i) => {
-      const size = Math.random() * 6 + 2;
-      const isLargeSpark = size > 6;
-      const isMediumEmber = size > 3.5 && !isLargeSpark;
-
-      return {
-        id: i,
-        size,
-        duration: Math.random() * 9 + 6,
-        delay: -(Math.random() * 15),
-        left: Math.random() * 100,
-        blur: blurWeights[Math.floor(Math.random() * blurWeights.length)],
-        drift: Math.random() * 55 + 15,
-        glowMultiplier: isLargeSpark ? 3.5 : isMediumEmber ? 2.2 : 1.4,
-        brightness: isLargeSpark ? 1.3 : isMediumEmber ? 1.05 : 0.85,
-        highlightX: 30 + Math.random() * 15,
-        highlightY: 30 + Math.random() * 15,
-      };
-    });
-    setParticles(generated);
-  }, []);
-
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      <style>{`
-        @keyframes ember-rise {
-          0% {
-            transform: translateY(0) translateX(0) rotate(0deg);
-            opacity: 0;
-          }
-          5% {
-            opacity: 0.85;
-          }
-          18% {
-            transform: translateY(-18vh) translateX(calc(var(--d) * -0.55px)) rotate(65deg);
-            opacity: 1;
-          }
-          35% {
-            transform: translateY(-35vh) translateX(calc(var(--d) * 0.4px)) rotate(130deg);
-            opacity: 0.7;
-          }
-          52% {
-            transform: translateY(-52vh) translateX(calc(var(--d) * -0.28px)) rotate(195deg);
-            opacity: 1;
-          }
-          70% {
-            transform: translateY(-70vh) translateX(calc(var(--d) * 0.18px)) rotate(260deg);
-            opacity: 0.55;
-          }
-          88% {
-            opacity: 0.25;
-          }
-          100% {
-            transform: translateY(-112vh) translateX(calc(var(--d) * -0.08px)) rotate(360deg);
-            opacity: 0;
-          }
-        }
-      `}</style>
-
-      {particles.map(p => {
-        const glowR = p.size * p.glowMultiplier;
-        const glowR2 = glowR * 1.8;
-
-        return (
-          <div
-            key={p.id}
-            className="absolute rounded-full will-change-transform"
-            style={{
-              width: p.size,
-              height: p.size,
-              left: `${p.left}%`,
-              bottom: '-4%',
-              background: `radial-gradient(circle at ${p.highlightX}% ${p.highlightY}%, #fef9c3 0%, #fbbf24 28%, #d97706 65%, #78350f 100%)`,
-              boxShadow: `
-                0 0 ${glowR}px ${glowR * 0.35}px rgba(251, 191, 36, 0.55),
-                0 0 ${glowR2}px ${glowR * 0.7}px rgba(217, 119, 6, 0.18)
-              `,
-              filter: `blur(${p.blur}px) brightness(${p.brightness})`,
-              animation: `ember-rise ${p.duration}s ${p.delay}s linear infinite`,
-              ['--d' as string]: p.drift,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-});
-
-PremiumGoldenParticles.displayName = 'PremiumGoldenParticles';
-
-
-// =========================================================
 // MAIN DASHBOARD LAYOUT
 // =========================================================
 
@@ -147,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [sysSettings, setSysSettings] = useState<any>(null);
+  const [sysSettings, setSysSettings] = useState<any>(null); 
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
@@ -156,20 +60,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
-
+  
+  // Layout states for animation sequence
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
 
-  // ✅ INTRO LOCK — prevents re-trigger during active sequence
   const introLockRef = useRef(false);
-
-  // ✅ REF MIRROR — reads activeBroadcast without creating dependency cascade.
   const activeBroadcastRef = useRef<any>(null);
   activeBroadcastRef.current = activeBroadcast;
 
-  // ✅ NEW: Track last broadcast ID for restart detection
-  //    When broadcast stops → activeBroadcast becomes null
-  //    When same broadcast starts again → prev is null but ID matches → it's a restart
   const lastBroadcastIdRef = useRef<string | null>(null);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
@@ -179,29 +78,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/admin/settings');
         const data = await res.json();
         setSysSettings(data);
-      } catch (e) { /* silent */ }
+      } catch (e) {}
     };
     fetchInitialSettings();
 
     const settingsChannel = supabase
       .channel('public:system_settings')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings', filter: 'id=eq.1' }, (payload) => {
-        setSysSettings(payload.new);
+        setSysSettings(payload.new); 
       })
       .subscribe();
 
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. HANDOVER ━━━
+  // ━━━ 2. THE HANDOVER FUNCTION ━━━
   const handleIntroHandover = useCallback(() => {
+    console.log("🎬 [Timeline Handover]: Rocket/Firework animation completed! Opening popup...");
     setTimeout(() => {
       setIsIntroActive(false);
       setIsAmbientActive(true);
-      setShowPopup(true);
-    }, 300);
+      setTimeout(() => {
+        setShowPopup(true);
+      }, 300);
+    }, 1200);
   }, []);
-
+  
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
@@ -220,64 +122,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      // ✅ Read from REF — no dependency on activeBroadcast state
       const prev = activeBroadcastRef.current;
       const prevId = lastBroadcastIdRef.current;
       
-      // Detect update (same broadcast, different timestamp)
       const wasUpdated = prev && prev.updated_at !== data.updated_at;
-      
-      // ✅ FIX: Detect restart — prev is null but same ID returned
-      //    This happens when: stop → activeBroadcast=null → start → same ID comes back
-      const isRestart = !prev && prevId === data.id;
+      const isNewBroadcast = !prev || prev.id !== data.id;
 
-      // ✅ Always track current broadcast ID
-      lastBroadcastIdRef.current = data.id;
+      if (isNewBroadcast) {
+        setHasSeenPopup(false);
+        introLockRef.current = false;
+      }
 
-      // ✅ Clear seen status on update OR restart
-      if (wasUpdated || isRestart) {
+      if (wasUpdated) {
         sessionStorage.removeItem(`seen_broadcast_${data.id}`);
         setHasSeenPopup(false);
         introLockRef.current = false;
       }
 
-      // Always keep broadcast data fresh for banner/popup
       setActiveBroadcast(data);
 
-      // ✅ LOCK GUARD
       if (introLockRef.current) return;
 
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
+
+      const isTestingBypass = true; // 🚀 TEST BYPASS ACTIVE
 
       const frequency: string = data.show_frequency || 'ONCE';
       const shouldShow = frequency === 'ALWAYS'
         ? !hasSeenPopup
         : (!sessionSeen && !hasSeenPopup);
 
-      // ✅ Show on: first time, update, or restart
-      if (shouldShow || wasUpdated || isRestart) {
+      if (shouldShow || wasUpdated || isTestingBypass) {
         introLockRef.current = true;
-        
-        // ✅ Hero logic — works on restart now too
         if (data.hero_enabled) {
           setIsIntroActive(true);
         } else {
           setShowPopup(true);
         }
       } else if (data.hero_enabled) {
-        // Show ambient particles if hero enabled but popup already seen
         setIsAmbientActive(true);
       }
     } else {
-      // ✅ Broadcast ended (stopped, deleted, or expired)
       if (activeBroadcastRef.current) {
         const endedId = activeBroadcastRef.current.id;
-        
-        // ✅ FIX: Clear sessionStorage when broadcast ends
-        //    So if it comes back (restart), it shows again
         sessionStorage.removeItem(`seen_broadcast_${endedId}`);
-        
-        // ✅ DON'T clear lastBroadcastIdRef — needed for restart detection
         
         setActiveBroadcast(null);
         setShowPopup(false);
@@ -289,14 +177,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [hasSeenPopup]);
 
-  // ✅ Check expiry — also clears sessionStorage
   const checkBroadcastExpiry = useCallback(() => {
     const bc = activeBroadcastRef.current;
     if (!bc?.ends_at) return;
     if (Date.now() >= new Date(bc.ends_at).getTime()) {
-      // ✅ FIX: Clear sessionStorage on expiry too
       sessionStorage.removeItem(`seen_broadcast_${bc.id}`);
-      
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
@@ -335,7 +220,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const handleDismissBanner = useCallback(() => {
-    // Note: Don't clear lastBroadcastIdRef here — broadcast is still active, just hidden
     setActiveBroadcast(null);
     setShowPopup(false);
     setIsIntroActive(false);
@@ -399,11 +283,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!userProfile || userProfile.role !== 'treasurer') return;
     const perms: string[] = Array.isArray(userProfile?.role_permissions?.treasurer) ? userProfile.role_permissions.treasurer : [];
     const path = pathname.toLowerCase();
-    const permissionMap: Record<string, string> = {
-      'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans',
-      'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard',
-      'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings'
-    };
+    const permissionMap: Record<string, string> = { 'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans', 'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard', 'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings' };
 
     if (path !== '/dashboard') {
       const requiredPerm = Object.entries(permissionMap).find(([key]) => path.includes(key))?.[1];
@@ -421,24 +301,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const { data: { user } } = await supabase.auth.getUser();
       if (user) await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
       document.documentElement.classList.remove('dark');
-      localStorage.removeItem('is_admin_viewing');
-      localStorage.removeItem('viewing_client_id');
-      localStorage.removeItem('is_admin_impersonating');
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
-      });
+      localStorage.removeItem('is_admin_viewing'); localStorage.removeItem('viewing_client_id'); localStorage.removeItem('is_admin_impersonating');
+      Object.keys(localStorage).forEach(key => { if (key.startsWith('saanify-storage-')) localStorage.removeItem(key); });
       toast.success("Welcome back Admin", { id: toastId });
       window.location.href = '/admin/clients';
-    } catch (err) {
-      window.location.href = '/admin/clients';
-    }
+    } catch (err) { window.location.href = '/admin/clients'; }
   }, []);
 
-  if (isChecking) return (
-    <div className="h-screen w-full flex items-center justify-center">
-      <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
-    </div>
-  );
+  if (isChecking) return <div className="h-screen w-full flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
 
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
@@ -484,14 +354,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Top Broadcast Banner */}
       {activeBroadcast && !showPopup && !isIntroActive && (
-        <div
-          className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
-          style={{
-            background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`,
-            backdropFilter: 'blur(12px)',
-            borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)'
-          }}
-        >
+        <div className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`} style={{ background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`, backdropFilter: 'blur(12px)', borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)' }}>
           <div className="max-w-7xl mx-auto flex items-center justify-between text-sm tracking-wide">
             <div className="flex items-center gap-4 flex-1 justify-center min-w-0">
               {renderBroadcastIcon()}
@@ -509,7 +372,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* LAYER 1 — INTRO ANIMATIONS */}
+      {/* LAYER 1 — INTRO ANIMATIONS (z-9997) */}
       {isIntroActive && activeBroadcast?.hero_enabled && (
         <div className="fixed inset-0 z-[9997] pointer-events-none">
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
@@ -517,21 +380,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <AnimationFactory
                 phase={phase}
                 engine={activeBroadcast?.hero_config?.animation}
-                preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
+                preset={activeBroadcast?.festival_key}
               />
             )}
           </FestivalIntroController>
         </div>
       )}
 
-      {/* LAYER 2 — AMBIENT GOLDEN PARTICLES */}
+      {/* LAYER 2 — DYNAMIC AMBIENT EFFECTS (🚀 FIXED: Cleanly calls AmbientFactory) */}
       {isAmbientActive && activeBroadcast && (
         <div className="fixed inset-0 z-[9998] pointer-events-none">
-          <PremiumGoldenParticles />
+          <AmbientFactory festivalKey={activeBroadcast?.festival_key} />
         </div>
       )}
 
-      {/* LAYER 3 — GREETING POPUP */}
+      {/* LAYER 3 — GREETING POPUP (Custom overlay with glassmorphism) */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div
