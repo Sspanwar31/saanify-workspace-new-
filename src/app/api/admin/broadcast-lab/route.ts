@@ -81,7 +81,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // 🚀 DEBUG LOG: Takii agar koi payload mismatch ho, toh Vercel Logs me dikh jaye
+    // 🚀 DEBUG LOG
     console.log("📥 POST API BODY RECEIVED:", JSON.stringify(body, null, 2));
 
     client = await getDbClient('API_Broadcast_Lab');
@@ -91,6 +91,14 @@ export async function POST(req: Request) {
     const language_mode = body.language_mode || 'BOTH';
     const action = body.action || 'generate';
     const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
+
+    // ✅ FIX: hero_enabled resolve karo - direct ya overlay se
+    let heroEnabled = body.hero_enabled === true;
+    if (!heroEnabled && body.overlay) {
+      // "Full Anim" ya "FULL_ANIM" → hero_enabled = true
+      heroEnabled = ['full_anim', 'full anim', 'fullanim'].includes(String(body.overlay).toLowerCase().replace(/\s+/g, '_'));
+    }
+    console.log("🔥 heroEnabled resolved:", heroEnabled, "from body.hero_enabled:", body.hero_enabled, "body.overlay:", body.overlay);
 
     // Consistent targetKey Resolution
     const targetKey = broadcastType || festivalKey;
@@ -116,11 +124,9 @@ export async function POST(req: Request) {
     }
 
     // C. SAVE ALL SCHEDULES ACTION (Bulk Scheduler Upsert)
-    // 🔧 FIXED: category mapping, key resolution, aur debug logging
     if (action === 'save_schedules') {
       const schedulesArray = body.schedules || [];
       
-      // 🐛 DEBUG: Track kya ho raha hai har row ke sath
       const debugLog: string[] = [];
       let insertedCount = 0;
       let skippedCount = 0;
@@ -129,17 +135,13 @@ export async function POST(req: Request) {
       for (let i = 0; i < schedulesArray.length; i++) {
         const item = schedulesArray[i];
         
-        // 🔧 FIX 1: item.type nahi — item.category check karo (frontend category bhejta hai)
         const category = item.category === 'CORPORATE' ? 'CORPORATE' : 'FESTIVAL';
-        
-        // 🔧 FIX 2: CORPORATE ke liye broadcast_type, FESTIVAL ke liye festival_key use karo
         const key = category === 'CORPORATE' ? item.broadcast_type : item.festival_key;
         const startsAt = item.starts_at;
         const endsAt = item.ends_at;
 
         debugLog.push(`[Row ${i}] category=${category}, key="${key}", starts="${startsAt}", ends="${endsAt}"`);
 
-        // Basic validation
         if (!key) {
           debugLog.push(`[Row ${i}] ❌ SKIPPED: key is empty/undefined`);
           skippedCount++;
@@ -167,11 +169,9 @@ export async function POST(req: Request) {
           debugLog.push(`[Row ${i}] FESTIVAL lookup: asset_found=${!!asset}, content_found=${!!content}`);
         }
 
-        // 🔧 FIX 3: Agar asset/content nahi mila toh basic default banao — skip mat karo
         if (!content || !asset) {
           debugLog.push(`[Row ${i}] ⚠️ Asset/Content missing in DB for "${key}". Creating minimal entry...`);
           
-          // Minimal fallback — database mein entry bana do agar nahi hai
           if (!asset) {
             asset = {
               theme_config: { primary_color: '#fbbf24', background_style: 'DARK_GOLD' },
@@ -233,7 +233,8 @@ export async function POST(req: Request) {
               SET
                 category=$1, title=$2, message=$3, hero_visual=$4, hero_config=$5, theme_config=$6,
                 image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10, resolved_message=$11,
-                resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='scheduled', broadcast_mode='SCHEDULED', manual_stop=false, updated_at=NOW()
+                resolved_cta=$12, starts_at=$13, ends_at=$14, is_active=true, status='scheduled', 
+                broadcast_mode='SCHEDULED', manual_stop=false, updated_at=NOW()
               WHERE id=$15;
               `,
               [
@@ -249,9 +250,11 @@ export async function POST(req: Request) {
               INSERT INTO broadcasts (
                 category, title, message, festival_key, hero_visual, hero_config, theme_config,
                 image_url, animation_theme, theme_color, resolved_title, resolved_message,
-                resolved_cta, starts_at, ends_at, is_active, status, broadcast_mode, manual_stop, created_at
+                resolved_cta, starts_at, ends_at, is_active, status, broadcast_mode, manual_stop, 
+                hero_enabled, created_at
               )
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'scheduled', 'SCHEDULED', false, NOW())
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, 'scheduled', 
+                'SCHEDULED', false, false, NOW())
               RETURNING id;
               `,
               [
@@ -271,7 +274,6 @@ export async function POST(req: Request) {
 
       await client.end();
 
-      // 🔧 FIX 4: Debug info bhi response mein bhejo taaki frontend console mein dikhe
       return NextResponse.json({ 
         success: true, 
         action: 'save_schedules',
@@ -285,7 +287,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 🚀 FIXED: save_schedules aur baki table actions ko targetKey restriction se surakshit karein
+    // Scheduler actions ko targetKey restriction se surakshit karein
     const isSchedulerAction = ['save_schedules', 'delete_schedule', 'delete_all'].includes(action);
     if (!targetKey && !isSchedulerAction) {
       throw new Error("festival_key or broadcast_type is required");
@@ -295,6 +297,7 @@ export async function POST(req: Request) {
 
     // ━━━ START ACTION ━━━
     if (action === 'start') {
+      // Pehle saare MANUAL broadcasts ko stop karo
       await client.query(
         `UPDATE broadcasts SET is_active=false, status='stopped', manual_stop=true, updated_at=NOW() WHERE broadcast_mode='MANUAL' AND festival_key != $1`,
         [targetKey]
@@ -446,6 +449,7 @@ export async function POST(req: Request) {
     }
 
     if (existingBroadcast.rows.length > 0) {
+      // ✅ FIX: manual_stop aur hero_enabled add kiya
       result = await client.query(
         `
         UPDATE broadcasts
@@ -453,7 +457,7 @@ export async function POST(req: Request) {
           title=$1, message=$2, language_mode=$3, hero_visual=$4, hero_config=$5,
           theme_config=$6, image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10,
           resolved_message=$11, resolved_cta=$12, preview_mode=true, is_active=true, status=$14,
-          category=$15,
+          category=$15, manual_stop=$16, hero_enabled=$17,
           updated_at=NOW()
         WHERE id=$13
         RETURNING *;
@@ -461,24 +465,30 @@ export async function POST(req: Request) {
         [
           resTitle, resMsg, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, resolvedCategory
+          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, resolvedCategory,
+          forceActive ? false : true,  // ✅ FIX: manual_stop = false when starting
+          heroEnabled                    // ✅ FIX: hero_enabled from body
         ]
       );
     } else {
+      // ✅ FIX: manual_stop aur hero_enabled add kiya
       result = await client.query(
         `
         INSERT INTO broadcasts (
           title, message, festival_key, language_mode, hero_visual, hero_config,
           theme_config, image_url, animation_theme, theme_color, resolved_title, resolved_message,
-          resolved_cta, preview_mode, is_active, content_mode, status, broadcast_mode, category, created_at
+          resolved_cta, preview_mode, is_active, content_mode, status, broadcast_mode, category, 
+          manual_stop, hero_enabled, created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', $14, $15, $16, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, true, true, 'AUTO', $14, $15, $16, $17, $18, NOW())
         RETURNING *;
         `,
         [
           resTitle, resMsg, resolvedFestivalKey, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, activeStatus, broadcastMode, resolvedCategory
+          resTitle, resMsg, resCta, activeStatus, broadcastMode, resolvedCategory,
+          forceActive ? false : true,  // ✅ FIX: manual_stop = false when starting
+          heroEnabled                    // ✅ FIX: hero_enabled from body
         ]
       );
     }
