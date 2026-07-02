@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -39,45 +39,29 @@ const MaintenanceScreen = ({ settings }: any) => (
 
 // =========================================================
 // PREMIUM GOLDEN PARTICLES — Floating Diwali Embers
-//
-// AnimationFactory se COMPLETELY independent.
-// Sirf golden particles — koi glow, rays, bloom NAHI.
-//
-// Har particle ke paas:
-//   - Random size: 2px → 8px
-//   - Random speed: 6s → 15s
-//   - Horizontal drift: random amplitude per particle
-//   - Rotation: 0° → 360°
-//   - Opacity pulsing: 0 → 1 → 0.75 → 1 → 0
-//   - Blur variation: 0px / 1px / 2px
-//
-// Feel: floating embers, luxury golden dust, premium sparks
-// NOT snowfall.
 // =========================================================
 const PremiumGoldenParticles = memo(() => {
   const [particles, setParticles] = useState<any[]>([]);
 
   useEffect(() => {
     const count = 50;
-    const blurWeights = [0, 0, 0, 0, 1, 1, 2]; // zyada particles sharp, kuch blurred
+    const blurWeights = [0, 0, 0, 0, 1, 1, 2];
 
     const generated = Array.from({ length: count }, (_, i) => {
-      const size = Math.random() * 6 + 2; // 2–8px
+      const size = Math.random() * 6 + 2;
       const isLargeSpark = size > 6;
       const isMediumEmber = size > 3.5 && !isLargeSpark;
 
       return {
         id: i,
         size,
-        duration: Math.random() * 9 + 6, // 6–15s
-        delay: -(Math.random() * 15),    // negative = staggered start
-        left: Math.random() * 100,       // horizontal position %
+        duration: Math.random() * 9 + 6,
+        delay: -(Math.random() * 15),
+        left: Math.random() * 100,
         blur: blurWeights[Math.floor(Math.random() * blurWeights.length)],
-        drift: Math.random() * 55 + 15,  // horizontal drift: 15–70px
-        // larger particles = brighter glow
+        drift: Math.random() * 55 + 15,
         glowMultiplier: isLargeSpark ? 3.5 : isMediumEmber ? 2.2 : 1.4,
         brightness: isLargeSpark ? 1.3 : isMediumEmber ? 1.05 : 0.85,
-        // inner highlight offset for 3D look
         highlightX: 30 + Math.random() * 15,
         highlightY: 30 + Math.random() * 15,
       };
@@ -87,8 +71,6 @@ const PremiumGoldenParticles = memo(() => {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* ── Ember Rise Keyframe ──
-          Bottom se upar float, horizontal sway, rotation, opacity pulse */}
       <style>{`
         @keyframes ember-rise {
           0% {
@@ -137,9 +119,7 @@ const PremiumGoldenParticles = memo(() => {
               height: p.size,
               left: `${p.left}%`,
               bottom: '-4%',
-              // 3D-like radial gradient: bright highlight → gold → dark gold edge
               background: `radial-gradient(circle at ${p.highlightX}% ${p.highlightY}%, #fef9c3 0%, #fbbf24 28%, #d97706 65%, #78350f 100%)`,
-              // dual-layer glow: inner sharp + outer soft
               boxShadow: `
                 0 0 ${glowR}px ${glowR * 0.35}px rgba(251, 191, 36, 0.55),
                 0 0 ${glowR2}px ${glowR * 0.7}px rgba(217, 119, 6, 0.18)
@@ -177,11 +157,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
 
-  // ✅ STATE SPLIT: Intro aur Ambient — completely independent lifecycles
-  // Intro: Flash → Rocket → Firework → Celebration Lights (AnimationFactory)
-  // Ambient: ONLY Golden Particles (PremiumGoldenParticles — custom, independent)
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
+
+  // ✅ INTRO LOCK — prevents re-trigger during active sequence
+  const introLockRef = useRef(false);
+
+  // ✅ REF MIRROR — reads activeBroadcast without creating dependency cascade.
+  //    Updated on every render (zero cost), read inside callbacks (always fresh).
+  //    This breaks the: setActiveBroadcast → fetchBroadcasts changes → useEffect re-fires → loop
+  const activeBroadcastRef = useRef<any>(null);
+  activeBroadcastRef.current = activeBroadcast;
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -204,16 +190,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { supabase.removeChannel(settingsChannel); };
   }, []);
 
-  // ━━━ 2. HANDOVER: Intro finishes → Ambient starts → Popup opens ━━━
+  // ━━━ 2. HANDOVER ━━━
   const handleIntroHandover = useCallback(() => {
     setTimeout(() => {
-      setIsIntroActive(false);   // ✅ Intro layer UNMOUNTS — glow/rays/bloom sab hat jaate hain
-      setIsAmbientActive(true);  // ✅ Ambient layer MOUNTS — sirf golden particles
-      setShowPopup(true);        // ✅ Greeting card khul-ta hai
+      setIsIntroActive(false);
+      setIsAmbientActive(true);
+      setShowPopup(true);
     }, 300);
   }, []);
 
   // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
+  // ✅ CRITICAL: Dependencies are [hasSeenPopup] ONLY.
+  //    activeBroadcast is read via ref → no cascade loop.
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -231,56 +219,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
-      // Admin ne update kiya → replay trigger
-      const wasUpdated = activeBroadcast && activeBroadcast.updated_at !== data.updated_at;
+      // ✅ Read from REF — no dependency on activeBroadcast state
+      const prev = activeBroadcastRef.current;
+      const wasUpdated = prev && prev.updated_at !== data.updated_at;
 
       if (wasUpdated) {
         sessionStorage.removeItem(`seen_broadcast_${data.id}`);
         setHasSeenPopup(false);
+        introLockRef.current = false;
       }
 
+      // Always keep broadcast data fresh for banner/popup
       setActiveBroadcast(data);
+
+      // ✅ LOCK GUARD
+      if (introLockRef.current) return;
+
       const sessionSeen = sessionStorage.getItem(`seen_broadcast_${data.id}`);
 
-      // ✅ show_frequency logic:
-      // ONCE:   sessionStorage check + hasSeenPopup check
-      // ALWAYS: sirf hasSeenPopup check (sessionStorage ignore)
       const frequency: string = data.show_frequency || 'ONCE';
       const shouldShow = frequency === 'ALWAYS'
         ? !hasSeenPopup
         : (!sessionSeen && !hasSeenPopup);
 
       if (shouldShow || wasUpdated) {
+        introLockRef.current = true;
         if (data.hero_enabled) {
-          setIsIntroActive(true);  // Full intro sequence start
+          setIsIntroActive(true);
         } else {
-          setShowPopup(true);      // No hero — sirf popup
+          setShowPopup(true);
         }
       } else if (data.hero_enabled) {
-        // ✅ Already seen — skip intro & popup, but start ambient particles
         setIsAmbientActive(true);
       }
     } else {
-      if (activeBroadcast) {
-        // ✅ Broadcast expired/stopped — STOP EVERYTHING
+      // ✅ Read from REF
+      if (activeBroadcastRef.current) {
         setActiveBroadcast(null);
         setShowPopup(false);
         setIsIntroActive(false);
         setIsAmbientActive(false);
+        introLockRef.current = false;
       }
     }
-  }, [hasSeenPopup, activeBroadcast]);
+  }, [hasSeenPopup]); // ✅ activeBroadcast REMOVED — cascade broken
 
+  // ✅ Also uses ref — no deps needed
   const checkBroadcastExpiry = useCallback(() => {
-    if (!activeBroadcast?.ends_at) return;
-    if (Date.now() >= new Date(activeBroadcast.ends_at).getTime()) {
-      // ✅ Broadcast expired — STOP EVERYTHING
+    const bc = activeBroadcastRef.current;
+    if (!bc?.ends_at) return;
+    if (Date.now() >= new Date(bc.ends_at).getTime()) {
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
       setIsAmbientActive(false);
+      introLockRef.current = false;
     }
-  }, [activeBroadcast]);
+  }, []); // ✅ No deps — reads from ref
 
   useEffect(() => {
     fetchBroadcasts();
@@ -299,24 +294,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!activeBroadcast?.ends_at) return;
     const interval = setInterval(checkBroadcastExpiry, 5000);
     return () => clearInterval(interval);
-  }, [activeBroadcast, checkBroadcastExpiry]);
+  }, [activeBroadcast?.ends_at, checkBroadcastExpiry]);
 
-  // ✅ Popup dismiss — ONLY close popup. DO NOT stop ambient particles.
-  // Particles tab tak chalenge jab tak broadcast active hai.
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
+    introLockRef.current = false;
     if (activeBroadcast) {
       sessionStorage.setItem(`seen_broadcast_${activeBroadcast.id}`, 'true');
     }
   };
 
-  // ✅ Banner X button — user ne manually dismiss kiya, stop everything
   const handleDismissBanner = useCallback(() => {
     setActiveBroadcast(null);
     setShowPopup(false);
     setIsIntroActive(false);
     setIsAmbientActive(false);
+    introLockRef.current = false;
   }, []);
 
   // ━━━ 4. AUTH + PROFILE SYNC ━━━
@@ -458,7 +452,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* Top Broadcast Banner — hidden during intro & popup */}
+      {/* Top Broadcast Banner */}
       {activeBroadcast && !showPopup && !isIntroActive && (
         <div
           className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
@@ -485,16 +479,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          LAYER 1  ·  z-[9997]  ·  INTRO ANIMATIONS
-
-          Renders ONLY when isIntroActive === true.
-          Contains: Flash → Rocket → Firework → Celebration Lights
-                    (controlled by FestivalIntroController + AnimationFactory)
-
-          Handover ke baad ye layer COMPLETELY UNMOUNT hota hai.
-          → Koi glow leak nahi hoga. Koi rays nahi. Koi bloom nahi.
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* LAYER 1 — INTRO ANIMATIONS */}
       {isIntroActive && activeBroadcast?.hero_enabled && (
         <div className="fixed inset-0 z-[9997] pointer-events-none">
           <FestivalIntroController isActive={isIntroActive} onHandover={handleIntroHandover}>
@@ -509,35 +494,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          LAYER 2  ·  z-[9998]  ·  AMBIENT GOLDEN PARTICLES
-
-          Renders ONLY when isAmbientActive === true.
-          Contains: ONLY PremiumGoldenParticles
-                    (custom component — AnimationFactory se BILKUL independent)
-
-          → NO LuxuryGlow
-          → NO LuxuryRays
-          → NO BloomLighting
-          → NO RocketLaunch
-          → NO FireworkBurst
-
-          Sirf floating golden embers.
-          Popup close karne ke baad bhi CHALTA RAHEGA.
-          Broadcast expire hone par band hoga.
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* LAYER 2 — AMBIENT GOLDEN PARTICLES */}
       {isAmbientActive && activeBroadcast && (
         <div className="fixed inset-0 z-[9998] pointer-events-none">
           <PremiumGoldenParticles />
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          LAYER 3  ·  z-[9999]  ·  GREETING POPUP
-
-          Dark backdrop + BroadcastRenderer card.
-          Particles (z-9998) iske peeche dikhte hain through the backdrop.
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* LAYER 3 — GREETING POPUP */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div
@@ -550,9 +514,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          MAIN DASHBOARD
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* MAIN DASHBOARD */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
