@@ -6,19 +6,16 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useClientStore } from '@/lib/client/store';
 import ClientSidebar from '@/components/layout/ClientSidebar';
-import { 
+import {
   ShieldCheck, ArrowLeft, Loader2, X, Settings, Sparkles,
-  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing 
+  Wrench, AlertOctagon, Megaphone, Gift, Calendar, BellRing
 } from 'lucide-react';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
 import BroadcastRenderer from '@/components/festival/v2/BroadcastRenderer';
 import AnimationFactory from '@/components/festival/v2/AnimationFactory';
-
-// 🚀 2027 UPGRADE: The Dictator Controller imported
 import FestivalIntroController from '@/components/festival/intro/FestivalIntroController';
 import AmbientFactory from '@/components/festival/v2/ambient/AmbientFactory';
 
@@ -51,7 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [sysSettings, setSysSettings] = useState<any>(null); 
+  const [sysSettings, setSysSettings] = useState<any>(null);
   const [isChecking, setIsChecking] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
@@ -60,16 +57,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeBroadcast, setActiveBroadcast] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [hasSeenPopup, setHasSeenPopup] = useState(false);
-  
-  // Layout states for animation sequence
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
 
+  // ✅ Lock state and Ref Mirror setup
   const introLockRef = useRef(false);
   const activeBroadcastRef = useRef<any>(null);
   activeBroadcastRef.current = activeBroadcast;
-
-  const lastBroadcastIdRef = useRef<string | null>(null);
 
   // ━━━ 1. REALTIME SYSTEM SETTINGS LISTENER ━━━
   useEffect(() => {
@@ -78,14 +72,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/admin/settings');
         const data = await res.json();
         setSysSettings(data);
-      } catch (e) {}
+      } catch (e) { /* silent */ }
     };
     fetchInitialSettings();
 
     const settingsChannel = supabase
       .channel('public:system_settings')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'system_settings', filter: 'id=eq.1' }, (payload) => {
-        setSysSettings(payload.new); 
+        setSysSettings(payload.new);
       })
       .subscribe();
 
@@ -94,17 +88,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // ━━━ 2. THE HANDOVER FUNCTION ━━━
   const handleIntroHandover = useCallback(() => {
-    console.log("🎬 [Timeline Handover]: Rocket/Firework animation completed! Opening popup...");
     setTimeout(() => {
-      setIsIntroActive(false);
-      setIsAmbientActive(true);
+      setIsIntroActive(false);      // Step 1: Close intro animation layer
+      setIsAmbientActive(true);     // Step 2: Enable ambient particles in background
       setTimeout(() => {
-        setShowPopup(true);
+        setShowPopup(true);         // Step 3: Open popup
       }, 300);
     }, 1200);
   }, []);
-  
-  // ━━━ 3. REALTIME BROADCAST LISTENER ━━━
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ━━━ 3. REALTIME BROADCAST LISTENER — FIXED FREQUENCY LOGIC
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 
+  // 📋 ONCE (or null): 
+  //    - 1 din me 1 baar dikhega (intro + popup)
+  //    - Refresh/logout karne par nahi dikhega
+  //    - Next day automatically dubara dikhega
+  //    - Admin stop→start kare to bhi dubara dikhega
+  //    - Admin update kare to bhi dubara dikhega
+  //    - Banner + Ambient hamesha dikhega (popup ke baad)
+  //
+  // 📋 ALWAYS:
+  //    - Har refresh par full sequence: intro → ambient → popup
+  //    - Banner + Ambient bhi hamesha dikhega
+  //
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const fetchBroadcasts = useCallback(async () => {
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -113,7 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .in('broadcast_mode', ['MANUAL', 'SCHEDULED'])
       .or('target_audience.eq.BOTH,target_audience.eq.CLIENT')
       .lte('starts_at', now)
-      .or(`ends_at.is.null,ends_at.gte.${now}`)
+      .or(`ends_at.is.null,ends_at.gte.${now}`)  // ✅ FIXED: backticks add kiye
       .eq('manual_stop', false)
       .eq('is_active', true)
       .order('priority', { ascending: false })
@@ -122,51 +131,64 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .maybeSingle();
 
     if (data) {
+      // ✅ Ref se read karo — stale state loop se bachne ke liye
       const prev = activeBroadcastRef.current;
-      const prevId = lastBroadcastIdRef.current;
-      
       const wasUpdated = prev && prev.updated_at !== data.updated_at;
-      const isNewBroadcast = !prev || prev.id !== data.id;
 
-      if (isNewBroadcast) {
-        setHasSeenPopup(false);
-        introLockRef.current = false;
+      // Same broadcast, no changes — skip to prevent loop
+      if (prev && prev.id === data.id && !wasUpdated) {
+        return;
       }
 
-      // 🚀 Admin ne update/restart kiya, to local cache ko saaf karein
+      // Admin ne update kiya — sessionStorage clear karo
       if (wasUpdated) {
-        console.log("🔥 [Replay Detected]: Admin updated the broadcast. Resetting local storage cache...");
-        localStorage.removeItem(`seen_broadcast_time_${data.id}`);
+        sessionStorage.removeItem(`seen_broadcast_${data.id}`);
         setHasSeenPopup(false);
         introLockRef.current = false;
       }
 
+      // Always keep data fresh for banner rendering
       setActiveBroadcast(data);
 
+      // Lock guard — intro chal raha hai to wait karo
       if (introLockRef.current) return;
 
-      // 🚀 24-HOUR LOCAL STORAGE CACHE LOGIC (ONCE/NULL ke liye)
-      const lastSeenTimeStr = localStorage.getItem(`seen_broadcast_time_${data.id}`);
-      let hasSeenInLast24Hours = false;
+      const frequency: string = data.show_frequency || 'ONCE'; // ✅ null → ONCE
+      const storageKey = `seen_broadcast_${data.id}`;
+      const storedData = sessionStorage.getItem(storageKey);
+      const today = new Date().toISOString().split('T')[0]; // "2024-01-15" format
 
-      if (lastSeenTimeStr) {
-        const lastSeenTime = parseInt(lastSeenTimeStr, 10);
-        const hoursPassed = (Date.now() - lastSeenTime) / (1000 * 60 * 60);
-        if (hoursPassed < 24) {
-          hasSeenInLast24Hours = true; // 24 ghante ke bhitar dekha ja chuka hai
+      let shouldShow = false;
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 🔄 ALWAYS: Har refresh par dikhega — NO sessionStorage check
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (frequency === 'ALWAYS') {
+        shouldShow = true;
+      } 
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 📅 ONCE: Ek din me ek baar — Date-based check
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      else {
+        if (storedData) {
+          try {
+            const parsed = JSON.parse(storedData);
+            if (parsed.date !== today) {
+              // ✅ Naya din — dubara dikhao
+              shouldShow = true;
+            }
+            // Same day — mat dikhao (banner + ambient dikhega)
+          } catch {
+            // Corrupted data — dikhao
+            shouldShow = true;
+          }
         } else {
-          localStorage.removeItem(`seen_broadcast_time_${data.id}`); // Expiry clear karein
+          // ✅ Pehli baar dekh raha hai — dikhao
+          shouldShow = true;
         }
       }
 
-      const frequency: string = data.show_frequency || 'ONCE';
-      
-      // ALWAYS mode har reload par chalu hoga (React state ke sath reset hokar)
-      // ONCE/NULL mode 24 ghante tak block rahega
-      const shouldShow = frequency === 'ALWAYS'
-        ? !hasSeenPopup
-        : (!hasSeenInLast24Hours && !hasSeenPopup);
-
+      // Show decision
       if (shouldShow || wasUpdated) {
         introLockRef.current = true;
         if (data.hero_enabled) {
@@ -175,13 +197,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setShowPopup(true);
         }
       } else if (data.hero_enabled) {
-        setIsAmbientActive(true); // Persist background ambient particles
+        // ✅ Already seen today — but ambient particles chalao if hero enabled
+        setIsAmbientActive(true);
       }
     } else {
+      // ━━━ Broadcast ended (stopped, deleted, or expired) ━━━
       if (activeBroadcastRef.current) {
         const endedId = activeBroadcastRef.current.id;
-        localStorage.removeItem(`seen_broadcast_time_${endedId}`);
         
+        // ✅ sessionStorage clear karo — taaki restart par dubara dikhe
+        sessionStorage.removeItem(`seen_broadcast_${endedId}`);
+
         setActiveBroadcast(null);
         setShowPopup(false);
         setIsIntroActive(false);
@@ -190,13 +216,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setHasSeenPopup(false);
       }
     }
-  }, [hasSeenPopup]);
+  }, []); // ✅ No dependencies — refs use kar rahe hain
 
+  // Check expiry
   const checkBroadcastExpiry = useCallback(() => {
     const bc = activeBroadcastRef.current;
     if (!bc?.ends_at) return;
     if (Date.now() >= new Date(bc.ends_at).getTime()) {
-      localStorage.removeItem(`seen_broadcast_time_${bc.id}`);
+      sessionStorage.removeItem(`seen_broadcast_${bc.id}`);
+      
       setActiveBroadcast(null);
       setShowPopup(false);
       setIsIntroActive(false);
@@ -225,13 +253,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast?.ends_at, checkBroadcastExpiry]);
 
+  // ━━━ POPUP DISMISS — Date-based storage for ONCE ━━━
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
     introLockRef.current = false;
+    
     if (activeBroadcast) {
-      // 🚀 24 ghante ka timestamp save karein
-      localStorage.setItem(`seen_broadcast_time_${activeBroadcast.id}`, Date.now().toString());
+      const frequency = activeBroadcast.show_frequency || 'ONCE';
+      const storageKey = `seen_broadcast_${activeBroadcast.id}`;  // ✅ FIXED: backticks
+      
+      if (frequency !== 'ALWAYS') {
+        // ✅ ONCE: Aaj ki date ke saath store karo
+        const today = new Date().toISOString().split('T')[0];
+        sessionStorage.setItem(storageKey, JSON.stringify({
+          seenAt: new Date().toISOString(),
+          date: today  // "2024-01-15" — next day compare ke liye
+        }));
+      }
+      // ✅ ALWAYS: Kuch store mat karo — next refresh par dubara dikhega
     }
   };
 
@@ -299,7 +339,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!userProfile || userProfile.role !== 'treasurer') return;
     const perms: string[] = Array.isArray(userProfile?.role_permissions?.treasurer) ? userProfile.role_permissions.treasurer : [];
     const path = pathname.toLowerCase();
-    const permissionMap: Record<string, string> = { 'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans', 'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard', 'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings' };
+    const permissionMap: Record<string, string> = {
+      'members': 'View Members', 'passbook': 'View Passbook', 'loans': 'View Loans',
+      'expenses': 'Manage Expenses', 'reports': 'View Reports', 'maturity': 'View Dashboard',
+      'admin-fund': 'Manage Admin Fund', 'user-management': 'User Management Access', 'settings': 'View Settings'
+    };
 
     if (path !== '/dashboard') {
       const requiredPerm = Object.entries(permissionMap).find(([key]) => path.includes(key))?.[1];
@@ -317,14 +361,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const { data: { user } } = await supabase.auth.getUser();
       if (user) await supabase.from('admin_active_viewing').delete().eq('admin_id', user.id);
       document.documentElement.classList.remove('dark');
-      localStorage.removeItem('is_admin_viewing'); localStorage.removeItem('viewing_client_id'); localStorage.removeItem('is_admin_impersonating');
-      Object.keys(localStorage).forEach(key => { if (key.startsWith('saanify-storage-')) localStorage.removeItem(key); });
+      localStorage.removeItem('is_admin_viewing');
+      localStorage.removeItem('viewing_client_id');
+      localStorage.removeItem('is_admin_impersonating');
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('saanify-storage-')) localStorage.removeItem(key);
+      });
       toast.success("Welcome back Admin", { id: toastId });
       window.location.href = '/admin/clients';
-    } catch (err) { window.location.href = '/admin/clients'; }
+    } catch (err) {
+      window.location.href = '/admin/clients';
+    }
   }, []);
 
-  if (isChecking) return <div className="h-screen w-full flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
+  if (isChecking) return (
+    <div className="h-screen w-full flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
+    </div>
+  );
 
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
@@ -368,8 +422,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
+      {/* Top Broadcast Banner — Always shows if broadcast active */}
       {activeBroadcast && !showPopup && !isIntroActive && (
-        <div className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`} style={{ background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`, backdropFilter: 'blur(12px)', borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)' }}>
+        <div
+          className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
+          style={{
+            background: `linear-gradient(90deg, ${themeColor}ee, ${themeColor}ff)`,
+            backdropFilter: 'blur(12px)',
+            borderColor: isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)'
+          }}
+        >
           <div className="max-w-7xl mx-auto flex items-center justify-between text-sm tracking-wide">
             <div className="flex items-center gap-4 flex-1 justify-center min-w-0">
               {renderBroadcastIcon()}
@@ -404,7 +466,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* LAYER 2 — DYNAMIC AMBIENT EFFECTS (Persistent in background) */}
       {isAmbientActive && activeBroadcast && (
-        <div 
+        <div
           className={`fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 ${
             showPopup ? 'opacity-[0.06] scale-95 saturate-[0.8]' : 'opacity-100 scale-100'
           }`}
@@ -426,6 +488,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
+      {/* MAIN DASHBOARD */}
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden flex-col md:flex-row">
         <div className="w-64 shrink-0 hidden md:block border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <ClientSidebar profile={userProfile} />
