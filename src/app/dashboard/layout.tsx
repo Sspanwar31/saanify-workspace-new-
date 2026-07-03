@@ -477,8 +477,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <AnimationFactory
                 phase={phase}
                 engine={activeBroadcast?.hero_config?.animation}
-                preset={activeBroadcast?.festival_key}
-              />
+                 preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key} // SAHI HAI
+/>
             )}
           </FestivalIntroController>
         </div>
