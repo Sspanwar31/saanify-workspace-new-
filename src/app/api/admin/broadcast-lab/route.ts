@@ -84,44 +84,52 @@ export async function POST(req: Request) {
 
     client = await getDbClient('API_Broadcast_Lab');
 
-    const festivalKey = body.festival_key;
-    const broadcastType = body.broadcast_type;
+    let festivalKey = body.festival_key;
+    let broadcastType = body.broadcast_type;
     const language_mode = body.language_mode || 'BOTH';
     const action = body.action || 'generate';
     const broadcastMode = action === 'start' ? 'MANUAL' : 'SCHEDULED';
+    const broadcastId = body.id;
+
+    // 🚀 FAILSAFE: Agar ID aa rahi hai par Key gayab hai (shceduler trigger), to use DB se khud dhoondh lein
+    if (broadcastId && !festivalKey && !broadcastType) {
+      const rowRes = await client.query(
+        'SELECT festival_key, category FROM broadcasts WHERE id = $1 LIMIT 1', 
+        [broadcastId]
+      );
+      if (rowRes.rows.length > 0) {
+        const row = rowRes.rows[0];
+        if (row.category === 'CORPORATE') {
+          broadcastType = row.festival_key;
+        } else {
+          festivalKey = row.festival_key;
+        }
+      }
+    }
+
+    // Consistent targetKey Resolution
+    const targetKey = broadcastType || festivalKey;
 
     // ============================================
-    // ✅✅✅ THE ACTUAL FIX - 3 CHECKS ✅✅✅
+    // THE ACTUAL FIX - 3 CHECKS
     // ============================================
     let heroEnabled = false;
     
-    // Check 1: Direct field (future proof)
     if (body.hero_enabled === true) {
       heroEnabled = true;
     }
     
-    // Check 2: FRONTEND ACTUALLY SENDS THIS FIELD
     if (body.full_screen_animation === true) {
       heroEnabled = true;
     }
     
-    // Check 3: String overlay (backward compatibility)
     if (!heroEnabled && body.overlay) {
       const overlayStr = String(body.overlay).toLowerCase().replace(/\s+/g, '_');
       if (['full_anim', 'fullanim', 'full_anim'].includes(overlayStr)) {
         heroEnabled = true;
       }
     }
-    
-    console.log("🔥 heroEnabled FINAL:", heroEnabled, 
-      "| full_screen_animation:", body.full_screen_animation, 
-      "| hero_enabled:", body.hero_enabled, 
-      "| overlay:", body.overlay
-    );
     // ============================================
-
-    // Consistent targetKey Resolution
-    const targetKey = broadcastType || festivalKey;
 
     // Master fallback theme colors map (24 Festivals)
     const MASTER_THEME_MAP: any = {
@@ -182,6 +190,7 @@ export async function POST(req: Request) {
           const msgRes = await client.query('SELECT * FROM broadcast_messages WHERE broadcast_type = $1 LIMIT 1', [key]);
           content = msgRes.rows[0];
         } else {
+          // 🚀 FIXED: scoping bug completely fixed
           const assetRes = await client.query('SELECT * FROM festival_assets_v2 WHERE festival_key = $1 LIMIT 1', [key]);
           asset = assetRes.rows[0];
           const msgRes = await client.query('SELECT * FROM festival_messages WHERE festival_key = $1 LIMIT 1', [key]);
@@ -209,7 +218,7 @@ export async function POST(req: Request) {
         const heroConfig = typeof asset.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset.hero_config || {});
         const mediaConfig = typeof asset.media_config === 'string' ? JSON.parse(asset.media_config) : (asset.media_config || {});
 
-        // 🚀 FIXED: Dynamic database color mapping with fallback order
+        // 🚀 FIXED: Aligned Color Priority (DB color first, Master map fallback next)
         const finalThemeColor = themeConfig.primary_color || MASTER_THEME_MAP[key] || '#fbbf24';
 
         const normalizedHeroConfig = {
@@ -298,7 +307,6 @@ export async function POST(req: Request) {
         [targetKey]
       );
 
-      const broadcastId = body.id;
       let existing;
 
       if (broadcastId) {
@@ -312,7 +320,6 @@ export async function POST(req: Request) {
 
     // ━━━ STOP ACTION ━━━
     if (action === 'stop') {
-      const broadcastId = body.id;
       let result;
 
       if (broadcastId) {
@@ -333,7 +340,6 @@ export async function POST(req: Request) {
 
     // ━━━ DELETE ACTION ━━━
     if (action === 'delete') {
-      const broadcastId = body.id;
       let result;
 
       if (broadcastId) {
@@ -373,7 +379,7 @@ export async function POST(req: Request) {
     const heroConfig = typeof asset?.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset?.hero_config || {});
     const mediaConfig = typeof asset?.media_config === 'string' ? JSON.parse(asset.media_config) : (asset?.media_config || {});
 
-    // 🚀 FIXED: Dynamic Color Priority (DB first, MASTER_THEME_MAP fallback next)
+    // 🚀 FIXED: Dynamic Color Priority (DB theme_config first, MASTER_THEME_MAP fallback next)
     const finalThemeColor = themeConfig.primary_color || MASTER_THEME_MAP[resolvedFestivalKey] || '#fbbf24';
 
     const normalizedHeroConfig = {
@@ -431,7 +437,6 @@ export async function POST(req: Request) {
     }
 
     if (existingBroadcast.rows.length > 0) {
-      // ✅ FIXED: Proper parameters with broadcast_mode
       result = await client.query(
         `UPDATE broadcasts SET
           title=$1, message=$2, language_mode=$3, hero_visual=$4, hero_config=$5,
