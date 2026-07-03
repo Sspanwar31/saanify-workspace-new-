@@ -6,7 +6,10 @@ const HoliAmbient = memo(() => {
   const [particles, setParticles] = useState<any[]>([]);
 
   useEffect(() => {
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🎨 6 Holi Gulal Colors — MATTE powder (no white shine)
+    //    main = center, mid = transition, dark = edge
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const colors = [
       { main: '#ff006e', mid: '#e60063', dark: '#b8004f' },  // गुलाबी
       { main: '#ffbe0b', mid: '#e6ab0a', dark: '#cc9909' },  // पीला
@@ -16,7 +19,9 @@ const HoliAmbient = memo(() => {
       { main: '#fb5607', mid: '#e24e06', dark: '#c94605' },  // नारंगी
     ];
 
-    // Irregular shapes (powder chunks)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔷 Irregular shapes — NOT circles (powder chunks)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const shapes = [
       '42% 58% 55% 45% / 50% 42% 58% 50%',
       '55% 45% 40% 60% / 58% 55% 45% 42%',
@@ -30,8 +35,11 @@ const HoliAmbient = memo(() => {
       '54% 46% 42% 58% / 58% 42% 54% 46%',
     ];
 
-    // Generate 75 particles with size distribution
-    const generated = Array.from({ length: 75 }, (_, i) => {
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🏭 Generate 130 particles with size distribution
+    //    40% = tiny dust | 40% = medium chunks | 20% = big puffs
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const generated = Array.from({ length: 130 }, (_, i) => {
       const color = colors[Math.floor(Math.random() * colors.length)];
       const shape = shapes[Math.floor(Math.random() * shapes.length)];
 
@@ -41,14 +49,17 @@ const HoliAmbient = memo(() => {
       let baseOpacity: number;
 
       if (sizeRoll < 0.4) {
+        // 💨 Tiny dust — barely visible, adds atmosphere
         size = Math.random() * 3 + 2.5;
         blurAmount = 0.3;
         baseOpacity = 0.55;
       } else if (sizeRoll < 0.8) {
-        size = Math.random() * 5 + 6.5; // Slightly larger for better contrast
+        // 🎨 Medium chunks — main visual
+        size = Math.random() * 5 + 6.5;
         blurAmount = 0.8;
         baseOpacity = 0.75;
       } else {
+        // ☁️ Large puffs — background depth, very soft
         size = Math.random() * 12 + 14;
         blurAmount = 3;
         baseOpacity = 0.3;
@@ -57,8 +68,8 @@ const HoliAmbient = memo(() => {
       return {
         id: i,
         size,
-        heightRatio: 0.65 + Math.random() * 0.7,
-        duration: Math.random() * 4 + 3.5, // Slightly faster, lively fall
+        heightRatio: 0.65 + Math.random() * 0.7, // Elongated or squished
+        duration: Math.random() * 2.5 + 2.5,     // Fast lively fall
         delay: -(Math.random() * 8),
         left: Math.random() * 100,
         drift: Math.random() * 50 - 25,
@@ -68,11 +79,11 @@ const HoliAmbient = memo(() => {
         shape,
         blur: blurAmount,
         opacity: baseOpacity,
-        // Z-Index layer 2 ke upar distributed rahega
-        zIndex: Math.random() > 0.5 ? 'z-[9998]' : 'z-[9997]'
+        depth: Math.floor(Math.random() * 3),
       };
     });
-    setSchedules(generated); // set to schedules/particles
+    
+    // 🚀 FIXED: Ghalat setSchedules line ko poori tarah delete kar diya gaya hai
     setParticles(generated);
   }, []);
 
@@ -112,7 +123,7 @@ const HoliAmbient = memo(() => {
           }
         }
 
-        /* 🚀 NEW: Gulal Smoke Clouds Slow Floating Animations */
+        /* 🚀 Gulal Smoke Clouds Slow Floating Animations */
         @keyframes smoke-float-1 {
           0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0.05; }
           50% { transform: translate(5%, -4%) scale(1.08) rotate(45deg); opacity: 0.09; }
@@ -127,7 +138,7 @@ const HoliAmbient = memo(() => {
         }
       `}</style>
 
-      {/* ━━━ 🚀 NEW: 3 LARGE HARDWARE ACCELERATED HOLI SMOKE CLOUDS ━━━ */}
+      {/* 🚀 DYNAMIC: 3 LARGE HARDWARE ACCELERATED HOLI SMOKE CLOUDS */}
       
       {/* 1. Pink/Magenta Mist (Top Left) */}
       <div 
@@ -163,7 +174,7 @@ const HoliAmbient = memo(() => {
       {particles.map(p => (
         <div
           key={p.id}
-          className={`absolute will-change-transform ${p.zIndex}`}
+          className="absolute will-change-transform"
           style={{
             width: p.size,
             height: p.size * p.heightRatio,
@@ -174,6 +185,7 @@ const HoliAmbient = memo(() => {
             filter: `blur(${p.blur}px)`,
             opacity: 0,
             animation: `gulal-powder-fall ${p.duration}s ${p.delay}s ease-in-out infinite`,
+            zIndex: p.depth,
             ['--drift' as string]: p.drift,
             ['--sway' as string]: p.swayAmount,
             ['--tumble' as string]: p.tumble,
