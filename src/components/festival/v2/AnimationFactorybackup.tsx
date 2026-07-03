@@ -1,114 +1,45 @@
 'use client';
 
-import ColorSplash from '../animations/ColorSplash';
-import GoldenParticles from '../animations/GoldenParticles';
-import SnowFall from '../animations/SnowFall';
-import MoonGlow from '../animations/MoonGlow';
-import TricolorWaves from '../animations/TricolorWaves';
+import { AnimationRegistry } from '@/config/AnimationRegistry';
 
-export default function AnimationFactory({ theme }: { theme: string }) {
+export default function AnimationFactory({
+  engine,
+  preset,
+  phase,
+}: {
+  engine?: string;
+  preset?: string;
+  phase?: string;
+}) {
+  if (!engine) return null;
 
-  switch (theme) {
+  const Engine = AnimationRegistry[engine as keyof typeof AnimationRegistry];
+  if (!Engine) return null;
 
-    // ━━━━━━━━━ GOLDEN ENGINE ━━━━━━━━━
-    case 'GOLDEN_PARTICLES':
-    case 'FIRE_EMBERS':
-    case 'BONFIRE_SPARKS':
-    case 'DIVINE_GLOW':
-    case 'TEMPLE_GLOW':
-    case 'VICTORY_RAYS':
-    case 'SUNRISE_RAYS':
-    case 'HARVEST_SPARKS':
-    case 'LOTUS_PARTICLES':
-    case 'LOTUS_GLOW':          // ✅ Added
-    case 'DIVINE_LIGHT':
-    case 'GOLDEN_LIGHT':
-    case 'SPARKLES':
-    case 'FLOATING_GRAINS':     // ✅ Added
-    case 'LIGHT_RAYS':          // ✅ Added
-    case 'COUNTDOWN':           // ✅ Added
+  const getScenePhase = (p?: string): string => {
+    switch (p) {
+      case 'FLASH':
+        return 'FLASH';
+      case 'SHOOTING':
+        return 'SHOOTING';
+      case 'HANDOVER':
+        return 'HANDOVER';
+      case 'AMBIENT':
+        return 'AMBIENT';
+      case 'IDLE':
+      default:
+        return 'IDLE';
+    }
+  };
 
-      return (
-        <GoldenParticles preset={theme} />
-      );
+  const finalPhase = getScenePhase(phase);
 
-    // ━━━━━━━━━ COLOR ENGINE ━━━━━━━━━
-    case 'COLOR_SPLASH':
-    case 'COLOR_BURST':
-    case 'RED_GOLD_PARTICLES':
-    case 'FLOATING_PETALS':
-    case 'CONFETTI_BLAST':
-    case 'THREAD_GLOW':
-    case 'ROMANTIC_LIGHTS':
+  console.log('ANIMATION FACTORY:', phase, '→', finalPhase);
 
-      return (
-        <ColorSplash preset={theme} />
-      );
-
-    // ━━━━━━━━━ MOON ENGINE ━━━━━━━━━
-    case 'MOON_GLOW':
-    case 'BLUE_AURA':
-    case 'SMOKE_GLOW':
-
-      return (
-        <MoonGlow preset={theme} />
-      );
-
-    // ━━━━━━━━━ SNOW ENGINE ━━━━━━━━━
-    case 'SNOW_FALL':
-    case 'SNOW_PARTICLES':
-
-      return (
-        <SnowFall preset={theme} />
-      );
-
-    // ━━━━━━━━━ TRICOLOR ENGINE ━━━━━━━━━
-    case 'TRICOLOR_WAVES':
-    case 'FLAG_MOTION':
-
-      return (
-        <TricolorWaves preset={theme} />
-      );
-
-    // ━━━━━━━━━ PEACOCK ENGINE ━━━━━━━━━
-    case 'PEACOCK_PARTICLES':
-
-      return (
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(circle, rgba(0,128,255,0.15) 0%, transparent 70%)'
-          }}
-        >
-          <GoldenParticles preset="PEACOCK_PARTICLES" />
-        </div>
-      );
-
-    // ━━━━━━━━━ WIND ENGINE ━━━━━━━━━
-    case 'WIND_EFFECT':
-    case 'FLYING_KITES':         // ✅ Added (Makar Sankranti mapping)
-
-      return (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-b from-blue-400/20 to-transparent opacity-40" />
-
-          <div
-            className="absolute inset-0 animate-pulse opacity-20"
-            style={{
-              backgroundImage:
-                "url('https://grainy-gradients.vercel.app/noise.svg')"
-            }}
-          />
-        </div>
-      );
-
-    default:
-      // ✅ Better Debugging
-      console.warn('Unknown animation:', theme);
-
-      return (
-        <GoldenParticles preset="GOLDEN_PARTICLES" />
-      );
-  }
+  return (
+    <Engine
+      preset={preset}
+      phase={finalPhase}
+    />
+  );
 }
