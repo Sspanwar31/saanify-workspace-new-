@@ -257,8 +257,10 @@ export default function ParticleEngine({
 
       ctx.clearRect(0, 0, w, h);
 
-      const @cap = Math.floor(config.maxCount * pb.intensity);
-      const cap = isNaN(@cap) ? 0 : @cap; // Prevent NaN crashes
+      // 🚀 FIXED: Ghalat variable aur variables collision ko puri tarah dur kiya
+      const rawCount = config.maxCount;
+      const cap = Math.floor(rawCount * pb.intensity);
+      
       if (particles.current.length < cap && Math.random() < pb.spawnRate) {
         particles.current.push(spawn());
       }
