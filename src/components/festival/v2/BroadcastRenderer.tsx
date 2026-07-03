@@ -43,7 +43,7 @@ export default function BroadcastPopup({
   const cardGlow =
     broadcast.theme_config?.card_glow || 'theme';
 
-  // ━━━ STEP 1: Kept these blocks as it is ━━━
+  // Master Title Styles
   const titleStyles: any = {
     royal: 'font-black italic tracking-tight',
     modern: 'font-bold tracking-wide',
@@ -112,7 +112,6 @@ export default function BroadcastPopup({
     }
   };
 
-  // ━━━ STEP 2: Added Design Tweaks Logic ━━━
   const getDesignTweaks = () => {
     switch(designPreset) {
       case 'premium': return 'scale-110';
@@ -127,14 +126,12 @@ export default function BroadcastPopup({
     <div className="relative min-h-[650px] flex items-center justify-center">
 
       {/* CARD */}
-      {/* ━━━ STEP 3: Changed max-w-[320px] to max-w-[350px] ━━━ */}
       <div className="relative w-full max-w-[350px] z-50">
 
         <div
           className={`relative rounded-[3rem] overflow-hidden flex flex-col border-[3px]
           shadow-[0_50px_120px_rgba(0,0,0,0.9)]
           ${cardClasses[bannerVariant]}`}
-          /* ━━━ STEP 6: Added Royal & Luxury glow logic ━━━ */
           style={{
             borderColor:
               designPreset === 'royal'
@@ -161,7 +158,6 @@ export default function BroadcastPopup({
           <div className="relative w-full h-[320px] overflow-hidden flex items-center justify-center bg-slate-950/50 p-6 pt-16">
 
             {broadcast.image_url ? (
-              /* ━━━ STEP 5: Added hero-anim and getDesignTweaks() ━━━ */
               <img
                 src={broadcast.image_url}
                 alt="Hero"
@@ -181,24 +177,34 @@ export default function BroadcastPopup({
           <div className="p-8 pt-0 text-center relative z-30 flex flex-col items-center">
 
             <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl flex items-center justify-center mb-6 shadow-2xl rotate-3">
-
               <ShieldCheck
                 className="w-8 h-8"
                 style={{ color: themeColor }}
               />
             </div>
 
+            {/* 🚀 FIXED: Dynamic inline background-clip forcing for gradient titles. Non-gradient titles remain unaffected. */}
             <h1
               className={`text-3xl uppercase leading-none drop-shadow-lg ${titleStyles[titleVariant]}`}
               style={{
                 color:
                   titleVariant !== 'gradient'
                     ? themeColor
-                    : undefined,
+                    : 'transparent', // Gradient ke case me text color transparent hona chahiye
 
                 background:
                   titleVariant === 'gradient'
                     ? `linear-gradient(90deg, ${themeColor}, white)`
+                    : undefined,
+
+                WebkitBackgroundClip:
+                  titleVariant === 'gradient'
+                    ? 'text'
+                    : undefined,
+
+                backgroundClip:
+                  titleVariant === 'gradient'
+                    ? 'text'
                     : undefined,
               }}
             >
@@ -211,20 +217,16 @@ export default function BroadcastPopup({
 
             <Button
               onClick={onClose}
-              /* ━━━ STEP 7: Updated CTA classes exactly like preview ━━━ */
               className="w-full h-14 mt-8 rounded-[1.5rem] text-lg font-black shadow-2xl transition-all hover:scale-105 active:scale-95 border-t border-white/20"
               style={getCTAStyle()}
             >
               {broadcast.resolved_cta || 'CONTINUE'}
             </Button>
 
-            {/* ━━━ STEP 4: Removed "Premium Saanify Greeting" text ━━━ */}
-
           </div>
         </div>
       </div>
 
-      {/* ━━━ STEP 8: Added Hero Animation Global Styles ━━━ */}
       <style jsx global>{`
         .hero-anim {
           animation: hero-float ${
