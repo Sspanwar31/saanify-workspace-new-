@@ -39,9 +39,9 @@ interface EngineConfig {
 
 const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = {
   IDLE:      { intensity: 0.3,  spawnRate: 0.025 },
-  AMBIENT:   { intensity: 0.8,  spawnRate: 0.08  }, // 🚀 0.4 से बढ़ाकर 0.8 किया (अधिकतम 280 लाइव पार्टिकल्स)
-  SHOOTING:  { intensity: 1.2,  spawnRate: 0.24  }, // 🚀 स्पॉन स्पीड दोगुनी की
-  FLASH:     { intensity: 1.5,  spawnRate: 0.65  }, // 🚀 तुरंत धमाके के लिए
+  AMBIENT:   { intensity: 0.8,  spawnRate: 0.08  }, 
+  SHOOTING:  { intensity: 1.2,  spawnRate: 0.24  }, 
+  FLASH:     { intensity: 1.5,  spawnRate: 0.65  }, 
   HANDOVER:  { intensity: 0.9,  spawnRate: 0.12  },
 };
 
@@ -72,9 +72,9 @@ const PRESET_MAP: Record<string, Partial<EngineConfig>> = {
     spread: 1.6,
     speed: 2.2,
     colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
-    minSize: 5,         // 🚀 न्यूनतम साइज़ 4 से बढ़ाकर 5 किया
-    maxSize: 15,        // 🚀 अधिकतम साइज़ 12 से बढ़ाकर 15 किया
-    maxCount: 350,      // 🚀 अधिकतम सीमा 120 से बढ़ाकर 350 की (3 गुना अधिक घना एनीमेशन)
+    minSize: 5,         
+    maxSize: 15,        
+    maxCount: 350,      
     glow: false,
     wobble: true,
     direction: 'upward',
@@ -131,16 +131,53 @@ export default function ParticleEngine({
     const spawn = (): Particle => {
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
+
+      // 🚀 2027 HOLI DYNAMIC INTRO SEQUENCE ENGINE (Phase-Aware Physics)
+      let currentDirection = config.direction;
+      let currentSpawnY = config.spawnY || 0.5;
+      let currentMinSize = config.minSize;
+      let currentMaxSize = config.maxSize;
+      let currentSpeed = config.speed;
+
+      if (preset === 'LIQUID_SPLASH') {
+        const currentPhase = phaseRef.current;
+
+        if (currentPhase === 'ROCKET') {
+          // Phase 1: Heavy liquid paint jets shooting upwards from bottom
+          currentDirection = 'upward';
+          currentSpawnY = 0.9;       // Screen ke bilkul neeche se niklega
+          currentMinSize = 10;       // Massive heavy paint bubbles
+          currentMaxSize = 25;
+          currentSpeed = 3.5;        // High speed launch
+        } 
+        else if (currentPhase === 'FIREWORK' || currentPhase === 'FLASH') {
+          // Phase 2: Massive radial color blast in the sky (35% height)!
+          currentDirection = 'radial';
+          currentSpawnY = 0.35;      // Explode near the top/sky
+          currentMinSize = 5;
+          currentMaxSize = 14;
+          currentSpeed = 3.8;        // Extremely fast explosion speed
+        } 
+        else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT') {
+          // Phase 3: Gentle color mist falling downwards
+          currentDirection = 'downward';
+          currentSpawnY = -0.05;     // Fall from above the screen
+          currentMinSize = 4;
+          currentMaxSize = 9;
+          currentSpeed = 0.8;        // Slow, gentle rain
+        }
+      }
+
       const cx = w / 2;
-      const cy = h * (config.spawnY || 0.5);
-      const angle = Math.random() * Math.PI * 2;
-      const spd = config.speed * rand(0.4, 1.3);
-      const size = rand(config.minSize, config.maxSize);
+      const cy = h * currentSpawnY; // Use currentSpawnY
+      const spd = currentSpeed * rand(0.4, 1.3); // Use currentSpeed
+      const size = rand(currentMinSize, currentMaxSize); // Use currentMinSize/MaxSize
 
       let vx = 0;
       let vy = 0;
 
-      switch (config.direction) {
+      // 🚀 Use currentDirection here
+      switch (currentDirection) {
         case 'upward':
           vx = rand(-1, 1) * spd * config.spread * 1.2;
           vy = -spd * rand(1.2, 2.8) * config.spread;
