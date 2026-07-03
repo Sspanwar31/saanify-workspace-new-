@@ -30,23 +30,23 @@ interface EngineConfig {
   glow: boolean;
   wobble: boolean;
   direction: 'radial' | 'upward' | 'downward' | 'spiral';
-  spawnY?: number; // 🆕 नीचे से निकलने के लिए
+  spawnY?: number; 
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   PHASE BEHAVIOR
+   🚀 PHASE BEHAVIOR (DENSITY & SPAWN SPEED UPGRADED)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = {
-  IDLE:      { intensity: 0.25, spawnRate: 0.015 },
-  AMBIENT:   { intensity: 0.4,  spawnRate: 0.035 },
-  SHOOTING:  { intensity: 0.8,  spawnRate: 0.12  },
-  FLASH:     { intensity: 1.0,  spawnRate: 0.35  },
-  HANDOVER:  { intensity: 0.5,  spawnRate: 0.06  },
+  IDLE:      { intensity: 0.3,  spawnRate: 0.025 },
+  AMBIENT:   { intensity: 0.8,  spawnRate: 0.08  }, // 🚀 0.4 से बढ़ाकर 0.8 किया (अधिकतम 280 लाइव पार्टिकल्स)
+  SHOOTING:  { intensity: 1.2,  spawnRate: 0.24  }, // 🚀 स्पॉन स्पीड दोगुनी की
+  FLASH:     { intensity: 1.5,  spawnRate: 0.65  }, // 🚀 तुरंत धमाके के लिए
+  HANDOVER:  { intensity: 0.9,  spawnRate: 0.12  },
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   DEFAULT (Generic Safe Fallback — Diwali नहीं है)
+   DEFAULT (Generic Safe Fallback)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const DEFAULT: EngineConfig = {
@@ -63,18 +63,18 @@ const DEFAULT: EngineConfig = {
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   PRESET MAP (सिर्फ HOLI के लिए)
+   🚀 PRESET MAP (HOLI - DENSE & VIBRANT GULAL BLAST)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const PRESET_MAP: Record<string, Partial<EngineConfig>> = {
   LIQUID_SPLASH: {
     gravity: 0.28,
-    spread: 1.5,
-    speed: 2.0,
+    spread: 1.6,
+    speed: 2.2,
     colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
-    minSize: 4,
-    maxSize: 12,
-    maxCount: 120,
+    minSize: 5,         // 🚀 न्यूनतम साइज़ 4 से बढ़ाकर 5 किया
+    maxSize: 15,        // 🚀 अधिकतम साइज़ 12 से बढ़ाकर 15 किया
+    maxCount: 350,      // 🚀 अधिकतम सीमा 120 से बढ़ाकर 350 की (3 गुना अधिक घना एनीमेशन)
     glow: false,
     wobble: true,
     direction: 'upward',
