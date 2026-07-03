@@ -19,12 +19,14 @@ const getDbClient = async (appName: string = 'API_Broadcast_Lab') => {
   return client;
 };
 
+// ━━━ 1. GET: Keys, types, aur schedules (List Planner) fetch karein ━━━
 export async function GET(req: Request) {
   let client: Client | null = null;
   try {
     const url = new URL(req.url);
     const actionParam = url.searchParams.get('action');
 
+    // Planner Grid ke liye saved schedules ki list return karein
     if (actionParam === 'get_schedules' || actionParam === 'list_schedules') {
       client = await getDbClient('API_System_Health');
       const res = await client.query(
@@ -37,6 +39,7 @@ export async function GET(req: Request) {
     client = await getDbClient('API_System_Health');
     if (!client) throw new Error("DB connection failed");
 
+    // Fetch Festival Keys
     const festRes = await client.query(`
       SELECT festival_key
       FROM festival_assets_v2
@@ -44,10 +47,12 @@ export async function GET(req: Request) {
       ORDER BY festival_key ASC
     `);
     
+    // Fetch Corporate Types
     const corpRes = await client.query(
       'SELECT broadcast_type FROM broadcast_assets ORDER BY broadcast_type ASC'
     );
 
+    // Get Total Count of Broadcasts currently in the DB
     const countRes = await client.query('SELECT COUNT(*) as count FROM broadcasts');
     const totalCount = parseInt(countRes.rows[0]?.count || '0', 10);
 
@@ -68,6 +73,7 @@ export async function GET(req: Request) {
   }
 }
 
+// ━━━ 2. POST: operations handle karein ━━━
 export async function POST(req: Request) {
   let client: Client | null = null;
 
@@ -114,7 +120,20 @@ export async function POST(req: Request) {
     );
     // ============================================
 
+    // Consistent targetKey Resolution
     const targetKey = broadcastType || festivalKey;
+
+    // Master fallback theme colors map (24 Festivals)
+    const MASTER_THEME_MAP: any = {
+      DIWALI: '#fbbf24', HOLI: '#ff0080', JANMASHTAMI: '#3b82f6', CHRISTMAS: '#ef4444',
+      EID_UL_FITR: '#10b981', MAHASHIVRATRI: '#6366f1', REPUBLIC_DAY: '#FF9933',
+      DUSSEHRA: '#B45309', NAVRATRI: '#DC2626', DURGA_PUJA: '#DC2626',
+      NEW_YEAR: '#8b5cf6', RAKSHA_BANDHAN: '#db2777', LOHRI: '#f97316',
+      MAKAR_SANKRANTI: '#38bdf8', GANESH_CHATURTHI: '#f97316', RAM_NAVAMI: '#f59e0b',
+      HANUMAN_JAYANTI: '#ea580c', KARWA_CHAUTH: '#f59e0b', CHHATH_PUJA: '#F97316',
+      PONGAL: '#22c55e', GURU_NANAK_JAYANTI: '#fbbf24', DEV_DEEPAWALI: '#fbbf24',
+      EID_AL_ADHA: '#10b981', INDEPENDENCE_DAY: '#16a34a'
+    };
 
     // A. DELETE ALL ACTION
     if (action === 'delete_all') {
@@ -190,7 +209,8 @@ export async function POST(req: Request) {
         const heroConfig = typeof asset.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset.hero_config || {});
         const mediaConfig = typeof asset.media_config === 'string' ? JSON.parse(asset.media_config) : (asset.media_config || {});
 
-        const finalThemeColor = themeConfig.primary_color || '#fbbf24';
+        // 🚀 FIXED: Dynamic database color mapping with fallback order
+        const finalThemeColor = themeConfig.primary_color || MASTER_THEME_MAP[key] || '#fbbf24';
 
         const normalizedHeroConfig = {
           render_type: heroConfig.render_type || 'COMPONENT',
@@ -353,7 +373,8 @@ export async function POST(req: Request) {
     const heroConfig = typeof asset?.hero_config === 'string' ? JSON.parse(asset.hero_config) : (asset?.hero_config || {});
     const mediaConfig = typeof asset?.media_config === 'string' ? JSON.parse(asset.media_config) : (asset?.media_config || {});
 
-    const finalThemeColor = themeConfig.primary_color || '#fbbf24';
+    // 🚀 FIXED: Dynamic Color Priority (DB first, MASTER_THEME_MAP fallback next)
+    const finalThemeColor = themeConfig.primary_color || MASTER_THEME_MAP[resolvedFestivalKey] || '#fbbf24';
 
     const normalizedHeroConfig = {
       render_type: heroConfig.render_type || 'COMPONENT',
@@ -370,6 +391,7 @@ export async function POST(req: Request) {
       background_style: themeConfig.background_style || 'DARK_GOLD'
     };
 
+    // Aligned Language Resolution
     let resTitle = "";
     let resMsg = "";
     let resCta = "";
@@ -409,19 +431,20 @@ export async function POST(req: Request) {
     }
 
     if (existingBroadcast.rows.length > 0) {
+      // ✅ FIXED: Proper parameters with broadcast_mode
       result = await client.query(
         `UPDATE broadcasts SET
           title=$1, message=$2, language_mode=$3, hero_visual=$4, hero_config=$5,
           theme_config=$6, image_url=$7, animation_theme=$8, theme_color=$9, resolved_title=$10,
           resolved_message=$11, resolved_cta=$12, preview_mode=true, is_active=true, status=$14,
-          category=$15, manual_stop=$16, hero_enabled=$17,
+          broadcast_mode=$15, category=$16, manual_stop=$17, hero_enabled=$18,
           updated_at=NOW()
         WHERE id=$13
         RETURNING *;`,
         [
           resTitle, resMsg, language_mode, normalizedHeroConfig.visual_key, JSON.stringify(normalizedHeroConfig),
           JSON.stringify(normalizedThemeConfig), mediaConfig.web_image || null, normalizedHeroConfig.animation, finalThemeColor,
-          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, resolvedCategory,
+          resTitle, resMsg, resCta, existingBroadcast.rows[0].id, activeStatus, broadcastMode, resolvedCategory,
           forceActive ? false : true,
           heroEnabled
         ]
