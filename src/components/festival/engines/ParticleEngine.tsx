@@ -72,6 +72,10 @@ const DEFAULT: EngineConfig = {
    🚀 PRESET MAP (HOLI - DENSE & VIBRANT GULAL BLAST)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🚀 PRESET MAP (HOLI - DENSE & VIBRANT GULAL BLAST)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 const PRESET_MAP: Record<string, Partial<EngineConfig>> = {
   LIQUID_SPLASH: {
     gravity: 0.28,
@@ -86,8 +90,20 @@ const PRESET_MAP: Record<string, Partial<EngineConfig>> = {
     direction: 'upward',
     spawnY: 0.75,
   },
+  HOLI: {
+    gravity: 0.28,
+    spread: 1.6,
+    speed: 2.2,
+    colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
+    minSize: 5,         
+    maxSize: 15,        
+    maxCount: 350,      
+    glow: false,
+    wobble: true,
+    direction: 'upward',
+    spawnY: 0.75,
+  },
 };
-
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    MAIN COMPONENT
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -145,7 +161,7 @@ export default function ParticleEngine({
       let currentMaxSize = config.maxSize;
       let currentSpeed = config.speed;
 
-      if (preset === 'LIQUID_SPLASH') {
+      if (preset === 'LIQUID_SPLASH' || preset === 'HOLI') {
         const currentPhase = phaseRef.current;
 
         // ━━━ DIWALI PHASES (Purana Logic) ━━━
