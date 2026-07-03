@@ -145,38 +145,41 @@ export default function ParticleEngine({
         if (currentPhase === 'ROCKET') {
           // Phase 1: Heavy liquid paint jets shooting upwards from bottom
           currentDirection = 'upward';
-          currentSpawnY = 0.9;       // Screen ke bilkul neeche se niklega
-          currentMinSize = 10;       // Massive heavy paint bubbles
+          currentSpawnY = 0.9;       
+          currentMinSize = 10;       
           currentMaxSize = 25;
-          currentSpeed = 3.5;        // High speed launch
+          currentSpeed = 3.5;        
         } 
         else if (currentPhase === 'FIREWORK' || currentPhase === 'FLASH') {
           // Phase 2: Massive radial color blast in the sky (35% height)!
           currentDirection = 'radial';
-          currentSpawnY = 0.35;      // Explode near the top/sky
+          currentSpawnY = 0.35;      
           currentMinSize = 5;
           currentMaxSize = 14;
-          currentSpeed = 3.8;        // Extremely fast explosion speed
+          currentSpeed = 3.8;        
         } 
         else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT') {
           // Phase 3: Gentle color mist falling downwards
           currentDirection = 'downward';
-          currentSpawnY = -0.05;     // Fall from above the screen
+          currentSpawnY = -0.05;     
           currentMinSize = 4;
           currentMaxSize = 9;
-          currentSpeed = 0.8;        // Slow, gentle rain
+          currentSpeed = 0.8;        
         }
       }
 
       const cx = w / 2;
-      const cy = h * currentSpawnY; // Use currentSpawnY
-      const spd = currentSpeed * rand(0.4, 1.3); // Use currentSpeed
-      const size = rand(currentMinSize, currentMaxSize); // Use currentMinSize/MaxSize
+      const cy = h * currentSpawnY; 
+      const spd = currentSpeed * rand(0.4, 1.3); 
+      const size = rand(currentMinSize, currentMaxSize); 
+
+      // 🚀 FIXED: Added the missing angle definition here!
+      const angle = Math.random() * Math.PI * 2;
 
       let vx = 0;
       let vy = 0;
 
-      // 🚀 Use currentDirection here
+      // Use currentDirection here
       switch (currentDirection) {
         case 'upward':
           vx = rand(-1, 1) * spd * config.spread * 1.2;
@@ -254,7 +257,8 @@ export default function ParticleEngine({
 
       ctx.clearRect(0, 0, w, h);
 
-      const cap = Math.floor(config.maxCount * pb.intensity);
+      const @cap = Math.floor(config.maxCount * pb.intensity);
+      const cap = isNaN(@cap) ? 0 : @cap; // Prevent NaN crashes
       if (particles.current.length < cap && Math.random() < pb.spawnRate) {
         particles.current.push(spawn());
       }
