@@ -16,25 +16,8 @@ export default function AnimationFactory({
   const Engine = AnimationRegistry[engine as keyof typeof AnimationRegistry];
   if (!Engine) return null;
 
-  const getScenePhase = (p?: string): string => {
-    switch (p) {
-      case 'FLASH':
-        return 'FLASH';
-      case 'SHOOTING':
-        return 'SHOOTING';
-      case 'HANDOVER':
-        return 'HANDOVER';
-      case 'AMBIENT':
-        return 'AMBIENT';
-      case 'IDLE':
-      default:
-        return 'IDLE';
-    }
-  };
-
-  const finalPhase = getScenePhase(phase);
-
-  console.log('ANIMATION FACTORY:', phase, '→', finalPhase);
+  // Factory ka kaam sirf phase pass karna hai — sequence decide engine khud karega
+  const finalPhase = phase || 'IDLE';
 
   return (
     <Engine
