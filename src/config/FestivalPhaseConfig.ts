@@ -1,22 +1,19 @@
-// src/config/FestivalPhaseConfig.ts
-
-export const FESTIVAL_PHASE_SEQUENCES: Record<string, { 
+ export const FESTIVAL_PHASE_SEQUENCES: Record<string, { 
   phases: string[], 
   timings: Record<string, number> 
 }> = {
   
-  // ━━━ DIWALI (Old Logic - Safe) ━━━
+  // ━━━ DIWALI (Old Working Logic - EXACT MATCH) ━━━
   DIWALI: {
-    phases: ['ROCKET', 'FIREWORK', 'FLASH', 'HANDOVER'],
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
-      ROCKET: 1200,
-      FIREWORK: 1500,
-      FLASH: 800,
-      HANDOVER: 1000
+      FLASH: 350,        // Old: 350ms ✅
+      SHOOTING: 6000,    // Old: 6000ms ✅ (6 sec pura chalna chahiye!)
+      HANDOVER: 150      // Old: 150ms ✅
     }
   },
 
-  // ━━━ HOLI (New 2027 Logic) ━━━
+  // ━━━ HOLI (New Logic) ━━━
   HOLI: {
     phases: ['PUCK_PUMP', 'STREAM_BLAST', 'COLOR_BURST', 'GULAL_RAIN', 'HANDOVER', 'FADE_MIST'],
     timings: {
@@ -31,11 +28,11 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
 
   // ━━━ GENERIC FALLBACK ━━━
   DEFAULT: {
-    phases: ['SHOOTING', 'FLASH', 'HANDOVER'],
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
-      SHOOTING: 1500,
-      FLASH: 1000,
-      HANDOVER: 1000
+      FLASH: 350,
+      SHOOTING: 6000,
+      HANDOVER: 150
     }
   }
 };
