@@ -60,7 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isIntroActive, setIsIntroActive] = useState(false);
   const [isAmbientActive, setIsAmbientActive] = useState(false);
 
-  // ✅ NEW: Transition guard — prevents banner flash during intro→popup handover
+  // ✅ Transition guard — prevents banner flash during intro→popup handover
   const [isGreetingSequenceActive, setIsGreetingSequenceActive] = useState(false);
 
   // ✅ Lock state and Ref Mirror setup
@@ -90,32 +90,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ━━━ 2. THE HANDOVER FUNCTION — FIXED: No banner flash
+  // ━━━ 2. THE HANDOVER FUNCTION — FIXED: No ambient before popup
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   //
-  // ❌ OLD BUG: setIsIntroActive(false) → 300ms gap → setShowPopup(true)
-  //              Banner flash hota tha us 300ms me
+  // ❌ OLD BUG: setIsAmbientActive(true) BEFORE popup
+  //              Banner + particles dikhte the popup se pehle
   //
-  // ✅ NEW FIX: isGreetingSequenceActive flag use karo
-  //             Banner condition me bhi check karo
+  // ✅ NEW FIX: Ambient SIRF popup dismiss ke baad start hoga
+  //             Yahan sirf intro band karo aur popup dikhao
   //
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const handleIntroHandover = useCallback(() => {
     setTimeout(() => {
       // ✅ Step 1: Close intro animation
       setIsIntroActive(false);
-      // ✅ Step 2: Start ambient particles
-      setIsAmbientActive(true);
-      // ✅ Step 3: Small delay for smooth visual transition
+      
+      // ❌ REMOVED: setIsAmbientActive(true)
+      //    Ambient ABHI mat start karo - popup dismiss ke baad hoga!
+      
+      // ✅ Step 2: Small delay for clean transition
       setTimeout(() => {
-        // ✅ Step 4: Show popup — NOW banner won't flash because
-        //            isGreetingSequenceActive is still TRUE
+        // ✅ Step 3: Show popup — banner nahi dikhega because guard is ON
         setShowPopup(true);
-        // ✅ Step 5: Only AFTER popup is visible, release the guard
-        //            This ensures no frame where both are false
+        // ✅ Step 4: Release guard after popup is painted
         setTimeout(() => {
           setIsGreetingSequenceActive(false);
-        }, 50); // Tiny buffer to ensure popup is painted
+        }, 50);
       }, 300);
     }, 1200);
   }, []);
@@ -192,7 +192,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (shouldShow || wasUpdated) {
         introLockRef.current = true;
         
-        // ✅ IMPORTANT: Set greeting sequence guard BEFORE triggering intro/popup
+        // ✅ Set greeting sequence guard BEFORE triggering intro/popup
         setIsGreetingSequenceActive(true);
         
         if (data.hero_enabled) {
@@ -200,13 +200,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         } else {
           // ✅ No hero — directly show popup, guard already set
           setShowPopup(true);
-          // ✅ For non-hero case, release guard after popup is visible
           setTimeout(() => {
             setIsGreetingSequenceActive(false);
           }, 50);
         }
       } else if (data.hero_enabled) {
-        // ✅ Already seen today — but ambient particles chalao if hero enabled
+        // ✅ Already seen today — ambient + banner chalao (correct case)
         setIsAmbientActive(true);
       }
     } else {
@@ -220,7 +219,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setShowPopup(false);
         setIsIntroActive(false);
         setIsAmbientActive(false);
-        setIsGreetingSequenceActive(false); // ✅ Reset guard
+        setIsGreetingSequenceActive(false);
         introLockRef.current = false;
         setHasSeenPopup(false);
       }
@@ -238,7 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setShowPopup(false);
       setIsIntroActive(false);
       setIsAmbientActive(false);
-      setIsGreetingSequenceActive(false); // ✅ Reset guard
+      setIsGreetingSequenceActive(false);
       introLockRef.current = false;
       setHasSeenPopup(false);
     }
@@ -263,12 +262,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearInterval(interval);
   }, [activeBroadcast?.ends_at, checkBroadcastExpiry]);
 
-  // ━━━ POPUP DISMISS ━━━
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ━━━ POPUP DISMISS — FIXED: Start ambient HERE after close
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const handleDismissPopup = () => {
     setShowPopup(false);
     setHasSeenPopup(true);
     introLockRef.current = false;
-    setIsGreetingSequenceActive(false); // ✅ Release guard
+    setIsGreetingSequenceActive(false);
+
+    // ✅ NEW: Start ambient particles ONLY after popup is dismissed
+    //    Ye wala step handleIntroHandover se yahan shift kiya
+    if (activeBroadcast?.hero_enabled) {
+      setIsAmbientActive(true);
+    }
 
     if (activeBroadcast) {
       const frequency = activeBroadcast.show_frequency || 'ONCE';
@@ -289,7 +296,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setShowPopup(false);
     setIsIntroActive(false);
     setIsAmbientActive(false);
-    setIsGreetingSequenceActive(false); // ✅ Reset guard
+    setIsGreetingSequenceActive(false);
     introLockRef.current = false;
   }, []);
 
@@ -393,7 +400,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isMaintenanceActive = sysSettings?.is_maintenance_mode;
   const shouldShowLockout = !isChecking && isMaintenanceActive && !isImpersonating;
 
-  const themeColor = activeBroadcast?.theme_color || '#3b82f6';
+  const themeColor = activeBroadcast?.theme_config?.primary_color || activeBroadcast?.theme_color || '#3b82f6';
   const isLightColor = ['#FBBF24', '#F59E0B', '#EAB308', 'GOLD', '#fbbf24', '#f59e0b', '#eab308'].includes(themeColor.toUpperCase());
   const textColorClass = isLightColor ? 'text-slate-950' : 'text-white';
   const badgeBgClass = isLightColor ? 'bg-black/10 border-black/10 text-slate-950' : 'bg-white/10 border-white/15 text-white';
@@ -410,7 +417,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   };
 
-  // ✅ FIXED: Banner visibility logic — greeting sequence active hone par mat dikhao
+  // ✅ Banner visibility — only when greeting sequence complete AND no popup
   const shouldShowBanner = activeBroadcast && !showPopup && !isIntroActive && !isGreetingSequenceActive;
 
   return (
@@ -435,7 +442,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* ✅ FIXED: Top Broadcast Banner — Only shows when greeting sequence is NOT active */}
+      {/* ✅ Top Broadcast Banner — Only after popup dismissed */}
       {shouldShowBanner && (
         <div
           className={`sticky top-0 z-[1001] w-full py-3.5 px-6 shadow-[0_10px_35px_rgba(0,0,0,0.2)] transition-all duration-500 border-b ${textColorClass}`}
@@ -477,13 +484,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* LAYER 2 — DYNAMIC AMBIENT EFFECTS */}
+      {/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
       {isAmbientActive && activeBroadcast && (
-        <div
-          className={`fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 ${
-            showPopup ? 'opacity-[0.06] scale-95 saturate-[0.8]' : 'opacity-100 scale-100'
-          }`}
-        >
+        <div className="fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 opacity-100 scale-100">
           <AmbientFactory festivalKey={activeBroadcast?.festival_key} />
         </div>
       )}
