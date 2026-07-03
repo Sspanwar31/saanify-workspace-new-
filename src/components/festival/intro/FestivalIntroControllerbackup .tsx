@@ -5,13 +5,12 @@ import { useEffect, useState } from 'react';
 export type FestivalPhase =
   | 'IDLE'
   | 'FLASH'
-  | 'ROCKET'
-  | 'FIREWORK'
+  | 'SHOOTING'
   | 'HANDOVER';
 
 interface Props {
-  isActive: boolean;           
-  onHandover: () => void;      
+  isActive: boolean;
+  onHandover: () => void;
   children: (phase: FestivalPhase) => React.ReactNode;
 }
 
@@ -33,35 +32,28 @@ export default function FestivalIntroController({
     let isCancelled = false;
 
     const runIntroSequence = async () => {
-      // 1. FLASH (Starts instantly)
+      // 1. FLASH — White flash
       setPhase('FLASH');
-      await delay(600);
+      await delay(350);
       if (isCancelled) return;
 
-      // 2. ROCKET — 🚀 2.9 Seconds (Perfect Sync with RocketLaunch Peak)
-      setPhase('ROCKET');
-      await delay(2900);  // 🚀 FIXED: wait exactly 2.9 seconds so all main rockets reach the sky and fade out
+      // 2. SHOOTING — Rockets launch + explode
+      setPhase('SHOOTING');
+      await delay(6000);
       if (isCancelled) return;
 
-      // 3. FIREWORK — 🎇 Fireworks burst instantly at the peak
-      setPhase('FIREWORK');
-      await delay(2500);  
-      if (isCancelled) return;
-
-      // 4. HANDOVER — Ambient settle
+      // 3. HANDOVER — Glow triggers
       setPhase('HANDOVER');
-      await delay(500);   
+      await delay(150);
       if (isCancelled) return;
 
-      // 5. Signal to layout to render card
+      // 4. Signal card to show
       onHandover();
     };
-    
+
     runIntroSequence();
 
-    return () => {
-      isCancelled = true;
-    };
+    return () => { isCancelled = true; };
   }, [isActive, onHandover]);
 
   return <>{children(phase)}</>;
