@@ -38,11 +38,17 @@ interface EngineConfig {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = {
-  IDLE:      { intensity: 0.3,  spawnRate: 0.025 },
-  AMBIENT:   { intensity: 0.8,  spawnRate: 0.08  }, 
-  SHOOTING:  { intensity: 1.2,  spawnRate: 0.24  }, 
-  FLASH:     { intensity: 1.5,  spawnRate: 0.65  }, 
-  HANDOVER:  { intensity: 0.9,  spawnRate: 0.12  },
+  IDLE:           { intensity: 0.3,  spawnRate: 0.025 },
+  AMBIENT:        { intensity: 0.8,  spawnRate: 0.08  }, 
+  SHOOTING:       { intensity: 1.2,  spawnRate: 0.24  }, 
+  FLASH:          { intensity: 1.5,  spawnRate: 0.65  }, 
+  HANDOVER:       { intensity: 0.9,  spawnRate: 0.12  },
+  // 🚀 HOLI 2027 NEW PHASES
+  PUCK_PUMP:      { intensity: 0.6,  spawnRate: 0.15  },
+  STREAM_BLAST:   { intensity: 1.4,  spawnRate: 0.35  },
+  COLOR_BURST:    { intensity: 1.6,  spawnRate: 0.50  },
+  GULAL_RAIN:     { intensity: 1.2,  spawnRate: 0.25  },
+  FADE_MIST:      { intensity: 0.4,  spawnRate: 0.05  },
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -142,29 +148,62 @@ export default function ParticleEngine({
       if (preset === 'LIQUID_SPLASH') {
         const currentPhase = phaseRef.current;
 
+        // ━━━ DIWALI PHASES (Purana Logic) ━━━
         if (currentPhase === 'ROCKET') {
-          // Phase 1: Heavy liquid paint jets shooting upwards from bottom
           currentDirection = 'upward';
           currentSpawnY = 0.9;       
           currentMinSize = 10;       
           currentMaxSize = 25;
           currentSpeed = 3.5;        
         } 
-        else if (currentPhase === 'FIREWORK' || currentPhase === 'FLASH') {
-          // Phase 2: Massive radial color blast in the sky (35% height)!
+        else if (currentPhase === 'FIREWORK' || currentPhase === 'FLASH' || currentPhase === 'SHOOTING') {
           currentDirection = 'radial';
           currentSpawnY = 0.35;      
           currentMinSize = 5;
           currentMaxSize = 14;
           currentSpeed = 3.8;        
         } 
-        else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT') {
-          // Phase 3: Gentle color mist falling downwards
+        
+        // ━━━ HOLI 2027 PHASES (Naya Logic) ━━━
+        else if (currentPhase === 'PUCK_PUMP') {
+          // Pichkari pump: Neeche se dhakke maar ke upar
+          currentDirection = 'upward';
+          currentSpawnY = 0.85;       
+          currentMinSize = 8;       
+          currentMaxSize = 18;
+          currentSpeed = 2.5;        
+        }
+        else if (currentPhase === 'STREAM_BLAST') {
+          // Pichkari ki stream: Tez sidhi stream
+          currentDirection = 'upward';
+          currentSpawnY = 0.80;       
+          currentMinSize = 6;
+          currentMaxSize = 22;
+          currentSpeed = 4.0; // Bahut tez!
+        }
+        else if (currentPhase === 'COLOR_BURST') {
+          // Gol gulal blast: Center se sab taraf
+          currentDirection = 'radial';
+          currentSpawnY = 0.40;      
+          currentMinSize = 5;
+          currentMaxSize = 16;
+          currentSpeed = 4.5;
+        }
+        else if (currentPhase === 'GULAL_RAIN') {
+          // Gulal baarish: Upar se neeche girta hua
           currentDirection = 'downward';
           currentSpawnY = -0.05;     
           currentMinSize = 4;
-          currentMaxSize = 9;
-          currentSpeed = 0.8;        
+          currentMaxSize = 10;
+          currentSpeed = 1.2;
+        }
+        else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT' || currentPhase === 'FADE_MIST') {
+          // Gentle fade: Halka girna
+          currentDirection = 'downward';
+          currentSpawnY = -0.05;     
+          currentMinSize = 3;
+          currentMaxSize = 7;
+          currentSpeed = 0.6;
         }
       }
 
