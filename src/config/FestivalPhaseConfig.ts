@@ -3,7 +3,7 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   timings: Record<string, number> 
 }> = {
   
-  // ━━━ DIWALI (Old Working Logic - EXACT MATCH - DO NOT TOUCH) ━━━
+  // ━━━ DIWALI (DO NOT TOUCH) ━━━
   DIWALI: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
@@ -13,15 +13,14 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
-  // ━━━ HOLI (New 2027 "First Person Attack" Logic) ━━━
+  // ━━━ HOLI (New "Rocket -> Dhamaka -> Rain" Story) ━━━
   HOLI: {
-    phases: ['APPROACHING', 'IMPACT', 'SMOKE_FILL', 'TEXT_REVEAL', 'HANDOVER'],
+    phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA', 'GULAL_RAIN', 'HANDOVER'],
     timings: {
-      APPROACHING: 1200, // Gutke aate hain
-      IMPACT: 400,       // Phat te hain
-      SMOKE_FILL: 1900,  // Dhua dhak leta hai
-      TEXT_REVEAL: 1500, // Happy Holi aata hai
-      HANDOVER: 200      // Popup ke liye ready
+      ROCKET_LAUNCH: 800,   // Beam upar jayega
+      COLOR_DHAMAKA: 1500,  // Phatkega (Dhamaka!)
+      GULAL_RAIN: 4000,     // Beautiful neon rain giregi
+      HANDOVER: 150          
     }
   },
 
