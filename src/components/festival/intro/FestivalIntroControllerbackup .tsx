@@ -1,60 +1,50 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
-export type FestivalPhase =
-  | 'IDLE'
-  | 'FLASH'
-  | 'SHOOTING'
-  | 'HANDOVER';
-
-interface Props {
-  isActive: boolean;
-  onHandover: () => void;
-  children: (phase: FestivalPhase) => React.ReactNode;
-}
-
-const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+import { useEffect, useState, useCallback } from 'react';
+import { FESTIVAL_PHASE_SEQUENCES } from '@/config/FestivalPhaseConfig';
 
 export default function FestivalIntroController({
   isActive,
   onHandover,
   children,
-}: Props) {
-  const [phase, setPhase] = useState<FestivalPhase>('IDLE');
+  preset = 'DEFAULT'
+}: {
+  isActive: boolean;
+  onHandover: () => void;
+  children: (phase: string) => React.ReactNode;
+  preset?: string;
+}) {
+  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
+
+  // Preset ke hisaab se sequence nikalo (Agar nahi mila toh DEFAULT use karo)
+  const sequence = FESTIVAL_PHASE_SEQUENCES[preset.toUpperCase()] || FESTIVAL_PHASE_SEQUENCES.DEFAULT;
 
   useEffect(() => {
+    // Jab intro band ho, reset karo
     if (!isActive) {
-      setPhase('IDLE');
+      setCurrentPhaseIndex(0);
       return;
     }
 
-    let isCancelled = false;
+    // Current phase ka naam aur time nikalo
+    const currentPhaseName = sequence.phases[currentPhaseIndex];
+    const duration = sequence.timings[currentPhaseName] || 1000;
 
-    const runIntroSequence = async () => {
-      // 1. FLASH — White flash
-      setPhase('FLASH');
-      await delay(350);
-      if (isCancelled) return;
+    const timer = setTimeout(() => {
+      if (currentPhaseIndex < sequence.phases.length - 1) {
+        // Agla phase
+        setCurrentPhaseIndex(prev => prev + 1);
+      } else {
+        // Last phase khatam → Handover (Popup dikhao)
+        onHandover();
+      }
+    }, duration);
 
-      // 2. SHOOTING — Rockets launch + explode
-      setPhase('SHOOTING');
-      await delay(6000);
-      if (isCancelled) return;
+    return () => clearTimeout(timer);
+  }, [isActive, currentPhaseIndex, sequence, onHandover]);
 
-      // 3. HANDOVER — Glow triggers
-      setPhase('HANDOVER');
-      await delay(150);
-      if (isCancelled) return;
+  // Jo bhi current phase hai, use children function me pass karo
+  const currentPhase = sequence.phases[currentPhaseIndex] || 'IDLE';
 
-      // 4. Signal card to show
-      onHandover();
-    };
-
-    runIntroSequence();
-
-    return () => { isCancelled = true; };
-  }, [isActive, onHandover]);
-
-  return <>{children(phase)}</>;
+  return <>{children(currentPhase)}</>;
 }
