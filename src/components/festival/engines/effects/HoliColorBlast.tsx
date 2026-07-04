@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 /* ─────────────────── TYPES ─────────────────── */
 
@@ -79,7 +79,6 @@ class HoliSound {
     } catch { return null; }
   }
 
-  /* SHUIII — Rocket whoosh */
   whoosh(variant = 0) {
     const ctx = this.ensure();
     if (!ctx || !this.master) return;
@@ -103,14 +102,12 @@ class HoliSound {
     src.start(now); src.stop(now + dur + 0.01);
   }
 
-  /* PUFF — Color dhamaka (softer than Diwali boom) */
   puff(variant = 0, delay = 0) {
     const ctx = this.ensure();
     if (!ctx || !this.master) return;
     const t = ctx.currentTime + delay;
     const pitch = 0.9 + variant * 0.05;
 
-    // Sub thud
     const sub = ctx.createOscillator(); sub.type = 'sine';
     sub.frequency.setValueAtTime(55 * pitch, t);
     sub.frequency.exponentialRampToValueAtTime(22, t + 0.45);
@@ -120,7 +117,6 @@ class HoliSound {
     sub.connect(sG); sG.connect(this.master);
     sub.start(t); sub.stop(t + 0.5);
 
-    // Color whoosh
     const bLen = Math.floor(ctx.sampleRate * 0.35);
     const bBuf = ctx.createBuffer(1, bLen, ctx.sampleRate);
     const bd = bBuf.getChannelData(0);
@@ -138,7 +134,6 @@ class HoliSound {
     bSrc.start(t); bSrc.stop(t + 0.4);
   }
 
-  /* Sprinkle — Gulal rain tickle */
   sprinkle() {
     const ctx = this.ensure();
     if (!ctx || !this.master) return;
@@ -194,7 +189,8 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
       targetY: 8 + Math.random() * 18,
       cx: 0, cy: 100,
       phase: 0,
-      duration: 55 + Math.random() * 25,
+      // 🚀 FIXED: duration ko 55-80 se badhakar 105-135 kiya (Rockets ab bahut hi smooth urenge, tej nahi bhagenge)
+      duration: 105 + Math.random() * 30, 
       drift: (Math.random() - 0.5) * 4,
       color: HOLI_COLORS[i % HOLI_COLORS.length],
       launched: false,
@@ -207,12 +203,11 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
     rainFade.current = 1;
   }, []);
 
-  /* ── SPAWN COLOR BURST (Holi style - wider, more colorful) ── */
+  /* ── SPAWN COLOR BURST ── */
   const spawnBurst = useCallback((x: number, y: number, color: [number, number, number], variant = 0) => {
     const out: Particle[] = [];
     const [r, g, b] = color;
 
-    // White flash
     out.push({
       id: nid(), x, y, vx: 0, vy: 0,
       life: 0, maxLife: 14, size: 55,
@@ -220,7 +215,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
       type: 'flash', gravity: 0, friction: 1,
     });
 
-    // Color burst particles — WIDER spread than Diwali
     const count = 130 + variant * 15;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -241,7 +235,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
       });
     }
 
-    // Splash droplets — Holi special (irregular, wobbly)
     for (let i = 0; i < 35; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 0.4 + Math.random() * 1.8;
@@ -304,7 +297,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
     }
 
     if (phase === 'COLOR_DHAMAKA') {
-      // Force-explode all rockets
       for (const rk of rockets.current) {
         if (!rk.exploded) {
           rk.exploded = true;
@@ -326,7 +318,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
     }
 
     if (phase === 'TEXT_REVEAL') {
-      // Soft ambient particles around center
       for (let i = 0; i < 50; i++) {
         const color = HOLI_COLORS[Math.floor(Math.random() * HOLI_COLORS.length)];
         particles.current.push({
@@ -348,7 +339,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
       }
     }
 
-    // Fade out on HANDOVER
     if (phase === 'HANDOVER') {
       rainFade.current = 1;
     }
@@ -366,7 +356,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
     const elapsed = physicsTime.current;
     const spawned: Particle[] = [];
 
-    // Rocket physics
     if (phase === 'ROCKET_LAUNCH') {
       for (const rk of rockets.current) {
         if (rk.exploded) continue;
@@ -386,7 +375,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
         rk.cx = rk.startX + rk.drift * e;
         rk.cy = 100 + (rk.targetY - 100) * e;
 
-        // Colorful trail particles
         if (rk.phase % 2 === 0 && p < 1) {
           const [tr, tg, tb] = rk.color;
           for (let i = 0; i < 3; i++) {
@@ -404,7 +392,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
           }
         }
 
-        // Sparks
         if (rk.phase % 5 === 0 && p < 0.9) {
           const a = Math.random() * Math.PI * 2;
           spawned.push({
@@ -419,19 +406,16 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
       }
     }
 
-    // Continuous gulal rain
     if (phase === 'GULAL_RAIN' || phase === 'TEXT_REVEAL') {
       sprinkleTimer.current++;
       if (sprinkleTimer.current % 6 === 0) spawnGulal(2);
       if (sprinkleTimer.current % 25 === 0) holiSound?.sprinkle();
     }
 
-    // Fade out on HANDOVER
     if (phase === 'HANDOVER') {
       rainFade.current = Math.max(0, rainFade.current - 0.03);
     }
 
-    // Update particles
     particles.current = particles.current
       .map(pt => {
         if (pt.life < 0) return { ...pt, life: pt.life + 1 };
@@ -476,7 +460,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
 
     ctx.clearRect(0, 0, cw, ch);
 
-    // Global fade for HANDOVER
     if (phase === 'HANDOVER' && rainFade.current < 1) {
       ctx.globalAlpha = rainFade.current;
     }
@@ -486,7 +469,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
     ctx.save();
     ctx.translate(sx, sy);
 
-    // Draw rockets
     for (const rk of rockets.current) {
       if (!rk.launched || rk.exploded) continue;
       const px = (rk.cx / 100) * cw;
@@ -504,7 +486,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
       ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Draw particles
     for (const pt of particles.current) {
       if (pt.life < 0) continue;
       const px = (pt.x / 100) * cw;
