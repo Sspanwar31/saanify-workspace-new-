@@ -13,16 +13,18 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
- // ━━━ HOLI (🚀 FIXED: Aligned 1.4s Rocket Flight & Blast Sync) ━━━
+ // ━━━ HOLI (🚀 FIXED: Perfect Rocket Flight & Staggered Blasts) ━━━
   HOLI: {
-    phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA', 'GULAL_RAIN', 'HANDOVER'],
+    phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA', 'TEXT_REVEAL', 'GULAL_RAIN', 'HANDOVER'],
     timings: {
-      ROCKET_LAUNCH: 1800,   // 🚀 FIXED: 3200 से घटाकर 1400 किया (रॉकेट्स ऊपर पहुँचते ही बिना रुके तुरंत फटेंगे)
-      COLOR_DHAMAKA: 2100,  // सघन धमाका और रंगीन बौछार
-      GULAL_RAIN: 4000,     // कोमल रंगीन बारिश
+      ROCKET_LAUNCH: 3200,   // 🚀 Sab rockets udenge, upar jayenge, aur blast honge
+      COLOR_DHAMAKA: 1500,   // 💥 Blast ka aftermath dikhega
+      TEXT_REVEAL: 2200,     // ✨ "Happy Holi" text
+      GULAL_RAIN: 3500,      // 🌈 Gulal baarish
       HANDOVER: 150          
     }
   },
+
   
   // ━━━ GENERIC FALLBACK ━━━
   DEFAULT: {
