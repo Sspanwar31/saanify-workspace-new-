@@ -153,7 +153,7 @@ const STEP = 1000 / 60;
 const ROCKET_COUNT = 5;
 
 // 🚀 CHANGE 1: रॉकेट्स के बीच का लॉन्च डिले बढ़ाया गया (लगभग 1.2 सेकंड का अंतराल)
-const ROCKET_DELAYS = [0, 1200, 2400, 3600, 4800];
+const ROCKET_DELAYS = [0, 1200, 2400, 2600, 2800];
 
 /* ─────────────────── COMPONENT ─────────────────── */
 export default function HoliColorBlast({ phase }: { phase: string }) {
