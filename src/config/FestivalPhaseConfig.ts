@@ -13,7 +13,7 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
- / // ━━━ HOLI (🚀 FIXED: Aligned 1.4s Rocket Flight & Blast Sync) ━━━
+ // ━━━ HOLI (🚀 FIXED: Aligned 1.4s Rocket Flight & Blast Sync) ━━━
   HOLI: {
     phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA', 'GULAL_RAIN', 'HANDOVER'],
     timings: {
