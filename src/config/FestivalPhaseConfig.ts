@@ -13,14 +13,14 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
- // ━━━ HOLI (🚀 FIXED: Aligned Standard Phase Names & 2.9s Perfect Sync) ━━━
+ / // ━━━ HOLI (🚀 FIXED: Aligned 1.4s Rocket Flight & Blast Sync) ━━━
   HOLI: {
-    phases: ['FLASH', 'ROCKET', 'FIREWORK', 'HANDOVER'], // 🚀 FIXED: Standard names taaki engine inhe pehchan sake
+    phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA', 'GULAL_RAIN', 'HANDOVER'],
     timings: {
-      FLASH: 600,        // Shuruat ka color flash
-      ROCKET: 2900,      // 🚀 FIXED: Bilkul sateek 2.9 seconds (Rockets ke upar pahuchne aur adrishya hone ka sateek samay)
-      FIREWORK: 2500,    // 🚀 Gulaal dhamaka aur particles ka bikharna
-      HANDOVER: 500      
+      ROCKET_LAUNCH: 1400,   // 🚀 FIXED: 3200 से घटाकर 1400 किया (रॉकेट्स ऊपर पहुँचते ही बिना रुके तुरंत फटेंगे)
+      COLOR_DHAMAKA: 2500,  // सघन धमाका और रंगीन बौछार
+      GULAL_RAIN: 4000,     // कोमल रंगीन बारिश
+      HANDOVER: 150          
     }
   },
   
