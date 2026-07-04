@@ -152,8 +152,8 @@ const holiSound = typeof window !== 'undefined' ? new HoliSound() : null;
 const STEP = 1000 / 60;
 const ROCKET_COUNT = 5;
 
-// 🚀 सुधार 1: हर रॉकेट के लॉन्च के बीच ठीक 900ms का एक समान अंतराल (Rhythmic sequence spacing)
-const ROCKET_DELAYS = [0, 900, 1800, 2700, 3600];
+// ✅ CHANGE 1: Sab rockets 1 second ke andar launch ho jayenge
+const ROCKET_DELAYS = [0, 200, 400, 600, 800];
 
 /* ─────────────────── COMPONENT ─────────────────── */
 export default function HoliColorBlast({ phase }: { phase: string }) {
@@ -193,8 +193,8 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
         targetY: 12 + Math.random() * 12,
         cx: 0, cy: 100,
         phase: 0,
-        // 🚀 सुधार 2: सभी रॉकेट्स की स्पीड को स्थिर (130 frames) किया गया, ताकि कोई बहुत धीमा या बहुत तेज न भागे
-        duration: 130,
+        // ✅ CHANGE 2: Normal speed + halka variation taaki ek saath na takraye
+        duration: 80 + (i * 5), // 80, 85, 90, 95, 100 frames
         drift: (Math.random() - 0.5) * 2.5,
         color: HOLI_COLORS[i % HOLI_COLORS.length],
         launched: false,
@@ -224,8 +224,9 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
     const count = 130 + variant * 15;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 1.2 + Math.random() * 4;
-      const ml = 90 + Math.random() * 70;
+      // ✅ CHANGE 3: Dheere se failgega, dikhega bhi
+      const speed = 0.8 + Math.random() * 2.5; 
+      const ml = 130 + Math.random() * 80; 
       const mixColor = Math.random() > 0.4 ? color : HOLI_COLORS[Math.floor(Math.random() * HOLI_COLORS.length)];
 
       out.push({
@@ -302,7 +303,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
     }
 
     if (phase === 'COLOR_DHAMAKA') {
-      // सेफ्टी फॉलबैक: अगर कोई रॉकेट किसी वजह से ब्लास्ट नहीं हुआ है, तो उसे तुरंत ब्लास्ट करें
       for (const rk of rockets.current) {
         if (!rk.exploded) {
           rk.exploded = true;
@@ -381,7 +381,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
         rk.cx = rk.startX + rk.drift * e;
         rk.cy = 100 + (rk.targetY - 100) * e;
 
-        // 🚀 सुधार 3: रॉकेट जैसे ही ऊपर पहुंचे (p >= 1), वह तुरंत ब्लास्ट हो जाए (Auto-Explode)
         if (p >= 1) {
           rk.exploded = true;
           spawnBurst(rk.cx, rk.cy, rk.color, rk.id - 1);
@@ -389,7 +388,7 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
             puffPlayed.current.add(rk.id);
             holiSound?.puff(rk.id - 1, 0.04);
           }
-          continue; // ब्लास्ट होने के बाद इस रॉकेट के ट्रेल पार्टिकल्स न बनाएं
+          continue;
         }
 
         if (rk.phase % 2 === 0 && p < 1) {
