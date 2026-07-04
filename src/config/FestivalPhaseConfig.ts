@@ -15,7 +15,7 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
 
  // ━━━ HOLI (🚀 FIXED: Perfect Rocket Flight & Staggered Blasts) ━━━
   HOLI: {
-    phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA', 'TEXT_REVEAL', 'GULAL_RAIN', 'HANDOVER'],
+    phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA','GULAL_RAIN', 'HANDOVER'],
     timings: {
       ROCKET_LAUNCH: 3500,   // 🚀 Sab rockets udenge, upar jayenge, aur blast honge
       COLOR_DHAMAKA: 1500,   // 💥 Blast ka aftermath dikhega
