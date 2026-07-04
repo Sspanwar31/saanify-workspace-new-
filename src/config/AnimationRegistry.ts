@@ -18,6 +18,9 @@ import EventEngine from '@/components/festival/engines/EventEngine';
 
 import ParticleEngine from '@/components/festival/engines/ParticleEngine';
 
+// 🚀 NEW: HoliColorBlast को इम्पोर्ट किया गया
+import HoliColorBlast from '@/components/festival/engines/effects/HoliColorBlast';
+
 export const AnimationRegistry = {
 
   SPIRITUAL_ENGINE: SpiritualEngine,
@@ -51,5 +54,8 @@ export const AnimationRegistry = {
   EVENT_ENGINE: EventEngine,
 
   PARTICLE_ENGINE: ParticleEngine,
+
+  // 🚀 NEW: Holi Color Blast Engine को यहाँ रजिस्टर किया गया है
+  HOLI_COLOR_BLAST: HoliColorBlast,
 
 } as const;
