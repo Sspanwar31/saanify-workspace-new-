@@ -141,9 +141,9 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
         // ━━━ HOLI 2027 "ROCKET & DHAMAKA" LOGIC ━━━
         else if (currentPhase === 'ROCKET_LAUNCH') {
           currentDirection = 'upward';
-          currentSpawnY = 0.95;      
-          currentMinSize = 6;
-          currentMaxSize = 12;
+          currentSpawnY = 0.9;      
+          currentMinSize = 10;
+          currentMaxSize = 25;
           currentSpeed = 3.5;        
         }
         else if (currentPhase === 'COLOR_DHAMAKA') {
