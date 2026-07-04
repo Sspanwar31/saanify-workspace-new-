@@ -44,16 +44,10 @@ const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = 
   FLASH:          { intensity: 1.5,  spawnRate: 0.65  }, 
   HANDOVER:       { intensity: 0.9,  spawnRate: 0.12  },
   
-  // ━━━ HOLI 2027 "FIRST PERSON ATTACK" PHASES ━━━
-  PUCK_PUMP:      { intensity: 0.6,  spawnRate: 0.15  },
-  STREAM_BLAST:   { intensity: 1.4,  spawnRate: 0.35  },
-  COLOR_BURST:    { intensity: 1.6,  spawnRate: 0.50  },
-  GULAL_RAIN:     { intensity: 1.2,  spawnRate: 0.25  },
-  FADE_MIST:      { intensity: 0.4,  spawnRate: 0.05  },
-  APPROACHING:    { intensity: 0.8,  spawnRate: 0.12  }, // Zoom-in gutkas
-  IMPACT:         { intensity: 2.0,  spawnRate: 0.85  }, // Fast dust blast
-  SMOKE_FILL:     { intensity: 0.5,  spawnRate: 0.08  }, // Slow thick clouds
-  TEXT_REVEAL:    { intensity: 0.1,  spawnRate: 0.01  }, // Almost idle for text
+  // 🚀 HOLI 2027 "ROCKET & DHAMAKA" PHASES
+  ROCKET_LAUNCH:  { intensity: 1.5,  spawnRate: 0.65 }, // Dense beam
+  COLOR_DHAMAKA:  { intensity: 2.0,  spawnRate: 0.90 }, // Massive explosion
+  GULAL_RAIN:     { intensity: 1.2,  spawnRate: 0.30 }, // Slow satisfying fall
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -136,7 +130,7 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
       if (preset === 'LIQUID_SPLASH' || preset === 'HOLI') {
         const currentPhase = phaseRef.current;
 
-        // ━━━ DIWALI PHASES (PURANA LOGIC - SAFE) ━━━
+        // ━━━ DIWALI PHASES ━━━
         if (currentPhase === 'ROCKET') {
           currentDirection = 'upward'; currentSpawnY = 0.9; currentMinSize = 10; currentMaxSize = 25; currentSpeed = 3.5;        
         } 
@@ -144,40 +138,29 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
           currentDirection = 'radial'; currentSpawnY = 0.35; currentMinSize = 5; currentMaxSize = 14; currentSpeed = 3.8;        
         } 
         
-        // ━━━ HOLI 2027 "FIRST PERSON ATTACK" LOGIC ━━━
-        else if (currentPhase === 'APPROACHING') {
-          // Bade gutke seedha camera ki taraf aate hain (Center me bade circles)
-          currentDirection = 'radial'; 
-          currentSpawnY = 0.5;       
-          currentMinSize = 40;       // Bahut bade size
-          currentMaxSize = 90;       
-          currentSpeed = 0.1;        // Almost stationary (Zoom illusion)
+        // ━━━ HOLI 2027 "ROCKET & DHAMAKA" LOGIC ━━━
+        else if (currentPhase === 'ROCKET_LAUNCH') {
+          currentDirection = 'upward';
+          currentSpawnY = 0.95;      
+          currentMinSize = 6;
+          currentMaxSize = 12;
+          currentSpeed = 5.0;        
         }
-        else if (currentPhase === 'IMPACT') {
-          // Phat kar chhote dhool ke kankar bahar jate hain
+        else if (currentPhase === 'COLOR_DHAMAKA') {
           currentDirection = 'radial';
-          currentSpawnY = 0.5;      
-          currentMinSize = 3;
-          currentMaxSize = 10;
-          currentSpeed = 8.0;        // Bahut tez blast
+          currentSpawnY = 0.15;      
+          currentMinSize = 6;
+          currentMaxSize = 18;
+          currentSpeed = 5.5;        
         }
-        else if (currentPhase === 'SMOKE_FILL') {
-          // Dheeme dhua bharega (Huge low-opacity clouds)
-          currentDirection = 'radial';
-          currentSpawnY = 0.5;      
-          currentMinSize = 120;      // Giant circles
-          currentMaxSize = 250;      
-          currentSpeed = 0.3;        // Very slow spread
+        else if (currentPhase === 'GULAL_RAIN') {
+          currentDirection = 'downward';
+          currentSpawnY = -0.1;      
+          currentMinSize = 4;
+          currentMaxSize = 12;
+          currentSpeed = 1.5;        
         }
-        else if (currentPhase === 'TEXT_REVEAL') {
-          // Text ke liye almost band (Controller text dikhayega)
-          currentDirection = 'radial';
-          currentSpawnY = -1; // Screen ke bahar spawn ho
-          currentMinSize = 1;
-          currentMaxSize = 2;
-          currentSpeed = 0;
-        }
-        else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT' || currentPhase === 'FADE_MIST') {
+        else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT') {
           currentDirection = 'downward'; currentSpawnY = -0.05; currentMinSize = 3; currentMaxSize = 7; currentSpeed = 0.6;
         }
       }
@@ -199,14 +182,11 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
         default: vx = Math.cos(angle) * spd * config.spread * 2; vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
-      // SMOKE_FILL ke liye zyada life chahiye taaki dhua rahe
-      const isSmoke = phaseRef.current === 'SMOKE_FILL';
-
       return {
         x: cx + rand(-20, 20), y: cy + rand(-10, 10), vx, vy, size,
         color: pick(config.colors),
-        life: isSmoke ? rand(150, 250) : rand(50, 110),
-        maxLife: isSmoke ? 250 : 110,
+        life: rand(50, 110),
+        maxLife: 110,
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: rand(-0.1, 0.1),
       };
@@ -215,17 +195,7 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
     /* ── Draw Particle ── */
     const draw = (p: Particle) => {
       const progress = 1 - p.life / p.maxLife;
-      let alpha = Math.max(0, 1 - progress * progress);
-
-      // ✨ SMOKE_FILL SPECIAL LOGIC: Transparent dhua banane ke liye
-      if (phaseRef.current === 'SMOKE_FILL') {
-        alpha = 0.08; // Thick smoke transparency
-      }
-
-      // ✨ APPROACHING SPECIAL LOGIC: Gutke thode transparent aayein
-      if (phaseRef.current === 'APPROACHING') {
-        alpha = Math.min(alpha, 0.85);
-      }
+      const alpha = Math.max(0, 1 - progress * progress);
 
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -237,7 +207,7 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
       ctx.arc(0, 0, p.size, 0, Math.PI * 2);
       ctx.fill();
 
-      if (config.wobble && p.size > 5 && phaseRef.current !== 'SMOKE_FILL') {
+      if (config.wobble && p.size > 5) {
         ctx.globalAlpha = alpha * 0.4;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
@@ -263,27 +233,20 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
         particles.current.push(spawn());
       }
 
-      // SMOKE me gravity 0 chahiye
-      const activeGravity = phaseRef.current === 'SMOKE_FILL' ? 0 : config.gravity;
-
       particles.current = particles.current.filter(p => {
-        p.vy += activeGravity;
+        p.vy += config.gravity;
         p.x += p.vx;
         p.y += p.vy;
         p.life -= 1;
         p.rotation += p.rotationSpeed;
-        
-        // Smoke ko zyada der tak rukne do (no friction)
-        if (phaseRef.current !== 'SMOKE_FILL') {
-          p.vx *= 0.995;
-          p.vy *= 0.995;
-        }
+        p.vx *= 0.995;
+        p.vy *= 0.995;
 
-        if (config.wobble && phaseRef.current !== 'SMOKE_FILL') {
+        if (config.wobble) {
           p.vx += Math.sin(p.life * 0.12) * 0.18;
         }
 
-        if (p.life > 0 && p.y < h + 300 && p.x > -300 && p.x < w + 300) {
+        if (p.life > 0 && p.y < h + 60 && p.x > -60 && p.x < w + 60) {
           draw(p);
           return true;
         }
