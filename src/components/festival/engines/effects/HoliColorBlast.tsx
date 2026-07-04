@@ -1,9 +1,7 @@
 'use client';
-
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 /* ─────────────────── TYPES ─────────────────── */
-
 interface Particle {
   id: number;
   x: number; y: number;
@@ -33,7 +31,6 @@ interface Rocket {
 }
 
 /* ─────────────────── HOLI NEON PALETTE ─────────────────── */
-
 const HOLI_COLORS: [number, number, number][] = [
   [255, 0, 110],    // Hot Pink #ff006e
   [255, 190, 11],   // Yellow #ffbe0b
@@ -46,7 +43,6 @@ const HOLI_COLORS: [number, number, number][] = [
 ];
 
 /* ─────────────────── SOUND ENGINE (Holi Puffs) ─────────────────── */
-
 class HoliSound {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -153,13 +149,13 @@ class HoliSound {
 const holiSound = typeof window !== 'undefined' ? new HoliSound() : null;
 
 /* ─────────────────── CONSTANTS ─────────────────── */
-
 const STEP = 1000 / 60;
 const ROCKET_COUNT = 5;
-const ROCKET_DELAYS = [0, 120, 250, 400, 580];
+
+// 🚀 CHANGE 1: रॉकेट्स के बीच का लॉन्च डिले बढ़ाया गया (लगभग 1.2 सेकंड का अंतराल)
+const ROCKET_DELAYS = [0, 1200, 2400, 3600, 4800];
 
 /* ─────────────────── COMPONENT ─────────────────── */
-
 export default function HoliColorBlast({ phase }: { phase: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
@@ -183,19 +179,31 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
 
   /* ── INIT ROCKETS ── */
   const initRockets = useCallback(() => {
-    rockets.current = Array.from({ length: ROCKET_COUNT }, (_, i) => ({
-      id: i + 1,
-      startX: 10 + Math.random() * 80,
-      targetY: 8 + Math.random() * 18,
-      cx: 0, cy: 100,
-      phase: 0,
-      // 🚀 FIXED: duration ko 55-80 se badhakar 105-135 kiya (Rockets ab bahut hi smooth urenge, tej nahi bhagenge)
-      duration: 105 + Math.random() * 30, 
-      drift: (Math.random() - 0.5) * 4,
-      color: HOLI_COLORS[i % HOLI_COLORS.length],
-      launched: false,
-      exploded: false,
-    }));
+    rockets.current = Array.from({ length: ROCKET_COUNT }, (_, i) => {
+      // 🚀 CHANGE 2: रॉकेट्स को आपस में चिपकने से रोकने के लिए Lanes में विभाजित किया गया
+      const minX = 15; // बायीं तरफ का मार्जिन
+      const maxX = 85; // दायीं तरफ का मार्जिन
+      const laneWidth = (maxX - minX) / (ROCKET_COUNT - 1 || 1);
+      
+      // प्रत्येक इंडेक्स के लिए एक निश्चित Lane और उसमें थोड़ा सा रैंडम वेरिएशन
+      const calculatedX = minX + i * laneWidth + (Math.random() - 0.5) * 6;
+      const finalX = Math.max(10, Math.min(90, calculatedX));
+
+      return {
+        id: i + 1,
+        startX: finalX,
+        targetY: 10 + Math.random() * 15,
+        cx: 0, cy: 100,
+        phase: 0,
+        // 🚀 CHANGE 3: रॉकेट की ऊपर जाने की गति को धीमा किया गया (180 से 240 frames)
+        duration: 180 + Math.random() * 60,
+        drift: (Math.random() - 0.5) * 3,
+        color: HOLI_COLORS[i % HOLI_COLORS.length],
+        launched: false,
+        exploded: false,
+      };
+    });
+
     whooshPlayed.current.clear();
     puffPlayed.current.clear();
     rainStarted.current = false;
@@ -285,7 +293,6 @@ export default function HoliColorBlast({ phase }: { phase: string }) {
   /* ── PHASE CHANGE HANDLER ── */
   useEffect(() => {
     if (phase === prevPhase.current) return;
-    const oldPhase = prevPhase.current;
     prevPhase.current = phase;
 
     if (phase === 'ROCKET_LAUNCH') {
