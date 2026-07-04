@@ -144,7 +144,7 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
           currentSpawnY = 0.9;      
           currentMinSize = 10;
           currentMaxSize = 25;
-          currentSpeed = 3.5;        
+          currentSpeed = 1.9;        
         }
         else if (currentPhase === 'COLOR_DHAMAKA') {
           currentDirection = 'radial';
