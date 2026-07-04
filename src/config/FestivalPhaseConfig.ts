@@ -17,9 +17,8 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   HOLI: {
     phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA', 'TEXT_REVEAL', 'GULAL_RAIN', 'HANDOVER'],
     timings: {
-      ROCKET_LAUNCH: 3200,   // 🚀 Sab rockets udenge, upar jayenge, aur blast honge
+      ROCKET_LAUNCH: 3500,   // 🚀 Sab rockets udenge, upar jayenge, aur blast honge
       COLOR_DHAMAKA: 1500,   // 💥 Blast ka aftermath dikhega
-      TEXT_REVEAL: 2200,     // ✨ "Happy Holi" text
       GULAL_RAIN: 3500,      // 🌈 Gulal baarish
       HANDOVER: 150          
     }
