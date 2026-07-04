@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { FESTIVAL_PHASE_SEQUENCES } from '@/config/FestivalPhaseConfig';
 
 export default function FestivalIntroController({
@@ -17,6 +17,11 @@ export default function FestivalIntroController({
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
 
   const sequence = FESTIVAL_PHASE_SEQUENCES[preset.toUpperCase()] || FESTIVAL_PHASE_SEQUENCES.DEFAULT;
+
+  // 🔍 DEBUG LOG: Yeh batayega kaun sa preset aa raha hai
+  useEffect(() => {
+    console.log("🎯 INTRO DEBUG -> Preset:", preset, "| Using Phases:", sequence.phases);
+  }, [preset, sequence.phases]);
 
   useEffect(() => {
     if (!isActive) {
