@@ -1,51 +1,35 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
 import HeroFactory from '../v2/HeroFactory';
 import RayEngine from '../engines/RayEngine';
 import ParticleEngine from '../engines/ParticleEngine';
 
 interface IntroProps {
   preset: string;
+  phase: string; // 🚀 फेज अब सीधे मुख्य कंट्रोलर से आएगा
   heroConfig: any;
   themeColor: string;
-  onComplete: () => void;
 }
 
 export default function LightRevealIntro({
   preset,
+  phase,
   heroConfig,
   themeColor,
-  onComplete,
 }: IntroProps) {
-  const [introPhase, setIntroPhase] = useState<'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'TRANSFORM' | 'HANDOVER'>('OBJECT_REVEAL');
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 🚀 सेंट्रल फेजेस का हमारे विज़ुअल स्टेप्स से मिलान (Mapping)
+  let introPhase: 'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'TRANSFORM' | 'HANDOVER' = 'OBJECT_REVEAL';
 
-  useEffect(() => {
-    // ── 1. OBJECT_REVEAL (0 से 1.5 सेकंड): हीरो सिंबल प्रकट होता है
-    timerRef.current = setTimeout(() => {
-      setIntroPhase('ACTION_TRIGGER');
-
-      // ── 2. ACTION_TRIGGER (1.5 से 3.5 सेकंड): तारा गिरना या तीर छूटना
-      timerRef.current = setTimeout(() => {
-        setIntroPhase('TRANSFORM');
-
-        // ── 3. TRANSFORM (3.5 से 5.5 सेकंड): बैकग्राउंड इंजन विस्फोट
-        timerRef.current = setTimeout(() => {
-          setIntroPhase('HANDOVER');
-          
-          // ── 4. HANDOVER (5.5 सेकंड के बाद): डैशबोर्ड चालू
-          timerRef.current = setTimeout(() => {
-            onComplete();
-          }, 800);
-        }, 2000);
-      }, 2000);
-    }, 1500);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [onComplete]);
+  if (phase === 'IDLE' || phase === 'AMBIENT' || phase === 'OBJECT_REVEAL') {
+    introPhase = 'OBJECT_REVEAL';
+  } else if (phase === 'SHOOTING' || phase === 'ACTION_TRIGGER') {
+    introPhase = 'ACTION_TRIGGER';
+  } else if (phase === 'FLASH' || phase === 'TRANSFORM') {
+    introPhase = 'TRANSFORM';
+  } else if (phase === 'HANDOVER') {
+    introPhase = 'HANDOVER';
+  }
 
   const renderActionOverlay = () => {
     if (introPhase !== 'ACTION_TRIGGER' && introPhase !== 'TRANSFORM') return null;
@@ -87,7 +71,6 @@ export default function LightRevealIntro({
         introPhase === 'HANDOVER' ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      {/* 🚀 इनलाइन सीएसएस एनीमेशन (No global.css editing required!) */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes christmas-star-descend {
           0% { transform: translateY(-400px) scale(0.5); opacity: 0; }
