@@ -2,23 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import { FESTIVAL_PHASE_SEQUENCES } from '@/config/FestivalPhaseConfig';
+import LightRevealIntro from '../intros/LightRevealIntro'; // 🚀 नए इंट्रो कंपोनेंट को इम्पोर्ट करें
 
 export default function FestivalIntroController({
   isActive,
   onHandover,
   children,
-  preset = 'DEFAULT'
+  preset = 'DEFAULT',
+  heroConfig,      // 🚀 नया प्रोप जोड़ा गया
+  themeColor = '#fbbf24' // 🚀 नया प्रोप जोड़ा गया
 }: {
   isActive: boolean;
   onHandover: () => void;
   children: (phase: string) => React.ReactNode;
   preset?: string;
+  heroConfig?: any;
+  themeColor?: string;
 }) {
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
 
   const sequence = FESTIVAL_PHASE_SEQUENCES[preset.toUpperCase()] || FESTIVAL_PHASE_SEQUENCES.DEFAULT;
 
-  // 🔍 DEBUG LOG: Yeh batayega kaun sa preset aa raha hai
   useEffect(() => {
     console.log("🎯 INTRO DEBUG -> Preset:", preset, "| Using Phases:", sequence.phases);
   }, [preset, sequence.phases]);
@@ -45,6 +49,20 @@ export default function FestivalIntroController({
 
   const currentPhase = sequence.phases[currentPhaseIndex] || 'IDLE';
 
+  // 🚀 उन त्योहारों की सूची जो LightRevealIntro का उपयोग करेंगे
+  const isLightRevealPreset = ['CHRISTMAS', 'RAM_NAVAMI', 'EID_UL_FITR', 'EID_AL_ADHA', 'REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(preset.toUpperCase());
+
+  if (isActive && isLightRevealPreset && heroConfig) {
+    return (
+      <LightRevealIntro
+        preset={preset.toUpperCase()}
+        phase={currentPhase}
+        heroConfig={heroConfig}
+        themeColor={themeColor}
+      />
+    );
+  }
+
   return (
     <>
       {children(currentPhase)}
@@ -54,21 +72,9 @@ export default function FestivalIntroController({
         <div className="absolute inset-0 z-[10] flex flex-col items-center justify-center pointer-events-none">
           <style>{`
             @keyframes holi-drip-in {
-              0% { 
-                transform: translateY(-50px) scale(1.3); 
-                opacity: 0; 
-                filter: blur(12px); 
-              }
-              60% { 
-                transform: translateY(8px) scale(0.95); 
-                opacity: 1; 
-                filter: blur(0.5px); 
-              }
-              100% { 
-                transform: translateY(0) scale(1); 
-                opacity: 1; 
-                filter: blur(0.5px); 
-              }
+              0% { transform: translateY(-50px) scale(1.3); opacity: 0; filter: blur(12px); }
+              60% { transform: translateY(8px) scale(0.95); opacity: 1; filter: blur(0.5px); }
+              100% { transform: translateY(0) scale(1); opacity: 1; filter: blur(0.5px); }
             }
             @keyframes drip-fall {
               0% { height: 0px; opacity: 0; }
@@ -77,7 +83,6 @@ export default function FestivalIntroController({
             }
           `}</style>
           
-          {/* Main Text */}
           <h1 
             className="text-7xl md:text-9xl font-black text-white tracking-tighter select-none"
             style={{
@@ -88,7 +93,6 @@ export default function FestivalIntroController({
             Happy Holi
           </h1>
 
-          {/* Liquid Drips hanging from letters (Visual trick) */}
           <div className="flex gap-12 mt-[-10px]">
             {['#ff006e', '#ffbe0b', '#00f5d4', '#8338ec'].map((color, i) => (
               <div 
