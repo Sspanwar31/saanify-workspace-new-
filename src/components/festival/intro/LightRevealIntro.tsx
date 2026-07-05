@@ -81,16 +81,17 @@ export default function LightRevealIntro({
       `}} />
 
       {/* ── बैकग्राउंड लेयर: एक्शन फेज़ चालू होते ही शुरू होगी ── */}
-      {introPhase === 'ACTION_TRIGGER' && (
-        <>
-          {preset === 'CHRISTMAS' ? (
-            <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />
-          ) : (
-            <RayEngine preset={preset} />
-          )}
-        </>
-      )}
-
+    {introPhase === 'ACTION_TRIGGER' && (
+  <>
+    {console.log('❄️ PARTICLE ENGINE SHOULD START NOW')}
+    
+    {preset === 'CHRISTMAS' ? (
+      <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />
+    ) : (
+      <RayEngine preset={preset} />
+    )}
+  </>
+)}
       {preset === 'CHRISTMAS' && (
         <div className="absolute top-10 left-10 z-[999] text-white text-xl">
           CHRISTMAS INTRO ACTIVE
