@@ -59,29 +59,24 @@ export default function FestivalIntroController({
     heroConfig: heroConfig          // 🚨 YEH UNDEFINED NAHI HONA CHAHIYE (Sabse bada reason)
   });
 
+console.log('🚀 CONTROLLER RECEIVED', {
+  preset,
+  heroConfig,
+  themeColor
+});
 
-  // 🔍 Yeh condition fail ho rahi hai isliye aage ka code nahi chal raha
-  if (isActive && isLightRevealPreset && heroConfig) {
-    console.log('✅ LIGHT REVEAL RENDER HO RAHA HAI!');
-    console.log('🎯 CONTROLLER DATA');
-console.log('broadcast', broadcast);
-console.log('hero_config', broadcast?.hero_config);
-console.log('theme_config', broadcast?.theme_config);
-console.log('heroConfig variable', heroConfig);
-    return (
-      <LightRevealIntro
-  preset="CHRISTMAS"
-  phase={phase}
-  heroConfig={{
-    scale: 0.5,
-    speed: 4,
-    visual_key: 'XMAS_TREE',
-    render_type: 'COMPONENT'
-  }}
-  themeColor="#fbbf24"
-      />
-    );
-  }
+if (isActive && isLightRevealPreset) {
+  console.log('✅ LIGHT REVEAL RENDER HO RAHA HAI!');
+
+  return (
+    <LightRevealIntro
+      preset={preset}
+      phase={currentPhase}
+      heroConfig={heroConfig}
+      themeColor={themeColor}
+    />
+  );
+}
 
   return (
     <>
