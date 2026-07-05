@@ -33,8 +33,13 @@ interface EngineConfig {
   spawnY?: number; 
 }
 
+interface PresetConfig {
+  default: Partial<EngineConfig>;
+  phases?: Record<string, Partial<EngineConfig>>;
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 PHASE BEHAVIOR
+   🚀 PHASE BEHAVIOR (Spawn configurations)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = {
@@ -44,14 +49,14 @@ const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = 
   FLASH:          { intensity: 1.5,  spawnRate: 0.65  }, 
   HANDOVER:       { intensity: 0.9,  spawnRate: 0.12  },
   
-  // 🚀 HOLI 2027 "ROCKET & DHAMAKA" PHASES
-  ROCKET_LAUNCH:  { intensity: 1.5,  spawnRate: 0.65 }, // Dense beam
-  COLOR_DHAMAKA:  { intensity: 2.0,  spawnRate: 0.90 }, // Massive explosion
-  GULAL_RAIN:     { intensity: 1.2,  spawnRate: 0.30 }, // Slow satisfying fall
+  // ROCKET & DHAMAKA PHASES
+  ROCKET_LAUNCH:  { intensity: 1.5,  spawnRate: 0.65 }, 
+  COLOR_DHAMAKA:  { intensity: 2.0,  spawnRate: 0.90 }, 
+  GULAL_RAIN:     { intensity: 1.2,  spawnRate: 0.30 }, 
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   DEFAULT CONFIG
+   DEFAULT SYSTEM CONFIG
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const DEFAULT: EngineConfig = {
@@ -68,27 +73,132 @@ const DEFAULT: EngineConfig = {
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 PRESET MAP
+   🚀 PRESET MAP (No Hardcoding - Pure Configuration)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-const PRESET_MAP: Record<string, Partial<EngineConfig>> = {
+const PRESET_MAP: Record<string, PresetConfig> = {
+  // ── 1. HOLI / LIQUID SPLASH (पूरी तरह से सुरक्षित और पुराना मैथ बरकरार) ──
   LIQUID_SPLASH: {
-    gravity: 0.28, spread: 1.6, speed: 2.2,
-    colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
-    minSize: 5, maxSize: 15, maxCount: 350, glow: false, wobble: true, direction: 'upward', spawnY: 0.75,
+    default: {
+      gravity: 0.28, spread: 1.6, speed: 2.2,
+      colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
+      minSize: 5, maxSize: 15, maxCount: 350, glow: false, wobble: true, direction: 'upward', spawnY: 0.75,
+    },
+    phases: {
+      ROCKET:         { direction: 'upward',   spawnY: 0.9,  minSize: 10, maxSize: 25, speed: 3.5 },
+      FIREWORK:       { direction: 'radial',   spawnY: 0.35, minSize: 5,  maxSize: 14, speed: 3.8 },
+      FLASH:          { direction: 'radial',   spawnY: 0.35, minSize: 5,  maxSize: 14, speed: 3.8 },
+      SHOOTING:       { direction: 'radial',   spawnY: 0.35, minSize: 5,  maxSize: 14, speed: 3.8 },
+      ROCKET_LAUNCH:  { direction: 'upward',   spawnY: 0.9,  minSize: 10, maxSize: 25, speed: 1.9 },
+      COLOR_DHAMAKA:  { direction: 'radial',   spawnY: 0.15, minSize: 6,  maxSize: 18, speed: 5.5 },
+      GULAL_RAIN:     { direction: 'downward', spawnY: -0.1, minSize: 4,  maxSize: 12, speed: 1.5 },
+      HANDOVER:       { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
+      AMBIENT:        { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
+    }
   },
   HOLI: {
-    gravity: 0.28, spread: 1.6, speed: 2.2,
-    colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
-    minSize: 5, maxSize: 15, maxCount: 350, glow: false, wobble: true, direction: 'upward', spawnY: 0.75,
+    default: {
+      gravity: 0.28, spread: 1.6, speed: 2.2,
+      colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
+      minSize: 5, maxSize: 15, maxCount: 350, glow: false, wobble: true, direction: 'upward', spawnY: 0.75,
+    },
+    phases: {
+      ROCKET:         { direction: 'upward',   spawnY: 0.9,  minSize: 10, maxSize: 25, speed: 3.5 },
+      FIREWORK:       { direction: 'radial',   spawnY: 0.35, minSize: 5,  maxSize: 14, speed: 3.8 },
+      FLASH:          { direction: 'radial',   spawnY: 0.35, minSize: 5,  maxSize: 14, speed: 3.8 },
+      SHOOTING:       { direction: 'radial',   spawnY: 0.35, minSize: 5,  maxSize: 14, speed: 3.8 },
+      ROCKET_LAUNCH:  { direction: 'upward',   spawnY: 0.9,  minSize: 10, maxSize: 25, speed: 1.9 },
+      COLOR_DHAMAKA:  { direction: 'radial',   spawnY: 0.15, minSize: 6,  maxSize: 18, speed: 5.5 },
+      GULAL_RAIN:     { direction: 'downward', spawnY: -0.1, minSize: 4,  maxSize: 12, speed: 1.5 },
+      HANDOVER:       { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
+      AMBIENT:        { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
+    }
   },
+
+  // ── 2. LOHRI (चिंगारी ऊपर की तरफ जाएगी) ──
+  LOHRI: {
+    default: {
+      gravity: -0.04, spread: 0.9, speed: 1.5,
+      colors: ['#ff6b35', '#ff4500', '#ffd700', '#ff8c00'],
+      minSize: 2.5, maxSize: 6.5, maxCount: 150, glow: true, wobble: false, direction: 'upward', spawnY: 0.9,
+    }
+  },
+
+  // ── 3. CHRISTMAS (बर्फबारी नीचे गिरेगी) ──
+  CHRISTMAS: {
+    default: {
+      gravity: 0.03, spread: 0.7, speed: 0.8,
+      colors: ['#ffffff', '#f1f5f9', '#cbd5e1', '#e2e8f0'],
+      minSize: 3, maxSize: 8, maxCount: 200, glow: false, wobble: true, direction: 'downward', spawnY: -0.1,
+    }
+  },
+
+  // ── 4. RAKSHA_BANDHAN & NEW_YEAR (रंगीन कंफेटी धमाका) ──
+  RAKSHA_BANDHAN: {
+    default: {
+      gravity: 0.18, spread: 1.5, speed: 2.5,
+      colors: ['#a855f7', '#ec4899', '#f43f5e', '#eab308', '#3b82f6', '#10b981'],
+      minSize: 4, maxSize: 10, maxCount: 220, glow: false, wobble: true, direction: 'radial', spawnY: 0.4,
+    }
+  },
+  NEW_YEAR: {
+    default: {
+      gravity: 0.18, spread: 1.5, speed: 2.5,
+      colors: ['#a855f7', '#ec4899', '#f43f5e', '#eab308', '#3b82f6', '#10b981'],
+      minSize: 4, maxSize: 10, maxCount: 220, glow: false, wobble: true, direction: 'radial', spawnY: 0.4,
+    }
+  },
+
+  // ── 5. MAKAR_SANKRANTI (धीमे तैरने वाले पतंग के रंग) ──
+  MAKAR_SANKRANTI: {
+    default: {
+      gravity: 0.02, spread: 0.8, speed: 0.6,
+      colors: ['#38bdf8', '#fbbf24', '#f43f5e', '#34d399'],
+      minSize: 3, maxSize: 7, maxCount: 80, glow: false, wobble: true, direction: 'downward', spawnY: -0.05,
+    }
+  },
+
+  // ── 6. VALENTINES_DAY & SPECIAL_OFFER (गुलाबी/लाल दिल थपेड़े) ──
+  VALENTINES_DAY: {
+    default: {
+      gravity: 0.08, spread: 1.2, speed: 1.4,
+      colors: ['#ec4899', '#f43f5e', '#fda4af', '#e11d48'],
+      minSize: 4, maxSize: 9, maxCount: 120, glow: true, wobble: true, direction: 'radial', spawnY: 0.5,
+    }
+  },
+  SPECIAL_OFFER: {
+    default: {
+      gravity: 0.08, spread: 1.2, speed: 1.4,
+      colors: ['#ec4899', '#f43f5e', '#fda4af', '#e11d48'],
+      minSize: 4, maxSize: 9, maxCount: 120, glow: true, wobble: true, direction: 'radial', spawnY: 0.5,
+    }
+  }
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    MAIN COMPONENT
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: string; phase?: string; }) {
+export default function ParticleEngine({ 
+  preset, 
+  phase = 'IDLE',
+  // 🚀 बैकएंड से लाइव कंट्रोल करने के लिए नए डायनामिक प्रॉपर्टीज
+  customGravity,
+  customSpeed,
+  customColors,
+  customMinSize,
+  customMaxSize,
+  customMaxCount
+}: { 
+  preset?: string; 
+  phase?: string; 
+  customGravity?: number;
+  customSpeed?: number;
+  customColors?: string[];
+  customMinSize?: number;
+  customMaxSize?: number;
+  customMaxCount?: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const rafId = useRef<number>(0);
@@ -102,7 +212,19 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const config: EngineConfig = { ...DEFAULT, ...(PRESET_MAP[preset || ''] || {}) };
+    const activePresetObj = PRESET_MAP[preset || ''] || { default: DEFAULT };
+
+    // 🚀 मर्ज प्राथमिकता: System Default <- Preset Default <- Backend Database Custom values
+    const config: EngineConfig = { 
+      ...DEFAULT, 
+      ...activePresetObj.default,
+      ...(customGravity !== undefined && { gravity: customGravity }),
+      ...(customSpeed !== undefined && { speed: customSpeed }),
+      ...(customColors && { colors: customColors }),
+      ...(customMinSize !== undefined && { minSize: customMinSize }),
+      ...(customMaxSize !== undefined && { maxSize: customMaxSize }),
+      ...(customMaxCount !== undefined && { maxCount: customMaxCount }),
+    };
 
     const setSize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -121,49 +243,14 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
 
-      let currentDirection = config.direction;
-      let currentSpawnY = config.spawnY || 0.5;
-      let currentMinSize = config.minSize;
-      let currentMaxSize = config.maxSize;
-      let currentSpeed = config.speed;
+      // एक्टिव फेज़ की सेटिंग्स को निकालें
+      const phaseConfig = activePresetObj.phases?.[phaseRef.current] || {};
 
-      if (preset === 'LIQUID_SPLASH' || preset === 'HOLI') {
-        const currentPhase = phaseRef.current;
-
-        // ━━━ DIWALI PHASES ━━━
-        if (currentPhase === 'ROCKET') {
-          currentDirection = 'upward'; currentSpawnY = 0.9; currentMinSize = 10; currentMaxSize = 25; currentSpeed = 3.5;        
-        } 
-        else if (currentPhase === 'FIREWORK' || currentPhase === 'FLASH' || currentPhase === 'SHOOTING') {
-          currentDirection = 'radial'; currentSpawnY = 0.35; currentMinSize = 5; currentMaxSize = 14; currentSpeed = 3.8;        
-        } 
-        
-        // ━━━ HOLI 2027 "ROCKET & DHAMAKA" LOGIC ━━━
-        else if (currentPhase === 'ROCKET_LAUNCH') {
-          currentDirection = 'upward';
-          currentSpawnY = 0.9;      
-          currentMinSize = 10;
-          currentMaxSize = 25;
-          currentSpeed = 1.9;        
-        }
-        else if (currentPhase === 'COLOR_DHAMAKA') {
-          currentDirection = 'radial';
-          currentSpawnY = 0.15;      
-          currentMinSize = 6;
-          currentMaxSize = 18;
-          currentSpeed = 5.5;        
-        }
-        else if (currentPhase === 'GULAL_RAIN') {
-          currentDirection = 'downward';
-          currentSpawnY = -0.1;      
-          currentMinSize = 4;
-          currentMaxSize = 12;
-          currentSpeed = 1.5;        
-        }
-        else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT') {
-          currentDirection = 'downward'; currentSpawnY = -0.05; currentMinSize = 3; currentMaxSize = 7; currentSpeed = 0.6;
-        }
-      }
+      let currentDirection = phaseConfig.direction || config.direction;
+      let currentSpawnY    = phaseConfig.spawnY !== undefined ? phaseConfig.spawnY : (config.spawnY || 0.5);
+      let currentMinSize   = phaseConfig.minSize || config.minSize;
+      let currentMaxSize   = phaseConfig.maxSize || config.maxSize;
+      let currentSpeed     = phaseConfig.speed || config.speed;
 
       const cx = w / 2;
       const cy = h * currentSpawnY; 
@@ -175,11 +262,11 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
       let vy = 0;
 
       switch (currentDirection) {
-        case 'upward': vx = rand(-1, 1) * spd * config.spread * 1.2; vy = -spd * rand(1.2, 2.8) * config.spread; break;
+        case 'upward':   vx = rand(-1, 1) * spd * config.spread * 1.2; vy = -spd * rand(1.2, 2.8) * config.spread; break;
         case 'downward': vx = rand(-1, 1) * spd * config.spread; vy = spd * rand(0.5, 1.5) * config.spread; break;
-        case 'spiral': vx = Math.cos(angle + particles.current.length * 0.4) * spd * config.spread; vy = Math.sin(angle + particles.current.length * 0.4) * spd * config.spread; break;
+        case 'spiral':   vx = Math.cos(angle + particles.current.length * 0.4) * spd * config.spread; vy = Math.sin(angle + particles.current.length * 0.4) * spd * config.spread; break;
         case 'radial':
-        default: vx = Math.cos(angle) * spd * config.spread * 2; vy = Math.sin(angle) * spd * config.spread * 2;
+        default:         vx = Math.cos(angle) * spd * config.spread * 2; vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
       return {
@@ -256,10 +343,11 @@ export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: st
       rafId.current = requestAnimationFrame(animate);
     };
 
+    const activeId = rafId.current;
     animate();
 
     return () => {
-      cancelAnimationFrame(rafId.current);
+      cancelAnimationFrame(activeId);
       window.removeEventListener('resize', setSize);
       particles.current = [];
     };
