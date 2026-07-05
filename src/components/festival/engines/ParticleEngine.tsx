@@ -2,10 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   TYPES
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
 interface Particle {
   x: number;
   y: number;
@@ -38,26 +34,16 @@ interface PresetConfig {
   phases?: Record<string, Partial<EngineConfig>>;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 PHASE BEHAVIOR (Spawn configurations)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
 const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = {
   IDLE:           { intensity: 0.3,  spawnRate: 0.025 },
   AMBIENT:        { intensity: 0.8,  spawnRate: 0.08  }, 
   SHOOTING:       { intensity: 1.2,  spawnRate: 0.24  }, 
   FLASH:          { intensity: 1.5,  spawnRate: 0.65  }, 
   HANDOVER:       { intensity: 0.9,  spawnRate: 0.12  },
-  
-  // ROCKET & DHAMAKA PHASES
   ROCKET_LAUNCH:  { intensity: 1.5,  spawnRate: 0.65 }, 
   COLOR_DHAMAKA:  { intensity: 2.0,  spawnRate: 0.90 }, 
   GULAL_RAIN:     { intensity: 1.2,  spawnRate: 0.30 }, 
 };
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   DEFAULT SYSTEM CONFIG
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const DEFAULT: EngineConfig = {
   gravity: 0.15,
@@ -72,12 +58,8 @@ const DEFAULT: EngineConfig = {
   direction: 'radial',
 };
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 PRESET MAP (No Hardcoding - Pure Configuration)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
 const PRESET_MAP: Record<string, PresetConfig> = {
-  // ── 1. HOLI / LIQUID SPLASH (पूरी तरह से सुरक्षित और पुराना मैथ बरकरार) ──
+  // ── 1. HOLI / LIQUID SPLASH ──
   LIQUID_SPLASH: {
     default: {
       gravity: 0.28, spread: 1.6, speed: 2.2,
@@ -115,7 +97,7 @@ const PRESET_MAP: Record<string, PresetConfig> = {
     }
   },
 
-  // ── 2. LOHRI (चिंगारी ऊपर की तरफ जाएगी) ──
+  // ── 2. LOHRI ──
   LOHRI: {
     default: {
       gravity: -0.04, spread: 0.9, speed: 1.5,
@@ -124,7 +106,7 @@ const PRESET_MAP: Record<string, PresetConfig> = {
     }
   },
 
-  // ── 3. CHRISTMAS (बर्फबारी नीचे गिरेगी) ──
+  // ── 3. CHRISTMAS ──
   CHRISTMAS: {
     default: {
       gravity: 0.03, spread: 0.7, speed: 0.8,
@@ -133,7 +115,7 @@ const PRESET_MAP: Record<string, PresetConfig> = {
     }
   },
 
-  // ── 4. RAKSHA_BANDHAN & NEW_YEAR (रंगीन कंफेटी धमाका) ──
+  // ── 4. RAKSHA_BANDHAN ──
   RAKSHA_BANDHAN: {
     default: {
       gravity: 0.18, spread: 1.5, speed: 2.5,
@@ -141,15 +123,8 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 4, maxSize: 10, maxCount: 220, glow: false, wobble: true, direction: 'radial', spawnY: 0.4,
     }
   },
-  NEW_YEAR: {
-    default: {
-      gravity: 0.18, spread: 1.5, speed: 2.5,
-      colors: ['#a855f7', '#ec4899', '#f43f5e', '#eab308', '#3b82f6', '#10b981'],
-      minSize: 4, maxSize: 10, maxCount: 220, glow: false, wobble: true, direction: 'radial', spawnY: 0.4,
-    }
-  },
 
-  // ── 5. MAKAR_SANKRANTI (धीमे तैरने वाले पतंग के रंग) ──
+  // ── 5. MAKAR_SANKRANTI ──
   MAKAR_SANKRANTI: {
     default: {
       gravity: 0.02, spread: 0.8, speed: 0.6,
@@ -158,14 +133,7 @@ const PRESET_MAP: Record<string, PresetConfig> = {
     }
   },
 
-  // ── 6. VALENTINES_DAY & SPECIAL_OFFER (गुलाबी/लाल दिल थपेड़े) ──
-  VALENTINES_DAY: {
-    default: {
-      gravity: 0.08, spread: 1.2, speed: 1.4,
-      colors: ['#ec4899', '#f43f5e', '#fda4af', '#e11d48'],
-      minSize: 4, maxSize: 9, maxCount: 120, glow: true, wobble: true, direction: 'radial', spawnY: 0.5,
-    }
-  },
+  // ── 6. SPECIAL_OFFER (BROADCAST) ──
   SPECIAL_OFFER: {
     default: {
       gravity: 0.08, spread: 1.2, speed: 1.4,
@@ -175,14 +143,9 @@ const PRESET_MAP: Record<string, PresetConfig> = {
   }
 };
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   MAIN COMPONENT
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
 export default function ParticleEngine({ 
   preset, 
   phase = 'IDLE',
-  // 🚀 बैकएंड से लाइव कंट्रोल करने के लिए नए डायनामिक प्रॉपर्टीज
   customGravity,
   customSpeed,
   customColors,
@@ -214,7 +177,6 @@ export default function ParticleEngine({
 
     const activePresetObj = PRESET_MAP[preset || ''] || { default: DEFAULT };
 
-    // 🚀 मर्ज प्राथमिकता: System Default <- Preset Default <- Backend Database Custom values
     const config: EngineConfig = { 
       ...DEFAULT, 
       ...activePresetObj.default,
@@ -243,7 +205,6 @@ export default function ParticleEngine({
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
 
-      // एक्टिव फेज़ की सेटिंग्स को निकालें
       const phaseConfig = activePresetObj.phases?.[phaseRef.current] || {};
 
       let currentDirection = phaseConfig.direction || config.direction;
@@ -279,7 +240,6 @@ export default function ParticleEngine({
       };
     };
 
-    /* ── Draw Particle ── */
     const draw = (p: Particle) => {
       const progress = 1 - p.life / p.maxLife;
       const alpha = Math.max(0, 1 - progress * progress);
@@ -305,7 +265,6 @@ export default function ParticleEngine({
       ctx.restore();
     };
 
-    /* ── Main Loop ── */
     const animate = () => {
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
@@ -314,9 +273,9 @@ export default function ParticleEngine({
       ctx.clearRect(0, 0, w, h);
 
       const rawCount = config.maxCount;
-      const cap = Math.floor(rawCount * pb.intensity);
+      const Math_floor = Math.floor(rawCount * pb.intensity);
       
-      if (particles.current.length < cap && Math.random() < pb.spawnRate) {
+      if (particles.current.length < Math_floor && Math.random() < pb.spawnRate) {
         particles.current.push(spawn());
       }
 
