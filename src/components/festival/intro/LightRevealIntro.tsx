@@ -3,6 +3,7 @@
 import HeroFactory from '../v2/HeroFactory';
 import RayEngine from '../engines/RayEngine';
 import ParticleEngine from '../engines/ParticleEngine';
+import ChristmasStarIntro from './effects/ChristmasStarIntro';
 
 interface IntroProps {
   preset: string;
@@ -50,6 +51,9 @@ export default function LightRevealIntro({
           </div>
         );
 
+        case 'CHRISTMAS':
+  return <ChristmasStarIntro />;
+
       case 'EID_UL_FITR':
       case 'EID_AL_ADHA':
         return (
@@ -92,7 +96,14 @@ export default function LightRevealIntro({
           )}
         </>
       )}
+{preset === 'CHRISTMAS' && (
+  <div className="absolute top-10 left-10 z-[999] text-white text-xl">
+    CHRISTMAS INTRO ACTIVE
+  </div>
+)}
 
+
+      
       {/* ── एक्शन लेयर (तारा या तीर एनीमेशन) ── */}
       {renderActionOverlay()}
 
