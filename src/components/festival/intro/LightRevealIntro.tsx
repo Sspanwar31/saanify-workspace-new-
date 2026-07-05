@@ -6,7 +6,7 @@ import ParticleEngine from '../engines/ParticleEngine';
 
 interface IntroProps {
   preset: string;
-  phase: string; // 🚀 फेज अब सीधे मुख्य कंट्रोलर से आएगा
+  phase: string; // 🚀 मुख्य कंट्रोलर से आने वाला सिंक फ़ेज़
   heroConfig: any;
   themeColor: string;
 }
@@ -18,21 +18,19 @@ export default function LightRevealIntro({
   themeColor,
 }: IntroProps) {
   
-  // 🚀 सेंट्रल फेजेस का हमारे विज़ुअल स्टेप्स से मिलान (Mapping)
-  let introPhase: 'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'TRANSFORM' | 'HANDOVER' = 'OBJECT_REVEAL';
+  // 🚀 कंट्रोलर के फेजेस का हमारे विज़ुअल स्टेप्स से 100% सटीक मिलान
+  let introPhase: 'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'HANDOVER' = 'OBJECT_REVEAL';
 
-  if (phase === 'IDLE' || phase === 'AMBIENT' || phase === 'OBJECT_REVEAL') {
+  if (phase === 'FLASH') {
     introPhase = 'OBJECT_REVEAL';
-  } else if (phase === 'SHOOTING' || phase === 'ACTION_TRIGGER') {
-    introPhase = 'ACTION_TRIGGER';
-  } else if (phase === 'FLASH' || phase === 'TRANSFORM') {
-    introPhase = 'TRANSFORM';
+  } else if (phase === 'SHOOTING') {
+    introPhase = 'ACTION_TRIGGER'; // इसी फेज़ में तारा भी गिरेगा और बर्फबारी/किरणें भी शुरू होंगी
   } else if (phase === 'HANDOVER') {
     introPhase = 'HANDOVER';
   }
 
   const renderActionOverlay = () => {
-    if (introPhase !== 'ACTION_TRIGGER' && introPhase !== 'TRANSFORM') return null;
+    if (introPhase !== 'ACTION_TRIGGER') return null;
 
     switch (preset) {
       case 'CHRISTMAS':
@@ -84,8 +82,8 @@ export default function LightRevealIntro({
         }
       `}} />
 
-      {/* ── बैकग्राउंड लेयर ── */}
-      {introPhase === 'TRANSFORM' && (
+      {/* ── बैकग्राउंड लेयर: एक्शन फेज़ चालू होते ही शुरू होगी ── */}
+      {introPhase === 'ACTION_TRIGGER' && (
         <>
           {preset === 'CHRISTMAS' ? (
             <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />
@@ -95,14 +93,14 @@ export default function LightRevealIntro({
         </>
       )}
 
-      {/* ── एक्शन लेयर ── */}
+      {/* ── एक्शन लेयर (तारा या तीर एनीमेशन) ── */}
       {renderActionOverlay()}
 
       {/* ── फोरग्राउंड लेयर (हीरो सिंबल) ── */}
       <div 
         className={`transform transition-all duration-1000 ${
-          introPhase === 'OBJECT_REVEAL' ? 'opacity-0 scale-75' : 'opacity-100 scale-100'
-        } ${introPhase === 'TRANSFORM' ? 'scale-110 blur-[1px]' : ''}`}
+          introPhase === 'OBJECT_REVEAL' ? 'opacity-100 scale-100' : 'opacity-100 scale-105'
+        }`}
       >
         <HeroFactory config={heroConfig} themeColor={themeColor} hideBranding={true} />
       </div>
@@ -110,7 +108,7 @@ export default function LightRevealIntro({
       {/* ── शीर्षक और सबटाइटल ── */}
       <div 
         className={`absolute bottom-20 flex flex-col items-center justify-center transition-all duration-1000 ${
-          introPhase === 'ACTION_TRIGGER' || introPhase === 'TRANSFORM' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          introPhase === 'ACTION_TRIGGER' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
         }`}
       >
         <h1 className="text-4xl font-extrabold tracking-widest text-white uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
