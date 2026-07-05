@@ -472,11 +472,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* LAYER 1 — INTRO ANIMATIONS */}
       {isIntroActive && activeBroadcast?.hero_enabled && (
         <div className="fixed inset-0 z-[9997] pointer-events-none">
-          <FestivalIntroController 
-            isActive={isIntroActive} 
-            onHandover={handleIntroHandover}
-            preset={activeBroadcast?.festival_key}
-          >
+          <FestivalIntroController
+  isActive={isIntroActive}
+  onHandover={handleIntroHandover}
+  preset={activeBroadcast?.festival_key}
+  heroConfig={activeBroadcast?.hero_config}
+  themeColor={
+    activeBroadcast?.theme_config?.primary_color ||
+    activeBroadcast?.theme_color ||
+    '#fbbf24'
+  }
+>
             {(phase) => (
               <AnimationFactory
                 phase={phase}
