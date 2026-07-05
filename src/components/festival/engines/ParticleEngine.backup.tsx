@@ -34,7 +34,7 @@ interface EngineConfig {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 PHASE BEHAVIOR (DENSITY & SPAWN SPEED UPGRADED)
+   🚀 PHASE BEHAVIOR
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = {
@@ -43,16 +43,15 @@ const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = 
   SHOOTING:       { intensity: 1.2,  spawnRate: 0.24  }, 
   FLASH:          { intensity: 1.5,  spawnRate: 0.65  }, 
   HANDOVER:       { intensity: 0.9,  spawnRate: 0.12  },
-  // 🚀 HOLI 2027 NEW PHASES
-  PUCK_PUMP:      { intensity: 0.6,  spawnRate: 0.15  },
-  STREAM_BLAST:   { intensity: 1.4,  spawnRate: 0.35  },
-  COLOR_BURST:    { intensity: 1.6,  spawnRate: 0.50  },
-  GULAL_RAIN:     { intensity: 1.2,  spawnRate: 0.25  },
-  FADE_MIST:      { intensity: 0.4,  spawnRate: 0.05  },
+  
+  // 🚀 HOLI 2027 "ROCKET & DHAMAKA" PHASES
+  ROCKET_LAUNCH:  { intensity: 1.5,  spawnRate: 0.65 }, // Dense beam
+  COLOR_DHAMAKA:  { intensity: 2.0,  spawnRate: 0.90 }, // Massive explosion
+  GULAL_RAIN:     { intensity: 1.2,  spawnRate: 0.30 }, // Slow satisfying fall
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   DEFAULT (Generic Safe Fallback)
+   DEFAULT CONFIG
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const DEFAULT: EngineConfig = {
@@ -69,53 +68,27 @@ const DEFAULT: EngineConfig = {
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 PRESET MAP (HOLI - DENSE & VIBRANT GULAL BLAST)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 PRESET MAP (HOLI - DENSE & VIBRANT GULAL BLAST)
+   🚀 PRESET MAP
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const PRESET_MAP: Record<string, Partial<EngineConfig>> = {
   LIQUID_SPLASH: {
-    gravity: 0.28,
-    spread: 1.6,
-    speed: 2.2,
+    gravity: 0.28, spread: 1.6, speed: 2.2,
     colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
-    minSize: 5,         
-    maxSize: 15,        
-    maxCount: 350,      
-    glow: false,
-    wobble: true,
-    direction: 'upward',
-    spawnY: 0.75,
+    minSize: 5, maxSize: 15, maxCount: 350, glow: false, wobble: true, direction: 'upward', spawnY: 0.75,
   },
   HOLI: {
-    gravity: 0.28,
-    spread: 1.6,
-    speed: 2.2,
+    gravity: 0.28, spread: 1.6, speed: 2.2,
     colors: ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#fb5607'],
-    minSize: 5,         
-    maxSize: 15,        
-    maxCount: 350,      
-    glow: false,
-    wobble: true,
-    direction: 'upward',
-    spawnY: 0.75,
+    minSize: 5, maxSize: 15, maxCount: 350, glow: false, wobble: true, direction: 'upward', spawnY: 0.75,
   },
 };
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    MAIN COMPONENT
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-export default function ParticleEngine({
-  preset,
-  phase = 'IDLE',
-}: {
-  preset?: string;
-  phase?: string;
-}) {
-
+export default function ParticleEngine({ preset, phase = 'IDLE' }: { preset?: string; phase?: string; }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const rafId = useRef<number>(0);
@@ -129,13 +102,8 @@ export default function ParticleEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    /* ── PRESET MERGE ── */
-    const config: EngineConfig = {
-      ...DEFAULT,
-      ...(PRESET_MAP[preset || ''] || {}),
-    };
+    const config: EngineConfig = { ...DEFAULT, ...(PRESET_MAP[preset || ''] || {}) };
 
-    /* ── Canvas Size ── */
     const setSize = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
@@ -149,12 +117,10 @@ export default function ParticleEngine({
     const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
     const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
-    /* ── Create Particle ── */
     const spawn = (): Particle => {
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
 
-      // 🚀 2027 HOLI DYNAMIC INTRO SEQUENCE ENGINE (Phase-Aware Physics)
       let currentDirection = config.direction;
       let currentSpawnY = config.spawnY || 0.5;
       let currentMinSize = config.minSize;
@@ -164,62 +130,38 @@ export default function ParticleEngine({
       if (preset === 'LIQUID_SPLASH' || preset === 'HOLI') {
         const currentPhase = phaseRef.current;
 
-        // ━━━ DIWALI PHASES (Purana Logic) ━━━
+        // ━━━ DIWALI PHASES ━━━
         if (currentPhase === 'ROCKET') {
-          currentDirection = 'upward';
-          currentSpawnY = 0.9;       
-          currentMinSize = 10;       
-          currentMaxSize = 25;
-          currentSpeed = 3.5;        
+          currentDirection = 'upward'; currentSpawnY = 0.9; currentMinSize = 10; currentMaxSize = 25; currentSpeed = 3.5;        
         } 
         else if (currentPhase === 'FIREWORK' || currentPhase === 'FLASH' || currentPhase === 'SHOOTING') {
-          currentDirection = 'radial';
-          currentSpawnY = 0.35;      
-          currentMinSize = 5;
-          currentMaxSize = 14;
-          currentSpeed = 3.8;        
+          currentDirection = 'radial'; currentSpawnY = 0.35; currentMinSize = 5; currentMaxSize = 14; currentSpeed = 3.8;        
         } 
         
-        // ━━━ HOLI 2027 PHASES (Naya Logic) ━━━
-        else if (currentPhase === 'PUCK_PUMP') {
-          // Pichkari pump: Neeche se dhakke maar ke upar
+        // ━━━ HOLI 2027 "ROCKET & DHAMAKA" LOGIC ━━━
+        else if (currentPhase === 'ROCKET_LAUNCH') {
           currentDirection = 'upward';
-          currentSpawnY = 0.85;       
-          currentMinSize = 8;       
-          currentMaxSize = 18;
-          currentSpeed = 2.5;        
+          currentSpawnY = 0.9;      
+          currentMinSize = 10;
+          currentMaxSize = 25;
+          currentSpeed = 1.9;        
         }
-        else if (currentPhase === 'STREAM_BLAST') {
-          // Pichkari ki stream: Tez sidhi stream
-          currentDirection = 'upward';
-          currentSpawnY = 0.80;       
-          currentMinSize = 6;
-          currentMaxSize = 22;
-          currentSpeed = 4.0; // Bahut tez!
-        }
-        else if (currentPhase === 'COLOR_BURST') {
-          // Gol gulal blast: Center se sab taraf
+        else if (currentPhase === 'COLOR_DHAMAKA') {
           currentDirection = 'radial';
-          currentSpawnY = 0.40;      
-          currentMinSize = 5;
-          currentMaxSize = 16;
-          currentSpeed = 4.5;
+          currentSpawnY = 0.15;      
+          currentMinSize = 6;
+          currentMaxSize = 18;
+          currentSpeed = 5.5;        
         }
         else if (currentPhase === 'GULAL_RAIN') {
-          // Gulal baarish: Upar se neeche girta hua
           currentDirection = 'downward';
-          currentSpawnY = -0.05;     
+          currentSpawnY = -0.1;      
           currentMinSize = 4;
-          currentMaxSize = 10;
-          currentSpeed = 1.2;
+          currentMaxSize = 12;
+          currentSpeed = 1.5;        
         }
-        else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT' || currentPhase === 'FADE_MIST') {
-          // Gentle fade: Halka girna
-          currentDirection = 'downward';
-          currentSpawnY = -0.05;     
-          currentMinSize = 3;
-          currentMaxSize = 7;
-          currentSpeed = 0.6;
+        else if (currentPhase === 'HANDOVER' || currentPhase === 'AMBIENT') {
+          currentDirection = 'downward'; currentSpawnY = -0.05; currentMinSize = 3; currentMaxSize = 7; currentSpeed = 0.6;
         }
       }
 
@@ -227,37 +169,21 @@ export default function ParticleEngine({
       const cy = h * currentSpawnY; 
       const spd = currentSpeed * rand(0.4, 1.3); 
       const size = rand(currentMinSize, currentMaxSize); 
-
-      // 🚀 FIXED: Added the missing angle definition here!
       const angle = Math.random() * Math.PI * 2;
 
       let vx = 0;
       let vy = 0;
 
-      // Use currentDirection here
       switch (currentDirection) {
-        case 'upward':
-          vx = rand(-1, 1) * spd * config.spread * 1.2;
-          vy = -spd * rand(1.2, 2.8) * config.spread;
-          break;
-        case 'downward':
-          vx = rand(-1, 1) * spd * config.spread;
-          vy = spd * rand(0.5, 1.5) * config.spread;
-          break;
-        case 'spiral':
-          vx = Math.cos(angle + particles.current.length * 0.4) * spd * config.spread;
-          vy = Math.sin(angle + particles.current.length * 0.4) * spd * config.spread;
-          break;
+        case 'upward': vx = rand(-1, 1) * spd * config.spread * 1.2; vy = -spd * rand(1.2, 2.8) * config.spread; break;
+        case 'downward': vx = rand(-1, 1) * spd * config.spread; vy = spd * rand(0.5, 1.5) * config.spread; break;
+        case 'spiral': vx = Math.cos(angle + particles.current.length * 0.4) * spd * config.spread; vy = Math.sin(angle + particles.current.length * 0.4) * spd * config.spread; break;
         case 'radial':
-        default:
-          vx = Math.cos(angle) * spd * config.spread * 2;
-          vy = Math.sin(angle) * spd * config.spread * 2;
+        default: vx = Math.cos(angle) * spd * config.spread * 2; vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
       return {
-        x: cx + rand(-20, 20),
-        y: cy + rand(-10, 10),
-        vx, vy, size,
+        x: cx + rand(-20, 20), y: cy + rand(-10, 10), vx, vy, size,
         color: pick(config.colors),
         life: rand(50, 110),
         maxLife: 110,
@@ -289,18 +215,6 @@ export default function ParticleEngine({
         ctx.fill();
       }
 
-      if (config.glow) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * 0.25;
-        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size * 4);
-        g.addColorStop(0, p.color);
-        g.addColorStop(1, 'transparent');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(0, 0, p.size * 4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
       ctx.restore();
     };
 
@@ -312,7 +226,6 @@ export default function ParticleEngine({
 
       ctx.clearRect(0, 0, w, h);
 
-      // 🚀 FIXED: Ghalat variable aur variables collision ko puri tarah dur kiya
       const rawCount = config.maxCount;
       const cap = Math.floor(rawCount * pb.intensity);
       
@@ -350,7 +263,6 @@ export default function ParticleEngine({
       window.removeEventListener('resize', setSize);
       particles.current = [];
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset]);
 
   return (
