@@ -3,7 +3,6 @@
 import HeroFactory from '../v2/HeroFactory';
 import RayEngine from '../engines/RayEngine';
 import ParticleEngine from '../engines/ParticleEngine';
-
 import ChristmasStarIntro from '../engines/effects/ChristmasStarIntro';
 
 interface IntroProps {
@@ -13,15 +12,16 @@ interface IntroProps {
   themeColor: string;
 }
 
-console.log('🔥 LIGHT REVEAL RECEIVED', {
-
-  export default function LightRevealIntro({
+export default function LightRevealIntro({
   preset,
   phase,
   heroConfig,
   themeColor,
 }: IntroProps) {
   
+  // 🚀 कंसोल लॉग सिंटैक्स को सही किया गया है
+  console.log('🔥 LIGHT REVEAL RECEIVED', { preset, phase, heroConfig, themeColor });
+
   // 🚀 कंट्रोलर के फेजेस का हमारे विज़ुअल स्टेप्स से 100% सटीक मिलान
   let introPhase: 'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'HANDOVER' = 'OBJECT_REVEAL';
 
@@ -37,8 +37,6 @@ console.log('🔥 LIGHT REVEAL RECEIVED', {
     if (introPhase !== 'ACTION_TRIGGER') return null;
 
     switch (preset) {
-      
-
       case 'RAM_NAVAMI':
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -47,8 +45,8 @@ console.log('🔥 LIGHT REVEAL RECEIVED', {
           </div>
         );
 
-        case 'CHRISTMAS':
-  return <ChristmasStarIntro />;
+      case 'CHRISTMAS':
+        return <ChristmasStarIntro />;
 
       case 'EID_UL_FITR':
       case 'EID_AL_ADHA':
@@ -92,14 +90,13 @@ console.log('🔥 LIGHT REVEAL RECEIVED', {
           )}
         </>
       )}
-{preset === 'CHRISTMAS' && (
-  <div className="absolute top-10 left-10 z-[999] text-white text-xl">
-    CHRISTMAS INTRO ACTIVE
-  </div>
-)}
 
+      {preset === 'CHRISTMAS' && (
+        <div className="absolute top-10 left-10 z-[999] text-white text-xl">
+          CHRISTMAS INTRO ACTIVE
+        </div>
+      )}
 
-      
       {/* ── एक्शन लेयर (तारा या तीर एनीमेशन) ── */}
       {renderActionOverlay()}
 
