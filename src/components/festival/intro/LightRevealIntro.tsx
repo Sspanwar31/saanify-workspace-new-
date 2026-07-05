@@ -22,19 +22,19 @@ export default function LightRevealIntro({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // ── 1. OBJECT_REVEAL (0 से 1.5 सेकंड): मुख्य हीरो सिंबल (जैसे ट्री, चाँद, या धनुष) धीरे से प्रकट होता है
+    // ── 1. OBJECT_REVEAL (0 से 1.5 सेकंड): हीरो सिंबल प्रकट होता है
     timerRef.current = setTimeout(() => {
       setIntroPhase('ACTION_TRIGGER');
 
-      // ── 2. ACTION_TRIGGER (1.5 से 3.5 सेकंड): विशिष्ट क्रिया (जैसे तारा गिरना, तीर छूटना, चाँद चमकना)
+      // ── 2. ACTION_TRIGGER (1.5 से 3.5 सेकंड): तारा गिरना या तीर छूटना
       timerRef.current = setTimeout(() => {
         setIntroPhase('TRANSFORM');
 
-        // ── 3. TRANSFORM (3.5 से 5.5 सेकंड): बैकग्राउंड के किरण इंजन का पूर्ण विस्फोट
+        // ── 3. TRANSFORM (3.5 से 5.5 सेकंड): बैकग्राउंड इंजन विस्फोट
         timerRef.current = setTimeout(() => {
           setIntroPhase('HANDOVER');
           
-          // ── 4. HANDOVER (5.5 सेकंड के बाद): डैशबोर्ड पर सुगम नियंत्रण स्थानांतरण
+          // ── 4. HANDOVER (5.5 सेकंड के बाद): डैशबोर्ड चालू
           timerRef.current = setTimeout(() => {
             onComplete();
           }, 800);
@@ -47,7 +47,6 @@ export default function LightRevealIntro({
     };
   }, [onComplete]);
 
-  // प्रेसेट के आधार पर विशिष्ट विज़ुअल स्टोरी तय करना
   const renderActionOverlay = () => {
     if (introPhase !== 'ACTION_TRIGGER' && introPhase !== 'TRANSFORM') return null;
 
@@ -55,9 +54,8 @@ export default function LightRevealIntro({
       case 'CHRISTMAS':
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            {/* 🌟 आसमान से गिरता हुआ जादुई तारा (Star Descends) */}
-            <div className="absolute -top-10 animate-christmas-star-descend">
-              <span className="text-[40px] drop-shadow-[0_0_20px_#fff]">⭐</span>
+            <div className="absolute -top-10" style={{ animation: 'christmas-star-descend 1.8s cubic-bezier(0.25, 1, 0.5, 1) forwards' }}>
+              <span className="text-[40px]" style={{ filter: 'drop-shadow(0 0 20px #fff)' }}>⭐</span>
             </div>
           </div>
         );
@@ -65,8 +63,8 @@ export default function LightRevealIntro({
       case 'RAM_NAVAMI':
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            {/* 🏹 चार्ज होता हुआ चमकीला दिव्य बाण (Arrow Energy charge) */}
-            <div className="absolute h-[4px] w-[150px] bg-gradient-to-r from-orange-500 to-yellow-200 animate-arrow-shoot" />
+            <div className="absolute h-[4px] w-[150px] bg-gradient-to-r from-orange-500 to-yellow-200" 
+                 style={{ animation: 'arrow-shoot 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }} />
           </div>
         );
 
@@ -74,7 +72,6 @@ export default function LightRevealIntro({
       case 'EID_AL_ADHA':
         return (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            {/* 🌙 चाँद के चारों ओर फैलती कोमल पवित्र रोशनी (Lunar Stroke Draw) */}
             <div className="absolute w-[240px] h-[240px] rounded-full border border-emerald-400 opacity-30 animate-ping" />
           </div>
         );
@@ -90,23 +87,35 @@ export default function LightRevealIntro({
         introPhase === 'HANDOVER' ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      {/* ── बैकग्राउंड लेयर: ट्रांसफॉर्म फेज में रे या पार्टिकल इंजनों का विस्फोट ── */}
+      {/* 🚀 इनलाइन सीएसएस एनीमेशन (No global.css editing required!) */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes christmas-star-descend {
+          0% { transform: translateY(-400px) scale(0.5); opacity: 0; }
+          70% { transform: translateY(0px) scale(1.2); opacity: 1; }
+          100% { transform: translateY(-80px) scale(1); opacity: 1; filter: drop-shadow(0 0 30px #fbbf24); }
+        }
+        @keyframes arrow-shoot {
+          0% { transform: translateX(-300px) scaleX(0.1); opacity: 0; }
+          50% { transform: translateX(0px) scaleX(1); opacity: 1; }
+          100% { transform: translateX(400px) scaleX(0.1); opacity: 0; }
+        }
+      `}} />
+
+      {/* ── बैकग्राउंड लेयर ── */}
       {introPhase === 'TRANSFORM' && (
         <>
           {preset === 'CHRISTMAS' ? (
-            // क्रिसमस के लिए धीमी बर्फबारी (Particle Engine)
             <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />
           ) : (
-            // बाकी अन्य त्योहारों के लिए दिव्य किरणें (Ray Engine)
             <RayEngine preset={preset} />
           )}
         </>
       )}
 
-      {/* ── एक्शन लेयर: कहानी का मुख्य एनीमेशन प्रभाव (जैसे तारा गिरना या तीर छूटना) ── */}
+      {/* ── एक्शन लेयर ── */}
       {renderActionOverlay()}
 
-      {/* ── फोरग्राउंड लेयर: हीरो सिंबल जो धीरे से प्रकट होगा ── */}
+      {/* ── फोरग्राउंड लेयर (हीरो सिंबल) ── */}
       <div 
         className={`transform transition-all duration-1000 ${
           introPhase === 'OBJECT_REVEAL' ? 'opacity-0 scale-75' : 'opacity-100 scale-100'
@@ -115,7 +124,7 @@ export default function LightRevealIntro({
         <HeroFactory config={heroConfig} themeColor={themeColor} hideBranding={true} />
       </div>
 
-      {/* ── त्योहार का नाम और सबटाइटल जो क्रिया के समय प्रकट होंगे ── */}
+      {/* ── शीर्षक और सबटाइटल ── */}
       <div 
         className={`absolute bottom-20 flex flex-col items-center justify-center transition-all duration-1000 ${
           introPhase === 'ACTION_TRIGGER' || introPhase === 'TRANSFORM' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
