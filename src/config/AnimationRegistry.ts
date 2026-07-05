@@ -1,4 +1,3 @@
-// src/config/AnimationRegistry.ts
 'use client';
 
 // 🚀 1. नए कोर इंजनों का इम्पोर्ट
