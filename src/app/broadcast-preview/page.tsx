@@ -14,10 +14,10 @@ export default function BroadcastPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [showTopBanner, setShowTopBanner] = useState(false);
   
-  // 🚀 FIXED: starts_at aur ends_at timeline chalne tak card ko hidden (false) rakhein
+  // starts_at और ends_at timeline चलने तक कार्ड को हिडन (false) रखें
   const [isCardVisible, setIsCardVisible] = useState(false);
 
-  // Intro sequence starts automatically
+  // इंट्रो सीक्वेंस आटोमैटिक स्टार्ट होगा
   const [isIntroActive, setIsIntroActive] = useState(true);
 
   useEffect(() => { loadBroadcast(); }, []);
@@ -27,14 +27,14 @@ export default function BroadcastPreviewPage() {
       const { data, error } = await supabase.from('broadcasts').select('*').eq('preview_mode', true).order('created_at', { ascending: false }).limit(1).single();
       if (error) throw error;
       setBroadcast(data);
-    } catch (err) { toast.error("No preview found."); } 
+    } catch (err) { toast.error("No active preview found."); } 
     finally { setLoading(false); }
   };
 
   if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white font-black animate-pulse tracking-[15px]">SAANIFY V2</div>;
   if (!broadcast) return <div className="h-screen bg-[#020617] flex items-center justify-center text-white">No Active Preview</div>;
 
-  // DYNAMIC CONFIG EXTRACTION
+  // डायनामिक कॉन्फिगरेशन
   const themeColor = broadcast.theme_config?.primary_color || broadcast.theme_color || '#fbbf24';
   const themeGradient = `linear-gradient(135deg, ${themeColor} 0%, #020617 100%)`;
   
@@ -130,11 +130,11 @@ export default function BroadcastPreviewPage() {
   return (
     <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 bg-[#020617] font-poppins">
       
-      {/* 🚀 FIXED: Intro Controller Timeline with Handover Callback */}
+      {/* 🚀 इंट्रो कंट्रोलर टाइमलाइन हैंडओवर कॉलबैक के साथ */}
       <FestivalIntroController 
         isActive={isIntroActive} 
         onHandover={() => {
-          // 🚀 FIXED: Rocket aur Fireworks khatm hote hi (5.1s par) card ko visible karenge
+          // इंट्रो खत्म होते ही कार्ड विज़िबल होगा
           setIsCardVisible(true);
         }}
       >
@@ -164,7 +164,7 @@ export default function BroadcastPreviewPage() {
         </div>
       )}
 
-      {/* 🚀 2. THE MASTER CARD CONTAINER (Fades in beautifully after intro) */}
+      {/* 🚀 2. THE MASTER CARD CONTAINER */}
       <div className={`relative w-full max-w-[350px] transition-all duration-1000 ${isCardVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-y-10 pointer-events-none'}`}>
         
         <div 
@@ -188,7 +188,7 @@ export default function BroadcastPreviewPage() {
                 </div>
               )}
 
-              {/* Smooth Bottom Blending */}
+              {/* Bottom Blending Gradient */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f1e] via-transparent to-transparent z-20 pointer-events-none" />
           </div>
 
@@ -240,7 +240,7 @@ export default function BroadcastPreviewPage() {
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
         body, html { font-family: 'Poppins', sans-serif !important; }
 
-        /* Spinning Star for Top Banner */
+        /* Slow Spinning Star for Top Banner */
         .animate-spin-slow { animation: spin 8s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
