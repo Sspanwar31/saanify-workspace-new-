@@ -3,7 +3,8 @@
 import HeroFactory from '../v2/HeroFactory';
 import RayEngine from '../engines/RayEngine';
 import ParticleEngine from '../engines/ParticleEngine';
-import ChristmasStarIntro from './effects/ChristmasStarIntro';
+
+import ChristmasStarIntro from '../engines/effects/ChristmasStarIntro';
 
 interface IntroProps {
   preset: string;
@@ -34,14 +35,7 @@ export default function LightRevealIntro({
     if (introPhase !== 'ACTION_TRIGGER') return null;
 
     switch (preset) {
-      case 'CHRISTMAS':
-        return (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="absolute -top-10" style={{ animation: 'christmas-star-descend 1.8s cubic-bezier(0.25, 1, 0.5, 1) forwards' }}>
-              <span className="text-[40px]" style={{ filter: 'drop-shadow(0 0 20px #fff)' }}>⭐</span>
-            </div>
-          </div>
-        );
+      
 
       case 'RAM_NAVAMI':
         return (
