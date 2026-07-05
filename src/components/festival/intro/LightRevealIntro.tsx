@@ -13,7 +13,9 @@ interface IntroProps {
   themeColor: string;
 }
 
-export default function LightRevealIntro({
+console.log('🔥 LIGHT REVEAL RECEIVED', {
+
+  export default function LightRevealIntro({
   preset,
   phase,
   heroConfig,
