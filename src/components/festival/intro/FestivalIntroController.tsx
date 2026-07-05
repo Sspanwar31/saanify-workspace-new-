@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FESTIVAL_PHASE_SEQUENCES } from '@/config/FestivalPhaseConfig';
-import LightRevealIntro from '../intros/LightRevealIntro'; // 🚀 नए इंट्रो कंपोनेंट को इम्पोर्ट करें
+import LightRevealIntro from '@/components/festival/intro/LightRevealIntro';
 
 export default function FestivalIntroController({
   isActive,
