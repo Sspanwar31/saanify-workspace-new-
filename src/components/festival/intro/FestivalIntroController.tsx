@@ -70,10 +70,15 @@ console.log('theme_config', broadcast?.theme_config);
 console.log('heroConfig variable', heroConfig);
     return (
       <LightRevealIntro
-        preset={preset.toUpperCase()}
-        phase={currentPhase}
-        heroConfig={heroConfig}
-        themeColor={themeColor}
+  preset="CHRISTMAS"
+  phase={phase}
+  heroConfig={{
+    scale: 0.5,
+    speed: 4,
+    visual_key: 'XMAS_TREE',
+    render_type: 'COMPONENT'
+  }}
+  themeColor="#fbbf24"
       />
     );
   }
