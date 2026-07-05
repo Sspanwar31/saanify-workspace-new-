@@ -63,6 +63,11 @@ export default function FestivalIntroController({
   // 🔍 Yeh condition fail ho rahi hai isliye aage ka code nahi chal raha
   if (isActive && isLightRevealPreset && heroConfig) {
     console.log('✅ LIGHT REVEAL RENDER HO RAHA HAI!');
+    console.log('🎯 CONTROLLER DATA');
+console.log('broadcast', broadcast);
+console.log('hero_config', broadcast?.hero_config);
+console.log('theme_config', broadcast?.theme_config);
+console.log('heroConfig variable', heroConfig);
     return (
       <LightRevealIntro
         preset={preset.toUpperCase()}
