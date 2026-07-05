@@ -2,10 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   TYPES
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
 interface LightRay {
   angle: number;
   width: number;
@@ -28,7 +24,7 @@ interface RayEngineConfig {
   rayCount: number;
   rayLength: number;
   pulseSpeed: number;
-  colors: string[]; // [Inner Glow, Outer Glow, Rays]
+  colors: string[]; 
   rotationSpeed: number;
   showDust: boolean;
   dustColor: string;
@@ -39,33 +35,25 @@ interface RayPresetConfig {
   default: Partial<RayEngineConfig>;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   DEFAULT CONFIGURATION
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
 const DEFAULT_RAY_CONFIG: RayEngineConfig = {
   rayCount: 12,
   rayLength: 160,
   pulseSpeed: 1.5,
-  colors: ['#ffe066', '#f59e0b', '#d97706'], // Rich Gold/Amber
+  colors: ['#ffe066', '#f59e0b', '#d97706'],
   rotationSpeed: 0.002,
   showDust: true,
   dustColor: '#fbbf24',
   beamIntensity: 0.25,
 };
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 RAY PRESET MAP (Diwali & Dev Deepawali Excluded)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
 const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
-  // ── 1. RAM_NAVAMI (सूर्यवंशी राम का दिव्य तेज - भगवा/स्वर्णिम किरणें) ──
+  // ── 1. RAM_NAVAMI (स्वर्णिम तीर और सूर्यवंशी तेज) ──
   RAM_NAVAMI: {
     default: {
-      rayCount: 24, // घनी किरणें (Divine Halo)
+      rayCount: 24,
       rayLength: 260,
       pulseSpeed: 2.0,
-      colors: ['#fffbeb', '#ff781f', '#ea580c'], // Saffron/Gold
+      colors: ['#fffbeb', '#ff781f', '#ea580c'],
       rotationSpeed: 0.004,
       showDust: true,
       dustColor: '#f97316',
@@ -73,13 +61,13 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     }
   },
 
-  // ── 2. PONGAL (सौर ऊर्जा - उगते सूरज की किरणें) ──
+  // ── 2. PONGAL (सौर उबाल तेज) ──
   PONGAL: {
     default: {
       rayCount: 20,
       rayLength: 240,
       pulseSpeed: 1.8,
-      colors: ['#fffbeb', '#f97316', '#dc2626'], // Sunfire Red/Orange
+      colors: ['#fffbeb', '#f97316', '#dc2626'],
       rotationSpeed: -0.003,
       showDust: true,
       dustColor: '#fbbf24',
@@ -87,25 +75,13 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     }
   },
 
-  // ── 3. KARWA_CHAUTH & EID (चाँद की शीतल और रहस्यमयी किरणें) ──
-  KARWA_CHAUTH: {
-    default: {
-      rayCount: 8.0, 
-      rayLength: 180,
-      pulseSpeed: 0.8, 
-      colors: ['#f8fafc', '#cbd5e1', '#94a3b8'], // Moonlight Silver
-      rotationSpeed: 0.0005,
-      showDust: true,
-      dustColor: '#cbd5e1',
-      beamIntensity: 0.15,
-    }
-  },
+  // ── 3. EID AL-ADHA & EID_UL_FITR (पवित्र चंद्र किरणें) ──
   EID_UL_FITR: {
     default: {
       rayCount: 10,
       rayLength: 200,
       pulseSpeed: 1.0,
-      colors: ['#ecfdf5', '#10b981', '#047857'], // Emerald Green/Lunar Glow
+      colors: ['#ecfdf5', '#10b981', '#047857'],
       rotationSpeed: 0.001,
       showDust: true,
       dustColor: '#34d399',
@@ -125,17 +101,29 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     }
   },
 
-  // ── 4. GURU_NANAK_JAYANTI (पवित्र और शांत गुरु-तेज) ──
-  GURU_NANAK_JAYANTI: {
+  // ── 4. REPUBLIC_DAY & INDEPENDENCE_DAY (देशभक्ति तिरंगा किरणें) ──
+  REPUBLIC_DAY: {
     default: {
-      rayCount: 12,
-      rayLength: 190,
-      pulseSpeed: 1.0,
-      colors: ['#ffffff', '#fbbf24', '#d97706'],
-      rotationSpeed: 0.001,
+      rayCount: 18,
+      rayLength: 250,
+      pulseSpeed: 1.6,
+      colors: ['#ff9933', '#ffffff', '#128807'], // केसरिया, सफेद, हरा
+      rotationSpeed: 0.002,
       showDust: true,
-      dustColor: '#fef08a',
-      beamIntensity: 0.25,
+      dustColor: '#ffffff',
+      beamIntensity: 0.35,
+    }
+  },
+  INDEPENDENCE_DAY: {
+    default: {
+      rayCount: 18,
+      rayLength: 250,
+      pulseSpeed: 1.6,
+      colors: ['#ff9933', '#ffffff', '#128807'],
+      rotationSpeed: 0.002,
+      showDust: true,
+      dustColor: '#ffffff',
+      beamIntensity: 0.35,
     }
   },
 
@@ -144,8 +132,8 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     default: {
       rayCount: 6,
       rayLength: 300,
-      pulseSpeed: 3.5, // तेजी से चमकेगा (Flashing Alert)
-      colors: ['#ffffff', '#dc2626', '#991b1b'], // Urgent Red Alert
+      pulseSpeed: 3.5,
+      colors: ['#ffffff', '#dc2626', '#991b1b'],
       rotationSpeed: 0.015,
       showDust: false,
       dustColor: '#ef4444',
@@ -157,7 +145,7 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
       rayCount: 4,
       rayLength: 220,
       pulseSpeed: 1.5,
-      colors: ['#eff6ff', '#3b82f6', '#1d4ed8'], // Corporate Blue Aura
+      colors: ['#eff6ff', '#3b82f6', '#1d4ed8'],
       rotationSpeed: 0.002,
       showDust: false,
       dustColor: '#60a5fa',
@@ -165,10 +153,6 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     }
   }
 };
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   MAIN COMPONENT
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 export default function RayEngine({
   preset,
