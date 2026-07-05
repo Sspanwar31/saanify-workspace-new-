@@ -52,20 +52,19 @@ export default function FestivalIntroController({
   // 🚨 YAHAN PAR MAINE CONSOLE LOG LAGAYA HAI
   const isLightRevealPreset = ['CHRISTMAS', 'RAM_NAVAMI', 'EID_UL_FITR', 'EID_AL_ADHA', 'REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(preset.toUpperCase());
 
-  console.log('🚨 FINAL INTRO CHECK ->', {
+   {
     isActive: isActive,             // Yeh true hona zaroori hai
     preset: preset.toUpperCase(),   // Yeh list mein se koi ek hona chahiye
     isLightRevealPreset: isLightRevealPreset, 
     heroConfig: heroConfig          // 🚨 YEH UNDEFINED NAHI HONA CHAHIYE (Sabse bada reason)
   });
 
-console.log('🚀 CONTROLLER RECEIVED', {
   preset,
   heroConfig,
   themeColor
 });
 
-if (isActive && isLightRevealPreset) {
+if (isActive && isLightRevealPreset && heroConfig) {
   console.log('✅ LIGHT REVEAL RENDER HO RAHA HAI!');
 
   return (
