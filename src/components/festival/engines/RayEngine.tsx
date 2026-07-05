@@ -55,37 +55,11 @@ const DEFAULT_RAY_CONFIG: RayEngineConfig = {
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 RAY PRESET MAP (Handles all Light/Aura Festivals)
+   🚀 RAY PRESET MAP (Diwali & Dev Deepawali Excluded)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
-  // ── 1. DIWALI & DEV_DEEPAWALI (दीपक की समृद्ध दिव्य सुनहरी लौ) ──
-  DIWALI: {
-    default: {
-      rayCount: 16,
-      rayLength: 220,
-      pulseSpeed: 1.2,
-      colors: ['#fff9db', '#f59e0b', '#b45309'],
-      rotationSpeed: 0.0015,
-      showDust: true,
-      dustColor: '#fbbf24',
-      beamIntensity: 0.35,
-    }
-  },
-  DEV_DEEPAWALI: {
-    default: {
-      rayCount: 14,
-      rayLength: 200,
-      pulseSpeed: 1.2,
-      colors: ['#fff9db', '#f59e0b', '#b45309'],
-      rotationSpeed: 0.0015,
-      showDust: true,
-      dustColor: '#fbbf24',
-      beamIntensity: 0.3,
-    }
-  },
-
-  // ── 2. RAM_NAVAMI (सूर्यवंशी राम का दिव्य तेज - भगवा/स्वर्णिम किरणें) ──
+  // ── 1. RAM_NAVAMI (सूर्यवंशी राम का दिव्य तेज - भगवा/स्वर्णिम किरणें) ──
   RAM_NAVAMI: {
     default: {
       rayCount: 24, // घनी किरणें (Divine Halo)
@@ -99,26 +73,26 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     }
   },
 
-  // ── 3. PONGAL & CHHATH (सौर ऊर्जा - उगते सूरज की किरणें) ──
+  // ── 2. PONGAL (सौर ऊर्जा - उगते सूरज की किरणें) ──
   PONGAL: {
     default: {
       rayCount: 20,
       rayLength: 240,
       pulseSpeed: 1.8,
       colors: ['#fffbeb', '#f97316', '#dc2626'], // Sunfire Red/Orange
-      rotationSpeed: -0.003, // Opposite rotation
+      rotationSpeed: -0.003,
       showDust: true,
       dustColor: '#fbbf24',
       beamIntensity: 0.4,
     }
   },
 
-  // ── 4. KARWA_CHAUTH & EID (चाँद की शीतल और रहस्यमयी किरणें) ──
+  // ── 3. KARWA_CHAUTH & EID (चाँद की शीतल और रहस्यमयी किरणें) ──
   KARWA_CHAUTH: {
     default: {
-      rayCount: 8, // कम और कोमल किरणें
+      rayCount: 8.0, 
       rayLength: 180,
-      pulseSpeed: 0.8, // बहुत ही शांत पल्स
+      pulseSpeed: 0.8, 
       colors: ['#f8fafc', '#cbd5e1', '#94a3b8'], // Moonlight Silver
       rotationSpeed: 0.0005,
       showDust: true,
@@ -151,7 +125,7 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     }
   },
 
-  // ── 5. GURU_NANAK_JAYANTI (पवित्र और शांत गुरु-तेज) ──
+  // ── 4. GURU_NANAK_JAYANTI (पवित्र और शांत गुरु-तेज) ──
   GURU_NANAK_JAYANTI: {
     default: {
       rayCount: 12,
@@ -165,7 +139,7 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     }
   },
 
-  // ── 6. BROADCASTS (EMERGENCY & ANNOUNCEMENT) ──
+  // ── 5. BROADCASTS (EMERGENCY & ANNOUNCEMENT) ──
   EMERGENCY: {
     default: {
       rayCount: 6,
@@ -228,7 +202,6 @@ export default function RayEngine({
 
     const activePresetObj = RAY_PRESET_MAP[preset || ''] || { default: DEFAULT_RAY_CONFIG };
 
-    // 🚀 मर्ज प्राथमिकता: System Default <- Preset Default <- Backend DB Live values
     const config: RayEngineConfig = {
       ...DEFAULT_RAY_CONFIG,
       ...activePresetObj.default,
@@ -250,7 +223,6 @@ export default function RayEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
-    // ── VOLUMETRIC RAYS GENERATOR ──
     const initRays = () => {
       const tempRays: LightRay[] = [];
       for (let i = 0; i < config.rayCount; i++) {
@@ -266,7 +238,6 @@ export default function RayEngine({
     };
     initRays();
 
-    // ── FLOATING SPARKLING DUST GENERATOR ──
     const initDust = () => {
       if (!config.showDust) return;
       const tempDust: SparkleDust[] = [];
@@ -287,7 +258,6 @@ export default function RayEngine({
     };
     initDust();
 
-    /* ── ANIMATE LOOP ── */
     const animate = () => {
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
@@ -296,23 +266,18 @@ export default function RayEngine({
 
       ctx.clearRect(0, 0, w, h);
 
-      // 1. कोमल पल्सिंग वैल्यू कैलकुलेशन (Smooth sine pulsation)
       pulseTime.current += 0.015 * config.pulseSpeed;
       const pulseScale = 0.94 + Math.sin(pulseTime.current) * 0.06;
-
-      // 2. रोटेशन अपडेट
       rotationOffset.current += config.rotationSpeed;
 
-      // 3. एम्बिएंट और कोरोना ग्लो ड्रा (Radial Glow Gradients)
       const innerColor = config.colors[0];
       const midColor = config.colors[1];
-      const outerColor = config.colors[2] || 'transparent';
 
       ctx.save();
       const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, config.rayLength * 1.1 * pulseScale);
       glowGrad.addColorStop(0, innerColor);
       glowGrad.addColorStop(0.2, innerColor);
-      glowGrad.addColorStop(0.5, midColor + '40'); // Opacity 25%
+      glowGrad.addColorStop(0.5, midColor + '40');
       glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
       
       ctx.fillStyle = glowGrad;
@@ -321,7 +286,6 @@ export default function RayEngine({
       ctx.fill();
       ctx.restore();
 
-      // 4. दिव्य किरणों का रेंडरिंग (Volumetric Ray Beams)
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       
@@ -332,7 +296,6 @@ export default function RayEngine({
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         
-        // शंक्वाकार किरण का निर्माण (Cone representation of God Rays)
         const p1x = cx + Math.cos(finalAngle - ray.width) * currentLength;
         const p1y = cy + Math.sin(finalAngle - ray.width) * currentLength;
         const p2x = cx + Math.cos(finalAngle + ray.width) * currentLength;
@@ -343,8 +306,8 @@ export default function RayEngine({
         ctx.closePath();
 
         const rayGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, currentLength);
-        rayGrad.addColorStop(0, innerColor + 'cc'); // 80% opacity
-        rayGrad.addColorStop(0.3, midColor + '2b'); // 17% opacity
+        rayGrad.addColorStop(0, innerColor + 'cc');
+        rayGrad.addColorStop(0.3, midColor + '2b');
         rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
         ctx.fillStyle = rayGrad;
@@ -352,18 +315,15 @@ export default function RayEngine({
       }
       ctx.restore();
 
-      // 5. उड़ते हुए दिव्य कण (Floating Sparkles)
       if (config.showDust) {
         ctx.save();
         for (const d of dustRef.current) {
           d.y += d.vy;
           d.x += d.vx;
           
-          // झिलमिलाता प्रभाव (Twinkle twinkle)
           d.alpha += Math.sin(pulseTime.current * 1.5 + d.x) * d.speed;
           const finalAlpha = Math.max(0.1, Math.min(1, d.alpha));
 
-          // रीसेट स्क्रीन से बाहर जाने पर
           if (d.y < -10) {
             d.y = h + 10;
             d.x = Math.random() * w;
