@@ -49,7 +49,7 @@ export default function FestivalIntroController({
 
   const currentPhase = sequence.phases[currentPhaseIndex] || 'IDLE';
 
-  // 🚀 उन त्योहारों की सूची जो LightRevealIntro का उपयोग करेंगे
+  // 🚀 उन त्योहारों की सूची जो LightRevealIntro  का उपयोग करेंगे
   const isLightRevealPreset = ['CHRISTMAS', 'RAM_NAVAMI', 'EID_UL_FITR', 'EID_AL_ADHA', 'REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(preset.toUpperCase());
 
   if (isActive && isLightRevealPreset && heroConfig) {
