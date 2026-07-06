@@ -102,11 +102,20 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 2.5, maxSize: 6.5, maxCount: 150, glow: true, wobble: false, direction: 'upward', spawnY: 0.9,
     }
   },
+  // 🚀 2027 MODERN PREMIUM SNOW CONFIG
   CHRISTMAS: {
     default: {
-      gravity: 0.04, spread: 0.9, speed: 1.2, 
-      colors: ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0'],
-      minSize: 2.5, maxSize: 7.5, maxCount: 450, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
+      gravity: 0.015,       // Bahut slow gravity (Floaty feel)
+      spread: 1.8,          // Zyada spread = hawa mein dolna
+      speed: 0.7,           // Slow speed
+      colors: ['#ffffff', '#f8fafc', '#e2e8f0', '#cbd5e1'], // Subtle white shades
+      minSize: 0.8,         // 🚀 Bohot chhota size (Ab mote nahi rahega)
+      maxSize: 2.2,         // 🚀 Max bhi 2.2 tak
+      maxCount: 900,        // 🚀 High density (Barf ki boondiya jaisa dense)
+      glow: true,           // 🚀 Magical glow effect ke liye
+      wobble: true,         // Smooth hawa ka jhukav
+      direction: 'downward', 
+      spawnY: -0.1,
     }
   },
   RAKSHA_BANDHAN: {
@@ -177,7 +186,6 @@ export default function ParticleEngine({
       ...(customMaxCount !== undefined && { maxCount: customMaxCount }),
     };
 
-    // 🚀 FIX 1: Width/Height ko cache kar liya taaki har frame par layout thrashing na ho
     let w = 0;
     let h = 0;
 
@@ -224,7 +232,6 @@ export default function ParticleEngine({
 
       const spawnX = currentDirection === 'downward' ? rand(0, w) : cx + rand(-20, 20);
 
-      // 🚀 FIX 2: Agar snow neeche gir rahi hai, toh uski life itni honi chahiye ki woh poora screen cross kar sake
       let baseMaxLife = 110;
       if (currentDirection === 'downward') {
          baseMaxLife = Math.max(350, Math.floor(h / (currentSpeed * 0.8))); 
@@ -235,40 +242,38 @@ export default function ParticleEngine({
         y: cy + rand(-10, 10),
         vx, vy, size,
         color: pick(config.colors),
-        life: rand(baseMaxLife * 0.6, baseMaxLife), // Ab yeh safe life hai
+        life: rand(baseMaxLife * 0.6, baseMaxLife),
         maxLife: baseMaxLife,
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: rand(-0.1, 0.1),
       };
     };
 
+    // 🚀 2027 PREMIUM DRAW FUNCTION
     const draw = (p: Particle) => {
       const progress = 1 - p.life / p.maxLife;
-      const alpha = Math.max(0, 1 - progress * progress);
+      
+      // Smooth fade-in aur fade-out
+      const alpha = Math.max(0, 1 - (progress * progress));
 
       ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation);
+      ctx.globalAlpha = alpha * 0.85; // Thoda transparent rakhne se dust jaisa feel aata hai
+      
+      // 🚀 MODERN GLOW: Agar glow true hai toh 'lighter' blend mode use karo
+      // Jab particles ek dusre se overlap karenge toh ek beautiful soft glow banega
+      if (config.glow) {
+        ctx.globalCompositeOperation = 'lighter';
+      }
 
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fill();
-
-      if (config.wobble && p.size > 5) {
-        ctx.globalAlpha = alpha * 0.4;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(-p.size * 0.25, -p.size * 0.25, p.size * 0.35, 0, Math.PI * 2);
-        ctx.fill();
-      }
 
       ctx.restore();
     };
 
     const animate = () => {
-      // 🚀 FIX 1 CONTINUED: Ab yahan getBoundingClientRect() nahi call hoga, direct w aur h use hoga
       const pb = PhaseBehavior[phaseRef.current] || PhaseBehavior.IDLE;
 
       ctx.clearRect(0, 0, w, h);
@@ -276,7 +281,7 @@ export default function ParticleEngine({
       const rawCount = config.maxCount;
       const Math_floor = Math.floor(rawCount * pb.intensity);
       
-      const currentSpawnRate = preset === 'CHRISTMAS' ? 0.35 : pb.spawnRate;
+      const currentSpawnRate = preset === 'CHRISTMAS' ? 0.45 : pb.spawnRate; // Fast spawn for dense snow
 
       if (particles.current.length < Math_floor && Math.random() < currentSpawnRate) {
         particles.current.push(spawn());
@@ -288,11 +293,13 @@ export default function ParticleEngine({
         p.y += p.vy;
         p.life -= 1;
         p.rotation += p.rotationSpeed;
-        p.vx *= 0.995;
-        p.vy *= 0.995;
+        p.vx *= 0.998; // 🚀 Thoda slow friction for smooth floating
+        p.vy *= 0.998;
 
+        // 🚀 SMOOTH WOBBLE: Ab har size par chalega (p.size > 5 wala condition hata diya)
+        // Yeh snow ko naturally hawa mein dolne dega
         if (config.wobble) {
-          p.vx += Math.sin(p.life * 0.12) * 0.18;
+          p.vx += Math.sin(p.life * 0.05 + p.y * 0.01) * 0.08;
         }
 
         if (p.life > 0 && p.y < h + 60 && p.x > -60 && p.x < w + 60) {
@@ -308,7 +315,6 @@ export default function ParticleEngine({
     animate();
 
     return () => {
-      // 🚀 FIX 3: Zombie loop band karne ke liye activeId ki jagah rafId.current use kiya
       cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
       particles.current = [];
