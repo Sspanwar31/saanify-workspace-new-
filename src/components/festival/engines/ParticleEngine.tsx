@@ -59,7 +59,6 @@ const DEFAULT: EngineConfig = {
 };
 
 const PRESET_MAP: Record<string, PresetConfig> = {
-  // ── 1. HOLI / LIQUID SPLASH ──
   LIQUID_SPLASH: {
     default: {
       gravity: 0.28, spread: 1.6, speed: 2.2,
@@ -96,8 +95,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       AMBIENT:        { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
     }
   },
-
-  // ── 2. LOHRI ──
   LOHRI: {
     default: {
       gravity: -0.04, spread: 0.9, speed: 1.5,
@@ -105,8 +102,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 2.5, maxSize: 6.5, maxCount: 150, glow: true, wobble: false, direction: 'upward', spawnY: 0.9,
     }
   },
-
-  // ── 3. CHRISTMAS ──
   CHRISTMAS: {
     default: {
       gravity: 0.04, spread: 0.9, speed: 1.2, 
@@ -114,8 +109,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 2.5, maxSize: 7.5, maxCount: 450, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
     }
   },
-
-  // ── 4. RAKSHA_BANDHAN ──
   RAKSHA_BANDHAN: {
     default: {
       gravity: 0.18, spread: 1.5, speed: 2.5,
@@ -123,8 +116,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 4, maxSize: 10, maxCount: 220, glow: false, wobble: true, direction: 'radial', spawnY: 0.4,
     }
   },
-
-  // ── 5. MAKAR_SANKRANTI ──
   MAKAR_SANKRANTI: {
     default: {
       gravity: 0.02, spread: 0.8, speed: 0.6,
@@ -132,8 +123,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 3, maxSize: 7, maxCount: 80, glow: false, wobble: true, direction: 'downward', spawnY: -0.05,
     }
   },
-
-  // ── 6. SPECIAL_OFFER (BROADCAST) ──
   SPECIAL_OFFER: {
     default: {
       gravity: 0.08, spread: 1.2, speed: 1.4,
@@ -188,15 +177,17 @@ export default function ParticleEngine({
       ...(customMaxCount !== undefined && { maxCount: customMaxCount }),
     };
 
+    // 🚀 FIX 1: Width/Height ko cache kar liya taaki har frame par layout thrashing na ho
+    let w = 0;
+    let h = 0;
+
     const setSize = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      
-      const actualWidth = rect.width > 0 ? rect.width : window.innerWidth;
-      const actualHeight = rect.height > 0 ? rect.height : window.innerHeight;
-
-      canvas.width = actualWidth * dpr;
-      canvas.height = actualHeight * dpr;
+      w = rect.width > 0 ? rect.width : window.innerWidth;
+      h = rect.height > 0 ? rect.height : window.innerHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     setSize();
@@ -206,10 +197,6 @@ export default function ParticleEngine({
     const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
     const spawn = (): Particle => {
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width > 0 ? rect.width : window.innerWidth;
-      const h = rect.height > 0 ? rect.height : window.innerHeight;
-
       const phaseConfig = activePresetObj.phases?.[phaseRef.current] || {};
 
       let currentDirection = phaseConfig.direction || config.direction;
@@ -235,16 +222,21 @@ export default function ParticleEngine({
         default:         vx = Math.cos(angle) * spd * config.spread * 2; vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
-      // 🚀 सुधार: यदि दिशा नीचे की ओर है (जैसे बर्फबारी), तो पूरे स्क्रीन की चौड़ाई में रैंडमली स्पॉन करें
       const spawnX = currentDirection === 'downward' ? rand(0, w) : cx + rand(-20, 20);
+
+      // 🚀 FIX 2: Agar snow neeche gir rahi hai, toh uski life itni honi chahiye ki woh poora screen cross kar sake
+      let baseMaxLife = 110;
+      if (currentDirection === 'downward') {
+         baseMaxLife = Math.max(350, Math.floor(h / (currentSpeed * 0.8))); 
+      }
 
       return {
         x: spawnX,
         y: cy + rand(-10, 10),
         vx, vy, size,
         color: pick(config.colors),
-        life: rand(50, 110),
-        maxLife: 110,
+        life: rand(baseMaxLife * 0.6, baseMaxLife), // Ab yeh safe life hai
+        maxLife: baseMaxLife,
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: rand(-0.1, 0.1),
       };
@@ -276,9 +268,7 @@ export default function ParticleEngine({
     };
 
     const animate = () => {
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width > 0 ? rect.width : window.innerWidth;
-      const h = rect.height > 0 ? rect.height : window.innerHeight;
+      // 🚀 FIX 1 CONTINUED: Ab yahan getBoundingClientRect() nahi call hoga, direct w aur h use hoga
       const pb = PhaseBehavior[phaseRef.current] || PhaseBehavior.IDLE;
 
       ctx.clearRect(0, 0, w, h);
@@ -315,11 +305,11 @@ export default function ParticleEngine({
       rafId.current = requestAnimationFrame(animate);
     };
 
-    const activeId = rafId.current;
     animate();
 
     return () => {
-      cancelAnimationFrame(activeId);
+      // 🚀 FIX 3: Zombie loop band karne ke liye activeId ki jagah rafId.current use kiya
+      cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
       particles.current = [];
     };
