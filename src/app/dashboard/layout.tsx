@@ -502,7 +502,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   </div>
 )}
 
-{      {/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
+     {/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
       {isAmbientActive && activeBroadcast && (
         <div className="fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 opacity-100 scale-100">
           
