@@ -59,7 +59,6 @@ const DEFAULT: EngineConfig = {
 };
 
 const PRESET_MAP: Record<string, PresetConfig> = {
-  // ── 1. HOLI / LIQUID SPLASH ──
   LIQUID_SPLASH: {
     default: {
       gravity: 0.28, spread: 1.6, speed: 2.2,
@@ -96,8 +95,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       AMBIENT:        { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
     }
   },
-
-  // ── 2. LOHRI ──
   LOHRI: {
     default: {
       gravity: -0.04, spread: 0.9, speed: 1.5,
@@ -105,8 +102,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 2.5, maxSize: 6.5, maxCount: 150, glow: true, wobble: false, direction: 'upward', spawnY: 0.9,
     }
   },
-
-  // ── 3. CHRISTMAS ──
   CHRISTMAS: {
     default: {
       gravity: 0.03, spread: 0.7, speed: 0.8,
@@ -114,8 +109,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 3, maxSize: 8, maxCount: 200, glow: false, wobble: true, direction: 'downward', spawnY: -0.1,
     }
   },
-
-  // ── 4. RAKSHA_BANDHAN ──
   RAKSHA_BANDHAN: {
     default: {
       gravity: 0.18, spread: 1.5, speed: 2.5,
@@ -123,8 +116,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 4, maxSize: 10, maxCount: 220, glow: false, wobble: true, direction: 'radial', spawnY: 0.4,
     }
   },
-
-  // ── 5. MAKAR_SANKRANTI ──
   MAKAR_SANKRANTI: {
     default: {
       gravity: 0.02, spread: 0.8, speed: 0.6,
@@ -132,8 +123,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 3, maxSize: 7, maxCount: 80, glow: false, wobble: true, direction: 'downward', spawnY: -0.05,
     }
   },
-
-  // ── 6. SPECIAL_OFFER (BROADCAST) ──
   SPECIAL_OFFER: {
     default: {
       gravity: 0.08, spread: 1.2, speed: 1.4,
@@ -162,13 +151,6 @@ export default function ParticleEngine({
   customMaxSize?: number;
   customMaxCount?: number;
 }) {
-  
-  // 🚨 1. YAHAN PEHLA CONSOLE LOG LAGAYA GAYA HAI
-  console.log('🎄 PARTICLE ENGINE MOUNTED', {
-    preset,
-    phase
-  });
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const rafId = useRef<number>(0);
@@ -198,8 +180,13 @@ export default function ParticleEngine({
     const setSize = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
+      
+      // 🚀 VIEWPORT FALLBACK (सबसे जरूरी सुधार): यदि पेरेंट का साइज़ 0 आता है, तो फुल स्क्रीन का उपयोग करें
+      const actualWidth = rect.width > 0 ? rect.width : window.innerWidth;
+      const actualHeight = rect.height > 0 ? rect.height : window.innerHeight;
+
+      canvas.width = actualWidth * dpr;
+      canvas.height = actualHeight * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     setSize();
@@ -209,12 +196,10 @@ export default function ParticleEngine({
     const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
     const spawn = (): Particle => {
-      
-      // 🚨 3. YAHAN PAR SPAWN KA CONSOLE LOG LAGAYA GAYA HAI
-      console.log('❄️ SPAWNING PARTICLE');
-
-      const w = canvas.getBoundingClientRect().width;
-      const h = canvas.getBoundingClientRect().height;
+      // यहाँ भी Actual Viewport साइज का उपयोग करें
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width > 0 ? rect.width : window.innerWidth;
+      const h = rect.height > 0 ? rect.height : window.innerHeight;
 
       const phaseConfig = activePresetObj.phases?.[phaseRef.current] || {};
 
@@ -277,12 +262,9 @@ export default function ParticleEngine({
     };
 
     const animate = () => {
-      const w = canvas.getBoundingClientRect().width;
-      const h = canvas.getBoundingClientRect().height;
-
-      // 🚨 2. YAHAN PAR CANVAS SIZE KA CONSOLE LOG LAGAYA GAYA HAI
-      console.log('❄️ CANVAS SIZE', w, h);
-
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width > 0 ? rect.width : window.innerWidth;
+      const h = rect.height > 0 ? rect.height : window.innerHeight;
       const pb = PhaseBehavior[phaseRef.current] || PhaseBehavior.IDLE;
 
       ctx.clearRect(0, 0, w, h);
