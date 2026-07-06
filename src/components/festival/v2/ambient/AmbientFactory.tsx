@@ -3,13 +3,15 @@
 import React from 'react';
 import DiwaliAmbient from './DiwaliAmbient';
 import HoliAmbient from './HoliAmbient';
+// 🚀 IMPORT ADDED
+import ParticleEngine from '../../engines/ParticleEngine';
 
-// 🚀 DYNAMIC REGISTRY: Ek-ek line me naye ambient yahan jodte jayenge
 const AmbientRegistry: Record<string, React.ComponentType> = {
   DIWALI: DiwaliAmbient,
   DEV_DEEPAWALI: DiwaliAmbient,
   HOLI: HoliAmbient,
-  // LOHRI: LohriAmbient, (baki baad me aise hi jodenge)
+  // 🚀 CHRISTMAS ADDED: Intro ke baad snow continue rahega
+  CHRISTMAS: () => <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />,
 };
 
 export default function AmbientFactory({
