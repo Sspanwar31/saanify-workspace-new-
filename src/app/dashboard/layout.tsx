@@ -470,44 +470,55 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* LAYER 1 — INTRO ANIMATIONS */}
-      {isIntroActive && activeBroadcast?.hero_enabled && (
-        <div className="fixed inset-0 z-[9997] pointer-events-none">
-          <FestivalIntroController
-            isActive={isIntroActive}
-            onHandover={handleIntroHandover}
-            preset={activeBroadcast?.festival_key}
-            heroConfig={activeBroadcast?.hero_config}
-            themeColor={
-              activeBroadcast?.theme_config?.primary_color ||
-              activeBroadcast?.theme_color ||
-              '#fbbf24'
-            }
-          >
-            {(phase) => (
-              <AnimationFactory
-                phase={phase}
-                engine={activeBroadcast?.hero_config?.animation}
-                preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
-                heroConfig={activeBroadcast?.hero_config}
-              />
-            )}
-          </FestivalIntroController>
-        </div>
+     {/* LAYER 1 — INTRO ANIMATIONS */}
+{isIntroActive && activeBroadcast?.hero_enabled && (
+  <div className="fixed inset-0 z-[9997] pointer-events-none">
+    <FestivalIntroController
+      isActive={isIntroActive}
+      onHandover={handleIntroHandover}
+      preset={activeBroadcast?.festival_key}
+      heroConfig={activeBroadcast?.hero_config}
+      themeColor={
+        activeBroadcast?.theme_config?.primary_color ||
+        activeBroadcast?.theme_color ||
+        '#fbbf24'
+      }
+    >
+      {(phase) => (
+        <AnimationFactory
+          phase={phase}
+          engine={activeBroadcast?.hero_config?.animation}
+          preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
+          // ✅ FIX: Individual props pass करो, heroConfig नहीं
+          customGravity={activeBroadcast?.hero_config?.customGravity}
+          customSpeed={activeBroadcast?.hero_config?.customSpeed}
+          customColors={activeBroadcast?.hero_config?.customColors}
+          customMinSize={activeBroadcast?.hero_config?.customMinSize}
+          customMaxSize={activeBroadcast?.hero_config?.customMaxSize}
+          customMaxCount={activeBroadcast?.hero_config?.customMaxCount}
+        />
       )}
+    </FestivalIntroController>
+  </div>
+)}
 
-      {/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
-      {isAmbientActive && activeBroadcast && (
-        <div className="fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 opacity-100 scale-100">
-          <AnimationFactory
-            phase="AMBIENT"
-            engine={activeBroadcast?.hero_config?.animation}
-            preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
-            heroConfig={activeBroadcast?.hero_config}
-          />
-        </div>
-      )}
-
+{/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
+{isAmbientActive && activeBroadcast && (
+  <div className="fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 opacity-100 scale-100">
+    {/* ✅ FIX: Individual props pass करो, heroConfig नहीं */}
+    <AnimationFactory
+      phase="AMBIENT"
+      engine={activeBroadcast?.hero_config?.animation}
+      preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
+      customGravity={activeBroadcast?.hero_config?.customGravity}
+      customSpeed={activeBroadcast?.hero_config?.customSpeed}
+      customColors={activeBroadcast?.hero_config?.customColors}
+      customMinSize={activeBroadcast?.hero_config?.customMinSize}
+      customMaxSize={activeBroadcast?.hero_config?.customMaxSize}
+      customMaxCount={activeBroadcast?.hero_config?.customMaxCount}
+    />
+  </div>
+)}
       {/* LAYER 3 — GREETING POPUP */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
