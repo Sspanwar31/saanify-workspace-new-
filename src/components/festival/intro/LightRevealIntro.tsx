@@ -19,6 +19,9 @@ export default function LightRevealIntro({
   themeColor,
 }: IntroProps) {
   
+  // 🚀 सेफ पार्सर: स्ट्रिंग डेटा को ऑब्जेक्ट में बदलें
+  const parsedHeroConfig = typeof heroConfig === 'string' ? JSON.parse(heroConfig) : (heroConfig || {});
+
   // 🚀 कंट्रोलर के फेजेस का हमारे विज़ुअल स्टेप्स से 100% सटीक मिलान
   let introPhase: 'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'HANDOVER' = 'OBJECT_REVEAL';
 
@@ -81,9 +84,24 @@ export default function LightRevealIntro({
       {introPhase === 'ACTION_TRIGGER' && (
         <>
           {preset === 'CHRISTMAS' ? (
-            <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />
+            <ParticleEngine 
+              preset="CHRISTMAS" 
+              phase="AMBIENT" 
+              customGravity={parsedHeroConfig.customGravity}
+              customSpeed={parsedHeroConfig.customSpeed}
+              customColors={parsedHeroConfig.customColors}
+              customMinSize={parsedHeroConfig.customMinSize}
+              customMaxSize={parsedHeroConfig.customMaxSize}
+              customMaxCount={parsedHeroConfig.customMaxCount}
+            />
           ) : (
-            <RayEngine preset={preset} />
+            <RayEngine 
+              preset={preset}
+              customRayCount={parsedHeroConfig.customRayCount}
+              customRayLength={parsedHeroConfig.customRayLength}
+              customPulseSpeed={parsedHeroConfig.customPulseSpeed}
+              customColors={parsedHeroConfig.customColors}
+            />
           )}
         </>
       )}
