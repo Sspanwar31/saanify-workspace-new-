@@ -473,21 +473,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {isIntroActive && activeBroadcast?.hero_enabled && (
         <div className="fixed inset-0 z-[9997] pointer-events-none">
           <FestivalIntroController
-  isActive={isIntroActive}
-  onHandover={handleIntroHandover}
-  preset={activeBroadcast?.festival_key}
-  heroConfig={activeBroadcast?.hero_config}
-  themeColor={
-    activeBroadcast?.theme_config?.primary_color ||
-    activeBroadcast?.theme_color ||
-    '#fbbf24'
-  }
->
+            isActive={isIntroActive}
+            onHandover={handleIntroHandover}
+            preset={activeBroadcast?.festival_key}
+            heroConfig={activeBroadcast?.hero_config}
+            themeColor={
+              activeBroadcast?.theme_config?.primary_color ||
+              activeBroadcast?.theme_color ||
+              '#fbbf24'
+            }
+          >
             {(phase) => (
               <AnimationFactory
                 phase={phase}
                 engine={activeBroadcast?.hero_config?.animation}
                 preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
+                heroConfig={activeBroadcast?.hero_config} // 🚀 यहाँ सुधार किया गया है: यह प्रोप जोड़ें!
               />
             )}
           </FestivalIntroController>
