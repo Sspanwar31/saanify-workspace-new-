@@ -106,10 +106,10 @@ const PRESET_MAP: Record<string, PresetConfig> = {
     }
   },
 
-  // ── 3. CHRISTMAS (🚀 सुधार 2: घनी और खूबसूरत बर्फबारी के लिए हैवी पैरामीटर्स) ──
+  // ── 3. CHRISTMAS ──
   CHRISTMAS: {
     default: {
-      gravity: 0.04, spread: 0.9, speed: 1.2, // सुगम बहाव गति
+      gravity: 0.04, spread: 0.9, speed: 1.2, 
       colors: ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0'],
       minSize: 2.5, maxSize: 7.5, maxCount: 450, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
     }
@@ -235,8 +235,13 @@ export default function ParticleEngine({
         default:         vx = Math.cos(angle) * spd * config.spread * 2; vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
+      // 🚀 सुधार: यदि दिशा नीचे की ओर है (जैसे बर्फबारी), तो पूरे स्क्रीन की चौड़ाई में रैंडमली स्पॉन करें
+      const spawnX = currentDirection === 'downward' ? rand(0, w) : cx + rand(-20, 20);
+
       return {
-        x: cx + rand(-20, 20), y: cy + rand(-10, 10), vx, vy, size,
+        x: spawnX,
+        y: cy + rand(-10, 10),
+        vx, vy, size,
         color: pick(config.colors),
         life: rand(50, 110),
         maxLife: 110,
@@ -281,7 +286,6 @@ export default function ParticleEngine({
       const rawCount = config.maxCount;
       const Math_floor = Math.floor(rawCount * pb.intensity);
       
-      // 🚀 क्रिसमस के दौरान स्पॉन गति को बढ़ाएं (Double Spawn rate for heavy winter feel)
       const currentSpawnRate = preset === 'CHRISTMAS' ? 0.35 : pb.spawnRate;
 
       if (particles.current.length < Math_floor && Math.random() < currentSpawnRate) {
@@ -324,8 +328,8 @@ export default function ParticleEngine({
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 w-full h-full pointer-events-none" // 🚀 'absolute' से बदलकर 'fixed' किया गया है
-      style={{ zIndex: 9999 }} // 🚀 'z-index: 9999' से अब यह सभी डैशबोर्ड कार्ड्स के ऊपर बरसेगी
+      className="fixed inset-0 w-full h-full pointer-events-none"
+      style={{ zIndex: 9999 }}
     />
   );
 }
