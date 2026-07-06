@@ -59,6 +59,7 @@ const DEFAULT: EngineConfig = {
 };
 
 const PRESET_MAP: Record<string, PresetConfig> = {
+  // ── 1. HOLI / LIQUID SPLASH ──
   LIQUID_SPLASH: {
     default: {
       gravity: 0.28, spread: 1.6, speed: 2.2,
@@ -95,6 +96,8 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       AMBIENT:        { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
     }
   },
+
+  // ── 2. LOHRI ──
   LOHRI: {
     default: {
       gravity: -0.04, spread: 0.9, speed: 1.5,
@@ -102,13 +105,17 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 2.5, maxSize: 6.5, maxCount: 150, glow: true, wobble: false, direction: 'upward', spawnY: 0.9,
     }
   },
+
+  // ── 3. CHRISTMAS (🚀 सुधार 2: घनी और खूबसूरत बर्फबारी के लिए हैवी पैरामीटर्स) ──
   CHRISTMAS: {
     default: {
-      gravity: 0.03, spread: 0.7, speed: 0.8,
-      colors: ['#ffffff', '#f1f5f9', '#cbd5e1', '#e2e8f0'],
-      minSize: 3, maxSize: 8, maxCount: 200, glow: false, wobble: true, direction: 'downward', spawnY: -0.1,
+      gravity: 0.04, spread: 0.9, speed: 1.2, // सुगम बहाव गति
+      colors: ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0'],
+      minSize: 2.5, maxSize: 7.5, maxCount: 450, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
     }
   },
+
+  // ── 4. RAKSHA_BANDHAN ──
   RAKSHA_BANDHAN: {
     default: {
       gravity: 0.18, spread: 1.5, speed: 2.5,
@@ -116,6 +123,8 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 4, maxSize: 10, maxCount: 220, glow: false, wobble: true, direction: 'radial', spawnY: 0.4,
     }
   },
+
+  // ── 5. MAKAR_SANKRANTI ──
   MAKAR_SANKRANTI: {
     default: {
       gravity: 0.02, spread: 0.8, speed: 0.6,
@@ -123,6 +132,8 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 3, maxSize: 7, maxCount: 80, glow: false, wobble: true, direction: 'downward', spawnY: -0.05,
     }
   },
+
+  // ── 6. SPECIAL_OFFER (BROADCAST) ──
   SPECIAL_OFFER: {
     default: {
       gravity: 0.08, spread: 1.2, speed: 1.4,
@@ -151,9 +162,6 @@ export default function ParticleEngine({
   customMaxSize?: number;
   customMaxCount?: number;
 }) {
-  
-  console.log('🎄 PARTICLE ENGINE MOUNTED', { preset, phase });
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const rafId = useRef<number>(0);
@@ -180,17 +188,15 @@ export default function ParticleEngine({
       ...(customMaxCount !== undefined && { maxCount: customMaxCount }),
     };
 
-    // 🚀 PERFORMANCE FIX: Width/Height ko cache kar liya
-    let w = 0;
-    let h = 0;
-
     const setSize = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      w = rect.width;
-      h = rect.height;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+      
+      const actualWidth = rect.width > 0 ? rect.width : window.innerWidth;
+      const actualHeight = rect.height > 0 ? rect.height : window.innerHeight;
+
+      canvas.width = actualWidth * dpr;
+      canvas.height = actualHeight * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     setSize();
@@ -200,9 +206,10 @@ export default function ParticleEngine({
     const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
     const spawn = (): Particle => {
-      console.log('❄️ SPAWNING PARTICLE');
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width > 0 ? rect.width : window.innerWidth;
+      const h = rect.height > 0 ? rect.height : window.innerHeight;
 
-      // 🚀 PERFORMANCE FIX: Ab getBoundingClientRect() nahi call hoga
       const phaseConfig = activePresetObj.phases?.[phaseRef.current] || {};
 
       let currentDirection = phaseConfig.direction || config.direction;
@@ -264,8 +271,9 @@ export default function ParticleEngine({
     };
 
     const animate = () => {
-      console.log('❄️ CANVAS SIZE', w, h);
-
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width > 0 ? rect.width : window.innerWidth;
+      const h = rect.height > 0 ? rect.height : window.innerHeight;
       const pb = PhaseBehavior[phaseRef.current] || PhaseBehavior.IDLE;
 
       ctx.clearRect(0, 0, w, h);
@@ -273,7 +281,10 @@ export default function ParticleEngine({
       const rawCount = config.maxCount;
       const Math_floor = Math.floor(rawCount * pb.intensity);
       
-      if (particles.current.length < Math_floor && Math.random() < pb.spawnRate) {
+      // 🚀 क्रिसमस के दौरान स्पॉन गति को बढ़ाएं (Double Spawn rate for heavy winter feel)
+      const currentSpawnRate = preset === 'CHRISTMAS' ? 0.35 : pb.spawnRate;
+
+      if (particles.current.length < Math_floor && Math.random() < currentSpawnRate) {
         particles.current.push(spawn());
       }
 
@@ -300,11 +311,11 @@ export default function ParticleEngine({
       rafId.current = requestAnimationFrame(animate);
     };
 
+    const activeId = rafId.current;
     animate();
 
     return () => {
-      // 🚀 ZOMBIE LOOP FIX: rafId.current use kiya hai activeId ki jagah
-      cancelAnimationFrame(rafId.current);
+      cancelAnimationFrame(activeId);
       window.removeEventListener('resize', setSize);
       particles.current = [];
     };
@@ -313,9 +324,8 @@ export default function ParticleEngine({
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      // 🚀 Z-INDEX FIX: 5 se badha kar 998 kar diya (Text 999 ke niche rahega)
-      style={{ zIndex: 998 }}
+      className="fixed inset-0 w-full h-full pointer-events-none" // 🚀 'absolute' से बदलकर 'fixed' किया गया है
+      style={{ zIndex: 9999 }} // 🚀 'z-index: 9999' से अब यह सभी डैशबोर्ड कार्ड्स के ऊपर बरसेगी
     />
   );
 }
