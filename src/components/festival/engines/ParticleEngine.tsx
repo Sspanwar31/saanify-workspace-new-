@@ -102,18 +102,17 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 2.5, maxSize: 6.5, maxCount: 150, glow: true, wobble: false, direction: 'upward', spawnY: 0.9,
     }
   },
-  // 🚀 2027 MODERN NATURAL SNOW CONFIG (सच्ची हिमपात भौतिकी)
   CHRISTMAS: {
     default: {
-      gravity: 0.025,       // कोमल और अत्यंत सुगम गुरुत्वाकर्षण
-      spread: 0.6,          // कम स्प्रेड = सीधी नीचे की तरफ गिरावट
-      speed: 0.9,           // सुगम प्राकृतिक गति
+      gravity: 0.025,       
+      spread: 0.6,          
+      speed: 0.9,           
       colors: ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0'], 
       minSize: 0.8,         
       maxSize: 2.5,         
-      maxCount: 450,        // आदर्श सघनता
+      maxCount: 450,        
       glow: true,           
-      wobble: true,         // हवा में सुगम झूमने की गति सक्रिय
+      wobble: true,         
       direction: 'downward', 
       spawnY: -0.1,
     }
@@ -153,12 +152,12 @@ export default function ParticleEngine({
 }: { 
   preset?: string; 
   phase?: string; 
-  customGravity?: number;
-  customSpeed?: number;
-  customColors?: string[];
-  customMinSize?: number;
-  customMaxSize?: number;
-  customMaxCount?: number;
+  customGravity?: number | null;
+  customSpeed?: number | null;
+  customColors?: string[] | null;
+  customMinSize?: number | null;
+  customMaxSize?: number | null;
+  customMaxCount?: number | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
@@ -173,18 +172,33 @@ export default function ParticleEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // 🔍 डीबग लॉग 1: यह बताएगा कि डेटाबेस से लाइव क्या इनपुट आ रहा है
+    console.log("❄️ [ParticleEngine] PROPS RECEIVED:", {
+      preset,
+      phase,
+      customSpeed,
+      customGravity,
+      customMinSize,
+      customMaxSize,
+      customMaxCount
+    });
+
     const activePresetObj = PRESET_MAP[preset || ''] || { default: DEFAULT };
 
+    // 🚀 सुरक्षित चेकिंग: null और undefined दोनों से सुरक्षा
     const config: EngineConfig = { 
       ...DEFAULT, 
       ...activePresetObj.default,
-      ...(customGravity !== undefined && { gravity: customGravity }),
-      ...(customSpeed !== undefined && { speed: customSpeed }),
-      ...(customColors && { colors: customColors }),
-      ...(customMinSize !== undefined && { minSize: customMinSize }),
-      ...(customMaxSize !== undefined && { maxSize: customMaxSize }),
-      ...(customMaxCount !== undefined && { maxCount: customMaxCount }),
+      ...(customGravity !== null && customGravity !== undefined && { gravity: customGravity }),
+      ...(customSpeed !== null && customSpeed !== undefined && { speed: customSpeed }),
+      ...(customColors !== null && customColors !== undefined && { colors: customColors }),
+      ...(customMinSize !== null && customMinSize !== undefined && { minSize: customMinSize }),
+      ...(customMaxSize !== null && customMaxSize !== undefined && { maxSize: customMaxSize }),
+      ...(customMaxCount !== null && customMaxCount !== undefined && { maxCount: customMaxCount }),
     };
+
+    // 🔍 डीबग लॉग 2: यह दिखाएगा कि अंतिम गणना के बाद कौन से मान तय हुए हैं
+    console.log("❄️ [ParticleEngine] FINAL CONFIG RESOLVED:", config);
 
     let w = 0;
     let h = 0;
@@ -209,9 +223,9 @@ export default function ParticleEngine({
 
       let currentDirection = phaseConfig.direction || config.direction;
       let currentSpawnY    = phaseConfig.spawnY !== undefined ? phaseConfig.spawnY : (config.spawnY || 0.5);
-      let currentMinSize   = phaseConfig.minSize || config.minSize;
-      let currentMaxSize   = phaseConfig.maxSize || config.maxSize;
-      let currentSpeed     = phaseConfig.speed || config.speed;
+      let currentMinSize   = config.minSize;
+      let currentMaxSize   = config.maxSize;
+      let currentSpeed     = config.speed;
 
       const cx = w / 2;
       const cy = h * currentSpawnY; 
@@ -228,7 +242,6 @@ export default function ParticleEngine({
           vy = -spd * rand(1.2, 2.8) * config.spread; 
           break;
         case 'downward': 
-          // 🚀 प्राकृतिक बहाव के लिए हॉरिजॉन्टल गति को बेहद न्यूनतम रखा गया है
           vx = rand(-0.15, 0.15) * spd; 
           vy = spd * rand(0.6, 1.2); 
           break;
@@ -301,16 +314,14 @@ export default function ParticleEngine({
         p.life -= 1;
         p.rotation += p.rotationSpeed;
 
-        // 🚀 सबसे जरूरी सुधार (Separated Drag): क्षैतिज और लंबवत गति के लिए अलग-अलग ड्रैग
         if (config.direction === 'downward') {
-          p.vx *= 0.94;  // 🚀 हाई ड्रैग: हॉरिजॉन्टल गति को तुरंत धीमा करेगा (कणों को तिरछा उड़ने से रोकेगा)
-          p.vy *= 0.995; // सामान्य ड्रैग: कोमलता से सीधे नीचे गिराने के लिए
+          p.vx *= 0.94;  
+          p.vy *= 0.995; 
         } else {
           p.vx *= 0.998;
           p.vy *= 0.998;
         }
 
-        // हवा का कोमल डगमगाव (Natural Gentle Sway)
         if (config.wobble) {
           p.vx += Math.sin(p.life * 0.04 + p.y * 0.005) * 0.05;
         }
@@ -332,7 +343,9 @@ export default function ParticleEngine({
       window.removeEventListener('resize', setSize);
       particles.current = [];
     };
-  }, [preset]);
+    
+    // 🚀 सुधार: अब सभी कस्टमाइज्ड वेरिएबल्स इस डिपेंडेंसी ऐरे में शामिल हैं!
+  }, [preset, phase, customGravity, customSpeed, customColors, customMinSize, customMaxSize, customMaxCount]);
 
   return (
     <canvas
