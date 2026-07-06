@@ -221,7 +221,9 @@ export async function POST(req: Request) {
         // 🚀 FIXED: Aligned Color Priority (DB color first, Master map fallback next)
         const finalThemeColor = themeConfig.primary_color || MASTER_THEME_MAP[key] || '#fbbf24';
 
+        // 🚀 सुधार 1: Yahan ...heroConfig add kiya gaya hai
         const normalizedHeroConfig = {
+          ...heroConfig, 
           render_type: heroConfig.render_type || 'COMPONENT',
           visual_key: heroConfig.visual_key || 'ROYAL_DIYA',
           animation: heroConfig.animation || 'GOLDEN_PARTICLES',
@@ -382,7 +384,9 @@ export async function POST(req: Request) {
     // 🚀 FIXED: Dynamic Color Priority (DB theme_config first, MASTER_THEME_MAP fallback next)
     const finalThemeColor = themeConfig.primary_color || MASTER_THEME_MAP[resolvedFestivalKey] || '#fbbf24';
 
+    // 🚀 सुधार 2: Yahan bhi ...heroConfig add kiya gaya hai
     const normalizedHeroConfig = {
+      ...heroConfig, 
       render_type: heroConfig.render_type || 'COMPONENT',
       visual_key: heroConfig.visual_key || 'ROYAL_DIYA',
       animation: heroConfig.animation || 'GOLDEN_PARTICLES',
