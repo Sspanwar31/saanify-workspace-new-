@@ -502,23 +502,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   </div>
 )}
 
-{/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
-{isAmbientActive && activeBroadcast && (
-  <div className="fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 opacity-100 scale-100">
-    {/* ✅ FIX: Individual props pass करो, heroConfig नहीं */}
-    <AnimationFactory
-      phase="AMBIENT"
-      engine={activeBroadcast?.hero_config?.animation}
-      preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
-      customGravity={activeBroadcast?.hero_config?.customGravity}
-      customSpeed={activeBroadcast?.hero_config?.customSpeed}
-      customColors={activeBroadcast?.hero_config?.customColors}
-      customMinSize={activeBroadcast?.hero_config?.customMinSize}
-      customMaxSize={activeBroadcast?.hero_config?.customMaxSize}
-      customMaxCount={activeBroadcast?.hero_config?.customMaxCount}
-    />
-  </div>
-)}
+{      {/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
+      {isAmbientActive && activeBroadcast && (
+        <div className="fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 opacity-100 scale-100">
+          
+          {/* 🎨 HOLI: इसका अलग स्पेशल CSS Animation है, इसलिए AmbientFactory */}
+          {activeBroadcast?.festival_key === 'HOLI' ? (
+            <AmbientFactory 
+              preset={activeBroadcast?.festival_key} 
+              heroConfig={activeBroadcast?.hero_config} 
+            />
+          ) : (
+            /* ⚡ BAKI SAB (Christmas, Eid, Diwali, etc): Backend Controls के साथ AnimationFactory */
+            <AnimationFactory
+              phase="AMBIENT"
+              engine={activeBroadcast?.hero_config?.animation}
+              preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
+              customGravity={activeBroadcast?.hero_config?.customGravity}
+              customSpeed={activeBroadcast?.hero_config?.customSpeed}
+              customColors={activeBroadcast?.hero_config?.customColors}
+              customMinSize={activeBroadcast?.hero_config?.customMinSize}
+              customMaxSize={activeBroadcast?.hero_config?.customMaxSize}
+              customMaxCount={activeBroadcast?.hero_config?.customMaxCount}
+            />
+          )}
+
+        </div>
+      )}
       {/* LAYER 3 — GREETING POPUP */}
       {showPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
