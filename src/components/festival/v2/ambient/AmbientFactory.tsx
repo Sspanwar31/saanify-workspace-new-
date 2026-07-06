@@ -15,13 +15,13 @@ const AmbientRegistry: Record<string, React.ComponentType> = {
 };
 
 export default function AmbientFactory({
-  festivalKey,
+  preset, // ✅ FIX: festivalKey की जगह preset लिखा
 }: {
-  festivalKey?: string;
+  preset?: string; // ✅ FIX: यहाँ भी preset
 }) {
-  if (!festivalKey) return null;
+  if (!preset) return null; // ✅ FIX: यहाँ भी preset
 
-  const key = festivalKey.toUpperCase();
+  const key = preset.toUpperCase();
   const Component = AmbientRegistry[key];
 
   if (!Component) return null;
