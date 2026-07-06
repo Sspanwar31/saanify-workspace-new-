@@ -102,18 +102,18 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 2.5, maxSize: 6.5, maxCount: 150, glow: true, wobble: false, direction: 'upward', spawnY: 0.9,
     }
   },
-  // 🚀 2027 MODERN PREMIUM SNOW CONFIG
+  // 🚀 2027 MODERN NATURAL SNOW CONFIG (सच्ची हिमपात भौतिकी)
   CHRISTMAS: {
     default: {
-      gravity: 0.015,       // Bahut slow gravity (Floaty feel)
-      spread: 1.8,          // Zyada spread = hawa mein dolna
-      speed: 0.7,           // Slow speed
-      colors: ['#ffffff', '#f8fafc', '#e2e8f0', '#cbd5e1'], // Subtle white shades
-      minSize: 0.8,         // 🚀 Bohot chhota size (Ab mote nahi rahega)
-      maxSize: 2.2,         // 🚀 Max bhi 2.2 tak
-      maxCount: 900,        // 🚀 High density (Barf ki boondiya jaisa dense)
-      glow: true,           // 🚀 Magical glow effect ke liye
-      wobble: true,         // Smooth hawa ka jhukav
+      gravity: 0.025,       // कोमल और अत्यंत सुगम गुरुत्वाकर्षण
+      spread: 0.6,          // कम स्प्रेड = सीधी नीचे की तरफ गिरावट
+      speed: 0.9,           // सुगम प्राकृतिक गति
+      colors: ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0'], 
+      minSize: 0.8,         
+      maxSize: 2.5,         
+      maxCount: 450,        // आदर्श सघनता
+      glow: true,           
+      wobble: true,         // हवा में सुगम झूमने की गति सक्रिय
       direction: 'downward', 
       spawnY: -0.1,
     }
@@ -223,11 +223,23 @@ export default function ParticleEngine({
       let vy = 0;
 
       switch (currentDirection) {
-        case 'upward':   vx = rand(-1, 1) * spd * config.spread * 1.2; vy = -spd * rand(1.2, 2.8) * config.spread; break;
-        case 'downward': vx = rand(-1, 1) * spd * config.spread; vy = spd * rand(0.5, 1.5) * config.spread; break;
-        case 'spiral':   vx = Math.cos(angle + particles.current.length * 0.4) * spd * config.spread; vy = Math.sin(angle + particles.current.length * 0.4) * spd * config.spread; break;
+        case 'upward':   
+          vx = rand(-1, 1) * spd * config.spread * 1.2; 
+          vy = -spd * rand(1.2, 2.8) * config.spread; 
+          break;
+        case 'downward': 
+          // 🚀 प्राकृतिक बहाव के लिए हॉरिजॉन्टल गति को बेहद न्यूनतम रखा गया है
+          vx = rand(-0.15, 0.15) * spd; 
+          vy = spd * rand(0.6, 1.2); 
+          break;
+        case 'spiral':   
+          vx = Math.cos(angle + particles.current.length * 0.4) * spd * config.spread; 
+          vy = Math.sin(angle + particles.current.length * 0.4) * spd * config.spread; 
+          break;
         case 'radial':
-        default:         vx = Math.cos(angle) * spd * config.spread * 2; vy = Math.sin(angle) * spd * config.spread * 2;
+        default:         
+          vx = Math.cos(angle) * spd * config.spread * 2; 
+          vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
       const spawnX = currentDirection === 'downward' ? rand(0, w) : cx + rand(-20, 20);
@@ -249,18 +261,13 @@ export default function ParticleEngine({
       };
     };
 
-    // 🚀 2027 PREMIUM DRAW FUNCTION
     const draw = (p: Particle) => {
       const progress = 1 - p.life / p.maxLife;
-      
-      // Smooth fade-in aur fade-out
       const alpha = Math.max(0, 1 - (progress * progress));
 
       ctx.save();
-      ctx.globalAlpha = alpha * 0.85; // Thoda transparent rakhne se dust jaisa feel aata hai
+      ctx.globalAlpha = alpha * 0.85; 
       
-      // 🚀 MODERN GLOW: Agar glow true hai toh 'lighter' blend mode use karo
-      // Jab particles ek dusre se overlap karenge toh ek beautiful soft glow banega
       if (config.glow) {
         ctx.globalCompositeOperation = 'lighter';
       }
@@ -281,7 +288,7 @@ export default function ParticleEngine({
       const rawCount = config.maxCount;
       const Math_floor = Math.floor(rawCount * pb.intensity);
       
-      const currentSpawnRate = preset === 'CHRISTMAS' ? 0.45 : pb.spawnRate; // Fast spawn for dense snow
+      const currentSpawnRate = preset === 'CHRISTMAS' ? 0.35 : pb.spawnRate;
 
       if (particles.current.length < Math_floor && Math.random() < currentSpawnRate) {
         particles.current.push(spawn());
@@ -293,13 +300,19 @@ export default function ParticleEngine({
         p.y += p.vy;
         p.life -= 1;
         p.rotation += p.rotationSpeed;
-        p.vx *= 0.998; // 🚀 Thoda slow friction for smooth floating
-        p.vy *= 0.998;
 
-        // 🚀 SMOOTH WOBBLE: Ab har size par chalega (p.size > 5 wala condition hata diya)
-        // Yeh snow ko naturally hawa mein dolne dega
+        // 🚀 सबसे जरूरी सुधार (Separated Drag): क्षैतिज और लंबवत गति के लिए अलग-अलग ड्रैग
+        if (config.direction === 'downward') {
+          p.vx *= 0.94;  // 🚀 हाई ड्रैग: हॉरिजॉन्टल गति को तुरंत धीमा करेगा (कणों को तिरछा उड़ने से रोकेगा)
+          p.vy *= 0.995; // सामान्य ड्रैग: कोमलता से सीधे नीचे गिराने के लिए
+        } else {
+          p.vx *= 0.998;
+          p.vy *= 0.998;
+        }
+
+        // हवा का कोमल डगमगाव (Natural Gentle Sway)
         if (config.wobble) {
-          p.vx += Math.sin(p.life * 0.05 + p.y * 0.01) * 0.08;
+          p.vx += Math.sin(p.life * 0.04 + p.y * 0.005) * 0.05;
         }
 
         if (p.life > 0 && p.y < h + 60 && p.x > -60 && p.x < w + 60) {
