@@ -495,10 +495,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-      {/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
+{/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
       {isAmbientActive && activeBroadcast && (
         <div className="fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 opacity-100 scale-100">
-          <AmbientFactory festivalKey={activeBroadcast?.festival_key} />
+          {/* 🚀 पुराने AmbientFactory को हटाकर सीधे सिंक किए गए AnimationFactory को यहाँ रखें */}
+          <AnimationFactory
+            phase="AMBIENT"
+            engine={activeBroadcast?.hero_config?.animation}
+            preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
+            heroConfig={activeBroadcast?.hero_config} // 🚀 लाइव डेटाबेस कंट्रोल को यहाँ सिंक किया गया
+          />
         </div>
       )}
 
