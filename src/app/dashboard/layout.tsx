@@ -92,14 +92,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // ━━━ 2. THE HANDOVER FUNCTION — FIXED: No ambient before popup
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  //
-  // ❌ OLD BUG: setIsAmbientActive(true) BEFORE popup
-  //              Banner + particles dikhte the popup se pehle
-  //
-  // ✅ NEW FIX: Ambient SIRF popup dismiss ke baad start hoga
-  //             Yahan sirf intro band karo aur popup dikhao
-  //
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const handleIntroHandover = useCallback(() => {
     setTimeout(() => {
       // ✅ Step 1: Close intro animation
@@ -155,14 +147,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         introLockRef.current = false;
       }
 
+      // 🚀 सुरक्षित सोर्स पार्सिंग (Source-Parsing): डेटाबेस से आते ही डेटा को ऑब्जेक्ट में बदलें
+      const parsedHero = typeof data.hero_config === 'string' ? JSON.parse(data.hero_config) : (data.hero_config || {});
+      const parsedTheme = typeof data.theme_config === 'string' ? JSON.parse(data.theme_config) : (data.theme_config || {});
+
+      const normalizedData = {
+        ...data,
+        hero_config: parsedHero,
+        theme_config: parsedTheme
+      };
+
       // Always keep data fresh for banner rendering
-      setActiveBroadcast(data);
+      setActiveBroadcast(normalizedData);
 
       // Lock guard — intro chal raha hai to wait karo
       if (introLockRef.current) return;
 
-      const frequency: string = data.show_frequency || 'ONCE';
-      const storageKey = `seen_broadcast_${data.id}`;
+      const frequency: string = normalizedData.show_frequency || 'ONCE';
+      const storageKey = `seen_broadcast_${normalizedData.id}`;
       const storedData = sessionStorage.getItem(storageKey);
       const today = new Date().toISOString().split('T')[0];
 
@@ -195,7 +197,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         // ✅ Set greeting sequence guard BEFORE triggering intro/popup
         setIsGreetingSequenceActive(true);
         
-        if (data.hero_enabled) {
+        if (normalizedData.hero_enabled) {
           setIsIntroActive(true);
         } else {
           // ✅ No hero — directly show popup, guard already set
@@ -204,7 +206,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             setIsGreetingSequenceActive(false);
           }, 50);
         }
-      } else if (data.hero_enabled) {
+      } else if (normalizedData.hero_enabled) {
         // ✅ Already seen today — ambient + banner chalao (correct case)
         setIsAmbientActive(true);
       }
@@ -272,7 +274,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsGreetingSequenceActive(false);
 
     // ✅ NEW: Start ambient particles ONLY after popup is dismissed
-    //    Ye wala step handleIntroHandover se yahan shift kiya
     if (activeBroadcast?.hero_enabled) {
       setIsAmbientActive(true);
     }
@@ -469,7 +470,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
-          {/* LAYER 1 — INTRO ANIMATIONS */}
+      {/* LAYER 1 — INTRO ANIMATIONS */}
       {isIntroActive && activeBroadcast?.hero_enabled && (
         <div className="fixed inset-0 z-[9997] pointer-events-none">
           <FestivalIntroController
@@ -488,22 +489,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 phase={phase}
                 engine={activeBroadcast?.hero_config?.animation}
                 preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
-                heroConfig={activeBroadcast?.hero_config} // 🚀 यहाँ सुधार किया गया है: यह प्रोप जोड़ें!
+                heroConfig={activeBroadcast?.hero_config}
               />
             )}
           </FestivalIntroController>
         </div>
       )}
 
-{/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
+      {/* LAYER 2 — AMBIENT EFFECTS — Only after popup dismiss */}
       {isAmbientActive && activeBroadcast && (
         <div className="fixed inset-0 z-[9998] pointer-events-none transition-all duration-1000 opacity-100 scale-100">
-          {/* 🚀 पुराने AmbientFactory को हटाकर सीधे सिंक किए गए AnimationFactory को यहाँ रखें */}
           <AnimationFactory
             phase="AMBIENT"
             engine={activeBroadcast?.hero_config?.animation}
             preset={activeBroadcast?.hero_config?.engine_preset || activeBroadcast?.festival_key}
-            heroConfig={activeBroadcast?.hero_config} // 🚀 लाइव डेटाबेस कंट्रोल को यहाँ सिंक किया गया
+            heroConfig={activeBroadcast?.hero_config}
           />
         </div>
       )}
