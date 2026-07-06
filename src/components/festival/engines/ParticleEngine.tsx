@@ -162,6 +162,13 @@ export default function ParticleEngine({
   customMaxSize?: number;
   customMaxCount?: number;
 }) {
+  
+  // 🚨 1. YAHAN PEHLA CONSOLE LOG LAGAYA GAYA HAI
+  console.log('🎄 PARTICLE ENGINE MOUNTED', {
+    preset,
+    phase
+  });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const rafId = useRef<number>(0);
@@ -202,6 +209,10 @@ export default function ParticleEngine({
     const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
     const spawn = (): Particle => {
+      
+      // 🚨 3. YAHAN PAR SPAWN KA CONSOLE LOG LAGAYA GAYA HAI
+      console.log('❄️ SPAWNING PARTICLE');
+
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
 
@@ -268,6 +279,10 @@ export default function ParticleEngine({
     const animate = () => {
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
+
+      // 🚨 2. YAHAN PAR CANVAS SIZE KA CONSOLE LOG LAGAYA GAYA HAI
+      console.log('❄️ CANVAS SIZE', w, h);
+
       const pb = PhaseBehavior[phaseRef.current] || PhaseBehavior.IDLE;
 
       ctx.clearRect(0, 0, w, h);
