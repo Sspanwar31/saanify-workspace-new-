@@ -7,7 +7,7 @@ import ChristmasStarIntro from '../engines/effects/ChristmasStarIntro';
 
 interface IntroProps {
   preset: string;
-  phase: string; // 🚀 मुख्य कंट्रोलर से आने वाला सिंक फ़ेज़
+  phase: string; 
   heroConfig: any;
   themeColor: string;
 }
@@ -19,16 +19,14 @@ export default function LightRevealIntro({
   themeColor,
 }: IntroProps) {
   
-  // 🚀 कंसोल लॉग सिंटैक्स को सही किया गया है
   console.log('🔥 LIGHT REVEAL RECEIVED', { preset, phase, heroConfig, themeColor });
 
-  // 🚀 कंट्रोलर के फेजेस का हमारे विज़ुअल स्टेप्स से 100% सटीक मिलान
   let introPhase: 'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'HANDOVER' = 'OBJECT_REVEAL';
 
   if (phase === 'FLASH') {
     introPhase = 'OBJECT_REVEAL';
   } else if (phase === 'SHOOTING') {
-    introPhase = 'ACTION_TRIGGER'; // इसी फेज़ में तारा भी गिरेगा और बर्फबारी/किरणें भी शुरू होंगी
+    introPhase = 'ACTION_TRIGGER'; 
   } else if (phase === 'HANDOVER') {
     introPhase = 'HANDOVER';
   }
@@ -39,19 +37,19 @@ export default function LightRevealIntro({
     switch (preset) {
       case 'RAM_NAVAMI':
         return (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[20]">
             <div className="absolute h-[4px] w-[150px] bg-gradient-to-r from-orange-500 to-yellow-200" 
                  style={{ animation: 'arrow-shoot 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }} />
           </div>
         );
 
       case 'CHRISTMAS':
-        return <ChristmasStarIntro />;
+        return <div className="z-[20]"><ChristmasStarIntro /></div>;
 
       case 'EID_UL_FITR':
       case 'EID_AL_ADHA':
         return (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[20]">
             <div className="absolute w-[240px] h-[240px] rounded-full border border-emerald-400 opacity-30 animate-ping" />
           </div>
         );
@@ -80,50 +78,51 @@ export default function LightRevealIntro({
         }
       `}} />
 
-      {/* ── बैकग्राउंड लेयर: एक्शन फेज़ चालू होते ही शुरू होगी ── */}
-    {introPhase === 'ACTION_TRIGGER' && (
-  <>
-    {console.log('❄️ PARTICLE ENGINE SHOULD START NOW')}
-    
-    {preset === 'CHRISTMAS' ? (
-      <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />
-    ) : (
-      <RayEngine preset={preset} />
-    )}
-  </>
-)}
+      {/* ── बैकग्राउंड लेयर ── */}
+      {introPhase === 'ACTION_TRIGGER' && (
+        <>
+          {console.log('❄️ PARTICLE ENGINE SHOULD START NOW')}
+          
+          {preset === 'CHRISTMAS' ? (
+            <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />
+          ) : (
+            <RayEngine preset={preset} />
+          )}
+        </>
+      )}
+
       {preset === 'CHRISTMAS' && (
-        <div className="absolute top-10 left-10 z-[999] text-white text-xl">
+        <div className="absolute top-10 left-10 z-[9999] text-white text-xl font-bold bg-red-600 p-2">
           CHRISTMAS INTRO ACTIVE
         </div>
       )}
 
-      {/* ── एक्शन लेयर (तारा या तीर एनीमेशन) ── */}
+      {/* ── एक्शन लेयर ── */}
       {renderActionOverlay()}
 
-      {/* ── फोरग्राउंड लेयर (हीरो सिंबल) ── */}
-      <div 
-        className={`transform transition-all duration-1000 ${
+      {/* ── फोरग्राउंड लेयर (z-[10] lagaya hai) ── */}
+      <div className="relative z-[10] transform transition-all duration-1000 flex flex-col items-center">
+        <div className={`transform transition-all duration-1000 ${
           introPhase === 'OBJECT_REVEAL' ? 'opacity-100 scale-100' : 'opacity-100 scale-105'
-        }`}
-      >
-        <HeroFactory config={heroConfig} themeColor={themeColor} hideBranding={true} />
-      </div>
+        }`}>
+          <HeroFactory config={heroConfig} themeColor={themeColor} hideBranding={true} />
+        </div>
 
-      {/* ── शीर्षक और सबटाइटल ── */}
-      <div 
-        className={`absolute bottom-20 flex flex-col items-center justify-center transition-all duration-1000 ${
-          introPhase === 'ACTION_TRIGGER' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}
-      >
-        <h1 className="text-4xl font-extrabold tracking-widest text-white uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-          {preset.replace('_', ' ')}
-        </h1>
-        <span className="mt-2 text-xs font-medium tracking-[0.4em] text-gray-400 uppercase">
-          {preset === 'CHRISTMAS' && 'MERRY & BRIGHT'}
-          {preset === 'RAM_NAVAMI' && 'DIVINE DHARMA RAYS'}
-          {(preset === 'EID_UL_FITR' || preset === 'EID_AL_ADHA') && 'SACRED LUNAR GLOW'}
-        </span>
+        {/* ── शीर्षक और सबटाइटल ── */}
+        <div 
+          className={`mt-8 flex flex-col items-center justify-center transition-all duration-1000 ${
+            introPhase === 'ACTION_TRIGGER' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}
+        >
+          <h1 className="text-4xl font-extrabold tracking-widest text-white uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+            {preset.replace('_', ' ')}
+          </h1>
+          <span className="mt-2 text-xs font-medium tracking-[0.4em] text-gray-400 uppercase">
+            {preset === 'CHRISTMAS' && 'MERRY & BRIGHT'}
+            {preset === 'RAM_NAVAMI' && 'DIVINE DHARMA RAYS'}
+            {(preset === 'EID_UL_FITR' || preset === 'EID_AL_ADHA') && 'SACRED LUNAR GLOW'}
+          </span>
+        </div>
       </div>
     </div>
   );
