@@ -151,6 +151,9 @@ export default function ParticleEngine({
   customMaxSize?: number;
   customMaxCount?: number;
 }) {
+  
+  console.log('🎄 PARTICLE ENGINE MOUNTED', { preset, phase });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const rafId = useRef<number>(0);
@@ -177,16 +180,17 @@ export default function ParticleEngine({
       ...(customMaxCount !== undefined && { maxCount: customMaxCount }),
     };
 
+    // 🚀 PERFORMANCE FIX: Width/Height ko cache kar liya
+    let w = 0;
+    let h = 0;
+
     const setSize = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      
-      // 🚀 VIEWPORT FALLBACK (सबसे जरूरी सुधार): यदि पेरेंट का साइज़ 0 आता है, तो फुल स्क्रीन का उपयोग करें
-      const actualWidth = rect.width > 0 ? rect.width : window.innerWidth;
-      const actualHeight = rect.height > 0 ? rect.height : window.innerHeight;
-
-      canvas.width = actualWidth * dpr;
-      canvas.height = actualHeight * dpr;
+      w = rect.width;
+      h = rect.height;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     setSize();
@@ -196,11 +200,9 @@ export default function ParticleEngine({
     const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
     const spawn = (): Particle => {
-      // यहाँ भी Actual Viewport साइज का उपयोग करें
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width > 0 ? rect.width : window.innerWidth;
-      const h = rect.height > 0 ? rect.height : window.innerHeight;
+      console.log('❄️ SPAWNING PARTICLE');
 
+      // 🚀 PERFORMANCE FIX: Ab getBoundingClientRect() nahi call hoga
       const phaseConfig = activePresetObj.phases?.[phaseRef.current] || {};
 
       let currentDirection = phaseConfig.direction || config.direction;
@@ -262,9 +264,8 @@ export default function ParticleEngine({
     };
 
     const animate = () => {
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width > 0 ? rect.width : window.innerWidth;
-      const h = rect.height > 0 ? rect.height : window.innerHeight;
+      console.log('❄️ CANVAS SIZE', w, h);
+
       const pb = PhaseBehavior[phaseRef.current] || PhaseBehavior.IDLE;
 
       ctx.clearRect(0, 0, w, h);
@@ -299,11 +300,11 @@ export default function ParticleEngine({
       rafId.current = requestAnimationFrame(animate);
     };
 
-    const activeId = rafId.current;
     animate();
 
     return () => {
-      cancelAnimationFrame(activeId);
+      // 🚀 ZOMBIE LOOP FIX: rafId.current use kiya hai activeId ki jagah
+      cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
       particles.current = [];
     };
@@ -313,7 +314,8 @@ export default function ParticleEngine({
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: 5 }}
+      // 🚀 Z-INDEX FIX: 5 se badha kar 998 kar diya (Text 999 ke niche rahega)
+      style={{ zIndex: 998 }}
     />
   );
 }
