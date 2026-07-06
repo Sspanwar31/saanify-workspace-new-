@@ -19,8 +19,7 @@ export default function LightRevealIntro({
   themeColor,
 }: IntroProps) {
   
-  console.log('🔥 LIGHT REVEAL RECEIVED', { preset, phase, heroConfig, themeColor });
-
+  // 🚀 कंट्रोलर के फेजेस का हमारे विज़ुअल स्टेप्स से 100% सटीक मिलान
   let introPhase: 'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'HANDOVER' = 'OBJECT_REVEAL';
 
   if (phase === 'FLASH') {
@@ -78,11 +77,9 @@ export default function LightRevealIntro({
         }
       `}} />
 
-      {/* ── बैकग्राउंड लेयर ── */}
+      {/* ── बैकग्राउंड लेयर: एक्शन फेज़ चालू होते ही शुरू होगी ── */}
       {introPhase === 'ACTION_TRIGGER' && (
         <>
-          {console.log('❄️ PARTICLE ENGINE SHOULD START NOW')}
-          
           {preset === 'CHRISTMAS' ? (
             <ParticleEngine preset="CHRISTMAS" phase="AMBIENT" />
           ) : (
@@ -91,16 +88,10 @@ export default function LightRevealIntro({
         </>
       )}
 
-      {preset === 'CHRISTMAS' && (
-        <div className="absolute top-10 left-10 z-[999] text-white text-xl">
-          CHRISTMAS INTRO ACTIVE
-        </div>
-      )}
-
-      {/* ── एक्शन लेयर ── */}
+      {/* ── एक्शन लेयर (तारा या तीर एनीमेशन) ── */}
       {renderActionOverlay()}
 
-      {/* ── फोरग्राउंड लेयर ── */}
+      {/* ── फोरग्राउंड लेयर (हीरो सिंबल) ── */}
       <div 
         className={`transform transition-all duration-1000 ${
           introPhase === 'OBJECT_REVEAL' ? 'opacity-100 scale-100' : 'opacity-100 scale-105'
