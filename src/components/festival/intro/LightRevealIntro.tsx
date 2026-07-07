@@ -3,7 +3,8 @@
 import HeroFactory from '../v2/HeroFactory';
 import RayEngine from '../engines/RayEngine';
 import ParticleEngine from '../engines/ParticleEngine';
-import ChristmasStarIntro from '../engines/effects/ChristmasStarIntro';
+// 🚀 पुराना ChristmasStarIntro हटाकर नया प्रीमियम ChristmasCinematicIntro इम्पोर्ट किया गया
+import ChristmasCinematicIntro from '../engines/effects/ChristmasCinematicIntro';
 
 interface IntroProps {
   preset: string;
@@ -19,10 +20,10 @@ export default function LightRevealIntro({
   themeColor,
 }: IntroProps) {
   
-  // 🚀 सेफ पार्सर: स्ट्रिंग डेटा को ऑब्जेक्ट में बदलें
+  // 🚀 जेसन पार्सर
   const parsedHeroConfig = typeof heroConfig === 'string' ? JSON.parse(heroConfig) : (heroConfig || {});
 
-  // 🚀 कंट्रोलर के फेजेस का हमारे विज़ुअल स्टेप्स से 100% सटीक मिलान
+  // 🚀 कंट्रोलर के फेजेस का हमारे विज़ुअल स्टेप्स से मिलान
   let introPhase: 'OBJECT_REVEAL' | 'ACTION_TRIGGER' | 'HANDOVER' = 'OBJECT_REVEAL';
 
   if (phase === 'FLASH') {
@@ -46,7 +47,8 @@ export default function LightRevealIntro({
         );
 
       case 'CHRISTMAS':
-        return <ChristmasStarIntro />;
+        // 🚀 नया सिनेमाई कंपोनेंट रेंडर होगा (onComplete फॉलबैक के साथ सुरक्षित)
+        return <ChristmasCinematicIntro onComplete={() => {}} />;
 
       case 'EID_UL_FITR':
       case 'EID_AL_ADHA':
@@ -80,7 +82,7 @@ export default function LightRevealIntro({
         }
       `}} />
 
-      {/* ── बैकग्राउंड लेयर: एक्शन फेज़ चालू होते ही शुरू होगी ── */}
+      {/* ── बैकग्राउंड लेयर ── */}
       {introPhase === 'ACTION_TRIGGER' && (
         <>
           {preset === 'CHRISTMAS' ? (
@@ -106,7 +108,7 @@ export default function LightRevealIntro({
         </>
       )}
 
-      {/* ── एक्शन लेयर (तारा या तीर एनीमेशन) ── */}
+      {/* ── एक्शन लेयर (नया सिनेमाई इंजन यहाँ चलेगा) ── */}
       {renderActionOverlay()}
 
       {/* ── फोरग्राउंड लेयर (हीरो सिंबल) ── */}
