@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useRef, useEffect } from "react";
 import ChristmasScene from "./ChristmasScene";
 import ChristmasParticles from "./ChristmasParticles";
@@ -10,7 +12,7 @@ interface Props {
    TYPES
    ================================================================ */
 
-const enum PType {
+enum PType {
   SNOW_BG,
   SNOW_FG,
   SMOKE,
@@ -331,7 +333,6 @@ function drawMoon(
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  // Outer volumetric glow layers
   for (let i = 6; i >= 1; i--) {
     const r = mr * (1 + i * 0.8) * pulse;
     const grad = ctx.createRadialGradient(mx, my, mr * 0.5, mx, my, r);
@@ -345,7 +346,6 @@ function drawMoon(
     ctx.fill();
   }
 
-  // Inner glow
   const innerGlow = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 2 * pulse);
   innerGlow.addColorStop(0, "rgba(200, 215, 240, 0.15)");
   innerGlow.addColorStop(0.5, "rgba(160, 185, 220, 0.06)");
@@ -355,7 +355,6 @@ function drawMoon(
   ctx.arc(mx, my, mr * 2 * pulse, 0, Math.PI * 2);
   ctx.fill();
 
-  // Moon body
   const moonGrad = ctx.createRadialGradient(
     mx - mr * 0.2, my - mr * 0.2, mr * 0.1,
     mx, my, mr
@@ -368,7 +367,6 @@ function drawMoon(
   ctx.arc(mx, my, mr * pulse, 0, Math.PI * 2);
   ctx.fill();
 
-  // Subtle craters
   ctx.globalAlpha = alpha * 0.12;
   ctx.fillStyle = "#a09888";
   const craters = [
@@ -440,7 +438,6 @@ function drawMountainLayer(
   ctx.fillStyle = layer.color;
   ctx.fill();
 
-  // Snow caps on peaks
   if (layer.snowLine > 0) {
     ctx.fillStyle = layer.snowColor;
     ctx.globalAlpha = alpha * 0.6;
@@ -471,7 +468,6 @@ function drawTree(
   const { x, h, w: tw } = tree;
   ctx.fillStyle = color;
 
-  // Three triangle layers
   for (let i = 0; i < 3; i++) {
     const layerH = h * (0.5 - i * 0.08);
     const layerW = tw * (1 - i * 0.2);
@@ -484,10 +480,8 @@ function drawTree(
     ctx.fill();
   }
 
-  // Trunk
   ctx.fillRect(x - tw * 0.06, baseY - h * 0.15, tw * 0.12, h * 0.18);
 
-  // Snow on top
   if (snowAlpha > 0) {
     ctx.fillStyle = `rgba(200, 215, 235, ${snowAlpha})`;
     ctx.beginPath();
@@ -527,7 +521,6 @@ function drawGround(
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  // Rolling snow ground
   const grad = ctx.createLinearGradient(0, groundY, 0, h);
   grad.addColorStop(0, "#c8d4e8");
   grad.addColorStop(0.15, "#b8c4d8");
@@ -546,7 +539,6 @@ function drawGround(
   ctx.closePath();
   ctx.fill();
 
-  // Subtle blue shadows
   ctx.globalAlpha = alpha * 0.15;
   ctx.fillStyle = "#6080b0";
   for (let x = 0; x < w; x += 80) {
@@ -599,12 +591,10 @@ function drawReindeer(
   const lo1 = Math.sin(legPhase) * 3;
   const lo2 = Math.sin(legPhase + Math.PI) * 3;
 
-  // Body
   ctx.beginPath();
   ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Neck
   ctx.beginPath();
   ctx.moveTo(16, -7);
   ctx.quadraticCurveTo(22, -18, 28, -20 + headBob);
@@ -613,17 +603,14 @@ function drawReindeer(
   ctx.closePath();
   ctx.fill();
 
-  // Head
   ctx.beginPath();
   ctx.ellipse(30, -18 + headBob, 8, 6, 0.15, 0, Math.PI * 2);
   ctx.fill();
 
-  // Ear
   ctx.beginPath();
   ctx.ellipse(34, -23 + headBob, 3, 2, 0.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // Antlers
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(27, -24 + headBob);
@@ -651,9 +638,7 @@ function drawReindeer(
   ctx.lineTo(40, -30 + headBob);
   ctx.stroke();
 
-  // Legs
   ctx.lineWidth = 3.5;
-  // Front
   ctx.beginPath();
   ctx.moveTo(12, 9);
   ctx.lineTo(12 + lo1, 28);
@@ -662,7 +647,6 @@ function drawReindeer(
   ctx.moveTo(17, 9);
   ctx.lineTo(17 + lo2, 28);
   ctx.stroke();
-  // Back
   ctx.beginPath();
   ctx.moveTo(-13, 9);
   ctx.lineTo(-13 + lo2, 28);
@@ -672,7 +656,6 @@ function drawReindeer(
   ctx.lineTo(-8 + lo1, 28);
   ctx.stroke();
 
-  // Hooves
   const hoofR = 2;
   ctx.lineWidth = 1;
   [
@@ -684,7 +667,6 @@ function drawReindeer(
     ctx.fill();
   });
 
-  // Tail
   ctx.beginPath();
   ctx.moveTo(-22, -5);
   ctx.quadraticCurveTo(-28, -12, -24, -3);
@@ -707,7 +689,6 @@ function drawSleigh(
   ctx.strokeStyle = "#000000";
   ctx.lineCap = "round";
 
-  // Sleigh body
   ctx.beginPath();
   ctx.moveTo(-45, -28);
   ctx.quadraticCurveTo(-50, -8, -44, 2);
@@ -717,7 +698,6 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
-  // Back rest
   ctx.beginPath();
   ctx.moveTo(-45, -28);
   ctx.quadraticCurveTo(-55, -52, -47, -58);
@@ -726,7 +706,6 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
-  // Front rail
   ctx.beginPath();
   ctx.moveTo(48, -28);
   ctx.quadraticCurveTo(55, -35, 52, -42);
@@ -735,7 +714,6 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
-  // Runner
   ctx.lineWidth = 3.5;
   ctx.beginPath();
   ctx.moveTo(-52, 7);
@@ -744,14 +722,12 @@ function drawSleigh(
   ctx.quadraticCurveTo(65, 6, 62, 0);
   ctx.stroke();
 
-  // Front curl
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(62, 0);
   ctx.quadraticCurveTo(72, -8, 66, -16);
   ctx.stroke();
 
-  // Cross bars
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(-30, -28);
@@ -788,21 +764,17 @@ function drawSantaBody(
   ctx.strokeStyle = "#000000";
   ctx.lineCap = "round";
 
-  // Body (sitting)
   ctx.beginPath();
   ctx.ellipse(0, -35, 20, 24, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Belt
   ctx.fillRect(-20, -28, 40, 5);
   ctx.fillRect(-4, -30, 8, 9);
 
-  // Head
   ctx.beginPath();
   ctx.arc(2, -64, 11, 0, Math.PI * 2);
   ctx.fill();
 
-  // Hat
   ctx.beginPath();
   ctx.moveTo(-9, -70);
   ctx.quadraticCurveTo(-5, -85, 3, -92);
@@ -811,17 +783,14 @@ function drawSantaBody(
   ctx.closePath();
   ctx.fill();
 
-  // Hat brim
   ctx.beginPath();
   ctx.ellipse(2, -70, 15, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Hat pompom
   ctx.beginPath();
   ctx.arc(17, -87, 5, 0, Math.PI * 2);
   ctx.fill();
 
-  // Beard
   ctx.beginPath();
   ctx.moveTo(-7, -57);
   ctx.quadraticCurveTo(-14, -42, -10, -24);
@@ -831,7 +800,6 @@ function drawSantaBody(
   ctx.closePath();
   ctx.fill();
 
-  // Beard texture lines
   ctx.lineWidth = 0.8;
   ctx.globalAlpha = 0.3;
   for (let i = -6; i <= 6; i += 3) {
@@ -842,11 +810,9 @@ function drawSantaBody(
   }
   ctx.globalAlpha = 1;
 
-  // Legs
   ctx.fillRect(-14, -14, 11, 14);
   ctx.fillRect(5, -14, 11, 14);
 
-  // Boots
   ctx.beginPath();
   ctx.moveTo(-16, -2);
   ctx.lineTo(-16, 5);
@@ -867,7 +833,6 @@ function drawSantaBody(
   ctx.closePath();
   ctx.fill();
 
-  // Left arm
   ctx.save();
   ctx.translate(-18, -48);
   if (leftUp) {
@@ -879,7 +844,6 @@ function drawSantaBody(
   ctx.beginPath();
   ctx.arc(24, 0, 5, 0, Math.PI * 2);
   ctx.fill();
-  // Fingers
   if (leftUp) {
     for (let f = -0.4; f <= 0.4; f += 0.2) {
       ctx.save();
@@ -891,7 +855,6 @@ function drawSantaBody(
   }
   ctx.restore();
 
-  // Right arm
   ctx.save();
   ctx.translate(18, -48);
   if (rightUp) {
@@ -959,26 +922,20 @@ function drawSantaFormation(
   const santaX = sleighX - 5 * s;
   const santaY = sleighY - 2 * s;
 
-  // Harness lines
   for (let i = 0; i < 3; i++) {
     const fromX = cx + deerX[i] + 25 * s;
     const toX = cx + deerX[i + 1] - 22 * s;
     drawHarness(ctx, fromX, toX, deerY - 5 * s, s);
   }
-  // Last reindeer to sleigh
   drawHarness(ctx, cx + deerX[3] + 25 * s, cx + sleighX - 42 * s, sleighY - 15 * s, s);
 
-  // Reindeer
   for (let i = 0; i < 4; i++) {
     const lp = legPhase + i * 0.8;
     const hb = headBob * (1 - i * 0.15);
     drawReindeer(ctx, cx + deerX[i], deerY, s, lp, hb);
   }
 
-  // Sleigh
   drawSleigh(ctx, cx + sleighX, sleighY, s);
-
-  // Santa
   drawSantaBody(ctx, cx + santaX, santaY, s, leftUp, rightUp);
 
   ctx.restore();
@@ -1127,7 +1084,6 @@ function drawSingleParticle(
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // Internal shine
       ctx.strokeStyle = `rgba(220,240,255,${alpha * 0.5})`;
       ctx.lineWidth = 0.3;
       ctx.beginPath();
@@ -1160,7 +1116,6 @@ function drawSingleParticle(
       ctx.beginPath();
       ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
       ctx.fill();
-      // Trail
       ctx.globalAlpha = alpha * 0.3;
       ctx.beginPath();
       ctx.arc(p.x - p.vx * 0.02, p.y - p.vy * 0.02, size * 0.7, 0, Math.PI * 2);
@@ -1217,7 +1172,6 @@ function drawShockwave(
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Inner glow ring
   const grad = ctx.createRadialGradient(x, y, radius * 0.85, x, y, radius * 1.1);
   grad.addColorStop(0, "rgba(180,210,255,0)");
   grad.addColorStop(0.5, `rgba(180,210,255,${alpha * 0.15})`);
@@ -1243,7 +1197,6 @@ function createCrystalSprite(): HTMLCanvasElement {
   const cy = size / 2;
   const g = c.getContext("2d")!;
 
-  // Glow
   const glow = g.createRadialGradient(cx, cy, 0, cx, cy, cx);
   glow.addColorStop(0, "rgba(140,190,255,0.25)");
   glow.addColorStop(0.6, "rgba(120,170,240,0.08)");
@@ -1251,7 +1204,6 @@ function createCrystalSprite(): HTMLCanvasElement {
   g.fillStyle = glow;
   g.fillRect(0, 0, size, size);
 
-  // Diamond body
   g.beginPath();
   g.moveTo(cx, 1.5);
   g.lineTo(size - 2, cy);
@@ -1264,7 +1216,6 @@ function createCrystalSprite(): HTMLCanvasElement {
   g.lineWidth = 0.7;
   g.stroke();
 
-  // Inner facet
   g.beginPath();
   g.moveTo(cx, 3);
   g.lineTo(size - 4, cy);
@@ -1273,7 +1224,6 @@ function createCrystalSprite(): HTMLCanvasElement {
   g.fillStyle = "rgba(200,230,255,0.15)";
   g.fill();
 
-  // Blue shine line
   g.strokeStyle = "rgba(210,235,255,0.7)";
   g.lineWidth = 0.5;
   g.beginPath();
@@ -1281,7 +1231,6 @@ function createCrystalSprite(): HTMLCanvasElement {
   g.lineTo(cx + 1.5, cy + 1);
   g.stroke();
 
-  // Specular
   g.fillStyle = "rgba(255,255,255,0.85)";
   g.beginPath();
   g.arc(cx - 1.5, cy - 2.5, 1, 0, Math.PI * 2);
@@ -1299,7 +1248,6 @@ function createSparkleSprite(): HTMLCanvasElement {
   const cy = size / 2;
   const g = c.getContext("2d")!;
 
-  // 4-pointed star
   g.fillStyle = "rgba(255,220,100,0.9)";
   g.beginPath();
   g.moveTo(cx, 1);
@@ -1313,7 +1261,6 @@ function createSparkleSprite(): HTMLCanvasElement {
   g.closePath();
   g.fill();
 
-  // Glow
   const glow = g.createRadialGradient(cx, cy, 0, cx, cy, cx);
   glow.addColorStop(0, "rgba(255,220,100,0.3)");
   glow.addColorStop(1, "rgba(255,220,100,0)");
@@ -1340,7 +1287,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
-    // ---- Setup canvas size ----
     const parent = canvas.parentElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
@@ -1353,11 +1299,9 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
     canvas.style.height = `${h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // ---- Sprites ----
     const crystalSprite = createCrystalSprite();
     const sparkleSprite = createSparkleSprite();
 
-    // ---- Scene data ----
     const stars = generateStars(180, w, h);
     const groundY = h * 0.72;
     const mountainLayers: MountainLayer[] = [
@@ -1386,7 +1330,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       { trees: generateTrees(18, w, groundY + h * 0.06, 2), color: "#070c14", baseY: groundY + h * 0.06 },
     ];
 
-    // ---- Text positions ----
     const textPositions = sampleTextPositions("MERRY CHRISTMAS", w, 3);
     const textCenterX = w / 2;
     const textCenterY = h * 0.42;
@@ -1397,13 +1340,11 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
     }));
     scaledTextPositions.sort((a, b) => a.x - b.x);
 
-    // ---- Santa config ----
     const santaScale = h / 650;
     const santaStartX = -350 * santaScale;
     const santaEndX = w * 0.33;
     const santaY = groundY - h * 0.08;
 
-    // ---- Effect particles ----
     const effects: Particle[] = [];
     for (let i = 0; i < MAX_EFFECTS; i++) {
       effects.push(makeParticle());
@@ -1414,9 +1355,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         if (!effects[i].active) {
           resetParticle(effects[i]);
           const p = effects[i];
-          (p as Record<string, unknown>)[
-            "active"
-          ] = true as unknown as Particle["active"];
           p.active = true;
           if (cfg.x !== undefined) p.x = cfg.x;
           if (cfg.y !== undefined) p.y = cfg.y;
@@ -1453,7 +1391,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       return null;
     }
 
-    // ---- Snow particles ----
     const snowBg: Particle[] = [];
     const snowFg: Particle[] = [];
     for (let i = 0; i < MAX_SNOW_BG; i++) {
@@ -1493,7 +1430,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       snowFg.push(p);
     }
 
-    // ---- Shockwave state ----
     let shockwaveRadius = 0;
     let shockwaveAlpha = 0;
     let shockwave2Radius = 0;
@@ -1504,7 +1440,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
     let explosionCenterX = w / 2;
     let explosionCenterY = h * 0.42;
 
-    // ---- Spawn trackers ----
     let goldenSpawned = false;
     let iceSpawned = false;
     let helixTriggered = false;
@@ -1516,7 +1451,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
     let goldenSpawnTimer = 0;
     let iceSpawnTimer = 0;
 
-    // ---- Animation state ----
     let prevTime = 0;
     let startTime = 0;
     let initialized = false;
@@ -1651,10 +1585,8 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       const dt = Math.min(rawDt, 0.05);
       prevTime = now;
 
-      // ---- Clear ----
       ctx.clearRect(0, 0, w, h);
 
-      // ---- Global alphas ----
       const sceneAlpha = elapsed >= T_FADE
         ? clamp(1 - (elapsed - T_FADE) / 0.8, 0, 1)
         : 1;
@@ -1668,29 +1600,23 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         ? clamp(1 - (elapsed - T_FADE) / 0.5, 0, 1)
         : clamp((elapsed - T_SANTA_ENTER) / 0.3, 0, 1);
 
-      // ---- Draw scene ----
       drawSky(ctx, w, h, sceneAlpha);
 
-      // Stars
       const starAlpha = clamp((elapsed - T_MOON) / 1.5, 0, 1) * sceneAlpha;
       drawStars(ctx, stars, starAlpha, elapsed);
 
-      // Moon
       const moonAlpha = clamp((elapsed - T_MOON) / 1.0, 0, 1) * sceneAlpha;
       drawMoon(ctx, w, h, moonAlpha, elapsed);
 
-      // Mountains
       for (const ml of mountainLayers) {
         drawMountainLayer(ctx, ml, w, h, sceneAlpha);
       }
 
-      // Trees (behind Santa)
       for (let li = 0; li < treeLayers.length - 1; li++) {
         const tl = treeLayers[li];
         drawForest(ctx, tl.trees, tl.baseY, ["#0d1520", "#0a1018", "#070c14"], 0.4 * sceneAlpha, sceneAlpha);
       }
 
-      // Background snow
       ctx.save();
       ctx.globalAlpha = snowAlpha;
       for (const sp of snowBg) {
@@ -1699,7 +1625,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       }
       ctx.restore();
 
-      // ---- Santa ----
       let santaX = santaStartX;
       let leftUp = false;
       let rightUp = false;
@@ -1711,13 +1636,11 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         const t = clamp((elapsed - T_SANTA_ENTER) / (T_SANTA_STOP - T_SANTA_ENTER), 0, 1);
         const et = easeOutCubic(t);
         santaX = lerp(santaStartX, santaEndX, et);
-        // Slight arc
         bounceY = -Math.sin(t * Math.PI) * 15 * santaScale;
       } else if (elapsed >= T_SANTA_STOP) {
         santaX = santaEndX;
         legPhase = Math.sin(elapsed * 0.5) * 0.15;
         headBob = Math.sin(elapsed * 0.7) * 0.8;
-        // Damped bounce
         const bt = elapsed - T_SANTA_STOP;
         bounceY = Math.sin(bt * 10) * 4 * santaScale * Math.exp(-bt * 3);
       }
@@ -1731,7 +1654,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
           leftUp, rightUp, legPhase, headBob, santaAlpha
         );
 
-        // Breath
         if (elapsed >= T_SANTA_STOP && elapsed < T_EXPLOSION) {
           breathTimer += dt;
           if (breathTimer > 0.8) {
@@ -1759,19 +1681,15 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Near trees
       {
         const tl = treeLayers[treeLayers.length - 1];
         drawForest(ctx, tl.trees, tl.baseY, ["#0d1520", "#0a1018", "#070c14"], 0.4 * sceneAlpha, sceneAlpha);
       }
 
-      // Ground
       drawGround(ctx, w, h, groundY, sceneAlpha);
 
-      // Vignette
       drawVignette(ctx, w, h, 0.45 * sceneAlpha);
 
-      // ---- Golden particles (left hand) ----
       if (elapsed >= T_LEFT_HAND && elapsed < T_HELIX && !helixTriggered) {
         goldenSpawnTimer += dt;
         if (goldenSpawnTimer > 0.03) {
@@ -1820,7 +1738,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // ---- Ice particles (right hand) ----
       if (elapsed >= T_RIGHT_HAND && elapsed < T_HELIX && !helixTriggered) {
         iceSpawnTimer += dt;
         if (iceSpawnTimer > 0.03) {
@@ -1869,7 +1786,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // ---- Helix transition ----
       if (elapsed >= T_HELIX && !helixTriggered) {
         helixTriggered = true;
         let goldIdx = 0;
@@ -1906,14 +1822,12 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // ---- Explosion ----
       if (elapsed >= T_EXPLOSION && !explosionTriggered) {
         explosionTriggered = true;
         flashAlpha = 1;
         explosionGlowAlpha = 1;
         explosionGlowRadius = 10;
 
-        // Kill helix particles and spawn explosion
         for (const p of effects) {
           if (p.type === PType.HELIX_GOLD || p.type === PType.HELIX_ICE) {
             p.active = false;
@@ -1960,7 +1874,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
           });
         }
 
-        // Explosion glow particles
         for (let i = 0; i < 40; i++) {
           const angle = rand(0, Math.PI * 2);
           const speed = rand(20, 100);
@@ -1985,7 +1898,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         shockwave2Alpha = 0.5;
       }
 
-      // ---- Update shockwave ----
       if (shockwaveAlpha > 0) {
         shockwaveRadius += 350 * dt;
         shockwaveAlpha -= 0.6 * dt;
@@ -1997,20 +1909,17 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         if (shockwave2Alpha < 0) shockwave2Alpha = 0;
       }
 
-      // ---- Update flash ----
       if (flashAlpha > 0) {
         flashAlpha -= 3.5 * dt;
         if (flashAlpha < 0) flashAlpha = 0;
       }
 
-      // ---- Update explosion glow ----
       if (explosionGlowAlpha > 0) {
         explosionGlowRadius += 200 * dt;
         explosionGlowAlpha -= 0.8 * dt;
         if (explosionGlowAlpha < 0) explosionGlowAlpha = 0;
       }
 
-      // ---- Text formation ----
       if (elapsed >= T_TEXT_FORM && !textFormTriggered) {
         textFormTriggered = true;
         let textIdx = 0;
@@ -2044,7 +1953,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
           textIdx++;
         }
 
-        // Kill non-text explosion particles gradually
         for (const p of effects) {
           if (p.active && p.type === PType.EXPLOSION && !p.reservedForText) {
             p.life = Math.min(p.life, 1.5);
@@ -2052,7 +1960,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // ---- Crystal transformation ----
       if (elapsed >= T_CRYSTAL && !crystalTriggered) {
         crystalTriggered = true;
         for (const p of effects) {
@@ -2064,7 +1971,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // ---- Sparkles ----
       if (elapsed >= T_SPARKLE && !sparkleSpawned) {
         sparkleSpawned = true;
         const padding = 30;
@@ -2085,16 +1991,13 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // ---- Update all effect particles ----
       for (const p of effects) {
         updateEffect(p, dt, elapsed);
       }
 
-      // ---- Draw effects (additive) ----
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
 
-      // Explosion center glow
       if (explosionGlowAlpha > 0) {
         const egR = Math.max(1, explosionGlowRadius);
         const egGrad = ctx.createRadialGradient(
@@ -2111,7 +2014,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         ctx.fill();
       }
 
-      // Glow-type particles
       for (const p of effects) {
         if (!p.active) continue;
         if (
@@ -2122,7 +2024,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Crystal glow pass
       if (crystalTriggered) {
         for (const p of effects) {
           if (!p.active || p.type !== PType.CRYSTAL) continue;
@@ -2139,7 +2040,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // All other particles
       for (const p of effects) {
         if (!p.active) continue;
         if (
@@ -2150,7 +2050,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Sparkles
       for (const p of effects) {
         if (!p.active || p.type !== PType.SPARKLE) continue;
         drawSingleParticle(ctx, p, crystalSprite, sparkleSprite, false);
@@ -2158,7 +2057,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
 
       ctx.restore();
 
-      // ---- Shockwaves (source-over) ----
       if (shockwaveAlpha > 0) {
         drawShockwave(ctx, explosionCenterX, explosionCenterY, shockwaveRadius, shockwaveAlpha, 3);
       }
@@ -2166,7 +2064,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         drawShockwave(ctx, explosionCenterX, explosionCenterY, shockwave2Radius, shockwave2Alpha, 1.5);
       }
 
-      // ---- Flash overlay ----
       if (flashAlpha > 0) {
         ctx.save();
         ctx.globalAlpha = flashAlpha;
@@ -2175,7 +2072,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         ctx.restore();
       }
 
-      // ---- Foreground snow ----
       ctx.save();
       ctx.globalAlpha = snowAlpha;
       for (const sp of snowFg) {
@@ -2184,7 +2080,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       }
       ctx.restore();
 
-      // ---- Fade to transparent ----
       if (elapsed >= T_END - 0.5) {
         const fadeOut = clamp((elapsed - (T_END - 0.5)) / 0.5, 0, 1);
         ctx.save();
@@ -2194,7 +2089,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         ctx.restore();
       }
 
-      // ---- Complete check ----
       if (elapsed >= DURATION && !completedRef.current) {
         completedRef.current = true;
         ctx.clearRect(0, 0, w, h);
