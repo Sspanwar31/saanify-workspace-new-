@@ -2,7 +2,7 @@
 
 export default function ChristmasHero() {
   return (
-    <div className="relative flex flex-col items-center justify-center w-[320px] h-[420px] bg-gradient-to-b from-[#0f172a] to-[#1e293b] rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(34,197,94,0.15)] border border-white/10">
+    <div className="relative flex flex-col items-center justify-center w-[320px] h-[420px]">
       
       <style>{`
         @keyframes float-star {
@@ -13,22 +13,7 @@ export default function ChristmasHero() {
           0% { transform: scale(1); opacity: 0.8; }
           100% { transform: scale(2.5); opacity: 0; }
         }
-        @keyframes subtle-snow {
-          0% { transform: translateY(-10px) translateX(0) rotate(0deg); opacity: 0; }
-          10% { opacity: 0.8; }
-          90% { opacity: 0.6; }
-          100% { transform: translateY(420px) translateX(20px) rotate(360deg); opacity: 0; }
-        }
       `}</style>
-
-      {/* ── Background Atmosphere ── */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 bg-emerald-500/10 rounded-full blur-3xl" />
-      
-      {/* ── Subtle Falling Snow (CSS Only) ── */}
-      <div className="absolute w-1.5 h-1.5 bg-white/60 rounded-full top-0 left-[15%]" style={{ animation: 'subtle-snow 6s linear infinite' }} />
-      <div className="absolute w-2 h-2 bg-white/40 rounded-full top-0 left-[45%]" style={{ animation: 'subtle-snow 8s linear infinite', animationDelay: '2s' }} />
-      <div className="absolute w-1 h-1 bg-white/70 rounded-full top-0 right-[20%]" style={{ animation: 'subtle-snow 7s linear infinite', animationDelay: '4s' }} />
-      <div className="absolute w-1.5 h-1.5 bg-white/50 rounded-full top-0 right-[40%]" style={{ animation: 'subtle-snow 9s linear infinite', animationDelay: '1s' }} />
 
       {/* ── The Glowing Star ── */}
       <div className="absolute top-[18%] left-1/2 -translate-x-1/2 z-20 text-amber-400" style={{ animation: 'float-star 3s ease-in-out infinite' }}>
@@ -85,16 +70,23 @@ export default function ChristmasHero() {
         <div className="absolute w-2 h-2 rounded-full bg-red-200" style={{ animation: 'glow-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite' }} />
       </div>
 
-      {/* ── The Text ── */}
+      {/* ── The Text (With dark outline so it's readable on white background) ── */}
       <div className="relative z-20 mt-2 text-center">
         <h1 
-          className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-200 tracking-wide"
-          style={{ fontFamily: 'Georgia, serif', textShadow: '0 0 30px rgba(251, 191, 36, 0.3)' }}
+          className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600 tracking-wide"
+          style={{ 
+            fontFamily: 'Georgia, serif', 
+            // ✅ Dark shadow added so text pops on white/light dashboard
+            textShadow: '0px 1px 4px rgba(0,0,0,0.8), 0 0 20px rgba(251, 191, 36, 0.4)' 
+          }}
         >
           Merry Christmas
         </h1>
-        <div className="w-24 h-[1px] mx-auto mt-2 bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
-        <p className="text-[11px] text-slate-400 mt-2 tracking-[0.25em] uppercase font-medium">
+        <div className="w-24 h-[1px] mx-auto mt-2 bg-gradient-to-r from-transparent via-amber-600/60 to-transparent" />
+        <p 
+          className="text-[11px] text-slate-700 mt-2 tracking-[0.25em] uppercase font-bold"
+          style={{ textShadow: '0px 1px 2px rgba(255,255,255,0.8)' }}
+        >
           Warm Wishes from Saanify
         </p>
       </div>
