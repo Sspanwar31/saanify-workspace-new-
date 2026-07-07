@@ -1,4 +1,3 @@
-```typescript
 import React, { useRef, useEffect } from "react";
 import ChristmasScene from "./ChristmasScene";
 import ChristmasParticles from "./ChristmasParticles";
@@ -2224,4 +2223,3 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
     </div>
   );
 }
-```
