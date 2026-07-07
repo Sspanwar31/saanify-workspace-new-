@@ -24,15 +24,14 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
-  // ━━━ CHRISTMAS (🚀 11.5s Cinematic Sequence Sync) ━━━
   CHRISTMAS: {
-    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
-    timings: {
-      FLASH: 1500,     // 1.5s: क्रिसमस ट्री और चाँद का आगमन
-      SHOOTING: 10500, // 10.5s: सान्ता फ़्लाइट + सांस + मैजिक डस्ट + धमाका + क्रिस्टल टेक्स्ट एनीमेशन
-      HANDOVER: 1000   // 1.0s: डैशबोर्ड पर स्मूथ फ़ेड-आउट
-    }
-  },
+  phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+  timings: {
+    FLASH: 1000,
+    SHOOTING: 12000,
+    HANDOVER: 1000
+  }
+},
 
   // ━━━ RAM_NAVAMI (🚀 1.5s Bow Charge + 3.0s Arrow Shoot & Rays) ━━━
   RAM_NAVAMI: {
