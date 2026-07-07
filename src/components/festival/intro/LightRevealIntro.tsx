@@ -3,7 +3,7 @@
 import HeroFactory from '../v2/HeroFactory';
 import RayEngine from '../engines/RayEngine';
 import ParticleEngine from '../engines/ParticleEngine';
-// 🚀 पुराना ChristmasStarIntro हटाकर नया प्रीमियम ChristmasCinematicIntro इम्पोर्ट किया गया
+// 🚀 नया प्रीमियम सिनेमाई इंजन
 import ChristmasCinematicIntro from '../engines/effects/ChristmasCinematicIntro';
 
 interface IntroProps {
@@ -47,7 +47,7 @@ export default function LightRevealIntro({
         );
 
       case 'CHRISTMAS':
-        // 🚀 नया सिनेमाई कंपोनेंट रेंडर होगा (onComplete फॉलबैक के साथ सुरक्षित)
+        // 🚀 नया सिनेमाई कंपोनेंट रेंडर होगा
         return <ChristmasCinematicIntro onComplete={() => {}} />;
 
       case 'EID_UL_FITR':
@@ -108,17 +108,20 @@ export default function LightRevealIntro({
         </>
       )}
 
-      {/* ── एक्शन लेयर (नया सिनेमाई इंजन यहाँ चलेगा) ── */}
+      {/* ── एक्शन लेयर (सिनेमाई सान्ता / तीर एनीमेशन) ── */}
       {renderActionOverlay()}
 
       {/* ── फोरग्राउंड लेयर (हीरो सिंबल) ── */}
-      <div 
-        className={`transform transition-all duration-1000 ${
-          introPhase === 'OBJECT_REVEAL' ? 'opacity-100 scale-100' : 'opacity-100 scale-105'
-        }`}
-      >
-        <HeroFactory config={heroConfig} themeColor={themeColor} hideBranding={true} />
-      </div>
+      {/* 🚀 सुधार: क्रिसमस के सिनेमाई एनीमेशन के दौरान हम स्थिर ट्री को छुपा रहे हैं */}
+      {preset !== 'CHRISTMAS' && (
+        <div 
+          className={`transform transition-all duration-1000 ${
+            introPhase === 'OBJECT_REVEAL' ? 'opacity-100 scale-100' : 'opacity-100 scale-105'
+          }`}
+        >
+          <HeroFactory config={heroConfig} themeColor={themeColor} hideBranding={true} />
+        </div>
+      )}
 
       {/* ── शीर्षक और सबटाइटल ── */}
       <div 
