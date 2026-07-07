@@ -4,7 +4,7 @@ import HeroFactory from '../v2/HeroFactory';
 import RayEngine from '../engines/RayEngine';
 import ParticleEngine from '../engines/ParticleEngine';
 // 🚀 नया प्रीमियम सिनेमाई इंजन
-import ChristmasCinematicIntro from '../engines/effects/ChristmasCinematicIntro';
+import ChristmasCinematicIntro from '../engines/effects/christmas/ChristmasCinematicIntro';
 
 interface IntroProps {
   preset: string;
@@ -85,18 +85,7 @@ export default function LightRevealIntro({
       {/* ── बैकग्राउंड लेयर ── */}
       {introPhase === 'ACTION_TRIGGER' && (
         <>
-          {preset === 'CHRISTMAS' ? (
-            <ParticleEngine 
-              preset="CHRISTMAS" 
-              phase="AMBIENT" 
-              customGravity={parsedHeroConfig.customGravity}
-              customSpeed={parsedHeroConfig.customSpeed}
-              customColors={parsedHeroConfig.customColors}
-              customMinSize={parsedHeroConfig.customMinSize}
-              customMaxSize={parsedHeroConfig.customMaxSize}
-              customMaxCount={parsedHeroConfig.customMaxCount}
-            />
-          ) : (
+          {preset !== 'CHRISTMAS' && (
             <RayEngine 
               preset={preset}
               customRayCount={parsedHeroConfig.customRayCount}
@@ -124,20 +113,22 @@ export default function LightRevealIntro({
       )}
 
       {/* ── शीर्षक और सबटाइटल ── */}
-      <div 
-        className={`absolute bottom-20 flex flex-col items-center justify-center transition-all duration-1000 ${
-          introPhase === 'ACTION_TRIGGER' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}
-      >
-        <h1 className="text-4xl font-extrabold tracking-widest text-white uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-          {preset.replace('_', ' ')}
-        </h1>
-        <span className="mt-2 text-xs font-medium tracking-[0.4em] text-gray-400 uppercase">
-          {preset === 'CHRISTMAS' && 'MERRY & BRIGHT'}
-          {preset === 'RAM_NAVAMI' && 'DIVINE DHARMA RAYS'}
-          {(preset === 'EID_UL_FITR' || preset === 'EID_AL_ADHA') && 'SACRED LUNAR GLOW'}
-        </span>
-      </div>
+      {/* 🚀 क्रिसमस इंट्रो खुद "MERRY CHRISTMAS" टेक्स्ट बनाएगा, इसलिए ये छुपा दिया */}
+      {preset !== 'CHRISTMAS' && (
+        <div 
+          className={`absolute bottom-20 flex flex-col items-center justify-center transition-all duration-1000 ${
+            introPhase === 'ACTION_TRIGGER' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}
+        >
+          <h1 className="text-4xl font-extrabold tracking-widest text-white uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+            {preset.replace('_', ' ')}
+          </h1>
+          <span className="mt-2 text-xs font-medium tracking-[0.4em] text-gray-400 uppercase">
+            {preset === 'RAM_NAVAMI' && 'DIVINE DHARMA RAYS'}
+            {(preset === 'EID_UL_FITR' || preset === 'EID_AL_ADHA') && 'SACRED LUNAR GLOW'}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
