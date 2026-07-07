@@ -24,13 +24,13 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
-  // ━━━ CHRISTMAS (🚀 1.5s Tree Reveal + 3.5s Star Fall & Snowfall) ━━━
+  // ━━━ CHRISTMAS (🚀 11.5s Cinematic Sequence Sync) ━━━
   CHRISTMAS: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
-      FLASH: 1500,     // 1.5s: क्रिसमस ट्री स्क्रीन पर सुगमता से प्रकट होगा
-      SHOOTING: 3500,  // 3.5s: तारा आसमान से गिरेगा और बैकग्राउंड में बर्फबारी शुरू होगी
-      HANDOVER: 1000   // 1.0s: डैशबोर्ड की तरफ सुगम बदलाव
+      FLASH: 1500,     // 1.5s: क्रिसमस ट्री और चाँद का आगमन
+      SHOOTING: 10500, // 10.5s: सान्ता फ़्लाइट + सांस + मैजिक डस्ट + धमाका + क्रिस्टल टेक्स्ट एनीमेशन
+      HANDOVER: 1000   // 1.0s: डैशबोर्ड पर स्मूथ फ़ेड-आउट
     }
   },
 
