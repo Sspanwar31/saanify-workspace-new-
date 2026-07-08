@@ -33,6 +33,16 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   }
 },
 
+// ━━━ RAKSHA_BANDHAN (🚀 12.0s Cinematic Sequence Sync) ━━━
+  RAKSHA_BANDHAN: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 1500,     // 1.5s: पवित्र धागे का स्क्रीन पर तैरना
+      SHOOTING: 9500,  // 9.5s: गाँठ बांधना, सुनहरी प्रकाश रिंग्स, और राखी का खिलना
+      HANDOVER: 1000   // 1.0s: डैशबोर्ड पर स्मूथ फ़ेड-आउट
+    }
+  },
+  
   // ━━━ RAM_NAVAMI (🚀 1.5s Bow Charge + 3.0s Arrow Shoot & Rays) ━━━
   RAM_NAVAMI: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
