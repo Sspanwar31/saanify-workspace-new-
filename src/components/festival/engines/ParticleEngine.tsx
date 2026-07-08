@@ -95,13 +95,18 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       AMBIENT:        { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
     }
   },
+  
+  // 🚀 सुधार क: LOHRI का उत्कृष्ट कोमल ऊपर की ओर खिंचाव और बॉटम स्पॉन सेटिंग
   LOHRI: {
     default: {
-      gravity: -0.04, spread: 0.9, speed: 1.5,
+      gravity: -0.015,       
+      spread: 1.2,          
+      speed: 0.6,           
       colors: ['#ff6b35', '#ff4500', '#ffd700', '#ff8c00'],
-      minSize: 2.5, maxSize: 6.5, maxCount: 150, glow: true, wobble: false, direction: 'upward', spawnY: 0.9,
+      minSize: 1.5, maxSize: 5.5, maxCount: 220, glow: true, wobble: true, direction: 'upward', spawnY: 1.02,
     }
   },
+
   CHRISTMAS: {
     default: {
       gravity: 0.025,       
@@ -172,7 +177,7 @@ export default function ParticleEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 🔍 डीबग लॉग 1: यह बताएगा कि डेटाबेस से लाइव क्या इनपुट आ रहा है
+    // डीबग लॉग 1
     console.log("❄️ [ParticleEngine] PROPS RECEIVED:", {
       preset,
       phase,
@@ -185,7 +190,7 @@ export default function ParticleEngine({
 
     const activePresetObj = PRESET_MAP[preset || ''] || { default: DEFAULT };
 
-    // 🚀 सुरक्षित चेकिंग: null और undefined दोनों से सुरक्षा
+    // सुरक्षित चेकिंग
     const config: EngineConfig = { 
       ...DEFAULT, 
       ...activePresetObj.default,
@@ -197,7 +202,7 @@ export default function ParticleEngine({
       ...(customMaxCount !== null && customMaxCount !== undefined && { maxCount: customMaxCount }),
     };
 
-    // 🔍 डीबग लॉग 2: यह दिखाएगा कि अंतिम गणना के बाद कौन से मान तय हुए हैं
+    // डीबग लॉग 2
     console.log("❄️ [ParticleEngine] FINAL CONFIG RESOLVED:", config);
 
     let w = 0;
@@ -255,12 +260,13 @@ export default function ParticleEngine({
           vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
-      // 🚀 सुधार: यदि दिशा नीचे की ओर है (बर्फबारी) या यह लोहड़ी (LOHRI) का अलाव है, तो पूरे स्क्रीन की चौड़ाई में रैंडमली स्पॉन करें
+      // सुधार: यदि दिशा नीचे की ओर है (बर्फबारी) या यह लोहड़ी (LOHRI) का अलाव है, तो पूरे स्क्रीन की चौड़ाई में रैंडमली स्पॉन करें
       const spawnX = (currentDirection === 'downward' || preset === 'LOHRI') ? rand(0, w) : cx + rand(-20, 20);
 
       let baseMaxLife = 110;
-      if (currentDirection === 'downward') {
-         baseMaxLife = Math.max(350, Math.floor(h / (currentSpeed * 0.8))); 
+      // 🚀 सुधार ख: डाउनवर्ड (क्रिसमस) और अपवर्ड (लोहड़ी) दोनों इंजनों को स्क्रीन पार करने के लिए अधिक लाइफस्पैन (Math.max)
+      if (currentDirection === 'downward' || currentDirection === 'upward') {
+         baseMaxLife = Math.max(350, Math.floor(h / (currentSpeed * 0.7))); 
       }
 
       return {
@@ -279,6 +285,9 @@ export default function ParticleEngine({
       const progress = 1 - p.life / p.maxLife;
       const alpha = Math.max(0, 1 - (progress * progress));
 
+      // 🚀 सुधार ग: लोहड़ी की चिंगारियां ऊपर जाते समय ठंडी होकर धीरे-धीरे सुई की नोक जैसी बारीक (shrink) होंगी
+      const renderSize = preset === 'LOHRI' ? p.size * (1 - progress * 0.8) : p.size;
+
       ctx.save();
       ctx.globalAlpha = alpha * 0.85; 
       
@@ -288,8 +297,16 @@ export default function ParticleEngine({
 
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2); // 🚀 renderSize का उपयोग
       ctx.fill();
+
+      if (config.wobble && p.size > 5) {
+        ctx.globalAlpha = alpha * 0.4;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-renderSize * 0.25, -renderSize * 0.25, renderSize * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       ctx.restore();
     };
