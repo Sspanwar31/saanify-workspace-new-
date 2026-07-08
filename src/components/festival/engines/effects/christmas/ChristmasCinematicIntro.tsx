@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useRef, useEffect } from "react";
-// 🚀 अनुपयोगी क्लास इंपोर्ट्स हटा दिए गए हैं ताकि एरर न आए
 
 interface Props {
   onComplete: () => void;
@@ -582,8 +581,9 @@ function drawReindeer(
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  ctx.fillStyle = "#000000";
-  ctx.strokeStyle = "#000000";
+  /* ★ CHANGE #2 (COLOUR): Black → Brown */
+  ctx.fillStyle = "#7A5230";
+  ctx.strokeStyle = "#5C3A1E";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
@@ -602,6 +602,7 @@ function drawReindeer(
   ctx.closePath();
   ctx.fill();
 
+  ctx.fillStyle = "#6B3F1F";
   ctx.beginPath();
   ctx.ellipse(30, -18 + headBob, 8, 6, 0.15, 0, Math.PI * 2);
   ctx.fill();
@@ -610,6 +611,7 @@ function drawReindeer(
   ctx.ellipse(34, -23 + headBob, 3, 2, 0.5, 0, Math.PI * 2);
   ctx.fill();
 
+  ctx.strokeStyle = "#5C3A1E";
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(27, -24 + headBob);
@@ -637,6 +639,7 @@ function drawReindeer(
   ctx.lineTo(40, -30 + headBob);
   ctx.stroke();
 
+  ctx.strokeStyle = "#5C3A1E";
   ctx.lineWidth = 3.5;
   ctx.beginPath();
   ctx.moveTo(12, 9);
@@ -656,6 +659,7 @@ function drawReindeer(
   ctx.stroke();
 
   const hoofR = 2;
+  ctx.fillStyle = "#4A2D15";
   ctx.lineWidth = 1;
   [
     [12 + lo1, 28], [17 + lo2, 28],
@@ -666,6 +670,7 @@ function drawReindeer(
     ctx.fill();
   });
 
+  ctx.fillStyle = "#7A5230";
   ctx.beginPath();
   ctx.moveTo(-22, -5);
   ctx.quadraticCurveTo(-28, -12, -24, -3);
@@ -684,8 +689,9 @@ function drawSleigh(
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  ctx.fillStyle = "#000000";
-  ctx.strokeStyle = "#000000";
+  /* ★ CHANGE #2 (COLOUR): Black → Dark Red */
+  ctx.fillStyle = "#8B2500";
+  ctx.strokeStyle = "#5C2E0E";
   ctx.lineCap = "round";
 
   ctx.beginPath();
@@ -697,6 +703,7 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
+  ctx.fillStyle = "#6B1D00";
   ctx.beginPath();
   ctx.moveTo(-45, -28);
   ctx.quadraticCurveTo(-55, -52, -47, -58);
@@ -705,6 +712,7 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
+  ctx.fillStyle = "#8B2500";
   ctx.beginPath();
   ctx.moveTo(48, -28);
   ctx.quadraticCurveTo(55, -35, 52, -42);
@@ -713,6 +721,7 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
+  ctx.strokeStyle = "#5C2E0E";
   ctx.lineWidth = 3.5;
   ctx.beginPath();
   ctx.moveTo(-52, 7);
@@ -727,6 +736,7 @@ function drawSleigh(
   ctx.quadraticCurveTo(72, -8, 66, -16);
   ctx.stroke();
 
+  ctx.strokeStyle = "#D4AF37";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(-30, -28);
@@ -759,21 +769,36 @@ function drawSantaBody(
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  ctx.fillStyle = "#000000";
-  ctx.strokeStyle = "#000000";
   ctx.lineCap = "round";
 
+  /* ★ CHANGE #2 (COLOUR): Black → Red Santa with details */
+
+  // Coat
+  ctx.fillStyle = "#CC0000";
   ctx.beginPath();
   ctx.ellipse(0, -35, 20, 24, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // White Fur Trim
+  ctx.fillStyle = "#F3F4F6";
   ctx.fillRect(-20, -28, 40, 5);
+
+  // Belt
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fillRect(-20, -25, 40, 6);
+
+  // Belt Buckle
+  ctx.fillStyle = "#D4AF37";
   ctx.fillRect(-4, -30, 8, 9);
 
+  // Head (skin)
+  ctx.fillStyle = "#FDBCB4";
   ctx.beginPath();
   ctx.arc(2, -64, 11, 0, Math.PI * 2);
   ctx.fill();
 
+  // Hat
+  ctx.fillStyle = "#CC0000";
   ctx.beginPath();
   ctx.moveTo(-9, -70);
   ctx.quadraticCurveTo(-5, -85, 3, -92);
@@ -782,14 +807,20 @@ function drawSantaBody(
   ctx.closePath();
   ctx.fill();
 
+  // Hat Fur Band
+  ctx.fillStyle = "#F3F4F6";
   ctx.beginPath();
   ctx.ellipse(2, -70, 15, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // Hat Tip
+  ctx.fillStyle = "#CC0000";
   ctx.beginPath();
   ctx.arc(17, -87, 5, 0, Math.PI * 2);
   ctx.fill();
 
+  // Beard
+  ctx.fillStyle = "#E0DDD5";
   ctx.beginPath();
   ctx.moveTo(-7, -57);
   ctx.quadraticCurveTo(-14, -42, -10, -24);
@@ -799,19 +830,23 @@ function drawSantaBody(
   ctx.closePath();
   ctx.fill();
 
+  // Beard texture lines
+  ctx.strokeStyle = "rgba(180,170,155,0.3)";
   ctx.lineWidth = 0.8;
-  ctx.globalAlpha = 0.3;
   for (let i = -6; i <= 6; i += 3) {
     ctx.beginPath();
     ctx.moveTo(i, -55);
     ctx.quadraticCurveTo(i * 0.8, -40, i * 0.6, -24);
     ctx.stroke();
   }
-  ctx.globalAlpha = 1;
 
+  // Legs
+  ctx.fillStyle = "#1a1a1a";
   ctx.fillRect(-14, -14, 11, 14);
   ctx.fillRect(5, -14, 11, 14);
 
+  // Boots
+  ctx.fillStyle = "#2a1a0e";
   ctx.beginPath();
   ctx.moveTo(-16, -2);
   ctx.lineTo(-16, 5);
@@ -832,6 +867,7 @@ function drawSantaBody(
   ctx.closePath();
   ctx.fill();
 
+  // Left Arm
   ctx.save();
   ctx.translate(-18, -48);
   if (leftUp) {
@@ -839,7 +875,9 @@ function drawSantaBody(
   } else {
     ctx.rotate(-0.35);
   }
+  ctx.fillStyle = "#CC0000";
   ctx.fillRect(0, -3.5, 24, 7);
+  ctx.fillStyle = "#FDBCB4";
   ctx.beginPath();
   ctx.arc(24, 0, 5, 0, Math.PI * 2);
   ctx.fill();
@@ -848,12 +886,14 @@ function drawSantaBody(
       ctx.save();
       ctx.translate(28, 0);
       ctx.rotate(f);
+      ctx.fillStyle = "#FDBCB4";
       ctx.fillRect(0, -1.5, 6, 3);
       ctx.restore();
     }
   }
   ctx.restore();
 
+  // Right Arm
   ctx.save();
   ctx.translate(18, -48);
   if (rightUp) {
@@ -861,7 +901,9 @@ function drawSantaBody(
   } else {
     ctx.rotate(0.35);
   }
+  ctx.fillStyle = "#CC0000";
   ctx.fillRect(-24, -3.5, 24, 7);
+  ctx.fillStyle = "#FDBCB4";
   ctx.beginPath();
   ctx.arc(-24, 0, 5, 0, Math.PI * 2);
   ctx.fill();
@@ -870,6 +912,7 @@ function drawSantaBody(
       ctx.save();
       ctx.translate(-28, 0);
       ctx.rotate(f + Math.PI);
+      ctx.fillStyle = "#FDBCB4";
       ctx.fillRect(0, -1.5, 6, 3);
       ctx.restore();
     }
@@ -887,7 +930,8 @@ function drawHarness(
   s: number
 ): void {
   ctx.save();
-  ctx.strokeStyle = "#000000";
+  /* ★ CHANGE #2 (COLOUR): Black → Brown harness */
+  ctx.strokeStyle = "#3E2723";
   ctx.lineWidth = 1.5 * s;
   ctx.lineCap = "round";
   const midX = (fromX + toX) / 2;
@@ -898,6 +942,7 @@ function drawHarness(
   ctx.restore();
 }
 
+/* ★ CHANGE #1 (DIRECTION): Added rot param + ctx.scale(-1,1) mirror */
 function drawSantaFormation(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -907,56 +952,63 @@ function drawSantaFormation(
   rightUp: boolean,
   legPhase: number,
   headBob: number,
-  alpha: number
+  alpha: number,
+  rot: number = 0
 ): void {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
 
+  ctx.translate(cx, cy);
+  ctx.rotate(rot);
+  ctx.scale(-1, 1);
+
   const gap = 65 * s;
   const deerX = [-3 * gap, -2 * gap, -1 * gap, 0];
-  const deerY = cy + 10 * s;
+  const deerY = 10 * s;
   const sleighX = gap * 0.8;
-  const sleighY = cy + 18 * s;
+  const sleighY = 18 * s;
   const santaX = sleighX - 5 * s;
   const santaY = sleighY - 2 * s;
 
   for (let i = 0; i < 3; i++) {
-    const fromX = cx + deerX[i] + 25 * s;
-    const toX = cx + deerX[i + 1] - 22 * s;
+    const fromX = deerX[i] + 25 * s;
+    const toX = deerX[i + 1] - 22 * s;
     drawHarness(ctx, fromX, toX, deerY - 5 * s, s);
   }
-  drawHarness(ctx, cx + deerX[3] + 25 * s, cx + sleighX - 42 * s, sleighY - 15 * s, s);
+  drawHarness(ctx, deerX[3] + 25 * s, sleighX - 42 * s, sleighY - 15 * s, s);
 
   for (let i = 0; i < 4; i++) {
     const lp = legPhase + i * 0.8;
     const hb = headBob * (1 - i * 0.15);
-    drawReindeer(ctx, cx + deerX[i], deerY, s, lp, hb);
+    drawReindeer(ctx, deerX[i], deerY, s, lp, hb);
   }
 
-  drawSleigh(ctx, cx + sleighX, sleighY, s);
-  drawSantaBody(ctx, cx + santaX, santaY, s, leftUp, rightUp);
+  drawSleigh(ctx, sleighX, sleighY, s);
+  drawSantaBody(ctx, santaX, santaY, s, leftUp, rightUp);
 
   ctx.restore();
 }
 
+/* ★ CHANGE #1 (DIRECTION): Added rot param + mirror math for screen coords */
 function getHandPositions(
   cx: number,
   cy: number,
   s: number,
   leftUp: boolean,
-  rightUp: boolean
+  rightUp: boolean,
+  rot: number
 ): { left: { x: number; y: number }; right: { x: number; y: number } } {
   const gap = 65 * s;
-  const sleighX = cx + gap * 0.8;
-  const sleighY = cy + 18 * s;
-  const santaX = sleighX - 5 * s;
-  const santaY = sleighY - 2 * s;
+  const sleighLocalX = gap * 0.8;
+  const sleighLocalY = 18 * s;
+  const santaLocalX = sleighLocalX - 5 * s;
+  const santaLocalY = sleighLocalY - 2 * s;
 
-  let leftX = santaX - 18 * s;
-  let leftY = santaY - 48 * s;
-  let rightX = santaX + 18 * s;
-  let rightY = santaY - 48 * s;
+  let leftX = santaLocalX - 18 * s;
+  let leftY = santaLocalY - 48 * s;
+  let rightX = santaLocalX + 18 * s;
+  let rightY = santaLocalY - 48 * s;
 
   if (leftUp) {
     const armLen = 32 * s;
@@ -978,9 +1030,20 @@ function getHandPositions(
     rightY += Math.sin(0.35) * 24 * s;
   }
 
+  // Transform: translate(cx,cy) → rotate(rot) → scale(-1,1)
+  // screenX = cx - lx*cos(rot) - ly*sin(rot)
+  // screenY = cy - lx*sin(rot) + ly*cos(rot)
+  const cosR = Math.cos(rot);
+  const sinR = Math.sin(rot);
+
+  const screenLeftX = cx - leftX * cosR - leftY * sinR;
+  const screenLeftY = cy - leftX * sinR + leftY * cosR;
+  const screenRightX = cx - rightX * cosR - rightY * sinR;
+  const screenRightY = cy - rightX * sinR + rightY * cosR;
+
   return {
-    left: { x: leftX, y: leftY },
-    right: { x: rightX, y: rightY },
+    left: { x: screenLeftX, y: screenLeftY },
+    right: { x: screenRightX, y: screenRightY },
   };
 }
 
@@ -1390,6 +1453,7 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       return null;
     }
 
+    /* ★ CHANGE #3 (SNOW SPEED) & #2 (COLOUR): Already correct in old code — kept as-is */
     const snowBg: Particle[] = [];
     const snowFg: Particle[] = [];
     for (let i = 0; i < MAX_SNOW_BG; i++) {
@@ -1630,37 +1694,42 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       let legPhase = elapsed * 4;
       let headBob = Math.sin(elapsed * 3) * 1.5;
       let bounceY = 0;
+      /* ★ CHANGE #1 (DIRECTION): Added rot variable */
+      let rot = 0;
 
+      /* ★ CHANGE #4 (ARC): Already 15 in old code — kept as-is */
       if (elapsed >= T_SANTA_ENTER && elapsed < T_SANTA_STOP) {
         const t = clamp((elapsed - T_SANTA_ENTER) / (T_SANTA_STOP - T_SANTA_ENTER), 0, 1);
         const et = easeOutCubic(t);
         santaX = lerp(santaStartX, santaEndX, et);
         bounceY = -Math.sin(t * Math.PI) * 15 * santaScale;
+        rot = (1 - et) * 0.12;
       } else if (elapsed >= T_SANTA_STOP) {
         santaX = santaEndX;
         legPhase = Math.sin(elapsed * 0.5) * 0.15;
         headBob = Math.sin(elapsed * 0.7) * 0.8;
         const bt = elapsed - T_SANTA_STOP;
         bounceY = Math.sin(bt * 10) * 4 * santaScale * Math.exp(-bt * 3);
+        rot = Math.sin(elapsed * 0.5) * 0.02;
       }
 
       if (elapsed >= T_LEFT_HAND) leftUp = true;
       if (elapsed >= T_RIGHT_HAND) rightUp = true;
 
       if (elapsed >= T_SANTA_ENTER) {
+        /* ★ CHANGE #1 (DIRECTION): Pass rot */
         drawSantaFormation(
           ctx, santaX, santaY + bounceY, santaScale,
-          leftUp, rightUp, legPhase, headBob, santaAlpha
+          leftUp, rightUp, legPhase, headBob, santaAlpha, rot
         );
 
         if (elapsed >= T_SANTA_STOP && elapsed < T_EXPLOSION) {
           breathTimer += dt;
           if (breathTimer > 0.8) {
             breathTimer = 0;
-            const deerX = santaX - 0 * 65 * santaScale;
-            const deerY = santaY + 10 * santaScale + headBob;
-            const noseX = deerX + 38 * santaScale;
-            const noseY = deerY - 18 * santaScale;
+            const hands = getHandPositions(santaX, santaY + bounceY, santaScale, leftUp, rightUp, rot);
+            const noseX = hands.right.x;
+            const noseY = hands.right.y;
             for (let i = 0; i < 3; i++) {
               spawnEffect({
                 type: PType.SMOKE,
@@ -1693,7 +1762,8 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         goldenSpawnTimer += dt;
         if (goldenSpawnTimer > 0.03) {
           goldenSpawnTimer = 0;
-          const hands = getHandPositions(santaX, santaY + bounceY, santaScale, leftUp, rightUp);
+          /* ★ CHANGE #1 (DIRECTION): Pass rot */
+          const hands = getHandPositions(santaX, santaY + bounceY, santaScale, leftUp, rightUp, rot);
           const hx = hands.left.x;
           const hy = hands.left.y;
           const roll = Math.random();
@@ -1741,7 +1811,8 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         iceSpawnTimer += dt;
         if (iceSpawnTimer > 0.03) {
           iceSpawnTimer = 0;
-          const hands = getHandPositions(santaX, santaY + bounceY, santaScale, leftUp, rightUp);
+          /* ★ CHANGE #1 (DIRECTION): Pass rot */
+          const hands = getHandPositions(santaX, santaY + bounceY, santaScale, leftUp, rightUp, rot);
           const hx = hands.right.x;
           const hy = hands.right.y;
           const roll = Math.random();
@@ -1759,22 +1830,22 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
             spawnEffect({
               type: PType.ICE_DUST,
               x: hx + rand(-8, 8), y: hy + rand(-8, 8),
-              vx: rand(-15, 15), vy: rand(-25, -8),
-              size: rand(2, 3.5), sizeEnd: 0.8,
-              life: rand(1, 2), maxLife: 2,
+              vx: rand(-20, 20), vy: rand(-30, -10),
+              size: rand(2, 4), sizeEnd: 0.8,
+              life: rand(1.2, 2.2), maxLife: 2.2,
               r: randInt(170, 210), g: randInt(220, 240), b: 255,
               a: 0.9, aEnd: 0,
               angle: rand(0, Math.PI * 2),
               angularSpeed: rand(1, 3) * (Math.random() > 0.5 ? 1 : -1),
-              rotationSpeed: rand(-2, 2),
+              rotationSpeed: rand(-3, 3),
             });
           } else {
             spawnEffect({
               type: PType.ICE_CRYSTAL,
               x: hx + rand(-10, 10), y: hy + rand(-10, 10),
-              vx: rand(-10, 10), vy: rand(-20, -5),
+              vx: rand(-10, 10), vy: rand(-25, -5),
               size: rand(3, 6), sizeEnd: 1.5,
-              life: rand(1.2, 2.2), maxLife: 2.2,
+              life: rand(1.5, 2.5), maxLife: 2.5,
               r: randInt(190, 230), g: randInt(230, 250), b: 255,
               a: 0.85, aEnd: 0,
               angle: rand(0, Math.PI * 2),
@@ -1826,41 +1897,28 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         flashAlpha = 1;
         explosionGlowAlpha = 1;
         explosionGlowRadius = 10;
-
         for (const p of effects) {
-          if (p.type === PType.HELIX_GOLD || p.type === PType.HELIX_ICE) {
-            p.active = false;
-          }
+          if (p.type === PType.HELIX_GOLD || p.type === PType.HELIX_ICE) p.active = false;
         }
-
         const textCount = scaledTextPositions.length;
         const extraCount = Math.min(2000, MAX_EFFECTS - textCount);
-        const totalCount = textCount + extraCount;
-
-        for (let i = 0; i < totalCount; i++) {
-          const angle = rand(0, Math.PI * 2);
-          const speed = rand(80, 550);
+        for (let i = 0; i < textCount + extraCount; i++) {
+          const ang = rand(0, Math.PI * 2);
+          const spd = rand(100, 600);
           const isText = i < textCount;
-          const colorRoll = Math.random();
-          let r = 255, g = 240, b = 220;
-          if (colorRoll < 0.25) {
-            r = 255; g = randInt(190, 230); b = randInt(50, 110);
-          } else if (colorRoll < 0.5) {
-            r = randInt(180, 220); g = randInt(225, 245); b = 255;
-          } else if (colorRoll < 0.7) {
-            r = 255; g = 255; b = 255;
-          } else if (colorRoll < 0.85) {
-            r = 255; g = randInt(140, 180); b = randInt(60, 100);
-          } else {
-            r = randInt(140, 180); g = randInt(200, 235); b = 255;
-          }
-
+          let r = 255, g = 240, b = 210;
+          const roll = Math.random();
+          if (roll < 0.3) { r = 255; g = randInt(200, 240); b = randInt(50, 120); }
+          else if (roll < 0.55) { r = randInt(180, 220); g = randInt(225, 245); b = 255; }
+          else if (roll < 0.75) { r = 255; g = 255; b = 255; }
+          else if (roll < 0.9) { r = 255; g = randInt(140, 180); b = randInt(60, 100); }
+          else { r = randInt(140, 180); g = randInt(200, 235); b = 255; }
           spawnEffect({
             type: PType.EXPLOSION,
             x: explosionCenterX + rand(-5, 5),
             y: explosionCenterY + rand(-5, 5),
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
             gravity: rand(30, 120),
             drag: rand(0.96, 0.995),
             size: rand(1, 3.5),
@@ -1872,16 +1930,15 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
             reservedForText: isText,
           });
         }
-
         for (let i = 0; i < 40; i++) {
-          const angle = rand(0, Math.PI * 2);
-          const speed = rand(20, 100);
+          const ang = rand(0, Math.PI * 2);
+          const spd = rand(20, 100);
           spawnEffect({
             type: PType.EXPLOSION_GLOW,
             x: explosionCenterX,
             y: explosionCenterY,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
             size: rand(30, 80),
             sizeEnd: rand(60, 140),
             life: rand(1, 2.5),
@@ -1890,9 +1947,11 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
             a: 0.5, aEnd: 0,
           });
         }
-
         shockwaveRadius = 5;
         shockwaveAlpha = 0.8;
+      }
+
+      if (elapsed >= T_EXPAND && shockwave2Alpha <= 0 && shockwaveAlpha <= 0) {
         shockwave2Radius = 5;
         shockwave2Alpha = 0.5;
       }
@@ -1904,15 +1963,13 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       }
       if (shockwave2Alpha > 0) {
         shockwave2Radius += 250 * dt;
-        shockwave2Alpha -= 0.4 * dt;
+        shockwave2Alpha -= 0.5 * dt;
         if (shockwave2Alpha < 0) shockwave2Alpha = 0;
       }
-
       if (flashAlpha > 0) {
         flashAlpha -= 3.5 * dt;
         if (flashAlpha < 0) flashAlpha = 0;
       }
-
       if (explosionGlowAlpha > 0) {
         explosionGlowRadius += 200 * dt;
         explosionGlowAlpha -= 0.8 * dt;
@@ -1922,23 +1979,25 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       if (elapsed >= T_TEXT_FORM && !textFormTriggered) {
         textFormTriggered = true;
         let textIdx = 0;
-        const maxX = scaledTextPositions.length > 0
-          ? scaledTextPositions[scaledTextPositions.length - 1].x
-          : 1;
-        const minX = scaledTextPositions.length > 0
-          ? scaledTextPositions[0].x
-          : 0;
+        const minX = scaledTextPositions[0]?.x || 0;
+        const maxX = scaledTextPositions[scaledTextPositions.length - 1]?.x || 1;
         const rangeX = maxX - minX || 1;
-
         for (const p of effects) {
-          if (!p.active || p.type !== PType.EXPLOSION || !p.reservedForText) continue;
-          if (textIdx >= scaledTextPositions.length) break;
-          const target = scaledTextPositions[textIdx];
+          if (!p.active || p.type !== PType.EXPLOSION || !p.reservedForText || textIdx >= scaledTextPositions.length) continue;
+          const tgt = scaledTextPositions[textIdx++];
+          /* ★ CHANGE #5 (TEXT COLOUR): 5 variety colors instead of only gold */
+          let tr = 255, tg = randInt(200, 240), tb = randInt(50, 120);
+          const tRoll = Math.random();
+          if (tRoll < 0.3) { tr = 255; tg = randInt(200, 240); tb = randInt(50, 120); }
+          else if (tRoll < 0.55) { tr = randInt(180, 220); tg = randInt(225, 245); tb = 255; }
+          else if (tRoll < 0.75) { tr = 255; tg = 255; tb = 255; }
+          else if (tRoll < 0.9) { tr = 255; tg = randInt(140, 180); tb = randInt(60, 100); }
+          else { tr = randInt(140, 180); tg = randInt(200, 235); tb = 255; }
           p.type = PType.TEXT_PARTICLE;
-          p.targetX = target.x;
-          p.targetY = target.y;
+          p.targetX = tgt.x;
+          p.targetY = tgt.y;
           p.hasTarget = true;
-          p.delay = ((target.x - minX) / rangeX) * 0.8;
+          p.delay = ((tgt.x - minX) / rangeX) * 0.8;
           p.vx = 0;
           p.vy = 0;
           p.gravity = 0;
@@ -1947,11 +2006,12 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
           p.maxLife = 10;
           p.size = rand(1.5, 2.8);
           p.sizeEnd = rand(1.5, 2.8);
-          p.r = 255; p.g = 240; p.b = 210;
-          p.a = 1; p.aEnd = 1;
-          textIdx++;
+          p.r = tr;
+          p.g = tg;
+          p.b = tb;
+          p.a = 1;
+          p.aEnd = 1;
         }
-
         for (const p of effects) {
           if (p.active && p.type === PType.EXPLOSION && !p.reservedForText) {
             p.life = Math.min(p.life, 1.5);
@@ -1964,7 +2024,7 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         for (const p of effects) {
           if (p.active && p.type === PType.TEXT_PARTICLE) {
             p.type = PType.CRYSTAL;
-            p.size = rand(2, 3.5);
+            p.size = rand(2.5, 4);
             p.sizeEnd = p.size;
           }
         }
@@ -1972,13 +2032,12 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
 
       if (elapsed >= T_SPARKLE && !sparkleSpawned) {
         sparkleSpawned = true;
-        const padding = 30;
-        for (let i = 0; i < 150; i++) {
+        for (let i = 0; i < 180; i++) {
           const tp = scaledTextPositions[randInt(0, scaledTextPositions.length - 1)] || { x: w / 2, y: h * 0.42 };
           spawnEffect({
             type: PType.SPARKLE,
-            x: tp.x + rand(-padding, padding),
-            y: tp.y + rand(-padding, padding),
+            x: tp.x + rand(-40, 40),
+            y: tp.y + rand(-40, 40),
             size: rand(1, 3),
             sizeEnd: rand(1, 3),
             life: rand(1, 3),
@@ -1990,79 +2049,42 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         }
       }
 
+      // Update all effects
       for (const p of effects) {
         updateEffect(p, dt, elapsed);
       }
 
+      // Draw explosion glow
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-
       if (explosionGlowAlpha > 0) {
         const egR = Math.max(1, explosionGlowRadius);
-        const egGrad = ctx.createRadialGradient(
-          explosionCenterX, explosionCenterY, 0,
-          explosionCenterX, explosionCenterY, egR
-        );
-        egGrad.addColorStop(0, `rgba(255,240,200,${explosionGlowAlpha * 0.6})`);
-        egGrad.addColorStop(0.3, `rgba(255,200,100,${explosionGlowAlpha * 0.25})`);
-        egGrad.addColorStop(0.7, `rgba(200,180,255,${explosionGlowAlpha * 0.08})`);
-        egGrad.addColorStop(1, "rgba(180,160,240,0)");
-        ctx.fillStyle = egGrad;
+        const egG = ctx.createRadialGradient(explosionCenterX, explosionCenterY, 0, explosionCenterX, explosionCenterY, egR);
+        egG.addColorStop(0, `rgba(255,240,200,${explosionGlowAlpha * 0.6})`);
+        egG.addColorStop(1, "rgba(180,160,240,0)");
+        ctx.fillStyle = egG;
         ctx.beginPath();
         ctx.arc(explosionCenterX, explosionCenterY, egR, 0, Math.PI * 2);
         ctx.fill();
       }
 
+      // Draw all effects
+      const isCrystalMode = elapsed >= T_CRYSTAL;
       for (const p of effects) {
         if (!p.active) continue;
-        if (
-          p.type === PType.GOLDEN_GLOW ||
-          p.type === PType.EXPLOSION_GLOW
-        ) {
-          drawSingleParticle(ctx, p, crystalSprite, sparkleSprite, false);
-        }
+        drawSingleParticle(ctx, p, crystalSprite, sparkleSprite, isCrystalMode);
       }
-
-      if (crystalTriggered) {
-        for (const p of effects) {
-          if (!p.active || p.type !== PType.CRYSTAL) continue;
-          const glowSize = p.size * 5;
-          const ga = 0.08 * textAlpha;
-          if (ga < 0.005) continue;
-          const cg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowSize);
-          cg.addColorStop(0, `rgba(150,200,255,${ga})`);
-          cg.addColorStop(1, "rgba(150,200,255,0)");
-          ctx.fillStyle = cg;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, glowSize, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      for (const p of effects) {
-        if (!p.active) continue;
-        if (
-          p.type !== PType.GOLDEN_GLOW &&
-          p.type !== PType.EXPLOSION_GLOW
-        ) {
-          drawSingleParticle(ctx, p, crystalSprite, sparkleSprite, crystalTriggered);
-        }
-      }
-
-      for (const p of effects) {
-        if (!p.active || p.type !== PType.SPARKLE) continue;
-        drawSingleParticle(ctx, p, crystalSprite, sparkleSprite, false);
-      }
-
       ctx.restore();
 
+      // Draw shockwaves
       if (shockwaveAlpha > 0) {
         drawShockwave(ctx, explosionCenterX, explosionCenterY, shockwaveRadius, shockwaveAlpha, 3);
       }
       if (shockwave2Alpha > 0) {
-        drawShockwave(ctx, explosionCenterX, explosionCenterY, shockwave2Radius, shockwave2Alpha, 1.5);
+        drawShockwave(ctx, explosionCenterX, explosionCenterY, shockwave2Radius, shockwave2Alpha, 2);
       }
 
+      // Draw flash
       if (flashAlpha > 0) {
         ctx.save();
         ctx.globalAlpha = flashAlpha;
@@ -2071,6 +2093,7 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         ctx.restore();
       }
 
+      // Draw foreground snow
       ctx.save();
       ctx.globalAlpha = snowAlpha;
       for (const sp of snowFg) {
@@ -2079,10 +2102,10 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       }
       ctx.restore();
 
+      // Fade out to black
       if (elapsed >= T_END - 0.5) {
-        const fadeOut = clamp((elapsed - (T_END - 0.5)) / 0.5, 0, 1);
         ctx.save();
-        ctx.globalAlpha = fadeOut;
+        ctx.globalAlpha = clamp((elapsed - (T_END - 0.5)) / 0.5, 0, 1);
         ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, w, h);
         ctx.restore();
@@ -2099,18 +2122,14 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
     }
 
     animRef.current = requestAnimationFrame(animate);
-
     return () => {
       cancelAnimationFrame(animRef.current);
     };
   }, []);
 
- return (
+  return (
     <div className="relative w-full h-full overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full"
-      />
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
     </div>
   );
 }
