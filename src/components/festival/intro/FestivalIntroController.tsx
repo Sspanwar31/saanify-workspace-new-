@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { FESTIVAL_PHASE_SEQUENCES } from '@/config/FestivalPhaseConfig';
 import LightRevealIntro from '@/components/festival/intro/LightRevealIntro';
+// 🚀 लोहड़ी का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
+import LohriCinematicIntro from '../engines/effects/lohri/LohriCinematicIntro';
 
 export default function FestivalIntroController({
   isActive,
@@ -45,6 +47,14 @@ export default function FestivalIntroController({
 
   const currentPhase = sequence.phases[currentPhaseIndex] || 'IDLE';
 
+  // 🚀 1. LOHRI ACTIVATION: यदि लोहड़ी सक्रिय है, तो सीधे इसका सिनेमाई इंजन रेंडर करें
+  if (isActive && preset.toUpperCase() === 'LOHRI') {
+    return (
+      <LohriCinematicIntro onComplete={onHandover} />
+    );
+  }
+
+  // 🚀 2. LIGHT REVEAL GROUP (Christmas, Ram Navami, Eid, etc.)
   const isLightRevealPreset = ['CHRISTMAS', 'RAM_NAVAMI', 'EID_UL_FITR', 'EID_AL_ADHA', 'REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(preset.toUpperCase());
 
   if (isActive && isLightRevealPreset && heroConfig) {
