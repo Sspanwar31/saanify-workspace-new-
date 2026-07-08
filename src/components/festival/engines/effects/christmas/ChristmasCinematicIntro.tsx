@@ -570,6 +570,7 @@ function drawVignette(
    DRAWING: SANTA FORMATION
    ================================================================ */
 
+/* ★ CHANGE #1 (क): drawReindeer — Black → Natural Brown Colors + Gallop */
 function drawReindeer(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -581,19 +582,22 @@ function drawReindeer(
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  /* ★ CHANGE #2 (COLOUR): Black → Brown */
-  ctx.fillStyle = "#7A5230";
-  ctx.strokeStyle = "#5C3A1E";
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
 
-  const lo1 = Math.sin(legPhase) * 3;
-  const lo2 = Math.sin(legPhase + Math.PI) * 3;
+  // 🦌 रेन्डियर की असली खाल और सींग का नेचुरल रंग
+  const bodyColor = "#5c4033"; // Deep Brown
+  const antlerColor = "#3d2b1f"; // Dark Wood Brown
+  const snoutColor = "#d2b48c"; // Light Beige
 
+  const lo1 = Math.sin(legPhase) * 9; // 🚀 व्यापक रनिंग मोशन (Gallop)
+  const lo2 = Math.sin(legPhase + Math.PI) * 9;
+
+  // 1. शरीर (Body)
+  ctx.fillStyle = bodyColor;
   ctx.beginPath();
   ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // 2. गर्दन और सिर (Neck & Head)
   ctx.beginPath();
   ctx.moveTo(16, -7);
   ctx.quadraticCurveTo(22, -18, 28, -20 + headBob);
@@ -602,16 +606,18 @@ function drawReindeer(
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#6B3F1F";
   ctx.beginPath();
   ctx.ellipse(30, -18 + headBob, 8, 6, 0.15, 0, Math.PI * 2);
   ctx.fill();
 
+  // थूथन (Snout)
+  ctx.fillStyle = snoutColor;
   ctx.beginPath();
-  ctx.ellipse(34, -23 + headBob, 3, 2, 0.5, 0, Math.PI * 2);
+  ctx.ellipse(34, -18 + headBob, 3, 2, 0.5, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "#5C3A1E";
+  // 3. सींग (Antlers)
+  ctx.strokeStyle = antlerColor;
   ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(27, -24 + headBob);
@@ -620,10 +626,6 @@ function drawReindeer(
   ctx.beginPath();
   ctx.moveTo(23, -31 + headBob);
   ctx.lineTo(17, -36 + headBob);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(24, -28 + headBob);
-  ctx.lineTo(20, -30 + headBob);
   ctx.stroke();
 
   ctx.beginPath();
@@ -634,12 +636,9 @@ function drawReindeer(
   ctx.moveTo(37, -31 + headBob);
   ctx.lineTo(43, -36 + headBob);
   ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(36, -28 + headBob);
-  ctx.lineTo(40, -30 + headBob);
-  ctx.stroke();
 
-  ctx.strokeStyle = "#5C3A1E";
+  // 4. पैर (Running Legs)
+  ctx.strokeStyle = bodyColor;
   ctx.lineWidth = 3.5;
   ctx.beginPath();
   ctx.moveTo(12, 9);
@@ -658,19 +657,19 @@ function drawReindeer(
   ctx.lineTo(-8 + lo1, 28);
   ctx.stroke();
 
-  const hoofR = 2;
-  ctx.fillStyle = "#4A2D15";
-  ctx.lineWidth = 1;
+  // खुर (Hooves)
+  ctx.fillStyle = "#1e293b";
   [
     [12 + lo1, 28], [17 + lo2, 28],
     [-13 + lo2, 28], [-8 + lo1, 28],
   ].forEach(([hx, hy]) => {
     ctx.beginPath();
-    ctx.arc(hx, hy, hoofR, 0, Math.PI * 2);
+    ctx.arc(hx, hy, 2.5, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  ctx.fillStyle = "#7A5230";
+  // पूंछ (Tail)
+  ctx.fillStyle = "#ffffff";
   ctx.beginPath();
   ctx.moveTo(-22, -5);
   ctx.quadraticCurveTo(-28, -12, -24, -3);
@@ -680,6 +679,7 @@ function drawReindeer(
   ctx.restore();
 }
 
+/* ★ CHANGE #1 (ख): drawSleigh — Black → Bright Red & Gold */
 function drawSleigh(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -689,11 +689,13 @@ function drawSleigh(
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  /* ★ CHANGE #2 (COLOUR): Black → Dark Red */
-  ctx.fillStyle = "#8B2500";
-  ctx.strokeStyle = "#5C2E0E";
-  ctx.lineCap = "round";
 
+  // 🛷 क्रिसमस की लाल गाड़ी और चमचमाते गोल्डन स्किज़ (Runners)
+  const sleighRed = "#dc2626";
+  const runnerGold = "#fbbf24";
+
+  // 1. गाड़ी की बॉडी
+  ctx.fillStyle = sleighRed;
   ctx.beginPath();
   ctx.moveTo(-45, -28);
   ctx.quadraticCurveTo(-50, -8, -44, 2);
@@ -703,7 +705,6 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#6B1D00";
   ctx.beginPath();
   ctx.moveTo(-45, -28);
   ctx.quadraticCurveTo(-55, -52, -47, -58);
@@ -712,7 +713,6 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "#8B2500";
   ctx.beginPath();
   ctx.moveTo(48, -28);
   ctx.quadraticCurveTo(55, -35, 52, -42);
@@ -721,7 +721,8 @@ function drawSleigh(
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = "#5C2E0E";
+  // 2. गाड़ी के नीचे के गोल्डन रनर (Skis)
+  ctx.strokeStyle = runnerGold;
   ctx.lineWidth = 3.5;
   ctx.beginPath();
   ctx.moveTo(-52, 7);
@@ -736,28 +737,20 @@ function drawSleigh(
   ctx.quadraticCurveTo(72, -8, 66, -16);
   ctx.stroke();
 
-  ctx.strokeStyle = "#D4AF37";
+  // गाड़ी की आंतरिक ग्रिल
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-30, -28);
-  ctx.lineTo(-30, 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(-10, -28);
-  ctx.lineTo(-10, 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(10, -28);
-  ctx.lineTo(10, 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(30, -28);
-  ctx.lineTo(30, 2);
+  ctx.moveTo(-30, -28); ctx.lineTo(-30, 2);
+  ctx.moveTo(-10, -28); ctx.lineTo(-10, 2);
+  ctx.moveTo(10, -28);  ctx.lineTo(10, 2);
+  ctx.moveTo(30, -28);  ctx.lineTo(30, 2);
   ctx.stroke();
 
   ctx.restore();
 }
 
+/* ★ CHANGE #1 (ग): drawSantaBody — Black → Red Coat & White Beard */
 function drawSantaBody(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -769,36 +762,33 @@ function drawSantaBody(
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  ctx.lineCap = "round";
 
-  /* ★ CHANGE #2 (COLOUR): Black → Red Santa with details */
+  // 🎅 सान्ता की लाल ड्रेस और सफेद दाढ़ी
+  const coatRed = "#ef4444";
+  const beardWhite = "#ffffff";
+  const beltBlack = "#1e293b";
 
-  // Coat
-  ctx.fillStyle = "#CC0000";
+  // 1. पेट और शरीर (Body)
+  ctx.fillStyle = coatRed;
   ctx.beginPath();
   ctx.ellipse(0, -35, 20, 24, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // White Fur Trim
-  ctx.fillStyle = "#F3F4F6";
+  // बेल्ट (Belt)
+  ctx.fillStyle = beltBlack;
   ctx.fillRect(-20, -28, 40, 5);
-
-  // Belt
-  ctx.fillStyle = "#1a1a1a";
-  ctx.fillRect(-20, -25, 40, 6);
-
-  // Belt Buckle
-  ctx.fillStyle = "#D4AF37";
+  // गोल्डन बकल (Gold Buckle)
+  ctx.fillStyle = "#fbbf24";
   ctx.fillRect(-4, -30, 8, 9);
 
-  // Head (skin)
-  ctx.fillStyle = "#FDBCB4";
+  // 2. सिर (Head)
+  ctx.fillStyle = "#fbcfe8"; // Skin tone
   ctx.beginPath();
   ctx.arc(2, -64, 11, 0, Math.PI * 2);
   ctx.fill();
 
-  // Hat
-  ctx.fillStyle = "#CC0000";
+  // सान्ता की टोपी (Hat)
+  ctx.fillStyle = coatRed;
   ctx.beginPath();
   ctx.moveTo(-9, -70);
   ctx.quadraticCurveTo(-5, -85, 3, -92);
@@ -807,20 +797,19 @@ function drawSantaBody(
   ctx.closePath();
   ctx.fill();
 
-  // Hat Fur Band
-  ctx.fillStyle = "#F3F4F6";
+  // टोपी का सफेद फर (Hat Fur)
+  ctx.fillStyle = beardWhite;
   ctx.beginPath();
   ctx.ellipse(2, -70, 15, 4.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Hat Tip
-  ctx.fillStyle = "#CC0000";
+  // टोपी का पोम्पम (Pom-pom)
   ctx.beginPath();
   ctx.arc(17, -87, 5, 0, Math.PI * 2);
   ctx.fill();
 
-  // Beard
-  ctx.fillStyle = "#E0DDD5";
+  // 3. घनी सफेद दाढ़ी (Fluffy White Beard)
+  ctx.fillStyle = beardWhite;
   ctx.beginPath();
   ctx.moveTo(-7, -57);
   ctx.quadraticCurveTo(-14, -42, -10, -24);
@@ -830,93 +819,30 @@ function drawSantaBody(
   ctx.closePath();
   ctx.fill();
 
-  // Beard texture lines
-  ctx.strokeStyle = "rgba(180,170,155,0.3)";
-  ctx.lineWidth = 0.8;
-  for (let i = -6; i <= 6; i += 3) {
-    ctx.beginPath();
-    ctx.moveTo(i, -55);
-    ctx.quadraticCurveTo(i * 0.8, -40, i * 0.6, -24);
-    ctx.stroke();
-  }
-
-  // Legs
-  ctx.fillStyle = "#1a1a1a";
+  // जूते (Boots)
+  ctx.fillStyle = beltBlack;
   ctx.fillRect(-14, -14, 11, 14);
   ctx.fillRect(5, -14, 11, 14);
 
-  // Boots
-  ctx.fillStyle = "#2a1a0e";
-  ctx.beginPath();
-  ctx.moveTo(-16, -2);
-  ctx.lineTo(-16, 5);
-  ctx.quadraticCurveTo(-16, 8, -12, 8);
-  ctx.lineTo(-1, 8);
-  ctx.quadraticCurveTo(0, 8, 0, 5);
-  ctx.lineTo(0, -2);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(3, -2);
-  ctx.lineTo(3, 5);
-  ctx.quadraticCurveTo(3, 8, 7, 8);
-  ctx.lineTo(18, 8);
-  ctx.quadraticCurveTo(19, 8, 19, 5);
-  ctx.lineTo(19, -2);
-  ctx.closePath();
-  ctx.fill();
-
-  // Left Arm
+  // 4. हाथ (Arms)
+  ctx.fillStyle = coatRed;
   ctx.save();
   ctx.translate(-18, -48);
-  if (leftUp) {
-    ctx.rotate(-2.2);
-  } else {
-    ctx.rotate(-0.35);
-  }
-  ctx.fillStyle = "#CC0000";
+  if (leftUp) ctx.rotate(-2.2);
+  else ctx.rotate(-0.35);
   ctx.fillRect(0, -3.5, 24, 7);
-  ctx.fillStyle = "#FDBCB4";
-  ctx.beginPath();
-  ctx.arc(24, 0, 5, 0, Math.PI * 2);
-  ctx.fill();
-  if (leftUp) {
-    for (let f = -0.4; f <= 0.4; f += 0.2) {
-      ctx.save();
-      ctx.translate(28, 0);
-      ctx.rotate(f);
-      ctx.fillStyle = "#FDBCB4";
-      ctx.fillRect(0, -1.5, 6, 3);
-      ctx.restore();
-    }
-  }
+  ctx.fillStyle = beardWhite; // दस्ताने
+  ctx.beginPath(); ctx.arc(24, 0, 5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  // Right Arm
+  ctx.fillStyle = coatRed;
   ctx.save();
   ctx.translate(18, -48);
-  if (rightUp) {
-    ctx.rotate(2.2);
-  } else {
-    ctx.rotate(0.35);
-  }
-  ctx.fillStyle = "#CC0000";
+  if (rightUp) ctx.rotate(2.2);
+  else ctx.rotate(0.35);
   ctx.fillRect(-24, -3.5, 24, 7);
-  ctx.fillStyle = "#FDBCB4";
-  ctx.beginPath();
-  ctx.arc(-24, 0, 5, 0, Math.PI * 2);
-  ctx.fill();
-  if (rightUp) {
-    for (let f = -0.4; f <= 0.4; f += 0.2) {
-      ctx.save();
-      ctx.translate(-28, 0);
-      ctx.rotate(f + Math.PI);
-      ctx.fillStyle = "#FDBCB4";
-      ctx.fillRect(0, -1.5, 6, 3);
-      ctx.restore();
-    }
-  }
+  ctx.fillStyle = beardWhite; // दस्ताने
+  ctx.beginPath(); ctx.arc(-24, 0, 5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
   ctx.restore();
@@ -930,8 +856,7 @@ function drawHarness(
   s: number
 ): void {
   ctx.save();
-  /* ★ CHANGE #2 (COLOUR): Black → Brown harness */
-  ctx.strokeStyle = "#3E2723";
+  ctx.strokeStyle = "#000000";
   ctx.lineWidth = 1.5 * s;
   ctx.lineCap = "round";
   const midX = (fromX + toX) / 2;
@@ -942,7 +867,6 @@ function drawHarness(
   ctx.restore();
 }
 
-/* ★ CHANGE #1 (DIRECTION): Added rot param + ctx.scale(-1,1) mirror */
 function drawSantaFormation(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -952,63 +876,60 @@ function drawSantaFormation(
   rightUp: boolean,
   legPhase: number,
   headBob: number,
-  alpha: number,
-  rot: number = 0
+  alpha: number
 ): void {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  ctx.translate(cx, cy);
-  ctx.rotate(rot);
-  ctx.scale(-1, 1);
-
+  /* ★ CHANGE #2: गाड़ी पीछे (Left), रेन्डियर आगे (Right) */
   const gap = 65 * s;
-  const deerX = [-3 * gap, -2 * gap, -1 * gap, 0];
-  const deerY = 10 * s;
-  const sleighX = gap * 0.8;
-  const sleighY = 18 * s;
-  const santaX = sleighX - 5 * s;
+  // 🚀 गाड़ी पीछे (Left) रहेगी, और चारों रेन्डियर आगे (Right) खींचते हुए दौड़ेंगे
+  const sleighX = -gap * 1.5;
+  const sleighY = cy + 18 * s;
+  const santaX = sleighX - 2 * s;
   const santaY = sleighY - 2 * s;
 
+  const deerX = [-gap * 0.4, 0.6 * gap, 1.6 * gap, 2.6 * gap];
+  const deerY = cy + 10 * s;
+
   for (let i = 0; i < 3; i++) {
-    const fromX = deerX[i] + 25 * s;
-    const toX = deerX[i + 1] - 22 * s;
+    const fromX = cx + deerX[i] + 25 * s;
+    const toX = cx + deerX[i + 1] - 22 * s;
     drawHarness(ctx, fromX, toX, deerY - 5 * s, s);
   }
-  drawHarness(ctx, deerX[3] + 25 * s, sleighX - 42 * s, sleighY - 15 * s, s);
+  drawHarness(ctx, cx + deerX[0] - 22 * s, cx + sleighX + 42 * s, (deerY + sleighY) / 2 - 5 * s, s);
 
   for (let i = 0; i < 4; i++) {
     const lp = legPhase + i * 0.8;
     const hb = headBob * (1 - i * 0.15);
-    drawReindeer(ctx, deerX[i], deerY, s, lp, hb);
+    drawReindeer(ctx, cx + deerX[i], deerY, s, lp, hb);
   }
 
-  drawSleigh(ctx, sleighX, sleighY, s);
-  drawSantaBody(ctx, santaX, santaY, s, leftUp, rightUp);
+  drawSleigh(ctx, cx + sleighX, sleighY, s);
+  drawSantaBody(ctx, cx + santaX, santaY, s, leftUp, rightUp);
 
   ctx.restore();
 }
 
-/* ★ CHANGE #1 (DIRECTION): Added rot param + mirror math for screen coords */
+/* ★ getHandPositions updated to match CHANGE #2 positions */
 function getHandPositions(
   cx: number,
   cy: number,
   s: number,
   leftUp: boolean,
-  rightUp: boolean,
-  rot: number
+  rightUp: boolean
 ): { left: { x: number; y: number }; right: { x: number; y: number } } {
   const gap = 65 * s;
-  const sleighLocalX = gap * 0.8;
-  const sleighLocalY = 18 * s;
-  const santaLocalX = sleighLocalX - 5 * s;
-  const santaLocalY = sleighLocalY - 2 * s;
+  const sleighX = cx - gap * 1.5;
+  const sleighY = cy + 18 * s;
+  const santaX = sleighX - 2 * s;
+  const santaY = sleighY - 2 * s;
 
-  let leftX = santaLocalX - 18 * s;
-  let leftY = santaLocalY - 48 * s;
-  let rightX = santaLocalX + 18 * s;
-  let rightY = santaLocalY - 48 * s;
+  let leftX = santaX - 18 * s;
+  let leftY = santaY - 48 * s;
+  let rightX = santaX + 18 * s;
+  let rightY = santaY - 48 * s;
 
   if (leftUp) {
     const armLen = 32 * s;
@@ -1030,20 +951,9 @@ function getHandPositions(
     rightY += Math.sin(0.35) * 24 * s;
   }
 
-  // Transform: translate(cx,cy) → rotate(rot) → scale(-1,1)
-  // screenX = cx - lx*cos(rot) - ly*sin(rot)
-  // screenY = cy - lx*sin(rot) + ly*cos(rot)
-  const cosR = Math.cos(rot);
-  const sinR = Math.sin(rot);
-
-  const screenLeftX = cx - leftX * cosR - leftY * sinR;
-  const screenLeftY = cy - leftX * sinR + leftY * cosR;
-  const screenRightX = cx - rightX * cosR - rightY * sinR;
-  const screenRightY = cy - rightX * sinR + rightY * cosR;
-
   return {
-    left: { x: screenLeftX, y: screenLeftY },
-    right: { x: screenRightX, y: screenRightY },
+    left: { x: leftX, y: leftY },
+    right: { x: rightX, y: rightY },
   };
 }
 
@@ -1453,7 +1363,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       return null;
     }
 
-    /* ★ CHANGE #3 (SNOW SPEED) & #2 (COLOUR): Already correct in old code — kept as-is */
     const snowBg: Particle[] = [];
     const snowFg: Particle[] = [];
     for (let i = 0; i < MAX_SNOW_BG; i++) {
@@ -1688,46 +1597,53 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
       }
       ctx.restore();
 
+      /* ★ CHANGE #3: तिरछा उतरना (Tilted Descending Path) */
       let santaX = santaStartX;
+      // 🚀 आसमान से ज़मीन की तरफ़ तिरखा उतरने के लिए Y कोऑर्डिनेट की गणना
+      let santaYAdjusted = santaY - (h * 0.22);
       let leftUp = false;
       let rightUp = false;
-      let legPhase = elapsed * 4;
-      let headBob = Math.sin(elapsed * 3) * 1.5;
+      let legPhase = elapsed * 8; // 🚀 पैरों की तेज़ दौड़ने वाली गति (Sprinting Legs)
+      let headBob = Math.sin(elapsed * 5) * 2;
       let bounceY = 0;
-      /* ★ CHANGE #1 (DIRECTION): Added rot variable */
-      let rot = 0;
+      let rotationAngle = 0; // ज़मीन पर उतरते समय थोड़ा सा झुकाव
 
-      /* ★ CHANGE #4 (ARC): Already 15 in old code — kept as-is */
       if (elapsed >= T_SANTA_ENTER && elapsed < T_SANTA_STOP) {
         const t = clamp((elapsed - T_SANTA_ENTER) / (T_SANTA_STOP - T_SANTA_ENTER), 0, 1);
         const et = easeOutCubic(t);
         santaX = lerp(santaStartX, santaEndX, et);
-        bounceY = -Math.sin(t * Math.PI) * 15 * santaScale;
-        rot = (1 - et) * 0.12;
+        // 🚀 उतरते समय Y-अक्ष पर कोमल ढलान (Tilted Descending)
+        santaYAdjusted = lerp(santaY - (h * 0.35), santaY, et);
+        bounceY = -Math.sin(t * Math.PI) * 25 * santaScale;
+        rotationAngle = lerp(0.12, 0, et); // उतरते समय गाड़ी का आगे की तरफ झुकाव
       } else if (elapsed >= T_SANTA_STOP) {
         santaX = santaEndX;
+        santaYAdjusted = santaY;
         legPhase = Math.sin(elapsed * 0.5) * 0.15;
         headBob = Math.sin(elapsed * 0.7) * 0.8;
         const bt = elapsed - T_SANTA_STOP;
         bounceY = Math.sin(bt * 10) * 4 * santaScale * Math.exp(-bt * 3);
-        rot = Math.sin(elapsed * 0.5) * 0.02;
       }
 
       if (elapsed >= T_LEFT_HAND) leftUp = true;
       if (elapsed >= T_RIGHT_HAND) rightUp = true;
 
+      /* ★ CHANGE #3: झुकाव (slanted landing rotate) के साथ रेंडर करें */
       if (elapsed >= T_SANTA_ENTER) {
-        /* ★ CHANGE #1 (DIRECTION): Pass rot */
+        ctx.save();
+        ctx.translate(santaX, santaYAdjusted + bounceY);
+        ctx.rotate(rotationAngle);
         drawSantaFormation(
-          ctx, santaX, santaY + bounceY, santaScale,
-          leftUp, rightUp, legPhase, headBob, santaAlpha, rot
+          ctx, 0, 0, santaScale,
+          leftUp, rightUp, legPhase, headBob, santaAlpha
         );
+        ctx.restore();
 
         if (elapsed >= T_SANTA_STOP && elapsed < T_EXPLOSION) {
           breathTimer += dt;
           if (breathTimer > 0.8) {
             breathTimer = 0;
-            const hands = getHandPositions(santaX, santaY + bounceY, santaScale, leftUp, rightUp, rot);
+            const hands = getHandPositions(santaX, santaYAdjusted + bounceY, santaScale, leftUp, rightUp);
             const noseX = hands.right.x;
             const noseY = hands.right.y;
             for (let i = 0; i < 3; i++) {
@@ -1762,8 +1678,7 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         goldenSpawnTimer += dt;
         if (goldenSpawnTimer > 0.03) {
           goldenSpawnTimer = 0;
-          /* ★ CHANGE #1 (DIRECTION): Pass rot */
-          const hands = getHandPositions(santaX, santaY + bounceY, santaScale, leftUp, rightUp, rot);
+          const hands = getHandPositions(santaX, santaYAdjusted + bounceY, santaScale, leftUp, rightUp);
           const hx = hands.left.x;
           const hy = hands.left.y;
           const roll = Math.random();
@@ -1811,8 +1726,7 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         iceSpawnTimer += dt;
         if (iceSpawnTimer > 0.03) {
           iceSpawnTimer = 0;
-          /* ★ CHANGE #1 (DIRECTION): Pass rot */
-          const hands = getHandPositions(santaX, santaY + bounceY, santaScale, leftUp, rightUp, rot);
+          const hands = getHandPositions(santaX, santaYAdjusted + bounceY, santaScale, leftUp, rightUp);
           const hx = hands.right.x;
           const hy = hands.right.y;
           const roll = Math.random();
@@ -1985,14 +1899,6 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
         for (const p of effects) {
           if (!p.active || p.type !== PType.EXPLOSION || !p.reservedForText || textIdx >= scaledTextPositions.length) continue;
           const tgt = scaledTextPositions[textIdx++];
-          /* ★ CHANGE #5 (TEXT COLOUR): 5 variety colors instead of only gold */
-          let tr = 255, tg = randInt(200, 240), tb = randInt(50, 120);
-          const tRoll = Math.random();
-          if (tRoll < 0.3) { tr = 255; tg = randInt(200, 240); tb = randInt(50, 120); }
-          else if (tRoll < 0.55) { tr = randInt(180, 220); tg = randInt(225, 245); tb = 255; }
-          else if (tRoll < 0.75) { tr = 255; tg = 255; tb = 255; }
-          else if (tRoll < 0.9) { tr = 255; tg = randInt(140, 180); tb = randInt(60, 100); }
-          else { tr = randInt(140, 180); tg = randInt(200, 235); tb = 255; }
           p.type = PType.TEXT_PARTICLE;
           p.targetX = tgt.x;
           p.targetY = tgt.y;
@@ -2006,9 +1912,9 @@ export default function ChristmasCinematicIntro({ onComplete }: Props) {
           p.maxLife = 10;
           p.size = rand(1.5, 2.8);
           p.sizeEnd = rand(1.5, 2.8);
-          p.r = tr;
-          p.g = tg;
-          p.b = tb;
+          p.r = 255;
+          p.g = randInt(200, 240);
+          p.b = randInt(50, 120);
           p.a = 1;
           p.aEnd = 1;
         }
