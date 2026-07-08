@@ -79,6 +79,16 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
+  // ━━━ LOHRI (🚀 13.0s Cinematic Sequence Sync) ━━━
+  LOHRI: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 1500,     // 1.5s: रात का आसमान और कोहरा प्रकट होना
+      SHOOTING: 10500, // 10.5s: अलाव का जलना, अदम्य चिंगारियां, और "HAPPY LOHRI" टेक्स्ट रिवील
+      HANDOVER: 1000   // 1.0s: डैशबोर्ड पर स्मूथ फ़ेड-आउट
+    }
+  },
+
   // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
