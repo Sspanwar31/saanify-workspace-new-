@@ -243,7 +243,7 @@ export default function ParticleEngine({
           break;
         case 'downward': 
           vx = rand(-0.15, 0.15) * spd; 
-          vy = spd * rand(0.6, 1.2); 
+          vy = spd * rand(0.6, 1.2) * config.spread; 
           break;
         case 'spiral':   
           vx = Math.cos(angle + particles.current.length * 0.4) * spd * config.spread; 
@@ -255,7 +255,8 @@ export default function ParticleEngine({
           vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
-      const spawnX = currentDirection === 'downward' ? rand(0, w) : cx + rand(-20, 20);
+      // 🚀 सुधार: यदि दिशा नीचे की ओर है (बर्फबारी) या यह लोहड़ी (LOHRI) का अलाव है, तो पूरे स्क्रीन की चौड़ाई में रैंडमली स्पॉन करें
+      const spawnX = (currentDirection === 'downward' || preset === 'LOHRI') ? rand(0, w) : cx + rand(-20, 20);
 
       let baseMaxLife = 110;
       if (currentDirection === 'downward') {
@@ -344,7 +345,6 @@ export default function ParticleEngine({
       particles.current = [];
     };
     
-    // 🚀 सुधार: अब सभी कस्टमाइज्ड वेरिएबल्स इस डिपेंडेंसी ऐरे में शामिल हैं!
   }, [preset, phase, customGravity, customSpeed, customColors, customMinSize, customMaxSize, customMaxCount]);
 
   return (
