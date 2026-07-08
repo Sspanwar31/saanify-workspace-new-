@@ -5,6 +5,9 @@ import { FESTIVAL_PHASE_SEQUENCES } from '@/config/FestivalPhaseConfig';
 import LightRevealIntro from '@/components/festival/intro/LightRevealIntro';
 // 🚀 लोहड़ी का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
 import LohriCinematicIntro from '../engines/effects/lohri/LohriCinematicIntro';
+// 🚀 रक्षाबंधन का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया (Hyphenated path)
+import RakshaBandhanCinematicIntro from '../engines/effects/raksha-bandhan/RakshaBandhanCinematicIntro';
+
 
 export default function FestivalIntroController({
   isActive,
@@ -54,7 +57,14 @@ export default function FestivalIntroController({
     );
   }
 
-  // 🚀 2. LIGHT REVEAL GROUP (Christmas, Ram Navami, Eid, etc.)
+  // 🚀 2. RAKSHA_BANDHAN ACTIVATION: रक्षाबंधन का स्वतंत्र सिनेमाई इंजन यहाँ चलेगा
+  if (isActive && preset.toUpperCase() === 'RAKSHA_BANDHAN') {
+    return (
+      <RakshaBandhanCinematicIntro onComplete={onHandover} />
+    );
+  }
+
+  // 🚀 3. LIGHT REVEAL GROUP (Christmas, Ram Navami, Eid, etc.)
   const isLightRevealPreset = ['CHRISTMAS', 'RAM_NAVAMI', 'EID_UL_FITR', 'EID_AL_ADHA', 'REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(preset.toUpperCase());
 
   if (isActive && isLightRevealPreset && heroConfig) {
