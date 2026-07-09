@@ -10,6 +10,8 @@ import RakshaBandhanCinematicIntro from '../engines/effects/raksha-bandhan/Raksh
 
 // 🚀 मकर संक्रांति का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया (सटीक पाथ मैचिंग)
 import MakarSankrantiCinematicIntro from '../engines/effects/Makar-Sankranti /MakarSankrantiCinematicIntro';
+// 🚀 नए साल का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
+import NewYearCinematicIntro from '../engines/effects/new-year/NewYearCinematicIntro';
 
 
 export default function FestivalIntroController({
@@ -85,6 +87,13 @@ export default function FestivalIntroController({
   if (isActive && preset.toUpperCase() === 'MAKAR_SANKRANTI') {
     return (
       <MakarSankrantiCinematicIntro onComplete={onHandover} />
+    );
+  }
+
+  // 🚀 5. NEW_YEAR ACTIVATION: नए साल का स्वतंत्र सिनेमाई इंजन यहाँ चलेगा
+  if (isActive && preset.toUpperCase() === 'NEW_YEAR') {
+    return (
+      <NewYearCinematicIntro onComplete={onHandover} />
     );
   }
 
