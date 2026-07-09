@@ -33,13 +33,13 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   }
 },
 
-// ━━━ RAKSHA_BANDHAN (🚀 12.0s Cinematic Sequence Sync) ━━━
+// ━━━ RAKSHA_BANDHAN (🚀 12.0s Cinematic Timeline Sync) ━━━
   RAKSHA_BANDHAN: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
-      FLASH: 1500,     // 1.5s: पवित्र धागे का स्क्रीन पर तैरना
-      SHOOTING: 9500,  // 9.5s: गाँठ बांधना, सुनहरी प्रकाश रिंग्स, और राखी का खिलना
-      HANDOVER: 1000   // 1.0s: डैशबोर्ड पर स्मूथ फ़ेड-आउट
+      FLASH: 1000,     // 1.0s: मंदिर का बैकग्राउंड आना और दीये का जलना (0-1s)
+      SHOOTING: 10000, // 10.0s: रेशमी धागा प्रवेश, राखी का निर्माण, एनर्जी पल्स, शील्ड ब्लास्ट और टेक्स्ट आना (1s - 11s)
+      HANDOVER: 1000   // 1.0s: स्वर्णिम रेडियल फेड-आउट और डैशबोर्ड पर ट्रांसफर (11s - 12s)
     }
   },
   
