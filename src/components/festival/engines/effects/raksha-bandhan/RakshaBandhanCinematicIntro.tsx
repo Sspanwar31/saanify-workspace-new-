@@ -277,6 +277,8 @@ function drawThread(ctx: CanvasRenderingContext2D, w: number, h: number, prog: n
   tg.addColorStop(0, '#D4A843'); tg.addColorStop(0.5, '#FFE082'); tg.addColorStop(1, '#F0C75E');
   ctx.strokeStyle = tg; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
   ctx.shadowColor = '#F0C75E'; ctx.shadowBlur = 8;
+
+  // 1. बायां रेशमी धागा (Left Golden Thread)
   ctx.beginPath();
   for (let i = 0; i <= steps; i++) {
     const t = i/100, m = 1-t;
@@ -287,14 +289,35 @@ function drawThread(ctx: CanvasRenderingContext2D, w: number, h: number, prog: n
   }
   ctx.stroke();
 
+  // 🚀 2. दायां रेशमी धागा (Symmetrical Right Golden Thread)
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const t = i/100, m = 1-t;
+    const px = m*m*m*sx + 3*m*m*t*c1x + 3*m*t*t*c2x + t*t*t*ex;
+    const py = m*m*m*sy + 3*m*m*t*c1y + 3*m*t*t*c2y + t*t*t*ey;
+    const wave = Math.sin(t*Math.PI*4 + time*3)*2*(1-t);
+    // क्षैतिज दर्पण छवि (Mirrored horizontal px across center)
+    if (i===0) ctx.moveTo(w - px, py+wave); else ctx.lineTo(w - px, py+wave);
+  }
+  ctx.stroke();
+
+  // दोनों धागों के आगे चमकता स्वर्णिम मुख (Dual Sparkle Tips)
   if (prog < 1) {
     const t = p, m = 1-t;
     const tx = m*m*m*sx+3*m*m*t*c1x+3*m*t*t*c2x+t*t*t*ex;
     const ty = m*m*m*sy+3*m*m*t*c1y+3*m*t*t*c2y+t*t*t*ey;
     const tw = Math.sin(t*Math.PI*4+time*3)*2*(1-t);
+
+    // बायां सिरा
     const sg = ctx.createRadialGradient(tx, ty+tw, 0, tx, ty+tw, 14);
     sg.addColorStop(0, 'rgba(255,240,200,0.8)'); sg.addColorStop(0.5, 'rgba(255,200,100,0.3)'); sg.addColorStop(1, 'rgba(255,200,100,0)');
     ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(tx, ty+tw, 14, 0, Math.PI*2); ctx.fill();
+
+    // दायां सिरा
+    const rx = w - tx;
+    const sgRight = ctx.createRadialGradient(rx, ty+tw, 0, rx, ty+tw, 14);
+    sgRight.addColorStop(0, 'rgba(255,240,200,0.8)'); sgRight.addColorStop(0.5, 'rgba(255,200,100,0.3)'); sgRight.addColorStop(1, 'rgba(255,200,100,0)');
+    ctx.fillStyle = sgRight; ctx.beginPath(); ctx.arc(rx, ty+tw, 14, 0, Math.PI*2); ctx.fill();
   }
   ctx.shadowBlur = 0; ctx.restore();
 }
@@ -607,9 +630,12 @@ export default function RakshaBandhanCinematicIntro({ onComplete }: Props) {
       if (elapsed >= 3 && elapsed < 6) {
         const tp = clamp((elapsed - 3) / 1.5, 0, 1);
         drawThread(ctx, w, h, tp, elapsed);
-        if (tp < 1 && Math.random() < .3) particles.spawnGoldDust(
-          w * tp * .5, h * .35, 1
-        );
+        if (tp < 1 && Math.random() < .3) {
+          // बायीं तरफ स्वर्णिम धूल
+          particles.spawnGoldDust(w * tp * .5, h * .35, 1);
+          // 🚀 दायीं तरफ भी स्वर्णिम धूल
+          particles.spawnGoldDust(w - (w * tp * .5), h * .35, 1);
+        }
       }
 
       // ─── RAKHI BUILD ───
@@ -624,16 +650,29 @@ export default function RakshaBandhanCinematicIntro({ onComplete }: Props) {
         const rp = (elapsed - 6);
         const rot = rp * Math.PI * .3;
         drawRakhi(ctx, rakhiCx, rakhiCy, 1, rot, elapsed, w);
-        // Show thread connected to Rakhi
+        
+        // 🚀 दोनों तरफ से राखी को जोड़ने वाले सुंदर धागे रेंडर करें
         ctx.save();
-        const tg = ctx.createLinearGradient(-50, h*.4, rakhiCx, rakhiCy);
-        tg.addColorStop(0, '#D4A843'); tg.addColorStop(1, '#F0C75E');
+        const tg = ctx.createLinearGradient(-50, h*.4, w+50, h*.4);
+        tg.addColorStop(0, '#D4A843'); tg.addColorStop(0.5, '#FFE082'); tg.addColorStop(1, '#D4A843');
         ctx.strokeStyle = tg; ctx.lineWidth = 2; ctx.lineCap = 'round';
         ctx.shadowColor = '#F0C75E'; ctx.shadowBlur = 5; ctx.globalAlpha = .6;
+        
+        const rRad = Math.min(50, Math.min(w,600)*.085);
+        
+        // बायां कनेक्शन
         ctx.beginPath();
         ctx.moveTo(-50, h*.4);
-        ctx.bezierCurveTo(w*.22, h*.15, w*.38, h*.35, rakhiCx - Math.min(50, Math.min(w,600)*.085), rakhiCy);
-        ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
+        ctx.bezierCurveTo(w*.22, h*.15, w*.38, h*.35, rakhiCx - rRad, rakhiCy);
+        ctx.stroke();
+
+        // दायां कनेक्शन (Symmetrical connection on the right edge)
+        ctx.beginPath();
+        ctx.moveTo(w + 50, h*.4);
+        ctx.bezierCurveTo(w*.78, h*.15, w*.62, h*.35, rakhiCx + rRad, rakhiCy);
+        ctx.stroke();
+
+        ctx.shadowBlur = 0; ctx.restore();
       }
 
       // ─── ENERGY BUILD ───
