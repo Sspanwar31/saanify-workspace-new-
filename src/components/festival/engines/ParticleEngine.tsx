@@ -134,13 +134,12 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       spawnY: -0.1,         
     }
   },
-  // 🚀 मकर संक्रांति के लिए सजीव हवा में बहने वाले पतंग-कणों का उत्कृष्ट प्रेसेट
   MAKAR_SANKRANTI: {
     default: {
-      gravity: 0.012,       // 🚀 बहुत हल्का हवा का खिंचाव (Floats like paper)
+      gravity: 0.012,       
       spread: 0.8,          
-      speed: 0.7,           // 🚀 धीमी शांत गति
-      colors: ['#38bdf8', '#fbbf24', '#f43f5e', '#34d399', '#ffffff'], // बहुरंगी पतंगे
+      speed: 0.7,           
+      colors: ['#38bdf8', '#fbbf24', '#f43f5e', '#34d399', '#ffffff'], 
       minSize: 1.2,         
       maxSize: 3.5,         
       maxCount: 160,        
@@ -191,9 +190,11 @@ export default function ParticleEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // डीबग लॉग 1
+    // 🚀 केस-इन्सेंसिटिव नॉर्मलाइज़ेशन (Case-Insensitive Normalization)
+    const normalizedPreset = (preset || '').toUpperCase().trim();
+
     console.log("❄️ [ParticleEngine] PROPS RECEIVED:", {
-      preset,
+      preset: normalizedPreset,
       phase,
       customSpeed,
       customGravity,
@@ -202,9 +203,8 @@ export default function ParticleEngine({
       customMaxCount
     });
 
-    const activePresetObj = PRESET_MAP[preset || ''] || { default: DEFAULT };
+    const activePresetObj = PRESET_MAP[normalizedPreset || ''] || { default: DEFAULT };
 
-    // सुरक्षित चेकिंग
     const config: EngineConfig = { 
       ...DEFAULT, 
       ...activePresetObj.default,
@@ -216,7 +216,6 @@ export default function ParticleEngine({
       ...(customMaxCount !== null && customMaxCount !== undefined && { maxCount: customMaxCount }),
     };
 
-    // डीबग लॉग 2
     console.log("❄️ [ParticleEngine] FINAL CONFIG RESOLVED:", config);
 
     let w = 0;
@@ -274,8 +273,7 @@ export default function ParticleEngine({
           vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
-      // सुधार: यदि दिशा नीचे की ओर है (बर्फबारी/पतंग) या यह लोहड़ी (LOHRI) का अलाव है, तो पूरे स्क्रीन की चौड़ाई में रैंडमली स्पॉन करें
-      const spawnX = (currentDirection === 'downward' || preset === 'LOHRI') ? rand(0, w) : cx + rand(-20, 20);
+      const spawnX = (currentDirection === 'downward' || normalizedPreset === 'LOHRI') ? rand(0, w) : cx + rand(-20, 20);
 
       let baseMaxLife = 110;
       if (currentDirection === 'downward') {
@@ -298,8 +296,7 @@ export default function ParticleEngine({
       const progress = 1 - p.life / p.maxLife;
       const alpha = Math.max(0, 1 - (progress * progress));
 
-      // लोहड़ी की चिंगारियां ऊपर जाते समय ठंडी होकर धीरे-धीरे सुई की नोक जैसी बारीक (shrink) होंगी
-      const renderSize = preset === 'LOHRI' ? p.size * (1 - progress * 0.8) : p.size;
+      const renderSize = normalizedPreset === 'LOHRI' ? p.size * (1 - progress * 0.8) : p.size;
 
       ctx.save();
       ctx.globalAlpha = alpha * 0.85; 
@@ -308,16 +305,16 @@ export default function ParticleEngine({
         ctx.globalCompositeOperation = 'lighter';
       }
 
-      // 🚀 मकर संक्रांति विज़ुअल अपडेट: यदि मकर संक्रांति चल रही है, तो नन्हीं पतंगे ड्रा करें!
-      if (preset === 'MAKAR_SANKRANTI') {
-        const s = renderSize * 1.5; // कोमल आकार
+      // 🚀 मकर संक्रांति विज़ुअल अपडेट (Case-Insensitive Match)
+      if (normalizedPreset === 'MAKAR_SANKRANTI') {
+        const s = renderSize * 1.5; 
         ctx.fillStyle = p.color;
         ctx.strokeStyle = p.color;
         ctx.lineWidth = 0.5;
         ctx.shadowColor = p.color;
         ctx.shadowBlur = s * 1.8;
 
-        // क) नन्हा डायमंड बॉडी
+        // क) डायमंड बॉडी
         ctx.beginPath();
         ctx.moveTo(p.x, p.y - s);
         ctx.lineTo(p.x + s * 0.7, p.y);
@@ -326,7 +323,7 @@ export default function ParticleEngine({
         ctx.closePath();
         ctx.fill();
 
-        // ख) नन्ही डगमगाती हुई पूंछ (Tail)
+        // ख) डगमगाती हुई डोर
         ctx.beginPath();
         ctx.moveTo(p.x, p.y + s);
         ctx.quadraticCurveTo(
@@ -337,7 +334,6 @@ export default function ParticleEngine({
         );
         ctx.stroke();
       } else {
-        // सामान्य सर्कल ड्राइंग (बर्फबारी, लोहड़ी चिंगारियों और अन्य त्योहारों के लिए)
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2);
@@ -363,7 +359,7 @@ export default function ParticleEngine({
       const rawCount = config.maxCount;
       const Math_floor = Math.floor(rawCount * pb.intensity);
       
-      const currentSpawnRate = preset === 'CHRISTMAS' ? 0.35 : pb.spawnRate;
+      const currentSpawnRate = normalizedPreset === 'CHRISTMAS' ? 0.35 : pb.spawnRate;
 
       if (particles.current.length < Math_floor && Math.random() < currentSpawnRate) {
         particles.current.push(spawn());
