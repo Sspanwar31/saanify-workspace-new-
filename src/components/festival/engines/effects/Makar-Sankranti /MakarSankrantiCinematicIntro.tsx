@@ -223,33 +223,57 @@ function drawKite(ctx:CanvasRenderingContext2D,k:Kite,t:number){
 const HINDI = '\u090A\u0901\u091A\u0940 \u0909\u0921\u093C\u093E\u0928, \u0928\u0908 \u0936\u0941\u0930\u0941\u0906\u0924';
 
 function drawText(ctx:CanvasRenderingContext2D,w:number,h:number,t:number,pe:PEngine){
-  // Hindi text reveal 11.5s - 12.2s (shifted +1s to sync with new call time)
+  // Hindi text reveal 11.5s - 12.2s
   const tp=eOC(cl((t-11.5)/.7,0,1));
   if(tp<=0)return;
-  const fs=Math.min(38,w*.052);const cy=h*.56;
+  
+  // 🚀 सुधार 1: टेक्स्ट को सूरज के ऊपर से हटाकर ऊपर गहरे नीले आसमान (h * 0.28) में शिफ्ट किया गया
+  const fs=Math.min(36,w*.048);const cy=h*.28; 
+  
   ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.font=`700 ${fs}px "Noto Sans Devanagari","Tiro Devanagari Hindi","Devanagari Sangam MN",sans-serif`;
   const met=ctx.measureText(HINDI);const tw=met.width;
+  
   ctx.beginPath();ctx.rect(w/2-tw/2-12,cy-fs*1.2,(tw+24)*tp,fs*2.4);ctx.clip();
-  const tg=ctx.createLinearGradient(w/2-tw/2,cy,w/2+tw/2,cy);tg.addColorStop(0,'#C8961E');tg.addColorStop(.25,'#F0C75E');tg.addColorStop(.45,'#FFF8E1');tg.addColorStop(.55,'#FFE082');tg.addColorStop(.75,'#F0C75E');tg.addColorStop(1,'#C8961E');
-  ctx.fillStyle=tg;ctx.shadowColor='#FFD700';ctx.shadowBlur=22*tp;
+  
+  // 🚀 सुधार 2: फ्लैट पीले रंग को हटाकर 3D सिल्वर-प्लेटिनम क्रोम मैटेलिक ग्रेडिएंट बनाया गया
+  const tg=ctx.createLinearGradient(w/2, cy - fs*0.5, w/2, cy + fs*0.5);
+  tg.addColorStop(0, '#ffffff');     // टॉप सिल्वर रिफ्लेक्शन
+  tg.addColorStop(0.4, '#e2e8f0');   // लाइट ग्रे मेटैलिक
+  tg.addColorStop(0.5, '#fef08a');   // केंद्र में कोमल सुनहरी शिमर बेल्ट
+  tg.addColorStop(0.65, '#ca8a04');  // गहरा पीतल गोल्ड शेड
+  tg.addColorStop(1, '#ffffff');     // बॉटम रिफ्लेक्शन
+  
+  // गहरे लाल-केसरिया रंग का बैकग्राउंड शैडो (Maximum contrast against light sky)
+  ctx.shadowColor = '#581c0c'; 
+  ctx.shadowBlur = 18 * tp;
+  ctx.fillStyle = tg;
   ctx.fillText(HINDI,w/2,cy);
-  ctx.shadowBlur=0;
-  if(tp>=1){const st=cl((t-12.2)/.6,0,1);if(st<1){const sx=w/2-tw/2-20+(tw+40)*st;const sg=ctx.createLinearGradient(sx-35,0,sx+35,0);sg.addColorStop(0,'rgba(255,255,255,0)');sg.addColorStop(.5,'rgba(255,255,255,0.35)');sg.addColorStop(1,'rgba(255,255,255,0)');ctx.globalCompositeOperation='lighter';ctx.fillStyle=sg;ctx.fillRect(w/2-tw/2-12,cy-fs*1.2,tw+24,fs*2.4);ctx.globalCompositeOperation='source-over';}}
+  ctx.shadowBlur = 0;
+  
+  // रीवील के बाद कोमल लाइट शिमर (Shimmer effect)
+  if(tp>=1){const st=cl((t-12.2)/.6,0,1);if(st<1){const sx=w/2-tw/2-20+(tw+40)*st;const sg=ctx.createLinearGradient(sx-35,0,sx+35,0);sg.addColorStop(0,'rgba(255,255,255,0)');sg.addColorStop(.5,'rgba(255,255,255,0.4)');sg.addColorStop(1,'rgba(255,255,255,0)');ctx.globalCompositeOperation='lighter';ctx.fillStyle=sg;ctx.fillRect(w/2-tw/2-12,cy-fs*1.2,tw+24,fs*2.4);ctx.globalCompositeOperation='source-over';}}
   ctx.restore();
-  ctx.save();const lw=tw*.6*tp;ctx.strokeStyle=`rgba(212,168,67,${tp*.5})`;ctx.lineWidth=1;
-  const dg1=ctx.createLinearGradient(w/2-lw/2,0,w/2+lw/2,0);dg1.addColorStop(0,'rgba(212,168,67,0)');dg1.addColorStop(.3,`rgba(212,168,67,${tp*.5})`);dg1.addColorStop(.5,`rgba(255,224,130,${tp*.7})`);dg1.addColorStop(.7,`rgba(212,168,67,${tp*.5})`);dg1.addColorStop(1,'rgba(212,168,67,0)');
+  
+  // सुंदर सजावटी नीचे की स्वर्ण रेखाएं (Decorative Lines)
+  ctx.save();const lw=tw*.6*tp;ctx.strokeStyle=`rgba(251,191,36,${tp*.5})`;ctx.lineWidth=1.2;
+  const dg1=ctx.createLinearGradient(w/2-lw/2,0,w/2+lw/2,0);dg1.addColorStop(0,'rgba(251,191,36,0)');dg1.addColorStop(.3,`rgba(251,191,36,${tp*.5})`);dg1.addColorStop(.5,`rgba(255,255,255,${tp*.8})`);dg1.addColorStop(.7,`rgba(251,191,36,${tp*.5})`);dg1.addColorStop(1,'rgba(251,191,36,0)');
   ctx.strokeStyle=dg1;ctx.beginPath();ctx.moveTo(w/2-lw/2,cy+fs*.85);ctx.lineTo(w/2+lw/2,cy+fs*.85);ctx.stroke();
-  for(let i=-1;i<=1;i+=2){const dx=w/2+i*lw/2;ctx.fillStyle=`rgba(240,199,94,${tp*.6})`;ctx.save();ctx.translate(dx,cy+fs*.85);ctx.rotate(Math.PI/4);ctx.fillRect(-2.5,-2.5,5,5);ctx.restore();}
+  
+  for(let i=-1;i<=1;i+=2){const dx=w/2+i*lw/2;ctx.fillStyle=`rgba(254,240,138,${tp*.7})`;ctx.save();ctx.translate(dx,cy+fs*.85);ctx.rotate(Math.PI/4);ctx.fillRect(-2.5,-2.5,5,5);ctx.restore();}
   ctx.restore();
-  // English subtitle 12.2s - 12.7s (shifted +1s)
+  
+  // अंग्रेजी सबटाइटल 12.2s - 12.7s
   const ep=eOC(cl((t-12.2)/.5,0,1));if(ep<=0)return;
-  const es=Math.min(22,w*.032);
-  ctx.save();ctx.globalAlpha=ep*.85;ctx.textAlign='center';ctx.textBaseline='middle';
+  const es=Math.min(20,w*.03);
+  ctx.save();ctx.globalAlpha=ep*.9;ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.font=`300 ${es}px "Cormorant Garamond","Georgia",serif`;
-  ctx.fillStyle='rgba(240,199,94,0.85)';ctx.letterSpacing=`${es*.18}px`;
+  ctx.fillStyle='#fef08a'; // 🚀 हल्का चमकदार पीला-सफेद रंग
+  ctx.shadowColor = '#581c0c'; ctx.shadowBlur = 6;
+  ctx.letterSpacing=`${es*.18}px`;
   ctx.fillText('Happy Makar Sankranti',w/2,cy+fs*1.5);
   ctx.restore();
+  
   if(tp<1&&Math.random()<.4){const rx=w/2-tw/2+tw*tp;pe.spawn({x:rx+(Math.random()-.5)*16,y:cy+(Math.random()-.5)*12,vx:(Math.random()-.5)*2,vy:-.5+Math.random(),size:.5+Math.random()*2,alpha:.9,maxLife:12+Math.random()*12,color:'#FFFFFF',type:'sparkle'});}
 }
 
