@@ -71,6 +71,16 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
+  // ━━━ MAKAR_SANKRANTI (🚀 12.0s Dynamic Sky Sequence) ━━━
+  MAKAR_SANKRANTI: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 1500,     // 1.5s: शांत नीले आकाश और सिंगल पतंग का आगमन
+      SHOOTING: 9500,  // 9.5s: पतंगों का झुंड, डगमगाती हवा की लकीरें और "Makar Sankranti" टेक्स्ट रिवील
+      HANDOVER: 1000   // 1.0s: कोमल स्वर्णिम फेड-आउट और डैशबोर्ड पर ट्रांसफर
+    }
+  },
+
   // ━━━ PATRIOTIC DAYS ━━━
   REPUBLIC_DAY: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
