@@ -190,7 +190,7 @@ export default function ParticleEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 🚀 केस-इन्सेंसिटिव नॉर्मलाइज़ेशन (Case-Insensitive Normalization)
+    // केस-इन्सेंसिटिव नॉर्मलाइज़ेशन
     const normalizedPreset = (preset || '').toUpperCase().trim();
 
     console.log("❄️ [ParticleEngine] PROPS RECEIVED:", {
@@ -205,6 +205,7 @@ export default function ParticleEngine({
 
     const activePresetObj = PRESET_MAP[normalizedPreset || ''] || { default: DEFAULT };
 
+    // सुरक्षित चेकिंग
     const config: EngineConfig = { 
       ...DEFAULT, 
       ...activePresetObj.default,
@@ -276,7 +277,7 @@ export default function ParticleEngine({
       const spawnX = (currentDirection === 'downward' || normalizedPreset === 'LOHRI') ? rand(0, w) : cx + rand(-20, 20);
 
       let baseMaxLife = 110;
-      if (currentDirection === 'downward') {
+      if (currentDirection === 'downward' || currentDirection === 'upward') {
          baseMaxLife = Math.max(350, Math.floor(h / (currentSpeed * 0.7))); 
       }
 
@@ -305,7 +306,7 @@ export default function ParticleEngine({
         ctx.globalCompositeOperation = 'lighter';
       }
 
-      // 🚀 मकर संक्रांति विज़ुअल अपडेट (Case-Insensitive Match)
+      // 🚀 1. मकर संक्रांति विज़ुअल अपडेट (Micro-Kites)
       if (normalizedPreset === 'MAKAR_SANKRANTI') {
         const s = renderSize * 1.5; 
         ctx.fillStyle = p.color;
@@ -314,7 +315,6 @@ export default function ParticleEngine({
         ctx.shadowColor = p.color;
         ctx.shadowBlur = s * 1.8;
 
-        // क) डायमंड बॉडी
         ctx.beginPath();
         ctx.moveTo(p.x, p.y - s);
         ctx.lineTo(p.x + s * 0.7, p.y);
@@ -323,7 +323,6 @@ export default function ParticleEngine({
         ctx.closePath();
         ctx.fill();
 
-        // ख) डगमगाती हुई डोर
         ctx.beginPath();
         ctx.moveTo(p.x, p.y + s);
         ctx.quadraticCurveTo(
@@ -333,7 +332,65 @@ export default function ParticleEngine({
           p.y + s * 2.2
         );
         ctx.stroke();
-      } else {
+      } 
+      // 🚀 2. लोहड़ी विज़ुअल अपडेट (Layered 3D-feel Flickering Flames!)
+      else if (normalizedPreset === 'LOHRI') {
+        const s = renderSize * 1.6;
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = s * 2;
+
+        // क) बाहरी आवरण (Outer realistic teardrop flame)
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - s * 1.4);
+        ctx.quadraticCurveTo(p.x + s * 0.85, p.y - s * 0.3, p.x + s * 0.4, p.y + s * 0.4);
+        ctx.quadraticCurveTo(p.x, p.y + s * 0.8, p.x - s * 0.4, p.y + s * 0.4);
+        ctx.quadraticCurveTo(p.x - s * 0.8, p.y - s * 0.3, p.x, p.y - s * 1.4);
+        ctx.closePath();
+        ctx.fill();
+
+        // ख) आंतरिक तीव्र ऊर्जा कोर (Bright white-yellow inner 3D core)
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = s * 1.2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y + s * 0.15, s * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 🚀 3. रक्षाबंधन विज़ुअल अपडेट (Exquisite Miniature Silk Rakhis)
+      else if (normalizedPreset === 'RAKSHA_BANDHAN') {
+        const s = renderSize * 1.4;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = s * 1.6;
+
+        // क) कोमलता से लहराते हुए लाल कुमकुम धागे (Swaying red silk strings)
+        ctx.strokeStyle = '#dc2626'; 
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x - s, p.y);
+        ctx.quadraticCurveTo(p.x - s * 1.4, p.y + Math.sin(p.life * 0.1) * s * 0.25, p.x - s * 2.2, p.y);
+        ctx.moveTo(p.x + s, p.y);
+        ctx.quadraticCurveTo(p.x + s * 1.4, p.y + Math.cos(p.life * 0.1) * s * 0.25, p.x + s * 2.2, p.y);
+        ctx.stroke();
+
+        // ख) राखी की 4 रेशमी लाल/गुलाबी पंखुड़ियां (4 Silk Petals)
+        ctx.fillStyle = p.color;
+        for (let i = 0; i < 4; i++) {
+          const ang = (i / 4) * Math.PI * 2 + p.rotation; // Rotation can apply
+          ctx.beginPath();
+          ctx.arc(p.x + Math.cos(ang) * s * 0.42, p.y + Math.sin(ang) * s * 0.42, s * 0.38, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // ग) केंद्रीय स्वर्णिम मटका मोती (Shining golden center pearl)
+        ctx.fillStyle = '#facc15';
+        ctx.shadowColor = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, s * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 🚀 4. डिफ़ॉल्ट ड्राइंग (क्रिसमस बर्फबारी और सामान्य गोल कणों के लिए)
+      else {
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2);
