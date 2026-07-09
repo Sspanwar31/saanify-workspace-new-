@@ -95,8 +95,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       AMBIENT:        { direction: 'downward', spawnY: -0.05,minSize: 3,  maxSize: 7,  speed: 0.6 },
     }
   },
-  
-  // 🚀 सुधार क: LOHRI का उत्कृष्ट कोमल ऊपर की ओर खिंचाव और बॉटम स्पॉन सेटिंग
   LOHRI: {
     default: {
       gravity: -0.015,       
@@ -106,7 +104,6 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       minSize: 1.5, maxSize: 5.5, maxCount: 220, glow: true, wobble: true, direction: 'upward', spawnY: 1.02,
     }
   },
-
   CHRISTMAS: {
     default: {
       gravity: 0.025,       
@@ -122,29 +119,35 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       spawnY: -0.1,
     }
   },
-
   RAKSHA_BANDHAN: {
     default: {
-      gravity: 0.025,       // 🚀 अत्यंत कोमल नीचे की ओर गिरावट (Floating gravity)
+      gravity: 0.025,       
       spread: 0.7,          
-      speed: 0.8,           // 🚀 धीमी और शांत स्वर्णिम गति
-      // 🚀 रंग: सोने की चमक, कुमकुम लाल, रेशमी गुलाबी और कोमल गुलाब का मिश्रण
+      speed: 0.8,           
       colors: ['#ffffff', '#fef08a', '#fbbf24', '#f43f5e', '#ec4899'], 
-      minSize: 1.0,         // 🚀 बारीक दिव्य कण (Sacred Dust Flakes)
+      minSize: 1.0,         
       maxSize: 4.0,         
-      maxCount: 280,        // 🚀 सुंदर और शांत सघनता
-      glow: true,           // 🚀 जादुई स्वर्णिम आभा सक्रिय
-      wobble: true,         // 🚀 हवा में कोमलता से झूमने का प्रभाव
-      direction: 'downward',// 🚀 सीधे नीचे की तरफ कोमल बारिश
-      spawnY: -0.1,         // 🚀 स्क्रीन के बिल्कुल शीर्ष से स्पॉन होगा
+      maxCount: 280,        
+      glow: true,           
+      wobble: true,         
+      direction: 'downward',
+      spawnY: -0.1,         
     }
   },
-  
+  // 🚀 मकर संक्रांति के लिए सजीव हवा में बहने वाले पतंग-कणों का उत्कृष्ट प्रेसेट
   MAKAR_SANKRANTI: {
     default: {
-      gravity: 0.02, spread: 0.8, speed: 0.6,
-      colors: ['#38bdf8', '#fbbf24', '#f43f5e', '#34d399'],
-      minSize: 3, maxSize: 7, maxCount: 80, glow: false, wobble: true, direction: 'downward', spawnY: -0.05,
+      gravity: 0.012,       // 🚀 बहुत हल्का हवा का खिंचाव (Floats like paper)
+      spread: 0.8,          
+      speed: 0.7,           // 🚀 धीमी शांत गति
+      colors: ['#38bdf8', '#fbbf24', '#f43f5e', '#34d399', '#ffffff'], // बहुरंगी पतंगे
+      minSize: 1.2,         
+      maxSize: 3.5,         
+      maxCount: 160,        
+      glow: true,           
+      wobble: true,         
+      direction: 'downward', 
+      spawnY: -0.1,
     }
   },
   SPECIAL_OFFER: {
@@ -271,12 +274,11 @@ export default function ParticleEngine({
           vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
-      // सुधार: यदि दिशा नीचे की ओर है (बर्फबारी) या यह लोहड़ी (LOHRI) का अलाव है, तो पूरे स्क्रीन की चौड़ाई में रैंडमली स्पॉन करें
+      // सुधार: यदि दिशा नीचे की ओर है (बर्फबारी/पतंग) या यह लोहड़ी (LOHRI) का अलाव है, तो पूरे स्क्रीन की चौड़ाई में रैंडमली स्पॉन करें
       const spawnX = (currentDirection === 'downward' || preset === 'LOHRI') ? rand(0, w) : cx + rand(-20, 20);
 
       let baseMaxLife = 110;
-      // 🚀 सुधार ख: डाउनवर्ड (क्रिसमस) और अपवर्ड (लोहड़ी) दोनों इंजनों को स्क्रीन पार करने के लिए अधिक लाइफस्पैन (Math.max)
-      if (currentDirection === 'downward' || currentDirection === 'upward') {
+      if (currentDirection === 'downward') {
          baseMaxLife = Math.max(350, Math.floor(h / (currentSpeed * 0.7))); 
       }
 
@@ -296,7 +298,7 @@ export default function ParticleEngine({
       const progress = 1 - p.life / p.maxLife;
       const alpha = Math.max(0, 1 - (progress * progress));
 
-      // 🚀 सुधार ग: लोहड़ी की चिंगारियां ऊपर जाते समय ठंडी होकर धीरे-धीरे सुई की नोक जैसी बारीक (shrink) होंगी
+      // लोहड़ी की चिंगारियां ऊपर जाते समय ठंडी होकर धीरे-धीरे सुई की नोक जैसी बारीक (shrink) होंगी
       const renderSize = preset === 'LOHRI' ? p.size * (1 - progress * 0.8) : p.size;
 
       ctx.save();
@@ -306,17 +308,48 @@ export default function ParticleEngine({
         ctx.globalCompositeOperation = 'lighter';
       }
 
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2); // 🚀 renderSize का उपयोग
-      ctx.fill();
+      // 🚀 मकर संक्रांति विज़ुअल अपडेट: यदि मकर संक्रांति चल रही है, तो नन्हीं पतंगे ड्रा करें!
+      if (preset === 'MAKAR_SANKRANTI') {
+        const s = renderSize * 1.5; // कोमल आकार
+        ctx.fillStyle = p.color;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 0.5;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = s * 1.8;
 
-      if (config.wobble && p.size > 5) {
-        ctx.globalAlpha = alpha * 0.4;
-        ctx.fillStyle = '#ffffff';
+        // क) नन्हा डायमंड बॉडी
         ctx.beginPath();
-        ctx.arc(-renderSize * 0.25, -renderSize * 0.25, renderSize * 0.35, 0, Math.PI * 2);
+        ctx.moveTo(p.x, p.y - s);
+        ctx.lineTo(p.x + s * 0.7, p.y);
+        ctx.lineTo(p.x, p.y + s);
+        ctx.lineTo(p.x - s * 0.7, p.y);
+        ctx.closePath();
         ctx.fill();
+
+        // ख) नन्ही डगमगाती हुई पूंछ (Tail)
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y + s);
+        ctx.quadraticCurveTo(
+          p.x + Math.sin(p.life * 0.15) * s * 0.4,
+          p.y + s * 1.4,
+          p.x + Math.sin(p.life * 0.08) * s * 0.7,
+          p.y + s * 2.2
+        );
+        ctx.stroke();
+      } else {
+        // सामान्य सर्कल ड्राइंग (बर्फबारी, लोहड़ी चिंगारियों और अन्य त्योहारों के लिए)
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (config.wobble && p.size > 5) {
+          ctx.globalAlpha = alpha * 0.4;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(-renderSize * 0.25, -renderSize * 0.25, renderSize * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
       ctx.restore();
