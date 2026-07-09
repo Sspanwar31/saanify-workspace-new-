@@ -8,6 +8,9 @@ import LohriCinematicIntro from '../engines/effects/lohri/LohriCinematicIntro';
 // 🚀 रक्षाबंधन का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया (Hyphenated path)
 import RakshaBandhanCinematicIntro from '../engines/effects/raksha-bandhan/RakshaBandhanCinematicIntro';
 
+// 🚀 मकर संक्रांति का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया (सटीक पाथ मैचिंग)
+import MakarSankrantiCinematicIntro from '../engines/effects/Makar-Sankranti /MakarSankrantiCinematicIntro';
+
 
 export default function FestivalIntroController({
   isActive,
@@ -75,6 +78,13 @@ export default function FestivalIntroController({
         heroConfig={heroConfig}
         themeColor={themeColor}
       />
+    );
+  }
+
+    // 🚀 4. MAKAR_SANKRANTI ACTIVATION: मकर संक्रांति का स्वतंत्र सिनेमाई इंजन यहाँ चलेगा
+  if (isActive && preset.toUpperCase() === 'MAKAR_SANKRANTI') {
+    return (
+      <MakarSankrantiCinematicIntro onComplete={onHandover} />
     );
   }
 
