@@ -109,6 +109,16 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
+  // ━━━ NEW_YEAR (🚀 12.0s Year Countdown & Firework Sequence) ━━━
+  NEW_YEAR: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 1500,     // 1.5s: काउंटडाउन रिंग का आगमन
+      SHOOTING: 9500,  // 9.5s: उल्टी गिनती (3-2-1), ईयर मॉर्फ, शानदार आतिशबाज़ी और "Happy New Year" टेक्स्ट रीवील
+      HANDOVER: 1000   // 1.0s: कोमल फ़ेड-आउट और डैशबोर्ड पर ट्रांसफर
+    }
+  },
+
   // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
