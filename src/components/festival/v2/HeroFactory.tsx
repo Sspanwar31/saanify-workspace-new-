@@ -10,6 +10,7 @@ import AshokaChakra from '../heroes/AshokaChakra';
 import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
 import SunGlow from '../engines/effects/SunGlow'; 
+import RakhiHero from '../heroes/RakhiHero'; // 🚀 नया: राखी हीरो इम्पोर्ट करें
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
 const ComponentMap: any = {
@@ -30,7 +31,7 @@ const ComponentMap: any = {
   'DANDIYA_BEAT': <span className="text-[110px] drop-shadow-2xl">🥁</span>,
   'RAVAN_DAHAN': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
   'BABY_KRISHNA': <span className="text-[110px] drop-shadow-2xl">🪈</span>,
-  'BROTHER_BOND': <span className="text-[110px] drop-shadow-2xl">🎁</span>,
+  'BROTHER_BOND': <RakhiHero />, // 🚀 अब गिफ्ट की जगह हमारी खुद की प्रोग्राम्ड राखी रेंडर होगी!
   'KITES_FLYING': <span className="text-[110px] drop-shadow-2xl">🪁</span>,
   'REAL_BONFIRE': <span className="text-[110px] drop-shadow-2xl">🔥</span>,
   'SHIVA_POWER': <span className="text-[110px] drop-shadow-2xl">🔱</span>,
