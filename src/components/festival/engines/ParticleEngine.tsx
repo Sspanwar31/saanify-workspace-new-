@@ -122,13 +122,24 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       spawnY: -0.1,
     }
   },
+
   RAKSHA_BANDHAN: {
     default: {
-      gravity: 0.18, spread: 1.5, speed: 2.5,
-      colors: ['#a855f7', '#ec4899', '#f43f5e', '#eab308', '#3b82f6', '#10b981'],
-      minSize: 4, maxSize: 10, maxCount: 220, glow: false, wobble: true, direction: 'radial', spawnY: 0.4,
+      gravity: 0.025,       // 🚀 अत्यंत कोमल नीचे की ओर गिरावट (Floating gravity)
+      spread: 0.7,          
+      speed: 0.8,           // 🚀 धीमी और शांत स्वर्णिम गति
+      // 🚀 रंग: सोने की चमक, कुमकुम लाल, रेशमी गुलाबी और कोमल गुलाब का मिश्रण
+      colors: ['#ffffff', '#fef08a', '#fbbf24', '#f43f5e', '#ec4899'], 
+      minSize: 1.0,         // 🚀 बारीक दिव्य कण (Sacred Dust Flakes)
+      maxSize: 4.0,         
+      maxCount: 280,        // 🚀 सुंदर और शांत सघनता
+      glow: true,           // 🚀 जादुई स्वर्णिम आभा सक्रिय
+      wobble: true,         // 🚀 हवा में कोमलता से झूमने का प्रभाव
+      direction: 'downward',// 🚀 सीधे नीचे की तरफ कोमल बारिश
+      spawnY: -0.1,         // 🚀 स्क्रीन के बिल्कुल शीर्ष से स्पॉन होगा
     }
   },
+  
   MAKAR_SANKRANTI: {
     default: {
       gravity: 0.02, spread: 0.8, speed: 0.6,
