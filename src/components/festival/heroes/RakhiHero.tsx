@@ -6,7 +6,7 @@ export default function RakhiHero() {
   return (
     <div className="relative flex items-center justify-center w-[260px] h-[200px] select-none pointer-events-none">
       
-      {/* 🚀 इनलाइन हार्डवेयर-एक्सेलरेटेड राखी एनीमेशन सीएसएस */}
+      {/* 🚀 इनलाइन सीएसएस एनीमेशन (No overwrite conflict) */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes rakhi-spin-slow {
           0% { transform: rotate(0deg); }
@@ -78,48 +78,52 @@ export default function RakhiHero() {
           <path d="M 130 100 Q 175 110, 205 90 T 235 100" fill="none" stroke="url(#rakhi-thread-grad)" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
         </g>
 
-        {/* ── 3. ROTATING SILK PETALS & MANDALA (बाहरी रेशमी पंखुड़ियां) ── */}
-        <g transform="translate(130, 100)" className="animate-rakhi-spin">
-          {/* 12 Overlapping Red Silk Petals */}
-          {Array.from({ length: 12 }).map((_, i) => {
-            const angle = (i * 30 * Math.PI) / 180;
-            const x = Math.cos(angle) * 44;
-            const y = Math.sin(angle) * 44;
-            return (
-              <g key={i} transform={`translate(${x}, ${y}) rotate(${i * 30})`}>
-                {/* पंखुड़ी */}
-                <ellipse cx="0" cy="0" rx="8" ry="15" fill="#dc2626" />
-                {/* सुनहरी बॉर्डर */}
-                <ellipse cx="0" cy="0" rx="8" ry="15" fill="none" stroke="#fbbf24" strokeWidth="0.8" />
-              </g>
-            );
-          })}
+        {/* ── 3. ROTATING SILK PETALS & MANDALA (🚀 नेस्टेड: आउटर ट्रांसलेट + इनर स्पिन) ── */}
+        <g transform="translate(130, 100)">
+          <g className="animate-rakhi-spin">
+            {/* 12 Overlapping Red Silk Petals */}
+            {Array.from({ length: 12 }).map((_, i) => {
+              const angle = (i * 30 * Math.PI) / 180;
+              const x = Math.cos(angle) * 44;
+              const y = Math.sin(angle) * 44;
+              return (
+                <g key={i} transform={`translate(${x}, ${y}) rotate(${i * 30})`}>
+                  <ellipse cx="0" cy="0" rx="8" ry="15" fill="#dc2626" />
+                  <ellipse cx="0" cy="0" rx="8" ry="15" fill="none" stroke="#fbbf24" strokeWidth="0.8" />
+                </g>
+              );
+            })}
+          </g>
         </g>
 
-        {/* ── 4. MIDDLE GOLDEN EMBOSSED RING ── */}
-        <g transform="translate(130, 100)" className="animate-rakhi-reverse">
-          <circle cx="0" cy="0" r="34" fill="url(#rakhi-gold)" stroke="#8b5a2b" strokeWidth="1" />
-          <circle cx="0" cy="0" r="30" fill="#db2777" stroke="#fbbf24" strokeWidth="1.2" /> {/* Pink inner base */}
+        {/* ── 4. MIDDLE GOLDEN EMBOSSED RING (🚀 नेस्टेड: आउटर ट्रांसलेट + इनर रिवर्स स्पिन) ── */}
+        <g transform="translate(130, 100)">
+          <g className="animate-rakhi-reverse">
+            <circle cx="0" cy="0" r="34" fill="url(#rakhi-gold)" stroke="#8b5a2b" strokeWidth="1" />
+            <circle cx="0" cy="0" r="30" fill="#db2777" stroke="#fbbf24" strokeWidth="1.2" />
 
-          {/* 8 Sparkling Pearl Beads (शानदार मोती) */}
-          {Array.from({ length: 8 }).map((_, i) => {
-            const angle = (i * 45 * Math.PI) / 180;
-            const px = Math.cos(angle) * 20;
-            const py = Math.sin(angle) * 20;
-            return (
-              <circle key={i} cx={px} cy={py} r="4.5" fill="url(#pearl-grad)" stroke="#94a3b8" strokeWidth="0.5" />
-            );
-          })}
+            {/* 8 Sparkling Pearl Beads */}
+            {Array.from({ length: 8 }).map((_, i) => {
+              const angle = (i * 45 * Math.PI) / 180;
+              const px = Math.cos(angle) * 20;
+              const py = Math.sin(angle) * 20;
+              return (
+                <circle key={i} cx={px} cy={py} r="4.5" fill="url(#pearl-grad)" stroke="#94a3b8" strokeWidth="0.5" />
+              );
+            })}
+          </g>
         </g>
 
-        {/* ── 5. SACRED COKAND CORES (कुमकुम तिलक और अक्षत) ── */}
-        <g transform="translate(130, 100)" className="animate-center-glow">
-          {/* Crimson Tilak Base */}
-          <circle cx="0" cy="0" r="11" fill="#dc2626" stroke="#fbbf24" strokeWidth="1" />
-          
-          {/* Akshat (Rice grains of blessing) */}
-          <ellipse cx="-2.5" cy="-2" rx="1" ry="2.5" fill="#fffbeb" transform="rotate(25 -2.5 -2)" />
-          <ellipse cx="2.5" cy="2" rx="1" ry="2.5" fill="#fffbeb" transform="rotate(-25 2.5 2)" />
+        {/* ── 5. SACRED COKAND CORES (🚀 नेस्टेड: आउटर ट्रांसलेट + इनर पल्स ग्लो) ── */}
+        <g transform="translate(130, 100)">
+          <g className="animate-center-glow">
+            {/* Crimson Tilak Base */}
+            <circle cx="0" cy="0" r="11" fill="#dc2626" stroke="#fbbf24" strokeWidth="1" />
+            
+            {/* Akshat (Rice grains) */}
+            <ellipse cx="-2.5" cy="-2" rx="1" ry="2.5" fill="#fffbeb" transform="rotate(25 -2.5 -2)" />
+            <ellipse cx="2.5" cy="2" rx="1" ry="2.5" fill="#fffbeb" transform="rotate(-25 2.5 2)" />
+          </g>
         </g>
       </svg>
     </div>
