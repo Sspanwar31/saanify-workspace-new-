@@ -29,20 +29,16 @@ const getShapePoints = (type: string, count: number, time: number): Point[] => {
     let r = 100;
 
     if (type === 'HEART') {
-      // शास्त्रीय कार्डियोइड दिल का समीकरण (Cardioid Heart shape)
       const x = 16 * Math.pow(Math.sin(angle), 3);
       const y = -(13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle));
       points.push({ x: x * 6, y: y * 6 });
       continue;
     } else if (type === 'ROSE') {
-      // गुलाब का फूल (Mathematical Rose curve)
       const k = 5;
       r = 100 * Math.sin(k * angle + time);
     } else if (type === 'MANDALA' || type === 'RANGOLI') {
-      // रंगोली आकृतियाँ
       r = 90 + Math.sin(8 * angle) * 25 + Math.cos(4 * angle) * 10;
     } else {
-      // डिफ़ॉल्ट सर्कल
       r = 100 + Math.sin(time + i) * 3;
     }
 
@@ -54,18 +50,15 @@ const getShapePoints = (type: string, count: number, time: number): Point[] => {
   return points;
 };
 
+// 🚀 दीवाली को यहाँ से पूरी तरह हटा दिया गया है (Only New Year and Valentine remain)
 const MORPH_PRESETS: Record<string, { default: Partial<MorphConfig>; shapes: string[] }> = {
   VALENTINES_DAY: {
     default: { colors: ['#f43f5e', '#ec4899', '#fda4af'] },
-    shapes: ['ROSE', 'HEART'] // गुलाब से दिल में रूपांतरण होगा
+    shapes: ['ROSE', 'HEART'] 
   },
   NEW_YEAR: {
     default: { colors: ['#fbbf24', '#f59e0b', '#ffffff'] },
     shapes: ['MANDALA', 'CIRCLE']
-  },
-  DIWALI: {
-    default: { colors: ['#f59e0b', '#ef4444', '#fffbeb'] },
-    shapes: ['RANGOLI', 'MANDALA']
   }
 };
 
@@ -91,7 +84,10 @@ export default function MorphEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const activePreset = MORPH_PRESETS[preset || ''] || { default: DEFAULT_MORPH, shapes: ['CIRCLE', 'MANDALA'] };
+    // 🚀 केस-इन्सेंसिटिव नॉर्मलाइज़ेशन (Case-Insensitive Normalization)
+    const normalizedPreset = (preset || '').toUpperCase().trim();
+
+    const activePreset = MORPH_PRESETS[normalizedPreset || ''] || { default: DEFAULT_MORPH, shapes: ['CIRCLE', 'MANDALA'] };
     const config: MorphConfig = {
       ...DEFAULT_MORPH,
       ...activePreset.default,
@@ -103,16 +99,22 @@ export default function MorphEngine({
     const setSize = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
+      
+      // 🚀 कंटेनर कोलैप्स से सुरक्षा (Viewport Sizing Fallback)
+      const actualWidth = rect.width > 0 ? rect.width : window.innerWidth;
+      const actualHeight = rect.height > 0 ? rect.height : window.innerHeight;
+
+      canvas.width = actualWidth * dpr;
+      canvas.height = actualHeight * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     setSize();
     window.addEventListener('resize', setSize);
 
     const animate = () => {
-      const w = canvas.getBoundingClientRect().width;
-      const h = canvas.getBoundingClientRect().height;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width > 0 ? rect.width : window.innerWidth;
+      const h = rect.height > 0 ? rect.height : window.innerHeight;
       const cx = w / 2;
       const cy = h / 2;
 
@@ -121,7 +123,6 @@ export default function MorphEngine({
       progressRef.current += config.speed;
       timeRef.current += 0.02;
 
-      // रूपांतरण प्रोग्रेस कैलकुलेशन (Smooth morph loop)
       const t = (Math.sin(progressRef.current) + 1) / 2;
 
       const shape1 = activePreset.shapes[0];
@@ -138,7 +139,6 @@ export default function MorphEngine({
 
       ctx.beginPath();
       for (let i = 0; i < config.pointCount; i++) {
-        // दो आकृतियों के कोणीय बिंदुओं को आपस में मर्ज करना (Linear Interpolation)
         const mx = p1[i].x * (1 - t) + p2[i].x * t;
         const my = p1[i].y * (1 - t) + p2[i].y * t;
 
@@ -148,7 +148,7 @@ export default function MorphEngine({
       ctx.closePath();
 
       const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 150);
-      grad.addColorStop(0, config.colors[0] + '33'); // हल्का 20% भरा हुआ बैकग्राउंड
+      grad.addColorStop(0, config.colors[0] + '33'); 
       grad.addColorStop(1, config.colors[1] + 'aa');
 
       ctx.strokeStyle = '#ffffff';
