@@ -330,9 +330,9 @@ export async function POST(req: Request) {
           [broadcastId]
         );
       } else {
+        // 🚀 स्मार्ट स्टॉप: अगर ड्रॉपडाउन से सिलेक्ट भूल गए, तो भी जो ब्रॉडकास्ट लाइव है उसे अपने आप ढूंढकर बंद कर देगा
         result = await client.query(
-          `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE festival_key=$1 AND broadcast_mode='MANUAL' RETURNING *;`,
-          [targetKey]
+          `UPDATE broadcasts SET status='stopped', is_active=false, manual_stop=true, updated_at=NOW() WHERE broadcast_mode='MANUAL' AND is_active=true RETURNING *;`
         );
       }
 
