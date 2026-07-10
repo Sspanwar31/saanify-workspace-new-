@@ -46,21 +46,13 @@ export default function MagicPichkari() {
 
   // 🎯 Liquid stream paths with turbulence
   const streams = useMemo(() => [
-    // Main thick stream
     { d: 'M160 85 Q110 25 25 70', width: 4, color: '#ff006e', speed: '1.8s', dash: '20 10', glow: 4 },
-    // Secondary stream
     { d: 'M158 88 Q115 35 18 62', width: 3, color: '#00f5d4', speed: '1.4s', dash: '14 16', glow: 3 },
-    // Gold stream (upper arc)
     { d: 'M162 82 Q100 8 22 75', width: 2.5, color: '#ffbe0b', speed: '2.2s', dash: '18 14', glow: 2 },
-    // Purple stream (lower arc)
     { d: 'M156 90 Q108 45 12 55', width: 2, color: '#8338ec', speed: '1.6s', dash: '10 20', glow: 2.5 },
-    // Thin accent stream
     { d: 'M163 84 Q105 15 28 68', width: 1.5, color: '#ff5400', speed: '2.5s', dash: '8 22', glow: 1.5 },
-    // Cyan highlight
     { d: 'M159 86 Q112 30 20 65', width: 1.5, color: '#06d6a0', speed: '1.9s', dash: '12 18', glow: 1.5 },
-    // Pink accent (wavy)
     { d: 'M161 83 Q95 18 15 72', width: 2, color: '#ef476f', speed: '2.1s', dash: '16 12', glow: 2 },
-    // Blue thin line
     { d: 'M157 89 Q118 40 10 58', width: 1, color: '#3a86ff', speed: '1.3s', dash: '6 24', glow: 1 },
   ], []);
 
@@ -71,7 +63,6 @@ export default function MagicPichkari() {
            🚀 2027 ADVANCED PICHKARI ANIMATION SYSTEM
            ═══════════════════════════════════════════════════ */
 
-        /* 3D Float with subtle rotation */
         @keyframes pichkari-float-3d {
           0%, 100% { 
             transform: translateY(0) rotate(-22deg) scale(1); 
@@ -91,65 +82,48 @@ export default function MagicPichkari() {
           }
         }
 
-        /* Liquid flow with smooth easing */
         @keyframes liquid-flow-advanced {
           0% { stroke-dashoffset: 200; opacity: 0.9; }
           50% { opacity: 1; }
           100% { stroke-dashoffset: 0; opacity: 0.9; }
         }
 
-        /* Splash with gravity simulation */
         @keyframes splash-physics {
-          0% { 
-            transform: translate(0, 0) scale(1) rotate(0deg); 
-            opacity: 1; 
-          }
-          30% {
-            opacity: 1;
-          }
-          100% { 
-            transform: translate(var(--tx), var(--ty)) scale(0.1) rotate(180deg); 
-            opacity: 0; 
-          }
+          0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+          30% { opacity: 1; }
+          100% { transform: translate(var(--tx), var(--ty)) scale(0.1) rotate(180deg); opacity: 0; }
         }
 
-        /* Trail effect for particles */
         @keyframes trail-fade {
           0% { width: var(--size); height: var(--size); opacity: 0.6; }
           100% { width: calc(var(--size) * 3); height: calc(var(--size) * 0.3); opacity: 0; }
         }
 
-        /* Metallic sparkle glint */
         @keyframes sparkle-glint {
           0%, 100% { opacity: 0; transform: scale(0); }
           50% { opacity: 1; transform: scale(1); }
         }
 
-        /* Rainbow color cycle for ambient */
         @keyframes rainbow-cycle {
           0% { filter: hue-rotate(0deg); }
           100% { filter: hue-rotate(360deg); }
         }
 
-        /* Ambient pulse glow */
         @keyframes ambient-pulse {
           0%, 100% { opacity: 0.3; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(1.1); }
         }
 
-        /* Number badge float */
         @keyframes badge-float {
           0%, 100% { transform: translateY(0) rotate(-5deg); }
           50% { transform: translateY(-8px) rotate(5deg); }
         }
 
-        /* Nozzle drip */
         @keyframes nozzle-drip {
           0% { transform: translate(0, 0) scale(1); opacity: 1; }
           100% { transform: translate(-15px, 25px) scale(0.5); opacity: 0; }
         }
 
-        /* Chamber bubble */
         @keyframes chamber-bubble {
           0% { transform: translateY(0) scale(1); opacity: 0.5; }
           50% { transform: translateY(-3px) scale(1.2); opacity: 0.8; }
@@ -157,7 +131,7 @@ export default function MagicPichkari() {
         }
       `}</style>
 
-      {/* ━━━ LAYER 0: AMBIENT BACKGROUND GLOW ━━━ */}
+      {/* ─── LAYER 0: AMBIENT BACKGROUND GLOW ─── */}
       <div 
         className="absolute top-1/2 left-[35%] -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full"
         style={{
@@ -167,7 +141,7 @@ export default function MagicPichkari() {
         }}
       />
 
-      {/* ━━━ LAYER 1: ADVANCED LIQUID STREAMS ━━━ */}
+      {/* ─── LAYER 1: ADVANCED LIQUID STREAMS ─── */}
       <svg
         className="absolute top-[18%] left-[0%] w-[85%] h-[65%] z-10"
         viewBox="0 0 200 130"
@@ -175,7 +149,6 @@ export default function MagicPichkari() {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          {/* Dynamic glow filters for each color */}
           <filter id="glow-pink" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="4" result="blur" />
             <feFlood floodColor="#ff006e" floodOpacity="0.6" result="color" />
@@ -213,15 +186,8 @@ export default function MagicPichkari() {
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-
-          {/* Turbulence filter for wavy liquid effect */}
-          <filter id="turbulence">
-            <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" />
-          </filter>
         </defs>
 
-        {/* Render all 8 liquid streams */}
         {streams.map((stream, i) => (
           <path
             key={i}
@@ -238,7 +204,6 @@ export default function MagicPichkari() {
           />
         ))}
 
-        {/* Splash mist at endpoint */}
         <circle cx="22" cy="68" r="15" fill="url(#splash-mist)" opacity="0.3">
           <animate attributeName="r" values="15;25;15" dur="2s" repeatCount="indefinite" />
           <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2s" repeatCount="indefinite" />
@@ -249,11 +214,11 @@ export default function MagicPichkari() {
         </radialGradient>
       </svg>
 
-      {/* ━━━ LAYER 2: PHYSICS-BASED SPLASH PARTICLES ━━━ */}
+      {/* ─── LAYER 2: PHYSICS-BASED SPLASH PARTICLES ─── */}
       <div className="absolute top-[58%] left-[14%] z-30">
         {particles.map((p) => (
           <div key={p.id} className="absolute">
-            {/* Main particle */}
+            {/* Main particle (🚀 Fixed inline style casting) */}
             <div
               className="rounded-full"
               style={{
@@ -261,13 +226,15 @@ export default function MagicPichkari() {
                 height: p.size,
                 backgroundColor: p.color,
                 boxShadow: `0 0 ${p.size * 2}px ${p.color}, 0 0 ${p.size * 4}px ${p.color}40`,
-                animation: `splash-physics ${p.duration}s ${p.delay} ease-out infinite`,
+                animation: `splash-physics ${p.duration}s ${p.delay}s ease-out infinite`,
                 opacity: p.opacity,
-                ['--tx' as string]: `${p.tx}px`,
-                ['--ty' as string]: `${p.ty}px`,
+                ...({
+                  '--tx': `${p.tx}px`,
+                  '--ty': `${p.ty}px`
+                } as React.CSSProperties)
               }}
             />
-            {/* Trail effect for larger particles */}
+            {/* Trail effect for larger particles (🚀 Fixed inline style casting) */}
             {p.trail && (
               <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
@@ -275,9 +242,11 @@ export default function MagicPichkari() {
                   width: p.size,
                   height: p.size,
                   backgroundColor: p.color,
-                  ['--size' as string]: `${p.size}px`,
                   animation: `trail-fade ${p.duration * 0.7}s ${p.delay}s ease-out infinite`,
                   filter: 'blur(2px)',
+                  ...({
+                    '--size': `${p.size}px`
+                  } as React.CSSProperties)
                 }}
               />
             )}
@@ -285,7 +254,7 @@ export default function MagicPichkari() {
         ))}
       </div>
 
-      {/* ━━━ LAYER 3: THE 3D METALLIC PICHKARI (UPGRADED) ━━━ */}
+      {/* ─── LAYER 3: THE 3D METALLIC PICHKARI ─── */}
       <div 
         className="relative z-20 w-[200px] h-[200px] origin-center"
         style={{
@@ -300,7 +269,6 @@ export default function MagicPichkari() {
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            {/* 🪙 Ultra-realistic Gold Gradients */}
             <linearGradient id="gold-ultra-light" x1="0" y1="0" x2="140" y2="140" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stopColor="#fefce8" />
               <stop offset="15%" stopColor="#fef08a" />
@@ -325,7 +293,6 @@ export default function MagicPichkari() {
               <stop offset="100%" stopColor="transparent" />
             </linearGradient>
 
-            {/* 🌈 Rainbow Liquid in Chamber */}
             <linearGradient id="rainbow-liquid" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#ff006e" />
               <stop offset="25%" stopColor="#ff5400" />
@@ -334,14 +301,12 @@ export default function MagicPichkari() {
               <stop offset="100%" stopColor="#3a86ff" />
             </linearGradient>
 
-            {/* Nozzle glow */}
             <radialGradient id="nozzle-glow" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#ff006e" stopOpacity="0.8" />
               <stop offset="50%" stopColor="#ff006e" stopOpacity="0.3" />
               <stop offset="100%" stopColor="#ff006e" stopOpacity="0" />
             </radialGradient>
 
-            {/* Reflection gradient */}
             <linearGradient id="reflection" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="rgba(255,255,255,0.35)" />
               <stop offset="50%" stopColor="rgba(255,255,255,0)" />
@@ -349,48 +314,34 @@ export default function MagicPichkari() {
             </linearGradient>
           </defs>
 
-          {/* ── 1. HANDLE/PLUNGER (Rear) ── */}
           <rect x="88" y="88" width="26" height="7" rx="2" transform="rotate(45 88 88)" fill="url(#gold-ultra-dark)" />
-          {/* Handle knurling texture */}
           {Array.from({length: 5}).map((_, i) => (
             <line key={`knurl-${i}`} x1={90 + i * 4} y1={90 + i * 4} x2={92 + i * 4} y2={88 + i * 4} stroke="#451a03" strokeWidth="0.5" transform="rotate(45 88 88)" opacity="0.4" />
           ))}
-          {/* Handle Ring */}
           <circle cx="110" cy="110" r="6" stroke="url(#gold-ultra-light)" strokeWidth="4" fill="none" />
           <circle cx="110" cy="110" r="6" stroke="url(#gold-highlight)" strokeWidth="4" fill="none" opacity="0.5" />
 
-          {/* ── 2. REAR CAP ── */}
           <rect x="76" y="76" width="14" height="14" rx="2" transform="rotate(45 76 76)" fill="url(#gold-ultra-dark)" />
           <rect x="76" y="76" width="14" height="7" rx="1" transform="rotate(45 76 76)" fill="url(#reflection)" />
 
-          {/* ── 3. TRANSPARENT CHAMBER ── */}
           <rect x="44" y="44" width="42" height="12" rx="2" transform="rotate(45 44 44)" fill="rgba(255,255,255,0.08)" stroke="url(#gold-ultra-light)" strokeWidth="1" />
-          {/* Rainbow liquid inside */}
           <rect x="48" y="48" width="32" height="9" rx="1.5" transform="rotate(45 48 48)" fill="url(#rainbow-liquid)" filter="drop-shadow(0 0 12px rgba(255,0,110,0.6))" style={{ animation: 'rainbow-cycle 3s linear infinite' }} />
-          {/* Chamber glass reflection */}
           <rect x="44" y="44" width="42" height="6" rx="1" transform="rotate(45 44 44)" fill="url(#reflection)" />
-          {/* Bubbles inside chamber */}
           <circle cx="58" cy="58" r="1.5" fill="rgba(255,255,255,0.6)" style={{ animation: 'chamber-bubble 2s 0s ease-in-out infinite' }} />
           <circle cx="62" cy="62" r="1" fill="rgba(255,255,255,0.5)" style={{ animation: 'chamber-bubble 2.5s 0.8s ease-in-out infinite' }} />
           <circle cx="55" cy="55" r="1.2" fill="rgba(255,255,255,0.4)" style={{ animation: 'chamber-bubble 1.8s 1.2s ease-in-out infinite' }} />
 
-          {/* ── 4. MAIN BARREL CYLINDER ── */}
           <rect x="26" y="26" width="32" height="14" rx="2" transform="rotate(45 26 26)" fill="url(#gold-ultra-light)" />
-          {/* Barrel top reflection */}
           <rect x="26" y="26" width="32" height="7" rx="1" transform="rotate(45 26 26)" fill="url(#reflection)" />
-          {/* Decorative rings */}
           <rect x="34" y="34" width="5" height="15" rx="0.5" transform="rotate(45 34 34)" fill="url(#gold-ultra-dark)" />
           <rect x="48" y="48" width="3" height="15" rx="0.5" transform="rotate(45 48 48)" fill="url(#gold-ultra-dark)" opacity="0.6" />
 
-          {/* ── 5. FRONT NOZZLE CONE ── */}
           <path d="M14 14 L26 24 L18 32 Z" fill="url(#gold-ultra-light)" />
           <path d="M14 14 L26 24 L20 28 Z" fill="url(#reflection)" opacity="0.6" />
-          {/* Nozzle tip with glow */}
           <circle cx="14" cy="14" r="8" fill="url(#nozzle-glow)" style={{ animation: 'ambient-pulse 1s ease-in-out infinite' }} />
           <circle cx="14" cy="14" r="3.5" fill="url(#gold-ultra-dark)" />
           <circle cx="13" cy="13" r="1.5" fill="url(#gold-ultra-light)" />
 
-          {/* ── 6. METALLIC SPARKLE GLINTS ── */}
           {sparkles.map((s) => (
             <circle
               key={s.id}
@@ -405,14 +356,13 @@ export default function MagicPichkari() {
             />
           ))}
 
-          {/* ── 7. NOZZLE DRIP DROPS ── */}
           <circle cx="10" cy="18" r="2" fill="#ff006e" style={{ animation: 'nozzle-drip 1.5s 0s ease-in infinite' }} />
           <circle cx="8" cy="20" r="1.5" fill="#00f5d4" style={{ animation: 'nozzle-drip 1.8s 0.6s ease-in infinite' }} />
           <circle cx="12" cy="16" r="1.8" fill="#ffbe0b" style={{ animation: 'nozzle-drip 2s 1.2s ease-in infinite' }} />
         </svg>
       </div>
 
-      {/* ━━━ LAYER 4: "2027" NUMBER BADGE ━━━ */}
+      {/* ─── LAYER 4: "2027" NUMBER BADGE ─── */}
       <div 
         className="absolute z-40"
         style={{
@@ -422,7 +372,6 @@ export default function MagicPichkari() {
         }}
       >
         <div className="relative">
-          {/* Badge glow */}
           <div 
             className="absolute inset-0 rounded-2xl blur-lg"
             style={{
@@ -430,7 +379,6 @@ export default function MagicPichkari() {
               opacity: 0.5,
             }}
           />
-          {/* Badge body */}
           <div 
             className="relative px-5 py-2.5 rounded-2xl border border-white/20"
             style={{
@@ -443,13 +391,12 @@ export default function MagicPichkari() {
               2027
             </span>
           </div>
-          {/* Sparkle dots on badge */}
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-300 rounded-full animate-pulse" />
           <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-cyan-300 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
         </div>
       </div>
 
-      {/* ━━━ LAYER 5: FLOATING GULAL CLOUDS ━━━ */}
+      {/* ─── LAYER 5: FLOATING GULAL CLOUDS ─── */}
       <div className="absolute top-[10%] left-[5%] z-5 opacity-60">
         <div className="w-20 h-20 rounded-full" style={{ background: 'radial-gradient(circle, #ff006e40, transparent)', filter: 'blur(8px)', animation: 'ambient-pulse 4s 0s ease-in-out infinite' }} />
       </div>
