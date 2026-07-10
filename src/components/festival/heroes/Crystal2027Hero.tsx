@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 
 /* ═══════════════════════════════════════════════════════════
-   CRYSTAL 2027 — Premium New Year Cinematic Hero
+   CRYSTAL 2027 — Premium New Year Cinematic Hero (Enhanced Crystal)
    ═══════════════════════════════════════════════════════════ */
 
 interface Props { onComplete: () => void; }
@@ -66,22 +66,18 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
           }
         }
         const b: Bld = { x, y: baseY, w: bw, h: bh, wins };
-        // Draw building
         const g = cCity.createLinearGradient(b.x, b.y, b.x, b.y - b.h);
         g.addColorStop(0, '#0a0e24'); g.addColorStop(1, '#0d1230');
         cCity.fillStyle = g;
         cCity.fillRect(b.x, b.y - b.h, b.w, b.h);
-        // Top edge highlight
         cCity.fillStyle = 'rgba(37,99,235,0.12)';
         cCity.fillRect(b.x, b.y - b.h, b.w, 1);
-        // Windows
         for (const wi of b.wins) {
           cCity.fillStyle = wi.c === 'g' ? `rgba(251,191,36,${rn(0.2,0.6)})` : `rgba(37,99,235,${rn(0.15,0.4)})`;
           cCity.fillRect(wi.x, wi.y, 2.5, 2.5);
         }
         x += bw + rn(1, 4);
       }
-      // Blur via downscale
       const tmp = document.createElement('canvas');
       tmp.width = Math.floor(w * 0.2); tmp.height = Math.floor(h * 0.2);
       tmp.getContext('2d')!.drawImage(oCity, 0, 0, tmp.width, tmp.height);
@@ -91,19 +87,23 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
       cCity.drawImage(tmp, 0, 0, w, h);
     }
 
-    /* ── Crystal Offscreen (CSS pixel space, no DPR) ── */
+    /* ── Crystal Offscreen ── */
     const oCrys = document.createElement('canvas');
     const cCrys = oCrys.getContext('2d')!;
     let cW = 0, cH = 0, fSz = 0;
 
+    /* ═══════════════════════════════════════════════════════
+       ✨ ENHANCED CRYSTAL RENDERER — Shimmer + Facets + Refraction
+       ═══════════════════════════════════════════════════════ */
     function renderCrystal(t: number) {
       cCrys.clearRect(0, 0, cW, cH);
       cCrys.save();
       cCrys.translate(cW / 2, cH / 2);
 
-      const floatY = Math.sin(t * 0.9) * 8;
-      const scaleX = 0.94 + Math.cos(t * 0.5) * 0.06;
-      const breath = 1 + Math.sin(t * 1.4) * 0.015;
+      // Enhanced floating — dual-frequency for organic feel
+      const floatY = Math.sin(t * 0.7) * 10 + Math.sin(t * 1.4) * 4;
+      const scaleX = 0.92 + Math.cos(t * 0.45) * 0.08;
+      const breath = 1 + Math.sin(t * 1.2) * 0.018;
       cCrys.translate(0, floatY);
       cCrys.scale(scaleX * breath, breath);
 
@@ -113,125 +113,222 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
       cCrys.textBaseline = 'middle';
       const tw = cCrys.measureText(txt).width;
 
-      // LAYER 1: Deep shadow
-      cCrys.shadowColor = 'rgba(0,0,0,0.7)';
-      cCrys.shadowBlur = 40;
-      cCrys.shadowOffsetX = 5;
-      cCrys.shadowOffsetY = 15;
-      cCrys.fillStyle = 'rgba(0,0,0,0.3)';
+      // ── LAYER 1: Deep shadow ──
+      cCrys.shadowColor = 'rgba(0,0,0,0.85)';
+      cCrys.shadowBlur = 65;
+      cCrys.shadowOffsetX = 4;
+      cCrys.shadowOffsetY = 22;
+      cCrys.fillStyle = 'rgba(0,0,0,0.45)';
       cCrys.fillText(txt, 0, 0);
       cCrys.shadowColor = 'transparent';
       cCrys.shadowBlur = 0;
       cCrys.shadowOffsetX = 0;
       cCrys.shadowOffsetY = 0;
 
-      // LAYER 2: Thick gold edge
-      const eg = cCrys.createLinearGradient(-tw / 2, 0, tw / 2, 0);
-      eg.addColorStop(0, '#5C4410');
-      eg.addColorStop(0.15, '#B8860B');
-      eg.addColorStop(0.35, '#FFD700');
-      eg.addColorStop(0.5, '#FFFACD');
-      eg.addColorStop(0.65, '#FFD700');
-      eg.addColorStop(0.85, '#B8860B');
-      eg.addColorStop(1, '#5C4410');
+      // ── LAYER 2: Outer gold glow ──
+      cCrys.shadowColor = 'rgba(251,191,36,0.55)';
+      cCrys.shadowBlur = 55;
+      cCrys.fillStyle = 'rgba(251,191,36,0.12)';
+      cCrys.fillText(txt, 0, 0);
+      cCrys.shadowColor = 'transparent';
+      cCrys.shadowBlur = 0;
+
+      // ── LAYER 3: Thick gold edge (SHIMMER gradient — moves like CSS version) ──
+      const shimOff = (t * 0.18) % 1;
+      const eg = cCrys.createLinearGradient(
+        -tw / 2 + shimOff * tw * 0.8, -fSz * 0.5,
+        tw / 2 + shimOff * tw * 0.8, fSz * 0.5
+      );
+      eg.addColorStop(0, '#2A1F06');
+      eg.addColorStop(0.08, '#6B4F1D');
+      eg.addColorStop(0.2, '#B8860B');
+      eg.addColorStop(0.3, '#FFD700');
+      eg.addColorStop(0.38, '#FFFACD');
+      eg.addColorStop(0.42, '#FFFFFF');
+      eg.addColorStop(0.48, '#FFFACD');
+      eg.addColorStop(0.55, '#FFD700');
+      eg.addColorStop(0.65, '#B8860B');
+      eg.addColorStop(0.78, '#FFD700');
+      eg.addColorStop(0.88, '#FFFACD');
+      eg.addColorStop(0.95, '#B8860B');
+      eg.addColorStop(1, '#2A1F06');
       cCrys.strokeStyle = eg;
-      cCrys.lineWidth = Math.max(3, fSz * 0.028);
+      cCrys.lineWidth = Math.max(4.5, fSz * 0.038);
       cCrys.lineJoin = 'round';
       cCrys.strokeText(txt, 0, 0);
 
-      // LAYER 3: Inner bright edge
-      cCrys.strokeStyle = 'rgba(255,250,205,0.35)';
-      cCrys.lineWidth = Math.max(1, fSz * 0.01);
+      // ── LAYER 4: Inner bright edge ──
+      cCrys.strokeStyle = 'rgba(255,250,205,0.55)';
+      cCrys.lineWidth = Math.max(1.5, fSz * 0.013);
       cCrys.strokeText(txt, 0, 0);
 
-      // LAYER 4: Glass body fill (STRONGER)
-      const gf = cCrys.createLinearGradient(0, -fSz * 0.5, 0, fSz * 0.5);
-      gf.addColorStop(0, 'rgba(100,150,255,0.3)');
-      gf.addColorStop(0.2, 'rgba(160,190,255,0.12)');
-      gf.addColorStop(0.4, 'rgba(220,235,255,0.35)');
-      gf.addColorStop(0.5, 'rgba(255,255,255,0.3)');
-      gf.addColorStop(0.6, 'rgba(255,240,200,0.15)');
-      gf.addColorStop(0.8, 'rgba(251,191,36,0.2)');
-      gf.addColorStop(1, 'rgba(200,160,50,0.25)');
+      // ── LAYER 5: Glass body fill — moving shimmer (CSS bg-position clone) ──
+      const sPhase = (t * 0.22) % 1;
+      const gf = cCrys.createLinearGradient(
+        -tw / 2 + sPhase * tw * 0.6, -fSz * 0.5,
+        tw / 2 - sPhase * tw * 0.6, fSz * 0.5
+      );
+      gf.addColorStop(0, 'rgba(70,110,255,0.38)');
+      gf.addColorStop(0.12, 'rgba(130,170,255,0.18)');
+      gf.addColorStop(0.25, 'rgba(255,255,255,0.45)');
+      gf.addColorStop(0.35, 'rgba(255,250,205,0.3)');
+      gf.addColorStop(0.45, 'rgba(251,191,36,0.32)');
+      gf.addColorStop(0.55, 'rgba(255,255,255,0.4)');
+      gf.addColorStop(0.65, 'rgba(190,210,255,0.22)');
+      gf.addColorStop(0.78, 'rgba(251,191,36,0.22)');
+      gf.addColorStop(0.9, 'rgba(255,255,255,0.3)');
+      gf.addColorStop(1, 'rgba(170,130,40,0.32)');
       cCrys.fillStyle = gf;
       cCrys.fillText(txt, 0, 0);
 
-      // LAYER 5: Facet lines (clipped to text)
-      cCrys.globalCompositeOperation = 'source-atop';
-      cCrys.strokeStyle = 'rgba(255,255,255,0.06)';
-      cCrys.lineWidth = 0.7;
-      for (let i = -tw * 1.3; i < tw * 1.3; i += 12) {
-        cCrys.beginPath();
-        cCrys.moveTo(i, -fSz * 0.55);
-        cCrys.lineTo(i + fSz * 0.7, fSz * 0.55);
-        cCrys.stroke();
-      }
-      for (let j = -fSz * 0.45; j < fSz * 0.45; j += 16) {
-        cCrys.beginPath();
-        cCrys.moveTo(-tw * 0.55, j);
-        cCrys.lineTo(tw * 0.55, j);
-        cCrys.stroke();
-      }
+      // ── LAYER 6: Vertical depth pass ──
+      const gf2 = cCrys.createLinearGradient(0, -fSz * 0.5, 0, fSz * 0.5);
+      gf2.addColorStop(0, 'rgba(255,255,255,0.18)');
+      gf2.addColorStop(0.25, 'rgba(255,255,255,0)');
+      gf2.addColorStop(0.6, 'rgba(251,191,36,0.12)');
+      gf2.addColorStop(1, 'rgba(200,150,50,0.18)');
+      cCrys.fillStyle = gf2;
+      cCrys.fillText(txt, 0, 0);
 
-      // LAYER 6: Chromatic aberration
-      cCrys.globalAlpha = 0.1;
-      cCrys.fillStyle = '#ff3333';
-      cCrys.fillText(txt, -2, 0);
-      cCrys.fillStyle = '#3333ff';
-      cCrys.fillText(txt, 2, 0);
+      // ── LAYER 7: Crystal facet lines (clipped to text) ──
+      cCrys.globalCompositeOperation = 'source-atop';
+
+      // Diagonal facets
+      cCrys.strokeStyle = 'rgba(255,255,255,0.07)';
+      cCrys.lineWidth = 0.7;
+      for (let i = -tw * 1.4; i < tw * 1.4; i += 9) {
+        cCrys.beginPath();
+        cCrys.moveTo(i, -fSz * 0.58);
+        cCrys.lineTo(i + fSz * 0.55, fSz * 0.58);
+        cCrys.stroke();
+      }
+      // Horizontal facets
+      for (let j = -fSz * 0.48; j < fSz * 0.48; j += 11) {
+        cCrys.beginPath();
+        cCrys.moveTo(-tw * 0.58, j);
+        cCrys.lineTo(tw * 0.58, j);
+        cCrys.stroke();
+      }
+      // Moving highlight facet (simulates light hitting crystal face)
+      const facetX = Math.sin(t * 0.65) * tw * 0.35;
+      cCrys.strokeStyle = 'rgba(255,255,255,0.18)';
+      cCrys.lineWidth = 2.2;
+      cCrys.beginPath();
+      cCrys.moveTo(facetX - fSz * 0.25, -fSz * 0.52);
+      cCrys.lineTo(facetX + fSz * 0.25, fSz * 0.52);
+      cCrys.stroke();
+      // Second moving facet
+      const facetX2 = Math.sin(t * 0.65 + 2) * tw * 0.3;
+      cCrys.strokeStyle = 'rgba(251,191,36,0.1)';
+      cCrys.lineWidth = 1.5;
+      cCrys.beginPath();
+      cCrys.moveTo(facetX2 - fSz * 0.2, -fSz * 0.48);
+      cCrys.lineTo(facetX2 + fSz * 0.2, fSz * 0.48);
+      cCrys.stroke();
+
+      // ── LAYER 8: Enhanced chromatic aberration (RGB + slight green) ──
+      cCrys.globalAlpha = 0.13;
+      cCrys.fillStyle = '#ff2222';
+      cCrys.fillText(txt, -3.5, -1);
+      cCrys.fillStyle = '#2222ff';
+      cCrys.fillText(txt, 3.5, 1);
+      cCrys.globalAlpha = 0.05;
+      cCrys.fillStyle = '#22ff44';
+      cCrys.fillText(txt, 0, 3.5);
       cCrys.globalAlpha = 1;
 
-      // LAYER 7: Moving light sweep
-      const sPeriod = 3.8;
-      const sPhase = (t % sPeriod) / sPeriod;
-      if (sPhase < 0.35) {
-        const sp = sPhase / 0.35;
-        const sx = -tw * 0.8 + sp * tw * 2;
-        const sg = cCrys.createLinearGradient(sx - 80, 0, sx + 80, 0);
-        sg.addColorStop(0, 'rgba(255,255,255,0)');
-        sg.addColorStop(0.35, 'rgba(255,255,255,0.4)');
-        sg.addColorStop(0.5, 'rgba(255,255,255,0.6)');
-        sg.addColorStop(0.65, 'rgba(255,255,255,0.4)');
-        sg.addColorStop(1, 'rgba(255,255,255,0)');
-        cCrys.fillStyle = sg;
-        cCrys.fillRect(-tw * 1.2, -fSz * 0.6, tw * 2.4, fSz * 1.2);
+      // ── LAYER 9: Multi-pass light sweep (CSS shimmer clone — 3 passes) ──
+      for (let pass = 0; pass < 3; pass++) {
+        const sPeriod = 3.2 + pass * 1.4;
+        const sPhase2 = ((t + pass * 1.6) % sPeriod) / sPeriod;
+        if (sPhase2 < 0.38) {
+          const sp = sPhase2 / 0.38;
+          const sx = -tw * 0.95 + sp * tw * 2.3;
+          const sweepW = 55 + pass * 35;
+          const peakAlpha = [0.65, 0.45, 0.3][pass];
+          const sg = cCrys.createLinearGradient(sx - sweepW, 0, sx + sweepW, 0);
+          sg.addColorStop(0, 'rgba(255,255,255,0)');
+          sg.addColorStop(0.25, `rgba(255,255,255,${peakAlpha * 0.5})`);
+          sg.addColorStop(0.5, `rgba(255,255,255,${peakAlpha})`);
+          sg.addColorStop(0.75, `rgba(255,255,255,${peakAlpha * 0.5})`);
+          sg.addColorStop(1, 'rgba(255,255,255,0)');
+          cCrys.fillStyle = sg;
+          cCrys.fillRect(-tw * 1.3, -fSz * 0.62, tw * 2.6, fSz * 1.24);
+        }
       }
 
-      // LAYER 8: Top highlight
-      cCrys.globalAlpha = 0.2 + Math.sin(t * 2.2) * 0.06;
-      const thg = cCrys.createLinearGradient(0, -fSz * 0.5, 0, -fSz * 0.15);
-      thg.addColorStop(0, 'rgba(255,255,255,0.7)');
+      // ── LAYER 10: Top highlight (pulsing) ──
+      cCrys.globalAlpha = 0.28 + Math.sin(t * 2.1) * 0.08;
+      const thg = cCrys.createLinearGradient(0, -fSz * 0.52, 0, -fSz * 0.08);
+      thg.addColorStop(0, 'rgba(255,255,255,0.85)');
       thg.addColorStop(1, 'rgba(255,255,255,0)');
       cCrys.fillStyle = thg;
       cCrys.fillText(txt, 0, 0);
       cCrys.globalAlpha = 1;
 
-      // LAYER 9: Dynamic sparkles
-      for (let i = 0; i < 12; i++) {
-        const seed = Math.floor(t * 2.5) + i * 97;
+      // ── LAYER 11: Bottom warm glow ──
+      cCrys.globalAlpha = 0.16 + Math.sin(t * 1.4 + 1.2) * 0.05;
+      const bg = cCrys.createLinearGradient(0, fSz * 0.08, 0, fSz * 0.52);
+      bg.addColorStop(0, 'rgba(251,191,36,0)');
+      bg.addColorStop(0.45, 'rgba(251,191,36,0.45)');
+      bg.addColorStop(1, 'rgba(200,150,50,0.22)');
+      cCrys.fillStyle = bg;
+      cCrys.fillText(txt, 0, 0);
+      cCrys.globalAlpha = 1;
+
+      // ── LAYER 12: Enhanced sparkles with CROSS shape ──
+      for (let i = 0; i < 20; i++) {
+        const seed = Math.floor(t * 3.2) + i * 67;
         const hx = ((seed * 2654435761) >>> 0) / 4294967296;
         const hy = ((seed * 340573321) >>> 0) / 4294967296;
-        const sx2 = (hx - 0.5) * tw * 0.85;
-        const sy2 = (hy - 0.5) * fSz * 0.65;
-        const sa = (Math.sin(t * 6 + i * 2.1) * 0.5 + 0.5);
-        if (sa > 0.15) {
-          const ssz = 1.5 + sa * 3;
-          const sgr = cCrys.createRadialGradient(sx2, sy2, 0, sx2, sy2, ssz * 4);
-          sgr.addColorStop(0, `rgba(255,255,255,${sa * 0.9})`);
-          sgr.addColorStop(0.3, `rgba(251,191,36,${sa * 0.3})`);
+        const sx2 = (hx - 0.5) * tw * 0.92;
+        const sy2 = (hy - 0.5) * fSz * 0.72;
+        const sa = Math.pow(Math.sin(t * 5.5 + i * 1.6) * 0.5 + 0.5, 2.2);
+        if (sa > 0.08) {
+          const ssz = 0.8 + sa * 4.5;
+          // Glow
+          const sgr = cCrys.createRadialGradient(sx2, sy2, 0, sx2, sy2, ssz * 5.5);
+          sgr.addColorStop(0, `rgba(255,255,255,${sa * 0.95})`);
+          sgr.addColorStop(0.12, `rgba(255,250,205,${sa * 0.55})`);
+          sgr.addColorStop(0.28, `rgba(251,191,36,${sa * 0.2})`);
           sgr.addColorStop(1, 'rgba(251,191,36,0)');
           cCrys.fillStyle = sgr;
-          cCrys.beginPath(); cCrys.arc(sx2, sy2, ssz * 4, 0, TAU); cCrys.fill();
+          cCrys.beginPath(); cCrys.arc(sx2, sy2, ssz * 5.5, 0, TAU); cCrys.fill();
+          // ✦ Cross sparkle lines
+          const crossLen = ssz * 3.5;
+          cCrys.strokeStyle = `rgba(255,255,255,${sa * 0.55})`;
+          cCrys.lineWidth = 0.6;
+          cCrys.beginPath(); cCrys.moveTo(sx2 - crossLen, sy2); cCrys.lineTo(sx2 + crossLen, sy2); cCrys.stroke();
+          cCrys.beginPath(); cCrys.moveTo(sx2, sy2 - crossLen); cCrys.lineTo(sx2, sy2 + crossLen); cCrys.stroke();
+          // Diagonal cross (smaller)
+          const dLen = crossLen * 0.5;
+          cCrys.strokeStyle = `rgba(251,191,36,${sa * 0.3})`;
+          cCrys.lineWidth = 0.4;
+          cCrys.beginPath(); cCrys.moveTo(sx2 - dLen, sy2 - dLen); cCrys.lineTo(sx2 + dLen, sy2 + dLen); cCrys.stroke();
+          cCrys.beginPath(); cCrys.moveTo(sx2 + dLen, sy2 - dLen); cCrys.lineTo(sx2 - dLen, sy2 + dLen); cCrys.stroke();
+          // Center bright dot
           cCrys.fillStyle = '#fff';
-          cCrys.beginPath(); cCrys.arc(sx2, sy2, ssz * 0.5, 0, TAU); cCrys.fill();
+          cCrys.beginPath(); cCrys.arc(sx2, sy2, ssz * 0.55, 0, TAU); cCrys.fill();
         }
       }
+
+      // ── LAYER 13: Rainbow edge refraction (crystal prism effect) ──
+      cCrys.globalAlpha = 0.055;
+      const rbPhase = t * 0.35;
+      const spectrum = ['#ff0044','#ff6600','#ffcc00','#00ff66','#0088ff','#8800ff'];
+      for (let i = 0; i < spectrum.length; i++) {
+        const offset = Math.sin(rbPhase + i * 1.05) * 3.5;
+        cCrys.strokeStyle = spectrum[i];
+        cCrys.lineWidth = 0.9;
+        cCrys.strokeText(txt, offset, offset * 0.45);
+      }
+      cCrys.globalAlpha = 1;
 
       cCrys.globalCompositeOperation = 'source-over';
       cCrys.restore();
     }
 
-    /* ── Stars (static, generated once) ── */
+    /* ── Stars ── */
     const stars: {x:number;y:number;s:number;a:number;tw:number;to:number}[] = [];
 
     /* ── Resize ── */
@@ -276,7 +373,6 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
       const crysY = h * 0.36;
       const floorY = h * 0.58;
 
-      /* ─ 0. FADE IN ─ */
       const fadeAlpha = 1 - eOC(cl((t - T.fadeOut) / (T.end - T.fadeOut), 0, 1));
       if (fadeAlpha <= 0.01) {
         if (!doneRef.v) { doneRef.v = true; ocRef.current(); }
@@ -335,7 +431,6 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
         flG.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = flG;
         ctx.fillRect(w * 0.03, floorY - 2, w * 0.94, 42);
-        // Floor line
         ctx.strokeStyle = `rgba(120,170,255,${0.1 * flA})`;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(w * 0.06, floorY); ctx.lineTo(w * 0.94, floorY); ctx.stroke();
@@ -349,10 +444,8 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
         ctx.translate(0, 2 * floorY);
         ctx.scale(1, -1);
         ctx.globalAlpha = crysA * 0.15;
-        // Draw crystal reflection (oCrys is in CSS pixels, ctx is in CSS-pixel space due to setTransform)
         ctx.drawImage(oCrys, cx - cW / 2, crysY - cH / 2, cW, cH);
         ctx.restore();
-        // Fade reflection
         const rfG = ctx.createLinearGradient(0, floorY, 0, floorY + 100);
         rfG.addColorStop(0, 'rgba(5,8,22,0)');
         rfG.addColorStop(1, 'rgba(5,8,22,1)');
@@ -383,7 +476,6 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
         ctx.translate(cx, crysY);
         ctx.globalAlpha = crysA;
 
-        // Main ring
         ctx.beginPath(); ctx.ellipse(0, 0, rRx, rRy, 0, 0, TAU);
         const rgG = ctx.createLinearGradient(-rRx, 0, rRx, 0);
         rgG.addColorStop(0, 'rgba(251,191,36,0)');
@@ -395,13 +487,11 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
         ctx.setLineDash([8, 12]); ctx.lineDashOffset = -t * 25;
         ctx.stroke(); ctx.setLineDash([]);
 
-        // Second ring
         ctx.beginPath(); ctx.ellipse(0, 0, rRx * 1.1, rRy * 1.15, 0, 0, TAU);
         ctx.strokeStyle = 'rgba(37,99,235,0.08)'; ctx.lineWidth = 0.8;
         ctx.setLineDash([4, 20]); ctx.lineDashOffset = t * 18;
         ctx.stroke(); ctx.setLineDash([]);
 
-        // Orbiting dots
         for (let i = 0; i < 20; i++) {
           const a = (i / 20) * TAU + t * 0.4;
           const px = Math.cos(a) * rRx;
@@ -526,7 +616,7 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
       ctx.fillStyle = blG;
       ctx.fillRect(0, 0, w, h);
 
-      /* ─ 16. GOLDEN GLOW (warm phase) ─ */
+      /* ─ 16. GOLDEN GLOW ─ */
       const glowA = eOC(cl((t - T.glowIn) / 1.5, 0, 1)) * (1 - eOC(cl((t - T.fadeOut) / (T.end - T.fadeOut), 0, 1)));
       if (glowA > 0.005) {
         const gG = ctx.createRadialGradient(cx, h * 0.4, 0, cx, h * 0.4, Math.max(w, h) * 0.65);
@@ -543,7 +633,6 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
         ctx.save(); ctx.globalAlpha = textA;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
-        // "NEW YEAR"
         const nyY = h * 0.76;
         const nySz = Math.min(w * 0.055, 46);
         ctx.font = `200 ${nySz}px "Inter","Segoe UI",system-ui,sans-serif`;
@@ -559,7 +648,6 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
         ctx.fillText('NEW YEAR', cx, nyY);
         ctx.shadowBlur = 0;
 
-        // Decorative line
         const lineW = Math.min(w * 0.22, 220) * textA;
         const dlG = ctx.createLinearGradient(cx - lineW, 0, cx + lineW, 0);
         dlG.addColorStop(0, 'rgba(251,191,36,0)');
@@ -569,14 +657,12 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
         dlG.addColorStop(1, 'rgba(251,191,36,0)');
         ctx.strokeStyle = dlG; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(cx - lineW, nyY + nySz * 0.85); ctx.lineTo(cx + lineW, nyY + nySz * 0.85); ctx.stroke();
-        // Diamond accents
         for (const s of [-1, 1]) {
           ctx.fillStyle = `rgba(255,250,205,${textA * 0.7})`;
           ctx.save(); ctx.translate(cx + s * lineW, nyY + nySz * 0.85); ctx.rotate(Math.PI / 4);
           ctx.fillRect(-3, -3, 6, 6); ctx.restore();
         }
 
-        // "NEW BEGINNING"
         const nbY = nyY + nySz * 1.45;
         const nbSz = Math.min(w * 0.042, 34);
         ctx.font = `300 ${nbSz}px "Inter","Segoe UI",system-ui,sans-serif`;
@@ -586,7 +672,6 @@ export default function NewYearCrystalHero({ onComplete }: Props) {
         ctx.fillText('NEW BEGINNING', cx, nbY);
         ctx.shadowBlur = 0;
 
-        // "Welcome to 2027"
         const wtY = h * 0.87;
         const wtSz = Math.min(w * 0.024, 19);
         ctx.font = `300 ${wtSz}px "Inter","Segoe UI",system-ui,sans-serif`;
