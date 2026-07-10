@@ -210,23 +210,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         // ✅ Already seen today — ambient + banner chalao (correct case)
         setIsAmbientActive(true);
       }
-    } else {
-      // ━━━ Broadcast ended ━━━
+    }} else {
+      // ━━━ Broadcast ended (🚀 सुधार: 'STOP' सिग्नल मिलते ही बिना शर्त तुरंत स्क्रीन क्लीन करें) ━━━
       if (activeBroadcastRef.current) {
         const endedId = activeBroadcastRef.current.id;
-
         sessionStorage.removeItem(`seen_broadcast_${endedId}`);
-
-        setActiveBroadcast(null);
-        setShowPopup(false);
-        setIsIntroActive(false);
-        setIsAmbientActive(false);
-        setIsGreetingSequenceActive(false);
-        introLockRef.current = false;
-        setHasSeenPopup(false);
       }
-    }
-  }, []);
+
+      // 🚀 तत्काल प्रभाव से सभी एक्टिव स्टेट्स को बंद करें (No redundant IF checks)
+      setActiveBroadcast(null);
+      setShowPopup(false);
+      setIsIntroActive(false);
+      setIsAmbientActive(false);
+      setIsGreetingSequenceActive(false);
+      introLockRef.current = false;
+      setHasSeenPopup(false);
+    } []);
 
   // Check expiry
   const checkBroadcastExpiry = useCallback(() => {
