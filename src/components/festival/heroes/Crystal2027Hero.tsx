@@ -1,7 +1,24 @@
+'use client';
+
+import React from 'react';
+
 export default function Crystal2027Hero() {
   return (
     <div className="relative flex items-center justify-center w-full h-full overflow-hidden">
       
+      {/* 🚀 इनलाइन सीएसएस एनीमेशन (No compilation conflicts with Turbopack) */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes shimmer {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 300% 50%; }
+        }
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-12px); }
+          100% { transform: translateY(0px); }
+        }
+      `}} />
+
       {/* Background Aura */}
       <div className="absolute w-[420px] h-[420px] rounded-full bg-yellow-400/10 blur-[120px] animate-pulse" />
 
@@ -14,7 +31,6 @@ export default function Crystal2027Hero() {
           font-black
           tracking-[-0.08em]
           select-none
-          animate-[float_6s_ease-in-out_infinite]
         "
         style={{
           background:
@@ -58,35 +74,3 @@ export default function Crystal2027Hero() {
       >
         2027
       </div>
-
-      {/* Floating Sparkles */}
-      <div className="absolute w-2 h-2 rounded-full bg-yellow-300 top-[30%] left-[35%] animate-ping" />
-      <div className="absolute w-1 h-1 rounded-full bg-white top-[42%] right-[32%] animate-ping" />
-      <div className="absolute w-2 h-2 rounded-full bg-yellow-200 bottom-[38%] left-[42%] animate-ping" />
-      <div className="absolute w-1 h-1 rounded-full bg-white bottom-[32%] right-[40%] animate-ping" />
-
-      <style jsx>{`
-        @keyframes shimmer {
-          0% {
-            background-position: 0% 50%;
-          }
-          100% {
-            background-position: 300% 50%;
-          }
-        }
-
-        @keyframes float {
-          0% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-12px);
-          }
-          100% {
-            transform: translateY(0px);
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
