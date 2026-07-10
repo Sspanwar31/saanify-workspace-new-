@@ -74,3 +74,13 @@ export default function Crystal2027Hero() {
       >
         2027
       </div>
+
+      {/* Floating Sparkles */}
+      <div className="absolute w-2 h-2 rounded-full bg-yellow-300 top-[30%] left-[35%] animate-ping" />
+      <div className="absolute w-1 h-1 rounded-full bg-white top-[42%] right-[32%] animate-ping" />
+      <div className="absolute w-2 h-2 rounded-full bg-yellow-200 bottom-[38%] left-[42%] animate-ping" />
+      <div className="absolute w-1 h-1 rounded-full bg-white bottom-[32%] right-[40%] animate-ping" />
+
+    </div>
+  );
+}
