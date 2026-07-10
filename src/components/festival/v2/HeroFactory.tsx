@@ -12,7 +12,7 @@ import MoonHero from '../heroes/MoonHero';
 import SunGlow from '../engines/effects/SunGlow'; 
 import RakhiHero from '../heroes/RakhiHero'; // 🚀 नया: राखी हीरो इम्पोर्ट करें
 
-import RakhiHero from '../Crystal2027Hero'; // 🚀
+import Crystal2027Hero from '../heroes/Crystal2027Hero'; // 🚀 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
 const ComponentMap: any = {
@@ -44,7 +44,7 @@ const ComponentMap: any = {
   'SUN_GOD': <SunGlow />,
   'HARVEST_POT': <span className="text-[110px] drop-shadow-2xl">🏺</span>,
   'HOLY_KAABA': <span className="text-[110px] drop-shadow-2xl">🕋</span>,
-  'NY_COUNTDOWN':  <Crystal2027Hero />, // 🚀
+  'NY_COUNTDOWN':  <Crystal2027Hero />, // 🚀 अब घड़ी की जगह हमारा खुद का 3D क्रिस्टल 2027 रेंडर होगा!
   'NATIONAL_PRIDE': <span className="text-[110px] drop-shadow-2xl">🏛️</span>,
   'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
   MEGAPHONE: <span className="text-[110px]">📢</span>,
