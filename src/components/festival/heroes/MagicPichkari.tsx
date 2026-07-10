@@ -1,12 +1,13 @@
 'use client';
+
 import React, { useMemo } from 'react';
+
 export default function MagicPichkari() {
 // 🎯 Generate deterministic random values using seed
 const particles = useMemo(() => {
 const items = [];
 const colors = ['#ff006e', '#ffbe0b', '#00f5d4', '#3a86ff', '#8338ec', '#ff5400', '#06d6a0', '#ef476f'];
-code
-Code
+
 // 40+ splash particles with physics
 for (let i = 0; i < 45; i++) {
   const angle = (Math.random() * 120 + 150) * (Math.PI / 180); // 150-270 degree spread
