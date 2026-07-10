@@ -210,7 +210,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         // ✅ Already seen today — ambient + banner chalao (correct case)
         setIsAmbientActive(true);
       }
-    }} else {
+    } else {
       // ━━━ Broadcast ended (🚀 सुधार: 'STOP' सिग्नल मिलते ही बिना शर्त तुरंत स्क्रीन क्लीन करें) ━━━
       if (activeBroadcastRef.current) {
         const endedId = activeBroadcastRef.current.id;
