@@ -225,7 +225,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setIsGreetingSequenceActive(false);
       introLockRef.current = false;
       setHasSeenPopup(false);
-    } []);
+    }
+  }, []); // ✅ FIX: यहीं `}` के बाद `);` गायब था
 
   // Check expiry
   const checkBroadcastExpiry = useCallback(() => {
