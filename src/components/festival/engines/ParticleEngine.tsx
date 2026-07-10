@@ -149,6 +149,25 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       spawnY: -0.1,
     }
   },
+  
+// 🚀 2027 MODERN NEW YEAR PRISMATIC PRESET (स्वर्णिम इंद्रधनुषी आतिशबाज़ी)
+  NEW_YEAR: {
+    default: {
+      gravity: 0.016,       // 🚀 कोमल स्वर्णिम बहाव
+      spread: 1.0,          
+      speed: 0.6,           // 🚀 धीमी राजसी गति
+      // 🚀 रंग: धात्विक सफेद, प्लैटिनम गोल्ड, गहरा एमरल्ड ग्रीन और वायलेट का इंद्रधनुषी संगम
+      colors: ['#ffffff', '#fef08a', '#fbbf24', '#10b981', '#8b5cf6', '#00f5d4'], 
+      minSize: 1.2,         
+      maxSize: 4.2,         
+      maxCount: 280,        // आदर्श सघनता
+      glow: true,           // 🚀 'lighter' ब्लेंड मोड सक्रिय करने के लिए ताकि ओवरलैप होने पर नियॉन ग्लो मिले
+      wobble: true,         // हवा में डगमगाना सक्रिय
+      direction: 'downward', 
+      spawnY: -0.1,
+    }
+  },
+
   SPECIAL_OFFER: {
     default: {
       gravity: 0.08, spread: 1.2, speed: 1.4,
