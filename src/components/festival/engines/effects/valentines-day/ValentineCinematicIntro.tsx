@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useEffect, useRef } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
-   VALENTINE 2027 — Cinematic Love Story (Enhanced Edition)
+   VALENTINE 2027 — Cinematic Love Story (All Fixes Applied)
    12.5s Disney-Pixar-Apple Premium Experience
    ═══════════════════════════════════════════════════════════════ */
 
@@ -35,7 +36,10 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
     const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     const eOB = (t: number) => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 
-    /* ── TIMELINE (Walk time slightly extended for natural walking) ── */
+    // ✅ FIX #1: Smooth ease-in-out for natural walk (was linear cl())
+    const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
+
+    /* ── TIMELINE ── */
     const TL = {
       walkE: 3.8, gestE: 5.2, orbE: 7.2, explE: 8.2,
       rainE: 10.5, txtE: 11.5, fadeS: 11.5, end: 12.5,
@@ -51,9 +55,10 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       shortsRed: '#dc2626',
       dressPink: '#f43f5e',
       shoeYellow: '#facc15',
+      shoePink: '#f43f5e', // ✅ FIX #5: Minnie's matching pink shoes
+      btnYellow: '#facc15', // ✅ FIX #3: Mickey's yellow buttons
     };
 
-    // strictly beautiful crimson red rose petals
     const ROSE_PETAL_COLS = ['#990000', '#bd081c', '#dc2626', '#e11d48', '#b91c1c'];
 
     /* ── STARS ── */
@@ -138,37 +143,38 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.closePath();
     }
 
-    // Mickey & Minnie Specific Programmatic Art
     function drawDisneyCharacter(x: number, y: number, s: number, face: number, isMinnie: boolean, opts: {
       aLX?: number; aLY?: number; aRX?: number; aRY?: number;
       legL?: number; legR?: number; turn?: number;
     }) {
       const { aLX = -14, aLY = 20, aRX = 14, aRY = 20, legL = 0, legR = 0, turn = 0 } = opts;
+      // ✅ FIX #5: Minnie gets pink shoes, Mickey keeps yellow
+      const shoeCol = isMinnie ? C.shoePink : C.shoeYellow;
+
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(s * face, s);
       ctx.rotate(turn);
 
-      // 1. LEGS (Thick black legs & Yellow shoes)
+      // 1. LEGS & SHOES
       ctx.lineWidth = 4.5;
       ctx.strokeStyle = '#000000';
-      ctx.fillStyle = C.shoeYellow;
 
-      // Leg Left
       ctx.save(); ctx.translate(-4.5, 26); ctx.rotate(legL);
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 14); ctx.stroke();
+      ctx.fillStyle = shoeCol; // ✅ FIX #5
       ctx.beginPath(); ctx.ellipse(0, 15, 6, 4.2, 0, 0, TAU); ctx.fill(); ctx.stroke();
       ctx.restore();
 
-      // Leg Right
       ctx.save(); ctx.translate(4.5, 26); ctx.rotate(legR);
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 14); ctx.stroke();
+      ctx.fillStyle = shoeCol; // ✅ FIX #5
       ctx.beginPath(); ctx.ellipse(0, 15, 6, 4.2, 0, 0, TAU); ctx.fill(); ctx.stroke();
       ctx.restore();
 
       // 2. BODY / CLOTHING
       if (isMinnie) {
-        // Minnie's pink/red polka-dot dress
+        // Minnie's polka-dot dress
         ctx.fillStyle = C.dressPink;
         ctx.beginPath();
         ctx.moveTo(-11, 26);
@@ -184,60 +190,72 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.beginPath(); ctx.arc(-5, 21, 1.8, 0, TAU); ctx.fill();
         ctx.beginPath(); ctx.arc(5, 21, 1.8, 0, TAU); ctx.fill();
         ctx.beginPath(); ctx.arc(0, 15, 1.8, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(-7, 16, 1.4, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(7, 16, 1.4, 0, TAU); ctx.fill();
       } else {
-        // Mickey's Red Shorts
-        ctx.fillStyle = '#000000'; // Upper body black
+        // Mickey black upper body
+        ctx.fillStyle = '#000000';
         ctx.beginPath(); ctx.ellipse(0, 14, 9, 13, 0, 0, TAU); ctx.fill(); ctx.stroke();
 
-        ctx.fillStyle = C.shortsRed; // Red shorts lower half overlay
+        // Red shorts
+        ctx.fillStyle = C.shortsRed;
         ctx.beginPath();
         ctx.ellipse(0, 19, 9.5, 8, 0, 0, TAU);
         ctx.fill();
         ctx.stroke();
 
-        // Two Yellow Oval Buttons
-        ctx.fillStyle = '#ffffff';
+        // ✅ FIX #3: Yellow buttons (were white)
+        ctx.fillStyle = C.btnYellow;
         ctx.beginPath(); ctx.ellipse(-3, 19, 1.5, 2.5, 0, 0, TAU); ctx.fill();
         ctx.beginPath(); ctx.ellipse(3, 19, 1.5, 2.5, 0, 0, TAU); ctx.fill();
+        // Button shine
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath(); ctx.ellipse(-3.4, 18.2, 0.6, 0.8, -0.3, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(2.6, 18.2, 0.6, 0.8, -0.3, 0, TAU); ctx.fill();
       }
 
-      // 3. BLACK ARMS & WHITE GLOVES
+      // 3. ARMS & WHITE GLOVES
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#000000';
-      ctx.fillStyle = '#ffffff'; // White Gloves
+      ctx.fillStyle = '#ffffff';
 
-      // Arm Left
       ctx.beginPath(); ctx.moveTo(-8, 8); ctx.lineTo(aLX, aLY); ctx.stroke();
-      ctx.beginPath(); ctx.arc(aLX, aLY, 4.5, 0, TAU); ctx.fill(); ctx.stroke(); // Glove
+      ctx.beginPath(); ctx.arc(aLX, aLY, 4.5, 0, TAU); ctx.fill(); ctx.stroke();
 
-      // Arm Right
       ctx.beginPath(); ctx.moveTo(8, 8); ctx.lineTo(aRX, aRY); ctx.stroke();
-      ctx.beginPath(); ctx.arc(aRX, aRY, 4.5, 0, TAU); ctx.fill(); ctx.stroke(); // Glove
+      ctx.beginPath(); ctx.arc(aRX, aRY, 4.5, 0, TAU); ctx.fill(); ctx.stroke();
 
-      // 4. MAIN HEAD (Black)
+      // 4. HEAD
       ctx.fillStyle = '#000000';
       ctx.beginPath(); ctx.arc(0, -8, 12, 0, TAU); ctx.fill(); ctx.stroke();
 
-      // 5. EAR LEFT & RIGHT
+      // 5. EARS
       ctx.beginPath(); ctx.arc(-11, -19, 7.2, 0, TAU); ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.arc(11, -19, 7.2, 0, TAU); ctx.fill(); ctx.stroke();
 
-      // 6. MINNIE SPECIFIC BOW & EYELASHES
+      // 6. MINNIE SPECIFIC
       if (isMinnie) {
-        // Bow
+        // Bow (matching dress color)
         ctx.fillStyle = C.dressPink;
         ctx.beginPath(); ctx.ellipse(-6, -26, 6, 4, -0.3, 0, TAU); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.ellipse(6, -26, 6, 4, 0.3, 0, TAU); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#ffffff'; // White center knot / details
+        // Bow center
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath(); ctx.arc(0, -25, 2.5, 0, TAU); ctx.fill(); ctx.stroke();
 
-        // Minnie's eyelashes (Simple stylized vector strokes)
+        // ✅ FIX #4: Three cute eyelashes (was only 1)
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.moveTo(8, -10); ctx.quadraticCurveTo(12, -12, 14, -8); ctx.stroke();
+        ctx.lineWidth = 1.3;
+        ctx.lineCap = 'round';
+        // Upper lash
+        ctx.beginPath(); ctx.moveTo(8, -10); ctx.quadraticCurveTo(12.5, -13, 15, -9); ctx.stroke();
+        // Middle lash
+        ctx.beginPath(); ctx.moveTo(9, -8.5); ctx.quadraticCurveTo(13, -10, 14.5, -7); ctx.stroke();
+        // Lower lash
+        ctx.beginPath(); ctx.moveTo(9.5, -7); ctx.quadraticCurveTo(13, -7.5, 13.5, -5); ctx.stroke();
       }
 
-      // Moonlight rim highlights
+      // Moonlight rim
       ctx.strokeStyle = 'rgba(255,255,255,0.22)';
       ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(0, -8, 12.5, -2.2, -0.2); ctx.stroke();
@@ -311,17 +329,20 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.fillStyle = gndH;
       ctx.fillRect(0, groundY - 15, w, 45);
 
-      /* ── 5. CHARACTER WALK & ANIMATION CYCLE ── */
-      // Natural consistent walking speed mapping to leg cycle
-      const walkP = cl(t / TL.walkE, 0, 1);
-      const mX = lerp(-60, cx - 62 * cScale, walkP);
-      const mnX = lerp(w + 60, cx + 62 * cScale, walkP);
+      /* ── 5. CHARACTER WALK (FIXED: ease-in-out + synced legs) ── */
+      // ✅ FIX #1: Smooth ease-in-out (was linear cl())
+      const rawWalkP = cl(t / TL.walkE, 0, 1);
+      const easedWalkP = easeInOutSine(rawWalkP);
+
+      const mX = lerp(-60, cx - 62 * cScale, easedWalkP);
+      const mnX = lerp(w + 60, cx + 62 * cScale, easedWalkP);
       const mY = groundY;
       const mnY = groundY;
 
-      // Leg swing speed directly proportional to horizontal progression
-      const wCyc = t * 6.5; 
-      const wDecay = 1 - walkP;
+      // ✅ FIX #2: Leg cycle uses EASED progress (legs slow down naturally)
+      const wCyc = t * 6.5;
+      const wDecay = 1 - easedWalkP; // was: 1 - walkP (linear)
+      // ✅ FIX #6: Bounce also uses eased decay (stops smoothly at gesture)
       const bounce = Math.abs(Math.sin(wCyc)) * 3.8 * wDecay;
       const legL = Math.sin(wCyc) * 0.48 * wDecay;
       const legR = -legL;
@@ -332,7 +353,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       const armRaiseP = eOB(cl((t - TL.walkE - 0.5) / 0.8, 0, 1));
       const turnAmt = gestP * 0.08;
 
-      // Smooth Hands meeting (Mickey Left/Right Glove, Minnie Left/Right Glove)
       const walkALX = -16, walkALY = 20 + armSwing;
       const walkARX = 16, walkARY = 20 - armSwing;
       const gestARX = 42, gestARY = lerp(20, -50, armRaiseP);
@@ -349,7 +369,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
 
       const legDecay = 1 - gestP * 0.9;
 
-      // Soft shadows
+      // Shadows
       const shA = 0.15 * fadeA;
       if (shA > 0.005) {
         ctx.fillStyle = `rgba(0,0,0,${shA})`;
@@ -357,30 +377,28 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.beginPath(); ctx.ellipse(mnX, groundY + 3, 24 * cScale, 5 * cScale, 0, 0, TAU); ctx.fill();
       }
 
-      // Draw Mickey (isMinnie: false)
+      // Draw Mickey
       drawDisneyCharacter(mX, mY - bounce * cScale, cScale, 1, false, {
         aLX: mLX, aLY: mLY, aRX: mRX, aRY: mRY,
         legL: legL * legDecay, legR: legR * legDecay, turn: -turnAmt,
       });
 
-      // Draw Minnie (isMinnie: true)
+      // Draw Minnie
       drawDisneyCharacter(mnX, mnY - bounce * cScale, cScale * 0.95, -1, true, {
         aLX: mnLX, aLY: mnLY, aRX: mnRX, aRY: mnRY,
         legL: -legL * legDecay, legR: -legR * legDecay, turn: -turnAmt,
       });
 
-      /* ── 6. HAND HEART GLOW (Enlarged) ── */
+      /* ── 6. HAND HEART GLOW ── */
       const heartApp = eOC(cl((t - (TL.walkE - 0.3)) / 0.6, 0, 1));
       if (heartApp > 0.01 && t < TL.orbE) {
         const hX = cx;
-        const hY = groundY - 62 * cScale - bounce * cScale;
+        const hY = groundY - 62 * cScale; // ✅ FIX #6: bounce removed here (gesture phase)
         const hPulse = 1 + Math.sin((t - 4.2) * 5.5) * 0.12;
-        // Increased hand heart size (0.75 -> 1.8)
         const hSz = 1.8 * cScale * heartApp * hPulse;
         const hFade = t > TL.orbE - 0.5 ? 1 - eOC(cl((t - (TL.orbE - 0.5)) / 0.5, 0, 1)) : 1;
         const hAl = heartApp * hFade * fadeA;
 
-        // Big Heart Glow
         const hGl = ctx.createRadialGradient(hX, hY, 0, hX, hY, hSz * 5);
         hGl.addColorStop(0, `rgba(239,68,68,${0.35 * hAl})`);
         hGl.addColorStop(0.4, `rgba(251,191,36,${0.18 * hAl})`);
@@ -388,7 +406,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.fillStyle = hGl;
         ctx.beginPath(); ctx.arc(hX, hY, hSz * 5, 0, TAU); ctx.fill();
 
-        // Heart Shape
         ctx.save();
         ctx.translate(hX, hY);
         ctx.scale(hSz, hSz);
@@ -407,7 +424,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.restore();
 
         if (hAl > 0.3 && Math.random() < 0.3) {
-          sp({ x: hX + rn(-20, 20) * hSz, y: hY + rn(-20, 20) * hSz, vx: rn(-0.4, 0.4), vy: rn(-0.9, -0.2), sz: rn(0.8, 2.2), a: 0.8, ml: rn(20, 40), r: 255, g: 250, b: 220, tp: 'sparkle' });
+          sp({ x: hX + rn(-20, 20) * hSz, y: hY + rn(-20, 20) * hSz, vx: rn(-0.4, 0.4), vy: rn(-0.9, -0.2), sz: rn(0.8, 2.2), a: 0.8, ml: rn(20, 40), r: 255, g: 250, b: 220, tp: 'sparkle', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
         }
       }
 
@@ -472,18 +489,17 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.restore();
 
         if (Math.random() < 0.5) {
-          sp({ x: gOx, y: gOy, vx: rn(-0.2, 0.2), vy: rn(-0.3, 0.1), sz: rn(0.6, 1.5), a: 0.6, ml: rn(15, 30), r: C.gold[0], g: C.gold[1], b: C.gold[2], tp: 'orbG' });
-          sp({ x: pOx, y: pOy, vx: rn(-0.2, 0.2), vy: rn(-0.3, 0.1), sz: rn(0.6, 1.5), a: 0.6, ml: rn(15, 30), r: C.pink[0], g: C.pink[1], b: C.pink[2], tp: 'orbP' });
+          sp({ x: gOx, y: gOy, vx: rn(-0.2, 0.2), vy: rn(-0.3, 0.1), sz: rn(0.6, 1.5), a: 0.6, ml: rn(15, 30), r: C.gold[0], g: C.gold[1], b: C.gold[2], tp: 'orbG', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
+          sp({ x: pOx, y: pOy, vx: rn(-0.2, 0.2), vy: rn(-0.3, 0.1), sz: rn(0.6, 1.5), a: 0.6, ml: rn(15, 30), r: C.pink[0], g: C.pink[1], b: C.pink[2], tp: 'orbP', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
         }
       }
 
-      /* ── 8. HEART EXPLOSION (Enlarged) ── */
+      /* ── 8. HEART EXPLOSION ── */
       const explP = cl((t - TL.orbE) / (TL.explE - TL.orbE), 0, 1);
       if (explP > 0 && explP < 1) {
         const eX = cx, eY = h * 0.22;
         const bA = Math.sin(explP * Math.PI);
 
-        // Sky Heart dramatically scaled up (1.2 -> 3.2)
         const bigH = eOB(cl(explP / 0.5, 0, 1));
         if (bigH > 0.01) {
           ctx.save();
@@ -504,7 +520,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
           ctx.restore();
         }
 
-        // Bloom flash
         const flG = ctx.createRadialGradient(eX, eY, 0, eX, eY, 320 * bA);
         flG.addColorStop(0, `rgba(255,230,220,${bA * 0.4})`);
         flG.addColorStop(0.25, `rgba(251,191,36,${bA * 0.2})`);
@@ -518,16 +533,16 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
           const ba = rn(0, TAU);
           const spd = rn(2.5, 6.5);
           const col = Math.random() > 0.5 ? C.gold : C.pink;
-          sp({ x: eX, y: eY, vx: Math.cos(ba) * spd, vy: Math.sin(ba) * spd, sz: rn(1.5, 3.5), a: 0.9, ml: rn(30, 60), r: col[0], g: col[1], b: col[2], tp: 'burst' });
+          sp({ x: eX, y: eY, vx: Math.cos(ba) * spd, vy: Math.sin(ba) * spd, sz: rn(1.5, 3.5), a: 0.9, ml: rn(30, 60), r: col[0], g: col[1], b: col[2], tp: 'burst', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
         }
       }
 
       /* ── 9. AMBIENT PARTICLES ── */
       if (t > 0.5 && Math.random() < 0.08) {
-        sp({ x: rn(0, w), y: rn(h * 0.1, h * 0.7), vx: rn(-0.03, 0.03), vy: rn(-0.04, 0.01), sz: rn(0.3, 0.8), a: rn(0.03, 0.1), ml: rn(200, 400), r: 160, g: 170, b: 220, tp: 'dust' });
+        sp({ x: rn(0, w), y: rn(h * 0.1, h * 0.7), vx: rn(-0.03, 0.03), vy: rn(-0.04, 0.01), sz: rn(0.3, 0.8), a: rn(0.03, 0.1), ml: rn(200, 400), r: 160, g: 170, b: 220, tp: 'dust', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
       }
 
-      /* ── 10. ROSE PETAL RAIN (Strictly Red Flower Petals) ── */
+      /* ── 10. ROSE PETAL RAIN ── */
       const rainP = cl((t - TL.explE) / (TL.rainE - TL.explE), 0, 1);
       if (rainP > 0 && t < TL.end) {
         const spawnRate = rainP < 0.1 ? rainP / 0.1 * 4.5 : 4.5;
@@ -538,7 +553,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
           const pb = parseInt(pCol.slice(5, 7), 16);
 
           if (Math.random() < 0.8) {
-            // Elegant falling rose petals
             sp({
               x: rn(-30, w + 30), y: rn(-40, -5),
               vx: rn(-0.25, 0.25), vy: rn(0.6, 1.4),
@@ -547,7 +561,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
               rot: rn(0, TAU), rotSpd: rn(-0.02, 0.02), tmbSpd: rn(0.025, 0.075), sx: 1,
             });
           } else {
-            // Microscopic Red Hearts
             sp({
               x: rn(0, w), y: rn(-30, -5),
               vx: rn(-0.15, 0.15), vy: rn(0.5, 1.1),
@@ -559,7 +572,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         }
 
         if (Math.random() < 0.12) {
-          sp({ x: rn(0, w), y: rn(h * 0.2, h * 0.75), vx: rn(-0.08, 0.08), vy: rn(-0.1, 0.05), sz: rn(0.5, 1.5), a: rn(0.15, 0.4), ml: rn(60, 120), r: 255, g: 100, b: 100, tp: 'sparkle' });
+          sp({ x: rn(0, w), y: rn(h * 0.2, h * 0.75), vx: rn(-0.08, 0.08), vy: rn(-0.1, 0.05), sz: rn(0.5, 1.5), a: rn(0.15, 0.4), ml: rn(60, 120), r: 255, g: 100, b: 100, tp: 'sparkle', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
         }
       }
 
@@ -648,7 +661,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       }
       pc = alive;
 
-      ctx.restore(); // Undo camera translation
+      ctx.restore(); // Undo camera
 
       /* ── 12. GREETING TEXT ── */
       const txtP = eOC(cl((t - TL.rainE) / (TL.txtE - TL.rainE), 0, 1));
@@ -743,7 +756,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.shadowBlur = 0;
 
         if (Math.random() < 0.25) {
-          sp({ x: cx + rn(-180, 180), y: mTY + rn(-mSz * 0.6, mSz * 0.6), vx: rn(-0.1, 0.1), vy: rn(-0.4, -0.05), sz: rn(0.6, 1.8), a: 0.7, ml: rn(30, 60), r: 255, g: 215, b: 0, tp: 'txtS' });
+          sp({ x: cx + rn(-180, 180), y: mTY + rn(-mSz * 0.6, mSz * 0.6), vx: rn(-0.1, 0.1), vy: rn(-0.4, -0.05), sz: rn(0.6, 1.8), a: 0.7, ml: rn(30, 60), r: 255, g: 215, b: 0, tp: 'txtS', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
         }
 
         ctx.restore();
