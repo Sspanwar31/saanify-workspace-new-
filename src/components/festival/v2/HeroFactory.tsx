@@ -13,7 +13,8 @@ import SunGlow from '../engines/effects/SunGlow';
 import RakhiHero from '../heroes/RakhiHero'; // 🚀 नया: राखी हीरो इम्पोर्ट करें
 
 import Crystal2027Hero from '../heroes/Crystal2027Hero'; // 🚀 
-import VALENTINESDAY from '../heroes/GlassmorphicHeartHero'; 
+// 🚀 नाम सुधार दिया गया है (VALENTINESDAY की जगह GlassmorphicHeartHero किया गया)
+import GlassmorphicHeartHero from '../heroes/GlassmorphicHeartHero';  
 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
