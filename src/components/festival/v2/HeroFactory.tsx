@@ -13,7 +13,7 @@ import SunGlow from '../engines/effects/SunGlow';
 import RakhiHero from '../heroes/RakhiHero'; // 🚀 नया: राखी हीरो इम्पोर्ट करें
 
 import Crystal2027Hero from '../heroes/Crystal2027Hero'; // 🚀 
-import GlassmorphicHeartHero from '../heroes/GlassmorphicHeartHero'; 
+import VALENTINESDAY from '../heroes/GlassmorphicHeartHero'; 
 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
@@ -51,7 +51,7 @@ const ComponentMap: any = {
   'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
  // 🚀 एक्टिवेशन कीज़: वैलेंटाइन और ग्लास हार्ट के लिए
   'VALENTINE_HEART': <GlassmorphicHeartHero onOpenLetter={() => {}} />,
-  'GLASS_HEART': <GlassmorphicHeartHero onOpenLetter={() => {}} />,
+  
  
   MEGAPHONE: <span className="text-[110px]">📢</span>,
   SIREN: <span className="text-[110px]">🚨</span>,
