@@ -183,16 +183,16 @@ export default function GlassmorphicHeartHero() {
                 <stop offset="100%" stopColor="rgba(244,63,94,0.7)" />
               </linearGradient>
 
-              {/* Body fill: rich rose-gold metallic */}
+              {/* Body fill: rich rose-gold metallic (🚀 FIXED: Added missing stop tags) */}
               <linearGradient id="body-g" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="rgba(180,50,80,0.3)" />
                 <stop offset="15%" stopColor="rgba(244,63,94,0.2)" />
                 <stop offset="30%" stopColor="rgba(251,191,36,0.15)" />
-                offset="45%" stopColor="rgba(255,250,240,0.22)" />
-                offset="55%" stopColor="rgba(255,255,255,0.25)" />
-                offset="70%" stopColor="rgba(251,191,36,0.18)" />
-                offset="85%" stopColor="rgba(244,63,94,0.22)" />
-                offset="100%" stopColor="rgba(160,30,60,0.3)" />
+                <stop offset="45%" stopColor="rgba(255,250,240,0.22)" />
+                <stop offset="55%" stopColor="rgba(255,255,255,0.25)" />
+                <stop offset="70%" stopColor="rgba(251,191,36,0.18)" />
+                <stop offset="85%" stopColor="rgba(244,63,94,0.22)" />
+                <stop offset="100%" stopColor="rgba(160,30,60,0.3)" />
               </linearGradient>
 
               {/* Inner glow gradient */}
