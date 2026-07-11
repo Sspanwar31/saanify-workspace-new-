@@ -13,6 +13,8 @@ import SunGlow from '../engines/effects/SunGlow';
 import RakhiHero from '../heroes/RakhiHero'; // 🚀 नया: राखी हीरो इम्पोर्ट करें
 
 import Crystal2027Hero from '../heroes/Crystal2027Hero'; // 🚀 
+import GlassmorphicHeartHero from '../heroes/GlassmorphicHeartHero'; 
+
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
 const ComponentMap: any = {
@@ -47,6 +49,10 @@ const ComponentMap: any = {
   'NY_COUNTDOWN':  <Crystal2027Hero />, // 🚀 अब घड़ी की जगह हमारा खुद का 3D क्रिस्टल 2027 रेंडर होगा!
   'NATIONAL_PRIDE': <span className="text-[110px] drop-shadow-2xl">🏛️</span>,
   'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
+ // 🚀 एक्टिवेशन कीज़: वैलेंटाइन और ग्लास हार्ट के लिए
+  'VALENTINE_HEART': <GlassmorphicHeartHero onOpenLetter={() => {}} />,
+  'GLASS_HEART': <GlassmorphicHeartHero onOpenLetter={() => {}} />,
+ 
   MEGAPHONE: <span className="text-[110px]">📢</span>,
   SIREN: <span className="text-[110px]">🚨</span>,
   GEAR_ICON: <span className="text-[110px]">⚙️</span>,
