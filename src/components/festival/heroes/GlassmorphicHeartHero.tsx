@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 
 export default function GlassmorphicHeartHero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,7 +23,6 @@ export default function GlassmorphicHeartHero() {
     setShine({ x: 50, y: 50 });
   };
 
-  // Sparkle positions (fixed, no re-render)
   const sparkles = [
     { x: 12, y: 8, s: 4.5, d: 0, dur: 3.2 },
     { x: 85, y: 14, s: 3.5, d: 0.6, dur: 3.8 },
@@ -189,11 +188,11 @@ export default function GlassmorphicHeartHero() {
                 <stop offset="0%" stopColor="rgba(180,50,80,0.3)" />
                 <stop offset="15%" stopColor="rgba(244,63,94,0.2)" />
                 <stop offset="30%" stopColor="rgba(251,191,36,0.15)" />
-                <stopOffset="45%" stopColor="rgba(255,250,240,0.22)" />
-                <stopOffset="55%" stopColor="rgba(255,255,255,0.25)" />
-                <stopOffset="70%" stopColor="rgba(251,191,36,0.18)" />
-                <stopOffset="85%" stopColor="rgba(244,63,94,0.22)" />
-                <stopOffset="100%" stopColor="rgba(160,30,60,0.3)" />
+                offset="45%" stopColor="rgba(255,250,240,0.22)" />
+                offset="55%" stopColor="rgba(255,255,255,0.25)" />
+                offset="70%" stopColor="rgba(251,191,36,0.18)" />
+                offset="85%" stopColor="rgba(244,63,94,0.22)" />
+                offset="100%" stopColor="rgba(160,30,60,0.3)" />
               </linearGradient>
 
               {/* Inner glow gradient */}
