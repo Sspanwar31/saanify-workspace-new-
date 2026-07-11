@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
-   VALENTINE 2027 — Cinematic Love Story
+   VALENTINE 2027 — Cinematic Love Story (Enhanced Edition)
    12.5s Disney-Pixar-Apple Premium Experience
    ═══════════════════════════════════════════════════════════════ */
 
@@ -35,23 +35,26 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
     const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     const eOB = (t: number) => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 
-    /* ── TIMELINE ── */
+    /* ── TIMELINE (Walk time slightly extended for natural walking) ── */
     const TL = {
-      walkE: 2.5, gestE: 4.0, orbE: 6.0, explE: 7.0,
-      rainE: 10.0, txtE: 11.5, fadeS: 11.5, end: 12.5,
+      walkE: 3.8, gestE: 5.2, orbE: 7.2, explE: 8.2,
+      rainE: 10.5, txtE: 11.5, fadeS: 11.5, end: 12.5,
     };
 
     /* ── PALETTE ── */
     const C = {
       skyTop: '#020818', skyMid: '#06102e', skyBot: '#0a0a20',
       moon: '#e8e0f0', moonGlow: 'rgba(180,190,240,',
-      body: '#08081e', rim: 'rgba(140,170,255,0.09)',
+      body: '#12121e', rim: 'rgba(140,170,255,0.15)',
       gold: [251, 191, 36], pink: [236, 72, 153], red: [220, 38, 38],
       rose: [244, 63, 94], white: [255, 245, 238],
+      shortsRed: '#dc2626',
+      dressPink: '#f43f5e',
+      shoeYellow: '#facc15',
     };
 
-    const PETAL_COLS = ['#e11d48', '#f43f5e', '#fb7185', '#fda4af', '#be123c', '#f9a8d4', '#f472b6'];
-    const HEART_COLS = ['#e11d48', '#f43f5e', '#dc2626', '#ef4444', '#fbbf24'];
+    // strictly beautiful crimson red rose petals
+    const ROSE_PETAL_COLS = ['#990000', '#bd081c', '#dc2626', '#e11d48', '#b91c1c'];
 
     /* ── STARS ── */
     const stars: Star[] = [];
@@ -135,60 +138,109 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.closePath();
     }
 
-    function drawFigure(x: number, y: number, s: number, face: number, opts: {
+    // Mickey & Minnie Specific Programmatic Art
+    function drawDisneyCharacter(x: number, y: number, s: number, face: number, isMinnie: boolean, opts: {
       aLX?: number; aLY?: number; aRX?: number; aRY?: number;
-      legL?: number; legR?: number; turn?: number; bow?: boolean;
+      legL?: number; legR?: number; turn?: number;
     }) {
-      const { aLX = -14, aLY = 20, aRX = 14, aRY = 20, legL = 0, legR = 0, turn = 0, bow = false } = opts;
+      const { aLX = -14, aLY = 20, aRX = 14, aRY = 20, legL = 0, legR = 0, turn = 0 } = opts;
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(s * face, s);
       ctx.rotate(turn);
-      ctx.fillStyle = C.body;
-      ctx.strokeStyle = C.rim;
-      ctx.lineWidth = 1.2 / s;
-      ctx.lineCap = 'round';
 
-      // Legs
-      ctx.lineWidth = 5;
-      ctx.save(); ctx.translate(-5, 28); ctx.rotate(legL);
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 16); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(0, 17, 5.5, 3, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.restore();
-      ctx.save(); ctx.translate(5, 28); ctx.rotate(legR);
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 16); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(0, 17, 5.5, 3, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.restore();
-
-      // Body
-      ctx.beginPath(); ctx.ellipse(0, 14, 10, 17, 0, 0, TAU); ctx.fill(); ctx.stroke();
-
-      // Arms
+      // 1. LEGS (Thick black legs & Yellow shoes)
       ctx.lineWidth = 4.5;
-      ctx.beginPath(); ctx.moveTo(-9, 5); ctx.lineTo(aLX, aLY); ctx.stroke();
-      ctx.beginPath(); ctx.arc(aLX, aLY, 3.8, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(9, 5); ctx.lineTo(aRX, aRY); ctx.stroke();
-      ctx.beginPath(); ctx.arc(aRX, aRY, 3.8, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#000000';
+      ctx.fillStyle = C.shoeYellow;
 
-      // Head
-      ctx.beginPath(); ctx.arc(0, -8, 12.5, 0, TAU); ctx.fill(); ctx.stroke();
+      // Leg Left
+      ctx.save(); ctx.translate(-4.5, 26); ctx.rotate(legL);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 14); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 15, 6, 4.2, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.restore();
 
-      // Ears
-      ctx.beginPath(); ctx.arc(-10.5, -18, 7.5, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(10.5, -18, 7.5, 0, TAU); ctx.fill(); ctx.stroke();
+      // Leg Right
+      ctx.save(); ctx.translate(4.5, 26); ctx.rotate(legR);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 14); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 15, 6, 4.2, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.restore();
 
-      // Bow
-      if (bow) {
-        ctx.beginPath(); ctx.ellipse(-7, -25.5, 6.5, 3.8, -0.3, 0, TAU); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(7, -25.5, 6.5, 3.8, 0.3, 0, TAU); ctx.fill();
-        ctx.beginPath(); ctx.arc(0, -23.5, 2.8, 0, TAU); ctx.fill();
+      // 2. BODY / CLOTHING
+      if (isMinnie) {
+        // Minnie's pink/red polka-dot dress
+        ctx.fillStyle = C.dressPink;
+        ctx.beginPath();
+        ctx.moveTo(-11, 26);
+        ctx.lineTo(-4, 9);
+        ctx.lineTo(4, 9);
+        ctx.lineTo(11, 26);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // White polka-dots
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(-5, 21, 1.8, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(5, 21, 1.8, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 15, 1.8, 0, TAU); ctx.fill();
+      } else {
+        // Mickey's Red Shorts
+        ctx.fillStyle = '#000000'; // Upper body black
+        ctx.beginPath(); ctx.ellipse(0, 14, 9, 13, 0, 0, TAU); ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = C.shortsRed; // Red shorts lower half overlay
+        ctx.beginPath();
+        ctx.ellipse(0, 19, 9.5, 8, 0, 0, TAU);
+        ctx.fill();
+        ctx.stroke();
+
+        // Two Yellow Oval Buttons
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.ellipse(-3, 19, 1.5, 2.5, 0, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(3, 19, 1.5, 2.5, 0, 0, TAU); ctx.fill();
       }
 
-      // Moonlight rim on head & ears
-      ctx.strokeStyle = 'rgba(170,195,255,0.12)';
-      ctx.lineWidth = 1.8 / s;
-      ctx.beginPath(); ctx.arc(0, -8, 13, -2.2, 0.8); ctx.stroke();
-      ctx.beginPath(); ctx.arc(10.5, -18, 8, -1.8, 0.6); ctx.stroke();
+      // 3. BLACK ARMS & WHITE GLOVES
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#000000';
+      ctx.fillStyle = '#ffffff'; // White Gloves
+
+      // Arm Left
+      ctx.beginPath(); ctx.moveTo(-8, 8); ctx.lineTo(aLX, aLY); ctx.stroke();
+      ctx.beginPath(); ctx.arc(aLX, aLY, 4.5, 0, TAU); ctx.fill(); ctx.stroke(); // Glove
+
+      // Arm Right
+      ctx.beginPath(); ctx.moveTo(8, 8); ctx.lineTo(aRX, aRY); ctx.stroke();
+      ctx.beginPath(); ctx.arc(aRX, aRY, 4.5, 0, TAU); ctx.fill(); ctx.stroke(); // Glove
+
+      // 4. MAIN HEAD (Black)
+      ctx.fillStyle = '#000000';
+      ctx.beginPath(); ctx.arc(0, -8, 12, 0, TAU); ctx.fill(); ctx.stroke();
+
+      // 5. EAR LEFT & RIGHT
+      ctx.beginPath(); ctx.arc(-11, -19, 7.2, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(11, -19, 7.2, 0, TAU); ctx.fill(); ctx.stroke();
+
+      // 6. MINNIE SPECIFIC BOW & EYELASHES
+      if (isMinnie) {
+        // Bow
+        ctx.fillStyle = C.dressPink;
+        ctx.beginPath(); ctx.ellipse(-6, -26, 6, 4, -0.3, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(6, -26, 6, 4, 0.3, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ffffff'; // White center knot / details
+        ctx.beginPath(); ctx.arc(0, -25, 2.5, 0, TAU); ctx.fill(); ctx.stroke();
+
+        // Minnie's eyelashes (Simple stylized vector strokes)
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(8, -10); ctx.quadraticCurveTo(12, -12, 14, -8); ctx.stroke();
+      }
+
+      // Moonlight rim highlights
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(0, -8, 12.5, -2.2, -0.2); ctx.stroke();
 
       ctx.restore();
     }
@@ -205,14 +257,12 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       const cScale = Math.min(w, h) * 0.0014;
       const moonX = w * 0.8, moonY = h * 0.14, moonR = Math.min(w, h) * 0.05;
 
-      // Fade out
       const fadeA = 1 - eOC(cl((t - TL.fadeS) / (TL.end - TL.fadeS), 0, 1));
       if (fadeA <= 0.01) { onComplete(); return; }
 
-      // Camera subtle follow
       let camY = 0;
-      if (t > 4.0 && t < 7.5) {
-        const cp = eIO(cl((t - 4.0) / 3.5, 0, 1));
+      if (t > 4.5 && t < 8.0) {
+        const cp = eIO(cl((t - 4.5) / 3.5, 0, 1));
         camY = -cp * h * 0.06;
       }
 
@@ -251,13 +301,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         if (a < 0.01) continue;
         ctx.fillStyle = `rgba(210,220,255,${a})`;
         ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, TAU); ctx.fill();
-        if (s.s > 1.2) {
-          const sg = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.s * 4);
-          sg.addColorStop(0, `rgba(200,215,255,${a * 0.2})`);
-          sg.addColorStop(1, 'rgba(200,215,255,0)');
-          ctx.fillStyle = sg;
-          ctx.beginPath(); ctx.arc(s.x, s.y, s.s * 4, 0, TAU); ctx.fill();
-        }
       }
 
       /* ── 4. GROUND HAZE ── */
@@ -268,30 +311,31 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.fillStyle = gndH;
       ctx.fillRect(0, groundY - 15, w, 45);
 
-      /* ── 5. CHARACTER POSITIONS ── */
-      const walkP = eOC(cl(t / TL.walkE, 0, 1));
-      const mX = lerp(-60, cx - 55 * cScale, walkP);
-      const mnX = lerp(w + 60, cx + 55 * cScale, walkP);
+      /* ── 5. CHARACTER WALK & ANIMATION CYCLE ── */
+      // Natural consistent walking speed mapping to leg cycle
+      const walkP = cl(t / TL.walkE, 0, 1);
+      const mX = lerp(-60, cx - 62 * cScale, walkP);
+      const mnX = lerp(w + 60, cx + 62 * cScale, walkP);
       const mY = groundY;
       const mnY = groundY;
 
-      // Walk cycle
-      const wCyc = t * 5.5;
+      // Leg swing speed directly proportional to horizontal progression
+      const wCyc = t * 6.5; 
       const wDecay = 1 - walkP;
-      const bounce = Math.abs(Math.sin(wCyc)) * 3.5 * wDecay;
-      const legL = Math.sin(wCyc) * 0.32 * wDecay;
+      const bounce = Math.abs(Math.sin(wCyc)) * 3.8 * wDecay;
+      const legL = Math.sin(wCyc) * 0.48 * wDecay;
       const legR = -legL;
-      const armSwing = Math.sin(wCyc) * 6 * wDecay;
+      const armSwing = Math.sin(wCyc) * 8.0 * wDecay;
 
-      // Gesture transition
-      const gestP = eOC(cl((t - TL.walkE) / 0.5, 0, 1));
+      // Gesture transitions
+      const gestP = eOC(cl((t - TL.walkE) / 0.6, 0, 1));
       const armRaiseP = eOB(cl((t - TL.walkE - 0.5) / 0.8, 0, 1));
-      const turnAmt = gestP * 0.12;
+      const turnAmt = gestP * 0.08;
 
-      // Arm positions: walking vs gesture
+      // Smooth Hands meeting (Mickey Left/Right Glove, Minnie Left/Right Glove)
       const walkALX = -16, walkALY = 20 + armSwing;
       const walkARX = 16, walkARY = 20 - armSwing;
-      const gestARX = 35, gestARY = lerp(20, -55, armRaiseP);
+      const gestARX = 42, gestARY = lerp(20, -50, armRaiseP);
 
       const mLX = lerp(walkALX, -14, gestP);
       const mLY = lerp(walkALY, 20, gestP);
@@ -303,74 +347,74 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       const mnRX = lerp(walkALX, -14, gestP);
       const mnRY = lerp(walkALY, 20, gestP);
 
-      const legDecay = 1 - gestP * 0.8;
+      const legDecay = 1 - gestP * 0.9;
 
-      // Character shadows
-      const shA = 0.12 * fadeA;
+      // Soft shadows
+      const shA = 0.15 * fadeA;
       if (shA > 0.005) {
         ctx.fillStyle = `rgba(0,0,0,${shA})`;
-        ctx.beginPath(); ctx.ellipse(mX, groundY + 3, 22 * cScale, 5 * cScale, 0, 0, TAU); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(mnX, groundY + 3, 22 * cScale, 5 * cScale, 0, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(mX, groundY + 3, 24 * cScale, 5 * cScale, 0, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(mnX, groundY + 3, 24 * cScale, 5 * cScale, 0, 0, TAU); ctx.fill();
       }
 
-      // Draw Mickey
-      drawFigure(mX, mY - bounce * cScale, cScale, 1, {
+      // Draw Mickey (isMinnie: false)
+      drawDisneyCharacter(mX, mY - bounce * cScale, cScale, 1, false, {
         aLX: mLX, aLY: mLY, aRX: mRX, aRY: mRY,
         legL: legL * legDecay, legR: legR * legDecay, turn: -turnAmt,
       });
 
-      // Draw Minnie
-      drawFigure(mnX, mnY - bounce * cScale, cScale * 0.95, -1, {
+      // Draw Minnie (isMinnie: true)
+      drawDisneyCharacter(mnX, mnY - bounce * cScale, cScale * 0.95, -1, true, {
         aLX: mnLX, aLY: mnLY, aRX: mnRX, aRY: mnRY,
-        legL: -legL * legDecay, legR: -legR * legDecay, turn: -turnAmt, bow: true,
+        legL: -legL * legDecay, legR: -legR * legDecay, turn: -turnAmt,
       });
 
-      /* ── 6. HAND HEART GLOW ── */
-      const heartApp = eOC(cl((t - 3.2) / 0.5, 0, 1));
+      /* ── 6. HAND HEART GLOW (Enlarged) ── */
+      const heartApp = eOC(cl((t - (TL.walkE - 0.3)) / 0.6, 0, 1));
       if (heartApp > 0.01 && t < TL.orbE) {
         const hX = cx;
-        const hY = groundY - 65 * cScale - bounce * cScale;
-        const hPulse = 1 + Math.sin((t - 3.7) * 4.5) * 0.1;
-        const hSz = 0.75 * cScale * heartApp * hPulse;
+        const hY = groundY - 62 * cScale - bounce * cScale;
+        const hPulse = 1 + Math.sin((t - 4.2) * 5.5) * 0.12;
+        // Increased hand heart size (0.75 -> 1.8)
+        const hSz = 1.8 * cScale * heartApp * hPulse;
         const hFade = t > TL.orbE - 0.5 ? 1 - eOC(cl((t - (TL.orbE - 0.5)) / 0.5, 0, 1)) : 1;
         const hAl = heartApp * hFade * fadeA;
 
-        // Glow
-        const hGl = ctx.createRadialGradient(hX, hY, 0, hX, hY, hSz * 4);
-        hGl.addColorStop(0, `rgba(239,68,68,${0.25 * hAl})`);
-        hGl.addColorStop(0.35, `rgba(251,191,36,${0.1 * hAl})`);
+        // Big Heart Glow
+        const hGl = ctx.createRadialGradient(hX, hY, 0, hX, hY, hSz * 5);
+        hGl.addColorStop(0, `rgba(239,68,68,${0.35 * hAl})`);
+        hGl.addColorStop(0.4, `rgba(251,191,36,${0.18 * hAl})`);
         hGl.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = hGl;
-        ctx.beginPath(); ctx.arc(hX, hY, hSz * 4, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(hX, hY, hSz * 5, 0, TAU); ctx.fill();
 
-        // Heart shape
+        // Heart Shape
         ctx.save();
         ctx.translate(hX, hY);
         ctx.scale(hSz, hSz);
         drawHeartShape(1);
         const hGr = ctx.createLinearGradient(-16, -16, 16, 14);
-        hGr.addColorStop(0, '#fca5a5');
-        hGr.addColorStop(0.3, '#ef4444');
-        hGr.addColorStop(0.5, '#fbbf24');
+        hGr.addColorStop(0, '#ff9999');
+        hGr.addColorStop(0.3, '#f43f5e');
+        hGr.addColorStop(0.5, '#facc15');
         hGr.addColorStop(0.7, '#ef4444');
-        hGr.addColorStop(1, '#dc2626');
+        hGr.addColorStop(1, '#be123c');
         ctx.fillStyle = hGr;
-        ctx.shadowColor = `rgba(239,68,68,${0.5 * hAl})`;
-        ctx.shadowBlur = 20;
+        ctx.shadowColor = `rgba(239,68,68,${0.7 * hAl})`;
+        ctx.shadowBlur = 25;
         ctx.globalAlpha = hAl;
         ctx.fill();
         ctx.restore();
 
-        // Heart sparkles
         if (hAl > 0.3 && Math.random() < 0.3) {
-          sp({ x: hX + rn(-15, 15) * hSz, y: hY + rn(-15, 15) * hSz, vx: rn(-0.3, 0.3), vy: rn(-0.8, -0.1), sz: rn(0.8, 2), a: 0.8, ml: rn(20, 40), r: 255, g: 250, b: 220, tp: 'sparkle', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
+          sp({ x: hX + rn(-20, 20) * hSz, y: hY + rn(-20, 20) * hSz, vx: rn(-0.4, 0.4), vy: rn(-0.9, -0.2), sz: rn(0.8, 2.2), a: 0.8, ml: rn(20, 40), r: 255, g: 250, b: 220, tp: 'sparkle' });
         }
       }
 
       /* ── 7. ENERGY ORBS ── */
       const orbP = cl((t - TL.gestE) / (TL.orbE - TL.gestE), 0, 1);
       if (orbP > 0 && orbP < 1) {
-        const heartCenter = { x: cx, y: groundY - 65 * cScale };
+        const heartCenter = { x: cx, y: groundY - 62 * cScale };
         const skyCenter = { x: cx, y: h * 0.22 };
         const spiralA = orbP * Math.PI * 10;
         const spiralR = 35 * (1 - orbP * 0.7) * cScale;
@@ -379,13 +423,11 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         const pOx = heartCenter.x + Math.cos(spiralA + Math.PI) * spiralR;
         const pOy = lerp(heartCenter.y, skyCenter.y, eIO(orbP)) + Math.sin((spiralA + Math.PI) * 0.7) * spiralR * 0.4;
 
-        // Trails
         gTr.push({ x: gOx, y: gOy });
         pTr.push({ x: pOx, y: pOy });
         if (gTr.length > TRM) gTr.shift();
         if (pTr.length > TRM) pTr.shift();
 
-        // Draw trails
         ctx.save();
         ctx.globalAlpha = fadeA;
         for (const [trail, col] of [[gTr, C.gold], [pTr, C.pink]] as const) {
@@ -396,7 +438,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
             tg.addColorStop(0.3, `rgba(${col[0]},${col[1]},${col[2]},0.08)`);
             tg.addColorStop(0.7, `rgba(${col[0]},${col[1]},${col[2]},0.35)`);
             tg.addColorStop(1, `rgba(255,255,255,0.6)`);
-            // Glow layer
             ctx.strokeStyle = tg;
             ctx.lineWidth = 7;
             ctx.lineCap = 'round';
@@ -409,7 +450,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
               ctx.quadraticCurveTo(trail[i].x, trail[i].y, xc, yc);
             }
             ctx.stroke();
-            // Core layer
             ctx.lineWidth = 2.5;
             ctx.globalAlpha = 0.8 * fadeA;
             ctx.stroke();
@@ -417,7 +457,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         }
         ctx.restore();
 
-        // Draw orbs
         ctx.save();
         ctx.globalAlpha = fadeA;
         ctx.globalCompositeOperation = 'lighter';
@@ -432,96 +471,95 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         }
         ctx.restore();
 
-        // Trail sparkles
         if (Math.random() < 0.5) {
-          sp({ x: gOx, y: gOy, vx: rn(-0.2, 0.2), vy: rn(-0.3, 0.1), sz: rn(0.6, 1.5), a: 0.6, ml: rn(15, 30), r: C.gold[0], g: C.gold[1], b: C.gold[2], tp: 'orbG', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
-          sp({ x: pOx, y: pOy, vx: rn(-0.2, 0.2), vy: rn(-0.3, 0.1), sz: rn(0.6, 1.5), a: 0.6, ml: rn(15, 30), r: C.pink[0], g: C.pink[1], b: C.pink[2], tp: 'orbP', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
+          sp({ x: gOx, y: gOy, vx: rn(-0.2, 0.2), vy: rn(-0.3, 0.1), sz: rn(0.6, 1.5), a: 0.6, ml: rn(15, 30), r: C.gold[0], g: C.gold[1], b: C.gold[2], tp: 'orbG' });
+          sp({ x: pOx, y: pOy, vx: rn(-0.2, 0.2), vy: rn(-0.3, 0.1), sz: rn(0.6, 1.5), a: 0.6, ml: rn(15, 30), r: C.pink[0], g: C.pink[1], b: C.pink[2], tp: 'orbP' });
         }
       }
 
-      /* ── 8. HEART EXPLOSION ── */
+      /* ── 8. HEART EXPLOSION (Enlarged) ── */
       const explP = cl((t - TL.orbE) / (TL.explE - TL.orbE), 0, 1);
       if (explP > 0 && explP < 1) {
         const eX = cx, eY = h * 0.22;
         const bA = Math.sin(explP * Math.PI);
 
-        // Big sky heart
+        // Sky Heart dramatically scaled up (1.2 -> 3.2)
         const bigH = eOB(cl(explP / 0.5, 0, 1));
         if (bigH > 0.01) {
           ctx.save();
           ctx.translate(eX, eY);
-          ctx.scale(bigH * cScale * 1.2, bigH * cScale * 1.2);
+          ctx.scale(bigH * cScale * 3.2, bigH * cScale * 3.2);
           drawHeartShape(1);
           const eGr = ctx.createRadialGradient(0, 0, 0, 0, 0, 18);
           eGr.addColorStop(0, '#ffffff');
-          eGr.addColorStop(0.2, '#fca5a5');
+          eGr.addColorStop(0.25, '#fca5a5');
           eGr.addColorStop(0.5, '#ef4444');
-          eGr.addColorStop(0.8, '#fbbf24');
+          eGr.addColorStop(0.8, '#facc15');
           eGr.addColorStop(1, '#dc2626');
           ctx.fillStyle = eGr;
-          ctx.shadowColor = `rgba(251,191,36,${bA * 0.6})`;
-          ctx.shadowBlur = 50;
+          ctx.shadowColor = `rgba(239,68,68,${bA * 0.85})`;
+          ctx.shadowBlur = 60;
           ctx.globalAlpha = bA * fadeA;
           ctx.fill();
           ctx.restore();
         }
 
-        // Flash bloom
-        const flG = ctx.createRadialGradient(eX, eY, 0, eX, eY, 250 * bA);
-        flG.addColorStop(0, `rgba(255,240,220,${bA * 0.35})`);
-        flG.addColorStop(0.2, `rgba(251,191,36,${bA * 0.15})`);
-        flG.addColorStop(0.5, `rgba(236,72,153,${bA * 0.08})`);
+        // Bloom flash
+        const flG = ctx.createRadialGradient(eX, eY, 0, eX, eY, 320 * bA);
+        flG.addColorStop(0, `rgba(255,230,220,${bA * 0.4})`);
+        flG.addColorStop(0.25, `rgba(251,191,36,${bA * 0.2})`);
+        flG.addColorStop(0.6, `rgba(236,72,153,${bA * 0.1})`);
         flG.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = flG;
         ctx.globalAlpha = fadeA;
-        ctx.fillRect(eX - 300, eY - 300, 600, 600);
+        ctx.fillRect(eX - 350, eY - 350, 700, 700);
 
-        // Burst particles
         if (explP < 0.35 && Math.random() < 0.7) {
           const ba = rn(0, TAU);
-          const spd = rn(2, 6);
+          const spd = rn(2.5, 6.5);
           const col = Math.random() > 0.5 ? C.gold : C.pink;
-          sp({ x: eX, y: eY, vx: Math.cos(ba) * spd, vy: Math.sin(ba) * spd, sz: rn(1.5, 3.5), a: 0.9, ml: rn(30, 60), r: col[0], g: col[1], b: col[2], tp: 'burst', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
+          sp({ x: eX, y: eY, vx: Math.cos(ba) * spd, vy: Math.sin(ba) * spd, sz: rn(1.5, 3.5), a: 0.9, ml: rn(30, 60), r: col[0], g: col[1], b: col[2], tp: 'burst' });
         }
       }
 
-      /* ── 9. AMBIENT PARTICLES (always) ── */
+      /* ── 9. AMBIENT PARTICLES ── */
       if (t > 0.5 && Math.random() < 0.08) {
-        sp({ x: rn(0, w), y: rn(h * 0.1, h * 0.7), vx: rn(-0.03, 0.03), vy: rn(-0.04, 0.01), sz: rn(0.3, 0.8), a: rn(0.03, 0.1), ml: rn(200, 400), r: 160, g: 170, b: 220, tp: 'dust', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
-      }
-      if (t > 1 && Math.random() < 0.06) {
-        sp({ x: rn(moonX - 80, moonX + 80), y: rn(moonY - 60, moonY + 60), vx: rn(-0.05, 0.05), vy: rn(-0.08, 0.02), sz: rn(0.5, 1.2), a: rn(0.05, 0.15), ml: rn(100, 200), r: 200, g: 210, b: 255, tp: 'dust', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
+        sp({ x: rn(0, w), y: rn(h * 0.1, h * 0.7), vx: rn(-0.03, 0.03), vy: rn(-0.04, 0.01), sz: rn(0.3, 0.8), a: rn(0.03, 0.1), ml: rn(200, 400), r: 160, g: 170, b: 220, tp: 'dust' });
       }
 
-      /* ── 10. ROSE PETAL RAIN ── */
+      /* ── 10. ROSE PETAL RAIN (Strictly Red Flower Petals) ── */
       const rainP = cl((t - TL.explE) / (TL.rainE - TL.explE), 0, 1);
       if (rainP > 0 && t < TL.end) {
-        const spawnRate = rainP < 0.1 ? rainP / 0.1 * 4 : 4;
+        const spawnRate = rainP < 0.1 ? rainP / 0.1 * 4.5 : 4.5;
         for (let i = 0; i < spawnRate; i++) {
-          if (Math.random() < 0.85) {
+          const pCol = ROSE_PETAL_COLS[Math.floor(Math.random() * ROSE_PETAL_COLS.length)];
+          const pr = parseInt(pCol.slice(1, 3), 16);
+          const pg = parseInt(pCol.slice(3, 5), 16);
+          const pb = parseInt(pCol.slice(5, 7), 16);
+
+          if (Math.random() < 0.8) {
+            // Elegant falling rose petals
             sp({
               x: rn(-30, w + 30), y: rn(-40, -5),
-              vx: rn(-0.3, 0.3), vy: rn(0.5, 1.5),
-              sz: rn(6, 14), a: rn(0.5, 0.85), ml: rn(200, 380),
-              r: 0, g: 0, b: 0, tp: 'petal',
-              rot: rn(0, TAU), rotSpd: rn(-0.02, 0.02), tmbSpd: rn(0.03, 0.08), sx: 1,
+              vx: rn(-0.25, 0.25), vy: rn(0.6, 1.4),
+              sz: rn(6, 13), a: rn(0.6, 0.9), ml: rn(200, 380),
+              r: pr, g: pg, b: pb, tp: 'petal',
+              rot: rn(0, TAU), rotSpd: rn(-0.02, 0.02), tmbSpd: rn(0.025, 0.075), sx: 1,
             });
           } else {
-            const hc = HEART_COLS[Math.floor(Math.random() * HEART_COLS.length)];
-            const [hr, hg, hb] = hc === '#fbbf24' ? [251, 191, 36] : [parseInt(hc.slice(1, 3), 16), parseInt(hc.slice(3, 5), 16), parseInt(hc.slice(5, 7), 16)];
+            // Microscopic Red Hearts
             sp({
               x: rn(0, w), y: rn(-30, -5),
-              vx: rn(-0.15, 0.15), vy: rn(0.4, 1.2),
-              sz: rn(4, 8), a: rn(0.4, 0.7), ml: rn(200, 350),
-              r: hr, g: hg, b: hb, tp: 'tinyH',
+              vx: rn(-0.15, 0.15), vy: rn(0.5, 1.1),
+              sz: rn(4, 7), a: rn(0.5, 0.8), ml: rn(200, 350),
+              r: pr, g: pg, b: pb, tp: 'tinyH',
               rot: 0, rotSpd: rn(-0.015, 0.015), tmbSpd: 0, sx: 1,
             });
           }
         }
 
-        // Ambient sparkles during rain
         if (Math.random() < 0.12) {
-          sp({ x: rn(0, w), y: rn(h * 0.2, h * 0.75), vx: rn(-0.08, 0.08), vy: rn(-0.1, 0.05), sz: rn(0.5, 1.5), a: rn(0.15, 0.4), ml: rn(60, 120), r: 255, g: 220, b: 180, tp: 'sparkle', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
+          sp({ x: rn(0, w), y: rn(h * 0.2, h * 0.75), vx: rn(-0.08, 0.08), vy: rn(-0.1, 0.05), sz: rn(0.5, 1.5), a: rn(0.15, 0.4), ml: rn(60, 120), r: 255, g: 100, b: 100, tp: 'sparkle' });
         }
       }
 
@@ -545,11 +583,11 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
             p.vy -= 0.002;
             break;
           case 'petal':
-            p.x += Math.sin(p.life * 0.02 + p.rot) * 0.3;
+            p.x += Math.sin(p.life * 0.02 + p.rot) * 0.35;
             p.rot += p.rotSpd;
             p.sx = Math.abs(Math.cos(p.life * p.tmbSpd));
             al *= Math.sin(lt * Math.PI) * 0.9 + 0.1;
-            p.vy += 0.002;
+            p.vy += 0.0015;
             break;
           case 'tinyH':
             p.x += Math.sin(p.life * 0.025) * 0.2;
@@ -591,7 +629,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
             ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.3, p.sz * 0.3), 0, TAU); ctx.fill();
             break;
           case 'petal':
-            drawPetal(p.x, p.y, p.sz, p.rot, PETAL_COLS[Math.floor(p.rot * 10) % PETAL_COLS.length], p.sx);
+            drawPetal(p.x, p.y, p.sz, p.rot, `rgb(${p.r},${p.g},${p.b})`, p.sx);
             break;
           case 'tinyH':
             drawTinyHeart(p.x, p.y, p.sz, `rgb(${p.r},${p.g},${p.b})`);
@@ -610,7 +648,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       }
       pc = alive;
 
-      ctx.restore(); // undo camera
+      ctx.restore(); // Undo camera translation
 
       /* ── 12. GREETING TEXT ── */
       const txtP = eOC(cl((t - TL.rainE) / (TL.txtE - TL.rainE), 0, 1));
@@ -626,7 +664,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.font = `800 ${mSz}px "Inter","Segoe UI",system-ui,sans-serif`;
         ctx.letterSpacing = `${mSz * 0.02}px`;
 
-        // Deep shadow
         ctx.shadowColor = 'rgba(0,0,0,0.8)';
         ctx.shadowBlur = 35;
         ctx.shadowOffsetX = 4;
@@ -634,7 +671,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillText("Happy Valentine's Day", cx, mTY);
 
-        // Gold base
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
@@ -651,7 +687,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.fillStyle = tG;
         ctx.fillText("Happy Valentine's Day", cx, mTY);
 
-        // Top highlight
         ctx.save();
         const tw = ctx.measureText("Happy Valentine's Day").width;
         ctx.beginPath();
@@ -664,7 +699,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.fillText("Happy Valentine's Day", cx, mTY);
         ctx.restore();
 
-        // Moving shimmer
         const shP = ((t - TL.rainE) * 0.18) % 1;
         if (shP < 0.35) {
           const sp2 = shP / 0.35;
@@ -679,7 +713,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
           ctx.fillRect(sx - 50, mTY - mSz * 0.5, 100, mSz);
         }
 
-        // Outer glow
         ctx.shadowColor = 'rgba(255,215,0,0.3)';
         ctx.shadowBlur = 45;
         ctx.fillStyle = 'rgba(255,215,0,0.04)';
@@ -687,7 +720,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.shadowBlur = 0;
         ctx.shadowColor = 'transparent';
 
-        // Divider
         const lnW = Math.min(w * 0.12, 100) * txtP;
         const lnY = mTY + mSz * 0.75;
         const lnG = ctx.createLinearGradient(cx - lnW, 0, cx + lnW, 0);
@@ -700,7 +732,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.lineWidth = 0.8;
         ctx.beginPath(); ctx.moveTo(cx - lnW, lnY); ctx.lineTo(cx + lnW, lnY); ctx.stroke();
 
-        // Subtitle
         const sTY = lnY + mSz * 0.55;
         const sSz = Math.min(w * 0.028, 22);
         ctx.font = `300 ${sSz}px "Inter","Segoe UI",system-ui,sans-serif`;
@@ -711,9 +742,8 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.fillText('Love is Connection', cx, sTY);
         ctx.shadowBlur = 0;
 
-        // Text sparkles
         if (Math.random() < 0.25) {
-          sp({ x: cx + rn(-180, 180), y: mTY + rn(-mSz * 0.6, mSz * 0.6), vx: rn(-0.1, 0.1), vy: rn(-0.4, -0.05), sz: rn(0.6, 1.8), a: 0.7, ml: rn(30, 60), r: 255, g: 215, b: 0, tp: 'txtS', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
+          sp({ x: cx + rn(-180, 180), y: mTY + rn(-mSz * 0.6, mSz * 0.6), vx: rn(-0.1, 0.1), vy: rn(-0.4, -0.05), sz: rn(0.6, 1.8), a: 0.7, ml: rn(30, 60), r: 255, g: 215, b: 0, tp: 'txtS' });
         }
 
         ctx.restore();
