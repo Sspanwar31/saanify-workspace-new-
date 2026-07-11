@@ -51,9 +51,8 @@ const ComponentMap: any = {
   'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
  // 🚀 एक्टिवेशन कीज़: वैलेंटाइन और ग्लास हार्ट के लिए
   'VALENTINE_HEART': <GlassmorphicHeartHero onOpenLetter={() => {}} />,
-  
- 
-  MEGAPHONE: <span className="text-[110px]">📢</span>,
+  'HEART_COUPLE': <GlassmorphicHeartHero onOpenLetter={() => {}} />,  
+ MEGAPHONE: <span className="text-[110px]">📢</span>,
   SIREN: <span className="text-[110px]">🚨</span>,
   GEAR_ICON: <span className="text-[110px]">⚙️</span>,
   TOOLS_ICON: <span className="text-[110px]">🛠️</span>,
