@@ -5,323 +5,236 @@ import React, { useState, useRef } from 'react';
 export default function GlassmorphicHeartHero() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const [shine, setShine] = useState({ x: 50, y: 50 });
   const [hovered, setHovered] = useState(false);
 
+  // माउस हिलाने पर 3D झुकाव (Tilt Effect)
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const r = containerRef.current.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width - 0.5;
     const y = (e.clientY - r.top) / r.height - 0.5;
-    setTilt({ x: y * -25, y: x * 25 });
-    setShine({ x: (x + 0.5) * 100, y: (y + 0.5) * 100 });
+    setTilt({ x: y * -20, y: x * 20 });
   };
 
   const handleMouseLeave = () => {
     setHovered(false);
     setTilt({ x: 0, y: 0 });
-    setShine({ x: 50, y: 50 });
   };
-
-  const sparkles = [
-    { x: 12, y: 8, s: 4.5, d: 0, dur: 3.2 },
-    { x: 85, y: 14, s: 3.5, d: 0.6, dur: 3.8 },
-    { x: 8, y: 55, s: 3, d: 1.1, dur: 2.9 },
-    { x: 88, y: 60, s: 3.5, d: 1.7, dur: 3.4 },
-    { x: 50, y: 2, s: 4, d: 0.3, dur: 3.6 },
-    { x: 25, y: 88, s: 3, d: 2.2, dur: 3.1 },
-    { x: 72, y: 85, s: 3.5, d: 0.9, dur: 3.5 },
-    { x: 4, y: 35, s: 2.5, d: 1.4, dur: 4.0 },
-    { x: 94, y: 38, s: 2.5, d: 2.0, dur: 3.3 },
-    { x: 50, y: 95, s: 3, d: 0.5, dur: 3.7 },
-  ];
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full h-full select-none overflow-visible">
-
+      
+      {/* ── CSS KEYFRAMES FOR LIVE ANIMATION ── */}
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes g-breathe {
-          0%, 100% { opacity: 0.3; transform: translate(-50%,-50%) scale(1); }
-          50% { opacity: 0.55; transform: translate(-50%,-50%) scale(1.12); }
+        @keyframes moon-pulse {
+          0%, 100% { transform: scale(1) translate(-50%, -50%); opacity: 0.15; }
+          50% { transform: scale(1.08) translate(-50%, -50%); opacity: 0.25; }
         }
-        @keyframes g-pulse {
-          0%, 100% { opacity: 0.15; }
-          50% { opacity: 0.35; }
+        @keyframes mascot-bob-left {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-2px) rotate(1.5deg); }
         }
-        @keyframes ring-spin {
-          0% { transform: translate(-50%,-50%) rotate(0deg); }
-          100% { transform: translate(-50%,-50%) rotate(360deg); }
+        @keyframes mascot-bob-right {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-2.2px) rotate(-1.5deg); transform-origin: center; }
         }
-        @keyframes ring-spin-r {
-          0% { transform: translate(-50%,-50%) rotate(360deg); }
-          100% { transform: translate(-50%,-50%) rotate(0deg); }
+        @keyframes heart-rise-one {
+          0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+          20% { opacity: 0.8; }
+          100% { transform: translate(-100%, -40px) scale(1); opacity: 0; }
         }
-        @keyframes spark-pop {
-          0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
-          15% { opacity: 1; transform: scale(1.3) rotate(60deg); }
-          40% { opacity: 0.7; transform: scale(0.9) rotate(120deg); }
-          60% { opacity: 0; transform: scale(0.3) rotate(160deg); }
+        @keyframes heart-rise-two {
+          0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+          20% { opacity: 0.8; }
+          100% { transform: translate(100%, -45px) scale(0.9); opacity: 0; }
         }
-        @keyframes facet-shift {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
+        @keyframes tail-wag {
+          0%, 100% { transform: rotate(0deg); }
+          50% { transform: rotate(15deg); }
         }
-        @keyframes shimmer-move {
-          0% { transform: translateX(-120%) skewX(-20deg); }
-          25% { transform: translateX(120%) skewX(-20deg); }
-          100% { transform: translateX(120%) skewX(-20deg); }
-        }
-        @keyframes orbit-dot {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 0.9; }
-        }
+        .anim-moon { animation: moon-pulse 4s ease-in-out infinite; transform-origin: 0 0; }
+        .anim-boy { animation: mascot-bob-left 3s ease-in-out infinite; transform-origin: 65px 125px; }
+        .anim-girl { animation: mascot-bob-right 3s ease-in-out infinite 0.2s; transform-origin: 135px 125px; }
+        .anim-heart-1 { animation: heart-rise-one 2.5s ease-in-out infinite; transform-origin: center; }
+        .anim-heart-2 { animation: heart-rise-two 2.8s ease-in-out infinite 1s; transform-origin: center; }
+        .anim-tail { animation: tail-wag 1.5s ease-in-out infinite; transform-origin: 48px 135px; }
       ` }} />
 
-      {/* ── LAYER 1: Deep multi-color ambient glow ── */}
+      {/* ── LAYER 1: Ambient Backdrop Glow ── */}
       <div
-        className="absolute w-56 h-56 rounded-full pointer-events-none"
+        className="absolute w-52 h-52 rounded-full pointer-events-none anim-moon"
         style={{
           top: '50%', left: '50%',
-          background: 'radial-gradient(circle, rgba(244,63,94,0.18) 0%, rgba(251,191,36,0.08) 35%, rgba(139,92,246,0.04) 55%, transparent 70%)',
-          animation: 'g-breathe 4s ease-in-out infinite',
-        }}
-      />
-      <div
-        className="absolute w-44 h-44 rounded-full pointer-events-none"
-        style={{
-          top: '50%', left: '50%',
-          background: 'radial-gradient(circle, rgba(251,113,133,0.12) 0%, transparent 60%)',
-          animation: 'g-pulse 3s ease-in-out infinite 1.5s',
+          background: 'radial-gradient(circle, rgba(244,63,94,0.2) 0%, rgba(251,191,36,0.1) 45%, transparent 70%)',
         }}
       />
 
-      {/* ── LAYER 2: Rotating orbital rings ── */}
-      <div
-        className="absolute w-[200px] h-[200px] rounded-[50%] pointer-events-none"
-        style={{
-          top: '50%', left: '50%',
-          border: '1.5px solid transparent',
-          borderImage: 'linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.25) 25%, transparent 50%, rgba(244,63,94,0.2) 75%, transparent 100%) 1',
-          animation: 'ring-spin 18s linear infinite',
-        }}
-      />
-      <div
-        className="absolute w-[220px] h-[220px] rounded-[50%] pointer-events-none"
-        style={{
-          top: '50%', left: '50%',
-          border: '1px solid transparent',
-          borderImage: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 30%, transparent 60%, rgba(255,255,255,0.08) 80%, transparent 100%) 1',
-          animation: 'ring-spin-r 25s linear infinite',
-        }}
-      />
-
-      {/* ── LAYER 3: 3D Tilt container ── */}
+      {/* ── LAYER 2: 3D Tilt Container ── */}
       <div
         ref={containerRef}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={handleMouseLeave}
-        className="relative w-48 h-48 sm:w-52 sm:h-52 flex items-center justify-center cursor-pointer overflow-visible"
-        style={{ perspective: '900px' }}
+        className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center cursor-pointer overflow-visible"
+        style={{ perspective: '800px' }}
       >
         <div
-          className="relative w-full h-full transition-transform duration-300 ease-out flex items-center justify-center"
+          className="relative w-full h-full transition-transform duration-300 ease-out flex items-center justify-center overflow-visible"
           style={{
             transformStyle: 'preserve-3d',
-            transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${hovered ? 1.04 : 1})`,
+            transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${hovered ? 1.05 : 1})`,
           }}
         >
-
-          {/* 3D Shadow */}
+          {/* Base Soft Shadow */}
           <div
-            className="absolute bottom-1 w-32 h-5 rounded-full pointer-events-none transition-all duration-300"
+            className="absolute bottom-2 w-36 h-6 rounded-full pointer-events-none transition-opacity duration-300"
             style={{
-              transform: 'translateZ(-40px)',
-              background: 'radial-gradient(ellipse, rgba(219,39,119,0.35) 0%, rgba(0,0,0,0.25) 50%, transparent 70%)',
-              filter: 'blur(8px)',
+              transform: 'translateZ(-30px)',
+              background: 'radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%)',
+              filter: 'blur(5px)',
             }}
           />
 
-          {/* ── HEART SVG ── */}
+          {/* ── HIGH-END ROMANTIC VECTOR SCENE ── */}
           <svg
-            viewBox="0 0 100 100"
-            className="w-full h-full overflow-visible"
-            style={{
-              transform: 'translateZ(10px)',
-              filter: `drop-shadow(0 8px 28px rgba(244,63,94,${hovered ? 0.55 : 0.4})) drop-shadow(0 2px 8px rgba(251,191,36,${hovered ? 0.3 : 0.15}))`,
-            }}
+            viewBox="0 0 200 200"
+            className="w-full h-full overflow-visible drop-shadow-[0_10px_25px_rgba(244,63,94,0.2)]"
+            style={{ transform: 'translateZ(10px)' }}
           >
             <defs>
-              <clipPath id="h-clip">
-                <path d="M50 86 C18 58, 6 38, 6 24 C6 12, 22 6, 38 14 C50 28, 50 28, 50 28 C50 28, 50 28, 66 14 C78 6, 94 12, 94 24 C94 38, 82 58, 50 86 Z" />
-              </clipPath>
-
-              {/* Multi-pass moving shimmer (CSS bg-position animation) */}
-              <linearGradient id="shim-1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-                <stop offset="42%" stopColor="rgba(255,255,255,0)" />
-                <stop offset="48%" stopColor="rgba(255,255,255,0.45)" />
-                <stop offset="52%" stopColor="rgba(255,255,255,0.45)" />
-                <stop offset="58%" stopColor="rgba(255,255,255,0)" />
-                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-              </linearGradient>
-
-              {/* Crystal facet lines */}
-              <pattern id="facets" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
-                <line x1="0" y1="0" x2="14" y2="14" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
-                <line x1="14" y1="0" x2="0" y2="14" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" />
-              </pattern>
-
-              {/* Border gradient: rose gold → white → pink → rose gold */}
-              <linearGradient id="edge-g" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="rgba(251,191,36,0.7)" />
-                <stop offset="18%" stopColor="rgba(255,250,230,0.85)" />
-                <stop offset="35%" stopColor="rgba(255,255,255,0.95)" />
-                <stop offset="50%" stopColor="rgba(255,200,220,0.9)" />
-                <stop offset="65%" stopColor="rgba(255,255,255,0.95)" />
-                <stop offset="82%" stopColor="rgba(255,250,230,0.85)" />
-                <stop offset="100%" stopColor="rgba(244,63,94,0.7)" />
-              </linearGradient>
-
-              {/* Body fill: rich rose-gold metallic (🚀 FIXED: Added missing stop tags) */}
-              <linearGradient id="body-g" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="rgba(180,50,80,0.3)" />
-                <stop offset="15%" stopColor="rgba(244,63,94,0.2)" />
-                <stop offset="30%" stopColor="rgba(251,191,36,0.15)" />
-                <stop offset="45%" stopColor="rgba(255,250,240,0.22)" />
-                <stop offset="55%" stopColor="rgba(255,255,255,0.25)" />
-                <stop offset="70%" stopColor="rgba(251,191,36,0.18)" />
-                <stop offset="85%" stopColor="rgba(244,63,94,0.22)" />
-                <stop offset="100%" stopColor="rgba(160,30,60,0.3)" />
-              </linearGradient>
-
-              {/* Inner glow gradient */}
-              <radialGradient id="inner-glow" cx="50%" cy="38%" r="35%">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
-                <stop offset="30%" stopColor="rgba(255,200,220,0.15)" />
-                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+              {/* Moon Glow Gradient */}
+              <radialGradient id="moon-g" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#fffae6" />
+                <stop offset="40%" stopColor="#ffecb3" />
+                <stop offset="100%" stopColor="rgba(251,191,36,0)" />
               </radialGradient>
+
+              {/* Boy Bear Body Gradient */}
+              <linearGradient id="bear-g" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#e3af92" />
+                <stop offset="100%" stopColor="#966d54" />
+              </linearGradient>
+
+              {/* Girl Bunny Body Gradient */}
+              <linearGradient id="bunny-g" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#ffd1df" />
+              </linearGradient>
             </defs>
 
-            {/* Glass body fill */}
-            <path
-              d="M50 86 C18 58, 6 38, 6 24 C6 12, 22 6, 38 14 C50 28, 50 28, 50 28 C50 28, 50 28, 66 14 C78 6, 94 12, 94 24 C94 38, 82 58, 50 86 Z"
-              fill="rgba(255,255,255,0.06)"
-              style={{
-                backdropFilter: 'blur(22px) saturate(200%)',
-                WebkitBackdropFilter: 'blur(22px) saturate(200%)',
-              }}
+            {/* 1. THE GLOWING FULL MOON (पृष्ठभूमि में चाँद) */}
+            <circle cx="100" cy="90" r="48" fill="url(#moon-g)" opacity="0.85" />
+
+            {/* 2. THE HILL (घास की छोटी सी पहाड़ी) */}
+            <path 
+              d="M15 155 C 60 142, 140 142, 185 155 L 185 180 L 15 180 Z" 
+              fill="rgba(26,20,54,0.8)" 
+              stroke="rgba(244,63,94,0.2)"
+              strokeWidth="1.5"
+            />
+            {/* Tiny grass sprout */}
+            <path d="M155 146 C152 142, 151 138, 154 139 C157 140, 156 144, 155 146 Z" fill="#ec4899" opacity="0.7"/>
+
+            {/* 3. BOY BEAR (प्यारा नन्हा भालू - बाईं तरफ) */}
+            <g className="anim-boy">
+              {/* Tail */}
+              <circle cx="48" cy="132" r="5" fill="#966d54" className="anim-tail" />
+              {/* Body */}
+              <ellipse cx="65" cy="128" rx="14" ry="16" fill="url(#bear-g)" stroke="#422919" strokeWidth="1" />
+              {/* Feet */}
+              <ellipse cx="56" cy="141" rx="5" ry="3.5" fill="#80563f" />
+              <ellipse cx="74" cy="141" rx="5" ry="3.5" fill="#80563f" />
+              
+              {/* Head */}
+              <circle cx="68" cy="108" r="15" fill="url(#bear-g)" stroke="#422919" strokeWidth="1" />
+              
+              {/* Bear Ears */}
+              <circle cx="56" cy="97" r="5.5" fill="#966d54" stroke="#422919" strokeWidth="1" />
+              <circle cx="56" cy="97" r="2.8" fill="#ffd1df" />
+              <circle cx="80" cy="97" r="5.5" fill="#966d54" stroke="#422919" strokeWidth="1" />
+              <circle cx="80" cy="97" r="2.8" fill="#ffd1df" />
+
+              {/* Eyes (Looking right, happy) */}
+              <ellipse cx="67" cy="106" rx="1.5" ry="2.2" fill="#121124" />
+              <ellipse cx="74" cy="106" rx="1.5" ry="2.2" fill="#121124" />
+              <circle cx="67.5" cy="105.2" r="0.6" fill="#ffffff" />
+              <circle cx="74.5" cy="105.2" r="0.6" fill="#ffffff" />
+
+              {/* Snout & Smile */}
+              <ellipse cx="71" cy="112" rx="4.5" ry="3.2" fill="#fcf0e8" />
+              <circle cx="71" cy="110.2" r="1.5" fill="#2d170c" />
+              <path d="M69 113.2 Q71 115, 73 113.2" stroke="#2d170c" strokeWidth="1" strokeLinecap="round" fill="none" />
+
+              {/* Cheerful blushing cheeks */}
+              <ellipse cx="63" cy="110" rx="2.5" ry="1.5" fill="#f43f5e" opacity="0.45" />
+
+              {/* Holding Arm (Left) */}
+              <ellipse cx="76" cy="126" rx="5.5" ry="4" fill="#966d54" stroke="#422919" strokeWidth="0.8" />
+            </g>
+
+            {/* 4. GIRL BUNNY (प्यारी बनी खरगोश - दाईं तरफ) */}
+            <g className="anim-girl">
+              {/* Body (Cute Dress) */}
+              <path d="M121 140 L126 120 L144 120 L149 140 Z" fill="#f43f5e" stroke="#5c061e" strokeWidth="1" />
+              {/* Feet */}
+              <ellipse cx="127" cy="141" rx="5" ry="3.5" fill="#ffd1df" stroke="#5c061e" strokeWidth="0.8" />
+              <ellipse cx="143" cy="141" rx="5" ry="3.5" fill="#ffd1df" stroke="#5c061e" strokeWidth="0.8" />
+              
+              {/* Head */}
+              <circle cx="135" cy="108" r="14.5" fill="url(#bunny-g)" stroke="#5c061e" strokeWidth="1" />
+              
+              {/* Long Bunny Ears */}
+              <g transform="rotate(-10, 126, 96)">
+                <rect x="123" y="74" width="6" height="20" rx="3" fill="#ffffff" stroke="#5c061e" strokeWidth="1" />
+                <rect x="124.5" y="78" width="3" height="14" rx="1.5" fill="#ffb3c6" />
+              </g>
+              <g transform="rotate(15, 144, 96)">
+                <rect x="141" y="74" width="6" height="20" rx="3" fill="#ffffff" stroke="#5c061e" strokeWidth="1" />
+                <rect x="142.5" y="78" width="3" height="14" rx="1.5" fill="#ffb3c6" />
+              </g>
+
+              {/* Minnie Ribbon/Bow on left ear */}
+              <path d="M121 89 L126 91 L121 93 Z" fill="#f43f5e" />
+              <path d="M131 89 L126 91 L131 93 Z" fill="#f43f5e" />
+              <circle cx="126" cy="91" r="1.5" fill="#ffffff" />
+
+              {/* Eyes with eyelashes */}
+              <ellipse cx="127" cy="106" rx="1.5" ry="2.2" fill="#121124" />
+              <ellipse cx="134" cy="106" rx="1.5" ry="2.2" fill="#121124" />
+              <circle cx="126.5" cy="105.2" r="0.6" fill="#ffffff" />
+              <circle cx="133.5" cy="105.2" r="0.6" fill="#ffffff" />
+              {/* Eyelashes */}
+              <path d="M124.5 104 C124.5 104, 125 102.5, 126 103" stroke="#121124" strokeWidth="0.8" strokeLinecap="round" />
+              <path d="M136.5 104 C136.5 104, 136 102.5, 135 103" stroke="#121124" strokeWidth="0.8" strokeLinecap="round" />
+
+              {/* Nose & Smile */}
+              <ellipse cx="130.5" cy="111" rx="1.5" ry="1" fill="#f43f5e" />
+              <path d="M129 113 Q130.5 114.5, 132 113" stroke="#5c061e" strokeWidth="0.8" fill="none" />
+
+              {/* Rosy Cheeks */}
+              <ellipse cx="138" cy="110" rx="2.5" ry="1.5" fill="#f43f5e" opacity="0.45" />
+
+              {/* Holding Arm (Right) */}
+              <ellipse cx="124" cy="126" rx="5.5" ry="4" fill="#ffffff" stroke="#5c061e" strokeWidth="0.8" />
+            </g>
+
+            {/* 5. HANDS JOINED DETAIL (दोनों के हाथ जुड़ने का स्थान) */}
+            {/* Soft pink heart popping where they meet */}
+            <path 
+              d="M100 126 C100 126, 99 123.5, 96.5 123.5 C94 123.5, 92.5 125.5, 92.5 127.5 C92.5 129.5, 96.5 132.5, 100 134 C103.5 132.5, 107.5 129.5, 107.5 127.5 C107.5 125.5, 106 123.5, 103.5 123.5 C101 123.5, 100 126, 100 126 Z" 
+              fill="#fb7185" 
+              className="animate-pulse"
+              style={{ transformOrigin: '100px 128px' }}
             />
 
-            {/* Metallic body gradient */}
-            <path
-              d="M50 86 C18 58, 6 38, 6 24 C6 12, 22 6, 38 14 C50 28, 50 28, 50 28 C50 28, 50 28, 66 14 C78 6, 94 12, 94 24 C94 38, 82 58, 50 86 Z"
-              fill="url(#body-g)"
-            />
-
-            {/* Crystal facet lines (clipped) */}
-            <g clipPath="url(#h-clip)">
-              <rect width="100" height="100" fill="url(#facets)" style={{ animation: 'facet-shift 8s linear infinite', backgroundSize: '200% 100%' }} />
+            {/* ── 6. FLOATING HEARTS (हवा में उड़ते जादुई दिल) ── */}
+            <g className="anim-heart-1" style={{ transformOrigin: '92px 115px' }}>
+              <path d="M92 115 C92 115, 91 113, 89 113 C87 113, 86 114.5, 86 116 C86 118, 89 120.5, 92 122 C95 120.5, 98 118, 98 116 C98 114.5, 97 113, 95 113 C93 113, 92 115, 92 115 Z" fill="#f43f5e" />
             </g>
-
-            {/* Inner glow overlay */}
-            <g clipPath="url(#h-clip)">
-              <path
-                d="M50 86 C18 58, 6 38, 6 24 C6 12, 22 6, 38 14 C50 28, 50 28, 50 28 C50 28, 50 28, 66 14 C78 6, 94 12, 94 24 C94 38, 82 58, 50 86 Z"
-                fill="url(#inner-glow)"
-                className="transition-opacity duration-500"
-                style={{ opacity: hovered ? 1 : 0.7 }}
-              />
+            <g className="anim-heart-2" style={{ transformOrigin: '108px 110px' }}>
+              <path d="M108 110 C108 110, 107 108.5, 105.5 108.5 C104 108.5, 103 109.5, 103 111 C103 112.5, 105.5 114.5, 108 115.5 C110.5 114.5, 113 112.5, 113 111 C113 109.5, 112 108.5, 110.5 108.5 C109 108.5, 108 110, 108 110 Z" fill="#fbbf24" />
             </g>
-
-            {/* Moving shimmer sweep */}
-            <g clipPath="url(#h-clip)">
-              <rect
-                x="-10%" y="-10%" width="50%" height="120%"
-                fill="url(#shim-1)"
-                style={{ animation: 'shimmer-move 3.5s ease-in-out infinite' }}
-              />
-            </g>
-
-            {/* Mouse-following highlight */}
-            <g clipPath="url(#h-clip)">
-              <circle
-                cx={shine.x} cy={shine.y}
-                r="35"
-                fill="url(#shim-1)"
-                style={{ opacity: 0.6 }}
-              />
-            </g>
-
-            {/* Top highlight reflection */}
-            <g clipPath="url(#h-clip)">
-              <ellipse cx="50" cy="25" rx="22" ry="18"
-                fill="rgba(255,255,255,0.15)"
-                className="transition-opacity duration-500"
-                style={{ opacity: hovered ? 0.2 : 0.08 }}
-              />
-            </g>
-
-            {/* Bottom warm glow */}
-            <g clipPath="url(#h-clip)">
-              <ellipse cx="50" cy="68" rx="20" ry="15"
-                fill="rgba(251,191,36,0.1)"
-                className="transition-opacity duration-500"
-                style={{ opacity: hovered ? 0.15 : 0.05 }}
-              />
-            </g>
-
-            {/* Pulsing core */}
-            <g clipPath="url(#h-clip)">
-              <circle cx="50" cy="40" r={hovered ? 14 : 10}
-                fill="rgba(239,68,68,0.35)"
-                className="blur-[6px] transition-all duration-500 animate-pulse"
-              />
-              <circle cx="50" cy="40" r="4"
-                fill="rgba(255,255,255,0.9)"
-                className="blur-[0.5px]"
-              />
-            </g>
-
-            {/* Gold-pink-white-pink-gold border */}
-            <path
-              d="M50 86 C18 58, 6 38, 6 24 C6 12, 22 6, 38 14 C50 28, 50 28, 50 28 C50 28, 50 28, 66 14 C78 6, 94 12, 94 24 C94 38, 82 58, 50 86 Z"
-              fill="none"
-              stroke="url(#edge-g)"
-              strokeWidth={hovered ? '2' : '1.2'}
-              className="transition-all duration-300"
-            />
-
-            {/* Inner thin bright edge */}
-            <path
-              d="M50 86 C18 58, 6 38, 6 24 C6 12, 22 6, 38 14 C50 28, 50 28, 50 28 C50 28, 50 28, 66 14 C78 6, 94 12, 94 24 C94 38, 82 58, 50 86 Z"
-              fill="none"
-              stroke="rgba(255,255,255,0.2)"
-              strokeWidth="0.5"
-            />
           </svg>
-
-          {/* ── OVERLAY: Floating sparkles ── */}
-          {sparkles.map((sp, i) => (
-            <svg
-              key={i}
-              className="absolute pointer-events-none"
-              style={{
-                left: `${sp.x}%`, top: `${sp.y}%`,
-                width: `${sp.s * 4}px`, height: `${sp.s * 4}px`,
-                animation: `spark-pop ${sp.dur}s ease-in-out ${sp.d}s infinite`,
-                transform: 'translate(-50%,-50%)',
-                filter: `drop-shadow(0 0 ${sp.s * 1.5}px rgba(251,191,36,0.8))`,
-              }}
-              viewBox="0 0 20 20"
-            >
-              <line x1="10" y1="2" x2="10" y2="18" stroke="white" strokeWidth="2" strokeLinecap="round" />
-              <line x1="2" y1="10" x2="18" y2="10" stroke="white" strokeWidth="2" strokeLinecap="round" />
-              <line x1="4" y1="4" x2="16" y2="16" stroke="rgba(251,191,36,0.6)" strokeWidth="1" strokeLinecap="round" />
-              <line x1="16" y1="4" x2="4" y2="16" stroke="rgba(251,191,36,0.6)" strokeWidth="1" strokeLinecap="round" />
-              <circle cx="10" cy="10" r="2" fill="white" />
-            </svg>
-          ))}
         </div>
       </div>
     </div>
