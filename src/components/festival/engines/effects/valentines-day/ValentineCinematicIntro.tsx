@@ -1,369 +1,538 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   TYPES & CONFIG
+   VALENTINE 2027 — "Two Lights Become One"
+   Advanced Cinematic Engine v2
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-interface LoveParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  color: string;
-  alpha: number;
-  life: number;
-  maxLife: number;
-  type: 'space_dust' | 'gold_spark' | 'pink_spark' | 'heart_glow';
-  wobble?: number;
+
+interface Pt {
+  x: number; y: number; vx: number; vy: number;
+  sz: number; a: number; life: number; ml: number;
+  r: number; g: number; b: number;
+  tp: 'dust' | 'ember' | 'pulse' | 'burst';
 }
 
-const DURATION = 12.0; // 12 Seconds Cinematic Experience
-
 export default function ValentineCinematicIntro({ onComplete }: { onComplete: () => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particles = useRef<LoveParticle[]>([]);
-  const rafId = useRef<number>(0);
-  const startTime = useRef<number>(Date.now());
-  const [currentStep, setCurrentStep] = useState<string>('NEBULA_START');
+  const cvRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const cv = cvRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext('2d', { alpha: false })!;
+    let w = 0, h = 0, dpr = 1, raf = 0, t0 = 0, run = true;
+    const done = { v: false };
 
-    // ── 1. CANVAS SIZING ──
-    const dpr = window.devicePixelRatio || 1;
-    const setSize = () => {
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
+    const rn = (a: number, b: number) => a + Math.random() * (b - a);
+    const cl = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+    const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
+    const eOB = (t: number) => {
+      const c = 2.70158;
+      return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2);
+    };
+    const TAU = Math.PI * 2;
+
+    /* ── Crimson Red + Warm Gold Palette ── */
+    const R = { dk: [127,29,29], md: [185,28,28], br: [220,38,38], lt: [252,165,165] };
+    const G = { dk: [180,130,80], br: [251,191,36] };
+    const W = [255, 245, 238];
+
+    /* ── Particle Pool ── */
+    const MX = 500;
+    const pts: Pt[] = [];
+    for (let i = 0; i < MX; i++) pts.push({ x:0,y:0,vx:0,vy:0,sz:1,a:0,life:0,ml:1,r:220,g:38,b:38,tp:'dust' });
+    let pc = 0;
+    function sp(o: Partial<Pt>) {
+      if (pc >= MX) return;
+      const p = pts[pc];
+      p.x=o.x??0; p.y=o.y??0; p.vx=o.vx??0; p.vy=o.vy??0;
+      p.sz=o.sz??1; p.a=o.a??1; p.life=0; p.ml=o.ml??100;
+      p.r=o.r??220; p.g=o.g??38; p.b=o.b??38; p.tp=o.tp??'dust';
+      pc++;
+    }
+
+    /* ── Heart Parametric ── */
+    function hXY(t: number, s: number) {
+      return {
+        x: 16 * Math.pow(Math.sin(t), 3) * s,
+        y: -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) * s,
+      };
+    }
+
+    /* ── Orb Trails ── */
+    const gTrail: {x:number;y:number;a:number}[] = [];
+    const rTrail: {x:number;y:number;a:number}[] = [];
+    const TMAX = 30;
+
+    /* ── Bokeh ── */
+    interface Bk { x:number;y:number;r:number;a:number;sp:number;of:number;cr:number;cg:number;cb:number; }
+    const bks: Bk[] = [];
+
+    /* ── Resize ── */
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth; h = window.innerHeight;
+      cv!.width = w * dpr; cv!.height = h * dpr;
+      cv!.style.width = w + 'px'; cv!.style.height = h + 'px';
+      bks.length = 0;
+      for (let i = 0; i < 6; i++) {
+        bks.push({
+          x: w*0.12+Math.random()*w*0.76, y: h*0.12+Math.random()*h*0.5,
+          r: rn(30,85), a: rn(0.006,0.022), sp: rn(0.18,0.55), of: rn(0,TAU),
+          cr: rn(100,170), cg: rn(15,45), cb: rn(15,45),
+        });
+      }
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    /* ═══ TIMELINE — 9.5 seconds ═══ */
+    const T = {
+      darkEnd: 1.0,
+      emergeS: 1.0, emergeE: 1.7,
+      orbitS: 1.7, orbitE: 4.6,
+      fusionS: 4.6, fusionE: 5.3,
+      heartS: 5.3, heartE: 6.1,
+      pulseS: 6.1,
+      textS: 7.2, textE: 8.0,
+      warmS: 8.2, fadeS: 8.5, end: 9.5,
+    };
+
+    /* ══════════════════ MAIN LOOP ══════════════════ */
+    const animate = (ts: number) => {
+      if (!run) return;
+      if (!t0) t0 = ts;
+      const t = (ts - t0) / 1000;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    setSize();
-    window.addEventListener('resize', setSize);
 
-    const rand = (min: number, max: number) => min + Math.random() * (max - min);
-
-    // ── 2. PARTICLE SPONSORS ──
-    const spawnSpaceDust = (w: number, h: number) => {
-      particles.current.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        vx: rand(-0.15, 0.15),
-        vy: rand(-0.1, -0.3),
-        size: rand(0.5, 1.8),
-        color: Math.random() > 0.5 ? '#fbcfe8' : '#fffbeb', // Soft pink/white
-        alpha: rand(0.1, 0.35),
-        life: 0,
-        maxLife: rand(150, 250),
-        type: 'space_dust',
-      });
-    };
-
-    const spawnGoldSpark = (x: number, y: number) => {
-      particles.current.push({
-        x, y,
-        vx: rand(-0.4, 0.4),
-        vy: rand(-0.2, -1.2),
-        size: rand(1.2, 3.2),
-        color: '#fbbf24', // Warm gold
-        alpha: 0.9,
-        life: 0,
-        maxLife: rand(50, 90),
-        type: 'gold_spark',
-      });
-    };
-
-    const spawnPinkSpark = (x: number, y: number) => {
-      particles.current.push({
-        x, y,
-        vx: rand(-0.4, 0.4),
-        vy: rand(-0.2, -1.2),
-        size: rand(1.2, 3.2),
-        color: '#db2777', // Silk rose pink
-        alpha: 0.9,
-        life: 0,
-        maxLife: rand(50, 90),
-        type: 'pink_spark',
-      });
-    };
-
-    const spawnHeartPulseGlow = (cx: number, cy: number, size: number) => {
-      // दिल के धड़कने पर फैलने वाले छल्ले (Heartbeat Pulse Waves)
-      particles.current.push({
-        x: cx,
-        y: cy,
-        vx: 0,
-        vy: 0,
-        size: size * 5,
-        color: 'rgba(219,39,119,0.22)',
-        alpha: 0.5,
-        life: 0,
-        maxLife: 55,
-        type: 'heart_glow',
-      });
-    };
-
-    // ── 3. MAIN ANIMATION LOOP ──
-    const animate = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
       const cx = w / 2;
-      const cy = h * 0.42;
+      const cy = h * 0.40;
+      const hSc = Math.min(w, h) * 0.011;
 
-      ctx.clearRect(0, 0, w, h);
-      const elapsed = Date.now() - startTime.current;
-
-      // ── TIME-BASED STATE MACHINE ──
-      let step = 'NEBULA_START';
-      if (elapsed >= 12000) {
-        cancelAnimationFrame(rafId.current);
-        onComplete();
+      const fadeA = 1 - eOC(cl((t - T.fadeS) / (T.end - T.fadeS), 0, 1));
+      if (fadeA <= 0.01) {
+        if (!done.v) { done.v = true; onComplete(); }
         return;
-      } else if (elapsed >= 11000) {
-        step = 'FADE_OUT';
-      } else if (elapsed >= 8500) {
-        step = 'TEXT_REVEAL';
-      } else if (elapsed >= 5500) {
-        step = 'HEART_PULSE_ACTIVE';
-      } else if (elapsed >= 4500) {
-        step = 'SOFT_FUSION';
-      } else if (elapsed >= 1500) {
-        step = 'TWO_LIGHTS_ORBIT';
       }
 
-      if (step !== currentStep) {
-        setCurrentStep(step);
-        // कोलिशन के समय कोमल स्वर्णिम छल्ला छोड़ें
-        if (step === 'SOFT_FUSION') {
-          spawnHeartPulseGlow(cx, cy, 35);
-        }
-      }
-
-      // ── 4. BACKGROUND COSMIC AURORA (अंतरिक्ष का कोमल धुआँ) ──
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-      bgGrad.addColorStop(0, '#030307');
-      bgGrad.addColorStop(0.4, '#090514'); // Deep violet
-      bgGrad.addColorStop(0.8, '#1b0615'); // Soft rose violet
-      bgGrad.addColorStop(1, '#050308');
-      ctx.fillStyle = bgGrad;
+      /* ── 1. BACKGROUND — Pure black, warm tint ── */
+      const bg = ctx.createRadialGradient(cx, h*0.38, 0, cx, h*0.38, Math.max(w,h)*0.75);
+      bg.addColorStop(0, '#06040a');
+      bg.addColorStop(0.4, '#030206');
+      bg.addColorStop(1, '#020204');
+      ctx.fillStyle = bg;
       ctx.fillRect(0, 0, w, h);
 
-      // एम्बिएंट स्पेस डस्ट जनरेशन
-      if (particles.current.filter(p => p.type === 'space_dust').length < 80) {
-        spawnSpaceDust(w, h);
+      /* ── 2. AMBIENT HEARTBEAT GLOW (from 0.5s, very subtle) ── */
+      if (t > 0.5) {
+        const hbC = ((t - 0.5) % 1.6) / 1.6;
+        let hb = 0;
+        if (hbC < 0.11) hb = Math.sin(hbC/0.11*Math.PI) * 0.04;
+        else if (hbC > 0.17 && hbC < 0.26) hb = Math.sin((hbC-0.17)/0.09*Math.PI) * 0.02;
+        const baseGlow = eOC(cl((t - 0.5) / 1.5, 0, 1)) * 0.05;
+        const gr = Math.min(w,h) * (0.18 + hb);
+        const gG = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
+        gG.addColorStop(0, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},${baseGlow + hb*0.15})`);
+        gG.addColorStop(0.3, `rgba(${R.dk[0]},${R.dk[1]},${R.dk[2]},${(baseGlow+hb*0.08)*0.5})`);
+        gG.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gG;
+        ctx.fillRect(0, 0, w, h);
       }
 
-      // ── 5. TWO LIGHTS MAGNETIC ORBIT (अनंतता का स्वर्णिम-गुलाबी नृत्य) ──
-      let goldX = cx - w * 0.25;
-      let goldY = cy;
-      let pinkX = cx + w * 0.25;
-      let pinkY = cy;
-
-      if (step === 'TWO_LIGHTS_ORBIT') {
-        const t = (elapsed - 1500) / 3000; // 3 seconds orbit duration
-        const loopScale = Math.min(w, h) * 0.28;
-        const angle = t * Math.PI * 2; // Complete 360 loop
-
-        // 🚀 Bernoulli's Lemniscate (Infinity Symbol `∞` Math)
-        const denom = 1 + Math.sin(angle) * Math.sin(angle);
-        
-        // स्वर्णिम लाइट (Left to center)
-        goldX = cx + (loopScale * Math.cos(angle)) / denom;
-        goldY = cy + (loopScale * Math.sin(angle) * Math.cos(angle)) / denom;
-
-        // गुलाबी लाइट (दाएं से केंद्र - 180 degree out of phase)
-        const pAngle = angle + Math.PI;
-        const pDenom = 1 + Math.sin(pAngle) * Math.sin(pAngle);
-        pinkX = cx + (loopScale * Math.cos(pAngle)) / pDenom;
-        pinkY = cy + (loopScale * Math.sin(pAngle) * Math.cos(pAngle)) / pDenom;
-
-        // स्पार्कल्स का उत्सर्जन (Emit sparkling trails)
-        if (t < 0.98) {
-          spawnGoldSpark(goldX, goldY);
-          spawnPinkSpark(pinkX, pinkY);
+      /* ── 3. BOKEH ── */
+      const orbVis = eOC(cl((t - T.orbitS) / 0.8, 0, 1));
+      if (orbVis > 0.01) {
+        for (const b of bks) {
+          const ba = b.a * orbVis * (0.4 + 0.6*Math.sin(t*b.sp + b.of));
+          if (ba < 0.001) continue;
+          const bG = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+          bG.addColorStop(0, `rgba(${b.cr},${b.cg},${b.cb},${ba})`);
+          bG.addColorStop(0.4, `rgba(${b.cr},${b.cg},${b.cb},${ba*0.18})`);
+          bG.addColorStop(1, `rgba(${b.cr},${b.cg},${b.cb},0)`);
+          ctx.fillStyle = bG;
+          ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
         }
       }
 
-      // ── 6. DRAW ORBITS (ओर्ब्स का रेंडरिंग) ──
-      if (step === 'TWO_LIGHTS_ORBIT') {
+      /* ── 4. SPAWN DUST ── */
+      if (t > 0.2 && Math.random() < 0.1) {
+        sp({ x:rn(0,w), y:rn(0,h*0.7), vx:rn(-0.03,0.03), vy:rn(-0.06,-0.005),
+          sz:rn(0.2,0.7), a:rn(0.02,0.08), ml:rn(180,350), r:160,g:120,b:100, tp:'dust' });
+      }
+
+      /* ── 5. TWO ORBS + INFINITY ORBIT ── */
+      const emA = eOC(cl((t - T.emergeS) / (T.emergeE - T.emergeS), 0, 1));
+      const oP = cl((t - T.orbitS) / (T.orbitE - T.orbitS), 0, 1);
+      const fP = cl((t - T.fusionS) / (T.fusionE - T.fusionS), 0, 1);
+
+      let gX = cx - w*0.22*(1-fP), gY = cy;
+      let rX = cx + w*0.22*(1-fP), rY = cy;
+
+      if (oP > 0 && oP < 1) {
+        const lSc = Math.min(w,h) * 0.24;
+        const ang = oP * Math.PI * 4; // 2 full infinity loops
+        const d = 1 + Math.sin(ang)*Math.sin(ang);
+        gX = cx + (lSc*Math.cos(ang))/d;
+        gY = cy + (lSc*Math.sin(ang)*Math.cos(ang))/d;
+        const pA = ang + Math.PI;
+        const pD = 1 + Math.sin(pA)*Math.sin(pA);
+        rX = cx + (lSc*Math.cos(pA))/pD;
+        rY = cy + (lSc*Math.sin(pA)*Math.cos(pA))/pD;
+
+        // Trail particles
+        if (Math.random() < 0.45) {
+          sp({ x:gX, y:gY, vx:rn(-0.12,0.12), vy:rn(-0.25,-0.04), sz:rn(0.7,1.8), a:0.65, ml:rn(28,55), r:G.br[0],g:G.br[1],b:G.br[2], tp:'ember' });
+          sp({ x:rX, y:rY, vx:rn(-0.12,0.12), vy:rn(-0.25,-0.04), sz:rn(0.7,1.8), a:0.65, ml:rn(28,55), r:R.br[0],g:R.br[1],b:R.br[2], tp:'ember' });
+        }
+        gTrail.push({x:gX,y:gY,a:1});
+        rTrail.push({x:rX,y:rY,a:1});
+        if (gTrail.length > TMAX) gTrail.shift();
+        if (rTrail.length > TMAX) rTrail.shift();
+      }
+
+      // Draw trails
+      for (let i = 0; i < gTrail.length; i++) {
+        gTrail[i].a *= 0.9;
+        const ta = gTrail[i].a * (1-fP);
+        if (ta < 0.008) continue;
+        ctx.fillStyle = `rgba(${G.br[0]},${G.br[1]},${G.br[2]},${ta*0.28})`;
+        ctx.beginPath(); ctx.arc(gTrail[i].x, gTrail[i].y, 2.5*ta+0.5, 0, TAU); ctx.fill();
+      }
+      for (let i = 0; i < rTrail.length; i++) {
+        rTrail[i].a *= 0.9;
+        const ta = rTrail[i].a * (1-fP);
+        if (ta < 0.008) continue;
+        ctx.fillStyle = `rgba(${R.br[0]},${R.br[1]},${R.br[2]},${ta*0.28})`;
+        ctx.beginPath(); ctx.arc(rTrail[i].x, rTrail[i].y, 2.5*ta+0.5, 0, TAU); ctx.fill();
+      }
+
+      // Magnetic field line between orbs
+      if (oP > 0.05 && oP < 0.95 && fP < 0.5) {
+        const mAlpha = 0.06 * (1-fP*2) * Math.sin(oP*Math.PI);
+        if (mAlpha > 0.003) {
+          const mG = ctx.createLinearGradient(gX, gY, rX, rY);
+          mG.addColorStop(0, `rgba(${G.br[0]},${G.br[1]},${G.br[2]},${mAlpha})`);
+          mG.addColorStop(0.5, `rgba(255,255,255,${mAlpha*0.8})`);
+          mG.addColorStop(1, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},${mAlpha})`);
+          ctx.strokeStyle = mG;
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          const midX = (gX+rX)/2, midY = (gY+rY)/2 - 20*Math.sin(t*2);
+          ctx.moveTo(gX, gY);
+          ctx.quadraticCurveTo(midX, midY, rX, rY);
+          ctx.stroke();
+        }
+      }
+
+      // Draw orbs
+      const orbA = emA * (1 - fP);
+      if (orbA > 0.01) {
         ctx.save();
+        ctx.globalAlpha = orbA * fadeA;
         ctx.globalCompositeOperation = 'lighter';
-        ctx.shadowBlur = 30;
 
-        // Gold Orb
-        ctx.shadowColor = '#fbbf24';
-        const gGlow = ctx.createRadialGradient(goldX, goldY, 0, goldX, goldY, 15);
-        gGlow.addColorStop(0, '#ffffff');
-        gGlow.addColorStop(0.3, '#fbbf24');
-        gGlow.addColorStop(1, 'rgba(251,191,36,0)');
-        ctx.fillStyle = gGlow;
-        ctx.beginPath(); ctx.arc(goldX, goldY, 15, 0, Math.PI * 2); ctx.fill();
+        // Gold orb
+        const gR = 13 + Math.sin(t*3.2)*2;
+        const gGl = ctx.createRadialGradient(gX, gY, 0, gX, gY, gR*2.8);
+        gGl.addColorStop(0, 'rgba(255,255,255,0.92)');
+        gGl.addColorStop(0.12, `rgba(${G.br[0]},${G.br[1]},${G.br[2]},0.75)`);
+        gGl.addColorStop(0.45, `rgba(${G.dk[0]},${G.dk[1]},${G.dk[2]},0.22)`);
+        gGl.addColorStop(1, `rgba(${G.dk[0]},${G.dk[1]},${G.dk[2]},0)`);
+        ctx.fillStyle = gGl;
+        ctx.beginPath(); ctx.arc(gX, gY, gR*2.8, 0, TAU); ctx.fill();
 
-        // Pink Orb
-        ctx.shadowColor = '#db2777';
-        const pGlow = ctx.createRadialGradient(pinkX, pinkY, 0, pinkX, pinkY, 15);
-        pGlow.addColorStop(0, '#ffffff');
-        pGlow.addColorStop(0.3, '#db2777');
-        pGlow.addColorStop(1, 'rgba(219,39,119,0)');
-        ctx.fillStyle = pGlow;
-        ctx.beginPath(); ctx.arc(pinkX, pinkY, 15, 0, Math.PI * 2); ctx.fill();
+        // Red orb
+        const rRad = 13 + Math.sin(t*3.2+1)*2;
+        const rGl = ctx.createRadialGradient(rX, rY, 0, rX, rY, rRad*2.8);
+        rGl.addColorStop(0, 'rgba(255,255,255,0.92)');
+        rGl.addColorStop(0.12, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},0.75)`);
+        rGl.addColorStop(0.45, `rgba(${R.dk[0]},${R.dk[1]},${R.dk[2]},0.22)`);
+        rGl.addColorStop(1, `rgba(${R.dk[0]},${R.dk[1]},${R.dk[2]},0)`);
+        ctx.fillStyle = rGl;
+        ctx.beginPath(); ctx.arc(rX, rY, rRad*2.8, 0, TAU); ctx.fill();
 
         ctx.restore();
       }
 
-      // ── 7. HEART BEAT PULSE TRIGGER (दिल की धड़कन पल्स) ──
-      if (step === 'HEART_PULSE_ACTIVE' || step === 'TEXT_REVEAL') {
-        const hPulseCycle = ((elapsed - 5500) % 1500) / 1500; // Complete beat every 1.5s
-        
-        // डबल बीट इफ़ेक्ट (Double-pump heartbeat physics)
-        let pulseFactor = 1.0;
-        if (hPulseCycle < 0.12) {
-          pulseFactor = 1.0 + Math.sin((hPulseCycle / 0.12) * Math.PI) * 0.08;
-          if (Math.random() < 0.08) spawnHeartPulseGlow(cx, cy, 35); // लहरों को जन्म दें
-        } else if (hPulseCycle > 0.18 && hPulseCycle < 0.28) {
-          pulseFactor = 1.0 + Math.sin(((hPulseCycle - 0.18) / 0.1) * Math.PI) * 0.04;
+      /* ── 6. FUSION BURST ── */
+      if (fP > 0 && fP < 1) {
+        const bA = Math.sin(fP * Math.PI);
+        // White core flash
+        const fG = ctx.createRadialGradient(cx, cy, 0, cx, cy, 90*bA);
+        fG.addColorStop(0, `rgba(255,255,255,${bA*0.4})`);
+        fG.addColorStop(0.15, `rgba(${G.br[0]},${G.br[1]},${G.br[2]},${bA*0.25})`);
+        fG.addColorStop(0.35, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},${bA*0.18})`);
+        fG.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fG;
+        ctx.fillRect(cx-120, cy-120, 240, 240);
+
+        // Burst particles
+        if (fP < 0.35 && Math.random() < 0.55) {
+          const ba = rn(0, TAU);
+          const spd = rn(1.5, 4.5);
+          sp({ x:cx, y:cy, vx:Math.cos(ba)*spd, vy:Math.sin(ba)*spd, sz:rn(1,2.8), a:0.85, ml:rn(22,45), r:G.br[0],g:G.br[1],b:G.br[2], tp:'burst' });
+          sp({ x:cx, y:cy, vx:Math.cos(ba+0.4)*spd*0.8, vy:Math.sin(ba+0.4)*spd*0.8, sz:rn(0.8,2.2), a:0.85, ml:rn(22,45), r:R.br[0],g:R.br[1],b:R.br[2], tp:'burst' });
+        }
+      }
+
+      /* ── 7. HEART FORM + PULSE ── */
+      const hFormA = eOB(cl((t - T.heartS) / (T.heartE - T.heartS), 0, 1));
+      const isPulse = t > T.pulseS;
+
+      let hSc = hFormA;
+      let hAl = hFormA * fadeA;
+
+      // Heartbeat pulse
+      if (isPulse) {
+        const hbC = ((t - T.pulseS) % 1.4) / 1.4;
+        if (hbC < 0.11) {
+          hSc *= (1 + Math.sin(hbC/0.11*Math.PI) * 0.09);
+          // Spawn pulse wave at first beat peak
+          if (hbC > 0.09 && Math.random() < 0.2) {
+            sp({ x:cx, y:cy, vx:0, vy:0, sz:hSc*8, a:0.3, ml:65, r:R.br[0],g:R.br[1],b:R.br[2], tp:'pulse' });
+          }
+        } else if (hbC > 0.17 && hbC < 0.26) {
+          hSc *= (1 + Math.sin((hbC-0.17)/0.09*Math.PI) * 0.045);
         }
 
-        // 3D-feel Glowing Crystal Heart Weaving
+        // Heart surface sparkles
+        if (Math.random() < 0.18) {
+          const sT = rn(0, TAU);
+          const sp2 = hXY(sT, hSc);
+          sp({ x:cx+sp2.x, y:cy+sp2.y, vx:rn(-0.3,0.3), vy:rn(-0.7,-0.1), sz:rn(0.5,1.6), a:0.8, ml:rn(22,48), r:W[0],g:W[1],b:W[2], tp:'ember' });
+        }
+      }
+
+      // Fade heart when text arrives
+      if (t > T.textS) {
+        hAl *= (1 - eOC(cl((t - T.textS) / 0.65, 0, 1)));
+      }
+
+      // Draw heart
+      if (hAl > 0.01 && hSc > 0.01) {
         ctx.save();
         ctx.translate(cx, cy);
-        ctx.scale(pulseFactor, pulseFactor);
-        
-        // दिल का आकार (Parametric Heart formula)
+        ctx.scale(hSc, hSc);
+        ctx.globalAlpha = hAl;
+
+        // Heart path
         ctx.beginPath();
-        const sc = Math.min(w, h) * 0.012;
-        for (let i = 0; i <= 150; i++) {
-          const ht = (i / 150) * Math.PI * 2;
-          const px = 16 * Math.pow(Math.sin(ht), 3) * sc;
-          const py = -(13 * Math.cos(ht) - 5 * Math.cos(2 * ht) - 2 * Math.cos(3 * ht) - Math.cos(4 * ht)) * sc;
-          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        for (let i = 0; i <= 160; i++) {
+          const ht = (i/160)*TAU;
+          const p = hXY(ht, hSc);
+          i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
         }
         ctx.closePath();
 
-        // सुवर्ण-गुलाबी मेटैलिक ग्रेडिएंट (Rich Gold-Pink Metallic Chrome)
-        const hGrad = ctx.createLinearGradient(-15 * sc, -15 * sc, 15 * sc, 15 * sc);
-        hGrad.addColorStop(0, '#db2777'); // Pink silk
-        hGrad.addColorStop(0.35, '#fda4af'); // Soft rose
-        hGrad.addColorStop(0.5, '#ffffff'); // White reflection
-        hGrad.addColorStop(0.65, '#fef08a'); // Gold shimmer
-        hGrad.addColorStop(1, '#ca8a04'); // Dark brass gold
-        
-        ctx.fillStyle = hGrad;
-        ctx.shadowColor = '#db2777'; ctx.shadowBlur = 30 * pulseFactor;
+        // Deep outer glow
+        ctx.shadowColor = `rgba(${R.br[0]},${R.br[1]},${R.br[2]},0.55)`;
+        ctx.shadowBlur = 40;
+
+        // Crimson metallic gradient
+        const hG = ctx.createLinearGradient(-16*hSc, -17*hSc, 16*hSc, 13*hSc);
+        hG.addColorStop(0, `rgb(${R.dk[0]},${R.dk[1]},${R.dk[2]})`);
+        hG.addColorStop(0.15, `rgb(${R.md[0]},${R.md[1]},${R.md[2]})`);
+        hG.addColorStop(0.32, `rgb(${R.br[0]},${R.br[1]},${R.br[2]})`);
+        hG.addColorStop(0.45, `rgb(${R.lt[0]},${R.lt[1]},${R.lt[2]})`);
+        hG.addColorStop(0.52, '#ffffff');
+        hG.addColorStop(0.58, `rgb(${R.lt[0]},${R.lt[1]},${R.lt[2]})`);
+        hG.addColorStop(0.7, `rgb(${R.br[0]},${R.br[1]},${R.br[2]})`);
+        hG.addColorStop(0.85, `rgb(${R.md[0]},${R.md[1]},${R.md[2]})`);
+        hG.addColorStop(1, `rgb(${R.dk[0]},${R.dk[1]},${R.dk[2]})`);
+        ctx.fillStyle = hG;
         ctx.fill();
+
+        // Inner bright edge
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 0.7;
+        ctx.stroke();
+
+        // Gold accent stroke
+        ctx.strokeStyle = `rgba(${G.dk[0]},${G.dk[1]},${G.dk[2]},0.15)`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        // Subtle chromatic aberration
+        ctx.globalAlpha = hAl * 0.06;
+        ctx.fillStyle = '#ff2222';
+        ctx.fill();
+        ctx.translate(2, 0);
+        ctx.fillStyle = '#2222ff';
+        ctx.fill();
+
         ctx.restore();
       }
 
-      // ── 8. UPDATE AND DRAW PARTICLES ──
-      particles.current = particles.current.filter(p => {
-        p.life += 1;
+      /* ── 8. TEXT ── */
+      const txtA = eOC(cl((t - T.textS) / (T.textE - T.textS), 0, 1)) * fadeA;
+      if (txtA > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = txtA;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
-        if (p.type === 'space_dust') {
-          p.x += p.vx; p.y += p.vy;
-          p.alpha = Math.max(0, 0.35 * (1 - p.life / p.maxLife));
-        } 
-        else if (p.type === 'gold_spark' || p.type === 'pink_spark') {
-          p.x += p.vx; p.y += p.vy;
-          p.alpha = Math.max(0, 0.9 * (1 - p.life / p.maxLife));
-        }
-        else if (p.type === 'heart_glow') {
-          p.size += 3.5; // लहरों का विस्तार (Expanding ripples)
-          p.alpha = Math.max(0, 0.5 * (1 - p.life / p.maxLife));
-        }
+        // "Love is Connection"
+        const mY = cy + h*0.12;
+        const mSz = Math.min(w*0.055, 44);
+        ctx.font = `200 ${mSz}px "Inter","Segoe UI",system-ui,sans-serif`;
+        ctx.letterSpacing = `${mSz*0.06}px`;
+        const mG = ctx.createLinearGradient(cx-190, mY, cx+190, mY);
+        mG.addColorStop(0, `rgba(${R.md[0]},${R.md[1]},${R.md[2]},0.35)`);
+        mG.addColorStop(0.18, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},0.85)`);
+        mG.addColorStop(0.5, `rgb(${W[0]},${W[1]},${W[2]})`);
+        mG.addColorStop(0.82, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},0.85)`);
+        mG.addColorStop(1, `rgba(${R.md[0]},${R.md[1]},${R.md[2]},0.35)`);
+        ctx.fillStyle = mG;
+        ctx.shadowColor = `rgba(${R.br[0]},${R.br[1]},${R.br[2]},0.28)`;
+        ctx.shadowBlur = 18;
+        ctx.fillText('Love is Connection', cx, mY);
+        ctx.shadowBlur = 0;
 
-        // Draw Particle
-        if (p.life < p.maxLife && p.y < h + 20 && p.x > -20 && p.x < w + 20) {
-          ctx.save();
-          ctx.globalAlpha = p.alpha;
-          
-          if (p.type === 'heart_glow') {
-            ctx.strokeStyle = p.color;
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            // दिल के आकार का धड़कता छल्ला ड्रा करें
-            const rsc = p.size * 0.05;
-            for (let i = 0; i <= 100; i++) {
-              const ht = (i / 100) * Math.PI * 2;
-              const rpx = p.x + 16 * Math.pow(Math.sin(ht), 3) * rsc;
-              const rpy = p.y - (13 * Math.cos(ht) - 5 * Math.cos(2 * ht) - 2 * Math.cos(3 * ht) - Math.cos(4 * ht)) * rsc;
-              i === 0 ? ctx.moveTo(rpx, rpy) : ctx.lineTo(rpx, rpy);
-            }
-            ctx.closePath();
-            ctx.stroke();
-          } else {
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
+        // Divider
+        const lnW = Math.min(w*0.13, 105) * txtA;
+        const lnY = mY + mSz*0.85;
+        const lnG = ctx.createLinearGradient(cx-lnW, 0, cx+lnW, 0);
+        lnG.addColorStop(0, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},0)`);
+        lnG.addColorStop(0.3, `rgba(${G.dk[0]},${G.dk[1]},${G.dk[2]},0.35)`);
+        lnG.addColorStop(0.5, `rgba(${W[0]},${W[1]},${W[2]},0.45)`);
+        lnG.addColorStop(0.7, `rgba(${G.dk[0]},${G.dk[1]},${G.dk[2]},0.35)`);
+        lnG.addColorStop(1, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},0)`);
+        ctx.strokeStyle = lnG; ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.moveTo(cx-lnW, lnY); ctx.lineTo(cx+lnW, lnY); ctx.stroke();
+
+        // "Happy Valentine's Day"
+        const sY = lnY + mSz*0.55;
+        const sSz = Math.min(w*0.026, 21);
+        ctx.font = `300 ${sSz}px "Inter","Segoe UI",system-ui,sans-serif`;
+        ctx.letterSpacing = `${sSz*0.32}px`;
+        ctx.fillStyle = `rgba(${R.lt[0]},${R.lt[1]},${R.lt[2]},0.45)`;
+        ctx.fillText("Happy Valentine's Day", cx, sY);
+
+        // "2027"
+        const yY = sY + sSz*0.8;
+        const ySz = Math.min(w*0.02, 16);
+        ctx.font = `300 ${ySz}px "Inter","Segoe UI",system-ui,sans-serif`;
+        ctx.letterSpacing = `${ySz*0.5}px`;
+        ctx.fillStyle = `rgba(${W[0]},${W[1]},${W[2]},0.3)`;
+        ctx.fillText('2027', cx, yY);
+
+        ctx.restore();
+      }
+
+      /* ── 9. PARTICLES UPDATE & DRAW ── */
+      let alive = 0;
+      for (let i = 0; i < pc; i++) {
+        const p = pts[i]; p.life++;
+        if (p.life >= p.ml) continue;
+        p.x += p.vx; p.y += p.vy;
+        const lt = p.life / p.ml;
+        let al = p.a;
+
+        if (p.tp === 'dust') {
+          al *= (1-lt);
+        } else if (p.tp === 'ember') {
+          al *= (1-lt*lt) * (0.45+0.55*Math.sin(p.life*0.11));
+          p.vx += rn(-0.005,0.005);
+          p.vy -= 0.0008;
+        } else if (p.tp === 'burst') {
+          al *= (1-lt*lt);
+          p.vx *= 0.96; p.vy *= 0.96;
+          p.vy += 0.008; // slight gravity
+        } else if (p.tp === 'pulse') {
+          p.sz += 2.2;
+          al *= (1-lt);
+        }
+        if (al < 0.003) continue;
+
+        ctx.save();
+        ctx.globalAlpha = al * fadeA;
+
+        if (p.tp === 'pulse') {
+          // Heart-shaped pulse ring
+          ctx.strokeStyle = `rgba(${p.r},${p.g},${p.b},${al*0.2})`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          const rsc = p.sz * 0.038;
+          for (let j = 0; j <= 90; j++) {
+            const ht = (j/90)*TAU;
+            const rpx = p.x + 16*Math.pow(Math.sin(ht),3)*rsc;
+            const rpy = p.y - (13*Math.cos(ht)-5*Math.cos(2*ht)-2*Math.cos(3*ht)-Math.cos(4*ht))*rsc;
+            j === 0 ? ctx.moveTo(rpx, rpy) : ctx.lineTo(rpx, rpy);
           }
-          ctx.restore();
-          return true;
+          ctx.closePath();
+          ctx.stroke();
+        } else if (p.tp === 'ember' || p.tp === 'burst') {
+          const eG = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz*3.2);
+          eG.addColorStop(0, `rgba(${p.r},${p.g},${p.b},0.72)`);
+          eG.addColorStop(0.25, `rgba(${p.r},${p.g},${p.b},0.18)`);
+          eG.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
+          ctx.fillStyle = eG;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.sz*3.2, 0, TAU); ctx.fill();
+          ctx.fillStyle = `rgba(255,255,255,${al*0.45})`;
+          ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.3, p.sz*0.25), 0, TAU); ctx.fill();
+        } else {
+          ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${al})`;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.sz, 0, TAU); ctx.fill();
         }
-        return false;
-      });
+        ctx.restore();
+        pts[alive++] = p;
+      }
+      pc = alive;
 
-      rafId.current = requestAnimationFrame(animate);
+      /* ── 10. WARM WASH ── */
+      const washA = eOC(cl((t - T.warmS) / 0.6, 0, 1))
+                  * (1 - eOC(cl((t - T.fadeS) / (T.end - T.fadeS), 0, 1)));
+      if (washA > 0.003) {
+        const wG = ctx.createRadialGradient(cx, h*0.4, 0, cx, h*0.4, Math.max(w,h)*0.55);
+        wG.addColorStop(0, `rgba(${R.br[0]},${R.br[1]},${R.br[2]},${washA*0.055})`);
+        wG.addColorStop(0.35, `rgba(${G.dk[0]},${G.dk[1]},${G.dk[2]},${washA*0.025})`);
+        wG.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = wG;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      /* ── 11. VIGNETTE ── */
+      const vg = ctx.createRadialGradient(cx, h*0.42, Math.min(w,h)*0.14, cx, h*0.42, Math.max(w,h)*0.92);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(0.45, 'rgba(0,0,0,0.08)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.65)');
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, w, h);
+
+      /* ── 12. SUBTLE FILM GRAIN ── */
+      ctx.save();
+      ctx.globalAlpha = 0.018 * fadeA;
+      for (let i = 0; i < 800; i++) {
+        const gx = Math.random() * w;
+        const gy = Math.random() * h;
+        const gv = Math.random() * 255;
+        ctx.fillStyle = `rgb(${gv},${gv},${gv})`;
+        ctx.fillRect(gx, gy, 1, 1);
+      }
+      ctx.restore();
+
+      raf = requestAnimationFrame(animate);
     };
 
-    animate();
-
+    raf = requestAnimationFrame(animate);
     return () => {
-      cancelAnimationFrame(rafId.current);
-      window.removeEventListener('resize', setSize);
+      run = false;
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
     };
-  }, [onComplete, currentStep]);
+  }, [onComplete]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 select-none overflow-hidden">
-      
-      {/* 🚀 इनलाइन लक्ज़री क्रोम ट्रांजिशन सीएसएस */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes text-glow-pulse {
-          0% { filter: drop-shadow(0 0 15px rgba(219, 39, 119, 0.45)); }
-          50% { filter: drop-shadow(0 0 35px rgba(251, 191, 36, 0.75)); }
-          100% { filter: drop-shadow(0 0 15px rgba(219, 39, 119, 0.45)); }
-        }
-        @keyframes love-text-reveal {
-          0% { transform: translateY(30px) scale(0.9); opacity: 0; }
-          100% { transform: translateY(0px) scale(1); opacity: 1; }
-        }
-        .animate-love-text {
-          background: linear-gradient(135deg, #ffffff 10%, #fbcfe8 35%, #fbbf24 50%, #db2777 65%, #ffffff 90%);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          background-clip: text;
-          color: transparent;
-          animation: love-text-reveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards, text-glow-pulse 4s ease infinite;
-        }
-      `}} />
-
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
-
-      {/* ── LAYER 1: CINEMATIC LOVE TEXT REVEAL ── */}
-      {(currentStep === 'TEXT_REVEAL' || currentStep === 'FADE_OUT') && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30 p-6 text-center">
-          
-          {/* Main Message */}
-          <h1 
-            className="animate-love-text text-5xl md:text-7xl font-extrabold tracking-tight select-none mt-[180px] drop-shadow-xl"
-            style={{
-              fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif',
-              letterSpacing: '-0.02em'
-            }}
-          >
-            Love is Connection
-          </h1>
-
-          {/* Subtitle */}
-          <p className="mt-4 text-pink-300 text-xs md:text-sm tracking-[0.6em] translate-y-1 uppercase font-semibold animate-pulse">
-            Happy Valentine&apos;s Day
-          </p>
-        </div>
-      )}
-
-    </div>
+    <canvas
+      ref={cvRef}
+      style={{
+        position:'fixed', top:0, left:0,
+        width:'100vw', height:'100vh',
+        display:'block', background:'#020204',
+        zIndex:9999,
+      }}
+    />
   );
 }
