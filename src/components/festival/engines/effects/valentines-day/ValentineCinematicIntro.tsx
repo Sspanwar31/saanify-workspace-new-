@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    VALENTINE 2027 — Cinematic Love Story (V3: Real Characters + Heart Rain)
-   12.5s Disney-Pixar-Apple Premium Experience
+   16.0s Disney-Pixar-Apple Premium Experience (Optimized Timing)
    ═══════════════════════════════════════════════════════════════ */
 
 interface P {
@@ -36,9 +36,16 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
     const eOB = (t: number) => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
     const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 
+    /* ── Extended Timeline (Total 16 seconds for relaxed viewing) ── */
     const TL = {
-      walkE: 3.8, gestE: 5.2, orbE: 7.2, explE: 8.2,
-      rainE: 10.5, txtE: 11.5, fadeS: 11.5, end: 12.5,
+      walkE: 3.8,     // Walks finish at 3.8s
+      gestE: 5.0,     // Preparation up to 5s
+      orbE: 7.0,      // Orbs merge at 7s
+      explE: 8.0,     // Heart explosion at 8s
+      rainE: 10.5,    // Rain settled by 10.5s
+      txtE: 11.5,     // Text fully visible by 11.5s
+      fadeS: 14.5,    // Fades out slowly after lingering for 3 seconds (at 14.5s)
+      end: 16.0,      // Ends at 16s
     };
 
     const C = {
@@ -50,7 +57,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       btnYellow: '#facc15', skinLight: '#fde8d0', skinMid: '#f5cba7',
     };
 
-    // ✅ Heart rain colors — rich reds, pinks, soft gold
+    // Heart rain colors
     const HEART_RAIN_COLS = [
       [220, 38, 38], [185, 28, 28], [239, 68, 68],
       [244, 63, 94], [251, 113, 133], [252, 165, 165],
@@ -91,9 +98,8 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
     resize();
     window.addEventListener('resize', resize);
 
-    /* ═══ ENHANCED DRAWING HELPERS ═══ */
+    /* ═══ DRAWING HELPERS ═══ */
 
-    // ✅ Better heart shape — rounder, more symmetrical
     function drawHeartShape(sz: number) {
       ctx.beginPath();
       for (let i = 0; i <= 120; i++) {
@@ -105,7 +111,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.closePath();
     }
 
-    // ✅ Pretty falling heart with glow
     function drawPrettyHeart(x: number, y: number, sz: number, r: number, g: number, b: number, glow: boolean) {
       ctx.save();
       ctx.translate(x, y);
@@ -119,11 +124,10 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.closePath();
 
       if (glow) {
-        ctx.shadowColor = `rgba(${r},${g},${b},0.6)`;
-        ctx.shadowBlur = s * 2;
+        ctx.shadowColor = `rgba(${r},${g},${b},0.65)`;
+        ctx.shadowBlur = s * 2.2;
       }
 
-      // Gradient fill
       const hG = ctx.createRadialGradient(0, s * 0.15, 0, 0, s * 0.15, s * 0.7);
       hG.addColorStop(0, `rgba(${Math.min(255,r+60)},${Math.min(255,g+60)},${Math.min(255,b+60)},1)`);
       hG.addColorStop(0.5, `rgb(${r},${g},${b})`);
@@ -131,18 +135,14 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.fillStyle = hG;
       ctx.fill();
 
-      // Top highlight
       ctx.beginPath();
       ctx.ellipse(-s * 0.18, -s * 0.08, s * 0.18, s * 0.12, -0.3, 0, TAU);
       ctx.fillStyle = `rgba(255,255,255,0.25)`;
       ctx.fill();
 
-      ctx.shadowBlur = 0;
-      ctx.shadowColor = 'transparent';
       ctx.restore();
     }
 
-    /* ═══ ENHANCED DISNEY CHARACTER ═══ */
     function drawDisneyCharacter(x: number, y: number, s: number, face: number, isMinnie: boolean, opts: {
       aLX?: number; aLY?: number; aRX?: number; aRY?: number;
       legL?: number; legR?: number; turn?: number;
@@ -155,27 +155,23 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.scale(s * face, s);
       ctx.rotate(turn);
 
-      // ── 1. LEGS & SHOES ──
+      // Legs
       ctx.lineWidth = 5;
       ctx.strokeStyle = '#1a1a2e';
       ctx.lineCap = 'round';
 
-      // Left leg
       ctx.save(); ctx.translate(-5, 27); ctx.rotate(legL);
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 13); ctx.stroke();
-      // Shoe with gradient
       const shG1 = ctx.createLinearGradient(-6, 12, 6, 18);
       shG1.addColorStop(0, shoeCol);
       shG1.addColorStop(1, isMinnie ? '#be123c' : '#ca8a04');
       ctx.fillStyle = shG1;
       ctx.beginPath(); ctx.ellipse(0, 15, 6.5, 4.5, 0, 0, TAU); ctx.fill();
       ctx.strokeStyle = '#000000'; ctx.lineWidth = 1; ctx.stroke();
-      // Shoe highlight
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
       ctx.beginPath(); ctx.ellipse(-2, 13, 3, 1.5, -0.2, 0, TAU); ctx.fill();
       ctx.restore();
 
-      // Right leg
       ctx.save(); ctx.translate(5, 27); ctx.rotate(legR);
       ctx.lineWidth = 5; ctx.strokeStyle = '#1a1a2e';
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 13); ctx.stroke();
@@ -189,9 +185,8 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       ctx.beginPath(); ctx.ellipse(-2, 13, 3, 1.5, -0.2, 0, TAU); ctx.fill();
       ctx.restore();
 
-      // ── 2. BODY / CLOTHING ──
+      // Clothing
       if (isMinnie) {
-        // Dress with gradient & skirt flare
         const dG = ctx.createLinearGradient(0, 8, 0, 27);
         dG.addColorStop(0, '#fb7185');
         dG.addColorStop(0.5, C.dressPink);
@@ -206,28 +201,24 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.fill();
         ctx.strokeStyle = '#000000'; ctx.lineWidth = 1; ctx.stroke();
 
-        // White collar
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.ellipse(0, 10, 6, 2.5, 0, 0, TAU);
         ctx.fill();
         ctx.stroke();
 
-        // Polka-dots grid (more dots!)
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         const dots = [[-4,15],[4,15],[0,20],[-7,20],[7,20],[-3,25],[3,25],[-8,24],[8,24],[-5,11],[5,11]];
         for (const [dx, dy] of dots) {
           ctx.beginPath(); ctx.arc(dx, dy, 1.6, 0, TAU); ctx.fill();
         }
       } else {
-        // Mickey upper body (dark with subtle blue tint)
         const bG = ctx.createRadialGradient(0, 12, 0, 0, 12, 14);
         bG.addColorStop(0, '#1a1a30');
         bG.addColorStop(1, '#0a0a18');
         ctx.fillStyle = bG;
         ctx.beginPath(); ctx.ellipse(0, 14, 10, 14, 0, 0, TAU); ctx.fill();
 
-        // Red shorts with gradient
         const sG = ctx.createLinearGradient(0, 14, 0, 26);
         sG.addColorStop(0, '#ef4444');
         sG.addColorStop(0.5, C.shortsRed);
@@ -238,7 +229,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.fill();
         ctx.strokeStyle = '#000000'; ctx.lineWidth = 0.8; ctx.stroke();
 
-        // Yellow buttons with 3D effect
         for (const bx of [-3.5, 3.5]) {
           ctx.fillStyle = '#b45309';
           ctx.beginPath(); ctx.ellipse(bx, 20, 1.8, 2.8, 0, 0, TAU); ctx.fill();
@@ -249,68 +239,45 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         }
       }
 
-      // ── 3. ARMS & GLOVES ──
+      // Gloves & Arms
       ctx.lineWidth = 5;
       ctx.strokeStyle = '#1a1a2e';
       ctx.lineCap = 'round';
 
-      // Left arm
       ctx.beginPath(); ctx.moveTo(-9, 8); ctx.lineTo(aLX, aLY); ctx.stroke();
-      // Glove with gradient
       const glG1 = ctx.createRadialGradient(aLX - 1, aLY - 1, 0, aLX, aLY, 5);
-      glG1.addColorStop(0, '#ffffff');
-      glG1.addColorStop(0.7, '#f0f0f0');
-      glG1.addColorStop(1, '#d0d0d0');
-      ctx.fillStyle = glG1;
-      ctx.beginPath(); ctx.arc(aLX, aLY, 5, 0, TAU); ctx.fill();
+      glG1.addColorStop(0, '#ffffff'); glG1.addColorStop(0.7, '#f0f0f0'); glG1.addColorStop(1, '#d0d0d0');
+      ctx.fillStyle = glG1; ctx.beginPath(); ctx.arc(aLX, aLY, 5, 0, TAU); ctx.fill();
       ctx.strokeStyle = '#000000'; ctx.lineWidth = 0.8; ctx.stroke();
-      // Glove line detail
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 0.5;
-      ctx.beginPath(); ctx.moveTo(aLX - 3, aLY + 3); ctx.lineTo(aLX + 3, aLY - 3); ctx.stroke();
 
-      // Right arm
-      ctx.lineWidth = 5; ctx.strokeStyle = '#1a1a2e';
       ctx.beginPath(); ctx.moveTo(9, 8); ctx.lineTo(aRX, aRY); ctx.stroke();
       const glG2 = ctx.createRadialGradient(aRX - 1, aRY - 1, 0, aRX, aRY, 5);
-      glG2.addColorStop(0, '#ffffff');
-      glG2.addColorStop(0.7, '#f0f0f0');
-      glG2.addColorStop(1, '#d0d0d0');
-      ctx.fillStyle = glG2;
-      ctx.beginPath(); ctx.arc(aRX, aRY, 5, 0, TAU); ctx.fill();
+      glG2.addColorStop(0, '#ffffff'); glG2.addColorStop(0.7, '#f0f0f0'); glG2.addColorStop(1, '#d0d0d0');
+      ctx.fillStyle = glG2; ctx.beginPath(); ctx.arc(aRX, aRY, 5, 0, TAU); ctx.fill();
       ctx.strokeStyle = '#000000'; ctx.lineWidth = 0.8; ctx.stroke();
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 0.5;
-      ctx.beginPath(); ctx.moveTo(aRX - 3, aRY + 3); ctx.lineTo(aRX + 3, aRY - 3); ctx.stroke();
 
-      // ── 4. HEAD ──
+      // Head
       const hG = ctx.createRadialGradient(-2, -10, 0, 0, -8, 13);
-      hG.addColorStop(0, '#1e1e35');
-      hG.addColorStop(1, '#0e0e1e');
-      ctx.fillStyle = hG;
-      ctx.beginPath(); ctx.arc(0, -8, 13, 0, TAU); ctx.fill();
+      hG.addColorStop(0, '#1e1e35'); hG.addColorStop(1, '#0e0e1e');
+      ctx.fillStyle = hG; ctx.beginPath(); ctx.arc(0, -8, 13, 0, TAU); ctx.fill();
 
-      // ── 5. EARS ──
+      // Ears
       ctx.fillStyle = '#12122a';
       ctx.beginPath(); ctx.arc(-12, -20, 7.5, 0, TAU); ctx.fill();
       ctx.beginPath(); ctx.arc(12, -20, 7.5, 0, TAU); ctx.fill();
 
-      // ── 6. FACE DETAILS ✅ NEW ──
-      // Skin area (front of face, lighter)
+      // Face Face skin
       const fG = ctx.createRadialGradient(0, -6, 0, 0, -6, 10);
-      fG.addColorStop(0, C.skinLight);
-      fG.addColorStop(0.6, C.skinMid);
-      fG.addColorStop(1, 'rgba(245,203,167,0)');
-      ctx.fillStyle = fG;
-      ctx.beginPath(); ctx.ellipse(0, -6, 9, 10, 0, 0, TAU); ctx.fill();
+      fG.addColorStop(0, C.skinLight); fG.addColorStop(0.6, C.skinMid); fG.addColorStop(1, 'rgba(245,203,167,0)');
+      ctx.fillStyle = fG; ctx.beginPath(); ctx.ellipse(0, -6, 9, 10, 0, 0, TAU); ctx.fill();
 
       // Eyes
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.ellipse(-4, -9, 3.5, 4, 0, 0, TAU); ctx.fill();
       ctx.beginPath(); ctx.ellipse(4, -9, 3.5, 4, 0, 0, TAU); ctx.fill();
-      // Pupils
       ctx.fillStyle = '#0a0a15';
       ctx.beginPath(); ctx.ellipse(-3.5, -8.5, 2, 2.8, 0, 0, TAU); ctx.fill();
       ctx.beginPath(); ctx.ellipse(4.5, -8.5, 2, 2.8, 0, 0, TAU); ctx.fill();
-      // Eye shine
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.arc(-4.2, -9.8, 1, 0, TAU); ctx.fill();
       ctx.beginPath(); ctx.arc(3.8, -9.8, 1, 0, TAU); ctx.fill();
@@ -318,88 +285,40 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       // Nose
       ctx.fillStyle = C.skinMid;
       ctx.beginPath(); ctx.ellipse(0, -5.5, 2.2, 1.8, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(0,0,0,0.15)';
-      ctx.beginPath(); ctx.ellipse(0, -5, 1.5, 0.8, 0, 0, TAU); ctx.fill();
 
       // Smile
-      ctx.strokeStyle = '#8b4513';
-      ctx.lineWidth = 1.2;
-      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(0, -4, 5, 0.15, Math.PI - 0.15); ctx.stroke();
 
-      // Cheek blush
-      ctx.fillStyle = 'rgba(255,130,130,0.18)';
-      ctx.beginPath(); ctx.ellipse(-7, -4, 3, 2, 0, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(7, -4, 3, 2, 0, 0, TAU); ctx.fill();
-
-      // ── 7. MINNIE SPECIFIC ──
       if (isMinnie) {
-        // Large detailed bow
+        // Detailed Bow
         ctx.fillStyle = C.dressPink;
-        // Left loop
-        ctx.beginPath();
-        ctx.moveTo(0, -25);
-        ctx.bezierCurveTo(-4, -28, -12, -30, -10, -26);
-        ctx.bezierCurveTo(-9, -22, -3, -23, 0, -25);
-        ctx.fill();
-        // Right loop
-        ctx.beginPath();
-        ctx.moveTo(0, -25);
-        ctx.bezierCurveTo(4, -28, 12, -30, 10, -26);
-        ctx.bezierCurveTo(9, -22, 3, -23, 0, -25);
-        ctx.fill();
-        // Bow outlines
+        ctx.beginPath(); ctx.moveTo(0, -25);
+        ctx.bezierCurveTo(-4, -28, -12, -30, -10, -26); ctx.bezierCurveTo(-9, -22, -3, -23, 0, -25); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -25);
+        ctx.bezierCurveTo(4, -28, 12, -30, 10, -26); ctx.bezierCurveTo(9, -22, 3, -23, 0, -25); ctx.fill();
+
         ctx.strokeStyle = '#be123c'; ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(0, -25);
-        ctx.bezierCurveTo(-4, -28, -12, -30, -10, -26);
-        ctx.bezierCurveTo(-9, -22, -3, -23, 0, -25);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, -25);
-        ctx.bezierCurveTo(4, -28, 12, -30, 10, -26);
-        ctx.bezierCurveTo(9, -22, 3, -23, 0, -25);
-        ctx.stroke();
-        // Bow dots
+        ctx.beginPath(); ctx.moveTo(0, -25);
+        ctx.bezierCurveTo(-4, -28, -12, -30, -10, -26); ctx.bezierCurveTo(-9, -22, -3, -23, 0, -25); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, -25);
+        ctx.bezierCurveTo(4, -28, 12, -30, 10, -26); ctx.bezierCurveTo(9, -22, 3, -23, 0, -25); ctx.stroke();
+
         ctx.fillStyle = 'rgba(255,255,255,0.7)';
         ctx.beginPath(); ctx.arc(-6, -26.5, 1.5, 0, TAU); ctx.fill();
         ctx.beginPath(); ctx.arc(6, -26.5, 1.5, 0, TAU); ctx.fill();
-        ctx.beginPath(); ctx.arc(-3, -28, 1, 0, TAU); ctx.fill();
-        ctx.beginPath(); ctx.arc(3, -28, 1, 0, TAU); ctx.fill();
-        // Center knot
+
         ctx.fillStyle = '#ffffff';
         ctx.beginPath(); ctx.arc(0, -24.5, 2.8, 0, TAU); ctx.fill();
         ctx.strokeStyle = '#be123c'; ctx.lineWidth = 0.6; ctx.stroke();
 
-        // Eyelashes (3 per eye)
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1.4;
-        ctx.lineCap = 'round';
-        // Left eye lashes
+        // Eyelashes
+        ctx.strokeStyle = '#000000'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(-7.5, -12); ctx.quadraticCurveTo(-11, -14, -13, -10.5); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-7, -10.5); ctx.quadraticCurveTo(-10.5, -12, -12.5, -9); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-7.5, -9.5); ctx.quadraticCurveTo(-10, -10, -11.5, -7.5); ctx.stroke();
-        // Right eye lashes
         ctx.beginPath(); ctx.moveTo(7.5, -12); ctx.quadraticCurveTo(11, -14, 13, -10.5); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(7, -10.5); ctx.quadraticCurveTo(10.5, -12, 12.5, -9); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(7.5, -9.5); ctx.quadraticCurveTo(10, -10, 11.5, -7.5); ctx.stroke();
-
-        // Minnie's eyeliner (subtle)
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.ellipse(-4, -9, 3.8, 4.3, 0, 0, TAU); ctx.stroke();
-        ctx.beginPath(); ctx.ellipse(4, -9, 3.8, 4.3, 0, 0, TAU); ctx.stroke();
       }
-
-      // Moonlight rim on head & ears
-      ctx.strokeStyle = 'rgba(180,200,255,0.2)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(0, -8, 13.5, -2.3, -0.1); ctx.stroke();
-      ctx.beginPath(); ctx.arc(12, -20, 8, -1.5, 0.5); ctx.stroke();
-
-      // Ear inner highlight
-      ctx.fillStyle = 'rgba(180,190,220,0.08)';
-      ctx.beginPath(); ctx.arc(12.5, -20.5, 4, 0, TAU); ctx.fill();
 
       ctx.restore();
     }
@@ -495,7 +414,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         legL: -legL * legDecay, legR: -legR * legDecay, turn: -turnAmt,
       });
 
-      // ── 6. HAND HEART (FIXED: Richer, deeper glow) ──
+      // ── 6. HAND HEART ──
       const heartApp = eOC(cl((t - (TL.walkE - 0.3)) / 0.6, 0, 1));
       if (heartApp > 0.01 && t < TL.orbE) {
         const hX = cx;
@@ -505,7 +424,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         const hFade = t > TL.orbE - 0.5 ? 1 - eOC(cl((t - (TL.orbE - 0.5)) / 0.5, 0, 1)) : 1;
         const hAl = heartApp * hFade * fadeA;
 
-        // Multi-layer glow
         const hG1 = ctx.createRadialGradient(hX, hY, 0, hX, hY, hSz * 7);
         hG1.addColorStop(0, `rgba(239,68,68,${0.3 * hAl})`);
         hG1.addColorStop(0.3, `rgba(251,191,36,${0.12 * hAl})`);
@@ -514,13 +432,11 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.fillStyle = hG1;
         ctx.beginPath(); ctx.arc(hX, hY, hSz * 7, 0, TAU); ctx.fill();
 
-        // Heart shape
         ctx.save();
         ctx.translate(hX, hY);
         ctx.scale(hSz, hSz);
         drawHeartShape(1);
 
-        // Rich gradient
         const hGr = ctx.createLinearGradient(-16, -17, 16, 15);
         hGr.addColorStop(0, '#7f1d1d');
         hGr.addColorStop(0.15, '#dc2626');
@@ -537,7 +453,6 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         ctx.globalAlpha = hAl;
         ctx.fill();
 
-        // Inner bright glow
         ctx.globalCompositeOperation = 'source-atop';
         const iG = ctx.createRadialGradient(0, -4, 0, 0, -4, 10);
         iG.addColorStop(0, `rgba(255,255,255,${0.5 * hAl})`);
@@ -650,20 +565,23 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
         sp({ x: rn(0, w), y: rn(h * 0.1, h * 0.7), vx: rn(-0.03, 0.03), vy: rn(-0.04, 0.01), sz: rn(0.3, 0.8), a: rn(0.03, 0.1), ml: rn(200, 400), r: 160, g: 170, b: 220, tp: 'dust', rot: 0, rotSpd: 0, tmbSpd: 0, sx: 1 });
       }
 
-      // ── 10. HEART RAIN (No petals — all hearts!) ──
+      // ── 10. HEART RAIN (Optimized fall to reach the very bottom) ──
       const rainP = cl((t - TL.explE) / (TL.rainE - TL.explE), 0, 1);
       if (rainP > 0 && t < TL.end) {
-        const rate = rainP < 0.1 ? rainP / 0.1 * 5 : 5;
+        // Keeps spawning a beautiful continuous rain of hearts
+        const rate = rainP < 0.1 ? rainP / 0.1 * 5.5 : 5.5;
         for (let i = 0; i < rate; i++) {
           const hc = HEART_RAIN_COLS[Math.floor(Math.random() * HEART_RAIN_COLS.length)];
-          const hasGlow = Math.random() < 0.35;
-          const sz = rn(5, 14);
+          const sz = rn(6, 13);
           sp({
             x: rn(-30, w + 30), y: rn(-40, -5),
-            vx: rn(-0.3, 0.3), vy: rn(0.5, 1.3),
-            sz, a: rn(0.55, 0.9), ml: rn(200, 380),
+            vx: rn(-0.25, 0.25), 
+            vy: rn(1.6, 3.4), // ✅ Increased fall speed (was 0.5 to 1.3)
+            sz, 
+            a: rn(0.65, 0.95), 
+            ml: rn(380, 520), // ✅ Extended lifetime to guarantee reaching the bottom
             r: hc[0], g: hc[1], b: hc[2], tp: 'tinyH',
-            rot: rn(-0.3, 0.3), rotSpd: rn(-0.012, 0.012), tmbSpd: rn(0.015, 0.05), sx: 1,
+            rot: rn(-0.3, 0.3), rotSpd: rn(-0.015, 0.015), tmbSpd: rn(0.012, 0.035), sx: 1,
           });
         }
         if (Math.random() < 0.15) {
@@ -684,13 +602,20 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
           case 'dust': al *= (1 - lt); p.vx += rn(-0.002, 0.002); break;
           case 'sparkle': al *= (1 - lt * lt) * (0.4 + 0.6 * Math.sin(p.life * 0.15)); p.vy -= 0.002; break;
           case 'tinyH':
-            p.x += Math.sin(p.life * 0.018 + p.rot) * 0.4;
+            p.x += Math.sin(p.life * 0.018 + p.rot) * 0.35;
             p.rot += p.rotSpd;
-            // ✅ 3D tumble via scale oscillation
+            // 3D tumble scale oscillation
             const tmb = Math.abs(Math.cos(p.life * p.tmbSpd));
-            al *= Math.sin(lt * Math.PI) * 0.9 + 0.1;
-            p.sx = 0.6 + tmb * 0.4;
-            p.vy += 0.001;
+            
+            // ✅ Natural alpha decay (stays solid and fades out gently only at the end)
+            if (lt < 0.8) {
+              al = p.a;
+            } else {
+              al = p.a * ((1 - lt) / 0.2);
+            }
+
+            p.sx = 0.5 + tmb * 0.5;
+            p.vy += 0.003; // Gentle downward drag
             break;
           case 'orbG': case 'orbP': al *= (1 - lt * lt); p.vx *= 0.95; p.vy *= 0.95; break;
           case 'burst': al *= (1 - lt * lt); p.vx *= 0.97; p.vy *= 0.97; p.vy += 0.015; break;
@@ -717,8 +642,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
             break;
           }
           case 'tinyH':
-            // ✅ Draw pretty heart with optional glow
-            drawPrettyHeart(p.x, p.y, p.sz * p.sx, p.r, p.g, p.b, p.sz > 9);
+            drawPrettyHeart(p.x, p.y, p.sz * p.sx, p.r, p.g, p.b, p.sz > 8);
             break;
           case 'burst': {
             const bG = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz * 4);
@@ -737,7 +661,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
 
       ctx.restore(); // camera
 
-      // ── 12. TEXT ──
+      // ── 12. TEXT (Beautifully lingers on screen with falling hearts) ──
       const txtP = eOC(cl((t - TL.rainE) / (TL.txtE - TL.rainE), 0, 1));
       if (txtP > 0.01) {
         const tA = txtP * fadeA;
@@ -819,7 +743,7 @@ export default function ValentineCinematicIntro({ onComplete }: { onComplete: ()
       }
       ctx.restore();
 
-      // ── 15. FADE ──
+      // ── 15. FADE OUT (At the extended timing mark) ──
       if (t > TL.fadeS) {
         ctx.fillStyle = `rgba(2,4,12,${eOC(cl((t - TL.fadeS) / (TL.end - TL.fadeS), 0, 1))})`;
         ctx.fillRect(0, 0, w, h);
