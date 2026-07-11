@@ -7,12 +7,12 @@ import LightRevealIntro from '@/components/festival/intro/LightRevealIntro';
 import LohriCinematicIntro from '../engines/effects/lohri/LohriCinematicIntro';
 // 🚀 रक्षाबंधन का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया (Hyphenated path)
 import RakshaBandhanCinematicIntro from '../engines/effects/raksha-bandhan/RakshaBandhanCinematicIntro';
-
 // 🚀 मकर संक्रांति का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया (सटीक पाथ मैचिंग)
 import MakarSankrantiCinematicIntro from '../engines/effects/Makar-Sankranti /MakarSankrantiCinematicIntro';
 // 🚀 नए साल का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
 import NewYearCinematicIntro from '../engines/effects/new-year/NewYearCinematicIntro';
-
+// 🚀 वैलेंटाइन डे का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
+import ValentineCinematicIntro from '../engines/effects/valentines-day/ValentineCinematicIntro';
 
 export default function FestivalIntroController({
   isActive,
@@ -96,6 +96,14 @@ export default function FestivalIntroController({
       <NewYearCinematicIntro onComplete={onHandover} />
     );
   }
+
+  // 🚀 6. VALENTINES_DAY ACTIVATION: वैलेंटाइन डे का स्वतंत्र सिनेमाई इंजन यहाँ चलेगा
+  if (isActive && preset.toUpperCase() === 'VALENTINES_DAY') {
+    return (
+      <ValentineCinematicIntro onComplete={onHandover} />
+    );
+  }
+
 
   return (
     <>
