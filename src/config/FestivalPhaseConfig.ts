@@ -129,6 +129,16 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
+ // ━━━ GANESH_CHATURTHI (🚀 12.0s Luxurious Cinematic Timeline Sync) ━━━
+  GANESH_CHATURTHI: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 1500,     // 1.5s: आध्यात्मिक पृष्ठभूमि भोर का आना (0-1.5s)
+      SHOOTING: 9500,  // 9.5s: गेंदे के फूलों की सुंदर बारिश, मंत्र और मुख्य टेक्स्ट का प्रकटीकरण (1.5s - 11.0s)
+      HANDOVER: 1000   // 1.0s: कोमल सुनहरे रंग का रेडियल फ़ेड-आउट और ट्रांसफर (11.0s - 12.0s)
+    }
+  },
+
   // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
