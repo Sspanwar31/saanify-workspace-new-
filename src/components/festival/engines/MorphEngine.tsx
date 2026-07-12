@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-// पार्टिकल का इंटरफ़ेस (🚀 विस्तारित विविधता)
+// पार्टिकल का इंटरफ़ेस
 interface Particle {
   x: number;
   y: number;
@@ -28,11 +28,21 @@ const PRESET_COLORS: Record<string, string[]> = {
 export default function MorphEngine({
   preset,
   customColors,
-  customScale, // 🚀 डेटाबेस स्केल को रीड करने के लिए एक्टिव किया गया
+  customScale,     // 🚀 डेटाबेस 'scale' से जुड़ेगा (आकार नियंत्रक)
+  customGravity,   // 🚀 डेटाबेस 'customGravity' से जुड़ेगा (नीचे गिरने का खिंचाव)
+  customSpeed,     // 🚀 डेटाबेस 'customSpeed' से जुड़ेगा (गिरने की गति)
+  customMinSize,   // 🚀 डेटाबेस 'customMinSize' से जुड़ेगा (न्यूनतम आकार)
+  customMaxSize,   // 🚀 डेटाबेस 'customMaxSize' से जुड़ेगा (अधिकतम आकार)
+  customMaxCount,  // 🚀 डेटाबेस 'customMaxCount' से जुड़ेगा (स्क्रीन पर पार्टिकल्स की अधिकतम संख्या)
 }: {
   preset?: string;
   customColors?: string[];
   customScale?: number;
+  customGravity?: number | null;
+  customSpeed?: number | null;
+  customMinSize?: number | null;
+  customMaxSize?: number | null;
+  customMaxCount?: number | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafId = useRef<number>(0);
@@ -47,12 +57,16 @@ export default function MorphEngine({
     const normalizedPreset = (preset || '').toUpperCase().trim();
     const colors = customColors || PRESET_COLORS[normalizedPreset] || DEFAULT_COLORS;
     
-    // डेटाबेस से स्केल प्राप्त करना (डिफ़ॉल्ट 0.55 जो कि बहुत नाजुक और सुंदर है)
+    // ── 1. BACKEND OPTIONS MAPPING ──
     const scaleFactor = customScale ?? 0.55;
+    const speedFactor = customSpeed ?? 1.0;
+    const gravityFactor = customGravity ?? 0.003; // डिफ़ॉल्ट ग्रेविटी खिंचाव
+    const maxParticles = customMaxCount ?? 120;   // कुल संख्या
+
+    const minPartSize = customMinSize ?? 6;
+    const maxPartSize = customMaxSize ?? 13;
 
     const particles: Particle[] = [];
-    const maxParticles = 120; // सघन और कोमल बारिश के लिए संतुलन
-
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
     const setSize = () => {
@@ -68,7 +82,7 @@ export default function MorphEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
-    // 1. कोमल 3D आउटलाइन दिल ड्रॉ करने की विधि
+    // कोमल आउटलाइन दिल ड्रॉ करने की विधि
     const drawHeartParticle = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, spin: number, color: string) => {
       c.save();
       c.translate(x, y);
@@ -88,7 +102,7 @@ export default function MorphEngine({
       c.restore();
     };
 
-    // 2. नन्हा सॉलिड डार्क-रेड दिल ड्रॉ करने की विधि (Tiny Solid Heart)
+    // नन्हा सॉलिड दिल ड्रॉ करने की विधि
     const drawTinyHeartParticle = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, color: string) => {
       c.save();
       c.translate(x, y);
@@ -105,7 +119,7 @@ export default function MorphEngine({
       c.restore();
     };
 
-    // 3. गिरते हुए टिमटिमाते सितारे ड्रॉ करने की विधि (Sparkles)
+    // सितारे / स्पार्कल ड्रॉ करने की विधि
     const drawSparkleParticle = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, color: string) => {
       c.save();
       c.translate(x, y);
@@ -122,11 +136,11 @@ export default function MorphEngine({
       c.restore();
     };
 
-    // 4. पारदर्शी बोकेह सर्कल्स ड्रॉ करने की विधि (Bokeh Bubbles)
+    // पारदर्शी बोकेह सर्कल्स ड्रॉ करने की विधि
     const drawBubbleParticle = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, color: string) => {
       c.save();
       c.translate(x, y);
-      c.globalAlpha = alpha * 0.25; // बहुत ही पारदर्शी और सॉफ्ट
+      c.globalAlpha = alpha * 0.25;
       
       const grad = c.createRadialGradient(0, 0, 0, 0, 0, size);
       grad.addColorStop(0, '#ffffff');
@@ -153,28 +167,28 @@ export default function MorphEngine({
         if (normalizedPreset === 'VALENTINES_DAY' && Math.random() < 0.38) {
           const randType = Math.random();
           let tp: Particle['tp'] = 'heart';
-          let size = rn(7, 14) * scaleFactor;
+          let size = rn(minPartSize, maxPartSize) * scaleFactor;
           let color = colors[Math.floor(Math.random() * colors.length)];
 
           if (randType < 0.4) {
-            tp = 'heart'; // 40% Outline Glow Hearts
+            tp = 'heart';
           } else if (randType < 0.7) {
-            tp = 'tinyH';  // 30% Tiny Solid Red/Rose Hearts
-            size = rn(4, 8) * scaleFactor;
-            color = '#991b1b'; // गहरे लाल रंग का शेड
+            tp = 'tinyH';
+            size = rn(minPartSize * 0.6, maxPartSize * 0.6) * scaleFactor;
+            color = '#991b1b';
           } else if (randType < 0.85) {
-            tp = 'sparkle'; // 15% Soft Sparkles
-            size = rn(3, 7) * scaleFactor;
+            tp = 'sparkle';
+            size = rn(minPartSize * 0.5, maxPartSize * 0.5) * scaleFactor;
           } else {
-            tp = 'bubble';  // 15% Deep Bokeh Bubbles
-            size = rn(12, 22) * scaleFactor;
+            tp = 'bubble';
+            size = rn(minPartSize * 1.8, maxPartSize * 1.8) * scaleFactor;
           }
 
           particles.push({
             x: rn(-20, w + 20),
             y: rn(-40, -10),
             vx: rn(-0.4, 0.4),
-            vy: rn(0.8, 2.2), // कोमल गति
+            vy: rn(0.8, 2.2) * speedFactor, // 🚀 customSpeed से नियंत्रित
             size,
             alpha: 1,
             color,
@@ -189,8 +203,8 @@ export default function MorphEngine({
             x: rn(-20, w + 20),
             y: rn(-30, -10),
             vx: rn(-0.6, 0.6),
-            vy: rn(0.8, 2.2),
-            size: rn(4, 9) * scaleFactor,
+            vy: rn(0.8, 2.2) * speedFactor, // 🚀 customSpeed से नियंत्रित
+            size: rn(minPartSize, maxPartSize) * scaleFactor,
             alpha: 1,
             color: colors[Math.floor(Math.random() * colors.length)],
             life: 0,
@@ -209,6 +223,9 @@ export default function MorphEngine({
         p.x += p.vx;
         p.y += p.vy;
 
+        // 🚀 customGravity को अप्लाई करना (ग्रेविटी फ़ोर्स)
+        p.vy += gravityFactor; 
+
         // कोमल हवा का बहाव
         if (p.tp === 'heart' || p.tp === 'tinyH') {
           p.vx += Math.sin(timeRef.current + p.y * 0.01) * 0.018;
@@ -225,7 +242,6 @@ export default function MorphEngine({
           continue;
         }
 
-        // टाइप के आधार पर रेंडर करें
         if (p.tp === 'heart') {
           drawHeartParticle(ctx, p.x, p.y, p.size, p.alpha, p.spin, p.color);
         } else if (p.tp === 'tinyH') {
@@ -246,7 +262,16 @@ export default function MorphEngine({
       cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
     };
-  }, [preset, customColors, customScale]);
+  }, [
+    preset, 
+    customColors, 
+    customScale, 
+    customGravity, 
+    customSpeed, 
+    customMinSize, 
+    customMaxSize, 
+    customMaxCount
+  ]); // 🚀 इन सभी के बदलने पर हुक री-ट्रिगर होगा
 
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 4 }} />;
 }
