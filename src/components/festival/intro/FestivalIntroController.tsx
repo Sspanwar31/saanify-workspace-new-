@@ -13,6 +13,8 @@ import MakarSankrantiCinematicIntro from '../engines/effects/Makar-Sankranti /Ma
 import NewYearCinematicIntro from '../engines/effects/new-year/NewYearCinematicIntro';
 // 🚀 वैलेंटाइन डे का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
 import ValentineCinematicIntro from '../engines/effects/valentines-day/ValentineCinematicIntro';
+// 🚀 गणेश चतुर्थी का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
+import GaneshChaturthiCinematicIntro from '../engines/effects/Ganesh-Chaturthi/GaneshChaturthiCinematicIntro';
 
 export default function FestivalIntroController({
   isActive,
@@ -104,6 +106,13 @@ export default function FestivalIntroController({
     );
   }
 
+  // 🚀 7. GANESH_CHATURTHI ACTIVATION: गणेश चतुर्थी का स्वतंत्र सिनेमाई इंजन यहाँ चलेगा
+  if (isActive && preset.toUpperCase() === 'GANESH_CHATURTHI') {
+    return (
+      <GaneshChaturthiCinematicIntro onComplete={onHandover} />
+    );
+  }
+  
 
   return (
     <>
