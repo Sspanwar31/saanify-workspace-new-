@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-/* ═══════════════════════════════════════════════════════════════
-   TYPES
-   ═══════════════════════════════════════════════════════════════ */
 interface Particle {
   x: number; y: number;
   vx: number; vy: number;
@@ -13,668 +10,531 @@ interface Particle {
   alpha: number;
   rotation: number; rotSpeed: number;
   active: boolean;
-  type: number;
+  type: 'ambient' | 'petal' | 'spark';
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   CONSTANTS
-   ═══════════════════════════════════════════════════════════════ */
-const POOL = 2800;
-const DUR = 12;
-const E = 0.0001;
-
-/* ═══════════════════════════════════════════════════════════════
-   EASING
-   ═══════════════════════════════════════════════════════════════ */
-const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
-const eIOC = (t: number) => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
-const eOQ = (t: number) => 1 - Math.pow(1 - t, 4);
-const eIQ = (t: number) => t * t;
-
-/* ═══════════════════════════════════════════════════════════════
-   BEZIER HELPERS
-   ═══════════════════════════════════════════════════════════════ */
-function cb(t: number, a: number, b: number, c: number, d: number): number {
-  const m = 1 - t;
-  return m*m*m*a + 3*m*m*t*b + 3*m*t*t*c + t*t*t*d;
-}
-function sampleSeg(p0: number[], p1: number[], p2: number[], p3: number[], n: number): number[][] {
-  const pts: number[][] = [];
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    pts.push([cb(t,p0[0],p1[0],p2[0],p3[0]), cb(t,p0[1],p1[1],p2[1],p3[1])]);
-  }
-  return pts;
+interface Bell {
+  x: number;
+  length: number;
+  angle: number;
+  angleSpeed: number;
+  lastBellTime: number;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   GANESHA OUTLINE PATH  (400×400 reference space → normalised 0-1)
-   ═══════════════════════════════════════════════════════════════ */
-function buildGanesha(): number[][] {
-  const body: number[][][] = [
-    [[200,58],[158,38],[78,48],[58,105]],
-    [[58,105],[42,148],[68,178],[112,162]],
-    [[112,162],[128,154],[140,162],[144,182]],
-    [[144,182],[142,208],[126,226],[108,234]],
-    [[108,234],[96,242],[90,254],[100,258]],
-    [[100,258],[114,262],[124,250],[128,232]],
-    [[128,232],[124,264],[116,314],[124,350]],
-    [[124,350],[130,368],[158,386],[200,390]],
-    [[200,390],[242,386],[270,368],[276,350]],
-    [[276,350],[284,314],[276,264],[272,232]],
-    [[272,232],[276,250],[286,262],[300,258]],
-    [[300,258],[310,254],[304,242],[292,234]],
-    [[292,234],[274,226],[258,208],[256,182]],
-    [[256,182],[260,162],[272,154],[288,162]],
-    [[288,162],[332,178],[358,148],[342,105]],
-    [[342,105],[322,48],[242,38],[200,58]],
-  ];
-  const trunk: number[][][] = [
-    [[190,152],[176,190],[142,240],[118,274]],
-    [[118,274],[108,290],[94,294],[92,284]],
-    [[92,284],[90,274],[100,266],[114,272]],
-  ];
-  const crown: number[][][] = [
-    [[188,58],[192,32],[200,18],[208,32],[212,58]],
-  ];
-  const all: number[][] = [];
-  const sps = 14;
-  const addSegs = (segs: number[][][]) => {
-    for (const s of segs) {
-      const pts = sampleSeg(s[0],s[1],s[2],s[3],sps);
-      const start = all.length > 0 ? 1 : 0;
-      for (let i = start; i < pts.length; i++) all.push(pts[i]);
-    }
-  };
-  addSegs(body);
-  addSegs(trunk);
-  addSegs(crown);
-  return all.map(p => [p[0]/400, p[1]/400]);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   COMPONENT
-   ═══════════════════════════════════════════════════════════════ */
-interface Props { onComplete?: () => void }
-
-export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
+export default function GaneshChaturthiCinematicIntro({ onComplete }: { onComplete?: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef   = useRef(0);
-  const t0Ref    = useRef(0);
-  const doneRef  = useRef(false);
-  const cbRef    = useRef(onComplete);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [audioStarted, setAudioStarted] = useState(false);
+  
+  const rafRef = useRef<number>(0);
+  const t0Ref = useRef<number>(0);
+  const doneRef = useRef<boolean>(false);
+  const cbRef = useRef(onComplete);
   cbRef.current = onComplete;
 
-  /* stable helpers */
-  const initPool = useCallback(() => {
-    const a: Particle[] = [];
-    for (let i = 0; i < POOL; i++)
-      a.push({ x:0,y:0,vx:0,vy:0,size:0,life:0,maxLife:1,r:255,g:200,b:50,
-                alpha:0,rotation:0,rotSpeed:0,active:false,type:0 });
-    return a;
-  }, []);
-  const grab = useCallback((p: Particle[]) => {
-    for (let i = 0; i < p.length; i++) if (!p[i].active) return p[i];
-    return null;
-  }, []);
+  // घंटियों की आवाज़ सिंथेसाइज़ करने की विधि (Deep Temple Brass Bell Synthesizer)
+  const triggerBellSound = (frequency: number) => {
+    if (!audioCtxRef.current) return;
+    const ctx = audioCtxRef.current;
+    
+    // Resume context if suspended
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
 
-  /* ─── main effect ─── */
+    const duration = 4.5; // Long echoing resonance
+    const mainGain = ctx.createGain();
+    mainGain.connect(ctx.destination);
+    mainGain.gain.setValueAtTime(0, ctx.currentTime);
+    mainGain.gain.linearRampToValueAtTime(0.28, ctx.currentTime + 0.015);
+    mainGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+
+    // Auspicious temple bell harmonics
+    const overtones = [1.0, 1.5, 1.98, 2.56, 3.12, 4.05];
+    const volumes = [1.0, 0.55, 0.38, 0.22, 0.15, 0.08];
+
+    overtones.forEach((ratio, i) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.frequency.setValueAtTime(frequency * ratio, ctx.currentTime);
+      osc.type = i === 0 ? 'sine' : 'triangle';
+      
+      // Warm chorus detuning
+      osc.detune.setValueAtTime(ratio * 5 - 10, ctx.currentTime);
+
+      gainNode.gain.setValueAtTime(volumes[i], ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / (ratio * 0.85));
+
+      osc.connect(gainNode);
+      gainNode.connect(mainGain);
+      osc.start();
+      osc.stop(ctx.currentTime + duration + 0.2);
+    });
+  };
+
+  const handleStartInteraction = () => {
+    if (typeof window !== 'undefined') {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        audioCtxRef.current = ctx;
+        setAudioStarted(true);
+        // Play an initial deep welcoming bell
+        triggerBellSound(165); // Deep base bell (E3/F3 note)
+      }
+    }
+  };
+
   useEffect(() => {
+    if (!audioStarted) return; // Wait for user tap to start rendering beautifully
+
     const cvs = canvasRef.current;
     if (!cvs) return;
     const ctx = cvs.getContext('2d', { alpha: false });
     if (!ctx) return;
 
-    /* retina */
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
+
     const resize = () => {
       W = window.innerWidth; H = window.innerHeight;
       cvs.width = W * dpr; cvs.height = H * dpr;
       cvs.style.width = W + 'px'; cvs.style.height = H + 'px';
-      ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
 
-    /* init */
-    const pool = initPool();
-    const gp = buildGanesha();
-    const gn = gp.length;
+    // ── INITIALIZE PARTICLES ──
+    const particles: Particle[] = [];
+    const maxParticles = 350;
 
-    /* ambient dust (persistent) */
-    const dustIdx: number[] = [];
-    for (let i = 0; i < 70; i++) {
-      const p = pool[i]; p.active = true; p.type = 0;
-      p.x = Math.random()*W; p.y = Math.random()*H;
-      p.vx = (Math.random()-.5)*.25; p.vy = -Math.random()*.4-.08;
-      p.size = Math.random()*1.8+.4; p.maxLife = 999; p.life = 999;
-      p.r = 255; p.g = 190+Math.random()*60|0; p.b = 40+Math.random()*60|0;
-      p.alpha = Math.random()*.25+.08; p.rotation = 0; p.rotSpeed = 0;
-      dustIdx.push(i);
-    }
+    const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
-    /* ─────────────────────── DRAW HELPERS ─────────────────────── */
+    // ── INITIALIZE SWINGING BELLS (घंटियाँ) ──
+    const bells: Bell[] = [
+      { x: 0.22, length: 75, angle: 0.25, angleSpeed: 0, lastBellTime: 0 },
+      { x: 0.50, length: 105, angle: -0.15, angleSpeed: 0, lastBellTime: 0 },
+      { x: 0.78, length: 75, angle: 0.20, angleSpeed: 0, lastBellTime: 0 },
+    ];
 
-    function bg(t: number) {
-      ctx.fillStyle = '#08040a';
-      ctx.fillRect(0,0,W,H);
-      const aa = t < 3 ? eOC(Math.min(t/2.5,1))*.65 : .65;
-      /* saffron top */
-      let g = ctx.createRadialGradient(W*.5,H*.25,0,W*.5,H*.25,H*.85);
-      g.addColorStop(0,`rgba(190,90,15,${aa*.32})`);
-      g.addColorStop(.6,`rgba(110,25,25,${aa*.18})`);
-      g.addColorStop(1,'rgba(8,4,10,0)');
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-      /* maroon bottom */
-      g = ctx.createRadialGradient(W*.5,H*.85,0,W*.5,H*.85,H*.55);
-      g.addColorStop(0,`rgba(75,12,22,${aa*.45})`);
-      g.addColorStop(1,'rgba(8,4,10,0)');
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-      /* centre warmth */
-      let ca = 0;
-      if (t>2) ca = Math.min((t-2)/4,1)*.22;
-      if (t>6) ca = .22 + Math.min((t-6)/2,1)*.2;
-      if (t>9) ca = .42 + Math.min((t-9)/2,1)*.18;
-      g = ctx.createRadialGradient(W*.5,H*.44,0,W*.5,H*.44,H*.48);
-      g.addColorStop(0,`rgba(255,175,45,${ca})`);
-      g.addColorStop(.45,`rgba(195,70,25,${ca*.45})`);
-      g.addColorStop(1,'rgba(8,4,10,0)');
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-      /* vignette */
-      g = ctx.createRadialGradient(W*.5,H*.5,H*.28,W*.5,H*.5,H*.95);
-      g.addColorStop(0,'rgba(0,0,0,0)');
-      g.addColorStop(1,'rgba(0,0,0,.65)');
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-    }
+    // ── DRAWING DEITY SILHOUETTE (गणेश जी का भव्य रूप) ──
+    const drawGaneshaAura = (c: CanvasRenderingContext2D, cx: number, cy: number, scale: number, opacity: number) => {
+      c.save();
+      c.translate(cx, cy);
+      c.scale(scale, scale);
+      c.globalAlpha = opacity;
 
-    /* --- Phase 1 streams --- */
-    function spawnStream(t: number) {
-      const prog = Math.min(t/2.5,1);
-      for (let s = 0; s < 2; s++) {
-        const side = s===0?-1:1;
-        const sx = s===0?-30:W+30;
-        const ex = W*.5, ey = H*.44;
-        for (let i = 0; i < 4; i++) {
-          const p = grab(pool); if(!p) break;
-          const tt = Math.random()*prog;
-          const cpx = side===-1?W*.18:W*.82;
-          const cpy = H*.18+Math.sin(tt*Math.PI)*H*.14;
-          const m = 1-tt;
-          p.x = m*m*sx+2*m*tt*cpx+tt*tt*ex+(Math.random()-.5)*35;
-          p.y = m*m*(H*.52)+2*m*tt*cpy+tt*tt*ey+(Math.random()-.5)*35;
-          p.vx = side*(Math.random()*2.2+.8);
-          p.vy = (Math.random()-.5)*.6;
-          p.size = Math.random()*3.5+.8;
-          p.maxLife = 1.6+Math.random(); p.life = p.maxLife;
-          p.r = 255; p.g = 175+Math.random()*65|0; p.b = 25+Math.random()*45|0;
-          p.alpha = .55+Math.random()*.45;
-          p.rotation = 0; p.rotSpeed = 0;
-          p.active = true; p.type = 1;
+      // Deep glowing Saffron and Gold Background
+      const auraGlow = c.createRadialGradient(0, -10, 5, 0, -10, 85);
+      auraGlow.addColorStop(0, 'rgba(251,191,36,0.35)');
+      auraGlow.addColorStop(0.4, 'rgba(244,63,94,0.15)');
+      auraGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = auraGlow;
+      c.beginPath(); c.arc(0, -10, 85, 0, Math.PI * 2); c.fill();
+
+      // Seated Lotus Base (कमल का आसन)
+      const lotusGlow = c.createLinearGradient(-45, 55, 45, 55);
+      lotusGlow.addColorStop(0, 'rgba(220,38,38,0.85)');
+      lotusGlow.addColorStop(0.5, 'rgba(244,63,94,0.9)');
+      lotusGlow.addColorStop(1, 'rgba(220,38,38,0.85)');
+      c.fillStyle = lotusGlow;
+      c.shadowBlur = 15; c.shadowColor = '#f43f5e';
+      c.beginPath();
+      c.moveTo(-45, 55);
+      c.bezierCurveTo(-55, 40, -25, 35, -20, 50);
+      c.bezierCurveTo(-10, 35, 10, 35, 20, 50);
+      c.bezierCurveTo(25, 35, 55, 40, 45, 55);
+      c.closePath(); c.fill();
+
+      // Body Silhouette (गहरे सोने का रंग)
+      const bodyGlow = c.createLinearGradient(0, -50, 0, 50);
+      bodyGlow.addColorStop(0, '#fcb524');
+      bodyGlow.addColorStop(0.5, '#d97706');
+      bodyGlow.addColorStop(1, '#854d0e');
+      c.fillStyle = bodyGlow;
+      c.shadowBlur = 20; c.shadowColor = 'rgba(251,191,36,0.5)';
+
+      // 1. Ganesha Ears & Head
+      c.beginPath();
+      c.arc(0, -18, 20, 0, Math.PI * 2); // Head
+      c.ellipse(-23, -20, 15, 11, -0.2, 0, Math.PI * 2); // Left Ear
+      c.ellipse(23, -20, 15, 11, 0.2, 0, Math.PI * 2);  // Right Ear
+      c.fill();
+
+      // 2. Trunk & Belly (सूंड और पेट)
+      c.beginPath();
+      c.ellipse(0, 18, 26, 22, 0, 0, Math.PI * 2); // Huge Modak-loving Belly
+      c.fill();
+
+      // Trunk Path (सुंदर वक्र सूंड)
+      c.beginPath();
+      c.moveTo(-3, -15);
+      c.bezierCurveTo(-14, 0, -16, 25, -22, 28);
+      c.bezierCurveTo(-26, 30, -32, 22, -26, 16);
+      c.bezierCurveTo(-20, 14, -20, 5, -8, -15);
+      c.closePath(); c.fill();
+
+      // 3. Crown (भव्य मुकुट)
+      c.fillStyle = '#fef08a'; // Bright gold mukut
+      c.beginPath();
+      c.moveTo(-10, -35);
+      c.lineTo(0, -56);
+      c.lineTo(10, -35);
+      c.bezierCurveTo(6, -30, -6, -35, -10, -35);
+      c.fill();
+
+      // 4. Forehead Tilak (पवित्र लाल तिलक)
+      c.fillStyle = '#dc2626';
+      c.beginPath();
+      c.moveTo(-2, -28);
+      c.quadraticCurveTo(0, -36, 2, -28);
+      c.quadraticCurveTo(0, -22, -2, -28);
+      c.fill();
+      c.fillStyle = '#fbbf24';
+      c.fillRect(-4, -25, 8, 1.2);
+
+      c.restore();
+    };
+
+    // ── TEMPLE BELL RENDERING (गूँजती घंटियाँ) ──
+    const drawBells = (c: CanvasRenderingContext2D, t: number) => {
+      c.save();
+      c.strokeStyle = 'rgba(251,191,36,0.45)';
+      c.lineWidth = 1.2;
+
+      bells.forEach((bell, idx) => {
+        // Swing physics (sine oscillation)
+        const swingFreq = 1.8 + idx * 0.35;
+        bell.angle = Math.sin(t * swingFreq) * 0.18;
+
+        const bx = bell.x * W;
+        const by = 0;
+        const ex = bx + Math.sin(bell.angle) * bell.length;
+        const ey = by + Math.cos(bell.angle) * bell.length;
+
+        // Draw Chain
+        c.beginPath();
+        c.moveTo(bx, by);
+        c.lineTo(ex, ey);
+        c.stroke();
+
+        // Bell Body
+        c.save();
+        c.translate(ex, ey);
+        c.rotate(bell.angle);
+
+        // Clapper (घंटी का लोलक - जो अंदर बजता है)
+        c.fillStyle = '#d97706';
+        c.beginPath();
+        c.arc(0, 18, 3.5, 0, Math.PI * 2);
+        c.fill();
+
+        // Authentic brass gradient
+        const bGrad = c.createLinearGradient(-15, 0, 15, 15);
+        bGrad.addColorStop(0, '#fef08a');
+        bGrad.addColorStop(0.5, '#ca8a04');
+        bGrad.addColorStop(1, '#854d0e');
+        c.fillStyle = bGrad;
+        c.strokeStyle = '#000000';
+        c.lineWidth = 0.8;
+
+        c.beginPath();
+        c.moveTo(-5, 0);
+        c.lineTo(-12, 14);
+        c.quadraticCurveTo(-15, 17, -8, 17);
+        c.lineTo(8, 17);
+        c.quadraticCurveTo(15, 17, 12, 14);
+        c.lineTo(5, 0);
+        c.closePath();
+        c.fill(); c.stroke();
+
+        // Bell Dome Top
+        c.beginPath();
+        c.arc(0, 0, 5, 0, Math.PI * 2);
+        c.fill(); c.stroke();
+
+        c.restore();
+
+        // ── SOUND SYNCHRONIZATION ──
+        // Trigger a deep bell chime when the bell swings through the center point
+        if (Math.abs(bell.angle) < 0.02 && t - bell.lastBellTime > 0.85) {
+          bell.lastBellTime = t;
+          const frequencies = [220, 165, 294]; // Deep A3, E3, D4 auspicious notes
+          triggerBellSound(frequencies[idx]);
         }
-      }
-    }
+      });
 
-    function drawStreams() {
-      for (const p of pool) {
-        if (!p.active||p.type!==1) continue;
-        const lr = p.life/p.maxLife;
-        const a = p.alpha*Math.min(lr*3,1)*Math.min((1-lr)*3,1);
+      c.restore();
+    };
+
+    // ── BACKGROUND GRADIENT (धूप और छांव) ──
+    const drawBackground = (t: number) => {
+      ctx.fillStyle = '#060309';
+      ctx.fillRect(0, 0, W, H);
+
+      const glowVal = eOC(Math.min(t / 2.5, 1)) * 0.7;
+
+      // Divine Marigold Aura
+      let g = ctx.createRadialGradient(W * 0.5, H * 0.44, 0, W * 0.5, H * 0.44, H * 0.8);
+      g.addColorStop(0, `rgba(234,88,12,${glowVal * 0.28})`); // Saffron
+      g.addColorStop(0.5, `rgba(146,14,35,${glowVal * 0.16})`); // Vermilion
+      g.addColorStop(1, 'rgba(6,3,9,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    };
+
+    /* ── ANIMATE FUNCTION ── */
+    const animate = (ts: number) => {
+      if (doneRef.current || !run) return;
+      if (!t0Ref.current) t0Ref.current = ts;
+      const t = (ts - t0Ref.current) / 1000;
+
+      drawBackground(t);
+
+      const cx = W / 2;
+      const cy = H / 2 - H * 0.02;
+      const scale = Math.min(W, H) * 0.0035;
+
+      // ── RENDER LORD GANESHA (धड़कता हुआ दिव्य रूप) ──
+      const fadeVal = Math.min(t / 2.0, 1.0);
+      drawGaneshaAura(ctx, cx, cy, scale * (1 + Math.sin(t * 1.5) * 0.015), fadeVal);
+
+      // ── THE MOVING AARTI PLATE (घूमती हुई आरती थाली) ──
+      if (t > 1.0) {
+        // Aarti dynamic orbit (perfect hand rotation motion)
+        const aX = cx + Math.cos(t * 1.8) * 65;
+        const aY = cy + 125 + Math.sin(t * 3.6) * 16;
+        
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        
+        // Aarti Warm Radial Lighting Ray beams
+        const rayGrad = ctx.createRadialGradient(aX, aY, 2, cx, cy, Math.max(W, H) * 0.7);
+        rayGrad.addColorStop(0, 'rgba(251,191,36,0.22)');
+        rayGrad.addColorStop(0.3, 'rgba(234,88,12,0.06)');
+        rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = rayGrad;
+        
+        // Draw Light rays sweeping across Ganesha
         ctx.beginPath();
-        ctx.arc(p.x,p.y,Math.max(E,p.size),0,Math.PI*2);
-        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+        ctx.moveTo(aX, aY);
+        ctx.lineTo(cx - 200, cy - 200);
+        ctx.lineTo(cx + 200, cy - 200);
+        ctx.closePath(); ctx.fill();
+
+        // Physical Golden Diya on plate
+        const dGlow = ctx.createRadialGradient(aX, aY, 0, aX, aY, 28);
+        dGlow.addColorStop(0, '#ffffff');
+        dGlow.addColorStop(0.2, '#facc15');
+        dGlow.addColorStop(0.5, '#ea580c');
+        dGlow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = dGlow;
+        ctx.beginPath(); ctx.arc(aX, aY, 28, 0, Math.PI * 2); ctx.fill();
+
+        // Flame inner core
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(aX, aY - 4, 3, 7 + Math.random() * 3, 0, 0, Math.PI * 2);
         ctx.fill();
-        if (p.size>1.8) {
-          const gl = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,Math.max(E,p.size*3.5));
-          gl.addColorStop(0,`rgba(${p.r},${p.g},${p.b},${a*.25})`);
-          gl.addColorStop(1,`rgba(${p.r},${p.g},${p.b},0)`);
-          ctx.fillStyle = gl;
-          ctx.fillRect(p.x-p.size*3.5,p.y-p.size*3.5,p.size*7,p.size*7);
+
+        ctx.restore();
+      }
+
+      // ── SPAWN DIVINE FLOWERS & SPARKLES (फूलों की दिव्य वर्षा) ──
+      if (t > 0.5 && particles.length < maxParticles) {
+        const rate = t < 2.0 ? 1 : 2;
+        for (let i = 0; i < rate; i++) {
+          const typeRand = Math.random();
+          let tp: Particle['type'] = 'ambient';
+          let r = 255, g = 200, b = 50;
+          let size = rn(0.8, 2.2);
+
+          if (typeRand < 0.6) {
+            tp = 'petal';
+            // Colorful marigold and red hibiscus flower petals
+            const pColor = Math.random();
+            if (pColor < 0.45) {
+              r = 245; g = 158; b = 11; // Orange Marigold
+            } else if (pColor < 0.8) {
+              r = 234; g = 88; b = 12; // Saffron Yellow
+            } else {
+              r = 220; g = 38; b = 38; // Red Hibiscus/Rose
+            }
+            size = rn(6, 12);
+          } else if (typeRand < 0.85) {
+            tp = 'spark'; // Golden sparkles
+            r = 254; g = 240; b = 138;
+            size = rn(2, 5);
+          }
+
+          particles.push({
+            x: rn(-20, W + 20),
+            y: rn(-30, -5),
+            vx: rn(-0.6, 0.6),
+            vy: rn(1.1, 2.4),
+            size,
+            life: 0,
+            maxLife: rn(250, 450),
+            r, g, b,
+            alpha: rn(0.65, 0.95),
+            rotation: rn(0, Math.PI * 2),
+            rotSpeed: rn(-0.02, 0.02),
+            active: true,
+            type: tp,
+          });
         }
       }
-    }
 
-    /* --- Smoke --- */
-    function spawnSmoke() {
-      if (Math.random()>.18) return;
-      const p = grab(pool); if(!p) return;
-      p.x = W*.25+Math.random()*W*.5;
-      p.y = H*.55+Math.random()*H*.25;
-      p.vx = (Math.random()-.5)*.45; p.vy = -Math.random()*.7-.25;
-      p.size = Math.random()*45+18;
-      p.maxLife = 4.5+Math.random()*3; p.life = p.maxLife;
-      p.r = 160; p.g = 105; p.b = 70;
-      p.alpha = .035+Math.random()*.025;
-      p.rotation = 0; p.rotSpeed = 0;
-      p.active = true; p.type = 6;
-    }
-    function drawSmoke() {
-      for (const p of pool) {
-        if (!p.active||p.type!==6) continue;
-        const lr = p.life/p.maxLife;
-        const a = p.alpha*(lr<.3?lr/.3:lr>.7?(1-lr)/.3:1);
-        const gl = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,Math.max(E,p.size));
-        gl.addColorStop(0,`rgba(${p.r},${p.g},${p.b},${a})`);
-        gl.addColorStop(1,`rgba(${p.r},${p.g},${p.b},0)`);
-        ctx.fillStyle = gl;
-        ctx.fillRect(p.x-p.size,p.y-p.size,p.size*2,p.size*2);
-      }
-    }
-
-    /* --- Ambient dust --- */
-    function drawDust(t: number) {
-      for (let i = 0; i < dustIdx.length; i++) {
-        const p = pool[dustIdx[i]];
-        p.x += p.vx + Math.sin(t*.4+i)*.08;
+      // ── UPDATE & DRAW FLOWERS ──
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life++;
+        p.x += p.vx;
         p.y += p.vy;
-        if (p.y<-12){p.y=H+12;p.x=Math.random()*W;}
-        if(p.x<-12)p.x=W+12; if(p.x>W+12)p.x=-12;
-        const fl = .65+Math.sin(t*1.8+i*.6)*.35;
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,Math.max(E,p.size),0,Math.PI*2);
-        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.alpha*fl})`;
-        ctx.fill();
-      }
-    }
 
-    /* --- Ganesha outline --- */
-    function drawOutline(t: number) {
-      const ps = 3, dur = 3;
-      const prog = eIOC(Math.min((t-ps)/dur,1));
-      const show = Math.floor(prog*gn);
-      if (show<2) return;
-      const sc = Math.min(W,H)*.58;
-      const ox = (W-sc)/2, oy = (H-sc)/2-H*.018;
-      ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
-      /* glow pass */
-      ctx.shadowColor='rgba(255,175,45,.55)'; ctx.shadowBlur=16;
-      ctx.strokeStyle='rgba(255,195,70,.35)'; ctx.lineWidth=3.5;
-      ctx.beginPath();
-      ctx.moveTo(gp[0][0]*sc+ox, gp[0][1]*sc+oy);
-      for (let i=1;i<show;i++) ctx.lineTo(gp[i][0]*sc+ox, gp[i][1]*sc+oy);
-      ctx.stroke();
-      /* bright pass */
-      ctx.shadowColor='rgba(255,215,90,.7)'; ctx.shadowBlur=6;
-      ctx.strokeStyle='rgba(255,225,130,.88)'; ctx.lineWidth=1.6;
-      ctx.beginPath();
-      ctx.moveTo(gp[0][0]*sc+ox, gp[0][1]*sc+oy);
-      for (let i=1;i<show;i++) ctx.lineTo(gp[i][0]*sc+ox, gp[i][1]*sc+oy);
-      ctx.stroke();
-      /* leading edge */
-      if (t-ps<dur && show>0) {
-        const lp = gp[show-1];
-        const lx=lp[0]*sc+ox, ly=lp[1]*sc+oy;
-        const eg = ctx.createRadialGradient(lx,ly,0,lx,ly,Math.max(E,18));
-        eg.addColorStop(0,'rgba(255,255,195,.92)');
-        eg.addColorStop(.35,'rgba(255,195,70,.45)');
-        eg.addColorStop(1,'rgba(255,170,40,0)');
-        ctx.fillStyle = eg;
-        ctx.fillRect(lx-18,ly-18,36,36);
-      }
-      /* sparkle along drawn line */
-      ctx.shadowBlur = 0;
-      for (let i=0;i<show;i+=4) {
-        const pt = gp[i];
-        const sp = .25+Math.sin(t*3.5+i*.45)*.25;
-        ctx.beginPath();
-        ctx.arc(pt[0]*sc+ox, pt[1]*sc+oy, Math.max(E,1.1), 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255,235,170,${sp})`;
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    /* --- Orbit particles --- */
-    function spawnOrbit(t: number) {
-      if (t<3.5||t>11.5||Math.random()>.22) return;
-      const p = grab(pool); if(!p) return;
-      const sc = Math.min(W,H)*.58;
-      const cx=W/2, cy=H/2-H*.018;
-      const ang = Math.random()*Math.PI*2;
-      const rad = sc*.36+Math.random()*sc*.08;
-      p.x = cx+Math.cos(ang)*rad;
-      p.y = cy+Math.sin(ang)*rad;
-      p.vx = Math.cos(ang+Math.PI/2)*.7;
-      p.vy = Math.sin(ang+Math.PI/2)*.7;
-      p.size = Math.random()*1.8+.4;
-      p.maxLife = 2.2+Math.random()*2; p.life = p.maxLife;
-      p.r = 255; p.g = 205+Math.random()*50|0; p.b = 70+Math.random()*60|0;
-      p.alpha = .45+Math.random()*.35;
-      p.rotation = 0; p.rotSpeed = 0;
-      p.active = true; p.type = 5;
-    }
-    function drawOrbit() {
-      for (const p of pool) {
-        if (!p.active||p.type!==5) continue;
-        const lr = p.life/p.maxLife;
-        const a = p.alpha*Math.min(lr*2,1)*Math.min((1-lr)*2,1);
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,Math.max(E,p.size),0,Math.PI*2);
-        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
-        ctx.fill();
-      }
-    }
-
-    /* --- Bloom --- */
-    function drawBloom(t: number) {
-      const bs = 6;
-      const bt = Math.min((t-bs)/1.5,1);
-      if (bt<=0) return;
-      const sc = Math.min(W,H)*.58;
-      const cx=W/2, cy=H/2-H*.018;
-      const maxR = sc*.85;
-      const r = maxR*eOQ(bt);
-      /* ring */
-      ctx.save();
-      const ra = (1-bt)*.45;
-      ctx.beginPath();
-      ctx.arc(cx,cy,Math.max(E,r),0,Math.PI*2);
-      ctx.strokeStyle = `rgba(255,195,70,${ra})`;
-      ctx.lineWidth = 3.5*(1-bt);
-      ctx.shadowColor = `rgba(255,175,45,${ra})`; ctx.shadowBlur = 28;
-      ctx.stroke();
-      ctx.restore();
-      /* glow */
-      const ba = (1-bt*.7)*.18;
-      const bg = ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(E,r));
-      bg.addColorStop(0,`rgba(255,195,70,${ba})`);
-      bg.addColorStop(.5,`rgba(255,145,45,${ba*.45})`);
-      bg.addColorStop(1,'rgba(255,95,25,0)');
-      ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
-      /* bloom particles */
-      if (bt<.45&&Math.random()<.55) {
-        const p = grab(pool); if(p) {
-          const ang = Math.random()*Math.PI*2;
-          const spd = 2.5+Math.random()*4.5;
-          p.x=cx; p.y=cy;
-          p.vx=Math.cos(ang)*spd; p.vy=Math.sin(ang)*spd;
-          p.size=Math.random()*3.2+.8;
-          p.maxLife=1.4+Math.random(); p.life=p.maxLife;
-          p.r=255; p.g=185+Math.random()*55|0; p.b=45+Math.random()*55|0;
-          p.alpha=.65; p.rotation=0; p.rotSpeed=0;
-          p.active=true; p.type=3;
+        // Sway flow
+        if (p.type === 'petal') {
+          p.vx += Math.sin(t * 1.5 + p.y * 0.01) * 0.025;
+          p.rotation += p.rotSpeed;
         }
-      }
-    }
-    function drawBloomParts() {
-      for (const p of pool) {
-        if (!p.active||p.type!==3) continue;
-        const lr = p.life/p.maxLife;
-        const a = p.alpha*lr;
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,Math.max(E,p.size*(1+(1-lr)*.5)),0,Math.PI*2);
-        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
-        ctx.fill();
-      }
-    }
 
-    /* --- Petals --- */
-    function spawnPetals(t: number) {
-      if (t<6.3||Math.random()>.28) return;
-      const p = grab(pool); if(!p) return;
-      p.x = Math.random()*W; p.y = -22-Math.random()*55;
-      p.vx = (Math.random()-.5)*1.6; p.vy = 1.6+Math.random()*2.2;
-      p.size = 4.5+Math.random()*6.5;
-      p.maxLife = 6.5+Math.random()*3; p.life = p.maxLife;
-      const ct = Math.random();
-      if (ct<.38){p.r=255;p.g=132;p.b=0;}
-      else if(ct<.68){p.r=255;p.g=185;p.b=25;}
-      else{p.r=255;p.g=218;p.b=45;}
-      p.alpha = .55+Math.random()*.3;
-      p.rotation = Math.random()*Math.PI*2;
-      p.rotSpeed = (Math.random()-.5)*.045;
-      p.active = true; p.type = 4;
-    }
-    function drawPetals() {
-      for (const p of pool) {
-        if (!p.active||p.type!==4) continue;
-        const lr = p.life/p.maxLife;
-        const a = p.alpha*Math.min(lr*2,1)*(lr>.82?(1-lr)/.18:1);
+        const lt = p.life / p.maxLife;
+        p.alpha = lt < 0.85 ? 1 : (1 - lt) / 0.15;
+
+        if (p.life >= p.maxLife || p.y > H + 20) {
+          particles.splice(i, 1);
+          continue;
+        }
+
         ctx.save();
-        ctx.translate(p.x,p.y);
-        ctx.rotate(p.rotation);
-        ctx.beginPath();
-        ctx.ellipse(0,0,Math.max(E,p.size*.38),Math.max(E,p.size),0,0,Math.PI*2);
-        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(-p.size*.08,-p.size*.22,Math.max(E,p.size*.12),Math.max(E,p.size*.35),0,0,Math.PI*2);
-        ctx.fillStyle = `rgba(255,255,215,${a*.28})`;
-        ctx.fill();
+        ctx.globalAlpha = p.alpha * fadeVal;
+
+        if (p.type === 'petal') {
+          // Draw detailed vector flower petals
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotation);
+          
+          const petalGrad = ctx.createLinearGradient(0, -p.size, 0, p.size);
+          petalGrad.addColorStop(0, `rgb(${p.r},${p.g},${p.b})`);
+          petalGrad.addColorStop(1, `rgb(${Math.max(0, p.r - 40)},${Math.max(0, p.g - 35)},${Math.max(0, p.b - 20)})`);
+          ctx.fillStyle = petalGrad;
+
+          ctx.beginPath();
+          ctx.ellipse(0, 0, p.size * 0.45, p.size, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Petal texture center line
+          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.beginPath();
+          ctx.ellipse(-p.size * 0.05, -p.size * 0.2, p.size * 0.1, p.size * 0.35, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Twinkling stars / sparkles
+          ctx.translate(p.x, p.y);
+          ctx.rotate(t * 1.5);
+          ctx.strokeStyle = `rgb(${p.r},${p.g},${p.b})`;
+          ctx.lineWidth = 1.2;
+          ctx.shadowBlur = p.size * 2;
+          ctx.shadowColor = `rgb(${p.r},${p.g},${p.b})`;
+          ctx.beginPath();
+          ctx.moveTo(-p.size, 0); ctx.lineTo(p.size, 0);
+          ctx.moveTo(0, -p.size); ctx.lineTo(0, p.size);
+          ctx.stroke();
+        }
         ctx.restore();
       }
-    }
 
-    /* --- Kumkum / Akshat --- */
-    function spawnKumkum(t: number) {
-      if (t<6.6||Math.random()>.32) return;
-      const p = grab(pool); if(!p) return;
-      p.x = Math.random()*W; p.y = -12-Math.random()*35;
-      p.vx = (Math.random()-.5)*.7; p.vy = .5+Math.random()*1.4;
-      p.size = .8+Math.random()*2;
-      p.maxLife = 5.5+Math.random()*3; p.life = p.maxLife;
-      if (Math.random()<.48){p.r=195+Math.random()*60|0;p.g=18+Math.random()*28|0;p.b=18+Math.random()*28|0;}
-      else{p.r=255;p.g=225+Math.random()*30|0;p.b=145+Math.random()*55|0;}
-      p.alpha = .45+Math.random()*.4;
-      p.rotation = Math.random()*Math.PI*2;
-      p.rotSpeed = (Math.random()-.5)*.07;
-      p.active = true; p.type = 8;
-    }
-    function drawKumkum() {
-      for (const p of pool) {
-        if (!p.active||p.type!==8) continue;
-        const lr = p.life/p.maxLife;
-        const a = p.alpha*Math.min(lr*2,1)*(lr>.84?(1-lr)/.16:1);
+      // ── DRAW SWINGING BELLS (गूँजती घंटियाँ) ──
+      drawBells(ctx, t);
+
+      // ── DRAW TEXT AND MANTRAS (Phase 3) ──
+      if (t > 4.5) {
+        const textFade = Math.min((t - 4.5) / 1.5, 1.0);
         ctx.save();
-        ctx.translate(p.x,p.y);
-        ctx.rotate(p.rotation);
-        ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
-        ctx.fillRect(-p.size*.5,-p.size*.22,p.size,p.size*.44);
+        ctx.globalAlpha = textFade;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const ty = H * 0.33;
+        const ts = Math.min(W * 0.065, 52);
+        
+        ctx.font = `800 ${ts}px "Georgia", serif`;
+        ctx.letterSpacing = `${ts * 0.015}px`;
+
+        // Golden metallic text gradient
+        const tG = ctx.createLinearGradient(W/2 - 250, ty - ts/2, W/2 + 250, ty + ts/2);
+        tG.addColorStop(0, '#8b6914');
+        tG.addColorStop(0.2, '#ca8a04');
+        tG.addColorStop(0.5, '#fef08a');
+        tG.addColorStop(0.8, '#daa520');
+        tG.addColorStop(1, '#8b6914');
+
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = tG;
+        ctx.fillText("Happy Ganesh Chaturthi", W/2, ty);
+
+        // Sanskrit Shlokas
+        const ss = Math.min(W * 0.024, 18);
+        ctx.font = `300 ${ss}px "Inter", system-ui, sans-serif`;
+        ctx.letterSpacing = `${ss * 0.22}px`;
+        ctx.fillStyle = 'rgba(254,240,138,0.7)'; // Warm pastel gold
+        ctx.shadowBlur = 8; ctx.shadowColor = 'rgba(251,191,36,0.3)';
+
+        ctx.fillText("वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।", W/2, ty + ts * 1.15);
+        ctx.fillText("निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥", W/2, ty + ts * 1.15 + ss * 2);
+
         ctx.restore();
       }
-    }
 
-    /* --- Light rays --- */
-    function drawRays(t: number) {
-      if (t<6.5) return;
-      const rt = Math.min((t-6.5)/2,1);
-      const alpha = eOC(rt)*.1;
-      const cx=W/2, cy=H/2-H*.018;
-      const rl = Math.max(W,H)*.82;
-      ctx.save(); ctx.globalAlpha = alpha;
-      const nr = 14;
-      for (let i=0;i<nr;i++) {
-        const ang = (i/nr)*Math.PI*2+t*.04;
-        const hw = (Math.PI/nr)*.38;
-        ctx.beginPath(); ctx.moveTo(cx,cy);
-        ctx.lineTo(cx+Math.cos(ang-hw)*rl, cy+Math.sin(ang-hw)*rl);
-        ctx.lineTo(cx+Math.cos(ang+hw)*rl, cy+Math.sin(ang+hw)*rl);
-        ctx.closePath();
-        const rg = ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(E,rl));
-        rg.addColorStop(0,'rgba(255,195,70,.75)');
-        rg.addColorStop(.5,'rgba(255,155,45,.25)');
-        rg.addColorStop(1,'rgba(255,115,25,0)');
-        ctx.fillStyle = rg; ctx.fill();
+      // ── FADE OUT TRANSITION ──
+      if (t > 11.0) {
+        const outP = Math.min((t - 11.0) / 1.0, 1.0);
+        ctx.fillStyle = `rgba(8, 4, 10, ${outP})`;
+        ctx.fillRect(0, 0, W, H);
       }
-      ctx.restore();
-    }
 
-    /* --- Ganesha dissolve (Phase 4) --- */
-    function drawDissolve(t: number) {
-      const ps = 9;
-      const dt = Math.min((t-ps)/2,1);
-      if (dt<=0) return;
-      const sc = Math.min(W,H)*.58;
-      const ox = (W-sc)/2, oy = (H-sc)/2-H*.018;
-      const oa = Math.max(0, 1-dt*1.6);
-      if (oa>0) {
-        ctx.save(); ctx.globalAlpha = oa;
-        ctx.shadowColor = `rgba(255,195,70,${oa*.55})`; ctx.shadowBlur = 22;
-        ctx.strokeStyle = `rgba(255,218,110,${oa*.75})`; ctx.lineWidth = 2;
-        ctx.lineCap='round'; ctx.lineJoin='round';
-        ctx.beginPath();
-        ctx.moveTo(gp[0][0]*sc+ox, gp[0][1]*sc+oy);
-        for (let i=1;i<gn;i++) ctx.lineTo(gp[i][0]*sc+ox, gp[i][1]*sc+oy);
-        ctx.stroke(); ctx.restore();
-      }
-      const la = eOC(dt)*.14;
-      const lg = ctx.createRadialGradient(W/2,H/2-H*.018,0,W/2,H/2-H*.018,Math.max(E,sc*.32));
-      lg.addColorStop(0,`rgba(255,225,140,${la})`);
-      lg.addColorStop(.5,`rgba(255,175,45,${la*.45})`);
-      lg.addColorStop(1,'rgba(255,145,25,0)');
-      ctx.fillStyle = lg; ctx.fillRect(0,0,W,H);
-    }
-
-    /* --- Blessing text (Phase 4) --- */
-    function drawText(t: number) {
-      const ps = 9;
-      const ft = Math.min((t-ps)/1.5,1);
-      if (ft<=0) return;
-      const fi = eOC(ft);
-      const ty = H*.36;
-      ctx.save(); ctx.globalAlpha = fi;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-
-      /* Title */
-      const ts = Math.min(W*.062, H*.068, 54);
-      ctx.font = `700 ${ts}px 'Georgia','Times New Roman',serif`;
-      const tw = ctx.measureText('Happy Ganesh Chaturthi').width;
-
-      /* dark outline */
-      ctx.strokeStyle = 'rgba(65,38,8,.4)';
-      ctx.lineWidth = 3.5;
-      ctx.shadowColor = 'rgba(255,195,45,.5)'; ctx.shadowBlur = 22;
-      ctx.strokeText('Happy Ganesh Chaturthi', W/2, ty);
-
-      /* metallic gradient */
-      const mg = ctx.createLinearGradient(W/2-tw/2,0,W/2+tw/2,0);
-      mg.addColorStop(0,'#6B4F10'); mg.addColorStop(.15,'#B8860B');
-      mg.addColorStop(.32,'#DAA520'); mg.addColorStop(.48,'#FFD700');
-      mg.addColorStop(.52,'#FFFACD'); mg.addColorStop(.68,'#FFD700');
-      mg.addColorStop(.84,'#DAA520'); mg.addColorStop(1,'#6B4F10');
-      ctx.fillStyle = mg;
-      ctx.shadowBlur = 18;
-      ctx.fillText('Happy Ganesh Chaturthi', W/2, ty);
-
-      /* shimmer overlay */
-      const sp = (Math.sin(t*2)+1)/2;
-      const sg = ctx.createLinearGradient(W/2-tw*.6,0,W/2+tw*.6,0);
-      const s0 = Math.max(0,sp-.12), s1 = Math.max(0,sp-.04);
-      const s2 = Math.min(1,sp+.04), s3 = Math.min(1,sp+.12);
-      sg.addColorStop(s0,'rgba(255,255,235,0)');
-      sg.addColorStop(s1,'rgba(255,255,235,.1)');
-      sg.addColorStop(sp,'rgba(255,255,235,.18)');
-      sg.addColorStop(s2,'rgba(255,255,235,.1)');
-      sg.addColorStop(s3,'rgba(255,255,235,0)');
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = sg;
-      ctx.fillText('Happy Ganesh Chaturthi', W/2, ty);
-
-      /* Shlok */
-      const ss = Math.min(W*.026, H*.03, 20);
-      ctx.font = `400 ${ss}px 'Nirmala UI','Devanagari Sangam MN','Segoe UI',sans-serif`;
-      ctx.shadowColor = 'rgba(255,175,45,.25)'; ctx.shadowBlur = 10;
-      const shg = ctx.createLinearGradient(W/2-ss*10,0,W/2+ss*10,0);
-      shg.addColorStop(0,'#8B6914'); shg.addColorStop(.25,'#DAA520');
-      shg.addColorStop(.5,'#FFD700'); shg.addColorStop(.75,'#DAA520');
-      shg.addColorStop(1,'#8B6914');
-      ctx.fillStyle = shg;
-      const l1y = ty + ts*1.25;
-      const l2y = l1y + ss*2;
-      ctx.fillText('वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।', W/2, l1y);
-      ctx.fillText('निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥', W/2, l2y);
-
-      /* shimmer on shlok */
-      ctx.fillStyle = sg;
-      ctx.shadowBlur = 0;
-      ctx.fillText('वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।', W/2, l1y);
-      ctx.fillText('निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥', W/2, l2y);
-
-      ctx.restore();
-    }
-
-    /* --- Final fade --- */
-    function drawFade(t: number) {
-      const fs = 11.5;
-      const ft = Math.min((t-fs)/.5,1);
-      const fa = eIQ(ft);
-      ctx.fillStyle = `rgba(18,10,4,${fa})`;
-      ctx.fillRect(0,0,W,H);
-      if (ft<.72) {
-        const ga = (1-ft/.72)*.28;
-        const gg = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(E,H*.42));
-        gg.addColorStop(0,`rgba(255,195,70,${ga})`);
-        gg.addColorStop(1,'rgba(255,145,25,0)');
-        ctx.fillStyle = gg; ctx.fillRect(0,0,W,H);
-      }
-    }
-
-    /* ─────────────────────── UPDATE ─────────────────────── */
-    function update(dt: number) {
-      for (const p of pool) {
-        if (!p.active||p.type===0) continue;
-        p.x += p.vx; p.y += p.vy;
-        p.life -= dt; p.rotation += p.rotSpeed;
-        switch(p.type) {
-          case 1: p.vx*=.99; p.vy*=.99; break;
-          case 3: p.vx*=.97; p.vy*=.97; break;
-          case 4: p.vx+=Math.sin(p.y*.018+p.rotation)*.018; p.vy*=.999; break;
-          case 5: p.vx*=.98; p.vy*=.98; break;
-          case 6: p.vx*=.995; p.vy*=.998; p.size+=.28; break;
-          case 8: p.vx+=(Math.random()-.5)*.018; break;
-        }
-        if (p.life<=0||p.y>H+55||p.x<-110||p.x>W+110) p.active = false;
-      }
-    }
-
-    /* ─────────────────────── MAIN LOOP ─────────────────────── */
-    let lt = 0;
-    const loop = (ts: number) => {
-      if (!t0Ref.current){t0Ref.current=ts;lt=ts;}
-      const t = (ts-t0Ref.current)/1000;
-      const dt = Math.min((ts-lt)/1000,.05);
-      lt = ts;
-
-      bg(t);
-
-      if (t<3) {
-        spawnStream(t); spawnSmoke();
-        drawSmoke(); drawStreams();
-      } else if (t<6) {
-        spawnSmoke(); drawSmoke(); drawStreams();
-        drawOutline(t); spawnOrbit(t); drawOrbit();
-      } else if (t<9) {
-        drawOutline(t); drawBloom(t); drawBloomParts();
-        spawnPetals(t); drawPetals();
-        spawnKumkum(t); drawKumkum();
-        drawRays(t); spawnOrbit(t); drawOrbit();
-      } else if (t<11.5) {
-        drawDissolve(t); drawText(t);
-        spawnPetals(t); drawPetals();
-        spawnKumkum(t); drawKumkum();
-        drawRays(t); spawnOrbit(t); drawOrbit();
-      }
-      if (t>=11.5) drawFade(t);
-
-      drawDust(t);
-      update(dt);
-
-      if (t < DUR+.15) {
-        rafRef.current = requestAnimationFrame(loop);
+      if (t < DUR) {
+        rafRef.current = requestAnimationFrame(animate);
       } else if (!doneRef.current) {
         doneRef.current = true;
         cbRef.current?.();
       }
     };
-    rafRef.current = requestAnimationFrame(loop);
 
-    return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize',resize); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let run = true;
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      run = false;
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('resize', resize);
+    };
+  }, [audioStarted, initPool, grab]);
 
   return (
-    <div className="fixed inset-0 z-[9999]" style={{ background:'#08040a' }}>
-      <canvas ref={canvasRef} className="block w-full h-full" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#08040a]">
+      {/* ── DIVINE INTERACTION PROMPT ── */}
+      {!audioStarted ? (
+        <button
+          onClick={handleStartInteraction}
+          className="relative px-12 py-5 rounded-full overflow-hidden group transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_15px_40px_rgba(251,191,36,0.22)] flex flex-col items-center gap-3"
+        >
+          {/* Glowing Divine Border */}
+          <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/25 via-red-500/25 to-yellow-500/25 rounded-full animate-pulse border border-yellow-500/30" />
+          
+          <span className="relative z-10 text-sm font-semibold tracking-[0.25em] uppercase text-yellow-100 animate-bounce">
+            Touch To Begin Aarti
+          </span>
+          <span className="relative z-10 text-[10px] tracking-[0.1em] text-yellow-500/60 uppercase">
+            वक्रतुण्ड महाकाय
+          </span>
+        </button>
+      ) : (
+        <canvas ref={canvasRef} className="block w-full h-full" />
+      )}
     </div>
   );
 }
