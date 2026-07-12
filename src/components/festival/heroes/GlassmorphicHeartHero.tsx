@@ -1,240 +1,462 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 export default function GlassmorphicHeartHero() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; size: number; duration: number; delay: number; opacity: number }>>([]);
+  const rafRef = useRef<number>(0);
+  const targetTilt = useRef({ x: 0, y: 0 });
+  const currentTilt = useRef({ x: 0, y: 0 });
 
-  // माउस हिलाने पर 3D झुकाव (Tilt Effect)
+  // Generate floating particles once
+  useEffect(() => {
+    const p = Array.from({ length: 18 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 3 + 1,
+      duration: Math.random() * 6 + 4,
+      delay: Math.random() * 5,
+      opacity: Math.random() * 0.5 + 0.2,
+    }));
+    setParticles(p);
+  }, []);
+
+  // Smooth spring-like tilt interpolation
+  const animate = useCallback(() => {
+    const spring = 0.08;
+    const damping = 0.85;
+    currentTilt.current.x += (targetTilt.current.x - currentTilt.current.x) * spring;
+    currentTilt.current.y += (targetTilt.current.y - currentTilt.current.y) * spring;
+    currentTilt.current.x *= damping;
+    currentTilt.current.y *= damping;
+    setTilt({ x: currentTilt.current.x, y: currentTilt.current.y });
+    rafRef.current = requestAnimationFrame(animate);
+  }, []);
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [animate]);
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const r = containerRef.current.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width - 0.5;
     const y = (e.clientY - r.top) / r.height - 0.5;
-    setTilt({ x: y * -20, y: x * 20 });
+    targetTilt.current = { x: y * -18, y: x * 18 };
+    setMousePos({
+      x: ((e.clientX - r.left) / r.width) * 100,
+      y: ((e.clientY - r.top) / r.height) * 100,
+    });
   };
 
   const handleMouseLeave = () => {
     setHovered(false);
-    setTilt({ x: 0, y: 0 });
+    targetTilt.current = { x: 0, y: 0 };
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full h-full select-none overflow-visible">
-      
-      {/* ── CSS KEYFRAMES FOR LIVE ANIMATION ── */}
+    <div className="relative flex items-center justify-center w-full h-full select-none">
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes moon-pulse {
-          0%, 100% { transform: scale(1) translate(-50%, -50%); opacity: 0.15; }
-          50% { transform: scale(1.08) translate(-50%, -50%); opacity: 0.25; }
+        @keyframes float-soft {
+          0%, 100% { transform: translateY(0px) scale(1); opacity: var(--p-opacity); }
+          50% { transform: translateY(-12px) scale(1.1); opacity: calc(var(--p-opacity) * 1.5); }
         }
-        @keyframes mascot-bob-left {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-2px) rotate(1.5deg); }
+        @keyframes hero-bob {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
         }
-        @keyframes mascot-bob-right {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-2.2px) rotate(-1.5deg); transform-origin: center; }
+        @keyframes shimmer-move {
+          0% { transform: translateX(-100%) translateY(-100%) rotate(25deg); }
+          100% { transform: translateX(200%) translateY(200%) rotate(25deg); }
         }
-        @keyframes heart-rise-one {
-          0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-          20% { opacity: 0.8; }
-          100% { transform: translate(-100%, -40px) scale(1); opacity: 0; }
+        @keyframes heart-float-1 {
+          0% { transform: translateY(0) scale(0.8) rotate(0deg); opacity: 0; }
+          15% { opacity: 0.9; }
+          85% { opacity: 0.6; }
+          100% { transform: translateY(-60px) scale(1.1) rotate(12deg); opacity: 0; }
         }
-        @keyframes heart-rise-two {
-          0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-          20% { opacity: 0.8; }
-          100% { transform: translate(100%, -45px) scale(0.9); opacity: 0; }
+        @keyframes heart-float-2 {
+          0% { transform: translateY(0) scale(0.7) rotate(0deg); opacity: 0; }
+          15% { opacity: 0.8; }
+          85% { opacity: 0.5; }
+          100% { transform: translateY(-50px) scale(0.9) rotate(-10deg); opacity: 0; }
         }
-        @keyframes tail-wag {
-          0%, 100% { transform: rotate(0deg); }
-          50% { transform: rotate(15deg); }
+        @keyframes heart-float-3 {
+          0% { transform: translateY(0) scale(0.6) rotate(0deg); opacity: 0; }
+          15% { opacity: 0.7; }
+          85% { opacity: 0.4; }
+          100% { transform: translateY(-55px) scale(1) rotate(8deg); opacity: 0; }
         }
-        .anim-moon { animation: moon-pulse 4s ease-in-out infinite; transform-origin: 0 0; }
-        .anim-boy { animation: mascot-bob-left 3s ease-in-out infinite; transform-origin: 65px 125px; }
-        .anim-girl { animation: mascot-bob-right 3s ease-in-out infinite 0.2s; transform-origin: 135px 125px; }
-        .anim-heart-1 { animation: heart-rise-one 2.5s ease-in-out infinite; transform-origin: center; }
-        .anim-heart-2 { animation: heart-rise-two 2.8s ease-in-out infinite 1s; transform-origin: center; }
-        .anim-tail { animation: tail-wag 1.5s ease-in-out infinite; transform-origin: 48px 135px; }
+        @keyframes glow-pulse {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        @keyframes ring-rotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes subtle-breathe {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.015); }
+        }
+        .hero-bob { animation: hero-bob 4s ease-in-out infinite; }
+        .shimmer-bar { animation: shimmer-move 3.5s ease-in-out infinite; }
+        .glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+        .ring-spin { animation: ring-rotate 20s linear infinite; }
+        .subtle-breathe { animation: subtle-breathe 4s ease-in-out infinite; }
       ` }} />
 
-      {/* ── LAYER 1: Ambient Backdrop Glow ── */}
-      <div
-        className="absolute w-52 h-52 rounded-full pointer-events-none anim-moon"
-        style={{
+      {/* ── AMBIENT GLOW LAYERS ── */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="glow-pulse absolute rounded-full" style={{
+          width: '280px', height: '280px',
           top: '50%', left: '50%',
-          background: 'radial-gradient(circle, rgba(244,63,94,0.2) 0%, rgba(251,191,36,0.1) 45%, transparent 70%)',
-        }}
-      />
+          transform: 'translate(-50%, -50%)',
+          background: 'radial-gradient(circle, rgba(244,63,94,0.18) 0%, rgba(251,113,133,0.08) 40%, transparent 70%)',
+          filter: 'blur(30px)',
+        }} />
+        <div className="glow-pulse absolute rounded-full" style={{
+          width: '200px', height: '200px',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'radial-gradient(circle, rgba(251,191,36,0.1) 0%, transparent 60%)',
+          filter: 'blur(25px)',
+          animationDelay: '1.5s',
+        }} />
+      </div>
 
-      {/* ── LAYER 2: 3D Tilt Container ── */}
+      {/* ── FLOATING PARTICLES ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-visible" aria-hidden="true">
+        {particles.map((p) => (
+          <div
+            key={p.id}
+            className="absolute rounded-full"
+            style={{
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              width: `${p.size}px`,
+              height: `${p.size}px`,
+              background: p.id % 3 === 0 ? '#f43f5e' : p.id % 3 === 1 ? '#fbbf24' : '#fb7185',
+              opacity: p.opacity,
+              ['--p-opacity' as string]: p.opacity,
+              animation: `float-soft ${p.duration}s ease-in-out infinite ${p.delay}s`,
+              filter: 'blur(0.5px)',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ── 3D TILT CONTAINER ── */}
       <div
         ref={containerRef}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={handleMouseLeave}
-        className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center cursor-pointer overflow-visible"
-        style={{ perspective: '800px' }}
+        className="relative cursor-pointer"
+        style={{ perspective: '1000px' }}
       >
         <div
-          className="relative w-full h-full transition-transform duration-300 ease-out flex items-center justify-center overflow-visible"
+          className="relative transition-[filter] duration-500"
           style={{
             transformStyle: 'preserve-3d',
-            transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${hovered ? 1.05 : 1})`,
+            transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${hovered ? 1.04 : 1})`,
+            filter: hovered ? 'brightness(1.05)' : 'brightness(1)',
           }}
         >
-          {/* Base Soft Shadow */}
-          <div
-            className="absolute bottom-2 w-36 h-6 rounded-full pointer-events-none transition-opacity duration-300"
+
+          {/* ── GLASS CARD ── */}
+          <div className="relative w-56 h-56 sm:w-72 sm:h-72 rounded-[2rem] overflow-hidden subtle-breathe"
             style={{
-              transform: 'translateZ(-30px)',
-              background: 'radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%)',
-              filter: 'blur(5px)',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 50%, rgba(251,113,133,0.06) 100%)',
+              backdropFilter: 'blur(24px) saturate(1.4)',
+              WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              boxShadow: `
+                0 8px 32px rgba(244,63,94,0.12),
+                0 2px 8px rgba(0,0,0,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.2),
+                inset 0 -1px 0 rgba(255,255,255,0.05)
+              `,
+              transform: 'translateZ(0px)',
+            }}
+          >
+            {/* Shimmer effect */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: 'inherit' }}>
+              <div className="shimmer-bar absolute" style={{
+                width: '60%', height: '60%',
+                top: '-30%', left: '-30%',
+                background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.08) 55%, transparent 60%)',
+                filter: 'blur(2px)',
+              }} />
+            </div>
+
+            {/* Mouse-following light */}
+            {hovered && (
+              <div className="absolute inset-0 pointer-events-none transition-opacity duration-300" style={{
+                background: `radial-gradient(350px circle at ${mousePos.x}% ${mousePos.y}%, rgba(255,255,255,0.06), transparent 60%)`,
+              }} />
+            )}
+
+            {/* ── SVG ILLUSTRATION ── */}
+            <div className="absolute inset-0 flex items-center justify-center hero-bob">
+              <svg viewBox="0 0 240 240" className="w-[85%] h-[85%]" style={{ transform: 'translateZ(15px)' }}>
+                <defs>
+                  {/* Premium Gradients */}
+                  <linearGradient id="moon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#fff9e6" />
+                    <stop offset="50%" stopColor="#ffecb3" stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.3" />
+                  </linearGradient>
+                  <linearGradient id="moon-ring" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.1" />
+                  </linearGradient>
+                  <linearGradient id="bear-body" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#e8b89a" />
+                    <stop offset="100%" stopColor="#a67a5e" />
+                  </linearGradient>
+                  <linearGradient id="bear-head" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#f0c4a8" />
+                    <stop offset="100%" stopColor="#b8886a" />
+                  </linearGradient>
+                  <linearGradient id="bunny-body" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="100%" stopColor="#fce4ec" />
+                  </linearGradient>
+                  <linearGradient id="dress-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#fb7185" />
+                    <stop offset="100%" stopColor="#e11d48" />
+                  </linearGradient>
+                  <linearGradient id="heart-center" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ff6b8a" />
+                    <stop offset="100%" stopColor="#f43f5e" />
+                  </linearGradient>
+                  <linearGradient id="hill-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#1a1440" />
+                    <stop offset="100%" stopColor="#0f0a2e" />
+                  </linearGradient>
+                  <radialGradient id="blush" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.5" />
+                    <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+                  </radialGradient>
+                  {/* Soft shadow filter */}
+                  <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+                    <feOffset dx="0" dy="4" />
+                    <feComponentTransfer><feFuncA type="linear" slope="0.15" /></feComponentTransfer>
+                    <feMerge>
+                      <feMergeNode />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  {/* Glow filter for heart */}
+                  <filter id="heart-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
+                    <feColorMatrix type="matrix" values="1 0 0 0 0  0 0.2 0.3 0 0  0 0 0.3 0 0  0 0 0 0.6 0" />
+                    <feMerge>
+                      <feMergeNode />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  {/* Star glow */}
+                  <filter id="star-glow" x="-100%" y="-100%" width="300%" height="300%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
+                  </filter>
+                </defs>
+
+                {/* ── STARS ── */}
+                <circle cx="40" cy="35" r="1.2" fill="#fbbf24" opacity="0.7" filter="url(#star-glow)" />
+                <circle cx="195" cy="28" r="1" fill="#fbbf24" opacity="0.6" filter="url(#star-glow)" />
+                <circle cx="170" cy="55" r="0.8" fill="#ffffff" opacity="0.5" filter="url(#star-glow)" />
+                <circle cx="55" cy="60" r="0.9" fill="#ffffff" opacity="0.4" filter="url(#star-glow)" />
+                <circle cx="30" cy="80" r="0.7" fill="#fbbf24" opacity="0.5" filter="url(#star-glow)" />
+                <circle cx="210" cy="75" r="1.1" fill="#fbbf24" opacity="0.4" filter="url(#star-glow)" />
+
+                {/* ── MOON WITH RING ── */}
+                <g className="ring-spin" style={{ transformOrigin: '120px 80px' }}>
+                  <circle cx="120" cy="80" r="52" fill="none" stroke="url(#moon-ring)" strokeWidth="0.5" strokeDasharray="4 6" opacity="0.5" />
+                </g>
+                <circle cx="120" cy="80" r="42" fill="url(#moon-grad)" opacity="0.85" />
+                {/* Moon craters (subtle) */}
+                <circle cx="110" cy="72" r="4" fill="rgba(217,170,80,0.15)" />
+                <circle cx="128" cy="85" r="3" fill="rgba(217,170,80,0.12)" />
+                <circle cx="118" cy="90" r="2.5" fill="rgba(217,170,80,0.1)" />
+
+                {/* ── HILL ── */}
+                <path d="M10 175 C50 158, 100 152, 120 155 C140 158, 190 158, 230 175 L230 210 L10 210 Z" fill="url(#hill-grad)" />
+                <path d="M10 175 C50 158, 100 152, 120 155 C140 158, 190 158, 230 175" fill="none" stroke="rgba(244,63,94,0.15)" strokeWidth="1" />
+                {/* Grass details */}
+                <path d="M45 170 C44 166, 42 163, 44 164 C46 165, 45 168, 45 170Z" fill="#2dd4bf" opacity="0.4" />
+                <path d="M180 169 C179 165, 177 162, 179 163 C181 164, 180 167, 180 169Z" fill="#2dd4bf" opacity="0.35" />
+                <path d="M100 163 C99 159, 97 156, 99 157 C101 158, 100 161, 100 163Z" fill="#2dd4bf" opacity="0.3" />
+
+                {/* ── BOY BEAR ── */}
+                <g filter="url(#soft-shadow)">
+                  {/* Tail */}
+                  <ellipse cx="50" cy="152" rx="4.5" ry="4" fill="#a67a5e" transform="rotate(-20, 50, 152)" />
+
+                  {/* Body */}
+                  <ellipse cx="72" cy="148" rx="16" ry="18" fill="url(#bear-body)" />
+
+                  {/* Belly patch */}
+                  <ellipse cx="74" cy="150" rx="9" ry="10" fill="#f5ddd0" opacity="0.7" />
+
+                  {/* Feet */}
+                  <ellipse cx="62" cy="164" rx="6" ry="4" fill="#8b6245" rx="3" />
+                  <ellipse cx="82" cy="164" rx="6" ry="4" fill="#8b6245" rx="3" />
+                  {/* Toe lines */}
+                  <path d="M60 163 L60 165" stroke="#6b4830" strokeWidth="0.6" strokeLinecap="round" />
+                  <path d="M63 163 L63 165.5" stroke="#6b4830" strokeWidth="0.6" strokeLinecap="round" />
+                  <path d="M80 163 L80 165" stroke="#6b4830" strokeWidth="0.6" strokeLinecap="round" />
+                  <path d="M83 163 L83 165.5" stroke="#6b4830" strokeWidth="0.6" strokeLinecap="round" />
+
+                  {/* Left arm (down) */}
+                  <ellipse cx="57" cy="146" rx="5" ry="8" fill="#a67a5e" transform="rotate(10, 57, 146)" />
+
+                  {/* Right arm (reaching toward bunny) */}
+                  <ellipse cx="88" cy="142" rx="5" ry="9" fill="#a67a5e" transform="rotate(-25, 88, 142)" />
+                  {/* Paw */}
+                  <circle cx="92" cy="134" r="4" fill="#c4956e" />
+
+                  {/* Head */}
+                  <circle cx="76" cy="122" r="17" fill="url(#bear-head)" />
+
+                  {/* Ears */}
+                  <circle cx="63" cy="109" r="6.5" fill="#a67a5e" />
+                  <circle cx="63" cy="109" r="3.5" fill="#f5ddd0" />
+                  <circle cx="89" cy="109" r="6.5" fill="#a67a5e" />
+                  <circle cx="89" cy="109" r="3.5" fill="#f5ddd0" />
+
+                  {/* Eyes — looking right toward bunny */}
+                  <ellipse cx="71" cy="120" rx="2" ry="2.8" fill="#1a1030" />
+                  <ellipse cx="82" cy="120" rx="2" ry="2.8" fill="#1a1030" />
+                  {/* Eye highlights */}
+                  <circle cx="72" cy="119" r="0.9" fill="#ffffff" />
+                  <circle cx="83" cy="119" r="0.9" fill="#ffffff" />
+                  <circle cx="70.5" cy="121" r="0.4" fill="#ffffff" opacity="0.6" />
+
+                  {/* Eyebrows (subtle, happy) */}
+                  <path d="M68 116 Q71 114.5, 74 116" stroke="#6b4830" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                  <path d="M79 116 Q82 114.5, 85 116" stroke="#6b4830" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+
+                  {/* Snout */}
+                  <ellipse cx="77" cy="127" rx="5.5" ry="4" fill="#f5ddd0" />
+                  <ellipse cx="77" cy="125.5" rx="2" ry="1.5" fill="#4a2a18" />
+                  {/* Smile */}
+                  <path d="M74 129 Q77 132, 80 129" stroke="#4a2a18" strokeWidth="1" strokeLinecap="round" fill="none" />
+
+                  {/* Blush */}
+                  <ellipse cx="66" cy="125" rx="4" ry="2.5" fill="url(#blush)" />
+                </g>
+
+                {/* ── GIRL BUNNY ── */}
+                <g filter="url(#soft-shadow)">
+                  {/* Body with dress */}
+                  <path d="M142 175 L148 148 L172 148 L178 175 Z" fill="url(#dress-grad)" />
+                  {/* Dress collar / top */}
+                  <ellipse cx="160" cy="148" rx="14" ry="5" fill="#fce4ec" />
+                  {/* Dress details - little bow */}
+                  <path d="M156 152 L160 154 L156 156Z" fill="#ffffff" opacity="0.6" />
+                  <path d="M164 152 L160 154 L164 156Z" fill="#ffffff" opacity="0.6" />
+
+                  {/* Feet */}
+                  <ellipse cx="148" cy="176" rx="5.5" ry="3.5" fill="#fce4ec" />
+                  <ellipse cx="172" cy="176" rx="5.5" ry="3.5" fill="#fce4ec" />
+
+                  {/* Left arm (reaching toward bear) */}
+                  <ellipse cx="146" cy="142" rx="5" ry="9" fill="#ffffff" transform="rotate(25, 146, 142)" />
+                  {/* Paw */}
+                  <circle cx="142" cy="134" r="3.5" fill="#fce4ec" />
+
+                  {/* Right arm (down, holding skirt) */}
+                  <ellipse cx="174" cy="150" rx="5" ry="8" fill="#ffffff" transform="rotate(-10, 174, 150)" />
+
+                  {/* Head */}
+                  <circle cx="160" cy="125" r="16" fill="url(#bunny-body)" />
+
+                  {/* Long bunny ears */}
+                  <g>
+                    <path d="M150 113 Q146 88, 152 72 Q156 80, 154 113Z" fill="#ffffff" stroke="#e8b0c4" strokeWidth="0.8" />
+                    <path d="M151 110 Q148 90, 153 78 Q155 85, 153 110Z" fill="#ffb3c6" opacity="0.6" />
+                  </g>
+                  <g>
+                    <path d="M166 111 Q170 86, 164 70 Q160 78, 162 111Z" fill="#ffffff" stroke="#e8b0c4" strokeWidth="0.8" />
+                    <path d="M165 108 Q168 88, 163 76 Q161 83, 163 108Z" fill="#ffb3c6" opacity="0.6" />
+                  </g>
+
+                  {/* Bow on left ear */}
+                  <path d="M146 88 L150 91 L146 94Z" fill="#f43f5e" />
+                  <path d="M154 88 L150 91 L154 94Z" fill="#f43f5e" />
+                  <circle cx="150" cy="91" r="1.8" fill="#ffffff" />
+
+                  {/* Eyes — looking left toward bear */}
+                  <ellipse cx="153" cy="123" rx="2" ry="2.8" fill="#1a1030" />
+                  <ellipse cx="164" cy="123" rx="2" ry="2.8" fill="#1a1030" />
+                  {/* Eye highlights */}
+                  <circle cx="152" cy="122" r="0.9" fill="#ffffff" />
+                  <circle cx="163" cy="122" r="0.9" fill="#ffffff" />
+                  <circle cx="153.5" cy="124" r="0.4" fill="#ffffff" opacity="0.6" />
+
+                  {/* Eyelashes */}
+                  <path d="M150 121 Q150.5 119, 151.5 120" stroke="#1a1030" strokeWidth="0.8" strokeLinecap="round" />
+                  <path d="M166 121 Q165.5 119, 164.5 120" stroke="#1a1030" strokeWidth="0.8" strokeLinecap="round" />
+
+                  {/* Eyebrows */}
+                  <path d="M150 119 Q153 117.5, 156 119" stroke="#c4808f" strokeWidth="0.7" fill="none" strokeLinecap="round" />
+                  <path d="M161 119 Q164 117.5, 167 119" stroke="#c4808f" strokeWidth="0.7" fill="none" strokeLinecap="round" />
+
+                  {/* Nose */}
+                  <ellipse cx="158.5" cy="128" rx="1.8" ry="1.2" fill="#f43f5e" />
+
+                  {/* Smile */}
+                  <path d="M156 130.5 Q158.5 133, 161 130.5" stroke="#c4808f" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+
+                  {/* Blush */}
+                  <ellipse cx="168" cy="128" rx="4" ry="2.5" fill="url(#blush)" />
+                  <ellipse cx="150" cy="128" rx="3" ry="2" fill="url(#blush)" opacity="0.5" />
+                </g>
+
+                {/* ── HANDS MEETING — GLOWING HEART ── */}
+                <g filter="url(#heart-glow)">
+                  <path
+                    d="M117 130 C117 130, 115.5 126.5, 112.5 126.5 C109.5 126.5, 107.5 129, 107.5 131.5 C107.5 135, 113 139, 117 141 C121 139, 126.5 135, 126.5 131.5 C126.5 129, 124.5 126.5, 121.5 126.5 C118.5 126.5, 117 130, 117 130 Z"
+                    fill="url(#heart-center)"
+                  />
+                  {/* Heart highlight */}
+                  <ellipse cx="113" cy="129" rx="2" ry="1.5" fill="#ffffff" opacity="0.35" transform="rotate(-20, 113, 129)" />
+                </g>
+
+                {/* ── FLOATING HEARTS ── */}
+                <g style={{ animation: 'heart-float-1 3s ease-in-out infinite', transformOrigin: '100px 115px' }}>
+                  <path d="M100 115 C100 115, 99 112.5, 97 112.5 C95 112.5, 93.5 114, 93.5 115.8 C93.5 118.5, 97 121, 100 122.5 C103 121, 106.5 118.5, 106.5 115.8 C106.5 114, 105 112.5, 103 112.5 C101 112.5, 100 115, 100 115Z" fill="#f43f5e" opacity="0.8" />
+                </g>
+                <g style={{ animation: 'heart-float-2 3.5s ease-in-out infinite 0.8s', transformOrigin: '130px 108px' }}>
+                  <path d="M130 108 C130 108, 129 106, 127.5 106 C126 106, 125 107.2, 125 108.5 C125 110.5, 127.5 112.5, 130 113.5 C132.5 112.5, 135 110.5, 135 108.5 C135 107.2, 134 106, 132.5 106 C131 106, 130 108, 130 108Z" fill="#fbbf24" opacity="0.7" />
+                </g>
+                <g style={{ animation: 'heart-float-3 4s ease-in-out infinite 1.6s', transformOrigin: '88px 105px' }}>
+                  <path d="M88 105 C88 105, 87.2 103.5, 86 103.5 C84.8 103.5, 84 104.5, 84 105.5 C84 107, 86 108.5, 88 109.2 C90 108.5, 92 107, 92 105.5 C92 104.5, 91.2 103.5, 90 103.5 C88.8 103.5, 88 105, 88 105Z" fill="#fb7185" opacity="0.6" />
+                </g>
+                <g style={{ animation: 'heart-float-1 3.2s ease-in-out infinite 2.2s', transformOrigin: '140px 100px' }}>
+                  <path d="M140 100 C140 100, 139.3 98.5, 138.2 98.5 C137.1 98.5, 136.2 99.5, 136.2 100.5 C136.2 102, 138 103.5, 140 104.2 C142 103.5, 143.8 102, 143.8 100.5 C143.8 99.5, 142.9 98.5, 141.8 98.5 C140.7 98.5, 140 100, 140 100Z" fill="#fda4af" opacity="0.5" />
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          {/* ── BOTTOM REFLECTION/GLOW ── */}
+          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-3/4 h-5 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse, rgba(244,63,94,0.2) 0%, transparent 70%)',
+              filter: 'blur(8px)',
+              transform: `translateZ(-20px) translateX(-50%) scaleX(${hovered ? 1.1 : 1})`,
             }}
           />
-
-          {/* ── HIGH-END ROMANTIC VECTOR SCENE ── */}
-          <svg
-            viewBox="0 0 200 200"
-            className="w-full h-full overflow-visible drop-shadow-[0_10px_25px_rgba(244,63,94,0.2)]"
-            style={{ transform: 'translateZ(10px)' }}
-          >
-            <defs>
-              {/* Moon Glow Gradient */}
-              <radialGradient id="moon-g" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#fffae6" />
-                <stop offset="40%" stopColor="#ffecb3" />
-                <stop offset="100%" stopColor="rgba(251,191,36,0)" />
-              </radialGradient>
-
-              {/* Boy Bear Body Gradient */}
-              <linearGradient id="bear-g" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#e3af92" />
-                <stop offset="100%" stopColor="#966d54" />
-              </linearGradient>
-
-              {/* Girl Bunny Body Gradient */}
-              <linearGradient id="bunny-g" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="100%" stopColor="#ffd1df" />
-              </linearGradient>
-            </defs>
-
-            {/* 1. THE GLOWING FULL MOON (पृष्ठभूमि में चाँद) */}
-            <circle cx="100" cy="90" r="48" fill="url(#moon-g)" opacity="0.85" />
-
-            {/* 2. THE HILL (घास की छोटी सी पहाड़ी) */}
-            <path 
-              d="M15 155 C 60 142, 140 142, 185 155 L 185 180 L 15 180 Z" 
-              fill="rgba(26,20,54,0.8)" 
-              stroke="rgba(244,63,94,0.2)"
-              strokeWidth="1.5"
-            />
-            {/* Tiny grass sprout */}
-            <path d="M155 146 C152 142, 151 138, 154 139 C157 140, 156 144, 155 146 Z" fill="#ec4899" opacity="0.7"/>
-
-            {/* 3. BOY BEAR (प्यारा नन्हा भालू - बाईं तरफ) */}
-            <g className="anim-boy">
-              {/* Tail */}
-              <circle cx="48" cy="132" r="5" fill="#966d54" className="anim-tail" />
-              {/* Body */}
-              <ellipse cx="65" cy="128" rx="14" ry="16" fill="url(#bear-g)" stroke="#422919" strokeWidth="1" />
-              {/* Feet */}
-              <ellipse cx="56" cy="141" rx="5" ry="3.5" fill="#80563f" />
-              <ellipse cx="74" cy="141" rx="5" ry="3.5" fill="#80563f" />
-              
-              {/* Head */}
-              <circle cx="68" cy="108" r="15" fill="url(#bear-g)" stroke="#422919" strokeWidth="1" />
-              
-              {/* Bear Ears */}
-              <circle cx="56" cy="97" r="5.5" fill="#966d54" stroke="#422919" strokeWidth="1" />
-              <circle cx="56" cy="97" r="2.8" fill="#ffd1df" />
-              <circle cx="80" cy="97" r="5.5" fill="#966d54" stroke="#422919" strokeWidth="1" />
-              <circle cx="80" cy="97" r="2.8" fill="#ffd1df" />
-
-              {/* Eyes (Looking right, happy) */}
-              <ellipse cx="67" cy="106" rx="1.5" ry="2.2" fill="#121124" />
-              <ellipse cx="74" cy="106" rx="1.5" ry="2.2" fill="#121124" />
-              <circle cx="67.5" cy="105.2" r="0.6" fill="#ffffff" />
-              <circle cx="74.5" cy="105.2" r="0.6" fill="#ffffff" />
-
-              {/* Snout & Smile */}
-              <ellipse cx="71" cy="112" rx="4.5" ry="3.2" fill="#fcf0e8" />
-              <circle cx="71" cy="110.2" r="1.5" fill="#2d170c" />
-              <path d="M69 113.2 Q71 115, 73 113.2" stroke="#2d170c" strokeWidth="1" strokeLinecap="round" fill="none" />
-
-              {/* Cheerful blushing cheeks */}
-              <ellipse cx="63" cy="110" rx="2.5" ry="1.5" fill="#f43f5e" opacity="0.45" />
-
-              {/* Holding Arm (Left) */}
-              <ellipse cx="76" cy="126" rx="5.5" ry="4" fill="#966d54" stroke="#422919" strokeWidth="0.8" />
-            </g>
-
-            {/* 4. GIRL BUNNY (प्यारी बनी खरगोश - दाईं तरफ) */}
-            <g className="anim-girl">
-              {/* Body (Cute Dress) */}
-              <path d="M121 140 L126 120 L144 120 L149 140 Z" fill="#f43f5e" stroke="#5c061e" strokeWidth="1" />
-              {/* Feet */}
-              <ellipse cx="127" cy="141" rx="5" ry="3.5" fill="#ffd1df" stroke="#5c061e" strokeWidth="0.8" />
-              <ellipse cx="143" cy="141" rx="5" ry="3.5" fill="#ffd1df" stroke="#5c061e" strokeWidth="0.8" />
-              
-              {/* Head */}
-              <circle cx="135" cy="108" r="14.5" fill="url(#bunny-g)" stroke="#5c061e" strokeWidth="1" />
-              
-              {/* Long Bunny Ears */}
-              <g transform="rotate(-10, 126, 96)">
-                <rect x="123" y="74" width="6" height="20" rx="3" fill="#ffffff" stroke="#5c061e" strokeWidth="1" />
-                <rect x="124.5" y="78" width="3" height="14" rx="1.5" fill="#ffb3c6" />
-              </g>
-              <g transform="rotate(15, 144, 96)">
-                <rect x="141" y="74" width="6" height="20" rx="3" fill="#ffffff" stroke="#5c061e" strokeWidth="1" />
-                <rect x="142.5" y="78" width="3" height="14" rx="1.5" fill="#ffb3c6" />
-              </g>
-
-              {/* Minnie Ribbon/Bow on left ear */}
-              <path d="M121 89 L126 91 L121 93 Z" fill="#f43f5e" />
-              <path d="M131 89 L126 91 L131 93 Z" fill="#f43f5e" />
-              <circle cx="126" cy="91" r="1.5" fill="#ffffff" />
-
-              {/* Eyes with eyelashes */}
-              <ellipse cx="127" cy="106" rx="1.5" ry="2.2" fill="#121124" />
-              <ellipse cx="134" cy="106" rx="1.5" ry="2.2" fill="#121124" />
-              <circle cx="126.5" cy="105.2" r="0.6" fill="#ffffff" />
-              <circle cx="133.5" cy="105.2" r="0.6" fill="#ffffff" />
-              {/* Eyelashes */}
-              <path d="M124.5 104 C124.5 104, 125 102.5, 126 103" stroke="#121124" strokeWidth="0.8" strokeLinecap="round" />
-              <path d="M136.5 104 C136.5 104, 136 102.5, 135 103" stroke="#121124" strokeWidth="0.8" strokeLinecap="round" />
-
-              {/* Nose & Smile */}
-              <ellipse cx="130.5" cy="111" rx="1.5" ry="1" fill="#f43f5e" />
-              <path d="M129 113 Q130.5 114.5, 132 113" stroke="#5c061e" strokeWidth="0.8" fill="none" />
-
-              {/* Rosy Cheeks */}
-              <ellipse cx="138" cy="110" rx="2.5" ry="1.5" fill="#f43f5e" opacity="0.45" />
-
-              {/* Holding Arm (Right) */}
-              <ellipse cx="124" cy="126" rx="5.5" ry="4" fill="#ffffff" stroke="#5c061e" strokeWidth="0.8" />
-            </g>
-
-            {/* 5. HANDS JOINED DETAIL (दोनों के हाथ जुड़ने का स्थान) */}
-            {/* Soft pink heart popping where they meet */}
-            <path 
-              d="M100 126 C100 126, 99 123.5, 96.5 123.5 C94 123.5, 92.5 125.5, 92.5 127.5 C92.5 129.5, 96.5 132.5, 100 134 C103.5 132.5, 107.5 129.5, 107.5 127.5 C107.5 125.5, 106 123.5, 103.5 123.5 C101 123.5, 100 126, 100 126 Z" 
-              fill="#fb7185" 
-              className="animate-pulse"
-              style={{ transformOrigin: '100px 128px' }}
-            />
-
-            {/* ── 6. FLOATING HEARTS (हवा में उड़ते जादुई दिल) ── */}
-            <g className="anim-heart-1" style={{ transformOrigin: '92px 115px' }}>
-              <path d="M92 115 C92 115, 91 113, 89 113 C87 113, 86 114.5, 86 116 C86 118, 89 120.5, 92 122 C95 120.5, 98 118, 98 116 C98 114.5, 97 113, 95 113 C93 113, 92 115, 92 115 Z" fill="#f43f5e" />
-            </g>
-            <g className="anim-heart-2" style={{ transformOrigin: '108px 110px' }}>
-              <path d="M108 110 C108 110, 107 108.5, 105.5 108.5 C104 108.5, 103 109.5, 103 111 C103 112.5, 105.5 114.5, 108 115.5 C110.5 114.5, 113 112.5, 113 111 C113 109.5, 112 108.5, 110.5 108.5 C109 108.5, 108 110, 108 110 Z" fill="#fbbf24" />
-            </g>
-          </svg>
         </div>
       </div>
     </div>
