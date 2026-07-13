@@ -38,41 +38,29 @@ function ss(a:number[],b:number[],c:number[],d:number[],n:number):number[][]{
    GANESHA OUTLINE  (400×400 → 0-1 normalised)
    ═══════════════════════════════════════════════════════════════ */
 function buildGP():number[][]{
-  // 🚀 शास्त्रीय और सुडौल गणेश रूपरेखा (Symmetrical & Elegant)
   const body:number[][][]=[
-    // बायाँ कान (Left Ear Curve)
     [[200, 80], [150, 60], [100, 80], [100, 120]],
     [[100, 120], [100, 160], [140, 180], [175, 160]],
-    
-    // बायाँ शरीर और धड़ (Left Body base)
     [[175, 160], [150, 190], [130, 220], [130, 260]],
     [[130, 260], [130, 320], [170, 350], [200, 350]], 
-    
-    // दायाँ शरीर और धड़ (Right Body base)
     [[200, 350], [230, 350], [270, 320], [270, 260]],
     [[270, 260], [270, 220], [250, 190], [225, 160]],
-    
-    // दायाँ कान (Right Ear Curve)
     [[225, 160], [260, 180], [300, 160], [300, 120]],
     [[300, 120], [300, 80], [250, 60], [200, 80]],
   ];
   
   const trunk:number[][][]=[
-    // वक्र सूंड और चेहरा (S-Curve Trunk pointing left)
     [[190, 110], [190, 150], [170, 190], [150, 215]],
     [[150, 215], [130, 235], [110, 220], [115, 200]], 
     [[115, 200], [120, 190], [135, 195], [145, 205]],
   ];
   
   const crown:number[][][]=[
-    // त्रिआयामी भव्य मुकुट (Sharp Majestic Crown)
     [[200, 80], [195, 60], [185, 45], [200, 20]],
     [[200, 20], [215, 45], [205, 60], [200, 80]],
   ];
 
   const all:number[][]=[];
-  
-  // 🚀 सैंपलिंग रेजोल्यूशन 14 से बढ़ाकर 25 किया गया (फॉर लिक्विड-स्मूथ फिनिश)
   const add=(s:number[][][])=>{for(const c of s){const pts=ss(c[0],c[1],c[2],c[3],25);const s0=all.length>0?1:0;for(let i=s0;i<pts.length;i++)all.push(pts[i]);}};
   add(body);add(trunk);add(crown);
   return all.map(p=>[p[0]/400,p[1]/400]);
@@ -95,7 +83,7 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
   },[]);
   const grab=useCallback((p:P[])=>{for(let i=0;i<p.length;i++)if(!p[i].on)return p[i];return null;},[]);
 
-  useEffect(()=>{
+  useEffect(() => {
     const cv=cvRef.current;if(!cv)return;
     const c=cv.getContext('2d',{alpha:false});if(!c)return;
     const dpr=Math.min(window.devicePixelRatio||1,2);
@@ -119,140 +107,133 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
 
     /* ───────── DRAW HELPERS ───────── */
 
-    /* ─── 🚀 NEW: DETAILED GANESHA ILLUSTRATION HELPERS (Pinterest Style) ─── */
+    /* ─── 🚀 RELATIVE PROPORTIONAL DETAILED GANESHA DRAWING ─── */
     
-    // 1. मोरपंख (Peacock Feather Behind Ganesha)
+    // Proportional Peacock Feather (S-Scaled)
     function drawPeacockFeather(x: number, y: number, r: number, rot: number) {
       c.save();
       c.translate(x, y);
       c.rotate(rot);
-      // Stem
-      c.strokeStyle = '#15803d'; c.lineWidth = 2.5;
-      c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(15, 30, 20, 50); c.stroke();
-      // Outer green lobe
+      c.strokeStyle = '#15803d'; c.lineWidth = r * 0.08;
+      c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(r*0.4, r*0.8, r*0.5, r*1.3); c.stroke();
       c.fillStyle = '#16a34a';
-      c.beginPath(); c.ellipse(0, 0, r * 0.6, r, 0, 0, Math.PI * 2); c.fill();
-      // Teal layer
+      c.beginPath(); c.ellipse(0, 0, r * 0.55, r, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#06b6d4';
-      c.beginPath(); c.ellipse(0, r * 0.1, r * 0.45, r * 0.75, 0, 0, Math.PI * 2); c.fill();
-      // Blue core
+      c.beginPath(); c.ellipse(0, r * 0.1, r * 0.4, r * 0.72, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#2563eb';
-      c.beginPath(); c.ellipse(0, r * 0.2, r * 0.3, r * 0.5, 0, 0, Math.PI * 2); c.fill();
-      // Gold center
+      c.beginPath(); c.ellipse(0, r * 0.18, r * 0.26, r * 0.46, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#fbbf24';
-      c.beginPath(); c.ellipse(0, r * 0.25, r * 0.18, r * 0.3, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(0, r * 0.22, r * 0.15, r * 0.28, 0, 0, Math.PI * 2); c.fill();
       c.restore();
     }
 
-    // 2. खिला हुआ गुलाबी कमल (Layered Pink Lotus Seat)
-    function drawLotusSeat(sc: number) {
+    // Proportional Pink Lotus Seat (S-Scaled)
+    function drawLotusSeat(cx: number, cy: number, S: number) {
       c.save();
       const colors = ['#9f1239', '#e11d48', '#f43f5e', '#fb7185', '#fbcfe8'];
       for (let layer = 0; layer < 4; layer++) {
         c.fillStyle = colors[layer];
         const numPetals = 8 - layer * 2;
-        const rX = sc * (0.6 - layer * 0.1);
-        const rY = sc * (0.22 - layer * 0.04);
-        c.beginPath();
+        const rX = S * (0.42 - layer * 0.07);
+        const rY = S * (0.16 - layer * 0.03);
+        const petalY = cy + S * 0.28;
+        
         for (let i = 0; i < numPetals; i++) {
           const ang = (i / (numPetals - 1)) * Math.PI - Math.PI;
-          const px = Math.cos(ang) * rX;
-          const py = Math.sin(ang) * rY + sc * 0.32;
-          c.ellipse(px, py, sc * 0.16, sc * 0.28, ang + Math.PI/2, 0, Math.PI * 2);
+          const px = cx + Math.cos(ang) * rX;
+          const py = petalY + Math.sin(ang) * rY;
+          c.save();
+          c.translate(px, py);
+          c.rotate(ang + Math.PI/2);
+          c.beginPath();
+          c.ellipse(0, 0, S * 0.09, S * 0.18, 0, 0, Math.PI * 2);
+          c.fill();
+          c.restore();
         }
-        c.fill();
       }
       c.restore();
     }
 
-    // 3. रंग-बिरंगे बाल गणेश (The Full Colored Mascot)
-    function drawDetailedGanesha(cx: number, cy: number, scale: number, opacity: number) {
+    // 100% PROPORTIONAL CUTE GANESHA (कभी स्ट्रेच नहीं होगा)
+    function drawDetailedGanesha(cx: number, cy: number, S: number, opacity: number) {
       c.save();
-      c.translate(cx, cy);
-      c.scale(scale, scale);
       c.globalAlpha = opacity;
 
-      // A. बैकग्राउंड मोरपंख (Peacock Feathers behind Head)
-      drawPeacockFeather(-38, -35, 28, -0.5);
-      drawPeacockFeather(38, -35, 28, 0.5);
+      // A. back Peacock Feathers
+      drawPeacockFeather(cx - S * 0.3, cy - S * 0.16, S * 0.22, -0.45);
+      drawPeacockFeather(cx + S * 0.3, cy - S * 0.16, S * 0.22, 0.45);
 
-      // B. कमल का आसन (Lotus Seat)
-      drawLotusSeat(70);
+      // B. Pink Lotus Base
+      drawLotusSeat(cx, cy, S);
 
-      // C. हाथ और पैर (Peach skin tone)
+      // C. Seated Body & Yellow Clothes (धोती)
       c.fillStyle = '#fde8d0';
       c.strokeStyle = '#4c0519';
-      c.lineWidth = 1.2;
-      // Sitting Legs
-      c.beginPath(); c.ellipse(-20, 22, 14, 10, 0.2, 0, Math.PI * 2); c.fill(); c.stroke();
-      c.beginPath(); c.ellipse(20, 22, 14, 10, -0.2, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.lineWidth = S * 0.008;
 
-      // D. पेट और छाती (Chubby Belly)
-      c.beginPath(); c.ellipse(0, 10, 25, 22, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(cx - S*0.14, cy + S*0.16, S*0.11, S*0.08, 0.2, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(cx + S*0.14, cy + S*0.16, S*0.11, S*0.08, -0.2, 0, Math.PI * 2); c.fill(); c.stroke();
+
+      c.beginPath(); c.ellipse(cx, cy + S*0.08, S*0.18, S*0.16, 0, 0, Math.PI * 2); c.fill(); c.stroke();
       
-      // पीताम्बर (Yellow Dhoti)
       c.fillStyle = '#facc15';
-      c.beginPath(); c.ellipse(0, 20, 25, 11, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(cx, cy + S*0.15, S*0.18, S*0.08, 0, 0, Math.PI * 2); c.fill(); c.stroke();
 
-      // E. कान और सिर (Ears and Head)
+      // D. Cute Peach Ears (गोल-मटोल कान)
       c.fillStyle = '#fde8d0';
-      // Left/Right pink inner ears
-      c.beginPath(); c.ellipse(-23, -15, 14, 10, -0.15, 0, Math.PI * 2); c.fill(); c.stroke();
-      c.beginPath(); c.ellipse(23, -15, 14, 10, 0.15, 0, Math.PI * 2); c.fill(); c.stroke();
-      c.fillStyle = '#fda4af'; // Pink Inner Ear
-      c.beginPath(); c.ellipse(-22, -15, 9, 6, -0.15, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.ellipse(22, -15, 9, 6, 0.15, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(cx - S*0.18, cy - S*0.1, S*0.11, S*0.08, -0.15, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(cx + S*0.18, cy - S*0.1, S*0.11, S*0.08, 0.15, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.fillStyle = '#fda4af';
+      c.beginPath(); c.ellipse(cx - S*0.17, cy - S*0.1, S*0.07, S*0.05, -0.15, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(cx + S*0.17, cy - S*0.1, S*0.07, S*0.05, 0.15, 0, Math.PI * 2); c.fill();
 
-      // Head
+      // E. Chubby Face (चेहरा)
       c.fillStyle = '#fde8d0';
-      c.beginPath(); c.arc(0, -12, 18, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath(); c.arc(cx, cy - S*0.08, S*0.14, 0, Math.PI * 2); c.fill(); c.stroke();
 
-      // F. सूंड (Smooth Trunk curving left with Modak)
+      // F. Smooth Trunk curving Left
       c.beginPath();
-      c.moveTo(-2, -10);
-      c.bezierCurveTo(-14, 5, -16, 22, -22, 25);
-      c.bezierCurveTo(-26, 28, -32, 20, -25, 15);
-      c.bezierCurveTo(-19, 14, -18, 5, -6, -10);
+      c.moveTo(cx - S*0.015, cy - S*0.06);
+      c.bezierCurveTo(cx - S*0.1, cy + S*0.05, cx - S*0.12, S*0.16 + cy, cx - S*0.16, cy + S*0.18);
+      c.bezierCurveTo(cx - S*0.2, cy + S*0.2, cx - S*0.24, cy + S*0.14, cx - S*0.19, cy + S*0.11);
+      c.bezierCurveTo(cx - S*0.14, cy + S*0.1, cx - S*0.13, cy + S*0.04, cx - S*0.05, cy - S*0.06);
       c.closePath(); c.fill(); c.stroke();
-      
-      // सुनहरे मोदक (Modak at Trunk Tip)
-      c.fillStyle = '#fbbf24';
-      c.beginPath(); c.arc(-22, 14, 3.5, 0, Math.PI * 2); c.fill(); c.stroke();
 
-      // G. गहरी प्यारी आँखें (Big Glossy Pixar Eyes)
-      c.fillStyle = '#0f172a'; // Left Eye
-      c.beginPath(); c.ellipse(-11, -12, 3.8, 5.2, 0, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.ellipse(11, -12, 3.8, 5.2, 0, 0, Math.PI * 2); c.fill();
-      // Eye shine reflection (चमक)
+      c.fillStyle = '#fbbf24';
+      c.beginPath(); c.arc(cx - S*0.17, cy + S*0.11, S*0.026, 0, Math.PI * 2); c.fill(); c.stroke();
+
+      // G. Large Expressive Pixar Eyes (आकर्षक आँखें)
+      c.fillStyle = '#0f172a';
+      c.beginPath(); c.ellipse(cx - S*0.08, cy - S*0.09, S*0.028, S*0.04, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(cx + S*0.08, cy - S*0.09, S*0.028, S*0.04, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#ffffff';
-      c.beginPath(); c.arc(-12, -14, 1.4, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(10, -14, 1.4, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(-10, -10, 0.6, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(12, -10, 0.6, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(cx - S*0.088, cy - S*0.105, S*0.01, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(cx + S*0.072, cy - S*0.105, S*0.01, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(cx - S*0.072, cy - S*0.075, S*0.005, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(cx + S*0.088, cy - S*0.075, S*0.005, 0, Math.PI * 2); c.fill();
 
-      // H. मुकुट (Golden detailed crown)
+      // H. Majestic Gold Crown (मुकुट)
       c.fillStyle = '#fbbf24';
       c.beginPath();
-      c.moveTo(-10, -28);
-      c.lineTo(0, -48);
-      c.lineTo(10, -28);
+      c.moveTo(cx - S*0.075, cy - S*0.2);
+      c.lineTo(cx, cy - S*0.35);
+      c.lineTo(cx + S*0.075, cy - S*0.2);
       c.closePath(); c.fill(); c.stroke();
-      // Crown jewels (Red Ruby)
       c.fillStyle = '#dc2626';
-      c.beginPath(); c.arc(0, -36, 2.5, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(cx, cy - S*0.26, S*0.018, 0, Math.PI * 2); c.fill();
 
-      // I. कुमकुम तिलक (Vermilion Tilak)
+      // I. Red Tilak
       c.fillStyle = '#dc2626';
       c.beginPath();
-      c.moveTo(-1.8, -22);
-      c.quadraticCurveTo(0, -28, 1.8, -22);
-      c.quadraticCurveTo(0, -17, -1.8, -22);
+      c.moveTo(cx - S*0.014, cy - S*0.16);
+      c.quadraticCurveTo(cx, cy - S*0.21, cx + S*0.014, cy - S*0.16);
+      c.quadraticCurveTo(cx, cy - S*0.12, cx - S*0.014, cy - S*0.16);
       c.fill();
 
       c.restore();
     }
-    /* ─── END NEW HELPERS ─── */
 
+    /* Background rendering */
     function dBg(t:number){
       c.fillStyle='#07030a';c.fillRect(0,0,W,H);
       const aa=t<2.5?eOC(Math.min(t/2,1))*.6:.6;
@@ -299,9 +280,7 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
         const tw=g.bw*.28;const ty=by-g.ti*th;
         c.beginPath();c.moveTo(g.cx,ty-th*.7);c.lineTo(g.cx-tw/2,ty);c.lineTo(g.cx+tw/2,ty);c.closePath();c.fill();
       }
-      /* ground */
       c.fillRect(0,H*.86,W,H*.14);
-      /* subtle ground glow */
       const gg=c.createLinearGradient(0,H*.84,0,H*.9);
       gg.addColorStop(0,'rgba(120,40,20,0)');gg.addColorStop(1,`rgba(120,40,20,${al*.3})`);
       c.fillStyle=gg;c.fillRect(0,H*.84,W,H*.06);
@@ -380,24 +359,20 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
       const show=Math.floor(prog*gn);if(show<2)return;
       const sc=Math.min(W,H)*.56;const ox=(W-sc)/2,oy=(H-sc)/2-H*.015;
       c.save();c.lineCap='round';c.lineJoin='round';
-      /* wide glow */
       c.shadowColor='rgba(255,170,40,.6)';c.shadowBlur=22;
-      c.strokeStyle=`rgba(255,190,65,.35)`;c.lineWidth=5.2; // 🚀 स्ट्रोक चौड़ा किया गया
+      c.strokeStyle=`rgba(255,190,65,.35)`;c.lineWidth=5.2;
       c.beginPath();c.moveTo(gp[0][0]*sc+ox,gp[0][1]*sc+oy);
       for(let i=1;i<show;i++)c.lineTo(gp[i][0]*sc+ox,gp[i][1]*sc+oy);c.stroke();
-      /* bright core */
       c.shadowColor='rgba(255,210,85,.8)';c.shadowBlur=10;
-      c.strokeStyle='rgba(255,225,130,.95)';c.lineWidth=2.4; // 🚀 मुख्य रेखा को ठोस किया गया
+      c.strokeStyle='rgba(255,225,130,.95)';c.lineWidth=2.4;
       c.beginPath();c.moveTo(gp[0][0]*sc+ox,gp[0][1]*sc+oy);
       for(let i=1;i<show;i++)c.lineTo(gp[i][0]*sc+ox,gp[i][1]*sc+oy);c.stroke();
-      /* leading dot */
       if(t-ps<dur&&show>0){
         const lp=gp[show-1];const lx=lp[0]*sc+ox,ly=lp[1]*sc+oy;
         const eg=c.createRadialGradient(lx,ly,0,lx,ly,Math.max(EP,20));
         eg.addColorStop(0,'rgba(255,255,190,.9)');eg.addColorStop(.35,'rgba(255,190,65,.4)');eg.addColorStop(1,'rgba(255,165,35,0)');
         c.fillStyle=eg;c.fillRect(lx-20,ly-20,40,40);
       }
-      /* sparkles */
       c.shadowBlur=0;
       for(let i=0;i<show;i+=4){const pt=gp[i];const sp=.22+Math.sin(t*3.2+i*.4)*.22;
         c.beginPath();c.arc(pt[0]*sc+ox,pt[1]*sc+oy,Math.max(EP,1.1),0,Math.PI*2);
@@ -452,10 +427,8 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
     }
     function drawBell(ax:number,ay:number,s:number,ang:number,al:number){
       c.save();c.globalAlpha=al;c.translate(ax,ay);c.rotate(ang);
-      /* chain */
       c.strokeStyle='#7a6535';c.lineWidth=1.2;
       for(let i=0;i<3;i++){c.beginPath();c.ellipse(0,s*.08*(i+1),s*.028,s*.045,0,0,Math.PI*2);c.stroke();}
-      /* body */
       const ty=s*.32,by=s,tw=s*.11,bw=s*.34;
       c.beginPath();c.moveTo(-tw,ty);
       c.bezierCurveTo(-tw,ty+s*.2,-bw*.82,ty+s*.4,-bw,by);
@@ -466,20 +439,16 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
       bg.addColorStop(0,'#523e10');bg.addColorStop(.25,'#9a7520');bg.addColorStop(.45,'#c9a030');
       bg.addColorStop(.55,'#dab540');bg.addColorStop(.75,'#9a7520');bg.addColorStop(1,'#523e10');
       c.fillStyle=bg;c.fill();
-      /* highlight */
       c.beginPath();c.moveTo(-tw*.25,ty+s*.05);
       c.bezierCurveTo(-tw*.25,ty+s*.2,-bw*.22,ty+s*.4,-bw*.22,by-s*.04);
       c.lineTo(-bw*.1,by-s*.04);
       c.bezierCurveTo(-bw*.1,ty+s*.4,-tw*.1,ty+s*.2,-tw*.1,ty+s*.05);
       c.closePath();c.fillStyle='rgba(255,228,165,.12)';c.fill();
-      /* rim */
       c.beginPath();c.moveTo(-bw,by);c.lineTo(bw,by);
       c.strokeStyle='#dab540';c.lineWidth=1.8;c.stroke();
-      /* glow on rim */
       const rg=c.createRadialGradient(0,by,0,0,by,Math.max(EP,s*.3));
       rg.addColorStop(0,'rgba(255,195,65,.15)');rg.addColorStop(1,'rgba(255,195,65,0)');
       c.fillStyle=rg;c.fillRect(-s*.3,by-s*.3,s*.6,s*.6);
-      /* clapper */
       c.beginPath();c.arc(0,by-s*.06,s*.035,0,Math.PI*2);c.fillStyle='#3e2e0c';c.fill();
       c.restore();
     }
@@ -494,7 +463,6 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
       const sc=Math.min(W,H)*.56;const cx=W/2,cy=H/2-H*.015;
       const orad=sc*.44;const ang=(t-as)*Math.PI*1.3;
       const ax=cx+Math.cos(ang)*orad;const ay=cy+Math.sin(ang)*orad*.52;
-      /* trail */
       for(let i=1;i<18;i++){
         const ta=ang-i*.045;const tx=cx+Math.cos(ta)*orad;const ty=cy+Math.sin(ta)*orad*.52;
         const tla=(1-i/18)*.12*aa;
@@ -503,10 +471,8 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
         c.fillStyle=tg;c.fillRect(tx-10,ty-10,20,20);
       }
       c.save();c.globalAlpha=aa;c.translate(ax,ay);
-      /* plate */
       c.beginPath();c.ellipse(0,0,11,4.5,0,0,Math.PI*2);
       c.fillStyle='#b8942e';c.fill();c.strokeStyle='#7a6520';c.lineWidth=.8;c.stroke();
-      /* flame */
       const fk=1+Math.sin(t*13)*.14+Math.sin(t*19)*.09;const fh=17*fk;
       c.beginPath();c.moveTo(0,-2);
       c.bezierCurveTo(-5.5,-fh*.4,-4.5,-fh*.8,0,-fh);
@@ -520,7 +486,6 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
       c.bezierCurveTo(-1.2,-fh*.18,-.8,-fh*.32,0,-fh*.38);
       c.bezierCurveTo(.8,-fh*.32,1.2,-fh*.18,0,-2);
       c.fillStyle='rgba(255,252,218,.92)';c.fill();
-      /* flame glow */
       const fg=c.createRadialGradient(0,-fh*.28,0,0,-fh*.28,Math.max(EP,32));
       fg.addColorStop(0,'rgba(255,175,48,.22)');fg.addColorStop(.5,'rgba(255,135,28,.06)');fg.addColorStop(1,'rgba(255,95,18,0)');
       c.fillStyle=fg;c.fillRect(-32,-fh-14,64,fh+42);
@@ -643,17 +608,14 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
       const ts=Math.min(W*.058,H*.065,50);
       c.font=`700 ${ts}px 'Georgia','Times New Roman',serif`;
       const tw=c.measureText('Happy Ganesh Chaturthi').width;
-      /* outline */
       c.strokeStyle='rgba(60,35,6,.38)';c.lineWidth=3.5;
       c.shadowColor='rgba(255,190,42,.45)';c.shadowBlur=20;
       c.strokeText('Happy Ganesh Chaturthi',W/2,ty);
-      /* metallic */
       const mg=c.createLinearGradient(W/2-tw/2,0,W/2+tw/2,0);
       mg.addColorStop(0,'#5a4210');mg.addColorStop(.15,'#b08018');mg.addColorStop(.32,'#d4a020');
       mg.addColorStop(.48,'#ffd700');mg.addColorStop(.52,'#fffacd');mg.addColorStop(.68,'#ffd700');
       mg.addColorStop(.84,'#d4a020');mg.addColorStop(1,'#5a4210');
       c.fillStyle=mg;c.shadowBlur=16;c.fillText('Happy Ganesh Chaturthi',W/2,ty);
-      /* shimmer */
       const sp=(Math.sin(t*2.2)+1)/2;
       const sg=c.createLinearGradient(W/2-tw*.6,0,W/2+tw*.6,0);
       const s0=Math.max(0,sp-.12),s1=Math.max(0,sp-.04),s2=Math.min(1,sp+.04),s3=Math.min(1,sp+.12);
@@ -661,7 +623,6 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
       sg.addColorStop(sp,'rgba(255,255,232,.18)');sg.addColorStop(s2,'rgba(255,255,232,.1)');
       sg.addColorStop(s3,'rgba(255,255,232,0)');
       c.shadowBlur=0;c.fillStyle=sg;c.fillText('Happy Ganesh Chaturthi',W/2,ty);
-      /* Shlok */
       const ss=Math.min(W*.024,H*.028,19);
       c.font=`400 ${ss}px 'Nirmala UI','Devanagari Sangam MN','Mangal','Segoe UI',sans-serif`;
       c.shadowColor='rgba(255,170,42,.22)';c.shadowBlur=10;
@@ -683,16 +644,13 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
       const ws=11;const wt=Math.min((t-ws)/.7,1);if(wt<=0)return;
       const cx=W/2,cy=H/2;const maxR=Math.max(W,H)*.95;
       const r=maxR*eOE(wt);const al=(1-wt)*.35;
-      /* ring */
       c.save();c.beginPath();c.arc(cx,cy,Math.max(EP,r),0,Math.PI*2);
       c.strokeStyle=`rgba(255,195,65,${al})`;c.lineWidth=4*(1-wt);c.stroke();c.restore();
-      /* ring glow */
       const inner=Math.max(EP,r-18);const outer=Math.max(inner+EP,r+18);
       const wg=c.createRadialGradient(cx,cy,inner,cx,cy,outer);
       wg.addColorStop(0,'rgba(255,195,65,0)');wg.addColorStop(.4,`rgba(255,195,65,${al*.4})`);
       wg.addColorStop(.6,`rgba(255,195,65,${al*.4})`);wg.addColorStop(1,'rgba(255,195,65,0)');
       c.fillStyle=wg;c.fillRect(0,0,W,H);
-      /* sparkles along ring */
       if(wt<.7){for(let i=0;i<12;i++){
         const ang=(i/12)*Math.PI*2+t*.5;
         const sx=cx+Math.cos(ang)*r;const sy=cy+Math.sin(ang)*r;
