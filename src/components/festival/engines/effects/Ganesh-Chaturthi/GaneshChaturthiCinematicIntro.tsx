@@ -18,6 +18,10 @@ const POOL = 3400;
 const DUR = 12.0; 
 const EP = 1e-4;
 
+/* ─── 🖼️ PRELOAD GANESHA IMAGE (module level = earliest possible load) ─── */
+const GANESH_IMG = new Image();
+GANESH_IMG.src = 'https://z-cdn-media.chatglm.cn/files/5279081f-8f1e-4bfc-aa5d-0c04de229e97.png?auth_key=1883950665-c601b813041f470eaf3e1a6c669a2b29-0-9e01fb5af563328a3d6cb08e9778401d';
+
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS
    ═══════════════════════════════════════════════════════════════ */
@@ -78,113 +82,42 @@ function buildGP(): number[][] {
   return all.map(p => [p[0] / 400, p[1] / 400]);
 }
 
-/* ─── GLOBAL DRAWING HELPERS ─── */
-const drawPeacockFeather = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number) => {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rot);
-  ctx.strokeStyle = '#15803d'; ctx.lineWidth = r * 0.08;
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(r * 0.4, r * 0.8, r * 0.5, r * 1.3); ctx.stroke();
-  ctx.fillStyle = '#16a34a';
-  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.55, r, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#06b6d4';
-  ctx.beginPath(); ctx.ellipse(0, r * 0.1, r * 0.4, r * 0.72, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#2563eb';
-  ctx.beginPath(); ctx.ellipse(0, r * 0.18, r * 0.26, r * 0.46, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath(); ctx.ellipse(0, r * 0.22, r * 0.15, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-};
-
-const drawLotusSeat = (ctx: CanvasRenderingContext2D, cx: number, cy: number, S: number) => {
-  ctx.save();
-  const colors = ['#9f1239', '#e11d48', '#f43f5e', '#fb7185', '#fbcfe8'];
-  for (let layer = 0; layer < 4; layer++) {
-    ctx.fillStyle = colors[layer];
-    const numPetals = 8 - layer * 2;
-    const rX = S * (0.42 - layer * 0.07);
-    const rY = S * (0.16 - layer * 0.03);
-    const petalY = cy + S * 0.28;
-    for (let i = 0; i < numPetals; i++) {
-      const ang = (i / (numPetals - 1)) * Math.PI - Math.PI;
-      const px = cx + Math.cos(ang) * rX;
-      const py = petalY + Math.sin(ang) * rY;
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(ang + Math.PI / 2);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, S * 0.09, S * 0.18, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-  ctx.restore();
-};
-
+/* ─── 🖼️ IMAGE-BASED GANESHA DRAWING ─── */
 const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: number, S: number, opacity: number) => {
+  if (!GANESH_IMG.complete || GANESH_IMG.naturalWidth === 0) return;
+
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  drawPeacockFeather(ctx, cx - S * 0.32, cy - S * 0.16, S * 0.22, -0.45);
-  drawPeacockFeather(ctx, cx + S * 0.32, cy - S * 0.16, S * 0.22, 0.45);
-  drawLotusSeat(ctx, cx, cy, S);
+  const displaySize = S * 25;
+  const aspect = GANESH_IMG.naturalWidth / GANESH_IMG.naturalHeight;
+  const drawH = displaySize;
+  const drawW = drawH * aspect;
 
-  ctx.fillStyle = '#fde8d0';
-  ctx.strokeStyle = '#4c0519';
-  ctx.lineWidth = S * 0.008;
+  /* ── soft golden aura behind image ── */
+  const auraR = Math.max(EP, drawH * 0.6);
+  const aura = ctx.createRadialGradient(cx, cy, 0, cx, cy, auraR);
+  aura.addColorStop(0, `rgba(255,190,60,${opacity * 0.18})`);
+  aura.addColorStop(0.5, `rgba(255,140,35,${opacity * 0.07})`);
+  aura.addColorStop(1, 'rgba(255,100,20,0)');
+  ctx.fillStyle = aura;
+  ctx.fillRect(cx - auraR, cy - auraR, auraR * 2, auraR * 2);
 
-  ctx.beginPath(); ctx.ellipse(cx - S * 0.14, cy + S * 0.16, S * 0.11, S * 0.08, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(cx + S * 0.14, cy + S * 0.16, S * 0.11, S * 0.08, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  /* ── golden glow shadow ── */
+  ctx.shadowColor = `rgba(255,185,50,${opacity * 0.55})`;
+  ctx.shadowBlur = 40 * opacity;
 
-  ctx.beginPath(); ctx.ellipse(cx, cy + S * 0.08, S * 0.18, S * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  
-  ctx.fillStyle = '#facc15';
-  ctx.beginPath(); ctx.ellipse(cx, cy + S * 0.15, S * 0.18, S * 0.08, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  /* ── draw the actual image ── */
+  ctx.drawImage(GANESH_IMG, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
 
-  ctx.fillStyle = '#fde8d0';
-  ctx.beginPath(); ctx.ellipse(cx - S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, -0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(cx + S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#fda4af';
-  ctx.beginPath(); ctx.ellipse(cx - S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, -0.15, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(cx + S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, 0.15, 0, Math.PI * 2); ctx.fill();
-
-  ctx.fillStyle = '#fde8d0';
-  ctx.beginPath(); ctx.arc(cx, cy - S * 0.08, S * 0.14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
+  /* ── thin golden border ring ── */
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = opacity * 0.35;
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(cx - S * 0.015, cy - S * 0.06);
-  ctx.bezierCurveTo(cx - S * 0.1, cy + S * 0.05, cx - S * 0.12, S * 0.16 + cy, cx - S * 0.16, cy + S * 0.18);
-  ctx.bezierCurveTo(cx - S * 0.2, cy + S * 0.2, cx - S * 0.24, cy + S * 0.14, cx - S * 0.19, cy + S * 0.11);
-  ctx.bezierCurveTo(cx - S * 0.14, cy + S * 0.1, cx - S * 0.13, cy + S * 0.04, cx - S * 0.05, cy - S * 0.06);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath(); ctx.arc(cx - S * 0.17, cy + S * 0.11, S * 0.026, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-
-  ctx.fillStyle = '#0f172a';
-  ctx.beginPath(); ctx.ellipse(cx - S * 0.08, cy - S * 0.09, S * 0.028, S * 0.04, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(cx + S * 0.08, cy - S * 0.09, S * 0.028, S * 0.04, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(cx - S * 0.088, cy - S * 0.105, S * 0.01, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + S * 0.072, cy - S * 0.105, S * 0.01, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx - S * 0.072, cy - S * 0.075, S * 0.005, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + S * 0.088, cy - S * 0.075, S * 0.005, 0, Math.PI * 2); ctx.fill();
-
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath();
-  ctx.moveTo(cx - S * 0.075, cy - S * 0.2);
-  ctx.lineTo(cx, cy - S * 0.35);
-  ctx.lineTo(cx + S * 0.075, cy - S * 0.2);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#dc2626';
-  ctx.beginPath(); ctx.arc(cx, cy - S * 0.26, S * 0.018, 0, Math.PI * 2); ctx.fill();
-
-  ctx.fillStyle = '#dc2626';
-  ctx.beginPath();
-  ctx.moveTo(cx - S * 0.014, cy - S * 0.16);
-  ctx.quadraticCurveTo(cx, cy - S * 0.21, cx + S * 0.014, cy - S * 0.16);
-  ctx.quadraticCurveTo(cx, cy - S * 0.12, cx - S * 0.014, cy - S * 0.16);
-  ctx.fill();
+  ctx.ellipse(cx, cy, drawW / 2 + 4, drawH / 2 + 4, 0, 0, Math.PI * 2);
+  ctx.stroke();
 
   ctx.restore();
 };
@@ -258,7 +191,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
     
-    // Try creating audio context silently (may be blocked by browser, that's fine — visual works anyway)
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
