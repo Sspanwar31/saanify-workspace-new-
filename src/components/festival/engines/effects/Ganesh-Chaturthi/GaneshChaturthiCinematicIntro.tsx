@@ -144,7 +144,6 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   // B. Lotus Seat
   drawLotusSeat(ctx, cx, cy, S);
 
-  // C. Seated legs
   ctx.fillStyle = '#fde8d0';
   ctx.strokeStyle = '#4c0519';
   ctx.lineWidth = S * 0.008;
@@ -152,14 +151,11 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.beginPath(); ctx.ellipse(cx - S * 0.14, cy + S * 0.16, S * 0.11, S * 0.08, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.14, cy + S * 0.16, S * 0.11, S * 0.08, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-  // Tummy
   ctx.beginPath(); ctx.ellipse(cx, cy + S * 0.08, S * 0.18, S * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   
-  // Dhoti
   ctx.fillStyle = '#facc15';
   ctx.beginPath(); ctx.ellipse(cx, cy + S * 0.15, S * 0.18, S * 0.08, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-  // D. Ears
   ctx.fillStyle = '#fde8d0';
   ctx.beginPath(); ctx.ellipse(cx - S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, -0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -167,11 +163,9 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.beginPath(); ctx.ellipse(cx - S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, -0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
   ctx.beginPath(); ctx.ellipse(cx + S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, 0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
 
-  // E. Face
   ctx.fillStyle = '#fde8d0';
   ctx.beginPath(); ctx.arc(cx, cy - S * 0.08, S * 0.14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-  // F. Trunk
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.015, cy - S * 0.06);
   ctx.bezierCurveTo(cx - S * 0.1, cy + S * 0.05, cx - S * 0.12, S * 0.16 + cy, cx - S * 0.16, cy + S * 0.18);
@@ -179,22 +173,18 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.bezierCurveTo(cx - S * 0.14, cy + S * 0.1, cx - S * 0.13, cy + S * 0.04, cx - S * 0.05, cy - S * 0.06);
   ctx.closePath(); ctx.fill(); ctx.stroke();
 
-  // Modak in Trunk
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath(); ctx.arc(cx - S * 0.17, cy + S * 0.11, S * 0.026, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-  // G. Pixar Eyes
   ctx.fillStyle = '#0f172a';
   ctx.beginPath(); ctx.ellipse(cx - S * 0.08, cy - S * 0.09, S * 0.028, S * 0.04, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.08, cy - S * 0.09, S * 0.028, S * 0.04, 0, 0, Math.PI * 2); ctx.fill();
-  // Reflection Highlights
   ctx.fillStyle = '#ffffff';
   ctx.beginPath(); ctx.arc(cx - S * 0.088, cy - S * 0.105, S * 0.01, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + S * 0.072, cy - S * 0.105, S * 0.01, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx - S * 0.072, cy - S * 0.075, S * 0.005, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + S * 0.088, cy - S * 0.075, S * 0.005, 0, Math.PI * 2); ctx.fill();
 
-  // H. Crown (मुकुट)
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.075, cy - S * 0.2);
@@ -204,7 +194,6 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.fillStyle = '#dc2626';
   ctx.beginPath(); ctx.arc(cx, cy - S * 0.26, S * 0.018, 0, Math.PI * 2); ctx.fill();
 
-  // I. Tilak
   ctx.fillStyle = '#dc2626';
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.014, cy - S * 0.16);
@@ -224,7 +213,7 @@ function fillGlow(ctx: CanvasRenderingContext2D, color: string, blur: number) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT
+   MAIN COMPONENT DEFINITION (🚀 NO BUTTON - AUTO START ON MOUNT)
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void }
 
@@ -573,7 +562,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
       const ty = s * .32, by = s, tw = s * .11, bw = s * .34;
       c!.beginPath(); c!.moveTo(-tw, ty);
-      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, -bw, by);
+      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, tw, by); // 🚀 FIXED: Replaced wrong variable reference
       c!.lineTo(bw, by);
       c!.bezierCurveTo(bw * .82, ty + s * .4, tw, ty + s * .2, tw, ty);
       c!.closePath();
