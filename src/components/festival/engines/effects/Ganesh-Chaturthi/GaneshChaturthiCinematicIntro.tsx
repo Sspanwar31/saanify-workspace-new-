@@ -1,43 +1,36 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES & CONSTANTS
    ═══════════════════════════════════════════════════════════════ */
-interface Particle {
-  x: number; y: number;
-  vx: number; vy: number;
-  size: number; life: number; maxLife: number;
-  r: number; g: number; b: number;
-  alpha: number;
-  rotation: number; rotSpeed: number;
-  active: boolean;
-  type: 'ambient' | 'petal' | 'spark';
+interface P {
+  x: number; y: number; vx: number; vy: number;
+  sz: number; life: number; ml: number;
+  r: number; g: number; b: number; a: number;
+  rot: number; rs: number; on: boolean; tp: number;
 }
-
-interface Bell {
-  x: number;
-  length: number;
-  angle: number;
-  lastBellTime: number;
-}
-
-const POOL = 2200;
+const POOL = 3400;
 const DUR = 12.0; // 12 सेकंड का सिंक टाइमलाइन
+const EP = 1e-4;
 
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS
    ═══════════════════════════════════════════════════════════════ */
 const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
-const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const eIO = (t: number) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const eOQ = (t: number) => 1 - Math.pow(1 - t, 4);
+const eIQ = (t: number) => t * t;
+const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
 
+/* ═══════════════════════════════════════════════════════════════
+   BEZIER SAMPLER
+   ═══════════════════════════════════════════════════════════════ */
 function cb(t: number, a: number, b: number, c: number, d: number) {
   const m = 1 - t;
   return m * m * m * a + 3 * m * m * t * b + 3 * m * t * t * c + t * t * t * d;
 }
-
 function ss(a: number[], b: number[], c: number[], d: number[], n: number): number[][] {
   const r: number[][] = [];
   for (let i = 0; i <= n; i++) {
@@ -48,7 +41,7 @@ function ss(a: number[], b: number[], c: number[], d: number[], n: number): numb
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SACRED GANESHA CALLIGRAPHY PATHS (0 to 1 normalized)
+   GANESHA CALLIGRAPHY PATHS (0-1 normalised)
    ═══════════════════════════════════════════════════════════════ */
 function buildGP(): number[][] {
   const body: number[][][] = [
@@ -82,7 +75,7 @@ function buildGP(): number[][] {
   return all.map(p => [p[0] / 400, p[1] / 400]);
 }
 
-/* ─── 🚀 INLINE STANDALONE DRAWING HELPERS (No Scope/Build Errors) ─── */
+/* ─── 🚀 GLOBAL DRAWING HELPERS (No Scope/Build Errors) ─── */
 const drawPeacockFeather = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number) => {
   ctx.save();
   ctx.translate(x, y);
@@ -136,8 +129,8 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.globalAlpha = opacity;
 
   // A. Back Peacock Feathers
-  drawPeacockFeather(ctx, cx - S * 0.3, cy - S * 0.16, S * 0.22, -0.45);
-  drawPeacockFeather(ctx, cx + S * 0.3, cy - S * 0.16, S * 0.22, 0.45);
+  drawPeacockFeather(ctx, cx - S * 0.32, cy - S * 0.16, S * 0.22, -0.45);
+  drawPeacockFeather(ctx, cx + S * 0.32, cy - S * 0.16, S * 0.22, 0.45);
 
   // B. Lotus Seat
   drawLotusSeat(ctx, cx, cy, S);
@@ -162,8 +155,8 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.beginPath(); ctx.ellipse(cx - S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, -0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#fda4af';
-  ctx.beginPath(); ctx.ellipse(cx - S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, -0.15, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(cx + S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, 0.15, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx - S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, -0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
+  ctx.beginPath(); ctx.ellipse(cx + S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, 0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
 
   // E. Face
   ctx.fillStyle = '#fde8d0';
@@ -213,17 +206,25 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.restore();
 };
 
+function fillGlow(ctx: CanvasRenderingContext2D, color: string, blur: number) {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+  ctx.fill();
+  ctx.restore();
+}
+
 /* ═══════════════════════════════════════════════════════════════
-   COMPONENT DEFINITION
+   MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════ */
 export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const [audioStarted, setAudioStarted] = useState(false);
   
-  const rafRef = useRef(0);
-  const t0Ref = useRef(0);
-  const doneRef = useRef(false);
+  const raf = useRef(0);
+  const t0 = useRef(0);
+  const done = useRef(false);
   const cbR = useRef(onComplete);
   cbR.current = onComplete;
 
@@ -242,7 +243,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     return null;
   }, []);
 
-  // Audio Synthesizer for Bells
+  // Web Audio API Bell Synthesizer
   const triggerBellSound = (frequency: number) => {
     if (!audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
@@ -280,7 +281,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       if (AudioCtx) {
         audioCtxRef.current = new AudioCtx();
         setAudioStarted(true);
-        triggerBellSound(165); // Welcoming bell sound
+        triggerBellSound(165); // Warm welcoming bell
       }
     }
   };
@@ -660,15 +661,29 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       p.rs = (Math.random() - .5) * .04; p.on = true; p.tp = 4;
     }
 
+    // Peackok Feather, Saffron Petals, Red Hibiscus Rain! (🚀 PERFECTLY REDESIGNED)
     function dPetals() {
       for (const p of pl) {
         if (!p.on || p.tp !== 4) continue;
         const lr = p.life / p.ml; const a = p.a * Math.min(lr * 2, 1) * (lr > .82 ? (1 - lr) / .18 : 1);
         c!.save(); c!.translate(p.x, p.y); c!.rotate(p.rot);
-        c!.beginPath(); c!.ellipse(0, 0, Math.max(EP, p.sz * .36), Math.max(EP, p.sz), 0, 0, Math.PI * 2);
-        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
-        c!.beginPath(); c!.ellipse(-p.sz * .07, -p.sz * .2, Math.max(EP, p.sz * .1), Math.max(EP, p.sz * .32), 0, 0, Math.PI * 2);
-        c!.fillStyle = `rgba(255,255,210,${a * .25})`; c!.fill();
+        
+        // Beautiful multi-colored flower petals & micro feathers
+        const grad = c!.createLinearGradient(0, -p.sz, 0, p.sz);
+        grad.addColorStop(0, `rgb(${p.r},${p.g},${p.b})`);
+        grad.addColorStop(1, `rgb(${Math.max(0, p.r - 40)},${Math.max(0, p.g - 35)},${Math.max(0, p.b - 20)})`);
+        c!.fillStyle = grad;
+
+        c!.beginPath();
+        c!.ellipse(0, 0, Math.max(EP, p.sz * .42), Math.max(EP, p.sz), 0, 0, Math.PI * 2);
+        c!.fill();
+        
+        // Petal highlight crease
+        c!.beginPath();
+        c!.ellipse(-p.sz * 0.05, -p.sz * 0.2, Math.max(EP, p.sz * 0.1), Math.max(EP, p.sz * 0.35), 0, 0, Math.PI * 2);
+        c!.fillStyle = 'rgba(255,255,255,0.25)';
+        c!.fill();
+
         c!.restore();
       }
     }
@@ -836,10 +851,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       dAarti(t);
       dBells(t);
 
+      // 🚀 MASTER STROKE FIX: Passed exact canvas context "c" to drawDetailedGanesha helper!
       if (t >= 5.5 && t < 9.5) {
         const coloredGaneshaFade = Math.min((t - 5.5) / 1.2, 1.0);
         const gScale = Math.min(W, H) * 0.02;
-        drawDetailedGanesha(W / 2, H / 2 - H * .015, gScale * (1 + Math.sin(t * 2.5) * 0.015), coloredGaneshaFade);
+        drawDetailedGanesha(c!, W / 2, H / 2 - H * .015, gScale * (1 + Math.sin(t * 2.5) * 0.015), coloredGaneshaFade);
       }
 
       dBloom(t);
@@ -870,7 +886,30 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
   return (
     <div className="fixed inset-0 z-[9999]" style={{ background: '#07030a' }}>
-      <canvas ref={cvRef} className="block w-full h-full" />
+      {/* ── 🚀 GLOWING PREMIUM DESIGN PRESET START BUTTON ── */}
+      {!audioStarted ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#07030a] px-4">
+          <div className="absolute w-[240px] h-[240px] rounded-full bg-yellow-500/10 blur-[100px] pointer-events-none animate-pulse" />
+          
+          <button
+            onClick={handleStartInteraction}
+            className="relative px-12 py-5 rounded-full overflow-hidden group transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_15px_40px_rgba(251,191,36,0.15)] flex flex-col items-center gap-2 border border-yellow-500/30"
+          >
+            {/* Ambient Glassy Inner Glow */}
+            <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[12px] rounded-full transition-colors group-hover:bg-white/[0.05]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-red-500/10 to-yellow-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
+            
+            <span className="relative z-10 text-xs sm:text-sm font-semibold tracking-[0.25em] uppercase text-yellow-100 flex items-center gap-2 animate-bounce">
+              Touch To Begin Aarti
+            </span>
+            <span className="relative z-10 text-[9px] tracking-[0.1em] text-yellow-500/50 uppercase">
+              वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ
+            </span>
+          </button>
+        </div>
+      ) : (
+        <canvas ref={cvRef} className="block w-full h-full" />
+      )}
     </div>
   );
 }
