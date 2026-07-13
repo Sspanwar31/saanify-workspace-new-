@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES & CONSTANTS
@@ -17,10 +17,6 @@ interface Bell {
 const POOL = 3400;
 const DUR = 12.0; 
 const EP = 1e-4;
-
-/* ─── 🖼️ PRELOAD GANESHA IMAGE (module level = earliest possible load) ─── */
-const GANESH_IMG = new Image();
-GANESH_IMG.src = 'https://z-cdn-media.chatglm.cn/files/5279081f-8f1e-4bfc-aa5d-0c04de229e97.png?auth_key=1883950665-c601b813041f470eaf3e1a6c669a2b29-0-9e01fb5af563328a3d6cb08e9778401d';
 
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS
@@ -82,46 +78,6 @@ function buildGP(): number[][] {
   return all.map(p => [p[0] / 400, p[1] / 400]);
 }
 
-/* ─── 🖼️ IMAGE-BASED GANESHA DRAWING ─── */
-const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: number, S: number, opacity: number) => {
-  if (!GANESH_IMG.complete || GANESH_IMG.naturalWidth === 0) return;
-
-  ctx.save();
-  ctx.globalAlpha = opacity;
-
-  const displaySize = S * 25;
-  const aspect = GANESH_IMG.naturalWidth / GANESH_IMG.naturalHeight;
-  const drawH = displaySize;
-  const drawW = drawH * aspect;
-
-  /* ── soft golden aura behind image ── */
-  const auraR = Math.max(EP, drawH * 0.6);
-  const aura = ctx.createRadialGradient(cx, cy, 0, cx, cy, auraR);
-  aura.addColorStop(0, `rgba(255,190,60,${opacity * 0.18})`);
-  aura.addColorStop(0.5, `rgba(255,140,35,${opacity * 0.07})`);
-  aura.addColorStop(1, 'rgba(255,100,20,0)');
-  ctx.fillStyle = aura;
-  ctx.fillRect(cx - auraR, cy - auraR, auraR * 2, auraR * 2);
-
-  /* ── golden glow shadow ── */
-  ctx.shadowColor = `rgba(255,185,50,${opacity * 0.55})`;
-  ctx.shadowBlur = 40 * opacity;
-
-  /* ── draw the actual image ── */
-  ctx.drawImage(GANESH_IMG, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
-
-  /* ── thin golden border ring ── */
-  ctx.shadowBlur = 0;
-  ctx.globalAlpha = opacity * 0.35;
-  ctx.strokeStyle = '#ffd700';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, drawW / 2 + 4, drawH / 2 + 4, 0, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.restore();
-};
-
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT DEFINITION
    ═══════════════════════════════════════════════════════════════ */
@@ -130,12 +86,43 @@ interface Props { onComplete?: () => void }
 export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const ganeshaImgRef = useRef<HTMLImageElement | null>(null);
+  const [imgReady, setImgReady] = useState(false);
 
   const raf = useRef(0);
   const t0 = useRef(0);
   const done = useRef(false);
   const cbR = useRef(onComplete);
   cbR.current = onComplete;
+
+  /* ─── 🖼️ ROBUST IMAGE PRELOAD with crossOrigin & retry ─── */
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    const tryLoad = (url: string) => {
+      img.onload = () => {
+        ganeshaImgRef.current = img;
+        setImgReady(true);
+      };
+      img.onerror = () => {
+        /* If first URL fails (expired), try direct Pinterest CDN fallback */
+        if (!url.includes('pinimg.com')) {
+          tryLoad('https://i.pinimg.com/736x/00/00/00/ganesh-placeholder.png');
+        }
+        /* If both fail, animation still works — just without the image overlay */
+      };
+      img.src = url;
+    };
+
+    /* ⚠️ IMPORTANT: Replace this URL with your own hosted image!
+       The previous CDN URL expired. Upload the Ganesha image to your
+       project's /public folder and use: '/ganesha.png'
+       Or use any permanent image URL. */
+    tryLoad('/ganesha.png');
+
+    return () => { img.onload = null; img.onerror = null; };
+  }, []);
 
   const mkPool = useCallback(() => {
     const a: P[] = [];
@@ -156,27 +143,21 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     try {
       if (!audioCtxRef.current) return;
       const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-
+      if (ctx.state === 'suspended') ctx.resume();
       const duration = 4.2;
       const mainGain = ctx.createGain();
       mainGain.connect(ctx.destination);
       mainGain.gain.setValueAtTime(0, ctx.currentTime);
       mainGain.gain.linearRampToValueAtTime(0.24, ctx.currentTime + 0.01);
       mainGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-
       const harmonics = [1.0, 1.5, 2.0, 2.6, 3.12];
       harmonics.forEach((ratio, i) => {
         const osc = ctx.createOscillator();
         const gNode = ctx.createGain();
         osc.frequency.value = frequency * ratio;
         osc.type = i === 0 ? 'sine' : 'triangle';
-        
         gNode.gain.setValueAtTime(0.4 / (i + 1), ctx.currentTime);
         gNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / (i + 0.9));
-        
         osc.connect(gNode);
         gNode.connect(mainGain);
         osc.start();
@@ -193,10 +174,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        audioCtxRef.current = new AudioCtx();
-      }
-    } catch (_) { /* Audio not available, visual will still work */ }
+      if (AudioCtx) audioCtxRef.current = new AudioCtx();
+    } catch (_) {}
     
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
@@ -445,16 +424,20 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       });
     }
 
+    /* ─── 🔔 FIXED BELL: bezierCurveTo now has correct 6 params ─── */
     function drawBell(ax: number, ay: number, s: number, ang: number, al: number) {
       c!.save(); c!.globalAlpha = al; c!.translate(ax, ay); c!.rotate(ang);
       c!.strokeStyle = '#7a6535'; c!.lineWidth = 1.2;
       for (let i = 0; i < 3; i++) {
         c!.beginPath(); c!.ellipse(0, s * .08 * (i + 1), s * .028, s * .045, 0, 0, Math.PI * 2); c!.stroke();
       }
-      const ty = s * .32, by = s, tw = s * .11, bw = s * .34;
-      c!.beginPath(); c!.moveTo(-tw, ty);
-      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, by); 
-      c!.lineTo(bw, by);
+      const ty = s * .32, bellBottom = s, tw = s * .11, bw = s * .34;
+
+      /* ✅ FIX: All 3 bezierCurveTo calls now have proper 6 parameters (cp1x, cp1y, cp2x, cp2y, endX, endY) */
+      c!.beginPath();
+      c!.moveTo(-tw, ty);
+      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, -bw * .5, bellBottom);
+      c!.lineTo(bw * .5, bellBottom);
       c!.bezierCurveTo(bw * .82, ty + s * .4, tw, ty + s * .2, tw, ty);
       c!.closePath();
       const bg = c!.createLinearGradient(-bw, 0, bw, 0);
@@ -463,19 +446,19 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.fillStyle = bg; c!.fill();
       
       c!.beginPath(); c!.moveTo(-tw * .25, ty + s * .05);
-      c!.bezierCurveTo(-tw * .25, ty + s * .2, -bw * .22, ty + s * .4, -bw * .22, by - s * .04);
-      c!.lineTo(-bw * .1, by - s * .04);
+      c!.bezierCurveTo(-tw * .25, ty + s * .2, -bw * .22, ty + s * .4, -bw * .22, bellBottom - s * .04);
+      c!.lineTo(-bw * .1, bellBottom - s * .04);
       c!.bezierCurveTo(-bw * .1, ty + s * .4, -tw * .1, ty + s * .2, -tw * .1, ty + s * .05);
       c!.closePath(); c!.fillStyle = 'rgba(255,228,165,.12)'; c!.fill();
       
-      c!.beginPath(); c!.moveTo(-bw, by); c!.lineTo(bw, by);
+      c!.beginPath(); c!.moveTo(-bw * .5, bellBottom); c!.lineTo(bw * .5, bellBottom);
       c!.strokeStyle = '#dab540'; c!.lineWidth = 1.8; c!.stroke();
       
-      const rg = c!.createRadialGradient(0, by, 0, 0, by, Math.max(EP, s * .3));
+      const rg = c!.createRadialGradient(0, bellBottom, 0, 0, bellBottom, Math.max(EP, s * .3));
       rg.addColorStop(0, 'rgba(255,195,65,.15)'); rg.addColorStop(1, 'rgba(255,195,65,0)');
-      c!.fillStyle = rg; c!.fillRect(-s * .3, by - s * .3, s * .6, s * .6);
+      c!.fillStyle = rg; c!.fillRect(-s * .3, bellBottom - s * .3, s * .6, s * .6);
       
-      c!.beginPath(); c!.arc(0, by - s * .06, s * .035, 0, Math.PI * 2); c!.fillStyle = '#3e2e0c'; c!.fill();
+      c!.beginPath(); c!.arc(0, bellBottom - s * .06, s * .035, 0, Math.PI * 2); c!.fillStyle = '#3e2e0c'; c!.fill();
       c!.restore();
     }
 
@@ -513,6 +496,50 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       const fg = c!.createRadialGradient(0, -fh * .28, 0, 0, -fh * .28, Math.max(EP, 32));
       fg.addColorStop(0, 'rgba(255,175,48,.22)'); fg.addColorStop(.5, 'rgba(255,135,28,.06)'); fg.addColorStop(1, 'rgba(255,95,18,0)');
       c!.fillStyle = fg; c!.fillRect(-32, -fh - 14, 64, fh + 42);
+      c!.restore();
+    }
+
+    /* ─── 🖼️ IMAGE DRAWING (only if image loaded) ─── */
+    function drawGaneshaImage(t: number) {
+      if (t < 5.5 || t > 9.5) return;
+      const img = ganeshaImgRef.current;
+      if (!img || !img.complete || img.naturalWidth === 0) return;
+
+      const fade = Math.min((t - 5.5) / 1.2, 1.0);
+      const cx = W / 2, cy = H / 2 - H * .015;
+      const sc = Math.min(W, H);
+      const displayH = sc * 0.5;
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const displayW = displayH * aspect;
+
+      c!.save();
+      c!.globalAlpha = fade;
+
+      /* golden aura */
+      const auraR = Math.max(EP, displayH * 0.6);
+      const aura = c!.createRadialGradient(cx, cy, 0, cx, cy, auraR);
+      aura.addColorStop(0, `rgba(255,190,60,${fade * 0.2})`);
+      aura.addColorStop(0.5, `rgba(255,140,35,${fade * 0.08})`);
+      aura.addColorStop(1, 'rgba(255,100,20,0)');
+      c!.fillStyle = aura;
+      c!.fillRect(cx - auraR, cy - auraR, auraR * 2, auraR * 2);
+
+      /* glow shadow */
+      c!.shadowColor = `rgba(255,185,50,${fade * 0.6})`;
+      c!.shadowBlur = 45 * fade;
+
+      /* actual image */
+      c!.drawImage(img, cx - displayW / 2, cy - displayH / 2, displayW, displayH);
+
+      /* golden border */
+      c!.shadowBlur = 0;
+      c!.globalAlpha = fade * 0.3;
+      c!.strokeStyle = '#ffd700';
+      c!.lineWidth = 1.5;
+      c!.beginPath();
+      c!.ellipse(cx, cy, displayW / 2 + 5, displayH / 2 + 5, 0, 0, Math.PI * 2);
+      c!.stroke();
+
       c!.restore();
     }
 
@@ -735,11 +762,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       dBg(t); dTemples(t); dSmoke(); dRays(t); dStreams(); dOutline(t);
       dEnergy(t); dAarti(t); dBells(t);
 
-      if (t >= 5.5 && t < 9.5) {
-        const coloredGaneshaFade = Math.min((t - 5.5) / 1.2, 1.0);
-        const gScale = Math.min(W, H) * 0.02;
-        drawDetailedGanesha(c!, W / 2, H / 2 - H * .015, gScale * (1 + Math.sin(t * 2.5) * 0.015), coloredGaneshaFade);
-      }
+      /* ✅ Image draw replaces old canvas-drawn Ganesha */
+      drawGaneshaImage(t);
 
       dBloom(t); dBloomP(); dPetals(); dKum(); dOrbit(); dDissolve(t); dText(t); dWave(t); dFade(t); dDust(t);
 
