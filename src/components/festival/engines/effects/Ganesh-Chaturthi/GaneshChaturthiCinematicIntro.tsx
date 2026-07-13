@@ -12,7 +12,7 @@ interface P {
   rot: number; rs: number; on: boolean; tp: number;
 }
 const POOL = 3400;
-const DUR = 12.0; // 12 सेकंड का सिंक टाइमलाइन
+const DUR = 12.0; 
 const EP = 1e-4;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -41,7 +41,7 @@ function ss(a: number[], b: number[], c: number[], d: number[], n: number): numb
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GANESHA CALLIGRAPHY PATHS (0-1 normalised)
+   GANESHA OUTLINE (0-1 normalised)
    ═══════════════════════════════════════════════════════════════ */
 function buildGP(): number[][] {
   const body: number[][][] = [
@@ -75,24 +75,19 @@ function buildGP(): number[][] {
   return all.map(p => [p[0] / 400, p[1] / 400]);
 }
 
-/* ─── 🚀 GLOBAL DRAWING HELPERS (No Scope/Build Errors) ─── */
+/* ─── 🚀 GLOBAL DRAWING HELPERS ─── */
 const drawPeacockFeather = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number) => {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
-  // Stem
   ctx.strokeStyle = '#15803d'; ctx.lineWidth = r * 0.08;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(r * 0.4, r * 0.8, r * 0.5, r * 1.3); ctx.stroke();
-  // Outer green
   ctx.fillStyle = '#16a34a';
   ctx.beginPath(); ctx.ellipse(0, 0, r * 0.55, r, 0, 0, Math.PI * 2); ctx.fill();
-  // Teal layer
   ctx.fillStyle = '#06b6d4';
   ctx.beginPath(); ctx.ellipse(0, r * 0.1, r * 0.4, r * 0.72, 0, 0, Math.PI * 2); ctx.fill();
-  // Blue core
   ctx.fillStyle = '#2563eb';
   ctx.beginPath(); ctx.ellipse(0, r * 0.18, r * 0.26, r * 0.46, 0, 0, Math.PI * 2); ctx.fill();
-  // Gold center
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath(); ctx.ellipse(0, r * 0.22, r * 0.15, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
@@ -128,14 +123,11 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // A. Back Peacock Feathers
   drawPeacockFeather(ctx, cx - S * 0.32, cy - S * 0.16, S * 0.22, -0.45);
   drawPeacockFeather(ctx, cx + S * 0.32, cy - S * 0.16, S * 0.22, 0.45);
 
-  // B. Lotus Seat
   drawLotusSeat(ctx, cx, cy, S);
 
-  // C. Seated legs
   ctx.fillStyle = '#fde8d0';
   ctx.strokeStyle = '#4c0519';
   ctx.lineWidth = S * 0.008;
@@ -143,14 +135,11 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.beginPath(); ctx.ellipse(cx - S * 0.14, cy + S * 0.16, S * 0.11, S * 0.08, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.14, cy + S * 0.16, S * 0.11, S * 0.08, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-  // Tummy
   ctx.beginPath(); ctx.ellipse(cx, cy + S * 0.08, S * 0.18, S * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   
-  // Dhoti
   ctx.fillStyle = '#facc15';
   ctx.beginPath(); ctx.ellipse(cx, cy + S * 0.15, S * 0.18, S * 0.08, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-  // D. Ears
   ctx.fillStyle = '#fde8d0';
   ctx.beginPath(); ctx.ellipse(cx - S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, -0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -158,11 +147,9 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.beginPath(); ctx.ellipse(cx - S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, -0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
   ctx.beginPath(); ctx.ellipse(cx + S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, 0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
 
-  // E. Face
   ctx.fillStyle = '#fde8d0';
   ctx.beginPath(); ctx.arc(cx, cy - S * 0.08, S * 0.14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-  // F. Trunk
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.015, cy - S * 0.06);
   ctx.bezierCurveTo(cx - S * 0.1, cy + S * 0.05, cx - S * 0.12, S * 0.16 + cy, cx - S * 0.16, cy + S * 0.18);
@@ -170,22 +157,18 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.bezierCurveTo(cx - S * 0.14, cy + S * 0.1, cx - S * 0.13, cy + S * 0.04, cx - S * 0.05, cy - S * 0.06);
   ctx.closePath(); ctx.fill(); ctx.stroke();
 
-  // Modak in Trunk
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath(); ctx.arc(cx - S * 0.17, cy + S * 0.11, S * 0.026, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-  // G. Pixar Eyes
   ctx.fillStyle = '#0f172a';
   ctx.beginPath(); ctx.ellipse(cx - S * 0.08, cy - S * 0.09, S * 0.028, S * 0.04, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.08, cy - S * 0.09, S * 0.028, S * 0.04, 0, 0, Math.PI * 2); ctx.fill();
-  // Reflection Highlights
   ctx.fillStyle = '#ffffff';
   ctx.beginPath(); ctx.arc(cx - S * 0.088, cy - S * 0.105, S * 0.01, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + S * 0.072, cy - S * 0.105, S * 0.01, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx - S * 0.072, cy - S * 0.075, S * 0.005, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + S * 0.088, cy - S * 0.075, S * 0.005, 0, Math.PI * 2); ctx.fill();
 
-  // H. Crown (मुकुट)
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.075, cy - S * 0.2);
@@ -195,7 +178,6 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.fillStyle = '#dc2626';
   ctx.beginPath(); ctx.arc(cx, cy - S * 0.26, S * 0.018, 0, Math.PI * 2); ctx.fill();
 
-  // I. Tilak
   ctx.fillStyle = '#dc2626';
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.014, cy - S * 0.16);
@@ -243,45 +225,56 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     return null;
   }, []);
 
-  // Web Audio API Bell Synthesizer
+  // Safe Web Audio API Bell Synthesizer (Wrapped in Try-Catch)
   const triggerBellSound = (frequency: number) => {
-    if (!audioCtxRef.current) return;
-    const ctx = audioCtxRef.current;
-    if (ctx.state === 'suspended') {
-      ctx.resume();
+    try {
+      if (!audioCtxRef.current) return;
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const duration = 4.2;
+      const mainGain = ctx.createGain();
+      mainGain.connect(ctx.destination);
+      mainGain.gain.setValueAtTime(0, ctx.currentTime);
+      mainGain.gain.linearRampToValueAtTime(0.24, ctx.currentTime + 0.01);
+      mainGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+
+      const harmonics = [1.0, 1.5, 2.0, 2.6, 3.12];
+      harmonics.forEach((ratio, i) => {
+        const osc = ctx.createOscillator();
+        const gNode = ctx.createGain();
+        osc.frequency.value = frequency * ratio;
+        osc.type = i === 0 ? 'sine' : 'triangle';
+        
+        gNode.gain.setValueAtTime(0.4 / (i + 1), ctx.currentTime);
+        gNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / (i + 0.9));
+        
+        osc.connect(gNode);
+        gNode.connect(mainGain);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      });
+    } catch (err) {
+      console.warn("Bell sound play failed safely:", err);
     }
-
-    const duration = 4.2;
-    const mainGain = ctx.createGain();
-    mainGain.connect(ctx.destination);
-    mainGain.gain.setValueAtTime(0, ctx.currentTime);
-    mainGain.gain.linearRampToValueAtTime(0.24, ctx.currentTime + 0.01);
-    mainGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-
-    const harmonics = [1.0, 1.5, 2.0, 2.6, 3.12];
-    harmonics.forEach((ratio, i) => {
-      const osc = ctx.createOscillator();
-      const gNode = ctx.createGain();
-      osc.frequency.value = frequency * ratio;
-      osc.type = i === 0 ? 'sine' : 'triangle';
-      
-      gNode.gain.setValueAtTime(0.4 / (i + 1), ctx.currentTime);
-      gNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / (i + 0.9));
-      
-      osc.connect(gNode);
-      gNode.connect(mainGain);
-      osc.start();
-      osc.stop(ctx.currentTime + duration);
-    });
   };
 
+  // Safe Start Interaction (State changes first, then audio inside Try-Catch)
   const handleStartInteraction = () => {
+    // 🚀 ALWAYS transition UI first so it never freezes
+    setAudioStarted(true);
+
     if (typeof window !== 'undefined') {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        audioCtxRef.current = new AudioCtx();
-        setAudioStarted(true);
-        triggerBellSound(165); // Warm welcoming bell
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          audioCtxRef.current = new AudioCtx();
+          triggerBellSound(165); // Warm welcoming bell
+        }
+      } catch (err) {
+        console.warn("AudioContext failed to start safely (Autoplay restricted):", err);
       }
     }
   };
