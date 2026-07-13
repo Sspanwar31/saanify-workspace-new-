@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES & CONSTANTS
@@ -78,7 +78,7 @@ function buildGP(): number[][] {
   return all.map(p => [p[0] / 400, p[1] / 400]);
 }
 
-/* ─── 🚀 GLOBAL DRAWING HELPERS ─── */
+/* ─── GLOBAL DRAWING HELPERS ─── */
 const drawPeacockFeather = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot: number) => {
   ctx.save();
   ctx.translate(x, y);
@@ -197,9 +197,6 @@ interface Props { onComplete?: () => void }
 export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  
-  // 🚀 FIX 1: Define the missing state variable
-  const [audioStarted, setAudioStarted] = useState(false);
 
   const raf = useRef(0);
   const t0 = useRef(0);
@@ -257,27 +254,17 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     }
   }, []);
 
-  // 🚀 FIX 2: Define the missing button click handler
-  const handleStartInteraction = useCallback(() => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx && !audioCtxRef.current) {
-        audioCtxRef.current = new AudioCtx();
-        triggerBellSound(165); 
-      } else if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume();
-      }
-    } catch (err) {
-      console.warn("Audio Context activation failed safely:", err);
-    }
-    setAudioStarted(true);
-  }, [triggerBellSound]);
-
   useEffect(() => {
-    if (!audioStarted) return; // Wait for user to click the button
-    
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
+    
+    // Try creating audio context silently (may be blocked by browser, that's fine — visual works anyway)
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        audioCtxRef.current = new AudioCtx();
+      }
+    } catch (_) { /* Audio not available, visual will still work */ }
     
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
@@ -534,7 +521,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
       const ty = s * .32, by = s, tw = s * .11, bw = s * .34;
       c!.beginPath(); c!.moveTo(-tw, ty);
-      // 🚀 FIX 4: Replaced wrong "tw" variable with correct "ty + s * .4"
       c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, by); 
       c!.lineTo(bw, by);
       c!.bezierCurveTo(bw * .82, ty + s * .4, tw, ty + s * .2, tw, ty);
@@ -838,32 +824,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
     return () => { cancelAnimationFrame(raf.current); window.removeEventListener('resize', rsz); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioStarted, mkPool, grab, triggerBellSound]);
+  }, [mkPool, grab, triggerBellSound]);
 
   return (
     <div className="fixed inset-0 z-[9999]" style={{ background: '#07030a' }}>
-      {!audioStarted ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#07030a] px-4">
-          <div className="absolute w-[240px] h-[240px] rounded-full bg-yellow-500/10 blur-[100px] pointer-events-none animate-pulse" />
-          
-          <button
-            onClick={handleStartInteraction}
-            className="relative px-12 py-5 rounded-full overflow-hidden group transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_15px_40px_rgba(251,191,36,0.15)] flex flex-col items-center gap-2 border border-yellow-500/30"
-          >
-            <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[12px] rounded-full transition-colors group-hover:bg-white/[0.05]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-red-500/10 to-yellow-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
-            
-            <span className="relative z-10 text-xs sm:text-sm font-semibold tracking-[0.25em] uppercase text-yellow-100 flex items-center gap-2 animate-bounce">
-              Touch To Begin Aarti
-            </span>
-            <span className="relative z-10 text-[9px] tracking-[0.1em] text-yellow-500/50 uppercase">
-              वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ
-            </span>
-          </button>
-        </div>
-      ) : (
-        <canvas ref={cvRef} className="block w-full h-full" />
-      )}
+      <canvas ref={cvRef} className="block w-full h-full" />
     </div>
   );
 }
