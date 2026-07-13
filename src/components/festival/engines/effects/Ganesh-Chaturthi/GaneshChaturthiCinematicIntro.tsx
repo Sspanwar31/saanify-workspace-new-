@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES & CONSTANTS
@@ -12,7 +12,7 @@ interface P {
   rot: number; rs: number; on: boolean; tp: number;
 }
 const POOL = 3400;
-const DUR = 12.0; 
+const DUR = 12.0; // 12.0s Luxurious Cinematic Sync
 const EP = 1e-4;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -45,21 +45,30 @@ function ss(a: number[], b: number[], c: number[], d: number[], n: number): numb
    ═══════════════════════════════════════════════════════════════ */
 function buildGP(): number[][] {
   const body: number[][][] = [
+    // Left Ear Curve
     [[200, 80], [150, 60], [100, 80], [100, 120]],
     [[100, 120], [100, 160], [140, 180], [175, 160]],
+    
+    // Left Body base
     [[175, 160], [150, 190], [130, 220], [130, 260]],
     [[130, 260], [130, 320], [170, 350], [200, 350]], 
+    
+    // Right Body base
     [[200, 350], [230, 350], [270, 320], [270, 260]],
     [[270, 260], [270, 220], [250, 190], [225, 160]],
+    
+    // Right Ear Curve
     [[225, 160], [260, 180], [300, 160], [300, 120]],
     [[300, 120], [300, 80], [250, 60], [200, 80]],
   ];
   const trunk: number[][][] = [
+    // S-Curve Trunk pointing left
     [[190, 110], [190, 150], [170, 190], [150, 215]],
     [[150, 215], [130, 235], [110, 220], [115, 200]], 
     [[115, 200], [120, 190], [135, 195], [145, 205]],
   ];
   const crown: number[][][] = [
+    // Sharp Majestic Crown
     [[200, 80], [195, 60], [185, 45], [200, 20]],
     [[200, 20], [215, 45], [205, 60], [200, 80]],
   ];
@@ -128,12 +137,14 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // 🚀 FIXED: Passed context "ctx" properly as first parameter
+  // A. Back Peacock Feathers
   drawPeacockFeather(ctx, cx - S * 0.32, cy - S * 0.16, S * 0.22, -0.45);
   drawPeacockFeather(ctx, cx + S * 0.32, cy - S * 0.16, S * 0.22, 0.45);
 
+  // B. Lotus Seat
   drawLotusSeat(ctx, cx, cy, S);
 
+  // C. Seated legs
   ctx.fillStyle = '#fde8d0';
   ctx.strokeStyle = '#4c0519';
   ctx.lineWidth = S * 0.008;
@@ -141,11 +152,14 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.beginPath(); ctx.ellipse(cx - S * 0.14, cy + S * 0.16, S * 0.11, S * 0.08, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.14, cy + S * 0.16, S * 0.11, S * 0.08, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
+  // Tummy
   ctx.beginPath(); ctx.ellipse(cx, cy + S * 0.08, S * 0.18, S * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   
+  // Dhoti
   ctx.fillStyle = '#facc15';
   ctx.beginPath(); ctx.ellipse(cx, cy + S * 0.15, S * 0.18, S * 0.08, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
+  // D. Ears
   ctx.fillStyle = '#fde8d0';
   ctx.beginPath(); ctx.ellipse(cx - S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, -0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -153,9 +167,11 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.beginPath(); ctx.ellipse(cx - S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, -0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
   ctx.beginPath(); ctx.ellipse(cx + S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, 0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
 
+  // E. Face
   ctx.fillStyle = '#fde8d0';
   ctx.beginPath(); ctx.arc(cx, cy - S * 0.08, S * 0.14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
+  // F. Trunk
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.015, cy - S * 0.06);
   ctx.bezierCurveTo(cx - S * 0.1, cy + S * 0.05, cx - S * 0.12, S * 0.16 + cy, cx - S * 0.16, cy + S * 0.18);
@@ -163,18 +179,22 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.bezierCurveTo(cx - S * 0.14, cy + S * 0.1, cx - S * 0.13, cy + S * 0.04, cx - S * 0.05, cy - S * 0.06);
   ctx.closePath(); ctx.fill(); ctx.stroke();
 
+  // Modak in Trunk
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath(); ctx.arc(cx - S * 0.17, cy + S * 0.11, S * 0.026, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
+  // G. Pixar Eyes
   ctx.fillStyle = '#0f172a';
   ctx.beginPath(); ctx.ellipse(cx - S * 0.08, cy - S * 0.09, S * 0.028, S * 0.04, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.08, cy - S * 0.09, S * 0.028, S * 0.04, 0, 0, Math.PI * 2); ctx.fill();
+  // Reflection Highlights
   ctx.fillStyle = '#ffffff';
   ctx.beginPath(); ctx.arc(cx - S * 0.088, cy - S * 0.105, S * 0.01, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + S * 0.072, cy - S * 0.105, S * 0.01, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx - S * 0.072, cy - S * 0.075, S * 0.005, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + S * 0.088, cy - S * 0.075, S * 0.005, 0, Math.PI * 2); ctx.fill();
 
+  // H. Crown (मुकुट)
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.075, cy - S * 0.2);
@@ -184,6 +204,7 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.fillStyle = '#dc2626';
   ctx.beginPath(); ctx.arc(cx, cy - S * 0.26, S * 0.018, 0, Math.PI * 2); ctx.fill();
 
+  // I. Tilak
   ctx.fillStyle = '#dc2626';
   ctx.beginPath();
   ctx.moveTo(cx - S * 0.014, cy - S * 0.16);
@@ -205,15 +226,11 @@ function fillGlow(ctx: CanvasRenderingContext2D, color: string, blur: number) {
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════ */
+interface Props { onComplete?: () => void }
+
 export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  
-  // ── 🚀 LIVE DEBUGGER STATES ──
-  const [debugStatus, setDebugStatus] = useState("Tap to start...");
-  const [debugTime, setDebugTime] = useState(0);
-  const [debugFrame, setDebugFrame] = useState(0);
-  const [audioStarted, setAudioStarted] = useState(false);
   
   const raf = useRef(0);
   const t0 = useRef(0);
@@ -237,7 +254,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   }, []);
 
   // Web Audio API Bell Synthesizer (Wrapped in Try-Catch)
-  const triggerBellSound = (frequency: number) => {
+  const triggerBellSound = useCallback((frequency: number) => {
     try {
       if (!audioCtxRef.current) return;
       const ctx = audioCtxRef.current;
@@ -270,46 +287,12 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     } catch (err) {
       console.warn("Bell sound play failed safely:", err);
     }
-  };
-
-  const handleStartInteraction = () => {
-    console.log("DEBUG: Aarti Button Clicked!");
-    setDebugStatus("Button clicked. Initializing Audio...");
-    
-    // 🚀 ALWAYS transition UI state first to avoid screen freezing
-    setAudioStarted(true);
-
-    if (typeof window !== 'undefined') {
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          audioCtxRef.current = new AudioCtx();
-          setDebugStatus("AudioContext Active. Triggering Bell...");
-          triggerBellSound(165); // Warm welcoming bell
-        }
-      } catch (err) {
-        setDebugStatus("AudioContext Blocked (Autoplay restriction). Animating anyway...");
-        console.warn("AudioContext failed safely:", err);
-      }
-    }
-  };
+  }, []);
 
   useEffect(() => {
-    if (!audioStarted) return;
-
-    setDebugStatus("Canvas Rendering Starting...");
-    const cv = cvRef.current; 
-    if (!cv) {
-      setDebugStatus("ERROR: Canvas Ref is null!");
-      return;
-    }
-    const c = cv.getContext('2d', { alpha: false }); 
-    if (!c) {
-      setDebugStatus("ERROR: Canvas Context 2D is null!");
-      return;
-    }
+    const cv = cvRef.current; if (!cv) return;
+    const c = cv.getContext('2d', { alpha: false }); if (!c) return;
     
-    setDebugStatus("Canvas Context Bound successfully!");
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
 
@@ -342,6 +325,25 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       { x: 0.50, length: 110, angle: -0.15, lastBellTime: 0 },
       { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
     ];
+
+    // 🚀 ATTACH INTERACTIVE SOUND TRIGGERS TO ENTIRE SCREEN
+    const handleScreenClick = () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx && !audioCtxRef.current) {
+            audioCtxRef.current = new AudioCtx();
+            triggerBellSound(165); // Auspicious base chime
+          } else if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+            audioCtxRef.current.resume();
+          }
+        }
+      } catch (err) {
+        console.warn("Audio Context activation failed safely:", err);
+      }
+    };
+    window.addEventListener('click', handleScreenClick);
+    window.addEventListener('touchstart', handleScreenClick);
 
     /* ───────── CANVAS RENDER LOGIC ───────── */
 
@@ -930,4 +932,4 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       )}
     </div>
   );
-} 
+}
