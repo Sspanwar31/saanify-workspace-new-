@@ -458,10 +458,10 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         return;
       }
 
-      // ★ बदलाव 1: Phase 3 — 7.5s+ — Clean Fade out (completely gone by 8.7s)
+      // Phase 3: 7.5s+ — Clean Fade out (completely gone by 8.7s)
       if (t >= 7.5) {
-        const dt = Math.min((t - 7.5) / 1.2, 1); // 1.2 सेकंड में गायब होगा
-        const oa = Math.max(0, 1 - dt); // 8.7s पर पूरी तरह अदृश्य
+        const dt = Math.min((t - 7.5) / 1.2, 1);
+        const oa = Math.max(0, 1 - dt);
         if (oa > 0) {
           c!.save(); c!.globalAlpha = oa;
           c!.shadowColor = `rgba(255,190,65,${oa * 0.5})`; c!.shadowBlur = 20;
@@ -618,10 +618,10 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     }
 
     /* ─────────────────────────────────────────────
-       ★ बदलाव 3: DISSOLVE GLOW — 7.5s+ (गणेश जी के फ़ेड-आउट के साथ)
+       DISSOLVE GLOW — 7.5s+ (गणेश जी के फ़ेड-आउट के साथ)
        ───────────────────────────────────────────── */
     function dDissolve(t: number) {
-      const ps = 7.5; // 🚀 गणेश जी के फ़ेड-आउट के साथ ही शुरू होगा
+      const ps = 7.5;
       const dt = Math.min((t - ps) / 1.2, 1); if (dt <= 0) return;
       const la = eOC(dt) * .12;
       const lg = c!.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
@@ -629,46 +629,50 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.fillStyle = lg; c!.fillRect(0, 0, W, H);
     }
 
-    /* ─────────────────────────────────────────────
-       ★ बदलाव 2: TEXT — 8.7s start (गणेश जी के 100% जाने के बाद)
-       ───────────────────────────────────────────── */
+    /* ═══════════════════════════════════════════════════════════════
+       📝 TEXT — 8.7s start — Pixel-Perfect Crisp (Zero shadowBlur)
+       ── shadowBlur हटाया → Crisp Offset Shadow तकनीक लगाई ──
+       ═══════════════════════════════════════════════════════════════ */
     function dText(t: number) {
-      const ps = 8.7; // 🚀 ठीक 8.7s पर शुरू होगा (गणेश जी के जाने के बाद)
-      const ft = Math.min((t - ps) / 1.1, 1); // 1.1 सेकंड में धीरे से प्रकट होगा
+      const ps = 8.7;
+      const ft = Math.min((t - ps) / 1.1, 1);
       if (ft <= 0) return;
       const fi = eOC(ft); const ty = H * .35;
       c!.save(); c!.globalAlpha = fi; c!.textAlign = 'center'; c!.textBaseline = 'middle';
       const ts = Math.min(W * .058, H * .065, 50);
       c!.font = `700 ${ts}px 'Georgia','Times New Roman',serif`;
       const tw = c!.measureText('Happy Ganesh Chaturthi').width;
-      c!.strokeStyle = 'rgba(60,35,6,.38)'; c!.lineWidth = 3.5;
-      c!.shadowColor = 'rgba(255,190,42,.45)'; c!.shadowBlur = 20;
-      c!.strokeText('Happy Ganesh Chaturthi', W / 2, ty);
+
+      // ── 1. क्रिस्प डार्क ड्रॉप शैडो (बिना किसी ब्लर के - 2px Offset) ──
+      c!.fillStyle = 'rgba(0, 0, 0, 0.72)';
+      c!.fillText('Happy Ganesh Chaturthi', W / 2 + 2, ty + 3);
+
+      // ── 2. मुख्य मैटेलिक गोल्ड टेक्स्ट (बिल्कुल शार्प) ──
       const mg = c!.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
       mg.addColorStop(0, '#5a4210'); mg.addColorStop(.15, '#b08018'); mg.addColorStop(.32, '#d4a020');
       mg.addColorStop(.48, '#ffd700'); mg.addColorStop(.52, '#fffacd'); mg.addColorStop(.68, '#ffd700');
       mg.addColorStop(.84, '#d4a020'); mg.addColorStop(1, '#5a4210');
-      c!.fillStyle = mg; c!.shadowBlur = 16; c!.fillText('Happy Ganesh Chaturthi', W / 2, ty);
-      const sp = (Math.sin(t * 2.2) + 1) / 2;
-      const sg = c!.createLinearGradient(W / 2 - tw * .6, 0, W / 2 + tw * .6, 0);
-      const s0 = Math.max(0, sp - .12), s1 = Math.max(0, sp - .04), s2 = Math.min(1, sp + .04), s3 = Math.min(1, sp + .12);
-      sg.addColorStop(s0, 'rgba(255,255,232,0)'); sg.addColorStop(s1, 'rgba(255,255,232,.1)');
-      sg.addColorStop(sp, 'rgba(255,255,232,.18)'); sg.addColorStop(s2, 'rgba(255,255,232,.1)');
-      sg.addColorStop(s3, 'rgba(255,255,232,0)');
-      c!.shadowBlur = 0; c!.fillStyle = sg; c!.fillText('Happy Ganesh Chaturthi', W / 2, ty);
+      c!.fillStyle = mg;
+      c!.fillText('Happy Ganesh Chaturthi', W / 2, ty);
+
+      // ── 3. श्लोक के लिए क्रिस्प आउटलाइन और शैडो ──
       const ss = Math.min(W * .024, H * .028, 19);
       c!.font = `400 ${ss}px 'Nirmala UI','Devanagari Sangam MN','Mangal','Segoe UI',sans-serif`;
-      c!.shadowColor = 'rgba(255,170,42,.22)'; c!.shadowBlur = 10;
+      const l1y = ty + ts * 1.3; const l2y = l1y + ss * 2.1;
+
+      // श्लोक शैडो (Crisp Offset)
+      c!.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      c!.fillText('वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।', W / 2 + 1, l1y + 1.2);
+      c!.fillText('निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥', W / 2 + 1, l2y + 1.2);
+
+      // श्लोक गोल्ड फिल
       const shg = c!.createLinearGradient(W / 2 - ss * 10, 0, W / 2 + ss * 10, 0);
       shg.addColorStop(0, '#856314'); shg.addColorStop(.25, '#d4a020'); shg.addColorStop(.5, '#ffd700');
       shg.addColorStop(.75, '#d4a020'); shg.addColorStop(1, '#856314');
       c!.fillStyle = shg;
-      const l1y = ty + ts * 1.3; const l2y = l1y + ss * 2.1;
       c!.fillText('वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।', W / 2, l1y);
       c!.fillText('निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥', W / 2, l2y);
-      c!.fillStyle = sg; c!.shadowBlur = 0;
-      c!.fillText('वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।', W / 2, l1y);
-      c!.fillText('निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥', W / 2, l2y);
+
       c!.restore();
     }
 
