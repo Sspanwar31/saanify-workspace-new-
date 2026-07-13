@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES & CONSTANTS
@@ -11,8 +11,11 @@ interface P {
   r: number; g: number; b: number; a: number;
   rot: number; rs: number; on: boolean; tp: number;
 }
+interface Bell {
+  x: number; length: number; angle: number; lastBellTime: number;
+}
 const POOL = 3400;
-const DUR = 12.0; // 12.0s Luxurious Cinematic Sync
+const DUR = 12.0; 
 const EP = 1e-4;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -45,30 +48,21 @@ function ss(a: number[], b: number[], c: number[], d: number[], n: number): numb
    ═══════════════════════════════════════════════════════════════ */
 function buildGP(): number[][] {
   const body: number[][][] = [
-    // Left Ear Curve
     [[200, 80], [150, 60], [100, 80], [100, 120]],
     [[100, 120], [100, 160], [140, 180], [175, 160]],
-    
-    // Left Body base
     [[175, 160], [150, 190], [130, 220], [130, 260]],
     [[130, 260], [130, 320], [170, 350], [200, 350]], 
-    
-    // Right Body base
     [[200, 350], [230, 350], [270, 320], [270, 260]],
     [[270, 260], [270, 220], [250, 190], [225, 160]],
-    
-    // Right Ear Curve
     [[225, 160], [260, 180], [300, 160], [300, 120]],
     [[300, 120], [300, 80], [250, 60], [200, 80]],
   ];
   const trunk: number[][][] = [
-    // S-Curve Trunk pointing left
     [[190, 110], [190, 150], [170, 190], [150, 215]],
     [[150, 215], [130, 235], [110, 220], [115, 200]], 
     [[115, 200], [120, 190], [135, 195], [145, 205]],
   ];
   const crown: number[][][] = [
-    // Sharp Majestic Crown
     [[200, 80], [195, 60], [185, 45], [200, 20]],
     [[200, 20], [215, 45], [205, 60], [200, 80]],
   ];
@@ -89,19 +83,14 @@ const drawPeacockFeather = (ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
-  // Stem
   ctx.strokeStyle = '#15803d'; ctx.lineWidth = r * 0.08;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(r * 0.4, r * 0.8, r * 0.5, r * 1.3); ctx.stroke();
-  // Outer green
   ctx.fillStyle = '#16a34a';
   ctx.beginPath(); ctx.ellipse(0, 0, r * 0.55, r, 0, 0, Math.PI * 2); ctx.fill();
-  // Teal layer
   ctx.fillStyle = '#06b6d4';
   ctx.beginPath(); ctx.ellipse(0, r * 0.1, r * 0.4, r * 0.72, 0, 0, Math.PI * 2); ctx.fill();
-  // Blue core
   ctx.fillStyle = '#2563eb';
   ctx.beginPath(); ctx.ellipse(0, r * 0.18, r * 0.26, r * 0.46, 0, 0, Math.PI * 2); ctx.fill();
-  // Gold center
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath(); ctx.ellipse(0, r * 0.22, r * 0.15, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
@@ -116,7 +105,6 @@ const drawLotusSeat = (ctx: CanvasRenderingContext2D, cx: number, cy: number, S:
     const rX = S * (0.42 - layer * 0.07);
     const rY = S * (0.16 - layer * 0.03);
     const petalY = cy + S * 0.28;
-    
     for (let i = 0; i < numPetals; i++) {
       const ang = (i / (numPetals - 1)) * Math.PI - Math.PI;
       const px = cx + Math.cos(ang) * rX;
@@ -137,11 +125,8 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // A. Back Peacock Feathers
   drawPeacockFeather(ctx, cx - S * 0.32, cy - S * 0.16, S * 0.22, -0.45);
   drawPeacockFeather(ctx, cx + S * 0.32, cy - S * 0.16, S * 0.22, 0.45);
-
-  // B. Lotus Seat
   drawLotusSeat(ctx, cx, cy, S);
 
   ctx.fillStyle = '#fde8d0';
@@ -160,8 +145,8 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.beginPath(); ctx.ellipse(cx - S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, -0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(cx + S * 0.18, cy - S * 0.1, S * 0.11, S * 0.08, 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#fda4af';
-  ctx.beginPath(); ctx.ellipse(cx - S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, -0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
-  ctx.beginPath(); ctx.ellipse(cx + S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, 0.15, 0, Math.PI * 2); fillGlow(ctx, '#fda4af', 3);
+  ctx.beginPath(); ctx.ellipse(cx - S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, -0.15, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + S * 0.17, cy - S * 0.1, S * 0.07, S * 0.05, 0.15, 0, Math.PI * 2); ctx.fill();
 
   ctx.fillStyle = '#fde8d0';
   ctx.beginPath(); ctx.arc(cx, cy - S * 0.08, S * 0.14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -204,16 +189,8 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.restore();
 };
 
-function fillGlow(ctx: CanvasRenderingContext2D, color: string, blur: number) {
-  ctx.save();
-  ctx.shadowColor = color;
-  ctx.shadowBlur = blur;
-  ctx.fill();
-  ctx.restore();
-}
-
 /* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT DEFINITION (🚀 NO BUTTON - AUTO START ON MOUNT)
+   MAIN COMPONENT DEFINITION
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void }
 
@@ -221,6 +198,9 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   
+  // 🚀 FIX 1: Define the missing state variable
+  const [audioStarted, setAudioStarted] = useState(false);
+
   const raf = useRef(0);
   const t0 = useRef(0);
   const done = useRef(false);
@@ -242,7 +222,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     return null;
   }, []);
 
-  // Web Audio API Bell Synthesizer (Wrapped in Try-Catch)
   const triggerBellSound = useCallback((frequency: number) => {
     try {
       if (!audioCtxRef.current) return;
@@ -278,7 +257,25 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     }
   }, []);
 
+  // 🚀 FIX 2: Define the missing button click handler
+  const handleStartInteraction = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx && !audioCtxRef.current) {
+        audioCtxRef.current = new AudioCtx();
+        triggerBellSound(165); 
+      } else if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+    } catch (err) {
+      console.warn("Audio Context activation failed safely:", err);
+    }
+    setAudioStarted(true);
+  }, [triggerBellSound]);
+
   useEffect(() => {
+    if (!audioStarted) return; // Wait for user to click the button
+    
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
     
@@ -296,7 +293,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     const pl = mkPool();
     const gp = buildGP(); const gn = gp.length;
 
-    // Ambient Star Dust
     const dI: number[] = [];
     for (let i = 0; i < 80; i++) {
       const p = pl[i]; p.on = true; p.tp = 0;
@@ -308,31 +304,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       dI.push(i);
     }
 
-    // Bells config
     const bells: Bell[] = [
       { x: 0.24, length: 80, angle: 0.22, lastBellTime: 0 },
       { x: 0.50, length: 110, angle: -0.15, lastBellTime: 0 },
       { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
     ];
-
-    // 🚀 ATTACH INTERACTIVE SOUND TRIGGERS TO ENTIRE SCREEN
-    const handleScreenClick = () => {
-      try {
-        if (typeof window !== 'undefined') {
-          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-          if (AudioCtx && !audioCtxRef.current) {
-            audioCtxRef.current = new AudioCtx();
-            triggerBellSound(165); // Auspicious base chime
-          } else if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-            audioCtxRef.current.resume();
-          }
-        }
-      } catch (err) {
-        console.warn("Audio Context activation failed safely:", err);
-      }
-    };
-    window.addEventListener('click', handleScreenClick);
-    window.addEventListener('touchstart', handleScreenClick);
 
     /* ───────── CANVAS RENDER LOGIC ───────── */
 
@@ -369,10 +345,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
     function dTemples(t: number) {
       const fa = t < 2.5 ? eOC(Math.min(t / 2, 1)) * .28 : .28;
-      if (t > 9) {
-        const fo = Math.max(0, 1 - (t - 9) / 2);
-        if (fo <= 0) return;
-      }
+      if (t > 9) { const fo = Math.max(0, 1 - (t - 9) / 2); if (fo <= 0) return; }
       const al = t > 9 ? Math.max(0, .28 - (t - 9) * .14) : fa;
       c!.save(); c!.globalAlpha = al; c!.fillStyle = '#0e0718';
       const gops = [
@@ -542,7 +515,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       drawBell(b1x, by, bsz, a1, ba);
       drawBell(b2x, by, bsz, a2, ba);
 
-      // Bell sound trigger
       bells.forEach((bell, idx) => {
         const swingFreq = 1.8 + idx * 0.35;
         const angle = Math.sin(t * swingFreq) * 0.18;
@@ -562,7 +534,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
       const ty = s * .32, by = s, tw = s * .11, bw = s * .34;
       c!.beginPath(); c!.moveTo(-tw, ty);
-      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, tw, by); // 🚀 FIXED: Replaced wrong variable reference
+      // 🚀 FIX 4: Replaced wrong "tw" variable with correct "ty + s * .4"
+      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, by); 
       c!.lineTo(bw, by);
       c!.bezierCurveTo(bw * .82, ty + s * .4, tw, ty + s * .2, tw, ty);
       c!.closePath();
@@ -670,29 +643,21 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       p.rs = (Math.random() - .5) * .04; p.on = true; p.tp = 4;
     }
 
-    // Peackok Feather, Saffron Petals, Red Hibiscus Rain! (🚀 PERFECTLY REDESIGNED)
     function dPetals() {
       for (const p of pl) {
         if (!p.on || p.tp !== 4) continue;
         const lr = p.life / p.ml; const a = p.a * Math.min(lr * 2, 1) * (lr > .82 ? (1 - lr) / .18 : 1);
         c!.save(); c!.translate(p.x, p.y); c!.rotate(p.rot);
-        
-        // Beautiful multi-colored flower petals & micro feathers
         const grad = c!.createLinearGradient(0, -p.sz, 0, p.sz);
         grad.addColorStop(0, `rgb(${p.r},${p.g},${p.b})`);
         grad.addColorStop(1, `rgb(${Math.max(0, p.r - 40)},${Math.max(0, p.g - 35)},${Math.max(0, p.b - 20)})`);
         c!.fillStyle = grad;
-
         c!.beginPath();
         c!.ellipse(0, 0, Math.max(EP, p.sz * .42), Math.max(EP, p.sz), 0, 0, Math.PI * 2);
         c!.fill();
-        
-        // Petal highlight crease
         c!.beginPath();
         c!.ellipse(-p.sz * 0.05, -p.sz * 0.2, Math.max(EP, p.sz * 0.1), Math.max(EP, p.sz * 0.35), 0, 0, Math.PI * 2);
-        c!.fillStyle = 'rgba(255,255,255,0.25)';
-        c!.fill();
-
+        c!.fillStyle = 'rgba(255,255,255,0.25)'; c!.fill();
         c!.restore();
       }
     }
@@ -786,7 +751,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.fillStyle = shg;
       const l1y = ty + ts * 1.3; const l2y = l1y + ss * 2.1;
       c!.fillText('वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।', W / 2, l1y);
-      c!.fillText('निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥', W/2, l2y);
+      c!.fillText('निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥', W / 2, l2y);
       c!.fillStyle = sg; c!.shadowBlur = 0;
       c!.fillText('वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ।', W / 2, l1y);
       c!.fillText('निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा॥', W / 2, l2y);
@@ -827,7 +792,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
-    /* ───────── UPDATE ───────── */
     function upd(dt: number) {
       for (const p of pl) {
         if (!p.on || p.tp === 0) continue;
@@ -850,37 +814,19 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       if (!t0.current) { t0.current = ts; lt = ts; }
       const t = (ts - t0.current) / 1000; const dt = Math.min((ts - lt) / 1000, .05); lt = ts;
 
-      dBg(t);
-      dTemples(t);
-      dSmoke();
-      dRays(t);
-      dStreams();
-      dOutline(t);
-      dEnergy(t);
-      dAarti(t);
-      dBells(t);
+      dBg(t); dTemples(t); dSmoke(); dRays(t); dStreams(); dOutline(t);
+      dEnergy(t); dAarti(t); dBells(t);
 
-      // 🚀 MASTER STROKE FIX: Passed exact canvas context "c" to drawDetailedGanesha helper!
       if (t >= 5.5 && t < 9.5) {
         const coloredGaneshaFade = Math.min((t - 5.5) / 1.2, 1.0);
         const gScale = Math.min(W, H) * 0.02;
         drawDetailedGanesha(c!, W / 2, H / 2 - H * .015, gScale * (1 + Math.sin(t * 2.5) * 0.015), coloredGaneshaFade);
       }
 
-      dBloom(t);
-      dBloomP();
-      dPetals();
-      dKum();
-      dOrbit();
-      dDissolve(t);
-      dText(t);
-      dWave(t);
-      dFade(t);
-      dDust(t);
+      dBloom(t); dBloomP(); dPetals(); dKum(); dOrbit(); dDissolve(t); dText(t); dWave(t); dFade(t); dDust(t);
 
       if (t < 2.8) sStreams(t);
-      sSmoke();
-      sOrbit(t);
+      sSmoke(); sOrbit(t);
       if (t > 7.8) { sPetals(t); sKum(t); }
 
       upd(dt);
@@ -891,11 +837,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     raf.current = requestAnimationFrame(loop);
 
     return () => { cancelAnimationFrame(raf.current); window.removeEventListener('resize', rsz); };
-  }, [audioStarted, mkPool, grab]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioStarted, mkPool, grab, triggerBellSound]);
 
   return (
     <div className="fixed inset-0 z-[9999]" style={{ background: '#07030a' }}>
-      {/* ── 🚀 GLOWING PREMIUM DESIGN PRESET START BUTTON ── */}
       {!audioStarted ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#07030a] px-4">
           <div className="absolute w-[240px] h-[240px] rounded-full bg-yellow-500/10 blur-[100px] pointer-events-none animate-pulse" />
@@ -904,7 +850,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
             onClick={handleStartInteraction}
             className="relative px-12 py-5 rounded-full overflow-hidden group transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_15px_40px_rgba(251,191,36,0.15)] flex flex-col items-center gap-2 border border-yellow-500/30"
           >
-            {/* Ambient Glassy Inner Glow */}
             <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[12px] rounded-full transition-colors group-hover:bg-white/[0.05]" />
             <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-red-500/10 to-yellow-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full" />
             
