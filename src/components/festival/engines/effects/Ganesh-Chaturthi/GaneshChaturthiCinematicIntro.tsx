@@ -80,14 +80,19 @@ const drawPeacockFeather = (ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
+  // Stem
   ctx.strokeStyle = '#15803d'; ctx.lineWidth = r * 0.08;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(r * 0.4, r * 0.8, r * 0.5, r * 1.3); ctx.stroke();
+  // Outer green
   ctx.fillStyle = '#16a34a';
   ctx.beginPath(); ctx.ellipse(0, 0, r * 0.55, r, 0, 0, Math.PI * 2); ctx.fill();
+  // Teal layer
   ctx.fillStyle = '#06b6d4';
   ctx.beginPath(); ctx.ellipse(0, r * 0.1, r * 0.4, r * 0.72, 0, 0, Math.PI * 2); ctx.fill();
+  // Blue core
   ctx.fillStyle = '#2563eb';
   ctx.beginPath(); ctx.ellipse(0, r * 0.18, r * 0.26, r * 0.46, 0, 0, Math.PI * 2); ctx.fill();
+  // Gold center
   ctx.fillStyle = '#fbbf24';
   ctx.beginPath(); ctx.ellipse(0, r * 0.22, r * 0.15, r * 0.28, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
@@ -123,6 +128,7 @@ const drawDetailedGanesha = (ctx: CanvasRenderingContext2D, cx: number, cy: numb
   ctx.save();
   ctx.globalAlpha = opacity;
 
+  // 🚀 FIXED: Passed context "ctx" properly as first parameter
   drawPeacockFeather(ctx, cx - S * 0.32, cy - S * 0.16, S * 0.22, -0.45);
   drawPeacockFeather(ctx, cx + S * 0.32, cy - S * 0.16, S * 0.22, 0.45);
 
@@ -202,6 +208,11 @@ function fillGlow(ctx: CanvasRenderingContext2D, color: string, blur: number) {
 export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  
+  // ── 🚀 LIVE DEBUGGER STATES ──
+  const [debugStatus, setDebugStatus] = useState("Tap to start...");
+  const [debugTime, setDebugTime] = useState(0);
+  const [debugFrame, setDebugFrame] = useState(0);
   const [audioStarted, setAudioStarted] = useState(false);
   
   const raf = useRef(0);
@@ -225,7 +236,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     return null;
   }, []);
 
-  // Safe Web Audio API Bell Synthesizer (Wrapped in Try-Catch)
+  // Web Audio API Bell Synthesizer (Wrapped in Try-Catch)
   const triggerBellSound = (frequency: number) => {
     try {
       if (!audioCtxRef.current) return;
@@ -261,9 +272,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     }
   };
 
-  // Safe Start Interaction (State changes first, then audio inside Try-Catch)
   const handleStartInteraction = () => {
-    // 🚀 ALWAYS transition UI first so it never freezes
+    console.log("DEBUG: Aarti Button Clicked!");
+    setDebugStatus("Button clicked. Initializing Audio...");
+    
+    // 🚀 ALWAYS transition UI state first to avoid screen freezing
     setAudioStarted(true);
 
     if (typeof window !== 'undefined') {
@@ -271,10 +284,12 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioCtx) {
           audioCtxRef.current = new AudioCtx();
+          setDebugStatus("AudioContext Active. Triggering Bell...");
           triggerBellSound(165); // Warm welcoming bell
         }
       } catch (err) {
-        console.warn("AudioContext failed to start safely (Autoplay restricted):", err);
+        setDebugStatus("AudioContext Blocked (Autoplay restriction). Animating anyway...");
+        console.warn("AudioContext failed safely:", err);
       }
     }
   };
@@ -282,9 +297,19 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   useEffect(() => {
     if (!audioStarted) return;
 
-    const cv = cvRef.current; if (!cv) return;
-    const c = cv.getContext('2d', { alpha: false }); if (!c) return;
+    setDebugStatus("Canvas Rendering Starting...");
+    const cv = cvRef.current; 
+    if (!cv) {
+      setDebugStatus("ERROR: Canvas Ref is null!");
+      return;
+    }
+    const c = cv.getContext('2d', { alpha: false }); 
+    if (!c) {
+      setDebugStatus("ERROR: Canvas Context 2D is null!");
+      return;
+    }
     
+    setDebugStatus("Canvas Context Bound successfully!");
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
 
@@ -905,4 +930,4 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       )}
     </div>
   );
-}
+} 
