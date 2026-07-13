@@ -119,6 +119,140 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
 
     /* ───────── DRAW HELPERS ───────── */
 
+    /* ─── 🚀 NEW: DETAILED GANESHA ILLUSTRATION HELPERS (Pinterest Style) ─── */
+    
+    // 1. मोरपंख (Peacock Feather Behind Ganesha)
+    function drawPeacockFeather(x: number, y: number, r: number, rot: number) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(rot);
+      // Stem
+      c.strokeStyle = '#15803d'; c.lineWidth = 2.5;
+      c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(15, 30, 20, 50); c.stroke();
+      // Outer green lobe
+      c.fillStyle = '#16a34a';
+      c.beginPath(); c.ellipse(0, 0, r * 0.6, r, 0, 0, Math.PI * 2); c.fill();
+      // Teal layer
+      c.fillStyle = '#06b6d4';
+      c.beginPath(); c.ellipse(0, r * 0.1, r * 0.45, r * 0.75, 0, 0, Math.PI * 2); c.fill();
+      // Blue core
+      c.fillStyle = '#2563eb';
+      c.beginPath(); c.ellipse(0, r * 0.2, r * 0.3, r * 0.5, 0, 0, Math.PI * 2); c.fill();
+      // Gold center
+      c.fillStyle = '#fbbf24';
+      c.beginPath(); c.ellipse(0, r * 0.25, r * 0.18, r * 0.3, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+
+    // 2. खिला हुआ गुलाबी कमल (Layered Pink Lotus Seat)
+    function drawLotusSeat(sc: number) {
+      c.save();
+      const colors = ['#9f1239', '#e11d48', '#f43f5e', '#fb7185', '#fbcfe8'];
+      for (let layer = 0; layer < 4; layer++) {
+        c.fillStyle = colors[layer];
+        const numPetals = 8 - layer * 2;
+        const rX = sc * (0.6 - layer * 0.1);
+        const rY = sc * (0.22 - layer * 0.04);
+        c.beginPath();
+        for (let i = 0; i < numPetals; i++) {
+          const ang = (i / (numPetals - 1)) * Math.PI - Math.PI;
+          const px = Math.cos(ang) * rX;
+          const py = Math.sin(ang) * rY + sc * 0.32;
+          c.ellipse(px, py, sc * 0.16, sc * 0.28, ang + Math.PI/2, 0, Math.PI * 2);
+        }
+        c.fill();
+      }
+      c.restore();
+    }
+
+    // 3. रंग-बिरंगे बाल गणेश (The Full Colored Mascot)
+    function drawDetailedGanesha(cx: number, cy: number, scale: number, opacity: number) {
+      c.save();
+      c.translate(cx, cy);
+      c.scale(scale, scale);
+      c.globalAlpha = opacity;
+
+      // A. बैकग्राउंड मोरपंख (Peacock Feathers behind Head)
+      drawPeacockFeather(-38, -35, 28, -0.5);
+      drawPeacockFeather(38, -35, 28, 0.5);
+
+      // B. कमल का आसन (Lotus Seat)
+      drawLotusSeat(70);
+
+      // C. हाथ और पैर (Peach skin tone)
+      c.fillStyle = '#fde8d0';
+      c.strokeStyle = '#4c0519';
+      c.lineWidth = 1.2;
+      // Sitting Legs
+      c.beginPath(); c.ellipse(-20, 22, 14, 10, 0.2, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(20, 22, 14, 10, -0.2, 0, Math.PI * 2); c.fill(); c.stroke();
+
+      // D. पेट और छाती (Chubby Belly)
+      c.beginPath(); c.ellipse(0, 10, 25, 22, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+      
+      // पीताम्बर (Yellow Dhoti)
+      c.fillStyle = '#facc15';
+      c.beginPath(); c.ellipse(0, 20, 25, 11, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+
+      // E. कान और सिर (Ears and Head)
+      c.fillStyle = '#fde8d0';
+      // Left/Right pink inner ears
+      c.beginPath(); c.ellipse(-23, -15, 14, 10, -0.15, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(23, -15, 14, 10, 0.15, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.fillStyle = '#fda4af'; // Pink Inner Ear
+      c.beginPath(); c.ellipse(-22, -15, 9, 6, -0.15, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(22, -15, 9, 6, 0.15, 0, Math.PI * 2); c.fill();
+
+      // Head
+      c.fillStyle = '#fde8d0';
+      c.beginPath(); c.arc(0, -12, 18, 0, Math.PI * 2); c.fill(); c.stroke();
+
+      // F. सूंड (Smooth Trunk curving left with Modak)
+      c.beginPath();
+      c.moveTo(-2, -10);
+      c.bezierCurveTo(-14, 5, -16, 22, -22, 25);
+      c.bezierCurveTo(-26, 28, -32, 20, -25, 15);
+      c.bezierCurveTo(-19, 14, -18, 5, -6, -10);
+      c.closePath(); c.fill(); c.stroke();
+      
+      // सुनहरे मोदक (Modak at Trunk Tip)
+      c.fillStyle = '#fbbf24';
+      c.beginPath(); c.arc(-22, 14, 3.5, 0, Math.PI * 2); c.fill(); c.stroke();
+
+      // G. गहरी प्यारी आँखें (Big Glossy Pixar Eyes)
+      c.fillStyle = '#0f172a'; // Left Eye
+      c.beginPath(); c.ellipse(-11, -12, 3.8, 5.2, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(11, -12, 3.8, 5.2, 0, 0, Math.PI * 2); c.fill();
+      // Eye shine reflection (चमक)
+      c.fillStyle = '#ffffff';
+      c.beginPath(); c.arc(-12, -14, 1.4, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(10, -14, 1.4, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(-10, -10, 0.6, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(12, -10, 0.6, 0, Math.PI * 2); c.fill();
+
+      // H. मुकुट (Golden detailed crown)
+      c.fillStyle = '#fbbf24';
+      c.beginPath();
+      c.moveTo(-10, -28);
+      c.lineTo(0, -48);
+      c.lineTo(10, -28);
+      c.closePath(); c.fill(); c.stroke();
+      // Crown jewels (Red Ruby)
+      c.fillStyle = '#dc2626';
+      c.beginPath(); c.arc(0, -36, 2.5, 0, Math.PI * 2); c.fill();
+
+      // I. कुमकुम तिलक (Vermilion Tilak)
+      c.fillStyle = '#dc2626';
+      c.beginPath();
+      c.moveTo(-1.8, -22);
+      c.quadraticCurveTo(0, -28, 1.8, -22);
+      c.quadraticCurveTo(0, -17, -1.8, -22);
+      c.fill();
+
+      c.restore();
+    }
+    /* ─── END NEW HELPERS ─── */
+
     function dBg(t:number){
       c.fillStyle='#07030a';c.fillRect(0,0,W,H);
       const aa=t<2.5?eOC(Math.min(t/2,1))*.6:.6;
@@ -611,6 +745,14 @@ export default function GaneshChaturthiCinematicIntro({onComplete}:Props){
       dEnergy(t);
       dAarti(t);
       dBells(t);
+
+      // 🚀 NEW: 5.5s के बाद रंगीन बाल गणेश (Detailed Colored Mascot) प्रकट होंगे
+      if(t >= 5.5 && t < 9.5) {
+        const coloredGaneshaFade = Math.min((t - 5.5) / 1.2, 1.0);
+        const gScale = Math.min(W,H) * 0.02; // सही स्केलिंग के लिए
+        drawDetailedGanesha(W/2, H/2-H*.015, gScale * (1 + Math.sin(t*2.5)*0.015), coloredGaneshaFade);
+      }
+
       dBloom(t);
       dBloomP();
       dPetals();
