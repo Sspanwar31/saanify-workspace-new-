@@ -15,7 +15,7 @@ interface Bell {
   x: number; length: number; angle: number; lastBellTime: number;
 }
 const POOL = 3400;
-const DUR = 12.0; 
+const DUR = 12.0;
 const EP = 1e-4;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -28,58 +28,7 @@ const eIQ = (t: number) => t * t;
 const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
 
 /* ═══════════════════════════════════════════════════════════════
-   BEZIER SAMPLER
-   ═══════════════════════════════════════════════════════════════ */
-function cb(t: number, a: number, b: number, c: number, d: number) {
-  const m = 1 - t;
-  return m * m * m * a + 3 * m * m * t * b + 3 * m * t * t * c + t * t * t * d;
-}
-function ss(a: number[], b: number[], c: number[], d: number[], n: number): number[][] {
-  const r: number[][] = [];
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    r.push([cb(t, a[0], b[0], c[0], d[0]), cb(t, a[1], b[1], c[1], d[1])]);
-  }
-  return r;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   GANESHA OUTLINE (0-1 normalised)
-   ═══════════════════════════════════════════════════════════════ */
-function buildGP(): number[][] {
-  const body: number[][][] = [
-    [[200, 80], [150, 60], [100, 80], [100, 120]],
-    [[100, 120], [100, 160], [140, 180], [175, 160]],
-    [[175, 160], [150, 190], [130, 220], [130, 260]],
-    [[130, 260], [130, 320], [170, 350], [200, 350]], 
-    [[200, 350], [230, 350], [270, 320], [270, 260]],
-    [[270, 260], [270, 220], [250, 190], [225, 160]],
-    [[225, 160], [260, 180], [300, 160], [300, 120]],
-    [[300, 120], [300, 80], [250, 60], [200, 80]],
-  ];
-  const trunk: number[][][] = [
-    [[190, 110], [190, 150], [170, 190], [150, 215]],
-    [[150, 215], [130, 235], [110, 220], [115, 200]], 
-    [[115, 200], [120, 190], [135, 195], [145, 205]],
-  ];
-  const crown: number[][][] = [
-    [[200, 80], [195, 60], [185, 45], [200, 20]],
-    [[200, 20], [215, 45], [205, 60], [200, 80]],
-  ];
-  const all: number[][] = [];
-  const add = (s: number[][][]) => {
-    for (const c of s) {
-      const pts = ss(c[0], c[1], c[2], c[3], 25);
-      const s0 = all.length > 0 ? 1 : 0;
-      for (let i = s0; i < pts.length; i++) all.push(pts[i]);
-    }
-  };
-  add(body); add(trunk); add(crown);
-  return all.map(p => [p[0] / 400, p[1] / 400]);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT DEFINITION
+   MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void }
 
@@ -95,47 +44,25 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   const cbR = useRef(onComplete);
   cbR.current = onComplete;
 
-  /* ─── 🖼️ ROBUST IMAGE PRELOAD with crossOrigin & retry ─── */
+  /* ─── 🖼️ IMAGE PRELOAD — animation WAITs for this ─── */
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-
-    const tryLoad = (url: string) => {
-      img.onload = () => {
-        ganeshaImgRef.current = img;
-        setImgReady(true);
-      };
-      img.onerror = () => {
-        /* If first URL fails (expired), try direct Pinterest CDN fallback */
-        if (!url.includes('pinimg.com')) {
-          tryLoad('https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/GANESH%20JI/Screenshot_2026-07-13_071236-removebg-preview.png');
-        }
-        /* If both fail, animation still works — just without the image overlay */
-      };
-      img.src = url;
-    };
-
-    /* ⚠️ IMPORTANT: Replace this URL with your own hosted image!
-       The previous CDN URL expired. Upload the Ganesha image to your
-       project's /public folder and use: '/ganesha.png'
-       Or use any permanent image URL. */
-    tryLoad('/ganesha.png');
-
+    img.onload = () => { ganeshaImgRef.current = img; setImgReady(true); };
+    img.onerror = () => { setImgReady(true); }; /* start without image if fail */
+    img.src = '/ganesha.png';
     return () => { img.onload = null; img.onerror = null; };
   }, []);
 
   const mkPool = useCallback(() => {
     const a: P[] = [];
-    for (let i = 0; i < POOL; i++) {
+    for (let i = 0; i < POOL; i++)
       a.push({ x: 0, y: 0, vx: 0, vy: 0, sz: 0, life: 0, ml: 1, r: 255, g: 200, b: 50, a: 0, rot: 0, rs: 0, on: false, tp: 0 });
-    }
     return a;
   }, []);
 
   const grab = useCallback((p: P[]) => {
-    for (let i = 0; i < p.length; i++) {
-      if (!p[i].on) return p[i];
-    }
+    for (let i = 0; i < p.length; i++) if (!p[i].on) return p[i];
     return null;
   }, []);
 
@@ -150,36 +77,35 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       mainGain.gain.setValueAtTime(0, ctx.currentTime);
       mainGain.gain.linearRampToValueAtTime(0.24, ctx.currentTime + 0.01);
       mainGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-      const harmonics = [1.0, 1.5, 2.0, 2.6, 3.12];
-      harmonics.forEach((ratio, i) => {
+      [1.0, 1.5, 2.0, 2.6, 3.12].forEach((ratio, i) => {
         const osc = ctx.createOscillator();
         const gNode = ctx.createGain();
         osc.frequency.value = frequency * ratio;
         osc.type = i === 0 ? 'sine' : 'triangle';
         gNode.gain.setValueAtTime(0.4 / (i + 1), ctx.currentTime);
         gNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / (i + 0.9));
-        osc.connect(gNode);
-        gNode.connect(mainGain);
-        osc.start();
-        osc.stop(ctx.currentTime + duration);
+        osc.connect(gNode); gNode.connect(mainGain);
+        osc.start(); osc.stop(ctx.currentTime + duration);
       });
-    } catch (err) {
-      console.warn("Bell sound play failed safely:", err);
-    }
+    } catch (err) { console.warn("Bell sound failed:", err); }
   }, []);
 
+  /* ═══════════════════════════════════════════════════════════════
+     MAIN ANIMATION — only starts when image is ready
+     ═══════════════════════════════════════════════════════════════ */
   useEffect(() => {
+    if (!imgReady) return; /* ⏳ WAIT here until image loads */
+
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
-    
+
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) audioCtxRef.current = new AudioCtx();
     } catch (_) {}
-    
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
-
     const rsz = () => {
       W = window.innerWidth; H = window.innerHeight;
       cv.width = W * dpr; cv.height = H * dpr;
@@ -187,10 +113,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     rsz(); window.addEventListener('resize', rsz);
-    
-    const pl = mkPool();
-    const gp = buildGP(); const gn = gp.length;
 
+    const pl = mkPool();
     const dI: number[] = [];
     for (let i = 0; i < 80; i++) {
       const p = pl[i]; p.on = true; p.tp = 0;
@@ -208,7 +132,19 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
     ];
 
-    /* ───────── CANVAS RENDER LOGIC ───────── */
+    /* ─── Helper: get image draw dimensions ─── */
+    const getImgDims = () => {
+      const img = ganeshaImgRef.current;
+      if (!img || !img.complete || img.naturalWidth === 0) return null;
+      const cx = W / 2, cy = H / 2 - H * 0.015;
+      const sc = Math.min(W, H);
+      const displayH = sc * 0.5;
+      const displayW = displayH * (img.naturalWidth / img.naturalHeight);
+      const maxR = Math.max(displayW, displayH) / 2 + 20;
+      return { img, cx, cy, displayW, displayH, maxR };
+    };
+
+    /* ═════════════════ RENDER FUNCTIONS ═══════════════ */
 
     function dBg(t: number) {
       c!.fillStyle = '#07030a'; c!.fillRect(0, 0, W, H);
@@ -218,24 +154,20 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       g.addColorStop(.55, `rgba(105,22,22,${aa * .16})`);
       g.addColorStop(1, 'rgba(7,3,10,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
-      
       g = c!.createRadialGradient(W * .5, H * .88, 0, W * .5, H * .88, H * .5);
       g.addColorStop(0, `rgba(70,10,18,${aa * .4})`);
       g.addColorStop(1, 'rgba(7,3,10,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
-      
       let ca = 0;
       if (t > 2) ca = Math.min((t - 2) / 4, 1) * .2;
       if (t > 5.5) ca = .2 + Math.min((t - 5.5) / 2, 1) * .18;
       if (t > 7.5) ca = .38 + Math.min((t - 7.5) / 1.5, 1) * .15;
       if (t > 9.5) ca = .53 + Math.min((t - 9.5) / 1.5, 1) * .12;
-      
       g = c!.createRadialGradient(W * .5, H * .43, 0, W * .5, H * .43, H * .5);
       g.addColorStop(0, `rgba(255,170,40,${ca})`);
       g.addColorStop(.4, `rgba(190,65,22,${ca * .4})`);
       g.addColorStop(1, 'rgba(7,3,10,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
-      
       g = c!.createRadialGradient(W * .5, H * .5, H * .26, W * .5, H * .5, H * .96);
       g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.62)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
@@ -243,7 +175,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
     function dTemples(t: number) {
       const fa = t < 2.5 ? eOC(Math.min(t / 2, 1)) * .28 : .28;
-      if (t > 9) { const fo = Math.max(0, 1 - (t - 9) / 2); if (fo <= 0) return; }
+      if (t > 9) { if (Math.max(0, 1 - (t - 9) / 2) <= 0) return; }
       const al = t > 9 ? Math.max(0, .28 - (t - 9) * .14) : fa;
       c!.save(); c!.globalAlpha = al; c!.fillStyle = '#0e0718';
       const gops = [
@@ -277,7 +209,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       p.r = 150; p.g = 95; p.b = 65; p.a = .03 + Math.random() * .02;
       p.rot = 0; p.rs = 0; p.on = true; p.tp = 6;
     }
-
     function dSmoke() {
       for (const p of pl) {
         if (!p.on || p.tp !== 6) continue;
@@ -285,42 +216,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         const g = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, p.sz));
         g.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a})`); g.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
         c!.fillStyle = g; c!.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
-      }
-    }
-
-    function sStreams(t: number) {
-      if (t > 2.8) return;
-      const prog = Math.min(t / 2.5, 1);
-      for (let s = 0; s < 2; s++) {
-        const side = s === 0 ? -1 : 1;
-        const sx = s === 0 ? -30 : W + 30; const ex = W * .5, ey = H * .43;
-        for (let i = 0; i < 5; i++) {
-          const p = grab(pl); if (!p) break;
-          const tt = Math.random() * prog;
-          const cpx = side === -1 ? W * .16 : W * .84;
-          const cpy = H * .16 + Math.sin(tt * Math.PI) * H * .14;
-          const m = 1 - tt;
-          p.x = m * m * sx + 2 * m * tt * cpx + tt * tt * ex + (Math.random() - .5) * 40;
-          p.y = m * m * (H * .52) + 2 * m * tt * cpy + tt * tt * ey + (Math.random() - .5) * 40;
-          p.vx = side * (Math.random() * 2.5 + .8); p.vy = (Math.random() - .5) * .5;
-          p.sz = Math.random() * 3.2 + .7; p.ml = 1.5 + Math.random(); p.life = p.ml;
-          p.r = 255; p.g = 170 + Math.random() * 70 | 0; p.b = 20 + Math.random() * 50 | 0;
-          p.a = .5 + Math.random() * .45; p.rot = 0; p.rs = 0; p.on = true; p.tp = 1;
-        }
-      }
-    }
-
-    function dStreams() {
-      for (const p of pl) {
-        if (!p.on || p.tp !== 1) continue;
-        const lr = p.life / p.ml; const a = p.a * Math.min(lr * 3, 1) * Math.min((1 - lr) * 3, 1);
-        c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz), 0, Math.PI * 2);
-        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
-        if (p.sz > 1.6) {
-          const g = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, p.sz * 3.5));
-          g.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * .22})`); g.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
-          c!.fillStyle = g; c!.fillRect(p.x - p.sz * 3.5, p.y - p.sz * 3.5, p.sz * 7, p.sz * 7);
-        }
       }
     }
 
@@ -336,39 +231,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
-    function dOutline(t: number) {
-      const ps = 2.5, dur = 3;
-      const prog = eIO(Math.min((t - ps) / dur, 1));
-      const show = Math.floor(prog * gn); if (show < 2) return;
-      const sc = Math.min(W, H) * .56; const ox = (W - sc) / 2, oy = (H - sc) / 2 - H * .015;
-      c!.save(); c!.lineCap = 'round'; c!.lineJoin = 'round';
-      
-      c!.shadowColor = 'rgba(255,170,40,.6)'; c!.shadowBlur = 22;
-      c!.strokeStyle = `rgba(255,190,65,.35)`; c!.lineWidth = 5.2;
-      c!.beginPath(); c!.moveTo(gp[0][0] * sc + ox, gp[0][1] * sc + oy);
-      for (let i = 1; i < show; i++) c!.lineTo(gp[i][0] * sc + ox, gp[i][1] * sc + oy); c!.stroke();
-      
-      c!.shadowColor = 'rgba(255,210,85,.8)'; c!.shadowBlur = 10;
-      c!.strokeStyle = 'rgba(255,225,130,.95)'; c!.lineWidth = 2.4;
-      c!.beginPath(); c!.moveTo(gp[0][0] * sc + ox, gp[0][1] * sc + oy);
-      for (let i = 1; i < show; i++) c!.lineTo(gp[i][0] * sc + ox, gp[i][1] * sc + oy); c!.stroke();
-      
-      if (t - ps < dur && show > 0) {
-        const lp = gp[show - 1]; const lx = lp[0] * sc + ox, ly = lp[1] * sc + oy;
-        const eg = c!.createRadialGradient(lx, ly, 0, lx, ly, Math.max(EP, 20));
-        eg.addColorStop(0, 'rgba(255,255,190,.9)'); eg.addColorStop(.35, 'rgba(255,190,65,.4)'); eg.addColorStop(1, 'rgba(255,165,35,0)');
-        c!.fillStyle = eg; c!.fillRect(lx - 20, ly - 20, 40, 40);
-      }
-      
-      c!.shadowBlur = 0;
-      for (let i = 0; i < show; i += 4) {
-        const pt = gp[i]; const sp = .22 + Math.sin(t * 3.2 + i * .4) * .22;
-        c!.beginPath(); c!.arc(pt[0] * sc + ox, pt[1] * sc + oy, Math.max(EP, 1.1), 0, Math.PI * 2);
-        c!.fillStyle = `rgba(255,232,165,${sp})`; c!.fill();
-      }
-      c!.restore();
-    }
-
     function sOrbit(t: number) {
       if (t < 3.5 || t > 11.5 || Math.random() > .2) return;
       const p = grab(pl); if (!p) return;
@@ -380,7 +242,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       p.r = 255; p.g = 200 + Math.random() * 50 | 0; p.b = 65 + Math.random() * 55 | 0;
       p.a = .4 + Math.random() * .35; p.rot = 0; p.rs = 0; p.on = true; p.tp = 5;
     }
-
     function dOrbit() {
       for (const p of pl) {
         if (!p.on || p.tp !== 5) continue;
@@ -407,58 +268,41 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       if (t > 8) ba = Math.max(0, 1 - (t - 8) / .6);
       if (ba <= 0) return;
       const bsz = Math.min(W, H) * .11;
-      const b1x = W * .28, b2x = W * .72, by = H * .04;
-      const a1 = .28 * Math.sin(t * 2.6) * ba;
-      const a2 = .24 * Math.sin(t * 2.9 + 1.6) * ba;
-      drawBell(b1x, by, bsz, a1, ba);
-      drawBell(b2x, by, bsz, a2, ba);
-
+      drawBell(W * .28, H * .04, bsz, .28 * Math.sin(t * 2.6) * ba, ba);
+      drawBell(W * .72, H * .04, bsz, .24 * Math.sin(t * 2.9 + 1.6) * ba, ba);
       bells.forEach((bell, idx) => {
-        const swingFreq = 1.8 + idx * 0.35;
-        const angle = Math.sin(t * swingFreq) * 0.18;
+        const angle = Math.sin(t * (1.8 + idx * 0.35)) * 0.18;
         if (Math.abs(angle) < 0.02 && t - bell.lastBellTime > 0.8) {
           bell.lastBellTime = t;
-          const freqs = [220, 165, 294];
-          triggerBellSound(freqs[idx]);
+          triggerBellSound([220, 165, 294][idx]);
         }
       });
     }
-
-    /* ─── 🔔 FIXED BELL: bezierCurveTo now has correct 6 params ─── */
     function drawBell(ax: number, ay: number, s: number, ang: number, al: number) {
       c!.save(); c!.globalAlpha = al; c!.translate(ax, ay); c!.rotate(ang);
       c!.strokeStyle = '#7a6535'; c!.lineWidth = 1.2;
-      for (let i = 0; i < 3; i++) {
-        c!.beginPath(); c!.ellipse(0, s * .08 * (i + 1), s * .028, s * .045, 0, 0, Math.PI * 2); c!.stroke();
-      }
-      const ty = s * .32, bellBottom = s, tw = s * .11, bw = s * .34;
-
-      /* ✅ FIX: All 3 bezierCurveTo calls now have proper 6 parameters (cp1x, cp1y, cp2x, cp2y, endX, endY) */
-      c!.beginPath();
-      c!.moveTo(-tw, ty);
-      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, -bw * .5, bellBottom);
-      c!.lineTo(bw * .5, bellBottom);
+      for (let i = 0; i < 3; i++) { c!.beginPath(); c!.ellipse(0, s * .08 * (i + 1), s * .028, s * .045, 0, 0, Math.PI * 2); c!.stroke(); }
+      const ty = s * .32, bb = s, tw = s * .11, bw = s * .34;
+      c!.beginPath(); c!.moveTo(-tw, ty);
+      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, -bw * .5, bb);
+      c!.lineTo(bw * .5, bb);
       c!.bezierCurveTo(bw * .82, ty + s * .4, tw, ty + s * .2, tw, ty);
       c!.closePath();
       const bg = c!.createLinearGradient(-bw, 0, bw, 0);
       bg.addColorStop(0, '#523e10'); bg.addColorStop(.25, '#9a7520'); bg.addColorStop(.45, '#c9a030');
       bg.addColorStop(.55, '#dab540'); bg.addColorStop(.75, '#9a7520'); bg.addColorStop(1, '#523e10');
       c!.fillStyle = bg; c!.fill();
-      
       c!.beginPath(); c!.moveTo(-tw * .25, ty + s * .05);
-      c!.bezierCurveTo(-tw * .25, ty + s * .2, -bw * .22, ty + s * .4, -bw * .22, bellBottom - s * .04);
-      c!.lineTo(-bw * .1, bellBottom - s * .04);
+      c!.bezierCurveTo(-tw * .25, ty + s * .2, -bw * .22, ty + s * .4, -bw * .22, bb - s * .04);
+      c!.lineTo(-bw * .1, bb - s * .04);
       c!.bezierCurveTo(-bw * .1, ty + s * .4, -tw * .1, ty + s * .2, -tw * .1, ty + s * .05);
       c!.closePath(); c!.fillStyle = 'rgba(255,228,165,.12)'; c!.fill();
-      
-      c!.beginPath(); c!.moveTo(-bw * .5, bellBottom); c!.lineTo(bw * .5, bellBottom);
+      c!.beginPath(); c!.moveTo(-bw * .5, bb); c!.lineTo(bw * .5, bb);
       c!.strokeStyle = '#dab540'; c!.lineWidth = 1.8; c!.stroke();
-      
-      const rg = c!.createRadialGradient(0, bellBottom, 0, 0, bellBottom, Math.max(EP, s * .3));
+      const rg = c!.createRadialGradient(0, bb, 0, 0, bb, Math.max(EP, s * .3));
       rg.addColorStop(0, 'rgba(255,195,65,.15)'); rg.addColorStop(1, 'rgba(255,195,65,0)');
-      c!.fillStyle = rg; c!.fillRect(-s * .3, bellBottom - s * .3, s * .6, s * .6);
-      
-      c!.beginPath(); c!.arc(0, bellBottom - s * .06, s * .035, 0, Math.PI * 2); c!.fillStyle = '#3e2e0c'; c!.fill();
+      c!.fillStyle = rg; c!.fillRect(-s * .3, bb - s * .3, s * .6, s * .6);
+      c!.beginPath(); c!.arc(0, bb - s * .06, s * .035, 0, Math.PI * 2); c!.fillStyle = '#3e2e0c'; c!.fill();
       c!.restore();
     }
 
@@ -472,9 +316,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       const ax = cx + Math.cos(ang) * orad; const ay = cy + Math.sin(ang) * orad * .52;
       for (let i = 1; i < 18; i++) {
         const ta = ang - i * .045; const tx = cx + Math.cos(ta) * orad; const ty = cy + Math.sin(ta) * orad * .52;
-        const tla = (1 - i / 18) * .12 * aa;
         const tg = c!.createRadialGradient(tx, ty, 0, tx, ty, Math.max(EP, 10));
-        tg.addColorStop(0, `rgba(255,175,45,${tla})`); tg.addColorStop(1, 'rgba(255,140,30,0)');
+        tg.addColorStop(0, `rgba(255,175,45,${(1 - i / 18) * .12 * aa})`); tg.addColorStop(1, 'rgba(255,140,30,0)');
         c!.fillStyle = tg; c!.fillRect(tx - 10, ty - 10, 20, 20);
       }
       c!.save(); c!.globalAlpha = aa; c!.translate(ax, ay);
@@ -499,55 +342,133 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.restore();
     }
 
-    /* ─── 🖼️ IMAGE DRAWING (only if image loaded) ─── */
-    function drawGaneshaImage(t: number) {
-      if (t < 5.5 || t > 9.5) return;
-      const img = ganeshaImgRef.current;
-      if (!img || !img.complete || img.naturalWidth === 0) return;
+    /* ═══════════════════════════════════════════════════════════════
+       🖼️ 2027 MODERN: UNIFIED GANESHA IMAGE
+       Phase 1 (2.5→5.5): Circular clip REVEAL with golden ring + sparkles
+       Phase 2 (5.5→9.5): Full visible with aura + shimmer sweep
+       Phase 3 (9.5→11):  DISSOLVE fade out
+       ═══════════════════════════════════════════════════════════════ */
+    function dGanesha(t: number) {
+      const d = getImgDims(); if (!d) return;
+      const { img, cx, cy, displayW: dw, displayH: dh, maxR } = d;
 
-      const fade = Math.min((t - 5.5) / 1.2, 1.0);
-      const cx = W / 2, cy = H / 2 - H * .015;
-      const sc = Math.min(W, H);
-      const displayH = sc * 0.5;
-      const aspect = img.naturalWidth / img.naturalHeight;
-      const displayW = displayH * aspect;
+      /* ── PHASE 1: CIRCULAR REVEAL (t=2.5 → 5.5) ── */
+      if (t >= 2.5 && t < 5.5) {
+        const prog = eIO(Math.min((t - 2.5) / 3, 1));
+        const revealR = maxR * prog;
 
-      c!.save();
-      c!.globalAlpha = fade;
+        /* clip & draw image */
+        c!.save();
+        c!.beginPath(); c!.arc(cx, cy, Math.max(EP, revealR), 0, Math.PI * 2); c!.clip();
+        c!.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+        c!.restore();
 
-      /* golden aura */
-      const auraR = Math.max(EP, displayH * 0.6);
-      const aura = c!.createRadialGradient(cx, cy, 0, cx, cy, auraR);
-      aura.addColorStop(0, `rgba(255,190,60,${fade * 0.2})`);
-      aura.addColorStop(0.5, `rgba(255,140,35,${fade * 0.08})`);
-      aura.addColorStop(1, 'rgba(255,100,20,0)');
-      c!.fillStyle = aura;
-      c!.fillRect(cx - auraR, cy - auraR, auraR * 2, auraR * 2);
+        /* golden ring at edge */
+        if (prog < 1) {
+          const ringA = 0.7 * (1 - prog * 0.6);
+          c!.save();
+          c!.shadowColor = `rgba(255,190,60,${ringA})`; c!.shadowBlur = 35;
+          c!.strokeStyle = `rgba(255,210,100,${ringA})`; c!.lineWidth = 2.5;
+          c!.beginPath(); c!.arc(cx, cy, Math.max(EP, revealR), 0, Math.PI * 2); c!.stroke();
+          c!.shadowBlur = 0;
+          c!.strokeStyle = `rgba(255,240,180,${ringA * 0.6})`; c!.lineWidth = 1;
+          c!.beginPath(); c!.arc(cx, cy, Math.max(EP, revealR - 2), 0, Math.PI * 2); c!.stroke();
+          c!.restore();
+        }
+        return;
+      }
 
-      /* glow shadow */
-      c!.shadowColor = `rgba(255,185,50,${fade * 0.6})`;
-      c!.shadowBlur = 45 * fade;
+      /* ── PHASE 2: FULL VISIBLE (t=5.5 → 9.5) ── */
+      if (t >= 5.5 && t < 9.5) {
+        const breath = 1 + Math.sin(t * 2.5) * 0.008;
+        const w = dw * breath, h = dh * breath;
 
-      /* actual image */
-      c!.drawImage(img, cx - displayW / 2, cy - displayH / 2, displayW, displayH);
+        /* golden aura */
+        const aR = Math.max(EP, h * 0.6);
+        const aura = c!.createRadialGradient(cx, cy, 0, cx, cy, aR);
+        aura.addColorStop(0, 'rgba(255,190,60,0.2)');
+        aura.addColorStop(0.5, 'rgba(255,140,35,0.08)');
+        aura.addColorStop(1, 'rgba(255,100,20,0)');
+        c!.fillStyle = aura; c!.fillRect(cx - aR, cy - aR, aR * 2, aR * 2);
 
-      /* golden border */
-      c!.shadowBlur = 0;
-      c!.globalAlpha = fade * 0.3;
-      c!.strokeStyle = '#ffd700';
-      c!.lineWidth = 1.5;
-      c!.beginPath();
-      c!.ellipse(cx, cy, displayW / 2 + 5, displayH / 2 + 5, 0, 0, Math.PI * 2);
-      c!.stroke();
+        /* image with glow */
+        c!.save();
+        c!.shadowColor = 'rgba(255,185,50,0.5)'; c!.shadowBlur = 40;
+        c!.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+        c!.restore();
 
-      c!.restore();
+        /* ✨ shimmer light sweep (plays once ~t=6.2) */
+        const st = (t - 6.2) / 1.0;
+        if (st >= 0 && st <= 1) {
+          const sx = cx - w / 2 + st * w * 1.4 - w * 0.2;
+          const bw2 = w * 0.12;
+          c!.save();
+          c!.beginPath(); c!.rect(cx - w / 2, cy - h / 2, w, h); c!.clip();
+          const shim = c!.createLinearGradient(sx - bw2, 0, sx + bw2, 0);
+          shim.addColorStop(0, 'rgba(255,255,255,0)');
+          shim.addColorStop(0.4, 'rgba(255,255,220,0.1)');
+          shim.addColorStop(0.5, 'rgba(255,255,255,0.18)');
+          shim.addColorStop(0.6, 'rgba(255,255,220,0.1)');
+          shim.addColorStop(1, 'rgba(255,255,255,0)');
+          c!.fillStyle = shim; c!.fillRect(sx - bw2, cy - h / 2, bw2 * 2, h);
+          c!.restore();
+        }
+        return;
+      }
+
+      /* ── PHASE 3: DISSOLVE (t=9.5 → 11) ── */
+      if (t >= 9.5) {
+        const dt = Math.min((t - 9.5) / 1.8, 1);
+        const oa = Math.max(0, 1 - dt * 1.7);
+        if (oa > 0) {
+          c!.save();
+          c!.globalAlpha = oa;
+          c!.shadowColor = `rgba(255,190,65,${oa * 0.5})`; c!.shadowBlur = 20;
+          c!.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+          c!.restore();
+        }
+      }
+    }
+
+    /* ── Reveal edge sparkles (tp=9) ── */
+    function sRevealSparkles(t: number) {
+      if (t < 2.5 || t > 5.5) return;
+      const d = getImgDims(); if (!d) return;
+      const prog = eIO(Math.min((t - 2.5) / 3, 1));
+      const revealR = d.maxR * prog;
+      for (let i = 0; i < 3; i++) {
+        const p = grab(pl); if (!p) break;
+        const ang = Math.random() * Math.PI * 2;
+        p.x = d.cx + Math.cos(ang) * revealR;
+        p.y = d.cy + Math.sin(ang) * revealR;
+        p.vx = Math.cos(ang) * (1 + Math.random() * 2.5);
+        p.vy = Math.sin(ang) * (1 + Math.random() * 2.5);
+        p.sz = Math.random() * 2 + 0.5; p.ml = 0.5 + Math.random() * 0.4; p.life = p.ml;
+        p.r = 255; p.g = 200 + Math.random() * 55 | 0; p.b = 50 + Math.random() * 50 | 0;
+        p.a = 0.7 + Math.random() * 0.3; p.rot = 0; p.rs = 0;
+        p.on = true; p.tp = 9;
+      }
+    }
+    function dRevealSparkles() {
+      for (const p of pl) {
+        if (!p.on || p.tp !== 9) continue;
+        const lr = p.life / p.ml; const a = p.a * lr;
+        const sz = p.sz * (0.5 + lr * 0.5);
+        c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, sz), 0, Math.PI * 2);
+        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
+        if (sz > 1) {
+          const g = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, sz * 3));
+          g.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.3})`);
+          g.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
+          c!.fillStyle = g; c!.fillRect(p.x - sz * 3, p.y - sz * 3, sz * 6, sz * 6);
+        }
+      }
     }
 
     function dBloom(t: number) {
       const bs = 7.5; const bt = Math.min((t - bs) / 1.4, 1); if (bt <= 0) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015; const maxR = sc * .88;
-      const r = maxR * eOQ(bt);
-      const ra = (1 - bt) * .4;
+      const r = maxR * eOQ(bt); const ra = (1 - bt) * .4;
       c!.save(); c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
       c!.strokeStyle = `rgba(255,190,65,${ra})`; c!.lineWidth = 3.5 * (1 - bt); c!.stroke(); c!.restore();
       const ba = (1 - bt * .65) * .16;
@@ -564,7 +485,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         }
       }
     }
-
     function dBloomP() {
       for (const p of pl) {
         if (!p.on || p.tp !== 3) continue;
@@ -587,7 +507,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       p.a = .5 + Math.random() * .3; p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .04; p.on = true; p.tp = 4;
     }
-
     function dPetals() {
       for (const p of pl) {
         if (!p.on || p.tp !== 4) continue;
@@ -597,11 +516,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         grad.addColorStop(0, `rgb(${p.r},${p.g},${p.b})`);
         grad.addColorStop(1, `rgb(${Math.max(0, p.r - 40)},${Math.max(0, p.g - 35)},${Math.max(0, p.b - 20)})`);
         c!.fillStyle = grad;
-        c!.beginPath();
-        c!.ellipse(0, 0, Math.max(EP, p.sz * .42), Math.max(EP, p.sz), 0, 0, Math.PI * 2);
-        c!.fill();
-        c!.beginPath();
-        c!.ellipse(-p.sz * 0.05, -p.sz * 0.2, Math.max(EP, p.sz * 0.1), Math.max(EP, p.sz * 0.35), 0, 0, Math.PI * 2);
+        c!.beginPath(); c!.ellipse(0, 0, Math.max(EP, p.sz * .42), Math.max(EP, p.sz), 0, 0, Math.PI * 2); c!.fill();
+        c!.beginPath(); c!.ellipse(-p.sz * .05, -p.sz * .2, Math.max(EP, p.sz * .1), Math.max(EP, p.sz * .35), 0, 0, Math.PI * 2);
         c!.fillStyle = 'rgba(255,255,255,0.25)'; c!.fill();
         c!.restore();
       }
@@ -618,7 +534,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       p.a = .4 + Math.random() * .38; p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .06; p.on = true; p.tp = 8;
     }
-
     function dKum() {
       for (const p of pl) {
         if (!p.on || p.tp !== 8) continue;
@@ -631,12 +546,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
     function dRays(t: number) {
       if (t < 7.5) return;
-      const rt = Math.min((t - 7.5) / 2, 1);
-      const al = eOC(rt) * .09;
+      const rt = Math.min((t - 7.5) / 2, 1); const al = eOC(rt) * .09;
       const cx = W / 2, cy = H / 2 - H * .015; const rl = Math.max(W, H) * .85;
-      c!.save(); c!.globalAlpha = al; const nr = 16;
-      for (let i = 0; i < nr; i++) {
-        const ang = (i / nr) * Math.PI * 2 + t * .035; const hw = (Math.PI / nr) * .36;
+      c!.save(); c!.globalAlpha = al;
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + t * .035; const hw = (Math.PI / 16) * .36;
         c!.beginPath(); c!.moveTo(cx, cy);
         c!.lineTo(cx + Math.cos(ang - hw) * rl, cy + Math.sin(ang - hw) * rl);
         c!.lineTo(cx + Math.cos(ang + hw) * rl, cy + Math.sin(ang + hw) * rl);
@@ -648,19 +562,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.restore();
     }
 
+    /* ── Dissolve: only golden glow, NO outline ── */
     function dDissolve(t: number) {
       const ps = 9.5; const dt = Math.min((t - ps) / 1.8, 1); if (dt <= 0) return;
-      const sc = Math.min(W, H) * .56; const ox = (W - sc) / 2, oy = (H - sc) / 2 - H * .015;
-      const oa = Math.max(0, 1 - dt * 1.7);
-      if (oa > 0) {
-        c!.save(); c!.globalAlpha = oa;
-        c!.shadowColor = `rgba(255,190,65,${oa * .5})`; c!.shadowBlur = 20;
-        c!.strokeStyle = `rgba(255,215,105,${oa * .72})`; c!.lineWidth = 2; c!.lineCap = 'round'; c!.lineJoin = 'round';
-        c!.beginPath(); c!.moveTo(gp[0][0] * sc + ox, gp[0][1] * sc + oy);
-        for (let i = 1; i < gn; i++) c!.lineTo(gp[i][0] * sc + ox, gp[i][1] * sc + oy); c!.stroke(); c!.restore();
-      }
       const la = eOC(dt) * .12;
-      const lg = c!.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, sc * .3));
+      const lg = c!.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
       lg.addColorStop(0, `rgba(255,220,135,${la})`); lg.addColorStop(.5, `rgba(255,170,42,${la * .4})`); lg.addColorStop(1, 'rgba(255,140,22,0)');
       c!.fillStyle = lg; c!.fillRect(0, 0, W, H);
     }
@@ -718,9 +624,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         for (let i = 0; i < 12; i++) {
           const ang = (i / 12) * Math.PI * 2 + t * .5;
           const sx = cx + Math.cos(ang) * r; const sy = cy + Math.sin(ang) * r;
-          const sa = (1 - wt / .7) * .5;
           c!.beginPath(); c!.arc(sx, sy, Math.max(EP, 2 * (1 - wt)), 0, Math.PI * 2);
-          c!.fillStyle = `rgba(255,235,170,${sa})`; c!.fill();
+          c!.fillStyle = `rgba(255,235,170,${(1 - wt / .7) * .5})`; c!.fill();
         }
       }
     }
@@ -742,12 +647,12 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         if (!p.on || p.tp === 0) continue;
         p.x += p.vx; p.y += p.vy; p.life -= dt; p.rot += p.rs;
         switch (p.tp) {
-          case 1: p.vx *= .99; p.vy *= .99; break;
           case 3: p.vx *= .97; p.vy *= .97; break;
           case 4: p.vx += Math.sin(p.y * .018 + p.rot) * .016; p.vy *= .999; break;
           case 5: p.vx *= .98; p.vy *= .98; break;
           case 6: p.vx *= .995; p.vy *= .998; p.sz += .3; break;
           case 8: p.vx += (Math.random() - .5) * .016; break;
+          case 9: p.vx *= .95; p.vy *= .95; break; /* reveal sparkles */
         }
         if (p.life <= 0 || p.y > H + 60 || p.x < -120 || p.x > W + 120) p.on = false;
       }
@@ -759,16 +664,17 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       if (!t0.current) { t0.current = ts; lt = ts; }
       const t = (ts - t0.current) / 1000; const dt = Math.min((ts - lt) / 1000, .05); lt = ts;
 
-      dBg(t); dTemples(t); dSmoke(); dRays(t); dStreams(); dOutline(t);
+      dBg(t); dTemples(t); dSmoke(); dRays(t); dDust(t);
       dEnergy(t); dAarti(t); dBells(t);
 
-      /* ✅ Image draw replaces old canvas-drawn Ganesha */
-      drawGaneshaImage(t);
+      /* 🖼️ ONE unified function replaces: dOutline + drawGaneshaImage + old dissolve outline */
+      dGanesha(t);
+      dRevealSparkles();
 
-      dBloom(t); dBloomP(); dPetals(); dKum(); dOrbit(); dDissolve(t); dText(t); dWave(t); dFade(t); dDust(t);
+      dBloom(t); dBloomP(); dPetals(); dKum(); dOrbit();
+      dDissolve(t); dText(t); dWave(t); dFade(t);
 
-      if (t < 2.8) sStreams(t);
-      sSmoke(); sOrbit(t);
+      sSmoke(); sOrbit(t); sRevealSparkles(t);
       if (t > 7.8) { sPetals(t); sKum(t); }
 
       upd(dt);
@@ -780,7 +686,50 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
     return () => { cancelAnimationFrame(raf.current); window.removeEventListener('resize', rsz); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mkPool, grab, triggerBellSound]);
+  }, [imgReady, mkPool, grab, triggerBellSound]);
+
+  /* ═══════════════════════════════════════════════════════════════
+     🔄 LOADING SCREEN — shown until image is ready
+     ═══════════════════════════════════════════════════════════════ */
+  if (!imgReady) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: '#07030a' }}>
+        <div
+          className="absolute w-52 h-52 rounded-full animate-pulse"
+          style={{ background: 'radial-gradient(circle, rgba(255,190,50,0.12) 0%, transparent 70%)' }}
+        />
+        <div
+          className="relative text-7xl select-none"
+          style={{
+            color: '#ffd700',
+            textShadow: '0 0 40px rgba(255,200,50,0.5), 0 0 80px rgba(255,180,30,0.25), 0 0 120px rgba(255,160,20,0.1)',
+            animation: 'omBreath 2.4s ease-in-out infinite',
+          }}
+        >
+          ॐ
+        </div>
+        <div
+          className="mt-8 text-xs tracking-[0.35em] uppercase select-none"
+          style={{
+            color: 'rgba(255,200,80,0.45)',
+            animation: 'textPulse 2.4s ease-in-out infinite',
+          }}
+        >
+          Preparing Aarti
+        </div>
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes omBreath {
+            0%, 100% { opacity: 0.7; transform: scale(1); filter: blur(0px); }
+            50% { opacity: 1; transform: scale(1.06); filter: blur(0.5px); }
+          }
+          @keyframes textPulse {
+            0%, 100% { opacity: 0.3; letter-spacing: 0.35em; }
+            50% { opacity: 0.65; letter-spacing: 0.45em; }
+          }
+        ` }} />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[9999]" style={{ background: '#07030a' }}>
