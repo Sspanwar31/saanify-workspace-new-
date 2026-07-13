@@ -15,7 +15,7 @@ interface Bell {
   x: number; length: number; angle: number; lastBellTime: number;
 }
 const POOL = 3400;
-const DUR = 12.0;
+const DUR = 10.5;
 const EP = 1e-4;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -92,7 +92,14 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
   /* ═══════════════════════════════════════════════════════════════
      MAIN ANIMATION — only starts when image is ready
-     ═══════════════════════════════════════════════════════════════ */
+     
+     🎬 NEW 10.5s TIMELINE:
+     0.0s - 1.5s  → धुएं और ऊर्जा का प्रवेश (सस्पेंस)
+     1.5s - 4.5s  → भगवान गणेश का स्वर्णिम प्रकटीकरण
+     4.5s - 8.0s  → आरती, घंटियाँ, फूलों की सघन वर्षा
+     8.0s - 9.8s  → "Happy Ganesh Chaturthi" + श्लोक प्रकटीकरण
+     9.8s - 10.5s → स्वाभाविक फेड-आउट हैंडओवर
+   ═══════════════════════════════════════════════════════════════ */
   useEffect(() => {
     if (!imgReady) return;
 
@@ -143,9 +150,13 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       return { img, cx, cy, displayW, displayH, maxR };
     };
 
+    /* ─────────────────────────────────────────────
+       BACKGROUND — warm-up starts at 0s, full by 1.5s
+       ───────────────────────────────────────────── */
     function dBg(t: number) {
       c!.fillStyle = '#07030a'; c!.fillRect(0, 0, W, H);
-      const aa = t < 2.5 ? eOC(Math.min(t / 2, 1)) * .6 : .6;
+      // Initial warm glow — builds during 0-1.5s suspense
+      const aa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .6 : .6;
       let g = c!.createRadialGradient(W * .5, H * .22, 0, W * .5, H * .22, H * .9);
       g.addColorStop(0, `rgba(185,85,12,${aa * .3})`);
       g.addColorStop(.55, `rgba(105,22,22,${aa * .16})`);
@@ -155,25 +166,30 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       g.addColorStop(0, `rgba(70,10,18,${aa * .4})`);
       g.addColorStop(1, 'rgba(7,3,10,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
+      // Center glow — 4 progressive stages synced to phases
       let ca = 0;
-      if (t > 2) ca = Math.min((t - 2) / 4, 1) * .2;
-      if (t > 5.5) ca = .2 + Math.min((t - 5.5) / 2, 1) * .18;
-      if (t > 7.5) ca = .38 + Math.min((t - 7.5) / 1.5, 1) * .15;
-      if (t > 9.5) ca = .53 + Math.min((t - 9.5) / 1.5, 1) * .12;
+      if (t > 1.0) ca = Math.min((t - 1.0) / 3, 1) * .2;           // 1.0s: anticipation before reveal
+      if (t > 4.5) ca = .2 + Math.min((t - 4.5) / 1.5, 1) * .18;   // 4.5s: aarti phase intensify
+      if (t > 7.0) ca = .38 + Math.min((t - 7.0) / 1.0, 1) * .15;   // 7.0s: pre-text warmth
+      if (t > 8.5) ca = .53 + Math.min((t - 8.5) / 1.0, 1) * .12;   // 8.5s: text phase peak
       g = c!.createRadialGradient(W * .5, H * .43, 0, W * .5, H * .43, H * .5);
       g.addColorStop(0, `rgba(255,170,40,${ca})`);
       g.addColorStop(.4, `rgba(190,65,22,${ca * .4})`);
       g.addColorStop(1, 'rgba(7,3,10,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
+      // Vignette
       g = c!.createRadialGradient(W * .5, H * .5, H * .26, W * .5, H * .5, H * .96);
       g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.62)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
     }
 
+    /* ─────────────────────────────────────────────
+       TEMPLES — fade starts 8.5s, gone by ~9.8s
+       ───────────────────────────────────────────── */
     function dTemples(t: number) {
-      const fa = t < 2.5 ? eOC(Math.min(t / 2, 1)) * .28 : .28;
-      if (t > 9) { if (Math.max(0, 1 - (t - 9) / 2) <= 0) return; }
-      const al = t > 9 ? Math.max(0, .28 - (t - 9) * .14) : fa;
+      const fa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .28 : .28;
+      if (t > 8.5) { if (Math.max(0, 1 - (t - 8.5) / 1.3) <= 0) return; }
+      const al = t > 8.5 ? Math.max(0, .28 - (t - 8.5) * .215) : fa;
       c!.save(); c!.globalAlpha = al; c!.fillStyle = '#0e0718';
       const gops = [
         { cx: W * .1, bw: W * .1, bh: H * .28, ti: 5 }, { cx: W * .18, bw: W * .065, bh: H * .2, ti: 4 },
@@ -197,13 +213,31 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.restore();
     }
 
-    function sSmoke() {
-      if (Math.random() > .2) return;
+    /* ─────────────────────────────────────────────
+       SMOKE — denser during 0-1.5s suspense
+       ───────────────────────────────────────────── */
+    function sSmoke(t: number) {
+      // 0-1.5s: heavier smoke for suspense (50% chance)
+      // 1.5s+: normal ambient smoke (18% chance)
+      if (Math.random() > (t < 1.5 ? 0.5 : 0.18)) return;
       const p = grab(pl); if (!p) return;
-      p.x = W * .2 + Math.random() * W * .6; p.y = H * .5 + Math.random() * H * .3;
+      if (t < 1.5) {
+        // Suspense phase: bigger, more centered smoke
+        p.x = W * .25 + Math.random() * W * .5;
+        p.y = H * .35 + Math.random() * H * .35;
+        p.sz = Math.random() * 65 + 30;
+        p.a = .04 + Math.random() * .03;
+        p.ml = 4 + Math.random() * 2;
+      } else {
+        p.x = W * .2 + Math.random() * W * .6;
+        p.y = H * .5 + Math.random() * H * .3;
+        p.sz = Math.random() * 50 + 20;
+        p.a = .03 + Math.random() * .02;
+        p.ml = 5 + Math.random() * 3;
+      }
       p.vx = (Math.random() - .5) * .4; p.vy = -Math.random() * .6 - .2;
-      p.sz = Math.random() * 50 + 20; p.ml = 5 + Math.random() * 3; p.life = p.ml;
-      p.r = 150; p.g = 95; p.b = 65; p.a = .03 + Math.random() * .02;
+      p.life = p.ml;
+      p.r = 150; p.g = 95; p.b = 65;
       p.rot = 0; p.rs = 0; p.on = true; p.tp = 6;
     }
     function dSmoke() {
@@ -216,6 +250,9 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ─────────────────────────────────────────────
+       DUST — always active ambient particles
+       ───────────────────────────────────────────── */
     function dDust(t: number) {
       for (let i = 0; i < dI.length; i++) {
         const p = pl[dI[i]];
@@ -228,8 +265,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ─────────────────────────────────────────────
+       ORBIT PARTICLES — 1.5s to 9.8s
+       ───────────────────────────────────────────── */
     function sOrbit(t: number) {
-      if (t < 3.5 || t > 11.5 || Math.random() > .2) return;
+      if (t < 1.5 || t > 9.8 || Math.random() > .2) return;
       const p = grab(pl); if (!p) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
       const ang = Math.random() * Math.PI * 2; const rad = sc * .38 + Math.random() * sc * .08;
@@ -248,21 +288,40 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ─────────────────────────────────────────────
+       ENERGY — Phase 1: 0-1.5s suspense pulse
+                Phase 2: 4.5-8.5s main glow
+       ───────────────────────────────────────────── */
     function dEnergy(t: number) {
-      if (t < 5.5 || t > 9.5) return;
+      // Phase 1: Subtle suspense pulse (0-1.5s)
+      if (t >= 0 && t < 1.5) {
+        const ep = eOC(Math.min(t / 1.2, 1));
+        const ea = ep * .09;
+        const eg = c!.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .45));
+        eg.addColorStop(0, `rgba(255,160,40,${ea})`);
+        eg.addColorStop(.5, `rgba(200,80,20,${ea * .4})`);
+        eg.addColorStop(1, 'rgba(150,40,10,0)');
+        c!.fillStyle = eg; c!.fillRect(0, 0, W, H);
+        return;
+      }
+      // Phase 2: Main energy during aarti (4.5-8.5s)
+      if (t < 4.5 || t > 8.5) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
       let ea = 0;
-      if (t < 7.5) ea = Math.min((t - 5.5) / 2, 1) * .14;
-      else ea = .14 * (1 - Math.min((t - 7.5) / 2, 1) * .5);
+      if (t < 6.5) ea = Math.min((t - 4.5) / 2, 1) * .14;
+      else ea = .14 * (1 - Math.min((t - 6.5) / 2, 1) * .5);
       const eg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, sc * .42));
       eg.addColorStop(0, `rgba(255,195,55,${ea})`); eg.addColorStop(.5, `rgba(255,140,35,${ea * .4})`); eg.addColorStop(1, 'rgba(255,100,20,0)');
       c!.fillStyle = eg; c!.fillRect(0, 0, W, H);
     }
 
+    /* ─────────────────────────────────────────────
+       BELLS — 4.5s to 8.0s (aarti phase)
+       ───────────────────────────────────────────── */
     function dBells(t: number) {
-      const bs = 5.5; if (t < bs) return;
+      const bs = 4.5; if (t < bs) return;
       let ba = Math.min((t - bs) / .6, 1);
-      if (t > 8) ba = Math.max(0, 1 - (t - 8) / .6);
+      if (t > 8.0) ba = Math.max(0, 1 - (t - 8.0) / .6);
       if (ba <= 0) return;
       const bsz = Math.min(W, H) * .11;
       drawBell(W * .28, H * .04, bsz, .28 * Math.sin(t * 2.6) * ba, ba);
@@ -303,8 +362,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.restore();
     }
 
+    /* ─────────────────────────────────────────────
+       AARTI — 4.5s to 7.8s
+       ───────────────────────────────────────────── */
     function dAarti(t: number) {
-      const as = 5.5; if (t < as) return;
+      const as = 4.5; if (t < as) return;
       let aa = Math.min((t - as) / .6, 1);
       if (t > 7.8) aa = Math.max(0, 1 - (t - 7.8) / .4);
       if (aa <= 0) return;
@@ -340,14 +402,18 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       🖼️ UNIFIED GANESHA IMAGE — 3 phases
+       🖼️ GANESHA IMAGE — 3 phases synced to new timeline
+       Phase 1: 1.5s-4.5s → Golden ring reveal (3s)
+       Phase 2: 4.5s-8.5s → Breath + shimmer (aarti phase)
+       Phase 3: 8.5s+     → Fade out (text phase)
        ═══════════════════════════════════════════════════════════════ */
     function dGanesha(t: number) {
       const d = getImgDims(); if (!d) return;
       const { img, cx, cy, displayW: dw, displayH: dh, maxR } = d;
 
-      if (t >= 2.5 && t < 5.5) {
-        const prog = eIO(Math.min((t - 2.5) / 3, 1));
+      // Phase 1: 1.5s - 4.5s — Golden ring circular reveal
+      if (t >= 1.5 && t < 4.5) {
+        const prog = eIO(Math.min((t - 1.5) / 3, 1));
         const revealR = maxR * prog;
         c!.save();
         c!.beginPath(); c!.arc(cx, cy, Math.max(EP, revealR), 0, Math.PI * 2); c!.clip();
@@ -367,7 +433,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         return;
       }
 
-      if (t >= 5.5 && t < 9.5) {
+      // Phase 2: 4.5s - 8.5s — Full display with breath + shimmer
+      if (t >= 4.5 && t < 8.5) {
         const breath = 1 + Math.sin(t * 2.5) * 0.008;
         const w = dw * breath, h = dh * breath;
         const aR = Math.max(EP, h * 0.6);
@@ -380,7 +447,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         c!.shadowColor = 'rgba(255,185,50,0.5)'; c!.shadowBlur = 40;
         c!.drawImage(img, cx - w / 2, cy - h / 2, w, h);
         c!.restore();
-        const st = (t - 6.2) / 1.0;
+        // Shimmer sweep at 5.0s
+        const st = (t - 5.0) / 1.0;
         if (st >= 0 && st <= 1) {
           const sx = cx - w / 2 + st * w * 1.4 - w * 0.2;
           const bw2 = w * 0.12;
@@ -398,9 +466,10 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         return;
       }
 
-      if (t >= 9.5) {
-        const dt = Math.min((t - 9.5) / 1.8, 1);
-        const oa = Math.max(0, 1 - dt * 1.7);
+      // Phase 3: 8.5s+ — Fade out (gone by ~9.5s)
+      if (t >= 8.5) {
+        const dt = Math.min((t - 8.5) / 1.0, 1);
+        const oa = Math.max(0, 1 - dt * 1.5);
         if (oa > 0) {
           c!.save(); c!.globalAlpha = oa;
           c!.shadowColor = `rgba(255,190,65,${oa * 0.5})`; c!.shadowBlur = 20;
@@ -410,10 +479,13 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ─────────────────────────────────────────────
+       REVEAL SPARKLES — 1.5s to 4.5s
+       ───────────────────────────────────────────── */
     function sRevealSparkles(t: number) {
-      if (t < 2.5 || t > 5.5) return;
+      if (t < 1.5 || t > 4.5) return;
       const d = getImgDims(); if (!d) return;
-      const prog = eIO(Math.min((t - 2.5) / 3, 1));
+      const prog = eIO(Math.min((t - 1.5) / 3, 1));
       const revealR = d.maxR * prog;
       for (let i = 0; i < 3; i++) {
         const p = grab(pl); if (!p) break;
@@ -444,8 +516,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ─────────────────────────────────────────────
+       BLOOM — 6.5s burst (mid-aarti phase)
+       ───────────────────────────────────────────── */
     function dBloom(t: number) {
-      const bs = 7.5; const bt = Math.min((t - bs) / 1.4, 1); if (bt <= 0) return;
+      const bs = 6.5; const bt = Math.min((t - bs) / 1.4, 1); if (bt <= 0) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015; const maxR = sc * .88;
       const r = maxR * eOQ(bt); const ra = (1 - bt) * .4;
       c!.save(); c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
@@ -473,8 +548,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ─────────────────────────────────────────────
+       PETALS — 4.5s+ (dense rain per timeline)
+       ───────────────────────────────────────────── */
     function sPetals(t: number) {
-      if (t < 7.8 || Math.random() > .3) return;
+      if (t < 4.5 || Math.random() > .45) return; // 45% for dense rain
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -24 - Math.random() * 60;
       p.vx = (Math.random() - .5) * 1.5; p.vy = 1.5 + Math.random() * 2.2;
@@ -502,8 +580,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ─────────────────────────────────────────────
+       KUMKUM — 4.5s+ (dense with petals)
+       ───────────────────────────────────────────── */
     function sKum(t: number) {
-      if (t < 7.8 || Math.random() > .3) return;
+      if (t < 4.5 || Math.random() > .45) return;
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -12 - Math.random() * 35;
       p.vx = (Math.random() - .5) * .6; p.vy = .45 + Math.random() * 1.3;
@@ -523,9 +604,12 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ─────────────────────────────────────────────
+       RAYS — 6.0s+ (aarti phase)
+       ───────────────────────────────────────────── */
     function dRays(t: number) {
-      if (t < 7.5) return;
-      const rt = Math.min((t - 7.5) / 2, 1); const al = eOC(rt) * .09;
+      if (t < 6.0) return;
+      const rt = Math.min((t - 6.0) / 2, 1); const al = eOC(rt) * .09;
       const cx = W / 2, cy = H / 2 - H * .015; const rl = Math.max(W, H) * .85;
       c!.save(); c!.globalAlpha = al;
       for (let i = 0; i < 16; i++) {
@@ -541,16 +625,23 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.restore();
     }
 
+    /* ─────────────────────────────────────────────
+       DISSOLVE GLOW — 8.0s+ (text phase warm glow)
+       ───────────────────────────────────────────── */
     function dDissolve(t: number) {
-      const ps = 9.5; const dt = Math.min((t - ps) / 1.8, 1); if (dt <= 0) return;
+      const ps = 8.0; const dt = Math.min((t - ps) / 1.5, 1); if (dt <= 0) return;
       const la = eOC(dt) * .12;
       const lg = c!.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
       lg.addColorStop(0, `rgba(255,220,135,${la})`); lg.addColorStop(.5, `rgba(255,170,42,${la * .4})`); lg.addColorStop(1, 'rgba(255,140,22,0)');
       c!.fillStyle = lg; c!.fillRect(0, 0, W, H);
     }
 
+    /* ─────────────────────────────────────────────
+       TEXT — 8.0s to 9.8s (1.8s for full reveal)
+       "Happy Ganesh Chaturthi" + श्लोक
+       ───────────────────────────────────────────── */
     function dText(t: number) {
-      const ps = 9.5; const ft = Math.min((t - ps) / 1.3, 1); if (ft <= 0) return;
+      const ps = 8.0; const ft = Math.min((t - ps) / 1.8, 1); if (ft <= 0) return;
       const fi = eOC(ft); const ty = H * .35;
       c!.save(); c!.globalAlpha = fi; c!.textAlign = 'center'; c!.textBaseline = 'middle';
       const ts = Math.min(W * .058, H * .065, 50);
@@ -587,39 +678,25 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.restore();
     }
 
-    function dWave(t: number) {
-      const ws = 11; const wt = Math.min((t - ws) / .7, 1); if (wt <= 0) return;
-      const cx = W / 2, cy = H / 2; const maxR = Math.max(W, H) * .95;
-      const r = maxR * eOE(wt); const al = (1 - wt) * .35;
-      c!.save(); c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
-      c!.strokeStyle = `rgba(255,195,65,${al})`; c!.lineWidth = 4 * (1 - wt); c!.stroke(); c!.restore();
-      const inner = Math.max(EP, r - 18); const outer = Math.max(inner + EP, r + 18);
-      const wg = c!.createRadialGradient(cx, cy, inner, cx, cy, outer);
-      wg.addColorStop(0, 'rgba(255,195,65,0)'); wg.addColorStop(.4, `rgba(255,195,65,${al * .4})`);
-      wg.addColorStop(.6, `rgba(255,195,65,${al * .4})`); wg.addColorStop(1, 'rgba(255,195,65,0)');
-      c!.fillStyle = wg; c!.fillRect(0, 0, W, H);
-      if (wt < .7) {
-        for (let i = 0; i < 12; i++) {
-          const ang = (i / 12) * Math.PI * 2 + t * .5;
-          const sx = cx + Math.cos(ang) * r; const sy = cy + Math.sin(ang) * r;
-          c!.beginPath(); c!.arc(sx, sy, Math.max(EP, 2 * (1 - wt)), 0, Math.PI * 2);
-          c!.fillStyle = `rgba(255,235,170,${(1 - wt / .7) * .5})`; c!.fill();
-        }
-      }
-    }
-
+    /* ─────────────────────────────────────────────
+       FINAL FADE-OUT — 9.8s to 10.5s (0.7s clean fade)
+       स्वाभाविक हैंडओवर — no wave, just smooth fade
+       ───────────────────────────────────────────── */
     function dFade(t: number) {
-      const fs = 11.3; const ft = Math.min((t - fs) / .7, 1); if (ft <= 0) return;
+      const fs = 9.8; const ft = Math.min((t - fs) / .7, 1); if (ft <= 0) return;
       const fa = eIQ(ft);
       c!.fillStyle = `rgba(15,8,3,${fa})`; c!.fillRect(0, 0, W, H);
-      if (ft < .72) {
-        const ga = (1 - ft / .72) * .22;
-        const gg = c!.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .4));
+      if (ft < .6) {
+        const ga = (1 - ft / .6) * .18;
+        const gg = c!.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .35));
         gg.addColorStop(0, `rgba(255,190,65,${ga})`); gg.addColorStop(1, 'rgba(255,140,22,0)');
         c!.fillStyle = gg; c!.fillRect(0, 0, W, H);
       }
     }
 
+    /* ─────────────────────────────────────────────
+       PARTICLE UPDATE
+       ───────────────────────────────────────────── */
     function upd(dt: number) {
       for (const p of pl) {
         if (!p.on || p.tp === 0) continue;
@@ -636,20 +713,36 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    /* ═══════════════════════════════════════════════════════════════
+       RENDER LOOP — draw order synced to 10.5s timeline
+       ═══════════════════════════════════════════════════════════════ */
     let lt = 0;
     const loop = (ts: number) => {
       if (!t0.current) { t0.current = ts; lt = ts; }
       const t = (ts - t0.current) / 1000; const dt = Math.min((ts - lt) / 1000, .05); lt = ts;
 
+      // Background layers (always)
       dBg(t); dTemples(t); dSmoke(); dRays(t); dDust(t);
+
+      // Aarti phase effects (4.5s+)
       dEnergy(t); dAarti(t); dBells(t);
+
+      // Ganesha image (1.5s+)
       dGanesha(t);
+
+      // Particle effects
       dRevealSparkles();
       dBloom(t); dBloomP(); dPetals(); dKum(); dOrbit();
-      dDissolve(t); dText(t); dWave(t); dFade(t);
 
-      sSmoke(); sOrbit(t); sRevealSparkles(t);
-      if (t > 7.8) { sPetals(t); sKum(t); }
+      // Text phase (8.0s+)
+      dDissolve(t); dText(t);
+
+      // Final fade (9.8s+)
+      dFade(t);
+
+      // Spawn particles
+      sSmoke(t); sOrbit(t); sRevealSparkles(t);
+      if (t > 4.5) { sPetals(t); sKum(t); }
 
       upd(dt);
 
@@ -743,7 +836,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
         {/* ── Layer 5: Main ॐ with triple glow ── */}
         <div className="relative flex flex-col items-center">
-          {/* Outer glow */}
           <div
             className="absolute rounded-full"
             style={{
@@ -753,7 +845,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
               animation: 'omBreath 2.4s ease-in-out infinite',
             }}
           />
-          {/* Mid glow */}
           <div
             className="absolute rounded-full"
             style={{
@@ -763,7 +854,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
               animation: 'omBreath 2.4s ease-in-out infinite 0.3s',
             }}
           />
-          {/* The ॐ */}
           <div
             className="relative select-none"
             style={{
