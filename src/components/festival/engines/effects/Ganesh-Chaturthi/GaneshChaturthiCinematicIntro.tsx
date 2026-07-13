@@ -49,8 +49,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => { ganeshaImgRef.current = img; setImgReady(true); };
-    img.onerror = () => { setImgReady(true); }; /* start without image if fail */
-    img.src = '/ganesha.png';
+    img.onerror = () => { setImgReady(true); };
+    img.src = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/GANESH%20JI/Screenshot_2026-07-13_071236-removebg-preview.png';
     return () => { img.onload = null; img.onerror = null; };
   }, []);
 
@@ -94,7 +94,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
      MAIN ANIMATION — only starts when image is ready
      ═══════════════════════════════════════════════════════════════ */
   useEffect(() => {
-    if (!imgReady) return; /* ⏳ WAIT here until image loads */
+    if (!imgReady) return;
 
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
@@ -132,7 +132,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
     ];
 
-    /* ─── Helper: get image draw dimensions ─── */
     const getImgDims = () => {
       const img = ganeshaImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return null;
@@ -143,8 +142,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       const maxR = Math.max(displayW, displayH) / 2 + 20;
       return { img, cx, cy, displayW, displayH, maxR };
     };
-
-    /* ═════════════════ RENDER FUNCTIONS ═══════════════ */
 
     function dBg(t: number) {
       c!.fillStyle = '#07030a'; c!.fillRect(0, 0, W, H);
@@ -343,27 +340,19 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       🖼️ 2027 MODERN: UNIFIED GANESHA IMAGE
-       Phase 1 (2.5→5.5): Circular clip REVEAL with golden ring + sparkles
-       Phase 2 (5.5→9.5): Full visible with aura + shimmer sweep
-       Phase 3 (9.5→11):  DISSOLVE fade out
+       🖼️ UNIFIED GANESHA IMAGE — 3 phases
        ═══════════════════════════════════════════════════════════════ */
     function dGanesha(t: number) {
       const d = getImgDims(); if (!d) return;
       const { img, cx, cy, displayW: dw, displayH: dh, maxR } = d;
 
-      /* ── PHASE 1: CIRCULAR REVEAL (t=2.5 → 5.5) ── */
       if (t >= 2.5 && t < 5.5) {
         const prog = eIO(Math.min((t - 2.5) / 3, 1));
         const revealR = maxR * prog;
-
-        /* clip & draw image */
         c!.save();
         c!.beginPath(); c!.arc(cx, cy, Math.max(EP, revealR), 0, Math.PI * 2); c!.clip();
         c!.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
         c!.restore();
-
-        /* golden ring at edge */
         if (prog < 1) {
           const ringA = 0.7 * (1 - prog * 0.6);
           c!.save();
@@ -378,26 +367,19 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         return;
       }
 
-      /* ── PHASE 2: FULL VISIBLE (t=5.5 → 9.5) ── */
       if (t >= 5.5 && t < 9.5) {
         const breath = 1 + Math.sin(t * 2.5) * 0.008;
         const w = dw * breath, h = dh * breath;
-
-        /* golden aura */
         const aR = Math.max(EP, h * 0.6);
         const aura = c!.createRadialGradient(cx, cy, 0, cx, cy, aR);
         aura.addColorStop(0, 'rgba(255,190,60,0.2)');
         aura.addColorStop(0.5, 'rgba(255,140,35,0.08)');
         aura.addColorStop(1, 'rgba(255,100,20,0)');
         c!.fillStyle = aura; c!.fillRect(cx - aR, cy - aR, aR * 2, aR * 2);
-
-        /* image with glow */
         c!.save();
         c!.shadowColor = 'rgba(255,185,50,0.5)'; c!.shadowBlur = 40;
         c!.drawImage(img, cx - w / 2, cy - h / 2, w, h);
         c!.restore();
-
-        /* ✨ shimmer light sweep (plays once ~t=6.2) */
         const st = (t - 6.2) / 1.0;
         if (st >= 0 && st <= 1) {
           const sx = cx - w / 2 + st * w * 1.4 - w * 0.2;
@@ -416,13 +398,11 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
         return;
       }
 
-      /* ── PHASE 3: DISSOLVE (t=9.5 → 11) ── */
       if (t >= 9.5) {
         const dt = Math.min((t - 9.5) / 1.8, 1);
         const oa = Math.max(0, 1 - dt * 1.7);
         if (oa > 0) {
-          c!.save();
-          c!.globalAlpha = oa;
+          c!.save(); c!.globalAlpha = oa;
           c!.shadowColor = `rgba(255,190,65,${oa * 0.5})`; c!.shadowBlur = 20;
           c!.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
           c!.restore();
@@ -430,7 +410,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       }
     }
 
-    /* ── Reveal edge sparkles (tp=9) ── */
     function sRevealSparkles(t: number) {
       if (t < 2.5 || t > 5.5) return;
       const d = getImgDims(); if (!d) return;
@@ -562,7 +541,6 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       c!.restore();
     }
 
-    /* ── Dissolve: only golden glow, NO outline ── */
     function dDissolve(t: number) {
       const ps = 9.5; const dt = Math.min((t - ps) / 1.8, 1); if (dt <= 0) return;
       const la = eOC(dt) * .12;
@@ -652,13 +630,12 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
           case 5: p.vx *= .98; p.vy *= .98; break;
           case 6: p.vx *= .995; p.vy *= .998; p.sz += .3; break;
           case 8: p.vx += (Math.random() - .5) * .016; break;
-          case 9: p.vx *= .95; p.vy *= .95; break; /* reveal sparkles */
+          case 9: p.vx *= .95; p.vy *= .95; break;
         }
         if (p.life <= 0 || p.y > H + 60 || p.x < -120 || p.x > W + 120) p.on = false;
       }
     }
 
-    /* ───────── MAIN LOOP ───────── */
     let lt = 0;
     const loop = (ts: number) => {
       if (!t0.current) { t0.current = ts; lt = ts; }
@@ -666,11 +643,8 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
 
       dBg(t); dTemples(t); dSmoke(); dRays(t); dDust(t);
       dEnergy(t); dAarti(t); dBells(t);
-
-      /* 🖼️ ONE unified function replaces: dOutline + drawGaneshaImage + old dissolve outline */
       dGanesha(t);
       dRevealSparkles();
-
       dBloom(t); dBloomP(); dPetals(); dKum(); dOrbit();
       dDissolve(t); dText(t); dWave(t); dFade(t);
 
@@ -689,42 +663,201 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
   }, [imgReady, mkPool, grab, triggerBellSound]);
 
   /* ═══════════════════════════════════════════════════════════════
-     🔄 LOADING SCREEN — shown until image is ready
+     🪔 LOADING SCREEN — Regional Devotional Aura
      ═══════════════════════════════════════════════════════════════ */
   if (!imgReady) {
     return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center" style={{ background: '#07030a' }}>
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden" style={{ background: '#07030a' }}>
+        
+        {/* ── Layer 1: Deep warm radial background ── */}
         <div
-          className="absolute w-52 h-52 rounded-full animate-pulse"
-          style={{ background: 'radial-gradient(circle, rgba(255,190,50,0.12) 0%, transparent 70%)' }}
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(ellipse at 50% 45%, rgba(160,60,10,0.18) 0%, rgba(80,15,15,0.08) 40%, transparent 70%)',
+          }}
+        />
+
+        {/* ── Layer 2: Rotating dashed diya ring ── */}
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: 'min(60vw, 320px)',
+            height: 'min(60vw, 320px)',
+            border: '1px dashed rgba(255,190,60,0.12)',
+            animation: 'ringRotate 12s linear infinite',
+          }}
         />
         <div
-          className="relative text-7xl select-none"
+          className="absolute rounded-full"
           style={{
-            color: '#ffd700',
-            textShadow: '0 0 40px rgba(255,200,50,0.5), 0 0 80px rgba(255,180,30,0.25), 0 0 120px rgba(255,160,20,0.1)',
-            animation: 'omBreath 2.4s ease-in-out infinite',
+            width: 'min(48vw, 260px)',
+            height: 'min(48vw, 260px)',
+            border: '1px dashed rgba(255,190,60,0.08)',
+            animation: 'ringRotate 18s linear infinite reverse',
           }}
-        >
-          ॐ
-        </div>
+        />
+
+        {/* ── Layer 3: Pulsing aura rings ── */}
         <div
-          className="mt-8 text-xs tracking-[0.35em] uppercase select-none"
+          className="absolute rounded-full"
           style={{
-            color: 'rgba(255,200,80,0.45)',
-            animation: 'textPulse 2.4s ease-in-out infinite',
+            width: 'min(40vw, 220px)',
+            height: 'min(40vw, 220px)',
+            background: 'radial-gradient(circle, rgba(255,180,40,0.08) 0%, transparent 70%)',
+            animation: 'auraPulse 3s ease-in-out infinite',
           }}
-        >
-          Preparing Aarti
+        />
+        <div
+          className="absolute rounded-full"
+          style={{
+            width: 'min(28vw, 160px)',
+            height: 'min(28vw, 160px)',
+            background: 'radial-gradient(circle, rgba(255,160,30,0.1) 0%, transparent 65%)',
+            animation: 'auraPulse 3s ease-in-out infinite 1.5s',
+          }}
+        />
+
+        {/* ── Layer 4: Floating diya flames (CSS only) ── */}
+        <div className="absolute flex gap-16" style={{ bottom: '22%' }}>
+          {[0, 1.2, 2.4].map((d, i) => (
+            <div key={i} className="flex flex-col items-center" style={{ animation: `floatY ${2.2 + i * 0.3}s ease-in-out infinite ${d}s` }}>
+              <div
+                style={{
+                  width: 8, height: 18,
+                  borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+                  background: 'linear-gradient(to top, rgba(255,100,20,0.9), rgba(255,200,50,0.6) 40%, rgba(255,255,180,0.3))',
+                  filter: 'blur(1.5px)',
+                  animation: `flameFlicker ${0.3 + i * 0.1}s ease-in-out infinite alternate`,
+                }}
+              />
+              <div
+                style={{
+                  width: 18, height: 8, borderRadius: 4,
+                  background: 'linear-gradient(to right, rgba(255,180,50,0.6), rgba(255,220,100,0.3), rgba(255,180,50,0.6))',
+                  filter: 'blur(3px)',
+                }}
+              />
+            </div>
+          ))}
         </div>
+
+        {/* ── Layer 5: Main ॐ with triple glow ── */}
+        <div className="relative flex flex-col items-center">
+          {/* Outer glow */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: 'min(35vw, 200px)',
+              height: 'min(35vw, 200px)',
+              background: 'radial-gradient(circle, rgba(255,200,50,0.06) 0%, transparent 70%)',
+              animation: 'omBreath 2.4s ease-in-out infinite',
+            }}
+          />
+          {/* Mid glow */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: 'min(22vw, 130px)',
+              height: 'min(22vw, 130px)',
+              background: 'radial-gradient(circle, rgba(255,210,80,0.1) 0%, transparent 60%)',
+              animation: 'omBreath 2.4s ease-in-out infinite 0.3s',
+            }}
+          />
+          {/* The ॐ */}
+          <div
+            className="relative select-none"
+            style={{
+              fontSize: 'clamp(4rem, 12vw, 7rem)',
+              lineHeight: 1,
+              color: '#ffd700',
+              textShadow: '0 0 20px rgba(255,215,0,0.8), 0 0 50px rgba(255,190,50,0.5), 0 0 100px rgba(255,170,30,0.25), 0 0 160px rgba(255,150,20,0.1)',
+              animation: 'omBreath 2.4s ease-in-out infinite',
+              fontFamily: "'Noto Sans Devanagari', 'Devanagari Sangam MN', 'Mangal', serif",
+            }}
+          >
+            ॐ
+          </div>
+        </div>
+
+        {/* ── Layer 6: Mantra text ── */}
+        <div className="absolute flex flex-col items-center gap-3" style={{ bottom: '10%' }}>
+          <p
+            className="select-none tracking-[0.3em] uppercase"
+            style={{
+              fontSize: 'clamp(0.6rem, 1.5vw, 0.8rem)',
+              color: 'rgba(255,200,80,0.5)',
+              animation: 'textPulse 2.4s ease-in-out infinite',
+            }}
+          >
+            गणपति आरती प्रारंभ हो रही है
+          </p>
+          <div className="flex items-center gap-2">
+            <div
+              className="h-px"
+              style={{
+                width: 'clamp(40px, 10vw, 80px)',
+                background: 'linear-gradient(to right, transparent, rgba(255,190,60,0.3), transparent)',
+              }}
+            />
+            <div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: '#ffd700',
+                boxShadow: '0 0 8px rgba(255,215,0,0.6), 0 0 20px rgba(255,200,50,0.3)',
+                animation: 'dotPulse 1.8s ease-in-out infinite',
+              }}
+            />
+            <div
+              className="h-px"
+              style={{
+                width: 'clamp(40px, 10vw, 80px)',
+                background: 'linear-gradient(to left, transparent, rgba(255,190,60,0.3), transparent)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* ── Layer 7: Corner mandala hints ── */}
+        <div className="absolute top-4 left-4 w-8 h-8 border border-yellow-700/10 rounded-full" style={{ animation: 'cornerSpin 20s linear infinite' }} />
+        <div className="absolute top-4 right-4 w-8 h-8 border border-yellow-700/10 rounded-full" style={{ animation: 'cornerSpin 20s linear infinite reverse' }} />
+        <div className="absolute bottom-4 left-4 w-8 h-8 border border-yellow-700/10 rounded-full" style={{ animation: 'cornerSpin 20s linear infinite 5s' }} />
+        <div className="absolute bottom-4 right-4 w-8 h-8 border border-yellow-700/10 rounded-full" style={{ animation: 'cornerSpin 20s linear infinite 15s' }} />
+
         <style dangerouslySetInnerHTML={{ __html: `
           @keyframes omBreath {
-            0%, 100% { opacity: 0.7; transform: scale(1); filter: blur(0px); }
-            50% { opacity: 1; transform: scale(1.06); filter: blur(0.5px); }
+            0%, 100% { opacity: 0.75; transform: scale(1); filter: blur(0px); }
+            50% { opacity: 1; transform: scale(1.05); filter: blur(0.3px); }
           }
           @keyframes textPulse {
-            0%, 100% { opacity: 0.3; letter-spacing: 0.35em; }
-            50% { opacity: 0.65; letter-spacing: 0.45em; }
+            0%, 100% { opacity: 0.35; }
+            50% { opacity: 0.7; }
+          }
+          @keyframes auraPulse {
+            0%, 100% { transform: scale(0.9); opacity: 0.4; }
+            50% { transform: scale(1.1); opacity: 1; }
+          }
+          @keyframes ringRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          @keyframes floatY {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+          }
+          @keyframes flameFlicker {
+            0% { transform: scaleY(1) scaleX(1); opacity: 0.8; }
+            100% { transform: scaleY(1.15) scaleX(0.85); opacity: 1; }
+          }
+          @keyframes dotPulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+          }
+          @keyframes cornerSpin {
+            0% { transform: rotate(0deg); border-color: rgba(255,190,60,0.08); }
+            25% { border-color: rgba(255,190,60,0.15); }
+            50% { border-color: rgba(255,190,60,0.05); }
+            75% { border-color: rgba(255,190,60,0.12); }
+            100% { transform: rotate(360deg); border-color: rgba(255,190,60,0.08); }
           }
         ` }} />
       </div>
