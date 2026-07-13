@@ -709,7 +709,35 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       p.rs = (Math.random() - .5) * .06; p.on = true; p.tp = 8;
     }
 
-    // Ganesha dissolve (Phase 5)
+    function dKum() {
+      for (const p of pl) {
+        if (!p.on || p.tp !== 8) continue;
+        const lr = p.life / p.ml; const a = p.a * Math.min(lr * 2, 1) * (lr > .84 ? (1 - lr) / .16 : 1);
+        c!.save(); c!.translate(p.x, p.y); c!.rotate(p.rot);
+        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+        c!.fillRect(-p.sz * .5, -p.sz * .2, p.sz, p.sz * .4); c!.restore();
+      }
+    }
+
+    function dRays(t: number) {
+      if (t < 7.5) return;
+      const rt = Math.min((t - 7.5) / 2, 1);
+      const al = eOC(rt) * .09;
+      const cx = W / 2, cy = H / 2 - H * .015; const rl = Math.max(W, H) * .85;
+      c!.save(); c!.globalAlpha = al; const nr = 16;
+      for (let i = 0; i < nr; i++) {
+        const ang = (i / nr) * Math.PI * 2 + t * .035; const hw = (Math.PI / nr) * .36;
+        c!.beginPath(); c!.moveTo(cx, cy);
+        c!.lineTo(cx + Math.cos(ang - hw) * rl, cy + Math.sin(ang - hw) * rl);
+        c!.lineTo(cx + Math.cos(ang + hw) * rl, cy + Math.sin(ang + hw) * rl);
+        c!.closePath();
+        const rg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, rl));
+        rg.addColorStop(0, 'rgba(255,190,65,.7)'); rg.addColorStop(.5, 'rgba(255,150,42,.2)'); rg.addColorStop(1, 'rgba(255,110,22,0)');
+        c!.fillStyle = rg; c!.fill();
+      }
+      c!.restore();
+    }
+
     function dDissolve(t: number) {
       const ps = 9.5; const dt = Math.min((t - ps) / 1.8, 1); if (dt <= 0) return;
       const sc = Math.min(W, H) * .56; const ox = (W - sc) / 2, oy = (H - sc) / 2 - H * .015;
