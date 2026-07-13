@@ -108,7 +108,7 @@ export default function GaneshChaturthiCinematicIntro({ onComplete }: Props) {
       img.onerror = () => {
         /* If first URL fails (expired), try direct Pinterest CDN fallback */
         if (!url.includes('pinimg.com')) {
-          tryLoad('https://i.pinimg.com/736x/00/00/00/ganesh-placeholder.png');
+          tryLoad('https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/GANESH%20JI/Screenshot_2026-07-13_071236-removebg-preview.png');
         }
         /* If both fail, animation still works — just without the image overlay */
       };
