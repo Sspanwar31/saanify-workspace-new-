@@ -1,6 +1,17 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+/* ═══════════════════════════════════════════════════════════════
+   FESTIVAL CONFIG — Import this for syncing
+   ═══════════════════════════════════════════════════════════════ */
+export const HANUMAN_TIMELINE = {
+  fluidStart: 0.0, fluidPeak: 1.0, fluidFade: 1.8,
+  revealStart: 2.0, raysStart: 4.0, revealComplete: 5.0,
+  impactTime: 5.0, windStart: 5.0, residualEnd: 7.0,
+  omStart: 7.0, textStart: 7.3, textComplete: 9.0,
+  portalStart: 9.5, portalComplete: 10.5, totalDuration: 10.5,
+};
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES & CONSTANTS
@@ -10,108 +21,51 @@ interface P {
   sz: number; life: number; ml: number;
   r: number; g: number; b: number; a: number;
   rot: number; rs: number; on: boolean; tp: number;
-  tx: number; ty: number; md: number;
 }
-const POOL = 2500;
+const POOL = 1800;
 const DUR = 10.5;
 const EP = 1e-4;
+const IMG_URL = 'https://z-cdn-media.chatglm.cn/files/2cb4964b-0ebd-40b9-a453-8aec85e6b0b3.png?auth_key=1884048330-1fa70d71514b4f9eb8479a787ca744b4-0-79ecab9f582737711881c28dbeaa8cf0';
 
 /* ═══════════════════════════════════════════════════════════════
    EASING
    ═══════════════════════════════════════════════════════════════ */
 const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
-const eIO = (t: number) => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+const eIO = (t: number) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const eOQ = (t: number) => 1 - Math.pow(1 - t, 4);
 const eIQ = (t: number) => t * t;
 const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
 
 /* ═══════════════════════════════════════════════════════════════
-   SILHOUETTE GENERATOR — Offscreen Canvas → Point Sampling
-   ═══════════════════════════════════════════════════════════════ */
-function genSilhouette(): { x: number; y: number }[] {
-  const sw = 240, sh = 320;
-  const off = document.createElement('canvas');
-  off.width = sw; off.height = sh;
-  const o = off.getContext('2d')!;
-  o.fillStyle = '#fff';
-  const cx = sw * 0.45, s = sw * 0.38;
-
-  const fc = (x: number, y: number, r: number) => { o.beginPath(); o.arc(x, y, r, 0, Math.PI * 2); o.fill(); };
-  const ts = (x1: number, y1: number, x2: number, y2: number, w: number) => {
-    o.lineWidth = w; o.lineCap = 'round'; o.strokeStyle = '#fff';
-    o.beginPath(); o.moveTo(x1, y1); o.lineTo(x2, y2); o.stroke();
-  };
-
-  fc(cx - s * 0.05, sh * 0.18, s * 0.13);
-  o.beginPath();
-  o.moveTo(cx - s * .18, sh * .14); o.lineTo(cx - s * .12, sh * .04);
-  o.lineTo(cx - s * .03, sh * .11); o.lineTo(cx + s * .04, sh * .02);
-  o.lineTo(cx + s * .10, sh * .10); o.lineTo(cx + s * .16, sh * .06);
-  o.lineTo(cx + s * .14, sh * .14); o.closePath(); o.fill();
-  ts(cx - s * .02, sh * .24, cx - s * .02, sh * .28, s * .06);
-  o.beginPath();
-  o.moveTo(cx - s * .32, sh * .28); o.lineTo(cx + s * .28, sh * .28);
-  o.quadraticCurveTo(cx + s * .24, sh * .42, cx + s * .16, sh * .48);
-  o.lineTo(cx - s * .16, sh * .48);
-  o.quadraticCurveTo(cx - s * .28, sh * .42, cx - s * .32, sh * .28);
-  o.fill();
-  fc(cx - s * .12, sh * .32, s * .08); fc(cx + s * .12, sh * .32, s * .08);
-  o.lineWidth = s * .08; o.lineCap = 'round'; o.strokeStyle = '#fff';
-  o.beginPath(); o.moveTo(cx - s * .32, sh * .30);
-  o.quadraticCurveTo(cx - s * .70, sh * .22, cx - s * .85, sh * .25);
-  o.stroke(); fc(cx - s * .87, sh * .25, s * .05);
-  o.beginPath(); o.moveTo(cx + s * .28, sh * .30);
-  o.quadraticCurveTo(cx + s * .42, sh * .15, cx + s * .45, sh * .05);
-  o.stroke();
-  ts(cx + s * .44, sh * .08, cx + s * .47, sh * .25, s * .035);
-  fc(cx + s * .45, sh * .04, s * .08); fc(cx + s * .46, sh * .14, s * .06); fc(cx + s * .46, sh * .24, s * .055);
-  o.beginPath();
-  o.moveTo(cx - s * .16, sh * .48); o.lineTo(cx + s * .16, sh * .48);
-  o.lineTo(cx + s * .22, sh * .65);
-  o.quadraticCurveTo(cx, sh * .70, cx - s * .22, sh * .65);
-  o.closePath(); o.fill();
-  o.lineWidth = s * .09;
-  o.beginPath(); o.moveTo(cx - s * .14, sh * .62);
-  o.quadraticCurveTo(cx - s * .40, sh * .72, cx - s * .58, sh * .65);
-  o.stroke(); fc(cx - s * .60, sh * .65, s * .05);
-  o.beginPath(); o.moveTo(cx + s * .14, sh * .62);
-  o.quadraticCurveTo(cx + s * .38, sh * .75, cx + s * .55, sh * .70);
-  o.stroke(); fc(cx + s * .57, sh * .70, s * .05);
-  o.lineWidth = s * .06;
-  o.beginPath(); o.moveTo(cx - s * .16, sh * .45);
-  o.bezierCurveTo(cx - s * .45, sh * .52, cx - s * .62, sh * .32, cx - s * .55, sh * .15);
-  o.stroke();
-  o.lineWidth = s * .08;
-  o.beginPath(); o.moveTo(cx - s * .57, sh * .18);
-  o.quadraticCurveTo(cx - s * .50, sh * .08, cx - s * .45, sh * .12);
-  o.stroke();
-
-  const data = o.getImageData(0, 0, sw, sh).data;
-  const pts: { x: number; y: number }[] = [];
-  for (let y = 0; y < sh; y += 2)
-    for (let x = 0; x < sw; x += 2)
-      if (data[(y * sw + x) * 4] > 128) pts.push({ x: x / sw, y: y / sh });
-  for (let i = pts.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pts[i], pts[j]] = [pts[j], pts[i]];
-  }
-  return pts;
-}
-
-/* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════ */
-interface Props { onComplete?: () => void }
+interface Props { onComplete?: () => void; imageUrl?: string }
 
-export default function HanumanJayantiIntro({ onComplete }: Props) {
+export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<AudioContext | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [ready, setReady] = useState(false);
   const raf = useRef(0); const t0 = useRef(0);
-  const done = useRef(false); const scattered = useRef(false);
+  const done = useRef(false);
   const audioPlayed = useRef<Set<number>>(new Set());
   const cbR = useRef(onComplete); cbR.current = onComplete;
 
+  /* ─── 🖼️ IMAGE PRELOAD ─── */
   useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { imgRef.current = img; setReady(true); };
+    img.onerror = () => { setReady(true); };
+    img.src = imageUrl || IMG_URL;
+    return () => { img.onload = null; img.onerror = null; };
+  }, [imageUrl]);
+
+  /* ═══════════════════════════════════════════════════════════════
+     MAIN ANIMATION
+     ═══════════════════════════════════════════════════════════════ */
+  useEffect(() => {
+    if (!ready) return;
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
     try {
@@ -129,36 +83,36 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
     };
     rsz(); window.addEventListener('resize', rsz);
 
-    /* ── Silhouette + Particle Pool ── */
-    const silPts = genSilhouette();
+    /* ── Particle Pool ── */
     const pl: P[] = [];
     for (let i = 0; i < POOL; i++)
-      pl.push({ x: 0, y: 0, vx: 0, vy: 0, sz: 0, life: 0, ml: 1, r: 255, g: 150, b: 30, a: 0, rot: 0, rs: 0, on: false, tp: 0, tx: 0, ty: 0, md: 0 });
+      pl.push({ x: 0, y: 0, vx: 0, vy: 0, sz: 0, life: 0, ml: 1, r: 255, g: 150, b: 30, a: 0, rot: 0, rs: 0, on: false, tp: 0 });
 
-    const morphI: number[] = [];
-    for (let i = 0; i < silPts.length && i < 700; i++) {
-      const p = pl[i]; p.on = true; p.tp = 2;
-      p.tx = silPts[i].x; p.ty = silPts[i].y;
-      p.md = Math.random() * 0.6;
-      p.sz = 1.2 + Math.random() * 1.4;
-      p.ml = 999; p.life = 999;
-      p.r = 255; p.g = 130 + Math.random() * 90 | 0; p.b = 15 + Math.random() * 45 | 0;
-      morphI.push(i);
-    }
     const dustI: number[] = [];
-    for (let i = 0; i < 50; i++) {
-      const idx = 700 + i; const p = pl[idx];
-      p.on = true; p.tp = 0;
+    for (let i = 0; i < 60; i++) {
+      const p = pl[i]; p.on = true; p.tp = 0;
       p.x = Math.random() * W; p.y = Math.random() * H;
-      p.vx = (Math.random() - .5) * .15; p.vy = -Math.random() * .25 - .04;
-      p.sz = Math.random() * 1 + .3; p.ml = 999; p.life = 999;
-      p.r = 255; p.g = 170 + Math.random() * 50 | 0; p.b = 35 + Math.random() * 40 | 0;
-      p.a = Math.random() * .12 + .04; dustI.push(idx);
+      p.vx = (Math.random() - .5) * .12; p.vy = -Math.random() * .2 - .03;
+      p.sz = Math.random() * .9 + .3; p.ml = 999; p.life = 999;
+      p.r = 255; p.g = 160 + Math.random() * 50 | 0; p.b = 30 + Math.random() * 35 | 0;
+      p.a = Math.random() * .1 + .03; dustI.push(i);
     }
 
-    const grab = () => { for (let i = 750; i < POOL; i++) if (!pl[i].on) return pl[i]; return null; };
+    const grab = () => { for (let i = 60; i < POOL; i++) if (!pl[i].on) return pl[i]; return null; };
 
-    /* ── Audio Helpers ── */
+    /* ── Image Dimensions ── */
+    const getImg = () => {
+      const img = imgRef.current;
+      if (!img || !img.complete || img.naturalWidth === 0) return null;
+      const dH = H * 0.62; const dW = dH * (img.naturalWidth / img.naturalHeight);
+      const cx = W / 2, cy = H / 2 - H * 0.02;
+      const maxR = Math.sqrt(dW * dW / 4 + dH * dH / 4) + 30;
+      return { img, cx, cy, dW, dH, maxR };
+    };
+
+    /* ═══════════════════════════════════════════════════════════
+       AUDIO
+       ═══════════════════════════════════════════════════════════ */
     const playAt = (id: number, fn: () => void, t: number) => {
       if (!audioPlayed.current.has(id) && t >= id) { audioPlayed.current.add(id); fn(); }
     };
@@ -168,13 +122,13 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
         if (ctx.state === 'suspended') ctx.resume();
         const g = ctx.createGain(); g.connect(ctx.destination);
         g.gain.setValueAtTime(0, ctx.currentTime);
-        g.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.5);
-        g.gain.linearRampToValueAtTime(0.10, ctx.currentTime + 4.5);
+        g.gain.linearRampToValueAtTime(0.10, ctx.currentTime + 0.5);
+        g.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 4.5);
         g.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 6);
         const o = ctx.createOscillator(); o.frequency.value = 48; o.type = 'sine';
         o.connect(g); o.start(); o.stop(ctx.currentTime + 6);
         const o2 = ctx.createOscillator(); o2.frequency.value = 52; o2.type = 'triangle';
-        const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.06, ctx.currentTime);
+        const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.05, ctx.currentTime);
         g2.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 6);
         o2.connect(g2); g2.connect(ctx.destination); o2.start(); o2.stop(ctx.currentTime + 6);
       } catch (_) {}
@@ -184,7 +138,7 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
         const ctx = audioRef.current; if (!ctx) return;
         const g = ctx.createGain(); g.connect(ctx.destination);
         g.gain.setValueAtTime(0, ctx.currentTime);
-        g.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 2);
+        g.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 2);
         g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 3.5);
         const o = ctx.createOscillator(); o.type = 'sawtooth';
         o.frequency.setValueAtTime(80, ctx.currentTime);
@@ -197,18 +151,18 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
       try {
         const ctx = audioRef.current; if (!ctx) return;
         if (ctx.state === 'suspended') ctx.resume();
-        const dur = 0.4; const buf = ctx.createBuffer(1, ctx.sampleRate * dur | 0, ctx.sampleRate);
+        const dur = 0.5; const buf = ctx.createBuffer(1, ctx.sampleRate * dur | 0, ctx.sampleRate);
         const d = buf.getChannelData(0);
-        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.08));
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.06));
         const src = ctx.createBufferSource(); src.buffer = buf;
-        const g = ctx.createGain(); g.gain.setValueAtTime(0.35, ctx.currentTime);
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.4, ctx.currentTime);
         g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 120;
+        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 100;
         src.connect(f); f.connect(g); g.connect(ctx.destination); src.start();
-        const o = ctx.createOscillator(); o.frequency.value = 55; o.type = 'sine';
-        const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.3, ctx.currentTime);
-        g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        o.connect(g2); g2.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.5);
+        const o = ctx.createOscillator(); o.frequency.value = 50; o.type = 'sine';
+        const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.35, ctx.currentTime);
+        g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        o.connect(g2); g2.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.6);
       } catch (_) {}
     };
     const aBell = () => {
@@ -217,12 +171,12 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
         if (ctx.state === 'suspended') ctx.resume();
         const dur = 3.5; const mg = ctx.createGain(); mg.connect(ctx.destination);
         mg.gain.setValueAtTime(0, ctx.currentTime);
-        mg.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.01);
+        mg.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 0.01);
         mg.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
         [1.0, 1.5, 2.0, 2.5, 3.0].forEach((r, i) => {
           const o = ctx.createOscillator(); const g = ctx.createGain();
           o.frequency.value = 180 * r; o.type = i === 0 ? 'sine' : 'triangle';
-          g.gain.setValueAtTime(0.35 / (i + 1), ctx.currentTime);
+          g.gain.setValueAtTime(0.3 / (i + 1), ctx.currentTime);
           g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur / (i + 0.9));
           o.connect(g); g.connect(mg); o.start(); o.stop(ctx.currentTime + dur);
         });
@@ -233,222 +187,322 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
        DRAW FUNCTIONS
        ═══════════════════════════════════════════════════════════ */
 
-    /* ── Background: Deep Space ── */
+    /* ── 0.0s: Deep Space Background ── */
     function dBg() {
-      c!.fillStyle = '#030108'; c!.fillRect(0, 0, W, H);
-      let g = c!.createRadialGradient(W * .3, H * .25, 0, W * .3, H * .25, H * .6);
-      g.addColorStop(0, 'rgba(18,4,35,0.25)'); g.addColorStop(1, 'rgba(3,1,8,0)');
+      c!.fillStyle = '#050108'; c!.fillRect(0, 0, W, H);
+      let g = c!.createRadialGradient(W * .3, H * .2, 0, W * .3, H * .2, H * .65);
+      g.addColorStop(0, 'rgba(22,5,40,0.22)'); g.addColorStop(1, 'rgba(5,1,8,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
-      g = c!.createRadialGradient(W * .75, H * .75, 0, W * .75, H * .75, H * .5);
-      g.addColorStop(0, 'rgba(12,2,25,0.18)'); g.addColorStop(1, 'rgba(3,1,8,0)');
+      g = c!.createRadialGradient(W * .75, H * .8, 0, W * .75, H * .8, H * .5);
+      g.addColorStop(0, 'rgba(15,3,28,0.16)'); g.addColorStop(1, 'rgba(5,1,8,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
-      g = c!.createRadialGradient(W * .5, H * .5, H * .28, W * .5, H * .5, H * .95);
-      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.72)');
+      g = c!.createRadialGradient(W * .5, H * .5, H * .26, W * .5, H * .5, H * .96);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.75)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
     }
 
-    /* ── Phase 1: Fluid Energy (0-2.5s) ── */
+    /* ── 0.0-2.0s: Lava Energy (3x bigger, darker) ── */
     function dFluid(t: number) {
       if (t > 2.5) return;
-      const fade = t < 2.0 ? Math.min(t / 1.0, 1) : Math.max(0, 1 - (t - 2.0) / 0.5);
+      const fade = t < 1.8 ? Math.min(t / 0.8, 1) : Math.max(0, 1 - (t - 1.8) / 0.7);
       const cx = W / 2, cy = H / 2;
-      const bR = Math.min(W, H) * 0.18;
-      for (let i = 0; i < 6; i++) {
-        const a = t * (0.7 + i * 0.25) + i * 1.1;
-        const d = bR * 0.4 * Math.sin(t * 1.2 + i * 2);
+      const bR = Math.min(W, H) * 0.28;
+      for (let i = 0; i < 8; i++) {
+        const a = t * (0.5 + i * 0.18) + i * 0.9;
+        const d = bR * 0.5 * Math.sin(t * 1.0 + i * 1.8);
         const x = cx + Math.cos(a) * d;
         const y = cy + Math.sin(a) * d;
-        const r = bR * (0.7 + Math.sin(t * 1.8 + i * 1.3) * 0.25);
+        const r = bR * (0.65 + Math.sin(t * 1.5 + i * 1.1) * 0.3);
         const g = c!.createRadialGradient(x, y, 0, x, y, Math.max(EP, r));
-        const al = fade * (0.22 + i * 0.025);
-        g.addColorStop(0, `rgba(255,${125 + i * 14},${12 + i * 8},${al})`);
-        g.addColorStop(0.4, `rgba(255,${65 + i * 10},0,${al * 0.45})`);
-        g.addColorStop(1, 'rgba(180,20,0,0)');
+        const al = fade * (0.18 + i * 0.02);
+        g.addColorStop(0, `rgba(255,${90 + i * 12},${8 + i * 6},${al})`);
+        g.addColorStop(0.35, `rgba(220,${45 + i * 8},0,${al * 0.5})`);
+        g.addColorStop(0.7, `rgba(140,${15 + i * 5},0,${al * 0.15})`);
+        g.addColorStop(1, 'rgba(80,5,0,0)');
         c!.fillStyle = g; c!.fillRect(x - r, y - r, r * 2, r * 2);
       }
-      const cr = bR * 0.22 * fade;
+      const cr = bR * 0.15 * fade;
       const cg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, cr));
-      cg.addColorStop(0, `rgba(255,235,190,${fade * 0.9})`);
-      cg.addColorStop(0.5, `rgba(255,170,50,${fade * 0.35})`);
-      cg.addColorStop(1, 'rgba(255,80,0,0)');
+      cg.addColorStop(0, `rgba(255,240,200,${fade * 0.95})`);
+      cg.addColorStop(0.4, `rgba(255,180,60,${fade * 0.4})`);
+      cg.addColorStop(1, 'rgba(255,100,20,0)');
       c!.fillStyle = cg; c!.fillRect(cx - cr, cy - cr, cr * 2, cr * 2);
     }
 
-    /* ── Phase 2: Silhouette Glow (1.5-6.5s) ── */
-    function dSilGlow(t: number) {
-      if (t < 1.5 || t > 6.5) return;
-      const fi = Math.min((t - 1.5) / 1.5, 1);
-      const fo = t > 5.0 ? Math.max(0, 1 - (t - 5.0) / 1.5) : 1;
-      const fade = eOC(fi) * fo;
-      const silW = W * 0.5, silH = H * 0.55;
-      const silX = (W - silW) / 2, silY = H * 0.05;
-      const cx = silX + silW * 0.45, cy = silY + silH * 0.35;
-      const r = Math.max(silW, silH) * 0.5;
-      const g = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r));
-      g.addColorStop(0, `rgba(255,160,40,${fade * 0.18})`);
-      g.addColorStop(0.5, `rgba(255,100,20,${fade * 0.06})`);
+    /* ── 0.5-2.0s: Floating "राम" Text ── */
+    function dRamText(t: number) {
+      if (t < 0.5 || t > 2.0) return;
+      const fade = t < 1.5 ? Math.min((t - 0.5) / 0.8, 1) : Math.max(0, 1 - (t - 1.5) / 0.5);
+      c!.save(); c!.globalAlpha = fade * 0.18;
+      c!.textAlign = 'center'; c!.textBaseline = 'middle';
+      c!.font = `300 ${Math.min(W * .025, 22)}px 'Noto Sans Devanagari','Mangal',serif`;
+      c!.fillStyle = '#ff9933';
+      const positions = [
+        { x: W * .25, y: H * .35 }, { x: W * .72, y: H * .28 },
+        { x: W * .18, y: H * .62 }, { x: W * .78, y: .58 },
+        { x: W * .4, y: H * .75 }, { x: W * .6, y: H * .22 },
+        { x: W * .35, y: H * .48 }, { x: W * .65, y: H * .7 },
+      ];
+      positions.forEach((p, i) => {
+        const yOff = Math.sin(t * 0.8 + i * 1.5) * 8;
+        c!.fillText('राम', p.x, p.y + yOff);
+      });
+      c!.restore();
+    }
+
+    /* ── 4.0-7.0s: Sun Rays Behind Image ── */
+    function dRays(t: number) {
+      if (t < 4.0 || t > 7.0) return;
+      const d = getImg(); if (!d) return;
+      let al = 0;
+      if (t < 5.0) al = Math.min((t - 4.0) / 1.0, 1) * 0.06;
+      else if (t < 5.5) al = 0.06 + Math.min((t - 5.0) / 0.5, 1) * 0.06;
+      else al = 0.12 * Math.max(0, 1 - (t - 5.5) / 1.5);
+      const rl = Math.max(W, H) * 0.9;
+      c!.save(); c!.globalAlpha = al;
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + t * 0.04;
+        const hw = (Math.PI / 16) * 0.32;
+        c!.beginPath(); c!.moveTo(d.cx, d.cy);
+        c!.lineTo(d.cx + Math.cos(ang - hw) * rl, d.cy + Math.sin(ang - hw) * rl);
+        c!.lineTo(d.cx + Math.cos(ang + hw) * rl, d.cy + Math.sin(ang + hw) * rl);
+        c!.closePath();
+        const rg = c!.createRadialGradient(d.cx, d.cy, 0, d.cx, d.cy, Math.max(EP, rl));
+        rg.addColorStop(0, 'rgba(255,200,80,0.8)');
+        rg.addColorStop(0.4, 'rgba(255,150,40,0.2)');
+        rg.addColorStop(1, 'rgba(255,100,20,0)');
+        c!.fillStyle = rg; c!.fill();
+      }
+      c!.restore();
+    }
+
+    /* ── 2.0-5.0s: 3 Golden Rings Reveal ── */
+    function dRings(t: number) {
+      if (t < 2.0 || t > 5.5) return;
+      const d = getImg(); if (!d) return;
+      const rings = [
+        { delay: 0, color: '255,210,80', width: 2.5, speed: 1.0 },
+        { delay: 0.08, color: '255,140,30', width: 2.0, speed: 0.95 },
+        { delay: 0.16, color: '255,245,200', width: 1.5, speed: 0.9 },
+      ];
+      for (const ring of rings) {
+        const rt = Math.max(0, Math.min(1, (t - 2.0 - ring.delay) / 3.0 * ring.speed));
+        if (rt <= 0) continue;
+        const r = d.maxR * eIO(rt);
+        const fade = rt < 0.9 ? 1 : Math.max(0, 1 - (rt - 0.9) / 0.1);
+        c!.save();
+        c!.beginPath(); c!.arc(d.cx, d.cy, Math.max(EP, r), 0, Math.PI * 2);
+        c!.strokeStyle = `rgba(${ring.color},${fade * 0.7})`;
+        c!.lineWidth = ring.width * (1 - rt * 0.5);
+        c!.shadowColor = `rgba(${ring.color},${fade * 0.5})`;
+        c!.shadowBlur = 20 * fade;
+        c!.stroke();
+        c!.restore();
+      }
+    }
+
+    /* ── 2.0-5.0s: Image with Ring Clip ── */
+    function dImage(t: number) {
+      const d = getImg(); if (!d) return;
+      if (t < 2.0) return;
+      const rt = Math.max(0, Math.min(1, (t - 2.08) / 3.0 * 0.95));
+      const revealR = d.maxR * eIO(rt);
+      c!.save();
+      c!.beginPath(); c!.arc(d.cx, d.cy, Math.max(EP, revealR), 0, Math.PI * 2); c!.clip();
+      // Slight zoom breath after fully revealed
+      let scale = 1;
+      if (t > 5.0 && t < 7.0) scale = 1 + Math.sin((t - 5.0) * 2.5) * 0.005;
+      let alpha = 1;
+      if (t > 7.0) alpha = Math.max(0, 1 - (t - 7.0) / 2.0);
+      const w = d.dW * scale, h = d.dH * scale;
+      c!.globalAlpha = alpha;
+      c!.drawImage(d.img, d.cx - w / 2, d.cy - h / 2, w, h);
+      c!.restore();
+    }
+
+    /* ── 2.0-5.0s: Ring Edge Sparks ── */
+    function sRingSparks(t: number) {
+      if (t < 2.0 || t > 5.2 || Math.random() > 0.4) return;
+      const d = getImg(); if (!d) return;
+      const p = grab(); if (!p) return;
+      const rt = Math.max(0, Math.min(1, (t - 2.0) / 3.0));
+      const r = d.maxR * eIO(rt);
+      const ang = Math.random() * Math.PI * 2;
+      p.x = d.cx + Math.cos(ang) * r;
+      p.y = d.cy + Math.sin(ang) * r;
+      const outAng = ang + (Math.random() - 0.5) * 0.5;
+      const spd = 2 + Math.random() * 4;
+      p.vx = Math.cos(outAng) * spd; p.vy = Math.sin(outAng) * spd;
+      p.sz = 1 + Math.random() * 2; p.ml = 0.5 + Math.random() * 0.5; p.life = p.ml;
+      p.r = 255; p.g = 180 + Math.random() * 70 | 0; p.b = 30 + Math.random() * 50 | 0;
+      p.a = 0.8; p.on = true; p.tp = 1;
+    }
+
+    /* ── 5.0-5.5s: Impact Flash ── */
+    function dFlash(t: number) {
+      if (t < 5.0 || t > 5.5) return;
+      const ft = (t - 5.0) / 0.5;
+      const intensity = (1 - ft) * (1 - ft);
+      c!.fillStyle = `rgba(255,220,160,${intensity * 0.6})`;
+      c!.fillRect(0, 0, W, H);
+    }
+
+    /* ── 5.0-7.0s: Shockwave Ring ── */
+    function dShockwave(t: number) {
+      const bt = Math.min((t - 5.0) / 2.0, 1); if (bt <= 0) return;
+      const d = getImg(); if (!d) return;
+      const maxR = Math.max(W, H) * 0.9;
+      const r = maxR * eOQ(bt);
+      const fade = (1 - bt) * (1 - bt);
+      c!.save();
+      c!.beginPath(); c!.arc(d.cx, d.cy, Math.max(EP, r), 0, Math.PI * 2);
+      c!.strokeStyle = `rgba(255,210,100,${fade * 0.7})`; c!.lineWidth = 3 * (1 - bt); c!.stroke();
+      c!.beginPath(); c!.arc(d.cx, d.cy, Math.max(EP, r), 0, Math.PI * 2);
+      c!.strokeStyle = `rgba(255,130,30,${fade * 0.2})`; c!.lineWidth = 22 * (1 - bt); c!.stroke();
+      c!.restore();
+    }
+
+    /* ── 5.0-5.8s: Wind Streaks (पवन सेना) ── */
+    function dWind(t: number) {
+      if (t < 5.0 || t > 5.8) return;
+      const d = getImg(); if (!d) return;
+      const ft = (t - 5.0) / 0.8;
+      const fade = ft < 0.3 ? ft / 0.3 : Math.max(0, 1 - (ft - 0.3) / 0.7);
+      c!.save(); c!.globalAlpha = fade * 0.6;
+      c!.lineCap = 'round';
+      const streaks = 24;
+      for (let i = 0; i < streaks; i++) {
+        const edgeAng = (i / streaks) * Math.PI * 2;
+        const startDist = Math.max(W, H) * 0.7;
+        const progress = Math.min(ft * 1.5, 1);
+        const sx = d.cx + Math.cos(edgeAng) * startDist * (1 - progress);
+        const sy = d.cy + Math.sin(edgeAng) * startDist * (1 - progress);
+        const ex = d.cx + Math.cos(edgeAng) * startDist * (1 - Math.min(ft * 1.2, 1));
+        const ey = d.cy + Math.sin(edgeAng) * startDist * (1 - Math.min(ft * 1.2, 1));
+        c!.beginPath(); c!.moveTo(sx, sy); c!.lineTo(ex, ey);
+        c!.strokeStyle = `rgba(255,${160 + i * 3},40,${fade * 0.5})`;
+        c!.lineWidth = 1.5 + Math.random(); c!.stroke();
+      }
+      c!.restore();
+    }
+
+    /* ── 5.0-7.0s: Residual Glow ── */
+    function dResidual(t: number) {
+      if (t < 5.0 || t > 7.0) return;
+      const d = getImg(); if (!d) return;
+      const fade = t < 5.5 ? Math.min((t - 5.0) / 0.5, 1) : Math.max(0, 1 - (t - 5.5) / 1.5);
+      const r = Math.min(W, H) * 0.35;
+      const g = c!.createRadialGradient(d.cx, d.cy, 0, d.cx, d.cy, Math.max(EP, r));
+      g.addColorStop(0, `rgba(255,160,40,${fade * 0.15})`);
+      g.addColorStop(0.5, `rgba(255,100,20,${fade * 0.05})`);
       g.addColorStop(1, 'rgba(255,60,0,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
     }
 
-    /* ── Phase 2: Morph Particles (2-6s) ── */
-    function dMorph(t: number, dt: number) {
-      const silW = W * 0.5, silH = H * 0.55;
-      const silX = (W - silW) / 2, silY = H * 0.05;
-      const cxs = W / 2, cys = H / 2;
-
-      for (const idx of morphI) {
-        const p = pl[idx]; if (!p.on) continue;
-        if (p.tp !== 2) continue;
-
-        if (t < 2.0) {
-          p.x = cxs + Math.sin(t * 2 + idx * 0.3) * 4;
-          p.y = cys + Math.cos(t * 1.5 + idx * 0.4) * 4;
-          p.a = 0.25 + Math.sin(t * 3 + idx * 0.5) * 0.15;
-        } else if (t < 5.0) {
-          const mt = Math.max(0, Math.min(1, (t - 2.0 - p.md) / 2.5));
-          const e = eIO(mt);
-          const stx = cxs, sty = cys;
-          const etx = silX + p.tx * silW, ety = silY + p.ty * silH;
-          p.x = stx + (etx - stx) * e;
-          p.y = sty + (ety - sty) * e;
-          p.a = Math.min(mt * 3, 1) * 0.88;
-        }
-        if (p.a > 0.01) {
-          c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz), 0, Math.PI * 2);
-          c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a})`; c!.fill();
-        }
-      }
-    }
-
-    /* ── Scatter at t=5s ── */
-    function doScatter() {
-      if (scattered.current) return;
-      scattered.current = true;
-      for (const idx of morphI) {
-        const p = pl[idx]; if (!p.on || p.tp !== 2) continue;
-        const ang = Math.atan2(p.y - H / 2, p.x - W / 2) + (Math.random() - .5) * .8;
-        const spd = 3 + Math.random() * 10;
-        p.vx = Math.cos(ang) * spd; p.vy = Math.sin(ang) * spd;
-        p.tp = 3; p.ml = 0.8 + Math.random() * 1.2; p.life = p.ml;
-      }
-    }
-
-    /* ── Flash (5-5.4s) ── */
-    function dFlash(t: number) {
-      if (t < 5.0 || t > 5.4) return;
-      const ft = (t - 5.0) / 0.4;
-      c!.fillStyle = `rgba(255,230,180,${(1 - ft) * (1 - ft) * 0.65})`;
-      c!.fillRect(0, 0, W, H);
-    }
-
-    /* ── Shockwave Ring (5-7s) ── */
-    function dShockwave(t: number) {
-      const bt = Math.min((t - 5.0) / 2.0, 1); if (bt <= 0) return;
-      const silW = W * 0.5, silH = H * 0.55;
-      const cx = (W - silW) / 2 + silW * 0.45;
-      const cy = H * 0.05 + silH * 0.35;
-      const maxR = Math.max(W, H) * 0.85;
-      const r = maxR * eOQ(bt);
-      const fade = (1 - bt) * (1 - bt);
-      c!.save();
-      c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
-      c!.strokeStyle = `rgba(255,220,120,${fade * 0.75})`;
-      c!.lineWidth = 3 * (1 - bt); c!.stroke();
-      c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
-      c!.strokeStyle = `rgba(255,150,40,${fade * 0.25})`;
-      c!.lineWidth = 18 * (1 - bt); c!.stroke();
+    /* ── 7.0-9.5s: "ॐ" Symbol ── */
+    function dOm(t: number) {
+      const ps = 7.0, ft = Math.min((t - ps) / 1.0, 1); if (ft <= 0) return;
+      const fi = eOC(ft);
+      const mainY = H * 0.55;
+      const omY = mainY - Math.min(W * .07, H * .08, 52) * 1.5;
+      c!.save(); c!.globalAlpha = fi * 0.85;
+      c!.textAlign = 'center'; c!.textBaseline = 'middle';
+      const os = Math.min(W * .045, H * .055, 38);
+      c!.font = `400 ${os}px 'Noto Sans Devanagari','Mangal','Devanagari Sangam MN',serif`;
+      c!.fillStyle = 'rgba(0,0,0,0.6)';
+      c!.fillText('ॐ', W / 2 + 1, omY + 1.5);
+      const ow = c!.measureText('ॐ').width;
+      const og = c!.createLinearGradient(W / 2 - ow / 2, 0, W / 2 + ow / 2, 0);
+      og.addColorStop(0, '#b8860b'); og.addColorStop(0.3, '#ffd700');
+      og.addColorStop(0.5, '#fffacd'); og.addColorStop(0.7, '#ffd700');
+      og.addColorStop(1, '#b8860b');
+      c!.fillStyle = og; c!.fillText('ॐ', W / 2, omY);
       c!.restore();
-      if (bt < 0.5) {
-        const ia = (1 - bt / 0.5) * 0.2;
-        const ig = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r * 0.7));
-        ig.addColorStop(0, `rgba(255,190,70,${ia})`); ig.addColorStop(1, 'rgba(255,140,30,0)');
-        c!.fillStyle = ig; c!.fillRect(0, 0, W, H);
-      }
     }
 
-    /* ── Residual Glow (6-7.5s) ── */
-    function dResidual(t: number) {
-      if (t < 6.0 || t > 7.5) return;
-      const fade = Math.max(0, 1 - (t - 6.0) / 1.5);
-      const silW = W * 0.5, silH = H * 0.55;
-      const cx = (W - silW) / 2 + silW * 0.45;
-      const cy = H * 0.05 + silH * 0.35;
-      const r = Math.min(W, H) * 0.3;
-      const g = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r));
-      g.addColorStop(0, `rgba(255,150,35,${fade * 0.12})`);
-      g.addColorStop(0.5, `rgba(255,90,15,${fade * 0.04})`);
-      g.addColorStop(1, 'rgba(255,50,0,0)');
-      c!.fillStyle = g; c!.fillRect(0, 0, W, H);
-    }
-
-    /* ── Phase 4: Kinetic Text (7.5-9.5s) — Crisp, Iridescent ── */
+    /* ── 7.3-9.5s: Kinetic Text — "जय हनुमान" + श्लोक ── */
     function dText(t: number) {
-      const ps = 7.5, ft = Math.min((t - ps) / 1.5, 1); if (ft <= 0) return;
-      const fi = eOC(ft); const mainY = H * 0.68;
+      const ps = 7.3, ft = Math.min((t - ps) / 1.5, 1); if (ft <= 0) return;
+      const fi = eOC(ft);
+      const mainY = H * 0.55;
       c!.save(); c!.globalAlpha = fi;
       c!.textAlign = 'center'; c!.textBaseline = 'middle';
 
-      const ts = Math.min(W * .072, H * .085, 60);
+      const ts = Math.min(W * .075, H * .09, 64);
       c!.font = `800 ${ts}px 'Noto Sans Devanagari','Mangal','Devanagari Sangam MN',sans-serif`;
 
+      // Crisp offset shadow
       c!.fillStyle = 'rgba(0,0,0,0.75)';
       c!.fillText('जय हनुमान', W / 2 + 2, mainY + 3);
 
+      // Iridescent gold gradient
       const tw = c!.measureText('जय हनुमान').width;
       const hue = Math.sin(t * 2.5) * 0.15;
       const tg = c!.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
-      tg.addColorStop(0, `hsl(${35 + hue * 30},85%,25%)`);
-      tg.addColorStop(0.15, `hsl(${38 + hue * 20},90%,40%)`);
-      tg.addColorStop(0.35, `hsl(${42 + hue * 15},95%,55%)`);
-      tg.addColorStop(0.50, `hsl(45,100%,70%)`);
-      tg.addColorStop(0.65, `hsl(${42 - hue * 15},95%,55%)`);
-      tg.addColorStop(0.85, `hsl(${38 - hue * 20},90%,40%)`);
-      tg.addColorStop(1, `hsl(${35 - hue * 30},85%,25%)`);
+      tg.addColorStop(0, `hsl(${32 + hue * 25},85%,22%)`);
+      tg.addColorStop(0.12, `hsl(${35 + hue * 18},90%,35%)`);
+      tg.addColorStop(0.30, `hsl(${40 + hue * 12},95%,50%)`);
+      tg.addColorStop(0.48, `hsl(43,100%,68%)`);
+      tg.addColorStop(0.52, `hsl(45,100%,75%)`);
+      tg.addColorStop(0.70, `hsl(43,100%,68%)`);
+      tg.addColorStop(0.88, `hsl(${40 - hue * 12},95%,50%)`);
+      tg.addColorStop(1, `hsl(${32 - hue * 25},85%,22%)`);
       c!.fillStyle = tg; c!.fillText('जय हनुमान', W / 2, mainY);
 
-      const ss = Math.min(W * .023, H * .027, 18);
+      // Shlok
+      const ss = Math.min(W * .022, H * .026, 17);
       c!.font = `400 ${ss}px 'Nirmala UI','Devanagari Sangam MN','Mangal',sans-serif`;
-      const shY = mainY + ts * 1.25;
+      const shY = mainY + ts * 1.2;
       c!.fillStyle = 'rgba(0,0,0,0.8)';
       c!.fillText('अतुलित बलधाम ह्येषं हनुमान शरीरापि।', W / 2 + 1, shY + 1.2);
-      const sg = c!.createLinearGradient(W / 2 - ss * 12, 0, W / 2 + ss * 12, 0);
-      sg.addColorStop(0, '#856314'); sg.addColorStop(0.3, '#d4a020');
-      sg.addColorStop(0.5, '#ffd700'); sg.addColorStop(0.7, '#d4a020');
+      c!.fillText('बुद्धिहीन तनु जानिके सुमिराव पवन सखारा॥', W / 2 + 1, shY + ss * 2.2);
+      const sg = c!.createLinearGradient(W / 2 - ss * 13, 0, W / 2 + ss * 13, 0);
+      sg.addColorStop(0, '#856314'); sg.addColorStop(0.25, '#d4a020');
+      sg.addColorStop(0.5, '#ffd700'); sg.addColorStop(0.75, '#d4a020');
       sg.addColorStop(1, '#856314');
       c!.fillStyle = sg;
       c!.fillText('अतुलित बलधाम ह्येषं हनुमान शरीरापि।', W / 2, shY);
+      c!.fillText('बुद्धिहीन तनु जानिके सुमिराव पवन सखारा॥', W / 2, shY + ss * 2.2);
       c!.restore();
     }
 
-    /* ── Phase 5: Portal Fade (9.5-10.5s) ── */
+    /* ── 9.5-10.5s: Golden-Rimmed Portal Fade ── */
     function dPortal(t: number) {
       const ft = Math.min((t - 9.5) / 1.0, 1); if (ft <= 0) return;
       const cx = W / 2, cy = H / 2;
       const maxR = Math.max(W, H) * 1.05;
       const r = maxR * eOE(ft);
-      const wa = eOC(ft) * 0.95;
+      const wa = eOC(ft) * 0.92;
+
+      // White-gold fill
       c!.save(); c!.beginPath();
       c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2); c!.clip();
       const pg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r));
-      pg.addColorStop(0, `rgba(255,248,240,${wa})`);
-      pg.addColorStop(0.6, `rgba(255,235,210,${wa * 0.8})`);
-      pg.addColorStop(1, `rgba(255,215,180,${wa * 0.3})`);
+      pg.addColorStop(0, `rgba(255,250,240,${wa})`);
+      pg.addColorStop(0.4, `rgba(255,240,210,${wa * 0.85})`);
+      pg.addColorStop(0.7, `rgba(255,220,170,${wa * 0.4})`);
+      pg.addColorStop(1, `rgba(255,200,130,${wa * 0.15})`);
       c!.fillStyle = pg; c!.fillRect(0, 0, W, H);
       c!.restore();
-      if (ft < 0.75) {
-        const ra = (1 - ft / 0.75) * 0.45;
+
+      // Golden rim
+      if (ft < 0.8) {
+        const rimFade = (1 - ft / 0.8);
         c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
-        c!.strokeStyle = `rgba(255,240,200,${ra})`;
-        c!.lineWidth = 4 * (1 - ft); c!.stroke();
+        c!.strokeStyle = `rgba(255,210,80,${rimFade * 0.5})`;
+        c!.lineWidth = 5 * rimFade;
+        c!.shadowColor = `rgba(255,200,60,${rimFade * 0.4})`;
+        c!.shadowBlur = 15 * rimFade;
+        c!.stroke();
+        c!.shadowBlur = 0;
       }
     }
 
-    /* ── Dust (always) ── */
+    /* ── Always: Dust Particles ── */
     function dDust(t: number) {
       for (const i of dustI) {
         const p = pl[i];
-        p.x += p.vx + Math.sin(t * .3 + i) * .05; p.y += p.vy;
+        p.x += p.vx + Math.sin(t * .3 + i) * .04; p.y += p.vy;
         if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; }
         if (p.x < -10) p.x = W + 10; if (p.x > W + 10) p.x = -10;
         const fl = .5 + Math.sin(t * 1.4 + i * .6) * .5;
@@ -457,84 +511,51 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
       }
     }
 
-    /* ── Draw Sparks & Shards (tp 3 & 4) ── */
-    function dEffects() {
+    /* ── Draw Spark Particles ── */
+    function dSparks() {
       for (const p of pl) {
-        if (!p.on) continue;
-        if (p.tp === 3) {
-          const lr = p.life / p.ml; const a = p.a * lr;
-          c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz), 0, Math.PI * 2);
-          c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
-        }
-        if (p.tp === 4) {
-          const lr = p.life / p.ml; const a = p.a * lr;
-          c!.save(); c!.translate(p.x, p.y); c!.rotate(p.rot);
-          c!.fillStyle = `rgba(190,210,255,${a * 0.55})`;
-          c!.fillRect(-p.sz * .12, -p.sz * .5, p.sz * .24, p.sz);
-          c!.fillStyle = `rgba(255,255,255,${a * 0.35})`;
-          c!.fillRect(-p.sz * .12, -p.sz * .5, p.sz * .07, p.sz);
-          c!.restore();
-        }
+        if (!p.on || p.tp !== 1) continue;
+        const lr = p.life / p.ml; const a = p.a * lr;
+        c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz * lr), 0, Math.PI * 2);
+        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
       }
     }
 
-    /* ── Spawn: Fluid Fire (0-2s) ── */
+    /* ── Spawn: Fluid Fire Particles (0-2s) ── */
     function sFluid(t: number) {
-      if (t > 2.2 || Math.random() > 0.4) return;
+      if (t > 2.2 || Math.random() > 0.35) return;
       const p = grab(); if (!p) return;
       const ang = Math.random() * Math.PI * 2;
-      const dist = 20 + Math.random() * 60;
+      const dist = 30 + Math.random() * 80;
       p.x = W / 2 + Math.cos(ang) * dist;
       p.y = H / 2 + Math.sin(ang) * dist;
-      p.vx = Math.cos(ang) * (0.5 + Math.random()); p.vy = -1 - Math.random() * 1.5;
-      p.sz = 2 + Math.random() * 3; p.ml = 0.8 + Math.random() * 0.8; p.life = p.ml;
-      p.r = 255; p.g = 100 + Math.random() * 100 | 0; p.b = 10 + Math.random() * 30 | 0;
-      p.a = 0.6 + Math.random() * 0.3; p.on = true; p.tp = 1;
+      p.vx = Math.cos(ang) * (0.3 + Math.random() * 0.8);
+      p.vy = -1.2 - Math.random() * 1.8;
+      p.sz = 2 + Math.random() * 3.5; p.ml = 0.6 + Math.random() * 0.6; p.life = p.ml;
+      p.r = 255; p.g = 80 + Math.random() * 120 | 0; p.b = 5 + Math.random() * 25 | 0;
+      p.a = 0.5 + Math.random() * 0.35; p.on = true; p.tp = 1;
     }
 
-    /* ── Spawn: Sparks (5-5.5s) ── */
-    function sSparks(t: number) {
+    /* ── Spawn: Impact Sparks (5-5.5s) ── */
+    function sImpactSparks(t: number) {
       if (t < 5.0 || t > 5.5 || Math.random() > 0.5) return;
+      const d = getImg(); if (!d) return;
       const p = grab(); if (!p) return;
-      const silW = W * 0.5, silH = H * 0.55;
-      const cx = (W - silW) / 2 + silW * 0.45;
-      const cy = H * 0.05 + silH * 0.35;
       const ang = Math.random() * Math.PI * 2;
-      const spd = 5 + Math.random() * 14;
-      p.x = cx; p.y = cy;
+      const spd = 6 + Math.random() * 16;
+      p.x = d.cx; p.y = d.cy;
       p.vx = Math.cos(ang) * spd; p.vy = Math.sin(ang) * spd;
-      p.sz = 1 + Math.random() * 2.5; p.ml = 1 + Math.random() * 1.5; p.life = p.ml;
-      p.r = 255; p.g = 150 + Math.random() * 100 | 0; p.b = 20 + Math.random() * 60 | 0;
-      p.a = 0.8 + Math.random() * 0.2; p.on = true; p.tp = 3;
-    }
-
-    /* ── Spawn: Glass Shards (5-5.3s) ── */
-    function sShards(t: number) {
-      if (t < 5.0 || t > 5.3 || Math.random() > 0.35) return;
-      const p = grab(); if (!p) return;
-      const silW = W * 0.5, silH = H * 0.55;
-      const cx = (W - silW) / 2 + silW * 0.45;
-      const cy = H * 0.05 + silH * 0.35;
-      const ang = Math.random() * Math.PI * 2;
-      const spd = 3 + Math.random() * 8;
-      p.x = cx; p.y = cy;
-      p.vx = Math.cos(ang) * spd; p.vy = Math.sin(ang) * spd;
-      p.sz = 6 + Math.random() * 12; p.ml = 1.2 + Math.random(); p.life = p.ml;
-      p.r = 200; p.g = 220; p.b = 255;
-      p.a = 0.7; p.rot = Math.random() * Math.PI * 2;
-      p.rs = (Math.random() - 0.5) * 0.15; p.on = true; p.tp = 4;
+      p.sz = 1 + Math.random() * 2.5; p.ml = 0.8 + Math.random() * 1.2; p.life = p.ml;
+      p.r = 255; p.g = 140 + Math.random() * 110 | 0; p.b = 15 + Math.random() * 55 | 0;
+      p.a = 0.9; p.on = true; p.tp = 1;
     }
 
     /* ── Particle Update ── */
     function upd(dt: number) {
       for (const p of pl) {
-        if (!p.on || p.tp === 0 || p.tp === 2) continue;
+        if (!p.on || p.tp === 0) continue;
         p.x += p.vx; p.y += p.vy; p.life -= dt; p.rot += p.rs;
-        switch (p.tp) {
-          case 1: p.vy -= 0.02; p.sz *= 0.995; break;
-          case 3: p.vx *= 0.97; p.vy *= 0.97; break;
-          case 4: p.vx *= 0.98; p.vy *= 0.98; p.vy += 0.08; break;
-        }
+        if (p.tp === 1) { p.vx *= 0.97; p.vy *= 0.97; p.vy += 0.02; }
         if (p.life <= 0 || p.y > H + 60 || p.x < -100 || p.x > W + 100) p.on = false;
       }
     }
@@ -548,38 +569,42 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
       const t = (ts - t0.current) / 1000;
       const dt = Math.min((ts - lt) / 1000, .05); lt = ts;
 
-      /* Screen Shake */
       c!.save();
-      if (t >= 5.0 && t < 5.6) {
-        const si = Math.max(0, 1 - (t - 5.0) / 0.6);
-        const mag = si * si * 14;
+      // Screen shake at impact
+      if (t >= 5.0 && t < 5.7) {
+        const si = Math.max(0, 1 - (t - 5.0) / 0.7);
+        const mag = si * si * 16;
         c!.translate((Math.random() - .5) * mag, (Math.random() - .5) * mag);
       }
 
-      /* Audio Triggers */
+      // Audio triggers
       playAt(0, aDrone, t);
       playAt(2, aSweep, t);
       playAt(5, aImpact, t);
       playAt(5, aBell, t);
-      if (t >= 5.0 && !scattered.current) doScatter();
 
-      /* Draw Order */
+      // Draw order (back to front)
       dBg();
       dFluid(t);
-      dSilGlow(t);
-      dMorph(t, dt);
+      dRamText(t);
+      dRays(t);
+      dRings(t);
+      dImage(t);
+      dRingSparks(t);
       dFlash(t);
       dShockwave(t);
-      dEffects();
+      dWind(t);
       dResidual(t);
+      dSparks();
+      dOm(t);
       dText(t);
       dPortal(t);
       dDust(t);
 
-      /* Spawn */
+      // Spawn
       sFluid(t);
-      sSparks(t);
-      sShards(t);
+      sRingSparks(t);
+      sImpactSparks(t);
 
       upd(dt);
       c!.restore();
@@ -595,10 +620,49 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
       if (audioRef.current) { try { audioRef.current.close(); } catch (_) {} }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ready]);
+
+  /* ═══════════════════════════════════════════════════════════════
+     🪔 LOADING SCREEN — Saffron Devotional Aura
+     ═══════════════════════════════════════════════════════════════ */
+  if (!ready) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden" style={{ background: '#050108' }}>
+        <div className="absolute inset-0" style={{
+          background: 'radial-gradient(ellipse at 50% 45%, rgba(120,30,5,0.2) 0%, rgba(40,8,15,0.08) 40%, transparent 70%)',
+        }} />
+        <div className="absolute rounded-full" style={{
+          width: 'min(55vw, 300px)', height: 'min(55vw, 300px)',
+          border: '1px dashed rgba(255,140,40,0.12)',
+          animation: 'hRing 12s linear infinite',
+        }} />
+        <div className="absolute rounded-full" style={{
+          width: 'min(40vw, 220px)', height: 'min(40vw, 220px)',
+          background: 'radial-gradient(circle, rgba(255,130,30,0.08) 0%, transparent 65%)',
+          animation: 'hPulse 3s ease-in-out infinite',
+        }} />
+        <div className="relative select-none" style={{
+          fontSize: 'clamp(3.5rem, 11vw, 6.5rem)', lineHeight: 1,
+          color: '#ff8c00',
+          textShadow: '0 0 20px rgba(255,140,0,0.7), 0 0 50px rgba(255,100,0,0.4), 0 0 100px rgba(255,80,0,0.2)',
+          animation: 'hPulse 3s ease-in-out infinite',
+          fontFamily: "'Noto Sans Devanagari','Mangal','Devanagari Sangam MN',serif",
+        }}>ॐ</div>
+        <p className="absolute select-none tracking-[0.3em]" style={{
+          bottom: '12%', fontSize: 'clamp(0.55rem, 1.3vw, 0.75rem)',
+          color: 'rgba(255,160,60,0.45)', animation: 'hPulse 3s ease-in-out infinite',
+          fontFamily: "'Noto Sans Devanagari','Mangal',sans-serif",
+        }}>हनुमान जयंती आरती प्रारंभ हो रही है</p>
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes hPulse { 0%,100%{opacity:.7;transform:scale(1)} 50%{opacity:1;transform:scale(1.04)} }
+          @keyframes hRing { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+        ` }} />
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-[9999]" style={{ background: '#030108' }}>
+    <div className="fixed inset-0 z-[9999]" style={{ background: '#050108' }}>
       <canvas ref={cvRef} className="block w-full h-full" />
     </div>
   );
