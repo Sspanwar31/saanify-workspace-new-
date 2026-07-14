@@ -20,10 +20,11 @@ interface NeonParticle {
   tp: 'petal' | 'sparkle' | 'confetti';
 }
 
-const DEFAULT_COLORS = ['#f97316', '#fbbf24', '#ffffff'];
+const DEFAULT_COLORS = ['#fde047', '#facc15', '#f97316'];
 
 const PRESET_COLORS: Record<string, string[]> = {
-  GANESH_CHATURTHI: ['#f97316', '#fbbf24', '#ffffff', '#ea580c'],
+  // 🚀 गेंदे के खिले हुए ताज़ा हल्के पीले रंग (Fresh Light Yellow)
+  GANESH_CHATURTHI: ['#fde047', '#facc15', '#fef08a', '#f97316'],
   HANUMAN_JAYANTI: ['#dc2626', '#f97316'],
   NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
   REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
@@ -76,7 +77,7 @@ export default function NeonEngine({
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
     const setSize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
@@ -94,7 +95,7 @@ export default function NeonEngine({
 
       const grad = c.createLinearGradient(0, -size, 0, size);
       grad.addColorStop(0, color);
-      grad.addColorStop(1, 'rgba(0,0,0,0.15)');
+      grad.addColorStop(1, 'rgba(255,255,255,0.15)'); // सॉफ्ट शाइन
       c.fillStyle = grad;
 
       c.beginPath();
@@ -143,14 +144,26 @@ export default function NeonEngine({
       if (particles.length < maxParticles) {
         if (normalizedPreset === 'GANESH_CHATURTHI' && Math.random() < 0.35) {
           const isPetal = Math.random() < 0.7;
+          
+          // 🚀 गेंदे की पंखुड़ियों के रंगों को बिल्कुल कोमल और हल्का पीला किया गया
+          const randCol = Math.random();
+          let petalColor = '#fde047'; // 50% खिले हुए हल्के पीले गेंदे के फूल (Bright Light Yellow)
+          if (randCol < 0.5) {
+            petalColor = '#fde047';
+          } else if (randCol < 0.8) {
+            petalColor = '#facc15'; // 30% कोमल सुनहरा पीला (Warm Golden Yellow)
+          } else {
+            petalColor = '#f97316'; // 20% कोमल केसरिया आभा (Soft Saffron Orange)
+          }
+
           particles.push({
             x: rn(-20, w + 20),
             y: rn(-30, -10),
             vx: rn(-0.5, 0.5),
-            vy: rn(1.0, 2.4) * speedFactor, // 🚀 customSpeed से नियंत्रित
+            vy: rn(1.0, 2.4) * speedFactor, 
             size: isPetal ? rn(minPartSize, maxPartSize) * scaleFactor : rn(minPartSize * 0.6, maxPartSize * 0.6) * scaleFactor,
             alpha: 1,
-            color: isPetal ? (Math.random() < 0.6 ? '#f97316' : '#ea580c') : '#fbbf24',
+            color: isPetal ? petalColor : '#ffffff', // सितारे बिल्कुल सफ़ेद और चमकदार होंगे
             rotation: rn(0, Math.PI * 2),
             rotSpeed: rn(-0.015, 0.015),
             life: 0,
@@ -198,7 +211,6 @@ export default function NeonEngine({
         p.x += p.vx;
         p.y += p.vy;
 
-        // 🚀 customGravity को अप्लाई करना (ग्रेविटी फ़ोर्स)
         p.vy += gravityFactor;
 
         p.vx += Math.sin(timeRef.current + p.y * 0.01) * 0.015;
@@ -221,8 +233,6 @@ export default function NeonEngine({
         }
       }
 
-      // ── 🚀 RINGS REMOVED (गोला यहाँ से पूरी तरह हटा दिया गया है) ──
-
       rafId.current = requestAnimationFrame(animate);
     };
 
@@ -232,12 +242,11 @@ export default function NeonEngine({
       cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
     };
+  // 🚀 FIX: हटाया गया customRadius और customGlow डिपेंडेंसी लिस्ट से (ReferenceError Solved)
   }, [
     preset, 
-    customRadius, 
     customSpeed, 
     customColors, 
-    customGlow,
     customScale,
     customGravity,
     customMinSize,
