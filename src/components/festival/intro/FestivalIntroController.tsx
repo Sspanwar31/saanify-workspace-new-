@@ -15,6 +15,7 @@ import NewYearCinematicIntro from '../engines/effects/new-year/NewYearCinematicI
 import ValentineCinematicIntro from '../engines/effects/valentines-day/ValentineCinematicIntro';
 // 🚀 गणेश चतुर्थी का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
 import GaneshChaturthiCinematicIntro from '../engines/effects/Ganesh-Chaturthi/GaneshChaturthiCinematicIntro';
+import HanumanJayantiCinematicIntro from '../engines/effects/Hanuman-Jayanti/HanumanJayantiCinematicIntro';
 
 export default function FestivalIntroController({
   isActive,
@@ -112,7 +113,14 @@ export default function FestivalIntroController({
       <GaneshChaturthiCinematicIntro onComplete={onHandover} />
     );
   }
-  
+
+// 🚀 8. HANUMAN_JAYANTI ACTIVATION: हनुमान जयंती का स्वतंत्र सिनेमाई इंजन यहाँ चलेगा
+  if (isActive && preset.toUpperCase() === 'HANUMAN_JAYANTI') {
+    return (
+      <HanumanJayantiCinematicIntro onComplete={onHandover} />
+    );
+  }
+
 
   return (
     <>
