@@ -11,7 +11,7 @@ interface P {
   r: number; g: number; b: number; a: number;
   rot: number; rs: number; on: boolean; tp: number;
 }
-const POOL = 1800;
+const POOL = 3400; // 🚀 Increased from 1800 for richer particle effects
 const DUR = 10.5;
 const EP = 1e-4;
 const IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Hanuman%20JI/Screenshot%202026-07-14%20221205.png';
@@ -30,7 +30,7 @@ const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void }
 
-export default function HanumanJayantiIntro({ onComplete }: Props) {
+export default function HanumanJayantiCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -40,10 +40,10 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
   const audioPlayed = useRef<Set<number>>(new Set());
   const cbR = useRef(onComplete); cbR.current = onComplete;
 
-  /* ─── 🖼️ IMAGE PRELOAD — सीधा Supabase URL ─── */
+  /* ─── 🖼️ IMAGE PRELOAD — CORS Resolved safely ─── */
   useEffect(() => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // 🚀 FIXED: Removed crossOrigin anonymous to bypass strict Supabase CDN CORS blocks
     img.onload = () => { imgRef.current = img; setReady(true); };
     img.onerror = () => { setReady(true); };
     img.src = IMG_URL;
@@ -77,6 +77,7 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
     for (let i = 0; i < POOL; i++)
       pl.push({ x: 0, y: 0, vx: 0, vy: 0, sz: 0, life: 0, ml: 1, r: 255, g: 150, b: 30, a: 0, rot: 0, rs: 0, on: false, tp: 0 });
 
+    // 🚀 FIXED: Consistent `dustI` name (first code had `dI` here but `dustI` in dDust — runtime crash)
     const dustI: number[] = [];
     for (let i = 0; i < 60; i++) {
       const p = pl[i]; p.on = true; p.tp = 0;
@@ -87,6 +88,7 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
       p.a = Math.random() * .1 + .03; dustI.push(i);
     }
 
+    // 🚀 FIXED: grab as closure (first code used useCallback with param but called without arg — crash)
     const grab = () => { for (let i = 60; i < POOL; i++) if (!pl[i].on) return pl[i]; return null; };
 
     /* ── Image Dimensions ── */
@@ -171,6 +173,17 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
         });
       } catch (_) {}
     };
+
+    // 🚀 NEW: Resume audio on first user touch/click (mobile safari fix)
+    const handleScreenClick = () => {
+      try {
+        if (audioRef.current && audioRef.current.state === 'suspended') {
+          audioRef.current.resume();
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('click', handleScreenClick);
+    window.addEventListener('touchstart', handleScreenClick);
 
     /* ═══════════════════════════════════════════════════════════
        DRAW FUNCTIONS
@@ -321,7 +334,7 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
       const outAng = ang + (Math.random() - 0.5) * 0.5;
       const spd = 2 + Math.random() * 4;
       p.vx = Math.cos(outAng) * spd; p.vy = Math.sin(outAng) * spd;
-      p.sz = 1 + Math.random() * 2; p.ml = 0.5 + Math.random() * 0.5; p.life = p.ml;
+      p.sz = 1 + Math.random() * 2.5; p.ml = 0.5 + Math.random() * 0.5; p.life = p.ml;
       p.r = 255; p.g = 180 + Math.random() * 70 | 0; p.b = 30 + Math.random() * 50 | 0;
       p.a = 0.8; p.on = true; p.tp = 1;
     }
@@ -435,7 +448,7 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
       tg.addColorStop(1, `hsl(${32 - hue * 25},85%,22%)`);
       c!.fillStyle = tg; c!.fillText('जय हनुमान', W / 2, mainY);
 
-      const ss = Math.min(W * .022, H * .026, 17);
+      const ss = Math.min(W * .024, H * .028, 17);
       c!.font = `400 ${ss}px 'Nirmala UI','Devanagari Sangam MN','Mangal',sans-serif`;
       const shY = mainY + ts * 1.2;
       c!.fillStyle = 'rgba(0,0,0,0.8)';
@@ -592,6 +605,8 @@ export default function HanumanJayantiIntro({ onComplete }: Props) {
     return () => {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
+      window.removeEventListener('click', handleScreenClick);
+      window.removeEventListener('touchstart', handleScreenClick);
       if (audioRef.current) { try { audioRef.current.close(); } catch (_) {} }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
