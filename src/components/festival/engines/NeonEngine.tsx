@@ -5,16 +5,6 @@ import { useEffect, useRef } from 'react';
 /* ═══════════════════════════════════════════════════════════════
    TYPES & CONSTANTS
    ═══════════════════════════════════════════════════════════════ */
-interface NeonConfig {
-  ringCount: number;
-  radius: number;
-  speed: number;
-  colors: string[];
-  glowIntensity: number;
-  trailLength: number; // 0.1 to 1.0
-  spiral: boolean;
-}
-
 interface NeonParticle {
   x: number;
   y: number;
@@ -30,50 +20,37 @@ interface NeonParticle {
   tp: 'petal' | 'sparkle' | 'confetti';
 }
 
-const DEFAULT_NEON: NeonConfig = {
-  ringCount: 2,
-  radius: 120,
-  speed: 0.03,
-  colors: ['#00f5d4', '#8338ec'],
-  glowIntensity: 15,
-  trailLength: 0.4,
-  spiral: false,
-};
+const DEFAULT_COLORS = ['#f97316', '#fbbf24', '#ffffff'];
 
-const NEON_PRESETS: Record<string, { default: Partial<NeonConfig> }> = {
-  GANESH_CHATURTHI: {
-    default: { ringCount: 3, radius: 110, speed: 0.02, colors: ['#f97316', '#fbbf24', '#ffffff'], glowIntensity: 20, spiral: true }
-  },
-  HANUMAN_JAYANTI: {
-    default: { ringCount: 2, radius: 130, speed: 0.04, colors: ['#dc2626', '#f97316'], glowIntensity: 25, spiral: false }
-  },
-  NAVRATRI: {
-    default: { ringCount: 4, radius: 100, speed: -0.025, colors: ['#ff006e', '#ffbe0b', '#00f5d4'], glowIntensity: 15, spiral: true }
-  },
-  REPUBLIC_DAY: {
-    default: { ringCount: 3, radius: 140, speed: 0.015, colors: ['#ff9933', '#ffffff', '#128807'], glowIntensity: 12, spiral: false }
-  },
-  INDEPENDENCE_DAY: {
-    default: { ringCount: 3, radius: 140, speed: 0.015, colors: ['#ff9933', '#ffffff', '#128807'], glowIntensity: 12, spiral: false }
-  }
+const PRESET_COLORS: Record<string, string[]> = {
+  GANESH_CHATURTHI: ['#f97316', '#fbbf24', '#ffffff', '#ea580c'],
+  HANUMAN_JAYANTI: ['#dc2626', '#f97316'],
+  NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
+  REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
+  INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807']
 };
 
 export default function NeonEngine({
   preset,
-  customRadius,
-  customSpeed,
   customColors,
-  customGlow,
+  customScale,     // 🚀 डेटाबेस 'scale' से जुड़ेगा (आकार नियंत्रक)
+  customGravity,   // 🚀 डेटाबेस 'customGravity' से जुड़ेगा (नीचे गिरने का खिंचाव)
+  customSpeed,     // 🚀 डेटाबेस 'customSpeed' से जुड़ेगा (गिरने की गति)
+  customMinSize,   // 🚀 डेटाबेस 'customMinSize' से जुड़ेगा (न्यूनतम आकार)
+  customMaxSize,   // 🚀 डेटाबेस 'customMaxSize' से जुड़ेगा (अधिकतम आकार)
+  customMaxCount,  // 🚀 डेटाबेस 'customMaxCount' से जुड़ेगा (स्क्रीन पर पार्टिकल्स की अधिकतम संख्या)
 }: {
   preset?: string;
-  customRadius?: number;
-  customSpeed?: number;
   customColors?: string[];
-  customGlow?: number;
+  customScale?: number;
+  customGravity?: number | null;
+  customSpeed?: number | null;
+  customMinSize?: number | null;
+  customMaxSize?: number | null;
+  customMaxCount?: number | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafId = useRef<number>(0);
-  const angleRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
 
   useEffect(() => {
@@ -83,20 +60,19 @@ export default function NeonEngine({
     if (!ctx) return;
 
     const normalizedPreset = (preset || '').toUpperCase().trim();
-    const activePreset = NEON_PRESETS[normalizedPreset] || { default: DEFAULT_NEON };
-    const config: NeonConfig = {
-      ...DEFAULT_NEON,
-      ...activePreset.default,
-      ...(customRadius !== undefined && { radius: customRadius }),
-      ...(customSpeed !== undefined && { speed: customSpeed }),
-      ...(customColors && { colors: customColors }),
-      ...(customGlow !== undefined && { glowIntensity: customGlow }),
-    };
+    const colors = customColors || PRESET_COLORS[normalizedPreset] || DEFAULT_COLORS;
+
+    // ── 🚀 DATABASE CONTROLLER WIRE-UP (बैकएंड सेटिंग्स मैपिंग) ──
+    const scaleFactor = customScale ?? 0.55;
+    const speedFactor = customSpeed ?? 1.0;
+    const gravityFactor = customGravity ?? 0.003; // स्वाभाविक ग्रेविटी
+    const maxParticles = customMaxCount ?? 90;
+
+    const minPartSize = customMinSize ?? 5;
+    const maxPartSize = customMaxSize ?? 11;
 
     // पार्टिकल पूल
     const particles: NeonParticle[] = [];
-    const maxParticles = 90; // स्क्रीन पर सुंदर और संतुलित डेंसिटी
-
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
     const setSize = () => {
@@ -109,7 +85,7 @@ export default function NeonEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
-    // कोमल गेंदा/गुलाब की पंखुड़ी ड्रॉ करने की विधि
+    // गेंदा/गुलाब की पंखुड़ी ड्रॉ करने की विधि
     const drawPetal = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, rot: number, color: string) => {
       c.save();
       c.translate(x, y);
@@ -118,7 +94,7 @@ export default function NeonEngine({
 
       const grad = c.createLinearGradient(0, -size, 0, size);
       grad.addColorStop(0, color);
-      grad.addColorStop(1, 'rgba(0,0,0,0.15)'); // कोमल शैडो इफ़ेक्ट
+      grad.addColorStop(1, 'rgba(0,0,0,0.15)');
       c.fillStyle = grad;
 
       c.beginPath();
@@ -159,14 +135,11 @@ export default function NeonEngine({
       const rect = canvas.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
-      const cx = w / 2;
-      const cy = h / 2;
 
       ctx.clearRect(0, 0, w, h);
-      angleRef.current += config.speed;
       timeRef.current += 0.015;
 
-      // ── 🚀 PARTICLE EMITTER (उत्सर्जन) ──
+      // ── SCREEN-WIDE EMITTER ──
       if (particles.length < maxParticles) {
         if (normalizedPreset === 'GANESH_CHATURTHI' && Math.random() < 0.35) {
           const isPetal = Math.random() < 0.7;
@@ -174,8 +147,8 @@ export default function NeonEngine({
             x: rn(-20, w + 20),
             y: rn(-30, -10),
             vx: rn(-0.5, 0.5),
-            vy: rn(1.0, 2.4),
-            size: isPetal ? rn(5, 11) : rn(3, 7),
+            vy: rn(1.0, 2.4) * speedFactor, // 🚀 customSpeed से नियंत्रित
+            size: isPetal ? rn(minPartSize, maxPartSize) * scaleFactor : rn(minPartSize * 0.6, maxPartSize * 0.6) * scaleFactor,
             alpha: 1,
             color: isPetal ? (Math.random() < 0.6 ? '#f97316' : '#ea580c') : '#fbbf24',
             rotation: rn(0, Math.PI * 2),
@@ -185,13 +158,12 @@ export default function NeonEngine({
             tp: isPetal ? 'petal' : 'sparkle'
           });
         } else if (normalizedPreset === 'NAVRATRI' && Math.random() < 0.3) {
-          // नवदुर्गा के लिए गुलाब की कोमल पंखुड़ियां
           particles.push({
             x: rn(-20, w + 20),
             y: rn(-30, -10),
             vx: rn(-0.4, 0.4),
-            vy: rn(0.8, 2.0),
-            size: rn(6, 12),
+            vy: rn(0.8, 2.0) * speedFactor,
+            size: rn(minPartSize, maxPartSize) * scaleFactor,
             alpha: 1,
             color: Math.random() < 0.7 ? '#f43f5e' : '#fbcfe8',
             rotation: rn(0, Math.PI * 2),
@@ -201,14 +173,13 @@ export default function NeonEngine({
             tp: 'petal'
           });
         } else if (['REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(normalizedPreset) && Math.random() < 0.3) {
-          // राष्ट्रीय त्योहारों के लिए तिरंगे कागज़ के टुकड़े (Confetti)
           const cols = ['#ff9933', '#ffffff', '#128807'];
           particles.push({
             x: rn(-20, w + 20),
             y: rn(-30, -10),
             vx: rn(-0.6, 0.6),
-            vy: rn(1.2, 2.6),
-            size: rn(5, 10),
+            vy: rn(1.2, 2.6) * speedFactor,
+            size: rn(minPartSize, maxPartSize) * scaleFactor,
             alpha: 1,
             color: cols[Math.floor(Math.random() * cols.length)],
             rotation: rn(0, Math.PI * 2),
@@ -227,7 +198,9 @@ export default function NeonEngine({
         p.x += p.vx;
         p.y += p.vy;
 
-        // स्वाभाविक हवा का झोंका (Sway physics)
+        // 🚀 customGravity को अप्लाई करना (ग्रेविटी फ़ोर्स)
+        p.vy += gravityFactor;
+
         p.vx += Math.sin(timeRef.current + p.y * 0.01) * 0.015;
         if (p.tp !== 'sparkle') p.rotation += p.rotSpeed;
 
@@ -248,33 +221,8 @@ export default function NeonEngine({
         }
       }
 
-      // ── MASTER NEON RINGS DRAW ──
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      ctx.shadowBlur = config.glowIntensity;
+      // ── 🚀 RINGS REMOVED (गोला यहाँ से पूरी तरह हटा दिया गया है) ──
 
-      for (let i = 0; i < config.ringCount; i++) {
-        const ringAngle = angleRef.current * (1 + i * 0.1) + (i * Math.PI) / 3;
-        const color = config.colors[i % config.colors.length];
-        const rad = config.radius * (1 + (config.spiral ? i * 0.15 : 0));
-
-        ctx.shadowColor = color;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, rad, ringAngle, ringAngle + Math.PI * 2 * config.trailLength);
-        ctx.stroke();
-
-        const headX = cx + Math.cos(ringAngle + Math.PI * 2 * config.trailLength) * rad;
-        const headY = cy + Math.sin(ringAngle + Math.PI * 2 * config.trailLength) * rad;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(headX, headY, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.restore();
       rafId.current = requestAnimationFrame(animate);
     };
 
@@ -284,7 +232,18 @@ export default function NeonEngine({
       cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
     };
-  }, [preset, customRadius, customSpeed, customColors, customGlow]);
+  }, [
+    preset, 
+    customRadius, 
+    customSpeed, 
+    customColors, 
+    customGlow,
+    customScale,
+    customGravity,
+    customMinSize,
+    customMaxSize,
+    customMaxCount
+  ]);
 
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 4 }} />;
 }
