@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from 'react';
    FESTIVAL CONFIG — Import this for syncing
    ═══════════════════════════════════════════════════════════════ */
 export const HANUMAN_TIMELINE = {
-  fluidStart: 0.0, fluidPeak: 1.0, fluidFade: 1.8,
-  revealStart: 2.0, raysStart: 4.0, revealComplete: 5.0,
-  impactTime: 5.0, windStart: 5.0, residualEnd: 7.0,
-  omStart: 7.0, textStart: 7.3, textComplete: 9.0,
+  fluidStart: 0.0, fluidFade: 2.5,
+  revealStart: 2.0, revealComplete: 4.5,
+  raysStart: 4.0, raysFade: 6.5,
+  impactTime: 5.0, windEnd: 5.8, residualEnd: 7.0,
+  flowerStart: 5.2, flowerEnd: 7.8,
+  omStart: 7.5, textStart: 7.8, textComplete: 9.2,
   portalStart: 9.5, portalComplete: 10.5, totalDuration: 10.5,
 };
 
@@ -22,7 +24,7 @@ interface P {
   r: number; g: number; b: number; a: number;
   rot: number; rs: number; on: boolean; tp: number;
 }
-const POOL = 1800;
+const POOL = 3000;
 const DUR = 10.5;
 const EP = 1e-4;
 const IMG_URL = 'https://z-cdn-media.chatglm.cn/files/2cb4964b-0ebd-40b9-a453-8aec85e6b0b3.png?auth_key=1884048330-1fa70d71514b4f9eb8479a787ca744b4-0-79ecab9f582737711881c28dbeaa8cf0';
@@ -35,6 +37,20 @@ const eIO = (t: number) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) 
 const eOQ = (t: number) => 1 - Math.pow(1 - t, 4);
 const eIQ = (t: number) => t * t;
 const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+
+/* ═══════════════════════════════════════════════════════════════
+   🌸 FLOWER COLORS — पुष्प वर्षा Devotional Palette
+   ═══════════════════════════════════════════════════════════════ */
+const FLOWER_COLORS = [
+  { r: 255, g: 100, b: 60 },   // गेंदा लाल
+  { r: 255, g: 180, b: 20 },   // गेंदा नारंगी
+  { r: 255, g: 220, b: 80 },   // पीला
+  { r: 255, g: 140, b: 170 },  // गुलाबी
+  { r: 255, g: 245, b: 235 },  // सफेद क्रीम
+  { r: 255, g: 70, b: 50 },    // गहरा लाल
+  { r: 255, g: 200, b: 60 },   // सोना
+  { r: 255, g: 120, b: 140 },  // गुलाब
+];
 
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
@@ -53,8 +69,8 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
 
   /* ─── 🖼️ IMAGE PRELOAD ─── */
   useEffect(() => {
-    const img = new Image(); 
-   img.onload = () => { imgRef.current = img; setReady(true); };
+    const img = new Image();
+    img.onload = () => { imgRef.current = img; setReady(true); };
     img.onerror = () => { setReady(true); };
     img.src = imageUrl || IMG_URL;
     return () => { img.onload = null; img.onerror = null; };
@@ -99,14 +115,30 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
 
     const grab = () => { for (let i = 60; i < POOL; i++) if (!pl[i].on) return pl[i]; return null; };
 
-    /* ── Image Dimensions ── */
+    /* ═══════════════════════════════════════════════════════════
+       🌀 CIRCULAR IMAGE — Perfect Circle Crop (FIXED)
+       ═══════════════════════════════════════════════════════════ */
     const getImg = () => {
       const img = imgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return null;
-      const dH = H * 0.62; const dW = dH * (img.naturalWidth / img.naturalHeight);
-      const cx = W / 2, cy = H / 2 - H * 0.02;
-      const maxR = Math.sqrt(dW * dW / 4 + dH * dH / 4) + 30;
-      return { img, cx, cy, dW, dH, maxR };
+      const aspect = img.naturalWidth / img.naturalHeight;
+
+      // Circle diameter — consistent on any screen
+      const diam = Math.min(W, H) * 0.46;
+      const clipR = diam / 2;
+
+      // Cover mode: image fills the circle completely
+      let dW: number, dH: number;
+      if (aspect >= 1) {
+        dH = diam; dW = diam * aspect;
+      } else {
+        dW = diam; dH = diam / aspect;
+      }
+
+      // Portrait images: shift up ~12% of excess so face is centered in circle
+      const yShift = aspect < 1 ? -(dH - diam) * 0.12 : 0;
+
+      return { img, cx: W / 2, cy: H / 2 + yShift, dW, dH, maxR: clipR };
     };
 
     /* ═══════════════════════════════════════════════════════════
@@ -182,6 +214,13 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       } catch (_) {}
     };
 
+    // Mobile audio resume
+    const handleTouch = () => {
+      try { if (audioRef.current?.state === 'suspended') audioRef.current.resume(); } catch (_) {}
+    };
+    window.addEventListener('click', handleTouch);
+    window.addEventListener('touchstart', handleTouch);
+
     /* ═══════════════════════════════════════════════════════════
        DRAW FUNCTIONS
        ═══════════════════════════════════════════════════════════ */
@@ -200,7 +239,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
     }
 
-    /* ── 0.0-2.0s: Lava Energy (3x bigger, darker) ── */
+    /* ── 0.0-2.5s: Lava Energy ── */
     function dFluid(t: number) {
       if (t > 2.5) return;
       const fade = t < 1.8 ? Math.min(t / 0.8, 1) : Math.max(0, 1 - (t - 1.8) / 0.7);
@@ -228,7 +267,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.fillStyle = cg; c!.fillRect(cx - cr, cy - cr, cr * 2, cr * 2);
     }
 
-    /* ── 0.5-2.0s: Floating "राम" Text ── */
+    /* ── 0.5-2.0s: Floating "राम" ── */
     function dRamText(t: number) {
       if (t < 0.5 || t > 2.0) return;
       const fade = t < 1.5 ? Math.min((t - 0.5) / 0.8, 1) : Math.max(0, 1 - (t - 1.5) / 0.5);
@@ -238,7 +277,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.fillStyle = '#ff9933';
       const positions = [
         { x: W * .25, y: H * .35 }, { x: W * .72, y: H * .28 },
-        { x: W * .18, y: H * .62 }, { x: W * .78, y: .58 },
+        { x: W * .18, y: H * .62 }, { x: W * .78, y: H * .58 },
         { x: W * .4, y: H * .75 }, { x: W * .6, y: H * .22 },
         { x: W * .35, y: H * .48 }, { x: W * .65, y: H * .7 },
       ];
@@ -249,14 +288,14 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.restore();
     }
 
-    /* ── 4.0-7.0s: Sun Rays Behind Image ── */
+    /* ── 4.0-6.5s: Sun Rays ── */
     function dRays(t: number) {
-      if (t < 4.0 || t > 7.0) return;
+      if (t < 4.0 || t > 6.5) return;
       const d = getImg(); if (!d) return;
       let al = 0;
       if (t < 5.0) al = Math.min((t - 4.0) / 1.0, 1) * 0.06;
       else if (t < 5.5) al = 0.06 + Math.min((t - 5.0) / 0.5, 1) * 0.06;
-      else al = 0.12 * Math.max(0, 1 - (t - 5.5) / 1.5);
+      else al = 0.12 * Math.max(0, 1 - (t - 5.5) / 1.0);
       const rl = Math.max(W, H) * 0.9;
       c!.save(); c!.globalAlpha = al;
       for (let i = 0; i < 16; i++) {
@@ -275,56 +314,91 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.restore();
     }
 
-    /* ── 2.0-5.0s: 3 Golden Rings Reveal ── */
+    /* ── ✨ 4.5-9.5s: Halo Glow Behind Circle ── */
+    function dHalo(t: number) {
+      if (t < 4.5 || t > 9.5) return;
+      const d = getImg(); if (!d) return;
+      const appear = Math.min((t - 4.5) / 1.0, 1);
+      const fade = t > 8.5 ? Math.max(0, 1 - (t - 8.5) / 1.0) : 1;
+      const al = eOC(appear) * fade;
+      const glowR = d.maxR * 1.4;
+      const g = c!.createRadialGradient(d.cx, d.cy, d.maxR * 0.7, d.cx, d.cy, Math.max(EP, glowR));
+      g.addColorStop(0, `rgba(255,180,50,${al * 0.18})`);
+      g.addColorStop(0.5, `rgba(255,120,20,${al * 0.06})`);
+      g.addColorStop(1, 'rgba(255,80,0,0)');
+      c!.fillStyle = g;
+      c!.fillRect(d.cx - glowR, d.cy - glowR, glowR * 2, glowR * 2);
+    }
+
+    /* ── 2.0-5.5s: Golden Rings Reveal ── */
     function dRings(t: number) {
       if (t < 2.0 || t > 5.5) return;
       const d = getImg(); if (!d) return;
       const rings = [
-        { delay: 0, color: '255,210,80', width: 2.5, speed: 1.0 },
-        { delay: 0.08, color: '255,140,30', width: 2.0, speed: 0.95 },
-        { delay: 0.16, color: '255,245,200', width: 1.5, speed: 0.9 },
+        { delay: 0, color: '255,210,80', width: 3.0, speed: 1.0 },
+        { delay: 0.06, color: '255,140,30', width: 2.5, speed: 0.95 },
+        { delay: 0.12, color: '255,245,200', width: 1.8, speed: 0.9 },
       ];
       for (const ring of rings) {
-        const rt = Math.max(0, Math.min(1, (t - 2.0 - ring.delay) / 3.0 * ring.speed));
+        const rt = Math.max(0, Math.min(1, (t - 2.0 - ring.delay) / 2.5 * ring.speed));
         if (rt <= 0) continue;
         const r = d.maxR * eIO(rt);
-        const fade = rt < 0.9 ? 1 : Math.max(0, 1 - (rt - 0.9) / 0.1);
+        const fade = rt < 0.85 ? 1 : Math.max(0, 1 - (rt - 0.85) / 0.15);
         c!.save();
         c!.beginPath(); c!.arc(d.cx, d.cy, Math.max(EP, r), 0, Math.PI * 2);
-        c!.strokeStyle = `rgba(${ring.color},${fade * 0.7})`;
-        c!.lineWidth = ring.width * (1 - rt * 0.5);
-        c!.shadowColor = `rgba(${ring.color},${fade * 0.5})`;
-        c!.shadowBlur = 20 * fade;
+        c!.strokeStyle = `rgba(${ring.color},${fade * 0.8})`;
+        c!.lineWidth = ring.width * (1 - rt * 0.4);
+        c!.shadowColor = `rgba(${ring.color},${fade * 0.6})`;
+        c!.shadowBlur = 25 * fade;
         c!.stroke();
         c!.restore();
       }
     }
 
-    /* ── 2.0-5.0s: Image with Ring Clip ── */
+    /* ═══════════════════════════════════════════════════════════
+       🌀 CIRCULAR IMAGE — Fixed: Perfect Circle + Golden Border
+       ═══════════════════════════════════════════════════════════ */
     function dImage(t: number) {
       const d = getImg(); if (!d) return;
       if (t < 2.0) return;
-      const rt = Math.max(0, Math.min(1, (t - 2.08) / 3.0 * 0.95));
+
+      // Reveal progress — synced to complete ~4.5s
+      const rt = Math.max(0, Math.min(1, (t - 2.06) / 2.4 * 0.97));
       const revealR = d.maxR * eIO(rt);
+
+      // Clip to perfect circle & draw image
       c!.save();
       c!.beginPath(); c!.arc(d.cx, d.cy, Math.max(EP, revealR), 0, Math.PI * 2); c!.clip();
-      // Slight zoom breath after fully revealed
-      let scale = 1;
-      if (t > 5.0 && t < 7.0) scale = 1 + Math.sin((t - 5.0) * 2.5) * 0.005;
-      let alpha = 1;
-      if (t > 7.0) alpha = Math.max(0, 1 - (t - 7.0) / 2.0);
-      const w = d.dW * scale, h = d.dH * scale;
-      c!.globalAlpha = alpha;
-      c!.drawImage(d.img, d.cx - w / 2, d.cy - h / 2, w, h);
+      c!.drawImage(d.img, d.cx - d.dW / 2, d.cy - d.dH / 2, d.dW, d.dH);
       c!.restore();
+
+      // Persistent golden double-ring border (appears after rings fade)
+      if (t > 4.5 && t < 9.5) {
+        const bAl = t < 5.0 ? (t - 4.5) / 0.5 : t > 9.0 ? (9.5 - t) / 0.5 : 1;
+        c!.save();
+        // Inner bright ring
+        c!.beginPath(); c!.arc(d.cx, d.cy, Math.max(EP, d.maxR + 1.5), 0, Math.PI * 2);
+        c!.strokeStyle = `rgba(255,200,60,${bAl * 0.65})`;
+        c!.lineWidth = 2.5;
+        c!.shadowColor = `rgba(255,180,40,${bAl * 0.5})`;
+        c!.shadowBlur = 14;
+        c!.stroke();
+        // Outer soft ring
+        c!.beginPath(); c!.arc(d.cx, d.cy, Math.max(EP, d.maxR + 6), 0, Math.PI * 2);
+        c!.strokeStyle = `rgba(255,180,40,${bAl * 0.2})`;
+        c!.lineWidth = 1;
+        c!.shadowBlur = 0;
+        c!.stroke();
+        c!.restore();
+      }
     }
 
-    /* ── 2.0-5.0s: Ring Edge Sparks ── */
+    /* ── 2.0-5.2s: Ring Edge Sparks ── */
     function sRingSparks(t: number) {
       if (t < 2.0 || t > 5.2 || Math.random() > 0.4) return;
       const d = getImg(); if (!d) return;
       const p = grab(); if (!p) return;
-      const rt = Math.max(0, Math.min(1, (t - 2.0) / 3.0));
+      const rt = Math.max(0, Math.min(1, (t - 2.0) / 2.5));
       const r = d.maxR * eIO(rt);
       const ang = Math.random() * Math.PI * 2;
       p.x = d.cx + Math.cos(ang) * r;
@@ -332,7 +406,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       const outAng = ang + (Math.random() - 0.5) * 0.5;
       const spd = 2 + Math.random() * 4;
       p.vx = Math.cos(outAng) * spd; p.vy = Math.sin(outAng) * spd;
-      p.sz = 1 + Math.random() * 2; p.ml = 0.5 + Math.random() * 0.5; p.life = p.ml;
+      p.sz = 1 + Math.random() * 2.5; p.ml = 0.5 + Math.random() * 0.5; p.life = p.ml;
       p.r = 255; p.g = 180 + Math.random() * 70 | 0; p.b = 30 + Math.random() * 50 | 0;
       p.a = 0.8; p.on = true; p.tp = 1;
     }
@@ -346,7 +420,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.fillRect(0, 0, W, H);
     }
 
-    /* ── 5.0-7.0s: Shockwave Ring ── */
+    /* ── 5.0-7.0s: Shockwave ── */
     function dShockwave(t: number) {
       const bt = Math.min((t - 5.0) / 2.0, 1); if (bt <= 0) return;
       const d = getImg(); if (!d) return;
@@ -361,7 +435,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.restore();
     }
 
-    /* ── 5.0-5.8s: Wind Streaks (पवन सेना) ── */
+    /* ── 5.0-5.8s: Wind Streaks ── */
     function dWind(t: number) {
       if (t < 5.0 || t > 5.8) return;
       const d = getImg(); if (!d) return;
@@ -369,9 +443,8 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       const fade = ft < 0.3 ? ft / 0.3 : Math.max(0, 1 - (ft - 0.3) / 0.7);
       c!.save(); c!.globalAlpha = fade * 0.6;
       c!.lineCap = 'round';
-      const streaks = 24;
-      for (let i = 0; i < streaks; i++) {
-        const edgeAng = (i / streaks) * Math.PI * 2;
+      for (let i = 0; i < 24; i++) {
+        const edgeAng = (i / 24) * Math.PI * 2;
         const startDist = Math.max(W, H) * 0.7;
         const progress = Math.min(ft * 1.5, 1);
         const sx = d.cx + Math.cos(edgeAng) * startDist * (1 - progress);
@@ -390,7 +463,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       if (t < 5.0 || t > 7.0) return;
       const d = getImg(); if (!d) return;
       const fade = t < 5.5 ? Math.min((t - 5.0) / 0.5, 1) : Math.max(0, 1 - (t - 5.5) / 1.5);
-      const r = Math.min(W, H) * 0.35;
+      const r = d.maxR * 1.2;
       const g = c!.createRadialGradient(d.cx, d.cy, 0, d.cx, d.cy, Math.max(EP, r));
       g.addColorStop(0, `rgba(255,160,40,${fade * 0.15})`);
       g.addColorStop(0.5, `rgba(255,100,20,${fade * 0.05})`);
@@ -398,9 +471,91 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
     }
 
-    /* ── 7.0-9.5s: "ॐ" Symbol ── */
+    /* ── Draw Spark Particles (tp:1) ── */
+    function dSparks() {
+      for (const p of pl) {
+        if (!p.on || p.tp !== 1) continue;
+        const lr = p.life / p.ml; const a = p.a * lr;
+        c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz * lr), 0, Math.PI * 2);
+        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       🌸 पुष्प वर्षा — Flower Petals Draw (tp:2)
+       ═══════════════════════════════════════════════════════════ */
+    function dFlowers() {
+      for (const p of pl) {
+        if (!p.on || p.tp !== 2) continue;
+        const lr = p.life / p.ml;
+        const fadeIn = Math.min(lr * 4, 1);
+        const fadeOut = lr < 0.12 ? lr / 0.12 : 1;
+        const a = p.a * fadeIn * fadeOut;
+
+        c!.save();
+        c!.translate(p.x, p.y);
+        c!.rotate(p.rot);
+        c!.globalAlpha = a;
+
+        const s = p.sz;
+
+        // Petal body — bezier curve leaf shape
+        c!.beginPath();
+        c!.moveTo(0, 0);
+        c!.bezierCurveTo(s * 0.4, -s * 0.5, s * 0.9, -s * 0.45, s, 0);
+        c!.bezierCurveTo(s * 0.9, s * 0.45, s * 0.4, s * 0.5, 0, 0);
+        c!.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
+        c!.fill();
+
+        // Inner highlight vein
+        c!.beginPath();
+        c!.moveTo(s * 0.12, 0);
+        c!.bezierCurveTo(s * 0.32, -s * 0.18, s * 0.58, -s * 0.15, s * 0.65, 0);
+        c!.bezierCurveTo(s * 0.58, s * 0.15, s * 0.32, s * 0.18, s * 0.12, 0);
+        c!.fillStyle = 'rgba(255,255,255,0.22)';
+        c!.fill();
+
+        // Subtle darker edge
+        c!.beginPath();
+        c!.moveTo(0, 0);
+        c!.bezierCurveTo(s * 0.4, -s * 0.5, s * 0.9, -s * 0.45, s, 0);
+        c!.bezierCurveTo(s * 0.9, s * 0.45, s * 0.4, s * 0.5, 0, 0);
+        c!.strokeStyle = `rgba(${Math.max(0, p.r - 40)},${Math.max(0, p.g - 30)},${Math.max(0, p.b - 20)},0.3)`;
+        c!.lineWidth = 0.5;
+        c!.stroke();
+
+        c!.restore();
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       🌸 पुष्प वर्षा — Flower Petals Spawn (tp:2)
+       ═══════════════════════════════════════════════════════════ */
+    function sFlowers(t: number) {
+      if (t < 5.2 || t > 7.8 || Math.random() > 0.4) return;
+      const p = grab(); if (!p) return;
+
+      // Spawn from top — spread across full width
+      const spread = W * 0.95;
+      p.x = W / 2 + (Math.random() - 0.5) * spread;
+      p.y = -12 - Math.random() * 45;
+      p.vx = (Math.random() - 0.5) * 0.5;
+      p.vy = 0.7 + Math.random() * 1.3;
+      p.sz = 4 + Math.random() * 7;
+      p.ml = 2.8 + Math.random() * 2.2;
+      p.life = p.ml;
+      p.rot = Math.random() * Math.PI * 2;
+      p.rs = (Math.random() - 0.5) * 0.025;
+
+      const col = FLOWER_COLORS[Math.random() * FLOWER_COLORS.length | 0];
+      p.r = col.r; p.g = col.g; p.b = col.b;
+      p.a = 0.6 + Math.random() * 0.4;
+      p.on = true; p.tp = 2;
+    }
+
+    /* ── 7.5-9.5s: "ॐ" Symbol ── */
     function dOm(t: number) {
-      const ps = 7.0, ft = Math.min((t - ps) / 1.0, 1); if (ft <= 0) return;
+      const ps = 7.5, ft = Math.min((t - ps) / 1.0, 1); if (ft <= 0) return;
       const fi = eOC(ft);
       const mainY = H * 0.55;
       const omY = mainY - Math.min(W * .07, H * .08, 52) * 1.5;
@@ -419,9 +574,9 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.restore();
     }
 
-    /* ── 7.3-9.5s: Kinetic Text — "जय हनुमान" + श्लोक ── */
+    /* ── 7.8-9.5s: "जय हनुमान" + श्लोक ── */
     function dText(t: number) {
-      const ps = 7.3, ft = Math.min((t - ps) / 1.5, 1); if (ft <= 0) return;
+      const ps = 7.8, ft = Math.min((t - ps) / 1.5, 1); if (ft <= 0) return;
       const fi = eOC(ft);
       const mainY = H * 0.55;
       c!.save(); c!.globalAlpha = fi;
@@ -430,11 +585,9 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       const ts = Math.min(W * .075, H * .09, 64);
       c!.font = `800 ${ts}px 'Noto Sans Devanagari','Mangal','Devanagari Sangam MN',sans-serif`;
 
-      // Crisp offset shadow
       c!.fillStyle = 'rgba(0,0,0,0.75)';
       c!.fillText('जय हनुमान', W / 2 + 2, mainY + 3);
 
-      // Iridescent gold gradient
       const tw = c!.measureText('जय हनुमान').width;
       const hue = Math.sin(t * 2.5) * 0.15;
       const tg = c!.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
@@ -448,8 +601,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       tg.addColorStop(1, `hsl(${32 - hue * 25},85%,22%)`);
       c!.fillStyle = tg; c!.fillText('जय हनुमान', W / 2, mainY);
 
-      // Shlok
-      const ss = Math.min(W * .022, H * .026, 17);
+      const ss = Math.min(W * .024, H * .028, 17);
       c!.font = `400 ${ss}px 'Nirmala UI','Devanagari Sangam MN','Mangal',sans-serif`;
       const shY = mainY + ts * 1.2;
       c!.fillStyle = 'rgba(0,0,0,0.8)';
@@ -465,7 +617,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.restore();
     }
 
-    /* ── 9.5-10.5s: Golden-Rimmed Portal Fade ── */
+    /* ── 9.5-10.5s: Golden Portal Fade ── */
     function dPortal(t: number) {
       const ft = Math.min((t - 9.5) / 1.0, 1); if (ft <= 0) return;
       const cx = W / 2, cy = H / 2;
@@ -473,7 +625,6 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       const r = maxR * eOE(ft);
       const wa = eOC(ft) * 0.92;
 
-      // White-gold fill
       c!.save(); c!.beginPath();
       c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2); c!.clip();
       const pg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r));
@@ -484,7 +635,6 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       c!.fillStyle = pg; c!.fillRect(0, 0, W, H);
       c!.restore();
 
-      // Golden rim
       if (ft < 0.8) {
         const rimFade = (1 - ft / 0.8);
         c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
@@ -492,8 +642,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
         c!.lineWidth = 5 * rimFade;
         c!.shadowColor = `rgba(255,200,60,${rimFade * 0.4})`;
         c!.shadowBlur = 15 * rimFade;
-        c!.stroke();
-        c!.shadowBlur = 0;
+        c!.stroke(); c!.shadowBlur = 0;
       }
     }
 
@@ -510,17 +659,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       }
     }
 
-    /* ── Draw Spark Particles ── */
-    function dSparks() {
-      for (const p of pl) {
-        if (!p.on || p.tp !== 1) continue;
-        const lr = p.life / p.ml; const a = p.a * lr;
-        c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz * lr), 0, Math.PI * 2);
-        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
-      }
-    }
-
-    /* ── Spawn: Fluid Fire Particles (0-2s) ── */
+    /* ── Spawn: Fluid Fire (0-2.2s) ── */
     function sFluid(t: number) {
       if (t > 2.2 || Math.random() > 0.35) return;
       const p = grab(); if (!p) return;
@@ -549,18 +688,29 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       p.a = 0.9; p.on = true; p.tp = 1;
     }
 
-    /* ── Particle Update ── */
+    /* ═══════════════════════════════════════════════════════════
+       PARTICLE UPDATE — with flower sway physics
+       ═══════════════════════════════════════════════════════════ */
     function upd(dt: number) {
       for (const p of pl) {
         if (!p.on || p.tp === 0) continue;
         p.x += p.vx; p.y += p.vy; p.life -= dt; p.rot += p.rs;
-        if (p.tp === 1) { p.vx *= 0.97; p.vy *= 0.97; p.vy += 0.02; }
+        if (p.tp === 1) {
+          p.vx *= 0.97; p.vy *= 0.97; p.vy += 0.02;
+        }
+        if (p.tp === 2) {
+          // 🌸 Gentle swaying like real falling petals
+          p.vx += Math.sin(p.life * 2.5 + p.rot * 8) * 0.012;
+          p.vx *= 0.992;
+          p.vy *= 0.999;
+          p.vy = Math.max(p.vy, 0.35); // minimum fall speed
+        }
         if (p.life <= 0 || p.y > H + 60 || p.x < -100 || p.x > W + 100) p.on = false;
       }
     }
 
     /* ═══════════════════════════════════════════════════════════
-       RENDER LOOP
+       RENDER LOOP — Synced Timeline
        ═══════════════════════════════════════════════════════════ */
     let lt = 0;
     const loop = (ts: number) => {
@@ -569,6 +719,7 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       const dt = Math.min((ts - lt) / 1000, .05); lt = ts;
 
       c!.save();
+
       // Screen shake at impact
       if (t >= 5.0 && t < 5.7) {
         const si = Math.max(0, 1 - (t - 5.0) / 0.7);
@@ -582,27 +733,30 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       playAt(5, aImpact, t);
       playAt(5, aBell, t);
 
-      // Draw order (back to front)
+      /* ── DRAW ORDER (back → front) ── */
       dBg();
-      dFluid(t);
-      dRamText(t);
-      dRays(t);
-      dRings(t);
-      dImage(t);
-      dFlash(t);
-      dShockwave(t);
-      dWind(t);
-      dResidual(t);
-      dSparks();
-      dOm(t);
-      dText(t);
-      dPortal(t);
-      dDust(t);
+      dFluid(t);          // 0.0-2.5s  🔥 Lava energy
+      dRamText(t);        // 0.5-2.0s  राम floating
+      dRays(t);           // 4.0-6.5s  ☀️ Sun rays
+      dHalo(t);           // 4.5-9.5s  ✨ Circle halo glow
+      dRings(t);          // 2.0-5.5s  💍 Golden rings expand
+      dImage(t);          // 2.0-9.5s  🌀 Circular image + border
+      dFlash(t);          // 5.0-5.5s  💥 Impact flash
+      dShockwave(t);      // 5.0-7.0s  🌊 Shockwave
+      dWind(t);           // 5.0-5.8s  💨 Wind streaks
+      dResidual(t);       // 5.0-7.0s  🟠 Residual glow
+      dSparks();          // ✨ Draw spark particles
+      dFlowers();         // 5.2-9.5s  🌸 पुष्प वर्षा (in front of image)
+      dOm(t);             // 7.5-9.5s  ॐ symbol
+      dText(t);           // 7.8-9.5s  जय हनुमान + श्लोक
+      dPortal(t);         // 9.5-10.5s 🚪 Portal fade
+      dDust(t);           // Always    🌫️ Ambient dust
 
-      // Spawn
-      sFluid(t);
-      sRingSparks(t);
-      sImpactSparks(t);
+      /* ── SPAWN ORDER ── */
+      sFluid(t);          // 0-2.2s
+      sRingSparks(t);     // 2.0-5.2s
+      sImpactSparks(t);   // 5.0-5.5s
+      sFlowers(t);        // 5.2-7.8s 🌸
 
       upd(dt);
       c!.restore();
@@ -615,13 +769,15 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
     return () => {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
+      window.removeEventListener('click', handleTouch);
+      window.removeEventListener('touchstart', handleTouch);
       if (audioRef.current) { try { audioRef.current.close(); } catch (_) {} }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
   /* ═══════════════════════════════════════════════════════════════
-     🪔 LOADING SCREEN — Saffron Devotional Aura
+     🪔 LOADING SCREEN
      ═══════════════════════════════════════════════════════════════ */
   if (!ready) {
     return (
