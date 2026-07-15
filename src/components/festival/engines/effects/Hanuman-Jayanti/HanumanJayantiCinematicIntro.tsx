@@ -53,9 +53,8 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
 
   /* ─── 🖼️ IMAGE PRELOAD ─── */
   useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => { imgRef.current = img; setReady(true); };
+    const img = new Image(); 
+   img.onload = () => { imgRef.current = img; setReady(true); };
     img.onerror = () => { setReady(true); };
     img.src = imageUrl || IMG_URL;
     return () => { img.onload = null; img.onerror = null; };
@@ -590,7 +589,6 @@ export default function HanumanJayantiIntro({ onComplete, imageUrl }: Props) {
       dRays(t);
       dRings(t);
       dImage(t);
-      dRingSparks(t);
       dFlash(t);
       dShockwave(t);
       dWind(t);
