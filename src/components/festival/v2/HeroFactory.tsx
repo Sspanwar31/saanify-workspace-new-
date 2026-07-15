@@ -11,6 +11,8 @@ import ChristmasHero from '../heroes/ChristmasHero';
 import MoonHero from '../heroes/MoonHero';
 import SunGlow from '../engines/effects/SunGlow'; 
 import RakhiHero from '../heroes/RakhiHero'; // 🚀 नया: राखी हीरो इम्पोर्ट करें
+import HanumanHero from '../heroes/HanumanHero'; // 🚀 NAYA: HanumanHero Import kiya
+
 
 import Crystal2027Hero from '../heroes/Crystal2027Hero'; // 🚀 
 // 🚀 नाम सुधार दिया गया है (VALENTINESDAY की जगह GlassmorphicHeartHero किया गया)
@@ -40,7 +42,7 @@ const ComponentMap: any = {
   'REAL_BONFIRE': <span className="text-[110px] drop-shadow-2xl">🔥</span>,
   'SHIVA_POWER': <span className="text-[110px] drop-shadow-2xl">🔱</span>,
   'RAM_DHARMA': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
-  'HANUMAN_GADA': <span className="text-[110px] drop-shadow-2xl">🪓</span>, 
+  'HANUMAN_GADA': <HanumanHero />, // 🚀 UPDATED: Ab emoji ki jagah custom image component render hoga
   'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
   'SUN_ARGHYA': <SunGlow />, 
   'SUN_GOD': <SunGlow />,
