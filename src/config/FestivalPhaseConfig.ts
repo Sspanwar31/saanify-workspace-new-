@@ -139,7 +139,17 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
-  // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
+  // ━━━ HANUMAN_JAYANTI (🚀 10.5s Epic & Powerful Cinematic Timeline Sync) ━━━
+  HANUMAN_JAYANTI: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 2000,     // 2.0s: लावा ऊर्जा का चक्कर और "राम" नाम का कोमल तैरना (0-2.0s)
+      SHOOTING: 7500,  // 7.5s: सोने की अंगूठियां, हनुमान जी का इम्पैक्ट, गेंदे की भारी वर्षा और श्लोक (2.0s - 9.5s)
+      HANDOVER: 1000   // 1.0s: कोमल स्वर्णिम पोर्टल का व्हाइट-आउट हैंडओवर (9.5s - 10.5s)
+    }
+  },
+
+    // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
