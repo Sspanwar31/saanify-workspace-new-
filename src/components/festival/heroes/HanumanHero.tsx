@@ -16,7 +16,7 @@ export default function HanumanHero() {
   return (
     <div className="relative flex flex-col items-center justify-center w-full h-full min-h-[260px] py-1 select-none">
 
-      {/* ═══ Layer 0: Deep background aura — breathes WITH frame ═══ */}
+      {/* ═══ Layer 0: Deep background aura ═══ */}
       <div
         className="absolute w-[200px] h-[220px] rounded-full pointer-events-none"
         style={{
@@ -30,7 +30,7 @@ export default function HanumanHero() {
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="absolute w-[2px] h-[2px] rounded-full bg-amber-400/40"
+            className="absolute w-[2px] h-[2px] rounded-full bg-amber-400/30"
             style={{
               left: `${25 + i * 13}%`,
               top: `${20 + (i % 2) * 20}%`,
@@ -40,7 +40,7 @@ export default function HanumanHero() {
         ))}
       </div>
 
-      {/* ═══ Layer 1: Frame + Image — ONE visual unit ═══ */}
+      {/* ═══ Layer 1: Frame + Image (Unified Art Piece) ═══ */}
       <div
         ref={frameRef}
         className="relative z-10 flex flex-col items-center"
@@ -51,7 +51,7 @@ export default function HanumanHero() {
         }}
       >
 
-        {/* ── Golden Frame Shell (Size optimized for better comfort) ── */}
+        {/* ── Golden Frame Shell ── */}
         <div
           className="relative p-[2.5px] rounded-t-full rounded-b-[16px]"
           style={{
@@ -61,36 +61,36 @@ export default function HanumanHero() {
           }}
         >
 
-          {/* ── Highlight strip (top shine) ── */}
+          {/* Highlight strip (top shine) */}
           <div
             className="absolute top-[1px] left-[15%] right-[15%] h-[1px] rounded-full pointer-events-none"
             style={{ background: 'linear-gradient(90deg, transparent, rgba(255,245,200,0.7), transparent)' }}
           />
 
-          {/* ── Inner Dark Chamber (Reduced size to fit everything gracefully) ── */}
+          {/* ── Inner Dark Chamber (Image touches the borders completely) ── */}
           <div
-            className="relative overflow-hidden rounded-t-full rounded-b-[12px] w-[130px] h-[166px]"
-            style={{ background: 'linear-gradient(180deg, #0d0e16 0%, #0a0b12 40%, #080910 100%)' }}
+            className="relative overflow-hidden rounded-t-full rounded-b-[12px] w-[136px] h-[176px]"
+            style={{ background: '#0d0e16' }}
           >
 
-            {/* Radial warm glow behind image */}
+            {/* Warm inner spotlight glow */}
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: 'radial-gradient(ellipse at 50% 38%, rgba(255,180,50,0.12) 0%, rgba(200,100,20,0.04) 40%, transparent 68%)',
+                background: 'radial-gradient(circle at 50% 40%, rgba(255,180,50,0.15) 0%, transparent 70%)',
               }}
             />
 
-            {/* The Image — Added comfortable scale to prevent left-right and top-bottom touch */}
+            {/* The Image — Set to object-cover & scale-100 to fuse with the frame */}
             {IMAGE_PATH ? (
               <img
                 src={IMAGE_PATH}
                 alt="हनुमान जी"
                 draggable={false}
                 className={`
-                  relative z-[1] w-full h-full object-contain
+                  relative z-[1] w-full h-full object-cover
                   transition-all duration-[1.4s] ease-out
-                  ${loaded ? 'opacity-100 scale-[0.85]' : 'opacity-0 scale-[0.78]'}
+                  ${loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.95]'}
                 `}
                 onLoad={() => setLoaded(true)}
                 onError={(e) => {
@@ -99,51 +99,33 @@ export default function HanumanHero() {
               />
             ) : null}
 
-            {/* ═══ Edge Soft Fades ═══ */}
-            {/* Top fade */}
+            {/* ═══ Subtle Top/Bottom Fade (Only to blend arch tips smoothly) ═══ */}
             <div
               className="absolute top-0 left-0 right-0 pointer-events-none z-[2]"
               style={{
-                height: '18%',
-                background: 'linear-gradient(180deg, #0d0e16 0%, rgba(13,14,22,0.5) 60%, transparent 100%)',
+                height: '10%',
+                background: 'linear-gradient(180deg, rgba(13,14,22,0.4) 0%, transparent 100%)',
               }}
             />
-            {/* Bottom fade */}
             <div
               className="absolute bottom-0 left-0 right-0 pointer-events-none z-[2]"
               style={{
-                height: '22%',
-                background: 'linear-gradient(0deg, #080910 0%, rgba(8,9,16,0.6) 50%, transparent 100%)',
-              }}
-            />
-            {/* Left edge fade (Reduced to show more mantra details) */}
-            <div
-              className="absolute top-0 bottom-0 left-0 pointer-events-none z-[2]"
-              style={{
-                width: '10%',
-                background: 'linear-gradient(90deg, #0d0e16 0%, transparent 100%)',
-              }}
-            />
-            {/* Right edge fade (Reduced) */}
-            <div
-              className="absolute top-0 bottom-0 right-0 pointer-events-none z-[2]"
-              style={{
-                width: '10%',
-                background: 'linear-gradient(270deg, #0d0e16 0%, transparent 100%)',
+                height: '10%',
+                background: 'linear-gradient(0deg, rgba(8,9,16,0.4) 0%, transparent 100%)',
               }}
             />
 
-            {/* Inner golden rim */}
+            {/* Inner golden rim shadow */}
             <div
               className="absolute inset-0 rounded-t-full rounded-b-[12px] pointer-events-none z-[3]"
               style={{
-                boxShadow: 'inset 0 0 20px rgba(245,180,50,0.08)',
+                boxShadow: 'inset 0 0 15px rgba(245,180,50,0.05)',
               }}
             />
           </div>
         </div>
 
-        {/* ═══ MANTRA — Optimized spacing & High Contrast ═══ */}
+        {/* ═══ MANTRA ═══ */}
         <div className="relative z-20 -mt-[4px] text-center px-6">
           {/* Golden connector */}
           <div className="flex items-center justify-center gap-1.5 mb-1.5">
@@ -158,7 +140,7 @@ export default function HanumanHero() {
             <div className="w-4 h-px bg-gradient-to-l from-transparent to-amber-400/40" />
           </div>
 
-          {/* Mantra lines (High Contrast & Bigger font) */}
+          {/* Mantra lines */}
           <div
             className="space-y-[4px]"
             style={{
@@ -169,7 +151,7 @@ export default function HanumanHero() {
               className="text-[10.5px] leading-[1.3] font-semibold tracking-wide"
               style={{
                 fontFamily: "'Nirmala UI','Devanagari Sangam MN','Mangal',sans-serif",
-                color: '#ffedd5', // Warm high-contrast peach white
+                color: '#ffedd5',
                 textShadow: '0 0 12px rgba(245,158,11,0.6), 0 2px 4px rgba(0,0,0,0.95)',
               }}
             >
