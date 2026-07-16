@@ -115,7 +115,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     };
     rsz(); window.addEventListener('resize', rsz);
 
-    /* ─── 🎞️ Film Grain Texture ─── */
+    /* ─── Film Grain Texture ─── */
     const grainCv = document.createElement('canvas');
     grainCv.width = 256; grainCv.height = 256;
     const gc = grainCv.getContext('2d')!;
@@ -144,7 +144,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
     ];
 
-    /* 🌟 Temple Arch Path Generator */
+    /* Temple Arch Path Generator */
     const drawArchPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rBottom: number) => {
       const rTop = w / 2;
       ctx.beginPath();
@@ -273,7 +273,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         const g = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, p.sz));
         g.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a})`);
         g.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
-        c!.getContext('2d')!.fillStyle = g; c!.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
+        c!.fillStyle = g; c!.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
       }
     }
 
@@ -433,10 +433,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       🖼️ HANUMAN IMAGE — TEMPLE ARCH FRAME (Organic Bloom Reveal)
-       Frame grows from center with its arch shape intact,
-       so it looks like the frame emerges from within itself.
-       Image is properly contained — no separate/stitched feel.
+       HANUMAN IMAGE — TEMPLE ARCH FRAME (Organic Bloom Reveal)
        ═══════════════════════════════════════════════════════════════ */
     function dHanuman(t: number) {
       const img = hanumanImgRef.current;
@@ -445,22 +442,21 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       const cx = W / 2, cy = H / 2 - H * 0.015;
       const sc = Math.min(W, H);
 
-      /* ── Frame geometry — proportional rounded corners ── */
       const fw = sc * 0.30;
       const fh = fw * 1.35;
-      const br = fw * 0.07; // ~7% of width — always properly rounded
+      const br = fw * 0.07;
 
-      let rp = 0;   // reveal progress (scale factor)
-      let al = 1;    // alpha
-      let gi = 0;    // bloom glow intensity
+      let rp = 0;
+      let al = 1;
+      let gi = 0;
 
       if (t >= 1.5 && t < 4.5) {
         const raw = Math.min((t - 1.5) / 3, 1);
-        rp = eSpring(raw);                       // Spring bloom — overshoots then settles
-        al = Math.min(raw * 3, 1);               // Quick fade-in
-        gi = Math.max(0, 1 - raw * 2.2) * 0.55; // Strong glow at birth, fades fast
+        rp = eSpring(raw);
+        al = Math.min(raw * 3, 1);
+        gi = Math.max(0, 1 - raw * 2.2) * 0.55;
       } else if (t >= 4.5 && t < 7.5) {
-        rp = 1 + Math.sin(t * 2.5) * 0.004;     // Subtle living breath
+        rp = 1 + Math.sin(t * 2.5) * 0.004;
         al = 1;
       } else if (t >= 7.5) {
         const d = Math.min((t - 7.5) / 1.2, 1);
@@ -473,10 +469,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.save();
       c!.globalAlpha = al;
 
-      /* ═══ KEY: Scale from center so arch shape is always intact ═══
-         The frame never "appears" — it GROWS from a point,
-         maintaining its rounded arch contour at every size.
-         This makes it look like it's blooming from within itself. */
       c!.translate(cx, cy);
       c!.scale(rp, rp);
       c!.translate(-cx, -cy);
@@ -484,7 +476,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       const fx = cx - fw / 2;
       const fy = cy - fh / 2;
 
-      /* ── LAYER 0: Birth glow (frame emerging energy) ── */
       if (gi > 0) {
         const gg = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.15), cx, cy, Math.max(EP, fw * 0.95));
         gg.addColorStop(0, `rgba(255,195,60,${gi * 0.38})`);
@@ -494,14 +485,12 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         c!.fillRect(fx - fw * 0.6, fy - fh * 0.35, fw * 2.2, fh * 1.7);
       }
 
-      /* ── LAYER 0.5: Persistent ambient halo (integrates frame into scene) ── */
       const ah = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.42), cx, cy, Math.max(EP, fw * 0.78));
       ah.addColorStop(0, 'rgba(255,175,45,0.035)');
       ah.addColorStop(1, 'rgba(255,130,25,0)');
       c!.fillStyle = ah;
       c!.fillRect(fx - fw * 0.35, fy - fh * 0.18, fw * 1.7, fh * 1.36);
 
-      /* ── LAYER 1: Drop shadow (depth) ── */
       c!.save();
       c!.shadowColor = 'rgba(245,158,11,0.48)';
       c!.shadowBlur = 44;
@@ -511,12 +500,10 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.fill();
       c!.restore();
 
-      /* ── LAYER 2: Image clipped inside arch frame ── */
       c!.save();
       drawArchPath(c!, fx, fy, fw, fh, br);
       c!.clip();
 
-      // Warm inner ambient glow behind the image
       const ig = c!.createRadialGradient(cx, cy - fh * 0.08, 0, cx, cy, Math.max(EP, fw * 0.72));
       ig.addColorStop(0, 'rgba(255,180,50,0.13)');
       ig.addColorStop(0.55, 'rgba(255,120,30,0.04)');
@@ -524,7 +511,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.fillStyle = ig;
       c!.fillRect(fx, fy, fw, fh);
 
-      // Object-cover image calculation
       const imgR = img.naturalWidth / img.naturalHeight;
       const frmR = fw / fh;
       let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
@@ -532,30 +518,26 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       else { sh = img.naturalWidth / frmR; sy = (img.naturalHeight - sh) / 2; }
       c!.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
 
-      // Top soft fade (blends image edge into frame border)
       const tf = c!.createLinearGradient(0, fy, 0, fy + fh * 0.1);
       tf.addColorStop(0, 'rgba(10,11,20,0.55)');
       tf.addColorStop(1, 'rgba(10,11,20,0)');
       c!.fillStyle = tf;
       c!.fillRect(fx, fy, fw, fh * 0.1);
 
-      // Bottom soft fade
       const bf = c!.createLinearGradient(0, fy + fh, 0, fy + fh * 0.9);
       bf.addColorStop(0, 'rgba(8,9,16,0.48)');
       bf.addColorStop(1, 'rgba(8,9,16,0)');
       c!.fillStyle = bf;
       c!.fillRect(fx, fy + fh * 0.9, fw, fh * 0.1);
 
-      // Inner vignette shadow (gives frame depth — image recedes inside)
       const iv = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.22), cx, cy, Math.max(EP, fw * 0.54));
       iv.addColorStop(0, 'rgba(0,0,0,0)');
       iv.addColorStop(1, 'rgba(0,0,0,0.2)');
       c!.fillStyle = iv;
       c!.fillRect(fx, fy, fw, fh);
 
-      c!.restore(); // end clip
+      c!.restore();
 
-      /* ── LAYER 3: Outer golden border (ornate temple frame) ── */
       c!.save();
       const og = c!.createLinearGradient(fx, fy - fw * 0.05, fx, fy + fh);
       og.addColorStop(0, '#f5e6a3');
@@ -572,7 +554,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.stroke();
       c!.restore();
 
-      /* ── LAYER 4: Inner golden border (double-frame depth) ── */
       const ins = 8;
       c!.save();
       const ig2 = c!.createLinearGradient(fx, fy, fx, fy + fh);
@@ -585,7 +566,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.stroke();
       c!.restore();
 
-      /* ── LAYER 5: Specular highlight shine on outer border ── */
       c!.save();
       const sg = c!.createLinearGradient(fx + fw * 0.06, 0, fx + fw * 0.94, 0);
       sg.addColorStop(0, 'rgba(255,250,215,0)');
@@ -599,13 +579,11 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.stroke();
       c!.restore();
 
-      /* ── LAYER 6: Decorative top finial (crown jewel at arch peak) ── */
       const fs = fw * 0.034;
       c!.save();
       c!.fillStyle = '#ffd700';
       c!.shadowColor = 'rgba(255,215,0,0.7)';
       c!.shadowBlur = 10;
-      // Diamond shape
       c!.beginPath();
       c!.moveTo(cx, fy - fs * 2.5);
       c!.lineTo(cx + fs * 0.85, fy - fs * 0.3);
@@ -613,15 +591,13 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.lineTo(cx - fs * 0.85, fy - fs * 0.3);
       c!.closePath();
       c!.fill();
-      // Base circle
       c!.beginPath();
       c!.arc(cx, fy + fs * 0.25, Math.max(EP, fs * 0.48), 0, Math.PI * 2);
       c!.fill();
       c!.restore();
 
-      /* ── LAYER 7: Side junction ornament dots ── */
       const dr = fw * 0.01;
-      const jy = fy + fw / 2; // Where arch curve meets straight sides
+      const jy = fy + fw / 2;
       c!.save();
       c!.fillStyle = '#ffd700';
       c!.shadowColor = 'rgba(255,215,0,0.5)';
@@ -634,23 +610,19 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.fill();
       c!.restore();
 
-      /* ── LAYER 7.5: Bottom corner ornament dots ── */
       c!.save();
       c!.fillStyle = 'rgba(255,215,0,0.6)';
       c!.shadowColor = 'rgba(255,215,0,0.35)';
       c!.shadowBlur = 4;
       const cdr = dr * 0.8;
-      // Bottom-left
       c!.beginPath();
       c!.arc(fx + br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2);
       c!.fill();
-      // Bottom-right
       c!.beginPath();
       c!.arc(fx + fw - br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2);
       c!.fill();
       c!.restore();
 
-      /* ── LAYER 8: Shimmer sweep (4.5s – 7.5s only) ── */
       if (t >= 4.5 && t < 7.5) {
         const st = (t - 5.0) / 1.0;
         if (st >= 0 && st <= 1) {
@@ -671,7 +643,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         }
       }
 
-      c!.restore(); // end globalAlpha
+      c!.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -894,7 +866,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       📝 TEXT
+       TEXT
        ═══════════════════════════════════════════════════════════════ */
     function dText(t: number) {
       const ps = 8.7;
@@ -966,16 +938,16 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         c!.globalAlpha = mFi;
 
         c!.fillStyle = 'rgba(0,0,0,0.8)';
-        c!.fillText('जय हनुमान ज्ञान गुण सागर।', W / 2 + 1, l1y + 1.2);
-        c!.fillText('जय कपीस तिहुँ लोक उजागर॥', W / 2 + 1, l2y + 1.2);
+        c!.fillText('\u091C\u092F \u0939\u0928\u0941\u092E\u093E\u0928 \u091C\u094D\u091E\u093E\u0928 \u0917\u0941\u0923 \u0938\u093E\u0917\u0930\u0964', W / 2 + 1, l1y + 1.2);
+        c!.fillText('\u091C\u092F \u0915\u092A\u0940\u0938 \u0924\u093F\u0939\u0941\u0901 \u0932\u094B\u0915 \u0909\u091C\u093E\u0917\u0930\u0965', W / 2 + 1, l2y + 1.2);
 
         const shg = c!.createLinearGradient(W / 2 - ss * 10, 0, W / 2 + ss * 10, 0);
         shg.addColorStop(0, '#856314'); shg.addColorStop(.25, '#d4a020');
         shg.addColorStop(.5, '#ffd700'); shg.addColorStop(.75, '#d4a020');
         shg.addColorStop(1, '#856314');
         c!.fillStyle = shg;
-        c!.fillText('जय हनुमान ज्ञान गुण सागर।', W / 2, l1y);
-        c!.fillText('जय कपीस तिहुँ लोक उजागर॥', W / 2, l2y);
+        c!.fillText('\u091C\u092F \u0939\u0928\u0941\u092E\u093E\u0928 \u091C\u094D\u091E\u093E\u0928 \u0917\u0941\u0923 \u0938\u093E\u0917\u0930\u0964', W / 2, l1y);
+        c!.fillText('\u091C\u092F \u0915\u092A\u0940\u0938 \u0924\u093F\u0939\u0941\u0901 \u0932\u094B\u0915 \u0909\u091C\u093E\u0917\u0930\u0965', W / 2, l2y);
       }
 
       c!.restore();
@@ -1097,10 +1069,10 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         <div className="relative flex flex-col items-center">
           <div className="absolute rounded-full" style={{ width: 'min(35vw, 200px)', height: 'min(35vw, 200px)', background: 'radial-gradient(circle, rgba(255,200,50,0.06) 0%, transparent 70%)', animation: 'omBreath 2.4s ease-in-out infinite' }} />
           <div className="absolute rounded-full" style={{ width: 'min(22vw, 130px)', height: 'min(22vw, 130px)', background: 'radial-gradient(circle, rgba(255,210,80,0.1) 0%, transparent 60%)', animation: 'omBreath 2.4s ease-in-out infinite 0.3s' }} />
-          <div className="relative select-none" style={{ fontSize: 'clamp(4rem, 12vw, 7rem)', lineHeight: 1, color: '#ffd700', textShadow: '0 0 20px rgba(255,215,0,0.8), 0 0 50px rgba(255,190,50,0.5), 0 0 100px rgba(255,170,30,0.25), 0 0 160px rgba(255,150,20,0.1)', animation: 'omBreath 2.4s ease-in-out infinite', fontFamily: "'Noto Sans Devanagari', 'Devanagari Sangam MN', 'Mangal', serif" }}>ॐ</div>
+          <div className="relative select-none" style={{ fontSize: 'clamp(4rem, 12vw, 7rem)', lineHeight: 1, color: '#ffd700', textShadow: '0 0 20px rgba(255,215,0,0.8), 0 0 50px rgba(255,190,50,0.5), 0 0 100px rgba(255,170,30,0.25), 0 0 160px rgba(255,150,20,0.1)', animation: 'omBreath 2.4s ease-in-out infinite', fontFamily: "'Noto Sans Devanagari', 'Devanagari Sangam MN', 'Mangal', serif" }}>&#x0950;</div>
         </div>
         <div className="absolute flex flex-col items-center gap-3" style={{ bottom: '10%' }}>
-          <p className="select-none tracking-[0.3em]" style={{ fontSize: 'clamp(0.6rem, 1.5vw, 0.8rem)', color: 'rgba(255,200,80,0.5)', animation: 'textPulse 2.4s ease-in-out infinite' }}>हनुमान जयंती आरती प्रारंभ हो रही है</p>
+          <p className="select-none tracking-[0.3em]" style={{ fontSize: 'clamp(0.6rem, 1.5vw, 0.8rem)', color: 'rgba(255,200,80,0.5)', animation: 'textPulse 2.4s ease-in-out infinite' }}>&#x0939;&#x0928;&#x0941;&#x092E;&#x093E;&#x0928; &#x091C;&#x092F;&#x0902;&#x0924;&#x0940; &#x0906;&#x0930;&#x0924;&#x0940; &#x092A;&#x094D;&#x0930;&#x093E;&#x0930;&#x0902;&#x092D; &#x0939;&#x094B; &#x0930;&#x0939;&#x0940; &#x0939;&#x0948;</p>
           <div className="flex items-center gap-2">
             <div className="h-px" style={{ width: 'clamp(40px, 10vw, 80px)', background: 'linear-gradient(to right, transparent, rgba(255,190,60,0.3), transparent)' }} />
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ffd700', boxShadow: '0 0 8px rgba(255,215,0,0.6), 0 0 20px rgba(255,200,50,0.3)', animation: 'dotPulse 1.8s ease-in-out infinite' }} />
