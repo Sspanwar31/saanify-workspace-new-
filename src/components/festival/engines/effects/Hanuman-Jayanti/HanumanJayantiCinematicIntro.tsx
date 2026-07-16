@@ -432,66 +432,90 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.restore();
     }
 
-    /* ═══════════════════════════════════════════════════════════════
-       HANUMAN IMAGE — TEMPLE ARCH FRAME (Organic Bloom Reveal)
-       ═══════════════════════════════════════════════════════════════ */
+    /* ═════════════════════════════════════════════════════════════════════
+       HANUMAN IMAGE — FLASH + CIRCULAR REVEAL FROM WITHIN FRAME
+       ═════════════════════════════════════════════════════════════════════
+       1. Frame pehle full-size mein aata hai (dark backdrop)
+       2. Center se ek bright golden FLASH hota hai
+       3. Circular wave expand hoti hai — image uske peeche se reveal hoti hai
+       4. Wave edge pe sparkles fly out — "frame se nikal rahi hai" feel
+       ═════════════════════════════════════════════════════════════════════ */
     function dHanuman(t: number) {
       const img = hanumanImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return;
 
       const cx = W / 2, cy = H / 2 - H * 0.015;
       const sc = Math.min(W, H);
-
       const fw = sc * 0.30;
       const fh = fw * 1.35;
       const br = fw * 0.07;
-
-      let rp = 0;
-      let al = 1;
-      let gi = 0;
-
-      if (t >= 1.5 && t < 4.5) {
-        const raw = Math.min((t - 1.5) / 3, 1);
-        rp = eSpring(raw);
-        al = Math.min(raw * 3, 1);
-        gi = Math.max(0, 1 - raw * 2.2) * 0.55;
-      } else if (t >= 4.5 && t < 7.5) {
-        rp = 1 + Math.sin(t * 2.5) * 0.004;
-        al = 1;
-      } else if (t >= 7.5) {
-        const d = Math.min((t - 7.5) / 1.2, 1);
-        al = Math.max(0, 1 - d);
-        rp = 1;
-      }
-
-      if (al <= 0 || rp <= 0.01) return;
-
-      c!.save();
-      c!.globalAlpha = al;
-
-      c!.translate(cx, cy);
-      c!.scale(rp, rp);
-      c!.translate(-cx, -cy);
-
       const fx = cx - fw / 2;
       const fy = cy - fh / 2;
 
-      if (gi > 0) {
-        const gg = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.15), cx, cy, Math.max(EP, fw * 0.95));
-        gg.addColorStop(0, `rgba(255,195,60,${gi * 0.38})`);
-        gg.addColorStop(0.45, `rgba(255,145,35,${gi * 0.16})`);
-        gg.addColorStop(1, 'rgba(255,100,20,0)');
-        c!.fillStyle = gg;
-        c!.fillRect(fx - fw * 0.6, fy - fh * 0.35, fw * 2.2, fh * 1.7);
+      // ── Timing phases ──
+      let frameAlpha = 0;
+      let revealProg = 0;     // 0→1 circular reveal expansion
+      let flashI = 0;         // flash brightness at wave edge
+      let fadeAlpha = 1;
+      let breathScale = 0;
+
+      if (t >= 1.5 && t < 4.5) {
+        const raw = Math.min((t - 1.5) / 2.8, 1);
+        frameAlpha = Math.min(raw * 5, 1);           // Frame 0.2s mein appear
+        revealProg = eIO(raw);                       // Circular reveal smoothly expand
+        flashI = Math.max(0, 1 - raw * 2.5) * 1.0;  // Strong flash at start, fades fast
+      } else if (t >= 4.5 && t < 7.5) {
+        frameAlpha = 1;
+        revealProg = 1;
+        flashI = 0;
+        breathScale = Math.sin(t * 2.5) * 0.004;
+      } else if (t >= 7.5) {
+        const d = Math.min((t - 7.5) / 1.2, 1);
+        frameAlpha = Math.max(0, 1 - d);
+        revealProg = 1;
+        fadeAlpha = Math.max(0, 1 - d);
       }
 
+      if (frameAlpha <= 0) return;
+
+      c!.save();
+      c!.globalAlpha = fadeAlpha;
+
+      // ── Subtle breath scale during static phase ──
+      if (breathScale !== 0) {
+        c!.translate(cx, cy);
+        c!.scale(1 + breathScale, 1 + breathScale);
+        c!.translate(-cx, -cy);
+      }
+
+      // ══════════════════════════════════════════════════
+      // LAYER 0: Birth flash (center burst BEFORE frame)
+      // ══════════════════════════════════════════════════
+      if (flashI > 0.1) {
+        const flashR = fw * 0.6 * (1 + (1 - flashI) * 0.5);
+        const fg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, flashR));
+        fg.addColorStop(0, `rgba(255,245,210,${flashI * 0.7})`);
+        fg.addColorStop(0.2, `rgba(255,210,80,${flashI * 0.45})`);
+        fg.addColorStop(0.5, `rgba(255,160,40,${flashI * 0.15})`);
+        fg.addColorStop(1, 'rgba(255,120,20,0)');
+        c!.fillStyle = fg;
+        c!.fillRect(fx - fw * 0.3, fy - fh * 0.2, fw * 1.6, fh * 1.4);
+      }
+
+      // ══════════════════════════════════════════════════
+      // LAYER 0.5: Persistent ambient halo
+      // ══════════════════════════════════════════════════
       const ah = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.42), cx, cy, Math.max(EP, fw * 0.78));
       ah.addColorStop(0, 'rgba(255,175,45,0.035)');
       ah.addColorStop(1, 'rgba(255,130,25,0)');
       c!.fillStyle = ah;
       c!.fillRect(fx - fw * 0.35, fy - fh * 0.18, fw * 1.7, fh * 1.36);
 
+      // ══════════════════════════════════════════════════
+      // LAYER 1: Frame dark backdrop (FULL SIZE — pehle aata hai)
+      // ══════════════════════════════════════════════════
       c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
       c!.shadowColor = 'rgba(245,158,11,0.48)';
       c!.shadowBlur = 44;
       c!.shadowOffsetY = 4;
@@ -500,10 +524,18 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.fill();
       c!.restore();
 
+      // ══════════════════════════════════════════════════
+      // LAYER 2: Image with CIRCULAR REVEAL inside frame
+      // Frame clip → then circle clip → image only in circle
+      // ══════════════════════════════════════════════════
       c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
+
+      // Clip to frame shape first
       drawArchPath(c!, fx, fy, fw, fh, br);
       c!.clip();
 
+      // Inner warm glow behind image
       const ig = c!.createRadialGradient(cx, cy - fh * 0.08, 0, cx, cy, Math.max(EP, fw * 0.72));
       ig.addColorStop(0, 'rgba(255,180,50,0.13)');
       ig.addColorStop(0.55, 'rgba(255,120,30,0.04)');
@@ -511,6 +543,17 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.fillStyle = ig;
       c!.fillRect(fx, fy, fw, fh);
 
+      // ── CIRCULAR REVEAL CLIP ──
+      // Image sirf circle ke andar dikhega — bahar dark rahega
+      const maxRevealR = Math.max(fw, fh) * 0.85;
+      const currentR = Math.max(EP, maxRevealR * revealProg);
+
+      c!.save();
+      c!.beginPath();
+      c!.arc(cx, cy, currentR, 0, Math.PI * 2);
+      c!.clip();
+
+      // Draw image (object-cover)
       const imgR = img.naturalWidth / img.naturalHeight;
       const frmR = fw / fh;
       let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
@@ -518,6 +561,29 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       else { sh = img.naturalWidth / frmR; sy = (img.naturalHeight - sh) / 2; }
       c!.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
 
+      c!.restore(); // end circle clip
+
+      // ══════════════════════════════════════════════════
+      // LAYER 2.5: BRIGHT WAVE EDGE (the "flash ring")
+      // Ye golden ring circle ke edge pe — jisse lagta hai
+      // ki energy wave frame se bahar nikal rahi hai
+      // ══════════════════════════════════════════════════
+      if (flashI > 0.01 && currentR > 5) {
+        const edgeW = 25 + flashI * 35;
+        const innerR = Math.max(EP, currentR - edgeW);
+        const outerR = Math.max(EP, currentR + edgeW);
+        const eg = c!.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+        eg.addColorStop(0, 'rgba(255,220,100,0)');
+        eg.addColorStop(0.35, `rgba(255,210,80,${flashI * 0.4})`);
+        eg.addColorStop(0.48, `rgba(255,240,180,${flashI * 0.85})`);
+        eg.addColorStop(0.52, `rgba(255,255,235,${flashI * 1.0})`);
+        eg.addColorStop(0.65, `rgba(255,210,80,${flashI * 0.4})`);
+        eg.addColorStop(1, 'rgba(255,180,40,0)');
+        c!.fillStyle = eg;
+        c!.fillRect(fx, fy, fw, fh);
+      }
+
+      // Top/bottom soft fades
       const tf = c!.createLinearGradient(0, fy, 0, fy + fh * 0.1);
       tf.addColorStop(0, 'rgba(10,11,20,0.55)');
       tf.addColorStop(1, 'rgba(10,11,20,0)');
@@ -530,15 +596,20 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.fillStyle = bf;
       c!.fillRect(fx, fy + fh * 0.9, fw, fh * 0.1);
 
+      // Inner vignette
       const iv = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.22), cx, cy, Math.max(EP, fw * 0.54));
       iv.addColorStop(0, 'rgba(0,0,0,0)');
       iv.addColorStop(1, 'rgba(0,0,0,0.2)');
       c!.fillStyle = iv;
       c!.fillRect(fx, fy, fw, fh);
 
-      c!.restore();
+      c!.restore(); // end frame clip
 
+      // ══════════════════════════════════════════════════
+      // LAYER 3: Golden borders (ON TOP of everything)
+      // ══════════════════════════════════════════════════
       c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
       const og = c!.createLinearGradient(fx, fy - fw * 0.05, fx, fy + fh);
       og.addColorStop(0, '#f5e6a3');
       og.addColorStop(0.1, '#eed366');
@@ -548,14 +619,16 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       og.addColorStop(1, '#7a5a06');
       c!.strokeStyle = og;
       c!.lineWidth = 4;
-      c!.shadowColor = 'rgba(255,215,0,0.38)';
-      c!.shadowBlur = 16;
+      c!.shadowColor = `rgba(255,215,0,${0.38 + flashI * 0.4})`;
+      c!.shadowBlur = 16 + flashI * 20;
       drawArchPath(c!, fx, fy, fw, fh, br);
       c!.stroke();
       c!.restore();
 
+      // Inner border
       const ins = 8;
       c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
       const ig2 = c!.createLinearGradient(fx, fy, fx, fy + fh);
       ig2.addColorStop(0, 'rgba(248,235,175,0.55)');
       ig2.addColorStop(0.5, 'rgba(212,160,48,0.35)');
@@ -566,7 +639,9 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.stroke();
       c!.restore();
 
+      // Specular highlight
       c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
       const sg = c!.createLinearGradient(fx + fw * 0.06, 0, fx + fw * 0.94, 0);
       sg.addColorStop(0, 'rgba(255,250,215,0)');
       sg.addColorStop(0.32, 'rgba(255,250,215,0)');
@@ -579,56 +654,56 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.stroke();
       c!.restore();
 
-      const fs = fw * 0.034;
+      // Top finial
+      const fss = fw * 0.034;
       c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
       c!.fillStyle = '#ffd700';
       c!.shadowColor = 'rgba(255,215,0,0.7)';
       c!.shadowBlur = 10;
       c!.beginPath();
-      c!.moveTo(cx, fy - fs * 2.5);
-      c!.lineTo(cx + fs * 0.85, fy - fs * 0.3);
-      c!.lineTo(cx, fy + fs * 0.7);
-      c!.lineTo(cx - fs * 0.85, fy - fs * 0.3);
+      c!.moveTo(cx, fy - fss * 2.5);
+      c!.lineTo(cx + fss * 0.85, fy - fss * 0.3);
+      c!.lineTo(cx, fy + fss * 0.7);
+      c!.lineTo(cx - fss * 0.85, fy - fss * 0.3);
       c!.closePath();
       c!.fill();
       c!.beginPath();
-      c!.arc(cx, fy + fs * 0.25, Math.max(EP, fs * 0.48), 0, Math.PI * 2);
+      c!.arc(cx, fy + fss * 0.25, Math.max(EP, fss * 0.48), 0, Math.PI * 2);
       c!.fill();
       c!.restore();
 
+      // Side dots
       const dr = fw * 0.01;
       const jy = fy + fw / 2;
       c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
       c!.fillStyle = '#ffd700';
       c!.shadowColor = 'rgba(255,215,0,0.5)';
       c!.shadowBlur = 5;
-      c!.beginPath();
-      c!.arc(fx + 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2);
-      c!.fill();
-      c!.beginPath();
-      c!.arc(fx + fw - 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2);
-      c!.fill();
+      c!.beginPath(); c!.arc(fx + 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c!.fill();
+      c!.beginPath(); c!.arc(fx + fw - 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c!.fill();
       c!.restore();
 
+      // Bottom corner dots
       c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
       c!.fillStyle = 'rgba(255,215,0,0.6)';
       c!.shadowColor = 'rgba(255,215,0,0.35)';
       c!.shadowBlur = 4;
       const cdr = dr * 0.8;
-      c!.beginPath();
-      c!.arc(fx + br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2);
-      c!.fill();
-      c!.beginPath();
-      c!.arc(fx + fw - br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2);
-      c!.fill();
+      c!.beginPath(); c!.arc(fx + br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c!.fill();
+      c!.beginPath(); c!.arc(fx + fw - br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c!.fill();
       c!.restore();
 
+      // Shimmer sweep
       if (t >= 4.5 && t < 7.5) {
         const st = (t - 5.0) / 1.0;
         if (st >= 0 && st <= 1) {
           const sx2 = fx + st * fw * 1.4 - fw * 0.2;
           const sw2 = fw * 0.13;
           c!.save();
+          c!.globalAlpha = fadeAlpha;
           drawArchPath(c!, fx, fy, fw, fh, br);
           c!.clip();
           const shim = c!.createLinearGradient(sx2 - sw2, 0, sx2 + sw2, 0);
@@ -647,24 +722,42 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════
-       4-POINT STAR SPARKLES
+       SPARKLES — spawn at CIRCULAR REVEAL EDGE, not random
        ═══════════════════════════════════════════════════════════ */
     function sRevealSparkles(t: number) {
       if (t < 1.5 || t > 4.5) return;
       const d = getImgDims(); if (!d) return;
-      const prog = eIO(Math.min((t - 1.5) / 3, 1));
-      const revealR = d.maxR * prog;
-      for (let i = 0; i < 3; i++) {
+      const raw = Math.min((t - 1.5) / 2.8, 1);
+      const revealProg = eIO(raw);
+      const sc = Math.min(W, H);
+      const fw = sc * 0.30;
+      const fh = fw * 1.35;
+      const maxRevealR = Math.max(fw, fh) * 0.85;
+      const currentR = maxRevealR * revealProg;
+
+      // Sparkles sirf wave edge se nikalte hain
+      const spawnRate = Math.max(0, 1 - raw * 2) * 5 + 1;
+      for (let i = 0; i < spawnRate; i++) {
         const p = grab(pl); if (!p) break;
         const ang = Math.random() * Math.PI * 2;
-        p.x = d.cx + Math.cos(ang) * revealR;
-        p.y = d.cy + Math.sin(ang) * revealR;
-        p.vx = Math.cos(ang) * (1 + Math.random() * 2.5);
-        p.vy = Math.sin(ang) * (1 + Math.random() * 2.5);
-        p.sz = Math.random() * 2 + 0.5; p.ml = 0.5 + Math.random() * 0.4; p.life = p.ml;
-        p.r = 255; p.g = 200 + Math.random() * 55 | 0; p.b = 50 + Math.random() * 50 | 0;
-        p.a = 0.7 + Math.random() * 0.3; p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - .5) * 3;
-        p.on = true; p.tp = 9;
+        // Spawn at the circle edge
+        p.x = d.cx + Math.cos(ang) * currentR;
+        p.y = d.cy + Math.sin(ang) * currentR;
+        // Fly OUTWARD from edge (away from center)
+        const spd = 1.5 + Math.random() * 3;
+        p.vx = Math.cos(ang) * spd;
+        p.vy = Math.sin(ang) * spd;
+        p.sz = Math.random() * 2.5 + 0.5;
+        p.ml = 0.4 + Math.random() * 0.5;
+        p.life = p.ml;
+        p.r = 255;
+        p.g = 200 + Math.random() * 55 | 0;
+        p.b = 50 + Math.random() * 60 | 0;
+        p.a = 0.7 + Math.random() * 0.3;
+        p.rot = Math.random() * Math.PI * 2;
+        p.rs = (Math.random() - .5) * 4;
+        p.on = true;
+        p.tp = 9;
       }
     }
     function dRevealSparkles() {
@@ -676,7 +769,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         if (sz > 0.8) {
           const gr = sz * 5;
           const gg = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, gr));
-          gg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.2})`);
+          gg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.25})`);
           gg.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
           c!.fillStyle = gg;
           c!.fillRect(p.x - gr, p.y - gr, gr * 2, gr * 2);
