@@ -144,7 +144,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
     ];
 
-    /* 🌟 Temple Arch Path Generator Helper */
+    /* 🌟 Temple Arch Path Generator */
     const drawArchPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rBottom: number) => {
       const rTop = w / 2;
       ctx.beginPath();
@@ -163,8 +163,8 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       if (!img || !img.complete || img.naturalWidth === 0) return null;
       const cx = W / 2, cy = H / 2 - H * 0.015;
       const sc = Math.min(W, H);
-      const displayW = sc * 0.28;
-      const displayH = displayW * 1.3;
+      const displayW = sc * 0.30;
+      const displayH = displayW * 1.35;
       const maxR = Math.max(displayW, displayH) / 2 + 10;
       return { img, cx, cy, displayW, displayH, maxR };
     };
@@ -433,158 +433,245 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       🖼️ HANUMAN IMAGE REVEAL — 2027: SACRED TEMPLE ARCH FRAME
+       🖼️ HANUMAN IMAGE — TEMPLE ARCH FRAME (Organic Bloom Reveal)
+       Frame grows from center with its arch shape intact,
+       so it looks like the frame emerges from within itself.
+       Image is properly contained — no separate/stitched feel.
        ═══════════════════════════════════════════════════════════════ */
     function dHanuman(t: number) {
       const img = hanumanImgRef.current;
-      if (!img || !img.complete || img.naturalWidth === 0) return null;
+      if (!img || !img.complete || img.naturalWidth === 0) return;
 
       const cx = W / 2, cy = H / 2 - H * 0.015;
       const sc = Math.min(W, H);
-      
-      // Matching Hero card aspect ratio perfectly (Width & Height)
-      const fw = sc * 0.28;
-      const fh = fw * 1.32;
-      const borderRadius = 14;
 
-      let frameScale = 1;
-      let alpha = 1;
+      /* ── Frame geometry — proportional rounded corners ── */
+      const fw = sc * 0.30;
+      const fh = fw * 1.35;
+      const br = fw * 0.07; // ~7% of width — always properly rounded
+
+      let rp = 0;   // reveal progress (scale factor)
+      let al = 1;    // alpha
+      let gi = 0;    // bloom glow intensity
 
       if (t >= 1.5 && t < 4.5) {
-        // Spotlight emergence: scales organically from 0.88 to 1.0, and fades in
-        const prog = eIO(Math.min((t - 1.5) / 3, 1));
-        frameScale = 0.88 + prog * 0.12;
-        alpha = prog;
+        const raw = Math.min((t - 1.5) / 3, 1);
+        rp = eSpring(raw);                       // Spring bloom — overshoots then settles
+        al = Math.min(raw * 3, 1);               // Quick fade-in
+        gi = Math.max(0, 1 - raw * 2.2) * 0.55; // Strong glow at birth, fades fast
       } else if (t >= 4.5 && t < 7.5) {
-        // Soft breathing synchronicity
-        const breath = Math.sin(t * 2.5) * 0.008;
-        frameScale = 1 + breath;
-        alpha = 1;
+        rp = 1 + Math.sin(t * 2.5) * 0.004;     // Subtle living breath
+        al = 1;
       } else if (t >= 7.5) {
-        // Dissolve / Fade Out
-        const dt = Math.min((t - 7.5) / 1.2, 1);
-        alpha = Math.max(0, 1 - dt);
-        frameScale = 1 - dt * 0.04;
+        const d = Math.min((t - 7.5) / 1.2, 1);
+        al = Math.max(0, 1 - d);
+        rp = 1;
       }
 
-      if (alpha <= 0) return;
+      if (al <= 0 || rp <= 0.01) return;
 
       c!.save();
-      c!.globalAlpha = alpha;
+      c!.globalAlpha = al;
 
-      // ── Translate to center and scale ──
+      /* ═══ KEY: Scale from center so arch shape is always intact ═══
+         The frame never "appears" — it GROWS from a point,
+         maintaining its rounded arch contour at every size.
+         This makes it look like it's blooming from within itself. */
       c!.translate(cx, cy);
-      c!.scale(frameScale, frameScale);
+      c!.scale(rp, rp);
       c!.translate(-cx, -cy);
 
       const fx = cx - fw / 2;
       const fy = cy - fh / 2;
 
-      // ── Step 1: Glowing Back Shadow/Aura ──
+      /* ── LAYER 0: Birth glow (frame emerging energy) ── */
+      if (gi > 0) {
+        const gg = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.15), cx, cy, Math.max(EP, fw * 0.95));
+        gg.addColorStop(0, `rgba(255,195,60,${gi * 0.38})`);
+        gg.addColorStop(0.45, `rgba(255,145,35,${gi * 0.16})`);
+        gg.addColorStop(1, 'rgba(255,100,20,0)');
+        c!.fillStyle = gg;
+        c!.fillRect(fx - fw * 0.6, fy - fh * 0.35, fw * 2.2, fh * 1.7);
+      }
+
+      /* ── LAYER 0.5: Persistent ambient halo (integrates frame into scene) ── */
+      const ah = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.42), cx, cy, Math.max(EP, fw * 0.78));
+      ah.addColorStop(0, 'rgba(255,175,45,0.035)');
+      ah.addColorStop(1, 'rgba(255,130,25,0)');
+      c!.fillStyle = ah;
+      c!.fillRect(fx - fw * 0.35, fy - fh * 0.18, fw * 1.7, fh * 1.36);
+
+      /* ── LAYER 1: Drop shadow (depth) ── */
       c!.save();
-      c!.shadowColor = 'rgba(245,158,11,0.42)';
-      c!.shadowBlur = 35;
-      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
-      c!.fillStyle = '#0d0e16'; // Solid matching backdrop
+      c!.shadowColor = 'rgba(245,158,11,0.48)';
+      c!.shadowBlur = 44;
+      c!.shadowOffsetY = 4;
+      drawArchPath(c!, fx, fy, fw, fh, br);
+      c!.fillStyle = '#0a0b14';
       c!.fill();
       c!.restore();
 
-      // ── Step 2: Clipped Artwork Chamber ──
+      /* ── LAYER 2: Image clipped inside arch frame ── */
       c!.save();
-      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+      drawArchPath(c!, fx, fy, fw, fh, br);
       c!.clip();
 
-      // Ambient golden inner glow behind Hanuman Ji
-      const innerGlow = c!.createRadialGradient(cx, cy, 0, cx, cy, fw * 0.65);
-      innerGlow.addColorStop(0, 'rgba(255,180,50,0.18)');
-      innerGlow.addColorStop(1, 'rgba(0,0,0,0)');
-      c!.fillStyle = innerGlow;
+      // Warm inner ambient glow behind the image
+      const ig = c!.createRadialGradient(cx, cy - fh * 0.08, 0, cx, cy, Math.max(EP, fw * 0.72));
+      ig.addColorStop(0, 'rgba(255,180,50,0.13)');
+      ig.addColorStop(0.55, 'rgba(255,120,30,0.04)');
+      ig.addColorStop(1, 'rgba(0,0,0,0)');
+      c!.fillStyle = ig;
       c!.fillRect(fx, fy, fw, fh);
 
-      // Object-cover calculations to perfectly align Hanuman Ji in center
-      const imgRatio = img.naturalWidth / img.naturalHeight;
-      const frameRatio = fw / fh;
+      // Object-cover image calculation
+      const imgR = img.naturalWidth / img.naturalHeight;
+      const frmR = fw / fh;
       let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
-      if (imgRatio > frameRatio) {
-        sw = img.naturalHeight * frameRatio;
-        sx = (img.naturalWidth - sw) / 2;
-      } else {
-        sh = img.naturalWidth / frameRatio;
-        sy = (img.naturalHeight - sh) / 2;
-      }
-
+      if (imgR > frmR) { sw = img.naturalHeight * frmR; sx = (img.naturalWidth - sw) / 2; }
+      else { sh = img.naturalWidth / frmR; sy = (img.naturalHeight - sh) / 2; }
       c!.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
 
-      // Inner Soft Overlays for integration
-      const topFade = c!.createLinearGradient(0, fy, 0, fy + fh * 0.16);
-      topFade.addColorStop(0, '#0d0e16');
-      topFade.addColorStop(1, 'rgba(13,14,22,0)');
-      c!.fillStyle = topFade;
-      c!.fillRect(fx, fy, fw, fh * 0.16);
+      // Top soft fade (blends image edge into frame border)
+      const tf = c!.createLinearGradient(0, fy, 0, fy + fh * 0.1);
+      tf.addColorStop(0, 'rgba(10,11,20,0.55)');
+      tf.addColorStop(1, 'rgba(10,11,20,0)');
+      c!.fillStyle = tf;
+      c!.fillRect(fx, fy, fw, fh * 0.1);
 
-      const bottomFade = c!.createLinearGradient(0, fy + fh, 0, fy + fh * 0.84);
-      bottomFade.addColorStop(0, '#080910');
-      bottomFade.addColorStop(1, 'rgba(8,9,16,0)');
-      c!.fillStyle = bottomFade;
-      c!.fillRect(fx, fy + fh * 0.84, fw, fh * 0.16);
+      // Bottom soft fade
+      const bf = c!.createLinearGradient(0, fy + fh, 0, fy + fh * 0.9);
+      bf.addColorStop(0, 'rgba(8,9,16,0.48)');
+      bf.addColorStop(1, 'rgba(8,9,16,0)');
+      c!.fillStyle = bf;
+      c!.fillRect(fx, fy + fh * 0.9, fw, fh * 0.1);
 
+      // Inner vignette shadow (gives frame depth — image recedes inside)
+      const iv = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.22), cx, cy, Math.max(EP, fw * 0.54));
+      iv.addColorStop(0, 'rgba(0,0,0,0)');
+      iv.addColorStop(1, 'rgba(0,0,0,0.2)');
+      c!.fillStyle = iv;
+      c!.fillRect(fx, fy, fw, fh);
+
+      c!.restore(); // end clip
+
+      /* ── LAYER 3: Outer golden border (ornate temple frame) ── */
+      c!.save();
+      const og = c!.createLinearGradient(fx, fy - fw * 0.05, fx, fy + fh);
+      og.addColorStop(0, '#f5e6a3');
+      og.addColorStop(0.1, '#eed366');
+      og.addColorStop(0.28, '#d4a030');
+      og.addColorStop(0.52, '#b8860b');
+      og.addColorStop(0.78, '#9a7209');
+      og.addColorStop(1, '#7a5a06');
+      c!.strokeStyle = og;
+      c!.lineWidth = 4;
+      c!.shadowColor = 'rgba(255,215,0,0.38)';
+      c!.shadowBlur = 16;
+      drawArchPath(c!, fx, fy, fw, fh, br);
+      c!.stroke();
       c!.restore();
 
-      // ── Step 3: Golden Border (Stroke) ──
+      /* ── LAYER 4: Inner golden border (double-frame depth) ── */
+      const ins = 8;
       c!.save();
-      const goldGrad = c!.createLinearGradient(fx, fy, fx, fy + fh);
-      goldGrad.addColorStop(0, '#f5d78e');
-      goldGrad.addColorStop(0.25, '#d4a030');
-      goldGrad.addColorStop(0.55, '#b8860b');
-      goldGrad.addColorStop(1, '#6b3a00');
-      
-      c!.strokeStyle = goldGrad;
-      c!.lineWidth = 3.2;
+      const ig2 = c!.createLinearGradient(fx, fy, fx, fy + fh);
+      ig2.addColorStop(0, 'rgba(248,235,175,0.55)');
+      ig2.addColorStop(0.5, 'rgba(212,160,48,0.35)');
+      ig2.addColorStop(1, 'rgba(184,134,11,0.22)');
+      c!.strokeStyle = ig2;
+      c!.lineWidth = 1.2;
+      drawArchPath(c!, fx + ins, fy + ins, fw - ins * 2, fh - ins * 2, Math.max(EP, br - ins * 0.35));
+      c!.stroke();
+      c!.restore();
 
+      /* ── LAYER 5: Specular highlight shine on outer border ── */
+      c!.save();
+      const sg = c!.createLinearGradient(fx + fw * 0.06, 0, fx + fw * 0.94, 0);
+      sg.addColorStop(0, 'rgba(255,250,215,0)');
+      sg.addColorStop(0.32, 'rgba(255,250,215,0)');
+      sg.addColorStop(0.5, 'rgba(255,250,215,0.42)');
+      sg.addColorStop(0.68, 'rgba(255,250,215,0)');
+      sg.addColorStop(1, 'rgba(255,250,215,0)');
+      c!.strokeStyle = sg;
+      c!.lineWidth = 0.9;
+      drawArchPath(c!, fx, fy, fw, fh, br);
+      c!.stroke();
+      c!.restore();
+
+      /* ── LAYER 6: Decorative top finial (crown jewel at arch peak) ── */
+      const fs = fw * 0.034;
+      c!.save();
+      c!.fillStyle = '#ffd700';
+      c!.shadowColor = 'rgba(255,215,0,0.7)';
+      c!.shadowBlur = 10;
+      // Diamond shape
+      c!.beginPath();
+      c!.moveTo(cx, fy - fs * 2.5);
+      c!.lineTo(cx + fs * 0.85, fy - fs * 0.3);
+      c!.lineTo(cx, fy + fs * 0.7);
+      c!.lineTo(cx - fs * 0.85, fy - fs * 0.3);
+      c!.closePath();
+      c!.fill();
+      // Base circle
+      c!.beginPath();
+      c!.arc(cx, fy + fs * 0.25, Math.max(EP, fs * 0.48), 0, Math.PI * 2);
+      c!.fill();
+      c!.restore();
+
+      /* ── LAYER 7: Side junction ornament dots ── */
+      const dr = fw * 0.01;
+      const jy = fy + fw / 2; // Where arch curve meets straight sides
+      c!.save();
+      c!.fillStyle = '#ffd700';
+      c!.shadowColor = 'rgba(255,215,0,0.5)';
+      c!.shadowBlur = 5;
+      c!.beginPath();
+      c!.arc(fx + 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2);
+      c!.fill();
+      c!.beginPath();
+      c!.arc(fx + fw - 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2);
+      c!.fill();
+      c!.restore();
+
+      /* ── LAYER 7.5: Bottom corner ornament dots ── */
+      c!.save();
+      c!.fillStyle = 'rgba(255,215,0,0.6)';
       c!.shadowColor = 'rgba(255,215,0,0.35)';
-      c!.shadowBlur = 12;
-
-      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
-      c!.stroke();
+      c!.shadowBlur = 4;
+      const cdr = dr * 0.8;
+      // Bottom-left
+      c!.beginPath();
+      c!.arc(fx + br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2);
+      c!.fill();
+      // Bottom-right
+      c!.beginPath();
+      c!.arc(fx + fw - br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2);
+      c!.fill();
       c!.restore();
 
-      // Top Highlight shine curve inside frame
-      c!.save();
-      const shineGrad = c!.createLinearGradient(fx + fw * 0.15, 0, fx + fw * 0.85, 0);
-      shineGrad.addColorStop(0, 'rgba(255,245,200,0)');
-      shineGrad.addColorStop(0.5, 'rgba(255,245,200,0.65)');
-      shineGrad.addColorStop(1, 'rgba(255,245,200,0)');
-      c!.strokeStyle = shineGrad;
-      c!.lineWidth = 1.0;
-      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
-      c!.stroke();
-      c!.restore();
-
-      // ── Step 4: Shimmer Sweep (Only during static display 4.5s - 7.5s) ──
+      /* ── LAYER 8: Shimmer sweep (4.5s – 7.5s only) ── */
       if (t >= 4.5 && t < 7.5) {
         const st = (t - 5.0) / 1.0;
         if (st >= 0 && st <= 1) {
-          const sx = fx + st * fw * 1.4 - fw * 0.2;
-          const sw2 = fw * 0.12;
-          
+          const sx2 = fx + st * fw * 1.4 - fw * 0.2;
+          const sw2 = fw * 0.13;
           c!.save();
-          drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+          drawArchPath(c!, fx, fy, fw, fh, br);
           c!.clip();
-
-          const shim = c!.createLinearGradient(sx - sw2, 0, sx + sw2, 0);
+          const shim = c!.createLinearGradient(sx2 - sw2, 0, sx2 + sw2, 0);
           shim.addColorStop(0, 'rgba(255,255,255,0)');
-          shim.addColorStop(0.4, 'rgba(255,255,220,0.12)');
-          shim.addColorStop(0.5, 'rgba(255,255,255,0.22)');
-          shim.addColorStop(0.6, 'rgba(255,255,220,0.12)');
+          shim.addColorStop(0.38, 'rgba(255,255,220,0.07)');
+          shim.addColorStop(0.5, 'rgba(255,255,255,0.16)');
+          shim.addColorStop(0.62, 'rgba(255,255,220,0.07)');
           shim.addColorStop(1, 'rgba(255,255,255,0)');
-          
-          c!.fillStyle = shim; 
-          c!.fillRect(sx - sw2, fy, sw2 * 2, fh);
+          c!.fillStyle = shim;
+          c!.fillRect(sx2 - sw2, fy, sw2 * 2, fh);
           c!.restore();
         }
       }
 
-      c!.restore();
+      c!.restore(); // end globalAlpha
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -962,7 +1049,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
 
       dEnergy(t); dAarti(t); dBells(t);
 
-      // Render image locked inside temple arch frame (ZERO crop, direct borders touch)
       dHanuman(t);
 
       dRevealSparkles();
