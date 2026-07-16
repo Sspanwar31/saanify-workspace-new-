@@ -20,7 +20,7 @@ const EP = 1e-4;
 const IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Hanuman%20JI/Screenshot%202026-07-14%20221205.png';
 
 /* ═══════════════════════════════════════════════════════════════
-   EASING HELPERS — 2027: Spring physics added
+   EASING HELPERS
    ═══════════════════════════════════════════════════════════════ */
 const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
 const eIO = (t: number) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -94,14 +94,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     } catch (err) { console.warn("Bell sound failed:", err); }
   }, []);
 
-  /* ═══════════════════════════════════════════════════════════════
-     🎬 10.5s TIMELINE
-     0.0s - 1.5s  → धुएं + ऊर्जा सस्पेंस
-     1.5s - 4.5s  → ★ स्पॉटलाइट रिवील (NO crop — full image)
-     4.5s - 8.0s  → आरती, घंटियाँ, फूल वर्षा
-     8.7s - 9.5s  → Text staggered reveal + shimmer
-     9.8s - 10.5s → स्वाभाविक फेड-आउट
-   ═══════════════════════════════════════════════════════════════ */
   useEffect(() => {
     if (!imgReady) return;
 
@@ -123,7 +115,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     };
     rsz(); window.addEventListener('resize', rsz);
 
-    /* ─── 🎞️ 2027: Film Grain Texture (generated once) ─── */
+    /* ─── 🎞️ Film Grain Texture ─── */
     const grainCv = document.createElement('canvas');
     grainCv.width = 256; grainCv.height = 256;
     const gc = grainCv.getContext('2d')!;
@@ -152,14 +144,28 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
     ];
 
+    /* 🌟 Temple Arch Path Generator Helper */
+    const drawArchPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rBottom: number) => {
+      const rTop = w / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + rBottom, y + h);
+      ctx.lineTo(x + w - rBottom, y + h);
+      ctx.arcTo(x + w, y + h, x + w, y + h - rBottom, rBottom);
+      ctx.lineTo(x + w, y + rTop);
+      ctx.arc(x + rTop, y + rTop, rTop, 0, Math.PI, true);
+      ctx.lineTo(x, y + h - rBottom);
+      ctx.arcTo(x, y + h, x + rBottom, y + h, rBottom);
+      ctx.closePath();
+    };
+
     const getImgDims = () => {
       const img = hanumanImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return null;
       const cx = W / 2, cy = H / 2 - H * 0.015;
       const sc = Math.min(W, H);
-      const displayH = sc * 0.5;
-      const displayW = displayH * (img.naturalWidth / img.naturalHeight);
-      const maxR = Math.max(displayW, displayH) / 2 + 20;
+      const displayW = sc * 0.28;
+      const displayH = displayW * 1.3;
+      const maxR = Math.max(displayW, displayH) / 2 + 10;
       return { img, cx, cy, displayW, displayH, maxR };
     };
 
@@ -194,7 +200,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════
-       2027: DYNAMIC VIGNETTE — breathing dark edges
+       DYNAMIC VIGNETTE
        ═══════════════════════════════════════════════════════════ */
     function dVignette(t: number) {
       const breathe = 0.55 + Math.sin(t * 1.2) * 0.06;
@@ -236,7 +242,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════
-       SMOKE — 2027: Organic turbulence
+       SMOKE
        ═══════════════════════════════════════════════════════════ */
     function sSmoke(t: number) {
       if (Math.random() > (t < 1.5 ? 0.5 : 0.18)) return;
@@ -267,7 +273,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         const g = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, p.sz));
         g.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a})`);
         g.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
-        c!.fillStyle = g; c!.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
+        c!.getContext('2d')!.fillStyle = g; c!.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
       }
     }
 
@@ -287,7 +293,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════
-       ORBIT — 2027: with soft glow halos
+       ORBIT
        ═══════════════════════════════════════════════════════════ */
     function sOrbit(t: number) {
       if (t < 1.5 || t > 9.8 || Math.random() > .2) return;
@@ -305,14 +311,12 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         if (!p.on || p.tp !== 5) continue;
         const lr = p.life / p.ml;
         const a = p.a * Math.min(lr * 2, 1) * Math.min((1 - lr) * 2, 1);
-        // Soft glow halo
         const haloR = p.sz * 4;
         const hg = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, haloR));
         hg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.15})`);
         hg.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
         c!.fillStyle = hg;
         c!.fillRect(p.x - haloR, p.y - haloR, haloR * 2, haloR * 2);
-        // Core
         c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz), 0, Math.PI * 2);
         c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
       }
@@ -429,114 +433,162 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       🖼️ HANUMAN IMAGE — 2027: SPOTLIGHT REVEAL (ZERO CROP)
-       
-       ❌ PURANA: arc() clip → image circular CUT hoti thi
-       ✅ NAYA: Full image draw + radial gradient dark mask
-          → Soft spotlight hole expands → image REVEAL hoti hai
-          → Image kabhi CUT nahi hoti, sirf DARK overlay hataata hai
+       🖼️ HANUMAN IMAGE REVEAL — 2027: SACRED TEMPLE ARCH FRAME
        ═══════════════════════════════════════════════════════════════ */
     function dHanuman(t: number) {
-      const d = getImgDims(); if (!d) return;
-      const { img, cx, cy, displayW: dw, displayH: dh, maxR } = d;
-      const left = cx - dw / 2, top = cy - dh / 2;
+      const img = hanumanImgRef.current;
+      if (!img || !img.complete || img.naturalWidth === 0) return null;
 
-      /* ── Phase 1: 1.5s - 4.5s — SPOTLIGHT REVEAL (no clip!) ── */
+      const cx = W / 2, cy = H / 2 - H * 0.015;
+      const sc = Math.min(W, H);
+      
+      // Matching Hero card aspect ratio perfectly (Width & Height)
+      const fw = sc * 0.28;
+      const fh = fw * 1.32;
+      const borderRadius = 14;
+
+      let frameScale = 1;
+      let alpha = 1;
+
       if (t >= 1.5 && t < 4.5) {
+        // Spotlight emergence: scales organically from 0.88 to 1.0, and fades in
         const prog = eIO(Math.min((t - 1.5) / 3, 1));
-
-        // Warm glow behind image
-        const glowR = Math.max(dw, dh) * 0.9;
-        const glowA = prog * 0.18;
-        const glow = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, glowR));
-        glow.addColorStop(0, `rgba(255,190,60,${glowA})`);
-        glow.addColorStop(0.5, `rgba(255,140,35,${glowA * 0.4})`);
-        glow.addColorStop(1, 'rgba(255,100,20,0)');
-        c!.fillStyle = glow;
-        c!.fillRect(cx - glowR, cy - glowR, glowR * 2, glowR * 2);
-
-        // ★ FULL IMAGE — no clipping, no cropping
-        c!.save();
-        c!.globalAlpha = prog;
-        c!.shadowColor = 'rgba(255,185,50,0.5)';
-        c!.shadowBlur = 35 * prog;
-        c!.drawImage(img, left, top, dw, dh);
-        c!.restore();
-
-        // ★ SPOTLIGHT MASK — dark overlay with expanding transparent hole
-        if (prog < 0.98) {
-          // Hole size: starts small, grows to cover full image
-          const holeR = Math.max(dw, dh) * 0.5 * prog + Math.min(dw, dh) * 0.18;
-          const softEdge = Math.max(dw, dh) * 0.35;
-          const innerR = Math.max(EP, holeR);
-          const outerR = Math.max(EP + 1, holeR + softEdge);
-
-          // Dark mask with soft transparent center
-          const mask = c!.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
-          mask.addColorStop(0, 'rgba(7,3,10,0)');
-          mask.addColorStop(1, `rgba(7,3,10,${0.97 * (1 - prog * prog)})`);
-          c!.fillStyle = mask;
-          c!.fillRect(0, 0, W, H);
-
-          // Soft golden glow ring at reveal edge
-          const ringA = 0.4 * (1 - prog * 0.7);
-          const ringG = c!.createRadialGradient(cx, cy, Math.max(EP, innerR * 0.8), cx, cy, outerR);
-          ringG.addColorStop(0, 'rgba(255,210,100,0)');
-          ringG.addColorStop(0.4, `rgba(255,210,100,${ringA * 0.25})`);
-          ringG.addColorStop(1, 'rgba(255,210,100,0)');
-          c!.fillStyle = ringG;
-          c!.fillRect(0, 0, W, H);
-        }
-        return;
+        frameScale = 0.88 + prog * 0.12;
+        alpha = prog;
+      } else if (t >= 4.5 && t < 7.5) {
+        // Soft breathing synchronicity
+        const breath = Math.sin(t * 2.5) * 0.008;
+        frameScale = 1 + breath;
+        alpha = 1;
+      } else if (t >= 7.5) {
+        // Dissolve / Fade Out
+        const dt = Math.min((t - 7.5) / 1.2, 1);
+        alpha = Math.max(0, 1 - dt);
+        frameScale = 1 - dt * 0.04;
       }
 
-      /* ── Phase 2: 4.5s - 7.5s — Full display with breath + shimmer ── */
+      if (alpha <= 0) return;
+
+      c!.save();
+      c!.globalAlpha = alpha;
+
+      // ── Translate to center and scale ──
+      c!.translate(cx, cy);
+      c!.scale(frameScale, frameScale);
+      c!.translate(-cx, -cy);
+
+      const fx = cx - fw / 2;
+      const fy = cy - fh / 2;
+
+      // ── Step 1: Glowing Back Shadow/Aura ──
+      c!.save();
+      c!.shadowColor = 'rgba(245,158,11,0.42)';
+      c!.shadowBlur = 35;
+      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+      c!.fillStyle = '#0d0e16'; // Solid matching backdrop
+      c!.fill();
+      c!.restore();
+
+      // ── Step 2: Clipped Artwork Chamber ──
+      c!.save();
+      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+      c!.clip();
+
+      // Ambient golden inner glow behind Hanuman Ji
+      const innerGlow = c!.createRadialGradient(cx, cy, 0, cx, cy, fw * 0.65);
+      innerGlow.addColorStop(0, 'rgba(255,180,50,0.18)');
+      innerGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      c!.fillStyle = innerGlow;
+      c!.fillRect(fx, fy, fw, fh);
+
+      // Object-cover calculations to perfectly align Hanuman Ji in center
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+      const frameRatio = fw / fh;
+      let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+      if (imgRatio > frameRatio) {
+        sw = img.naturalHeight * frameRatio;
+        sx = (img.naturalWidth - sw) / 2;
+      } else {
+        sh = img.naturalWidth / frameRatio;
+        sy = (img.naturalHeight - sh) / 2;
+      }
+
+      c!.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
+
+      // Inner Soft Overlays for integration
+      const topFade = c!.createLinearGradient(0, fy, 0, fy + fh * 0.16);
+      topFade.addColorStop(0, '#0d0e16');
+      topFade.addColorStop(1, 'rgba(13,14,22,0)');
+      c!.fillStyle = topFade;
+      c!.fillRect(fx, fy, fw, fh * 0.16);
+
+      const bottomFade = c!.createLinearGradient(0, fy + fh, 0, fy + fh * 0.84);
+      bottomFade.addColorStop(0, '#080910');
+      bottomFade.addColorStop(1, 'rgba(8,9,16,0)');
+      c!.fillStyle = bottomFade;
+      c!.fillRect(fx, fy + fh * 0.84, fw, fh * 0.16);
+
+      c!.restore();
+
+      // ── Step 3: Golden Border (Stroke) ──
+      c!.save();
+      const goldGrad = c!.createLinearGradient(fx, fy, fx, fy + fh);
+      goldGrad.addColorStop(0, '#f5d78e');
+      goldGrad.addColorStop(0.25, '#d4a030');
+      goldGrad.addColorStop(0.55, '#b8860b');
+      goldGrad.addColorStop(1, '#6b3a00');
+      
+      c!.strokeStyle = goldGrad;
+      c!.lineWidth = 3.2;
+
+      c!.shadowColor = 'rgba(255,215,0,0.35)';
+      c!.shadowBlur = 12;
+
+      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+      c!.stroke();
+      c!.restore();
+
+      // Top Highlight shine curve inside frame
+      c!.save();
+      const shineGrad = c!.createLinearGradient(fx + fw * 0.15, 0, fx + fw * 0.85, 0);
+      shineGrad.addColorStop(0, 'rgba(255,245,200,0)');
+      shineGrad.addColorStop(0.5, 'rgba(255,245,200,0.65)');
+      shineGrad.addColorStop(1, 'rgba(255,245,200,0)');
+      c!.strokeStyle = shineGrad;
+      c!.lineWidth = 1.0;
+      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+      c!.stroke();
+      c!.restore();
+
+      // ── Step 4: Shimmer Sweep (Only during static display 4.5s - 7.5s) ──
       if (t >= 4.5 && t < 7.5) {
-        const breath = 1 + Math.sin(t * 2.5) * 0.008;
-        const w = dw * breath, h = dh * breath;
-        const aR = Math.max(EP, h * 0.6);
-        const aura = c!.createRadialGradient(cx, cy, 0, cx, cy, aR);
-        aura.addColorStop(0, 'rgba(255,190,60,0.2)');
-        aura.addColorStop(0.5, 'rgba(255,140,35,0.08)');
-        aura.addColorStop(1, 'rgba(255,100,20,0)');
-        c!.fillStyle = aura; c!.fillRect(cx - aR, cy - aR, aR * 2, aR * 2);
-        c!.save();
-        c!.shadowColor = 'rgba(255,185,50,0.5)'; c!.shadowBlur = 40;
-        c!.drawImage(img, cx - w / 2, cy - h / 2, w, h);
-        c!.restore();
         const st = (t - 5.0) / 1.0;
         if (st >= 0 && st <= 1) {
-          const sx = cx - w / 2 + st * w * 1.4 - w * 0.2;
-          const bw2 = w * 0.12;
+          const sx = fx + st * fw * 1.4 - fw * 0.2;
+          const sw2 = fw * 0.12;
+          
           c!.save();
-          c!.beginPath(); c!.rect(cx - w / 2, cy - h / 2, w, h); c!.clip();
-          const shim = c!.createLinearGradient(sx - bw2, 0, sx + bw2, 0);
+          drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+          c!.clip();
+
+          const shim = c!.createLinearGradient(sx - sw2, 0, sx + sw2, 0);
           shim.addColorStop(0, 'rgba(255,255,255,0)');
-          shim.addColorStop(0.4, 'rgba(255,255,220,0.1)');
-          shim.addColorStop(0.5, 'rgba(255,255,255,0.18)');
-          shim.addColorStop(0.6, 'rgba(255,255,220,0.1)');
+          shim.addColorStop(0.4, 'rgba(255,255,220,0.12)');
+          shim.addColorStop(0.5, 'rgba(255,255,255,0.22)');
+          shim.addColorStop(0.6, 'rgba(255,255,220,0.12)');
           shim.addColorStop(1, 'rgba(255,255,255,0)');
-          c!.fillStyle = shim; c!.fillRect(sx - bw2, cy - h / 2, bw2 * 2, h);
+          
+          c!.fillStyle = shim; 
+          c!.fillRect(sx - sw2, fy, sw2 * 2, fh);
           c!.restore();
         }
-        return;
       }
 
-      /* ── Phase 3: 7.5s+ — Clean fade out ── */
-      if (t >= 7.5) {
-        const dt = Math.min((t - 7.5) / 1.2, 1);
-        const oa = Math.max(0, 1 - dt);
-        if (oa > 0) {
-          c!.save(); c!.globalAlpha = oa;
-          c!.shadowColor = `rgba(255,190,65,${oa * 0.5})`; c!.shadowBlur = 20;
-          c!.drawImage(img, left, top, dw, dh);
-          c!.restore();
-        }
-      }
+      c!.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
-       2027: 4-POINT STAR SPARKLES (not boring circles)
+       4-POINT STAR SPARKLES
        ═══════════════════════════════════════════════════════════ */
     function sRevealSparkles(t: number) {
       if (t < 1.5 || t > 4.5) return;
@@ -562,7 +614,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         const lr = p.life / p.ml; const a = p.a * lr;
         const sz = p.sz * (0.5 + lr * 0.5);
 
-        // Soft glow
         if (sz > 0.8) {
           const gr = sz * 5;
           const gg = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, gr));
@@ -572,7 +623,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
           c!.fillRect(p.x - gr, p.y - gr, gr * 2, gr * 2);
         }
 
-        // ★ 4-point star shape
         c!.save();
         c!.translate(p.x, p.y);
         c!.rotate(p.rot);
@@ -594,7 +644,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════
-       2027: ANAMORPHIC LENS FLARE — horizontal light streak
+       ANAMORPHIC LENS FLARE
        ═══════════════════════════════════════════════════════════ */
     function dFlare(t: number) {
       if (t < 2.0 || t > 5.5) return;
@@ -613,7 +663,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.globalAlpha = fi * 0.08;
       c!.globalCompositeOperation = 'lighter';
 
-      // Main horizontal streak
       const fg = c!.createLinearGradient(cx - flareW / 2, 0, cx + flareW / 2, 0);
       fg.addColorStop(0, 'rgba(255,200,80,0)');
       fg.addColorStop(0.2, 'rgba(255,200,80,0.12)');
@@ -625,7 +674,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.fillStyle = fg;
       c!.fillRect(cx - flareW / 2, cy - flareH, flareW, flareH * 2);
 
-      // Bright center core
       const coreW = flareW * 0.2;
       const cg = c!.createLinearGradient(cx - coreW / 2, 0, cx + coreW / 2, 0);
       cg.addColorStop(0, 'rgba(255,240,200,0)');
@@ -759,10 +807,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       📝 2027: TEXT — Staggered reveal + Spring bounce + Shimmer
-       ── Title: 8.7s → slide up + scale spring
-       ── Mantra: 9.0s → staggered slide up
-       ── Shimmer: 9.3s → gold sweep
+       📝 TEXT
        ═══════════════════════════════════════════════════════════════ */
     function dText(t: number) {
       const ps = 8.7;
@@ -770,7 +815,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
       c!.save();
       c!.textAlign = 'center'; c!.textBaseline = 'middle';
 
-      // ── TITLE: 8.7s - 9.3s ──
       const tProg = Math.min((t - ps) / 0.6, 1);
       const tFi = Math.min(1, eSpring(tProg));
       const tSlide = (1 - eOC(tProg)) * 14;
@@ -790,11 +834,9 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         c!.font = `700 ${ts}px 'Georgia','Times New Roman',serif`;
         const tw = c!.measureText(title).width;
 
-        // Crisp drop shadow
         c!.fillStyle = 'rgba(0,0,0,0.72)';
         c!.fillText(title, W / 2 + 2, ty + 3);
 
-        // Metallic gold
         const mg = c!.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
         mg.addColorStop(0, '#5a4210'); mg.addColorStop(.15, '#b08018');
         mg.addColorStop(.32, '#d4a020'); mg.addColorStop(.48, '#ffd700');
@@ -805,7 +847,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
 
         c!.restore();
 
-        // Gold shimmer sweep (9.3s - 10.0s)
         if (t > 9.3) {
           const shProg = Math.min((t - 9.3) / 0.7, 1);
           const shX = (W / 2 - tw / 2) + shProg * tw * 1.4 - tw * 0.2;
@@ -822,7 +863,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
         }
       }
 
-      // ── MANTRA: 9.0s - 9.5s (staggered) ──
       const mStart = 9.0;
       if (t > mStart) {
         const mProg = Math.min((t - mStart) / 0.5, 1);
@@ -855,7 +895,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════
-       2027: FILM GRAIN — subtle analog texture
+       FILM GRAIN
        ═══════════════════════════════════════════════════════════ */
     function dGrain(t: number) {
       const pattern = c!.createPattern(grainCv, 'repeat');
@@ -884,7 +924,7 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════
-       PARTICLE UPDATE — 2027: Organic smoke turbulence
+       PARTICLE UPDATE
        ═══════════════════════════════════════════════════════════ */
     function upd(dt: number) {
       for (const p of pl) {
@@ -895,7 +935,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
           case 4: p.vx += Math.sin(p.y * .018 + p.rot) * .016; p.vy *= .999; break;
           case 5: p.vx *= .98; p.vy *= .98; break;
           case 6:
-            // ★ 2027: Sine-based turbulence for organic smoke
             p.vx += Math.sin(p.y * 0.008 + p.x * 0.004) * 0.025;
             p.vx *= .995; p.vy *= .998; p.sz += .3; break;
           case 8: p.vx += (Math.random() - .5) * .016; break;
@@ -906,42 +945,36 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
     }
 
     /* ═══════════════════════════════════════════════════════════
-       RENDER LOOP — 2027 updated draw order
+       RENDER LOOP
        ═══════════════════════════════════════════════════════════ */
     let lt = 0;
     const loop = (ts: number) => {
       if (!t0.current) { t0.current = ts; lt = ts; }
       const t = (ts - t0.current) / 1000; const dt = Math.min((ts - lt) / 1000, .05); lt = ts;
 
-      // Background & atmosphere
       dBg(t);
-      dVignette(t);        // ★ 2027: breathing vignette
+      dVignette(t);
       dTemples(t);
       dSmoke();
-      dFlare(t);           // ★ 2027: anamorphic flare
+      dFlare(t);
       dRays(t);
       dDust(t);
 
-      // Aarti phase
       dEnergy(t); dAarti(t); dBells(t);
 
-      // Image — SPOTLIGHT reveal, ZERO crop
+      // Render image locked inside temple arch frame (ZERO crop, direct borders touch)
       dHanuman(t);
 
-      // Particles
-      dRevealSparkles();   // ★ 2027: 4-point stars
+      dRevealSparkles();
       dBloom(t); dBloomP();
-      dPetals(); dKum(); dOrbit(); // ★ 2027: orbit with glow halos
+      dPetals(); dKum(); dOrbit();
 
-      // Text & dissolve
       dDissolve(t);
-      dText(t);            // ★ 2027: staggered + spring + shimmer
+      dText(t);
 
-      // Final
-      dGrain(t);           // ★ 2027: film grain on content
+      dGrain(t);
       dFade(t);
 
-      // Spawn
       sSmoke(t); sOrbit(t); sRevealSparkles(t);
       if (t > 4.5) { sPetals(t); sKum(t); }
 
@@ -988,10 +1021,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
             <div className="h-px" style={{ width: 'clamp(40px, 10vw, 80px)', background: 'linear-gradient(to left, transparent, rgba(255,190,60,0.3), transparent)' }} />
           </div>
         </div>
-        <div className="absolute top-4 left-4 w-8 h-8 border border-yellow-700/10 rounded-full" style={{ animation: 'cornerSpin 20s linear infinite' }} />
-        <div className="absolute top-4 right-4 w-8 h-8 border border-yellow-700/10 rounded-full" style={{ animation: 'cornerSpin 20s linear infinite reverse' }} />
-        <div className="absolute bottom-4 left-4 w-8 h-8 border border-yellow-700/10 rounded-full" style={{ animation: 'cornerSpin 20s linear infinite 5s' }} />
-        <div className="absolute bottom-4 right-4 w-8 h-8 border border-yellow-700/10 rounded-full" style={{ animation: 'cornerSpin 20s linear infinite 15s' }} />
         <style dangerouslySetInnerHTML={{ __html: `
           @keyframes omBreath { 0%,100%{opacity:.75;transform:scale(1)} 50%{opacity:1;transform:scale(1.05)} }
           @keyframes textPulse { 0%,100%{opacity:.35} 50%{opacity:.7} }
@@ -1000,7 +1029,6 @@ export default function HanumanJayantiCinematicIntro({ onComplete, imageUrl }: P
           @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
           @keyframes flameFlicker { 0%{transform:scaleY(1) scaleX(1);opacity:.8} 100%{transform:scaleY(1.15) scaleX(.85);opacity:1} }
           @keyframes dotPulse { 0%,100%{opacity:.4;transform:scale(.8)} 50%{opacity:1;transform:scale(1.2)} }
-          @keyframes cornerSpin { 0%{transform:rotate(0deg);border-color:rgba(255,190,60,.08)} 25%{border-color:rgba(255,190,60,.15)} 50%{border-color:rgba(255,190,60,.05)} 75%{border-color:rgba(255,190,60,.12)} 100%{transform:rotate(360deg);border-color:rgba(255,190,60,.08)} }
         ` }} />
       </div>
     );
