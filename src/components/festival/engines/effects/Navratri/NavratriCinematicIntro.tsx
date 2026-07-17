@@ -15,7 +15,7 @@ interface Bell {
   x: number; length: number; angle: number; lastBellTime: number;
 }
 const POOL = 3400;
-const DUR = 15.0; // 🚀 TIMELINE SYNCHRONIZATION: Updated to full 15.0 seconds
+const DUR = 15.0; // 🚀 Total duration is 15.0s
 const EP = 1e-4;
 
 const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/Screenshot%202026-07-17%20201625.png';
@@ -191,9 +191,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fillStyle = g; c.fillRect(0, 0, W, H);
 
       let ca = 0;
-      if (t > 2.0) ca = Math.min((t - 2.0) / 5.0, 1) * .15; // Adjusted to start after 2.0s FLASH
-      if (t > 7.0) ca = .15 + Math.min((t - 7.0) / 1.5, 1) * .2;  // DISPLAY start
-      if (t > 11.5) ca = .35 * (1 - Math.min((t - 11.5) / 2.0, 1)); // Fade during HANDOVER
+      if (t > 2.0) ca = Math.min((t - 2.0) / 5.0, 1) * .15; 
+      if (t > 7.0) ca = .15 + Math.min((t - 7.0) / 1.5, 1) * .2;  
+      if (t > 11.5) ca = .35 * (1 - Math.min((t - 11.5) / 2.0, 1)); 
 
       g = c.createRadialGradient(W * .5, H * .42, 0, W * .5, H * .42, H * .5);
       g.addColorStop(0, `rgba(255,140,60,${ca})`);
@@ -292,7 +292,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        GARBA SWIRL ORBITS
        ═══════════════════════════════════════════════════════════ */
     function sOrbit(t: number) {
-      if (t < 2.0 || t > 11.5 || Math.random() > .2) return; // Sync with reveal to display
+      if (t < 2.0 || t > 11.5 || Math.random() > .2) return; 
       const p = grab(pl); if (!p) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
       const ang = Math.random() * Math.PI * 2; const rad = sc * .38 + Math.random() * sc * .1;
@@ -348,7 +348,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        BELLS
        ═══════════════════════════════════════════════════════════ */
     function dBells(t: number) {
-      const bs = 7.0; if (t < bs) return; // Display start
+      const bs = 7.0; if (t < bs) return; 
       let ba = Math.min((t - bs) / .8, 1);
       if (t > 11.5) ba = Math.max(0, 1 - (t - 11.5) / 1.0);
       if (ba <= 0) return;
@@ -391,7 +391,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        AARTI
        ═══════════════════════════════════════════════════════════ */
     function dAarti(t: number) {
-      const as = 7.0; if (t < as) return; // Display start
+      const as = 7.0; if (t < as) return; 
       let aa = Math.min((t - as) / .8, 1);
       if (t > 11.5) aa = Math.max(0, 1 - (t - 11.5) / 1.0);
       if (aa <= 0) return;
@@ -430,7 +430,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        FLATING DIYAS
        ═══════════════════════════════════════════════════════════ */
     function dDiyas(t: number) {
-      const ds = 7.0; if (t < ds) return; // Display start
+      const ds = 7.0; if (t < ds) return; 
       let da = Math.min((t - ds) / .8, 1);
       if (t > 11.5) da = Math.max(0, 1 - (t - 11.5) / 1.5);
       if (da <= 0) return;
@@ -533,10 +533,10 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       MAA DURGA
+       MAA DURGA — Crimson Flash + Circular Reveal
        ═══════════════════════════════════════════════════════════ */
     function dDurga(t: number) {
-      if (t < 2.0) return; // 🌟 SYNCHRONIZED: Safe check matches the 2.0s FLASH duration
+      if (t < 2.0) return; // 🌟 Safety check
       const img = durgaImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return;
 
@@ -556,7 +556,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
 
       // 🌟 DYNAMIC SYNCHRONIZED TIMING 🌟
       if (t >= 2.0 && t < 7.0) {
-        const raw = Math.min((t - 2.0) / 5.0, 1); // 5.0 seconds REVEAL phase
+        const raw = Math.min((t - 2.0) / 5.0, 1); // 5.0s Reveal phase
         frameAlpha = Math.min(raw * 5, 1);
         revealProg = eIO(raw);
         flashI = Math.max(0, 1 - raw * 2.5) * 1.0;
@@ -566,7 +566,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         flashI = 0;
         breathScale = Math.sin(t * 2.5) * 0.004;
       } else if (t >= 11.5) {
-        const d = Math.min((t - 11.5) / 3.5, 1); // 3.5 seconds HANDOVER fadeout
+        const d = Math.min((t - 11.5) / 1.5, 1); // 🚀 FIXED: Rapid and smooth 1.5s fade-out (instead of 3.5s)
         frameAlpha = Math.max(0, 1 - d);
         revealProg = 1;
         fadeAlpha = Math.max(0, 1 - d);
@@ -782,7 +782,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        SPARKLES
        ═══════════════════════════════════════════════════════════ */
     function sRevealSparkles(t: number) {
-      if (t < 2.0 || t > 7.0) return; // Sync with 5-second reveal duration
+      if (t < 2.0 || t > 7.0) return; 
       const d = getImgDims(); if (!d) return;
       const raw = Math.min((t - 2.0) / 5.0, 1);
       const revealProg = eIO(raw);
@@ -840,7 +840,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        FLARE
        ═══════════════════════════════════════════════════════════ */
     function dFlare(t: number) {
-      if (t < 2.0 || t > 8.0) return; // Active during reveal
+      if (t < 2.0 || t > 8.0) return; 
       let fi: number;
       if (t < 3.2) fi = (t - 2.0) / 1.2;
       else if (t > 7.0) fi = 1 - (t - 7.0) / 1.0;
@@ -908,7 +908,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        GENDA & ROSE PETALS
        ═══════════════════════════════════════════════════════════ */
     function sPetals(t: number) {
-      if (t < 5.0 || Math.random() > .5) return; // Active during reveal
+      if (t < 5.0 || Math.random() > .5) return; 
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -24 - Math.random() * 60;
       p.vx = (Math.random() - .5) * 3.0;
@@ -1046,7 +1046,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        DISSOLVE
        ═══════════════════════════════════════════════════════════ */
     function dDissolve(t: number) {
-      const ps = 10.0; // Dissolve near handover phase
+      const ps = 10.0; 
       const dt = Math.min((t - ps) / 1.5, 1); if (dt <= 0) return;
       const la = eOC(dt) * .12;
       const lg = c.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
@@ -1060,7 +1060,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        TEXT
        ═══════════════════════════════════════════════════════════ */
     function dText(t: number) {
-      const ps = 11.5; // Synced with HANDOVER phase
+      const ps = 11.5; 
       if (t < ps) return;
       c.save();
       c.textAlign = 'center'; c.textBaseline = 'middle';
