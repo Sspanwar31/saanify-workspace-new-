@@ -104,7 +104,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) audioCtxRef.current = new AudioCtx();
-    } catch (_) {}
+    } catch (_) { /* no audio */ }
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
@@ -171,40 +171,37 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     };
 
     /* ═══════════════════════════════════════════════════════════
-       BACKGROUND — Deep Crimson/Purple Navratri Night
+       BACKGROUND
        ═══════════════════════════════════════════════════════════ */
     function dBg(t: number) {
-      c!.fillStyle = '#050108'; c!.fillRect(0, 0, W, H);
+      c.fillStyle = '#050108'; c.fillRect(0, 0, W, H);
 
-      // Deep crimson upper atmosphere
       const aa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .7 : .7;
-      let g = c!.createRadialGradient(W * .5, H * .18, 0, W * .5, H * .18, H * .85);
+      let g = c.createRadialGradient(W * .5, H * .18, 0, W * .5, H * .18, H * .85);
       g.addColorStop(0, `rgba(180,20,40,${aa * .22})`);
       g.addColorStop(.4, `rgba(120,20,60,${aa * .12})`);
       g.addColorStop(.7, `rgba(50,10,50,${aa * .06})`);
       g.addColorStop(1, 'rgba(5,1,8,0)');
-      c!.fillStyle = g; c!.fillRect(0, 0, W, H);
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
 
-      // Bottom warm glow (like distant temple lamps)
-      g = c!.createRadialGradient(W * .5, H * .92, 0, W * .5, H * .92, H * .45);
+      g = c.createRadialGradient(W * .5, H * .92, 0, W * .5, H * .92, H * .45);
       g.addColorStop(0, `rgba(200,80,20,${aa * .18})`);
       g.addColorStop(.5, `rgba(140,30,30,${aa * .08})`);
-      g!.addColorStop(1, 'rgba(5,1,8,0)');
-      c!.fillStyle = g; c!.fillRect(0, 0, W, H);
+      g.addColorStop(1, 'rgba(5,1,8,0)');
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
 
-      // Center divine glow (builds with time)
       let ca = 0;
       if (t > 1.0) ca = Math.min((t - 1.0) / 3, 1) * .15;
       if (t > 4.5) ca = .15 + Math.min((t - 4.5) / 1.5, 1) * .2;
       if (t > 7.0) ca = .35 + Math.min((t - 7.0) / 1.0, 1) * .15;
       if (t > 8.5) ca = .5 + Math.min((t - 8.5) / 1.0, 1) * .12;
 
-      g = c!.createRadialGradient(W * .5, H * .42, 0, W * .5, H * .42, H * .5);
+      g = c.createRadialGradient(W * .5, H * .42, 0, W * .5, H * .42, H * .5);
       g.addColorStop(0, `rgba(255,140,60,${ca})`);
       g.addColorStop(.3, `rgba(220,50,50,${ca * .35})`);
       g.addColorStop(.6, `rgba(120,30,80,${ca * .15})`);
       g.addColorStop(1, 'rgba(5,1,8,0)');
-      c!.fillStyle = g; c!.fillRect(0, 0, W, H);
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -212,11 +209,11 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        ═══════════════════════════════════════════════════════════ */
     function dVignette(t: number) {
       const breathe = 0.6 + Math.sin(t * 1.2) * 0.04;
-      const vg = c!.createRadialGradient(W / 2, H / 2, H * 0.24, W / 2, H / 2, Math.max(EP, Math.max(W, H) * 0.82));
+      const vg = c.createRadialGradient(W / 2, H / 2, H * 0.24, W / 2, H / 2, Math.max(EP, Math.max(W, H) * 0.82));
       vg.addColorStop(0, 'rgba(0,0,0,0)');
       vg.addColorStop(1, `rgba(5,1,8,${breathe})`);
-      c!.fillStyle = vg;
-      c!.fillRect(0, 0, W, H);
+      c.fillStyle = vg;
+      c.fillRect(0, 0, W, H);
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -226,31 +223,31 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const fa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .22 : .22;
       if (t > 8.5) { if (Math.max(0, 1 - (t - 8.5) / 1.3) <= 0) return; }
       const al = t > 8.5 ? Math.max(0, .22 - (t - 8.5) * .17) : fa;
-      c!.save(); c!.globalAlpha = al; c!.fillStyle = '#0a0312';
+      c.save(); c.globalAlpha = al; c.fillStyle = '#0a0312';
       const gops = [
         { cx: W * .1, bw: W * .1, bh: H * .28, ti: 5 }, { cx: W * .18, bw: W * .065, bh: H * .2, ti: 4 },
         { cx: W * .83, bw: W * .09, bh: H * .25, ti: 5 }, { cx: W * .92, bw: W * .055, bh: H * .18, ti: 3 },
         { cx: W * .5, bw: W * .045, bh: H * .12, ti: 3 }, { cx: W * .38, bw: W * .04, bh: H * .1, ti: 3 },
         { cx: W * .62, bw: W * .04, bh: H * .1, ti: 3 },
       ];
-      for (const g of gops) {
-        const by = H * .86; const th = g.bh / (g.ti + 1);
-        for (let i = 0; i < g.ti; i++) {
-          const sh = 1 - (i / g.ti) * .55; const w = g.bw * sh;
-          c!.fillRect(g.cx - w / 2, by - (i + 1) * th, w, th + 1);
+      for (const gop of gops) {
+        const by = H * .86; const th = gop.bh / (gop.ti + 1);
+        for (let i = 0; i < gop.ti; i++) {
+          const sh = 1 - (i / gop.ti) * .55; const w = gop.bw * sh;
+          c.fillRect(gop.cx - w / 2, by - (i + 1) * th, w, th + 1);
         }
-        const tw = g.bw * .28; const ty = by - g.ti * th;
-        c!.beginPath(); c!.moveTo(g.cx, ty - th * .7); c!.lineTo(g.cx - tw / 2, ty); c!.lineTo(g.cx + tw / 2, ty); c!.closePath(); c!.fill();
+        const tw = gop.bw * .28; const ty = by - gop.ti * th;
+        c.beginPath(); c.moveTo(gop.cx, ty - th * .7); c.lineTo(gop.cx - tw / 2, ty); c.lineTo(gop.cx + tw / 2, ty); c.closePath(); c.fill();
       }
-      c!.fillRect(0, H * .86, W, H * .14);
-      const gg = c!.createLinearGradient(0, H * .84, 0, H * .9);
+      c.fillRect(0, H * .86, W, H * .14);
+      const gg = c.createLinearGradient(0, H * .84, 0, H * .9);
       gg.addColorStop(0, 'rgba(180,30,30,0)'); gg.addColorStop(1, `rgba(180,30,30,${al * .2})`);
-      c!.fillStyle = gg; c!.fillRect(0, H * .84, W, H * .06);
-      c!.restore();
+      c.fillStyle = gg; c.fillRect(0, H * .84, W, H * .06);
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
-       SMOKE (Incense / Dhoop)
+       SMOKE
        ═══════════════════════════════════════════════════════════ */
     function sSmoke(t: number) {
       if (Math.random() > (t < 1.5 ? 0.4 : 0.12)) return;
@@ -262,7 +259,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       p.ml = 5 + Math.random() * 3;
       p.vx = (Math.random() - .5) * .25; p.vy = -Math.random() * .5 - .15;
       p.life = p.ml;
-      p.r = 180; p.g = 140; p.b = 120; // Grey-ish incense smoke
+      p.r = 180; p.g = 140; p.b = 120;
       p.rot = 0; p.rs = 0; p.on = true; p.tp = 6;
     }
     function dSmoke() {
@@ -270,10 +267,10 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         if (!p.on || p.tp !== 6) continue;
         const lr = p.life / p.ml;
         const a = p.a * (lr < .3 ? lr / .3 : lr > .7 ? (1 - lr) / .3 : 1);
-        const g = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, p.sz));
+        const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, p.sz));
         g.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a})`);
         g.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
-        c!.fillStyle = g; c!.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
+        c.fillStyle = g; c.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
       }
     }
 
@@ -287,8 +284,8 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         if (p.y < -12) { p.y = H + 12; p.x = Math.random() * W; }
         if (p.x < -12) p.x = W + 12; if (p.x > W + 12) p.x = -12;
         const fl = .6 + Math.sin(t * 1.6 + i * .55) * .4;
-        c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz), 0, Math.PI * 2);
-        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * fl})`; c!.fill();
+        c.beginPath(); c.arc(p.x, p.y, Math.max(EP, p.sz), 0, Math.PI * 2);
+        c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * fl})`; c.fill();
       }
     }
 
@@ -312,13 +309,13 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         const lr = p.life / p.ml;
         const a = p.a * Math.min(lr * 2, 1) * Math.min((1 - lr) * 2, 1);
         const haloR = p.sz * 4;
-        const hg = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, haloR));
+        const hg = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, haloR));
         hg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.2})`);
         hg.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
-        c!.fillStyle = hg;
-        c!.fillRect(p.x - haloR, p.y - haloR, haloR * 2, haloR * 2);
-        c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz), 0, Math.PI * 2);
-        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
+        c.fillStyle = hg;
+        c.fillRect(p.x - haloR, p.y - haloR, haloR * 2, haloR * 2);
+        c.beginPath(); c.arc(p.x, p.y, Math.max(EP, p.sz), 0, Math.PI * 2);
+        c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c.fill();
       }
     }
 
@@ -329,11 +326,11 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       if (t >= 0 && t < 1.5) {
         const ep = eOC(Math.min(t / 1.2, 1));
         const ea = ep * .08;
-        const eg = c!.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .45));
+        const eg = c.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .45));
         eg.addColorStop(0, `rgba(200,30,60,${ea})`);
         eg.addColorStop(.5, `rgba(100,20,80,${ea * .4})`);
         eg.addColorStop(1, 'rgba(5,1,8,0)');
-        c!.fillStyle = eg; c!.fillRect(0, 0, W, H);
+        c.fillStyle = eg; c.fillRect(0, 0, W, H);
         return;
       }
       if (t < 4.5 || t > 8.5) return;
@@ -341,11 +338,11 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       let ea = 0;
       if (t < 6.5) ea = Math.min((t - 4.5) / 2, 1) * .12;
       else ea = .12 * (1 - Math.min((t - 6.5) / 2, 1) * .5);
-      const eg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, sc * .42));
+      const eg = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, sc * .42));
       eg.addColorStop(0, `rgba(255,140,60,${ea})`);
       eg.addColorStop(.5, `rgba(200,40,60,${ea * .4})`);
       eg.addColorStop(1, 'rgba(5,1,8,0)');
-      c!.fillStyle = eg; c!.fillRect(0, 0, W, H);
+      c.fillStyle = eg; c.fillRect(0, 0, W, H);
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -368,27 +365,27 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       });
     }
     function drawBell(ax: number, ay: number, s: number, ang: number, al: number) {
-      c!.save(); c!.globalAlpha = al; c!.translate(ax, ay); c!.rotate(ang);
-      c!.strokeStyle = '#7a6535'; c!.lineWidth = 1.2;
-      for (let i = 0; i < 3; i++) { c!.beginPath(); c!.ellipse(0, s * .08 * (i + 1), Math.max(EP, s * .028), Math.max(EP, s * .045), 0, 0, Math.PI * 2); c!.stroke(); }
+      c.save(); c.globalAlpha = al; c.translate(ax, ay); c.rotate(ang);
+      c.strokeStyle = '#7a6535'; c.lineWidth = 1.2;
+      for (let i = 0; i < 3; i++) { c.beginPath(); c.ellipse(0, s * .08 * (i + 1), Math.max(EP, s * .028), Math.max(EP, s * .045), 0, 0, Math.PI * 2); c.stroke(); }
       const ty = s * .32, bb = s, tw = s * .11, bw = s * .34;
-      c!.beginPath(); c!.moveTo(-tw, ty);
-      c!.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, -bw * .5, bb);
-      c!.lineTo(bw * .5, bb);
-      c!.bezierCurveTo(bw * .82, ty + s * .4, tw, ty + s * .2, tw, ty);
-      c!.closePath();
-      const bg = c!.createLinearGradient(-bw, 0, bw, 0);
+      c.beginPath(); c.moveTo(-tw, ty);
+      c.bezierCurveTo(-tw, ty + s * .2, -bw * .82, ty + s * .4, -bw * .5, bb);
+      c.lineTo(bw * .5, bb);
+      c.bezierCurveTo(bw * .82, ty + s * .4, tw, ty + s * .2, tw, ty);
+      c.closePath();
+      const bg = c.createLinearGradient(-bw, 0, bw, 0);
       bg.addColorStop(0, '#523e10'); bg.addColorStop(.25, '#9a7520'); bg.addColorStop(.45, '#c9a030');
       bg.addColorStop(.55, '#dab540'); bg.addColorStop(.75, '#9a7520'); bg.addColorStop(1, '#523e10');
-      c!.fillStyle = bg; c!.fill();
-      c!.beginPath(); c!.moveTo(-tw * .25, ty + s * .05);
-      c!.bezierCurveTo(-tw * .25, ty + s * .2, -bw * .22, ty + s * .4, -bw * .22, bb - s * .04);
-      c!.lineTo(-bw * .1, bb - s * .04);
-      c!.bezierCurveTo(-bw * .1, ty + s * .4, -tw * .1, ty + s * .2, -tw * .1, ty + s * .05);
-      c!.closePath(); c!.fillStyle = 'rgba(255,228,165,.12)'; c!.fill();
-      c!.beginPath(); c!.moveTo(-bw * .5, bb); c!.lineTo(bw * .5, bb);
-      c!.strokeStyle = '#dab540'; c!.lineWidth = 1.8; c!.stroke();
-      c!.restore();
+      c.fillStyle = bg; c.fill();
+      c.beginPath(); c.moveTo(-tw * .25, ty + s * .05);
+      c.bezierCurveTo(-tw * .25, ty + s * .2, -bw * .22, ty + s * .4, -bw * .22, bb - s * .04);
+      c.lineTo(-bw * .1, bb - s * .04);
+      c.bezierCurveTo(-bw * .1, ty + s * .4, -tw * .1, ty + s * .2, -tw * .1, ty + s * .05);
+      c.closePath(); c.fillStyle = 'rgba(255,228,165,.12)'; c.fill();
+      c.beginPath(); c.moveTo(-bw * .5, bb); c.lineTo(bw * .5, bb);
+      c.strokeStyle = '#dab540'; c.lineWidth = 1.8; c.stroke();
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -404,34 +401,34 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const ax = cx + Math.cos(ang) * orad; const ay = cy + Math.sin(ang) * orad * .52;
       for (let i = 1; i < 18; i++) {
         const ta = ang - i * .045; const tx = cx + Math.cos(ta) * orad; const ty = cy + Math.sin(ta) * orad * .52;
-        const tg = c!.createRadialGradient(tx, ty, 0, tx, ty, Math.max(EP, 10));
+        const tg = c.createRadialGradient(tx, ty, 0, tx, ty, Math.max(EP, 10));
         tg.addColorStop(0, `rgba(255,175,45,${(1 - i / 18) * .1 * aa})`); tg.addColorStop(1, 'rgba(255,140,30,0)');
-        c!.fillStyle = tg; c!.fillRect(tx - 10, ty - 10, 20, 20);
+        c.fillStyle = tg; c.fillRect(tx - 10, ty - 10, 20, 20);
       }
-      c!.save(); c!.globalAlpha = aa; c!.translate(ax, ay);
-      c!.beginPath(); c!.ellipse(0, 0, Math.max(EP, 11), Math.max(EP, 4.5), 0, 0, Math.PI * 2);
-      c!.fillStyle = '#b8942e'; c!.fill(); c!.strokeStyle = '#7a6520'; c!.lineWidth = .8; c!.stroke();
+      c.save(); c.globalAlpha = aa; c.translate(ax, ay);
+      c.beginPath(); c.ellipse(0, 0, Math.max(EP, 11), Math.max(EP, 4.5), 0, 0, Math.PI * 2);
+      c.fillStyle = '#b8942e'; c.fill(); c.strokeStyle = '#7a6520'; c.lineWidth = .8; c.stroke();
       const fk = 1 + Math.sin(t * 13) * .14 + Math.sin(t * 19) * .09; const fh = 17 * fk;
-      c!.beginPath(); c!.moveTo(0, -2);
-      c!.bezierCurveTo(-5.5, -fh * .4, -4.5, -fh * .8, 0, -fh);
-      c!.bezierCurveTo(4.5, -fh * .8, 5.5, -fh * .4, 0, -2);
-      c!.fillStyle = 'rgba(255,135,18,.68)'; c!.fill();
-      c!.beginPath(); c!.moveTo(0, -2);
-      c!.bezierCurveTo(-2.8, -fh * .32, -2.2, -fh * .58, 0, -fh * .68);
-      c!.bezierCurveTo(2.2, -fh * .58, 2.8, -fh * .32, 0, -2);
-      c!.fillStyle = 'rgba(255,218,95,.88)'; c!.fill();
-      c!.beginPath(); c!.moveTo(0, -2);
-      c!.bezierCurveTo(-1.2, -fh * .18, -.8, -fh * .32, 0, -fh * .38);
-      c!.bezierCurveTo(.8, -fh * .32, 1.2, -fh * .18, 0, -2);
-      c!.fillStyle = 'rgba(255,252,218,.92)'; c!.fill();
-      const fg = c!.createRadialGradient(0, -fh * .28, 0, 0, -fh * .28, Math.max(EP, 32));
+      c.beginPath(); c.moveTo(0, -2);
+      c.bezierCurveTo(-5.5, -fh * .4, -4.5, -fh * .8, 0, -fh);
+      c.bezierCurveTo(4.5, -fh * .8, 5.5, -fh * .4, 0, -2);
+      c.fillStyle = 'rgba(255,135,18,.68)'; c.fill();
+      c.beginPath(); c.moveTo(0, -2);
+      c.bezierCurveTo(-2.8, -fh * .32, -2.2, -fh * .58, 0, -fh * .68);
+      c.bezierCurveTo(2.2, -fh * .58, 2.8, -fh * .32, 0, -2);
+      c.fillStyle = 'rgba(255,218,95,.88)'; c.fill();
+      c.beginPath(); c.moveTo(0, -2);
+      c.bezierCurveTo(-1.2, -fh * .18, -.8, -fh * .32, 0, -fh * .38);
+      c.bezierCurveTo(.8, -fh * .32, 1.2, -fh * .18, 0, -2);
+      c.fillStyle = 'rgba(255,252,218,.92)'; c.fill();
+      const fg = c.createRadialGradient(0, -fh * .28, 0, 0, -fh * .28, Math.max(EP, 32));
       fg.addColorStop(0, 'rgba(255,175,48,.22)'); fg.addColorStop(.5, 'rgba(255,135,28,.06)'); fg.addColorStop(1, 'rgba(255,95,18,0)');
-      c!.fillStyle = fg; c!.fillRect(-32, -fh - 14, 64, fh + 42);
-      c!.restore();
+      c.fillStyle = fg; c.fillRect(-32, -fh - 14, 64, fh + 42);
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
-       🪔 FLOATING DIYAS — Realistic Oil Lamps
+       FLOATING DIYAS
        ═══════════════════════════════════════════════════════════ */
     function dDiyas(t: number) {
       const ds = 4.0; if (t < ds) return;
@@ -448,112 +445,99 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         { x: W * 0.88, y: H * 0.82, scl: 0.65 },
       ];
 
-      c!.save();
-      c!.globalAlpha = da;
+      c.save();
+      c.globalAlpha = da;
 
       for (const pos of positions) {
         const s = diyaSize * pos.scl;
+        c.save();
+        c.translate(pos.x, pos.y);
 
-        // Diya base (clay pot)
-        c!.save();
-        c!.translate(pos.x, pos.y);
-
-        // Oil reservoir
-        c!.beginPath();
-        c!.ellipse(0, 0, Math.max(EP, s * 0.6), Math.max(0.01, s * 0.2), 0, 0, Math.PI * 2);
-        const oilGrad = c!.createRadialGradient(0, 0, 0, 0, 0, Math.max(EP, s * 0.6));
+        c.beginPath();
+        c.ellipse(0, 0, Math.max(EP, s * 0.6), Math.max(0.01, s * 0.2), 0, 0, Math.PI * 2);
+        const oilGrad = c.createRadialGradient(0, 0, 0, 0, 0, Math.max(EP, s * 0.6));
         oilGrad.addColorStop(0, '#fbbf24');
         oilGrad.addColorStop(0.6, '#f59e0b');
         oilGrad.addColorStop(1, '#92400e');
-        c!.fillStyle = oilGrad;
-        c!.fill();
+        c.fillStyle = oilGrad;
+        c.fill();
 
-        // Clay pot rim
-        c!.beginPath();
-        c!.ellipse(0, s * 0.12, Math.max(EP, s * 0.68), Math.max(0.01, s * 0.18), 0, 0, Math.PI * 2);
-        const clayGrad = c!.createLinearGradient(-s * 0.7, 0, s * 0.7, 0);
+        c.beginPath();
+        c.ellipse(0, s * 0.12, Math.max(EP, s * 0.68), Math.max(0.01, s * 0.18), 0, 0, Math.PI * 2);
+        const clayGrad = c.createLinearGradient(-s * 0.7, 0, s * 0.7, 0);
         clayGrad.addColorStop(0, '#78350f');
         clayGrad.addColorStop(0.3, '#a16207');
         clayGrad.addColorStop(0.7, '#92400e');
         clayGrad.addColorStop(1, '#78350f');
-        c!.fillStyle = clayGrad;
-        c!.fill();
+        c.fillStyle = clayGrad;
+        c.fill();
 
-        // Cotton wick
-        c!.beginPath();
-        c!.rect(-s * 0.02, -s * 0.04, s * 0.04, s * 0.08);
-        c!.fillStyle = '#fde68a';
-        c!.fill();
+        c.beginPath();
+        c.rect(-s * 0.02, -s * 0.04, s * 0.04, s * 0.08);
+        c.fillStyle = '#fde68a';
+        c.fill();
 
-        // Multi-layer realistic flame
         const flicker1 = Math.sin(t * 12 + pos.x) * 0.15;
         const flicker2 = Math.sin(t * 17 + pos.y) * 0.12;
         const flicker3 = Math.cos(t * 23) * 0.08;
         const baseH = s * 1.2;
 
-        c!.globalCompositeOperation = 'lighter';
+        c.globalCompositeOperation = 'lighter';
 
-        // Outer glow
         const glowR = s * 1.8;
-        const glow = c!.createRadialGradient(0, -baseH * 0.3, 0, 0, -baseH * 0.3, Math.max(EP, glowR));
-        glow.addColorStop(0, `rgba(255,200,50,0.12)`);
-        glow.addColorStop(0.5, `rgba(255,120,30,0.04)`);
+        const glow = c.createRadialGradient(0, -baseH * 0.3, 0, 0, -baseH * 0.3, Math.max(EP, glowR));
+        glow.addColorStop(0, 'rgba(255,200,50,0.12)');
+        glow.addColorStop(0.5, 'rgba(255,120,30,0.04)');
         glow.addColorStop(1, 'rgba(255,80,20,0)');
-        c!.fillStyle = glow;
-        c!.fillRect(-glowR, -baseH * 0.3 - glowR, glowR * 2, glowR * 2);
+        c.fillStyle = glow;
+        c.fillRect(-glowR, -baseH * 0.3 - glowR, glowR * 2, glowR * 2);
 
-        // Flame layer 1 — outer red-orange
         const h1 = baseH * (1 + flicker1);
-        c!.beginPath();
-        c!.moveTo(-s * 0.15, 0);
-        c!.bezierCurveTo(-s * 0.12, -h1 * 0.4, -s * 0.03 + Math.sin(t * 8) * s * 0.06, -h1 * 0.85, 0, -h1);
-        c!.bezierCurveTo(s * 0.03 + Math.sin(t * 8) * s * 0.06, -h1 * 0.85, s * 0.12, -h1 * 0.4, s * 0.15, 0);
-        c!.closePath();
-        const fg1 = c!.createLinearGradient(0, 0, 0, -h1);
+        c.beginPath();
+        c.moveTo(-s * 0.15, 0);
+        c.bezierCurveTo(-s * 0.12, -h1 * 0.4, -s * 0.03 + Math.sin(t * 8) * s * 0.06, -h1 * 0.85, 0, -h1);
+        c.bezierCurveTo(s * 0.03 + Math.sin(t * 8) * s * 0.06, -h1 * 0.85, s * 0.12, -h1 * 0.4, s * 0.15, 0);
+        c.closePath();
+        const fg1 = c.createLinearGradient(0, 0, 0, -h1);
         fg1.addColorStop(0, 'rgba(255,80,20,0.7)');
         fg1.addColorStop(0.4, 'rgba(255,160,40,0.4)');
         fg1.addColorStop(1, 'rgba(255,200,60,0)');
-        c!.fillStyle = fg1;
-        c!.fill();
+        c.fillStyle = fg1;
+        c.fill();
 
-        // Flame layer 2 — mid orange-yellow
         const h2 = h1 * 0.7 * (1 + flicker2);
-        c!.beginPath();
-        c!.moveTo(-s * 0.08, 0);
-        c!.bezierCurveTo(-s * 0.06, -h2 * 0.4, -s * 0.02 + Math.sin(t * 10) * s * 0.04, -h2 * 0.8, 0, -h2);
-        c!.bezierCurveTo(s * 0.02 + Math.sin(t * 10) * s * 0.04, -h2 * 0.8, s * 0.06, -h2 * 0.4, s * 0.08, 0);
-        c!.closePath();
-        const fg2 = c!.createLinearGradient(0, 0, 0, -h2);
+        c.beginPath();
+        c.moveTo(-s * 0.08, 0);
+        c.bezierCurveTo(-s * 0.06, -h2 * 0.4, -s * 0.02 + Math.sin(t * 10) * s * 0.04, -h2 * 0.8, 0, -h2);
+        c.bezierCurveTo(s * 0.02 + Math.sin(t * 10) * s * 0.04, -h2 * 0.8, s * 0.06, -h2 * 0.4, s * 0.08, 0);
+        c.closePath();
+        const fg2 = c.createLinearGradient(0, 0, 0, -h2);
         fg2.addColorStop(0, 'rgba(255,220,80,0.9)');
         fg2.addColorStop(0.5, 'rgba(255,180,50,0.5)');
         fg2.addColorStop(1, 'rgba(255,255,200,0)');
-        c!.fillStyle = fg2;
-        c!.fill();
+        c.fillStyle = fg2;
+        c.fill();
 
-        // Flame layer 3 — inner white-hot core
         const h3 = h2 * 0.5 * (1 + flicker3);
-        c!.beginPath();
-        c!.moveTo(-s * 0.03, 0);
-        c!.quadraticCurveTo(0, -h3 * 0.5, 0, -h3);
-        c!.quadraticCurveTo(s * 0.03, -h3 * 0.5, s * 0.03, 0);
-        c!.closePath();
-        c!.fillStyle = 'rgba(255,255,240,0.85)';
-        c!.fill();
+        c.beginPath();
+        c.moveTo(-s * 0.03, 0);
+        c.quadraticCurveTo(0, -h3 * 0.5, 0, -h3);
+        c.quadraticCurveTo(s * 0.03, -h3 * 0.5, s * 0.03, 0);
+        c.closePath();
+        c.fillStyle = 'rgba(255,255,240,0.85)';
+        c.fill();
 
-        c!.globalCompositeOperation = 'source-over';
-
-        c!.restore();
+        c.globalCompositeOperation = 'source-over';
+        c.restore();
       }
-
-      c!.restore();
+      c.restore();
     }
 
-    /* ═══════════════════════════════════════════════════════════════
-       🖼️ MAA DURGA — Crimson Flash + Circular Reveal
-       ═══════════════════════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════
+       MAA DURGA — Crimson Flash + Circular Reveal
+       ═══════════════════════════════════════════════════════════ */
     function dDurga(t: number) {
       if (t < 1.5) return;
-
       const img = durgaImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return;
 
@@ -590,227 +574,208 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
 
       if (frameAlpha <= 0) return;
 
-      c!.save();
-      c!.globalAlpha = fadeAlpha;
+      c.save();
+      c.globalAlpha = fadeAlpha;
 
       if (breathScale !== 0) {
-        c!.translate(cx, cy);
-        c!.scale(1 + breathScale, 1 + breathScale);
-        c!.translate(-cx, -cy);
+        c.translate(cx, cy);
+        c.scale(1 + breathScale, 1 + breathScale);
+        c.translate(-cx, -cy);
       }
 
-      // ── Crimson Flash Burst ──
       if (flashI > 0.1) {
         const flashR = fw * 0.65 * (1 + (1 - flashI) * 0.5);
-        const fg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, flashR));
+        const fg = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, flashR));
         fg.addColorStop(0, `rgba(255,240,220,${flashI * 0.65})`);
         fg.addColorStop(0.15, `rgba(255,180,100,${flashI * 0.45})`);
         fg.addColorStop(0.35, `rgba(220,50,50,${flashI * 0.25})`);
         fg.addColorStop(0.6, `rgba(180,30,60,${flashI * 0.1})`);
         fg.addColorStop(1, 'rgba(100,10,40,0)');
-        c!.fillStyle = fg;
-        c!.fillRect(fx - fw * 0.3, fy - fh * 0.2, fw * 1.6, fh * 1.4);
+        c.fillStyle = fg;
+        c.fillRect(fx - fw * 0.3, fy - fh * 0.2, fw * 1.6, fh * 1.4);
       }
 
-      // ── Ambient Halo ──
-      const ah = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.42), cx, cy, Math.max(EP, fw * 0.78));
+      const ah = c.createRadialGradient(cx, cy, Math.max(EP, fw * 0.42), cx, cy, Math.max(EP, fw * 0.78));
       ah.addColorStop(0, 'rgba(220,60,80,0.04)');
       ah.addColorStop(1, 'rgba(180,30,60,0)');
-      c!.fillStyle = ah;
-      c!.fillRect(fx - fw * 0.35, fy - fh * 0.18, fw * 1.7, fh * 1.36);
+      c.fillStyle = ah;
+      c.fillRect(fx - fw * 0.35, fy - fh * 0.18, fw * 1.7, fh * 1.36);
 
-      // ── Frame Backdrop ──
-      c!.save();
-      c!.globalAlpha = frameAlpha * fadeAlpha;
-      c!.shadowColor = 'rgba(220,38,38,0.5)';
-      c!.shadowBlur = 44;
-      c!.shadowOffsetY = 4;
-      drawArchPath(c!, fx, fy, fw, fh, br);
-      c!.fillStyle = '#0a0312';
-      c!.fill();
-      c!.restore();
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      c.shadowColor = 'rgba(220,38,38,0.5)';
+      c.shadowBlur = 44;
+      c.shadowOffsetY = 4;
+      drawArchPath(c, fx, fy, fw, fh, br);
+      c.fillStyle = '#0a0312';
+      c.fill();
+      c.restore();
 
-      // ── Image with Circular Reveal ──
-      c!.save();
-      c!.globalAlpha = frameAlpha * fadeAlpha;
-      drawArchPath(c!, fx, fy, fw, fh, br);
-      c!.clip();
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      drawArchPath(c, fx, fy, fw, fh, br);
+      c.clip();
 
-      // Inner glow
-      const ig = c!.createRadialGradient(cx, cy - fh * 0.08, 0, cx, cy, Math.max(EP, fw * 0.72));
+      const ig = c.createRadialGradient(cx, cy - fh * 0.08, 0, cx, cy, Math.max(EP, fw * 0.72));
       ig.addColorStop(0, 'rgba(255,120,80,0.12)');
       ig.addColorStop(0.5, 'rgba(255,60,60,0.04)');
       ig.addColorStop(1, 'rgba(0,0,0,0)');
-      c!.fillStyle = ig;
-      c!.fillRect(fx, fy, fw, fh);
+      c.fillStyle = ig;
+      c.fillRect(fx, fy, fw, fh);
 
-      // Circle clip
       const maxRevealR = Math.max(fw, fh) * 0.85;
       const currentR = Math.max(EP, maxRevealR * revealProg);
-      c!.save();
-      c!.beginPath();
-      c!.arc(cx, cy, currentR, 0, Math.PI * 2);
-      c!.clip();
+      c.save();
+      c.beginPath();
+      c.arc(cx, cy, currentR, 0, Math.PI * 2);
+      c.clip();
 
-      // Draw image
       const imgR = img.naturalWidth / img.naturalHeight;
       const frmR = fw / fh;
       let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
       if (imgR > frmR) { sw = img.naturalHeight * frmR; sx = (img.naturalWidth - sw) / 2; }
       else { sh = img.naturalWidth / frmR; sy = (img.naturalHeight - sh) / 2; }
-      c!.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
-      c!.restore();
+      c.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
+      c.restore();
 
-      // Wave edge glow
       if (flashI > 0.01 && currentR > 5) {
         const edgeW = 22 + flashI * 30;
         const innerR = Math.max(EP, currentR - edgeW);
         const outerR = Math.max(EP, currentR + edgeW);
-        const eg = c!.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+        const eg = c.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
         eg.addColorStop(0, 'rgba(255,200,150,0)');
         eg.addColorStop(0.3, `rgba(255,150,100,${flashI * 0.35})`);
         eg.addColorStop(0.48, `rgba(255,240,200,${flashI * 0.8})`);
         eg.addColorStop(0.52, `rgba(255,255,240,${flashI * 1.0})`);
         eg.addColorStop(0.7, `rgba(255,150,100,${flashI * 0.35})`);
         eg.addColorStop(1, 'rgba(255,100,60,0)');
-        c!.fillStyle = eg;
-        c!.fillRect(fx, fy, fw, fh);
+        c.fillStyle = eg;
+        c.fillRect(fx, fy, fw, fh);
       }
 
-      // Top/bottom fades
-      const tf = c!.createLinearGradient(0, fy, 0, fy + fh * 0.1);
+      const tf = c.createLinearGradient(0, fy, 0, fy + fh * 0.1);
       tf.addColorStop(0, 'rgba(10,3,18,0.55)');
       tf.addColorStop(1, 'rgba(10,3,18,0)');
-      c!.fillStyle = tf;
-      c!.fillRect(fx, fy, fw, fh * 0.1);
+      c.fillStyle = tf;
+      c.fillRect(fx, fy, fw, fh * 0.1);
 
-      const bf = c!.createLinearGradient(0, fy + fh, 0, fy + fh * 0.9);
+      const bf = c.createLinearGradient(0, fy + fh, 0, fy + fh * 0.9);
       bf.addColorStop(0, 'rgba(8,9,16,0.48)');
       bf.addColorStop(1, 'rgba(8,9,16,0)');
-      c!.fillStyle = bf;
-      c!.fillRect(fx, fy + fh * 0.9, fw, fh * 0.1);
+      c.fillStyle = bf;
+      c.fillRect(fx, fy + fh * 0.9, fw, fh * 0.1);
 
-      // Inner vignette
-      const iv = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.22), cx, cy, Math.max(EP, fw * 0.54));
+      const iv = c.createRadialGradient(cx, cy, Math.max(EP, fw * 0.22), cx, cy, Math.max(EP, fw * 0.54));
       iv.addColorStop(0, 'rgba(0,0,0,0)');
       iv.addColorStop(1, 'rgba(0,0,0,0.2)');
-      c!.fillStyle = iv;
-      c!.fillRect(fx, fy, fw, fh);
+      c.fillStyle = iv;
+      c.fillRect(fx, fy, fw, fh);
+      c.restore();
 
-      c!.restore();
-
-      // ── Crimson-Gold Border ──
-      c!.save();
-      c!.globalAlpha = frameAlpha * fadeAlpha;
-      const og = c!.createLinearGradient(fx, fy - fw * 0.05, fx, fy + fh);
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      const og = c.createLinearGradient(fx, fy - fw * 0.05, fx, fy + fh);
       og.addColorStop(0, '#f0c8d8');
       og.addColorStop(0.1, '#e8a8b0');
       og.addColorStop(0.28, '#d4a030');
       og.addColorStop(0.52, '#c44020');
       og.addColorStop(0.78, '#8b2010');
       og.addColorStop(1, '#5a1508');
-      c!.strokeStyle = og;
-      c!.lineWidth = 4;
-      c!.shadowColor = `rgba(255,215,0,${0.35 + flashI * 0.4})`;
-      c!.shadowBlur = 16 + flashI * 20;
-      drawArchPath(c!, fx, fy, fw, fh, br);
-      c!.stroke();
-      c!.restore();
+      c.strokeStyle = og;
+      c.lineWidth = 4;
+      c.shadowColor = `rgba(255,215,0,${0.35 + flashI * 0.4})`;
+      c.shadowBlur = 16 + flashI * 20;
+      drawArchPath(c, fx, fy, fw, fh, br);
+      c.stroke();
+      c.restore();
 
-      // Inner border
       const ins = 8;
-      c!.save();
-      c!.globalAlpha = frameAlpha * fadeAlpha;
-      const ig2 = c!.createLinearGradient(fx, fy, fx, fy + fh);
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      const ig2 = c.createLinearGradient(fx, fy, fx, fy + fh);
       ig2.addColorStop(0, 'rgba(240,200,210,0.45)');
       ig2.addColorStop(0.5, 'rgba(200,140,100,0.3)');
       ig2.addColorStop(1, 'rgba(160,80,60,0.18)');
-      c!.strokeStyle = ig2;
-      c!.lineWidth = 1.2;
-      drawArchPath(c!, fx + ins, fy + ins, fw - ins * 2, fh - ins * 2, Math.max(EP, br - ins * 0.35));
-      c!.stroke();
-      c!.restore();
+      c.strokeStyle = ig2;
+      c.lineWidth = 1.2;
+      drawArchPath(c, fx + ins, fy + ins, fw - ins * 2, fh - ins * 2, Math.max(EP, br - ins * 0.35));
+      c.stroke();
+      c.restore();
 
-      // Specular
-      c!.save();
-      c!.globalAlpha = frameAlpha * fadeAlpha;
-      const sg = c!.createLinearGradient(fx + fw * 0.06, 0, fx + fw * 0.94, 0);
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      const sg = c.createLinearGradient(fx + fw * 0.06, 0, fx + fw * 0.94, 0);
       sg.addColorStop(0, 'rgba(255,240,220,0)');
       sg.addColorStop(0.32, 'rgba(255,240,220,0)');
       sg.addColorStop(0.5, 'rgba(255,240,220,0.38)');
       sg.addColorStop(0.68, 'rgba(255,240,220,0)');
       sg.addColorStop(1, 'rgba(255,240,220,0)');
-      c!.strokeStyle = sg;
-      c!.lineWidth = 0.9;
-      drawArchPath(c!, fx, fy, fw, fh, br);
-      c!.stroke();
-      c!.restore();
+      c.strokeStyle = sg;
+      c.lineWidth = 0.9;
+      drawArchPath(c, fx, fy, fw, fh, br);
+      c.stroke();
+      c.restore();
 
-      // Top finial
       const fss = fw * 0.034;
-      c!.save();
-      c!.globalAlpha = frameAlpha * fadeAlpha;
-      c!.fillStyle = '#ffd700';
-      c!.shadowColor = 'rgba(255,215,0,0.7)';
-      c!.shadowBlur = 10;
-      c!.beginPath();
-      c!.moveTo(cx, fy - fss * 2.5);
-      c!.lineTo(cx + fss * 0.85, fy - fss * 0.3);
-      c!.lineTo(cx, fy + fss * 0.7);
-      c!.lineTo(cx - fss * 0.85, fy - fss * 0.3);
-      c!.closePath();
-      c!.fill();
-      c!.beginPath();
-      c!.arc(cx, fy + fss * 0.25, Math.max(EP, fss * 0.48), 0, Math.PI * 2);
-      c!.fill();
-      c!.restore();
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      c.fillStyle = '#ffd700';
+      c.shadowColor = 'rgba(255,215,0,0.7)';
+      c.shadowBlur = 10;
+      c.beginPath();
+      c.moveTo(cx, fy - fss * 2.5);
+      c.lineTo(cx + fss * 0.85, fy - fss * 0.3);
+      c.lineTo(cx, fy + fss * 0.7);
+      c.lineTo(cx - fss * 0.85, fy - fss * 0.3);
+      c.closePath();
+      c.fill();
+      c.beginPath();
+      c.arc(cx, fy + fss * 0.25, Math.max(EP, fss * 0.48), 0, Math.PI * 2);
+      c.fill();
+      c.restore();
 
-      // Side dots
       const dr = fw * 0.01;
       const jy = fy + fw / 2;
-      c!.save();
-      c!.globalAlpha = frameAlpha * fadeAlpha;
-      c!.fillStyle = '#ffd700';
-      c!.shadowColor = 'rgba(255,215,0,0.5)';
-      c!.shadowBlur = 5;
-      c!.beginPath(); c!.arc(fx + 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c!.fill();
-      c!.beginPath(); c!.arc(fx + fw - 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c!.fill();
-      c!.restore();
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      c.fillStyle = '#ffd700';
+      c.shadowColor = 'rgba(255,215,0,0.5)';
+      c.shadowBlur = 5;
+      c.beginPath(); c.arc(fx + 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(fx + fw - 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c.fill();
+      c.restore();
 
-      // Corner dots
-      c!.save();
-      c!.globalAlpha = frameAlpha * fadeAlpha * 0.6;
-      c!.fillStyle = 'rgba(255,215,0,0.6)';
-      c!.shadowColor = 'rgba(255,215,0,0.35)';
-      c!.shadowBlur = 4;
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha * 0.6;
+      c.fillStyle = 'rgba(255,215,0,0.6)';
+      c.shadowColor = 'rgba(255,215,0,0.35)';
+      c.shadowBlur = 4;
       const cdr = dr * 0.8;
-      c!.beginPath(); c!.arc(fx + br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c!.fill();
-      c!.beginPath(); c!.arc(fx + fw - br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c!.fill();
-      c!.restore();
+      c.beginPath(); c.arc(fx + br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(fx + fw - br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c.fill();
+      c.restore();
 
-      // Shimmer
       if (t >= 4.5 && t < 7.5) {
         const st = (t - 5.0) / 1.0;
         if (st >= 0 && st <= 1) {
           const sx2 = fx + st * fw * 1.4 - fw * 0.2;
           const sw2 = fw * 0.13;
-          c!.save();
-          c!.globalAlpha = fadeAlpha;
-          drawArchPath(c!, fx, fy, fw, fh, br);
-          c!.clip();
-          const shim = c!.createLinearGradient(sx2 - sw2, 0, sx2 + sw2, 0);
+          c.save();
+          c.globalAlpha = fadeAlpha;
+          drawArchPath(c, fx, fy, fw, fh, br);
+          c.clip();
+          const shim = c.createLinearGradient(sx2 - sw2, 0, sx2 + sw2, 0);
           shim.addColorStop(0, 'rgba(255,255,255,0)');
           shim.addColorStop(0.38, 'rgba(255,230,220,0.07)');
           shim.addColorStop(0.5, 'rgba(255,255,255,0.14)');
           shim.addColorStop(0.62, 'rgba(255,230,220,0.07)');
           shim.addColorStop(1, 'rgba(255,255,255,0)');
-          c!.fillStyle = shim;
-          c!.fillRect(sx2 - sw2, fy, sw2 * 2, fh);
-          c!.restore();
+          c.fillStyle = shim;
+          c.fillRect(sx2 - sw2, fy, sw2 * 2, fh);
+          c.restore();
         }
       }
-
-      c!.restore();
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -852,22 +817,22 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         const sz = p.sz * (0.5 + lr * 0.5);
         if (sz > 0.8) {
           const gr = sz * 5;
-          const gg = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, gr));
+          const gg = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, gr));
           gg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.25})`);
           gg.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
-          c!.fillStyle = gg;
-          c!.fillRect(p.x - gr, p.y - gr, gr * 2, gr * 2);
+          c.fillStyle = gg;
+          c.fillRect(p.x - gr, p.y - gr, gr * 2, gr * 2);
         }
-        c!.save();
-        c!.translate(p.x, p.y); c!.rotate(p.rot); c!.globalAlpha = a;
-        c!.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
-        c!.beginPath();
-        c!.moveTo(0, -sz * 2.2); c!.lineTo(sz * 0.25, -sz * 0.25);
-        c!.lineTo(sz * 2.2, 0); c!.lineTo(sz * 0.25, sz * 0.25);
-        c!.lineTo(0, sz * 2.2); c!.lineTo(-sz * 0.25, sz * 0.25);
-        c!.lineTo(-sz * 2.2, 0); c!.lineTo(-sz * 0.25, -sz * 0.25);
-        c!.closePath(); c!.fill();
-        c!.restore();
+        c.save();
+        c.translate(p.x, p.y); c.rotate(p.rot); c.globalAlpha = a;
+        c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
+        c.beginPath();
+        c.moveTo(0, -sz * 2.2); c.lineTo(sz * 0.25, -sz * 0.25);
+        c.lineTo(sz * 2.2, 0); c.lineTo(sz * 0.25, sz * 0.25);
+        c.lineTo(0, sz * 2.2); c.lineTo(-sz * 0.25, sz * 0.25);
+        c.lineTo(-sz * 2.2, 0); c.lineTo(-sz * 0.25, -sz * 0.25);
+        c.closePath(); c.fill();
+        c.restore();
       }
     }
 
@@ -885,9 +850,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const cx = W / 2, cy = H / 2 - H * 0.01;
       const flareW = W * 0.85;
       const flareH = 2.5 + Math.sin(t * 4.5) * 1.2;
-      c!.save(); c!.globalAlpha = fi * 0.07;
-      c!.globalCompositeOperation = 'lighter';
-      const fg = c!.createLinearGradient(cx - flareW / 2, 0, cx + flareW / 2, 0);
+      c.save(); c.globalAlpha = fi * 0.07;
+      c.globalCompositeOperation = 'lighter';
+      const fg = c.createLinearGradient(cx - flareW / 2, 0, cx + flareW / 2, 0);
       fg.addColorStop(0, 'rgba(255,180,80,0)');
       fg.addColorStop(0.2, 'rgba(255,180,80,0.1)');
       fg.addColorStop(0.45, 'rgba(255,220,150,0.35)');
@@ -895,14 +860,14 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       fg.addColorStop(0.55, 'rgba(255,220,150,0.35)');
       fg.addColorStop(0.8, 'rgba(255,180,80,0.1)');
       fg.addColorStop(1, 'rgba(255,180,80,0)');
-      c!.fillStyle = fg; c!.fillRect(cx - flareW / 2, cy - flareH, flareW, flareH * 2);
+      c.fillStyle = fg; c.fillRect(cx - flareW / 2, cy - flareH, flareW, flareH * 2);
       const coreW = flareW * 0.2;
-      const cg = c!.createLinearGradient(cx - coreW / 2, 0, cx + coreW / 2, 0);
+      const cg = c.createLinearGradient(cx - coreW / 2, 0, cx + coreW / 2, 0);
       cg.addColorStop(0, 'rgba(255,240,200,0)');
       cg.addColorStop(0.5, 'rgba(255,250,230,0.3)');
       cg.addColorStop(1, 'rgba(255,240,200,0)');
-      c!.fillStyle = cg; c!.fillRect(cx - coreW / 2, cy - flareH * 0.4, coreW, flareH * 0.8);
-      c!.restore();
+      c.fillStyle = cg; c.fillRect(cx - coreW / 2, cy - flareH * 0.4, coreW, flareH * 0.8);
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -912,14 +877,14 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const bs = 6.5; const bt = Math.min((t - bs) / 1.4, 1); if (bt <= 0) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015; const maxR = sc * .88;
       const r = maxR * eOQ(bt); const ra = (1 - bt) * .4;
-      c!.save(); c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
-      c!.strokeStyle = `rgba(220,60,60,${ra})`; c!.lineWidth = 3.5 * (1 - bt); c!.stroke(); c!.restore();
+      c.save(); c.beginPath(); c.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
+      c.strokeStyle = `rgba(220,60,60,${ra})`; c.lineWidth = 3.5 * (1 - bt); c.stroke(); c.restore();
       const ba = (1 - bt * .65) * .14;
-      const bg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r));
+      const bg = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r));
       bg.addColorStop(0, `rgba(255,140,60,${ba})`);
       bg.addColorStop(.5, `rgba(220,40,60,${ba * .4})`);
       bg.addColorStop(1, 'rgba(100,20,40,0)');
-      c!.fillStyle = bg; c!.fillRect(0, 0, W, H);
+      c.fillStyle = bg; c.fillRect(0, 0, W, H);
       if (bt < .45 && Math.random() < .6) {
         const p = grab(pl); if (p) {
           const ang = Math.random() * Math.PI * 2; const spd = 2.2 + Math.random() * 4.8;
@@ -934,43 +899,44 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       for (const p of pl) {
         if (!p.on || p.tp !== 3) continue;
         const lr = p.life / p.ml; const a = p.a * lr;
-        c!.beginPath(); c!.arc(p.x, p.y, Math.max(EP, p.sz * (1 + (1 - lr) * .4)), 0, Math.PI * 2);
-        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c!.fill();
+        c.beginPath(); c.arc(p.x, p.y, Math.max(EP, p.sz * (1 + (1 - lr) * .4)), 0, Math.PI * 2);
+        c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`; c.fill();
       }
     }
 
-    /* ═════════════════════════════════════════════════════════════
-       🌹 GENDA & ROSE PETALS (Garba Style Swirl)
+    /* ═══════════════════════════════════════════════════════════
+       GENDA & ROSE PETALS
        ═══════════════════════════════════════════════════════════ */
     function sPetals(t: number) {
       if (t < 4.5 || Math.random() > .5) return;
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -24 - Math.random() * 60;
-      // Garba swirl: wider horizontal spread
       p.vx = (Math.random() - .5) * 3.0;
       p.vy = 1.0 + Math.random() * 1.8;
       p.sz = 4 + Math.random() * 7; p.ml = 7 + Math.random() * 3; p.life = p.ml;
       const ct = Math.random();
-      if (ct < .4) { p.r = 255; p.g = 180; p.b = 0; }        // Genda/Marigold
-      else if (ct < .75) { p.r = 244; p.g = 63; p.b = 94; }  // Rose pink
-      else if (ct < .9) { p.r = 220; p.g = 38; p.b = 38; }     // Red
-      else { p.r = 251; p.g = 191; p.b = 36; }                       // Golden
-      p.a = .45 + Math.random() .3; p.rot = Math.random() * Math.PI * 2;
+      if (ct < .4) { p.r = 255; p.g = 180; p.b = 0; }
+      else if (ct < .75) { p.r = 244; p.g = 63; p.b = 94; }
+      else if (ct < .9) { p.r = 220; p.g = 38; p.b = 38; }
+      else { p.r = 251; p.g = 191; p.b = 36; }
+      // ✅ FIX #1: was `Math.random() .3` — missing `*`
+      p.a = .45 + Math.random() * .3;
+      p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .08; p.on = true; p.tp = 4;
     }
     function dPetals() {
       for (const p of pl) {
         if (!p.on || p.tp !== 4) continue;
         const lr = p.life / p.ml; const a = p.a * Math.min(lr * 2, 1) * (lr > .82 ? (1 - lr) / .18 : 1);
-        c!.save(); c!.translate(p.x, p.y); c!.rotate(p.rot);
-        const grad = c!.createLinearGradient(0, -p.sz, 0, p.sz);
+        c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
+        const grad = c.createLinearGradient(0, -p.sz, 0, p.sz);
         grad.addColorStop(0, `rgb(${p.r},${p.g},${p.b})`);
         grad.addColorStop(1, `rgb(${Math.max(0, p.r - 45)},${Math.max(0, p.g - 35)},${Math.max(0, p.b - 20)})`);
-        c!.fillStyle = grad;
-        c!.beginPath(); c!.ellipse(0, 0, Math.max(EP, p.sz * .45), Math.max(EP, p.sz), 0, 0, Math.PI * 2); c!.fill();
-        c!.beginPath(); c!.ellipse(-p.sz * .05, -p.sz * .2, Math.max(EP, p.sz * .1), Math.max(EP, p.sz * .35), 0, 0, Math.PI * 2);
-        c!.fillStyle = 'rgba(255,255,255,0.2)'; c!.fill();
-        c!.restore();
+        c.fillStyle = grad;
+        c.beginPath(); c.ellipse(0, 0, Math.max(EP, p.sz * .45), Math.max(EP, p.sz), 0, 0, Math.PI * 2); c.fill();
+        c.beginPath(); c.ellipse(-p.sz * .05, -p.sz * .2, Math.max(EP, p.sz * .1), Math.max(EP, p.sz * .35), 0, 0, Math.PI * 2);
+        c.fillStyle = 'rgba(255,255,255,0.2)'; c.fill();
+        c.restore();
       }
     }
 
@@ -983,18 +949,24 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       p.x = Math.random() * W; p.y = -12 - Math.random() * 35;
       p.vx = (Math.random() - .5) * .8; p.vy = .5 + Math.random() * 1.5;
       p.sz = .8 + Math.random() * 2; p.ml = 5.5 + Math.random() * 3; p.life = p.ml;
-      if (Math.random() < .6) { p.r = 180 + Math.random() * 55 | 0; p.g = 10 + Math.random() * 20 | 0; p.b = 10 + Math.random() 20 | 0; }
-      else { p.r = 251; p.g = 191; p.b = 36; }
-      p.a = .4 + Math.random() .38; p.rot = Math.random() * Math.PI * 2;
+      if (Math.random() < .6) {
+        p.r = 180 + Math.random() * 55 | 0;
+        p.g = 10 + Math.random() * 20 | 0;
+        // ✅ FIX #2: was `Math.random() 20` — missing `*`
+        p.b = 10 + Math.random() * 20 | 0;
+      } else { p.r = 251; p.g = 191; p.b = 36; }
+      // ✅ FIX #3: was `Math.random() .38` — missing `*`
+      p.a = .4 + Math.random() * .38;
+      p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .07; p.on = true; p.tp = 8;
     }
     function dKum() {
       for (const p of pl) {
         if (!p.on || p.tp !== 8) continue;
         const lr = p.life / p.ml; const a = p.a * Math.min(lr * 2, 1) * (lr > .84 ? (1 - lr) / .16 : 1);
-        c!.save(); c!.translate(p.x, p.y); c!.rotate(p.rot);
-        c!.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
-        c!.fillRect(-p.sz * .5, -p.sz * .2, p.sz, p.sz * .4); c!.restore();
+        c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
+        c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+        c.fillRect(-p.sz * .5, -p.sz * .2, p.sz, p.sz * .4); c.restore();
       }
     }
 
@@ -1005,24 +977,24 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       if (t < 6.0) return;
       const rt = Math.min((t - 6.0) / 2, 1); const al = eOC(rt) * .08;
       const cx = W / 2, cy = H / 2 - H * .015; const rl = Math.max(W, H) * .85;
-      c!.save(); c!.globalAlpha = al;
+      c.save(); c.globalAlpha = al;
       for (let i = 0; i < 16; i++) {
         const ang = (i / 16) * Math.PI * 2 + t * .035; const hw = (Math.PI / 16) * .36;
-        c!.beginPath(); c!.moveTo(cx, cy);
-        c!.lineTo(cx + Math.cos(ang - hw) * rl, cy + Math.sin(ang - hw) * rl);
-        c!.lineTo(cx + Math.cos(ang + hw) * rl, cy + Math.sin(ang + hw) * rl);
-        c!.closePath();
-        const rg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, rl));
+        c.beginPath(); c.moveTo(cx, cy);
+        c.lineTo(cx + Math.cos(ang - hw) * rl, cy + Math.sin(ang - hw) * rl);
+        c.lineTo(cx + Math.cos(ang + hw) * rl, cy + Math.sin(ang + hw) * rl);
+        c.closePath();
+        const rg = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, rl));
         rg.addColorStop(0, 'rgba(255,180,60,0.6)');
         rg.addColorStop(.5, 'rgba(220,50,50,0.15)');
         rg.addColorStop(1, 'rgba(80,10,30,0)');
-        c!.fillStyle = rg; c!.fill();
+        c.fillStyle = rg; c.fill();
       }
-      c!.restore();
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
-       RANGOLI GLOW (Bottom center mandala)
+       RANGOLI GLOW
        ═══════════════════════════════════════════════════════════ */
     function dRangoli(t: number) {
       if (t < 3.5 || t > 8.0) return;
@@ -1033,47 +1005,44 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const cx = W / 2, cy = H * 0.9;
       const maxR = Math.min(W, H) * 0.18;
 
-      c!.save();
-      c!.globalAlpha = ra * 0.2;
-      c!.globalCompositeOperation = 'lighter';
+      c.save();
+      c.globalAlpha = ra * 0.2;
+      c.globalCompositeOperation = 'lighter';
 
-      // Rotating mandala rings
       for (let i = 0; i < 3; i++) {
         const ringR = maxR * (0.4 + i * 0.3);
         const rotAng = t * (0.3 - i * 0.12);
-        c!.save();
-        c!.translate(cx, cy);
-        c!.rotate(rotAng);
-        c!.beginPath();
-        c!.arc(0, 0, Math.max(EP, ringR), 0, Math.PI * 2);
-        c!.strokeStyle = `rgba(255,180,60,${ra * 0.3})`;
-        c!.lineWidth = 1.5;
-        c!.stroke();
+        c.save();
+        c.translate(cx, cy);
+        c.rotate(rotAng);
+        c.beginPath();
+        c.arc(0, 0, Math.max(EP, ringR), 0, Math.PI * 2);
+        c.strokeStyle = `rgba(255,180,60,${ra * 0.3})`;
+        c.lineWidth = 1.5;
+        c.stroke();
 
-        // Petal dots on ring
         const count = 6 + i * 2;
         for (let j = 0; j < count; j++) {
           const a = (j / count) * Math.PI * 2 + rotAng;
           const px = Math.cos(a) * ringR;
           const py = Math.sin(a) * ringR;
-          c!.beginPath();
-          c!.arc(px, py, Math.max(EP, 3), 0, Math.PI * 2);
-          c!.fillStyle = `rgba(255,140,50,${ra * 0.5})`;
-          c!.fill();
+          c.beginPath();
+          c.arc(px, py, Math.max(EP, 3), 0, Math.PI * 2);
+          c.fillStyle = `rgba(255,140,50,${ra * 0.5})`;
+          c.fill();
         }
-        c!.restore();
+        c.restore();
       }
 
-      // Center bindi/tilak dot
       const bindiR = maxR * 0.08;
-      const bindiGlow = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, bindiR * 3));
+      const bindiGlow = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, bindiR * 3));
       bindiGlow.addColorStop(0, `rgba(255,200,50,${ra * 0.6})`);
       bindiGlow.addColorStop(0.5, `rgba(255,140,30,${ra * 0.2})`);
       bindiGlow.addColorStop(1, 'rgba(255,100,20,0)');
-      c!.fillStyle = bindiGlow;
-      c!.fillRect(cx - bindiR * 3, cy - bindiR * 3, bindiR * 6, bindiR * 6);
+      c.fillStyle = bindiGlow;
+      c.fillRect(cx - bindiR * 3, cy - bindiR * 3, bindiR * 6, bindiR * 6);
 
-      c!.restore();
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -1083,21 +1052,21 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const ps = 7.5;
       const dt = Math.min((t - ps) / 1.2, 1); if (dt <= 0) return;
       const la = eOC(dt) * .12;
-      const lg = c!.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
+      const lg = c.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
       lg.addColorStop(0, `rgba(255,180,100,${la})`);
       lg.addColorStop(.5, `rgba(220,50,50,${la * .4})`);
       lg.addColorStop(1, 'rgba(5,1,8,0)');
-      c!.fillStyle = lg; c!.fillRect(0, 0, W, H);
+      c.fillStyle = lg; c.fillRect(0, 0, W, H);
     }
 
     /* ═══════════════════════════════════════════════════════════
-       📝 TEXT — Navratri Specific
+       TEXT — Navratri Specific
        ═══════════════════════════════════════════════════════════ */
     function dText(t: number) {
       const ps = 8.7;
       if (t < ps) return;
-      c!.save();
-      c!.textAlign = 'center'; c!.textBaseline = 'middle';
+      c.save();
+      c.textAlign = 'center'; c.textBaseline = 'middle';
 
       const tProg = Math.min((t - ps) / 0.6, 1);
       const tFi = Math.min(1, eSpring(tProg));
@@ -1109,20 +1078,19 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         const title = 'Happy Navratri';
         const ty = H * .35 + tSlide;
 
-        c!.globalAlpha = tFi;
-        c!.save();
-        c!.translate(W / 2, ty);
-        c!.scale(scale, scale);
-        c!.translate(-W / 2, -ty);
+        c.globalAlpha = tFi;
+        c.save();
+        c.translate(W / 2, ty);
+        c.scale(scale, scale);
+        c.translate(-W / 2, -ty);
 
-        c!.font = `700 ${ts}px 'Georgia','Times New Roman',serif`;
-        const tw = c!.measureText(title).width;
+        c.font = `700 ${ts}px 'Georgia','Times New Roman',serif`;
+        const tw = c.measureText(title).width;
 
-        c!.fillStyle = 'rgba(0,0,0,0.72)';
-        c!.fillText(title, W / 2 + 2, ty + 3);
+        c.fillStyle = 'rgba(0,0,0,0.72)';
+        c.fillText(title, W / 2 + 2, ty + 3);
 
-        // Navratri rose-crimson gradient
-        const mg = c!.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
+        const mg = c.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
         mg.addColorStop(0, '#6b1530');
         mg.addColorStop(0.15, '#c44020');
         mg.addColorStop(0.32, '#dc2626');
@@ -1131,27 +1099,28 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         mg.addColorStop(0.68, '#f43f5e');
         mg.addColorStop(0.84, '#dc2626');
         mg.addColorStop(1, '#6b1530');
-        c!.fillStyle = mg;
-        c!.fillText(title, W / 2, ty);
+        c.fillStyle = mg;
+        c.fillText(title, W / 2, ty);
 
-        c!.restore();
+        c.restore();
 
         if (t > 9.3) {
           const shProg = Math.min((t - 9.3) / 0.7, 1);
           const shX = (W / 2 - tw / 2) + shProg * tw * 1.4 - tw * 0.2;
-          c!.save();
-          c!.beginPath(); c!.rect(W / 2 - tw / 2, ty - ts, tw, ts * 2); c!.clip();
+          c.save();
+          c.beginPath(); c.rect(W / 2 - tw / 2, ty - ts, tw, ts * 2); c.clip();
           const shW = tw * 0.1;
-          const sg = c!.createLinearGradient(shX - shW, 0, shX + shW, 0);
+          const sg = c.createLinearGradient(shX - shW, 0, shX + shW, 0);
           sg.addColorStop(0, 'rgba(255,255,230,0)');
           sg.addColorStop(0.5, `rgba(255,220,220,${0.18 * (1 - shProg)})`);
           sg.addColorStop(1, 'rgba(255,255,230,0)');
-          c!.fillStyle = sg;
-          c!.fillRect(shX - shW, ty - ts, shW * 2, ts * 2);
-          c!.restore();
+          c.fillStyle = sg;
+          c.fillRect(shX - shW, ty - ts, shW * 2, ts * 2);
+          c.restore();
         }
       }
 
+      // Subtitle
       const mStart = 9.0;
       if (t > mStart) {
         const mProg = Math.min((t - mStart) / 0.5, 1);
@@ -1159,190 +1128,164 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         const mSlide = (1 - eOC(mProg)) * 10;
 
         const ss = Math.min(W * .022, H * .026, 18);
-        c!.font = `400 ${ss}px 'Nirmala UI','Devanagari Sangam MN','Mangal','Segoe UI',sans-serif`;
+        const subtitle = 'जय माँ दुर्गा  •  शुभ नवरात्रि';
+        const my = H * .35 + tSlide + Math.min(W * .06, H * .065, 52) * 0.85 + mSlide;
 
-        const baseY = H * .35 + Math.min(W * .06, H * .065, 52) * 1.3;
-        const l1y = baseY + mSlide;
-        const l2y = l1y + ss * 2.1;
+        c.globalAlpha = mFi;
+        c.font = `400 ${ss}px 'Georgia','Times New Roman',serif`;
 
-        c!.globalAlpha = mFi;
+        c.fillStyle = 'rgba(0,0,0,0.5)';
+        c.fillText(subtitle, W / 2 + 1, my + 2);
 
-        c!.fillStyle = 'rgba(0,0,0,0.8)';
-        c!.fillText('\u0938\u0930\u0930\u092E\u092E\u092E\u092E \u092E\u092E\u092E\u0932\u093E\u0932\u094D\u0932\u0932\u094D\u0932\u094D\u0940\u0947\u0947\u0947\u0947\u0964\u0964\u0965\u0964\u0949\u0964\u0965\u0949\u0965\u0965\u0949\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965', W / 2 + 1, l1y + 1.2);
-        c!.fillText('\u0936\u0930\u0930\u0930\u092E\u092E\u092E \u0924\u094D\u094D\u092C\u094D\u092C\u092C \u0924\u094D\u092C\u092C\u092C\u092C \u0924\u0930\u0930\u0930\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E', W / 2 + 1, l2y + 1.2);
-
-        const shg = c!.createLinearGradient(W / 2 - ss * 10, 0, W / 2 + ss * 10, 0);
-        shg.addColorStop(0, '#856314'); shg.addColorStop(.25, '#c44020');
-        shg.addColorStop(.5, '#f43f5e'); shg.addColorStop(.75, '#c44020');
-        shg.addColorStop(1, '#856314');
-        c!.fillStyle = shg;
-        c!.fillText('\u0938\u0930\u0930\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u0932\u093E\u0932\u094D\u0932\u0932\u094D\u0940\u0947\u0947\u0947\u0947\u0964\u0965\u0964\u0949\u0964\u0965\u0949\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965', W / 2, l1y);
-        c!.fillText('\u0936\u0930\u0930\u092E\u092E\u092E \u0924\u094D\u094D\u092C\u094C\u092C\u092C \u0924\u0930\u0930\u0930\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E', W / 2, l2y);
+        const smg = c.createLinearGradient(W / 2 - 120, 0, W / 2 + 120, 0);
+        smg.addColorStop(0, 'rgba(180,120,80,0.6)');
+        smg.addColorStop(0.5, 'rgba(255,200,150,0.85)');
+        smg.addColorStop(1, 'rgba(180,120,80,0.6)');
+        c.fillStyle = smg;
+        c.fillText(subtitle, W / 2, my);
       }
 
-      c!.restore();
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
-       FILM GRAIN
+       GRAIN OVERLAY
        ═══════════════════════════════════════════════════════════ */
-    function dGrain(t: number) {
-      const pattern = c!.createPattern(grainCv, 'repeat');
-      if (!pattern) return;
-      c!.save();
-      c!.globalAlpha = 0.025 + Math.sin(t * 2.7) * 0.008;
-      c!.translate(((t * 137) | 0) % 256, ((t * 89) | 0) % 256);
-      c!.fillStyle = pattern;
-      c!.fillRect(-256, -256, W + 512, H + 512);
-      c!.restore();
-    }
-
-    /* ═══════════════════════════════════════════════════════════
-       FINAL FADE-OUT
-       ═══════════════════════════════════════════════════════════ */
-    function dFade(t: number) {
-      const fs = 9.8; const ft = Math.min((t - fs) / .7, 1); if (ft <= 0) return;
-      const fa = eIQ(ft);
-      c!.fillStyle = `rgba(5,1,8,${fa})`; c!.fillRect(0, 0, W, H);
-      if (ft < .6) {
-        const ga = (1 - ft / .6) * .18;
-        const gg = c!.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .35));
-        gg.addColorStop(0, `rgba(244,63,94,${ga})`);
-        gg.addColorStop(1, 'rgba(220,38,38,0)');
-        c!.fillStyle = gg; c!.fillRect(0, 0, W, H);
+    function dGrain() {
+      c.save();
+      c.globalAlpha = 0.035;
+      c.globalCompositeOperation = 'overlay';
+      const pat = c.createPattern(grainCv, 'repeat');
+      if (pat) {
+        c.fillStyle = pat;
+        c.fillRect(0, 0, W, H);
       }
+      c.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
        PARTICLE UPDATE
        ═══════════════════════════════════════════════════════════ */
-    function upd(dt: number) {
-      for (const p of pl) {
+    function updateParticles(dt: number, t: number) {
+      for (let i = 0; i < pl.length; i++) {
+        const p = pl[i];
         if (!p.on || p.tp === 0) continue;
-        p.x += p.vx; p.y += p.vy; p.life -= dt; p.rot += p.rs;
-        switch (p.tp) {
-          case 3: p.vx *= .97; p.vy *= .97; break;
-          case 4:
-            p.vx += Math.sin(p.y * .015 + p.rot) * .025;
-            p.vy *= .998;
-            break;
-          case 5: p.vx *= .98; p.vy *= .98; break;
-          case 6:
-            p.vx += Math.sin(p.y * 0.008 + p.x * 0.004) * 0.025;
-            p.vx *= .995; p.vy *= .998; p.sz += .3; break;
-          case 8: p.vx += (Math.random() - .5) * .016; break;
-          case 9: p.vx *= .94; p.vy *= .94; break;
+        p.life -= dt;
+        if (p.life <= 0) { p.on = false; continue; }
+
+        // Garba swirl for petals and kumkum
+        if (p.tp === 4 || p.tp === 8) {
+          const cx = W / 2;
+          const dx = p.x - cx;
+          p.vx += dx * 0.0003 * Math.sin(t * 0.8);
+          p.vy += 0.02;
+          p.vx *= 0.995;
+          p.vy *= 0.998;
         }
-        if (p.life <= 0 || p.y > H + 60 || p.x < -120 || p.x > W + 120) p.on = false;
+
+        // Orbit centripetal
+        if (p.tp === 5) {
+          const cx = W / 2, cy = H / 2 - H * .015;
+          const dx = p.x - cx, dy = p.y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const sc = Math.min(W, H) * .56;
+          const target = sc * .4;
+          const force = (dist - target) * 0.003;
+          p.vx -= (dx / dist) * force;
+          p.vy -= (dy / dist) * force;
+          p.vx *= 0.99;
+          p.vy *= 0.99;
+        }
+
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.rs;
+
+        // Smoke drift
+        if (p.tp === 6) {
+          p.vx += (Math.random() - .5) * .02;
+          p.vy -= 0.005;
+          p.sz += 0.15;
+        }
       }
     }
 
     /* ═══════════════════════════════════════════════════════════
-       RENDER LOOP
+       ANIMATION LOOP
        ═══════════════════════════════════════════════════════════ */
-    let lt = 0;
-    const loop = (ts: number) => {
-      if (!t0.current) { t0.current = ts; lt = ts; }
-      const t = (ts - t0.current) / 1000; const dt = Math.min((ts - lt) / 1000, .05); lt = ts;
+    let prevTime = 0;
+    function loop(now: number) {
+      if (!t0.current) { t0.current = now; prevTime = now; }
+      const t = (now - t0.current) / 1000;
+      const dt = Math.min((now - prevTime) / 1000, 0.05);
+      prevTime = now;
 
+      if (t >= DUR) {
+        if (!done.current) { done.current = true; cbR.current?.(); }
+        return;
+      }
+
+      // Spawn
+      sSmoke(t);
+      sOrbit(t);
+      sPetals(t);
+      sKum(t);
+      sRevealSparkles(t);
+
+      // Update
+      updateParticles(dt, t);
+
+      // Draw
       dBg(t);
-      dVignette(t);
       dTemples(t);
-      dSmoke();
-      dFlare(t);
-      dRays(t);
-      dDust(t);
-
-      dEnergy(t); dAarti(t); dBells(t);
-
-      dDurga(t);
-
-      // 🔥 Floating Diyas (BELOW sparkles, above rangoli)
-      dDiyas(t);
-
-      dRevealSparkles();
-      dBloom(t); dBloomP();
-      dPetals(); dKum(); dOrbit();
-
-      // Rangoli glow (below text)
+      dEnergy(t);
       dRangoli(t);
-
+      dSmoke();
+      dDust(t);
+      dOrbit();
+      dDurga(t);
+      dRevealSparkles();
+      dFlare(t);
+      dDiyas(t);
+      dAarti(t);
+      dBells(t);
+      dBloom(t);
+      dBloomP();
+      dPetals();
+      dKum();
+      dRays(t);
       dDissolve(t);
       dText(t);
+      dVignette(t);
+      dGrain();
 
-      dGrain(t);
-      dFade(t);
+      raf.current = requestAnimationFrame(loop);
+    }
 
-      sSmoke(t); sOrbit(t); sRevealSparkles(t);
-      if (t > 4.5) { sPetals(t); sKum(t); }
-
-      upd(dt);
-
-      if (t < DUR + .15) { raf.current = requestAnimationFrame(loop); }
-      else if (!done.current) { done.current = true; cbR.current?.(); }
-    };
     raf.current = requestAnimationFrame(loop);
 
-    return () => { cancelAnimationFrame(raf.current); window.removeEventListener('resize', rsz); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelAnimationFrame(raf.current);
+      window.removeEventListener('resize', rsz);
+      if (audioCtxRef.current) {
+        try { audioCtxRef.current.close(); } catch (_) { /* ignore */ }
+        audioCtxRef.current = null;
+      }
+    };
   }, [imgReady, mkPool, grab, triggerBellSound]);
 
-  /* ═══════════════════════════════════════════════════════════════
-     LOADING SCREEN — 🪔 Navratri Theme
-     ═══════════════════════════════════════════════════════════════ */
-  if (!imgReady) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden" style={{ background: '#050108' }}>
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 45%, rgba(180,20,40,0.2) 0%, rgba(100,15,60,0.08) 40%, transparent 70%)' }} />
-
-        {/* Decorative concentric circles */}
-        <div className="absolute rounded-full" style={{ width: 'min(60vw, 320px)', height: 'min(60vw, 320px)', border: '1px dashed rgba(244,63,94,0.1)', animation: 'ringRotate 12s linear infinite' }} />
-        <div className="absolute rounded-full" style={{ width: 'min(48vw, 260px)', height: 'min(48vw, 260px)', border: '1px dashed rgba(255,180,50,0.06)', animation: 'ringRotate 18s linear infinite reverse' }} />
-        <div className="absolute rounded-full" style={{ width: 'min(40vw, 220px)', height: 'min(40vw, 220px)', background: 'radial-gradient(circle, rgba(244,63,94,0.06) 0%, transparent 70%)', animation: 'auraPulse 3s ease-in-out infinite' }} />
-        <div className="absolute rounded-full" style={{ width: 'min(28vw, 160px)', height: 'min(28vw, 160px)', background: 'radial-gradient(circle, rgba(255,160,30,0.08) 0%, transparent 65%)', animation: 'auraPulse 3s ease-in-out infinite 1.5s' }} />
-
-        {/* Small floating diya flames */}
-        <div className="absolute flex gap-16" style={{ bottom: '22%' }}>
-          {[0, 1.2, 2.4].map((d, i) => (
-            <div key={i} className="flex flex-col items-center" style={{ animation: `floatY ${2.2 + i * 0.3}s ease-in-out infinite ${d}s` }}>
-              <div style={{ width: 8, height: 18, borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', background: 'linear-gradient(to top, rgba(220,38,38,0.9), rgba(245,158,11,0.6) 40%, rgba(255,255,180,0.3))', filter: 'blur(1.5px)', animation: `flameFlicker ${0.3 + i * 0.1}s ease-in-out infinite alternate` }} />
-              <div style={{ width: 18, height: 8, borderRadius: 4, background: 'linear-gradient(to right, rgba(244,63,94,0.5), rgba(255,220,100,0.3), rgba(244,63,94,0.5))', filter: 'blur(3px)' }} />
-            </div>
-          ))}
-        </div>
-
-        {/* ॐ Symbol */}
-        <div className="relative flex flex-col items-center select-none">
-          <div className="absolute rounded-full" style={{ width: 'min(35vw, 200px)', height: 'min(35vw, 200px)', background: 'radial-gradient(circle, rgba(255,200,50,0.06) 0%, transparent 70%)', animation: 'omBreath 2.4s ease-in-out infinite' }} />
-          <div className="absolute rounded-full" style={{ width: 'min(22vw, 130px)', height: 'min(22vw, 130px)', background: 'radial-gradient(circle, rgba(255,210,80,0.1) 0%, transparent 60%)', animation: 'omBreath 2.4s ease-in-out infinite 0.3s' }} />
-          <div className="relative select-none" style={{ fontSize: 'clamp(4rem, 12vw, 7rem)', lineHeight: 1, color: '#f43f5e', textShadow: '0 0 20px rgba(244,63,94,0.8), 0 0 50px rgba(244,63,94,0.5), 0 0 100px rgba(244,63,94,0.25), 0 0 160px rgba(180,30,60,0.1)', animation: 'omBreath 2.4s ease-in-out infinite', fontFamily: "'Noto Sans Devanagari', 'Devanagari Sangam MN', 'Mangal', serif" }}>&#x0950;</div>
-        </div>
-
-        {/* Loading text */}
-        <div className="absolute flex flex-col items-center gap-3" style={{ bottom: '10%' }}>
-          <p className="select-none tracking-[0.3em]" style={{ fontSize: 'clamp(0.6rem, 1.5vw, 0.8rem)', color: 'rgba(244,63,94,0.5)', animation: 'textPulse 2.4s ease-in-out infinite' }}>&#x0936;&#x0928;&#x0930;&#x0930;&#x092E;&#x092E;&#x092E; &#x092E;&#x092E;&#x092E;&#x092E; &#x0906;&#x0930;&#x0930;&#x0930;&#x093E;&#x093E;&#x0932;&#x093E;&#x092F;&#x092F;&#x092E; &#x092A;&#x0930;&#x0930;&#x0930;&#x093E;&#x093E; &#x0906;&#x0930;&#x0930;&#x0930;&#x092E;&#x092E;&#x092E;</p>
-          <div className="flex items-center gap-2">
-            <div className="h-px" style={{ width: 'clamp(40px, 10vw, 80px)', background: 'linear-gradient(to right, transparent, rgba(244,63,94,0.3), transparent)' }} />
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#f43f5e', boxShadow: '0 0 8px rgba(244,63,94,0.6), 0 0 20px rgba(244,63,94,0.3)', animation: 'dotPulse 1.8s ease-in-out infinite' }} />
-            <div className="h-px" style={{ width: 'clamp(40px, 10vw, 80px)', background: 'linear-gradient(to left, transparent, rgba(244,63,94,0.3), transparent)' }} />
-          </div>
-        </div>
-        <style dangerouslySetInnerHTML={{ __html: `
-          @keyframes omBreath { 0%,100%{opacity:.75;transform:scale(1)} 50%{opacity:1;transform:scale(1.05)} }
-          @keyframes textPulse { 0%,100%{opacity:.35} 50%{opacity:.7} }
-          @keyframes auraPulse { 0%,100%{transform:scale(.9);opacity:.4} 50%{transform:scale(1.1);opacity:1} }
-          @keyframes ringRotate { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-          @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-          @keyframes flameFlicker { 0%{transform:scaleY(1) scaleX(1);opacity:.8} 100%{transform:scaleY(1.15) scaleX(.85);opacity:1} }
-          @keyframes dotPulse { 0%,100%{opacity:.4;transform:scale(.8)} 50%{opacity:1;transform:scale(1.2)} }
-        ` }} />
-      </div>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 z-[9999]" style={{ background: '#050108' }}>
-      <canvas ref={cvRef} className="block w-full h-full" />
-    </div>
+    <canvas
+      ref={cvRef}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        display: 'block',
+        zIndex: 50,
+      }}
+    />
   );
 }
