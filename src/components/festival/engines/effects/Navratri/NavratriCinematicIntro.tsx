@@ -15,7 +15,7 @@ interface Bell {
   x: number; length: number; angle: number; lastBellTime: number;
 }
 const POOL = 3400;
-const DUR = 10.5;
+const DUR = 15.0; // 🚀 TIMELINE SYNCHRONIZATION: Updated to full 15.0 seconds
 const EP = 1e-4;
 
 const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/Screenshot%202026-07-17%20201625.png';
@@ -191,10 +191,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fillStyle = g; c.fillRect(0, 0, W, H);
 
       let ca = 0;
-      if (t > 1.0) ca = Math.min((t - 1.0) / 3, 1) * .15;
-      if (t > 4.5) ca = .15 + Math.min((t - 4.5) / 1.5, 1) * .2;
-      if (t > 7.0) ca = .35 + Math.min((t - 7.0) / 1.0, 1) * .15;
-      if (t > 8.5) ca = .5 + Math.min((t - 8.5) / 1.0, 1) * .12;
+      if (t > 2.0) ca = Math.min((t - 2.0) / 5.0, 1) * .15; // Adjusted to start after 2.0s FLASH
+      if (t > 7.0) ca = .15 + Math.min((t - 7.0) / 1.5, 1) * .2;  // DISPLAY start
+      if (t > 11.5) ca = .35 * (1 - Math.min((t - 11.5) / 2.0, 1)); // Fade during HANDOVER
 
       g = c.createRadialGradient(W * .5, H * .42, 0, W * .5, H * .42, H * .5);
       g.addColorStop(0, `rgba(255,140,60,${ca})`);
@@ -220,9 +219,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        TEMPLES
        ═══════════════════════════════════════════════════════════ */
     function dTemples(t: number) {
-      const fa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .22 : .22;
-      if (t > 8.5) { if (Math.max(0, 1 - (t - 8.5) / 1.3) <= 0) return; }
-      const al = t > 8.5 ? Math.max(0, .22 - (t - 8.5) * .17) : fa;
+      const fa = t < 2.0 ? eOC(Math.min(t / 1.5, 1)) * .22 : .22;
+      if (t > 11.5) { if (Math.max(0, 1 - (t - 11.5) / 2.0) <= 0) return; }
+      const al = t > 11.5 ? Math.max(0, .22 - (t - 11.5) * .11) : fa;
       c.save(); c.globalAlpha = al; c.fillStyle = '#0a0312';
       const gops = [
         { cx: W * .1, bw: W * .1, bh: H * .28, ti: 5 }, { cx: W * .18, bw: W * .065, bh: H * .2, ti: 4 },
@@ -250,7 +249,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        SMOKE
        ═══════════════════════════════════════════════════════════ */
     function sSmoke(t: number) {
-      if (Math.random() > (t < 1.5 ? 0.4 : 0.12)) return;
+      if (Math.random() > (t < 2.0 ? 0.4 : 0.12)) return;
       const p = grab(pl); if (!p) return;
       p.x = W * .35 + Math.random() * W * .3;
       p.y = H * .75 + Math.random() * H * .15;
@@ -293,7 +292,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        GARBA SWIRL ORBITS
        ═══════════════════════════════════════════════════════════ */
     function sOrbit(t: number) {
-      if (t < 1.5 || t > 9.8 || Math.random() > .2) return;
+      if (t < 2.0 || t > 11.5 || Math.random() > .2) return; // Sync with reveal to display
       const p = grab(pl); if (!p) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
       const ang = Math.random() * Math.PI * 2; const rad = sc * .38 + Math.random() * sc * .1;
@@ -323,8 +322,8 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        ENERGY
        ═══════════════════════════════════════════════════════════ */
     function dEnergy(t: number) {
-      if (t >= 0 && t < 1.5) {
-        const ep = eOC(Math.min(t / 1.2, 1));
+      if (t >= 0 && t < 2.0) {
+        const ep = eOC(Math.min(t / 1.5, 1));
         const ea = ep * .08;
         const eg = c.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .45));
         eg.addColorStop(0, `rgba(200,30,60,${ea})`);
@@ -333,11 +332,11 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         c.fillStyle = eg; c.fillRect(0, 0, W, H);
         return;
       }
-      if (t < 4.5 || t > 8.5) return;
+      if (t < 7.0 || t > 11.5) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
       let ea = 0;
-      if (t < 6.5) ea = Math.min((t - 4.5) / 2, 1) * .12;
-      else ea = .12 * (1 - Math.min((t - 6.5) / 2, 1) * .5);
+      if (t < 9.5) ea = Math.min((t - 7.0) / 2.5, 1) * .12;
+      else ea = .12 * (1 - Math.min((t - 9.5) / 2.0, 1) * .5);
       const eg = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, sc * .42));
       eg.addColorStop(0, `rgba(255,140,60,${ea})`);
       eg.addColorStop(.5, `rgba(200,40,60,${ea * .4})`);
@@ -349,9 +348,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        BELLS
        ═══════════════════════════════════════════════════════════ */
     function dBells(t: number) {
-      const bs = 4.5; if (t < bs) return;
-      let ba = Math.min((t - bs) / .6, 1);
-      if (t > 8.0) ba = Math.max(0, 1 - (t - 8.0) / .6);
+      const bs = 7.0; if (t < bs) return; // Display start
+      let ba = Math.min((t - bs) / .8, 1);
+      if (t > 11.5) ba = Math.max(0, 1 - (t - 11.5) / 1.0);
       if (ba <= 0) return;
       const bsz = Math.min(W, H) * .11;
       drawBell(W * .28, H * .04, bsz, .28 * Math.sin(t * 2.6) * ba, ba);
@@ -392,9 +391,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        AARTI
        ═══════════════════════════════════════════════════════════ */
     function dAarti(t: number) {
-      const as = 4.5; if (t < as) return;
-      let aa = Math.min((t - as) / .6, 1);
-      if (t > 7.8) aa = Math.max(0, 1 - (t - 7.8) / .4);
+      const as = 7.0; if (t < as) return; // Display start
+      let aa = Math.min((t - as) / .8, 1);
+      if (t > 11.5) aa = Math.max(0, 1 - (t - 11.5) / 1.0);
       if (aa <= 0) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
       const orad = sc * .44; const ang = (t - as) * Math.PI * 1.3;
@@ -428,12 +427,12 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       FLOATING DIYAS
+       FLATING DIYAS
        ═══════════════════════════════════════════════════════════ */
     function dDiyas(t: number) {
-      const ds = 4.0; if (t < ds) return;
+      const ds = 7.0; if (t < ds) return; // Display start
       let da = Math.min((t - ds) / .8, 1);
-      if (t > 8.0) da = Math.max(0, 1 - (t - 8.0) / .8);
+      if (t > 11.5) da = Math.max(0, 1 - (t - 11.5) / 1.5);
       if (da <= 0) return;
 
       const sc = Math.min(W, H);
@@ -534,20 +533,20 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       MAA DURGA — Crimson Flash + Circular Reveal
+       MAA DURGA
        ═══════════════════════════════════════════════════════════ */
     function dDurga(t: number) {
-      if (t < 1.5) return;
+      if (t < 2.0) return; // 🌟 SYNCHRONIZED: Safe check matches the 2.0s FLASH duration
       const img = durgaImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return;
 
       const cx = W / 2, cy = H / 2 - H * 0.01;
       const sc = Math.min(W, H);
-      const fw = sc * 0.30;
-      const fh = fw * 1.35;
-      const br = fw * 0.07;
-      const fx = cx - fw / 2;
-      const fy = cy - fh / 2;
+      const displayW = sc * 0.30;
+      const displayH = displayW * 1.35;
+      const br = displayW * 0.07;
+      const fx = cx - displayW / 2;
+      const fy = cy - displayH / 2;
 
       let frameAlpha = 0;
       let revealProg = 0;
@@ -555,18 +554,19 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       let fadeAlpha = 1;
       let breathScale = 0;
 
-      if (t >= 1.5 && t < 4.5) {
-        const raw = Math.min((t - 1.5) / 2.8, 1);
+      // 🌟 DYNAMIC SYNCHRONIZED TIMING 🌟
+      if (t >= 2.0 && t < 7.0) {
+        const raw = Math.min((t - 2.0) / 5.0, 1); // 5.0 seconds REVEAL phase
         frameAlpha = Math.min(raw * 5, 1);
         revealProg = eIO(raw);
         flashI = Math.max(0, 1 - raw * 2.5) * 1.0;
-      } else if (t >= 4.5 && t < 7.5) {
+      } else if (t >= 7.0 && t < 11.5) {
         frameAlpha = 1;
         revealProg = 1;
         flashI = 0;
         breathScale = Math.sin(t * 2.5) * 0.004;
-      } else if (t >= 7.5) {
-        const d = Math.min((t - 7.5) / 1.2, 1);
+      } else if (t >= 11.5) {
+        const d = Math.min((t - 11.5) / 3.5, 1); // 3.5 seconds HANDOVER fadeout
         frameAlpha = Math.max(0, 1 - d);
         revealProg = 1;
         fadeAlpha = Math.max(0, 1 - d);
@@ -584,7 +584,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       }
 
       if (flashI > 0.1) {
-        const flashR = fw * 0.65 * (1 + (1 - flashI) * 0.5);
+        const flashR = displayW * 0.65 * (1 + (1 - flashI) * 0.5);
         const fg = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, flashR));
         fg.addColorStop(0, `rgba(255,240,220,${flashI * 0.65})`);
         fg.addColorStop(0.15, `rgba(255,180,100,${flashI * 0.45})`);
@@ -592,38 +592,38 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         fg.addColorStop(0.6, `rgba(180,30,60,${flashI * 0.1})`);
         fg.addColorStop(1, 'rgba(100,10,40,0)');
         c.fillStyle = fg;
-        c.fillRect(fx - fw * 0.3, fy - fh * 0.2, fw * 1.6, fh * 1.4);
+        c.fillRect(fx - displayW * 0.3, fy - displayH * 0.2, displayW * 1.6, displayH * 1.4);
       }
 
-      const ah = c.createRadialGradient(cx, cy, Math.max(EP, fw * 0.42), cx, cy, Math.max(EP, fw * 0.78));
+      const ah = c.createRadialGradient(cx, cy, Math.max(EP, displayW * 0.42), cx, cy, Math.max(EP, displayW * 0.78));
       ah.addColorStop(0, 'rgba(220,60,80,0.04)');
       ah.addColorStop(1, 'rgba(180,30,60,0)');
       c.fillStyle = ah;
-      c.fillRect(fx - fw * 0.35, fy - fh * 0.18, fw * 1.7, fh * 1.36);
+      c.fillRect(fx - displayW * 0.35, fy - displayH * 0.18, displayW * 1.7, displayH * 1.36);
 
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
       c.shadowColor = 'rgba(220,38,38,0.5)';
       c.shadowBlur = 44;
       c.shadowOffsetY = 4;
-      drawArchPath(c, fx, fy, fw, fh, br);
+      drawArchPath(c, fx, fy, displayW, displayH, br);
       c.fillStyle = '#0a0312';
       c.fill();
       c.restore();
 
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
-      drawArchPath(c, fx, fy, fw, fh, br);
+      drawArchPath(c, fx, fy, displayW, displayH, br);
       c.clip();
 
-      const ig = c.createRadialGradient(cx, cy - fh * 0.08, 0, cx, cy, Math.max(EP, fw * 0.72));
+      const ig = c.createRadialGradient(cx, cy - displayH * 0.08, 0, cx, cy, Math.max(EP, displayW * 0.72));
       ig.addColorStop(0, 'rgba(255,120,80,0.12)');
       ig.addColorStop(0.5, 'rgba(255,60,60,0.04)');
       ig.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = ig;
-      c.fillRect(fx, fy, fw, fh);
+      c.fillRect(fx, fy, displayW, displayH);
 
-      const maxRevealR = Math.max(fw, fh) * 0.85;
+      const maxRevealR = Math.max(displayW, displayH) * 0.85;
       const currentR = Math.max(EP, maxRevealR * revealProg);
       c.save();
       c.beginPath();
@@ -631,11 +631,11 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c.clip();
 
       const imgR = img.naturalWidth / img.naturalHeight;
-      const frmR = fw / fh;
+      const frmR = displayW / displayH;
       let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
       if (imgR > frmR) { sw = img.naturalHeight * frmR; sx = (img.naturalWidth - sw) / 2; }
       else { sh = img.naturalWidth / frmR; sy = (img.naturalHeight - sh) / 2; }
-      c.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
+      c.drawImage(img, sx, sy, sw, sh, fx, fy, displayW, displayH);
       c.restore();
 
       if (flashI > 0.01 && currentR > 5) {
@@ -650,31 +650,31 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         eg.addColorStop(0.7, `rgba(255,150,100,${flashI * 0.35})`);
         eg.addColorStop(1, 'rgba(255,100,60,0)');
         c.fillStyle = eg;
-        c.fillRect(fx, fy, fw, fh);
+        c.fillRect(fx, fy, displayW, displayH);
       }
 
-      const tf = c.createLinearGradient(0, fy, 0, fy + fh * 0.1);
+      const tf = c.createLinearGradient(0, fy, 0, fy + displayH * 0.1);
       tf.addColorStop(0, 'rgba(10,3,18,0.55)');
       tf.addColorStop(1, 'rgba(10,3,18,0)');
       c.fillStyle = tf;
-      c.fillRect(fx, fy, fw, fh * 0.1);
+      c.fillRect(fx, fy, displayW, displayH * 0.1);
 
-      const bf = c.createLinearGradient(0, fy + fh, 0, fy + fh * 0.9);
+      const bf = c.createLinearGradient(0, fy + displayH, 0, fy + displayH * 0.9);
       bf.addColorStop(0, 'rgba(8,9,16,0.48)');
       bf.addColorStop(1, 'rgba(8,9,16,0)');
       c.fillStyle = bf;
-      c.fillRect(fx, fy + fh * 0.9, fw, fh * 0.1);
+      c.fillRect(fx, fy + displayH * 0.9, displayW, displayH * 0.1);
 
-      const iv = c.createRadialGradient(cx, cy, Math.max(EP, fw * 0.22), cx, cy, Math.max(EP, fw * 0.54));
+      const iv = c.createRadialGradient(cx, cy, Math.max(EP, displayW * 0.22), cx, cy, Math.max(EP, displayW * 0.54));
       iv.addColorStop(0, 'rgba(0,0,0,0)');
       iv.addColorStop(1, 'rgba(0,0,0,0.2)');
       c.fillStyle = iv;
-      c.fillRect(fx, fy, fw, fh);
+      c.fillRect(fx, fy, displayW, displayH);
       c.restore();
 
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
-      const og = c.createLinearGradient(fx, fy - fw * 0.05, fx, fy + fh);
+      const og = c.createLinearGradient(fx, fy - displayW * 0.05, fx, fy + displayH);
       og.addColorStop(0, '#f0c8d8');
       og.addColorStop(0.1, '#e8a8b0');
       og.addColorStop(0.28, '#d4a030');
@@ -685,26 +685,26 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c.lineWidth = 4;
       c.shadowColor = `rgba(255,215,0,${0.35 + flashI * 0.4})`;
       c.shadowBlur = 16 + flashI * 20;
-      drawArchPath(c, fx, fy, fw, fh, br);
+      drawArchPath(c, fx, fy, displayW, displayH, br);
       c.stroke();
       c.restore();
 
       const ins = 8;
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
-      const ig2 = c.createLinearGradient(fx, fy, fx, fy + fh);
+      const ig2 = c.createLinearGradient(fx, fy, fx, fy + displayH);
       ig2.addColorStop(0, 'rgba(240,200,210,0.45)');
       ig2.addColorStop(0.5, 'rgba(200,140,100,0.3)');
       ig2.addColorStop(1, 'rgba(160,80,60,0.18)');
       c.strokeStyle = ig2;
       c.lineWidth = 1.2;
-      drawArchPath(c, fx + ins, fy + ins, fw - ins * 2, fh - ins * 2, Math.max(EP, br - ins * 0.35));
+      drawArchPath(c, fx + ins, fy + ins, displayW - ins * 2, displayH - ins * 2, Math.max(EP, br - ins * 0.35));
       c.stroke();
       c.restore();
 
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
-      const sg = c.createLinearGradient(fx + fw * 0.06, 0, fx + fw * 0.94, 0);
+      const sg = c.createLinearGradient(fx + displayW * 0.06, 0, fx + displayW * 0.94, 0);
       sg.addColorStop(0, 'rgba(255,240,220,0)');
       sg.addColorStop(0.32, 'rgba(255,240,220,0)');
       sg.addColorStop(0.5, 'rgba(255,240,220,0.38)');
@@ -712,11 +712,11 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       sg.addColorStop(1, 'rgba(255,240,220,0)');
       c.strokeStyle = sg;
       c.lineWidth = 0.9;
-      drawArchPath(c, fx, fy, fw, fh, br);
+      drawArchPath(c, fx, fy, displayW, displayH, br);
       c.stroke();
       c.restore();
 
-      const fss = fw * 0.034;
+      const fss = displayW * 0.034;
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
       c.fillStyle = '#ffd700';
@@ -734,15 +734,15 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fill();
       c.restore();
 
-      const dr = fw * 0.01;
-      const jy = fy + fw / 2;
+      const dr = displayW * 0.01;
+      const jy = fy + displayW / 2;
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
       c.fillStyle = '#ffd700';
       c.shadowColor = 'rgba(255,215,0,0.5)';
       c.shadowBlur = 5;
       c.beginPath(); c.arc(fx + 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(fx + fw - 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(fx + displayW - 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c.fill();
       c.restore();
 
       c.save();
@@ -751,18 +751,18 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c.shadowColor = 'rgba(255,215,0,0.35)';
       c.shadowBlur = 4;
       const cdr = dr * 0.8;
-      c.beginPath(); c.arc(fx + br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(fx + fw - br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(fx + br * 0.6, fy + displayH - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(fx + displayW - br * 0.6, fy + displayH - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c.fill();
       c.restore();
 
-      if (t >= 4.5 && t < 7.5) {
-        const st = (t - 5.0) / 1.0;
+      if (t >= 7.0 && t < 11.5) {
+        const st = (t - 7.5) / 1.5;
         if (st >= 0 && st <= 1) {
-          const sx2 = fx + st * fw * 1.4 - fw * 0.2;
-          const sw2 = fw * 0.13;
+          const sx2 = fx + st * displayW * 1.4 - displayW * 0.2;
+          const sw2 = displayW * 0.13;
           c.save();
           c.globalAlpha = fadeAlpha;
-          drawArchPath(c, fx, fy, fw, fh, br);
+          drawArchPath(c, fx, fy, displayW, displayH, br);
           c.clip();
           const shim = c.createLinearGradient(sx2 - sw2, 0, sx2 + sw2, 0);
           shim.addColorStop(0, 'rgba(255,255,255,0)');
@@ -771,7 +771,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
           shim.addColorStop(0.62, 'rgba(255,230,220,0.07)');
           shim.addColorStop(1, 'rgba(255,255,255,0)');
           c.fillStyle = shim;
-          c.fillRect(sx2 - sw2, fy, sw2 * 2, fh);
+          c.fillRect(sx2 - sw2, fy, sw2 * 2, displayH);
           c.restore();
         }
       }
@@ -779,12 +779,12 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       SPARKLES — at circular reveal edge
+       SPARKLES
        ═══════════════════════════════════════════════════════════ */
     function sRevealSparkles(t: number) {
-      if (t < 1.5 || t > 4.5) return;
+      if (t < 2.0 || t > 7.0) return; // Sync with 5-second reveal duration
       const d = getImgDims(); if (!d) return;
-      const raw = Math.min((t - 1.5) / 2.8, 1);
+      const raw = Math.min((t - 2.0) / 5.0, 1);
       const revealProg = eIO(raw);
       const sc = Math.min(W, H);
       const fw = sc * 0.30;
@@ -840,10 +840,10 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        FLARE
        ═══════════════════════════════════════════════════════════ */
     function dFlare(t: number) {
-      if (t < 2.0 || t > 5.5) return;
+      if (t < 2.0 || t > 8.0) return; // Active during reveal
       let fi: number;
-      if (t < 2.8) fi = (t - 2.0) / 0.8;
-      else if (t > 4.8) fi = 1 - (t - 4.8) / 0.7;
+      if (t < 3.2) fi = (t - 2.0) / 1.2;
+      else if (t > 7.0) fi = 1 - (t - 7.0) / 1.0;
       else fi = 1;
       fi = Math.max(0, Math.min(1, fi));
       if (fi <= 0) return;
@@ -874,7 +874,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        BLOOM
        ═══════════════════════════════════════════════════════════ */
     function dBloom(t: number) {
-      const bs = 6.5; const bt = Math.min((t - bs) / 1.4, 1); if (bt <= 0) return;
+      const bs = 8.0; const bt = Math.min((t - bs) / 2.0, 1); if (bt <= 0) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015; const maxR = sc * .88;
       const r = maxR * eOQ(bt); const ra = (1 - bt) * .4;
       c.save(); c.beginPath(); c.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
@@ -908,7 +908,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        GENDA & ROSE PETALS
        ═══════════════════════════════════════════════════════════ */
     function sPetals(t: number) {
-      if (t < 4.5 || Math.random() > .5) return;
+      if (t < 5.0 || Math.random() > .5) return; // Active during reveal
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -24 - Math.random() * 60;
       p.vx = (Math.random() - .5) * 3.0;
@@ -919,7 +919,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       else if (ct < .75) { p.r = 244; p.g = 63; p.b = 94; }
       else if (ct < .9) { p.r = 220; p.g = 38; p.b = 38; }
       else { p.r = 251; p.g = 191; p.b = 36; }
-      // ✅ FIX #1: was `Math.random() .3` — missing `*`
       p.a = .45 + Math.random() * .3;
       p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .08; p.on = true; p.tp = 4;
@@ -944,7 +943,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        KUMKUM
        ═══════════════════════════════════════════════════════════ */
     function sKum(t: number) {
-      if (t < 4.5 || Math.random() > .45) return;
+      if (t < 5.0 || Math.random() > .45) return;
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -12 - Math.random() * 35;
       p.vx = (Math.random() - .5) * .8; p.vy = .5 + Math.random() * 1.5;
@@ -952,10 +951,8 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       if (Math.random() < .6) {
         p.r = 180 + Math.random() * 55 | 0;
         p.g = 10 + Math.random() * 20 | 0;
-        // ✅ FIX #2: was `Math.random() 20` — missing `*`
         p.b = 10 + Math.random() * 20 | 0;
       } else { p.r = 251; p.g = 191; p.b = 36; }
-      // ✅ FIX #3: was `Math.random() .38` — missing `*`
       p.a = .4 + Math.random() * .38;
       p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .07; p.on = true; p.tp = 8;
@@ -974,8 +971,8 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        RAYS
        ═══════════════════════════════════════════════════════════ */
     function dRays(t: number) {
-      if (t < 6.0) return;
-      const rt = Math.min((t - 6.0) / 2, 1); const al = eOC(rt) * .08;
+      if (t < 7.0) return;
+      const rt = Math.min((t - 7.0) / 2, 1); const al = eOC(rt) * .08;
       const cx = W / 2, cy = H / 2 - H * .015; const rl = Math.max(W, H) * .85;
       c.save(); c.globalAlpha = al;
       for (let i = 0; i < 16; i++) {
@@ -997,9 +994,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        RANGOLI GLOW
        ═══════════════════════════════════════════════════════════ */
     function dRangoli(t: number) {
-      if (t < 3.5 || t > 8.0) return;
-      let ra = Math.min((t - 3.5) / 1.0, 1);
-      if (t > 7.0) ra = 1 - Math.min((t - 7.0) / 1.0, 1);
+      if (t < 5.0 || t > 11.5) return;
+      let ra = Math.min((t - 5.0) / 1.0, 1);
+      if (t > 10.0) ra = 1 - Math.min((t - 10.0) / 1.5, 1);
       if (ra <= 0) return;
 
       const cx = W / 2, cy = H * 0.9;
@@ -1049,8 +1046,8 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        DISSOLVE
        ═══════════════════════════════════════════════════════════ */
     function dDissolve(t: number) {
-      const ps = 7.5;
-      const dt = Math.min((t - ps) / 1.2, 1); if (dt <= 0) return;
+      const ps = 10.0; // Dissolve near handover phase
+      const dt = Math.min((t - ps) / 1.5, 1); if (dt <= 0) return;
       const la = eOC(dt) * .12;
       const lg = c.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
       lg.addColorStop(0, `rgba(255,180,100,${la})`);
@@ -1060,15 +1057,15 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       TEXT — Navratri Specific
+       TEXT
        ═══════════════════════════════════════════════════════════ */
     function dText(t: number) {
-      const ps = 8.7;
+      const ps = 11.5; // Synced with HANDOVER phase
       if (t < ps) return;
       c.save();
       c.textAlign = 'center'; c.textBaseline = 'middle';
 
-      const tProg = Math.min((t - ps) / 0.6, 1);
+      const tProg = Math.min((t - ps) / 0.8, 1);
       const tFi = Math.min(1, eSpring(tProg));
       const tSlide = (1 - eOC(tProg)) * 14;
 
@@ -1104,8 +1101,8 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
 
         c.restore();
 
-        if (t > 9.3) {
-          const shProg = Math.min((t - 9.3) / 0.7, 1);
+        if (t > 12.5) {
+          const shProg = Math.min((t - 12.5) / 1.0, 1);
           const shX = (W / 2 - tw / 2) + shProg * tw * 1.4 - tw * 0.2;
           c.save();
           c.beginPath(); c.rect(W / 2 - tw / 2, ty - ts, tw, ts * 2); c.clip();
@@ -1121,9 +1118,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       }
 
       // Subtitle
-      const mStart = 9.0;
+      const mStart = 12.2;
       if (t > mStart) {
-        const mProg = Math.min((t - mStart) / 0.5, 1);
+        const mProg = Math.min((t - mStart) / 0.6, 1);
         const mFi = Math.min(1, eOC(mProg));
         const mSlide = (1 - eOC(mProg)) * 10;
 
@@ -1173,7 +1170,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         p.life -= dt;
         if (p.life <= 0) { p.on = false; continue; }
 
-        // Garba swirl for petals and kumkum
         if (p.tp === 4 || p.tp === 8) {
           const cx = W / 2;
           const dx = p.x - cx;
@@ -1183,7 +1179,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
           p.vy *= 0.998;
         }
 
-        // Orbit centripetal
         if (p.tp === 5) {
           const cx = W / 2, cy = H / 2 - H * .015;
           const dx = p.x - cx, dy = p.y - cy;
@@ -1201,7 +1196,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         p.y += p.vy;
         p.rot += p.rs;
 
-        // Smoke drift
         if (p.tp === 6) {
           p.vx += (Math.random() - .5) * .02;
           p.vy -= 0.005;
