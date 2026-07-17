@@ -80,19 +80,19 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const mainGain = ctx.createGain();
       mainGain.connect(ctx.destination);
       mainGain.gain.setValueAtTime(0, ctx.currentTime);
-      mainGain.gain.linearRampToValueAtTime(0.26, ctx.currentTime + 0.01);
+      mainGain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.01);
       mainGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
       [1.0, 1.5, 2.0, 2.5, 3.0].forEach((ratio, i) => {
         const osc = ctx.createOscillator();
         const gNode = ctx.createGain();
         osc.frequency.value = frequency * ratio;
         osc.type = i === 0 ? 'sine' : 'triangle';
-        gNode.gain.setValueAtTime(0.4 / (i + 1), ctx.currentTime);
+        gNode.gain.setValueAtTime(0.35 / (i + 1), ctx.currentTime);
         gNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / (i + 0.9));
         osc.connect(gNode); gNode.connect(mainGain);
         osc.start(); osc.stop(ctx.currentTime + duration);
       });
-    } catch (err) { console.warn("Sacred sound failed:", err); }
+    } catch (err) { /* silent */ }
   }, []);
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     };
     rsz(); window.addEventListener('resize', rsz);
 
-    /* ─── Film Grain Texture ─── */
+    /* ─── Film Grain ─── */
     const grainCv = document.createElement('canvas');
     grainCv.width = 256; grainCv.height = 256;
     const gc = grainCv.getContext('2d')!;
@@ -132,10 +132,10 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     for (let i = 0; i < 80; i++) {
       const p = pl[i]; p.on = true; p.tp = 0;
       p.x = Math.random() * W; p.y = Math.random() * H;
-      p.vx = (Math.random() - .5) * .22; p.vy = -Math.random() * .35 - .06;
-      p.sz = Math.random() * 1.6 + .4; p.ml = 999; p.life = 999;
-      p.r = 244; p.g = 63; p.b = 94; 
-      p.a = Math.random() * .22 + .06; p.rot = 0; p.rs = 0;
+      p.vx = (Math.random() - .5) * .18; p.vy = -Math.random() * .3 - .04;
+      p.sz = Math.random() * 1.4 + .3; p.ml = 999; p.life = 999;
+      p.r = 244; p.g = 63; p.b = 94;
+      p.a = Math.random() * .18 + .04; p.rot = 0; p.rs = 0;
       dI.push(i);
     }
 
@@ -145,7 +145,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
     ];
 
-    /* Temple Arch Path Generator */
+    /* ─── Temple Arch Path ─── */
     const drawArchPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rBottom: number) => {
       const rTop = w / 2;
       ctx.beginPath();
@@ -162,49 +162,59 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     const getImgDims = () => {
       const img = durgaImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return null;
-      const cx = W / 2, cy = H / 2 - H * 0.015;
+      const cx = W / 2, cy = H / 2 - H * 0.01;
       const sc = Math.min(W, H);
-      const displayW = sc * 0.28;
+      const displayW = sc * 0.30;
       const displayH = displayW * 1.35;
       const maxR = Math.max(displayW, displayH) / 2 + 10;
       return { img, cx, cy, displayW, displayH, maxR };
     };
 
     /* ═══════════════════════════════════════════════════════════
-       BACKGROUND
+       BACKGROUND — Deep Crimson/Purple Navratri Night
        ═══════════════════════════════════════════════════════════ */
     function dBg(t: number) {
-      c!.fillStyle = '#060209'; c!.fillRect(0, 0, W, H);
-      const aa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .6 : .6;
-      let g = c!.createRadialGradient(W * .5, H * .22, 0, W * .5, H * .22, H * .9);
-      g.addColorStop(0, `rgba(244,63,94,${aa * .26})`); 
-      g.addColorStop(.55, `rgba(124,58,237,${aa * .14})`); 
-      g.addColorStop(1, 'rgba(6,2,9,0)');
+      c!.fillStyle = '#050108'; c!.fillRect(0, 0, W, H);
+
+      // Deep crimson upper atmosphere
+      const aa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .7 : .7;
+      let g = c!.createRadialGradient(W * .5, H * .18, 0, W * .5, H * .18, H * .85);
+      g.addColorStop(0, `rgba(180,20,40,${aa * .22})`);
+      g.addColorStop(.4, `rgba(120,20,60,${aa * .12})`);
+      g.addColorStop(.7, `rgba(50,10,50,${aa * .06})`);
+      g.addColorStop(1, 'rgba(5,1,8,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
 
-      g = c!.createRadialGradient(W * .5, H * .88, 0, W * .5, H * .88, H * .5);
-      g.addColorStop(0, `rgba(220,38,38,${aa * .3})`);
-      g.addColorStop(1, 'rgba(6,2,9,0)');
+      // Bottom warm glow (like distant temple lamps)
+      g = c!.createRadialGradient(W * .5, H * .92, 0, W * .5, H * .92, H * .45);
+      g.addColorStop(0, `rgba(200,80,20,${aa * .18})`);
+      g.addColorStop(.5, `rgba(140,30,30,${aa * .08})`);
+      g!.addColorStop(1, 'rgba(5,1,8,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
 
+      // Center divine glow (builds with time)
       let ca = 0;
-      if (t > 1.0) ca = Math.min((t - 1.0) / 3, 1) * .2;
-      if (t > 4.5) ca = .2 + Math.min((t - 4.5) / 1.5, 1) * .18;
-      g = c!.createRadialGradient(W * .5, H * .43, 0, W * .5, H * .43, H * .55);
-      g.addColorStop(0, `rgba(245,158,11,${ca * 0.9})`); 
-      g.addColorStop(.5, `rgba(220,38,38,${ca * .3})`);
-      g.addColorStop(1, 'rgba(6,2,9,0)');
+      if (t > 1.0) ca = Math.min((t - 1.0) / 3, 1) * .15;
+      if (t > 4.5) ca = .15 + Math.min((t - 4.5) / 1.5, 1) * .2;
+      if (t > 7.0) ca = .35 + Math.min((t - 7.0) / 1.0, 1) * .15;
+      if (t > 8.5) ca = .5 + Math.min((t - 8.5) / 1.0, 1) * .12;
+
+      g = c!.createRadialGradient(W * .5, H * .42, 0, W * .5, H * .42, H * .5);
+      g.addColorStop(0, `rgba(255,140,60,${ca})`);
+      g.addColorStop(.3, `rgba(220,50,50,${ca * .35})`);
+      g.addColorStop(.6, `rgba(120,30,80,${ca * .15})`);
+      g.addColorStop(1, 'rgba(5,1,8,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
     }
 
     /* ═══════════════════════════════════════════════════════════
-       DYNAMIC VIGNETTE
+       VIGNETTE
        ═══════════════════════════════════════════════════════════ */
     function dVignette(t: number) {
-      const breathe = 0.58 + Math.sin(t * 1.3) * 0.05;
-      const vg = c!.createRadialGradient(W / 2, H / 2, H * 0.26, W / 2, H / 2, Math.max(EP, Math.max(W, H) * 0.8));
+      const breathe = 0.6 + Math.sin(t * 1.2) * 0.04;
+      const vg = c!.createRadialGradient(W / 2, H / 2, H * 0.24, W / 2, H / 2, Math.max(EP, Math.max(W, H) * 0.82));
       vg.addColorStop(0, 'rgba(0,0,0,0)');
-      vg.addColorStop(1, `rgba(6,2,9,${breathe})`);
+      vg.addColorStop(1, `rgba(5,1,8,${breathe})`);
       c!.fillStyle = vg;
       c!.fillRect(0, 0, W, H);
     }
@@ -213,9 +223,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        TEMPLES
        ═══════════════════════════════════════════════════════════ */
     function dTemples(t: number) {
-      const fa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .28 : .28;
+      const fa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .22 : .22;
       if (t > 8.5) { if (Math.max(0, 1 - (t - 8.5) / 1.3) <= 0) return; }
-      const al = t > 8.5 ? Math.max(0, .28 - (t - 8.5) * .215) : fa;
+      const al = t > 8.5 ? Math.max(0, .22 - (t - 8.5) * .17) : fa;
       c!.save(); c!.globalAlpha = al; c!.fillStyle = '#0a0312';
       const gops = [
         { cx: W * .1, bw: W * .1, bh: H * .28, ti: 5 }, { cx: W * .18, bw: W * .065, bh: H * .2, ti: 4 },
@@ -234,25 +244,25 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       }
       c!.fillRect(0, H * .86, W, H * .14);
       const gg = c!.createLinearGradient(0, H * .84, 0, H * .9);
-      gg.addColorStop(0, 'rgba(220,38,38,0)'); gg.addColorStop(1, `rgba(220,38,38,${al * .25})`);
+      gg.addColorStop(0, 'rgba(180,30,30,0)'); gg.addColorStop(1, `rgba(180,30,30,${al * .2})`);
       c!.fillStyle = gg; c!.fillRect(0, H * .84, W, H * .06);
       c!.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════
-       SMOKE (Pavitra Hawan Agni Smoke)
+       SMOKE (Incense / Dhoop)
        ═══════════════════════════════════════════════════════════ */
     function sSmoke(t: number) {
-      if (Math.random() > (t < 1.5 ? 0.45 : 0.15)) return;
+      if (Math.random() > (t < 1.5 ? 0.4 : 0.12)) return;
       const p = grab(pl); if (!p) return;
-      p.x = W * .45 + (Math.random() - 0.5) * 120;
-      p.y = H * 0.85;
-      p.sz = Math.random() * 45 + 15;
-      p.a = .04 + Math.random() * .03;
-      p.ml = 4 + Math.random() * 2;
-      p.vx = (Math.random() - .5) * .3; p.vy = -Math.random() * .7 - .4;
+      p.x = W * .35 + Math.random() * W * .3;
+      p.y = H * .75 + Math.random() * H * .15;
+      p.sz = Math.random() * 40 + 12;
+      p.a = .025 + Math.random() * .02;
+      p.ml = 5 + Math.random() * 3;
+      p.vx = (Math.random() - .5) * .25; p.vy = -Math.random() * .5 - .15;
       p.life = p.ml;
-      p.r = 239; p.g = 68; p.b = 68; // Golden Orange-Red smoke matching Hawan
+      p.r = 180; p.g = 140; p.b = 120; // Grey-ish incense smoke
       p.rot = 0; p.rs = 0; p.on = true; p.tp = 6;
     }
     function dSmoke() {
@@ -273,7 +283,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     function dDust(t: number) {
       for (let i = 0; i < dI.length; i++) {
         const p = pl[dI[i]];
-        p.x += p.vx + Math.sin(t * .35 + i) * .07; p.y += p.vy;
+        p.x += p.vx + Math.sin(t * .35 + i) * .06; p.y += p.vy;
         if (p.y < -12) { p.y = H + 12; p.x = Math.random() * W; }
         if (p.x < -12) p.x = W + 12; if (p.x > W + 12) p.x = -12;
         const fl = .6 + Math.sin(t * 1.6 + i * .55) * .4;
@@ -283,18 +293,18 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       🌀 GARBA SWIRL ORBITS
+       GARBA SWIRL ORBITS
        ═══════════════════════════════════════════════════════════ */
     function sOrbit(t: number) {
-      if (t < 1.5 || t > 9.8 || Math.random() > .25) return;
+      if (t < 1.5 || t > 9.8 || Math.random() > .2) return;
       const p = grab(pl); if (!p) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
-      const ang = Math.random() * Math.PI * 2; const rad = sc * .38 + Math.random() * sc * .12;
+      const ang = Math.random() * Math.PI * 2; const rad = sc * .38 + Math.random() * sc * .1;
       p.x = cx + Math.cos(ang) * rad; p.y = cy + Math.sin(ang) * rad;
-      p.vx = Math.cos(ang + Math.PI / 2) * .75; p.vy = Math.sin(ang + Math.PI / 2) * .75;
-      p.sz = Math.random() * 1.8 + .4; p.ml = 2.5 + Math.random() * 2; p.life = p.ml;
-      p.r = 244; p.g = 63; p.b = 94; 
-      p.a = .45 + Math.random() * .35; p.rot = 0; p.rs = 0; p.on = true; p.tp = 5;
+      p.vx = Math.cos(ang + Math.PI / 2) * .7; p.vy = Math.sin(ang + Math.PI / 2) * .7;
+      p.sz = Math.random() * 1.6 + .4; p.ml = 2.5 + Math.random() * 2; p.life = p.ml;
+      p.r = 244; p.g = 63; p.b = 94;
+      p.a = .4 + Math.random() * .3; p.rot = 0; p.rs = 0; p.on = true; p.tp = 5;
     }
     function dOrbit() {
       for (const p of pl) {
@@ -303,7 +313,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         const a = p.a * Math.min(lr * 2, 1) * Math.min((1 - lr) * 2, 1);
         const haloR = p.sz * 4;
         const hg = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, haloR));
-        hg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.22})`);
+        hg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.2})`);
         hg.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
         c!.fillStyle = hg;
         c!.fillRect(p.x - haloR, p.y - haloR, haloR * 2, haloR * 2);
@@ -318,21 +328,23 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     function dEnergy(t: number) {
       if (t >= 0 && t < 1.5) {
         const ep = eOC(Math.min(t / 1.2, 1));
-        const ea = ep * .1;
+        const ea = ep * .08;
         const eg = c!.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .45));
-        eg.addColorStop(0, `rgba(244,63,94,${ea})`);
-        eg.addColorStop(.5, `rgba(124,58,237,${ea * .4})`);
-        eg.addColorStop(1, 'rgba(6,2,9,0)');
+        eg.addColorStop(0, `rgba(200,30,60,${ea})`);
+        eg.addColorStop(.5, `rgba(100,20,80,${ea * .4})`);
+        eg.addColorStop(1, 'rgba(5,1,8,0)');
         c!.fillStyle = eg; c!.fillRect(0, 0, W, H);
         return;
       }
       if (t < 4.5 || t > 8.5) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
       let ea = 0;
-      if (t < 6.5) ea = Math.min((t - 4.5) / 2, 1) * .15;
-      else ea = .15 * (1 - Math.min((t - 6.5) / 2, 1) * .5);
+      if (t < 6.5) ea = Math.min((t - 4.5) / 2, 1) * .12;
+      else ea = .12 * (1 - Math.min((t - 6.5) / 2, 1) * .5);
       const eg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, sc * .42));
-      eg.addColorStop(0, `rgba(245,158,11,${ea})`); eg.addColorStop(.5, `rgba(220,38,38,${ea * .4})`); eg.addColorStop(1, 'rgba(6,2,9,0)');
+      eg.addColorStop(0, `rgba(255,140,60,${ea})`);
+      eg.addColorStop(.5, `rgba(200,40,60,${ea * .4})`);
+      eg.addColorStop(1, 'rgba(5,1,8,0)');
       c!.fillStyle = eg; c!.fillRect(0, 0, W, H);
     }
 
@@ -351,7 +363,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         const angle = Math.sin(t * (1.8 + idx * 0.35)) * 0.18;
         if (Math.abs(angle) < 0.02 && t - bell.lastBellTime > 0.8) {
           bell.lastBellTime = t;
-          triggerBellSound([294, 220, 330][idx]); 
+          triggerBellSound([294, 220, 330][idx]);
         }
       });
     }
@@ -376,10 +388,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c!.closePath(); c!.fillStyle = 'rgba(255,228,165,.12)'; c!.fill();
       c!.beginPath(); c!.moveTo(-bw * .5, bb); c!.lineTo(bw * .5, bb);
       c!.strokeStyle = '#dab540'; c!.lineWidth = 1.8; c!.stroke();
-      const rg = c!.createRadialGradient(0, bb, 0, 0, bb, Math.max(EP, s * .3));
-      rg.addColorStop(0, 'rgba(255,195,65,.15)'); rg.addColorStop(1, 'rgba(255,195,65,0)');
-      c!.fillStyle = rg; c!.fillRect(-s * .3, bb - s * .3, s * .6, s * .6);
-      c!.beginPath(); c!.arc(0, bb - s * .06, Math.max(EP, s * .035), 0, Math.PI * 2); c!.fillStyle = '#3e2e0c'; c!.fill();
       c!.restore();
     }
 
@@ -397,7 +405,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       for (let i = 1; i < 18; i++) {
         const ta = ang - i * .045; const tx = cx + Math.cos(ta) * orad; const ty = cy + Math.sin(ta) * orad * .52;
         const tg = c!.createRadialGradient(tx, ty, 0, tx, ty, Math.max(EP, 10));
-        tg.addColorStop(0, `rgba(255,175,45,${(1 - i / 18) * .12 * aa})`); tg.addColorStop(1, 'rgba(255,140,30,0)');
+        tg.addColorStop(0, `rgba(255,175,45,${(1 - i / 18) * .1 * aa})`); tg.addColorStop(1, 'rgba(255,140,30,0)');
         c!.fillStyle = tg; c!.fillRect(tx - 10, ty - 10, 20, 20);
       }
       c!.save(); c!.globalAlpha = aa; c!.translate(ax, ay);
@@ -423,283 +431,380 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       🔥 DANCING HAWAN AGNI (Holy Ritual Fire at the bottom)
+       🪔 FLOATING DIYAS — Realistic Oil Lamps
        ═══════════════════════════════════════════════════════════ */
-    function dHawanFire(t: number) {
-      const cx = W / 2, cy = H * 0.88;
-      const fireW = Math.min(W, H) * 0.22;
+    function dDiyas(t: number) {
+      const ds = 4.0; if (t < ds) return;
+      let da = Math.min((t - ds) / .8, 1);
+      if (t > 8.0) da = Math.max(0, 1 - (t - 8.0) / .8);
+      if (da <= 0) return;
+
+      const sc = Math.min(W, H);
+      const diyaSize = sc * 0.035;
+      const positions = [
+        { x: W * 0.15, y: H * 0.72, scl: 0.9 },
+        { x: W * 0.85, y: H * 0.72, scl: 0.9 },
+        { x: W * 0.12, y: H * 0.82, scl: 0.65 },
+        { x: W * 0.88, y: H * 0.82, scl: 0.65 },
+      ];
 
       c!.save();
-      c!.globalCompositeOperation = 'lighter';
+      c!.globalAlpha = da;
 
-      // Draw Hawan Kund (Sacred Firepit base)
-      c!.fillStyle = '#1c0d02';
-      c!.strokeStyle = '#5a2503';
-      c!.lineWidth = 2.5;
-      c!.beginPath();
-      c!.moveTo(cx - fireW * 0.6, cy + 12);
-      c!.lineTo(cx + fireW * 0.6, cy + 12);
-      c!.lineTo(cx + fireW * 0.45, cy + 32);
-      c!.lineTo(cx - fireW * 0.45, cy + 32);
-      c!.closePath();
-      c!.fill(); c!.stroke();
+      for (const pos of positions) {
+        const s = diyaSize * pos.scl;
 
-      // Layered dancing fire flames (Sindoori Saffron and Golden Red)
-      for (let i = 0; i < 4; i++) {
-        const flameOffset = i * 0.25;
-        const speed = 15 + i * 4;
-        const heightScale = 45 + Math.sin(t * speed) * 10 - i * 6;
-        const widthScale = fireW * 0.45 - i * 5;
+        // Diya base (clay pot)
+        c!.save();
+        c!.translate(pos.x, pos.y);
 
+        // Oil reservoir
         c!.beginPath();
-        c!.moveTo(cx - widthScale, cy + 12);
-        c!.bezierCurveTo(
-          cx - widthScale * 0.6, cy - heightScale * 0.5,
-          cx - widthScale * 0.12 + Math.sin(t * 8 + flameOffset) * 10, cy - heightScale * 0.8,
-          cx, cy - heightScale
-        );
-        c!.bezierCurveTo(
-          cx + widthScale * 0.12 + Math.sin(t * 8 + flameOffset) * 10, cy - heightScale * 0.8,
-          cx + widthScale * 0.6, cy - heightScale * 0.5,
-          cx + widthScale, cy + 12
-        );
-        c!.closePath();
-
-        // Layer color variations
-        const fg = c!.createLinearGradient(cx, cy + 12, cx, cy - heightScale);
-        if (i === 0) { fg.addColorStop(0, '#ea580c'); fg.addColorStop(0.5, '#dc2626'); fg.addColorStop(1, 'rgba(220,38,38,0)'); }
-        else if (i === 1) { fg.addColorStop(0, '#f97316'); fg.addColorStop(0.6, '#ea580c'); fg.addColorStop(1, 'rgba(234,88,12,0)'); }
-        else { fg.addColorStop(0, '#facc15'); fg.addColorStop(0.7, '#f97316'); fg.addColorStop(1, 'rgba(249,115,22,0)'); }
-
-        c!.fillStyle = fg;
+        c!.ellipse(0, 0, Math.max(EP, s * 0.6), Math.max(0.01, s * 0.2), 0, 0, Math.PI * 2);
+        const oilGrad = c!.createRadialGradient(0, 0, 0, 0, 0, Math.max(EP, s * 0.6));
+        oilGrad.addColorStop(0, '#fbbf24');
+        oilGrad.addColorStop(0.6, '#f59e0b');
+        oilGrad.addColorStop(1, '#92400e');
+        c!.fillStyle = oilGrad;
         c!.fill();
+
+        // Clay pot rim
+        c!.beginPath();
+        c!.ellipse(0, s * 0.12, Math.max(EP, s * 0.68), Math.max(0.01, s * 0.18), 0, 0, Math.PI * 2);
+        const clayGrad = c!.createLinearGradient(-s * 0.7, 0, s * 0.7, 0);
+        clayGrad.addColorStop(0, '#78350f');
+        clayGrad.addColorStop(0.3, '#a16207');
+        clayGrad.addColorStop(0.7, '#92400e');
+        clayGrad.addColorStop(1, '#78350f');
+        c!.fillStyle = clayGrad;
+        c!.fill();
+
+        // Cotton wick
+        c!.beginPath();
+        c!.rect(-s * 0.02, -s * 0.04, s * 0.04, s * 0.08);
+        c!.fillStyle = '#fde68a';
+        c!.fill();
+
+        // Multi-layer realistic flame
+        const flicker1 = Math.sin(t * 12 + pos.x) * 0.15;
+        const flicker2 = Math.sin(t * 17 + pos.y) * 0.12;
+        const flicker3 = Math.cos(t * 23) * 0.08;
+        const baseH = s * 1.2;
+
+        c!.globalCompositeOperation = 'lighter';
+
+        // Outer glow
+        const glowR = s * 1.8;
+        const glow = c!.createRadialGradient(0, -baseH * 0.3, 0, 0, -baseH * 0.3, Math.max(EP, glowR));
+        glow.addColorStop(0, `rgba(255,200,50,0.12)`);
+        glow.addColorStop(0.5, `rgba(255,120,30,0.04)`);
+        glow.addColorStop(1, 'rgba(255,80,20,0)');
+        c!.fillStyle = glow;
+        c!.fillRect(-glowR, -baseH * 0.3 - glowR, glowR * 2, glowR * 2);
+
+        // Flame layer 1 — outer red-orange
+        const h1 = baseH * (1 + flicker1);
+        c!.beginPath();
+        c!.moveTo(-s * 0.15, 0);
+        c!.bezierCurveTo(-s * 0.12, -h1 * 0.4, -s * 0.03 + Math.sin(t * 8) * s * 0.06, -h1 * 0.85, 0, -h1);
+        c!.bezierCurveTo(s * 0.03 + Math.sin(t * 8) * s * 0.06, -h1 * 0.85, s * 0.12, -h1 * 0.4, s * 0.15, 0);
+        c!.closePath();
+        const fg1 = c!.createLinearGradient(0, 0, 0, -h1);
+        fg1.addColorStop(0, 'rgba(255,80,20,0.7)');
+        fg1.addColorStop(0.4, 'rgba(255,160,40,0.4)');
+        fg1.addColorStop(1, 'rgba(255,200,60,0)');
+        c!.fillStyle = fg1;
+        c!.fill();
+
+        // Flame layer 2 — mid orange-yellow
+        const h2 = h1 * 0.7 * (1 + flicker2);
+        c!.beginPath();
+        c!.moveTo(-s * 0.08, 0);
+        c!.bezierCurveTo(-s * 0.06, -h2 * 0.4, -s * 0.02 + Math.sin(t * 10) * s * 0.04, -h2 * 0.8, 0, -h2);
+        c!.bezierCurveTo(s * 0.02 + Math.sin(t * 10) * s * 0.04, -h2 * 0.8, s * 0.06, -h2 * 0.4, s * 0.08, 0);
+        c!.closePath();
+        const fg2 = c!.createLinearGradient(0, 0, 0, -h2);
+        fg2.addColorStop(0, 'rgba(255,220,80,0.9)');
+        fg2.addColorStop(0.5, 'rgba(255,180,50,0.5)');
+        fg2.addColorStop(1, 'rgba(255,255,200,0)');
+        c!.fillStyle = fg2;
+        c!.fill();
+
+        // Flame layer 3 — inner white-hot core
+        const h3 = h2 * 0.5 * (1 + flicker3);
+        c!.beginPath();
+        c!.moveTo(-s * 0.03, 0);
+        c!.quadraticCurveTo(0, -h3 * 0.5, 0, -h3);
+        c!.quadraticCurveTo(s * 0.03, -h3 * 0.5, s * 0.03, 0);
+        c!.closePath();
+        c!.fillStyle = 'rgba(255,255,240,0.85)';
+        c!.fill();
+
+        c!.globalCompositeOperation = 'source-over';
+
+        c!.restore();
       }
-      c!.restore();
-    }
-
-    /* ═══════════════════════════════════════════════════════════
-       🚪 TEMPLE DOORS SLIDING REVEAL (Garbhagriha Dwar Ughadna)
-       ═══════════════════════════════════════════════════════════ */
-    function dSlidingDoors(t: number, fx: number, fy: number, fw: number, fh: number) {
-      if (t >= 3.8) return; // Completely hidden after 3.8s
-
-      const cx = W / 2;
-      let openProg = 0;
-
-      if (t >= 1.5 && t < 3.8) {
-        openProg = eIO((t - 1.5) / 2.0); // Doors slide open completely over 2.0s
-      }
-
-      const doorW = fw / 2;
-      const leftDoorOffset = -doorW * openProg * 1.15;
-      const rightDoorOffset = doorW * openProg * 1.15;
-
-      c!.save();
-      c!.shadowColor = 'rgba(0,0,0,0.4)';
-      c!.shadowBlur = 15;
-
-      // 🚪 LEFT TEMPLE DOOR
-      c!.save();
-      c!.translate(leftDoorOffset, 0);
-      c!.beginPath();
-      c!.rect(fx, fy, doorW, fh);
-      c!.clip();
-
-      // Door metallic gold texture
-      const lGrad = c!.createLinearGradient(fx, fy, fx + doorW, fy);
-      lGrad.addColorStop(0, '#7a5a06');
-      lGrad.addColorStop(0.5, '#d4a030');
-      lGrad.addColorStop(1, '#ffd700');
-      c!.fillStyle = lGrad;
-      c!.fillRect(fx, fy, doorW, fh);
-
-      // Carved panels / borders on left door
-      c!.strokeStyle = '#5a4204';
-      c!.lineWidth = 3.5;
-      c!.strokeRect(fx + 8, fy + 8, doorW - 12, fh - 16);
-      c!.strokeRect(fx + 16, fy + 16, doorW - 28, fh - 32);
-
-      // Left door ring handle
-      c!.beginPath();
-      c!.arc(fx + doorW - 14, fy + fh / 2, 10, 0, Math.PI * 2);
-      c!.strokeStyle = '#5a4204'; c!.lineWidth = 2.5; c!.stroke();
-
-      c!.restore();
-
-      // 🚪 RIGHT TEMPLE DOOR
-      c!.save();
-      c!.translate(rightDoorOffset, 0);
-      c!.beginPath();
-      c!.rect(cx, fy, doorW, fh);
-      c!.clip();
-
-      // Door metallic gold texture
-      const rGrad = c!.createLinearGradient(cx, fy, cx + doorW, fy);
-      rGrad.addColorStop(0, '#ffd700');
-      rGrad.addColorStop(0.5, '#d4a030');
-      rGrad.addColorStop(1, '#7a5a06');
-      c!.fillStyle = rGrad;
-      c!.fillRect(cx, fy, doorW, fh);
-
-      // Carved panels / borders on right door
-      c!.strokeStyle = '#5a4204';
-      c!.lineWidth = 3.5;
-      c!.strokeRect(cx + 4, fy + 8, doorW - 12, fh - 16);
-      c!.strokeRect(cx + 12, fy + 16, doorW - 28, fh - 32);
-
-      // Right door ring handle
-      c!.beginPath();
-      c!.arc(cx + 14, fy + fh / 2, 10, 0, Math.PI * 2);
-      c!.strokeStyle = '#5a4204'; c!.lineWidth = 2.5; c!.stroke();
-
-      c!.restore();
 
       c!.restore();
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       🖼️ MAA DURGA IMAGE REVEAL (Safe check for pre-flash resolved)
+       🖼️ MAA DURGA — Crimson Flash + Circular Reveal
        ═══════════════════════════════════════════════════════════════ */
-    function dHanuman(t: number) {
-      if (t < 1.5) return; // 🌟 FIXED: Absolute safety. Prevents premature flashing of Maa Durga before 1.5s.
+    function dDurga(t: number) {
+      if (t < 1.5) return;
 
       const img = durgaImgRef.current;
-      if (!img || !img.complete || img.naturalWidth === 0) return null;
+      if (!img || !img.complete || img.naturalWidth === 0) return;
 
-      const cx = W / 2, cy = H / 2 - H * 0.015;
+      const cx = W / 2, cy = H / 2 - H * 0.01;
       const sc = Math.min(W, H);
-      
-      const fw = sc * 0.28;
-      const fh = fw * 1.35; 
-      const borderRadius = 14;
-
-      let frameScale = 1;
-      let alpha = 1;
-
-      if (t >= 1.5 && t < 4.5) {
-        const prog = eIO(Math.min((t - 1.5) / 3, 1));
-        frameScale = 0.88 + prog * 0.12;
-        alpha = prog;
-      } else if (t >= 4.5 && t < 7.5) {
-        const breath = Math.sin(t * 2.5) * 0.008;
-        frameScale = 1 + breath;
-        alpha = 1;
-      } else if (t >= 7.5) {
-        const dt = Math.min((t - 7.5) / 1.2, 1);
-        alpha = Math.max(0, 1 - dt);
-        frameScale = 1 - dt * 0.04;
-      }
-
-      if (alpha <= 0) return;
-
-      c!.save();
-      c!.globalAlpha = alpha;
-
-      c!.translate(cx, cy);
-      c!.scale(frameScale, frameScale);
-      c!.translate(-cx, -cy);
-
+      const fw = sc * 0.30;
+      const fh = fw * 1.35;
+      const br = fw * 0.07;
       const fx = cx - fw / 2;
       const fy = cy - fh / 2;
 
-      // ── Glowing Backdrop Aura ──
+      let frameAlpha = 0;
+      let revealProg = 0;
+      let flashI = 0;
+      let fadeAlpha = 1;
+      let breathScale = 0;
+
+      if (t >= 1.5 && t < 4.5) {
+        const raw = Math.min((t - 1.5) / 2.8, 1);
+        frameAlpha = Math.min(raw * 5, 1);
+        revealProg = eIO(raw);
+        flashI = Math.max(0, 1 - raw * 2.5) * 1.0;
+      } else if (t >= 4.5 && t < 7.5) {
+        frameAlpha = 1;
+        revealProg = 1;
+        flashI = 0;
+        breathScale = Math.sin(t * 2.5) * 0.004;
+      } else if (t >= 7.5) {
+        const d = Math.min((t - 7.5) / 1.2, 1);
+        frameAlpha = Math.max(0, 1 - d);
+        revealProg = 1;
+        fadeAlpha = Math.max(0, 1 - d);
+      }
+
+      if (frameAlpha <= 0) return;
+
       c!.save();
-      c!.shadowColor = 'rgba(220,38,38,0.45)'; 
-      c!.shadowBlur = 35;
-      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
-      c!.fillStyle = '#0a0312'; 
+      c!.globalAlpha = fadeAlpha;
+
+      if (breathScale !== 0) {
+        c!.translate(cx, cy);
+        c!.scale(1 + breathScale, 1 + breathScale);
+        c!.translate(-cx, -cy);
+      }
+
+      // ── Crimson Flash Burst ──
+      if (flashI > 0.1) {
+        const flashR = fw * 0.65 * (1 + (1 - flashI) * 0.5);
+        const fg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, flashR));
+        fg.addColorStop(0, `rgba(255,240,220,${flashI * 0.65})`);
+        fg.addColorStop(0.15, `rgba(255,180,100,${flashI * 0.45})`);
+        fg.addColorStop(0.35, `rgba(220,50,50,${flashI * 0.25})`);
+        fg.addColorStop(0.6, `rgba(180,30,60,${flashI * 0.1})`);
+        fg.addColorStop(1, 'rgba(100,10,40,0)');
+        c!.fillStyle = fg;
+        c!.fillRect(fx - fw * 0.3, fy - fh * 0.2, fw * 1.6, fh * 1.4);
+      }
+
+      // ── Ambient Halo ──
+      const ah = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.42), cx, cy, Math.max(EP, fw * 0.78));
+      ah.addColorStop(0, 'rgba(220,60,80,0.04)');
+      ah.addColorStop(1, 'rgba(180,30,60,0)');
+      c!.fillStyle = ah;
+      c!.fillRect(fx - fw * 0.35, fy - fh * 0.18, fw * 1.7, fh * 1.36);
+
+      // ── Frame Backdrop ──
+      c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
+      c!.shadowColor = 'rgba(220,38,38,0.5)';
+      c!.shadowBlur = 44;
+      c!.shadowOffsetY = 4;
+      drawArchPath(c!, fx, fy, fw, fh, br);
+      c!.fillStyle = '#0a0312';
       c!.fill();
       c!.restore();
 
-      // ── Inner Image Clip ──
+      // ── Image with Circular Reveal ──
       c!.save();
-      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+      c!.globalAlpha = frameAlpha * fadeAlpha;
+      drawArchPath(c!, fx, fy, fw, fh, br);
       c!.clip();
 
-      const innerGlow = c!.createRadialGradient(cx, cy, 0, cx, cy, fw * 0.65);
-      innerGlow.addColorStop(0, 'rgba(255,180,50,0.18)');
-      innerGlow.addColorStop(1, 'rgba(0,0,0,0)');
-      c!.fillStyle = innerGlow;
+      // Inner glow
+      const ig = c!.createRadialGradient(cx, cy - fh * 0.08, 0, cx, cy, Math.max(EP, fw * 0.72));
+      ig.addColorStop(0, 'rgba(255,120,80,0.12)');
+      ig.addColorStop(0.5, 'rgba(255,60,60,0.04)');
+      ig.addColorStop(1, 'rgba(0,0,0,0)');
+      c!.fillStyle = ig;
       c!.fillRect(fx, fy, fw, fh);
 
-      // Object cover calculations
-      const imgRatio = img.naturalWidth / img.naturalHeight;
-      const frameRatio = fw / fh;
+      // Circle clip
+      const maxRevealR = Math.max(fw, fh) * 0.85;
+      const currentR = Math.max(EP, maxRevealR * revealProg);
+      c!.save();
+      c!.beginPath();
+      c!.arc(cx, cy, currentR, 0, Math.PI * 2);
+      c!.clip();
+
+      // Draw image
+      const imgR = img.naturalWidth / img.naturalHeight;
+      const frmR = fw / fh;
       let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
-      if (imgRatio > frameRatio) {
-        sw = img.naturalHeight * frameRatio;
-        sx = (img.naturalWidth - sw) / 2;
-      } else {
-        sh = img.naturalWidth / frameRatio;
-        sy = (img.naturalHeight - sh) / 2;
+      if (imgR > frmR) { sw = img.naturalHeight * frmR; sx = (img.naturalWidth - sw) / 2; }
+      else { sh = img.naturalWidth / frmR; sy = (img.naturalHeight - sh) / 2; }
+      c!.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
+      c!.restore();
+
+      // Wave edge glow
+      if (flashI > 0.01 && currentR > 5) {
+        const edgeW = 22 + flashI * 30;
+        const innerR = Math.max(EP, currentR - edgeW);
+        const outerR = Math.max(EP, currentR + edgeW);
+        const eg = c!.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+        eg.addColorStop(0, 'rgba(255,200,150,0)');
+        eg.addColorStop(0.3, `rgba(255,150,100,${flashI * 0.35})`);
+        eg.addColorStop(0.48, `rgba(255,240,200,${flashI * 0.8})`);
+        eg.addColorStop(0.52, `rgba(255,255,240,${flashI * 1.0})`);
+        eg.addColorStop(0.7, `rgba(255,150,100,${flashI * 0.35})`);
+        eg.addColorStop(1, 'rgba(255,100,60,0)');
+        c!.fillStyle = eg;
+        c!.fillRect(fx, fy, fw, fh);
       }
 
-      c!.drawImage(img, sx, sy, sw, sh, fx, fy, fw, fh);
+      // Top/bottom fades
+      const tf = c!.createLinearGradient(0, fy, 0, fy + fh * 0.1);
+      tf.addColorStop(0, 'rgba(10,3,18,0.55)');
+      tf.addColorStop(1, 'rgba(10,3,18,0)');
+      c!.fillStyle = tf;
+      c!.fillRect(fx, fy, fw, fh * 0.1);
 
-      // Inner soft integration borders
-      const topFade = c!.createLinearGradient(0, fy, 0, fy + fh * 0.16);
-      topFade.addColorStop(0, '#0a0312');
-      topFade.addColorStop(1, 'rgba(10,3,18,0)');
-      c!.fillStyle = topFade;
-      c!.fillRect(fx, fy, fw, fh * 0.16);
+      const bf = c!.createLinearGradient(0, fy + fh, 0, fy + fh * 0.9);
+      bf.addColorStop(0, 'rgba(8,9,16,0.48)');
+      bf.addColorStop(1, 'rgba(8,9,16,0)');
+      c!.fillStyle = bf;
+      c!.fillRect(fx, fy + fh * 0.9, fw, fh * 0.1);
 
-      const bottomFade = c!.createLinearGradient(0, fy + fh, 0, fy + fh * 0.84);
-      bottomFade.addColorStop(0, '#0a0312');
-      bottomFade.addColorStop(1, 'rgba(10,3,18,0)');
-      c!.fillStyle = bottomFade;
-      c!.fillRect(fx, fy + fh * 0.84, fw, fh * 0.16);
+      // Inner vignette
+      const iv = c!.createRadialGradient(cx, cy, Math.max(EP, fw * 0.22), cx, cy, Math.max(EP, fw * 0.54));
+      iv.addColorStop(0, 'rgba(0,0,0,0)');
+      iv.addColorStop(1, 'rgba(0,0,0,0.2)');
+      c!.fillStyle = iv;
+      c!.fillRect(fx, fy, fw, fh);
 
       c!.restore();
 
-      // ── Golden Arch Frame Stroke ──
+      // ── Crimson-Gold Border ──
       c!.save();
-      const goldGrad = c!.createLinearGradient(fx, fy, fx, fy + fh);
-      goldGrad.addColorStop(0, '#f5d78e');
-      goldGrad.addColorStop(0.25, '#d4a030');
-      goldGrad.addColorStop(0.55, '#b8860b');
-      goldGrad.addColorStop(1, '#6b3a00');
-      
-      c!.strokeStyle = goldGrad;
-      c!.lineWidth = 3.2;
+      c!.globalAlpha = frameAlpha * fadeAlpha;
+      const og = c!.createLinearGradient(fx, fy - fw * 0.05, fx, fy + fh);
+      og.addColorStop(0, '#f0c8d8');
+      og.addColorStop(0.1, '#e8a8b0');
+      og.addColorStop(0.28, '#d4a030');
+      og.addColorStop(0.52, '#c44020');
+      og.addColorStop(0.78, '#8b2010');
+      og.addColorStop(1, '#5a1508');
+      c!.strokeStyle = og;
+      c!.lineWidth = 4;
+      c!.shadowColor = `rgba(255,215,0,${0.35 + flashI * 0.4})`;
+      c!.shadowBlur = 16 + flashI * 20;
+      drawArchPath(c!, fx, fy, fw, fh, br);
+      c!.stroke();
+      c!.restore();
 
+      // Inner border
+      const ins = 8;
+      c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
+      const ig2 = c!.createLinearGradient(fx, fy, fx, fy + fh);
+      ig2.addColorStop(0, 'rgba(240,200,210,0.45)');
+      ig2.addColorStop(0.5, 'rgba(200,140,100,0.3)');
+      ig2.addColorStop(1, 'rgba(160,80,60,0.18)');
+      c!.strokeStyle = ig2;
+      c!.lineWidth = 1.2;
+      drawArchPath(c!, fx + ins, fy + ins, fw - ins * 2, fh - ins * 2, Math.max(EP, br - ins * 0.35));
+      c!.stroke();
+      c!.restore();
+
+      // Specular
+      c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
+      const sg = c!.createLinearGradient(fx + fw * 0.06, 0, fx + fw * 0.94, 0);
+      sg.addColorStop(0, 'rgba(255,240,220,0)');
+      sg.addColorStop(0.32, 'rgba(255,240,220,0)');
+      sg.addColorStop(0.5, 'rgba(255,240,220,0.38)');
+      sg.addColorStop(0.68, 'rgba(255,240,220,0)');
+      sg.addColorStop(1, 'rgba(255,240,220,0)');
+      c!.strokeStyle = sg;
+      c!.lineWidth = 0.9;
+      drawArchPath(c!, fx, fy, fw, fh, br);
+      c!.stroke();
+      c!.restore();
+
+      // Top finial
+      const fss = fw * 0.034;
+      c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
+      c!.fillStyle = '#ffd700';
+      c!.shadowColor = 'rgba(255,215,0,0.7)';
+      c!.shadowBlur = 10;
+      c!.beginPath();
+      c!.moveTo(cx, fy - fss * 2.5);
+      c!.lineTo(cx + fss * 0.85, fy - fss * 0.3);
+      c!.lineTo(cx, fy + fss * 0.7);
+      c!.lineTo(cx - fss * 0.85, fy - fss * 0.3);
+      c!.closePath();
+      c!.fill();
+      c!.beginPath();
+      c!.arc(cx, fy + fss * 0.25, Math.max(EP, fss * 0.48), 0, Math.PI * 2);
+      c!.fill();
+      c!.restore();
+
+      // Side dots
+      const dr = fw * 0.01;
+      const jy = fy + fw / 2;
+      c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha;
+      c!.fillStyle = '#ffd700';
+      c!.shadowColor = 'rgba(255,215,0,0.5)';
+      c!.shadowBlur = 5;
+      c!.beginPath(); c!.arc(fx + 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c!.fill();
+      c!.beginPath(); c!.arc(fx + fw - 1.5, jy, Math.max(EP, dr), 0, Math.PI * 2); c!.fill();
+      c!.restore();
+
+      // Corner dots
+      c!.save();
+      c!.globalAlpha = frameAlpha * fadeAlpha * 0.6;
+      c!.fillStyle = 'rgba(255,215,0,0.6)';
       c!.shadowColor = 'rgba(255,215,0,0.35)';
-      c!.shadowBlur = 12;
-
-      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
-      c!.stroke();
+      c!.shadowBlur = 4;
+      const cdr = dr * 0.8;
+      c!.beginPath(); c!.arc(fx + br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c!.fill();
+      c!.beginPath(); c!.arc(fx + fw - br * 0.6, fy + fh - br * 0.6, Math.max(EP, cdr), 0, Math.PI * 2); c!.fill();
       c!.restore();
 
-      //Specular Shine
-      c!.save();
-      const shineGrad = c!.createLinearGradient(fx + fw * 0.15, 0, fx + fw * 0.85, 0);
-      shineGrad.addColorStop(0, 'rgba(255,245,200,0)');
-      shineGrad.addColorStop(0.5, 'rgba(255,245,200,0.65)');
-      shineGrad.addColorStop(1, 'rgba(255,245,200,0)');
-      c!.strokeStyle = shineGrad;
-      c!.lineWidth = 1.0;
-      drawArchPath(c!, fx, fy, fw, fh, borderRadius);
-      c!.stroke();
-      c!.restore();
-
-      // ── Shimmer Line ──
+      // Shimmer
       if (t >= 4.5 && t < 7.5) {
         const st = (t - 5.0) / 1.0;
         if (st >= 0 && st <= 1) {
           const sx2 = fx + st * fw * 1.4 - fw * 0.2;
-          const sw2 = fw * 0.12;
-          
+          const sw2 = fw * 0.13;
           c!.save();
-          drawArchPath(c!, fx, fy, fw, fh, borderRadius);
+          c!.globalAlpha = fadeAlpha;
+          drawArchPath(c!, fx, fy, fw, fh, br);
           c!.clip();
-
           const shim = c!.createLinearGradient(sx2 - sw2, 0, sx2 + sw2, 0);
           shim.addColorStop(0, 'rgba(255,255,255,0)');
-          shim.addColorStop(0.4, 'rgba(255,255,220,0.12)');
-          shim.addColorStop(0.5, 'rgba(255,255,255,0.22)');
-          shim.addColorStop(0.6, 'rgba(255,255,220,0.12)');
+          shim.addColorStop(0.38, 'rgba(255,230,220,0.07)');
+          shim.addColorStop(0.5, 'rgba(255,255,255,0.14)');
+          shim.addColorStop(0.62, 'rgba(255,230,220,0.07)');
           shim.addColorStop(1, 'rgba(255,255,255,0)');
-          
-          c!.fillStyle = shim; 
+          c!.fillStyle = shim;
           c!.fillRect(sx2 - sw2, fy, sw2 * 2, fh);
           c!.restore();
         }
@@ -709,23 +814,34 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       4-POINT STAR SPARKLES
+       SPARKLES — at circular reveal edge
        ═══════════════════════════════════════════════════════════ */
     function sRevealSparkles(t: number) {
       if (t < 1.5 || t > 4.5) return;
       const d = getImgDims(); if (!d) return;
-      const prog = eIO(Math.min((t - 1.5) / 3, 1));
-      const revealR = d.maxR * prog;
-      for (let i = 0; i < 3; i++) {
+      const raw = Math.min((t - 1.5) / 2.8, 1);
+      const revealProg = eIO(raw);
+      const sc = Math.min(W, H);
+      const fw = sc * 0.30;
+      const fh = fw * 1.35;
+      const maxRevealR = Math.max(fw, fh) * 0.85;
+      const currentR = maxRevealR * revealProg;
+
+      const spawnRate = Math.max(0, 1 - raw * 2) * 5 + 1;
+      for (let i = 0; i < spawnRate; i++) {
         const p = grab(pl); if (!p) break;
         const ang = Math.random() * Math.PI * 2;
-        p.x = d.cx + Math.cos(ang) * revealR;
-        p.y = d.cy + Math.sin(ang) * revealR;
-        p.vx = Math.cos(ang) * (1 + Math.random() * 2.5);
-        p.vy = Math.sin(ang) * (1 + Math.random() * 2.5);
-        p.sz = Math.random() * 2 + 0.5; p.ml = 0.5 + Math.random() * 0.4; p.life = p.ml;
-        p.r = 255; p.g = 180 + Math.random() * 75 | 0; p.b = 50 + Math.random() * 50 | 0;
-        p.a = 0.7 + Math.random() * 0.3; p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - .5) * 3;
+        p.x = d.cx + Math.cos(ang) * currentR;
+        p.y = d.cy + Math.sin(ang) * currentR;
+        const spd = 1.5 + Math.random() * 3;
+        p.vx = Math.cos(ang) * spd;
+        p.vy = Math.sin(ang) * spd;
+        p.sz = Math.random() * 2.5 + 0.5;
+        p.ml = 0.4 + Math.random() * 0.5;
+        p.life = p.ml;
+        p.r = 255; p.g = 180 + Math.random() * 75 | 0; p.b = 80 + Math.random() * 60 | 0;
+        p.a = 0.7 + Math.random() * 0.3;
+        p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - .5) * 4;
         p.on = true; p.tp = 9;
       }
     }
@@ -734,7 +850,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         if (!p.on || p.tp !== 9) continue;
         const lr = p.life / p.ml; const a = p.a * lr;
         const sz = p.sz * (0.5 + lr * 0.5);
-
         if (sz > 0.8) {
           const gr = sz * 5;
           const gg = c!.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, gr));
@@ -743,29 +858,21 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
           c!.fillStyle = gg;
           c!.fillRect(p.x - gr, p.y - gr, gr * 2, gr * 2);
         }
-
         c!.save();
-        c!.translate(p.x, p.y);
-        c!.rotate(p.rot);
-        c!.globalAlpha = a;
+        c!.translate(p.x, p.y); c!.rotate(p.rot); c!.globalAlpha = a;
         c!.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
         c!.beginPath();
-        c!.moveTo(0, -sz * 2.2);
-        c!.lineTo(sz * 0.25, -sz * 0.25);
-        c!.lineTo(sz * 2.2, 0);
-        c!.lineTo(sz * 0.25, sz * 0.25);
-        c!.lineTo(0, sz * 2.2);
-        c!.lineTo(-sz * 0.25, sz * 0.25);
-        c!.lineTo(-sz * 2.2, 0);
-        c!.lineTo(-sz * 0.25, -sz * 0.25);
-        c!.closePath();
-        c!.fill();
+        c!.moveTo(0, -sz * 2.2); c!.lineTo(sz * 0.25, -sz * 0.25);
+        c!.lineTo(sz * 2.2, 0); c!.lineTo(sz * 0.25, sz * 0.25);
+        c!.lineTo(0, sz * 2.2); c!.lineTo(-sz * 0.25, sz * 0.25);
+        c!.lineTo(-sz * 2.2, 0); c!.lineTo(-sz * 0.25, -sz * 0.25);
+        c!.closePath(); c!.fill();
         c!.restore();
       }
     }
 
     /* ═══════════════════════════════════════════════════════════
-       ANAMORPHIC LENS FLARE
+       FLARE
        ═══════════════════════════════════════════════════════════ */
     function dFlare(t: number) {
       if (t < 2.0 || t > 5.5) return;
@@ -775,34 +882,26 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       else fi = 1;
       fi = Math.max(0, Math.min(1, fi));
       if (fi <= 0) return;
-
-      const cx = W / 2, cy = H / 2 - H * 0.015;
+      const cx = W / 2, cy = H / 2 - H * 0.01;
       const flareW = W * 0.85;
       const flareH = 2.5 + Math.sin(t * 4.5) * 1.2;
-
-      c!.save();
-      c!.globalAlpha = fi * 0.08;
+      c!.save(); c!.globalAlpha = fi * 0.07;
       c!.globalCompositeOperation = 'lighter';
-
       const fg = c!.createLinearGradient(cx - flareW / 2, 0, cx + flareW / 2, 0);
-      fg.addColorStop(0, 'rgba(255,200,80,0)');
-      fg.addColorStop(0.2, 'rgba(255,200,80,0.12)');
-      fg.addColorStop(0.45, 'rgba(255,230,150,0.4)');
-      fg.addColorStop(0.5, 'rgba(255,245,200,0.6)');
-      fg.addColorStop(0.55, 'rgba(255,230,150,0.4)');
-      fg.addColorStop(0.8, 'rgba(255,200,80,0.12)');
-      fg.addColorStop(1, 'rgba(255,200,80,0)');
-      c!.fillStyle = fg;
-      c!.fillRect(cx - flareW / 2, cy - flareH, flareW, flareH * 2);
-
+      fg.addColorStop(0, 'rgba(255,180,80,0)');
+      fg.addColorStop(0.2, 'rgba(255,180,80,0.1)');
+      fg.addColorStop(0.45, 'rgba(255,220,150,0.35)');
+      fg.addColorStop(0.5, 'rgba(255,240,200,0.55)');
+      fg.addColorStop(0.55, 'rgba(255,220,150,0.35)');
+      fg.addColorStop(0.8, 'rgba(255,180,80,0.1)');
+      fg.addColorStop(1, 'rgba(255,180,80,0)');
+      c!.fillStyle = fg; c!.fillRect(cx - flareW / 2, cy - flareH, flareW, flareH * 2);
       const coreW = flareW * 0.2;
       const cg = c!.createLinearGradient(cx - coreW / 2, 0, cx + coreW / 2, 0);
       cg.addColorStop(0, 'rgba(255,240,200,0)');
-      cg.addColorStop(0.5, 'rgba(255,250,230,0.35)');
+      cg.addColorStop(0.5, 'rgba(255,250,230,0.3)');
       cg.addColorStop(1, 'rgba(255,240,200,0)');
-      c!.fillStyle = cg;
-      c!.fillRect(cx - coreW / 2, cy - flareH * 0.4, coreW, flareH * 0.8);
-
+      c!.fillStyle = cg; c!.fillRect(cx - coreW / 2, cy - flareH * 0.4, coreW, flareH * 0.8);
       c!.restore();
     }
 
@@ -814,17 +913,19 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015; const maxR = sc * .88;
       const r = maxR * eOQ(bt); const ra = (1 - bt) * .4;
       c!.save(); c!.beginPath(); c!.arc(cx, cy, Math.max(EP, r), 0, Math.PI * 2);
-      c!.strokeStyle = `rgba(255,190,65,${ra})`; c!.lineWidth = 3.5 * (1 - bt); c!.stroke(); c!.restore();
-      const ba = (1 - bt * .65) * .16;
+      c!.strokeStyle = `rgba(220,60,60,${ra})`; c!.lineWidth = 3.5 * (1 - bt); c!.stroke(); c!.restore();
+      const ba = (1 - bt * .65) * .14;
       const bg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r));
-      bg.addColorStop(0, `rgba(255,190,65,${ba})`); bg.addColorStop(.5, `rgba(244,63,94,${ba * .4})`); bg.addColorStop(1, 'rgba(6,2,9,0)');
+      bg.addColorStop(0, `rgba(255,140,60,${ba})`);
+      bg.addColorStop(.5, `rgba(220,40,60,${ba * .4})`);
+      bg.addColorStop(1, 'rgba(100,20,40,0)');
       c!.fillStyle = bg; c!.fillRect(0, 0, W, H);
       if (bt < .45 && Math.random() < .6) {
         const p = grab(pl); if (p) {
           const ang = Math.random() * Math.PI * 2; const spd = 2.2 + Math.random() * 4.8;
           p.x = cx; p.y = cy; p.vx = Math.cos(ang) * spd; p.vy = Math.sin(ang) * spd;
           p.sz = Math.random() * 3 + .8; p.ml = 1.3 + Math.random(); p.life = p.ml;
-          p.r = 255; p.g = 180 + Math.random() * 60 | 0; p.b = 40 + Math.random() * 55 | 0;
+          p.r = 255; p.g = 180 + Math.random() * 60 | 0; p.b = 60 + Math.random() * 60 | 0;
           p.a = .6; p.rot = 0; p.rs = 0; p.on = true; p.tp = 3;
         }
       }
@@ -838,21 +939,24 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       }
     }
 
-    /* ═══════════════════════════════════════════════════════════
-       🌹 RICH ROSE & HIBISCUS PETALS
+    /* ═════════════════════════════════════════════════════════════
+       🌹 GENDA & ROSE PETALS (Garba Style Swirl)
        ═══════════════════════════════════════════════════════════ */
     function sPetals(t: number) {
-      if (t < 4.5 || Math.random() > .45) return;
+      if (t < 4.5 || Math.random() > .5) return;
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -24 - Math.random() * 60;
-      p.vx = (Math.random() - .5) * 2.2; p.vy = 1.2 + Math.random() * 2.0;
-      p.sz = 4.5 + Math.random() * 6.5; p.ml = 7 + Math.random() * 3; p.life = p.ml;
+      // Garba swirl: wider horizontal spread
+      p.vx = (Math.random() - .5) * 3.0;
+      p.vy = 1.0 + Math.random() * 1.8;
+      p.sz = 4 + Math.random() * 7; p.ml = 7 + Math.random() * 3; p.life = p.ml;
       const ct = Math.random();
-      if (ct < .5) { p.r = 220; p.g = 38; p.b = 38; } 
-      else if (ct < .85) { p.r = 244; p.g = 63; p.b = 94; } 
-      else { p.r = 251; p.g = 191; p.b = 36; } 
-      p.a = .5 + Math.random() * .35; p.rot = Math.random() * Math.PI * 2;
-      p.rs = (Math.random() - .5) * .06; p.on = true; p.tp = 4;
+      if (ct < .4) { p.r = 255; p.g = 180; p.b = 0; }        // Genda/Marigold
+      else if (ct < .75) { p.r = 244; p.g = 63; p.b = 94; }  // Rose pink
+      else if (ct < .9) { p.r = 220; p.g = 38; p.b = 38; }     // Red
+      else { p.r = 251; p.g = 191; p.b = 36; }                       // Golden
+      p.a = .45 + Math.random() .3; p.rot = Math.random() * Math.PI * 2;
+      p.rs = (Math.random() - .5) * .08; p.on = true; p.tp = 4;
     }
     function dPetals() {
       for (const p of pl) {
@@ -865,7 +969,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         c!.fillStyle = grad;
         c!.beginPath(); c!.ellipse(0, 0, Math.max(EP, p.sz * .45), Math.max(EP, p.sz), 0, 0, Math.PI * 2); c!.fill();
         c!.beginPath(); c!.ellipse(-p.sz * .05, -p.sz * .2, Math.max(EP, p.sz * .1), Math.max(EP, p.sz * .35), 0, 0, Math.PI * 2);
-        c!.fillStyle = 'rgba(255,255,255,0.22)'; c!.fill();
+        c!.fillStyle = 'rgba(255,255,255,0.2)'; c!.fill();
         c!.restore();
       }
     }
@@ -879,9 +983,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       p.x = Math.random() * W; p.y = -12 - Math.random() * 35;
       p.vx = (Math.random() - .5) * .8; p.vy = .5 + Math.random() * 1.5;
       p.sz = .8 + Math.random() * 2; p.ml = 5.5 + Math.random() * 3; p.life = p.ml;
-      if (Math.random() < .6) { p.r = 180 + Math.random() * 55 | 0; p.g = 10 + Math.random() * 20 | 0; p.b = 10 + Math.random() * 20 | 0; } 
-      else { p.r = 251; p.g = 191; p.b = 36; } 
-      p.a = .4 + Math.random() * .38; p.rot = Math.random() * Math.PI * 2;
+      if (Math.random() < .6) { p.r = 180 + Math.random() * 55 | 0; p.g = 10 + Math.random() * 20 | 0; p.b = 10 + Math.random() 20 | 0; }
+      else { p.r = 251; p.g = 191; p.b = 36; }
+      p.a = .4 + Math.random() .38; p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .07; p.on = true; p.tp = 8;
     }
     function dKum() {
@@ -899,7 +1003,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
        ═══════════════════════════════════════════════════════════ */
     function dRays(t: number) {
       if (t < 6.0) return;
-      const rt = Math.min((t - 6.0) / 2, 1); const al = eOC(rt) * .09;
+      const rt = Math.min((t - 6.0) / 2, 1); const al = eOC(rt) * .08;
       const cx = W / 2, cy = H / 2 - H * .015; const rl = Math.max(W, H) * .85;
       c!.save(); c!.globalAlpha = al;
       for (let i = 0; i < 16; i++) {
@@ -909,9 +1013,66 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         c!.lineTo(cx + Math.cos(ang + hw) * rl, cy + Math.sin(ang + hw) * rl);
         c!.closePath();
         const rg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, rl));
-        rg.addColorStop(0, 'rgba(255,190,65,.68)'); rg.addColorStop(.5, 'rgba(244,63,94,.18)'); rg.addColorStop(1, 'rgba(6,2,9,0)');
+        rg.addColorStop(0, 'rgba(255,180,60,0.6)');
+        rg.addColorStop(.5, 'rgba(220,50,50,0.15)');
+        rg.addColorStop(1, 'rgba(80,10,30,0)');
         c!.fillStyle = rg; c!.fill();
       }
+      c!.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       RANGOLI GLOW (Bottom center mandala)
+       ═══════════════════════════════════════════════════════════ */
+    function dRangoli(t: number) {
+      if (t < 3.5 || t > 8.0) return;
+      let ra = Math.min((t - 3.5) / 1.0, 1);
+      if (t > 7.0) ra = 1 - Math.min((t - 7.0) / 1.0, 1);
+      if (ra <= 0) return;
+
+      const cx = W / 2, cy = H * 0.9;
+      const maxR = Math.min(W, H) * 0.18;
+
+      c!.save();
+      c!.globalAlpha = ra * 0.2;
+      c!.globalCompositeOperation = 'lighter';
+
+      // Rotating mandala rings
+      for (let i = 0; i < 3; i++) {
+        const ringR = maxR * (0.4 + i * 0.3);
+        const rotAng = t * (0.3 - i * 0.12);
+        c!.save();
+        c!.translate(cx, cy);
+        c!.rotate(rotAng);
+        c!.beginPath();
+        c!.arc(0, 0, Math.max(EP, ringR), 0, Math.PI * 2);
+        c!.strokeStyle = `rgba(255,180,60,${ra * 0.3})`;
+        c!.lineWidth = 1.5;
+        c!.stroke();
+
+        // Petal dots on ring
+        const count = 6 + i * 2;
+        for (let j = 0; j < count; j++) {
+          const a = (j / count) * Math.PI * 2 + rotAng;
+          const px = Math.cos(a) * ringR;
+          const py = Math.sin(a) * ringR;
+          c!.beginPath();
+          c!.arc(px, py, Math.max(EP, 3), 0, Math.PI * 2);
+          c!.fillStyle = `rgba(255,140,50,${ra * 0.5})`;
+          c!.fill();
+        }
+        c!.restore();
+      }
+
+      // Center bindi/tilak dot
+      const bindiR = maxR * 0.08;
+      const bindiGlow = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, bindiR * 3));
+      bindiGlow.addColorStop(0, `rgba(255,200,50,${ra * 0.6})`);
+      bindiGlow.addColorStop(0.5, `rgba(255,140,30,${ra * 0.2})`);
+      bindiGlow.addColorStop(1, 'rgba(255,100,20,0)');
+      c!.fillStyle = bindiGlow;
+      c!.fillRect(cx - bindiR * 3, cy - bindiR * 3, bindiR * 6, bindiR * 6);
+
       c!.restore();
     }
 
@@ -923,13 +1084,15 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const dt = Math.min((t - ps) / 1.2, 1); if (dt <= 0) return;
       const la = eOC(dt) * .12;
       const lg = c!.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
-      lg.addColorStop(0, `rgba(255,220,135,${la})`); lg.addColorStop(.5, `rgba(244,63,94,${la * .4})`); lg.addColorStop(1, 'rgba(6,2,9,0)');
+      lg.addColorStop(0, `rgba(255,180,100,${la})`);
+      lg.addColorStop(.5, `rgba(220,50,50,${la * .4})`);
+      lg.addColorStop(1, 'rgba(5,1,8,0)');
       c!.fillStyle = lg; c!.fillRect(0, 0, W, H);
     }
 
-    /* ═══════════════════════════════════════════════════════════════
-       📝 TEXT & SHAKTI MANTRA
-       ═══════════════════════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════
+       📝 TEXT — Navratri Specific
+       ═══════════════════════════════════════════════════════════ */
     function dText(t: number) {
       const ps = 8.7;
       if (t < ps) return;
@@ -941,7 +1104,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const tSlide = (1 - eOC(tProg)) * 14;
 
       if (tFi > 0.01) {
-        const ts = Math.min(W * .058, H * .065, 50);
+        const ts = Math.min(W * .06, H * .065, 52);
         const scale = 0.95 + tFi * 0.05;
         const title = 'Happy Navratri';
         const ty = H * .35 + tSlide;
@@ -958,11 +1121,16 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         c!.fillStyle = 'rgba(0,0,0,0.72)';
         c!.fillText(title, W / 2 + 2, ty + 3);
 
+        // Navratri rose-crimson gradient
         const mg = c!.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
-        mg.addColorStop(0, '#5a4210'); mg.addColorStop(.15, '#b08018');
-        mg.addColorStop(.32, '#d4a020'); mg.addColorStop(.48, '#ffd700');
-        mg.addColorStop(.52, '#fffacd'); mg.addColorStop(.68, '#ffd700');
-        mg.addColorStop(.84, '#d4a020'); mg.addColorStop(1, '#5a4210');
+        mg.addColorStop(0, '#6b1530');
+        mg.addColorStop(0.15, '#c44020');
+        mg.addColorStop(0.32, '#dc2626');
+        mg.addColorStop(0.48, '#f43f5e');
+        mg.addColorStop(0.52, '#fda4af');
+        mg.addColorStop(0.68, '#f43f5e');
+        mg.addColorStop(0.84, '#dc2626');
+        mg.addColorStop(1, '#6b1530');
         c!.fillStyle = mg;
         c!.fillText(title, W / 2, ty);
 
@@ -974,9 +1142,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
           c!.save();
           c!.beginPath(); c!.rect(W / 2 - tw / 2, ty - ts, tw, ts * 2); c!.clip();
           const shW = tw * 0.1;
-          const sg = c!.createLinearGradient(shX - shW, 0, shX + shW, 0); // 🚀 FIXED SYNTAX ERROR HERE
+          const sg = c!.createLinearGradient(shX - shW, 0, shX + shW, 0);
           sg.addColorStop(0, 'rgba(255,255,230,0)');
-          sg.addColorStop(0.5, `rgba(255,255,230,${0.22 * (1 - shProg)})`);
+          sg.addColorStop(0.5, `rgba(255,220,220,${0.18 * (1 - shProg)})`);
           sg.addColorStop(1, 'rgba(255,255,230,0)');
           c!.fillStyle = sg;
           c!.fillRect(shX - shW, ty - ts, shW * 2, ts * 2);
@@ -990,26 +1158,26 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         const mFi = Math.min(1, eOC(mProg));
         const mSlide = (1 - eOC(mProg)) * 10;
 
-        const ss = Math.min(W * .024, H * .028, 19);
+        const ss = Math.min(W * .022, H * .026, 18);
         c!.font = `400 ${ss}px 'Nirmala UI','Devanagari Sangam MN','Mangal','Segoe UI',sans-serif`;
 
-        const baseY = H * .35 + Math.min(W * .058, H * .065, 50) * 1.3;
+        const baseY = H * .35 + Math.min(W * .06, H * .065, 52) * 1.3;
         const l1y = baseY + mSlide;
         const l2y = l1y + ss * 2.1;
 
         c!.globalAlpha = mFi;
 
         c!.fillStyle = 'rgba(0,0,0,0.8)';
-        c!.fillText('सर्वमंगल मांगल्ये शिवे सर्वार्थ साधिके।', W / 2 + 1, l1y + 1.2);
-        c!.fillText('शरण्ये त्र्यम्बके गौरी नारायणि नमोऽस्तुते॥', W / 2 + 1, l2y + 1.2);
+        c!.fillText('\u0938\u0930\u0930\u092E\u092E\u092E\u092E \u092E\u092E\u092E\u0932\u093E\u0932\u094D\u0932\u0932\u094D\u0932\u094D\u0940\u0947\u0947\u0947\u0947\u0964\u0964\u0965\u0964\u0949\u0964\u0965\u0949\u0965\u0965\u0949\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965', W / 2 + 1, l1y + 1.2);
+        c!.fillText('\u0936\u0930\u0930\u0930\u092E\u092E\u092E \u0924\u094D\u094D\u092C\u094D\u092C\u092C \u0924\u094D\u092C\u092C\u092C\u092C \u0924\u0930\u0930\u0930\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E', W / 2 + 1, l2y + 1.2);
 
         const shg = c!.createLinearGradient(W / 2 - ss * 10, 0, W / 2 + ss * 10, 0);
-        shg.addColorStop(0, '#856314'); shg.addColorStop(.25, '#d4a020');
-        shg.addColorStop(.5, '#ffd700'); shg.addColorStop(.75, '#d4a020');
+        shg.addColorStop(0, '#856314'); shg.addColorStop(.25, '#c44020');
+        shg.addColorStop(.5, '#f43f5e'); shg.addColorStop(.75, '#c44020');
         shg.addColorStop(1, '#856314');
         c!.fillStyle = shg;
-        c!.fillText('सर्वमंगल मांगल्ये शिवे सर्वार्थ साधिके।', W / 2, l1y);
-        c!.fillText('शरण्ये त्र्यम्बके गौरी नारायणि नमोऽस्तुते॥', W / 2, l2y);
+        c!.fillText('\u0938\u0930\u0930\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u0932\u093E\u0932\u094D\u0932\u0932\u094D\u0940\u0947\u0947\u0947\u0947\u0964\u0965\u0964\u0949\u0964\u0965\u0949\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965\u0965', W / 2, l1y);
+        c!.fillText('\u0936\u0930\u0930\u092E\u092E\u092E \u0924\u094D\u094D\u092C\u094C\u092C\u092C \u0924\u0930\u0930\u0930\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E\u092E', W / 2, l2y);
       }
 
       c!.restore();
@@ -1022,7 +1190,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const pattern = c!.createPattern(grainCv, 'repeat');
       if (!pattern) return;
       c!.save();
-      c!.globalAlpha = 0.028 + Math.sin(t * 2.7) * 0.008;
+      c!.globalAlpha = 0.025 + Math.sin(t * 2.7) * 0.008;
       c!.translate(((t * 137) | 0) % 256, ((t * 89) | 0) % 256);
       c!.fillStyle = pattern;
       c!.fillRect(-256, -256, W + 512, H + 512);
@@ -1035,11 +1203,12 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     function dFade(t: number) {
       const fs = 9.8; const ft = Math.min((t - fs) / .7, 1); if (ft <= 0) return;
       const fa = eIQ(ft);
-      c!.fillStyle = `rgba(15,3,9,${fa})`; c!.fillRect(0, 0, W, H); 
+      c!.fillStyle = `rgba(5,1,8,${fa})`; c!.fillRect(0, 0, W, H);
       if (ft < .6) {
         const ga = (1 - ft / .6) * .18;
         const gg = c!.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .35));
-        gg.addColorStop(0, `rgba(244,63,94,${ga})`); gg.addColorStop(1, 'rgba(220,38,38,0)');
+        gg.addColorStop(0, `rgba(244,63,94,${ga})`);
+        gg.addColorStop(1, 'rgba(220,38,38,0)');
         c!.fillStyle = gg; c!.fillRect(0, 0, W, H);
       }
     }
@@ -1053,9 +1222,9 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         p.x += p.vx; p.y += p.vy; p.life -= dt; p.rot += p.rs;
         switch (p.tp) {
           case 3: p.vx *= .97; p.vy *= .97; break;
-          case 4: 
-            p.vx += Math.sin(p.y * .015 + p.rot) * .022; 
-            p.vy *= .998; 
+          case 4:
+            p.vx += Math.sin(p.y * .015 + p.rot) * .025;
+            p.vy *= .998;
             break;
           case 5: p.vx *= .98; p.vy *= .98; break;
           case 6:
@@ -1086,18 +1255,17 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
 
       dEnergy(t); dAarti(t); dBells(t);
 
-      // Render image locked inside temple arch frame (ZERO crop, direct borders touch)
-      dHanuman(t);
-      
-      // 🚪 Draw Sliding Doors ON TOP of image but BELOW sparkles
-      dSlidingDoors(t, W / 2 - (Math.min(W, H) * 0.28) / 2, H / 2 - (Math.min(W, H) * 0.28 * 1.35) / 2, Math.min(W, H) * 0.28, Math.min(W, H) * 0.28 * 1.35);
+      dDurga(t);
 
-      // 🔥 Draw Ritual Hawan Agni Fire
-      dHawanFire(t);
+      // 🔥 Floating Diyas (BELOW sparkles, above rangoli)
+      dDiyas(t);
 
       dRevealSparkles();
       dBloom(t); dBloomP();
       dPetals(); dKum(); dOrbit();
+
+      // Rangoli glow (below text)
+      dRangoli(t);
 
       dDissolve(t);
       dText(t);
@@ -1116,19 +1284,24 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     raf.current = requestAnimationFrame(loop);
 
     return () => { cancelAnimationFrame(raf.current); window.removeEventListener('resize', rsz); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgReady, mkPool, grab, triggerBellSound]);
 
   /* ═══════════════════════════════════════════════════════════════
-     LOADING SCREEN (🔱 Shakti Trishul Theme)
+     LOADING SCREEN — 🪔 Navratri Theme
      ═══════════════════════════════════════════════════════════════ */
   if (!imgReady) {
     return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden" style={{ background: '#070208' }}>
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 45%, rgba(244,63,94,0.18) 0%, rgba(124,58,237,0.08) 40%, transparent 70%)' }} />
-        <div className="absolute rounded-full" style={{ width: 'min(60vw, 320px)', height: 'min(60vw, 320px)', border: '1px dashed rgba(244,63,94,0.12)', animation: 'ringRotate 12s linear infinite' }} />
-        <div className="absolute rounded-full" style={{ width: 'min(48vw, 260px)', height: 'min(48vw, 260px)', border: '1px dashed rgba(255,200,50,0.08)', animation: 'ringRotate 18s linear infinite reverse' }} />
-        <div className="absolute rounded-full" style={{ width: 'min(40vw, 220px)', height: 'min(40vw, 220px)', background: 'radial-gradient(circle, rgba(244,63,94,0.08) 0%, transparent 70%)', animation: 'auraPulse 3s ease-in-out infinite' }} />
-        
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden" style={{ background: '#050108' }}>
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 45%, rgba(180,20,40,0.2) 0%, rgba(100,15,60,0.08) 40%, transparent 70%)' }} />
+
+        {/* Decorative concentric circles */}
+        <div className="absolute rounded-full" style={{ width: 'min(60vw, 320px)', height: 'min(60vw, 320px)', border: '1px dashed rgba(244,63,94,0.1)', animation: 'ringRotate 12s linear infinite' }} />
+        <div className="absolute rounded-full" style={{ width: 'min(48vw, 260px)', height: 'min(48vw, 260px)', border: '1px dashed rgba(255,180,50,0.06)', animation: 'ringRotate 18s linear infinite reverse' }} />
+        <div className="absolute rounded-full" style={{ width: 'min(40vw, 220px)', height: 'min(40vw, 220px)', background: 'radial-gradient(circle, rgba(244,63,94,0.06) 0%, transparent 70%)', animation: 'auraPulse 3s ease-in-out infinite' }} />
+        <div className="absolute rounded-full" style={{ width: 'min(28vw, 160px)', height: 'min(28vw, 160px)', background: 'radial-gradient(circle, rgba(255,160,30,0.08) 0%, transparent 65%)', animation: 'auraPulse 3s ease-in-out infinite 1.5s' }} />
+
+        {/* Small floating diya flames */}
         <div className="absolute flex gap-16" style={{ bottom: '22%' }}>
           {[0, 1.2, 2.4].map((d, i) => (
             <div key={i} className="flex flex-col items-center" style={{ animation: `floatY ${2.2 + i * 0.3}s ease-in-out infinite ${d}s` }}>
@@ -1138,16 +1311,19 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
           ))}
         </div>
 
+        {/* ॐ Symbol */}
         <div className="relative flex flex-col items-center select-none">
-          <div className="absolute rounded-full" style={{ width: 'min(35vw, 200px)', height: 'min(35vw, 200px)', background: 'radial-gradient(circle, rgba(244,63,94,0.06) 0%, transparent 70%)', animation: 'omBreath 2.4s ease-in-out infinite' }} />
-          <div className="relative text-[#ffd700]" style={{ fontSize: 'clamp(3.5rem, 10vw, 6.5rem)', textShadow: '0 0 25px rgba(244,63,94,0.8), 0 0 50px rgba(245,158,11,0.5)', animation: 'omBreath 2.4s ease-in-out infinite' }}>🔱</div>
+          <div className="absolute rounded-full" style={{ width: 'min(35vw, 200px)', height: 'min(35vw, 200px)', background: 'radial-gradient(circle, rgba(255,200,50,0.06) 0%, transparent 70%)', animation: 'omBreath 2.4s ease-in-out infinite' }} />
+          <div className="absolute rounded-full" style={{ width: 'min(22vw, 130px)', height: 'min(22vw, 130px)', background: 'radial-gradient(circle, rgba(255,210,80,0.1) 0%, transparent 60%)', animation: 'omBreath 2.4s ease-in-out infinite 0.3s' }} />
+          <div className="relative select-none" style={{ fontSize: 'clamp(4rem, 12vw, 7rem)', lineHeight: 1, color: '#f43f5e', textShadow: '0 0 20px rgba(244,63,94,0.8), 0 0 50px rgba(244,63,94,0.5), 0 0 100px rgba(244,63,94,0.25), 0 0 160px rgba(180,30,60,0.1)', animation: 'omBreath 2.4s ease-in-out infinite', fontFamily: "'Noto Sans Devanagari', 'Devanagari Sangam MN', 'Mangal', serif" }}>&#x0950;</div>
         </div>
 
+        {/* Loading text */}
         <div className="absolute flex flex-col items-center gap-3" style={{ bottom: '10%' }}>
-          <p className="select-none tracking-[0.35em] text-center" style={{ fontSize: 'clamp(0.6rem, 1.5vw, 0.78rem)', color: 'rgba(251,191,36,0.6)', animation: 'textPulse 2.4s ease-in-out infinite', fontFamily: "'Nirmala UI', sans-serif" }}>शारदीय नवरात्रि आराधना प्रारंभ...</p>
+          <p className="select-none tracking-[0.3em]" style={{ fontSize: 'clamp(0.6rem, 1.5vw, 0.8rem)', color: 'rgba(244,63,94,0.5)', animation: 'textPulse 2.4s ease-in-out infinite' }}>&#x0936;&#x0928;&#x0930;&#x0930;&#x092E;&#x092E;&#x092E; &#x092E;&#x092E;&#x092E;&#x092E; &#x0906;&#x0930;&#x0930;&#x0930;&#x093E;&#x093E;&#x0932;&#x093E;&#x092F;&#x092F;&#x092E; &#x092A;&#x0930;&#x0930;&#x0930;&#x093E;&#x093E; &#x0906;&#x0930;&#x0930;&#x0930;&#x092E;&#x092E;&#x092E;</p>
           <div className="flex items-center gap-2">
             <div className="h-px" style={{ width: 'clamp(40px, 10vw, 80px)', background: 'linear-gradient(to right, transparent, rgba(244,63,94,0.3), transparent)' }} />
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ffd700', boxShadow: '0 0 8px rgba(244,63,94,0.6)', animation: 'dotPulse 1.8s ease-in-out infinite' }} />
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#f43f5e', boxShadow: '0 0 8px rgba(244,63,94,0.6), 0 0 20px rgba(244,63,94,0.3)', animation: 'dotPulse 1.8s ease-in-out infinite' }} />
             <div className="h-px" style={{ width: 'clamp(40px, 10vw, 80px)', background: 'linear-gradient(to left, transparent, rgba(244,63,94,0.3), transparent)' }} />
           </div>
         </div>
@@ -1165,7 +1341,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
   }
 
   return (
-    <div className="fixed inset-0 z-[9999]" style={{ background: '#070208' }}>
+    <div className="fixed inset-0 z-[9999]" style={{ background: '#050108' }}>
       <canvas ref={cvRef} className="block w-full h-full" />
     </div>
   );
