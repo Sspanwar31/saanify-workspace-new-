@@ -840,7 +840,8 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
           c!.save();
           c!.beginPath(); c!.rect(W / 2 - tw / 2, ty - ts, tw, ts * 2); c!.clip();
           const shW = tw * 0.1;
-          const sg = c!.createLinearGradient(shX - shW, 0, shX + sw2 => sx + sw2 ? shX + sw2 : 0, 0);
+          // Humne ise standard syntax me change kiya hai:
+          const sg = c!.createLinearGradient(shX - shW, 0, shX + shW, 0);
           sg.addColorStop(0, 'rgba(255,255,230,0)');
           sg.addColorStop(0.5, `rgba(255,255,230,${0.22 * (1 - shProg)})`);
           sg.addColorStop(1, 'rgba(255,255,230,0)');
