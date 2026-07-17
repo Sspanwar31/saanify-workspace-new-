@@ -17,14 +17,14 @@ interface NeonParticle {
   rotSpeed: number;
   life: number;
   maxLife: number;
-  tp: 'petal' | 'sparkle' | 'confetti' | 'tulsi' | 'ember'; // Added 'tulsi' and 'ember' types
+  tp: 'petal' | 'sparkle' | 'confetti' | 'tulsi' | 'ember'; 
 }
 
 const DEFAULT_COLORS = ['#fde047', '#facc15', '#f97316'];
 
 const PRESET_COLORS: Record<string, string[]> = {
   GANESH_CHATURTHI: ['#fde047', '#facc15', '#fef08a', '#f97316'],
-  HANUMAN_JAYANTI: ['#dc2626', '#f97316', '#16a34a', '#fbbf24'], // 🚀 Colors matching Tulsi (green), Sindoori (red/orange) & Gold
+  HANUMAN_JAYANTI: ['#dc2626', '#f97316', '#16a34a', '#fbbf24'], 
   NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
   REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
   INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807']
@@ -52,15 +52,31 @@ export default function NeonEngine({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafId = useRef<number>(0);
   const timeRef = useRef<number>(0);
+  
+  // ── 🛠️ DEBUG COUNTERS ──
+  const spawnDebugCount = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.error("%c🔴 NeonEngine Error: Canvas ref not found on mount!", "color: #ef4444; font-weight: bold;");
+      return;
+    }
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.error("%c🔴 NeonEngine Error: Could not get 2D context!", "color: #ef4444; font-weight: bold;");
+      return;
+    }
 
     const normalizedPreset = (preset || '').toUpperCase().trim();
     const colors = customColors || PRESET_COLORS[normalizedPreset] || DEFAULT_COLORS;
+
+    // ── 🛠️ MOUNT DIAGNOSTICS ──
+    console.log(
+      `%c🟢 NeonEngine Mounted successfully! %c\nPreset Received: "${preset}" \nNormalized: "${normalizedPreset}" \nColors Loaded: ${JSON.stringify(colors)}`,
+      "color: #22c55e; font-weight: bold; font-size: 13px;",
+      "color: #a3a3a3; font-size: 11px;"
+    );
 
     const scaleFactor = customScale ?? 0.55;
     const speedFactor = customSpeed ?? 1.0;
@@ -76,6 +92,18 @@ export default function NeonEngine({
     const setSize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
+      
+      // ── 🛠️ HEIGHT/WIDTH ZERO DIAGNOSTICS ──
+      if (rect.width === 0 || rect.height === 0) {
+        console.warn(
+          `%c⚠️ NeonEngine Warning: Canvas has 0px bounds! %c\nWidth: ${rect.width}px, Height: ${rect.height}px\nIs the parent element hidden or collapsed (display: none)?`,
+          "color: #eab308; font-weight: bold; font-size: 12px;",
+          "color: #a3a3a3; font-size: 11px;"
+        );
+      } else {
+        console.log(`%c📐 NeonEngine Canvas resized: ${rect.width}px x ${rect.height}px`, "color: #3b82f6;");
+      }
+
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -101,7 +129,7 @@ export default function NeonEngine({
       c.restore();
     };
 
-    // 🚀 NEW: Sacred Tulsi Leaf Drawing (Pointed leaf tip & Center vein structure)
+    // Sacred Tulsi Leaf Drawing
     const drawTulsi = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, rot: number) => {
       c.save();
       c.translate(x, y);
@@ -109,8 +137,8 @@ export default function NeonEngine({
       c.globalAlpha = alpha;
 
       const grad = c.createLinearGradient(0, -size, 0, size);
-      grad.addColorStop(0, '#16a34a'); // Pure Fresh green
-      grad.addColorStop(1, '#14532d'); // Sacred deep green
+      grad.addColorStop(0, '#16a34a'); 
+      grad.addColorStop(1, '#14532d'); 
       c.fillStyle = grad;
 
       c.beginPath();
@@ -120,7 +148,6 @@ export default function NeonEngine({
       c.closePath();
       c.fill();
 
-      // Soft center vein
       c.strokeStyle = '#15803d';
       c.lineWidth = 0.8;
       c.beginPath();
@@ -131,16 +158,16 @@ export default function NeonEngine({
       c.restore();
     };
 
-    // 🚀 NEW: Sindoori Glowing Ember Drawing (Floating fiery spark with radial light)
+    // Sindoori Glowing Ember Drawing
     const drawEmber = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, color: string) => {
       c.save();
       c.translate(x, y);
       c.globalAlpha = alpha;
 
       const grad = c.createRadialGradient(0, 0, 0, 0, 0, size * 1.5);
-      grad.addColorStop(0, '#ffffff'); // Intense center
-      grad.addColorStop(0.3, color);   // Sindoori Red or Saffron Orange
-      grad.addColorStop(1, 'rgba(220,38,38,0)'); // Soft fire fade out
+      grad.addColorStop(0, '#ffffff'); 
+      grad.addColorStop(0.3, color);   
+      grad.addColorStop(1, 'rgba(220,38,38,0)'); 
       c.fillStyle = grad;
 
       c.beginPath();
@@ -149,7 +176,7 @@ export default function NeonEngine({
       c.restore();
     };
 
-    // Twinkling Sparkles (Fast wind-dust for Hanuman Jayanti / standard stars)
+    // Twinkling Sparkles
     const drawSparkle = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, color: string) => {
       c.save();
       c.translate(x, y);
@@ -214,13 +241,14 @@ export default function NeonEngine({
             tp: isPetal ? 'petal' : 'sparkle'
           });
         } 
-        // 🚀 NEW LOGIC BRANCH: Active Spawning for Hanuman Jayanti
+        // 🚀 HANUMAN JAYANTI EMITTER
         else if (normalizedPreset === 'HANUMAN_JAYANTI' && Math.random() < 0.38) {
           const randType = Math.random();
+          let newParticle: NeonParticle | null = null;
           
           if (randType < 0.35) {
-            // 1. Tulsi Leaves (Hari Tulsi Patti)
-            particles.push({
+            // 1. Tulsi Leaves
+            newParticle = {
               x: rn(-20, w + 20),
               y: rn(-30, -10),
               vx: rn(-0.7, 0.7),
@@ -233,10 +261,10 @@ export default function NeonEngine({
               life: 0,
               maxLife: rn(340, 500),
               tp: 'tulsi'
-            });
+            };
           } else if (randType < 0.70) {
-            // 2. Sindoori Embers (Energy sparks)
-            particles.push({
+            // 2. Sindoori Embers
+            newParticle = {
               x: rn(-20, w + 20),
               y: rn(-30, -10),
               vx: rn(-0.9, 0.9),
@@ -249,23 +277,36 @@ export default function NeonEngine({
               life: 0,
               maxLife: rn(240, 380),
               tp: 'ember'
-            });
+            };
           } else {
-            // 3. Golden Pawan Dust (Fast-moving sacred wind particles)
-            particles.push({
+            // 3. Golden Pawan Dust
+            newParticle = {
               x: rn(-20, w + 20),
               y: rn(-30, -10),
-              vx: rn(-1.4, 1.4), // Higher horizontal spread to match Pawan-putra speed
+              vx: rn(-1.4, 1.4), 
               vy: rn(1.6, 3.2) * speedFactor,
               size: rn(minPartSize * 0.4, maxPartSize * 0.5) * scaleFactor,
               alpha: 1,
-              color: '#fbbf24', // Golden spark glow
+              color: '#fbbf24', 
               rotation: rn(0, Math.PI * 2),
               rotSpeed: 0,
               life: 0,
               maxLife: rn(180, 320),
               tp: 'sparkle'
-            });
+            };
+          }
+
+          if (newParticle) {
+            particles.push(newParticle);
+            // ── 🛠️ SPAWN EMISSION LOG (Limits logging to first 5 particles to avoid console freeze) ──
+            if (spawnDebugCount.current < 5) {
+              spawnDebugCount.current++;
+              console.log(
+                `%c✨ Debug: Spawned Hanuman Jayanti Particle %c(${spawnDebugCount.current}/5) \nType: "${newParticle.tp}" \nColor: "${newParticle.color}"`,
+                "color: #eab308; font-weight: bold;",
+                "color: #a3a3a3;"
+              );
+            }
           }
         } 
         else if (normalizedPreset === 'NAVRATRI' && Math.random() < 0.3) {
@@ -311,7 +352,6 @@ export default function NeonEngine({
 
         p.vy += gravityFactor;
 
-        // 🚀 Pawanputra wind sway adjustment (stronger organic horizontal wave for Hanuman Jayanti)
         const windWave = normalizedPreset === 'HANUMAN_JAYANTI' ? 0.035 : 0.015;
         p.vx += Math.sin(timeRef.current + p.y * 0.01) * windWave;
         
@@ -332,9 +372,9 @@ export default function NeonEngine({
         } else if (p.tp === 'confetti') {
           drawConfetti(ctx, p.x, p.y, p.size, p.alpha, p.rotation, p.color);
         } else if (p.tp === 'tulsi') {
-          drawTulsi(ctx, p.x, p.y, p.size, p.alpha, p.rotation); // 🚀 Render custom Tulsi leaf
+          drawTulsi(ctx, p.x, p.y, p.size, p.alpha, p.rotation); 
         } else if (p.tp === 'ember') {
-          drawEmber(ctx, p.x, p.y, p.size, p.alpha, p.color); // 🚀 Render custom Sindoori Ember
+          drawEmber(ctx, p.x, p.y, p.size, p.alpha, p.color); 
         }
       }
 
