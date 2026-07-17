@@ -149,6 +149,16 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
+    // ━━━ NAVRATRI (🚀 10.5s Divine Shakti Cinematic Timeline Sync) ━━━
+  NAVRATRI: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 1500,     // 1.5s: दिव्य त्रिशूल आगमन, धुएं और शंखनाद का दिव्य प्रवेश (0-1.5s)
+      SHOOTING: 8300,  // 8.3s: माँ दुर्गा प्रकटीकरण, गरबा पुष्प वर्षा, आरती, घंटियां और मंत्र (1.5s - 9.8s)
+      HANDOVER: 700    // 0.7s: दिव्य सिंदूरी पोर्टल का कोमल फ़ेड-आउट और डैशबोर्ड ट्रांसफर (9.8s - 10.5s)
+    }
+  },
+
     // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
