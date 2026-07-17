@@ -16,6 +16,8 @@ import ValentineCinematicIntro from '../engines/effects/valentines-day/Valentine
 // 🚀 गणेश चतुर्थी का नया प्रीमियम सिनेमाई इंट्रो इम्पोर्ट किया गया
 import GaneshChaturthiCinematicIntro from '../engines/effects/Ganesh-Chaturthi/GaneshChaturthiCinematicIntro';
 import HanumanJayantiCinematicIntro from '../engines/effects/Hanuman-Jayanti/HanumanJayantiCinematicIntro';
+import NavratriCinematicIntro from '../engines/effects/Navratri/NavratriCinematicIntro'; // 🚀 NAYA: Navratri Intro Import kiya
+
 
 export default function FestivalIntroController({
   isActive,
@@ -118,6 +120,16 @@ export default function FestivalIntroController({
   if (isActive && preset.toUpperCase() === 'HANUMAN_JAYANTI') {
     return (
       <HanumanJayantiCinematicIntro onComplete={onHandover} />
+    );
+  }
+
+  // 🚀 9. NAVRATRI ACTIVATION: नवरात्रि का स्वतंत्र सिनेमाई इंजन यहाँ चलेगा (Trishul reveal and Garba motion)
+  if (isActive && preset.toUpperCase() === 'NAVRATRI') {
+    return (
+      <NavratriCinematicIntro 
+        onComplete={onHandover} 
+        imageUrl={heroConfig?.image_url} 
+      />
     );
   }
 
