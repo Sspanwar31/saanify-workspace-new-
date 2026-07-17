@@ -53,38 +53,41 @@ export default function NeonEngine({
   const rafId = useRef<number>(0);
   const timeRef = useRef<number>(0);
   
-  // ── 🛠️ DEBUG COUNTERS ──
   const spawnDebugCount = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) {
-      console.error("%c🔴 NeonEngine Error: Canvas ref not found on mount!", "color: #ef4444; font-weight: bold;");
-      return;
-    }
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error("%c🔴 NeonEngine Error: Could not get 2D context!", "color: #ef4444; font-weight: bold;");
-      return;
-    }
+    if (!ctx) return;
 
     const normalizedPreset = (preset || '').toUpperCase().trim();
     const colors = customColors || PRESET_COLORS[normalizedPreset] || DEFAULT_COLORS;
 
-    // ── 🛠️ MOUNT DIAGNOSTICS ──
+    // ── 🚀 Step 1: Default/Incoming Prop values ──
+    let scaleFactor = customScale ?? 0.55;
+    let speedFactor = customSpeed ?? 1.0;
+    let gravityFactor = customGravity ?? 0.003; 
+    let maxParticles = customMaxCount ?? 90;
+    let minPartSize = customMinSize ?? 5;
+    let maxPartSize = customMaxSize ?? 11;
+
+    // ── 🚀 Step 2: HANUMAN JAYANTI INTERNAL OVERRIDE (Bypasses missing parent props) ──
+    if (normalizedPreset === 'HANUMAN_JAYANTI') {
+      scaleFactor = customScale ?? 1.0;         // Normal visible size
+      speedFactor = customSpeed ?? 0.65;        // Comfortable falling speed
+      gravityFactor = customGravity ?? 0.0012;   // Gentle floating gravity
+      maxParticles = customMaxCount ?? 130;      // Optimal beautiful density
+      minPartSize = customMinSize ?? 6.0;
+      maxPartSize = customMaxSize ?? 12.0;
+    }
+
+    // ── 🛠️ MOUNT DIAGNOSTICS LOG ──
     console.log(
-      `%c🟢 NeonEngine Mounted successfully! %c\nPreset Received: "${preset}" \nNormalized: "${normalizedPreset}" \nColors Loaded: ${JSON.stringify(colors)}`,
+      `%c🟢 NeonEngine Mounted! %c\nPreset: "${preset}"\nScale Factor: ${scaleFactor} (Prop: ${customScale})\nSpeed Factor: ${speedFactor} (Prop: ${customSpeed})\nGravity Factor: ${gravityFactor} (Prop: ${customGravity})\nMax Count: ${maxParticles} (Prop: ${customMaxCount})\nMin Size: ${minPartSize} (Prop: ${customMinSize})\nMax Size: ${maxPartSize} (Prop: ${customMaxSize})`,
       "color: #22c55e; font-weight: bold; font-size: 13px;",
       "color: #a3a3a3; font-size: 11px;"
     );
-
-    const scaleFactor = customScale ?? 0.55;
-    const speedFactor = customSpeed ?? 1.0;
-    const gravityFactor = customGravity ?? 0.003; 
-    const maxParticles = customMaxCount ?? 90;
-
-    const minPartSize = customMinSize ?? 5;
-    const maxPartSize = customMaxSize ?? 11;
 
     const particles: NeonParticle[] = [];
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
@@ -92,18 +95,6 @@ export default function NeonEngine({
     const setSize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
-      
-      // ── 🛠️ HEIGHT/WIDTH ZERO DIAGNOSTICS ──
-      if (rect.width === 0 || rect.height === 0) {
-        console.warn(
-          `%c⚠️ NeonEngine Warning: Canvas has 0px bounds! %c\nWidth: ${rect.width}px, Height: ${rect.height}px\nIs the parent element hidden or collapsed (display: none)?`,
-          "color: #eab308; font-weight: bold; font-size: 12px;",
-          "color: #a3a3a3; font-size: 11px;"
-        );
-      } else {
-        console.log(`%c📐 NeonEngine Canvas resized: ${rect.width}px x ${rect.height}px`, "color: #3b82f6;");
-      }
-
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -298,7 +289,6 @@ export default function NeonEngine({
 
           if (newParticle) {
             particles.push(newParticle);
-            // ── 🛠️ SPAWN EMISSION LOG (Limits logging to first 5 particles to avoid console freeze) ──
             if (spawnDebugCount.current < 5) {
               spawnDebugCount.current++;
               console.log(
