@@ -12,8 +12,7 @@ import MoonHero from '../heroes/MoonHero';
 import SunGlow from '../engines/effects/SunGlow'; 
 import RakhiHero from '../heroes/RakhiHero'; // 🚀 नया: राखी हीरो इम्पोर्ट करें
 import HanumanHero from '../heroes/HanumanHero'; // 🚀 NAYA: HanumanHero Import kiya
-
-
+import NavratriHero from '../heroes/NavratriHero'; 
 import Crystal2027Hero from '../heroes/Crystal2027Hero'; // 🚀 
 // 🚀 नाम सुधार दिया गया है (VALENTINESDAY की जगह GlassmorphicHeartHero किया गया)
 import GlassmorphicHeartHero from '../heroes/GlassmorphicHeartHero';  
@@ -23,7 +22,7 @@ const ComponentMap: any = {
   'ROYAL_DIYA': <RoyalDiya />,
   'GANESHA': <GaneshaHero />,
   'ROYAL_GANESHA': <GaneshaHero />,
-  'MAA_DURGA': <DurgaHero />,
+  'MAA_DURGA': <NavratriHero />, // 🚀 UPDATED: Maa Durga custom image frame show karegi
   'DIVINE_TRISHUL': <DurgaHero />,
   'VIBRANT_PALETTE': <MagicPichkari />, // 🚀 FIXED: Holi now renders the premium 3D MagicPichkari!
   'ASHOKA_CHAKRA': <AshokaChakra />,
