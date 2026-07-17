@@ -33,7 +33,7 @@ const ComponentMap: any = {
   'CRESCENT_MOON': <MoonHero />,
   'EID_MUBARAK': <MoonHero />, 
   'GANGA_GHAT_DIYA': <RoyalDiya />,
-  'DANDIYA_BEAT': <span className="text-[110px] drop-shadow-2xl">🥁</span>,
+  'DANDIYA_BEAT': <NavratriHero />, // 🚀 FIXED: mapped to NavratriHero (Maa Durga frame) instead of drum emoji
   'RAVAN_DAHAN': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
   'BABY_KRISHNA': <span className="text-[110px] drop-shadow-2xl">🪈</span>,
   'BROTHER_BOND': <RakhiHero />, // 🚀 अब गिफ्ट की जगह हमारी खुद की प्रोग्राम्ड राखी रेंडर होगी!
