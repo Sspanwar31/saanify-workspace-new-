@@ -18,7 +18,6 @@ const POOL = 3400;
 const DUR = 10.5;
 const EP = 1e-4;
 
-// 📝 Maa Durga Image URL (Aapki upload ki gayi pehli image ka URL yahan change kar sakte hain)
 const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/Screenshot%202026-07-17%20201625.png';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -72,7 +71,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     return null;
   }, []);
 
-  // 🔔 Synthesized Sacred bell/chant sound
   const triggerBellSound = useCallback((frequency: number) => {
     try {
       if (!audioCtxRef.current) return;
@@ -136,7 +134,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       p.x = Math.random() * W; p.y = Math.random() * H;
       p.vx = (Math.random() - .5) * .22; p.vy = -Math.random() * .35 - .06;
       p.sz = Math.random() * 1.6 + .4; p.ml = 999; p.life = 999;
-      p.r = 244; p.g = 63; p.b = 94; // Crimson Red/Pink theme dust
+      p.r = 244; p.g = 63; p.b = 94; 
       p.a = Math.random() * .22 + .06; p.rot = 0; p.rs = 0;
       dI.push(i);
     }
@@ -173,14 +171,14 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     };
 
     /* ═══════════════════════════════════════════════════════════
-       BACKGROUND (Deep Divine Crimson Red & Dark Purple theme)
+       BACKGROUND
        ═══════════════════════════════════════════════════════════ */
     function dBg(t: number) {
       c!.fillStyle = '#060209'; c!.fillRect(0, 0, W, H);
       const aa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .6 : .6;
       let g = c!.createRadialGradient(W * .5, H * .22, 0, W * .5, H * .22, H * .9);
-      g.addColorStop(0, `rgba(244,63,94,${aa * .26})`); // Crimson Red
-      g.addColorStop(.55, `rgba(124,58,237,${aa * .14})`); // Deep Purple/Shakti Aura
+      g.addColorStop(0, `rgba(244,63,94,${aa * .26})`); 
+      g.addColorStop(.55, `rgba(124,58,237,${aa * .14})`); 
       g.addColorStop(1, 'rgba(6,2,9,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
 
@@ -193,7 +191,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       if (t > 1.0) ca = Math.min((t - 1.0) / 3, 1) * .2;
       if (t > 4.5) ca = .2 + Math.min((t - 4.5) / 1.5, 1) * .18;
       g = c!.createRadialGradient(W * .5, H * .43, 0, W * .5, H * .43, H * .55);
-      g.addColorStop(0, `rgba(245,158,11,${ca * 0.9})`); // Golden warm light
+      g.addColorStop(0, `rgba(245,158,11,${ca * 0.9})`); 
       g.addColorStop(.5, `rgba(220,38,38,${ca * .3})`);
       g.addColorStop(1, 'rgba(6,2,9,0)');
       c!.fillStyle = g; c!.fillRect(0, 0, W, H);
@@ -242,19 +240,19 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       SMOKE (Hawan Kund / Incense smoky effect)
+       SMOKE (Pavitra Hawan Agni Smoke)
        ═══════════════════════════════════════════════════════════ */
     function sSmoke(t: number) {
       if (Math.random() > (t < 1.5 ? 0.45 : 0.15)) return;
       const p = grab(pl); if (!p) return;
-      p.x = W * .25 + Math.random() * W * .5;
-      p.y = H * .65 + Math.random() * H * .2;
-      p.sz = Math.random() * 55 + 22;
-      p.a = .03 + Math.random() * .02;
-      p.ml = 5 + Math.random() * 3;
-      p.vx = (Math.random() - .5) * .35; p.vy = -Math.random() * .55 - .15;
+      p.x = W * .45 + (Math.random() - 0.5) * 120;
+      p.y = H * 0.85;
+      p.sz = Math.random() * 45 + 15;
+      p.a = .04 + Math.random() * .03;
+      p.ml = 4 + Math.random() * 2;
+      p.vx = (Math.random() - .5) * .3; p.vy = -Math.random() * .7 - .4;
       p.life = p.ml;
-      p.r = 135; p.g = 40; p.b = 55; // Crimson warm smoke
+      p.r = 239; p.g = 68; p.b = 68; // Golden Orange-Red smoke matching Hawan
       p.rot = 0; p.rs = 0; p.on = true; p.tp = 6;
     }
     function dSmoke() {
@@ -285,7 +283,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       🌀 GARBA SWIRL ORBITS (Circular divine halo loops)
+       🌀 GARBA SWIRL ORBITS
        ═══════════════════════════════════════════════════════════ */
     function sOrbit(t: number) {
       if (t < 1.5 || t > 9.8 || Math.random() > .25) return;
@@ -295,7 +293,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       p.x = cx + Math.cos(ang) * rad; p.y = cy + Math.sin(ang) * rad;
       p.vx = Math.cos(ang + Math.PI / 2) * .75; p.vy = Math.sin(ang + Math.PI / 2) * .75;
       p.sz = Math.random() * 1.8 + .4; p.ml = 2.5 + Math.random() * 2; p.life = p.ml;
-      p.r = 244; p.g = 63; p.b = 94; // Crimson pink swirl
+      p.r = 244; p.g = 63; p.b = 94; 
       p.a = .45 + Math.random() * .35; p.rot = 0; p.rs = 0; p.on = true; p.tp = 5;
     }
     function dOrbit() {
@@ -353,13 +351,13 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         const angle = Math.sin(t * (1.8 + idx * 0.35)) * 0.18;
         if (Math.abs(angle) < 0.02 && t - bell.lastBellTime > 0.8) {
           bell.lastBellTime = t;
-          triggerBellSound([294, 220, 330][idx]); // Navratri High frequencies chords
+          triggerBellSound([294, 220, 330][idx]); 
         }
       });
     }
     function drawBell(ax: number, ay: number, s: number, ang: number, al: number) {
       c!.save(); c!.globalAlpha = al; c!.translate(ax, ay); c!.rotate(ang);
-      c!.strokeStyle = '#856314'; c!.lineWidth = 1.2;
+      c!.strokeStyle = '#7a6535'; c!.lineWidth = 1.2;
       for (let i = 0; i < 3; i++) { c!.beginPath(); c!.ellipse(0, s * .08 * (i + 1), Math.max(EP, s * .028), Math.max(EP, s * .045), 0, 0, Math.PI * 2); c!.stroke(); }
       const ty = s * .32, bb = s, tw = s * .11, bw = s * .34;
       c!.beginPath(); c!.moveTo(-tw, ty);
@@ -424,10 +422,147 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c!.restore();
     }
 
+    /* ═══════════════════════════════════════════════════════════
+       🔥 DANCING HAWAN AGNI (Holy Ritual Fire at the bottom)
+       ═══════════════════════════════════════════════════════════ */
+    function dHawanFire(t: number) {
+      const cx = W / 2, cy = H * 0.88;
+      const fireW = Math.min(W, H) * 0.22;
+
+      c!.save();
+      c!.globalCompositeOperation = 'lighter';
+
+      // Draw Hawan Kund (Sacred Firepit base)
+      c!.fillStyle = '#1c0d02';
+      c!.strokeStyle = '#5a2503';
+      c!.lineWidth = 2.5;
+      c!.beginPath();
+      c!.moveTo(cx - fireW * 0.6, cy + 12);
+      c!.lineTo(cx + fireW * 0.6, cy + 12);
+      c!.lineTo(cx + fireW * 0.45, cy + 32);
+      c!.lineTo(cx - fireW * 0.45, cy + 32);
+      c!.closePath();
+      c!.fill(); c!.stroke();
+
+      // Layered dancing fire flames (Sindoori Saffron and Golden Red)
+      for (let i = 0; i < 4; i++) {
+        const flameOffset = i * 0.25;
+        const speed = 15 + i * 4;
+        const heightScale = 45 + Math.sin(t * speed) * 10 - i * 6;
+        const widthScale = fireW * 0.45 - i * 5;
+
+        c!.beginPath();
+        c!.moveTo(cx - widthScale, cy + 12);
+        c!.bezierCurveTo(
+          cx - widthScale * 0.6, cy - heightScale * 0.5,
+          cx - widthScale * 0.12 + Math.sin(t * 8 + flameOffset) * 10, cy - heightScale * 0.8,
+          cx, cy - heightScale
+        );
+        c!.bezierCurveTo(
+          cx + widthScale * 0.12 + Math.sin(t * 8 + flameOffset) * 10, cy - heightScale * 0.8,
+          cx + widthScale * 0.6, cy - heightScale * 0.5,
+          cx + widthScale, cy + 12
+        );
+        c!.closePath();
+
+        // Layer color variations
+        const fg = c!.createLinearGradient(cx, cy + 12, cx, cy - heightScale);
+        if (i === 0) { fg.addColorStop(0, '#ea580c'); fg.addColorStop(0.5, '#dc2626'); fg.addColorStop(1, 'rgba(220,38,38,0)'); }
+        else if (i === 1) { fg.addColorStop(0, '#f97316'); fg.addColorStop(0.6, '#ea580c'); fg.addColorStop(1, 'rgba(234,88,12,0)'); }
+        else { fg.addColorStop(0, '#facc15'); fg.addColorStop(0.7, '#f97316'); fg.addColorStop(1, 'rgba(249,115,22,0)'); }
+
+        c!.fillStyle = fg;
+        c!.fill();
+      }
+      c!.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       🚪 TEMPLE DOORS SLIDING REVEAL (Garbhagriha Dwar Ughadna)
+       ═══════════════════════════════════════════════════════════ */
+    function dSlidingDoors(t: number, fx: number, fy: number, fw: number, fh: number) {
+      if (t >= 3.8) return; // Completely hidden after 3.8s
+
+      const cx = W / 2;
+      let openProg = 0;
+
+      if (t >= 1.5 && t < 3.8) {
+        openProg = eIO((t - 1.5) / 2.0); // Doors slide open completely over 2.0s
+      }
+
+      const doorW = fw / 2;
+      const leftDoorOffset = -doorW * openProg * 1.15;
+      const rightDoorOffset = doorW * openProg * 1.15;
+
+      c!.save();
+      c!.shadowColor = 'rgba(0,0,0,0.4)';
+      c!.shadowBlur = 15;
+
+      // 🚪 LEFT TEMPLE DOOR
+      c!.save();
+      c!.translate(leftDoorOffset, 0);
+      c!.beginPath();
+      c!.rect(fx, fy, doorW, fh);
+      c!.clip();
+
+      // Door metallic gold texture
+      const lGrad = c!.createLinearGradient(fx, fy, fx + doorW, fy);
+      lGrad.addColorStop(0, '#7a5a06');
+      lGrad.addColorStop(0.5, '#d4a030');
+      lGrad.addColorStop(1, '#ffd700');
+      c!.fillStyle = lGrad;
+      c!.fillRect(fx, fy, doorW, fh);
+
+      // Carved panels / borders on left door
+      c!.strokeStyle = '#5a4204';
+      c!.lineWidth = 3.5;
+      c!.strokeRect(fx + 8, fy + 8, doorW - 12, fh - 16);
+      c!.strokeRect(fx + 16, fy + 16, doorW - 28, fh - 32);
+
+      // Left door ring handle
+      c!.beginPath();
+      c!.arc(fx + doorW - 14, fy + fh / 2, 10, 0, Math.PI * 2);
+      c!.strokeStyle = '#5a4204'; c!.lineWidth = 2.5; c!.stroke();
+
+      c!.restore();
+
+      // 🚪 RIGHT TEMPLE DOOR
+      c!.save();
+      c!.translate(rightDoorOffset, 0);
+      c!.beginPath();
+      c!.rect(cx, fy, doorW, fh);
+      c!.clip();
+
+      // Door metallic gold texture
+      const rGrad = c!.createLinearGradient(cx, fy, cx + doorW, fy);
+      rGrad.addColorStop(0, '#ffd700');
+      rGrad.addColorStop(0.5, '#d4a030');
+      rGrad.addColorStop(1, '#7a5a06');
+      c!.fillStyle = rGrad;
+      c!.fillRect(cx, fy, doorW, fh);
+
+      // Carved panels / borders on right door
+      c!.strokeStyle = '#5a4204';
+      c!.lineWidth = 3.5;
+      c!.strokeRect(cx + 4, fy + 8, doorW - 12, fh - 16);
+      c!.strokeRect(cx + 12, fy + 16, doorW - 28, fh - 32);
+
+      // Right door ring handle
+      c!.beginPath();
+      c!.arc(cx + 14, fy + fh / 2, 10, 0, Math.PI * 2);
+      c!.strokeStyle = '#5a4204'; c!.lineWidth = 2.5; c!.stroke();
+
+      c!.restore();
+
+      c!.restore();
+    }
+
     /* ═══════════════════════════════════════════════════════════════
-       🖼️ MAA DURGA IMAGE REVEAL — SACRED TEMPLE ARCH FRAME
+       🖼️ MAA DURGA IMAGE REVEAL (Safe check for pre-flash resolved)
        ═══════════════════════════════════════════════════════════════ */
     function dHanuman(t: number) {
+      if (t < 1.5) return; // 🌟 FIXED: Absolute safety. Prevents premature flashing of Maa Durga before 1.5s.
+
       const img = durgaImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return null;
 
@@ -435,7 +570,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       const sc = Math.min(W, H);
       
       const fw = sc * 0.28;
-      const fh = fw * 1.35; // Ideal Tall temple proportion
+      const fh = fw * 1.35; 
       const borderRadius = 14;
 
       let frameScale = 1;
@@ -469,7 +604,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
 
       // ── Glowing Backdrop Aura ──
       c!.save();
-      c!.shadowColor = 'rgba(220,38,38,0.45)'; // Crimson shadow
+      c!.shadowColor = 'rgba(220,38,38,0.45)'; 
       c!.shadowBlur = 35;
       drawArchPath(c!, fx, fy, fw, fh, borderRadius);
       c!.fillStyle = '#0a0312'; 
@@ -546,7 +681,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c!.stroke();
       c!.restore();
 
-      // ── Shimmer Line (4.5s - 7.5s) ──
+      // ── Shimmer Line ──
       if (t >= 4.5 && t < 7.5) {
         const st = (t - 5.0) / 1.0;
         if (st >= 0 && st <= 1) {
@@ -682,7 +817,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       c!.strokeStyle = `rgba(255,190,65,${ra})`; c!.lineWidth = 3.5 * (1 - bt); c!.stroke(); c!.restore();
       const ba = (1 - bt * .65) * .16;
       const bg = c!.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, r));
-      bg.addColorStop(0, `rgba(255,190,65,${ba})`); bg.addColorStop(.5, `rgba(255,140,42,${ba * .4})`); bg.addColorStop(1, 'rgba(255,95,22,0)');
+      bg.addColorStop(0, `rgba(255,190,65,${ba})`); bg.addColorStop(.5, `rgba(244,63,94,${ba * .4})`); bg.addColorStop(1, 'rgba(6,2,9,0)');
       c!.fillStyle = bg; c!.fillRect(0, 0, W, H);
       if (bt < .45 && Math.random() < .6) {
         const p = grab(pl); if (p) {
@@ -704,19 +839,18 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       🌹 RICH ROSE & HIBISCUS PETALS (Laal Gudahal and Rose)
+       🌹 RICH ROSE & HIBISCUS PETALS
        ═══════════════════════════════════════════════════════════ */
     function sPetals(t: number) {
       if (t < 4.5 || Math.random() > .45) return;
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -24 - Math.random() * 60;
-      // 🌀 Swirling Garba motion trajectory
       p.vx = (Math.random() - .5) * 2.2; p.vy = 1.2 + Math.random() * 2.0;
       p.sz = 4.5 + Math.random() * 6.5; p.ml = 7 + Math.random() * 3; p.life = p.ml;
       const ct = Math.random();
-      if (ct < .5) { p.r = 220; p.g = 38; p.b = 38; } // Deep Crimson Red (Hibiscus)
-      else if (ct < .85) { p.r = 244; p.g = 63; p.b = 94; } // Rose Pink
-      else { p.r = 251; p.g = 191; p.b = 36; } // Bright Marigold Gold
+      if (ct < .5) { p.r = 220; p.g = 38; p.b = 38; } 
+      else if (ct < .85) { p.r = 244; p.g = 63; p.b = 94; } 
+      else { p.r = 251; p.g = 191; p.b = 36; } 
       p.a = .5 + Math.random() * .35; p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .06; p.on = true; p.tp = 4;
     }
@@ -737,7 +871,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       KUMKUM (Red divine saffron dust)
+       KUMKUM
        ═══════════════════════════════════════════════════════════ */
     function sKum(t: number) {
       if (t < 4.5 || Math.random() > .45) return;
@@ -745,8 +879,8 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
       p.x = Math.random() * W; p.y = -12 - Math.random() * 35;
       p.vx = (Math.random() - .5) * .8; p.vy = .5 + Math.random() * 1.5;
       p.sz = .8 + Math.random() * 2; p.ml = 5.5 + Math.random() * 3; p.life = p.ml;
-      if (Math.random() < .6) { p.r = 180 + Math.random() * 55 | 0; p.g = 10 + Math.random() * 20 | 0; p.b = 10 + Math.random() * 20 | 0; } // Sindoori Crimson
-      else { p.r = 251; p.g = 191; p.b = 36; } // Sunehra Haldi Yellow
+      if (Math.random() < .6) { p.r = 180 + Math.random() * 55 | 0; p.g = 10 + Math.random() * 20 | 0; p.b = 10 + Math.random() * 20 | 0; } 
+      else { p.r = 251; p.g = 191; p.b = 36; } 
       p.a = .4 + Math.random() * .38; p.rot = Math.random() * Math.PI * 2;
       p.rs = (Math.random() - .5) * .07; p.on = true; p.tp = 8;
     }
@@ -840,8 +974,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
           c!.save();
           c!.beginPath(); c!.rect(W / 2 - tw / 2, ty - ts, tw, ts * 2); c!.clip();
           const shW = tw * 0.1;
-          // Humne ise standard syntax me change kiya hai:
-          const sg = c!.createLinearGradient(shX - shW, 0, shX + shW, 0);
+          const sg = c!.createLinearGradient(shX - shW, 0, shX + shW, 0); // 🚀 FIXED SYNTAX ERROR HERE
           sg.addColorStop(0, 'rgba(255,255,230,0)');
           sg.addColorStop(0.5, `rgba(255,255,230,${0.22 * (1 - shProg)})`);
           sg.addColorStop(1, 'rgba(255,255,230,0)');
@@ -902,7 +1035,7 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     function dFade(t: number) {
       const fs = 9.8; const ft = Math.min((t - fs) / .7, 1); if (ft <= 0) return;
       const fa = eIQ(ft);
-      c!.fillStyle = `rgba(15,3,9,${fa})`; c!.fillRect(0, 0, W, H); // Sindoori deep fade-out
+      c!.fillStyle = `rgba(15,3,9,${fa})`; c!.fillRect(0, 0, W, H); 
       if (ft < .6) {
         const ga = (1 - ft / .6) * .18;
         const gg = c!.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(EP, H * .35));
@@ -920,7 +1053,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         p.x += p.vx; p.y += p.vy; p.life -= dt; p.rot += p.rs;
         switch (p.tp) {
           case 3: p.vx *= .97; p.vy *= .97; break;
-          // 🌀 Swirling wavy Garba dance motion
           case 4: 
             p.vx += Math.sin(p.y * .015 + p.rot) * .022; 
             p.vy *= .998; 
@@ -954,7 +1086,14 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
 
       dEnergy(t); dAarti(t); dBells(t);
 
+      // Render image locked inside temple arch frame (ZERO crop, direct borders touch)
       dHanuman(t);
+      
+      // 🚪 Draw Sliding Doors ON TOP of image but BELOW sparkles
+      dSlidingDoors(t, W / 2 - (Math.min(W, H) * 0.28) / 2, H / 2 - (Math.min(W, H) * 0.28 * 1.35) / 2, Math.min(W, H) * 0.28, Math.min(W, H) * 0.28 * 1.35);
+
+      // 🔥 Draw Ritual Hawan Agni Fire
+      dHawanFire(t);
 
       dRevealSparkles();
       dBloom(t); dBloomP();
@@ -977,7 +1116,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
     raf.current = requestAnimationFrame(loop);
 
     return () => { cancelAnimationFrame(raf.current); window.removeEventListener('resize', rsz); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgReady, mkPool, grab, triggerBellSound]);
 
   /* ═══════════════════════════════════════════════════════════════
@@ -991,7 +1129,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
         <div className="absolute rounded-full" style={{ width: 'min(48vw, 260px)', height: 'min(48vw, 260px)', border: '1px dashed rgba(255,200,50,0.08)', animation: 'ringRotate 18s linear infinite reverse' }} />
         <div className="absolute rounded-full" style={{ width: 'min(40vw, 220px)', height: 'min(40vw, 220px)', background: 'radial-gradient(circle, rgba(244,63,94,0.08) 0%, transparent 70%)', animation: 'auraPulse 3s ease-in-out infinite' }} />
         
-        {/* Hawan/Diya Flames representing Pooja */}
         <div className="absolute flex gap-16" style={{ bottom: '22%' }}>
           {[0, 1.2, 2.4].map((d, i) => (
             <div key={i} className="flex flex-col items-center" style={{ animation: `floatY ${2.2 + i * 0.3}s ease-in-out infinite ${d}s` }}>
@@ -1001,7 +1138,6 @@ export default function NavratriCinematicIntro({ onComplete, imageUrl }: Props) 
           ))}
         </div>
 
-        {/* 🔱 Glowing Trishul Icon represent instead of OM */}
         <div className="relative flex flex-col items-center select-none">
           <div className="absolute rounded-full" style={{ width: 'min(35vw, 200px)', height: 'min(35vw, 200px)', background: 'radial-gradient(circle, rgba(244,63,94,0.06) 0%, transparent 70%)', animation: 'omBreath 2.4s ease-in-out infinite' }} />
           <div className="relative text-[#ffd700]" style={{ fontSize: 'clamp(3.5rem, 10vw, 6.5rem)', textShadow: '0 0 25px rgba(244,63,94,0.8), 0 0 50px rgba(245,158,11,0.5)', animation: 'omBreath 2.4s ease-in-out infinite' }}>🔱</div>
