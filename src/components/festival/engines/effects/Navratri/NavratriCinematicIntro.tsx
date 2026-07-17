@@ -19,7 +19,7 @@ const DUR = 10.5;
 const EP = 1e-4;
 
 // 📝 Maa Durga Image URL (Aapki upload ki gayi pehli image ka URL yahan change kar sakte hain)
-const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/durga-navratri.png';
+const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/Screenshot%202026-07-17%20201625.png';
 
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS
