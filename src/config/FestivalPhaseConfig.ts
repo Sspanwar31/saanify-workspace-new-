@@ -160,6 +160,17 @@ NAVRATRI: {
    }
   },
 
+  
+  // ━━━ PATRIOTIC DAYS (🚀 15.0s Epic National Pride Cinematic Timeline Sync) ━━━
+  REPUBLIC_DAY: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 2500,     // 2.5s: अशोक चक्र घूर्णन, अमर जवान ज्योति मशाल, परेड आरंभ लोडिंग टेक्स्ट (0s - 2.5s)
+      SHOOTING: 9000,  // 9.0s: सुखोई जेट फ़्लाईपास्ट, तिरंगा धुआं, गोल्डन मेहराब फ्रेम प्रकटीकरण, चक्र किरणें, तिरंगा कंफेटी (2.5s - 11.5s)
+      HANDOVER: 3500   // 3.5s: "Happy Republic Day" स्वर्ण फोंट, राष्ट्रगान धुन, सत्यमेव जयते नारा, कोमल फेड-आउट हैंडओवर (11.5s - 15.0s)
+    }
+  },
+
     // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
