@@ -20,6 +20,15 @@ interface NeonParticle {
   tp: 'petal' | 'sparkle' | 'confetti' | 'tulsi' | 'ember'; 
 }
 
+interface PresetConfig {
+  scale: number;
+  speed: number;
+  gravity: number;
+  maxCount: number;
+  minSize: number;
+  maxSize: number;
+}
+
 const DEFAULT_COLORS = ['#fde047', '#facc15', '#f97316'];
 
 const PRESET_COLORS: Record<string, string[]> = {
@@ -28,6 +37,17 @@ const PRESET_COLORS: Record<string, string[]> = {
   NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
   REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
   INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807']
+};
+
+// ━━━ MASTER PRESET CONFIGS (Mirrors exact old if-else fallback behavior) ━━━
+// Old code: Only HANUMAN_JAYANTI had override, everything else used DEFAULT values.
+const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
+  GANESH_CHATURTHI: { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 },
+  HANUMAN_JAYANTI:  { scale: 1.0,  speed: 0.65, gravity: 0.0012, maxCount: 130, minSize: 6,   maxSize: 12 },
+  NAVRATRI:         { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 },
+  REPUBLIC_DAY:     { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 },
+  INDEPENDENCE_DAY: { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 },
+  DEFAULT:          { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 }
 };
 
 export default function NeonEngine({
@@ -64,25 +84,17 @@ export default function NeonEngine({
     const normalizedPreset = (preset || '').toUpperCase().trim();
     const colors = customColors || PRESET_COLORS[normalizedPreset] || DEFAULT_COLORS;
 
-    // ── 🚀 Step 1: Default/Incoming Prop values ──
-    let scaleFactor = customScale ?? 0.55;
-    let speedFactor = customSpeed ?? 1.0;
-    let gravityFactor = customGravity ?? 0.003; 
-    let maxParticles = customMaxCount ?? 90;
-    let minPartSize = customMinSize ?? 5;
-    let maxPartSize = customMaxSize ?? 11;
+    // Resolve config from master table (same behavior as old if-else)
+    const presetConfig = MASTER_PRESET_CONFIGS[normalizedPreset] || MASTER_PRESET_CONFIGS.DEFAULT;
 
-    // ── 🚀 Step 2: HANUMAN JAYANTI INTERNAL OVERRIDE (Bypasses missing parent props) ──
-    if (normalizedPreset === 'HANUMAN_JAYANTI') {
-      scaleFactor = customScale ?? 1.0;         // Normal visible size
-      speedFactor = customSpeed ?? 0.65;        // Comfortable falling speed
-      gravityFactor = customGravity ?? 0.0012;   // Gentle floating gravity
-      maxParticles = customMaxCount ?? 130;      // Optimal beautiful density
-      minPartSize = customMinSize ?? 6.0;
-      maxPartSize = customMaxSize ?? 12.0;
-    }
+    const scaleFactor = customScale ?? presetConfig.scale;
+    const speedFactor = customSpeed ?? presetConfig.speed;
+    const gravityFactor = customGravity ?? presetConfig.gravity;
+    const maxParticles = customMaxCount ?? presetConfig.maxCount;
+    const minPartSize = customMinSize ?? presetConfig.minSize;
+    const maxPartSize = customMaxSize ?? presetConfig.maxSize;
 
-    // ── 🛠️ MOUNT DIAGNOSTICS LOG ──
+    // ── MOUNT DIAGNOSTICS LOG ──
     console.log(
       `%c🟢 NeonEngine Mounted! %c\nPreset: "${preset}"\nScale Factor: ${scaleFactor} (Prop: ${customScale})\nSpeed Factor: ${speedFactor} (Prop: ${customSpeed})\nGravity Factor: ${gravityFactor} (Prop: ${customGravity})\nMax Count: ${maxParticles} (Prop: ${customMaxCount})\nMin Size: ${minPartSize} (Prop: ${customMinSize})\nMax Size: ${maxPartSize} (Prop: ${customMaxSize})`,
       "color: #22c55e; font-weight: bold; font-size: 13px;",
