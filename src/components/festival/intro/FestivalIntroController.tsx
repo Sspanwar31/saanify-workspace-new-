@@ -76,7 +76,8 @@ export default function FestivalIntroController({
   }
 
   // 🚀 3. LIGHT REVEAL GROUP (Christmas, Ram Navami, Eid, etc.)
-  const isLightRevealPreset = ['CHRISTMAS', 'RAM_NAVAMI', 'EID_UL_FITR', 'EID_AL_ADHA', 'REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(preset.toUpperCase());
+   // ✅ NAYA (Ise replace karein):
+  const isLightRevealPreset = ['CHRISTMAS', 'RAM_NAVAMI', 'EID_UL_FITR', 'EID_AL_ADHA'].includes(preset.toUpperCase());
 
   if (isActive && isLightRevealPreset && heroConfig) {
     return (
@@ -128,6 +129,16 @@ export default function FestivalIntroController({
   if (isActive && preset.toUpperCase() === 'NAVRATRI') {
     return (
       <NavratriCinematicIntro 
+        onComplete={onHandover} 
+        imageUrl={heroConfig?.image_url} 
+      />
+    );
+  }
+
+   // 🚀 10. REPUBLIC_DAY & INDEPENDENCE_DAY ACTIVATION (Tricolor Jet Smoke Trails & Confetti)
+  if (isActive && ['REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(preset.toUpperCase())) {
+    return (
+      <RepublicDayCinematicIntro 
         onComplete={onHandover} 
         imageUrl={heroConfig?.image_url} 
       />
