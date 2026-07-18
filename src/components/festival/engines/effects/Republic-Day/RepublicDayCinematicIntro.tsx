@@ -15,7 +15,7 @@ interface Bell {
   x: number; length: number; angle: number; lastBellTime: number;
 }
 const POOL = 3400;
-const DUR = 5.5; // 🚀 TIMELINE SYNCHRONIZATION: Updated to 5.5 seconds (1.5s + 3.0s + 1.0s)
+const DUR = 5.5;
 const EP = 1e-4;
 
 const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/Screenshot%202026-07-17%20201625.png';
@@ -86,7 +86,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         const osc = ctx.createOscillator();
         const gNode = ctx.createGain();
         osc.frequency.value = frequency * ratio;
-        osc.type = 'sawtooth'; 
+        osc.type = 'sawtooth';
         gNode.gain.setValueAtTime(0.35 / (i + 1), ctx.currentTime);
         gNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / (i + 1.2));
         const filter = ctx.createBiquadFilter();
@@ -137,7 +137,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       p.x = Math.random() * W; p.y = Math.random() * H;
       p.vx = (Math.random() - .5) * .18; p.vy = -Math.random() * .3 - .04;
       p.sz = Math.random() * 1.4 + .3; p.ml = 999; p.life = 999;
-      p.r = 255; p.g = 153; p.b = 51; 
+      p.r = 255; p.g = 153; p.b = 51;
       p.a = Math.random() * .18 + .04; p.rot = 0; p.rs = 0;
       dI.push(i);
     }
@@ -181,9 +181,9 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
 
       const aa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .7 : .7;
       let g = c.createRadialGradient(W * .5, H * .18, 0, W * .5, H * .18, H * .85);
-      g.addColorStop(0, `rgba(255,153,51,${aa * .22})`); 
-      g.addColorStop(.4, `rgba(255,255,255,${aa * .08})`); 
-      g.addColorStop(.7, `rgba(18,136,7,${aa * .1})`); 
+      g.addColorStop(0, `rgba(255,153,51,${aa * .22})`);
+      g.addColorStop(.4, `rgba(255,255,255,${aa * .08})`);
+      g.addColorStop(.7, `rgba(18,136,7,${aa * .1})`);
       g.addColorStop(1, 'rgba(3,3,12,0)');
       c.fillStyle = g; c.fillRect(0, 0, W, H);
 
@@ -193,8 +193,8 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fillStyle = g; c.fillRect(0, 0, W, H);
 
       let ca = 0;
-      if (t > 1.5) ca = Math.min((t - 1.5) / 3.0, 1) * .15; 
-      if (t > 4.5) ca = .15 * (1 - Math.min((t - 4.5) / 1.0, 1)); 
+      if (t > 1.5) ca = Math.min((t - 1.5) / 3.0, 1) * .15;
+      if (t > 4.5) ca = .15 * (1 - Math.min((t - 4.5) / 1.0, 1));
 
       g = c.createRadialGradient(W * .5, H * .42, 0, W * .5, H * .42, H * .5);
       g.addColorStop(0, `rgba(255,153,51,${ca * 0.95})`);
@@ -220,9 +220,9 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
        ✈️ FIGHTER JETS
        ═══════════════════════════════════════════════════════════ */
     function dFighterJetsAndTrails(t: number) {
-      if (t < 1.5 || t > 4.5) return; // 🚀 Sync with 3.0s reveal duration
+      if (t < 1.5 || t > 4.5) return;
 
-      const prog = Math.min((t - 1.5) / 3.0, 1); 
+      const prog = Math.min((t - 1.5) / 3.0, 1);
       const cx = W / 2, cy = H / 2;
 
       c.save();
@@ -234,8 +234,8 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       const colors = ['#ff9933', '#ffffff', '#128807'];
 
       for (let i = 0; i < 3; i++) {
-        const offset = (i - 1) * Math.min(W, H) * 0.1; 
-        const jProg = eOC(prog); 
+        const offset = (i - 1) * Math.min(W, H) * 0.1;
+        const jProg = eOC(prog);
         const jx = startX + (endX - startX) * jProg;
         const jy = startY + (endY - startY) * jProg + offset;
 
@@ -334,7 +334,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
-       🚀 sSmoke particle spawner function (Fixed)
+       SMOKE PARTICLE SPAWNER
        ═══════════════════════════════════════════════════════════ */
     function sSmoke(t: number) {
       if (Math.random() > (t < 1.5 ? 0.45 : 0.12)) return;
@@ -346,15 +346,15 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       p.ml = 4 + Math.random() * 2;
       p.vx = (Math.random() - .5) * .3; p.vy = -Math.random() * .7 - .4;
       p.life = p.ml;
-      p.r = 239; p.g = 68; p.b = 68; 
+      p.r = 239; p.g = 68; p.b = 68;
       p.rot = 0; p.rs = 0; p.on = true; p.tp = 6;
     }
 
     /* ═══════════════════════════════════════════════════════════
-       🚀 sOrbit particle spawner function (Fixed)
+       ORBIT PARTICLE SPAWNER
        ═══════════════════════════════════════════════════════════ */
     function sOrbit(t: number) {
-      if (t < 1.5 || t > 4.5 || Math.random() > .2) return; 
+      if (t < 1.5 || t > 4.5 || Math.random() > .2) return;
       const p = grab(pl); if (!p) return;
       const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
       const ang = Math.random() * Math.PI * 2; const rad = sc * .38 + Math.random() * sc * .1;
@@ -369,20 +369,21 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
        AMAR JAWAN JYOTI
        ═══════════════════════════════════════════════════════════ */
     function dAmarJawanJyoti(t: number) {
-      if (t >= 1.5) return; // Active only during loading 1.5s FLASH phase
+      if (t >= 1.5) return;
 
       const cx = W / 2, cy = H * 0.84;
       const s = Math.min(W, H) * 0.05;
 
       c.save();
+      c.translate(cx, cy);
       c.fillStyle = '#11121d';
       c.strokeStyle = '#27293a';
       c.lineWidth = 1.5;
       c.beginPath();
-      c.moveTo(cx - s * 0.8, cy + 10);
-      c.lineTo(cx + s * 0.8, cy + 10);
-      c.lineTo(cx + s * 0.55, cy + 30);
-      c.lineTo(cx - s * 0.55, cy + 30);
+      c.moveTo(-s * 0.8, 10);
+      c.lineTo(s * 0.8, 10);
+      c.lineTo(s * 0.55, 30);
+      c.lineTo(-s * 0.55, 30);
       c.closePath();
       c.fill(); c.stroke();
 
@@ -417,7 +418,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
        MAI PICTURE - TALL TEMPLE ARCH REVEAL
        ═══════════════════════════════════════════════════════════ */
     function dNationalImage(t: number) {
-      if (t < 1.5) return; // 🌟 FIXED: Absolute safety. Prevents premature flashing before 1.5s
+      if (t < 1.5) return;
       const img = nationalImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return;
 
@@ -435,9 +436,8 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       let fadeAlpha = 1;
       let breathScale = 0;
 
-      // 🌟 DYNAMIC SYNCHRONIZED TIMING (For 5.5s total timeline)
       if (t >= 1.5 && t < 4.5) {
-        const raw = Math.min((t - 1.5) / 3.0, 1); // 3.0 seconds REVEAL
+        const raw = Math.min((t - 1.5) / 3.0, 1);
         frameAlpha = Math.min(raw * 5, 1);
         revealProg = eIO(raw);
         flashI = Math.max(0, 1 - raw * 2.5) * 1.0;
@@ -447,7 +447,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         flashI = 0;
         breathScale = Math.sin(t * 2.5) * 0.004;
       } else if (t >= 4.9) {
-        const d = Math.min((t - 4.9) / 0.6, 1); // smooth fade out
+        const d = Math.min((t - 4.9) / 0.6, 1);
         frameAlpha = Math.max(0, 1 - d);
         revealProg = 1;
         fadeAlpha = Math.max(0, 1 - d);
@@ -477,7 +477,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
 
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
-      c.shadowColor = 'rgba(255,153,51,0.45)'; 
+      c.shadowColor = 'rgba(255,153,51,0.45)';
       c.shadowBlur = 40;
       c.shadowOffsetY = 4;
       drawArchPath(c, fx, fy, displayW, displayH, br);
@@ -592,10 +592,10 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       const fss = displayW * 0.034;
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
-      c.fillStyle = '#0f2c59'; 
+      c.fillStyle = '#0f2c59';
       c.shadowColor = 'rgba(15,44,89,0.7)';
       c.shadowBlur = 10;
-      
+
       c.translate(cx, fy - fss * 1.5);
       c.rotate(t * 1.2);
       c.beginPath();
@@ -703,7 +703,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
        FLARE
        ═══════════════════════════════════════════════════════════ */
     function dFlare(t: number) {
-      if (t < 2.0 || t > 8.0) return; 
+      if (t < 2.0 || t > 8.0) return;
       let fi: number;
       if (t < 3.2) fi = (t - 2.0) / 1.2;
       else if (t > 7.0) fi = 1 - (t - 7.0) / 1.0;
@@ -771,19 +771,19 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
        TRICOLOR PATRIOTIC CONFETTI
        ═══════════════════════════════════════════════════════════ */
     function sConfetti(t: number) {
-      if (t < 5.0 || Math.random() > .55) return; 
+      if (t < 5.0 || Math.random() > .55) return;
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -24 - Math.random() * 60;
       p.vx = (Math.random() - .5) * 2.8;
       p.vy = 1.2 + Math.random() * 2.2;
       p.sz = 5 + Math.random() * 7; p.ml = 7 + Math.random() * 3; p.life = p.ml;
       const ct = Math.random();
-      if (ct < .35) { p.r = 255; p.g = 153; p.b = 51; } 
-      else if (ct < .7) { p.r = 255; p.g = 255; p.b = 255; } 
-      else { p.r = 18; p.g = 136; p.b = 7; } 
+      if (ct < .35) { p.r = 255; p.g = 153; p.b = 51; }
+      else if (ct < .7) { p.r = 255; p.g = 255; p.b = 255; }
+      else { p.r = 18; p.g = 136; p.b = 7; }
       p.a = .55 + Math.random() * .35;
       p.rot = Math.random() * Math.PI * 2;
-      p.rs = (Math.random() - .5) * .12; p.on = true; p.tp = 7; 
+      p.rs = (Math.random() - .5) * .12; p.on = true; p.tp = 7;
     }
     function dConfetti() {
       for (const p of pl) {
@@ -823,7 +823,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
        DISSOLVE
        ═══════════════════════════════════════════════════════════ */
     function dDissolve(t: number) {
-      const ps = 10.0; 
+      const ps = 10.0;
       const dt = Math.min((t - ps) / 1.5, 1); if (dt <= 0) return;
       const la = eOC(dt) * .12;
       const lg = c.createRadialGradient(W / 2, H / 2 - H * .015, 0, W / 2, H / 2 - H * .015, Math.max(EP, Math.min(W, H) * .56 * .3));
@@ -837,7 +837,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
        TEXT
        ═══════════════════════════════════════════════════════════ */
     function dText(t: number) {
-      const ps = 11.5; 
+      const ps = 11.5;
       if (t < ps) return;
       c.save();
       c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -865,10 +865,10 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         c.fillText(title, W / 2 + 2, ty + 3);
 
         const mg = c.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
-        mg.addColorStop(0, '#ff9933'); 
-        mg.addColorStop(0.48, '#ffffff'); 
-        mg.addColorStop(0.52, '#0f2c59'); 
-        mg.addColorStop(1, '#128807'); 
+        mg.addColorStop(0, '#ff9933');
+        mg.addColorStop(0.48, '#ffffff');
+        mg.addColorStop(0.52, '#0f2c59');
+        mg.addColorStop(1, '#128807');
         c.fillStyle = mg;
         c.fillText(title, W / 2, ty);
 
@@ -890,7 +890,6 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         }
       }
 
-      // Subtitle
       const mStart = 12.2;
       if (t > mStart) {
         const mProg = Math.min((t - mStart) / 0.6, 1);
@@ -934,6 +933,276 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ═══════════════════════════════════════════════════════════
+       🛕 TEMPLES (was missing — FIXED)
+       ═══════════════════════════════════════════════════════════ */
+    function dTemples(t: number) {
+      if (t > 4.5) { if (Math.max(0, 1 - (t - 4.5) / 1.0) <= 0) return; }
+      const fa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .12 : .12;
+      const al = t > 4.5 ? Math.max(0, .12 - (t - 4.5) * .12) : fa;
+      if (al <= 0) return;
+
+      const positions = [0.15, 0.35, 0.65, 0.85];
+      const sizes = [0.6, 1.0, 1.0, 0.6];
+
+      c.save();
+      c.globalAlpha = al;
+      c.fillStyle = '#050510';
+      c.strokeStyle = 'rgba(255,200,100,0.04)';
+      c.lineWidth = 0.8;
+
+      for (let i = 0; i < positions.length; i++) {
+        const cx = W * positions[i];
+        const cy = H * 0.86;
+        const s = Math.min(W, H) * 0.06 * sizes[i];
+
+        // Temple base
+        c.beginPath();
+        c.rect(cx - s * 0.5, cy - s * 0.15, s, s * 0.15);
+        c.fill(); c.stroke();
+
+        // Temple body
+        c.beginPath();
+        c.moveTo(cx - s * 0.35, cy - s * 0.15);
+        c.lineTo(cx - s * 0.3, cy - s * 0.7);
+        c.lineTo(cx + s * 0.3, cy - s * 0.7);
+        c.lineTo(cx + s * 0.35, cy - s * 0.15);
+        c.closePath();
+        c.fill(); c.stroke();
+
+        // Temple shikhara (dome top)
+        c.beginPath();
+        c.moveTo(cx - s * 0.3, cy - s * 0.7);
+        c.quadraticCurveTo(cx, cy - s * 1.2, cx + s * 0.3, cy - s * 0.7);
+        c.fill(); c.stroke();
+
+        // Small flag/kalash on top
+        c.beginPath();
+        c.moveTo(cx, cy - s * 1.15);
+        c.lineTo(cx, cy - s * 1.35);
+        c.strokeStyle = 'rgba(255,200,100,0.06)';
+        c.lineWidth = 1;
+        c.stroke();
+        c.beginPath();
+        c.arc(cx, cy - s * 1.38, Math.max(EP, s * 0.04), 0, Math.PI * 2);
+        c.fillStyle = 'rgba(255,153,51,0.08)';
+        c.fill();
+      }
+
+      c.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       ⚡ ENERGY PULSE (was missing — FIXED)
+       ═══════════════════════════════════════════════════════════ */
+    function dEnergy(t: number) {
+      if (t < 1.5 || t > 4.5) return;
+      const prog = (t - 1.5) / 3.0;
+      const cx = W / 2, cy = H / 2 - H * 0.01;
+      const sc = Math.min(W, H);
+
+      // Pulsing ring around image area
+      const pulseR = sc * 0.22 + Math.sin(t * 3) * sc * 0.015;
+      const pulseA = 0.06 + Math.sin(t * 4) * 0.03;
+
+      c.save();
+      c.globalAlpha = pulseA * Math.min(prog * 3, 1);
+      c.strokeStyle = '#ff9933';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(cx, cy, Math.max(EP, pulseR), 0, Math.PI * 2);
+      c.stroke();
+
+      // Second ring
+      const pulse2 = sc * 0.26 + Math.sin(t * 2.5 + 1) * sc * 0.01;
+      c.globalAlpha = pulseA * 0.5 * Math.min(prog * 3, 1);
+      c.strokeStyle = '#128807';
+      c.beginPath();
+      c.arc(cx, cy, Math.max(EP, pulse2), 0, Math.PI * 2);
+      c.stroke();
+
+      c.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       💨 SMOKE RENDERER (was missing — FIXED)
+       ═══════════════════════════════════════════════════════════ */
+    function dSmoke() {
+      for (const p of pl) {
+        if (!p.on || p.tp !== 6) continue;
+        const lr = p.life / p.ml;
+        const a = p.a * lr * lr;
+        const sz = Math.max(EP, p.sz);
+        const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, sz);
+        gr.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a})`);
+        gr.addColorStop(0.6, `rgba(${p.r},${p.g},${p.b},${a * 0.3})`);
+        gr.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
+        c.fillStyle = gr;
+        c.fillRect(p.x - sz, p.y - sz, sz * 2, sz * 2);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       🌀 ORBIT RENDERER (was missing — FIXED)
+       ═══════════════════════════════════════════════════════════ */
+    function dOrbit() {
+      for (const p of pl) {
+        if (!p.on || p.tp !== 5) continue;
+        const lr = p.life / p.ml;
+        const a = p.a * lr;
+        const sz = Math.max(EP, p.sz * (0.5 + lr * 0.5));
+
+        // Glow
+        const gr = sz * 4;
+        const gg = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(EP, gr));
+        gg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.3})`);
+        gg.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
+        c.fillStyle = gg;
+        c.fillRect(p.x - gr, p.y - gr, gr * 2, gr * 2);
+
+        // Core dot
+        c.beginPath();
+        c.arc(p.x, p.y, sz, 0, Math.PI * 2);
+        c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+        c.fill();
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       🪔 AARTI LAMP (was missing — FIXED)
+       ═══════════════════════════════════════════════════════════ */
+    function dAarti(t: number) {
+      if (t >= 1.5) return;
+
+      const cx = W / 2, cy = H * 0.92;
+      const s = Math.min(W, H) * 0.035;
+
+      c.save();
+      c.translate(cx, cy);
+
+      // Diya base
+      c.fillStyle = '#b8860b';
+      c.beginPath();
+      c.ellipse(0, 0, s * 0.6, s * 0.2, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // Oil
+      c.fillStyle = '#ffd700';
+      c.beginPath();
+      c.ellipse(0, -s * 0.05, s * 0.35, s * 0.1, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // Flame
+      const flicker = Math.sin(t * 16) * 0.15 + Math.sin(t * 23) * 0.08;
+      const fh = s * 1.4 * (1 + flicker);
+
+      c.globalCompositeOperation = 'lighter';
+
+      // Outer glow
+      const glR = s * 2.5;
+      const gl = c.createRadialGradient(0, -fh * 0.35, 0, 0, -fh * 0.35, Math.max(EP, glR));
+      gl.addColorStop(0, 'rgba(255,153,51,0.18)');
+      gl.addColorStop(0.5, 'rgba(255,80,20,0.06)');
+      gl.addColorStop(1, 'rgba(255,50,10,0)');
+      c.fillStyle = gl;
+      c.fillRect(-glR, -fh * 0.35 - glR, glR * 2, glR * 2);
+
+      // Flame shape
+      c.beginPath();
+      c.moveTo(-s * 0.12, -s * 0.05);
+      c.bezierCurveTo(
+        -s * 0.1 + Math.sin(t * 10) * s * 0.04, -fh * 0.4,
+        -s * 0.04 + Math.sin(t * 12) * s * 0.05, -fh * 0.85,
+        0, -fh
+      );
+      c.bezierCurveTo(
+        s * 0.04 + Math.sin(t * 12) * s * 0.05, -fh * 0.85,
+        s * 0.1 + Math.sin(t * 10) * s * 0.04, -fh * 0.4,
+        s * 0.12, -s * 0.05
+      );
+      c.closePath();
+
+      const fg = c.createLinearGradient(0, -s * 0.05, 0, -fh);
+      fg.addColorStop(0, 'rgba(255,200,50,0.9)');
+      fg.addColorStop(0.4, 'rgba(255,153,51,0.8)');
+      fg.addColorStop(0.8, 'rgba(255,80,20,0.5)');
+      fg.addColorStop(1, 'rgba(255,50,10,0.1)');
+      c.fillStyle = fg;
+      c.fill();
+
+      // Inner bright core
+      c.beginPath();
+      c.ellipse(0, -fh * 0.3, s * 0.06, fh * 0.15, 0, 0, Math.PI * 2);
+      c.fillStyle = 'rgba(255,255,200,0.7)';
+      c.fill();
+
+      c.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       🔔 BELLS (was missing — FIXED)
+       ═══════════════════════════════════════════════════════════ */
+    function dBells(t: number) {
+      if (t >= 1.5) return;
+      const al = eOC(Math.min(t / 1.0, 1)) * 0.15;
+      if (al <= 0) return;
+
+      c.save();
+      c.globalAlpha = al;
+
+      for (const bell of bells) {
+        const bx = W * bell.x;
+        const by = H * 0.12;
+
+        // Swing animation
+        const swing = Math.sin(t * 2.5 + bell.x * 10) * 0.08 + bell.angle * 0.3;
+
+        c.save();
+        c.translate(bx, by);
+        c.rotate(swing);
+
+        // Rope
+        c.strokeStyle = 'rgba(255,200,100,0.3)';
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.lineTo(0, bell.length * 0.3);
+        c.stroke();
+
+        // Bell body
+        const bw = 12;
+        const bh = bell.length * 0.7;
+        c.fillStyle = '#b8860b';
+        c.beginPath();
+        c.moveTo(-bw * 0.3, 0);
+        c.quadraticCurveTo(-bw * 0.5, bh * 0.5, -bw, bh);
+        c.lineTo(bw, bh);
+        c.quadraticCurveTo(bw * 0.5, bh * 0.5, bw * 0.3, 0);
+        c.closePath();
+        c.fill();
+
+        // Bell highlight
+        c.fillStyle = 'rgba(255,215,0,0.2)';
+        c.beginPath();
+        c.moveTo(-bw * 0.15, bh * 0.1);
+        c.quadraticCurveTo(-bw * 0.2, bh * 0.5, -bw * 0.4, bh * 0.85);
+        c.lineTo(-bw * 0.1, bh * 0.85);
+        c.quadraticCurveTo(0, bh * 0.5, -bw * 0.05, bh * 0.1);
+        c.closePath();
+        c.fill();
+
+        // Clapper
+        c.beginPath();
+        c.arc(0, bh * 0.85, Math.max(EP, 2.5), 0, Math.PI * 2);
+        c.fillStyle = '#6b4500';
+        c.fill();
+
+        c.restore();
+      }
+
+      c.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
        PARTICLE UPDATE
        ═══════════════════════════════════════════════════════════ */
     function updateParticles(dt: number, t: number) {
@@ -943,10 +1212,9 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         p.life -= dt;
         if (p.life <= 0) { p.on = false; continue; }
 
-        // Confetti Fluttering physics
         if (p.tp === 7) {
-          p.vx += Math.sin(p.y * .015 + p.rot) * .025; 
-          p.vy *= .998; 
+          p.vx += Math.sin(p.y * .015 + p.rot) * .025;
+          p.vy *= .998;
         }
 
         p.x += p.vx;
