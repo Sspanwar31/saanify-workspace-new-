@@ -15,10 +15,9 @@ interface Bell {
   x: number; length: number; angle: number; lastBellTime: number;
 }
 const POOL = 3400;
-const DUR = 15.0; // 🚀 TIMELINE SYNCHRONIZATION: 15.0 seconds
+const DUR = 5.5; // 🚀 TIMELINE SYNCHRONIZATION: Updated to 5.5 seconds (1.5s + 3.0s + 1.0s)
 const EP = 1e-4;
 
-// 📝 Safe Fallback Image URL (Maa Durga working URL applied to prevent 400 bad request until you upload the actual image)
 const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/Screenshot%202026-07-17%20201625.png';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -35,11 +34,11 @@ const eSpring = (t: number) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT
+   MAIN COMPONENT: NationalCinematicIntro
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void; imageUrl?: string }
 
-export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Props) {
+export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const nationalImgRef = useRef<HTMLImageElement | null>(null);
@@ -77,7 +76,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       if (!audioCtxRef.current) return;
       const ctx = audioCtxRef.current;
       if (ctx.state === 'suspended') ctx.resume();
-      const duration = 4.5;
+      const duration = 3.5;
       const mainGain = ctx.createGain();
       mainGain.connect(ctx.destination);
       mainGain.gain.setValueAtTime(0, ctx.currentTime);
@@ -194,9 +193,8 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.fillStyle = g; c.fillRect(0, 0, W, H);
 
       let ca = 0;
-      if (t > 2.0) ca = Math.min((t - 2.0) / 5.0, 1) * .15; 
-      if (t > 7.0) ca = .15 + Math.min((t - 7.0) / 1.5, 1) * .2;  
-      if (t > 11.5) ca = .35 * (1 - Math.min((t - 11.5) / 2.0, 1)); 
+      if (t > 1.5) ca = Math.min((t - 1.5) / 3.0, 1) * .15; 
+      if (t > 4.5) ca = .15 * (1 - Math.min((t - 4.5) / 1.0, 1)); 
 
       g = c.createRadialGradient(W * .5, H * .42, 0, W * .5, H * .42, H * .5);
       g.addColorStop(0, `rgba(255,153,51,${ca * 0.95})`);
@@ -222,9 +220,9 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
        ✈️ FIGHTER JETS
        ═══════════════════════════════════════════════════════════ */
     function dFighterJetsAndTrails(t: number) {
-      if (t < 2.0 || t > 7.0) return; 
+      if (t < 1.5 || t > 4.5) return; // 🚀 Sync with 3.0s reveal duration
 
-      const prog = Math.min((t - 2.0) / 3.0, 1); 
+      const prog = Math.min((t - 1.5) / 3.0, 1); 
       const cx = W / 2, cy = H / 2;
 
       c.save();
@@ -281,9 +279,9 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
        MONUMENTS
        ═══════════════════════════════════════════════════════════ */
     function dMonuments(t: number) {
-      if (t > 11.5) { if (Math.max(0, 1 - (t - 11.5) / 2.0) <= 0) return; }
+      if (t > 4.5) { if (Math.max(0, 1 - (t - 4.5) / 1.0) <= 0) return; }
       const fa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .18 : .18;
-      const al = t > 11.5 ? Math.max(0, .18 - (t - 11.5) * .1) : fa;
+      const al = t > 4.5 ? Math.max(0, .18 - (t - 4.5) * .18) : fa;
 
       const cx = W / 2, cy = H * 0.86;
       const iw = Math.min(W, H) * 0.22;
@@ -336,10 +334,10 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
     }
 
     /* ═══════════════════════════════════════════════════════════
-       🚀 NEW: sSmoke particle spawner function (Fixed missing reference)
+       🚀 sSmoke particle spawner function (Fixed)
        ═══════════════════════════════════════════════════════════ */
     function sSmoke(t: number) {
-      if (Math.random() > (t < 2.0 ? 0.45 : 0.12)) return;
+      if (Math.random() > (t < 1.5 ? 0.45 : 0.12)) return;
       const p = grab(pl); if (!p) return;
       p.x = W * .45 + (Math.random() - 0.5) * 120;
       p.y = H * 0.85;
@@ -348,15 +346,30 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       p.ml = 4 + Math.random() * 2;
       p.vx = (Math.random() - .5) * .3; p.vy = -Math.random() * .7 - .4;
       p.life = p.ml;
-      p.r = 239; p.g = 68; p.b = 68; // Golden Orange-Red smoke
+      p.r = 239; p.g = 68; p.b = 68; 
       p.rot = 0; p.rs = 0; p.on = true; p.tp = 6;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       🚀 sOrbit particle spawner function (Fixed)
+       ═══════════════════════════════════════════════════════════ */
+    function sOrbit(t: number) {
+      if (t < 1.5 || t > 4.5 || Math.random() > .2) return; 
+      const p = grab(pl); if (!p) return;
+      const sc = Math.min(W, H) * .56; const cx = W / 2, cy = H / 2 - H * .015;
+      const ang = Math.random() * Math.PI * 2; const rad = sc * .38 + Math.random() * sc * .1;
+      p.x = cx + Math.cos(ang) * rad; p.y = cy + Math.sin(ang) * rad;
+      p.vx = Math.cos(ang + Math.PI / 2) * .7; p.vy = Math.sin(ang + Math.PI / 2) * .7;
+      p.sz = Math.random() * 1.6 + .4; p.ml = 2.5 + Math.random() * 2; p.life = p.ml;
+      p.r = 255; p.g = 153; p.b = 51;
+      p.a = .4 + Math.random() * .3; p.rot = 0; p.rs = 0; p.on = true; p.tp = 5;
     }
 
     /* ═══════════════════════════════════════════════════════════
        AMAR JAWAN JYOTI
        ═══════════════════════════════════════════════════════════ */
     function dAmarJawanJyoti(t: number) {
-      if (t >= 2.0) return; 
+      if (t >= 1.5) return; // Active only during loading 1.5s FLASH phase
 
       const cx = W / 2, cy = H * 0.84;
       const s = Math.min(W, H) * 0.05;
@@ -404,7 +417,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
        MAI PICTURE - TALL TEMPLE ARCH REVEAL
        ═══════════════════════════════════════════════════════════ */
     function dNationalImage(t: number) {
-      if (t < 2.0) return;
+      if (t < 1.5) return; // 🌟 FIXED: Absolute safety. Prevents premature flashing before 1.5s
       const img = nationalImgRef.current;
       if (!img || !img.complete || img.naturalWidth === 0) return;
 
@@ -422,18 +435,19 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       let fadeAlpha = 1;
       let breathScale = 0;
 
-      if (t >= 2.0 && t < 7.0) {
-        const raw = Math.min((t - 2.0) / 5.0, 1); 
+      // 🌟 DYNAMIC SYNCHRONIZED TIMING (For 5.5s total timeline)
+      if (t >= 1.5 && t < 4.5) {
+        const raw = Math.min((t - 1.5) / 3.0, 1); // 3.0 seconds REVEAL
         frameAlpha = Math.min(raw * 5, 1);
         revealProg = eIO(raw);
         flashI = Math.max(0, 1 - raw * 2.5) * 1.0;
-      } else if (t >= 7.0 && t < 11.5) {
+      } else if (t >= 4.5 && t < 4.9) {
         frameAlpha = 1;
         revealProg = 1;
         flashI = 0;
         breathScale = Math.sin(t * 2.5) * 0.004;
-      } else if (t >= 11.5) {
-        const d = Math.min((t - 11.5) / 1.5, 1); 
+      } else if (t >= 4.9) {
+        const d = Math.min((t - 4.9) / 0.6, 1); // smooth fade out
         frameAlpha = Math.max(0, 1 - d);
         revealProg = 1;
         fadeAlpha = Math.max(0, 1 - d);
@@ -594,9 +608,11 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.fill();
       for (let j = 0; j < 24; j++) {
         const ang = (j / 24) * Math.PI * 2;
+        const jx = Math.cos(ang) * fss;
+        const jy = Math.sin(ang) * fss;
         c.beginPath();
         c.moveTo(0, 0);
-        c.lineTo(Math.cos(ang) * fss, Math.sin(ang) * fss);
+        c.lineTo(jx, jy);
         c.lineWidth = 0.8;
         c.stroke();
       }
@@ -1022,4 +1038,4 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       }}
     />
   );
-} 
+}
