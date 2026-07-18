@@ -18,8 +18,8 @@ const POOL = 3400;
 const DUR = 15.0; // 🚀 TIMELINE SYNCHRONIZATION: 15.0 seconds
 const EP = 1e-4;
 
-// 📝 Default Patriotic Image (Aap database/Supabase se dynamic imageUrl bhejkar ise override kar sakte hain)
-const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/National/Screenshot_republic_day.png';
+// 📝 Safe Fallback Image URL (Maa Durga working URL applied to prevent 400 bad request until you upload the actual image)
+const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/Screenshot%202026-07-17%20201625.png';
 
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS
@@ -72,7 +72,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
     return null;
   }, []);
 
-  // Synthesizing a powerful brass/horn chord representation for national anthem vibe
   const triggerBrassSound = useCallback((frequency: number) => {
     try {
       if (!audioCtxRef.current) return;
@@ -88,10 +87,9 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
         const osc = ctx.createOscillator();
         const gNode = ctx.createGain();
         osc.frequency.value = frequency * ratio;
-        osc.type = 'sawtooth'; // Metallic brassy texture
+        osc.type = 'sawtooth'; 
         gNode.gain.setValueAtTime(0.35 / (i + 1), ctx.currentTime);
         gNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration / (i + 1.2));
-        // Low pass filter to make it sound majestic and warm
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.value = 1200;
@@ -140,10 +138,30 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       p.x = Math.random() * W; p.y = Math.random() * H;
       p.vx = (Math.random() - .5) * .18; p.vy = -Math.random() * .3 - .04;
       p.sz = Math.random() * 1.4 + .3; p.ml = 999; p.life = 999;
-      p.r = 255; p.g = 153; p.b = 51; // Saffron patriotic dust
+      p.r = 255; p.g = 153; p.b = 51; 
       p.a = Math.random() * .18 + .04; p.rot = 0; p.rs = 0;
       dI.push(i);
     }
+
+    const bells: Bell[] = [
+      { x: 0.24, length: 80, angle: 0.22, lastBellTime: 0 },
+      { x: 0.50, length: 110, angle: -0.15, lastBellTime: 0 },
+      { x: 0.76, length: 80, angle: 0.18, lastBellTime: 0 },
+    ];
+
+    /* ─── Temple Arch Path ─── */
+    const drawArchPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rBottom: number) => {
+      const rTop = w / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + rBottom, y + h);
+      ctx.lineTo(x + w - rBottom, y + h);
+      ctx.arcTo(x + w, y + h, x + w, y + h - rBottom, rBottom);
+      ctx.lineTo(x + w, y + rTop);
+      ctx.arc(x + rTop, y + rTop, rTop, 0, Math.PI, true);
+      ctx.lineTo(x, y + h - rBottom);
+      ctx.arcTo(x, y + h, x + rBottom, y + h, rBottom);
+      ctx.closePath();
+    };
 
     const getImgDims = () => {
       const img = nationalImgRef.current;
@@ -157,16 +175,16 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
     };
 
     /* ═══════════════════════════════════════════════════════════
-       BACKGROUND (Patriotic Deep Indigo & Saffron Dawn theme)
+       BACKGROUND
        ═══════════════════════════════════════════════════════════ */
     function dBg(t: number) {
       c.fillStyle = '#03030c'; c.fillRect(0, 0, W, H);
 
       const aa = t < 1.5 ? eOC(Math.min(t / 1.2, 1)) * .7 : .7;
       let g = c.createRadialGradient(W * .5, H * .18, 0, W * .5, H * .18, H * .85);
-      g.addColorStop(0, `rgba(255,153,51,${aa * .22})`); // Patriotic Saffron
-      g.addColorStop(.4, `rgba(255,255,255,${aa * .08})`); // White aura
-      g.addColorStop(.7, `rgba(18,136,7,${aa * .1})`); // Green base glow
+      g.addColorStop(0, `rgba(255,153,51,${aa * .22})`); 
+      g.addColorStop(.4, `rgba(255,255,255,${aa * .08})`); 
+      g.addColorStop(.7, `rgba(18,136,7,${aa * .1})`); 
       g.addColorStop(1, 'rgba(3,3,12,0)');
       c.fillStyle = g; c.fillRect(0, 0, W, H);
 
@@ -201,30 +219,28 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
     }
 
     /* ═══════════════════════════════════════════════════════════
-       ✈️ FIGHTER JETS & TRICOLOR SMOKE TRAILS
+       ✈️ FIGHTER JETS
        ═══════════════════════════════════════════════════════════ */
     function dFighterJetsAndTrails(t: number) {
-      if (t < 2.0 || t > 7.0) return; // Active during reveal
+      if (t < 2.0 || t > 7.0) return; 
 
-      const prog = Math.min((t - 2.0) / 3.0, 1); // Jets fly past over 3.0 seconds
+      const prog = Math.min((t - 2.0) / 3.0, 1); 
       const cx = W / 2, cy = H / 2;
 
       c.save();
       c.globalCompositeOperation = 'lighter';
 
-      // Three Jet paths with Saffron, White, Green offsets
       const startX = -150, startY = H * 0.65;
       const endX = W + 150, endY = H * 0.15;
 
       const colors = ['#ff9933', '#ffffff', '#128807'];
 
       for (let i = 0; i < 3; i++) {
-        const offset = (i - 1) * Math.min(W, H) * 0.1; // Parallel spacing between jets
-        const jProg = eOC(prog); // Smooth acceleration curve
+        const offset = (i - 1) * Math.min(W, H) * 0.1; 
+        const jProg = eOC(prog); 
         const jx = startX + (endX - startX) * jProg;
         const jy = startY + (endY - startY) * jProg + offset;
 
-        // Draw Smoke Trails (Expanding backwards)
         const smokeW = 10 + jProg * 45;
         const sg = c.createLinearGradient(startX, startY + offset, jx, jy);
         sg.addColorStop(0, 'rgba(0,0,0,0)');
@@ -240,7 +256,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
         c.lineTo(jx, jy);
         c.stroke();
 
-        // Draw Fighter Jet (Minimalist glowing triangle)
         if (prog < 1.0) {
           c.save();
           c.translate(jx, jy);
@@ -263,7 +278,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
     }
 
     /* ═══════════════════════════════════════════════════════════
-       MONUMENTS (Delhi India Gate Silhouette Outline)
+       MONUMENTS
        ═══════════════════════════════════════════════════════════ */
     function dMonuments(t: number) {
       if (t > 11.5) { if (Math.max(0, 1 - (t - 11.5) / 2.0) <= 0) return; }
@@ -279,7 +294,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.strokeStyle = 'rgba(255,255,255,0.06)';
       c.lineWidth = 1;
 
-      // Silhouette of India Gate
       c.beginPath();
       c.moveTo(cx - iw * 0.6, cy);
       c.lineTo(cx - iw * 0.6, cy - iw * 0.75);
@@ -295,7 +309,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.closePath();
       c.fill(); c.stroke();
 
-      // Inner Arch of Monument
       c.beginPath();
       c.moveTo(cx - iw * 0.2, cy);
       c.lineTo(cx - iw * 0.2, cy - iw * 0.45);
@@ -323,16 +336,32 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
     }
 
     /* ═══════════════════════════════════════════════════════════
-       AMAR JAWAN JYOTI Pedestal (Loading Screen)
+       🚀 NEW: sSmoke particle spawner function (Fixed missing reference)
+       ═══════════════════════════════════════════════════════════ */
+    function sSmoke(t: number) {
+      if (Math.random() > (t < 2.0 ? 0.45 : 0.12)) return;
+      const p = grab(pl); if (!p) return;
+      p.x = W * .45 + (Math.random() - 0.5) * 120;
+      p.y = H * 0.85;
+      p.sz = Math.random() * 45 + 15;
+      p.a = .04 + Math.random() * .03;
+      p.ml = 4 + Math.random() * 2;
+      p.vx = (Math.random() - .5) * .3; p.vy = -Math.random() * .7 - .4;
+      p.life = p.ml;
+      p.r = 239; p.g = 68; p.b = 68; // Golden Orange-Red smoke
+      p.rot = 0; p.rs = 0; p.on = true; p.tp = 6;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       AMAR JAWAN JYOTI
        ═══════════════════════════════════════════════════════════ */
     function dAmarJawanJyoti(t: number) {
-      if (t >= 2.0) return; // Active only during loading FLASH phase
+      if (t >= 2.0) return; 
 
       const cx = W / 2, cy = H * 0.84;
       const s = Math.min(W, H) * 0.05;
 
       c.save();
-      // Stone Pedestal
       c.fillStyle = '#11121d';
       c.strokeStyle = '#27293a';
       c.lineWidth = 1.5;
@@ -344,13 +373,11 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.closePath();
       c.fill(); c.stroke();
 
-      // Flame Base
       c.beginPath();
       c.rect(-s * 0.02, -s * 0.04, s * 0.04, s * 0.08);
       c.fillStyle = '#fde68a';
       c.fill();
 
-      // Dynamic Flame Animation
       const flicker = Math.sin(t * 14) * 0.12;
       const baseH = s * 1.1 * (1 + flicker);
       c.globalCompositeOperation = 'lighter';
@@ -396,7 +423,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       let breathScale = 0;
 
       if (t >= 2.0 && t < 7.0) {
-        const raw = Math.min((t - 2.0) / 5.0, 1); // 5.0 seconds REVEAL
+        const raw = Math.min((t - 2.0) / 5.0, 1); 
         frameAlpha = Math.min(raw * 5, 1);
         revealProg = eIO(raw);
         flashI = Math.max(0, 1 - raw * 2.5) * 1.0;
@@ -406,7 +433,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
         flashI = 0;
         breathScale = Math.sin(t * 2.5) * 0.004;
       } else if (t >= 11.5) {
-        const d = Math.min((t - 11.5) / 1.5, 1); // Rapid and smooth 1.5s fade-out
+        const d = Math.min((t - 11.5) / 1.5, 1); 
         frameAlpha = Math.max(0, 1 - d);
         revealProg = 1;
         fadeAlpha = Math.max(0, 1 - d);
@@ -436,7 +463,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
 
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
-      c.shadowColor = 'rgba(255,153,51,0.45)'; // Saffron outer glow
+      c.shadowColor = 'rgba(255,153,51,0.45)'; 
       c.shadowBlur = 40;
       c.shadowOffsetY = 4;
       drawArchPath(c, fx, fy, displayW, displayH, br);
@@ -505,7 +532,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.fillRect(fx, fy, displayW, displayH);
       c.restore();
 
-      // ── Step 3: Golden/Tricolor Border Frame ──
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
       const og = c.createLinearGradient(fx, fy - displayW * 0.05, fx, fy + displayH);
@@ -522,15 +548,40 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.stroke();
       c.restore();
 
-      // ── Step 4: Ashoka Chakra Top Finial ──
+      const ins = 8;
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      const ig2 = c.createLinearGradient(fx, fy, fx, fy + displayH);
+      ig2.addColorStop(0, 'rgba(240,200,210,0.45)');
+      ig2.addColorStop(0.5, 'rgba(200,140,100,0.3)');
+      ig2.addColorStop(1, 'rgba(160,80,60,0.18)');
+      c.strokeStyle = ig2;
+      c.lineWidth = 1.2;
+      drawArchPath(c, fx + ins, fy + ins, displayW - ins * 2, displayH - ins * 2, Math.max(EP, br - ins * 0.35));
+      c.stroke();
+      c.restore();
+
+      c.save();
+      c.globalAlpha = frameAlpha * fadeAlpha;
+      const sg = c.createLinearGradient(fx + displayW * 0.06, 0, fx + displayW * 0.94, 0);
+      sg.addColorStop(0, 'rgba(255,240,220,0)');
+      sg.addColorStop(0.32, 'rgba(255,240,220,0)');
+      sg.addColorStop(0.5, 'rgba(255,240,220,0.38)');
+      sg.addColorStop(0.68, 'rgba(255,240,220,0)');
+      sg.addColorStop(1, 'rgba(255,240,220,0)');
+      c.strokeStyle = sg;
+      c.lineWidth = 0.9;
+      drawArchPath(c, fx, fy, displayW, displayH, br);
+      c.stroke();
+      c.restore();
+
       const fss = displayW * 0.034;
       c.save();
       c.globalAlpha = frameAlpha * fadeAlpha;
-      c.fillStyle = '#0f2c59'; // Deep Navy Blue
+      c.fillStyle = '#0f2c59'; 
       c.shadowColor = 'rgba(15,44,89,0.7)';
       c.shadowBlur = 10;
       
-      // Draw a highly detailed rotating Ashoka Chakra on top of the frame
       c.translate(cx, fy - fss * 1.5);
       c.rotate(t * 1.2);
       c.beginPath();
@@ -636,7 +687,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
        FLARE
        ═══════════════════════════════════════════════════════════ */
     function dFlare(t: number) {
-      if (t < 2.0 || t > 8.0) return;
+      if (t < 2.0 || t > 8.0) return; 
       let fi: number;
       if (t < 3.2) fi = (t - 2.0) / 1.2;
       else if (t > 7.0) fi = 1 - (t - 7.0) / 1.0;
@@ -704,19 +755,19 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
        TRICOLOR PATRIOTIC CONFETTI
        ═══════════════════════════════════════════════════════════ */
     function sConfetti(t: number) {
-      if (t < 5.0 || Math.random() > .55) return; // Active during reveal onwards
+      if (t < 5.0 || Math.random() > .55) return; 
       const p = grab(pl); if (!p) return;
       p.x = Math.random() * W; p.y = -24 - Math.random() * 60;
       p.vx = (Math.random() - .5) * 2.8;
       p.vy = 1.2 + Math.random() * 2.2;
       p.sz = 5 + Math.random() * 7; p.ml = 7 + Math.random() * 3; p.life = p.ml;
       const ct = Math.random();
-      if (ct < .35) { p.r = 255; p.g = 153; p.b = 51; } // Saffron
-      else if (ct < .7) { p.r = 255; p.g = 255; p.b = 255; } // White
-      else { p.r = 18; p.g = 136; p.b = 7; } // Green
+      if (ct < .35) { p.r = 255; p.g = 153; p.b = 51; } 
+      else if (ct < .7) { p.r = 255; p.g = 255; p.b = 255; } 
+      else { p.r = 18; p.g = 136; p.b = 7; } 
       p.a = .55 + Math.random() * .35;
       p.rot = Math.random() * Math.PI * 2;
-      p.rs = (Math.random() - .5) * .12; p.on = true; p.tp = 7; // Custom type 7 for Confetti
+      p.rs = (Math.random() - .5) * .12; p.on = true; p.tp = 7; 
     }
     function dConfetti() {
       for (const p of pl) {
@@ -767,7 +818,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
     }
 
     /* ═══════════════════════════════════════════════════════════
-       TEXT - Patriotic Specific
+       TEXT
        ═══════════════════════════════════════════════════════════ */
     function dText(t: number) {
       const ps = 11.5; 
@@ -798,10 +849,10 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
         c.fillText(title, W / 2 + 2, ty + 3);
 
         const mg = c.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0);
-        mg.addColorStop(0, '#ff9933'); // Saffron
-        mg.addColorStop(0.48, '#ffffff'); // White
-        mg.addColorStop(0.52, '#0f2c59'); // Navy Blue
-        mg.addColorStop(1, '#128807'); // Green
+        mg.addColorStop(0, '#ff9933'); 
+        mg.addColorStop(0.48, '#ffffff'); 
+        mg.addColorStop(0.52, '#0f2c59'); 
+        mg.addColorStop(1, '#128807'); 
         c.fillStyle = mg;
         c.fillText(title, W / 2, ty);
 
@@ -971,4 +1022,4 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       }}
     />
   );
-}
+} 
