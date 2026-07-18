@@ -15,8 +15,8 @@ const POOL = 5000;
 const DUR = 15.0;
 const EP = 1e-4;
 
-// 🇮🇳 NEW DEFAULT IMAGE: Highly reliable HD Indian National Flag (Tiranga) to replace Maa Durga image
-const DEFAULT_IMG_URL = 'https://images.unsplash.com/photo-1532375811400-247e9138d29d?q=80&w=1000&auto=format&fit=crop';
+// 🇮🇳 NEW DEFAULT IMAGE: Your custom high-definition Indian National Flag from Supabase Storage
+const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/india%20flag/india%20flag.png';
 
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS
@@ -31,11 +31,11 @@ const eSpring = (t: number) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT: RepublicDayCinematicIntro
+   MAIN COMPONENT: NationalCinematicIntro
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void; imageUrl?: string }
 
-export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Props) {
+export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const nationalImgRef = useRef<HTMLImageElement | null>(null);
@@ -179,8 +179,19 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       ctx.closePath();
     };
 
+    const getImgDims = () => {
+      const img = nationalImgRef.current;
+      if (!img || !img.complete || img.naturalWidth === 0) return null;
+      const cx = W / 2, cy = H / 2 - H * 0.01;
+      const sc = Math.min(W, H);
+      const displayW = sc * 0.30;
+      const displayH = displayW * 1.35;
+      const maxR = Math.max(displayW, displayH) / 2 + 10;
+      return { img, cx, cy, displayW, displayH, maxR };
+    };
+
     /* ═══════════════════════════════════════════════════════════
-       🌌 BACKGROUND: Deep Indigo Night → Saffron Sunrise
+       🌌 BACKGROUND
        ═══════════════════════════════════════════════════════════ */
     function dBg(t: number) {
       const ni = t < 8 ? 1 : Math.max(0, 1 - (t - 8) / 4);
@@ -256,7 +267,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.translate(cx, cy);
       c.globalAlpha = alpha;
 
-      // Outer glow (navy blue haze)
       c.save();
       c.globalCompositeOperation = 'lighter';
       const glR = radius * 2.2;
@@ -268,7 +278,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.fillRect(-glR, -glR, glR * 2, glR * 2);
       c.restore();
 
-      // Pulsing ring glow
       const pulseA = 0.08 + Math.sin(t * 4) * 0.04;
       c.save();
       c.globalCompositeOperation = 'lighter';
@@ -281,21 +290,18 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
 
       c.rotate(rot);
 
-      // Outer ring
       c.beginPath();
       c.arc(0, 0, Math.max(EP, radius), 0, Math.PI * 2);
       c.strokeStyle = `rgba(15,44,89,${0.85 * alpha})`;
       c.lineWidth = 3.5;
       c.stroke();
 
-      // Inner ring
       c.beginPath();
       c.arc(0, 0, Math.max(EP, radius * 0.84), 0, Math.PI * 2);
       c.strokeStyle = `rgba(15,44,89,${0.4 * alpha})`;
       c.lineWidth = 1.5;
       c.stroke();
 
-      // 24 spokes
       for (let i = 0; i < spokes; i++) {
         const ang = (i / spokes) * Math.PI * 2;
         const ir = radius * 0.14;
@@ -308,19 +314,16 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
         c.stroke();
       }
 
-      // Center hub
       c.beginPath();
       c.arc(0, 0, Math.max(EP, radius * 0.14), 0, Math.PI * 2);
       c.fillStyle = `rgba(15,44,89,${0.9 * alpha})`;
       c.fill();
 
-      // Center bright dot
       c.beginPath();
       c.arc(0, 0, Math.max(EP, radius * 0.05), 0, Math.PI * 2);
       c.fillStyle = `rgba(200,220,255,${0.6 * alpha})`;
       c.fill();
 
-      // Small chakras between spokes on rim
       for (let i = 0; i < spokes; i++) {
         const ang = (i / spokes) * Math.PI * 2 + Math.PI / spokes;
         const px = Math.cos(ang) * radius * 0.7;
@@ -351,7 +354,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.translate(cx, cy);
       c.globalAlpha = alpha;
 
-      // Torch body (military pedestal)
       c.fillStyle = '#12132a';
       c.strokeStyle = 'rgba(255,215,0,0.25)';
       c.lineWidth = 1.5;
@@ -363,7 +365,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.closePath();
       c.fill(); c.stroke();
 
-      // Torch rim
       c.beginPath();
       c.ellipse(0, -s * 0.25, s * 0.32, s * 0.09, 0, 0, Math.PI * 2);
       c.fillStyle = '#1e1f3a';
@@ -371,7 +372,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.strokeStyle = 'rgba(255,215,0,0.35)';
       c.stroke();
 
-      // Flame
       const fk = Math.sin(t * 18) * 0.12 + Math.sin(t * 27) * 0.06;
       const fh = s * 2.2 * (1 + fk);
 
@@ -380,21 +380,20 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       const glR = s * 4;
       const gl = c.createRadialGradient(0, -fh * 0.3, 0, 0, -fh * 0.3, Math.max(EP, glR));
       gl.addColorStop(0, 'rgba(255,153,51,0.22)');
-      gl.addColorStop(0.3, 'rgba(255,100,30,0.08)');
-      gl.addColorStop(1, 'rgba(255,50,10,0)');
+      gl.addColorStop(1, 'rgba(255,80,20,0)');
       c.fillStyle = gl;
       c.fillRect(-glR, -fh * 0.3 - glR, glR * 2, glR * 2);
 
       c.beginPath();
       c.moveTo(-s * 0.22, -s * 0.2);
       c.bezierCurveTo(
-        -s * 0.18 + Math.sin(t * 12) * s * 0.05, -fh * 0.35,
+        -s * 0.12 + Math.sin(t * 12) * s * 0.05, -fh * 0.35,
         -s * 0.06 + Math.sin(t * 16) * s * 0.06, -fh * 0.82,
         0, -fh
       );
       c.bezierCurveTo(
         s * 0.06 + Math.sin(t * 16) * s * 0.06, -fh * 0.82,
-        s * 0.18 + Math.sin(t * 12) * s * 0.05, -fh * 0.35,
+        s * 0.12 + Math.sin(t * 12) * s * 0.05, -fh * 0.35,
         s * 0.22, -s * 0.2
       );
       c.closePath();
@@ -465,34 +464,28 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.strokeStyle = 'rgba(255,255,255,0.035)';
       c.lineWidth = 1;
 
-      // Base platform
       c.beginPath();
       c.rect(cx - s * 0.65, cy - s * 0.03, s * 1.3, s * 0.03);
       c.fill(); c.stroke();
 
-      // Steps
       for (let i = 0; i < 3; i++) {
         c.beginPath();
         c.rect(cx - s * (0.6 - i * 0.03), cy - s * (0.03 + i * 0.015), s * (1.2 - i * 0.06), s * 0.015);
         c.fill();
       }
 
-      // Left pillar
       c.beginPath();
       c.rect(cx - s * 0.55, cy - s * 0.68, s * 0.1, s * 0.62);
       c.fill(); c.stroke();
 
-      // Right pillar
       c.beginPath();
       c.rect(cx + s * 0.45, cy - s * 0.68, s * 0.1, s * 0.62);
       c.fill(); c.stroke();
 
-      // Top beam
       c.beginPath();
       c.rect(cx - s * 0.58, cy - s * 0.75, s * 1.16, s * 0.07);
       c.fill(); c.stroke();
 
-      // Arch (dark cutout)
       c.beginPath();
       c.moveTo(cx - s * 0.45, cy - s * 0.68);
       c.quadraticCurveTo(cx, cy - s * 0.38, cx + s * 0.45, cy - s * 0.68);
@@ -502,7 +495,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.fillStyle = '#03030c';
       c.fill();
 
-      // Small domes on top corners
       for (const dx of [-s * 0.52, -s * 0.48, s * 0.48, s * 0.52]) {
         c.beginPath();
         c.arc(cx + dx, cy - s * 0.78, Math.max(EP, s * 0.025), 0, Math.PI * 2);
@@ -510,7 +502,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
         c.fill();
       }
 
-      // Tricolor flag on top center
       const fX = cx, fY = cy - s * 0.82;
       const fW = s * 0.07, fH = s * 0.1;
       c.beginPath();
@@ -566,7 +557,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
         const tsX = sX + (eX - sX) * Math.max(0, ep - trailLen);
         const tsY = sY + (eY - sY) * Math.max(0, ep - trailLen) + yOff;
 
-        // Dense multi-layer smoke trail
         const sw = 18 + ep * 55;
         for (let layer = 0; layer < 4; layer++) {
           const lw = sw * (1 - layer * 0.2);
@@ -586,7 +576,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
           c.stroke();
         }
 
-        // Jet head
         if (prog < 0.95) {
           const angle = Math.atan2(eY - sY, eX - sX);
           c.save();
@@ -601,7 +590,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
           c.fillStyle = jg;
           c.fillRect(-jgR, -jgR, jgR * 2, jgR * 2);
 
-          // Delta wing Sukhoi shape
           c.fillStyle = '#ffffff';
           c.shadowColor = `rgb(${col.r},${col.g},${col.b})`;
           c.shadowBlur = 14;
@@ -626,7 +614,7 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
     }
 
     /* ═══════════════════════════════════════════════════════════
-       💨 JET SMOKE PARTICLES (drifting from trails)
+       💨 JET SMOKE PARTICLES
        ═══════════════════════════════════════════════════════════ */
     function sJetSmoke(t: number) {
       if (t < 2.5 || t > 7.0 || Math.random() > 0.35) return;
@@ -688,7 +676,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.save();
       c.globalAlpha = fa;
 
-      // Shadow fill
       c.shadowColor = 'rgba(255,215,0,0.5)';
       c.shadowBlur = 35;
       drawArchPath(c, fx, fy, dw, dh, br);
@@ -696,7 +683,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.fill();
       c.shadowBlur = 0;
 
-      // Gold outer border
       const og = c.createLinearGradient(fx, fy - dw * 0.05, fx, fy + dh);
       og.addColorStop(0, '#f5e6a3');
       og.addColorStop(0.15, '#ffd700');
@@ -711,14 +697,12 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       c.stroke();
       c.shadowBlur = 0;
 
-      // Inner border
       const ins = 7;
       c.strokeStyle = 'rgba(255,215,0,0.18)';
       c.lineWidth = 1.2;
       drawArchPath(c, fx + ins, fy + ins, dw - ins * 2, dh - ins * 2, Math.max(EP, br - ins * 0.3));
       c.stroke();
 
-      // Vertical center shine
       const sg = c.createLinearGradient(fx + dw * 0.08, 0, fx + dw * 0.92, 0);
       sg.addColorStop(0, 'rgba(255,240,200,0)');
       sg.addColorStop(0.38, 'rgba(255,240,200,0)');
@@ -730,7 +714,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
       drawArchPath(c, fx, fy, dw, dh, br);
       c.stroke();
 
-      // Corner ornaments
       const ornR = 4;
       const corners = [
         { x: fx + br * 0.5, y: fy + dh - br * 0.5 },
@@ -876,7 +859,6 @@ export default function RepublicDayCinematicIntro({ onComplete, imageUrl }: Prop
         c.fill();
       }
 
-      // Center bright point
       const cpA = alpha * 0.15;
       const cpR = sc * 0.08;
       const cp = c.createRadialGradient(cx, cy, 0, cx, cy, Math.max(EP, cpR));
