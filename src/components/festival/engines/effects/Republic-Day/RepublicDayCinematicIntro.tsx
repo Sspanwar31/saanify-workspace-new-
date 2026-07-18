@@ -15,7 +15,8 @@ const POOL = 5000;
 const DUR = 15.0;
 const EP = 1e-4;
 
-const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/Maa%20Durga/Screenshot%202026-07-17%20201625.png';
+// 🇮🇳 NEW DEFAULT IMAGE: Highly reliable HD Indian National Flag (Tiranga) to replace Maa Durga image
+const DEFAULT_IMG_URL = 'https://images.unsplash.com/photo-1532375811400-247e9138d29d?q=80&w=1000&auto=format&fit=crop';
 
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS
