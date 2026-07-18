@@ -17,6 +17,7 @@ import ValentineCinematicIntro from '../engines/effects/valentines-day/Valentine
 import GaneshChaturthiCinematicIntro from '../engines/effects/Ganesh-Chaturthi/GaneshChaturthiCinematicIntro';
 import HanumanJayantiCinematicIntro from '../engines/effects/Hanuman-Jayanti/HanumanJayantiCinematicIntro';
 import NavratriCinematicIntro from '../engines/effects/Navratri/NavratriCinematicIntro'; // 🚀 NAYA: Navratri Intro Import kiya
+import RepublicDayCinematicIntro from '../engines/effects/Republic-Day/RepublicDayCinematicIntro';
 
 
 export default function FestivalIntroController({
