@@ -725,18 +725,13 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       c.fillStyle = '#000000'; c.fillRect(0, 0, W, H);
 
-      // Cinematic Camera (Crane, Dolly, Handheld Breathing)
-      let camZ = lerp(1.0, 1.25, eOE(t / DUR));
-      if (t > 13) camZ = lerp(1.25, 1.0, eIO((t - 13) / 2)); // Slow zoom out at end
-      const camY = lerp(0, -H * 0.08, eIO(t / DUR));
-      const brX = Math.sin(t * 0.6) * 3 * (1 - t / DUR);
-      const brY = Math.cos(t * 0.5) * 3 * (1 - t / DUR);
-      const camR = Math.sin(t * 0.2) * 0.005;
-      const finZ = camZ + Math.sin(t * 0.8) * 0.005;
+      // ✅ FIXED CAMERA: Removed extreme zoom (camZ) and pan (camY) that were ruining the view.
+      // Only keeping a very subtle handheld breathing effect at the start.
+      const brX = Math.sin(t * 0.6) * 1.5 * (1 - t / DUR);
+      const brY = Math.cos(t * 0.5) * 1.5 * (1 - t / DUR);
 
       c.save();
-      c.translate(W / 2 + brX, H / 2 + brY + camY);
-      c.rotate(camR); c.scale(finZ, finZ);
+      c.translate(W / 2 + brX, H / 2 + brY);
       c.translate(-W / 2, -H / 2);
 
       drawAtmosphere(t, now / 1000);
