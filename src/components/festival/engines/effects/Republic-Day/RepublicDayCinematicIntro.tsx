@@ -165,6 +165,13 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       { x: -W * 0.35, y: H * 0.20, scale: 0.9, smokeColor: '#FFFFFF', vx: 12, vy: 4, active: true },
       { x: -W * 0.4, y: H * 0.25, scale: 0.8, smokeColor: '#138808', vx: 12, vy: 4, active: true }
     ];
+    const doves = Array.from({ length: 8 }, (_, i) => ({
+      x: W * (0.1 + i * 0.12),
+      y: H * (0.7 + Math.random() * 0.2),
+      vx: 1.5 + Math.random(),
+      vy: -0.8 - Math.random() * 0.4,
+      wing: Math.random() * Math.PI * 2
+    }));
 
     const drawArchPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
       const rT = w / 2;
@@ -306,6 +313,97 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
     }
 
+    /* 🏛️ INDIA GATE (Procedural Architecture) */
+    function drawIndiaGate(t: number) {
+      const gateW = W * 0.7;
+      const gateH = H * 0.6;
+      const baseY = H * 0.85;
+      const cx = W * 0.5;
+
+      c.save();
+      const reveal = clamp((t - 1) * 0.5, 0, 1);
+      c.globalAlpha = reveal;
+
+      const stoneBase = `rgb(${lerp(30, 190, t/15)}, ${lerp(30, 170, t/15)}, ${lerp(30, 130, t/15)})`;
+      const stoneDark = `rgb(${lerp(10, 80, t/15)}, ${lerp(10, 70, t/15)}, ${lerp(10, 50, t/15)})`;
+      const stoneHighlight = `rgb(${lerp(50, 220, t/15)}, ${lerp(50, 200, t/15)}, ${lerp(50, 160, t/15)})`;
+      
+      const drawArchitecturalBlock = (x: number, y: number, width: number, height: number, depth: number) => {
+        const grad = c.createLinearGradient(x, y, x, y + height);
+        grad.addColorStop(0, stoneHighlight);
+        grad.addColorStop(0.5, stoneBase);
+        grad.addColorStop(1, stoneDark);
+        c.fillStyle = grad;
+        c.fillRect(x, y, width, height);
+        c.fillStyle = stoneDark;
+        c.fillRect(x, y - depth, width, depth);
+        c.fillStyle = 'rgba(0,0,0,0.4)';
+        c.fillRect(x, y, width, 4);
+        c.fillRect(x, y + height - 4, width, 4);
+      };
+
+      drawArchitecturalBlock(cx - gateW/2 - 50, baseY - 40, gateW + 100, 40, 20);
+      drawArchitecturalBlock(cx - gateW/2, baseY - gateH, gateW, gateH, 30);
+      
+      const archW = gateW * 0.3, archH = gateH * 0.7;
+      c.beginPath();
+      c.moveTo(cx - archW/2, baseY);
+      c.lineTo(cx - archW/2, baseY - archH * 0.7);
+      c.quadraticCurveTo(cx, baseY - archH, cx + archW/2, baseY - archH * 0.7);
+      c.lineTo(cx + archW/2, baseY);
+      c.closePath();
+      const archGrad = c.createLinearGradient(cx, baseY - archH, cx, baseY);
+      archGrad.addColorStop(0, 'rgba(0,0,0,0.95)');
+      archGrad.addColorStop(1, 'rgba(20,10,5,0.8)');
+      c.fillStyle = archGrad;
+      c.fill();
+
+      [-1, 1].forEach(side => {
+        const sArchW = gateW * 0.15, sArchH = gateH * 0.45;
+        const sX = cx + side * gateW * 0.32;
+        c.beginPath();
+        c.moveTo(sX - sArchW/2, baseY);
+        c.lineTo(sX - sArchW/2, baseY - sArchH * 0.7);
+        c.quadraticCurveTo(sX, baseY - sArchH, sX + sArchW/2, baseY - sArchH * 0.7);
+        c.lineTo(sX + sArchW/2, baseY);
+        c.closePath();
+        c.fillStyle = 'rgba(0,0,0,0.9)';
+        c.fill();
+      });
+
+      for(let i=0; i<8; i++) {
+        const colX = cx - gateW/2 + (gateW / 8) * i + 15;
+        const colGrad = c.createLinearGradient(colX, 0, colX + 20, 0);
+        colGrad.addColorStop(0, stoneDark);
+        colGrad.addColorStop(0.5, stoneHighlight);
+        colGrad.addColorStop(1, stoneDark);
+        c.fillStyle = colGrad;
+        c.fillRect(colX, baseY - gateH * 0.85, 20, gateH * 0.85);
+      }
+
+      const canopyY = baseY - gateH - 50;
+      drawArchitecturalBlock(cx - gateW * 0.15, canopyY, gateW * 0.3, 50, 40);
+      c.beginPath();
+      c.moveTo(cx - gateW * 0.2, canopyY);
+      c.lineTo(cx, canopyY - 60);
+      c.lineTo(cx + gateW * 0.2, canopyY);
+      c.closePath();
+      c.fillStyle = stoneDark;
+      c.fill();
+
+      if (t > 2) {
+        c.save();
+        c.globalCompositeOperation = 'overlay';
+        const torchLight = c.createRadialGradient(W/2, H*0.78, 0, W/2, H*0.78, gateH);
+        torchLight.addColorStop(0, 'rgba(255, 120, 30, 0.8)');
+        torchLight.addColorStop(1, 'rgba(255, 100, 0, 0)');
+        c.fillStyle = torchLight;
+        c.fillRect(cx - gateW/2, baseY - gateH, gateW, gateH);
+        c.restore();
+      }
+      c.restore();
+    }
+
     /* 🔥 AMAR JAWAN JYOTI (TORCH) */
     function drawTorch(t: number, elapsed: number) {
       const tx = W * 0.5;
@@ -409,7 +507,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       }
     }
 
-    /* ✈️ JETS & VOLUMETRIC SMOKE (Draws over everything for depth!) */
+    /* ✈️ JETS & VOLUMETRIC SMOKE */
     function drawJets(t: number) {
       if (t < 2.0 || t > 7.5) return;
       const activeJets = jets.filter(j => j.x < W + 500);
@@ -578,6 +676,66 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
     }
 
+    /* 🕊️ FINAL SCENE (13s - 15s) */
+    function drawFinalScene(t: number, elapsed: number) {
+      if (t < 13) return;
+      const phase = clamp((t - 13) / 2, 0, 1);
+      
+      doves.forEach(d => { d.x += d.vx; d.y += d.vy; d.wing += 0.25; });
+
+      // Full Screen Procedural Flag Wave
+      c.save();
+      c.globalAlpha = phase * 0.85;
+      const flagH = H, flagW = H * 1.5;
+      const fCols = 50, fRows = 30, fCellW = flagW / fCols, fCellH = flagH / fRows;
+
+      for (let y = 0; y < fRows; y++) {
+        for (let x = 0; x < fCols; x++) {
+          const px = W/2 - flagW/2 + x * fCellW;
+          const py = y * fCellH;
+          const wave = Math.sin(x * 0.25 + elapsed * 3) * 30 + Math.sin(y * 0.4 + elapsed * 2) * 10;
+          const shade = clamp(0.5 + (wave / 40) * 0.5, 0, 1);
+          let color = [0,0,0];
+          if (y < fRows / 3) color = [255, 153, 51];
+          else if (y < fRows * 2 / 3) color = [255, 255, 255];
+          else color = [18, 136, 8];
+          const r = ACESFilmic(color[0] * shade / 255) * 255;
+          const g = ACESFilmic(color[1] * shade / 255) * 255;
+          const b = ACESFilmic(color[2] * shade / 255) * 255;
+          c.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          c.fillRect(px + wave, py, fCellW + 1, fCellH + 1);
+        }
+      }
+      c.restore();
+
+      // Doves
+      c.save();
+      c.globalAlpha = phase;
+      c.fillStyle = '#FFFFFF';
+      c.shadowColor = 'rgba(0,0,0,0.3)'; c.shadowBlur = 10;
+      doves.forEach(d => {
+        c.save();
+        c.translate(d.x, d.y);
+        const wingY = Math.sin(d.wing) * 12;
+        c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-15, -wingY, -30, 0); c.quadraticCurveTo(-15, wingY * 0.5, 0, 0); c.fill();
+        c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(15, -wingY, 30, 0); c.quadraticCurveTo(15, wingY * 0.5, 0, 0); c.fill();
+        c.restore();
+      });
+      c.restore();
+
+      // Final Text Reveal
+      c.save();
+      c.globalAlpha = phase;
+      c.textAlign = 'center';
+      c.font = `700 ${Math.min(W * 0.14, 140)}px 'Cinzel', Georgia, serif`;
+      c.shadowColor = 'rgba(0, 0, 0, 0.9)'; c.shadowBlur = 50;
+      const grad = c.createLinearGradient(0, H/2 - 70, 0, H/2 + 70);
+      grad.addColorStop(0, '#FFFACD'); grad.addColorStop(0.5, '#FFD700'); grad.addColorStop(1, '#8B6914');
+      c.fillStyle = grad;
+      c.fillText("वंदे मातरम्", W/2, H/2);
+      c.restore();
+    }
+
     /* 🎞️ POST PROCESSING (Color Grade & Vignette) */
     function drawPostFX() {
       // ACES Orange & Teal
@@ -590,8 +748,8 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fillRect(0, 0, W, H);
       c.restore();
 
-      // Vignette
-      const vignette = c.createRadialGradient(W/2, H/2, H*0.3, w/2, H/2, H*0.9);
+      // Vignette (Fixed W/2 capitalization)
+      const vignette = c.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.9);
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
       vignette.addColorStop(1, 'rgba(0,0,0,0.8)');
       c.fillStyle = vignette;
@@ -625,8 +783,11 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fillStyle = '#000000';
       c.fillRect(0, 0, W, H);
 
-      // Handheld camera movement
-      const camDollyZ = lerp(1.0, 1.25, eOE(t / DUR));
+      // Handheld camera movement (Zoom out at the end 13s-15s)
+      let camDollyZ = lerp(1.0, 1.25, eOE(t / 11));
+      if (t > 13) {
+        camDollyZ = lerp(1.25, 1.0, eIO((t - 13) / 2)); // Slow zoom out
+      }
       const camCraneY = lerp(0, -H * 0.1, eIO(t / DUR));
       const breatheX = Math.sin(t * 0.6) * 3 * (1 - t / DUR);
       const breatheY = Math.cos(t * 0.5) * 3 * (1 - t / DUR);
@@ -640,14 +801,16 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.translate(-W / 2, -H / 2);
 
       drawAtmosphere(t, now / 1000);
-      drawStars(t);
-      drawIndiaGate(t);
+      drawSunAndRays(t, now / 1000); // Restored missing call
+      drawFog(t, now / 1000);        // Restored missing call
+      drawIndiaGate(t);              // Restored missing definition
       drawTorch(t, now / 1000);
-      drawArchAndImage(t);       // Photorealistic image clipped inside Golden Arch
-      drawJets(t);                // Su-30MKI flypast over the frame
+      drawArchAndImage(t);           // Photorealistic image clipped inside Golden Arch
+      drawJets(t);                   // Su-30MKI flypast over the frame
       drawParticles();
       dChakraSpokes(t);
       drawTypography(t, now / 1000);
+      drawFinalScene(t, now / 1000); // 13s-15s Final scene
 
       c.restore();
 
