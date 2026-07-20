@@ -257,10 +257,10 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
     }
 
-    /* ☀️ SUN & VOLUMETRIC GOD RAYS (Behind India Gate) */
+    /* ☀️ SUN & VOLUMETRIC GOD RAYS */
     function drawSunAndRays(t: number, elapsed: number) {
       if (t < 4) return;
-      const sunY = lerp(H * 1.1, H * 0.35, eOE((t - 4) / 5));
+      const sunY = lerp(H * 1.1, H * 0.38, eOE((t - 4) / 5));
       const sunX = W * 0.5;
       const intensity = clamp((t - 4) * 0.5, 0, 1);
 
@@ -268,37 +268,37 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.globalCompositeOperation = 'screen';
       
       // Volumetric Sun Glow
-      const bloomGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, H * 0.8);
-      bloomGrad.addColorStop(0, `rgba(255, 240, 200, ${0.9 * intensity})`);
-      bloomGrad.addColorStop(0.15, `rgba(255, 180, 80, ${0.6 * intensity})`);
-      bloomGrad.addColorStop(0.4, `rgba(255, 100, 30, ${0.2 * intensity})`);
-      bloomGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+      const bloomGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, H * 0.7);
+      bloomGrad.addColorStop(0, `rgba(255, 240, 200, ${0.8 * intensity})`);
+      bloomGrad.addColorStop(0.2, `rgba(255, 180, 80, ${0.5 * intensity})`);
+      bloomGrad.addColorStop(0.5, `rgba(255, 100, 30, ${0.15 * intensity})`);
+      bloomGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       c.fillStyle = bloomGrad;
       c.fillRect(0, 0, W, H);
 
       // Sun Core
-      const coreGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, 120);
+      const coreGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, 90);
       coreGrad.addColorStop(0, `rgba(255, 255, 255, ${intensity})`);
-      coreGrad.addColorStop(0.3, `rgba(255, 250, 220, ${0.9 * intensity})`);
-      coreGrad.addColorStop(1, 'rgba(255, 200, 100, 0)');
+      coreGrad.addColorStop(0.4, `rgba(255, 245, 200, ${0.8 * intensity})`);
+      coreGrad.addColorStop(1, 'rgba(255, 180, 80, 0)');
       c.fillStyle = coreGrad;
-      c.fillRect(sunX - 120, sunY - 120, 240, 240);
+      c.fillRect(sunX - 90, sunY - 90, 180, 180);
 
       // God Rays
-      const rayIntensity = clamp((t - 5) * 0.5, 0, 1);
+      const rayIntensity = clamp((t - 5) * 0.4, 0, 0.75);
       if (rayIntensity > 0) {
         c.translate(sunX, sunY);
         c.rotate(Math.sin(elapsed * 0.05) * 0.02);
         for (let i = 0; i < 16; i++) {
           const angle = (i / 16) * Math.PI * 2 + elapsed * 0.01;
           const length = H * 1.2;
-          const width = 80 + Math.sin(elapsed * 2 + i) * 40;
+          const width = 60 + Math.sin(elapsed * 2 + i) * 30;
           c.save();
           c.rotate(angle);
           const rayGrad = c.createLinearGradient(0, 0, 0, length);
-          rayGrad.addColorStop(0, `rgba(255, 230, 180, ${0.2 * rayIntensity})`);
-          rayGrad.addColorStop(0.5, `rgba(255, 200, 150, ${0.1 * rayIntensity})`);
-          rayGrad.addColorStop(1, 'rgba(255, 200, 150, 0)');
+          rayGrad.addColorStop(0, `rgba(255, 235, 180, ${0.15 * rayIntensity})`);
+          rayGrad.addColorStop(0.5, `rgba(255, 200, 130, ${0.08 * rayIntensity})`);
+          rayGrad.addColorStop(1, 'rgba(255, 200, 130, 0)');
           c.fillStyle = rayGrad;
           c.beginPath();
           c.moveTo(-width/4, 0);
@@ -337,65 +337,52 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
     }
 
-    /* 🔥 AMAR JAWAN JYOTI (Eternal Torch with flame embers) */
+    /* 🔥 AMAR JAWAN JYOTI (Flickering Flame Base) */
     function drawTorch(t: number, elapsed: number) {
       const tx = W * 0.5;
-      const ty = H * 0.78;
+      const ty = H * 0.795; // Base level of the central arch
       
-      // Pre-ignition smoke
-      if (t < 2) {
-        c.save();
-        c.globalCompositeOperation = 'screen';
-        for(let i=0; i<5; i++) {
-          const sy = ty - (elapsed * 25 + i * 40) % 200;
-          const sx = tx + Math.sin(sy * 0.05 + elapsed) * 10;
-          const grad = c.createRadialGradient(sx, sy, 0, sx, sy, 50);
-          grad.addColorStop(0, 'rgba(60, 60, 60, 0.4)');
-          grad.addColorStop(1, 'rgba(60, 60, 60, 0)');
-          c.fillStyle = grad;
-          c.fillRect(sx - 50, sy - 50, 100, 100);
-        }
-        c.restore();
-      }
-
-      // Ignition & Volumetric Fire
       if (t > 1.5) {
         const fireAlpha = clamp((t - 1.5) * 2, 0, 1);
         c.save();
         c.globalAlpha = fireAlpha;
         c.globalCompositeOperation = 'lighter';
         
-        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 400);
-        glowGrad.addColorStop(0, 'rgba(255, 180, 80, 0.9)');
-        glowGrad.addColorStop(0.2, 'rgba(255, 120, 30, 0.5)');
-        glowGrad.addColorStop(0.5, 'rgba(200, 50, 0, 0.2)');
+        // Soft ambient warm glow behind torch
+        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 120);
+        glowGrad.addColorStop(0, 'rgba(255, 130, 40, 0.85)');
+        glowGrad.addColorStop(0.4, 'rgba(255, 70, 10, 0.35)');
         glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         c.fillStyle = glowGrad;
-        c.fillRect(tx - 400, ty - 400, 800, 800);
+        c.fillRect(tx - 120, ty - 120, 240, 240);
 
-        const flicker = Math.sin(elapsed * 25) * 8 + Math.sin(elapsed * 9) * 4;
-        const fireGrad = c.createRadialGradient(tx, ty + flicker, 0, tx, ty + flicker, 80);
-        fireGrad.addColorStop(0, 'rgba(255, 255, 240, 1)');
-        fireGrad.addColorStop(0.3, 'rgba(255, 220, 100, 0.9)');
-        fireGrad.addColorStop(0.7, 'rgba(255, 100, 0, 0.5)');
+        // Realistic flickering smaller flame core
+        const flicker = Math.sin(elapsed * 28) * 3;
+        const flameH = 40 + flicker;
+        const flameW = 10;
+
+        const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
+        fireGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        fireGrad.addColorStop(0.2, 'rgba(255, 200, 60, 0.95)');
+        fireGrad.addColorStop(0.6, 'rgba(255, 80, 0, 0.6)');
         fireGrad.addColorStop(1, 'rgba(255, 0, 0, 0)');
         c.fillStyle = fireGrad;
-        
+
         c.beginPath();
-        c.moveTo(tx - 50, ty);
-        c.quadraticCurveTo(tx - 30, ty - 100 + flicker, tx, ty - 150 + flicker);
-        c.quadraticCurveTo(tx + 30, ty - 100 - flicker, tx + 50, ty);
+        c.moveTo(tx - flameW, ty);
+        c.quadraticCurveTo(tx - flameW * 0.4, ty - flameH * 0.5, tx, ty - flameH);
+        c.quadraticCurveTo(tx + flameW * 0.4, ty - flameH * 0.5, tx + flameW, ty);
         c.closePath();
         c.fill();
 
-        // Spawn embers
-        if (Math.random() < 0.6) {
+        // Delicate rising sparks
+        if (Math.random() < 0.25) {
           const p = grab(pl); if (p) {
-            p.on = true; p.x = tx + (Math.random() - 0.5) * 30;
-            p.y = ty - 100; p.vx = (Math.random() - 0.5) * 1;
-            p.vy = -2 - Math.random() * 3; p.life = 3; p.ml = 3;
-            p.sz = 1 + Math.random() * 2;
-            p.r = 255; p.g = 150 + Math.random() * 100; p.b = 50; p.a = 1;
+            p.on = true; p.x = tx + (Math.random() - 0.5) * 8;
+            p.y = ty - 5; p.vx = (Math.random() - 0.5) * 0.6;
+            p.vy = -1.2 - Math.random() * 1.8; p.life = 2.0; p.ml = 2.0;
+            p.sz = 0.8 + Math.random() * 1.2;
+            p.r = 255; p.g = 150 + Math.random() * 80; p.b = 40; p.a = 0.95;
             p.tp = 3; // ember
           }
         }
@@ -403,104 +390,116 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       }
     }
 
-    /* 🏛️ INDIA GATE (Procedural Architecture) */
+    /* 🏛️ INDIA GATE (Aspect-Ratio Locked & Warm Sandstone Styled) */
     function drawIndiaGate(t: number) {
-      const gateW = W * 0.7;
-      const gateH = H * 0.6;
-      const baseY = H * 0.85;
+      const sc = Math.min(W, H);
+      const gateH = sc * 0.68;
+      const gateW = gateH * 0.86;
+      const baseY = H * 0.82;
       const cx = W * 0.5;
 
       c.save();
       const reveal = clamp((t - 1) * 0.5, 0, 1);
-      c.globalAlpha = reveal;
+      c.globalAlpha = reveal * 0.9;
 
-      // Stone Material Gradients
-      const stoneBase = `rgb(${lerp(30, 190, t/15)}, ${lerp(30, 170, t/15)}, ${lerp(30, 130, t/15)})`;
-      const stoneDark = `rgb(${lerp(10, 80, t/15)}, ${lerp(10, 70, t/15)}, ${lerp(10, 50, t/15)})`;
-      const stoneHighlight = `rgb(${lerp(50, 220, t/15)}, ${lerp(50, 200, t/15)}, ${lerp(50, 160, t/15)})`;
+      // Real Sandstone Color Palette
+      const stoneBase = '#ca865a';
+      const stoneDark = '#79472e';
+      const stoneHighlight = '#eed0b7';
       
-      const drawArchitecturalBlock = (x: number, y: number, width: number, height: number, depth: number) => {
+      const drawBlock = (x: number, y: number, width: number, height: number, depthLayer = true) => {
         const grad = c.createLinearGradient(x, y, x, y + height);
         grad.addColorStop(0, stoneHighlight);
-        grad.addColorStop(0.5, stoneBase);
+        grad.addColorStop(0.3, stoneBase);
         grad.addColorStop(1, stoneDark);
         c.fillStyle = grad;
         c.fillRect(x, y, width, height);
-        c.fillStyle = stoneDark;
-        c.fillRect(x, y - depth, width, depth);
-        c.fillStyle = 'rgba(0,0,0,0.4)'; // Ambient Occlusion
-        c.fillRect(x, y, width, 4);
-        c.fillRect(x, y + height - 4, width, 4);
+
+        if (depthLayer) {
+          c.fillStyle = 'rgba(255,255,255,0.12)';
+          c.fillRect(x, y, width, 1.5); // Rim highlight
+          c.fillStyle = 'rgba(0,0,0,0.25)';
+          c.fillRect(x, y + height - 2, width, 2); // Shadow base
+        }
       };
 
-      drawArchitecturalBlock(cx - gateW/2 - 50, baseY - 40, gateW + 100, 40, 20);
-      drawArchitecturalBlock(cx - gateW/2, baseY - gateH, gateW, gateH, 30);
+      // 1. Base steps of the structure
+      drawBlock(cx - gateW * 0.54, baseY - 16, gateW * 1.08, 16);
+      drawBlock(cx - gateW * 0.5, baseY - 32, gateW, 16);
+
+      // 2. Main pillars (Left & Right flanking pillars)
+      const pillarW = gateW * 0.28;
+      const pillarH = gateH * 0.73;
+      const pillarY = baseY - 32 - pillarH;
       
-      // Central Arch Void
-      const archW = gateW * 0.3, archH = gateH * 0.7;
+      // Left side structural base
+      drawBlock(cx - gateW * 0.48, pillarY, pillarW, pillarH);
+      // Right side structural base
+      drawBlock(cx + gateW * 0.48 - pillarW, pillarY, pillarW, pillarH);
+
+      // Visual Fluting & Columns (Adding beautiful shadow offsets to remove flat looks)
+      c.fillStyle = 'rgba(0,0,0,0.15)';
+      c.fillRect(cx - gateW * 0.48 + pillarW - 8, pillarY, 8, pillarH);
+      c.fillRect(cx + gateW * 0.48 - pillarW, pillarY, 8, pillarH);
+
+      // 3. Central Archway Framework (Soft translucent edges instead of solid pitch black blocks)
+      const cArchW = gateW * 0.42;
+      const cArchH = gateH * 0.56;
+      const cArchY = baseY - 32 - cArchH;
+
+      c.save();
       c.beginPath();
-      c.moveTo(cx - archW/2, baseY);
-      c.lineTo(cx - archW/2, baseY - archH * 0.7);
-      c.quadraticCurveTo(cx, baseY - archH, cx + archW/2, baseY - archH * 0.7);
-      c.lineTo(cx + archW/2, baseY);
+      c.moveTo(cx - cArchW/2, baseY - 32);
+      c.lineTo(cx - cArchW/2, cArchY + cArchW/2);
+      c.arc(cx, cArchY + cArchW/2, cArchW/2, Math.PI, 0, false);
+      c.lineTo(cx + cArchW/2, baseY - 32);
       c.closePath();
-      const archGrad = c.createLinearGradient(cx, baseY - archH, cx, baseY);
-      archGrad.addColorStop(0, 'rgba(0,0,0,0.95)');
-      archGrad.addColorStop(1, 'rgba(20,10,5,0.8)');
-      c.fillStyle = archGrad;
+      
+      // Paint an atmospheric deep radial shadow outlining the arch beautifully
+      const archShadow = c.createRadialGradient(cx, cArchY + cArchW/2, cArchW * 0.2, cx, cArchY + cArchW/2, cArchW * 0.52);
+      archShadow.addColorStop(0, 'rgba(0,0,0,0)');
+      archShadow.addColorStop(1, 'rgba(0,0,0,0.55)');
+      c.fillStyle = archShadow;
       c.fill();
+      c.restore();
 
-      // Side Arches
-      [-1, 1].forEach(side => {
-        const sArchW = gateW * 0.15, sArchH = gateH * 0.45;
-        const sX = cx + side * gateW * 0.32;
-        c.beginPath();
-        c.moveTo(sX - sArchW/2, baseY);
-        c.lineTo(sX - sArchW/2, baseY - sArchH * 0.7);
-        c.quadraticCurveTo(sX, baseY - sArchH, sX + sArchW/2, baseY - sArchH * 0.7);
-        c.lineTo(sX + sArchW/2, baseY);
-        c.closePath();
-        c.fillStyle = 'rgba(0,0,0,0.9)';
-        c.fill();
-      });
+      // 4. Lintel & Arch Crown (Architectural Beams)
+      const lintelH = gateH * 0.12;
+      drawBlock(cx - gateW * 0.52, pillarY - lintelH, gateW * 1.04, lintelH);
 
-      // Fluted Columns
-      for(let i=0; i<8; i++) {
-        const colX = cx - gateW/2 + (gateW / 8) * i + 15;
-        const colGrad = c.createLinearGradient(colX, 0, colX + 20, 0);
-        colGrad.addColorStop(0, stoneDark);
-        colGrad.addColorStop(0.5, stoneHighlight);
-        colGrad.addColorStop(1, stoneDark);
-        c.fillStyle = colGrad;
-        c.fillRect(colX, baseY - gateH * 0.85, 20, gateH * 0.85);
-      }
-
-      // Top Canopy
-      const canopyY = baseY - gateH - 50;
-      drawArchitecturalBlock(cx - gateW * 0.15, canopyY, gateW * 0.3, 50, 40);
+      // 5. High attic/top structure layers (Elegantly textured blocks)
+      drawBlock(cx - gateW * 0.45, pillarY - lintelH - 24, gateW * 0.9, 24);
+      drawBlock(cx - gateW * 0.36, pillarY - lintelH - 46, gateW * 0.72, 22);
+      
+      // Dome Canopy atop the Gate
       c.beginPath();
-      c.moveTo(cx - gateW * 0.2, canopyY);
-      c.lineTo(cx, canopyY - 60);
-      c.lineTo(cx + gateW * 0.2, canopyY);
+      c.moveTo(cx - gateW * 0.18, pillarY - lintelH - 46);
+      c.quadraticCurveTo(cx, pillarY - lintelH - 72, cx + gateW * 0.18, pillarY - lintelH - 46);
       c.closePath();
       c.fillStyle = stoneDark;
       c.fill();
 
-      // Torch Bounce Light
-      if (t > 2) {
-        c.save();
-        c.globalCompositeOperation = 'overlay';
-        const torchLight = c.createRadialGradient(W/2, H*0.78, 0, W/2, H*0.78, gateH);
-        torchLight.addColorStop(0, 'rgba(255, 120, 30, 0.8)');
-        torchLight.addColorStop(1, 'rgba(255, 100, 0, 0)');
-        c.fillStyle = torchLight;
-        c.fillRect(cx - gateW/2, baseY - gateH, gateW, gateH);
-        c.restore();
-      }
+      // 6. Smaller side architectural arches
+      [-1, 1].forEach(side => {
+        const archX = cx + side * (gateW * 0.34);
+        const archW = gateW * 0.085;
+        const archH = gateH * 0.26;
+        const archY = baseY - 32 - archH;
+
+        c.beginPath();
+        c.moveTo(archX - archW/2, archY + archH);
+        c.lineTo(archX - archW/2, archY + archW/2);
+        c.arc(archX, archY + archW/2, archW/2, Math.PI, 0, false);
+        c.lineTo(archX + archW/2, archY + archH);
+        c.closePath();
+        c.fillStyle = 'rgba(0,0,0,0.45)';
+        c.fill();
+      });
+
       c.restore();
     }
 
-    /* 🏆 GOLDEN ARCH & SUPABASE IMAGE */
+    /* 🏆 GOLDEN ARCH & SUPABASE IMAGE (Beautifully scaled behind India Gate) */
     function drawArchAndImage(t: number) {
       if (t < 3.5) return;
       let fa = 0;
@@ -509,7 +508,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       else if (t >= 10.5 && t < 11.5) fa = 1 - eOC((t - 10.5) / 1.0);
       if (fa <= 0) return;
       
-      const cx = W / 2, cy = H / 2 - H * 0.02, sc = Math.min(W, H), dw = sc * 0.33, dh = dw * 1.28, br = dw * 0.055;
+      const cx = W / 2, cy = H / 2 - H * 0.03, sc = Math.min(W, H), dw = sc * 0.35, dh = dw * 1.25, br = dw * 0.055;
       
       const img = nationalImgRef.current;
       if (img && img.complete && img.naturalWidth > 0) {
@@ -518,7 +517,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         drawArchPath(c, cx - dw / 2, cy - dh / 2, dw, dh, br);
         c.clip();
         
-        // Object cover math
+        // Object cover calculations
         const imgR = img.naturalWidth / img.naturalHeight;
         const frmR = dw / dh;
         let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
@@ -811,11 +810,14 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.scale(finalZoom, finalZoom);
       c.translate(-W / 2, -H / 2);
 
+      // Dynamic Layering Sequence (Depth Order)
       drawAtmosphere(t, now / 1000);
+      drawSunAndRays(t, now / 1000); // ☀️ Sun rays in depth back
       dStars(t); 
-      drawIndiaGate(t);
-      drawTorch(t, now / 1000);
-      drawArchAndImage(t);       
+      drawArchAndImage(t);           // Waving Indian flag inside the window
+      drawIndiaGate(t);              // Elegant Sandstone Gate naturally frames the image
+      drawTorch(t, now / 1000);      // Realistically proportioned flickering flame
+      drawFog(t, now / 1000);        // Volumetric mist blending layers
       drawJets(t);                
       drawParticles();
       dChakraSpokes(t);
