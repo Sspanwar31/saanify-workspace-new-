@@ -7,9 +7,9 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
    ═══════════════════════════════════════════════════════════════ */
 interface Particle {
   x: number; y: number; z: number; vx: number; vy: number; vz: number;
-  life: number; maxLife: number; size: number;
-  color: string; type: 'dust' | 'ember' | 'smoke' | 'sparkle' | 'confetti';
-  rotation: number; vr: number; active: boolean;
+  life: number; ml: number; sz: number;
+  color: string; tp: number;
+  rot: number; rs: number; on: boolean;
   r: number; g: number; b: number; a: number;
 }
 
@@ -23,8 +23,7 @@ interface Dove {
 }
 
 const POOL_SIZE = 4200;
-const DUR = 15.0; // 🚀 Hollywood Opener: 15.0 Seconds
-const EP = 1e-4;
+const DUR = 15.0; // Hollywood Opener: 15.0 Seconds
 
 const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/india%20flag/india%20flag.png';
 
@@ -36,19 +35,9 @@ const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(
 const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
 const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t); // Expo Out
-const eOB = (t: number) => { // Back Out
-  const c1 = 1.70158, c3 = c1 + 1;
-  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-};
-
-// ACES Filmic Tone Mapping Approximation for Photorealistic Look
-const ACESFilmic = (x: number) => {
-  const a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
-  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0, 1);
-};
 
 /* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT: NationalCinematicIntro (Opener Edition)
+   MAIN COMPONENT: NationalCinematicIntro
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void; imageUrl?: string }
 
@@ -74,24 +63,24 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
   }, [imageUrl]);
 
   const mkPool = useCallback(() => {
-    const a: P[] = [];
+    const a: Particle[] = [];
     for (let i = 0; i < POOL_SIZE; i++) {
       a.push({
         x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
-        life: 0, maxLife: 1, size: 0, color: '',
-        rotation: 0, vr: 0, active: false,
-        r: 255, g: 153, b: 51, a: 0, on: false, tp: 0
-      } as any);
+        life: 0, ml: 1, sz: 0, color: '',
+        rot: 0, rs: 0, on: false, tp: 0,
+        r: 255, g: 153, b: 51, a: 0
+      });
     }
     return a;
   }, []);
 
-  const grab = useCallback((p: P[]) => {
+  const grab = useCallback((p: Particle[]) => {
     for (let i = 0; i < p.length; i++) if (!p[i].on) return p[i];
     return null;
   }, []);
 
-  /* ─── 🥁 PROCEDURAL MILITARY PERCUSSION + STRINGS SYNTH ─── */
+  /* ─── PROCEDURAL MILITARY PERCUSSION + STRINGS SYNTH ─── */
   const triggerMilitaryAudio = useCallback(() => {
     try {
       if (!audioCtxRef.current) return;
@@ -176,9 +165,9 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
     
     // Initialize Jets & Doves
     const jets: Jet[] = [
-      { x: -W * 0.3, y: H * 0.15, scale: 1, smokeColor: '#FF9933', vx: 12, vy: 4, active: true, z: 0.8 },
-      { x: -W * 0.35, y: H * 0.20, scale: 0.9, smokeColor: '#FFFFFF', vx: 12, vy: 4, active: true, z: 0.9 },
-      { x: -W * 0.4, y: H * 0.25, scale: 0.8, smokeColor: '#138808', vx: 12, vy: 4, active: true, z: 1.0 }
+      { x: -W * 0.3, y: H * 0.15, scale: 1, smokeColor: '#FF9933', vx: 12, vy: 4, active: true },
+      { x: -W * 0.35, y: H * 0.20, scale: 0.9, smokeColor: '#FFFFFF', vx: 12, vy: 4, active: true },
+      { x: -W * 0.4, y: H * 0.25, scale: 0.8, smokeColor: '#138808', vx: 12, vy: 4, active: true }
     ];
     const doves: Dove[] = Array.from({ length: 8 }, (_, i) => ({
       x: W * (0.1 + i * 0.12),
@@ -246,6 +235,26 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         }
         c.restore();
       }
+    }
+
+    /* ⭐ STAR RENDERING (dStars implementation) */
+    function dStars(t: number) {
+      if (t > 7) return;
+      const alpha = clamp(1 - t / 7, 0, 1);
+      c.save();
+      c.globalAlpha = alpha;
+      for (let i = 0; i < starI.length; i++) {
+        const idx = starI[i];
+        const p = pl[idx];
+        if (p && p.on) {
+          const twinkle = Math.sin(t * 3.5 + i) * 0.4 + 0.6;
+          c.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.a * twinkle})`;
+          c.beginPath();
+          c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
+          c.fill();
+        }
+      }
+      c.restore();
     }
 
     /* ☀️ SUN & VOLUMETRIC GOD RAYS (Behind India Gate) */
@@ -491,9 +500,9 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
     }
 
-    /* 🏆 GOLDEN ARCH & SUPABASE IMAGE (Photorealistic flag replaces Maa Durga) */
+    /* 🏆 GOLDEN ARCH & SUPABASE IMAGE */
     function drawArchAndImage(t: number) {
-      if (t < 3.5) return; // 🌟 Safety check prevents premature flashing
+      if (t < 3.5) return;
       let fa = 0;
       if (t >= 3.5 && t < 5.0) fa = eIO((t - 3.5) / 1.5);
       else if (t >= 5.0 && t < 10.5) fa = 1;
@@ -528,7 +537,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       }
     }
 
-    /* ✈️ JETS & VOLUMETRIC SMOKE (Draws over everything for depth!) */
+    /* ✈️ JETS & VOLUMETRIC SMOKE */
     function drawJets(t: number) {
       if (t < 2.0 || t > 7.5) return;
       const activeJets = jets.filter(j => j.x < W + 500);
@@ -549,7 +558,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
           }
         }
 
-        // Sukhoi Silhouette
+        // Silhouette
         c.save();
         c.translate(jet.x, jet.y);
         c.scale(jet.scale, jet.scale);
@@ -646,12 +655,12 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       }
     }
 
-    /* 🔆 ASHOKA SPOKE GLOW BEAMS (7.0s - 11.5s) */
+    /* 🔆 ASHOKA SPOKE GLOW BEAMS */
     function dChakraSpokes(t: number) {
       if (t < 7.0 || t > 11.5) return;
       let alpha = t < 8.0 ? eOC((t - 7.0) / 1.0) : t < 10.0 ? 1 : 1 - eOC((t - 10.0) / 1.5);
       if (alpha <= 0) return;
-      const cx = W / 2, cy = H / 2, sc = Math.min(W, H), ir = sc * 0.12, or = Math.max(W, H) * 0.9, spokes = 24;
+      const cx = W / 2, cy = H / 2, sc = Math.min(W, H), or = Math.max(W, H) * 0.9, spokes = 24;
       c.save(); c.globalAlpha = alpha * 0.12; c.globalCompositeOperation = 'lighter';
       for (let i = 0; i < spokes; i++) {
         const ang = (i / spokes) * Math.PI * 2 + t * 0.08;
@@ -664,7 +673,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
 
     /* 📜 TYPOGRAPHY */
     function drawTypography(t: number, elapsed: number) {
-      if (t < 11.5) return; // 🌟 Timed perfectly with your 11.5s Handover
+      if (t < 11.5) return;
       const textAlpha = clamp((t - 11.5) * 1.5, 0, 1);
       const titleY = lerp(H * 0.65, H * 0.4, eOE((t - 11.5) * 0.5));
       
@@ -697,7 +706,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
     }
 
-    /* 🕊️🕊️ INDEPENDENT FLYING DOVES (13s - 15s) */
+    /* 🕊️🕊️ FLYING DOVES */
     function drawDoves(t: number, elapsed: number) {
       if (t < 12.5) return;
       const phaseAlpha = clamp((t - 12.5) / 1.5, 0, 1);
@@ -711,7 +720,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       doves.forEach(d => {
         d.x += d.vx;
         d.y += d.vy;
-        d.wing += 0.22; // Wing flaps based on frame ticks
+        d.wing += 0.22;
 
         c.save();
         c.translate(d.x, d.y);
@@ -744,7 +753,6 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
 
     /* 🎞️ POST PROCESSING (Color Grade & Vignette) */
     function drawPostFX() {
-      // ACES Orange & Teal
       c.save();
       c.globalCompositeOperation = 'soft-light';
       const gradeGrad = c.createLinearGradient(0, 0, W, H);
@@ -755,7 +763,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
 
       // Vignette
-      const vignette = c.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.9); // 🚀 FIXED: capital W used instead of small w
+      const vignette = c.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.9);
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
       vignette.addColorStop(1, 'rgba(0,0,0,0.8)');
       c.fillStyle = vignette;
@@ -804,15 +812,15 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.translate(-W / 2, -H / 2);
 
       drawAtmosphere(t, now / 1000);
-      dStars(t); // 🚀 FIXED: dStars called instead of drawStars
+      dStars(t); 
       drawIndiaGate(t);
       drawTorch(t, now / 1000);
-      drawArchAndImage(t);       // Photorealistic image clipped inside Golden Arch
-      drawJets(t);                // Su-30MKI flypast over the frame
+      drawArchAndImage(t);       
+      drawJets(t);                
       drawParticles();
       dChakraSpokes(t);
       drawTypography(t, now / 1000);
-      drawDoves(t, now / 1000);   // 🚀 NAYA: Independence / Peace flying white doves rendered organically
+      drawDoves(t, now / 1000);   
 
       c.restore();
 
