@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES & INTERFACES (Physically Based Particles & Entities)
@@ -23,9 +23,7 @@ interface Dove {
 }
 
 const POOL_SIZE = 4200;
-const DUR = 15.0; // Hollywood Opener: 15.0 Seconds
-
-const DEFAULT_IMG_URL = 'https://cgntcihiwlzwkurkkarr.supabase.co/storage/v1/object/public/broadcasts/india%20flag/india%20flag.png';
+const DUR = 15.0; // Cinematic Duration: 15.0 Seconds
 
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS & CINEMATIC MATH
@@ -39,28 +37,17 @@ const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t); // Expo Out
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT: NationalCinematicIntro
    ═══════════════════════════════════════════════════════════════ */
-interface Props { onComplete?: () => void; imageUrl?: string }
+interface Props { onComplete?: () => void }
 
-export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) {
+export default function NationalCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const nationalImgRef = useRef<HTMLImageElement | null>(null);
-  const [imgReady, setImgReady] = useState(false);
   
   const raf = useRef<number>(0);
   const t0 = useRef<number>(0);
   const done = useRef<boolean>(false);
   const cbR = useRef(onComplete);
   cbR.current = onComplete;
-
-  useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => { nationalImgRef.current = img; setImgReady(true); };
-    img.onerror = () => { setImgReady(true); };
-    img.src = imageUrl || DEFAULT_IMG_URL;
-    return () => { img.onload = null; img.onerror = null; };
-  }, [imageUrl]);
 
   const mkPool = useCallback(() => {
     const a: Particle[] = [];
@@ -132,7 +119,6 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
      CANVAS LIFE CYCLE & CINEMATIC DRAWERS
      ═══════════════════════════════════════════════════════════ */
   useEffect(() => {
-    if (!imgReady) return;
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
 
@@ -163,12 +149,16 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
 
     const pl = mkPool();
     
-    // Initialize Jets & Doves
+    // Initialize Crossway Jets & Doves
     const jets: Jet[] = [
-      { x: -W * 0.3, y: H * 0.15, scale: 1, smokeColor: '#FF9933', vx: 12, vy: 4, active: true },
-      { x: -W * 0.35, y: H * 0.20, scale: 0.9, smokeColor: '#FFFFFF', vx: 12, vy: 4, active: true },
-      { x: -W * 0.4, y: H * 0.25, scale: 0.8, smokeColor: '#138808', vx: 12, vy: 4, active: true }
+      // Left-to-Right Jet (Saffron smoke)
+      { x: -W * 0.25, y: H * 0.15, scale: 0.95, smokeColor: '#FF9933', vx: 6.2, vy: 1.1, active: true },
+      // Right-to-Left Jet (White smoke)
+      { x: W + W * 0.25, y: H * 0.19, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 0.9, active: true },
+      // Left-to-Right Jet (Green smoke)
+      { x: -W * 0.40, y: H * 0.23, scale: 0.85, smokeColor: '#138808', vx: 6.2, vy: 0.7, active: true }
     ];
+    
     const doves: Dove[] = Array.from({ length: 8 }, (_, i) => ({
       x: W * (0.1 + i * 0.12),
       y: H * (0.7 + Math.random() * 0.2),
@@ -188,21 +178,10 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       starI.push(i);
     }
 
-    const drawArchPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
-      const rT = w / 2;
-      ctx.beginPath();
-      ctx.moveTo(x + r, y + h);
-      ctx.lineTo(x + w - r, y + h);
-      ctx.arcTo(x + w, y + h, x + w, y + h - r, r);
-      ctx.lineTo(x + w, y + rT);
-      ctx.arc(x + rT, y + rT, rT, 0, Math.PI, true);
-      ctx.lineTo(x, y + h - r);
-      ctx.arcTo(x, y + h, x + r, y + h, r);
-      ctx.closePath();
-    };
-
     /* 🌌 ATMOSPHERE & SKY (Night -> Dawn -> Saffron Sunrise) */
-    function drawAtmosphere(t: number, elapsed: number) {
+    function drawAtmosphere(t: number, elapsed: number, sceneAlpha: number) {
+      c.save();
+      c.globalAlpha = sceneAlpha;
       const phase1 = clamp(t / 6, 0, 1); 
       const phase2 = clamp((t - 4) / 6, 0, 1);
       const phase3 = clamp((t - 8) / 7, 0, 1);
@@ -235,12 +214,13 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         }
         c.restore();
       }
+      c.restore();
     }
 
-    /* ⭐ STAR RENDERING (dStars implementation) */
-    function dStars(t: number) {
+    /* ⭐ STAR RENDERING */
+    function dStars(t: number, sceneAlpha: number) {
       if (t > 7) return;
-      const alpha = clamp(1 - t / 7, 0, 1);
+      const alpha = clamp(1 - t / 7, 0, 1) * sceneAlpha;
       c.save();
       c.globalAlpha = alpha;
       for (let i = 0; i < starI.length; i++) {
@@ -258,28 +238,29 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* ☀️ SUN & VOLUMETRIC GOD RAYS */
-    function drawSunAndRays(t: number, elapsed: number) {
+    function drawSunAndRays(t: number, elapsed: number, sceneAlpha: number) {
       if (t < 4) return;
       const sunY = lerp(H * 1.1, H * 0.38, eOE((t - 4) / 5));
       const sunX = W * 0.5;
-      const intensity = clamp((t - 4) * 0.5, 0, 1);
+      const intensity = clamp((t - 4) * 0.5, 0, 1) * sceneAlpha;
 
       c.save();
+      c.globalAlpha = intensity;
       c.globalCompositeOperation = 'screen';
       
       // Volumetric Sun Glow
       const bloomGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, H * 0.7);
-      bloomGrad.addColorStop(0, `rgba(255, 240, 200, ${0.8 * intensity})`);
-      bloomGrad.addColorStop(0.2, `rgba(255, 180, 80, ${0.5 * intensity})`);
-      bloomGrad.addColorStop(0.5, `rgba(255, 100, 30, ${0.15 * intensity})`);
+      bloomGrad.addColorStop(0, 'rgba(255, 240, 200, 0.8)');
+      bloomGrad.addColorStop(0.2, 'rgba(255, 180, 80, 0.5)');
+      bloomGrad.addColorStop(0.5, 'rgba(255, 100, 30, 0.15)');
       bloomGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       c.fillStyle = bloomGrad;
       c.fillRect(0, 0, W, H);
 
       // Sun Core
       const coreGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, 90);
-      coreGrad.addColorStop(0, `rgba(255, 255, 255, ${intensity})`);
-      coreGrad.addColorStop(0.4, `rgba(255, 245, 200, ${0.8 * intensity})`);
+      coreGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      coreGrad.addColorStop(0.4, 'rgba(255, 245, 200, 0.8)');
       coreGrad.addColorStop(1, 'rgba(255, 180, 80, 0)');
       c.fillStyle = coreGrad;
       c.fillRect(sunX - 90, sunY - 90, 180, 180);
@@ -314,8 +295,9 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
     }
 
     /* 💨 VOLUMETRIC FOG & ATMOSPHERIC SCATTERING */
-    function drawFog(t: number, elapsed: number) {
+    function drawFog(t: number, elapsed: number, sceneAlpha: number) {
       c.save();
+      c.globalAlpha = sceneAlpha;
       c.globalCompositeOperation = 'screen';
       const offset = elapsed * 8;
       const hazeGrad = c.createLinearGradient(0, H * 0.5, 0, H);
@@ -337,29 +319,29 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
     }
 
-    /* 🔥 AMAR JAWAN JYOTI (Flickering Flame Base) */
-    function drawTorch(t: number, elapsed: number) {
+    /* 🔥 AMAR JAWAN JYOTI (Torch Flame) */
+    function drawTorch(t: number, elapsed: number, sceneAlpha: number) {
       const tx = W * 0.5;
-      const ty = H * 0.795; // Base level of the central arch
+      const ty = H * 0.795;
       
       if (t > 1.5) {
-        const fireAlpha = clamp((t - 1.5) * 2, 0, 1);
+        const fireAlpha = clamp((t - 1.5) * 2, 0, 1) * sceneAlpha;
         c.save();
         c.globalAlpha = fireAlpha;
         c.globalCompositeOperation = 'lighter';
         
-        // Soft ambient warm glow behind torch
-        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 120);
+        // Ambient glow
+        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 100);
         glowGrad.addColorStop(0, 'rgba(255, 130, 40, 0.85)');
         glowGrad.addColorStop(0.4, 'rgba(255, 70, 10, 0.35)');
         glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         c.fillStyle = glowGrad;
-        c.fillRect(tx - 120, ty - 120, 240, 240);
+        c.fillRect(tx - 100, ty - 100, 200, 200);
 
-        // Realistic flickering smaller flame core
+        // Flame core
         const flicker = Math.sin(elapsed * 28) * 3;
-        const flameH = 40 + flicker;
-        const flameW = 10;
+        const flameH = 35 + flicker;
+        const flameW = 8;
 
         const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
         fireGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
@@ -375,34 +357,34 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         c.closePath();
         c.fill();
 
-        // Delicate rising sparks
-        if (Math.random() < 0.25) {
+        // Rising embers
+        if (Math.random() < 0.2) {
           const p = grab(pl); if (p) {
-            p.on = true; p.x = tx + (Math.random() - 0.5) * 8;
-            p.y = ty - 5; p.vx = (Math.random() - 0.5) * 0.6;
-            p.vy = -1.2 - Math.random() * 1.8; p.life = 2.0; p.ml = 2.0;
-            p.sz = 0.8 + Math.random() * 1.2;
+            p.on = true; p.x = tx + (Math.random() - 0.5) * 6;
+            p.y = ty - 5; p.vx = (Math.random() - 0.5) * 0.5;
+            p.vy = -1.0 - Math.random() * 1.5; p.life = 1.8; p.ml = 1.8;
+            p.sz = 0.8 + Math.random() * 1.0;
             p.r = 255; p.g = 150 + Math.random() * 80; p.b = 40; p.a = 0.95;
-            p.tp = 3; // ember
+            p.tp = 3; 
           }
         }
         c.restore();
       }
     }
 
-    /* 🏛️ INDIA GATE (Aspect-Ratio Locked & Warm Sandstone Styled) */
-    function drawIndiaGate(t: number) {
+    /* 🏛️ INDIA GATE (Proportional Sandstone Structure) */
+    function drawIndiaGate(t: number, sceneAlpha: number) {
       const sc = Math.min(W, H);
-      const gateH = sc * 0.68;
-      const gateW = gateH * 0.86;
+      const gateH = sc * 0.66;
+      const gateW = gateH * 0.85;
       const baseY = H * 0.82;
       const cx = W * 0.5;
 
       c.save();
       const reveal = clamp((t - 1) * 0.5, 0, 1);
-      c.globalAlpha = reveal * 0.9;
+      c.globalAlpha = reveal * sceneAlpha;
 
-      // Real Sandstone Color Palette
+      // Realistic Sandstone Palette
       const stoneBase = '#ca865a';
       const stoneDark = '#79472e';
       const stoneHighlight = '#eed0b7';
@@ -417,32 +399,30 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
 
         if (depthLayer) {
           c.fillStyle = 'rgba(255,255,255,0.12)';
-          c.fillRect(x, y, width, 1.5); // Rim highlight
+          c.fillRect(x, y, width, 1.5); 
           c.fillStyle = 'rgba(0,0,0,0.25)';
-          c.fillRect(x, y + height - 2, width, 2); // Shadow base
+          c.fillRect(x, y + height - 2, width, 2); 
         }
       };
 
-      // 1. Base steps of the structure
+      // Base layers
       drawBlock(cx - gateW * 0.54, baseY - 16, gateW * 1.08, 16);
       drawBlock(cx - gateW * 0.5, baseY - 32, gateW, 16);
 
-      // 2. Main pillars (Left & Right flanking pillars)
+      // Flanking main pillars
       const pillarW = gateW * 0.28;
       const pillarH = gateH * 0.73;
       const pillarY = baseY - 32 - pillarH;
       
-      // Left side structural base
       drawBlock(cx - gateW * 0.48, pillarY, pillarW, pillarH);
-      // Right side structural base
       drawBlock(cx + gateW * 0.48 - pillarW, pillarY, pillarW, pillarH);
 
-      // Visual Fluting & Columns (Adding beautiful shadow offsets to remove flat looks)
+      // Inner structural shadows
       c.fillStyle = 'rgba(0,0,0,0.15)';
       c.fillRect(cx - gateW * 0.48 + pillarW - 8, pillarY, 8, pillarH);
       c.fillRect(cx + gateW * 0.48 - pillarW, pillarY, 8, pillarH);
 
-      // 3. Central Archway Framework (Soft translucent edges instead of solid pitch black blocks)
+      // Main Central Arch Shadow (soft edges)
       const cArchW = gateW * 0.42;
       const cArchH = gateH * 0.56;
       const cArchY = baseY - 32 - cArchH;
@@ -455,23 +435,20 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.lineTo(cx + cArchW/2, baseY - 32);
       c.closePath();
       
-      // Paint an atmospheric deep radial shadow outlining the arch beautifully
-      const archShadow = c.createRadialGradient(cx, cArchY + cArchW/2, cArchW * 0.2, cx, cArchY + cArchW/2, cArchW * 0.52);
+      const archShadow = c.createRadialGradient(cx, cArchY + cArchW/2, cArchW * 0.1, cx, cArchY + cArchW/2, cArchW * 0.52);
       archShadow.addColorStop(0, 'rgba(0,0,0,0)');
-      archShadow.addColorStop(1, 'rgba(0,0,0,0.55)');
+      archShadow.addColorStop(1, 'rgba(0,0,0,0.6)');
       c.fillStyle = archShadow;
       c.fill();
       c.restore();
 
-      // 4. Lintel & Arch Crown (Architectural Beams)
+      // Top Beam & Cornice Layers
       const lintelH = gateH * 0.12;
       drawBlock(cx - gateW * 0.52, pillarY - lintelH, gateW * 1.04, lintelH);
-
-      // 5. High attic/top structure layers (Elegantly textured blocks)
       drawBlock(cx - gateW * 0.45, pillarY - lintelH - 24, gateW * 0.9, 24);
       drawBlock(cx - gateW * 0.36, pillarY - lintelH - 46, gateW * 0.72, 22);
       
-      // Dome Canopy atop the Gate
+      // Top Dome
       c.beginPath();
       c.moveTo(cx - gateW * 0.18, pillarY - lintelH - 46);
       c.quadraticCurveTo(cx, pillarY - lintelH - 72, cx + gateW * 0.18, pillarY - lintelH - 46);
@@ -479,7 +456,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fillStyle = stoneDark;
       c.fill();
 
-      // 6. Smaller side architectural arches
+      // Side arches
       [-1, 1].forEach(side => {
         const archX = cx + side * (gateW * 0.34);
         const archW = gateW * 0.085;
@@ -492,119 +469,101 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         c.arc(archX, archY + archW/2, archW/2, Math.PI, 0, false);
         c.lineTo(archX + archW/2, archY + archH);
         c.closePath();
-        c.fillStyle = 'rgba(0,0,0,0.45)';
+        c.fillStyle = 'rgba(0,0,0,0.5)';
         c.fill();
       });
 
       c.restore();
     }
 
-    /* 🏆 GOLDEN ARCH & SUPABASE IMAGE (Beautifully scaled behind India Gate) */
-    function drawArchAndImage(t: number) {
-      if (t < 3.5) return;
-      let fa = 0;
-      if (t >= 3.5 && t < 5.0) fa = eIO((t - 3.5) / 1.5);
-      else if (t >= 5.0 && t < 10.5) fa = 1;
-      else if (t >= 10.5 && t < 11.5) fa = 1 - eOC((t - 10.5) / 1.0);
-      if (fa <= 0) return;
-      
-      const cx = W / 2, cy = H / 2 - H * 0.03, sc = Math.min(W, H), dw = sc * 0.35, dh = dw * 1.25, br = dw * 0.055;
-      
-      const img = nationalImgRef.current;
-      if (img && img.complete && img.naturalWidth > 0) {
-        c.save();
-        c.globalAlpha = fa;
-        drawArchPath(c, cx - dw / 2, cy - dh / 2, dw, dh, br);
-        c.clip();
-        
-        // Object cover calculations
-        const imgR = img.naturalWidth / img.naturalHeight;
-        const frmR = dw / dh;
-        let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
-        if (imgR > frmR) { sw = img.naturalHeight * frmR; sx = (img.naturalWidth - sw) / 2; }
-        else { sh = img.naturalWidth / frmR; sy = (img.naturalHeight - sh) / 2; }
-        c.drawImage(img, sx, sy, sw, sh, cx - dw / 2, cy - dh / 2, dw, dh);
-        
-        // Premium Gold Glowing Border
-        c.strokeStyle = `rgba(255, 215, 0, ${fa * 0.8})`;
-        c.lineWidth = 4;
-        c.shadowColor = `rgba(255, 215, 0, ${fa})`;
-        c.shadowBlur = 20;
-        drawArchPath(c, cx - dw / 2, cy - dh / 2, dw, dh, br);
-        c.stroke();
-        c.restore();
-      }
-    }
-
-    /* ✈️ JETS & VOLUMETRIC SMOKE */
-    function drawJets(t: number) {
-      if (t < 2.0 || t > 7.5) return;
-      const activeJets = jets.filter(j => j.x < W + 500);
-      activeJets.forEach(jet => {
+    /* ✈️ CROSSING JETS & VOLUMETRIC SMOKE EFFECT */
+    function drawJets(t: number, sceneAlpha: number) {
+      if (t < 2.0 || t > 8.5) return;
+      c.save();
+      c.globalAlpha = sceneAlpha;
+      jets.forEach(jet => {
         jet.x += jet.vx; jet.y += jet.vy;
 
-        // Spawn Smoke
-        if (Math.random() < 0.8) {
+        // Smoke Emitters (slower puff generation)
+        if (Math.random() < 0.65) {
           const p = grab(pl); if (p) {
-            p.on = true; p.x = jet.x - 30 * jet.scale; p.y = jet.y + 5 * jet.scale;
-            p.vx = -2 + Math.random(); p.vy = (Math.random() - 0.5) * 1;
-            p.life = 3; p.ml = 3; p.sz = 20 * jet.scale + Math.random() * 20;
+            p.on = true; 
+            p.x = jet.x - (jet.vx > 0 ? 30 : -30) * jet.scale; 
+            p.y = jet.y + 2 * jet.scale;
+            p.vx = -jet.vx * 0.15 + (Math.random() - 0.5) * 0.4; 
+            p.vy = (Math.random() - 0.5) * 0.4;
+            p.life = 3.8; p.ml = 3.8; p.sz = 16 * jet.scale + Math.random() * 12;
             const hex = jet.smokeColor.replace('#', '');
             p.r = parseInt(hex.substring(0, 2), 16);
             p.g = parseInt(hex.substring(2, 4), 16);
             p.b = parseInt(hex.substring(4, 6), 16);
-            p.a = 0.6; p.tp = 4; // smoke
+            p.a = 0.55; p.tp = 4; // Smoke
           }
         }
 
-        // Silhouette
+        // Draw Fighter jet silhouette facing its direction vector
         c.save();
         c.translate(jet.x, jet.y);
+        const angle = Math.atan2(jet.vy, jet.vx);
+        c.rotate(angle);
         c.scale(jet.scale, jet.scale);
-        const burnerGrad = c.createRadialGradient(-30, 0, 0, -30, 0, 40);
+
+        // Afterburner glow
+        const burnerGrad = c.createRadialGradient(-30, 0, 0, -30, 0, 35);
         burnerGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        burnerGrad.addColorStop(0.2, 'rgba(100, 200, 255, 0.8)');
-        burnerGrad.addColorStop(0.6, 'rgba(255, 150, 50, 0.6)');
+        burnerGrad.addColorStop(0.3, 'rgba(255, 160, 50, 0.85)');
         burnerGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
         c.fillStyle = burnerGrad;
-        c.fillRect(-70, -20, 50, 40);
+        c.fillRect(-60, -15, 40, 30);
 
-        c.fillStyle = '#0a0a0a';
+        // Jet Body Frame
+        c.fillStyle = '#151515';
         c.beginPath();
-        c.moveTo(40, 0); c.quadraticCurveTo(20, -5, -10, -6); c.lineTo(-30, -4);
-        c.lineTo(-30, 4); c.lineTo(-10, 6); c.quadraticCurveTo(20, 5, 40, 0); c.fill();
+        c.moveTo(35, 0); 
+        c.quadraticCurveTo(15, -4, -10, -5); 
+        c.lineTo(-25, -3);
+        c.lineTo(-25, 3); 
+        c.lineTo(-10, 5); 
+        c.quadraticCurveTo(15, 4, 35, 0); 
+        c.fill();
 
-        c.fillStyle = 'rgba(20, 40, 80, 0.8)';
-        c.beginPath(); c.ellipse(15, -1, 12, 4, 0, 0, Math.PI * 2); c.fill();
+        // Cockpit glass
+        c.fillStyle = 'rgba(100, 180, 255, 0.75)';
+        c.beginPath(); c.ellipse(12, -1, 10, 3.2, 0, 0, Math.PI * 2); c.fill();
 
-        c.fillStyle = '#111';
-        c.beginPath(); c.moveTo(5, 0); c.lineTo(-25, -35); c.lineTo(-35, -35); c.lineTo(-15, 0); c.closePath(); c.fill();
-        c.beginPath(); c.moveTo(5, 0); c.lineTo(-25, 35); c.lineTo(-35, 35); c.lineTo(-15, 0); c.closePath(); c.fill();
-        c.beginPath(); c.moveTo(-20, -2); c.lineTo(-35, -20); c.lineTo(-40, -20); c.lineTo(-25, -2); c.closePath(); c.fill();
+        // Main Wings
+        c.fillStyle = '#1e1e1e';
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(-18, -28); c.lineTo(-25, -28); c.lineTo(-10, 0); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(-18, 28); c.lineTo(-25, 28); c.lineTo(-10, 0); c.closePath(); c.fill();
         c.restore();
       });
+      c.restore();
     }
 
-    /* 🎊 PARTICLES LOGIC */
+    /* 🎊 CELEBRATORY TRICOLOR PETALS (Falling particles) */
     function spawnDust(t: number, elapsed: number) {
-      if (t > 1 && Math.random() < 0.3) {
+      if (t > 1 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = Math.random() * H;
-          p.vx = Math.sin(elapsed + Math.random()*10) * 0.3; p.vy = -0.2 - Math.random() * 0.3;
-          p.life = 5; p.ml = 5; p.sz = 1 + Math.random() * 2;
-          p.r = 255; p.g = 200 + Math.random() * 55; p.b = 150; p.a = 0.4; p.tp = 1; // dust
+          p.vx = Math.sin(elapsed + Math.random()*10) * 0.25; p.vy = -0.2 - Math.random() * 0.25;
+          p.life = 5; p.ml = 5; p.sz = 1 + Math.random() * 1.5;
+          p.r = 255; p.g = 200 + Math.random() * 55; p.b = 150; p.a = 0.35; p.tp = 1; // dust
         }
       }
-      if (t > 5.0 && Math.random() < 0.4) {
+      // Marigold flower petals and celebratory papers falling elegantly
+      if (t > 2.5 && Math.random() < 0.35) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = -10;
-          p.vx = (Math.random() - 0.5) * 3; p.vy = 1 + Math.random() * 3;
-          p.life = 6; p.ml = 6; p.sz = 6 + Math.random() * 8;
+          p.vx = (Math.random() - 0.5) * 2; p.vy = 0.8 + Math.random() * 1.5;
+          p.life = 7; p.ml = 7; p.sz = 5 + Math.random() * 5;
+          
+          // Tricolor Indian Festive Palette (Saffron, White, Green)
           const ct = Math.random();
-          if (ct < 0.33) { p.r = 255; p.g = 153; p.b = 51; }
-          else if (ct < 0.66) { p.r = 255; p.g = 255; p.b = 255; }
-          else { p.r = 18; p.g = 136; p.b = 7; }
-          p.a = 1; p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.2; p.tp = 2; // confetti
+          if (ct < 0.34) { p.r = 255; p.g = 153; p.b = 51; }      // Saffron
+          else if (ct < 0.67) { p.r = 255; p.g = 255; p.b = 255; } // Pure White
+          else { p.r = 19; p.g = 136; p.b = 8; }                  // India Green
+          
+          p.a = 0.9; p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.1; p.tp = 2; // Petals
         }
       }
     }
@@ -614,9 +573,9 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         const p = pl[i]; if (!p.on) continue;
         p.life -= dt; p.x += p.vx; p.y += p.vy;
         
-        if (p.tp === 4) { p.sz += 0.5; p.vx *= 0.98; p.vy *= 0.98; p.life -= 0.015; } 
-        else if (p.tp === 2) { p.rot += p.rs; p.vy += 0.05; p.vx += Math.sin(elapsed + p.y * 0.01) * 0.1; p.life -= 0.012; } 
-        else if (p.tp === 3) { p.vy -= 0.02; p.vx += (Math.random() - 0.5) * 0.2; p.life -= 0.02; } 
+        if (p.tp === 4) { p.sz += 0.45; p.vx *= 0.985; p.vy *= 0.985; p.life -= 0.012; } 
+        else if (p.tp === 2) { p.rot += p.rs; p.vy += 0.03; p.vx += Math.sin(elapsed + p.y * 0.01) * 0.12; p.life -= 0.008; } 
+        else if (p.tp === 3) { p.vy -= 0.015; p.vx += (Math.random() - 0.5) * 0.18; p.life -= 0.015; } 
         else { p.life -= 0.005; }
 
         if (p.life <= 0 || p.x < -100 || p.x > W + 100 || p.y > H + 100) p.on = false;
@@ -643,21 +602,30 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
           c.restore();
-        } else if (p.tp === 2) { // confetti
+        } else if (p.tp === 2) { // Rounded marigold / tricolor petals
           c.save();
           c.globalAlpha = alpha;
-          c.translate(p.x, p.y); c.rotate(p.rot);
+          c.translate(p.x, p.y); 
+          c.rotate(p.rot);
           c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
-          c.fillRect(-p.sz/2, -p.sz/4, p.sz, p.sz/2);
+          
+          c.beginPath();
+          c.ellipse(0, 0, p.sz, p.sz * 0.55, 0, 0, Math.PI * 2);
+          c.fill();
+          
+          // Delicate petal boundary
+          c.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+          c.lineWidth = 1;
+          c.stroke();
           c.restore();
         }
       }
     }
 
     /* 🔆 ASHOKA SPOKE GLOW BEAMS */
-    function dChakraSpokes(t: number) {
+    function dChakraSpokes(t: number, sceneAlpha: number) {
       if (t < 7.0 || t > 11.5) return;
-      let alpha = t < 8.0 ? eOC((t - 7.0) / 1.0) : t < 10.0 ? 1 : 1 - eOC((t - 10.0) / 1.5);
+      let alpha = (t < 8.0 ? eOC((t - 7.0) / 1.0) : t < 10.0 ? 1 : 1 - eOC((t - 10.0) / 1.5)) * sceneAlpha;
       if (alpha <= 0) return;
       const cx = W / 2, cy = H / 2, sc = Math.min(W, H), or = Math.max(W, H) * 0.9, spokes = 24;
       c.save(); c.globalAlpha = alpha * 0.12; c.globalCompositeOperation = 'lighter';
@@ -670,21 +638,23 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.restore();
     }
 
-    /* 📜 TYPOGRAPHY */
+    /* 📜 TYPOGRAPHY (Cleaned and scaled beautifully) */
     function drawTypography(t: number, elapsed: number) {
       if (t < 11.5) return;
       const textAlpha = clamp((t - 11.5) * 1.5, 0, 1);
-      const titleY = lerp(H * 0.65, H * 0.4, eOE((t - 11.5) * 0.5));
+      const titleY = lerp(H * 0.60, H * 0.44, eOE((t - 11.5) * 0.5));
       
       c.save();
       c.globalAlpha = textAlpha;
       c.textAlign = 'center';
-      const fontSize = Math.min(W * 0.09, 90);
+      
+      // Aspect ratio secure smaller font sizes
+      const fontSize = Math.min(W * 0.065, 54);
       c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
       
       // Shadow
-      c.fillStyle = 'rgba(0,0,0,0.8)';
-      c.fillText("HAPPY REPUBLIC DAY", W/2 + 2, titleY + 2);
+      c.fillStyle = 'rgba(0,0,0,0.9)';
+      c.fillText("HAPPY REPUBLIC DAY", W/2 + 1.5, titleY + 1.5);
       
       // Gold Foil Gradient
       const grad = c.createLinearGradient(0, titleY - fontSize/2, 0, titleY + fontSize/2);
@@ -694,27 +664,27 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fillText("HAPPY REPUBLIC DAY", W/2, titleY);
 
       // Slogans under main title
-      if (t > 12.4) {
-        const ss = Math.min(W * 0.022, H * 0.026, 18);
+      if (t > 12.3) {
+        const ss = Math.min(W * 0.020, H * 0.024, 16);
         c.font = `400 ${ss}px 'Georgia', serif`;
-        c.fillStyle = 'rgba(0,0,0,0.7)';
-        c.fillText('सत्यमेव जयते  •  वन्दे मातरम्', W / 2 + 1.5, titleY + fontSize * 0.85 + 1.5);
+        c.fillStyle = 'rgba(0,0,0,0.85)';
+        c.fillText('सत्यमेव जयते  •  वन्दे मातरम्', W / 2 + 1, titleY + fontSize * 0.9 + 1);
         c.fillStyle = '#ffd700';
-        c.fillText('सत्यमेव जयते  •  वन्दे मातरम्', W / 2, titleY + fontSize * 0.85);
+        c.fillText('सत्यमेव जयते  •  वन्दे मातरम्', W / 2, titleY + fontSize * 0.9);
       }
       c.restore();
     }
 
     /* 🕊️🕊️ FLYING DOVES */
-    function drawDoves(t: number, elapsed: number) {
+    function drawDoves(t: number, elapsed: number, sceneAlpha: number) {
       if (t < 12.5) return;
-      const phaseAlpha = clamp((t - 12.5) / 1.5, 0, 1);
+      const phaseAlpha = clamp((t - 12.5) / 1.5, 0, 1) * sceneAlpha;
 
       c.save();
       c.globalAlpha = phaseAlpha;
       c.fillStyle = '#FFFFFF';
-      c.shadowColor = 'rgba(0,0,0,0.2)';
-      c.shadowBlur = 8;
+      c.shadowColor = 'rgba(0,0,0,0.18)';
+      c.shadowBlur = 6;
 
       doves.forEach(d => {
         d.x += d.vx;
@@ -755,14 +725,14 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.save();
       c.globalCompositeOperation = 'soft-light';
       const gradeGrad = c.createLinearGradient(0, 0, W, H);
-      gradeGrad.addColorStop(0, 'rgba(255, 140, 50, 0.25)'); 
-      gradeGrad.addColorStop(1, 'rgba(0, 50, 100, 0.35)');   
+      gradeGrad.addColorStop(0, 'rgba(255, 140, 50, 0.22)'); 
+      gradeGrad.addColorStop(1, 'rgba(0, 50, 100, 0.32)');   
       c.fillStyle = gradeGrad;
       c.fillRect(0, 0, W, H);
       c.restore();
 
       // Vignette
-      const vignette = c.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.9);
+      const vignette = c.createRadialGradient(W/2, H/2, H*0.35, W/2, H/2, H*0.9);
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
       vignette.addColorStop(1, 'rgba(0,0,0,0.8)');
       c.fillStyle = vignette;
@@ -796,36 +766,49 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
       c.fillStyle = '#000000';
       c.fillRect(0, 0, W, H);
 
-      // Handheld camera movement
-      const camDollyZ = lerp(1.0, 1.25, eOE(t / DUR));
-      const camCraneY = lerp(0, -H * 0.1, eIO(t / DUR));
-      const breatheX = Math.sin(t * 0.6) * 3 * (1 - t / DUR);
-      const breatheY = Math.cos(t * 0.5) * 3 * (1 - t / DUR);
-      const camRot = Math.sin(t * 0.2) * 0.005;
-      const finalZoom = camDollyZ + Math.sin(t * 0.8) * 0.005;
+      // Smooth horizontal camera drift only (Removed vertical crane to secure India Gate)
+      const camDollyZ = lerp(1.0, 1.10, eOE(t / DUR)); // slow cinematically stable zoom
+      const breatheX = Math.sin(t * 0.4) * 2;
+      const breatheY = Math.cos(t * 0.3) * 1.5;
+      const camRot = Math.sin(t * 0.15) * 0.003;
 
       c.save();
-      c.translate(W / 2 + breatheX, H / 2 + breatheY + camCraneY);
+      c.translate(W / 2 + breatheX, H / 2 + breatheY);
       c.rotate(camRot);
-      c.scale(finalZoom, finalZoom);
+      c.scale(camDollyZ, camDollyZ);
       c.translate(-W / 2, -H / 2);
 
-      // Dynamic Layering Sequence (Depth Order)
-      drawAtmosphere(t, now / 1000);
-      drawSunAndRays(t, now / 1000); // ☀️ Sun rays in depth back
-      dStars(t); 
-      drawArchAndImage(t);           // Waving Indian flag inside the window
-      drawIndiaGate(t);              // Elegant Sandstone Gate naturally frames the image
-      drawTorch(t, now / 1000);      // Realistically proportioned flickering flame
-      drawFog(t, now / 1000);        // Volumetric mist blending layers
-      drawJets(t);                
+      // Calculate fading factor when typography screen slides in (after 11.5s)
+      const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
+
+      // Background Rendering Layer Order with Alpha blending
+      drawAtmosphere(t, now / 1000, sceneAlpha);
+      drawSunAndRays(t, now / 1000, sceneAlpha); 
+      dStars(t, sceneAlpha); 
+      drawIndiaGate(t, sceneAlpha);              
+      drawTorch(t, now / 1000, sceneAlpha);      
+      drawFog(t, now / 1000, sceneAlpha);        
+      drawJets(t, sceneAlpha);                
       drawParticles();
-      dChakraSpokes(t);
-      drawTypography(t, now / 1000);
-      drawDoves(t, now / 1000);   
+      dChakraSpokes(t, sceneAlpha);
+      drawDoves(t, now / 1000, sceneAlpha);   
 
       c.restore();
 
+      // Premium Black/Dark Backdrop Fade-in strictly for the message (at 11.5s)
+      if (t >= 11.5) {
+        const bgFade = clamp((t - 11.5) * 1.8, 0, 1);
+        c.save();
+        c.globalAlpha = bgFade;
+        const bgGrad = c.createLinearGradient(0, 0, 0, H);
+        bgGrad.addColorStop(0, '#060810');
+        bgGrad.addColorStop(1, '#0c101c');
+        c.fillStyle = bgGrad;
+        c.fillRect(0, 0, W, H);
+        c.restore();
+      }
+
+      drawTypography(t, now / 1000);
       drawPostFX();
 
       raf.current = requestAnimationFrame(loop);
@@ -841,7 +824,7 @@ export default function NationalCinematicIntro({ onComplete, imageUrl }: Props) 
         audioCtxRef.current = null;
       }
     };
-  }, [imgReady, mkPool, grab, triggerMilitaryAudio]);
+  }, [mkPool, grab, triggerMilitaryAudio]);
 
   return (
     <canvas
