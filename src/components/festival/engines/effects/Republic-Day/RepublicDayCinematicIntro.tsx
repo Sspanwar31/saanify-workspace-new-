@@ -334,15 +334,21 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.fill();
       };
 
+      // Base Platform
       draw3DBlock(cx - gateW * 0.52, baseY - 16, gateW * 1.04, 16, 5);
       draw3DBlock(cx - gateW * 0.48, baseY - 32, gateW * 0.96, 16, 4);
 
-      draw3DBlock(cx - gateW * 0.46, pillarY, pW, pillarH, 6);
-      draw3DBlock(cx + gateW * 0.46 - pW, pillarY, pW, pillarH, 6);
+      // Flanking main columns (Variables defined securely here first)
+      const pW = gateW * 0.26;
+      const pH = gateH * 0.72;
+      const pY = baseY - 32 - pH;
+
+      draw3DBlock(cx - gateW * 0.46, pY, pW, pH, 6);
+      draw3DBlock(cx + gateW * 0.46 - pW, pY, pW, pH, 6);
 
       c.fillStyle = 'rgba(0,0,0,0.15)';
-      c.fillRect(cx - gateW * 0.48 + pW - 8, pillarY, 8, pillarH);
-      c.fillRect(cx + gateW * 0.48 - pW, pillarY, 8, pillarH);
+      c.fillRect(cx - gateW * 0.48 + pW - 8, pY, 8, pH);
+      c.fillRect(cx + gateW * 0.48 - pW, pY, 8, pH);
 
       const cArchW = gateW * 0.44;
       const cArchH = gateH * 0.54;
@@ -362,12 +368,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.fill();
       c.restore();
 
-      draw3DBlock(cx - gateW * 0.5, pillarY - gateH * 0.1, gateW * 1.0, gateH * 0.1, 8);
-      draw3DBlock(cx - gateW * 0.42, pillarY - gateH * 0.22, gateW * 0.84, gateH * 0.12, 10);
+      draw3DBlock(cx - gateW * 0.5, pY - gateH * 0.1, gateW * 1.0, gateH * 0.1, 8);
+      draw3DBlock(cx - gateW * 0.42, pY - gateH * 0.22, gateW * 0.84, gateH * 0.12, 10);
       
       c.beginPath();
-      c.moveTo(cx - gateW * 0.2, pillarY - gateH * 0.22);
-      c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pillarY - gateH * 0.22);
+      c.moveTo(cx - gateW * 0.2, pY - gateH * 0.22);
+      c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pY - gateH * 0.22);
       c.closePath();
       c.fillStyle = shadowColor;
       c.fill();
@@ -777,7 +783,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
     // EXTRA LAYER: HIGH-FIDELITY SCARY FLYAWAY PEACE DOVES
     const drawDoves = (t: number, elapsed: number, sceneAlpha: number) => {
-      // Pigeons are visible as sitting elements first, then startled upwards
       const dAlpha = sceneAlpha;
       c.save();
       c.globalAlpha = dAlpha;
