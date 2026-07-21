@@ -8,22 +8,21 @@ import React, { useEffect, useRef, useCallback } from 'react';
 interface Particle {
   x: number; y: number; z: number; vx: number; vy: number; vz: number;
   life: number; ml: number; sz: number;
-  color: string; tp: number;
+  color: string; tp: number; // 1: dust, 2: petal, 3: ember, 4: smoke
   rot: number; rs: number; on: boolean;
   r: number; g: number; b: number; a: number;
 }
 
 interface Jet {
-  x: number; y: number; z: number; vx: number; vy: number;
-  scale: number; smokeColor: string; active: boolean;
+  x: number; y: number; scale: number; smokeColor: string; vx: number; vy: number; active: boolean;
 }
 
-interface Dove {
-  x: number; y: number; vx: number; vy: number; wing: number;
+interface Cloud {
+  x: number; y: number; sz: number; speed: number; opacity: number;
 }
 
-const POOL_SIZE = 4200;
-const DUR = 15.0; // Cinematic Duration: 15.0 Seconds
+const POOL_SIZE = 4000;
+const DUR = 15.0; // Total Cinematic Duration
 
 /* ═══════════════════════════════════════════════════════════════
    EASING HELPERS & CINEMATIC MATH
@@ -35,11 +34,11 @@ const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3)
 const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t); // Expo Out
 
 /* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT: NationalCinematicIntro
+   MAIN COMPONENT: RepublicDayCinematicIntro
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void }
 
-export default function NationalCinematicIntro({ onComplete }: Props) {
+export default function RepublicDayCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   
@@ -149,23 +148,21 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
 
     const pl = mkPool();
     
-    // Initialize Crossway Jets & Doves
-    const jets: Jet[] = [
-      // Left-to-Right Jet (Saffron smoke)
-      { x: -W * 0.25, y: H * 0.15, scale: 0.95, smokeColor: '#FF9933', vx: 6.2, vy: 1.1, active: true },
-      // Right-to-Left Jet (White smoke)
-      { x: W + W * 0.25, y: H * 0.19, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 0.9, active: true },
-      // Left-to-Right Jet (Green smoke)
-      { x: -W * 0.40, y: H * 0.23, scale: 0.85, smokeColor: '#138808', vx: 6.2, vy: 0.7, active: true }
-    ];
-    
-    const doves: Dove[] = Array.from({ length: 8 }, (_, i) => ({
-      x: W * (0.1 + i * 0.12),
-      y: H * (0.7 + Math.random() * 0.2),
-      vx: 1.5 + Math.random(),
-      vy: -0.8 - Math.random() * 0.4,
-      wing: Math.random() * Math.PI * 2
+    // Initialize procedural Clouds
+    const clouds: Cloud[] = Array.from({ length: 6 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.4,
+      sz: 180 + Math.random() * 140,
+      speed: 0.15 + Math.random() * 0.2,
+      opacity: 0.15 + Math.random() * 0.2
     }));
+
+    // Crossing Jets Setup
+    const jets: Jet[] = [
+      { x: -W * 0.3, y: H * 0.16, scale: 0.95, smokeColor: '#FF9933', vx: 5.5, vy: 0.8, active: true },
+      { x: W + W * 0.3, y: H * 0.20, scale: 0.90, smokeColor: '#FFFFFF', vx: -5.5, vy: 0.6, active: true },
+      { x: -W * 0.45, y: H * 0.24, scale: 0.85, smokeColor: '#138808', vx: 5.5, vy: 0.4, active: true }
+    ];
 
     const starI: number[] = [];
     for (let i = 0; i < 120; i++) {
@@ -174,259 +171,159 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
       p.vx = 0; p.vy = 0;
       p.sz = Math.random() * 1.2 + 0.2; p.ml = 999; p.life = 999;
       p.r = 180; p.g = 200; p.b = 255;
-      p.a = Math.random() * 0.45 + 0.08; p.rot = 0; p.rs = 0;
+      p.a = Math.random() * 0.4 + 0.05; p.rot = 0; p.rs = 0;
       starI.push(i);
     }
 
-    /* 🌌 ATMOSPHERE & SKY (Night -> Dawn -> Saffron Sunrise) */
-    function drawAtmosphere(t: number, elapsed: number, sceneAlpha: number) {
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 1: SKY (Smooth Dawn Transition)
+       ═══════════════════════════════════════════════════════════ */
+    function drawSky(t: number, elapsed: number, sceneAlpha: number) {
       c.save();
       c.globalAlpha = sceneAlpha;
       const phase1 = clamp(t / 6, 0, 1); 
       const phase2 = clamp((t - 4) / 6, 0, 1);
       const phase3 = clamp((t - 8) / 7, 0, 1);
 
-      const r = lerp(lerp(5, 20, phase1), lerp(255, 255, phase3), phase2);
-      const g = lerp(lerp(10, 40, phase1), lerp(140, 200, phase3), phase2);
-      const b = lerp(lerp(30, 70, phase1), lerp(50, 150, phase3), phase2);
+      // Deep Space Blue -> Soft Saffron Rose -> Saffron Gold
+      const r = lerp(lerp(8, 35, phase1), lerp(255, 255, phase3), phase2);
+      const g = lerp(lerp(12, 55, phase1), lerp(130, 195, phase3), phase2);
+      const b = lerp(lerp(30, 85, phase1), lerp(50, 120, phase3), phase2);
 
       const grad = c.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, `rgb(${r*0.5},${g*0.5},${b*0.8})`);
-      grad.addColorStop(0.6, `rgb(${r*0.8},${g*0.7},${b*0.6})`);
-      grad.addColorStop(1, `rgb(${r},${g*0.9},${b*0.4})`);
+      grad.addColorStop(0, `rgb(${r * 0.45},${g * 0.45},${b * 0.75})`);
+      grad.addColorStop(0.5, `rgb(${r * 0.75},${g * 0.65},${b * 0.55})`);
+      grad.addColorStop(1, `rgb(${r},${g * 0.85},${b * 0.35})`);
       c.fillStyle = grad;
-      c.fillRect(-W, -H, W * 3, H * 3);
-
-      // Stars (Slowly fades as sunrise approaches)
-      if (t < 7) {
-        const alpha = 1 - phase2;
-        c.save();
-        c.globalAlpha = alpha;
-        for (let i = 0; i < 300; i++) {
-          const x = (Math.sin(i * 92.3) * 0.5 + 0.5) * W;
-          const y = (Math.cos(i * 45.1) * 0.5 + 0.5) * H * 0.7;
-          const twinkle = Math.sin(elapsed * 4 + i) * 0.5 + 0.5;
-          const size = (Math.sin(i * 12.4) * 0.5 + 0.5) * 1.2 + 0.3;
-          c.fillStyle = `rgba(255, 255, 255, ${twinkle * 0.9})`;
-          c.beginPath();
-          c.arc(x, y, size, 0, Math.PI * 2);
-          c.fill();
-        }
-        c.restore();
-      }
-      c.restore();
-    }
-
-    /* ⭐ STAR RENDERING */
-    function dStars(t: number, sceneAlpha: number) {
-      if (t > 7) return;
-      const alpha = clamp(1 - t / 7, 0, 1) * sceneAlpha;
-      c.save();
-      c.globalAlpha = alpha;
-      for (let i = 0; i < starI.length; i++) {
-        const idx = starI[i];
-        const p = pl[idx];
-        if (p && p.on) {
-          const twinkle = Math.sin(t * 3.5 + i) * 0.4 + 0.6;
-          c.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.a * twinkle})`;
-          c.beginPath();
-          c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
-          c.fill();
-        }
-      }
-      c.restore();
-    }
-
-    /* ☀️ SUN & VOLUMETRIC GOD RAYS */
-    function drawSunAndRays(t: number, elapsed: number, sceneAlpha: number) {
-      if (t < 4) return;
-      const sunY = lerp(H * 1.1, H * 0.38, eOE((t - 4) / 5));
-      const sunX = W * 0.5;
-      const intensity = clamp((t - 4) * 0.5, 0, 1) * sceneAlpha;
-
-      c.save();
-      c.globalAlpha = intensity;
-      c.globalCompositeOperation = 'screen';
-      
-      // Volumetric Sun Glow
-      const bloomGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, H * 0.7);
-      bloomGrad.addColorStop(0, 'rgba(255, 240, 200, 0.8)');
-      bloomGrad.addColorStop(0.2, 'rgba(255, 180, 80, 0.5)');
-      bloomGrad.addColorStop(0.5, 'rgba(255, 100, 30, 0.15)');
-      bloomGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      c.fillStyle = bloomGrad;
       c.fillRect(0, 0, W, H);
-
-      // Sun Core
-      const coreGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, 90);
-      coreGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-      coreGrad.addColorStop(0.4, 'rgba(255, 245, 200, 0.8)');
-      coreGrad.addColorStop(1, 'rgba(255, 180, 80, 0)');
-      c.fillStyle = coreGrad;
-      c.fillRect(sunX - 90, sunY - 90, 180, 180);
-
-      // God Rays
-      const rayIntensity = clamp((t - 5) * 0.4, 0, 0.75);
-      if (rayIntensity > 0) {
-        c.translate(sunX, sunY);
-        c.rotate(Math.sin(elapsed * 0.05) * 0.02);
-        for (let i = 0; i < 16; i++) {
-          const angle = (i / 16) * Math.PI * 2 + elapsed * 0.01;
-          const length = H * 1.2;
-          const width = 60 + Math.sin(elapsed * 2 + i) * 30;
-          c.save();
-          c.rotate(angle);
-          const rayGrad = c.createLinearGradient(0, 0, 0, length);
-          rayGrad.addColorStop(0, `rgba(255, 235, 180, ${0.15 * rayIntensity})`);
-          rayGrad.addColorStop(0.5, `rgba(255, 200, 130, ${0.08 * rayIntensity})`);
-          rayGrad.addColorStop(1, 'rgba(255, 200, 130, 0)');
-          c.fillStyle = rayGrad;
-          c.beginPath();
-          c.moveTo(-width/4, 0);
-          c.lineTo(width/4, 0);
-          c.lineTo(width, length);
-          c.lineTo(-width, length);
-          c.closePath();
-          c.fill();
-          c.restore();
-        }
-      }
       c.restore();
     }
 
-    /* 💨 VOLUMETRIC FOG & ATMOSPHERIC SCATTERING */
-    function drawFog(t: number, elapsed: number, sceneAlpha: number) {
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 2: CLOUDS (Procedural Drifting)
+       ═══════════════════════════════════════════════════════════ */
+    function drawClouds(t: number, sceneAlpha: number) {
       c.save();
       c.globalAlpha = sceneAlpha;
-      c.globalCompositeOperation = 'screen';
-      const offset = elapsed * 8;
-      const hazeGrad = c.createLinearGradient(0, H * 0.5, 0, H);
-      hazeGrad.addColorStop(0, 'rgba(40, 50, 70, 0)');
-      hazeGrad.addColorStop(0.7, `rgba(100, 110, 130, ${0.2 + (t/15) * 0.1})`);
-      hazeGrad.addColorStop(1, `rgba(180, 190, 210, ${0.4 + (t/15) * 0.2})`);
-      c.fillStyle = hazeGrad;
-      c.fillRect(0, H * 0.5, W, H * 0.5);
+      clouds.forEach(cl => {
+        cl.x += cl.speed;
+        if (cl.x - cl.sz > W) cl.x = -cl.sz;
 
-      for(let i=0; i<6; i++) {
-        const x = (i * W * 0.3 + offset) % (W * 1.5) - W * 0.2;
-        const y = H * (0.7 + i * 0.03);
-        const grad = c.createRadialGradient(x, y, 0, x, y, 400);
-        grad.addColorStop(0, `rgba(220, 230, 240, ${0.08 + (t/15) * 0.04})`);
-        grad.addColorStop(1, 'rgba(220, 230, 240, 0)');
+        const grad = c.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, cl.sz);
+        grad.addColorStop(0, `rgba(255, 235, 220, ${cl.opacity})`);
+        grad.addColorStop(0.5, `rgba(255, 200, 170, ${cl.opacity * 0.4})`);
+        grad.addColorStop(1, 'rgba(255, 200, 170, 0)');
         c.fillStyle = grad;
-        c.fillRect(x - 400, y - 400, 800, 800);
+        c.beginPath();
+        c.arc(cl.x, cl.y, cl.sz, 0, Math.PI * 2);
+        c.fill();
+      });
+      c.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 3: VOLUMETRIC FOG (Dissipates progressively)
+       ═══════════════════════════════════════════════════════════ */
+    function drawFog(t: number, elapsed: number, sceneAlpha: number) {
+      const fogIntensity = clamp(2.5 - (t / 4), 0, 1) * sceneAlpha; // Progressively thins out
+      if (fogIntensity <= 0) return;
+
+      c.save();
+      c.globalAlpha = fogIntensity;
+      c.globalCompositeOperation = 'screen';
+      
+      const offset = elapsed * 10;
+      const hazeGrad = c.createLinearGradient(0, H * 0.4, 0, H);
+      hazeGrad.addColorStop(0, 'rgba(50, 60, 80, 0)');
+      hazeGrad.addColorStop(0.7, 'rgba(180, 190, 210, 0.25)');
+      hazeGrad.addColorStop(1, 'rgba(235, 240, 250, 0.45)');
+      c.fillStyle = hazeGrad;
+      c.fillRect(0, H * 0.4, W, H * 0.6);
+
+      for(let i = 0; i < 4; i++) {
+        const x = (i * W * 0.4 + offset) % (W * 1.5) - W * 0.2;
+        const y = H * (0.65 + i * 0.05);
+        const grad = c.createRadialGradient(x, y, 0, x, y, 500);
+        grad.addColorStop(0, 'rgba(240, 245, 255, 0.12)');
+        grad.addColorStop(1, 'rgba(240, 245, 255, 0)');
+        c.fillStyle = grad;
+        c.fillRect(x - 500, y - 500, 1000, 1000);
       }
       c.restore();
     }
 
-    /* 🔥 AMAR JAWAN JYOTI (Torch Flame) */
-    function drawTorch(t: number, elapsed: number, sceneAlpha: number) {
-      const tx = W * 0.5;
-      const ty = H * 0.795;
-      
-      if (t > 1.5) {
-        const fireAlpha = clamp((t - 1.5) * 2, 0, 1) * sceneAlpha;
-        c.save();
-        c.globalAlpha = fireAlpha;
-        c.globalCompositeOperation = 'lighter';
-        
-        // Ambient glow
-        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 100);
-        glowGrad.addColorStop(0, 'rgba(255, 130, 40, 0.85)');
-        glowGrad.addColorStop(0.4, 'rgba(255, 70, 10, 0.35)');
-        glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        c.fillStyle = glowGrad;
-        c.fillRect(tx - 100, ty - 100, 200, 200);
-
-        // Flame core
-        const flicker = Math.sin(elapsed * 28) * 3;
-        const flameH = 35 + flicker;
-        const flameW = 8;
-
-        const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
-        fireGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        fireGrad.addColorStop(0.2, 'rgba(255, 200, 60, 0.95)');
-        fireGrad.addColorStop(0.6, 'rgba(255, 80, 0, 0.6)');
-        fireGrad.addColorStop(1, 'rgba(255, 0, 0, 0)');
-        c.fillStyle = fireGrad;
-
-        c.beginPath();
-        c.moveTo(tx - flameW, ty);
-        c.quadraticCurveTo(tx - flameW * 0.4, ty - flameH * 0.5, tx, ty - flameH);
-        c.quadraticCurveTo(tx + flameW * 0.4, ty - flameH * 0.5, tx + flameW, ty);
-        c.closePath();
-        c.fill();
-
-        // Rising embers
-        if (Math.random() < 0.2) {
-          const p = grab(pl); if (p) {
-            p.on = true; p.x = tx + (Math.random() - 0.5) * 6;
-            p.y = ty - 5; p.vx = (Math.random() - 0.5) * 0.5;
-            p.vy = -1.0 - Math.random() * 1.5; p.life = 1.8; p.ml = 1.8;
-            p.sz = 0.8 + Math.random() * 1.0;
-            p.r = 255; p.g = 150 + Math.random() * 80; p.b = 40; p.a = 0.95;
-            p.tp = 3; 
-          }
-        }
-        c.restore();
-      }
-    }
-
-    /* 🏛️ INDIA GATE (Proportional Sandstone Structure) */
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 4: INDIA GATE (Majestic 3D Perspective Sandstone)
+       ═══════════════════════════════════════════════════════════ */
     function drawIndiaGate(t: number, sceneAlpha: number) {
       const sc = Math.min(W, H);
       const gateH = sc * 0.66;
-      const gateW = gateH * 0.85;
+      const gateW = gateH * 0.84;
       const baseY = H * 0.82;
       const cx = W * 0.5;
 
+      // Reveal smoothly after t=1.0s as fog dissipates
+      const reveal = clamp((t - 1.0) * 0.4, 0, 1);
       c.save();
-      const reveal = clamp((t - 1) * 0.5, 0, 1);
       c.globalAlpha = reveal * sceneAlpha;
 
-      // Realistic Sandstone Palette
-      const stoneBase = '#ca865a';
-      const stoneDark = '#79472e';
-      const stoneHighlight = '#eed0b7';
+      const baseColor = '#c1805b';
+      const shadowColor = '#6d3c26';
+      const highlightColor = '#eed2bc';
       
-      const drawBlock = (x: number, y: number, width: number, height: number, depthLayer = true) => {
-        const grad = c.createLinearGradient(x, y, x, y + height);
-        grad.addColorStop(0, stoneHighlight);
-        grad.addColorStop(0.3, stoneBase);
-        grad.addColorStop(1, stoneDark);
-        c.fillStyle = grad;
+      const draw3DBlock = (x: number, y: number, width: number, height: number, depth: number) => {
+        // Front Face
+        const frontGrad = c.createLinearGradient(x, y, x, y + height);
+        frontGrad.addColorStop(0, highlightColor);
+        frontGrad.addColorStop(0.3, baseColor);
+        frontGrad.addColorStop(1, shadowColor);
+        c.fillStyle = frontGrad;
         c.fillRect(x, y, width, height);
 
-        if (depthLayer) {
-          c.fillStyle = 'rgba(255,255,255,0.12)';
-          c.fillRect(x, y, width, 1.5); 
-          c.fillStyle = 'rgba(0,0,0,0.25)';
-          c.fillRect(x, y + height - 2, width, 2); 
-        }
+        // Side Depth face (creating 3D shadow depth)
+        const sideGrad = c.createLinearGradient(x + width, y, x + width + depth, y + height);
+        sideGrad.addColorStop(0, shadowColor);
+        sideGrad.addColorStop(1, '#3b1c10');
+        c.fillStyle = sideGrad;
+        c.beginPath();
+        c.moveTo(x + width, y);
+        c.lineTo(x + width + depth, y + depth);
+        c.lineTo(x + width + depth, y + height + depth);
+        c.lineTo(x + width, y + height);
+        c.closePath();
+        c.fill();
+
+        // Top Depth face
+        c.fillStyle = highlightColor;
+        c.beginPath();
+        c.moveTo(x, y);
+        c.lineTo(x + depth, y - depth);
+        c.lineTo(x + width + depth, y - depth);
+        c.lineTo(x + width, y);
+        c.closePath();
+        c.fill();
       };
 
-      // Base layers
-      drawBlock(cx - gateW * 0.54, baseY - 16, gateW * 1.08, 16);
-      drawBlock(cx - gateW * 0.5, baseY - 32, gateW, 16);
+      // Base Platform
+      draw3DBlock(cx - gateW * 0.52, baseY - 16, gateW * 1.04, 16, 5);
+      draw3DBlock(cx - gateW * 0.48, baseY - 32, gateW * 0.96, 16, 4);
 
-      // Flanking main pillars
-      const pillarW = gateW * 0.28;
-      const pillarH = gateH * 0.73;
-      const pillarY = baseY - 32 - pillarH;
+      // Flanking main columns
+      const pW = gateW * 0.26;
+      const pH = gateH * 0.72;
+      const pY = baseY - 32 - pH;
       
-      drawBlock(cx - gateW * 0.48, pillarY, pillarW, pillarH);
-      drawBlock(cx + gateW * 0.48 - pillarW, pillarY, pillarW, pillarH);
+      // Left Column
+      draw3DBlock(cx - gateW * 0.46, pY, pW, pH, 6);
+      // Right Column
+      draw3DBlock(cx + gateW * 0.46 - pW, pY, pW, pH, 6);
 
-      // Inner structural shadows
-      c.fillStyle = 'rgba(0,0,0,0.15)';
-      c.fillRect(cx - gateW * 0.48 + pillarW - 8, pillarY, 8, pillarH);
-      c.fillRect(cx + gateW * 0.48 - pillarW, pillarY, 8, pillarH);
-
-      // Main Central Arch Shadow (soft edges)
-      const cArchW = gateW * 0.42;
-      const cArchH = gateH * 0.56;
+      // Central Arch Curve Base
+      const cArchW = gateW * 0.44;
+      const cArchH = gateH * 0.54;
       const cArchY = baseY - 32 - cArchH;
 
+      // Soft shadow inside the central arch
       c.save();
       c.beginPath();
       c.moveTo(cx - cArchW/2, baseY - 32);
@@ -434,136 +331,243 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
       c.arc(cx, cArchY + cArchW/2, cArchW/2, Math.PI, 0, false);
       c.lineTo(cx + cArchW/2, baseY - 32);
       c.closePath();
-      
-      const archShadow = c.createRadialGradient(cx, cArchY + cArchW/2, cArchW * 0.1, cx, cArchY + cArchW/2, cArchW * 0.52);
+      const archShadow = c.createRadialGradient(cx, cArchY + cArchW/2, cArchW * 0.1, cx, cArchY + cArchW/2, cArchW * 0.5);
       archShadow.addColorStop(0, 'rgba(0,0,0,0)');
-      archShadow.addColorStop(1, 'rgba(0,0,0,0.6)');
+      archShadow.addColorStop(1, 'rgba(0,0,0,0.65)');
       c.fillStyle = archShadow;
       c.fill();
       c.restore();
 
-      // Top Beam & Cornice Layers
-      const lintelH = gateH * 0.12;
-      drawBlock(cx - gateW * 0.52, pillarY - lintelH, gateW * 1.04, lintelH);
-      drawBlock(cx - gateW * 0.45, pillarY - lintelH - 24, gateW * 0.9, 24);
-      drawBlock(cx - gateW * 0.36, pillarY - lintelH - 46, gateW * 0.72, 22);
+      // Translucent side molding blocks
+      draw3DBlock(cx - gateW * 0.5, pY - gateH * 0.1, gateW * 1.0, gateH * 0.1, 8);
+      draw3DBlock(cx - gateW * 0.42, pY - gateH * 0.22, gateW * 0.84, gateH * 0.12, 10);
       
-      // Top Dome
+      // Cornice & Roof Dome
       c.beginPath();
-      c.moveTo(cx - gateW * 0.18, pillarY - lintelH - 46);
-      c.quadraticCurveTo(cx, pillarY - lintelH - 72, cx + gateW * 0.18, pillarY - lintelH - 46);
+      c.moveTo(cx - gateW * 0.2, pY - gateH * 0.22);
+      c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pY - gateH * 0.22);
       c.closePath();
-      c.fillStyle = stoneDark;
+      c.fillStyle = shadowColor;
       c.fill();
-
-      // Side arches
-      [-1, 1].forEach(side => {
-        const archX = cx + side * (gateW * 0.34);
-        const archW = gateW * 0.085;
-        const archH = gateH * 0.26;
-        const archY = baseY - 32 - archH;
-
-        c.beginPath();
-        c.moveTo(archX - archW/2, archY + archH);
-        c.lineTo(archX - archW/2, archY + archW/2);
-        c.arc(archX, archY + archW/2, archW/2, Math.PI, 0, false);
-        c.lineTo(archX + archW/2, archY + archH);
-        c.closePath();
-        c.fillStyle = 'rgba(0,0,0,0.5)';
-        c.fill();
-      });
 
       c.restore();
     }
 
-    /* ✈️ CROSSING JETS & VOLUMETRIC SMOKE EFFECT */
-    function drawJets(t: number, sceneAlpha: number) {
-      if (t < 2.0 || t > 8.5) return;
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 5: AMAR JAWAN JYOTI (Dynamic Fire & Ambient Bounce)
+       ═══════════════════════════════════════════════════════════ */
+    function drawTorch(t: number, elapsed: number, sceneAlpha: number) {
+      if (t < 2.0) return; // Ignites after t=2s
+      const tx = W * 0.5;
+      const ty = H * 0.795;
+      
+      const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
+      c.save();
+      c.globalAlpha = fireAlpha;
+      c.globalCompositeOperation = 'lighter';
+      
+      // Warm floor bounce reflection
+      const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 140);
+      glowGrad.addColorStop(0, 'rgba(255, 120, 20, 0.9)');
+      glowGrad.addColorStop(0.4, 'rgba(255, 60, 5, 0.35)');
+      glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      c.fillStyle = glowGrad;
+      c.fillRect(tx - 140, ty - 140, 280, 280);
+
+      // Flickering flame geometry
+      const flicker = Math.sin(elapsed * 32) * 4;
+      const flameH = 42 + flicker;
+      const flameW = 11;
+
+      const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
+      fireGrad.addColorStop(0, '#ffffff');
+      fireGrad.addColorStop(0.2, 'rgba(255, 210, 80, 0.95)');
+      fireGrad.addColorStop(0.6, 'rgba(255, 90, 0, 0.6)');
+      fireGrad.addColorStop(1, 'rgba(230, 0, 0, 0)');
+      c.fillStyle = fireGrad;
+
+      c.beginPath();
+      c.moveTo(tx - flameW, ty);
+      c.quadraticCurveTo(tx - flameW * 0.4, ty - flameH * 0.5, tx, ty - flameH);
+      c.quadraticCurveTo(tx + flameW * 0.4, ty - flameH * 0.5, tx + flameW, ty);
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 6 & 7: WAving FLAG & ASHOKA CHAKRA (Inside main archway)
+       ═══════════════════════════════════════════════════════════ */
+    function drawWavingFlagAndChakra(t: number, elapsed: number, sceneAlpha: number) {
+      if (t < 3.0) return; // Fades in beautifully at t=3.0s
+      const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
+
+      const sc = Math.min(W, H);
+      const fw = sc * 0.38;
+      const fh = fw * 0.66;
+      const fx = W * 0.5 - fw / 2;
+      const fy = H * 0.44 - fh / 2;
+
+      c.save();
+      c.globalAlpha = revealAlpha;
+
+      // Render the tricolor using column slicing to simulate wave physics
+      const cols = 45;
+      const colW = fw / cols;
+
+      for (let i = 0; i < cols; i++) {
+        const xOffset = i * colW;
+        const targetX = fx + xOffset;
+        
+        // Sinusoidal displacement representing wind waving
+        const wave = Math.sin(i * 0.22 - elapsed * 3.8) * 8.5;
+        const targetY = fy + wave;
+
+        // Draw Saffron Strip
+        c.fillStyle = '#FF9933';
+        c.fillRect(targetX, targetY, colW + 0.5, fh / 3);
+
+        // Draw White Strip
+        c.fillStyle = '#FFFFFF';
+        c.fillRect(targetX, targetY + fh / 3, colW + 0.5, fh / 3);
+
+        // Draw Green Strip
+        c.fillStyle = '#138808';
+        c.fillRect(targetX, targetY + (fh * 2) / 3, colW + 0.5, fh / 3);
+      }
+
+      // ─── Layer 7: Ashoka Chakra ───
+      const cx = fx + fw / 2;
+      const cy = fy + fh / 2 + Math.sin((cols / 2) * 0.22 - elapsed * 3.8) * 8.5;
+      const cr = fh * 0.12;
+
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(elapsed * 0.6); // Gentle rotation
+
+      // Blue circle rim
+      c.strokeStyle = '#000080';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.arc(0, 0, cr, 0, Math.PI * 2);
+      c.stroke();
+
+      // Inner hub
+      c.fillStyle = '#000080';
+      c.beginPath();
+      c.arc(0, 0, cr * 0.15, 0, Math.PI * 2);
+      c.fill();
+
+      // 24 Spokes
+      c.lineWidth = 1.2;
+      for (let i = 0; i < 24; i++) {
+        const angle = (i / 24) * Math.PI * 2;
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.lineTo(Math.cos(angle) * cr, Math.sin(angle) * cr);
+        c.stroke();
+      }
+      c.restore();
+
+      c.restore();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 8 & 9: SUKHOI JETS & VOLUMETRIC TRICOLOR SMOKE
+       ═══════════════════════════════════════════════════════════ */
+    function drawJetsAndTrails(t: number, sceneAlpha: number) {
+      if (t < 2.5 || t > 9.0) return; // Perfect flypast frame
       c.save();
       c.globalAlpha = sceneAlpha;
+
       jets.forEach(jet => {
         jet.x += jet.vx; jet.y += jet.vy;
 
-        // Smoke Emitters (slower puff generation)
-        if (Math.random() < 0.65) {
+        // Volumetric Smoke trails
+        if (Math.random() < 0.68) {
           const p = grab(pl); if (p) {
-            p.on = true; 
-            p.x = jet.x - (jet.vx > 0 ? 30 : -30) * jet.scale; 
+            p.on = true;
+            // Emitters positioned at the rear nozzle
+            p.x = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
             p.y = jet.y + 2 * jet.scale;
-            p.vx = -jet.vx * 0.15 + (Math.random() - 0.5) * 0.4; 
-            p.vy = (Math.random() - 0.5) * 0.4;
-            p.life = 3.8; p.ml = 3.8; p.sz = 16 * jet.scale + Math.random() * 12;
+            p.vx = -jet.vx * 0.12 + (Math.random() - 0.5) * 0.35;
+            p.vy = (Math.random() - 0.5) * 0.35;
+            p.life = 4.0; p.ml = 4.0;
+            p.sz = 14 * jet.scale + Math.random() * 14;
+
             const hex = jet.smokeColor.replace('#', '');
             p.r = parseInt(hex.substring(0, 2), 16);
             p.g = parseInt(hex.substring(2, 4), 16);
             p.b = parseInt(hex.substring(4, 6), 16);
-            p.a = 0.55; p.tp = 4; // Smoke
+            p.a = 0.58; p.tp = 4; // Smoke type
           }
         }
 
-        // Draw Fighter jet silhouette facing its direction vector
+        // Draw Fighter Plane silhouette
         c.save();
         c.translate(jet.x, jet.y);
-        const angle = Math.atan2(jet.vy, jet.vx);
-        c.rotate(angle);
+        c.rotate(Math.atan2(jet.vy, jet.vx));
         c.scale(jet.scale, jet.scale);
 
         // Afterburner glow
-        const burnerGrad = c.createRadialGradient(-30, 0, 0, -30, 0, 35);
-        burnerGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        burnerGrad.addColorStop(0.3, 'rgba(255, 160, 50, 0.85)');
-        burnerGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
-        c.fillStyle = burnerGrad;
-        c.fillRect(-60, -15, 40, 30);
+        const glow = c.createRadialGradient(-30, 0, 0, -30, 0, 30);
+        glow.addColorStop(0, '#ffffff');
+        glow.addColorStop(0.3, 'rgba(255, 140, 0, 0.9)');
+        glow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        c.fillStyle = glow;
+        c.fillRect(-55, -12, 35, 24);
 
-        // Jet Body Frame
-        c.fillStyle = '#151515';
+        // Jet Body
+        c.fillStyle = '#1c1c1c';
         c.beginPath();
-        c.moveTo(35, 0); 
-        c.quadraticCurveTo(15, -4, -10, -5); 
-        c.lineTo(-25, -3);
-        c.lineTo(-25, 3); 
-        c.lineTo(-10, 5); 
-        c.quadraticCurveTo(15, 4, 35, 0); 
+        c.moveTo(35, 0);
+        c.quadraticCurveTo(15, -4, -10, -5);
+        c.lineTo(-24, -3);
+        c.lineTo(-24, 3);
+        c.lineTo(-10, 5);
+        c.quadraticCurveTo(15, 4, 35, 0);
         c.fill();
 
-        // Cockpit glass
-        c.fillStyle = 'rgba(100, 180, 255, 0.75)';
-        c.beginPath(); c.ellipse(12, -1, 10, 3.2, 0, 0, Math.PI * 2); c.fill();
+        // Cockpit
+        c.fillStyle = 'rgba(100, 190, 255, 0.8)';
+        c.beginPath(); c.ellipse(12, -1, 10, 3, 0, 0, Math.PI * 2); c.fill();
 
-        // Main Wings
-        c.fillStyle = '#1e1e1e';
-        c.beginPath(); c.moveTo(0, 0); c.lineTo(-18, -28); c.lineTo(-25, -28); c.lineTo(-10, 0); c.closePath(); c.fill();
-        c.beginPath(); c.moveTo(0, 0); c.lineTo(-18, 28); c.lineTo(-25, 28); c.lineTo(-10, 0); c.closePath(); c.fill();
+        // Wings
+        c.fillStyle = '#242424';
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(-18, -26); c.lineTo(-24, -26); c.lineTo(-10, 0); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(-18, 26); c.lineTo(-24, 26); c.lineTo(-10, 0); c.closePath(); c.fill();
         c.restore();
       });
       c.restore();
     }
 
-    /* 🎊 CELEBRATORY TRICOLOR PETALS (Falling particles) */
-    function spawnDust(t: number, elapsed: number) {
-      if (t > 1 && Math.random() < 0.25) {
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 10: PARTICLES (Fiery Embers & Falling Festive Petals)
+       ═══════════════════════════════════════════════════════════ */
+    function spawnParticles(t: number, elapsed: number) {
+      // Ambient sparkles
+      if (t > 1 && Math.random() < 0.2) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = Math.random() * H;
-          p.vx = Math.sin(elapsed + Math.random()*10) * 0.25; p.vy = -0.2 - Math.random() * 0.25;
-          p.life = 5; p.ml = 5; p.sz = 1 + Math.random() * 1.5;
-          p.r = 255; p.g = 200 + Math.random() * 55; p.b = 150; p.a = 0.35; p.tp = 1; // dust
+          p.vx = Math.sin(elapsed + Math.random() * 10) * 0.2; p.vy = -0.15 - Math.random() * 0.2;
+          p.life = 4.5; p.ml = 4.5; p.sz = 1.0 + Math.random() * 1.5;
+          p.r = 255; p.g = 210 + Math.random() * 45; p.b = 160; p.a = 0.3; p.tp = 1; // dust
         }
       }
-      // Marigold flower petals and celebratory papers falling elegantly
-      if (t > 2.5 && Math.random() < 0.35) {
+
+      // Elegant Marigold & Tricolor petals falling
+      if (t > 3.0 && Math.random() < 0.35) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = -10;
-          p.vx = (Math.random() - 0.5) * 2; p.vy = 0.8 + Math.random() * 1.5;
-          p.life = 7; p.ml = 7; p.sz = 5 + Math.random() * 5;
+          p.vx = (Math.random() - 0.5) * 1.8; p.vy = 0.7 + Math.random() * 1.2;
+          p.life = 6.5; p.ml = 6.5; p.sz = 5 + Math.random() * 5;
           
-          // Tricolor Indian Festive Palette (Saffron, White, Green)
-          const ct = Math.random();
-          if (ct < 0.34) { p.r = 255; p.g = 153; p.b = 51; }      // Saffron
-          else if (ct < 0.67) { p.r = 255; p.g = 255; p.b = 255; } // Pure White
-          else { p.r = 19; p.g = 136; p.b = 8; }                  // India Green
-          
-          p.a = 0.9; p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.1; p.tp = 2; // Petals
+          const rand = Math.random();
+          if (rand < 0.34) { p.r = 255; p.g = 153; p.b = 51; }      // Saffron
+          else if (rand < 0.67) { p.r = 255; p.g = 255; p.b = 255; } // White
+          else { p.r = 19; p.g = 136; p.b = 8; }                  // Green
+
+          p.a = 0.85; p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.08; p.tp = 2; // Petals
         }
       }
     }
@@ -574,11 +578,11 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
         p.life -= dt; p.x += p.vx; p.y += p.vy;
         
         if (p.tp === 4) { p.sz += 0.45; p.vx *= 0.985; p.vy *= 0.985; p.life -= 0.012; } 
-        else if (p.tp === 2) { p.rot += p.rs; p.vy += 0.03; p.vx += Math.sin(elapsed + p.y * 0.01) * 0.12; p.life -= 0.008; } 
-        else if (p.tp === 3) { p.vy -= 0.015; p.vx += (Math.random() - 0.5) * 0.18; p.life -= 0.015; } 
+        else if (p.tp === 2) { p.rot += p.rs; p.vy += 0.035; p.vx += Math.sin(elapsed + p.y * 0.01) * 0.1; p.life -= 0.006; } 
+        else if (p.tp === 3) { p.vy -= 0.015; p.vx += (Math.random() - 0.5) * 0.15; p.life -= 0.018; } 
         else { p.life -= 0.005; }
 
-        if (p.life <= 0 || p.x < -100 || p.x > W + 100 || p.y > H + 100) p.on = false;
+        if (p.life <= 0 || p.x < -120 || p.x > W + 120 || p.y > H + 120) p.on = false;
       }
     }
 
@@ -595,150 +599,127 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
           c.fillStyle = grad;
           c.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
           c.restore();
-        } else if (p.tp === 1 || p.tp === 3) { // dust & ember
+        } else if (p.tp === 1 || p.tp === 3) { // dust & embers
           c.save();
           c.globalCompositeOperation = 'screen';
           c.globalAlpha = alpha;
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
           c.restore();
-        } else if (p.tp === 2) { // Rounded marigold / tricolor petals
+        } else if (p.tp === 2) { // Rotating rounded petals
           c.save();
           c.globalAlpha = alpha;
-          c.translate(p.x, p.y); 
-          c.rotate(p.rot);
+          c.translate(p.x, p.y); c.rotate(p.rot);
           c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
-          
           c.beginPath();
-          c.ellipse(0, 0, p.sz, p.sz * 0.55, 0, 0, Math.PI * 2);
+          c.ellipse(0, 0, p.sz, p.sz * 0.6, 0, 0, Math.PI * 2);
           c.fill();
           
-          // Delicate petal boundary
-          c.strokeStyle = 'rgba(0, 0, 0, 0.08)';
-          c.lineWidth = 1;
+          c.strokeStyle = 'rgba(0,0,0,0.06)';
+          c.lineWidth = 0.8;
           c.stroke();
           c.restore();
         }
       }
     }
 
-    /* 🔆 ASHOKA SPOKE GLOW BEAMS */
-    function dChakraSpokes(t: number, sceneAlpha: number) {
-      if (t < 7.0 || t > 11.5) return;
-      let alpha = (t < 8.0 ? eOC((t - 7.0) / 1.0) : t < 10.0 ? 1 : 1 - eOC((t - 10.0) / 1.5)) * sceneAlpha;
-      if (alpha <= 0) return;
-      const cx = W / 2, cy = H / 2, sc = Math.min(W, H), or = Math.max(W, H) * 0.9, spokes = 24;
-      c.save(); c.globalAlpha = alpha * 0.12; c.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < spokes; i++) {
-        const ang = (i / spokes) * Math.PI * 2 + t * 0.08;
-        c.beginPath(); c.moveTo(cx, cy);
-        c.lineTo(cx + Math.cos(ang) * or, cy + Math.sin(ang) * or);
-        c.strokeStyle = 'rgba(30,70,160,0.55)'; c.stroke();
-      }
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 11: LENS FLARES (Cinematic Sunrise flare streaks)
+       ═══════════════════════════════════════════════════════════ */
+    function drawLensFlares(t: number, sceneAlpha: number) {
+      if (t < 5.0) return; // Flare appears at high sunrise
+      const intensity = clamp((t - 5.0) * 0.35, 0, 0.65) * sceneAlpha;
+      const fx = W * 0.5;
+      const fy = lerp(H * 1.1, H * 0.38, eOE((t - 4) / 5));
+
+      c.save();
+      c.globalAlpha = intensity;
+      c.globalCompositeOperation = 'screen';
+
+      // Primary Horizontal anamorphic flare streak
+      const streakGrad = c.createLinearGradient(0, fy, W, fy);
+      streakGrad.addColorStop(0, 'rgba(255, 140, 50, 0)');
+      streakGrad.addColorStop(0.5, 'rgba(255, 220, 160, 0.7)');
+      streakGrad.addColorStop(1, 'rgba(255, 140, 50, 0)');
+      c.fillStyle = streakGrad;
+      c.fillRect(0, fy - 6, W, 12);
+
+      // Ghosting rings along the offset axis
+      const rings = [0.25, 0.45, -0.15, -0.3];
+      rings.forEach(mult => {
+        const rx = fx + (W * 0.15) * mult;
+        const ry = fy + (H * 0.1) * mult;
+        const rGrad = c.createRadialGradient(rx, ry, 0, rx, ry, 35);
+        rGrad.addColorStop(0, 'rgba(255, 200, 100, 0.3)');
+        rGrad.addColorStop(0.6, 'rgba(255, 100, 50, 0.1)');
+        rGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = rGrad;
+        c.beginPath(); c.arc(rx, ry, 35, 0, Math.PI * 2); c.fill();
+      });
+
       c.restore();
     }
 
-    /* 📜 TYPOGRAPHY (Cleaned and scaled beautifully) */
-    function drawTypography(t: number, elapsed: number) {
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 13: TYPOGRAPHY (Golden Serif message)
+       ═══════════════════════════════════════════════════════════ */
+    function drawTypography(t: number) {
       if (t < 11.5) return;
       const textAlpha = clamp((t - 11.5) * 1.5, 0, 1);
-      const titleY = lerp(H * 0.60, H * 0.44, eOE((t - 11.5) * 0.5));
+      const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
       
       c.save();
       c.globalAlpha = textAlpha;
       c.textAlign = 'center';
       
-      // Aspect ratio secure smaller font sizes
-      const fontSize = Math.min(W * 0.065, 54);
+      const fontSize = Math.min(W * 0.065, 52);
       c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
       
-      // Shadow
+      // Shadow layer
       c.fillStyle = 'rgba(0,0,0,0.9)';
       c.fillText("HAPPY REPUBLIC DAY", W/2 + 1.5, titleY + 1.5);
       
-      // Gold Foil Gradient
+      // Premium Gold Foil Gradient
       const grad = c.createLinearGradient(0, titleY - fontSize/2, 0, titleY + fontSize/2);
       grad.addColorStop(0, '#FFFACD'); grad.addColorStop(0.4, '#FFD700');
       grad.addColorStop(0.6, '#DAA520'); grad.addColorStop(1, '#8B6914');
       c.fillStyle = grad;
       c.fillText("HAPPY REPUBLIC DAY", W/2, titleY);
 
-      // Slogans under main title
-      if (t > 12.3) {
-        const ss = Math.min(W * 0.020, H * 0.024, 16);
+      // Devotional slogan layer
+      if (t > 12.4) {
+        const ss = Math.min(W * 0.018, H * 0.022, 15);
         c.font = `400 ${ss}px 'Georgia', serif`;
-        c.fillStyle = 'rgba(0,0,0,0.85)';
-        c.fillText('सत्यमेव जयते  •  वन्दे मातरम्', W / 2 + 1, titleY + fontSize * 0.9 + 1);
+        c.fillStyle = 'rgba(0,0,0,0.8)';
+        c.fillText('सत्यमेव जयते  •  वन्दे मातरम्', W / 2 + 1, titleY + fontSize * 0.95 + 1);
         c.fillStyle = '#ffd700';
-        c.fillText('सत्यमेव जयते  •  वन्दे मातरम्', W / 2, titleY + fontSize * 0.9);
+        c.fillText('सत्यमेव जयते  •  वन्दे मातरम्', W / 2, titleY + fontSize * 0.95);
       }
       c.restore();
     }
 
-    /* 🕊️🕊️ FLYING DOVES */
-    function drawDoves(t: number, elapsed: number, sceneAlpha: number) {
-      if (t < 12.5) return;
-      const phaseAlpha = clamp((t - 12.5) / 1.5, 0, 1) * sceneAlpha;
-
-      c.save();
-      c.globalAlpha = phaseAlpha;
-      c.fillStyle = '#FFFFFF';
-      c.shadowColor = 'rgba(0,0,0,0.18)';
-      c.shadowBlur = 6;
-
-      doves.forEach(d => {
-        d.x += d.vx;
-        d.y += d.vy;
-        d.wing += 0.22;
-
-        c.save();
-        c.translate(d.x, d.y);
-        const wingY = Math.sin(d.wing) * 12;
-
-        // Left wing
-        c.beginPath();
-        c.moveTo(0, 0);
-        c.quadraticCurveTo(-15, -wingY, -30, 0);
-        c.quadraticCurveTo(-15, wingY * 0.5, 0, 0);
-        c.fill();
-
-        // Right wing
-        c.beginPath();
-        c.moveTo(0, 0);
-        c.quadraticCurveTo(15, -wingY, 30, 0);
-        c.quadraticCurveTo(15, wingY * 0.5, 0, 0);
-        c.fill();
-
-        // Body
-        c.beginPath();
-        c.ellipse(0, 2, 4, 10, 0, 0, Math.PI * 2);
-        c.fill();
-
-        c.restore();
-      });
-
-      c.restore();
-    }
-
-    /* 🎞️ POST PROCESSING (Color Grade & Vignette) */
+    /* ═══════════════════════════════════════════════════════════
+       LAYER 12 & 15: COLOR GRADING & VIGNETTE
+       ═══════════════════════════════════════════════════════════ */
     function drawPostFX() {
+      // Layer 12: Cinematic Warm/Orange Soft-light grade
       c.save();
       c.globalCompositeOperation = 'soft-light';
-      const gradeGrad = c.createLinearGradient(0, 0, W, H);
-      gradeGrad.addColorStop(0, 'rgba(255, 140, 50, 0.22)'); 
-      gradeGrad.addColorStop(1, 'rgba(0, 50, 100, 0.32)');   
-      c.fillStyle = gradeGrad;
+      const grade = c.createLinearGradient(0, 0, W, H);
+      grade.addColorStop(0, 'rgba(255, 140, 50, 0.22)'); 
+      grade.addColorStop(1, 'rgba(0, 50, 100, 0.32)');   
+      c.fillStyle = grade;
       c.fillRect(0, 0, W, H);
       c.restore();
 
-      // Vignette
-      const vignette = c.createRadialGradient(W/2, H/2, H*0.35, W/2, H/2, H*0.9);
+      // Layer 15: Deep Vignette Shadowing
+      const vignette = c.createRadialGradient(W/2, H/2, H * 0.35, W/2, H/2, H * 0.9);
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.8)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.85)');
       c.fillStyle = vignette;
       c.fillRect(0, 0, W, H);
 
-      // High Quality Film Grain
+      // Layer 14: Photorealistic Film Grain overlay
       c.save();
       c.globalCompositeOperation = 'overlay';
       c.globalAlpha = 0.04;
@@ -747,7 +728,7 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
       c.restore();
     }
 
-    /* 🎬 ANIMATION LOOP */
+    /* 🎬 ANIMATION LOOP (Layer orchestration) */
     let prevTime = 0;
     function loop(now: number) {
       if (!t0.current) { t0.current = now; prevTime = now; }
@@ -760,14 +741,14 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
         return;
       }
 
-      spawnDust(t, now / 1000);
+      spawnParticles(t, now / 1000);
       updateParticles(dt, now / 1000);
 
       c.fillStyle = '#000000';
       c.fillRect(0, 0, W, H);
 
-      // Smooth horizontal camera drift only (Removed vertical crane to secure India Gate)
-      const camDollyZ = lerp(1.0, 1.10, eOE(t / DUR)); // slow cinematically stable zoom
+      // Layer 10 (Part 1): Slow Camera Drift
+      const camDollyZ = lerp(1.0, 1.08, eOE(t / DUR)); 
       const breatheX = Math.sin(t * 0.4) * 2;
       const breatheY = Math.cos(t * 0.3) * 1.5;
       const camRot = Math.sin(t * 0.15) * 0.003;
@@ -778,24 +759,26 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
       c.scale(camDollyZ, camDollyZ);
       c.translate(-W / 2, -H / 2);
 
-      // Calculate fading factor when typography screen slides in (after 11.5s)
+      // Scene Alpha fade-out coefficient triggered at t=11.5s
       const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
 
-      // Background Rendering Layer Order with Alpha blending
-      drawAtmosphere(t, now / 1000, sceneAlpha);
-      drawSunAndRays(t, now / 1000, sceneAlpha); 
-      dStars(t, sceneAlpha); 
-      drawIndiaGate(t, sceneAlpha);              
-      drawTorch(t, now / 1000, sceneAlpha);      
-      drawFog(t, now / 1000, sceneAlpha);        
-      drawJets(t, sceneAlpha);                
-      drawParticles();
-      dChakraSpokes(t, sceneAlpha);
-      drawDoves(t, now / 1000, sceneAlpha);   
+      // Progressive Layer Assembly
+      drawSky(t, now / 1000, sceneAlpha);                     // Layer 1: Sky
+      drawClouds(t, sceneAlpha);                              // Layer 2: Clouds
+      dStars(t, sceneAlpha);                                  // Stars (Background)
+      drawWavingFlagAndChakra(t, now / 1000, sceneAlpha);     // Layer 6 & 7: Flag & Chakra
+      drawIndiaGate(t, sceneAlpha);                           // Layer 4: India Gate
+      drawTorch(t, now / 1000, sceneAlpha);                   // Layer 5: Flame
+      drawFog(t, now / 1000, sceneAlpha);                     // Layer 3: Volumetric Fog
+      drawLensFlares(t, sceneAlpha);                          // Layer 11: Flares
+      drawJetsAndTrails(t, sceneAlpha);                       // Layer 8 & 9: Jets & Smoke
+      drawParticles();                                        // Layer 10 (Part 2): Particles
+      dChakraSpokes(t, sceneAlpha);                           // Ashoka spokes glow
+      drawDoves(t, now / 1000, sceneAlpha);                   // Peace Doves (Layer extra)
 
       c.restore();
 
-      // Premium Black/Dark Backdrop Fade-in strictly for the message (at 11.5s)
+      // Layer 13 Premium Transition: Smooth backdrop overlay fade-in (at 11.5s)
       if (t >= 11.5) {
         const bgFade = clamp((t - 11.5) * 1.8, 0, 1);
         c.save();
@@ -808,10 +791,52 @@ export default function NationalCinematicIntro({ onComplete }: Props) {
         c.restore();
       }
 
-      drawTypography(t, now / 1000);
-      drawPostFX();
+      drawTypography(t);                                      // Layer 13: Typography
+      drawPostFX();                                           // Layer 12, 14, 15: Post Grading/Vignette/Grain
 
       raf.current = requestAnimationFrame(loop);
+    }
+
+    /* Extra: Subtle Peace Doves flight logic */
+    const doves: Dove[] = Array.from({ length: 5 }, (_, i) => ({
+      x: W * (0.15 + i * 0.16),
+      y: H * (0.68 + Math.random() * 0.18),
+      vx: 1.2 + Math.random() * 0.8,
+      vy: -0.6 - Math.random() * 0.3,
+      wing: Math.random() * Math.PI * 2
+    }));
+
+    function drawDoves(t: number, elapsed: number, sceneAlpha: number) {
+      if (t < 4.5) return;
+      const dAlpha = clamp((t - 4.5) / 1.5, 0, 1) * sceneAlpha;
+      c.save();
+      c.globalAlpha = dAlpha;
+      c.fillStyle = '#FFFFFF';
+      c.shadowColor = 'rgba(0,0,0,0.15)';
+      c.shadowBlur = 5;
+
+      doves.forEach(d => {
+        d.x += d.vx; d.y += d.vy; d.wing += 0.2;
+        c.save();
+        c.translate(d.x, d.y);
+        const wingY = Math.sin(d.wing) * 10;
+
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.quadraticCurveTo(-12, -wingY, -25, 0);
+        c.quadraticCurveTo(-12, wingY * 0.5, 0, 0);
+        c.fill();
+
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.quadraticCurveTo(12, -wingY, 25, 0);
+        c.quadraticCurveTo(12, wingY * 0.5, 0, 0);
+        c.fill();
+
+        c.beginPath(); c.ellipse(0, 1, 3.5, 8, 0, 0, Math.PI * 2); c.fill();
+        c.restore();
+      });
+      c.restore();
     }
 
     raf.current = requestAnimationFrame(loop);
