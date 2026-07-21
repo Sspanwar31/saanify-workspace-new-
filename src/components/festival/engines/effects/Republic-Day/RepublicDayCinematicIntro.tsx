@@ -483,7 +483,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // LAYER 8 & 9: SUKHOI JETS & TRAILS (Spawns Tricolor Sand Trails)
+    // LAYER 8 & 9: SUKHOI JETS & TRAILS (Spawns Tricolor Sand Trails with variegated 5px-9px sizing)
     const drawJetsAndTrails = (t: number, sceneAlpha: number) => {
       if (t < 2.5 || t > 9.0) return;
       c.save();
@@ -515,7 +515,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           }
         }
 
-        // NOVELTY: High Density Tricolor fine Sand/Color drop emissions (Strictly Behind Jet Flight)
+        // NOVELTY: High Density Tricolor fine Sand/Color drop emissions (Strictly Behind Jet Flight, sized 5px to 9px)
         if (Math.random() < 0.90) {
           const p = grab(pl); if (p) {
             p.on = true;
@@ -524,7 +524,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             p.vx = -jet.vx * 0.15 + (Math.random() - 0.5) * 0.4;
             p.vy = 0.6 + Math.random() * 1.2;
             p.life = 5.0; p.ml = 5.0;
-            p.sz = 1.3 + Math.random() * 1.8; // Beautiful fine sand granules
+            p.sz = 5 + Math.random() * 4; // RANDOMLY Variegated Size strictly between 5px and 9px
 
             const hex = jet.smokeColor.replace('#', '');
             p.r = parseInt(hex.substring(0, 2), 16);
@@ -567,7 +567,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // LAYER 10: PARTICLES ENGINE (Dust + Spectacular sky-wide Tricolor Rain)
+    // LAYER 10: PARTICLES ENGINE (Dust + Spectacular sky-wide Tricolor Rain with variegated 5px-9px sizing)
     const spawnParticles = (t: number, elapsed: number) => {
       // 1. Ambient sparkles (dust)
       if (t > 1 && Math.random() < 0.25) {
@@ -589,7 +589,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // 2. MAGICAL SKY-WIDE TRICOLOR COLOR RAIN (Starts after Jets are active t >= 3.2s)
+      // 2. MAGICAL SKY-WIDE TRICOLOR COLOR RAIN (Sized 5px to 9px for high visibility)
       if (t >= 3.2 && t < 11.5) {
         const rainIntensity = 4; // High frequency spawn rate for screen-wide rain effect
         for (let i = 0; i < rainIntensity; i++) {
@@ -601,7 +601,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             p.vx = (Math.random() - 0.5) * 0.5; // Soft natural descent with minor sway
             p.vy = 1.5 + Math.random() * 2.0; // Falling down smoothly
             p.life = 6.0; p.ml = 6.0;
-            p.sz = 1.3 + Math.random() * 1.8; // Fine sand granules (not leaves)
+            p.sz = 5 + Math.random() * 4; // Variegated Size strictly between 5px and 9px
 
             const rand = Math.random();
             if (rand < 0.34) {
@@ -675,15 +675,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
           c.fill();
           c.restore();
-        } else if (p.tp === 2) { // Tiny circular sand color drops with microglow
+        } else if (p.tp === 2) { // Tiny circular sand color drops with soft radiant bloom
           c.save();
           c.globalCompositeOperation = 'screen';
-          const rGrad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz * 1.5);
+          const rGrad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz);
           rGrad.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${alpha})`);
+          rGrad.addColorStop(0.8, `rgba(${p.r},${p.g},${p.b},${alpha * 0.45})`);
           rGrad.addColorStop(1, 'rgba(0,0,0,0)');
           c.fillStyle = rGrad;
           c.beginPath();
-          c.arc(p.x, p.y, p.sz * 1.5, 0, Math.PI * 2);
+          c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
           c.fill();
           c.restore();
         }
@@ -723,7 +724,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // LAYER 13: TYPOGRAPHY
+    // LAYER 13: TYPOGRAPHY (Stunning Waving Tricolor Gradient Theme)
     const drawTypography = (t: number) => {
       if (t < 11.5) return;
       const textAlpha = clamp((t - 11.5) * 1.5, 0, 1);
@@ -736,12 +737,17 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       const fontSize = Math.min(W * 0.065, 52);
       c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
       
-      c.fillStyle = 'rgba(0,0,0,0.9)';
-      c.fillText("HAPPY REPUBLIC DAY", W/2 + 1.5, titleY + 1.5);
+      // High-contrast clean dark shadow behind text
+      c.fillStyle = 'rgba(0,0,0,0.92)';
+      c.fillText("HAPPY REPUBLIC DAY", W/2 + 2, titleY + 2);
       
-      const grad = c.createLinearGradient(0, titleY - fontSize/2, 0, titleY + fontSize/2);
-      grad.addColorStop(0, '#FFFACD'); grad.addColorStop(0.4, '#FFD700');
-      grad.addColorStop(0.6, '#DAA520'); grad.addColorStop(1, '#8B6914');
+      // TRICOLOR STYLE GRADIENT (Saffron -> White -> Green)
+      const grad = c.createLinearGradient(0, titleY - fontSize * 0.5, 0, titleY + fontSize * 0.38);
+      grad.addColorStop(0, '#FF9933');    // Saffron
+      grad.addColorStop(0.48, '#FFFFFF'); // White Middle
+      grad.addColorStop(0.52, '#FFFFFF'); // White Middle
+      grad.addColorStop(1, '#138808');    // Green base
+      
       c.fillStyle = grad;
       c.fillText("HAPPY REPUBLIC DAY", W/2, titleY);
 
@@ -783,7 +789,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
     // EXTRA LAYER: HIGH-FIDELITY SCARY FLYAWAY PEACE DOVES
     const drawDoves = (t: number, elapsed: number, sceneAlpha: number) => {
-      const dAlpha = sceneAlpha;
+      // FIX 1: Pigeons are strictly hidden until India Gate is fully revealed (t >= 2.0s)
+      if (t < 2.0) return;
+      const dAlpha = clamp((t - 2.0) * 1.2, 0, 1) * sceneAlpha;
       c.save();
       c.globalAlpha = dAlpha;
 
@@ -792,15 +800,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         dovesList.forEach(d => {
           if (d.state === 'sitting') {
             d.state = 'flying';
-            // Startled velocity vectors
+            // FIX 2: Gentle, elegant flight speed (reduced to make flight realistic)
             if (d.side === 'left') {
-              // Left pigeons fly up and to the right
-              d.vx = 2.0 + Math.random() * 1.8;
-              d.vy = -2.2 - Math.random() * 1.5;
+              // Left pigeons fly up and gracefully to the right
+              d.vx = 0.8 + Math.random() * 0.8;
+              d.vy = -0.9 - Math.random() * 0.7;
             } else {
-              // Right pigeons fly up and to the left
-              d.vx = -2.0 - Math.random() * 1.8;
-              d.vy = -2.2 - Math.random() * 1.5;
+              // Right pigeons fly up and gracefully to the left
+              d.vx = -0.8 - Math.random() * 0.8;
+              d.vy = -0.9 - Math.random() * 0.7;
             }
           }
         });
@@ -808,8 +816,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       dovesList.forEach(d => {
         if (d.state === 'flying') {
-          d.x += d.vx; d.y += d.vy; d.wing += 0.32; // Energetic flaps
-          d.vy += 0.012; // Minor gravity drift
+          d.x += d.vx; d.y += d.vy; d.wing += 0.22; // Natural organic flaps speed
+          d.vy += 0.006; // Highly minimal air gravity drift
         }
 
         c.save();
@@ -856,7 +864,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.closePath();
           c.fill();
 
-          // Flapping Wings
+          // Flapping Wings (Jointed 2-segment wing design)
           [-1, 1].forEach(side => {
             c.save();
             c.scale(1, side);
