@@ -515,6 +515,132 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
+    // LAYER 10: PARTICLES ENGINE (Complete Definition)
+    const spawnParticles = (t: number, elapsed: number) => {
+      // Ambient sparkles
+      if (t > 1 && Math.random() < 0.25) {
+        const p = grab(pl);
+        if (p) {
+          p.on = true;
+          p.x = Math.random() * W;
+          p.y = Math.random() * H;
+          p.vx = Math.sin(elapsed + Math.random() * 10) * 0.25;
+          p.vy = -0.2 - Math.random() * 0.25;
+          p.life = 5;
+          p.ml = 5;
+          p.sz = 1 + Math.random() * 1.5;
+          p.r = 255;
+          p.g = 210 + Math.random() * 45;
+          p.b = 160;
+          p.a = 0.35;
+          p.tp = 1; // dust
+        }
+      }
+
+      // Elegant Marigold & Tricolor petals falling
+      if (t > 2.5 && Math.random() < 0.35) {
+        const p = grab(pl);
+        if (p) {
+          p.on = true;
+          p.x = Math.random() * W;
+          p.y = -10;
+          p.vx = (Math.random() - 0.5) * 1.8;
+          p.vy = 0.7 + Math.random() * 1.2;
+          p.life = 7;
+          p.ml = 7;
+          p.sz = 5 + Math.random() * 5;
+
+          const rand = Math.random();
+          if (rand < 0.34) {
+            p.r = 255; p.g = 153; p.b = 51; // Saffron
+          } else if (rand < 0.67) {
+            p.r = 255; p.g = 255; p.b = 255; // White
+          } else {
+            p.r = 19; p.g = 136; p.b = 8; // Green
+          }
+
+          p.a = 0.9;
+          p.rot = Math.random() * Math.PI * 2;
+          p.rs = (Math.random() - 0.5) * 0.08;
+          p.tp = 2; // Petals
+        }
+      }
+    };
+
+    const updateParticles = (dt: number, elapsed: number) => {
+      for (let i = 0; i < pl.length; i++) {
+        const p = pl[i];
+        if (!p.on) continue;
+        p.life -= dt;
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.tp === 4) { // smoke
+          p.sz += 0.45;
+          p.vx *= 0.985;
+          p.vy *= 0.985;
+          p.life -= 0.012;
+        } else if (p.tp === 2) { // petals
+          p.rot += p.rs;
+          p.vy += 0.035;
+          p.vx += Math.sin(elapsed + p.y * 0.01) * 0.1;
+          p.life -= 0.006;
+        } else if (p.tp === 3) { // embers
+          p.vy -= 0.015;
+          p.vx += (Math.random() - 0.5) * 0.15;
+          p.life -= 0.018;
+        } else { // dust
+          p.life -= 0.005;
+        }
+
+        if (p.life <= 0 || p.x < -120 || p.x > W + 120 || p.y > H + 120) {
+          p.on = false;
+        }
+      }
+    };
+
+    const drawParticles = () => {
+      for (let i = 0; i < pl.length; i++) {
+        const p = pl[i];
+        if (!p.on) continue;
+        const alpha = clamp(p.life / p.ml, 0, 1) * p.a;
+
+        if (p.tp === 4) { // smoke
+          c.save();
+          c.globalCompositeOperation = 'screen';
+          const grad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz);
+          grad.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${alpha})`);
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = grad;
+          c.fillRect(p.x - p.sz, p.y - p.sz, p.sz * 2, p.sz * 2);
+          c.restore();
+        } else if (p.tp === 1 || p.tp === 3) { // dust & embers
+          c.save();
+          c.globalCompositeOperation = 'screen';
+          c.globalAlpha = alpha;
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
+          c.beginPath();
+          c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
+          c.fill();
+          c.restore();
+        } else if (p.tp === 2) { // Rotating petals
+          c.save();
+          c.globalAlpha = alpha;
+          c.translate(p.x, p.y);
+          c.rotate(p.rot);
+          c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
+          c.beginPath();
+          c.ellipse(0, 0, p.sz, p.sz * 0.6, 0, 0, Math.PI * 2);
+          c.fill();
+
+          c.strokeStyle = 'rgba(0,0,0,0.06)';
+          c.lineWidth = 0.8;
+          c.stroke();
+          c.restore();
+        }
+      }
+    };
+
     // LAYER 11: LENS FLARES
     const drawLensFlares = (t: number, sceneAlpha: number) => {
       if (t < 5.0) return;
