@@ -21,8 +21,11 @@ interface Cloud {
   x: number; y: number; sz: number; speed: number; opacity: number;
 }
 
-interface Dove {
+interface SittingDove {
   x: number; y: number; vx: number; vy: number; wing: number;
+  state: 'sitting' | 'flying';
+  side: 'left' | 'right';
+  bobOffset: number;
 }
 
 const POOL_SIZE = 4000;
@@ -161,7 +164,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       opacity: 0.15 + Math.random() * 0.2
     }));
 
-    // Crossing Jets Setup (Adjusted starting and velocity positions)
+    // Crossing Jets Setup
     const jets: Jet[] = [
       { x: -W * 0.3, y: H * 0.16, scale: 0.95, smokeColor: '#FF9933', vx: 5.5, vy: 0.8, active: true },
       { x: W + W * 0.3, y: H * 0.20, scale: 0.90, smokeColor: '#FFFFFF', vx: -5.5, vy: 0.6, active: true },
@@ -179,14 +182,43 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       starI.push(i);
     }
 
-    /* Peace Doves Flight - Complex realistic flap patterns */
-    const doves: Dove[] = Array.from({ length: 5 }, (_, i) => ({
-      x: W * (0.15 + i * 0.16),
-      y: H * (0.68 + Math.random() * 0.18),
-      vx: 1.2 + Math.random() * 0.8,
-      vy: -0.6 - Math.random() * 0.3,
-      wing: Math.random() * Math.PI * 2
-    }));
+    // Dynamic Sizing Metrics for India Gate (Needed for Sitting Doves positioning)
+    const sc = Math.min(window.innerWidth, window.innerHeight);
+    const gateH = sc * 0.66;
+    const gateW = gateH * 0.84;
+    const baseY = window.innerHeight * 0.82;
+    const cx = window.innerWidth * 0.5;
+    const pillarH = gateH * 0.72;
+    const pillarY = baseY - 32 - pillarH; // Sitting ledge height
+
+    // Initialize 14 pigeons sitting on the India Gate molding ledges
+    const dovesList: SittingDove[] = [];
+    // Left side ledge pigeons
+    for (let i = 0; i < 7; i++) {
+      dovesList.push({
+        x: cx - gateW * 0.42 + (gateW * 0.16) * (i / 6),
+        y: pillarY - 2, // Sitting flush on top of the left ledge
+        vx: 0,
+        vy: 0,
+        wing: Math.random() * Math.PI * 2,
+        state: 'sitting',
+        side: 'left',
+        bobOffset: Math.random() * 10
+      });
+    }
+    // Right side ledge pigeons
+    for (let i = 0; i < 7; i++) {
+      dovesList.push({
+        x: cx + gateW * 0.26 + (gateW * 0.16) * (i / 6),
+        y: pillarY - 2, // Sitting flush on top of the right ledge
+        vx: 0,
+        vy: 0,
+        wing: Math.random() * Math.PI * 2,
+        state: 'sitting',
+        side: 'right',
+        bobOffset: Math.random() * 10
+      });
+    }
 
     /* ═══════════════════════════════════════════════════════════
        LEXICALLY SCOPED DRAWING FUNCTIONS (Prevents Scoping Bugs)
@@ -264,12 +296,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
     // LAYER 4: INDIA GATE (Majestic 3D Perspective Sandstone)
     const drawIndiaGate = (t: number, sceneAlpha: number) => {
-      const sc = Math.min(W, H);
-      const gateH = sc * 0.66;
-      const gateW = gateH * 0.84;
-      const baseY = H * 0.82;
-      const cx = W * 0.5;
-
       const reveal = clamp((t - 1.0) * 0.4, 0, 1);
       c.save();
       c.globalAlpha = reveal * sceneAlpha;
@@ -311,16 +337,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       draw3DBlock(cx - gateW * 0.52, baseY - 16, gateW * 1.04, 16, 5);
       draw3DBlock(cx - gateW * 0.48, baseY - 32, gateW * 0.96, 16, 4);
 
-      const pW = gateW * 0.26;
-      const pH = gateH * 0.72;
-      const pY = baseY - 32 - pH;
-      
-      draw3DBlock(cx - gateW * 0.46, pY, pW, pH, 6);
-      draw3DBlock(cx + gateW * 0.46 - pW, pY, pW, pH, 6);
+      draw3DBlock(cx - gateW * 0.46, pillarY, pW, pillarH, 6);
+      draw3DBlock(cx + gateW * 0.46 - pW, pillarY, pW, pillarH, 6);
 
       c.fillStyle = 'rgba(0,0,0,0.15)';
-      c.fillRect(cx - gateW * 0.48 + pW - 8, pY, 8, pH);
-      c.fillRect(cx + gateW * 0.48 - pW, pY, 8, pH);
+      c.fillRect(cx - gateW * 0.48 + pW - 8, pillarY, 8, pillarH);
+      c.fillRect(cx + gateW * 0.48 - pW, pillarY, 8, pillarH);
 
       const cArchW = gateW * 0.44;
       const cArchH = gateH * 0.54;
@@ -340,12 +362,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.fill();
       c.restore();
 
-      draw3DBlock(cx - gateW * 0.5, pY - gateH * 0.1, gateW * 1.0, gateH * 0.1, 8);
-      draw3DBlock(cx - gateW * 0.42, pY - gateH * 0.22, gateW * 0.84, gateH * 0.12, 10);
+      draw3DBlock(cx - gateW * 0.5, pillarY - gateH * 0.1, gateW * 1.0, gateH * 0.1, 8);
+      draw3DBlock(cx - gateW * 0.42, pillarY - gateH * 0.22, gateW * 0.84, gateH * 0.12, 10);
       
       c.beginPath();
-      c.moveTo(cx - gateW * 0.2, pY - gateH * 0.22);
-      c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pY - gateH * 0.22);
+      c.moveTo(cx - gateW * 0.2, pillarY - gateH * 0.22);
+      c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pillarY - gateH * 0.22);
       c.closePath();
       c.fillStyle = shadowColor;
       c.fill();
@@ -396,8 +418,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       if (t < 3.0) return;
       const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
 
-      const sc = Math.min(W, H);
-      const fw = sc * 0.38;
+      const scVal = Math.min(W, H);
+      const fw = scVal * 0.38;
       const fh = fw * 0.66;
       const fx = W * 0.5 - fw / 2;
       const fy = H * 0.44 - fh / 2;
@@ -424,12 +446,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.fillRect(targetX, targetY + (fh * 2) / 3, colW + 0.5, fh / 3);
       }
 
-      const cx = fx + fw / 2;
-      const cy = fy + fh / 2 + Math.sin((cols / 2) * 0.22 - elapsed * 3.8) * 8.5;
+      const cxVal = fx + fw / 2;
+      const cyVal = fy + fh / 2 + Math.sin((cols / 2) * 0.22 - elapsed * 3.8) * 8.5;
       const cr = fh * 0.12;
 
       c.save();
-      c.translate(cx, cy);
+      c.translate(cxVal, cyVal);
       c.rotate(elapsed * 0.6);
 
       c.strokeStyle = '#000080';
@@ -455,7 +477,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // LAYER 8 & 9: SUKHOI JETS & TRAILS (Now Spawning Tricolor Sand Trails)
+    // LAYER 8 & 9: SUKHOI JETS & TRAILS (Spawns Tricolor Sand Trails)
     const drawJetsAndTrails = (t: number, sceneAlpha: number) => {
       if (t < 2.5 || t > 9.0) return;
       c.save();
@@ -493,7 +515,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             p.on = true;
             p.x = nozzleX;
             p.y = nozzleY + (Math.random() - 0.5) * 6;
-            // Slight drag drift + natural gravity falling physics
             p.vx = -jet.vx * 0.15 + (Math.random() - 0.5) * 0.4;
             p.vy = 0.6 + Math.random() * 1.2;
             p.life = 5.0; p.ml = 5.0;
@@ -540,9 +561,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // LAYER 10: PARTICLES ENGINE (Dust Particles only - Jet spawns colors)
+    // LAYER 10: PARTICLES ENGINE (Dust + Spectacular sky-wide Tricolor Rain)
     const spawnParticles = (t: number, elapsed: number) => {
-      // Ambient sparkles
+      // 1. Ambient sparkles (dust)
       if (t > 1 && Math.random() < 0.25) {
         const p = grab(pl);
         if (p) {
@@ -559,6 +580,35 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           p.b = 160;
           p.a = 0.35;
           p.tp = 1; // dust
+        }
+      }
+
+      // 2. MAGICAL SKY-WIDE TRICOLOR COLOR RAIN (Starts after Jets are active t >= 3.2s)
+      if (t >= 3.2 && t < 11.5) {
+        const rainIntensity = 4; // High frequency spawn rate for screen-wide rain effect
+        for (let i = 0; i < rainIntensity; i++) {
+          const p = grab(pl);
+          if (p) {
+            p.on = true;
+            p.x = Math.random() * W; // Scattered across entire canvas width
+            p.y = -10 - Math.random() * 15; // Spawn right above the screen viewport
+            p.vx = (Math.random() - 0.5) * 0.5; // Soft natural descent with minor sway
+            p.vy = 1.5 + Math.random() * 2.0; // Falling down smoothly
+            p.life = 6.0; p.ml = 6.0;
+            p.sz = 1.3 + Math.random() * 1.8; // Fine sand granules (not leaves)
+
+            const rand = Math.random();
+            if (rand < 0.34) {
+              p.r = 255; p.g = 153; p.b = 51; // Saffron
+            } else if (rand < 0.67) {
+              p.r = 255; p.g = 255; p.b = 255; // White
+            } else {
+              p.r = 19; p.g = 136; p.b = 8; // India Green
+            }
+
+            p.a = 0.88;
+            p.tp = 2; // Tricolor fine sand
+          }
         }
       }
     };
@@ -725,97 +775,161 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // EXTRA LAYER: HIGH-FIDELITY PEACE DOVES (Realistic wings flapping & body structure)
+    // EXTRA LAYER: HIGH-FIDELITY SCARY FLYAWAY PEACE DOVES
     const drawDoves = (t: number, elapsed: number, sceneAlpha: number) => {
-      if (t < 4.5) return;
-      const dAlpha = clamp((t - 4.5) / 1.5, 0, 1) * sceneAlpha;
+      // Pigeons are visible as sitting elements first, then startled upwards
+      const dAlpha = sceneAlpha;
       c.save();
       c.globalAlpha = dAlpha;
 
-      doves.forEach(d => {
-        d.x += d.vx; d.y += d.vy; d.wing += 0.22;
-        
+      // Startle trigger synchronized perfectly with the Jets crossing (t >= 2.6s)
+      if (t >= 2.6) {
+        dovesList.forEach(d => {
+          if (d.state === 'sitting') {
+            d.state = 'flying';
+            // Startled velocity vectors
+            if (d.side === 'left') {
+              // Left pigeons fly up and to the right
+              d.vx = 2.0 + Math.random() * 1.8;
+              d.vy = -2.2 - Math.random() * 1.5;
+            } else {
+              // Right pigeons fly up and to the left
+              d.vx = -2.0 - Math.random() * 1.8;
+              d.vy = -2.2 - Math.random() * 1.5;
+            }
+          }
+        });
+      }
+
+      dovesList.forEach(d => {
+        if (d.state === 'flying') {
+          d.x += d.vx; d.y += d.vy; d.wing += 0.32; // Energetic flaps
+          d.vy += 0.012; // Minor gravity drift
+        }
+
         c.save();
         c.translate(d.x, d.y);
         
-        // Align facing angle to flight vector
-        const flightAngle = Math.atan2(d.vy, d.vx);
-        c.rotate(flightAngle);
-
-        const dScale = 0.65; // Compact organic proportions
+        const dScale = 0.52; // Elegant, compact size
         c.scale(dScale, dScale);
 
-        const wingFactor = Math.sin(d.wing); // Flap cycle
+        if (d.state === 'flying') {
+          // Align facing angle to flight vector
+          const flightAngle = Math.atan2(d.vy, d.vx);
+          c.rotate(flightAngle);
 
-        // 1. Tail Feathers
-        c.fillStyle = '#e5e5e5';
-        c.beginPath();
-        c.moveTo(-15, 0);
-        c.lineTo(-26, -5 + wingFactor * 2);
-        c.lineTo(-26, 5 - wingFactor * 2);
-        c.closePath();
-        c.fill();
+          const wingFactor = Math.sin(d.wing);
 
-        // 2. Streamlined Body Torso
-        const bodyGrad = c.createLinearGradient(-15, 0, 15, 0);
-        bodyGrad.addColorStop(0, '#dadada');
-        bodyGrad.addColorStop(0.5, '#ffffff');
-        bodyGrad.addColorStop(1, '#e3e3e3');
-        c.fillStyle = bodyGrad;
-        c.beginPath();
-        c.ellipse(0, 0, 15, 5.0, 0, 0, Math.PI * 2);
-        c.fill();
-
-        // 3. Head & Yellow Beak
-        c.fillStyle = '#ffffff';
-        c.beginPath(); c.arc(13, -2, 4.0, 0, Math.PI * 2); c.fill();
-        
-        c.fillStyle = '#e29b3c';
-        c.beginPath();
-        c.moveTo(16, -3);
-        c.lineTo(21, -2);
-        c.lineTo(15, -1);
-        c.closePath();
-        c.fill();
-
-        // 4. Dual Jointed Flapping Wings (Shoulder -> Joint -> Feather Tip)
-        [-1, 1].forEach(side => {
-          c.save();
-          c.scale(1, side); // Mirror vertically for upper/lower wing
-
-          // Inner Wing Joint (Shoulder to Elbow)
-          const shoulderAngle = (wingFactor * 0.48 - 0.15);
-          c.rotate(shoulderAngle);
-          c.fillStyle = '#f0f0f0';
+          // 1. Tail Feathers
+          c.fillStyle = '#d8d8d8';
           c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(-7, -15);
-          c.lineTo(-13, -13);
+          c.moveTo(-15, 0);
+          c.lineTo(-26, -5 + wingFactor * 2);
+          c.lineTo(-26, 5 - wingFactor * 2);
           c.closePath();
           c.fill();
 
-          // Outer Wing Joint (Elbow to Wingtip)
-          c.translate(-7, -15);
-          const elbowAngle = (wingFactor * 0.38 - 0.08);
-          c.rotate(elbowAngle);
-
-          // Feather gradients
-          const featherGrad = c.createLinearGradient(0, 0, -10, -20);
-          featherGrad.addColorStop(0, '#ffffff');
-          featherGrad.addColorStop(1, '#cccccc');
-          c.fillStyle = featherGrad;
+          // 2. Streamlined Body Torso
+          const bodyGrad = c.createLinearGradient(-15, 0, 15, 0);
+          bodyGrad.addColorStop(0, '#dadada');
+          bodyGrad.addColorStop(0.5, '#ffffff');
+          bodyGrad.addColorStop(1, '#e3e3e3');
+          c.fillStyle = bodyGrad;
           c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(-11, -21);
-          c.lineTo(-16, -10);
+          c.ellipse(0, 0, 15, 5.0, 0, 0, Math.PI * 2);
+          c.fill();
+
+          // Head & Beak
+          c.fillStyle = '#ffffff';
+          c.beginPath(); c.arc(13, -2, 4.0, 0, Math.PI * 2); c.fill();
+          
+          c.fillStyle = '#e29b3c';
+          c.beginPath();
+          c.moveTo(16, -3);
+          c.lineTo(21, -2);
+          c.lineTo(15, -1);
           c.closePath();
           c.fill();
 
-          c.restore();
-        });
+          // Flapping Wings
+          [-1, 1].forEach(side => {
+            c.save();
+            c.scale(1, side);
+
+            const shoulderAngle = (wingFactor * 0.5 - 0.15);
+            c.rotate(shoulderAngle);
+            c.fillStyle = '#f0f0f0';
+            c.beginPath();
+            c.moveTo(0, 0);
+            c.lineTo(-7, -15);
+            c.lineTo(-13, -13);
+            c.closePath();
+            c.fill();
+
+            c.translate(-7, -15);
+            const elbowAngle = (wingFactor * 0.4 - 0.08);
+            c.rotate(elbowAngle);
+
+            const featherGrad = c.createLinearGradient(0, 0, -10, -20);
+            featherGrad.addColorStop(0, '#ffffff');
+            featherGrad.addColorStop(1, '#cccccc');
+            c.fillStyle = featherGrad;
+            c.beginPath();
+            c.moveTo(0, 0);
+            c.lineTo(-11, -21);
+            c.lineTo(-16, -10);
+            c.closePath();
+            c.fill();
+
+            c.restore();
+          });
+        } else {
+          // SITTING STATE on Ledges (Folded wings, head bobbing)
+          const headBob = Math.sin(elapsed * 6 + d.bobOffset) * 1.2;
+
+          // 1. Folded Tail
+          c.fillStyle = '#b5b5b5';
+          c.beginPath();
+          c.moveTo(-10, 2);
+          c.lineTo(-22, 6);
+          c.lineTo(-20, 0);
+          c.closePath();
+          c.fill();
+
+          // 2. Compact Sitting Body Torso
+          const bodyGrad = c.createLinearGradient(-12, 0, 12, 0);
+          bodyGrad.addColorStop(0, '#cccccc');
+          bodyGrad.addColorStop(0.5, '#f5f5f5');
+          bodyGrad.addColorStop(1, '#d8d8d8');
+          c.fillStyle = bodyGrad;
+          c.beginPath();
+          c.ellipse(0, 2, 13, 6.5, 0.1, 0, Math.PI * 2);
+          c.fill();
+
+          // Head & Beak (bobbing gently)
+          c.fillStyle = '#ffffff';
+          c.beginPath(); 
+          c.arc(10, -2 + headBob, 4.2, 0, Math.PI * 2); 
+          c.fill();
+          
+          c.fillStyle = '#e29b3c';
+          c.beginPath();
+          c.moveTo(13, -3 + headBob);
+          c.lineTo(17, -2 + headBob);
+          c.lineTo(12, -1 + headBob);
+          c.closePath();
+          c.fill();
+
+          // Folded Wing overlay
+          c.fillStyle = '#e2e2e2';
+          c.beginPath();
+          c.ellipse(-1, 2, 10, 4.2, -0.15, 0, Math.PI * 2);
+          c.fill();
+        }
 
         c.restore();
       });
+
       c.restore();
     };
 
@@ -844,12 +958,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       if (t < 7.0 || t > 11.5) return;
       let alpha = (t < 8.0 ? eOC((t - 7.0) / 1.0) : t < 10.0 ? 1 : 1 - eOC((t - 10.0) / 1.5)) * sceneAlpha;
       if (alpha <= 0) return;
-      const cx = W / 2, cy = H / 2, sc = Math.min(W, H), or = Math.max(W, H) * 0.9, spokes = 24;
+      const cxVal = W / 2, cyVal = H / 2, scVal = Math.min(W, H), or = Math.max(W, H) * 0.9, spokes = 24;
       c.save(); c.globalAlpha = alpha * 0.12; c.globalCompositeOperation = 'lighter';
       for (let i = 0; i < spokes; i++) {
         const ang = (i / spokes) * Math.PI * 2 + t * 0.08;
-        c.beginPath(); c.moveTo(cx, cy);
-        c.lineTo(cx + Math.cos(ang) * or, cy + Math.sin(ang) * or);
+        c.beginPath(); c.moveTo(cxVal, cyVal);
+        c.lineTo(cxVal + Math.cos(ang) * or, cyVal + Math.sin(ang) * or);
         c.strokeStyle = 'rgba(30,70,160,0.55)'; c.stroke();
       }
       c.restore();
@@ -899,7 +1013,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       drawJetsAndTrails(t, sceneAlpha);                       // Layer 8 & 9: Jets & Smoke (Spawns Color Trails)
       drawParticles();                                        // Layer 10: Particles (Dust & Colors)
       drawChakraSpokes(t, sceneAlpha);                        // Ashoka spokes glow
-      drawDoves(t, now / 1000, sceneAlpha);                   // Peace Doves
+      drawDoves(t, now / 1000, sceneAlpha);                   // Peace Doves (Sitting first, startling Flyaway)
 
       c.restore();
 
