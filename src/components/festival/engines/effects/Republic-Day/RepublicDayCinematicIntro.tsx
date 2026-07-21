@@ -8,7 +8,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 interface Particle {
   x: number; y: number; z: number; vx: number; vy: number; vz: number;
   life: number; ml: number; sz: number;
-  color: string; tp: number; // 1: dust, 2: petal, 3: ember, 4: smoke
+  color: string; tp: number; // 1: dust, 2: color sand, 3: ember, 4: smoke
   rot: number; rs: number; on: boolean;
   r: number; g: number; b: number; a: number;
 }
@@ -161,7 +161,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       opacity: 0.15 + Math.random() * 0.2
     }));
 
-    // Crossing Jets Setup
+    // Crossing Jets Setup (Adjusted starting and velocity positions)
     const jets: Jet[] = [
       { x: -W * 0.3, y: H * 0.16, scale: 0.95, smokeColor: '#FF9933', vx: 5.5, vy: 0.8, active: true },
       { x: W + W * 0.3, y: H * 0.20, scale: 0.90, smokeColor: '#FFFFFF', vx: -5.5, vy: 0.6, active: true },
@@ -179,7 +179,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       starI.push(i);
     }
 
-    /* Extra: Subtle Peace Doves flight logic */
+    /* Peace Doves Flight - Complex realistic flap patterns */
     const doves: Dove[] = Array.from({ length: 5 }, (_, i) => ({
       x: W * (0.15 + i * 0.16),
       y: H * (0.68 + Math.random() * 0.18),
@@ -455,7 +455,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // LAYER 8 & 9: SUKHOI JETS & TRAILS
+    // LAYER 8 & 9: SUKHOI JETS & TRAILS (Now Spawning Tricolor Sand Trails)
     const drawJetsAndTrails = (t: number, sceneAlpha: number) => {
       if (t < 2.5 || t > 9.0) return;
       c.save();
@@ -464,11 +464,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       jets.forEach(jet => {
         jet.x += jet.vx; jet.y += jet.vy;
 
+        // Emitters positioned at rear nozzle
+        const nozzleX = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
+        const nozzleY = jet.y + 2 * jet.scale;
+
+        // Volumetric Smoke puffs
         if (Math.random() < 0.68) {
           const p = grab(pl); if (p) {
             p.on = true;
-            p.x = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
-            p.y = jet.y + 2 * jet.scale;
+            p.x = nozzleX;
+            p.y = nozzleY;
             p.vx = -jet.vx * 0.12 + (Math.random() - 0.5) * 0.35;
             p.vy = (Math.random() - 0.5) * 0.35;
             p.life = 4.0; p.ml = 4.0;
@@ -479,6 +484,26 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             p.g = parseInt(hex.substring(2, 4), 16);
             p.b = parseInt(hex.substring(4, 6), 16);
             p.a = 0.58; p.tp = 4;
+          }
+        }
+
+        // NOVELTY: High Density Tricolor fine Sand/Color drop emissions (Strictly Behind Jet Flight)
+        if (Math.random() < 0.90) {
+          const p = grab(pl); if (p) {
+            p.on = true;
+            p.x = nozzleX;
+            p.y = nozzleY + (Math.random() - 0.5) * 6;
+            // Slight drag drift + natural gravity falling physics
+            p.vx = -jet.vx * 0.15 + (Math.random() - 0.5) * 0.4;
+            p.vy = 0.6 + Math.random() * 1.2;
+            p.life = 5.0; p.ml = 5.0;
+            p.sz = 1.3 + Math.random() * 1.8; // Beautiful fine sand granules
+
+            const hex = jet.smokeColor.replace('#', '');
+            p.r = parseInt(hex.substring(0, 2), 16);
+            p.g = parseInt(hex.substring(2, 4), 16);
+            p.b = parseInt(hex.substring(4, 6), 16);
+            p.a = 0.88; p.tp = 2; // Fine Color Sand Dust
           }
         }
 
@@ -515,7 +540,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // LAYER 10: PARTICLES ENGINE (Complete Definition)
+    // LAYER 10: PARTICLES ENGINE (Dust Particles only - Jet spawns colors)
     const spawnParticles = (t: number, elapsed: number) => {
       // Ambient sparkles
       if (t > 1 && Math.random() < 0.25) {
@@ -536,35 +561,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           p.tp = 1; // dust
         }
       }
-
-      // Elegant Marigold & Tricolor petals falling
-      if (t > 2.5 && Math.random() < 0.35) {
-        const p = grab(pl);
-        if (p) {
-          p.on = true;
-          p.x = Math.random() * W;
-          p.y = -10;
-          p.vx = (Math.random() - 0.5) * 1.8;
-          p.vy = 0.7 + Math.random() * 1.2;
-          p.life = 7;
-          p.ml = 7;
-          p.sz = 5 + Math.random() * 5;
-
-          const rand = Math.random();
-          if (rand < 0.34) {
-            p.r = 255; p.g = 153; p.b = 51; // Saffron
-          } else if (rand < 0.67) {
-            p.r = 255; p.g = 255; p.b = 255; // White
-          } else {
-            p.r = 19; p.g = 136; p.b = 8; // Green
-          }
-
-          p.a = 0.9;
-          p.rot = Math.random() * Math.PI * 2;
-          p.rs = (Math.random() - 0.5) * 0.08;
-          p.tp = 2; // Petals
-        }
-      }
     };
 
     const updateParticles = (dt: number, elapsed: number) => {
@@ -580,11 +576,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           p.vx *= 0.985;
           p.vy *= 0.985;
           p.life -= 0.012;
-        } else if (p.tp === 2) { // petals
-          p.rot += p.rs;
-          p.vy += 0.035;
-          p.vx += Math.sin(elapsed + p.y * 0.01) * 0.1;
-          p.life -= 0.006;
+        } else if (p.tp === 2) { // Tiny color sand particles falling under gravity
+          p.vy += 0.045; // Gravity pull
+          p.vy *= 0.985; // Terminal velocity drag
+          p.vx = p.vx * 0.96 + Math.sin(elapsed * 2 + p.y * 0.015) * 0.15; // Smooth breeze sway
+          p.life -= 0.007;
         } else if (p.tp === 3) { // embers
           p.vy -= 0.015;
           p.vx += (Math.random() - 0.5) * 0.15;
@@ -623,19 +619,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
           c.fill();
           c.restore();
-        } else if (p.tp === 2) { // Rotating petals
+        } else if (p.tp === 2) { // Tiny circular sand color drops with microglow
           c.save();
-          c.globalAlpha = alpha;
-          c.translate(p.x, p.y);
-          c.rotate(p.rot);
-          c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
+          c.globalCompositeOperation = 'screen';
+          const rGrad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz * 1.5);
+          rGrad.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${alpha})`);
+          rGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = rGrad;
           c.beginPath();
-          c.ellipse(0, 0, p.sz, p.sz * 0.6, 0, 0, Math.PI * 2);
+          c.arc(p.x, p.y, p.sz * 1.5, 0, Math.PI * 2);
           c.fill();
-
-          c.strokeStyle = 'rgba(0,0,0,0.06)';
-          c.lineWidth = 0.8;
-          c.stroke();
           c.restore();
         }
       }
@@ -732,35 +725,95 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // EXTRA LAYER: PEACE DOVES
+    // EXTRA LAYER: HIGH-FIDELITY PEACE DOVES (Realistic wings flapping & body structure)
     const drawDoves = (t: number, elapsed: number, sceneAlpha: number) => {
       if (t < 4.5) return;
       const dAlpha = clamp((t - 4.5) / 1.5, 0, 1) * sceneAlpha;
       c.save();
       c.globalAlpha = dAlpha;
-      c.fillStyle = '#FFFFFF';
-      c.shadowColor = 'rgba(0,0,0,0.15)';
-      c.shadowBlur = 5;
 
       doves.forEach(d => {
-        d.x += d.vx; d.y += d.vy; d.wing += 0.2;
+        d.x += d.vx; d.y += d.vy; d.wing += 0.22;
+        
         c.save();
         c.translate(d.x, d.y);
-        const wingY = Math.sin(d.wing) * 10;
+        
+        // Align facing angle to flight vector
+        const flightAngle = Math.atan2(d.vy, d.vx);
+        c.rotate(flightAngle);
 
+        const dScale = 0.65; // Compact organic proportions
+        c.scale(dScale, dScale);
+
+        const wingFactor = Math.sin(d.wing); // Flap cycle
+
+        // 1. Tail Feathers
+        c.fillStyle = '#e5e5e5';
         c.beginPath();
-        c.moveTo(0, 0);
-        c.quadraticCurveTo(-12, -wingY, -25, 0);
-        c.quadraticCurveTo(-12, wingY * 0.5, 0, 0);
+        c.moveTo(-15, 0);
+        c.lineTo(-26, -5 + wingFactor * 2);
+        c.lineTo(-26, 5 - wingFactor * 2);
+        c.closePath();
         c.fill();
 
+        // 2. Streamlined Body Torso
+        const bodyGrad = c.createLinearGradient(-15, 0, 15, 0);
+        bodyGrad.addColorStop(0, '#dadada');
+        bodyGrad.addColorStop(0.5, '#ffffff');
+        bodyGrad.addColorStop(1, '#e3e3e3');
+        c.fillStyle = bodyGrad;
         c.beginPath();
-        c.moveTo(0, 0);
-        c.quadraticCurveTo(12, -wingY, 25, 0);
-        c.quadraticCurveTo(12, wingY * 0.5, 0, 0);
+        c.ellipse(0, 0, 15, 5.0, 0, 0, Math.PI * 2);
         c.fill();
 
-        c.beginPath(); c.ellipse(0, 1, 3.5, 8, 0, 0, Math.PI * 2); c.fill();
+        // 3. Head & Yellow Beak
+        c.fillStyle = '#ffffff';
+        c.beginPath(); c.arc(13, -2, 4.0, 0, Math.PI * 2); c.fill();
+        
+        c.fillStyle = '#e29b3c';
+        c.beginPath();
+        c.moveTo(16, -3);
+        c.lineTo(21, -2);
+        c.lineTo(15, -1);
+        c.closePath();
+        c.fill();
+
+        // 4. Dual Jointed Flapping Wings (Shoulder -> Joint -> Feather Tip)
+        [-1, 1].forEach(side => {
+          c.save();
+          c.scale(1, side); // Mirror vertically for upper/lower wing
+
+          // Inner Wing Joint (Shoulder to Elbow)
+          const shoulderAngle = (wingFactor * 0.48 - 0.15);
+          c.rotate(shoulderAngle);
+          c.fillStyle = '#f0f0f0';
+          c.beginPath();
+          c.moveTo(0, 0);
+          c.lineTo(-7, -15);
+          c.lineTo(-13, -13);
+          c.closePath();
+          c.fill();
+
+          // Outer Wing Joint (Elbow to Wingtip)
+          c.translate(-7, -15);
+          const elbowAngle = (wingFactor * 0.38 - 0.08);
+          c.rotate(elbowAngle);
+
+          // Feather gradients
+          const featherGrad = c.createLinearGradient(0, 0, -10, -20);
+          featherGrad.addColorStop(0, '#ffffff');
+          featherGrad.addColorStop(1, '#cccccc');
+          c.fillStyle = featherGrad;
+          c.beginPath();
+          c.moveTo(0, 0);
+          c.lineTo(-11, -21);
+          c.lineTo(-16, -10);
+          c.closePath();
+          c.fill();
+
+          c.restore();
+        });
+
         c.restore();
       });
       c.restore();
@@ -843,8 +896,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       drawTorch(t, now / 1000, sceneAlpha);                   // Layer 5: Flame
       drawFog(t, now / 1000, sceneAlpha);                     // Layer 3: Volumetric Fog
       drawLensFlares(t, sceneAlpha);                          // Layer 11: Flares
-      drawJetsAndTrails(t, sceneAlpha);                       // Layer 8 & 9: Jets & Smoke
-      drawParticles();                                        // Layer 10: Particles
+      drawJetsAndTrails(t, sceneAlpha);                       // Layer 8 & 9: Jets & Smoke (Spawns Color Trails)
+      drawParticles();                                        // Layer 10: Particles (Dust & Colors)
       drawChakraSpokes(t, sceneAlpha);                        // Ashoka spokes glow
       drawDoves(t, now / 1000, sceneAlpha);                   // Peace Doves
 
