@@ -218,371 +218,545 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     const sunPos = (t: number) => ({ x: lerp(W*0.3, W*0.5, eOE(t/10)), y: lerp(H*1.2, H*0.15, eOE(t/10)) });
 
     /* ═══════════════════════════════════════════════════════════
-       LAYER 1: SKY (Continuous Evolving Dawn -> Saffron Sunrise -> Morning Blue)
+       RENDERER OBJECT (Encapsulates all layers to avoid scoping/compilation bugs)
        ═══════════════════════════════════════════════════════════ */
-    const drawSky = (t: number, sceneAlpha: number) => {
-      c.save();
-      c.globalAlpha = sceneAlpha;
-      const grad = c.createLinearGradient(0, 0, 0, H);
-      
-      if (t < 3.5) {
-        // Phase 1: Twilight Deep Blue
-        const interp = clamp(t / 3.5, 0, 1);
-        const r1 = lerp(4, 20, interp), g1 = lerp(6, 32, interp), b1 = lerp(18, 62, interp);
-        const r2 = lerp(8, 48, interp), g2 = lerp(12, 40, interp), b2 = lerp(32, 90, interp);
-        grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
-        grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
-      } else if (t < 7.5) {
-        // Phase 2: Purple-to-Orange Horizon
-        const interp = clamp((t - 3.5) / 4.0, 0, 1);
-        const r1 = lerp(20, 85, interp), g1 = lerp(32, 38, interp), b1 = lerp(62, 80, interp);
-        const r2 = lerp(48, 255, interp), g2 = lerp(40, 130, interp), b2 = lerp(90, 48, interp);
-        grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
-        grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
-      } else if (t < 11.5) {
-        // Phase 3: Golden Saffron Sunrise
-        const interp = clamp((t - 7.5) / 4.0, 0, 1);
-        const r1 = lerp(85, 255, interp), g1 = lerp(38, 195, interp), b1 = lerp(80, 110, interp);
-        const r2 = lerp(255, 255, interp), g2 = lerp(130, 175, interp), b2 = lerp(48, 30, interp);
-        grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
-        grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
-      } else {
-        // Phase 4: Blue Morning Soft Haze
-        const interp = clamp((t - 11.5) / 4.5, 0, 1);
-        const r1 = lerp(255, 14, interp), g1 = lerp(195, 30, interp), b1 = lerp(110, 85, interp);
-        const r2 = lerp(255, 32, interp), g2 = lerp(175, 54, interp), b2 = lerp(30, 140, interp);
-        grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
-        grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
-      }
+    const renderer = {
+      // LAYER 1: SKY (Smooth Dawn Transition)
+      sky: (t: number, sceneAlpha: number) => {
+        c.save();
+        c.globalAlpha = sceneAlpha;
+        const grad = c.createLinearGradient(0, 0, 0, H);
+        
+        if (t < 3.5) {
+          // Phase 1: Twilight Deep Blue
+          const interp = clamp(t / 3.5, 0, 1);
+          const r1 = lerp(4, 20, interp), g1 = lerp(6, 32, interp), b1 = lerp(18, 62, interp);
+          const r2 = lerp(8, 48, interp), g2 = lerp(12, 40, interp), b2 = lerp(32, 90, interp);
+          grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
+          grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
+        } else if (t < 7.5) {
+          // Phase 2: Purple-to-Orange Horizon
+          const interp = clamp((t - 3.5) / 4.0, 0, 1);
+          const r1 = lerp(20, 85, interp), g1 = lerp(32, 38, interp), b1 = lerp(62, 80, interp);
+          const r2 = lerp(48, 255, interp), g2 = lerp(40, 130, interp), b2 = lerp(90, 48, interp);
+          grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
+          grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
+        } else if (t < 11.5) {
+          // Phase 3: Golden Saffron Sunrise
+          const interp = clamp((t - 7.5) / 4.0, 0, 1);
+          const r1 = lerp(85, 255, interp), g1 = lerp(38, 195, interp), b1 = lerp(80, 110, interp);
+          const r2 = lerp(255, 255, interp), g2 = lerp(130, 175, interp), b2 = lerp(48, 30, interp);
+          grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
+          grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
+        } else {
+          // Phase 4: Blue Morning Soft Haze
+          const interp = clamp((t - 11.5) / 4.5, 0, 1);
+          const r1 = lerp(255, 14, interp), g1 = lerp(195, 30, interp), b1 = lerp(110, 85, interp);
+          const r2 = lerp(255, 32, interp), g2 = lerp(175, 54, interp), b2 = lerp(30, 140, interp);
+          grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
+          grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
+        }
 
-      c.fillStyle = grad;
-      c.fillRect(0, 0, W, H);
-      c.restore();
-    };
+        c.fillStyle = grad;
+        c.fillRect(0, 0, W, H);
+        c.restore();
+      },
 
-    /* ═══════════════════════════════════════════════════════════
-       LAYER 4: INDIA GATE (Layered Nanite-style sandstone with AO)
-       ═══════════════════════════════════════════════════════════ */
-    const drawIndiaGate = (t: number, sceneAlpha: number) => {
-      const reveal = clamp((t - 0.8) * 0.4, 0, 1);
-      c.save();
-      c.globalAlpha = reveal * sceneAlpha;
+      // STARS RENDERING (Fades progressively)
+      stars: (t: number, sceneAlpha: number) => {
+        if (t > 7) return;
+        const alpha = clamp(1 - t / 7, 0, 1) * sceneAlpha;
+        c.save();
+        c.globalAlpha = alpha;
+        for (let i = 0; i < starI.length; i++) {
+          const idx = starI[i];
+          const p = pl[idx];
+          if (p && p.on) {
+            const twinkle = Math.sin(t * 3.5 + i) * 0.4 + 0.6;
+            c.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.a * twinkle})`;
+            c.beginPath();
+            c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
+            c.fill();
+          }
+        }
+        c.restore();
+      },
 
-      const sandstoneBase = '#c1805b';
-      const shadowBevel = '#613620';
-      const highlightBevel = '#fad6bd';
+      // LAYER 4: INDIA GATE
+      indiaGate: (t: number, sceneAlpha: number) => {
+        const reveal = clamp((t - 0.8) * 0.4, 0, 1);
+        c.save();
+        c.globalAlpha = reveal * sceneAlpha;
 
-      const drawBevelBlock = (x: number, y: number, w: number, h: number, depth: number) => {
-        // Ambient Contact Shadow (Ambient Occlusion effect)
-        c.fillStyle = 'rgba(0,0,0,0.32)';
-        c.fillRect(x - 3, y - 3, w + 6, h + 6);
+        const sandstoneBase = '#c1805b';
+        const shadowBevel = '#613620';
+        const highlightBevel = '#eed2bc';
 
-        // Core Block Front face
-        const frontGrad = c.createLinearGradient(x, y, x, y + h);
-        frontGrad.addColorStop(0, highlightBevel);
-        frontGrad.addColorStop(0.3, sandstoneBase);
-        frontGrad.addColorStop(1, shadowBevel);
-        c.fillStyle = frontGrad;
-        c.fillRect(x, y, w, h);
+        const drawBevelBlock = (x: number, y: number, w: number, h: number) => {
+          c.fillStyle = 'rgba(0,0,0,0.32)';
+          c.fillRect(x - 3, y - 3, w + 6, h + 6);
 
-        // Warm Bevel Lines (Sunlit Highlights)
-        c.strokeStyle = highlightBevel;
-        c.lineWidth = 1.5;
+          const frontGrad = c.createLinearGradient(x, y, x, y + h);
+          frontGrad.addColorStop(0, highlightBevel);
+          frontGrad.addColorStop(0.3, sandstoneBase);
+          frontGrad.addColorStop(1, shadowBevel);
+          c.fillStyle = frontGrad;
+          c.fillRect(x, y, w, h);
+
+          c.strokeStyle = highlightBevel;
+          c.lineWidth = 1.5;
+          c.beginPath();
+          c.moveTo(x, y + h);
+          c.lineTo(x, y);
+          c.lineTo(x + w, y);
+          c.stroke();
+
+          c.strokeStyle = shadowBevel;
+          c.lineWidth = 2.0;
+          c.beginPath();
+          c.moveTo(x + w, y);
+          c.lineTo(x + w, y + h);
+          c.lineTo(x, y + h);
+          c.stroke();
+        };
+
+        drawBevelBlock(cx - gateW * 0.52, baseY - 16, gateW * 1.04, 16);
+        drawBevelBlock(cx - gateW * 0.48, baseY - 32, gateW * 0.96, 16);
+
+        const pW = gateW * 0.26;
+        const pH = gateH * 0.72;
+        const pY = baseY - 32 - pH;
+        
+        drawBevelBlock(cx - gateW * 0.46, pY, pW, pH);
+        drawBevelBlock(cx + gateW * 0.46 - pW, pY, pW, pH);
+
+        drawBevelBlock(cx - gateW * 0.5, pY - gateH * 0.1, gateW * 1.0, gateH * 0.1);
+        drawBevelBlock(cx - gateW * 0.42, pY - gateH * 0.22, gateW * 0.84, gateH * 0.12);
+
         c.beginPath();
-        c.moveTo(x, y + h);
-        c.lineTo(x, y);
-        c.lineTo(x + w, y);
-        c.stroke();
+        c.moveTo(cx - gateW * 0.2, pY - gateH * 0.22);
+        c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pY - gateH * 0.22);
+        c.closePath();
+        c.fillStyle = shadowBevel;
+        c.fill();
 
-        // Cool Shadows (Side/Bottom cuts)
-        c.strokeStyle = shadowBevel;
-        c.lineWidth = 2.0;
+        c.restore();
+      },
+
+      // LAYER 5: AMAR JAWAN JYOTI (Flame)
+      torch: (t: number, elapsed: number, sceneAlpha: number) => {
+        if (t < 2.0) return;
+        const tx = W * 0.5;
+        const ty = H * 0.795;
+        
+        const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
+        c.save();
+        c.globalAlpha = fireAlpha;
+        c.globalCompositeOperation = 'lighter';
+        
+        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 140);
+        glowGrad.addColorStop(0, 'rgba(255, 120, 20, 0.9)');
+        glowGrad.addColorStop(0.4, 'rgba(255, 60, 5, 0.35)');
+        glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        c.fillStyle = glowGrad;
+        c.fillRect(tx - 140, ty - 140, 280, 280);
+
+        const flicker = Math.sin(elapsed * 32) * 4;
+        const flameH = 42 + flicker;
+        const flameW = 11;
+
+        const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
+        fireGrad.addColorStop(0, '#ffffff');
+        fireGrad.addColorStop(0.2, 'rgba(255, 210, 80, 0.95)');
+        fireGrad.addColorStop(0.6, 'rgba(255, 90, 0, 0.6)');
+        fireGrad.addColorStop(1, 'rgba(230, 0, 0, 0)');
+        c.fillStyle = fireGrad;
+
         c.beginPath();
-        c.moveTo(x + w, y);
-        c.lineTo(x + w, y + h);
-        c.lineTo(x, y + h);
-        c.stroke();
-      };
+        c.moveTo(tx - flameW, ty);
+        c.quadraticCurveTo(tx - flameW * 0.4, ty - flameH * 0.5, tx, ty - flameH);
+        c.quadraticCurveTo(tx + flameW * 0.4, ty - flameH * 0.5, tx + flameW, ty);
+        c.closePath();
+        c.fill();
+        c.restore();
+      },
 
-      // Base Platform
-      drawBevelBlock(cx - gateW * 0.52, baseY - 16, gateW * 1.04, 16, 5);
-      drawBevelBlock(cx - gateW * 0.48, baseY - 32, gateW * 0.96, 16, 4);
+      // LAYER 6 & 7: WAVING FLAG & ASHOKA CHAKRA
+      wavingFlagAndChakra: (t: number, elapsed: number, sceneAlpha: number) => {
+        if (t < 3.0) return;
+        const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
 
-      // Flanking main columns
-      const pW = gateW * 0.26;
-      const pH = gateH * 0.72;
-      const pY = baseY - 32 - pH;
-      
-      drawBevelBlock(cx - gateW * 0.46, pY, pW, pH, 6);
-      drawBevelBlock(cx + gateW * 0.46 - pW, pY, pW, pH, 6);
+        const scVal = Math.min(W, H);
+        const fw = scVal * 0.38;
+        const fh = fw * 0.66;
+        const fx = W * 0.5 - fw / 2;
+        const fy = H * 0.44 - fh / 2;
 
-      // Cornice structure
-      drawBevelBlock(cx - gateW * 0.5, pY - gateH * 0.1, gateW * 1.0, gateH * 0.1, 8);
-      drawBevelBlock(cx - gateW * 0.42, pY - gateH * 0.22, gateW * 0.84, gateH * 0.12, 10);
+        // Verlet Cloth Simulation Nodes setup
+        if (flagNodes[0].x === 0) {
+          for (let i = 0; i < numPoints; i++) {
+            flagNodes[i].x = fx + (i * fw) / (numPoints - 1);
+            flagNodes[i].y = fy;
+            flagNodes[i].ox = flagNodes[i].x;
+            flagNodes[i].oy = flagNodes[i].y;
+          }
+        }
 
-      // Top Dome
-      c.beginPath();
-      c.moveTo(cx - gateW * 0.2, pY - gateH * 0.22);
-      c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pY - gateH * 0.22);
-      c.closePath();
-      c.fillStyle = shadowBevel;
-      c.fill();
+        // Physics integration cycle
+        for (let i = 1; i < numPoints; i++) {
+          const wind = 0.5 + noise.n2(elapsed * 2.5 + i * 0.2, 0) * 0.85;
+          const gravity = 0.15;
 
-      c.restore();
-    };
+          flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.85 + wind;
+          flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.85 + gravity;
 
-    /* ═══════════════════════════════════════════════════════════
-       LAYER 6 & 7: WAVING SILK FLAG (Verlet Mass-Spring Engine)
-       ═══════════════════════════════════════════════════════════ */
-    const drawWavingFlagAndChakra = (t: number, elapsed: number, sceneAlpha: number) => {
-      if (t < 3.0) return;
-      const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
-
-      const scVal = Math.min(W, H);
-      const fw = scVal * 0.38;
-      const fh = fw * 0.66;
-      const fx = W * 0.5 - fw / 2;
-      const fy = H * 0.44 - fh / 2;
-
-      // Verlet Cloth Simulation Nodes setup
-      if (flagNodes[0].x === 0) {
-        for (let i = 0; i < numPoints; i++) {
-          flagNodes[i].x = fx + (i * fw) / (numPoints - 1);
-          flagNodes[i].y = fy;
           flagNodes[i].ox = flagNodes[i].x;
           flagNodes[i].oy = flagNodes[i].y;
+
+          flagNodes[i].x += flagNodes[i].vx;
+          flagNodes[i].y += flagNodes[i].vy;
         }
-      }
 
-      // Physics integration cycle
-      for (let i = 1; i < numPoints; i++) {
-        // Wind drag based on noise turbulence
-        const wind = 0.5 + noise.n2(elapsed * 2.5 + i * 0.2, 0) * 0.85;
-        const gravity = 0.15; // Realistic Silk momentum weight
+        flagNodes[0].x = fx;
+        flagNodes[0].y = fy;
 
-        flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.85 + wind;
-        flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.85 + gravity;
+        const linkLength = fw / (numPoints - 1);
+        for (let steps = 0; steps < 4; steps++) {
+          for (let i = 0; i < numPoints - 1; i++) {
+            const n1 = flagNodes[i];
+            const n2 = flagNodes[i + 1];
+            const dx = n2.x - n1.x;
+            const dy = n2.y - n1.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const diff = linkLength - dist;
+            const percent = (diff / dist) * 0.5;
+            const offsetX = dx * percent;
+            const offsetY = dy * percent;
 
-        flagNodes[i].ox = flagNodes[i].x;
-        flagNodes[i].oy = flagNodes[i].y;
+            if (i > 0) {
+              n1.x -= offsetX;
+              n1.y -= offsetY;
+            }
+            n2.x += offsetX;
+            n2.y += offsetY;
+          }
+        }
 
-        flagNodes[i].x += flagNodes[i].vx;
-        flagNodes[i].y += flagNodes[i].vy;
-      }
+        c.save();
+        c.globalAlpha = revealAlpha;
 
-      // Restore Hoist (Left node remains fixed)
-      flagNodes[0].x = fx;
-      flagNodes[0].y = fy;
-
-      // Structural spring constraints
-      const linkLength = fw / (numPoints - 1);
-      for (let steps = 0; steps < 4; steps++) {
         for (let i = 0; i < numPoints - 1; i++) {
           const n1 = flagNodes[i];
           const n2 = flagNodes[i + 1];
-          const dx = n2.x - n1.x;
-          const dy = n2.y - n1.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const diff = linkLength - dist;
-          const percent = (diff / dist) * 0.5;
-          const offsetX = dx * percent;
-          const offsetY = dy * percent;
+          const shade = 0.85 + Math.sin(i * 0.3 - elapsed * 4) * 0.15;
 
-          if (i > 0) {
-            n1.x -= offsetX;
-            n1.y -= offsetY;
-          }
-          n2.x += offsetX;
-          n2.y += offsetY;
-        }
-      }
+          const applyShade = (hex: string) => {
+            const h = hex.replace('#', '');
+            const rr = parseInt(h.substring(0,2),16), gg = parseInt(h.substring(2,4),16), bb = parseInt(h.substring(4,6),16);
+            return `rgb(${rr*shade|0},${gg*shade|0},${bb*shade|0})`;
+          };
 
-      c.save();
-      c.globalAlpha = revealAlpha;
-
-      // Draw physically modeled tricolor grid columns
-      for (let i = 0; i < numPoints - 1; i++) {
-        const n1 = flagNodes[i];
-        const n2 = flagNodes[i + 1];
-        const shade = 0.85 + Math.sin(i * 0.3 - elapsed * 4) * 0.15;
-
-        const applyShade = (hex: string) => {
-          const h = hex.replace('#', '');
-          const rr = parseInt(h.substring(0,2),16), gg = parseInt(h.substring(2,4),16), bb = parseInt(h.substring(4,6),16);
-          return `rgb(${rr*shade|0},${gg*shade|0},${bb*shade|0})`;
-        };
-
-        // Saffron
-        c.fillStyle = applyShade('#FF9933');
-        c.beginPath();
-        c.moveTo(n1.x, n1.y);
-        c.lineTo(n2.x, n2.y);
-        c.lineTo(n2.x, n2.y + fh / 3);
-        c.lineTo(n1.x, n1.y + fh / 3);
-        c.closePath();
-        c.fill();
-
-        // White
-        c.fillStyle = applyShade('#FFFFFF');
-        c.beginPath();
-        c.moveTo(n1.x, n1.y + fh / 3);
-        c.lineTo(n2.x, n2.y + fh / 3);
-        c.lineTo(n2.x, n2.y + (fh * 2) / 3);
-        c.lineTo(n1.x, n1.y + (fh * 2) / 3);
-        c.closePath();
-        c.fill();
-
-        // Green
-        c.fillStyle = applyShade('#138808');
-        c.beginPath();
-        c.moveTo(n1.x, n1.y + (fh * 2) / 3);
-        c.lineTo(n2.x, n2.y + (fh * 2) / 3);
-        c.lineTo(n2.x, n2.y + fh);
-        c.lineTo(n1.x, n1.y + fh);
-        c.closePath();
-        c.fill();
-      }
-
-      // Ashoka Chakra (Waving along simulated node structure)
-      const midIdx = numPoints / 2 | 0;
-      const cxV = flagNodes[midIdx].x;
-      const cyV = flagNodes[midIdx].y + fh / 2;
-      const cr = fh * 0.11;
-
-      // ─── GRADUAL REVEAL SEQUENCE ───
-      let chakAlpha = 0;
-      if (t >= 5.0 && t < 6.5) {
-        // Phase 1: Metal engraving outline
-        c.save();
-        c.translate(cxV, cyV);
-        c.strokeStyle = 'rgba(192, 192, 192, 0.4)';
-        c.lineWidth = 1.0;
-        c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
-        c.restore();
-      } else if (t >= 6.5) {
-        // Phase 2: Radiant blue glowing energy outline
-        chakAlpha = clamp((t - 6.5) / 1.5, 0, 1);
-        c.save();
-        c.translate(cxV, cyV);
-        c.rotate(elapsed * 0.7);
-
-        c.strokeStyle = `rgba(0, 0, 128, ${chakAlpha})`;
-        c.lineWidth = 2.5;
-        c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
-
-        // Spokes
-        c.lineWidth = 1.2;
-        for (let i = 0; i < 24; i++) {
-          const ang = (i / 24) * Math.PI * 2;
+          c.fillStyle = applyShade('#FF9933');
           c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(Math.cos(ang) * cr, Math.sin(ang) * cr);
-          c.stroke();
-        }
-        c.restore();
-      }
+          c.moveTo(n1.x, n1.y);
+          c.lineTo(n2.x, n2.y);
+          c.lineTo(n2.x, n2.y + fh / 3);
+          c.lineTo(n1.x, n1.y + fh / 3);
+          c.closePath();
+          c.fill();
 
-      c.restore();
-    };
+          c.fillStyle = applyShade('#FFFFFF');
+          c.beginPath();
+          c.moveTo(n1.x, n1.y + fh / 3);
+          c.lineTo(n2.x, n2.y + fh / 3);
+          c.lineTo(n2.x, n2.y + (fh * 2) / 3);
+          c.lineTo(n1.x, n1.y + (fh * 2) / 3);
+          c.closePath();
+          c.fill();
 
-    /* ═══════════════════════════════════════════════════════════
-       LAYER 11: VOLUMETRIC SUNRISE LIGHTING (Hidden Sun behind Gate)
-       ═══════════════════════════════════════════════════════════ */
-    const drawVolumetricLighting = (t: number, sceneAlpha: number) => {
-      if (t < 3.0) return;
-      const intensity = clamp((t - 3.0) * 0.3, 0, 0.82) * sceneAlpha;
-      const sunX = W * 0.5;
-      const sunY = baseY - gateH * 0.4; // Physically occluded behind the Gate central arch
-
-      c.save();
-      c.globalAlpha = intensity;
-      c.globalCompositeOperation = 'screen';
-
-      // Volumetric Scattering radiating exclusively out of the Arch
-      const volumetricGrad = c.createRadialGradient(sunX, sunY, 10, sunX, sunY, gateW * 0.95);
-      volumetricGrad.addColorStop(0, 'rgba(255, 160, 50, 0.7)');
-      volumetricGrad.addColorStop(0.3, 'rgba(255, 110, 20, 0.3)');
-      volumetricGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = volumetricGrad;
-      c.fillRect(0, 0, W, H);
-
-      // Ray shafts bleed
-      for (let i = 0; i < 15; i++) {
-        const angle = -Math.PI * 0.5 + (i / 15) * Math.PI - Math.PI * 0.5;
-        const l = sc * 1.5;
-        c.beginPath();
-        c.moveTo(sunX, sunY);
-        c.lineTo(sunX + Math.cos(angle - 0.05) * l, sunY + Math.sin(angle - 0.05) * l);
-        c.lineTo(sunX + Math.cos(angle + 0.05) * l, sunY + Math.sin(angle + 0.05) * l);
-        c.closePath();
-
-        const rayGrad = c.createLinearGradient(sunX, sunY, sunX + Math.cos(angle) * l, sunY + Math.sin(angle) * l);
-        rayGrad.addColorStop(0, 'rgba(255, 230, 160, 0.28)');
-        rayGrad.addColorStop(0.5, 'rgba(255, 140, 50, 0.08)');
-        rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = rayGrad;
-        c.fill();
-      }
-
-      c.restore();
-    };
-
-    /* ═══════════════════════════════════════════════════════════
-       LAYER 8: CROSSING JETS & THICK SMOKE TRAILS
-       ═══════════════════════════════════════════════════════════ */
-    const drawJetsAndTrails = (t: number, sceneAlpha: number) => {
-      if (t < 2.5 || t > 9.0) return;
-      c.save();
-      c.globalAlpha = sceneAlpha;
-
-      jets.forEach(jet => {
-        jet.x += jet.vx; jet.y += jet.vy;
-
-        // Camera tremor trigger when jets pass closely
-        if (Math.abs(jet.x - W * 0.5) < 180) {
-          cameraShake = 3.5; // Starts lens micro-shake
+          c.fillStyle = applyShade('#138808');
+          c.beginPath();
+          c.moveTo(n1.x, n1.y + (fh * 2) / 3);
+          c.lineTo(n2.x, n2.y + (fh * 2) / 3);
+          c.lineTo(n2.x, n2.y + fh);
+          c.lineTo(n1.x, n1.y + fh);
+          c.closePath();
+          c.fill();
         }
 
-        const nozzleX = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
-        const nozzleY = jet.y + 2 * jet.scale;
+        const midIdx = numPoints / 2 | 0;
+        const cxV = flagNodes[midIdx].x;
+        const cyV = flagNodes[midIdx].y + fh / 2;
+        const cr = fh * 0.11;
 
-        // Thick Volumetric trails
-        if (Math.random() < 0.85) {
-          const p = grab(pl); if (p) {
-            p.on = true; p.x = nozzleX; p.y = nozzleY;
-            p.vx = -jet.vx * 0.12 + (Math.random() - 0.5) * 0.4;
-            p.vy = (Math.random() - 0.5) * 0.4;
-            p.life = 4.2; p.ml = 4.2;
-            p.sz = 14 * jet.scale + Math.random() * 15;
+        let chakAlpha = 0;
+        if (t >= 5.0 && t < 6.5) {
+          c.save();
+          c.translate(cxV, cyV);
+          c.strokeStyle = 'rgba(192, 192, 192, 0.4)';
+          c.lineWidth = 1.0;
+          c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
+          c.restore();
+        } else if (t >= 6.5) {
+          chakAlpha = clamp((t - 6.5) / 1.5, 0, 1);
+          c.save();
+          c.translate(cxV, cyV);
+          c.rotate(elapsed * 0.7);
 
-            const hex = jet.smokeColor.replace('#', '');
-            p.r = parseInt(hex.substring(0, 2), 16);
-            p.g = parseInt(hex.substring(2, 4), 16);
-            p.b = parseInt(hex.substring(4, 6), 16);
-            p.a = 0.65; p.tp = 4; // Smoke System
+          c.strokeStyle = `rgba(0, 0, 128, ${chakAlpha})`;
+          c.lineWidth = 2.5;
+          c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
+
+          c.lineWidth = 1.2;
+          for (let i = 0; i < 24; i++) {
+            const ang = (i / 24) * Math.PI * 2;
+            c.beginPath();
+            c.moveTo(0, 0);
+            c.lineTo(Math.cos(ang) * cr, Math.sin(ang) * cr);
+            c.stroke();
           }
+          c.restore();
         }
+
+        c.restore();
+      },
+
+      // LAYER 11: VOLUMETRIC SUNRISE LIGHTING
+      volumetricLighting: (t: number, sceneAlpha: number) => {
+        if (t < 3.0) return;
+        const intensity = clamp((t - 3.0) * 0.3, 0, 0.82) * sceneAlpha;
+        const sunX = W * 0.5;
+        const sunY = baseY - gateH * 0.4;
 
         c.save();
-        c.translate(jet.x, jet.y);
-        c.rotate(Math.atan2(jet.vy, jet.vx));
-        c.scale(jet.scale, jet.scale);
+        c.globalAlpha = intensity;
+        c.globalCompositeOperation = 'screen';
 
-        // Body Silhouette
-        c.fillStyle = '#1c1c1c';
-        c.beginPath();
-        c.moveTo(35, 0); c.quadraticCurveTo(15, -4, -10, -5);
-        c.lineTo(-24, -3); c.lineTo(-24, 3); c.lineTo(-10, 5);
-        c.quadraticCurveTo(15, 4, 35, 0);
-        c.fill();
+        const volumetricGrad = c.createRadialGradient(sunX, sunY, 10, sunX, sunY, gateW * 0.95);
+        volumetricGrad.addColorStop(0, 'rgba(255, 160, 50, 0.7)');
+        volumetricGrad.addColorStop(0.3, 'rgba(255, 110, 20, 0.3)');
+        volumetricGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = volumetricGrad;
+        c.fillRect(0, 0, W, H);
+
+        for (let i = 0; i < 15; i++) {
+          const angle = -Math.PI * 0.5 + (i / 15) * Math.PI - Math.PI * 0.5;
+          const l = sc * 1.5;
+          c.beginPath();
+          c.moveTo(sunX, sunY);
+          c.lineTo(sunX + Math.cos(angle - 0.05) * l, sunY + Math.sin(angle - 0.05) * l);
+          c.lineTo(sunX + Math.cos(angle + 0.05) * l, sunY + Math.sin(angle + 0.05) * l);
+          c.closePath();
+
+          const rayGrad = c.createLinearGradient(sunX, sunY, sunX + Math.cos(angle) * l, sunY + Math.sin(angle) * l);
+          rayGrad.addColorStop(0, 'rgba(255, 230, 160, 0.28)');
+          rayGrad.addColorStop(0.5, 'rgba(255, 140, 50, 0.08)');
+          rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = rayGrad;
+          c.fill();
+        }
+
         c.restore();
-      });
+      },
 
-      c.restore();
+      // LAYER 8: CROSSING JETS & THICK SMOKE TRAILS
+      jetsAndTrails: (t: number, sceneAlpha: number) => {
+        if (t < 2.5 || t > 9.0) return;
+        c.save();
+        c.globalAlpha = sceneAlpha;
+
+        jets.forEach(jet => {
+          jet.x += jet.vx; jet.y += jet.vy;
+
+          if (Math.abs(jet.x - W * 0.5) < 180) {
+            cameraShake = 3.5;
+          }
+
+          const nozzleX = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
+          const nozzleY = jet.y + 2 * jet.scale;
+
+          if (Math.random() < 0.85) {
+            const p = grab(pl); if (p) {
+              p.on = true; p.x = nozzleX; p.y = nozzleY;
+              p.vx = -jet.vx * 0.12 + (Math.random() - 0.5) * 0.4;
+              p.vy = (Math.random() - 0.5) * 0.4;
+              p.life = 4.2; p.ml = 4.2;
+              p.sz = 14 * jet.scale + Math.random() * 15;
+
+              const hex = jet.smokeColor.replace('#', '');
+              p.r = parseInt(hex.substring(0, 2), 16);
+              p.g = parseInt(hex.substring(2, 4), 16);
+              p.b = parseInt(hex.substring(4, 6), 16);
+              p.a = 0.65; p.tp = 4;
+            }
+          }
+
+          c.save();
+          c.translate(jet.x, jet.y);
+          c.rotate(Math.atan2(jet.vy, jet.vx));
+          c.scale(jet.scale, jet.scale);
+
+          c.fillStyle = '#1c1c1c';
+          c.beginPath();
+          c.moveTo(35, 0); c.quadraticCurveTo(15, -4, -10, -5);
+          c.lineTo(-24, -3); c.lineTo(-24, 3); c.lineTo(-10, 5);
+          c.quadraticCurveTo(15, 4, 35, 0);
+          c.fill();
+          c.restore();
+        });
+
+        c.restore();
+      },
+
+      // LAYER 11: DOVES (Startling and flying dynamically using Perlin Noise)
+      doves: (t: number, elapsed: number, sceneAlpha: number) => {
+        if (t < 2.0) return;
+        const dAlpha = clamp((t - 2.0) * 1.2, 0, 1) * sceneAlpha;
+        c.save();
+        c.globalAlpha = dAlpha;
+
+        if (t >= 2.6) {
+          birds.forEach(b => {
+            if (b.state === 'sitting') {
+              b.state = 'flying';
+              const driftX = b.side === 'left' ? 1.5 : -1.5;
+              b.vx = driftX + (Math.random() - 0.5) * 0.5;
+              b.vy = -2.0 - Math.random() * 1.5;
+            }
+          });
+        }
+
+        birds.forEach(b => {
+          if (b.state === 'flying') {
+            const noiseForceX = noise.n2(elapsed * 0.6, b.noiseSeed) * 0.5;
+            const noiseForceY = noise.n2(elapsed * 0.4, b.noiseSeed + 100) * 0.3;
+            b.vx = clamp(b.vx * 0.98 + noiseForceX, -4, 4);
+            b.vy = clamp(b.vy * 0.98 + noiseForceY, -4, -1);
+
+            const flightSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+            if (flightSpeed > 3.0) {
+              b.vx = (b.vx / flightSpeed) * 3.0;
+              b.vy = (b.vy / flightSpeed) * 3.0;
+            }
+
+            b.x += b.vx;
+            b.y += b.vy;
+
+            const dutyCycle = Math.sin(elapsed * 3.5 + b.noiseSeed);
+            b.wing += dutyCycle > 0 ? 0.35 : 0.15;
+            b.bank = b.vx * 0.12;
+          }
+
+          c.save();
+          c.translate(b.x, b.y);
+          c.rotate(b.state === 'flying' ? Math.atan2(b.vy, b.vx) + b.bank : 0);
+
+          const scale = 0.52;
+          c.scale(scale, scale);
+
+          if (b.state === 'flying') {
+            const wingFactor = Math.sin(b.wing);
+
+            c.fillStyle = '#d8d8d8';
+            c.beginPath();
+            c.moveTo(-15, 0);
+            c.lineTo(-26, -5 + wingFactor * 2);
+            c.lineTo(-26, 5 - wingFactor * 2);
+            c.closePath();
+            c.fill();
+
+            c.fillStyle = '#ffffff';
+            c.beginPath(); c.ellipse(0, 0, 15, 5, 0, 0, Math.PI * 2); c.fill();
+
+            c.fillStyle = '#ffffff';
+            c.beginPath(); c.arc(13, -2, 4, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#e29b3c';
+            c.beginPath();
+            c.moveTo(16, -3); c.lineTo(21, -2); c.lineTo(15, -1);
+            c.closePath(); c.fill();
+
+            [-1, 1].forEach(side => {
+              c.save();
+              c.scale(1, side);
+              c.rotate(wingFactor * 0.5 - 0.15);
+              c.fillStyle = '#f0f0f0';
+              c.beginPath();
+              c.moveTo(0, 0); c.lineTo(-7, -15); c.lineTo(-13, -13);
+              c.closePath(); c.fill();
+              c.restore();
+            });
+          } else {
+            const headBob = Math.sin(elapsed * 5.5 + b.noiseSeed) * 1.2;
+            c.fillStyle = '#b5b5b5';
+            c.beginPath();
+            c.moveTo(-10, 2); c.lineTo(-22, 6); c.lineTo(-20, 0);
+            c.closePath(); c.fill();
+
+            c.fillStyle = '#f5f5f5';
+            c.beginPath(); c.ellipse(0, 2, 13, 6.5, 0.1, 0, Math.PI * 2); c.fill();
+
+            c.fillStyle = '#ffffff';
+            c.beginPath(); c.arc(10, -2 + headBob, 4, 0, Math.PI * 2); c.fill();
+          }
+
+          c.restore();
+        });
+
+        c.restore();
+      },
+
+      // LAYER 13: PREMIUM TYPOGRAPHY
+      typography: (t: number) => {
+        if (t < 11.5) return;
+        const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
+
+        c.save();
+        c.textAlign = 'center';
+        const fontSize = Math.min(W * 0.065, 52);
+        c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
+
+        const title = "HAPPY REPUBLIC DAY";
+        const totalW = c.measureText(title).width;
+        let xOff = W * 0.5 - totalW * 0.5;
+
+        for (let i = 0; i < title.length; i++) {
+          const charW = c.measureText(title[i]).width;
+          const charT = clamp((t - 11.5 - i * 0.035) / 0.4, 0, 1);
+          const charY = titleY + (1 - eOB(charT)) * -15;
+
+          c.save();
+          c.globalAlpha = eOC(charT);
+
+          const sweepGrad = c.createLinearGradient(xOff, 0, xOff + charW, 0);
+          const sweepPos = clamp((t - 12.0) * 1.8, 0, 1.5);
+          sweepGrad.addColorStop(0, '#FF9933');
+          sweepGrad.addColorStop(clamp(sweepPos - 0.2, 0, 1), '#FFFFFF');
+          sweepGrad.addColorStop(clamp(sweepPos, 0, 1), '#FFFFFF');
+          sweepGrad.addColorStop(clamp(sweepPos + 0.2, 0, 1), '#138808');
+
+          c.fillStyle = sweepGrad;
+          c.fillText(title[i], xOff + W * 0.5 - totalW * 0.5, charY);
+          c.restore();
+
+          xOff += charW;
+        }
+
+        if (t > 13.0) {
+          const subAlpha = clamp((t - 13.0) * 2, 0, 1);
+          c.save();
+          c.globalAlpha = subAlpha;
+          c.fillStyle = '#ffd700';
+          c.font = `500 ${fontSize * 0.65}px 'Georgia', serif`;
+          c.fillText("जय हिन्द", W * 0.5, titleY + fontSize * 1.1);
+          c.restore();
+        }
+
+        c.restore();
+      }
     };
 
     /* ═══════════════════════════════════════════════════════════
-       LAYER 10: ISOLATED PARTICLE SYSTEMS (Embers, Gold Dust, Fog, Solar, Confetti)
+       LAYER 10: PARTICLES ENGINE (Dust + Spectacular sky-wide Tricolor Rain)
        ═══════════════════════════════════════════════════════════ */
     const spawnParticles = (t: number, elapsed: number) => {
       // 1. Fog Dust (tp=1: Slow, large, low opacity)
@@ -712,169 +886,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       }
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       LAYER 11: DOVES (Startling and flying dynamically using Perlin Noise)
-       ═══════════════════════════════════════════════════════════ */
-    const drawDoves = (t: number, elapsed: number, sceneAlpha: number) => {
-      if (t < 2.0) return;
-      const dAlpha = clamp((t - 2.0) * 1.2, 0, 1) * sceneAlpha;
-      c.save();
-      c.globalAlpha = dAlpha;
-
-      if (t >= 2.6) {
-        birds.forEach(b => {
-          if (b.state === 'sitting') {
-            b.state = 'flying';
-            // Startled flight paths: Left group fly up-right, Right fly up-left
-            const driftX = b.side === 'left' ? 1.5 : -1.5;
-            b.vx = driftX + (Math.random() - 0.5) * 0.5;
-            b.vy = -2.0 - Math.random() * 1.5;
-          }
-        });
-      }
-
-      birds.forEach(b => {
-        if (b.state === 'flying') {
-          // Applying continuous Perlin Noise instead of standard linear velocity
-          const noiseForceX = noise.n2(elapsed * 0.6, b.noiseSeed) * 0.5;
-          const noiseForceY = noise.n2(elapsed * 0.4, b.noiseSeed + 100) * 0.3;
-          b.vx = clamp(b.vx * 0.98 + noiseForceX, -4, 4);
-          b.vy = clamp(b.vy * 0.98 + noiseForceY, -4, -1);
-
-          // Flight Speed boundaries: Avg 35 px/sec, Max 60 px/sec
-          const flightSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-          if (flightSpeed > 3.0) { // Max 60 px limit
-            b.vx = (b.vx / flightSpeed) * 3.0;
-            b.vy = (b.vy / flightSpeed) * 3.0;
-          }
-
-          b.x += b.vx;
-          b.y += b.vy;
-
-          // Non-linear Wing flapping duty cycles (slow -> fast -> slow)
-          const dutyCycle = Math.sin(elapsed * 3.5 + b.noiseSeed);
-          b.wing += dutyCycle > 0 ? 0.35 : 0.15;
-          b.bank = b.vx * 0.12; // Bank angle offsets dynamically
-        }
-
-        c.save();
-        c.translate(b.x, b.y);
-        c.rotate(b.state === 'flying' ? Math.atan2(b.vy, b.vx) + b.bank : 0);
-
-        const scale = 0.52;
-        c.scale(scale, scale);
-
-        if (b.state === 'flying') {
-          const wingFactor = Math.sin(b.wing);
-
-          // Tail
-          c.fillStyle = '#d8d8d8';
-          c.beginPath();
-          c.moveTo(-15, 0);
-          c.lineTo(-26, -5 + wingFactor * 2);
-          c.lineTo(-26, 5 - wingFactor * 2);
-          c.closePath();
-          c.fill();
-
-          // Body Torso
-          c.fillStyle = '#ffffff';
-          c.beginPath(); c.ellipse(0, 0, 15, 5, 0, 0, Math.PI * 2); c.fill();
-
-          // Head & Beak
-          c.fillStyle = '#ffffff';
-          c.beginPath(); c.arc(13, -2, 4, 0, Math.PI * 2); c.fill();
-          c.fillStyle = '#e29b3c';
-          c.beginPath();
-          c.moveTo(16, -3); c.lineTo(21, -2); c.lineTo(15, -1);
-          c.closePath(); c.fill();
-
-          // Wings
-          [-1, 1].forEach(side => {
-            c.save();
-            c.scale(1, side);
-            c.rotate(wingFactor * 0.5 - 0.15);
-            c.fillStyle = '#f0f0f0';
-            c.beginPath();
-            c.moveTo(0, 0); c.lineTo(-7, -15); c.lineTo(-13, -13);
-            c.closePath(); c.fill();
-            c.restore();
-          });
-        } else {
-          // Sitting on ledges
-          const headBob = Math.sin(elapsed * 5.5 + b.noiseSeed) * 1.2;
-          c.fillStyle = '#b5b5b5';
-          c.beginPath();
-          c.moveTo(-10, 2); c.lineTo(-22, 6); c.lineTo(-20, 0);
-          c.closePath(); c.fill();
-
-          c.fillStyle = '#f5f5f5';
-          c.beginPath(); c.ellipse(0, 2, 13, 6.5, 0.1, 0, Math.PI * 2); c.fill();
-
-          c.fillStyle = '#ffffff';
-          c.beginPath(); c.arc(10, -2 + headBob, 4, 0, Math.PI * 2); c.fill();
-        }
-
-        c.restore();
-      });
-
-      c.restore();
-    };
-
-    /* ═══════════════════════════════════════════════════════════
-       LAYER 13: PREMIUM TYPOGRAPHY (Marvel-style reveal sequence)
-       ═══════════════════════════════════════════════════════════ */
-    const drawTypography = (t: number) => {
-      if (t < 11.5) return;
-      const revealT = clamp((t - 11.5) * 1.5, 0, 1);
-      const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
-
-      c.save();
-      c.textAlign = 'center';
-      const fontSize = Math.min(W * 0.065, 52);
-      c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
-
-      const title = "HAPPY REPUBLIC DAY";
-      const totalW = c.measureText(title).width;
-      let xOff = W * 0.5 - totalW * 0.5;
-
-      // Marvel letters assembly sequence
-      for (let i = 0; i < title.length; i++) {
-        const charW = c.measureText(title[i]).width;
-        const charT = clamp((t - 11.5 - i * 0.035) / 0.4, 0, 1);
-        const charY = titleY + (1 - eOB(charT)) * -15;
-
-        c.save();
-        c.globalAlpha = eOC(charT);
-
-        // Gold Bevel Highlight Sweep
-        const sweepGrad = c.createLinearGradient(xOff, 0, xOff + charW, 0);
-        const sweepPos = clamp((t - 12.0) * 1.8, 0, 1.5);
-        sweepGrad.addColorStop(0, '#FF9933');
-        sweepGrad.addColorStop(clamp(sweepPos - 0.2, 0, 1), '#FFFFFF');
-        sweepGrad.addColorStop(clamp(sweepPos, 0, 1), '#FFFFFF');
-        sweepGrad.addColorStop(clamp(sweepPos + 0.2, 0, 1), '#138808');
-
-        c.fillStyle = sweepGrad;
-        c.fillText(title[i], xOff + W * 0.5 - totalW * 0.5, charY);
-        c.restore();
-
-        xOff += charW;
-      }
-
-      // Climax second text "जय हिन्द"
-      if (t > 13.0) {
-        const subAlpha = clamp((t - 13.0) * 2, 0, 1);
-        c.save();
-        c.globalAlpha = subAlpha;
-        c.fillStyle = '#ffd700';
-        c.font = `500 ${fontSize * 0.65}px 'Georgia', serif`;
-        c.fillText("जय हिन्द", W * 0.5, titleY + fontSize * 1.1);
-        c.restore();
-      }
-
-      c.restore();
-    };
-
     // CHROMATIC ABERRATION
     const drawChromaticAberration = () => {
       c.save();
@@ -945,18 +956,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
 
-      // Layer Assembly Sequence
-      drawSky(t, sceneAlpha);
-      drawStars(t, sceneAlpha);
-      drawWavingFlagAndChakra(t, now / 1000, sceneAlpha);
-      drawIndiaGate(t, sceneAlpha);
-      drawVolumetricLighting(t, sceneAlpha); // UEFI-style god rays
-      drawTorch(t, now / 1000, sceneAlpha);
-      drawFog(t, now / 1000, sceneAlpha);
-      drawJetsAndTrails(t, sceneAlpha);
+      // Layer Assembly Sequence via encapsulated renderer object (Secure Reference Binding)
+      renderer.sky(t, sceneAlpha);
+      renderer.stars(t, sceneAlpha);
+      renderer.wavingFlagAndChakra(t, now / 1000, sceneAlpha);
+      renderer.indiaGate(t, sceneAlpha);
+      renderer.volumetricLighting(t, sceneAlpha); // UEFI-style god rays
+      renderer.torch(t, now / 1000, sceneAlpha);
+      renderer.jetsAndTrails(t, sceneAlpha);
       drawParticles();
-      drawChakraSpokes(t, sceneAlpha);
-      drawDoves(t, now / 1000, sceneAlpha);
+      renderer.doves(t, now / 1000, sceneAlpha);
 
       c.restore();
 
@@ -973,7 +982,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       }
 
-      drawTypography(t);
+      renderer.typography(t);
       drawChromaticAberration();
       drawPostFX();
 
