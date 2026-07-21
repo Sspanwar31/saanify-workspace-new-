@@ -31,7 +31,7 @@ interface BoidBird {
 }
 
 const POOL_SIZE = 5000;
-const DUR = 16.0; // Cinematic 16s Climax Timeline
+const DUR = 16.0; // Cinematic Climax Timeline
 
 /* ═══════════════════════════════════════════════════════════════
    SIMPLEX NOISE 2D
@@ -109,9 +109,34 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     } catch (e) { /* silent */ }
   }, []);
 
+  /* ═══════════════════════════════════════════════════════════
+     CANVAS LIFE CYCLE & CINEMATIC DRAWERS
+     ═══════════════════════════════════════════════════════════ */
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
+
+    // Secure local math scope to prevent ReferenceErrors during bundling
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
+    const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
+    const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    const eOB = (t: number) => { 
+      const n = 7.5625, d = 2.75; 
+      if (t < 1/d) return n*t*t; 
+      if (t < 2/d) return n*(t-=1.5/d)*t+0.75; 
+      if (t < 2.5/d) return n*(t-=2.25/d)*t+0.9375; 
+      return n*(t-=2.625/d)*t+0.984375; 
+    };
+    const ss = (e0: number, e1: number, x: number) => { 
+      const t = clamp((x-e0)/(e1-e0),0,1); 
+      return t*t*(3-2*t); 
+    };
+    const aces = (x: number) => { 
+      const a=2.51,b=0.03,c2=2.43,d=0.59,e=0.14; 
+      return clamp((x*(a*x+b))/(x*(c2*x+d)+e),0,1); 
+    };
 
     audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     triggerMilitaryAudio();
@@ -141,7 +166,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
     const pl = mkPool();
 
-    // 1. CLOTH SIMULATION FOR THE TRICOLOR FLAG (Verlet Spring-Mass Model)
+    // CLOTH SIMULATION FOR THE TRICOLOR FLAG (Verlet Spring-Mass Model)
     const numPoints = 14;
     const flagNodes: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < numPoints; i++) {
@@ -164,12 +189,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       starI.push(i);
     }
 
-    // 2. BBC PLANET EARTH FLOCKING BIRDS (Startling from behind the India Gate)
+    // BBC PLANET EARTH FLOCKING BIRDS (Startling from behind the India Gate)
     const birds: BoidBird[] = [];
     for (let i = 0; i < 15; i++) {
       birds.push({
         x: W * 0.5 + (Math.random() - 0.5) * 40,
-        y: H * 0.5, // Spawned behind the India Gate
+        y: H * 0.5,
         vx: 0, vy: 0,
         wing: Math.random() * Math.PI * 2,
         state: 'sitting',
@@ -180,6 +205,17 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     }
 
     let cameraShake = 0;
+
+    // Dynamic Sizing Metrics for India Gate
+    const sc = Math.min(window.innerWidth, window.innerHeight);
+    const gateH = sc * 0.66;
+    const gateW = gateH * 0.84;
+    const baseY = window.innerHeight * 0.82;
+    const cx = window.innerWidth * 0.5;
+    const pillarH = gateH * 0.72;
+    const pillarY = baseY - 32 - pillarH;
+
+    const sunPos = (t: number) => ({ x: lerp(W*0.3, W*0.5, eOE(t/10)), y: lerp(H*1.2, H*0.15, eOE(t/10)) });
 
     /* ═══════════════════════════════════════════════════════════
        LAYER 1: SKY (Continuous Evolving Dawn -> Saffron Sunrise -> Morning Blue)
@@ -272,7 +308,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       drawBevelBlock(cx - gateW * 0.52, baseY - 16, gateW * 1.04, 16, 5);
       drawBevelBlock(cx - gateW * 0.48, baseY - 32, gateW * 0.96, 16, 4);
 
-      // Fluted Pillars
+      // Flanking main columns
       const pW = gateW * 0.26;
       const pH = gateH * 0.72;
       const pY = baseY - 32 - pH;
@@ -298,7 +334,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     /* ═══════════════════════════════════════════════════════════
        LAYER 6 & 7: WAVING SILK FLAG (Verlet Mass-Spring Engine)
        ═══════════════════════════════════════════════════════════ */
-    const drawFlagAndChakra = (t: number, elapsed: number, sceneAlpha: number) => {
+    const drawWavingFlagAndChakra = (t: number, elapsed: number, sceneAlpha: number) => {
       if (t < 3.0) return;
       const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
 
