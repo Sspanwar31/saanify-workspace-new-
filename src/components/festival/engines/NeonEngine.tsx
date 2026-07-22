@@ -27,6 +27,7 @@ interface PresetConfig {
   maxCount: number;
   minSize: number;
   maxSize: number;
+  sway: number; // Default sway added to configuration
 }
 
 const DEFAULT_COLORS = ['#fde047', '#facc15', '#f97316'];
@@ -39,15 +40,14 @@ const PRESET_COLORS: Record<string, string[]> = {
   INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807']
 };
 
-// ━━━ MASTER PRESET CONFIGS (Mirrors exact old if-else fallback behavior) ━━━
-// Old code: Only HANUMAN_JAYANTI had override, everything else used DEFAULT values.
+// ━━━ MASTER PRESET CONFIGS (Fully customizable from backend props) ━━━
 const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
-  GANESH_CHATURTHI: { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 },
-  HANUMAN_JAYANTI:  { scale: 1.0,  speed: 0.65, gravity: 0.0012, maxCount: 130, minSize: 6,   maxSize: 12 },
-  NAVRATRI:         { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 },
-  REPUBLIC_DAY:     { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 },
-  INDEPENDENCE_DAY: { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 },
-  DEFAULT:          { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11 }
+  GANESH_CHATURTHI: { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11, sway: 0.03 },
+  HANUMAN_JAYANTI:  { scale: 1.0,  speed: 0.65, gravity: 0.0012, maxCount: 130, minSize: 6,   maxSize: 12, sway: 0.06 },
+  NAVRATRI:         { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11, sway: 0.03 },
+  REPUBLIC_DAY:     { scale: 0.55, speed: 0.8,  gravity: 0.004,  maxCount: 100, minSize: 4,   maxSize: 8,  sway: 0.02 }, // Lowered speed & sway
+  INDEPENDENCE_DAY: { scale: 0.55, speed: 0.8,  gravity: 0.004,  maxCount: 100, minSize: 4,   maxSize: 8,  sway: 0.02 },
+  DEFAULT:          { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11, sway: 0.03 }
 };
 
 export default function NeonEngine({
@@ -58,7 +58,8 @@ export default function NeonEngine({
   customSpeed,     
   customMinSize,   
   customMaxSize,   
-  customMaxCount,  
+  customMaxCount,
+  customSway, // 👈 New backend controller prop for taming sway
 }: {
   preset?: string;
   customColors?: string[];
@@ -68,11 +69,11 @@ export default function NeonEngine({
   customMinSize?: number | null;
   customMaxSize?: number | null;
   customMaxCount?: number | null;
+  customSway?: number | null; // 👈 Controlled from backend/props
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafId = useRef<number>(0);
   const timeRef = useRef<number>(0);
-  
   const spawnDebugCount = useRef<number>(0);
 
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function NeonEngine({
     const normalizedPreset = (preset || '').toUpperCase().trim();
     const colors = customColors || PRESET_COLORS[normalizedPreset] || DEFAULT_COLORS;
 
-    // Resolve config from master table (same behavior as old if-else)
+    // Resolve config from master table
     const presetConfig = MASTER_PRESET_CONFIGS[normalizedPreset] || MASTER_PRESET_CONFIGS.DEFAULT;
 
     const scaleFactor = customScale ?? presetConfig.scale;
@@ -93,10 +94,11 @@ export default function NeonEngine({
     const maxParticles = customMaxCount ?? presetConfig.maxCount;
     const minPartSize = customMinSize ?? presetConfig.minSize;
     const maxPartSize = customMaxSize ?? presetConfig.maxSize;
+    const swayFactor = customSway ?? presetConfig.sway; // Directly mapped to prop
 
     // ── MOUNT DIAGNOSTICS LOG ──
     console.log(
-      `%c🟢 NeonEngine Mounted! %c\nPreset: "${preset}"\nScale Factor: ${scaleFactor} (Prop: ${customScale})\nSpeed Factor: ${speedFactor} (Prop: ${customSpeed})\nGravity Factor: ${gravityFactor} (Prop: ${customGravity})\nMax Count: ${maxParticles} (Prop: ${customMaxCount})\nMin Size: ${minPartSize} (Prop: ${customMinSize})\nMax Size: ${maxPartSize} (Prop: ${customMaxSize})`,
+      `%c🟢 NeonEngine Mounted! %c\nPreset: "${preset}"\nScale Factor: ${scaleFactor} (Prop: ${customScale})\nSpeed Factor: ${speedFactor} (Prop: ${customSpeed})\nGravity Factor: ${gravityFactor} (Prop: ${customGravity})\nMax Count: ${maxParticles} (Prop: ${customMaxCount})\nMin Size: ${minPartSize} (Prop: ${customMinSize})\nMax Size: ${maxPartSize} (Prop: ${customMaxSize})\nSway Control: ${swayFactor} (Prop: ${customSway})`,
       "color: #22c55e; font-weight: bold; font-size: 13px;",
       "color: #a3a3a3; font-size: 11px;"
     );
@@ -250,7 +252,6 @@ export default function NeonEngine({
           let newParticle: NeonParticle | null = null;
           
           if (randType < 0.35) {
-            // 1. Tulsi Leaves
             newParticle = {
               x: rn(-20, w + 20),
               y: rn(-30, -10),
@@ -266,7 +267,6 @@ export default function NeonEngine({
               tp: 'tulsi'
             };
           } else if (randType < 0.70) {
-            // 2. Sindoori Embers
             newParticle = {
               x: rn(-20, w + 20),
               y: rn(-30, -10),
@@ -282,7 +282,6 @@ export default function NeonEngine({
               tp: 'ember'
             };
           } else {
-            // 3. Golden Pawan Dust
             newParticle = {
               x: rn(-20, w + 20),
               y: rn(-30, -10),
@@ -301,14 +300,6 @@ export default function NeonEngine({
 
           if (newParticle) {
             particles.push(newParticle);
-            if (spawnDebugCount.current < 5) {
-              spawnDebugCount.current++;
-              console.log(
-                `%c✨ Debug: Spawned Hanuman Jayanti Particle %c(${spawnDebugCount.current}/5) \nType: "${newParticle.tp}" \nColor: "${newParticle.color}"`,
-                "color: #eab308; font-weight: bold;",
-                "color: #a3a3a3;"
-              );
-            }
           }
         } 
         else if (normalizedPreset === 'NAVRATRI' && Math.random() < 0.3) {
@@ -327,17 +318,16 @@ export default function NeonEngine({
             tp: 'petal'
           });
         } else if (['REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(normalizedPreset) && Math.random() < 0.3) {
-          const cols = ['#ff9933', '#ffffff', '#128807'];
           particles.push({
             x: rn(-20, w + 20),
             y: rn(-30, -10),
-            vx: rn(-0.6, 0.6),
-            vy: rn(1.2, 2.6) * speedFactor,
+            vx: rn(-0.4, 0.4), // Kept centered
+            vy: rn(1.0, 2.2) * speedFactor, // Stable falling speed
             size: rn(minPartSize, maxPartSize) * scaleFactor,
             alpha: 1,
-            color: cols[Math.floor(Math.random() * cols.length)],
+            color: colors[Math.floor(Math.random() * colors.length)],
             rotation: rn(0, Math.PI * 2),
-            rotSpeed: rn(-0.03, 0.03),
+            rotSpeed: rn(-0.02, 0.02),
             life: 0,
             maxLife: rn(250, 420),
             tp: 'confetti'
@@ -354,8 +344,10 @@ export default function NeonEngine({
 
         p.vy += gravityFactor;
 
-        const windWave = normalizedPreset === 'HANUMAN_JAYANTI' ? 0.035 : 0.015;
-        p.vx += Math.sin(timeRef.current + p.y * 0.01) * windWave;
+        // FIX: Replaced globally synchronized wind wave with individual phase offsets (p.rotation)
+        // This completely prevents synchronized "hujo" (clumping)
+        const individualSway = Math.sin(timeRef.current * 1.5 + p.y * 0.01 + p.rotation) * swayFactor;
+        p.vx = p.vx * 0.98 + individualSway; // Dampens previous vx & adds organic individual sway
         
         if (p.tp !== 'sparkle' && p.tp !== 'ember') p.rotation += p.rotSpeed;
 
@@ -397,7 +389,8 @@ export default function NeonEngine({
     customGravity,
     customMinSize,
     customMaxSize,
-    customMaxCount
+    customMaxCount,
+    customSway // Mapped directly so parent can control sway from backend props
   ]);
 
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 4 }} />;
