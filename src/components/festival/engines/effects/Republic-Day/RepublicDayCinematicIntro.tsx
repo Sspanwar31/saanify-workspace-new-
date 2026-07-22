@@ -39,7 +39,7 @@ interface Firework {
 }
 
 const POOL_SIZE = 5000;
-const DUR = 16.0; // Cinematic Climax Timeline
+const DUR = 16.0; // Cinematic 16s Climax Timeline
 
 /* ═══════════════════════════════════════════════════════════════
    SIMPLEX NOISE 2D
@@ -162,12 +162,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       flagNodes.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
     }
 
-    // Crossing Fighter Jets Setup (Initially empty, populated relative to W/H in rsz)
-    const jets: Jet[] = [
-      { x: 0, y: 0, scale: 0.95, smokeColor: '#FF9933', vx: 0, vy: 0, active: true },
-      { x: 0, y: 0, scale: 0.90, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true },
-      { x: 0, y: 0, scale: 0.85, smokeColor: '#138808', vx: 0, vy: 0, active: true }
-    ];
+    // 6-Jet Aerobatic Stunt Team Array Setup (Pre-defined empty slots)
+    const jets: Jet[] = Array.from({ length: 6 }, () => ({
+      x: 0, y: 0, scale: 0.85, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true
+    }));
 
     const starI: number[] = [];
     for (let i = 0; i < 150; i++) {
@@ -205,10 +203,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       pillarH = gateH * 0.72;
       pillarY = baseY - 32 - pillarH;
 
-      // Jets positions updated relative to dynamic W and H securely (No more invisible jets)
-      jets[0] = { x: -W * 0.35, y: H * 0.46, scale: 0.95, smokeColor: '#FF9933', vx: 6.2, vy: -1.8, active: true };
-      jets[1] = { x: W + W * 0.35, y: H * 0.15, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 1.2, active: true };
-      jets[2] = { x: -W * 0.50, y: H * 0.53, scale: 0.85, smokeColor: '#138808', vx: 6.2, vy: -2.2, active: true };
+      // 1. LEFT-TO-RIGHT Vic Formation (Staggered 3 Jets)
+      jets[0] = { x: -W * 0.25, y: H * 0.18, scale: 0.90, smokeColor: '#FFFFFF', vx: 6.2, vy: -1.2, active: true }; // Lead (White)
+      jets[1] = { x: -W * 0.38, y: H * 0.13, scale: 0.84, smokeColor: '#FF9933', vx: 6.2, vy: -1.2, active: true }; // Upper Wing (Saffron)
+      jets[2] = { x: -W * 0.38, y: H * 0.23, scale: 0.84, smokeColor: '#138808', vx: 6.2, vy: -1.2, active: true }; // Lower Wing (Green)
+
+      // 2. RIGHT-TO-LEFT Vic Formation (Staggered 3 Jets, Crossing path)
+      jets[3] = { x: W + W * 0.25, y: H * 0.15, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 1.0, active: true }; // Lead (White)
+      jets[4] = { x: W + W * 0.38, y: H * 0.10, scale: 0.84, smokeColor: '#FF9933', vx: -6.2, vy: 1.0, active: true }; // Upper Wing (Saffron)
+      jets[5] = { x: W + W * 0.38, y: H * 0.20, scale: 0.84, smokeColor: '#138808', vx: -6.2, vy: 1.0, active: true }; // Lower Wing (Green)
 
       // Initialize doves securely on high wall ledges of the newly scaled India Gate
       birds.length = 0;
@@ -614,14 +617,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.globalAlpha = intensity;
         c.globalCompositeOperation = 'screen';
 
-        // FIX: Tighter, non-sprawling golden sunrise glow localized strictly behind India Gate walls
-        const volumetricGrad = c.createRadialGradient(sunX, sunY, 5, sunX, sunY, gateW * 0.48);
-        volumetricGrad.addColorStop(0, 'rgba(255, 140, 50, 0.85)');
-        volumetricGrad.addColorStop(0.3, 'rgba(255, 110, 20, 0.35)');
-        volumetricGrad.addColorStop(0.7, 'rgba(255, 90, 10, 0.12)');
-        volumetricGrad.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = volumetricGrad;
-        c.fillRect(0, 0, W, H);
+        // FIX: Tighter, non-sprawling golden sunrise glow localized strictly behind India Gate walls (AURA REMOVED)
+        // No more large circular yellow backgrounds drawn.
 
         for (let i = 0; i < 15; i++) {
           const angle = -Math.PI * 0.5 + (i / 15) * Math.PI - Math.PI * 0.5;
@@ -643,7 +640,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 8: CROSSING JETS & THICK SMOKE TRAILS
+      // LAYER 8: CROSSING JETS & THICK SMOKE TRAILS (6-Jet vic formations with staggered spacing & dynamic crossed paths)
       jetsAndTrails: (t: number, sceneAlpha: number) => {
         if (t < 2.5 || t > 9.0) return;
         c.save();
@@ -659,6 +656,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           const nozzleX = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
           const nozzleY = jet.y + 2 * jet.scale;
 
+          // Thick Volumetric trails
           if (Math.random() < 0.85) {
             const p = grab(pl); if (p) {
               p.on = true; p.x = nozzleX; p.y = nozzleY;
