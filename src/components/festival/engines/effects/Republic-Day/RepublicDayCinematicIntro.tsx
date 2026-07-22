@@ -39,7 +39,7 @@ interface Firework {
 }
 
 const POOL_SIZE = 5000;
-const DUR = 16.0; // Cinematic 16s Climax Timeline
+const DUR = 16.0;
 
 /* ═══════════════════════════════════════════════════════════════
    SIMPLEX NOISE 2D
@@ -124,7 +124,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
 
-    // Secure local math scope to prevent ReferenceErrors during bundling
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -155,14 +154,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     const noise = new SimplexNoise(3821);
     const pl = mkPool();
 
-    // CLOTH SIMULATION FOR THE TRICOLOR FLAG (Verlet Spring-Mass Model)
     const numPoints = 14;
     const flagNodes: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < numPoints; i++) {
       flagNodes.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
     }
 
-    // 6-Jet Aerobatic Stunt Team Array Setup (Pre-defined empty slots)
     const jets: Jet[] = Array.from({ length: 6 }, () => ({
       x: 0, y: 0, scale: 0.85, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true
     }));
@@ -176,10 +173,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       starI.push(i);
     }
 
-    // BBC PLANET EARTH FLOCKING BIRDS setup
     const birds: BoidBird[] = [];
 
-    // Master Sizing values computed dynamically
     let sc = Math.min(window.innerWidth, window.innerHeight);
     let gateH = sc * 0.66;
     let gateW = gateH * 0.84;
@@ -194,7 +189,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Re-calculate layout values
       sc = Math.min(W, H);
       gateH = sc * 0.66;
       gateW = gateH * 0.84;
@@ -203,22 +197,18 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       pillarH = gateH * 0.72;
       pillarY = baseY - 32 - pillarH;
 
-      // 1. LEFT-TO-RIGHT Vic Formation (Staggered 3 Jets climbing cleanly inside the viewport)
-      jets[0] = { x: -W * 0.25, y: H * 0.40, scale: 0.90, smokeColor: '#FFFFFF', vx: 6.2, vy: -0.8, active: true }; // Lead (White)
-      jets[1] = { x: -W * 0.38, y: H * 0.35, scale: 0.84, smokeColor: '#FF9933', vx: 6.2, vy: -0.8, active: true }; // Upper Wing (Saffron)
-      jets[2] = { x: -W * 0.38, y: H * 0.45, scale: 0.84, smokeColor: '#138808', vx: 6.2, vy: -0.8, active: true }; // Lower Wing (Green)
+      jets[0] = { x: -W * 0.25, y: H * 0.40, scale: 0.90, smokeColor: '#FFFFFF', vx: 6.2, vy: -0.8, active: true };
+      jets[1] = { x: -W * 0.38, y: H * 0.35, scale: 0.84, smokeColor: '#FF9933', vx: 6.2, vy: -0.8, active: true };
+      jets[2] = { x: -W * 0.38, y: H * 0.45, scale: 0.84, smokeColor: '#138808', vx: 6.2, vy: -0.8, active: true };
+      jets[3] = { x: W + W * 0.25, y: H * 0.15, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 0.8, active: true };
+      jets[4] = { x: W + W * 0.38, y: H * 0.10, scale: 0.84, smokeColor: '#FF9933', vx: -6.2, vy: 0.8, active: true };
+      jets[5] = { x: W + W * 0.38, y: H * 0.20, scale: 0.84, smokeColor: '#138808', vx: -6.2, vy: 0.8, active: true };
 
-      // 2. RIGHT-TO-LEFT Vic Formation (Staggered 3 Jets descending cleanly inside the viewport)
-      jets[3] = { x: W + W * 0.25, y: H * 0.15, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 0.8, active: true }; // Lead (White)
-      jets[4] = { x: W + W * 0.38, y: H * 0.10, scale: 0.84, smokeColor: '#FF9933', vx: -6.2, vy: 0.8, active: true }; // Upper Wing (Saffron)
-      jets[5] = { x: W + W * 0.38, y: H * 0.20, scale: 0.84, smokeColor: '#138808', vx: -6.2, vy: 0.8, active: true }; // Lower Wing (Green)
-
-      // Initialize doves securely on high wall ledges of the newly scaled India Gate
       birds.length = 0;
       for (let i = 0; i < 8; i++) {
         birds.push({
           x: cx - gateW * 0.44 + (gateW * 0.16) * (i / 7),
-          y: pillarY - 4, // Left wall ledge
+          y: pillarY - 4,
           vx: 0, vy: 0,
           wing: Math.random() * Math.PI * 2,
           state: 'sitting',
@@ -230,7 +220,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       for (let i = 0; i < 8; i++) {
         birds.push({
           x: cx + gateW * 0.28 + (gateW * 0.16) * (i / 7),
-          y: pillarY - 4, // Right wall ledge
+          y: pillarY - 4,
           vx: 0, vy: 0,
           wing: Math.random() * Math.PI * 2,
           state: 'sitting',
@@ -242,7 +232,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
     rsz(); window.addEventListener('resize', rsz);
 
-    // Film Grain Setup
     const grainCv = document.createElement('canvas');
     grainCv.width = 256; grainCv.height = 256;
     const gc = grainCv.getContext('2d')!;
@@ -256,7 +245,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     let cameraShake = 0;
     const sunPos = (t: number) => ({ x: lerp(W*0.3, W*0.5, eOE(t/10)), y: lerp(H*1.2, H*0.15, eOE(t/10)) });
 
-    // Procedural Fireworks Setup
     const fireworksList: Firework[] = [];
     const fwColors = [{r:255,g:153,b:51}, {r:255,g:255,b:255}, {r:19,g:136,b:8}, {r:255,g:215,b:0}];
 
@@ -278,7 +266,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const fw = fireworksList[i];
         if (fw.state === 'rising') {
           fw.y += fw.vy;
-          fw.vy += 0.04; // Gravity acting on projectile
+          fw.vy += 0.04;
           if (fw.vy >= -0.5 || fw.y < H * 0.2) {
             fw.state = 'burst';
             const count = 40 + Math.random() * 30 | 0;
@@ -300,7 +288,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           for (let j = fw.pts.length - 1; j >= 0; j--) {
             const pt = fw.pts[j];
             pt.x += pt.vx; pt.y += pt.vy;
-            pt.vy += 0.035; // Spark gravity
+            pt.vy += 0.035;
             pt.vx *= 0.985; pt.vy *= 0.985;
             pt.life -= dt;
             if (pt.life <= 0) fw.pts.splice(j, 1);
@@ -311,7 +299,54 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       RENDERER OBJECT (Encapsulates all layers to avoid scoping/compilation bugs)
+       CHANGE #1 & #2: drawSun() — Fixed bloom + small core
+       CHANGE #5: Called only when t < 0.72
+       ═══════════════════════════════════════════════════════════ */
+    const drawSun = (t: number) => {
+      if (t >= 0.72) return; // CHANGE #5: Stop drawing sun after t=0.72
+
+      const sun = sunPos(t);
+      const sunX = sun.x;
+      const sunY = sun.y;
+      const intensity = clamp(t / 0.72, 0, 1);
+
+      c.save();
+      c.globalCompositeOperation = 'screen';
+
+      // CHANGE #1: Soft sunrise glow only (no giant circular halo)
+      const bloomGrad = c.createLinearGradient(
+        0,
+        sunY - H * 0.25,
+        0,
+        H
+      );
+      bloomGrad.addColorStop(0, 'rgba(255,220,160,0)');
+      bloomGrad.addColorStop(0.55, `rgba(255,180,70,${0.12 * intensity})`);
+      bloomGrad.addColorStop(1, `rgba(255,120,40,${0.35 * intensity})`);
+      c.fillStyle = bloomGrad;
+      c.fillRect(0, sunY - H * 0.25, W, H);
+
+      // CHANGE #2: Small hidden sunrise disk
+      const coreGrad = c.createRadialGradient(
+        sunX,
+        sunY,
+        0,
+        sunX,
+        sunY,
+        35
+      );
+      coreGrad.addColorStop(0, `rgba(255,255,240,${0.8 * intensity})`);
+      coreGrad.addColorStop(1, 'rgba(255,255,240,0)');
+      c.fillStyle = coreGrad;
+      c.beginPath();
+      c.arc(sunX, sunY, 35, 0, Math.PI * 2);
+      c.fill();
+
+      c.restore();
+    };
+
+    /* ═══════════════════════════════════════════════════════════
+       RENDERER OBJECT
        ═══════════════════════════════════════════════════════════ */
     const renderer = {
       // LAYER 1: SKY (Smooth Dawn Transition)
@@ -321,28 +356,24 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const grad = c.createLinearGradient(0, 0, 0, H);
         
         if (t < 3.5) {
-          // Phase 1: Twilight Deep Blue
           const interp = clamp(t / 3.5, 0, 1);
           const r1 = lerp(4, 20, interp), g1 = lerp(6, 32, interp), b1 = lerp(18, 62, interp);
           const r2 = lerp(8, 48, interp), g2 = lerp(12, 40, interp), b2 = lerp(32, 90, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else if (t < 7.5) {
-          // Phase 2: Purple-to-Orange Horizon
           const interp = clamp((t - 3.5) / 4.0, 0, 1);
           const r1 = lerp(20, 85, interp), g1 = lerp(32, 38, interp), b1 = lerp(62, 80, interp);
           const r2 = lerp(48, 255, interp), g2 = lerp(40, 130, interp), b2 = lerp(90, 48, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else if (t < 11.5) {
-          // Phase 3: Golden Saffron Sunrise
           const interp = clamp((t - 7.5) / 4.0, 0, 1);
           const r1 = lerp(85, 255, interp), g1 = lerp(38, 195, interp), b1 = lerp(80, 110, interp);
           const r2 = lerp(255, 255, interp), g2 = lerp(130, 175, interp), b2 = lerp(48, 30, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else {
-          // Phase 4: Blue Morning Soft Haze
           const interp = clamp((t - 11.5) / 4.5, 0, 1);
           const r1 = lerp(255, 14, interp), g1 = lerp(195, 30, interp), b1 = lerp(110, 85, interp);
           const r2 = lerp(255, 32, interp), g2 = lerp(175, 54, interp), b2 = lerp(30, 140, interp);
@@ -376,6 +407,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       },
 
       // LAYER 4: INDIA GATE
+      // CHANGE #4: Sunrise Backlight block — ALREADY NOT PRESENT in this code
+      // (No ctx.save(); ctx.globalCompositeOperation='screen'; backlight block exists here)
       indiaGate: (t: number, sceneAlpha: number) => {
         const reveal = clamp((t - 0.8) * 0.4, 0, 1);
         c.save();
@@ -474,7 +507,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 6 & 7: WAVING FLAG & ASHOKA CHAKRA (Silk simulation and Chakra synced perfectly at t=3.0s)
+      // LAYER 6 & 7: WAVING FLAG & ASHOKA CHAKRA
       wavingFlagAndChakra: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 3.0) return;
         const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
@@ -485,7 +518,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const fx = W * 0.5 - fw / 2;
         const fy = H * 0.44 - fh / 2;
 
-        // Verlet Cloth Simulation Nodes setup
         if (flagNodes[0].x === 0) {
           for (let i = 0; i < numPoints; i++) {
             flagNodes[i].x = fx + (i * fw) / (numPoints - 1);
@@ -495,13 +527,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           }
         }
 
-        // Physics integration cycle (Elegantly tuned down to represent heavy heavy silk fabric)
         for (let i = 1; i < numPoints; i++) {
-          // WIND FORCE: Extremely subtle slow-motion breeze wave (elapsed * 0.8 and force multiplier scaled down)
           const wind = 0.22 + noise.n2(elapsed * 0.8 + i * 0.15, 0) * 0.18;
-          const gravity = 0.08; // Delicate downward drag for stable structure
+          const gravity = 0.08;
 
-          // High damping (0.94) to eliminate frantic/violent waving jitter
           flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.94 + wind;
           flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.94 + gravity;
 
@@ -579,7 +608,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fill();
         }
 
-        // Ashok Chakra Synced perfectly to wave and rotate immediately with the Flag
         const midIdx = numPoints / 2 | 0;
         const cxV = flagNodes[midIdx].x;
         const cyV = flagNodes[midIdx].y + fh / 2;
@@ -606,8 +634,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 11: VOLUMETRIC SUNRISE LIGHTING (Sun glow strictly localized behind the walls, AURA REMOVED)
-      volumetricLighting: (t: number, sceneAlpha: number) => {
+      /* ═══════════════════════════════════════════════════════════
+         CHANGE #3: God Rays — Reduced length, width, intensity
+         ═══════════════════════════════════════════════════════════ */
+      volumetricLighting: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 3.0) return;
         const intensity = clamp((t - 3.0) * 0.3, 0, 0.82) * sceneAlpha;
         const sunX = W * 0.5;
@@ -617,20 +647,34 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.globalAlpha = intensity;
         c.globalCompositeOperation = 'screen';
 
-        // FIX: Tighter, non-sprawling golden sunrise glow localized strictly behind India Gate walls (AURA REMOVED)
-        // No more large circular yellow backgrounds drawn.
-
         for (let i = 0; i < 15; i++) {
           const angle = -Math.PI * 0.5 + (i / 15) * Math.PI - Math.PI * 0.5;
-          const l = sc * 1.5;
+
+          // CHANGE #3a: length h*0.8 → h*0.55
+          const length = H * 0.55;
+
+          // CHANGE #3b: width 100+sin*50 → 40+sin*12
+          const width = 40 + Math.sin(elapsed + i) * 12;
+          const halfW = width / 2;
+
+          const tipX = sunX + Math.cos(angle) * length;
+          const tipY = sunY + Math.sin(angle) * length;
+          const perpX = -Math.sin(angle);
+          const perpY = Math.cos(angle);
+
           c.beginPath();
           c.moveTo(sunX, sunY);
-          c.lineTo(sunX + Math.cos(angle - 0.05) * l, sunY + Math.sin(angle - 0.05) * l);
-          c.lineTo(sunX + Math.cos(angle + 0.05) * l, sunY + Math.sin(angle + 0.05) * l);
+          c.lineTo(tipX + perpX * halfW, tipY + perpY * halfW);
+          c.lineTo(tipX - perpX * halfW, tipY - perpY * halfW);
           c.closePath();
 
-          const rayGrad = c.createLinearGradient(sunX, sunY, sunX + Math.cos(angle) * l, sunY + Math.sin(angle) * l);
-          rayGrad.addColorStop(0, 'rgba(255, 230, 160, 0.28)');
+          const rayGrad = c.createLinearGradient(sunX, sunY, tipX, tipY);
+
+          // CHANGE #3c: 0.15*intensity → 0.06*intensity
+          rayGrad.addColorStop(
+            0,
+            `rgba(255,235,180,${0.06 * intensity})`
+          );
           rayGrad.addColorStop(0.5, 'rgba(255, 140, 50, 0.08)');
           rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
           c.fillStyle = rayGrad;
@@ -640,7 +684,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 8: CROSSING JETS & THICK SMOKE TRAILS (6-Jet vic formations with staggered spacing & dynamic crossed paths)
+      // LAYER 8: CROSSING JETS & THICK SMOKE TRAILS
       jetsAndTrails: (t: number, sceneAlpha: number) => {
         if (t < 2.5 || t > 9.0) return;
         c.save();
@@ -677,26 +721,25 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.rotate(Math.atan2(jet.vy, jet.vx));
           c.scale(jet.scale, jet.scale);
 
-          // Highly detailed vector fighter silhouette (canards, swept wings)
           c.fillStyle = '#1c1c1c';
           c.beginPath();
           c.moveTo(35, 0); 
           c.lineTo(15, -4);
-          c.lineTo(2, -18); // Swept wing left
+          c.lineTo(2, -18);
           c.lineTo(-10, -28);
           c.lineTo(-14, -28);
           c.lineTo(-12, -4);
           c.lineTo(-24, -3);
-          c.lineTo(-28, -8); // Left horizontal stabilizer
+          c.lineTo(-28, -8);
           c.lineTo(-32, -8);
-          c.lineTo(-30, 0); // Tail end center
+          c.lineTo(-30, 0);
           c.lineTo(-32, 8);
-          c.lineTo(-28, 8);  // Right horizontal stabilizer
+          c.lineTo(-28, 8);
           c.lineTo(-24, 3);
           c.lineTo(-12, 4);
           c.lineTo(-14, 28);
           c.lineTo(-10, 28);
-          c.lineTo(2, 18);  // Swept wing right
+          c.lineTo(2, 18);
           c.lineTo(15, 4);
           c.closePath();
           c.fill();
@@ -707,9 +750,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 11: DOVES (Fades in correctly with India Gate, flying elegantly)
+      // LAYER 11: DOVES
       doves: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 2.0) return; // Hidden until India Gate is fully revealed
+        if (t < 2.0) return;
         const dAlpha = clamp((t - 2.0) * 1.2, 0, 1) * sceneAlpha;
         c.save();
         c.globalAlpha = dAlpha;
@@ -718,7 +761,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           birds.forEach(b => {
             if (b.state === 'sitting') {
               b.state = 'flying';
-              // Fixed: Gentle, organic flight speeds (much slower and natural)
               const driftX = b.side === 'left' ? 0.9 : -0.9;
               b.vx = driftX + (Math.random() - 0.5) * 0.4;
               b.vy = -1.2 - Math.random() * 0.8;
@@ -799,7 +841,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 13: PREMIUM TYPOGRAPHY (Perfect Center Position Fixed)
+      // LAYER 13: PREMIUM TYPOGRAPHY
       typography: (t: number) => {
         if (t < 11.5) return;
         const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
@@ -810,7 +852,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
         const title = "HAPPY REPUBLIC DAY";
         const totalW = c.measureText(title).width;
-        let xOff = W * 0.5 - totalW * 0.5; // Start boundary strictly centered
+        let xOff = W * 0.5 - totalW * 0.5;
 
         for (let i = 0; i < title.length; i++) {
           const charW = c.measureText(title[i]).width;
@@ -820,11 +862,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.save();
           c.globalAlpha = eOC(charT);
 
-          // Shadow drawn centered
           c.fillStyle = 'rgba(0,0,0,0.92)';
           c.fillText(title[i], xOff + 2, charY + 2);
 
-          // Waving Tricolor Gradient
           const sweepGrad = c.createLinearGradient(xOff, charY - fontSize * 0.5, xOff, charY + fontSize * 0.38);
           sweepGrad.addColorStop(0, '#FF9933');
           sweepGrad.addColorStop(0.48, '#FFFFFF');
@@ -835,7 +875,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fillText(title[i], xOff, charY);
           c.restore();
 
-          xOff += charW; // Step boundary correctly centered
+          xOff += charW;
         }
 
         if (t > 13.0) {
@@ -852,7 +892,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // EXTRA LAYER: FESTIVE FIREWORKS (Atishbaji Bursting majestically in the background)
+      // EXTRA LAYER: FESTIVE FIREWORKS
       fireworks: (sceneAlpha: number) => {
         c.save();
         c.globalCompositeOperation = 'lighter';
@@ -880,10 +920,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       LAYER 10: PARTICLES ENGINE (Dust + Spectacular sky-wide Tricolor Rain)
+       LAYER 10: PARTICLES ENGINE
        ═══════════════════════════════════════════════════════════ */
     const spawnParticles = (t: number, elapsed: number) => {
-      // 1. Fog Dust (tp=1: Slow, large, low opacity)
       if (Math.random() < 0.12) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H * 0.6 + Math.random() * H * 0.3;
@@ -893,7 +932,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // 2. Gold Dust (tp=5: floats upwards with noise turbulence)
       if (t > 4.0 && Math.random() < 0.4) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H + 10;
@@ -903,7 +941,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // 3. Solar Particles (tp=6: diagonally drifting glowing rays)
       if (t > 5.0 && Math.random() < 0.3) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 100; p.y = baseY - gateH * 0.4;
@@ -913,15 +950,14 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // 4. Tricolor Confetti (Fades/Spawns strictly AFTER Jets cross the screen at t >= 5.5s)
       if (t >= 5.5 && t < 11.5) {
-        const rainCount = 1; // FIX: Reduced density (was 4) to keep scene incredibly elegant & clean
+        const rainCount = 1;
         for (let i = 0; i < rainCount; i++) {
           const p = grab(pl); if (p) {
-            p.on = true; p.x = Math.random() * W; p.y = -20 - Math.random() * 30; // Random offset to prevent clumping
-            p.vx = (Math.random() - 0.5) * 0.2; // Tiny lateral drift
-            p.vy = 1.8 + Math.random() * 1.8; // Steady rainfall descent
-            p.life = 6; p.ml = 6; p.sz = 5 + Math.random() * 4; // Variegated Size strictly between 5px and 9px
+            p.on = true; p.x = Math.random() * W; p.y = -20 - Math.random() * 30;
+            p.vx = (Math.random() - 0.5) * 0.2;
+            p.vy = 1.8 + Math.random() * 1.8;
+            p.life = 6; p.ml = 6; p.sz = 5 + Math.random() * 4;
             p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.08;
             const rand = Math.random();
             if (rand < 0.34) { p.r = 255; p.g = 153; p.b = 51; }
@@ -932,7 +968,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // 5. Torch Embers (tp=3: hot orange, rising quickly near the flame)
       if (t > 2.0 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = H * 0.795;
@@ -948,23 +983,22 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const p = pl[i]; if (!p.on) continue;
         p.life -= dt;
 
-        if (p.tp === 4) { // Smoke
+        if (p.tp === 4) {
           p.x += p.vx; p.y += p.vy;
           p.sz += 0.45; p.vx *= 0.985; p.vy *= 0.985;
-        } else if (p.tp === 2) { // Confetti falling with wind drift
-          // FIX: Soft vertical rainfall descent (Dampens wind shaking completely)
-          p.vy += 0.050; // High gravity pull downwards
-          p.vy *= 0.980; // High terminal velocity drag
-          p.vx = p.vx * 0.92 + Math.sin(elapsed * 0.6 + p.y * 0.015) * 0.015; // Extremely reduced 10x smaller sway
+        } else if (p.tp === 2) {
+          p.vy += 0.050;
+          p.vy *= 0.980;
+          p.vx = p.vx * 0.92 + Math.sin(elapsed * 0.6 + p.y * 0.015) * 0.015;
           p.x += p.vx; p.y += p.vy;
           p.rot += p.rs;
-        } else if (p.tp === 5) { // Gold Dust (FBM flow noise)
+        } else if (p.tp === 5) {
           p.vy *= 0.99;
           p.vx = p.vx * 0.95 + noise.n2(elapsed * 0.5 + p.y * 0.01, p.turbOff) * 0.15;
           p.x += p.vx; p.y += p.vy;
-        } else if (p.tp === 6) { // Solar (straight fast diagonal)
+        } else if (p.tp === 6) {
           p.x += p.vx; p.y += p.vy;
-        } else { // Fog and Embers
+        } else {
           p.x += p.vx; p.y += p.vy;
         }
 
@@ -980,23 +1014,23 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.save();
         c.globalAlpha = alpha;
 
-        if (p.tp === 4) { // Jet Smoke Renderer
+        if (p.tp === 4) {
           c.globalCompositeOperation = 'screen';
           const smokeGrad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz);
           smokeGrad.addColorStop(0, `rgba(${p.r},${p.g},${p.b},0.35)`);
           smokeGrad.addColorStop(1, 'rgba(0,0,0,0)');
           c.fillStyle = smokeGrad;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
-        } else if (p.tp === 2) { // Confetti solid shape renderer
+        } else if (p.tp === 2) {
           c.translate(p.x, p.y);
           c.rotate(p.rot);
           c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
           c.fillRect(-p.sz / 2, -p.sz / 4, p.sz, p.sz / 2);
-        } else if (p.tp === 5) { // Gold Dust sparkles (highly bright)
+        } else if (p.tp === 5) {
           c.globalCompositeOperation = 'lighter';
           c.fillStyle = `rgba(255, 215, 0, ${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
-        } else if (p.tp === 6) { // Solar Particles (radiant diagonal streaks)
+        } else if (p.tp === 6) {
           c.globalCompositeOperation = 'screen';
           c.strokeStyle = `rgba(255, 230, 160, ${alpha * 0.4})`;
           c.lineWidth = p.sz * 0.5;
@@ -1004,7 +1038,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.moveTo(p.x, p.y);
           c.lineTo(p.x - p.vx * 3, p.y - p.vy * 3);
           c.stroke();
-        } else { // Embers & Fog Dust
+        } else {
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
         }
@@ -1013,7 +1047,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       }
     };
 
-    // CHROMATIC ABERRATION
     const drawChromaticAberration = () => {
       c.save();
       c.globalCompositeOperation = 'screen';
@@ -1024,7 +1057,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    // POST FX (Film Grain & Vignette)
     const drawPostFX = () => {
       c.save();
       c.globalCompositeOperation = 'soft-light';
@@ -1048,7 +1080,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       ANIMATION LOOP (Cinematic Cameras and Handheld breathe)
+       ANIMATION LOOP
        ═══════════════════════════════════════════════════════════ */
     let prevTime = 0;
     let fwTimer = 0;
@@ -1064,7 +1096,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         return;
       }
 
-      // Spawns Festive fireworks strictly AFTER jets fly past (t >= 5.5s)
       if (t >= 5.5 && t < 11.5) {
         fwTimer += dt;
         if (fwTimer > 0.8 + Math.random() * 0.6) {
@@ -1080,9 +1111,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.fillStyle = '#000000';
       c.fillRect(0, 0, W, H);
 
-      // Cinematic Camera: Handheld breathing & shake decay
-      cameraShake *= 0.92; // Decay factor
-      const camDollyZ = lerp(1.0, 1.10, eOE(t / DUR)); // Ultra-slow dolly zoom
+      cameraShake *= 0.92;
+      const camDollyZ = lerp(1.0, 1.10, eOE(t / DUR));
       const breatheX = Math.sin(t * 0.4) * 2 + (Math.random() - 0.5) * cameraShake;
       const breatheY = Math.cos(t * 0.3) * 1.5 + (Math.random() - 0.5) * cameraShake;
       const camRot = Math.sin(t * 0.15) * 0.003;
@@ -1095,21 +1125,28 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
 
-      // Layer Assembly Sequence via encapsulated renderer object (Secure Reference Binding)
+      /* ═══════════════════════════════════════════════════════════
+         LAYER ASSEMBLY — With all 5 changes applied
+         ═══════════════════════════════════════════════════════════ */
       renderer.sky(t, sceneAlpha);
+
+      // CHANGE #5: drawSun() only called when t < 0.72
+      // (drawSun function internally also checks t < 0.72 as safety)
+      drawSun(t);
+
       renderer.stars(t, sceneAlpha);
       renderer.wavingFlagAndChakra(t, now / 1000, sceneAlpha);
       renderer.indiaGate(t, sceneAlpha);
-      renderer.volumetricLighting(t, sceneAlpha); // UEFI-style god rays
+      // CHANGE #3: volumetricLighting now receives elapsed parameter
+      renderer.volumetricLighting(t, now / 1000, sceneAlpha);
       renderer.torch(t, now / 1000, sceneAlpha);
       renderer.jetsAndTrails(t, sceneAlpha);
       drawParticles();
-      renderer.fireworks(sceneAlpha); // Back-end Fireworks bursting after jets exit
+      renderer.fireworks(sceneAlpha);
       renderer.doves(t, now / 1000, sceneAlpha);
 
       c.restore();
 
-      // EPIC ENDING TRANSITION: Solid tricolor backdrop expansion (t >= 11.5s)
       if (t >= 11.5) {
         const bgFade = clamp((t - 11.5) * 1.8, 0, 1);
         c.save();
