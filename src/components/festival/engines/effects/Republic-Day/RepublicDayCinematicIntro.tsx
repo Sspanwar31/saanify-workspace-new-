@@ -31,7 +31,7 @@ interface BoidBird {
 }
 
 const POOL_SIZE = 5000;
-const DUR = 16.0; // Cinematic Climax Timeline
+const DUR = 16.0; // Cinematic 16s Climax Timeline
 
 /* ═══════════════════════════════════════════════════════════════
    SIMPLEX NOISE 2D
@@ -391,8 +391,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
         fireGrad.addColorStop(0, '#ffffff');
         fireGrad.addColorStop(0.2, 'rgba(255, 210, 80, 0.95)');
-        fireGrad.addColorStop(0.6, 'rgba(255, 90, 0, 0.6)');
-        fireGrad.addColorStop(1, 'rgba(230, 0, 0, 0)');
+        fireGrad.addColorStop(0.6, 'rgba(255, 120, 20, 0.6)');
+        fireGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
         c.fillStyle = fireGrad;
 
         c.beginPath();
@@ -404,7 +404,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 6 & 7: WAVING FLAG & ASHOKA CHAKRA
+      // LAYER 6 & 7: WAVING FLAG & ASHOKA CHAKRA (Silk simulation slowed down and elegant)
       wavingFlagAndChakra: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 3.0) return;
         const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
@@ -425,13 +425,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           }
         }
 
-        // Physics integration cycle
+        // Physics integration cycle (Elegantly tuned down to represent heavy heavy silk fabric)
         for (let i = 1; i < numPoints; i++) {
-          const wind = 0.5 + noise.n2(elapsed * 2.5 + i * 0.2, 0) * 0.85;
-          const gravity = 0.15;
+          // WIND FORCE: Extremely subtle slow-motion breeze wave (elapsed * 0.8 and force multiplier scaled down)
+          const wind = 0.22 + noise.n2(elapsed * 0.8 + i * 0.15, 0) * 0.18;
+          const gravity = 0.08; // Delicate downward drag for stable structure
 
-          flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.85 + wind;
-          flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.85 + gravity;
+          // High damping (0.94) to eliminate frantic/violent waving jitter
+          flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.94 + wind;
+          flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.94 + gravity;
 
           flagNodes[i].ox = flagNodes[i].x;
           flagNodes[i].oy = flagNodes[i].y;
@@ -726,7 +728,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       // LAYER 13: PREMIUM TYPOGRAPHY (Perfect Center Position Fixed)
       typography: (t: number) => {
         if (t < 11.5) return;
-        const revealT = clamp((t - 11.5) * 1.5, 0, 1);
         const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
 
         c.save();
@@ -851,8 +852,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           p.x += p.vx; p.y += p.vy;
           p.sz += 0.45; p.vx *= 0.985; p.vy *= 0.985;
         } else if (p.tp === 2) { // Confetti falling with wind drift
-          p.vy += 0.045; p.vy *= 0.985;
-          p.vx = p.vx * 0.96 + Math.sin(elapsed * 2 + p.y * 0.015) * 0.15;
+          // FIX: Soft vertical rainfall descent (Dampens wind shaking completely)
+          p.vy += 0.050; // High gravity pull downwards
+          p.vy *= 0.980; // High terminal velocity drag
+          p.vx = p.vx * 0.92 + Math.sin(elapsed * 0.6 + p.y * 0.015) * 0.015; // Extremely reduced 10x smaller sway
           p.x += p.vx; p.y += p.vy;
           p.rot += p.rs;
         } else if (p.tp === 5) { // Gold Dust (FBM flow noise)
