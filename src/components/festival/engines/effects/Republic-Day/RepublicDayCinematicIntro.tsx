@@ -203,15 +203,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       pillarH = gateH * 0.72;
       pillarY = baseY - 32 - pillarH;
 
-      // 1. LEFT-TO-RIGHT Vic Formation (Staggered 3 Jets)
-      jets[0] = { x: -W * 0.25, y: H * 0.18, scale: 0.90, smokeColor: '#FFFFFF', vx: 6.2, vy: -1.2, active: true }; // Lead (White)
-      jets[1] = { x: -W * 0.38, y: H * 0.13, scale: 0.84, smokeColor: '#FF9933', vx: 6.2, vy: -1.2, active: true }; // Upper Wing (Saffron)
-      jets[2] = { x: -W * 0.38, y: H * 0.23, scale: 0.84, smokeColor: '#138808', vx: 6.2, vy: -1.2, active: true }; // Lower Wing (Green)
+      // 1. LEFT-TO-RIGHT Vic Formation (Staggered 3 Jets climbing cleanly inside the viewport)
+      jets[0] = { x: -W * 0.25, y: H * 0.40, scale: 0.90, smokeColor: '#FFFFFF', vx: 6.2, vy: -0.8, active: true }; // Lead (White)
+      jets[1] = { x: -W * 0.38, y: H * 0.35, scale: 0.84, smokeColor: '#FF9933', vx: 6.2, vy: -0.8, active: true }; // Upper Wing (Saffron)
+      jets[2] = { x: -W * 0.38, y: H * 0.45, scale: 0.84, smokeColor: '#138808', vx: 6.2, vy: -0.8, active: true }; // Lower Wing (Green)
 
-      // 2. RIGHT-TO-LEFT Vic Formation (Staggered 3 Jets, Crossing path)
-      jets[3] = { x: W + W * 0.25, y: H * 0.15, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 1.0, active: true }; // Lead (White)
-      jets[4] = { x: W + W * 0.38, y: H * 0.10, scale: 0.84, smokeColor: '#FF9933', vx: -6.2, vy: 1.0, active: true }; // Upper Wing (Saffron)
-      jets[5] = { x: W + W * 0.38, y: H * 0.20, scale: 0.84, smokeColor: '#138808', vx: -6.2, vy: 1.0, active: true }; // Lower Wing (Green)
+      // 2. RIGHT-TO-LEFT Vic Formation (Staggered 3 Jets descending cleanly inside the viewport)
+      jets[3] = { x: W + W * 0.25, y: H * 0.15, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 0.8, active: true }; // Lead (White)
+      jets[4] = { x: W + W * 0.38, y: H * 0.10, scale: 0.84, smokeColor: '#FF9933', vx: -6.2, vy: 0.8, active: true }; // Upper Wing (Saffron)
+      jets[5] = { x: W + W * 0.38, y: H * 0.20, scale: 0.84, smokeColor: '#138808', vx: -6.2, vy: 0.8, active: true }; // Lower Wing (Green)
 
       // Initialize doves securely on high wall ledges of the newly scaled India Gate
       birds.length = 0;
@@ -606,7 +606,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 11: VOLUMETRIC SUNRISE LIGHTING (Sun glow strictly localized behind the walls)
+      // LAYER 11: VOLUMETRIC SUNRISE LIGHTING (Sun glow strictly localized behind the walls, AURA REMOVED)
       volumetricLighting: (t: number, sceneAlpha: number) => {
         if (t < 3.0) return;
         const intensity = clamp((t - 3.0) * 0.3, 0, 0.82) * sceneAlpha;
@@ -656,7 +656,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           const nozzleX = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
           const nozzleY = jet.y + 2 * jet.scale;
 
-          // Thick Volumetric trails
           if (Math.random() < 0.85) {
             const p = grab(pl); if (p) {
               p.on = true; p.x = nozzleX; p.y = nozzleY;
