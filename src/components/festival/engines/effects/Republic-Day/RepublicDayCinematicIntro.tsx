@@ -3,13 +3,13 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
-   TYPES & INTERFACES (Physically Based Particles & Entities)
+   TYPES & INTERFACES
    ═══════════════════════════════════════════════════════════════ */
 interface Particle {
   x: number; y: number; vx: number; vy: number;
   life: number; ml: number; sz: number;
   r: number; g: number; b: number; a: number;
-  tp: number; // 1: Fog Dust, 2: Confetti, 3: Torch Embers, 4: Jet Smoke, 5: Gold Dust, 6: Solar
+  tp: number;
   rot: number; rs: number; on: boolean;
   turbOff: number;
 }
@@ -102,7 +102,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       if (!audioCtxRef.current) return;
       const ctx = audioCtxRef.current;
       if (ctx.state === 'suspended') ctx.resume();
-
       for (let beat = 0; beat < 12; beat++) {
         const bt = ctx.currentTime + beat * 0.35;
         const kick = ctx.createOscillator();
@@ -118,7 +117,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
   }, []);
 
   /* ═══════════════════════════════════════════════════════════
-     CANVAS LIFE CYCLE & CINEMATIC DRAWERS
+     CANVAS LIFE CYCLE
      ═══════════════════════════════════════════════════════════ */
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return;
@@ -129,20 +128,20 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
     const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-    const eOB = (t: number) => { 
-      const n = 7.5625, d = 2.75; 
-      if (t < 1/d) return n*t*t; 
-      if (t < 2/d) return n*(t-=1.5/d)*t+0.75; 
-      if (t < 2.5/d) return n*(t-=2.25/d)*t+0.9375; 
-      return n*(t-=2.625/d)*t+0.984375; 
+    const eOB = (t: number) => {
+      const n = 7.5625, d = 2.75;
+      if (t < 1/d) return n*t*t;
+      if (t < 2/d) return n*(t-=1.5/d)*t+0.75;
+      if (t < 2.5/d) return n*(t-=2.25/d)*t+0.9375;
+      return n*(t-=2.625/d)*t+0.984375;
     };
-    const ss = (e0: number, e1: number, x: number) => { 
-      const t = clamp((x-e0)/(e1-e0),0,1); 
-      return t*t*(3-2*t); 
+    const ss = (e0: number, e1: number, x: number) => {
+      const t = clamp((x-e0)/(e1-e0),0,1);
+      return t*t*(3-2*t);
     };
-    const aces = (x: number) => { 
-      const a=2.51,b=0.03,c2=2.43,d=0.59,e=0.14; 
-      return clamp((x*(a*x+b))/(x*(c2*x+d)+e),0,1); 
+    const aces = (x: number) => {
+      const a=2.51,b=0.03,c2=2.43,d=0.59,e=0.14;
+      return clamp((x*(a*x+b))/(x*(c2*x+d)+e),0,1);
     };
 
     audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -150,7 +149,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
-    
+
     const noise = new SimplexNoise(3821);
     const pl = mkPool();
 
@@ -208,25 +207,17 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       for (let i = 0; i < 8; i++) {
         birds.push({
           x: cx - gateW * 0.44 + (gateW * 0.16) * (i / 7),
-          y: pillarY - 4,
-          vx: 0, vy: 0,
-          wing: Math.random() * Math.PI * 2,
-          state: 'sitting',
-          side: 'left',
-          noiseSeed: Math.random() * 1000,
-          bank: 0
+          y: pillarY - 4, vx: 0, vy: 0,
+          wing: Math.random() * Math.PI * 2, state: 'sitting', side: 'left',
+          noiseSeed: Math.random() * 1000, bank: 0
         });
       }
       for (let i = 0; i < 8; i++) {
         birds.push({
           x: cx + gateW * 0.28 + (gateW * 0.16) * (i / 7),
-          y: pillarY - 4,
-          vx: 0, vy: 0,
-          wing: Math.random() * Math.PI * 2,
-          state: 'sitting',
-          side: 'right',
-          noiseSeed: Math.random() * 1000,
-          bank: 0
+          y: pillarY - 4, vx: 0, vy: 0,
+          wing: Math.random() * Math.PI * 2, state: 'sitting', side: 'right',
+          noiseSeed: Math.random() * 1000, bank: 0
         });
       }
     };
@@ -251,13 +242,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     const spawnFirework = () => {
       const col = fwColors[Math.floor(Math.random() * fwColors.length)];
       fireworksList.push({
-        x: W * 0.25 + Math.random() * W * 0.5,
-        y: H,
-        vy: -5.0 - Math.random() * 3.5,
-        state: 'rising',
-        burstT: 0,
-        col: col,
-        pts: []
+        x: W * 0.25 + Math.random() * W * 0.5, y: H,
+        vy: -5.0 - Math.random() * 3.5, state: 'rising', burstT: 0, col: col, pts: []
       });
     };
 
@@ -265,8 +251,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       for (let i = fireworksList.length - 1; i >= 0; i--) {
         const fw = fireworksList[i];
         if (fw.state === 'rising') {
-          fw.y += fw.vy;
-          fw.vy += 0.04;
+          fw.y += fw.vy; fw.vy += 0.04;
           if (fw.vy >= -0.5 || fw.y < H * 0.2) {
             fw.state = 'burst';
             const count = 40 + Math.random() * 30 | 0;
@@ -274,12 +259,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
               const ang = (j / count) * Math.PI * 2;
               const spd = 1.2 + Math.random() * 2.5;
               fw.pts.push({
-                x: fw.x, y: fw.y,
-                vx: Math.cos(ang) * spd,
-                vy: Math.sin(ang) * spd,
-                life: 1.5 + Math.random() * 1.5,
-                ml: 3.0,
-                sz: 1.5 + Math.random() * 2.0
+                x: fw.x, y: fw.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+                life: 1.5 + Math.random() * 1.5, ml: 3.0, sz: 1.5 + Math.random() * 2.0
               });
             }
           }
@@ -288,8 +269,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           for (let j = fw.pts.length - 1; j >= 0; j--) {
             const pt = fw.pts[j];
             pt.x += pt.vx; pt.y += pt.vy;
-            pt.vy += 0.035;
-            pt.vx *= 0.985; pt.vy *= 0.985;
+            pt.vy += 0.035; pt.vx *= 0.985; pt.vy *= 0.985;
             pt.life -= dt;
             if (pt.life <= 0) fw.pts.splice(j, 1);
           }
@@ -299,48 +279,29 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       CHANGE #1 & #2: drawSun() — Fixed bloom + small core
-       CHANGE #5: Called only when t < 0.72
+       drawSun — Soft linear bloom, small core, t < 0.72 only
        ═══════════════════════════════════════════════════════════ */
     const drawSun = (t: number) => {
-      if (t >= 0.72) return; // CHANGE #5: Stop drawing sun after t=0.72
-
+      if (t >= 0.72) return;
       const sun = sunPos(t);
-      const sunX = sun.x;
-      const sunY = sun.y;
+      const sunX = sun.x, sunY = sun.y;
       const intensity = clamp(t / 0.72, 0, 1);
 
       c.save();
       c.globalCompositeOperation = 'screen';
 
-      // CHANGE #1: Soft sunrise glow only (no giant circular halo)
-      const bloomGrad = c.createLinearGradient(
-        0,
-        sunY - H * 0.25,
-        0,
-        H
-      );
+      const bloomGrad = c.createLinearGradient(0, sunY - H * 0.25, 0, H);
       bloomGrad.addColorStop(0, 'rgba(255,220,160,0)');
       bloomGrad.addColorStop(0.55, `rgba(255,180,70,${0.12 * intensity})`);
       bloomGrad.addColorStop(1, `rgba(255,120,40,${0.35 * intensity})`);
       c.fillStyle = bloomGrad;
       c.fillRect(0, sunY - H * 0.25, W, H);
 
-      // CHANGE #2: Small hidden sunrise disk
-      const coreGrad = c.createRadialGradient(
-        sunX,
-        sunY,
-        0,
-        sunX,
-        sunY,
-        35
-      );
+      const coreGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, 35);
       coreGrad.addColorStop(0, `rgba(255,255,240,${0.8 * intensity})`);
       coreGrad.addColorStop(1, 'rgba(255,255,240,0)');
       c.fillStyle = coreGrad;
-      c.beginPath();
-      c.arc(sunX, sunY, 35, 0, Math.PI * 2);
-      c.fill();
+      c.beginPath(); c.arc(sunX, sunY, 35, 0, Math.PI * 2); c.fill();
 
       c.restore();
     };
@@ -349,34 +310,44 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
        RENDERER OBJECT
        ═══════════════════════════════════════════════════════════ */
     const renderer = {
-      // LAYER 1: SKY (Smooth Dawn Transition)
+      /* ═══════════════════════════════════════════════════════════
+         FIX #2: SKY — Bottom colors were too orange (rgb(255,130,48))
+         This was creating a "sun ball" look at the horizon.
+         Real dawn: deep blue top → purple mid → SOFT pink/warm bottom (not bright orange)
+         ═══════════════════════════════════════════════════════════ */
       sky: (t: number, sceneAlpha: number) => {
         c.save();
         c.globalAlpha = sceneAlpha;
         const grad = c.createLinearGradient(0, 0, 0, H);
-        
+
         if (t < 3.5) {
+          // Phase 1: Deep Night Blue (unchanged)
           const interp = clamp(t / 3.5, 0, 1);
           const r1 = lerp(4, 20, interp), g1 = lerp(6, 32, interp), b1 = lerp(18, 62, interp);
           const r2 = lerp(8, 48, interp), g2 = lerp(12, 40, interp), b2 = lerp(32, 90, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else if (t < 7.5) {
+          // Phase 2: Pre-Dawn — FIX: Bottom was rgb(255,130,48) → now soft warm pink
           const interp = clamp((t - 3.5) / 4.0, 0, 1);
-          const r1 = lerp(20, 85, interp), g1 = lerp(32, 38, interp), b1 = lerp(62, 80, interp);
-          const r2 = lerp(48, 255, interp), g2 = lerp(40, 130, interp), b2 = lerp(90, 48, interp);
+          const r1 = lerp(20, 50, interp), g1 = lerp(32, 35, interp), b1 = lerp(62, 75, interp);
+          const r2 = lerp(48, 140, interp), g2 = lerp(40, 70, interp), b2 = lerp(90, 80, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
+          grad.addColorStop(0.7, `rgb(${(r2*0.6) | 0}, ${(g2*0.7) | 0}, ${(b2*1.1) | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else if (t < 11.5) {
+          // Phase 3: Dawn — FIX: Bottom was rgb(255,175,30) → now soft golden, not orange ball
           const interp = clamp((t - 7.5) / 4.0, 0, 1);
-          const r1 = lerp(85, 255, interp), g1 = lerp(38, 195, interp), b1 = lerp(80, 110, interp);
-          const r2 = lerp(255, 255, interp), g2 = lerp(130, 175, interp), b2 = lerp(48, 30, interp);
+          const r1 = lerp(50, 90, interp), g1 = lerp(35, 80, interp), b1 = lerp(75, 120, interp);
+          const r2 = lerp(140, 170, interp), g2 = lerp(70, 110, interp), b2 = lerp(80, 100, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
+          grad.addColorStop(0.7, `rgb(${(r2*0.7) | 0}, ${(g2*0.8) | 0}, ${(b2*1.05) | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else {
+          // Phase 4: Morning Blue (unchanged)
           const interp = clamp((t - 11.5) / 4.5, 0, 1);
-          const r1 = lerp(255, 14, interp), g1 = lerp(195, 30, interp), b1 = lerp(110, 85, interp);
-          const r2 = lerp(255, 32, interp), g2 = lerp(175, 54, interp), b2 = lerp(30, 140, interp);
+          const r1 = lerp(90, 14, interp), g1 = lerp(80, 30, interp), b1 = lerp(120, 85, interp);
+          const r2 = lerp(170, 32, interp), g2 = lerp(110, 54, interp), b2 = lerp(100, 140, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         }
@@ -386,33 +357,24 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // STARS RENDERING (Fades progressively)
       stars: (t: number, sceneAlpha: number) => {
         if (t > 7) return;
         const alpha = clamp(1 - t / 7, 0, 1) * sceneAlpha;
-        c.save();
-        c.globalAlpha = alpha;
+        c.save(); c.globalAlpha = alpha;
         for (let i = 0; i < starI.length; i++) {
-          const idx = starI[i];
-          const p = pl[idx];
+          const idx = starI[i]; const p = pl[idx];
           if (p && p.on) {
             const twinkle = Math.sin(t * 3.5 + i) * 0.4 + 0.6;
             c.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.a * twinkle})`;
-            c.beginPath();
-            c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
-            c.fill();
+            c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
           }
         }
         c.restore();
       },
 
-      // LAYER 4: INDIA GATE
-      // CHANGE #4: Sunrise Backlight block — ALREADY NOT PRESENT in this code
-      // (No ctx.save(); ctx.globalCompositeOperation='screen'; backlight block exists here)
       indiaGate: (t: number, sceneAlpha: number) => {
         const reveal = clamp((t - 0.8) * 0.4, 0, 1);
-        c.save();
-        c.globalAlpha = reveal * sceneAlpha;
+        c.save(); c.globalAlpha = reveal * sceneAlpha;
 
         const sandstoneBase = '#c1805b';
         const shadowBevel = '#613620';
@@ -421,102 +383,71 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const drawBevelBlock = (x: number, y: number, w: number, h: number) => {
           c.fillStyle = 'rgba(0,0,0,0.32)';
           c.fillRect(x - 3, y - 3, w + 6, h + 6);
-
           const frontGrad = c.createLinearGradient(x, y, x, y + h);
           frontGrad.addColorStop(0, highlightBevel);
           frontGrad.addColorStop(0.3, sandstoneBase);
           frontGrad.addColorStop(1, shadowBevel);
-          c.fillStyle = frontGrad;
-          c.fillRect(x, y, w, h);
-
-          c.strokeStyle = highlightBevel;
-          c.lineWidth = 1.5;
-          c.beginPath();
-          c.moveTo(x, y + h);
-          c.lineTo(x, y);
-          c.lineTo(x + w, y);
-          c.stroke();
-
-          c.strokeStyle = shadowBevel;
-          c.lineWidth = 2.0;
-          c.beginPath();
-          c.moveTo(x + w, y);
-          c.lineTo(x + w, y + h);
-          c.lineTo(x, y + h);
-          c.stroke();
+          c.fillStyle = frontGrad; c.fillRect(x, y, w, h);
+          c.strokeStyle = highlightBevel; c.lineWidth = 1.5;
+          c.beginPath(); c.moveTo(x, y + h); c.lineTo(x, y); c.lineTo(x + w, y); c.stroke();
+          c.strokeStyle = shadowBevel; c.lineWidth = 2.0;
+          c.beginPath(); c.moveTo(x + w, y); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.stroke();
         };
 
         drawBevelBlock(cx - gateW * 0.52, baseY - 16, gateW * 1.04, 16);
         drawBevelBlock(cx - gateW * 0.48, baseY - 32, gateW * 0.96, 16);
-
-        const pW = gateW * 0.26;
-        const pH = gateH * 0.72;
-        const pY = baseY - 32 - pH;
-        
+        const pW = gateW * 0.26, pH = gateH * 0.72, pY = baseY - 32 - pH;
         drawBevelBlock(cx - gateW * 0.46, pY, pW, pH);
         drawBevelBlock(cx + gateW * 0.46 - pW, pY, pW, pH);
-
         drawBevelBlock(cx - gateW * 0.5, pY - gateH * 0.1, gateW * 1.0, gateH * 0.1);
         drawBevelBlock(cx - gateW * 0.42, pY - gateH * 0.22, gateW * 0.84, gateH * 0.12);
-
         c.beginPath();
         c.moveTo(cx - gateW * 0.2, pY - gateH * 0.22);
         c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pY - gateH * 0.22);
-        c.closePath();
-        c.fillStyle = shadowBevel;
-        c.fill();
-
+        c.closePath(); c.fillStyle = shadowBevel; c.fill();
         c.restore();
       },
 
-      // LAYER 5: AMAR JAWAN JYOTI (Flame)
+      /* ═══════════════════════════════════════════════════════════
+         FIX #1: TORCH — Glow radius 140→50, intensity 0.9→0.3
+         This was a major contributor to the golden ball behind India Gate
+         ═══════════════════════════════════════════════════════════ */
       torch: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 2.0) return;
-        const tx = W * 0.5;
-        const ty = H * 0.795;
-        
+        const tx = W * 0.5, ty = H * 0.795;
         const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
-        c.save();
-        c.globalAlpha = fireAlpha;
-        c.globalCompositeOperation = 'lighter';
-        
-        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 140);
-        glowGrad.addColorStop(0, 'rgba(255, 120, 20, 0.9)');
-        glowGrad.addColorStop(0.4, 'rgba(255, 60, 5, 0.35)');
+        c.save(); c.globalAlpha = fireAlpha; c.globalCompositeOperation = 'lighter';
+
+        // FIX: Radius 140→50, intensity 0.9→0.3, 0.35→0.1
+        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 50);
+        glowGrad.addColorStop(0, 'rgba(255, 120, 20, 0.3)');
+        glowGrad.addColorStop(0.4, 'rgba(255, 60, 5, 0.1)');
         glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         c.fillStyle = glowGrad;
-        c.fillRect(tx - 140, ty - 140, 280, 280);
+        c.fillRect(tx - 50, ty - 50, 100, 100);
 
         const flicker = Math.sin(elapsed * 32) * 4;
-        const flameH = 42 + flicker;
-        const flameW = 11;
-
+        const flameH = 42 + flicker, flameW = 11;
         const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
         fireGrad.addColorStop(0, '#ffffff');
         fireGrad.addColorStop(0.2, 'rgba(255, 210, 80, 0.95)');
         fireGrad.addColorStop(0.6, 'rgba(255, 120, 20, 0.6)');
         fireGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
         c.fillStyle = fireGrad;
-
         c.beginPath();
         c.moveTo(tx - flameW, ty);
         c.quadraticCurveTo(tx - flameW * 0.4, ty - flameH * 0.5, tx, ty - flameH);
         c.quadraticCurveTo(tx + flameW * 0.4, ty - flameH * 0.5, tx + flameW, ty);
-        c.closePath();
-        c.fill();
+        c.closePath(); c.fill();
         c.restore();
       },
 
-      // LAYER 6 & 7: WAVING FLAG & ASHOKA CHAKRA
       wavingFlagAndChakra: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 3.0) return;
         const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
-
         const scVal = Math.min(W, H);
-        const fw = scVal * 0.38;
-        const fh = fw * 0.66;
-        const fx = W * 0.5 - fw / 2;
-        const fy = H * 0.44 - fh / 2;
+        const fw = scVal * 0.38, fh = fw * 0.66;
+        const fx = W * 0.5 - fw / 2, fy = H * 0.44 - fh / 2;
 
         if (flagNodes[0].x === 0) {
           for (let i = 0; i < numPoints; i++) {
@@ -530,133 +461,85 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         for (let i = 1; i < numPoints; i++) {
           const wind = 0.22 + noise.n2(elapsed * 0.8 + i * 0.15, 0) * 0.18;
           const gravity = 0.08;
-
           flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.94 + wind;
           flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.94 + gravity;
-
-          flagNodes[i].ox = flagNodes[i].x;
-          flagNodes[i].oy = flagNodes[i].y;
-
-          flagNodes[i].x += flagNodes[i].vx;
-          flagNodes[i].y += flagNodes[i].vy;
+          flagNodes[i].ox = flagNodes[i].x; flagNodes[i].oy = flagNodes[i].y;
+          flagNodes[i].x += flagNodes[i].vx; flagNodes[i].y += flagNodes[i].vy;
         }
-
-        flagNodes[0].x = fx;
-        flagNodes[0].y = fy;
+        flagNodes[0].x = fx; flagNodes[0].y = fy;
 
         const linkLength = fw / (numPoints - 1);
         for (let steps = 0; steps < 4; steps++) {
           for (let i = 0; i < numPoints - 1; i++) {
-            const n1 = flagNodes[i];
-            const n2 = flagNodes[i + 1];
-            const dx = n2.x - n1.x;
-            const dy = n2.y - n1.y;
+            const n1 = flagNodes[i], n2 = flagNodes[i + 1];
+            const dx = n2.x - n1.x, dy = n2.y - n1.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             const diff = linkLength - dist;
             const percent = (diff / dist) * 0.5;
-            const offsetX = dx * percent;
-            const offsetY = dy * percent;
-
-            if (i > 0) {
-              n1.x -= offsetX;
-              n1.y -= offsetY;
-            }
-            n2.x += offsetX;
-            n2.y += offsetY;
+            const offsetX = dx * percent, offsetY = dy * percent;
+            if (i > 0) { n1.x -= offsetX; n1.y -= offsetY; }
+            n2.x += offsetX; n2.y += offsetY;
           }
         }
 
-        c.save();
-        c.globalAlpha = revealAlpha;
-
+        c.save(); c.globalAlpha = revealAlpha;
         for (let i = 0; i < numPoints - 1; i++) {
-          const n1 = flagNodes[i];
-          const n2 = flagNodes[i + 1];
+          const n1 = flagNodes[i], n2 = flagNodes[i + 1];
           const shade = 0.85 + Math.sin(i * 0.3 - elapsed * 4) * 0.15;
-
           const applyShade = (hex: string) => {
             const h = hex.replace('#', '');
             const rr = parseInt(h.substring(0,2),16), gg = parseInt(h.substring(2,4),16), bb = parseInt(h.substring(4,6),16);
             return `rgb(${rr*shade|0},${gg*shade|0},${bb*shade|0})`;
           };
-
           c.fillStyle = applyShade('#FF9933');
-          c.beginPath();
-          c.moveTo(n1.x, n1.y);
-          c.lineTo(n2.x, n2.y);
-          c.lineTo(n2.x, n2.y + fh / 3);
-          c.lineTo(n1.x, n1.y + fh / 3);
-          c.closePath();
-          c.fill();
-
+          c.beginPath(); c.moveTo(n1.x, n1.y); c.lineTo(n2.x, n2.y);
+          c.lineTo(n2.x, n2.y + fh / 3); c.lineTo(n1.x, n1.y + fh / 3); c.closePath(); c.fill();
           c.fillStyle = applyShade('#FFFFFF');
-          c.beginPath();
-          c.moveTo(n1.x, n1.y + fh / 3);
-          c.lineTo(n2.x, n2.y + fh / 3);
-          c.lineTo(n2.x, n2.y + (fh * 2) / 3);
-          c.lineTo(n1.x, n1.y + (fh * 2) / 3);
-          c.closePath();
-          c.fill();
-
+          c.beginPath(); c.moveTo(n1.x, n1.y + fh / 3); c.lineTo(n2.x, n2.y + fh / 3);
+          c.lineTo(n2.x, n2.y + (fh * 2) / 3); c.lineTo(n1.x, n1.y + (fh * 2) / 3); c.closePath(); c.fill();
           c.fillStyle = applyShade('#138808');
-          c.beginPath();
-          c.moveTo(n1.x, n1.y + (fh * 2) / 3);
-          c.lineTo(n2.x, n2.y + (fh * 2) / 3);
-          c.lineTo(n2.x, n2.y + fh);
-          c.lineTo(n1.x, n1.y + fh);
-          c.closePath();
-          c.fill();
+          c.beginPath(); c.moveTo(n1.x, n1.y + (fh * 2) / 3); c.lineTo(n2.x, n2.y + (fh * 2) / 3);
+          c.lineTo(n2.x, n2.y + fh); c.lineTo(n1.x, n1.y + fh); c.closePath(); c.fill();
         }
 
         const midIdx = numPoints / 2 | 0;
-        const cxV = flagNodes[midIdx].x;
-        const cyV = flagNodes[midIdx].y + fh / 2;
-        const cr = fh * 0.11;
-
-        c.save();
-        c.translate(cxV, cyV);
-        c.rotate(elapsed * 0.7);
-
-        c.strokeStyle = 'rgba(0, 0, 128, 1)';
-        c.lineWidth = 2.5;
+        const cxV = flagNodes[midIdx].x, cyV = flagNodes[midIdx].y + fh / 2, cr = fh * 0.11;
+        c.save(); c.translate(cxV, cyV); c.rotate(elapsed * 0.7);
+        c.strokeStyle = 'rgba(0, 0, 128, 1)'; c.lineWidth = 2.5;
         c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
-
         c.lineWidth = 1.2;
         for (let i = 0; i < 24; i++) {
           const ang = (i / 24) * Math.PI * 2;
-          c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(Math.cos(ang) * cr, Math.sin(ang) * cr);
-          c.stroke();
+          c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(ang) * cr, Math.sin(ang) * cr); c.stroke();
         }
-        c.restore();
-
-        c.restore();
+        c.restore(); c.restore();
       },
 
       /* ═══════════════════════════════════════════════════════════
-         CHANGE #3: God Rays — Reduced length, width, intensity
+         FIX #1 (MAIN): VOLUMETRIC LIGHTING — This is THE golden ball culprit!
+         - 15 rays from ONE point = looks like a circular glow
+         - Intensity 0.82 = way too bright with screen blend
+         - Origin at W*0.5 = dead center behind India Gate
+         FIX: Intensity 0.82→0.08, rays 15→8, origin shifted up
          ═══════════════════════════════════════════════════════════ */
       volumetricLighting: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 3.0) return;
-        const intensity = clamp((t - 3.0) * 0.3, 0, 0.82) * sceneAlpha;
+        // FIX: Intensity 0.82 → 0.08 (was the main golden ball cause)
+        const intensity = clamp((t - 3.0) * 0.3, 0, 0.08) * sceneAlpha;
         const sunX = W * 0.5;
-        const sunY = baseY - gateH * 0.45;
+        // FIX: Shift origin UP so rays come from above, not from behind gate
+        const sunY = baseY - gateH * 0.8;
 
         c.save();
         c.globalAlpha = intensity;
         c.globalCompositeOperation = 'screen';
 
-        for (let i = 0; i < 15; i++) {
-          const angle = -Math.PI * 0.5 + (i / 15) * Math.PI - Math.PI * 0.5;
-
-          // CHANGE #3a: length h*0.8 → h*0.55
+        // FIX: 15 rays → 8 rays (fewer = less circular ball look)
+        for (let i = 0; i < 8; i++) {
+          const angle = -Math.PI * 0.5 + (i / 8) * Math.PI - Math.PI * 0.5;
           const length = H * 0.55;
-
-          // CHANGE #3b: width 100+sin*50 → 40+sin*12
           const width = 40 + Math.sin(elapsed + i) * 12;
           const halfW = width / 2;
-
           const tipX = sunX + Math.cos(angle) * length;
           const tipY = sunY + Math.sin(angle) * length;
           const perpX = -Math.sin(angle);
@@ -669,13 +552,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.closePath();
 
           const rayGrad = c.createLinearGradient(sunX, sunY, tipX, tipY);
-
-          // CHANGE #3c: 0.15*intensity → 0.06*intensity
-          rayGrad.addColorStop(
-            0,
-            `rgba(255,235,180,${0.06 * intensity})`
-          );
-          rayGrad.addColorStop(0.5, 'rgba(255, 140, 50, 0.08)');
+          // FIX: 0.06 → 0.02 (even weaker start)
+          rayGrad.addColorStop(0, `rgba(255,235,180,${0.02 * intensity})`);
+          rayGrad.addColorStop(0.5, 'rgba(255, 140, 50, 0.03)');
           rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
           c.fillStyle = rayGrad;
           c.fill();
@@ -684,30 +563,20 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 8: CROSSING JETS & THICK SMOKE TRAILS
       jetsAndTrails: (t: number, sceneAlpha: number) => {
         if (t < 2.5 || t > 9.0) return;
-        c.save();
-        c.globalAlpha = sceneAlpha;
-
+        c.save(); c.globalAlpha = sceneAlpha;
         jets.forEach(jet => {
           jet.x += jet.vx; jet.y += jet.vy;
-
-          if (Math.abs(jet.x - W * 0.5) < 180) {
-            cameraShake = 3.5;
-          }
-
+          if (Math.abs(jet.x - W * 0.5) < 180) cameraShake = 3.5;
           const nozzleX = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
           const nozzleY = jet.y + 2 * jet.scale;
-
           if (Math.random() < 0.85) {
             const p = grab(pl); if (p) {
               p.on = true; p.x = nozzleX; p.y = nozzleY;
               p.vx = -jet.vx * 0.12 + (Math.random() - 0.5) * 0.4;
               p.vy = (Math.random() - 0.5) * 0.4;
-              p.life = 4.2; p.ml = 4.2;
-              p.sz = 14 * jet.scale + Math.random() * 15;
-
+              p.life = 4.2; p.ml = 4.2; p.sz = 14 * jet.scale + Math.random() * 15;
               const hex = jet.smokeColor.replace('#', '');
               p.r = parseInt(hex.substring(0, 2), 16);
               p.g = parseInt(hex.substring(2, 4), 16);
@@ -715,48 +584,28 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
               p.a = 0.65; p.tp = 4;
             }
           }
-
           c.save();
           c.translate(jet.x, jet.y);
           c.rotate(Math.atan2(jet.vy, jet.vx));
           c.scale(jet.scale, jet.scale);
-
           c.fillStyle = '#1c1c1c';
           c.beginPath();
-          c.moveTo(35, 0); 
-          c.lineTo(15, -4);
-          c.lineTo(2, -18);
-          c.lineTo(-10, -28);
-          c.lineTo(-14, -28);
-          c.lineTo(-12, -4);
-          c.lineTo(-24, -3);
-          c.lineTo(-28, -8);
-          c.lineTo(-32, -8);
-          c.lineTo(-30, 0);
-          c.lineTo(-32, 8);
-          c.lineTo(-28, 8);
-          c.lineTo(-24, 3);
-          c.lineTo(-12, 4);
-          c.lineTo(-14, 28);
-          c.lineTo(-10, 28);
-          c.lineTo(2, 18);
-          c.lineTo(15, 4);
-          c.closePath();
-          c.fill();
-
+          c.moveTo(35, 0); c.lineTo(15, -4); c.lineTo(2, -18);
+          c.lineTo(-10, -28); c.lineTo(-14, -28); c.lineTo(-12, -4);
+          c.lineTo(-24, -3); c.lineTo(-28, -8); c.lineTo(-32, -8);
+          c.lineTo(-30, 0); c.lineTo(-32, 8); c.lineTo(-28, 8);
+          c.lineTo(-24, 3); c.lineTo(-12, 4); c.lineTo(-14, 28);
+          c.lineTo(-10, 28); c.lineTo(2, 18); c.lineTo(15, 4);
+          c.closePath(); c.fill();
           c.restore();
         });
-
         c.restore();
       },
 
-      // LAYER 11: DOVES
       doves: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 2.0) return;
         const dAlpha = clamp((t - 2.0) * 1.2, 0, 1) * sceneAlpha;
-        c.save();
-        c.globalAlpha = dAlpha;
-
+        c.save(); c.globalAlpha = dAlpha;
         if (t >= 2.6) {
           birds.forEach(b => {
             if (b.state === 'sitting') {
@@ -767,141 +616,95 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             }
           });
         }
-
         birds.forEach(b => {
           if (b.state === 'flying') {
             const noiseForceX = noise.n2(elapsed * 0.6, b.noiseSeed) * 0.5;
             const noiseForceY = noise.n2(elapsed * 0.4, b.noiseSeed + 100) * 0.3;
             b.vx = clamp(b.vx * 0.98 + noiseForceX, -3, 3);
             b.vy = clamp(b.vy * 0.98 + noiseForceY, -3, -0.8);
-
-            b.x += b.vx;
-            b.y += b.vy;
-
+            b.x += b.vx; b.y += b.vy;
             const dutyCycle = Math.sin(elapsed * 3.5 + b.noiseSeed);
             b.wing += dutyCycle > 0 ? 0.28 : 0.12;
             b.bank = b.vx * 0.10;
           }
-
           c.save();
           c.translate(b.x, b.y);
           c.rotate(b.state === 'flying' ? Math.atan2(b.vy, b.vx) + b.bank : 0);
-
-          const scale = 0.52;
-          c.scale(scale, scale);
-
+          const scale = 0.52; c.scale(scale, scale);
           if (b.state === 'flying') {
             const wingFactor = Math.sin(b.wing);
-
             c.fillStyle = '#d8d8d8';
-            c.beginPath();
-            c.moveTo(-15, 0);
-            c.lineTo(-26, -5 + wingFactor * 2);
-            c.lineTo(-26, 5 - wingFactor * 2);
-            c.closePath();
-            c.fill();
-
+            c.beginPath(); c.moveTo(-15, 0); c.lineTo(-26, -5 + wingFactor * 2); c.lineTo(-26, 5 - wingFactor * 2); c.closePath(); c.fill();
             c.fillStyle = '#ffffff';
             c.beginPath(); c.ellipse(0, 0, 15, 5, 0, 0, Math.PI * 2); c.fill();
-
             c.fillStyle = '#ffffff';
             c.beginPath(); c.arc(13, -2, 4, 0, Math.PI * 2); c.fill();
             c.fillStyle = '#e29b3c';
-            c.beginPath();
-            c.moveTo(16, -3); c.lineTo(21, -2); c.lineTo(15, -1);
-            c.closePath(); c.fill();
-
+            c.beginPath(); c.moveTo(16, -3); c.lineTo(21, -2); c.lineTo(15, -1); c.closePath(); c.fill();
             [-1, 1].forEach(side => {
-              c.save();
-              c.scale(1, side);
+              c.save(); c.scale(1, side);
               c.rotate(wingFactor * 0.5 - 0.15);
               c.fillStyle = '#f0f0f0';
-              c.beginPath();
-              c.moveTo(0, 0); c.lineTo(-7, -15); c.lineTo(-13, -13);
-              c.closePath(); c.fill();
+              c.beginPath(); c.moveTo(0, 0); c.lineTo(-7, -15); c.lineTo(-13, -13); c.closePath(); c.fill();
               c.restore();
             });
           } else {
             const headBob = Math.sin(elapsed * 5.5 + b.noiseSeed) * 1.2;
             c.fillStyle = '#b5b5b5';
-            c.beginPath();
-            c.moveTo(-10, 2); c.lineTo(-22, 6); c.lineTo(-20, 0);
-            c.closePath(); c.fill();
-
+            c.beginPath(); c.moveTo(-10, 2); c.lineTo(-22, 6); c.lineTo(-20, 0); c.closePath(); c.fill();
             c.fillStyle = '#f5f5f5';
             c.beginPath(); c.ellipse(0, 2, 13, 6.5, 0.1, 0, Math.PI * 2); c.fill();
-
             c.fillStyle = '#ffffff';
             c.beginPath(); c.arc(10, -2 + headBob, 4, 0, Math.PI * 2); c.fill();
           }
-
           c.restore();
         });
-
         c.restore();
       },
 
-      // LAYER 13: PREMIUM TYPOGRAPHY
       typography: (t: number) => {
         if (t < 11.5) return;
         const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
-
         c.save();
         const fontSize = Math.min(W * 0.065, 52);
         c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
-
         const title = "HAPPY REPUBLIC DAY";
         const totalW = c.measureText(title).width;
         let xOff = W * 0.5 - totalW * 0.5;
-
         for (let i = 0; i < title.length; i++) {
           const charW = c.measureText(title[i]).width;
           const charT = clamp((t - 11.5 - i * 0.035) / 0.4, 0, 1);
           const charY = titleY + (1 - eOB(charT)) * -15;
-
-          c.save();
-          c.globalAlpha = eOC(charT);
-
+          c.save(); c.globalAlpha = eOC(charT);
           c.fillStyle = 'rgba(0,0,0,0.92)';
           c.fillText(title[i], xOff + 2, charY + 2);
-
           const sweepGrad = c.createLinearGradient(xOff, charY - fontSize * 0.5, xOff, charY + fontSize * 0.38);
           sweepGrad.addColorStop(0, '#FF9933');
           sweepGrad.addColorStop(0.48, '#FFFFFF');
           sweepGrad.addColorStop(0.52, '#FFFFFF');
           sweepGrad.addColorStop(1, '#138808');
-
           c.fillStyle = sweepGrad;
           c.fillText(title[i], xOff, charY);
           c.restore();
-
           xOff += charW;
         }
-
         if (t > 13.0) {
           const subAlpha = clamp((t - 13.0) * 2, 0, 1);
-          c.save();
-          c.globalAlpha = subAlpha;
-          c.fillStyle = '#ffd700';
-          c.textAlign = 'center';
+          c.save(); c.globalAlpha = subAlpha;
+          c.fillStyle = '#ffd700'; c.textAlign = 'center';
           c.font = `500 ${fontSize * 0.65}px 'Georgia', serif`;
           c.fillText("जय हिन्द", W * 0.5, titleY + fontSize * 1.1);
           c.restore();
         }
-
         c.restore();
       },
 
-      // EXTRA LAYER: FESTIVE FIREWORKS
       fireworks: (sceneAlpha: number) => {
-        c.save();
-        c.globalCompositeOperation = 'lighter';
+        c.save(); c.globalCompositeOperation = 'lighter';
         fireworksList.forEach(fw => {
           if (fw.state === 'rising') {
             c.fillStyle = 'rgba(255,230,150,0.95)';
-            c.beginPath();
-            c.arc(fw.x, fw.y, 2.5, 0, Math.PI * 2);
-            c.fill();
+            c.beginPath(); c.arc(fw.x, fw.y, 2.5, 0, Math.PI * 2); c.fill();
           } else {
             fw.pts.forEach(pt => {
               const alpha = clamp(pt.life / pt.ml, 0, 1) * sceneAlpha;
@@ -909,9 +712,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
               fGrad.addColorStop(0, `rgba(${fw.col.r}, ${fw.col.g}, ${fw.col.b}, ${alpha})`);
               fGrad.addColorStop(1, 'rgba(0,0,0,0)');
               c.fillStyle = fGrad;
-              c.beginPath();
-              c.arc(pt.x, pt.y, pt.sz * 2, 0, Math.PI * 2);
-              c.fill();
+              c.beginPath(); c.arc(pt.x, pt.y, pt.sz * 2, 0, Math.PI * 2); c.fill();
             });
           }
         });
@@ -920,9 +721,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       LAYER 10: PARTICLES ENGINE
+       PARTICLES — FIX: Gold Dust & Solar particles heavily reduced
        ═══════════════════════════════════════════════════════════ */
     const spawnParticles = (t: number, elapsed: number) => {
+      // Fog Dust (unchanged)
       if (Math.random() < 0.12) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H * 0.6 + Math.random() * H * 0.3;
@@ -932,16 +734,18 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      if (t > 4.0 && Math.random() < 0.4) {
+      // FIX: Gold Dust — spawn rate 0.4→0.06, alpha 0.78→0.25 (was adding to golden glow)
+      if (t > 4.0 && Math.random() < 0.06) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H + 10;
           p.vx = (Math.random() - 0.5) * 0.5; p.vy = -0.4 - Math.random() * 0.7;
           p.life = 6; p.ml = 6; p.sz = 2.0 + Math.random() * 3.5;
-          p.r = 255; p.g = 215; p.b = 0; p.a = 0.78; p.tp = 5;
+          p.r = 255; p.g = 215; p.b = 0; p.a = 0.25; p.tp = 5;
         }
       }
 
-      if (t > 5.0 && Math.random() < 0.3) {
+      // FIX: Solar Particles — spawn rate 0.3→0.02 (diagonal golden streaks removed)
+      if (t > 5.0 && Math.random() < 0.02) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 100; p.y = baseY - gateH * 0.4;
           p.vx = 1.5 + Math.random() * 2.0; p.vy = 1.0 + Math.random() * 1.5;
@@ -950,13 +754,13 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
+      // Confetti (unchanged)
       if (t >= 5.5 && t < 11.5) {
         const rainCount = 1;
         for (let i = 0; i < rainCount; i++) {
           const p = grab(pl); if (p) {
             p.on = true; p.x = Math.random() * W; p.y = -20 - Math.random() * 30;
-            p.vx = (Math.random() - 0.5) * 0.2;
-            p.vy = 1.8 + Math.random() * 1.8;
+            p.vx = (Math.random() - 0.5) * 0.2; p.vy = 1.8 + Math.random() * 1.8;
             p.life = 6; p.ml = 6; p.sz = 5 + Math.random() * 4;
             p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.08;
             const rand = Math.random();
@@ -968,6 +772,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
+      // Torch Embers (unchanged)
       if (t > 2.0 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = H * 0.795;
@@ -982,16 +787,13 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       for (let i = 0; i < pl.length; i++) {
         const p = pl[i]; if (!p.on) continue;
         p.life -= dt;
-
         if (p.tp === 4) {
           p.x += p.vx; p.y += p.vy;
           p.sz += 0.45; p.vx *= 0.985; p.vy *= 0.985;
         } else if (p.tp === 2) {
-          p.vy += 0.050;
-          p.vy *= 0.980;
+          p.vy += 0.050; p.vy *= 0.980;
           p.vx = p.vx * 0.92 + Math.sin(elapsed * 0.6 + p.y * 0.015) * 0.015;
-          p.x += p.vx; p.y += p.vy;
-          p.rot += p.rs;
+          p.x += p.vx; p.y += p.vy; p.rot += p.rs;
         } else if (p.tp === 5) {
           p.vy *= 0.99;
           p.vx = p.vx * 0.95 + noise.n2(elapsed * 0.5 + p.y * 0.01, p.turbOff) * 0.15;
@@ -1001,7 +803,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         } else {
           p.x += p.vx; p.y += p.vy;
         }
-
         if (p.life <= 0 || p.x < -120 || p.x > W + 120 || p.y > H + 120) p.on = false;
       }
     };
@@ -1010,10 +811,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       for (let i = 0; i < pl.length; i++) {
         const p = pl[i]; if (!p.on) continue;
         const alpha = clamp(p.life / p.ml, 0, 1) * p.a;
-
-        c.save();
-        c.globalAlpha = alpha;
-
+        c.save(); c.globalAlpha = alpha;
         if (p.tp === 4) {
           c.globalCompositeOperation = 'screen';
           const smokeGrad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz);
@@ -1022,8 +820,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fillStyle = smokeGrad;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
         } else if (p.tp === 2) {
-          c.translate(p.x, p.y);
-          c.rotate(p.rot);
+          c.translate(p.x, p.y); c.rotate(p.rot);
           c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
           c.fillRect(-p.sz / 2, -p.sz / 4, p.sz, p.sz / 2);
         } else if (p.tp === 5) {
@@ -1034,22 +831,18 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.globalCompositeOperation = 'screen';
           c.strokeStyle = `rgba(255, 230, 160, ${alpha * 0.4})`;
           c.lineWidth = p.sz * 0.5;
-          c.beginPath();
-          c.moveTo(p.x, p.y);
-          c.lineTo(p.x - p.vx * 3, p.y - p.vy * 3);
-          c.stroke();
+          c.beginPath(); c.moveTo(p.x, p.y);
+          c.lineTo(p.x - p.vx * 3, p.y - p.vy * 3); c.stroke();
         } else {
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
         }
-
         c.restore();
       }
     };
 
     const drawChromaticAberration = () => {
-      c.save();
-      c.globalCompositeOperation = 'screen';
+      c.save(); c.globalCompositeOperation = 'screen';
       c.globalAlpha = 0.015;
       c.drawImage(cv, -1.5, 0, W, H);
       c.globalAlpha = 0.012;
@@ -1057,12 +850,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
+    /* ═══════════════════════════════════════════════════════════
+       FIX: Post FX — Warm grade reduced (was adding golden tint)
+       ═══════════════════════════════════════════════════════════ */
     const drawPostFX = () => {
-      c.save();
-      c.globalCompositeOperation = 'soft-light';
+      c.save(); c.globalCompositeOperation = 'soft-light';
       const grade = c.createLinearGradient(0, 0, W, H);
-      grade.addColorStop(0, 'rgba(255, 140, 50, 0.18)');
-      grade.addColorStop(1, 'rgba(0, 50, 100, 0.25)');
+      // FIX: 0.18 → 0.06, 0.25 → 0.12 (was adding warm golden wash)
+      grade.addColorStop(0, 'rgba(255, 140, 50, 0.06)');
+      grade.addColorStop(1, 'rgba(0, 50, 100, 0.12)');
       c.fillStyle = grade; c.fillRect(0, 0, W, H);
       c.restore();
 
@@ -1071,9 +867,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       vignette.addColorStop(1, 'rgba(0,0,0,0.85)');
       c.fillStyle = vignette; c.fillRect(0, 0, W, H);
 
-      c.save();
-      c.globalCompositeOperation = 'overlay';
-      c.globalAlpha = 0.03;
+      c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.03;
       const pat = c.createPattern(grainCv, 'repeat');
       if (pat) { c.fillStyle = pat; c.fillRect(0, 0, W, H); }
       c.restore();
@@ -1098,18 +892,13 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       if (t >= 5.5 && t < 11.5) {
         fwTimer += dt;
-        if (fwTimer > 0.8 + Math.random() * 0.6) {
-          spawnFirework();
-          fwTimer = 0;
-        }
+        if (fwTimer > 0.8 + Math.random() * 0.6) { spawnFirework(); fwTimer = 0; }
       }
       updateFireworks(dt);
-
       spawnParticles(t, now / 1000);
       updateParticles(dt, now / 1000);
 
-      c.fillStyle = '#000000';
-      c.fillRect(0, 0, W, H);
+      c.fillStyle = '#000000'; c.fillRect(0, 0, W, H);
 
       cameraShake *= 0.92;
       const camDollyZ = lerp(1.0, 1.10, eOE(t / DUR));
@@ -1119,25 +908,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       c.save();
       c.translate(W / 2 + breatheX, H / 2 + breatheY);
-      c.rotate(camRot);
-      c.scale(camDollyZ, camDollyZ);
+      c.rotate(camRot); c.scale(camDollyZ, camDollyZ);
       c.translate(-W / 2, -H / 2);
 
       const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
 
-      /* ═══════════════════════════════════════════════════════════
-         LAYER ASSEMBLY — With all 5 changes applied
-         ═══════════════════════════════════════════════════════════ */
       renderer.sky(t, sceneAlpha);
-
-      // CHANGE #5: drawSun() only called when t < 0.72
-      // (drawSun function internally also checks t < 0.72 as safety)
       drawSun(t);
-
       renderer.stars(t, sceneAlpha);
       renderer.wavingFlagAndChakra(t, now / 1000, sceneAlpha);
       renderer.indiaGate(t, sceneAlpha);
-      // CHANGE #3: volumetricLighting now receives elapsed parameter
       renderer.volumetricLighting(t, now / 1000, sceneAlpha);
       renderer.torch(t, now / 1000, sceneAlpha);
       renderer.jetsAndTrails(t, sceneAlpha);
@@ -1149,13 +929,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       if (t >= 11.5) {
         const bgFade = clamp((t - 11.5) * 1.8, 0, 1);
-        c.save();
-        c.globalAlpha = bgFade;
+        c.save(); c.globalAlpha = bgFade;
         const bgGrad = c.createLinearGradient(0, 0, 0, H);
-        bgGrad.addColorStop(0, '#060810');
-        bgGrad.addColorStop(1, '#0c101c');
-        c.fillStyle = bgGrad;
-        c.fillRect(0, 0, W, H);
+        bgGrad.addColorStop(0, '#060810'); bgGrad.addColorStop(1, '#0c101c');
+        c.fillStyle = bgGrad; c.fillRect(0, 0, W, H);
         c.restore();
       }
 
@@ -1182,13 +959,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     <canvas
       ref={cvRef}
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        display: 'block',
-        zIndex: 50,
+        position: 'fixed', top: 0, left: 0,
+        width: '100vw', height: '100vh',
+        display: 'block', zIndex: 50,
       }}
     />
   );
