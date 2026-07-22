@@ -143,15 +143,88 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0;
+    
+    const noise = new SimplexNoise(3821);
+    const pl = mkPool();
+
+    // CLOTH SIMULATION FOR THE TRICOLOR FLAG (Verlet Spring-Mass Model)
+    const numPoints = 14;
+    const flagNodes: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
+    for (let i = 0; i < numPoints; i++) {
+      flagNodes.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
+    }
+
+    // Crossing Fighter Jets Setup (With diagonal paths for realistic crossing)
+    const jets: Jet[] = [
+      { x: -W * 0.3, y: H * 0.45, scale: 0.95, smokeColor: '#FF9933', vx: 6.2, vy: -1.8, active: true }, // Climbing up
+      { x: W + W * 0.3, y: H * 0.15, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 1.2, active: true },  // Descending down
+      { x: -W * 0.45, y: H * 0.52, scale: 0.85, smokeColor: '#138808', vx: 6.2, vy: -2.2, active: true } // Climbing up
+    ];
+
+    const starI: number[] = [];
+    for (let i = 0; i < 150; i++) {
+      const p = pl[i]; p.on = true; p.tp = 0;
+      p.x = Math.random() * W; p.y = Math.random() * H * 0.75;
+      p.sz = Math.random() * 1.2 + 0.2; p.ml = 999; p.life = 999;
+      p.r = 200; p.g = 220; p.b = 255; p.a = Math.random() * 0.4 + 0.05;
+      starI.push(i);
+    }
+
+    // BBC PLANET EARTH FLOCKING BIRDS setup
+    const birds: BoidBird[] = [];
+
+    // Master Sizing values computed dynamically
+    let sc = Math.min(window.innerWidth, window.innerHeight);
+    let gateH = sc * 0.66;
+    let gateW = gateH * 0.84;
+    let baseY = window.innerHeight * 0.82;
+    let cx = window.innerWidth * 0.5;
+    let pillarH = gateH * 0.72;
+    let pillarY = baseY - 32 - pillarH;
+
     const rsz = () => {
       W = window.innerWidth; H = window.innerHeight;
       cv.width = W * dpr; cv.height = H * dpr;
       cv.style.width = W + 'px'; cv.style.height = H + 'px';
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Re-calculate layout values
+      sc = Math.min(W, H);
+      gateH = sc * 0.66;
+      gateW = gateH * 0.84;
+      baseY = H * 0.82;
+      cx = W * 0.5;
+      pillarH = gateH * 0.72;
+      pillarY = baseY - 32 - pillarH;
+
+      // Initialize doves securely on high wall ledges of the newly scaled India Gate
+      birds.length = 0;
+      for (let i = 0; i < 8; i++) {
+        birds.push({
+          x: cx - gateW * 0.44 + (gateW * 0.16) * (i / 7),
+          y: pillarY - 4, // Left wall ledge
+          vx: 0, vy: 0,
+          wing: Math.random() * Math.PI * 2,
+          state: 'sitting',
+          side: 'left',
+          noiseSeed: Math.random() * 1000,
+          bank: 0
+        });
+      }
+      for (let i = 0; i < 8; i++) {
+        birds.push({
+          x: cx + gateW * 0.28 + (gateW * 0.16) * (i / 7),
+          y: pillarY - 4, // Right wall ledge
+          vx: 0, vy: 0,
+          wing: Math.random() * Math.PI * 2,
+          state: 'sitting',
+          side: 'right',
+          noiseSeed: Math.random() * 1000,
+          bank: 0
+        });
+      }
     };
     rsz(); window.addEventListener('resize', rsz);
-
-    const noise = new SimplexNoise(3821);
 
     // Film Grain Setup
     const grainCv = document.createElement('canvas');
@@ -164,57 +237,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     }
     gc.putImageData(gd, 0, 0);
 
-    const pl = mkPool();
-
-    // CLOTH SIMULATION FOR THE TRICOLOR FLAG (Verlet Spring-Mass Model)
-    const numPoints = 14;
-    const flagNodes: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
-    for (let i = 0; i < numPoints; i++) {
-      flagNodes.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
-    }
-
-    // Initialize crossing fighter jets
-    const jets: Jet[] = [
-      { x: -W * 0.3, y: H * 0.16, scale: 0.95, smokeColor: '#FF9933', vx: 6.2, vy: 0.8, active: true },
-      { x: W + W * 0.3, y: H * 0.20, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 0.6, active: true },
-      { x: -W * 0.45, y: H * 0.24, scale: 0.85, smokeColor: '#138808', vx: 6.2, vy: 0.4, active: true }
-    ];
-
-    const starI: number[] = [];
-    for (let i = 0; i < 150; i++) {
-      const p = pl[i]; p.on = true; p.tp = 0;
-      p.x = Math.random() * W; p.y = Math.random() * H * 0.75;
-      p.sz = Math.random() * 1.2 + 0.2; p.ml = 999; p.life = 999;
-      p.r = 200; p.g = 220; p.b = 255; p.a = Math.random() * 0.4 + 0.05;
-      starI.push(i);
-    }
-
-    // BBC PLANET EARTH FLOCKING BIRDS (Startling from behind the India Gate)
-    const birds: BoidBird[] = [];
-    for (let i = 0; i < 15; i++) {
-      birds.push({
-        x: W * 0.5 + (Math.random() - 0.5) * 40,
-        y: H * 0.5,
-        vx: 0, vy: 0,
-        wing: Math.random() * Math.PI * 2,
-        state: 'sitting',
-        side: i % 2 === 0 ? 'left' : 'right',
-        noiseSeed: Math.random() * 1000,
-        bank: 0
-      });
-    }
-
     let cameraShake = 0;
-
-    // Dynamic Sizing Metrics for India Gate
-    const sc = Math.min(window.innerWidth, window.innerHeight);
-    const gateH = sc * 0.66;
-    const gateW = gateH * 0.84;
-    const baseY = window.innerHeight * 0.82;
-    const cx = window.innerWidth * 0.5;
-    const pillarH = gateH * 0.72;
-    const pillarY = baseY - 32 - pillarH;
-
     const sunPos = (t: number) => ({ x: lerp(W*0.3, W*0.5, eOE(t/10)), y: lerp(H*1.2, H*0.15, eOE(t/10)) });
 
     /* ═══════════════════════════════════════════════════════════
@@ -608,9 +631,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 11: DOVES (Startling and flying dynamically using Perlin Noise)
+      // LAYER 11: DOVES (Fades in correctly with India Gate, flying elegantly)
       doves: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 2.0) return;
+        if (t < 2.0) return; // Hidden until India Gate is fully revealed
         const dAlpha = clamp((t - 2.0) * 1.2, 0, 1) * sceneAlpha;
         c.save();
         c.globalAlpha = dAlpha;
@@ -619,9 +642,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           birds.forEach(b => {
             if (b.state === 'sitting') {
               b.state = 'flying';
-              const driftX = b.side === 'left' ? 1.5 : -1.5;
-              b.vx = driftX + (Math.random() - 0.5) * 0.5;
-              b.vy = -2.0 - Math.random() * 1.5;
+              // Fixed: Gentle, organic flight speeds (much slower and natural)
+              const driftX = b.side === 'left' ? 0.9 : -0.9;
+              b.vx = driftX + (Math.random() - 0.5) * 0.4;
+              b.vy = -1.2 - Math.random() * 0.8;
             }
           });
         }
@@ -630,21 +654,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           if (b.state === 'flying') {
             const noiseForceX = noise.n2(elapsed * 0.6, b.noiseSeed) * 0.5;
             const noiseForceY = noise.n2(elapsed * 0.4, b.noiseSeed + 100) * 0.3;
-            b.vx = clamp(b.vx * 0.98 + noiseForceX, -4, 4);
-            b.vy = clamp(b.vy * 0.98 + noiseForceY, -4, -1);
-
-            const flightSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-            if (flightSpeed > 3.0) {
-              b.vx = (b.vx / flightSpeed) * 3.0;
-              b.vy = (b.vy / flightSpeed) * 3.0;
-            }
+            b.vx = clamp(b.vx * 0.98 + noiseForceX, -3, 3);
+            b.vy = clamp(b.vy * 0.98 + noiseForceY, -3, -0.8);
 
             b.x += b.vx;
             b.y += b.vy;
 
             const dutyCycle = Math.sin(elapsed * 3.5 + b.noiseSeed);
-            b.wing += dutyCycle > 0 ? 0.35 : 0.15;
-            b.bank = b.vx * 0.12;
+            b.wing += dutyCycle > 0 ? 0.28 : 0.12;
+            b.bank = b.vx * 0.10;
           }
 
           c.save();
@@ -705,19 +723,19 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 13: PREMIUM TYPOGRAPHY
+      // LAYER 13: PREMIUM TYPOGRAPHY (Perfect Center Position Fixed)
       typography: (t: number) => {
         if (t < 11.5) return;
+        const revealT = clamp((t - 11.5) * 1.5, 0, 1);
         const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
 
         c.save();
-        c.textAlign = 'center';
         const fontSize = Math.min(W * 0.065, 52);
         c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
 
         const title = "HAPPY REPUBLIC DAY";
         const totalW = c.measureText(title).width;
-        let xOff = W * 0.5 - totalW * 0.5;
+        let xOff = W * 0.5 - totalW * 0.5; // Start boundary strictly centered
 
         for (let i = 0; i < title.length; i++) {
           const charW = c.measureText(title[i]).width;
@@ -727,18 +745,22 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.save();
           c.globalAlpha = eOC(charT);
 
-          const sweepGrad = c.createLinearGradient(xOff, 0, xOff + charW, 0);
-          const sweepPos = clamp((t - 12.0) * 1.8, 0, 1.5);
+          // Shadow drawn centered
+          c.fillStyle = 'rgba(0,0,0,0.92)';
+          c.fillText(title[i], xOff + 2, charY + 2);
+
+          // Waving Tricolor Gradient
+          const sweepGrad = c.createLinearGradient(xOff, charY - fontSize * 0.5, xOff, charY + fontSize * 0.38);
           sweepGrad.addColorStop(0, '#FF9933');
-          sweepGrad.addColorStop(clamp(sweepPos - 0.2, 0, 1), '#FFFFFF');
-          sweepGrad.addColorStop(clamp(sweepPos, 0, 1), '#FFFFFF');
-          sweepGrad.addColorStop(clamp(sweepPos + 0.2, 0, 1), '#138808');
+          sweepGrad.addColorStop(0.48, '#FFFFFF');
+          sweepGrad.addColorStop(0.52, '#FFFFFF');
+          sweepGrad.addColorStop(1, '#138808');
 
           c.fillStyle = sweepGrad;
-          c.fillText(title[i], xOff + W * 0.5 - totalW * 0.5, charY);
+          c.fillText(title[i], xOff, charY);
           c.restore();
 
-          xOff += charW;
+          xOff += charW; // Step boundary correctly centered
         }
 
         if (t > 13.0) {
@@ -746,6 +768,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.save();
           c.globalAlpha = subAlpha;
           c.fillStyle = '#ffd700';
+          c.textAlign = 'center';
           c.font = `500 ${fontSize * 0.65}px 'Georgia', serif`;
           c.fillText("जय हिन्द", W * 0.5, titleY + fontSize * 1.1);
           c.restore();
@@ -789,14 +812,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // 4. Tricolor Confetti (tp=2: paper falling under gravity)
+      // 4. Tricolor Confetti (tp=2: paper falling under gravity, beautifully variegated 5px-9px)
       if (t >= 3.2 && t < 11.5) {
         const rainCount = 4;
         for (let i = 0; i < rainCount; i++) {
           const p = grab(pl); if (p) {
-            p.on = true; p.x = Math.random() * W; p.y = -20;
-            p.vx = (Math.random() - 0.5) * 0.4; p.vy = 1.5 + Math.random() * 1.5;
-            p.life = 6; p.ml = 6; p.sz = 5 + Math.random() * 4; // Size 5px to 9px
+            p.on = true; p.x = Math.random() * W; p.y = -20 - Math.random() * 30; // Random offset to prevent clumping
+            p.vx = (Math.random() - 0.5) * 0.2; // Tiny lateral drift
+            p.vy = 1.8 + Math.random() * 1.8; // Steady rainfall descent
+            p.life = 6; p.ml = 6; p.sz = 5 + Math.random() * 4; // Variegated Size strictly between 5px and 9px
             p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.08;
             const rand = Math.random();
             if (rand < 0.34) { p.r = 255; p.g = 153; p.b = 51; }
