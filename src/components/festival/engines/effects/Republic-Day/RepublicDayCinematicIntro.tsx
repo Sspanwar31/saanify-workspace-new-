@@ -5,6 +5,10 @@ import React, { useEffect, useRef, useCallback } from 'react';
 /* ═══════════════════════════════════════════════════════════════
    TYPES & INTERFACES
    ═══════════════════════════════════════════════════════════════ */
+interface Props {                          // ← FIX: ये पूरा interface missing था
+  onComplete?: () => void;
+}
+
 interface Particle {
   x: number; y: number; vx: number; vy: number;
   life: number; ml: number; sz: number;
@@ -139,10 +143,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       const t = clamp((x-e0)/(e1-e0),0,1);
       return t*t*(3-2*t);
     };
-    const aces = (x: number) => {
-      const a=2.51,b=0.03,c2=2.43,d=0.59,e=0.14;
-      return clamp((x*(a*x+b))/(x*(c2*x+d)+e),0,1);
-    };
 
     audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     triggerMilitaryAudio();
@@ -163,24 +163,19 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       x: 0, y: 0, scale: 0.85, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true
     }));
 
+    /* ═══════════════════════════════════════════════════════════
+       FIX: starI sirf index store karega, stars rsz() ke andar
+       proper W/H ke saath initialize honge
+       ═══════════════════════════════════════════════════════════ */
     const starI: number[] = [];
     for (let i = 0; i < 150; i++) {
-      const p = pl[i]; p.on = true; p.tp = 0;
-      p.x = Math.random() * W; p.y = Math.random() * H * 0.75;
-      p.sz = Math.random() * 1.2 + 0.2; p.ml = 999; p.life = 999;
-      p.r = 200; p.g = 220; p.b = 255; p.a = Math.random() * 0.4 + 0.05;
       starI.push(i);
+      // NOTE: yahan particles ko on=true MAT kar rahe — rsz() me karenge
     }
 
     const birds: BoidBird[] = [];
 
-    let sc = Math.min(window.innerWidth, window.innerHeight);
-    let gateH = sc * 0.66;
-    let gateW = gateH * 0.84;
-    let baseY = window.innerHeight * 0.82;
-    let cx = window.innerWidth * 0.5;
-    let pillarH = gateH * 0.72;
-    let pillarY = baseY - 32 - pillarH;
+    let sc = 0, gateH = 0, gateW = 0, baseY = 0, cx = 0, pillarH = 0, pillarY = 0;
 
     const rsz = () => {
       W = window.innerWidth; H = window.innerHeight;
@@ -195,6 +190,23 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       cx = W * 0.5;
       pillarH = gateH * 0.72;
       pillarY = baseY - 32 - pillarH;
+
+      /* ═══════════════════════════════════════════════════════
+         FIX: Stars ko YAHAN initialize karo — jab W aur H
+         proper values hai, naki upar jab W=0, H=0 tha
+         ═══════════════════════════════════════════════════════ */
+      for (let i = 0; i < starI.length; i++) {
+        const idx = starI[i];
+        const p = pl[idx];
+        p.on = true;
+        p.tp = 0;
+        p.x = Math.random() * W;
+        p.y = Math.random() * H * 0.75;
+        p.sz = Math.random() * 1.2 + 0.2;
+        p.ml = 999; p.life = 999;
+        p.r = 200; p.g = 220; p.b = 255;
+        p.a = Math.random() * 0.4 + 0.05;
+      }
 
       jets[0] = { x: -W * 0.25, y: H * 0.40, scale: 0.90, smokeColor: '#FFFFFF', vx: 6.2, vy: -0.8, active: true };
       jets[1] = { x: -W * 0.38, y: H * 0.35, scale: 0.84, smokeColor: '#FF9933', vx: 6.2, vy: -0.8, active: true };
@@ -221,7 +233,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         });
       }
     };
-    rsz(); window.addEventListener('resize', rsz);
+    rsz();
+    window.addEventListener('resize', rsz);
 
     const grainCv = document.createElement('canvas');
     grainCv.width = 256; grainCv.height = 256;
@@ -278,9 +291,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       }
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       drawSun — Soft linear bloom, small core, t < 0.72 only
-       ═══════════════════════════════════════════════════════════ */
     const drawSun = (t: number) => {
       if (t >= 0.72) return;
       const sun = sunPos(t);
@@ -306,29 +316,19 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       RENDERER OBJECT
-       ═══════════════════════════════════════════════════════════ */
     const renderer = {
-      /* ═══════════════════════════════════════════════════════════
-         FIX #2: SKY — Bottom colors were too orange (rgb(255,130,48))
-         This was creating a "sun ball" look at the horizon.
-         Real dawn: deep blue top → purple mid → SOFT pink/warm bottom (not bright orange)
-         ═══════════════════════════════════════════════════════════ */
       sky: (t: number, sceneAlpha: number) => {
         c.save();
         c.globalAlpha = sceneAlpha;
         const grad = c.createLinearGradient(0, 0, 0, H);
 
         if (t < 3.5) {
-          // Phase 1: Deep Night Blue (unchanged)
           const interp = clamp(t / 3.5, 0, 1);
           const r1 = lerp(4, 20, interp), g1 = lerp(6, 32, interp), b1 = lerp(18, 62, interp);
           const r2 = lerp(8, 48, interp), g2 = lerp(12, 40, interp), b2 = lerp(32, 90, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else if (t < 7.5) {
-          // Phase 2: Pre-Dawn — FIX: Bottom was rgb(255,130,48) → now soft warm pink
           const interp = clamp((t - 3.5) / 4.0, 0, 1);
           const r1 = lerp(20, 50, interp), g1 = lerp(32, 35, interp), b1 = lerp(62, 75, interp);
           const r2 = lerp(48, 140, interp), g2 = lerp(40, 70, interp), b2 = lerp(90, 80, interp);
@@ -336,7 +336,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           grad.addColorStop(0.7, `rgb(${(r2*0.6) | 0}, ${(g2*0.7) | 0}, ${(b2*1.1) | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else if (t < 11.5) {
-          // Phase 3: Dawn — FIX: Bottom was rgb(255,175,30) → now soft golden, not orange ball
           const interp = clamp((t - 7.5) / 4.0, 0, 1);
           const r1 = lerp(50, 90, interp), g1 = lerp(35, 80, interp), b1 = lerp(75, 120, interp);
           const r2 = lerp(140, 170, interp), g2 = lerp(70, 110, interp), b2 = lerp(80, 100, interp);
@@ -344,7 +343,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           grad.addColorStop(0.7, `rgb(${(r2*0.7) | 0}, ${(g2*0.8) | 0}, ${(b2*1.05) | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else {
-          // Phase 4: Morning Blue (unchanged)
           const interp = clamp((t - 11.5) / 4.5, 0, 1);
           const r1 = lerp(90, 14, interp), g1 = lerp(80, 30, interp), b1 = lerp(120, 85, interp);
           const r2 = lerp(170, 32, interp), g2 = lerp(110, 54, interp), b2 = lerp(100, 140, interp);
@@ -408,17 +406,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════════════
-         FIX #1: TORCH — Glow radius 140→50, intensity 0.9→0.3
-         This was a major contributor to the golden ball behind India Gate
-         ═══════════════════════════════════════════════════════════ */
       torch: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 2.0) return;
         const tx = W * 0.5, ty = H * 0.795;
         const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
         c.save(); c.globalAlpha = fireAlpha; c.globalCompositeOperation = 'lighter';
 
-        // FIX: Radius 140→50, intensity 0.9→0.3, 0.35→0.1
         const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 50);
         glowGrad.addColorStop(0, 'rgba(255, 120, 20, 0.3)');
         glowGrad.addColorStop(0.4, 'rgba(255, 60, 5, 0.1)');
@@ -515,26 +508,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore(); c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════════════
-         FIX #1 (MAIN): VOLUMETRIC LIGHTING — This is THE golden ball culprit!
-         - 15 rays from ONE point = looks like a circular glow
-         - Intensity 0.82 = way too bright with screen blend
-         - Origin at W*0.5 = dead center behind India Gate
-         FIX: Intensity 0.82→0.08, rays 15→8, origin shifted up
-         ═══════════════════════════════════════════════════════════ */
       volumetricLighting: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 3.0) return;
-        // FIX: Intensity 0.82 → 0.08 (was the main golden ball cause)
         const intensity = clamp((t - 3.0) * 0.3, 0, 0.08) * sceneAlpha;
         const sunX = W * 0.5;
-        // FIX: Shift origin UP so rays come from above, not from behind gate
         const sunY = baseY - gateH * 0.8;
 
         c.save();
         c.globalAlpha = intensity;
         c.globalCompositeOperation = 'screen';
 
-        // FIX: 15 rays → 8 rays (fewer = less circular ball look)
         for (let i = 0; i < 8; i++) {
           const angle = -Math.PI * 0.5 + (i / 8) * Math.PI - Math.PI * 0.5;
           const length = H * 0.55;
@@ -552,7 +535,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.closePath();
 
           const rayGrad = c.createLinearGradient(sunX, sunY, tipX, tipY);
-          // FIX: 0.06 → 0.02 (even weaker start)
           rayGrad.addColorStop(0, `rgba(255,235,180,${0.02 * intensity})`);
           rayGrad.addColorStop(0.5, 'rgba(255, 140, 50, 0.03)');
           rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
@@ -720,11 +702,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       }
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       PARTICLES — FIX: Gold Dust & Solar particles heavily reduced
-       ═══════════════════════════════════════════════════════════ */
     const spawnParticles = (t: number, elapsed: number) => {
-      // Fog Dust (unchanged)
       if (Math.random() < 0.12) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H * 0.6 + Math.random() * H * 0.3;
@@ -734,7 +712,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // FIX: Gold Dust — spawn rate 0.4→0.06, alpha 0.78→0.25 (was adding to golden glow)
       if (t > 4.0 && Math.random() < 0.06) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H + 10;
@@ -744,7 +721,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // FIX: Solar Particles — spawn rate 0.3→0.02 (diagonal golden streaks removed)
       if (t > 5.0 && Math.random() < 0.02) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 100; p.y = baseY - gateH * 0.4;
@@ -754,7 +730,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Confetti (unchanged)
       if (t >= 5.5 && t < 11.5) {
         const rainCount = 1;
         for (let i = 0; i < rainCount; i++) {
@@ -772,7 +747,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Torch Embers (unchanged)
       if (t > 2.0 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = H * 0.795;
@@ -850,13 +824,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       FIX: Post FX — Warm grade reduced (was adding golden tint)
-       ═══════════════════════════════════════════════════════════ */
     const drawPostFX = () => {
       c.save(); c.globalCompositeOperation = 'soft-light';
       const grade = c.createLinearGradient(0, 0, W, H);
-      // FIX: 0.18 → 0.06, 0.25 → 0.12 (was adding warm golden wash)
       grade.addColorStop(0, 'rgba(255, 140, 50, 0.06)');
       grade.addColorStop(1, 'rgba(0, 50, 100, 0.12)');
       c.fillStyle = grade; c.fillRect(0, 0, W, H);
@@ -873,9 +843,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       ANIMATION LOOP
-       ═══════════════════════════════════════════════════════════ */
     let prevTime = 0;
     let fwTimer = 0;
 
