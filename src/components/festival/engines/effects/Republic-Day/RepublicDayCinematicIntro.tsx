@@ -154,7 +154,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       x: 0, y: 0, scale: 0.85, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true
     }));
 
-    /* FIX #2: Stars ko sirf index store karo, rsz() me proper W/H ke saath init karo */
     const starI: number[] = [];
     for (let i = 0; i < 150; i++) starI.push(i);
 
@@ -176,7 +175,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       pillarH = gateH * 0.72;
       pillarY = baseY - 32 - pillarH;
 
-      /* FIX #2: Stars ko YAHAN init karo jab W aur H proper hai */
+      // रिसाइज होने पर झंडे की नोड्स की पोजीशन रीसेट करें
+      if (flagNodes.length > 0) {
+        flagNodes[0].x = 0;
+      }
+
       for (let i = 0; i < starI.length; i++) {
         const idx = starI[i]; const p = pl[idx];
         p.on = true; p.tp = 0;
@@ -454,9 +457,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
         const scVal = Math.min(W, H);
         const fw = scVal * 0.22, fh = fw * 0.66;
-        const domeTipY = baseY - gateH * 0.94 - 15;
-        const poleHeight = gateH * 0.30;
-        const poleTopX = cx, poleTopY = domeTipY - poleHeight;
+        
+        // झंडे को गुंबद से हटाकर बाईं ओर (left side) ग्राउंड पर स्थापित करने हेतु गणना
+        const poleHeight = gateH * 0.85;
+        const poleTopX = cx - gateW * 0.58; 
+        const poleTopY = baseY - poleHeight;
 
         if (flagNodes[0].x === 0) {
           for (let i = 0; i < numPoints; i++) {
@@ -491,10 +496,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
 
         c.save(); c.globalAlpha = revealAlpha;
-        const poleGrad = c.createLinearGradient(cx - 2.5, poleTopY, cx + 2.5, domeTipY);
+        const poleGrad = c.createLinearGradient(poleTopX - 2.5, poleTopY, poleTopX + 2.5, baseY);
         poleGrad.addColorStop(0, '#f0f0f0'); poleGrad.addColorStop(0.5, '#ffffff'); poleGrad.addColorStop(1, '#a8a8a8');
-        c.fillStyle = poleGrad; c.fillRect(cx - 2.5, poleTopY, 5, poleHeight);
-        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, poleTopY, 4, 0, Math.PI * 2); c.fill();
+        c.fillStyle = poleGrad; c.fillRect(poleTopX - 2.5, poleTopY, 5, poleHeight);
+        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(poleTopX, poleTopY, 4, 0, Math.PI * 2); c.fill();
 
         for (let i = 0; i < numPoints - 1; i++) {
           const n1 = flagNodes[i], n2 = flagNodes[i + 1];
@@ -850,9 +855,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       cameraShake *= 0.92;
 
-      /* ═══════════════════════════════════════════════════════
-         FIX #1: camDollyZ → zoomClimax (yeahi error tha)
-         ═══════════════════════════════════════════════════════ */
       const zoomClimax = t < 11.5
         ? lerp(1.0, 1.10, eOE(t / 11.5))
         : lerp(1.10, 2.5, clamp((t - 11.5) / 2.5, 0, 1));
@@ -896,7 +898,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       drawPostFX();
 
       /* ═══════════════════════════════════════════════════════
-         FIX #4: Truncated code complete — White fade + Ashoka Chakra
+         WHITE FADE (बिना अंतिम अशोक चक्र के)
          ═══════════════════════════════════════════════════════ */
       if (t >= 14.5) {
         const whiteFadeAlpha = clamp((t - 14.5) * 1.8, 0, 1);
@@ -904,36 +906,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.globalAlpha = whiteFadeAlpha;
         c.fillStyle = '#FFFFFF';
         c.fillRect(0, 0, W, H);
-
-        // Ashoka Chakra center display
-        const chakraAlpha = clamp((t - 14.8) * 2, 0, 1);
-        if (chakraAlpha > 0) {
-          c.globalAlpha = whiteFadeAlpha * chakraAlpha;
-          const chakraR = Math.min(W, H) * 0.08;
-          const chakraX = W / 2, chakraY = H / 2;
-
-          c.translate(chakraX, chakraY);
-          c.rotate(now / 1000 * 0.5);
-
-          // Outer circle
-          c.strokeStyle = '#000080';
-          c.lineWidth = 3;
-          c.beginPath(); c.arc(0, 0, chakraR, 0, Math.PI * 2); c.stroke();
-
-          // 24 spokes
-          c.lineWidth = 1.5;
-          for (let i = 0; i < 24; i++) {
-            const ang = (i / 24) * Math.PI * 2;
-            c.beginPath(); c.moveTo(0, 0);
-            c.lineTo(Math.cos(ang) * chakraR, Math.sin(ang) * chakraR);
-            c.stroke();
-          }
-
-          // Center hub
-          c.fillStyle = '#000080';
-          c.beginPath(); c.arc(0, 0, chakraR * 0.15, 0, Math.PI * 2); c.fill();
-        }
-
         c.restore();
       }
 
