@@ -458,21 +458,23 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const scVal = Math.min(W, H);
         const fw = scVal * 0.22, fh = fw * 0.66;
         
-        // झंडे को गुंबद से हटाकर बाईं ओर (left side) ग्राउंड पर स्थापित करने हेतु गणना
-        const poleHeight = gateH * 0.85;
-        const poleTopX = cx - gateW * 0.58; 
+        // झंडे का डंडा (Left Side) - जमीन पर स्थिर करने के लिए गणना
+        const poleHeight = gateH * 0.88;
+        const poleTopX = cx - gateW * 0.65; 
         const poleTopY = baseY - poleHeight;
 
         if (flagNodes[0].x === 0) {
           for (let i = 0; i < numPoints; i++) {
-            flagNodes[i].x = poleTopX + (i * fw) / (numPoints - 1);
+            // माइनस सिंबल (-) झंडे को बाईं तरफ (इंडिया गेट से दूर) लहराने के लिए दिशा बदलता है
+            flagNodes[i].x = poleTopX - (i * fw) / (numPoints - 1);
             flagNodes[i].y = poleTopY;
             flagNodes[i].ox = flagNodes[i].x; flagNodes[i].oy = flagNodes[i].y;
           }
         }
 
         for (let i = 1; i < numPoints; i++) {
-          const wind = 0.22 + noise.n2(elapsed * 0.8 + i * 0.15, 0) * 0.18;
+          // माइनस विंड फोर्स (-) हवा को बाईं तरफ धकेलता है
+          const wind = -0.22 - noise.n2(elapsed * 0.8 + i * 0.15, 0) * 0.18;
           const gravity = 0.025;
           flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.94 + wind;
           flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.94 + gravity;
@@ -496,10 +498,23 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
 
         c.save(); c.globalAlpha = revealAlpha;
-        const poleGrad = c.createLinearGradient(poleTopX - 2.5, poleTopY, poleTopX + 2.5, baseY);
-        poleGrad.addColorStop(0, '#f0f0f0'); poleGrad.addColorStop(0.5, '#ffffff'); poleGrad.addColorStop(1, '#a8a8a8');
-        c.fillStyle = poleGrad; c.fillRect(poleTopX - 2.5, poleTopY, 5, poleHeight);
-        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(poleTopX, poleTopY, 4, 0, Math.PI * 2); c.fill();
+
+        // खंभे का निचला स्टैंड (Base stand) - ताकि पोल हवा में तैरता हुआ न दिखे
+        c.fillStyle = '#5a3420';
+        c.fillRect(poleTopX - 8, baseY - 6, 16, 6);
+        c.fillStyle = '#eed2bc';
+        c.fillRect(poleTopX - 5, baseY - 10, 10, 4);
+
+        // मजबूत मैटेलिक पोल
+        const poleGrad = c.createLinearGradient(poleTopX - 3, poleTopY, poleTopX + 3, baseY);
+        poleGrad.addColorStop(0, '#f0f0f0'); 
+        poleGrad.addColorStop(0.3, '#ffffff'); 
+        poleGrad.addColorStop(0.7, '#a8a8a8');
+        poleGrad.addColorStop(1, '#666666');
+        c.fillStyle = poleGrad; c.fillRect(poleTopX - 3, poleTopY, 6, poleHeight);
+        
+        // डंडे के ऊपर सोने का गोला (Golden Sphere)
+        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(poleTopX, poleTopY, 5, 0, Math.PI * 2); c.fill();
 
         for (let i = 0; i < numPoints - 1; i++) {
           const n1 = flagNodes[i], n2 = flagNodes[i + 1];
