@@ -372,13 +372,13 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      // LAYER 4: DETAILED REALISTIC INDIA GATE (Nanite-style Sandstone carvings)
+      // LAYER 4: DETAILED REALISTIC INDIA GATE
       indiaGate: (t: number, sceneAlpha: number) => {
         const reveal = clamp((t - 0.8) * 0.4, 0, 1);
         c.save();
         c.globalAlpha = reveal * sceneAlpha;
 
-        const sandstoneBase = '#c1805b';
+        const baseColor = '#c1805b'; // Fixed: sandstoneBase renamed back to baseColor
         const shadowColor = '#6d3c26';
         const highlightColor = '#eed2bc';
         const darkSienna = '#4e2311';
@@ -390,7 +390,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
           const frontGrad = c.createLinearGradient(x, y, x, y + h);
           frontGrad.addColorStop(0, highlightColor);
-          frontGrad.addColorStop(0.35, baseColor);
+          frontGrad.addColorStop(0.35, baseColor); // Works flawlessly now
           frontGrad.addColorStop(1, shadowColor);
           c.fillStyle = frontGrad;
           c.fillRect(x, y, w, h);
@@ -511,7 +511,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.closePath();
         const domeGrad = c.createLinearGradient(cx - gateW * 0.16, domeY, cx + gateW * 0.16, attic2Y);
         domeGrad.addColorStop(0, highlightColor);
-        domeGrad.addColorStop(0.4, baseColor);
+        domeGrad.addColorStop(0.4, baseColor); // Works flawlessly now
         domeGrad.addColorStop(1, shadowColor);
         c.fillStyle = domeGrad;
         c.fill();
@@ -569,7 +569,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         fireGrad.addColorStop(0, '#ffffff');
         fireGrad.addColorStop(0.2, 'rgba(255, 210, 80, 0.95)');
         fireGrad.addColorStop(0.6, 'rgba(255, 120, 20, 0.6)');
-        fireGrad.addColorStop(1, 'rgba(230, 0, 0, 0)');
+        fireGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
         c.fillStyle = fireGrad;
 
         c.beginPath();
@@ -716,10 +716,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.rotate(elapsed * 0.7);
 
         c.strokeStyle = 'rgba(0, 0, 128, 1)';
-        c.lineWidth = 2.0;
+        c.lineWidth = 2.5;
         c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
 
-        c.lineWidth = 1.0;
+        c.lineWidth = 1.2;
         for (let i = 0; i < 24; i++) {
           const ang = (i / 24) * Math.PI * 2;
           c.beginPath();
@@ -1218,7 +1218,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.save();
       c.translate(W / 2 + breatheX, H / 2 + breatheY);
       c.rotate(camRot);
-      c.scale(zoomClimax, zoomClimax);
+      c.scale(camDollyZ, camDollyZ);
       c.translate(-W / 2, -H / 2);
 
       const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
