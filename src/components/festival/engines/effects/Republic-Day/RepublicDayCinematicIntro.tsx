@@ -2,1324 +2,2378 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 
-/* ═══════════════════════════════════════════════════════════════
-   TYPES & INTERFACES (Physically Based Particles & Entities)
-   ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════TYPES & INTERFACES═══════════════════════════════════════════════════════════════ */
+interface Props {
+  onComplete?: () => void;
+}
+
 interface Particle {
-  x: number; y: number; vx: number; vy: number;
-  life: number; ml: number; sz: number;
-  r: number; g: number; b: number; a: number;
-  tp: number; // 1: Fog Dust, 2: Confetti, 3: Torch Embers, 4: Jet Smoke, 5: Gold Dust, 6: Solar
-  rot: number; rs: number; on: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  ml: number;
+  sz: number;
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+  tp: number;
+  rot: number;
+  rs: number;
+  on: boolean;
   turbOff: number;
+  depth: number;
+  confettiColor: number;
+  sparklePhase: number;
+  bokehRadius: number;
+  bokehAperture: number;
 }
 
-interface Jet {
-  x: number; y: number; scale: number; smokeColor: string; vx: number; vy: number; active: boolean;
+interface Star {
+  x: number;
+  y: number;
+  sz: number;
+  br: number;
+  tw: number;
+  tp: number;
 }
 
-interface Cloud {
-  x: number; y: number; sz: number; speed: number; opacity: number;
+interface Bird {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  wingPhase: number;
+  wingSpeed: number;
+  sz: number;
+  depth: number;
+  flapAmplitude: number;
 }
 
-interface BoidBird {
-  x: number; y: number; vx: number; vy: number; wing: number;
-  state: 'sitting' | 'flying';
-  side: 'left' | 'right';
-  noiseSeed: number;
-  bank: number;
+interface Sukhoi {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  trail: Array<{x: number; y: number; a: number}>;
+  afterburner: number;
+  depth: number;
 }
 
-interface Firework {
-  x: number; y: number; vy: number;
-  state: 'rising' | 'burst';
-  burstT: number;
-  col: { r: number; g: number; b: number };
-  pts: { x: number; y: number; vx: number; vy: number; life: number; ml: number; sz: number }[];
+interface Camera {
+  x: number;
+  y: number;
+  zoom: number;
+  tilt: number;
+  shakeX: number;
+  shakeY: number;
+  breathing: number;
+  dollySpeed: number;
+  targetZoom: number;
 }
 
-const POOL_SIZE = 5000;
-const DUR = 17.5; // Complete 17.5s Climax and Handover Timeline
-
-/* ═══════════════════════════════════════════════════════════════
-   SIMPLEX NOISE 2D
-   ═══════════════════════════════════════════════════════════════ */
-class SimplexNoise {
-  private perm: Uint8Array;
-  private g2: number[][] = [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
-  constructor(seed: number = 42) {
-    this.perm = new Uint8Array(512);
-    const p = new Uint8Array(256);
-    for (let i = 0; i < 256; i++) p[i] = i;
-    let s = seed;
-    for (let i = 255; i > 0; i--) { s = (s * 16807) % 2147483647; const j = s % (i + 1); [p[i], p[j]] = [p[j], p[i]]; }
-    for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
-  }
-  n2(x: number, y: number): number {
-    const F = 0.5 * (Math.sqrt(3) - 1), G = (3 - Math.sqrt(3)) / 6;
-    const s = (x + y) * F, i = Math.floor(x + s), j = Math.floor(y + s);
-    const t = (i + j) * G, x0 = x - (i - t), y0 = y - (j - t);
-    const i1 = x0 > y0 ? 1 : 0, j1 = x0 > y0 ? 0 : 1;
-    const x1 = x0 - i1 + G, y1 = y0 - j1 + G, x2 = x0 - 1 + 2 * G, y2 = y0 - 1 + 2 * G;
-    const ii = i & 255, jj = j & 255;
-    let n0 = 0, n1 = 0, n2 = 0, t0 = 0.5 - x0 * x0 - y0 * y0;
-    if (t0 >= 0) { t0 *= t0; const gi = this.perm[ii + this.perm[jj]] % 8; n0 = t0 * t0 * (this.g2[gi][0] * x0 + this.g2[gi][1] * y0); }
-    let t1 = 0.5 - x1 * x1 - y1 * y1;
-    if (t1 >= 0) { t1 *= t1; const gi = this.perm[ii + i1 + this.perm[jj + j1]] % 8; n1 = t1 * t1 * (this.g2[gi][0] * x1 + this.g2[gi][1] * y1); }
-    let t2 = 0.5 - x2 * x2 - y2 * y2;
-    if (t2 >= 0) { t2 *= t2; const gi = this.perm[ii + 1 + this.perm[jj + 1]] % 8; n2 = t2 * t2 * (this.g2[gi][0] * x2 + this.g2[gi][1] * y2); }
-    return 70 * (n0 + n1 + n2);
-  }
+interface Lighting {
+  torchIntensity: number;
+  ambientIntensity: number;
+  sunIntensity: number;
+  sunAngle: number;
+  sunColor: { r: number; g: number; b: number };
+  backLightIntensity: number;
+  rimLightIntensity: number;
+  fogDensity: number;
+  fogColor: { r: number; g: number; b: number };
+  exposure: number;
 }
 
-export default function RepublicDayCinematicIntro({ onComplete }: Props) {
-  const cvRef = useRef<HTMLCanvasElement>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const raf = useRef<number>(0);
-  const t0 = useRef<number>(0);
-  const done = useRef<boolean>(false);
-  const cbR = useRef(onComplete);
-  cbR.current = onComplete;
+interface FlagCloth {
+  points: Array<{x: number; y: number; z: number; vx: number; vy: number; vz: number}>;
+  constraints: Array<{p1: number; p2: number; length: number}>;
+  cols: number;
+  rows: number;
+  width: number;
+  height: number;
+}
 
-  const mkPool = useCallback(() => {
-    const a: Particle[] = [];
-    for (let i = 0; i < POOL_SIZE; i++) {
-      a.push({
-        x:0,y:0,vx:0,vy:0,life:0,ml:1,sz:0,r:255,g:153,b:51,a:0,
-        tp:1,rot:0,rs:0,on:false,turbOff:Math.random()*1000
-      });
-    }
-    return a;
-  }, []);
+interface FogLayer {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+  opacity: number;
+  turbulence: number;
+}
 
-  const grab = useCallback((p: Particle[]) => {
-    for (let i = 0; i < p.length; i++) if (!p[i].on) return p[i];
-    return null;
-  }, []);
+/* ═══════════════════════════════════════════════════════════════CONSTANTS═══════════════════════════════════════════════════════════════ */
+const TOTAL_DURATION = 15000; // 15 seconds
+const FLAG_COLS = 30;
+const FLAG_ROWS = 20;
+const STAR_COUNT = 300;
+const MAX_PARTICLES = 500;
+const BIRD_COUNT = 15;
+const SUKHOI_COUNT = 3;
+const FOG_LAYERS = 8;
 
-  const triggerMilitaryAudio = useCallback(() => {
-    try {
-      if (!audioCtxRef.current) return;
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') ctx.resume();
+/* ═══════════════════════════════════════════════════════════════HELPER FUNCTIONS═══════════════════════════════════════════════════════════════ */
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+const smoothstep = (edge0: number, edge1: number, x: number) => {
+  const t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+  return t * t * (3 - 2 * t);
+};
 
-      for (let beat = 0; beat < 12; beat++) {
-        const bt = ctx.currentTime + beat * 0.35;
-        const kick = ctx.createOscillator();
-        const kg = ctx.createGain();
-        kick.frequency.setValueAtTime(100, bt);
-        kick.frequency.exponentialRampToValueAtTime(18, bt + 0.15);
-        kg.gain.setValueAtTime(0.35, bt);
-        kg.gain.exponentialRampToValueAtTime(0.001, bt + 0.18);
-        kick.connect(kg); kg.connect(ctx.destination);
-        kick.start(bt); kick.stop(bt + 0.18);
-      }
-    } catch (e) { /* silent */ }
-  }, []);
+const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
+const easeInQuart = (t: number) => t * t * t * t;
 
-  /* ═══════════════════════════════════════════════════════════
-     CANVAS LIFE CYCLE & CINEMATIC DRAWERS
-     ═══════════════════════════════════════════════════════════ */
-  useEffect(() => {
-    const cv = cvRef.current; if (!cv) return;
-    const c = cv.getContext('2d', { alpha: false }); if (!c) return;
+const randomRange = (min: number, max: number) => Math.random() * (max - min) + min;
+const randomInt = (min: number, max: number) => Math.floor(randomRange(min, max + 1));
 
-    // Secure local math scope to prevent ReferenceErrors during bundling
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-    const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
-    const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
-    const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-    const eOB = (t: number) => { 
-      const n = 7.5625, d = 2.75; 
-      if (t < 1/d) return n*t*t; 
-      if (t < 2/d) return n*(t-=1.5/d)*t+0.75; 
-      if (t < 2.5/d) return n*(t-=2.25/d)*t+0.9375; 
-      return n*(t-=2.625/d)*t+0.984375; 
-    };
-    const ss = (e0: number, e1: number, x: number) => { 
-      const t = clamp((x-e0)/(e1-e0),0,1); 
-      return t*t*(3-2*t); 
-    };
+const createGradient = (
+  ctx: CanvasRenderingContext2D,
+  x0: number, y0: number, x1: number, y1: number,
+  stops: Array<{pos: number; color: string}>
+) => {
+  const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+  stops.forEach(stop => gradient.addColorStop(stop.pos, stop.color));
+  return gradient;
+};
 
-    audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    triggerMilitaryAudio();
+const createRadialGradient = (
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, r0: number, r1: number,
+  stops: Array<{pos: number; color: string}>
+) => {
+  const gradient = ctx.createRadialGradient(x, y, r0, x, y, r1);
+  stops.forEach(stop => gradient.addColorStop(stop.pos, stop.color));
+  return gradient;
+};
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let W = 0, H = 0;
-    
-    const noise = new SimplexNoise(3821);
-    const pl = mkPool();
+/* ═══════════════════════════════════════════════════════════════MAIN COMPONENT═══════════════════════════════════════════════════════════════ */
+const RepublicDayCinematicIntro: React.FC<Props> = ({ onComplete }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>(0);
+  const startTimeRef = useRef<number>(0);
+  
+  // Refs for all dynamic elements
+  const starsRef = useRef<Star[]>([]);
+  const particlesRef = useRef<Particle[]>([]);
+  const birdsRef = useRef<Bird[]>([]);
+  const sukhoisRef = useRef<Sukhoi[]>([]);
+  const cameraRef = useRef<Camera>({
+    x: 0, y: 0, zoom: 1, tilt: 0, shakeX: 0, shakeY: 0,
+    breathing: 0, dollySpeed: 0, targetZoom: 1
+  });
+  const lightingRef = useRef<Lighting>({
+    torchIntensity: 0.8, ambientIntensity: 0.1, sunIntensity: 0,
+    sunAngle: -0.5, sunColor: { r: 255, g: 200, b: 100 },
+    backLightIntensity: 0, rimLightIntensity: 0, fogDensity: 0.3,
+    fogColor: { r: 20, g: 30, b: 50 }, exposure: 0.8
+  });
+  const flagRef = useRef<FlagCloth | null>(null);
+  const fogLayersRef = useRef<FogLayer[]>([]);
+  const completedRef = useRef(false);
 
-    // CLOTH SIMULATION FOR THE TRICOLOR FLAG (Verlet Spring-Mass Model)
-    const numPoints = 14;
-    const flagNodes: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
-    for (let i = 0; i < numPoints; i++) {
-      flagNodes.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
-    }
-
-    // 6-Jet Aerobatic Stunt Team Array Setup (Pre-defined empty slots)
-    const jets: Jet[] = Array.from({ length: 6 }, () => ({
-      x: 0, y: 0, scale: 0.85, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true
+  // Initialize all systems
+  const initializeSystems = useCallback((width: number, height: number) => {
+    // Initialize stars
+    starsRef.current = Array.from({ length: STAR_COUNT }, () => ({
+      x: randomRange(0, width),
+      y: randomRange(0, height * 0.6),
+      sz: randomRange(0.5, 2.5),
+      br: randomRange(0.3, 1),
+      tw: randomRange(0.5, 2),
+      tp: randomRange(0, Math.PI * 2)
     }));
 
-    const starI: number[] = [];
-    for (let i = 0; i < 150; i++) {
-      const p = pl[i]; p.on = true; p.tp = 0;
-      p.x = Math.random() * W; p.y = Math.random() * H * 0.75;
-      p.sz = Math.random() * 1.2 + 0.2; p.ml = 999; p.life = 999;
-      p.r = 200; p.g = 220; p.b = 255; p.a = Math.random() * 0.4 + 0.05;
-      starI.push(i);
+    // Initialize particles
+    particlesRef.current = Array.from({ length: MAX_PARTICLES }, () => createParticle(width, height));
+
+    // Initialize birds
+    birdsRef.current = Array.from({ length: BIRD_COUNT }, () => ({
+      x: randomRange(-200, width + 200),
+      y: randomRange(height * 0.2, height * 0.5),
+      vx: randomRange(0.5, 1.5),
+      vy: randomRange(-0.2, 0.2),
+      wingPhase: randomRange(0, Math.PI * 2),
+      wingSpeed: randomRange(2, 4),
+      sz: randomRange(3, 8),
+      depth: randomRange(0.5, 1.5),
+      flapAmplitude: randomRange(0.3, 0.8)
+    }));
+
+    // Initialize Sukhois
+    sukhoisRef.current = Array.from({ length: SUKHOI_COUNT }, (_, i) => ({
+      x: -300 - i * 150,
+      y: height * 0.15 + i * 40,
+      vx: randomRange(3, 5),
+      vy: randomRange(-0.1, 0.1),
+      trail: [],
+      afterburner: 1,
+      depth: 0.8 + i * 0.1
+    }));
+
+    // Initialize flag cloth simulation
+    initializeFlagCloth();
+
+    // Initialize fog layers
+    fogLayersRef.current = Array.from({ length: FOG_LAYERS }, () => ({
+      x: randomRange(-width * 0.5, width * 0.5),
+      y: randomRange(height * 0.6, height * 0.9),
+      width: randomRange(width * 0.8, width * 1.5),
+      height: randomRange(30, 80),
+      speed: randomRange(0.2, 0.8),
+      opacity: randomRange(0.1, 0.3),
+      turbulence: randomRange(0.5, 2)
+    }));
+  }, []);
+
+  const createParticle = (width: number, height: number): Particle => ({
+    x: randomRange(0, width),
+    y: randomRange(0, height),
+    vx: randomRange(-0.5, 0.5),
+    vy: randomRange(-0.5, 0.5),
+    life: 0,
+    ml: randomRange(60, 180),
+    sz: randomRange(1, 4),
+    r: randomInt(200, 255),
+    g: randomInt(150, 220),
+    b: randomInt(0, 50),
+    a: randomRange(0.3, 0.8),
+    tp: randomInt(0, 5), // 0: golden dust, 1: ember, 2: lens dust, 3: confetti, 4: sparkle, 5: bokeh
+    rot: randomRange(0, Math.PI * 2),
+    rs: randomRange(-0.05, 0.05),
+    on: false,
+    turbOff: randomRange(0, Math.PI * 2),
+    depth: randomRange(0.5, 1.5),
+    confettiColor: randomInt(0, 2), // 0: saffron, 1: white, 2: green
+    sparklePhase: randomRange(0, Math.PI * 2),
+    bokehRadius: randomRange(5, 20),
+    bokehAperture: randomRange(3, 8)
+  });
+
+  const initializeFlagCloth = () => {
+    const cols = FLAG_COLS;
+    const rows = FLAG_ROWS;
+    const points: FlagCloth['points'] = [];
+    const constraints: FlagCloth['constraints'] = [];
+    
+    // Create points in a grid
+    for (let j = 0; j <= rows; j++) {
+      for (let i = 0; i <= cols; i++) {
+        points.push({
+          x: i * 8,
+          y: j * 6,
+          z: 0,
+          vx: 0,
+          vy: 0,
+          vz: 0
+        });
+      }
     }
-
-    // BBC PLANET EARTH FLOCKING BIRDS setup
-    const birds: BoidBird[] = [];
-
-    // Master Sizing values computed dynamically
-    let sc = Math.min(window.innerWidth, window.innerHeight);
-    let gateH = sc * 0.66;
-    let gateW = gateH * 0.84;
-    let baseY = window.innerHeight * 0.82;
-    let cx = window.innerWidth * 0.5;
-    let pillarH = gateH * 0.72;
-    let pillarY = baseY - 32 - pillarH;
-
-    const rsz = () => {
-      W = window.innerWidth; H = window.innerHeight;
-      cv.width = W * dpr; cv.height = H * dpr;
-      cv.style.width = W + 'px'; cv.style.height = H + 'px';
-      c.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      // Re-calculate layout values
-      sc = Math.min(W, H);
-      gateH = sc * 0.66;
-      gateW = gateH * 0.84;
-      baseY = H * 0.82;
-      cx = W * 0.5;
-      pillarH = gateH * 0.72;
-      pillarY = baseY - 32 - pillarH;
-
-      // 1. LEFT-TO-RIGHT Vic Formation (Staggered 3 Jets climbing cleanly inside the viewport)
-      jets[0] = { x: -W * 0.25, y: H * 0.40, scale: 0.90, smokeColor: '#FFFFFF', vx: 6.2, vy: -0.8, active: true }; // Lead (White)
-      jets[1] = { x: -W * 0.38, y: H * 0.35, scale: 0.84, smokeColor: '#FF9933', vx: 6.2, vy: -0.8, active: true }; // Upper Wing (Saffron)
-      jets[2] = { x: -W * 0.38, y: H * 0.45, scale: 0.84, smokeColor: '#138808', vx: 6.2, vy: -0.8, active: true }; // Lower Wing (Green)
-
-      // 2. RIGHT-TO-LEFT Vic Formation (Staggered 3 Jets descending cleanly inside the viewport)
-      jets[3] = { x: W + W * 0.25, y: H * 0.15, scale: 0.90, smokeColor: '#FFFFFF', vx: -6.2, vy: 0.8, active: true }; // Lead (White)
-      jets[4] = { x: W + W * 0.38, y: H * 0.10, scale: 0.84, smokeColor: '#FF9933', vx: -6.2, vy: 0.8, active: true }; // Upper Wing (Saffron)
-      jets[5] = { x: W + W * 0.38, y: H * 0.20, scale: 0.84, smokeColor: '#138808', vx: -6.2, vy: 0.8, active: true }; // Lower Wing (Green)
-
-      // Initialize doves securely on high wall ledges of the newly scaled India Gate (Top decorative cornice)
-      birds.length = 0;
-      const birdY = baseY - gateH * 0.88;
-      for (let i = 0; i < 8; i++) {
-        birds.push({
-          x: cx - gateW * 0.44 + (gateW * 0.16) * (i / 7),
-          y: birdY - 4, // Left top cornice ledge
-          vx: 0, vy: 0,
-          wing: Math.random() * Math.PI * 2,
-          state: 'sitting',
-          side: 'left',
-          noiseSeed: Math.random() * 1000,
-          bank: 0
-        });
+    
+    // Create constraints between adjacent points
+    for (let j = 0; j <= rows; j++) {
+      for (let i = 0; i <= cols; i++) {
+        const idx = j * (cols + 1) + i;
+        if (i < cols) {
+          constraints.push({ p1: idx, p2: idx + 1, length: 8 });
+        }
+        if (j < rows) {
+          constraints.push({ p1: idx, p2: idx + (cols + 1), length: 6 });
+        }
       }
-      for (let i = 0; i < 8; i++) {
-        birds.push({
-          x: cx + gateW * 0.28 + (gateW * 0.16) * (i / 7),
-          y: birdY - 4, // Right top cornice ledge
-          vx: 0, vy: 0,
-          wing: Math.random() * Math.PI * 2,
-          state: 'sitting',
-          side: 'right',
-          noiseSeed: Math.random() * 1000,
-          bank: 0
-        });
-      }
-    };
-    rsz(); window.addEventListener('resize', rsz);
-
-    // Film Grain Setup
-    const grainCv = document.createElement('canvas');
-    grainCv.width = 256; grainCv.height = 256;
-    const gc = grainCv.getContext('2d')!;
-    const gd = gc.createImageData(256, 256);
-    for (let i = 0; i < gd.data.length; i += 4) {
-      const v = Math.random() * 255 | 0;
-      gd.data[i] = v; gd.data[i + 1] = v; gd.data[i + 2] = v; gd.data[i + 3] = 255;
     }
-    gc.putImageData(gd, 0, 0);
+    
+    flagRef.current = { points, constraints, cols, rows, width: cols * 8, height: rows * 6 };
+  };
 
-    let cameraShake = 0;
-    const sunPos = (t: number) => ({ x: lerp(W*0.3, W*0.5, eOE(t/10)), y: lerp(H*1.2, H*0.15, eOE(t/10)) });
-
-    // Procedural Fireworks Setup
-    const fireworksList: Firework[] = [];
-    const fwColors = [{r:255,g:153,b:51}, {r:255,g:255,b:255}, {r:19,g:136,b:8}, {r:255,g:215,b:0}];
-
-    const spawnFirework = () => {
-      const col = fwColors[Math.floor(Math.random() * fwColors.length)];
-      fireworksList.push({
-        x: W * 0.25 + Math.random() * W * 0.5,
-        y: H,
-        vy: -5.0 - Math.random() * 3.5,
-        state: 'rising',
-        burstT: 0,
-        col: col,
-        pts: []
-      });
-    };
-
-    const updateFireworks = (dt: number) => {
-      for (let i = fireworksList.length - 1; i >= 0; i--) {
-        const fw = fireworksList[i];
-        if (fw.state === 'rising') {
-          fw.y += fw.vy;
-          fw.vy += 0.04; // Gravity acting on projectile
-          if (fw.vy >= -0.5 || fw.y < H * 0.2) {
-            fw.state = 'burst';
-            const count = 40 + Math.random() * 30 | 0;
-            for (let j = 0; j < count; j++) {
-              const ang = (j / count) * Math.PI * 2;
-              const spd = 1.2 + Math.random() * 2.5;
-              fw.pts.push({
-                x: fw.x, y: fw.y,
-                vx: Math.cos(ang) * spd,
-                vy: Math.sin(ang) * spd,
-                life: 1.5 + Math.random() * 1.5,
-                ml: 3.0,
-                sz: 1.5 + Math.random() * 2.0
-              });
-            }
-          }
-        } else {
-          fw.burstT += dt;
-          for (let j = fw.pts.length - 1; j >= 0; j--) {
-            const pt = fw.pts[j];
-            pt.x += pt.vx; pt.y += pt.vy;
-            pt.vy += 0.035; // Spark gravity
-            pt.vx *= 0.985; pt.vy *= 0.985;
-            pt.life -= dt;
-            if (pt.life <= 0) fw.pts.splice(j, 1);
-          }
-          if (fw.pts.length === 0) fireworksList.splice(i, 1);
-        }
-      }
-    };
-
-    /* ═══════════════════════════════════════════════════════════
-       RENDERER OBJECT (Encapsulates all layers to avoid scoping/compilation bugs)
-       ═══════════════════════════════════════════════════════════ */
-    const renderer = {
-      // LAYER 1: SKY (Smooth Dawn Transition)
-      sky: (t: number, sceneAlpha: number) => {
-        c.save();
-        c.globalAlpha = sceneAlpha;
-        const grad = c.createLinearGradient(0, 0, 0, H);
+  // Update flag cloth simulation
+  const updateFlagCloth = (time: number, windStrength: number) => {
+    if (!flagRef.current) return;
+    
+    const flag = flagRef.current;
+    const gravity = 0.05;
+    const damping = 0.98;
+    const windTime = time * 0.001;
+    
+    // Apply forces to each point
+    for (let i = 0; i < flag.points.length; i++) {
+      const p = flag.points[i];
+      const col = i % (flag.cols + 1);
+      
+      // Skip first column (attached to pole)
+      if (col === 0) continue;
+      
+      // Gravity
+      p.vy += gravity;
+      
+      // Wind force with turbulence
+      const windX = Math.sin(windTime * 2 + p.y * 0.05 + p.x * 0.02) * windStrength * 0.3;
+      const windZ = Math.sin(windTime * 3 + p.x * 0.08) * windStrength * 0.2;
+      p.vx += windX;
+      p.vz += windZ;
+      
+      // Apply damping
+      p.vx *= damping;
+      p.vy *= damping;
+      p.vz *= damping;
+      
+      // Update position
+      p.x += p.vx;
+      p.y += p.vy;
+      p.z += p.vz;
+    }
+    
+    // Solve constraints multiple times for stability
+    for (let iter = 0; iter < 5; iter++) {
+      for (const c of flag.constraints) {
+        const p1 = flag.points[c.p1];
+        const p2 = flag.points[c.p2];
         
-        if (t < 3.5) {
-          // Phase 1: Twilight Deep Blue
-          const interp = clamp(t / 3.5, 0, 1);
-          const r1 = lerp(4, 20, interp), g1 = lerp(6, 32, interp), b1 = lerp(18, 62, interp);
-          const r2 = lerp(8, 48, interp), g2 = lerp(12, 40, interp), b2 = lerp(32, 90, interp);
-          grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
-          grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
-        } else if (t < 7.5) {
-          // Phase 2: Purple-to-Orange Horizon
-          const interp = clamp((t - 3.5) / 4.0, 0, 1);
-          const r1 = lerp(20, 85, interp), g1 = lerp(32, 38, interp), b1 = lerp(62, 80, interp);
-          const r2 = lerp(48, 255, interp), g2 = lerp(40, 130, interp), b2 = lerp(90, 48, interp);
-          grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
-          grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
-        } else if (t < 11.5) {
-          // Phase 3: Golden Saffron Sunrise
-          const interp = clamp((t - 7.5) / 4.0, 0, 1);
-          const r1 = lerp(85, 255, interp), g1 = lerp(38, 195, interp), b1 = lerp(80, 110, interp);
-          const r2 = lerp(255, 255, interp), g2 = lerp(130, 175, interp), b2 = lerp(48, 30, interp);
-          grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
-          grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
-        } else {
-          // Phase 4: Blue Morning Soft Haze
-          const interp = clamp((t - 11.5) / 4.5, 0, 1);
-          const r1 = lerp(255, 14, interp), g1 = lerp(195, 30, interp), b1 = lerp(110, 85, interp);
-          const r2 = lerp(255, 32, interp), g2 = lerp(175, 54, interp), b2 = lerp(30, 140, interp);
-          grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
-          grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
-        }
-
-        c.fillStyle = grad;
-        c.fillRect(0, 0, W, H);
-        c.restore();
-      },
-
-      // STARS RENDERING (Fades progressively)
-      stars: (t: number, sceneAlpha: number) => {
-        if (t > 7) return;
-        const alpha = clamp(1 - t / 7, 0, 1) * sceneAlpha;
-        c.save();
-        c.globalAlpha = alpha;
-        for (let i = 0; i < starI.length; i++) {
-          const idx = starI[i];
-          const p = pl[idx];
-          if (p && p.on) {
-            const twinkle = Math.sin(t * 3.5 + i) * 0.4 + 0.6;
-            c.fillStyle = `rgba(${p.r}, ${p.g}, ${p.b}, ${p.a * twinkle})`;
-            c.beginPath();
-            c.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
-            c.fill();
-          }
-        }
-        c.restore();
-      },
-
-      // LAYER 4: DETAILED REALISTIC INDIA GATE (Nanite-style Sandstone carvings)
-      indiaGate: (t: number, sceneAlpha: number) => {
-        const reveal = clamp((t - 0.8) * 0.4, 0, 1);
-        c.save();
-        c.globalAlpha = reveal * sceneAlpha;
-
-        const baseColor = '#c1805b';
-        const shadowColor = '#6d3c26';
-        const highlightColor = '#eed2bc';
-        const darkSienna = '#4e2311';
-        const deepCavity = '#271005';
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dz = p2.z - p1.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
         
-        const drawBevelBlock = (x: number, y: number, w: number, h: number, depth: number = 3) => {
-          c.fillStyle = 'rgba(0,0,0,0.32)';
-          c.fillRect(x - 2, y - 2, w + 4, h + 4);
-
-          const frontGrad = c.createLinearGradient(x, y, x, y + h);
-          frontGrad.addColorStop(0, highlightColor);
-          frontGrad.addColorStop(0.35, baseColor);
-          frontGrad.addColorStop(1, shadowColor);
-          c.fillStyle = frontGrad;
-          c.fillRect(x, y, w, h);
-
-          c.strokeStyle = highlightColor;
-          c.lineWidth = 1.2;
-          c.beginPath();
-          c.moveTo(x, y + h);
-          c.lineTo(x, y);
-          c.lineTo(x + w, y);
-          c.stroke();
-
-          c.strokeStyle = shadowColor;
-          c.lineWidth = 1.8;
-          c.beginPath();
-          c.moveTo(x + w, y);
-          c.lineTo(x + w, y + h);
-          c.lineTo(x, y + h);
-          c.stroke();
-        };
-
-        const drawCorniceLine = (x: number, y: number, w: number, h: number) => {
-          drawBevelBlock(x, y, w, h);
-          c.fillStyle = 'rgba(0,0,0,0.22)';
-          c.fillRect(x + 5, y + 2, w - 10, 2);
-          c.fillStyle = highlightColor;
-          c.fillRect(x, y, w, 1);
-        };
-
-        // 1. Base Steps (3 stacked steps)
-        drawBevelBlock(cx - gateW * 0.52, baseY - 12, gateW * 1.04, 12);
-        drawBevelBlock(cx - gateW * 0.48, baseY - 24, gateW * 0.96, 12);
-        drawBevelBlock(cx - gateW * 0.44, baseY - 32, gateW * 0.88, 8);
-
-        // 2. Main Pillars
-        const pW = gateW * 0.25;
-        const pH = gateH * 0.72;
-        const pY = baseY - 32 - pH;
+        if (dist === 0) continue;
         
-        drawBevelBlock(cx - gateW * 0.45, pY, pW, pH); // Left Pillar
-        drawBevelBlock(cx + gateW * 0.45 - pW, pY, pW, pH); // Right Pillar
-
-        // Pillar Fluting vertical courses
-        c.fillStyle = 'rgba(90,52,32,0.12)';
-        for (let fi = 1; fi <= 3; fi++) {
-          const fx = pW * (fi / 4);
-          c.fillRect(cx - gateW * 0.45 + fx - 1, pY + 5, 2, pH - 10);
-          c.fillRect(cx + gateW * 0.45 - pW + fx - 1, pY + 5, 2, pH - 10);
-        }
-
-        // 3. Central Archway Opening (Completely hollow and transparent inside)
-        const cArchW = gateW * 0.40;
-        const cArchH = gateH * 0.54;
-        const cArchY = baseY - 32 - cArchH;
-
-        c.save();
-        c.beginPath();
-        c.moveTo(cx - cArchW/2, baseY - 32);
-        c.lineTo(cx - cArchW/2, cArchY + cArchW/2);
-        c.arc(cx, cArchY + cArchW/2, cArchW/2, Math.PI, 0, false);
-        c.lineTo(cx + cArchW/2, baseY - 32);
-        c.closePath();
-        c.clip(); // Creates hollow portal mask
-
-        // Inner shadow lining the arch opening
-        const archShadow = c.createRadialGradient(cx, cArchY + cArchW/2, cArchW * 0.25, cx, cArchY + cArchW/2, cArchW * 0.55);
-        archShadow.addColorStop(0, 'rgba(0,0,0,0)');
-        archShadow.addColorStop(1, 'rgba(0,0,0,0.6)');
-        c.fillStyle = archShadow;
-        c.fillRect(cx - cArchW/2, cArchY, cArchW, cArchH + 40);
-        c.restore();
-
-        // 4. Inscription Lintel "INDIA" MCMXIV & MCMXIX
-        const lintelH = gateH * 0.12;
-        const lintelY = pY - lintelH;
-        drawBevelBlock(cx - gateW * 0.48, lintelY, gateW * 0.96, lintelH);
-
-        // MCMXIV MCMXIX carving
-        c.save();
-        const subFontSz = Math.min(gateW * 0.02, 10);
-        c.font = `600 ${subFontSz}px 'Cinzel', serif`;
-        c.fillStyle = darkSienna;
-        c.textAlign = 'left';
-        c.fillText("MCMXIV", cx - gateW * 0.35, lintelY + lintelH * 0.5);
-        c.textAlign = 'right';
-        c.fillText("MCMXIX", cx + gateW * 0.35, lintelY + lintelH * 0.5);
-
-        // "INDIA" inscription center
-        const tSz = Math.min(gateW * 0.07, 24);
-        c.font = `700 ${tSz}px 'Cinzel', 'Playfair Display', Georgia, serif`;
-        c.textAlign = 'center';
-        c.fillStyle = deepCavity;
-        c.fillText("INDIA", cx + 1, lintelY + lintelH * 0.52 + 1); // shadow
-        c.fillStyle = darkSienna;
-        c.fillText("INDIA", cx, lintelY + lintelH * 0.52);
-        c.restore();
-
-        // 5. Stepped Attic Layers (Nanite tiered roofs)
-        const attic1Y = lintelY - gateH * 0.08;
-        drawCorniceLine(cx - gateW * 0.45, attic1Y, gateW * 0.90, gateH * 0.08);
-
-        // Cornice dentils/molding blocks
-        c.fillStyle = shadowColor;
-        for (let di = 0; di < 24; di++) {
-          const dx = cx - gateW * 0.43 + (gateW * 0.86) * (di / 24);
-          c.fillRect(dx, attic1Y + 3, 5, 4);
-        }
-
-        const attic2Y = attic1Y - gateH * 0.06;
-        drawCorniceLine(cx - gateW * 0.38, attic2Y, gateW * 0.76, gateH * 0.06);
-
-        // 6. Shallow Dome Bowl (Chhatri)
-        const domeH = gateH * 0.06;
-        const domeY = attic2Y - domeH;
-        c.beginPath();
-        c.moveTo(cx - gateW * 0.16, attic2Y);
-        c.quadraticCurveTo(cx, domeY - domeH * 0.4, cx + gateW * 0.16, attic2Y);
-        c.closePath();
-        const domeGrad = c.createLinearGradient(cx - gateW * 0.16, domeY, cx + gateW * 0.16, attic2Y);
-        domeGrad.addColorStop(0, highlightColor);
-        domeGrad.addColorStop(0.4, baseColor);
-        domeGrad.addColorStop(1, shadowColor);
-        c.fillStyle = domeGrad;
-        c.fill();
-        c.strokeStyle = shadowColor;
-        c.lineWidth = 1.2;
-        c.stroke();
-
-        // Finial kalash on dome tip
-        c.fillStyle = shadowColor;
-        c.beginPath();
-        c.moveTo(cx - 3, domeY + 2);
-        c.lineTo(cx, domeY - 12);
-        c.lineTo(cx + 3, domeY + 2);
-        c.closePath();
-        c.fill();
-        c.beginPath();
-        c.arc(cx, domeY - 14, 3.5, 0, Math.PI * 2);
-        c.fill();
-
-        // 7. Carved Laurel Wreaths on pillars (real monument design)
-        c.strokeStyle = 'rgba(90,52,32,0.18)';
-        c.lineWidth = 1.5;
-        [cx - gateW * 0.32, cx + gateW * 0.32].forEach(wx => {
-          c.beginPath();
-          c.arc(wx, pY + pH * 0.12, 10, 0, Math.PI * 2);
-          c.stroke();
-        });
-
-        c.restore();
-      },
-
-      // LAYER 5: AMAR JAWAN JYOTI (Flame)
-      torch: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 2.0) return;
-        const tx = W * 0.5;
-        const ty = H * 0.795;
+        const diff = (c.length - dist) / dist * 0.5;
+        const offsetX = dx * diff;
+        const offsetY = dy * diff;
+        const offsetZ = dz * diff;
         
-        const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
-        c.save();
-        c.globalAlpha = fireAlpha;
-        c.globalCompositeOperation = 'lighter';
+        // Don't move first column points
+        if (c.p1 % (flag.cols + 1) !== 0) {
+          p1.x -= offsetX;
+          p1.y -= offsetY;
+          p1.z -= offsetZ;
+        }
         
-        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 140);
-        glowGrad.addColorStop(0, 'rgba(255, 120, 20, 0.9)');
-        glowGrad.addColorStop(0.4, 'rgba(255, 60, 5, 0.35)');
-        glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        c.fillStyle = glowGrad;
-        c.fillRect(tx - 140, ty - 140, 280, 280);
-
-        const flicker = Math.sin(elapsed * 32) * 4;
-        const flameH = 42 + flicker;
-        const flameW = 11;
-
-        const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
-        fireGrad.addColorStop(0, '#ffffff');
-        fireGrad.addColorStop(0.2, 'rgba(255, 210, 80, 0.95)');
-        fireGrad.addColorStop(0.6, 'rgba(255, 120, 20, 0.6)');
-        fireGrad.addColorStop(1, 'rgba(230, 0, 0, 0)');
-        c.fillStyle = fireGrad;
-
-        c.beginPath();
-        c.moveTo(tx - flameW, ty);
-        c.quadraticCurveTo(tx - flameW * 0.4, ty - flameH * 0.5, tx, ty - flameH);
-        c.quadraticCurveTo(tx + flameW * 0.4, ty - flameH * 0.5, tx + flameW, ty);
-        c.closePath();
-        c.fill();
-        c.restore();
-      },
-
-      // LAYER 6 & 7: WAVING SILK FLAG (Verlet Mass-Spring Engine mounted securely on top of India Gate)
-      wavingFlagAndChakra: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 3.0) return;
-        const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
-
-        const scVal = Math.min(W, H);
-        // Slightly smaller dimensions suited for the top dome flagpole
-        const fw = scVal * 0.22;
-        const fh = fw * 0.66;
-
-        // Dome top finial tip coordinate (Top of the India Gate)
-        const domeTipY = baseY - gateH * 0.94 - 15;
-        const poleHeight = gateH * 0.30;
-
-        const poleTopX = cx;
-        const poleTopY = domeTipY - poleHeight;
-
-        // Verlet Cloth Simulation Nodes setup (Pinnned to top flagpole)
-        if (flagNodes[0].x === 0) {
-          for (let i = 0; i < numPoints; i++) {
-            flagNodes[i].x = poleTopX + (i * fw) / (numPoints - 1);
-            flagNodes[i].y = poleTopY;
-            flagNodes[i].ox = flagNodes[i].x;
-            flagNodes[i].oy = flagNodes[i].y;
-          }
-        }
-
-        // Physics integration cycle
-        for (let i = 1; i < numPoints; i++) {
-          const wind = 0.22 + noise.n2(elapsed * 0.8 + i * 0.15, 0) * 0.18;
-          const gravity = 0.025; // Stopped downward sag completely
-
-          flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.94 + wind;
-          flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.94 + gravity;
-
-          flagNodes[i].ox = flagNodes[i].x;
-          flagNodes[i].oy = flagNodes[i].y;
-
-          flagNodes[i].x += flagNodes[i].vx;
-          flagNodes[i].y += flagNodes[i].vy;
-        }
-
-        flagNodes[0].x = poleTopX;
-        flagNodes[0].y = poleTopY;
-
-        const linkLength = fw / (numPoints - 1);
-        for (let steps = 0; steps < 4; steps++) {
-          for (let i = 0; i < numPoints - 1; i++) {
-            const n1 = flagNodes[i];
-            const n2 = flagNodes[i + 1];
-            const dx = n2.x - n1.x;
-            const dy = n2.y - n1.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const diff = linkLength - dist;
-            const percent = (diff / dist) * 0.5;
-            const offsetX = dx * percent;
-            const offsetY = dy * percent;
-
-            if (i > 0) {
-              n1.x -= offsetX;
-              n1.y -= offsetY;
-            }
-            n2.x += offsetX;
-            n2.y += offsetY;
-          }
-        }
-
-        c.save();
-        c.globalAlpha = revealAlpha;
-
-        // 1. Draw Metallic Flagpole rising majestically from the dome tip
-        const poleGrad = c.createLinearGradient(cx - 2.5, poleTopY, cx + 2.5, domeTipY);
-        poleGrad.addColorStop(0, '#f0f0f0');
-        poleGrad.addColorStop(0.5, '#ffffff');
-        poleGrad.addColorStop(1, '#a8a8a8');
-        c.fillStyle = poleGrad;
-        c.fillRect(cx - 2.5, poleTopY, 5, poleHeight);
-
-        // Gold knob on pole tip
-        c.fillStyle = '#ffd700';
-        c.beginPath();
-        c.arc(cx, poleTopY, 4, 0, Math.PI * 2);
-        c.fill();
-
-        // 2. Draw Flag Fabric columns
-        for (let i = 0; i < numPoints - 1; i++) {
-          const n1 = flagNodes[i];
-          const n2 = flagNodes[i + 1];
-          const shade = 0.85 + Math.sin(i * 0.3 - elapsed * 4) * 0.15;
-
-          const applyShade = (hex: string) => {
-            const h = hex.replace('#', '');
-            const rr = parseInt(h.substring(0,2),16), gg = parseInt(h.substring(2,4),16), bb = parseInt(h.substring(4,6),16);
-            return `rgb(${rr*shade|0},${gg*shade|0},${bb*shade|0})`;
-          };
-
-          c.fillStyle = applyShade('#FF9933');
-          c.beginPath();
-          c.moveTo(n1.x, n1.y);
-          c.lineTo(n2.x, n2.y);
-          c.lineTo(n2.x, n2.y + fh / 3);
-          c.lineTo(n1.x, n1.y + fh / 3);
-          c.closePath();
-          c.fill();
-
-          c.fillStyle = applyShade('#FFFFFF');
-          c.beginPath();
-          c.moveTo(n1.x, n1.y + fh / 3);
-          c.lineTo(n2.x, n2.y + fh / 3);
-          c.lineTo(n2.x, n2.y + (fh * 2) / 3);
-          c.lineTo(n1.x, n1.y + (fh * 2) / 3);
-          c.closePath();
-          c.fill();
-
-          c.fillStyle = applyShade('#138808');
-          c.beginPath();
-          c.moveTo(n1.x, n1.y + (fh * 2) / 3);
-          c.lineTo(n2.x, n2.y + (fh * 2) / 3);
-          c.lineTo(n2.x, n2.y + fh);
-          c.lineTo(n1.x, n1.y + fh);
-          c.closePath();
-          c.fill();
-        }
-
-        // 3. Ashok Chakra Center (Synced wave movement)
-        const midIdx = numPoints / 2 | 0;
-        const cxV = flagNodes[midIdx].x;
-        const cyV = flagNodes[midIdx].y + fh / 2;
-        const cr = fh * 0.11;
-
-        c.save();
-        c.translate(cxV, cyV);
-        c.rotate(elapsed * 0.7);
-
-        c.strokeStyle = 'rgba(0, 0, 128, 1)';
-        c.lineWidth = 2.0;
-        c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
-
-        c.lineWidth = 1.0;
-        for (let i = 0; i < 24; i++) {
-          const ang = (i / 24) * Math.PI * 2;
-          c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(Math.cos(ang) * cr, Math.sin(ang) * cr);
-          c.stroke();
-        }
-        c.restore();
-
-        c.restore();
-      },
-
-      // LAYER 11: VOLUMETRIC SUNRISE LIGHTING (Glow aura completely removed as requested)
-      volumetricLighting: (t: number, sceneAlpha: number) => {
-        if (t < 3.0) return;
-        const intensity = clamp((t - 3.0) * 0.3, 0, 0.82) * sceneAlpha;
-        const sunX = W * 0.5;
-        const sunY = baseY - gateH * 0.45;
-
-        c.save();
-        c.globalAlpha = intensity;
-        c.globalCompositeOperation = 'screen';
-
-        // UEFI-style sharp god rays cutting through structural openings
-        for (let i = 0; i < 15; i++) {
-          const angle = -Math.PI * 0.5 + (i / 15) * Math.PI - Math.PI * 0.5;
-          const l = sc * 1.5;
-          c.beginPath();
-          c.moveTo(sunX, sunY);
-          c.lineTo(sunX + Math.cos(angle - 0.05) * l, sunY + Math.sin(angle - 0.05) * l);
-          c.lineTo(sunX + Math.cos(angle + 0.05) * l, sunY + Math.sin(angle + 0.05) * l);
-          c.closePath();
-
-          const rayGrad = c.createLinearGradient(sunX, sunY, sunX + Math.cos(angle) * l, sunY + Math.sin(angle) * l);
-          rayGrad.addColorStop(0, 'rgba(255, 230, 160, 0.28)');
-          rayGrad.addColorStop(0.5, 'rgba(255, 140, 50, 0.08)');
-          rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
-          c.fillStyle = rayGrad;
-          c.fill();
-        }
-
-        c.restore();
-      },
-
-      // LAYER 8: CROSSING JETS & THICK SMOKE TRAILS
-      jetsAndTrails: (t: number, sceneAlpha: number) => {
-        if (t < 2.5 || t > 9.0) return;
-        c.save();
-        c.globalAlpha = sceneAlpha;
-
-        jets.forEach(jet => {
-          jet.x += jet.vx; jet.y += jet.vy;
-
-          if (Math.abs(jet.x - W * 0.5) < 180) {
-            cameraShake = 3.5;
-          }
-
-          const nozzleX = jet.x - (jet.vx > 0 ? 32 : -32) * jet.scale;
-          const nozzleY = jet.y + 2 * jet.scale;
-
-          if (Math.random() < 0.85) {
-            const p = grab(pl); if (p) {
-              p.on = true; p.x = nozzleX; p.y = nozzleY;
-              p.vx = -jet.vx * 0.12 + (Math.random() - 0.5) * 0.4;
-              p.vy = (Math.random() - 0.5) * 0.4;
-              p.life = 4.2; p.ml = 4.2;
-              p.sz = 14 * jet.scale + Math.random() * 15;
-
-              const hex = jet.smokeColor.replace('#', '');
-              p.r = parseInt(hex.substring(0, 2), 16);
-              p.g = parseInt(hex.substring(2, 4), 16);
-              p.b = parseInt(hex.substring(4, 6), 16);
-              p.a = 0.65; p.tp = 4;
-            }
-          }
-
-          c.save();
-          c.translate(jet.x, jet.y);
-          c.rotate(Math.atan2(jet.vy, jet.vx));
-          c.scale(jet.scale, jet.scale);
-
-          // Swept back wing fighter outline
-          c.fillStyle = '#1c1c1c';
-          c.beginPath();
-          c.moveTo(35, 0); 
-          c.lineTo(15, -4);
-          c.lineTo(2, -18); 
-          c.lineTo(-10, -28);
-          c.lineTo(-14, -28);
-          c.lineTo(-12, -4);
-          c.lineTo(-24, -3);
-          c.lineTo(-28, -8); 
-          c.lineTo(-32, -8);
-          c.lineTo(-30, 0); 
-          c.lineTo(-32, 8);
-          c.lineTo(-28, 8);  
-          c.lineTo(-24, 3);
-          c.lineTo(-12, 4);
-          c.lineTo(-14, 28);
-          c.lineTo(-10, 28);
-          c.lineTo(2, 18);  
-          c.lineTo(15, 4);
-          c.closePath();
-          c.fill();
-
-          c.restore();
-        });
-
-        c.restore();
-      },
-
-      // LAYER 11: DOVES (Sitting elegantly on the upper decorative cornice ledge of India Gate)
-      doves: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 2.0) return;
-        const dAlpha = clamp((t - 2.0) * 1.2, 0, 1) * sceneAlpha;
-        c.save();
-        c.globalAlpha = dAlpha;
-
-        if (t >= 2.6) {
-          birds.forEach(b => {
-            if (b.state === 'sitting') {
-              b.state = 'flying';
-              const driftX = b.side === 'left' ? 0.9 : -0.9;
-              b.vx = driftX + (Math.random() - 0.5) * 0.4;
-              b.vy = -1.2 - Math.random() * 0.8;
-            }
-          });
-        }
-
-        birds.forEach(b => {
-          if (b.state === 'flying') {
-            const noiseForceX = noise.n2(elapsed * 0.6, b.noiseSeed) * 0.5;
-            const noiseForceY = noise.n2(elapsed * 0.4, b.noiseSeed + 100) * 0.3;
-            b.vx = clamp(b.vx * 0.98 + noiseForceX, -3, 3);
-            b.vy = clamp(b.vy * 0.98 + noiseForceY, -3, -0.8);
-
-            b.x += b.vx;
-            b.y += b.vy;
-
-            const dutyCycle = Math.sin(elapsed * 3.5 + b.noiseSeed);
-            b.wing += dutyCycle > 0 ? 0.28 : 0.12;
-            b.bank = b.vx * 0.10;
-          }
-
-          c.save();
-          c.translate(b.x, b.y);
-          c.rotate(b.state === 'flying' ? Math.atan2(b.vy, b.vx) + b.bank : 0);
-
-          const scale = 0.52;
-          c.scale(scale, scale);
-
-          if (b.state === 'flying') {
-            const wingFactor = Math.sin(b.wing);
-
-            c.fillStyle = '#d8d8d8';
-            c.beginPath();
-            c.moveTo(-15, 0);
-            c.lineTo(-26, -5 + wingFactor * 2);
-            c.lineTo(-26, 5 - wingFactor * 2);
-            c.closePath();
-            c.fill();
-
-            c.fillStyle = '#ffffff';
-            c.beginPath(); c.ellipse(0, 0, 15, 5, 0, 0, Math.PI * 2); c.fill();
-
-            c.fillStyle = '#ffffff';
-            c.beginPath(); c.arc(13, -2, 4, 0, Math.PI * 2); c.fill();
-            c.fillStyle = '#e29b3c';
-            c.beginPath();
-            c.moveTo(16, -3); c.lineTo(21, -2); c.lineTo(15, -1);
-            c.closePath(); c.fill();
-
-            [-1, 1].forEach(side => {
-              c.save();
-              c.scale(1, side);
-              c.rotate(wingFactor * 0.5 - 0.15);
-              c.fillStyle = '#f0f0f0';
-              c.beginPath();
-              c.moveTo(0, 0); c.lineTo(-7, -15); c.lineTo(-13, -13);
-              c.closePath(); c.fill();
-              c.restore();
-            });
-          } else {
-            const headBob = Math.sin(elapsed * 5.5 + b.noiseSeed) * 1.2;
-            c.fillStyle = '#b5b5b5';
-            c.beginPath();
-            c.moveTo(-10, 2); c.lineTo(-22, 6); c.lineTo(-20, 0);
-            c.closePath(); c.fill();
-
-            c.fillStyle = '#f5f5f5';
-            c.beginPath(); c.ellipse(0, 2, 13, 6.5, 0.1, 0, Math.PI * 2); c.fill();
-
-            c.fillStyle = '#ffffff';
-            c.beginPath(); c.arc(10, -2 + headBob, 4, 0, Math.PI * 2); c.fill();
-          }
-
-          c.restore();
-        });
-
-        c.restore();
-      },
-
-      // LAYER 13: PREMIUM TYPOGRAPHY
-      typography: (t: number) => {
-        if (t < 11.5) return;
-        const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
-
-        c.save();
-        const fontSize = Math.min(W * 0.065, 52);
-        c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
-
-        const title = "HAPPY REPUBLIC DAY";
-        const totalW = c.measureText(title).width;
-        let xOff = W * 0.5 - totalW * 0.5;
-
-        for (let i = 0; i < title.length; i++) {
-          const charW = c.measureText(title[i]).width;
-          const charT = clamp((t - 11.5 - i * 0.035) / 0.4, 0, 1);
-          const charY = titleY + (1 - eOB(charT)) * -15;
-
-          c.save();
-          c.globalAlpha = eOC(charT);
-
-          // Shadow
-          c.fillStyle = 'rgba(0,0,0,0.92)';
-          c.fillText(title[i], xOff + 2, charY + 2);
-
-          // Waving Tricolor Gradient
-          const sweepGrad = c.createLinearGradient(xOff, charY - fontSize * 0.5, xOff, charY + fontSize * 0.38);
-          sweepGrad.addColorStop(0, '#FF9933');
-          sweepGrad.addColorStop(0.48, '#FFFFFF');
-          sweepGrad.addColorStop(0.52, '#FFFFFF');
-          sweepGrad.addColorStop(1, '#138808');
-
-          c.fillStyle = sweepGrad;
-          c.fillText(title[i], xOff, charY);
-          c.restore();
-
-          xOff += charW;
-        }
-
-        if (t > 13.0) {
-          const subAlpha = clamp((t - 13.0) * 2, 0, 1);
-          c.save();
-          c.globalAlpha = subAlpha;
-          c.fillStyle = '#ffd700';
-          c.textAlign = 'center';
-          c.font = `500 ${fontSize * 0.65}px 'Georgia', serif`;
-          c.fillText("जय हिन्द", W * 0.5, titleY + fontSize * 1.1);
-          c.restore();
-        }
-
-        c.restore();
-      },
-
-      // EXTRA LAYER: FESTIVE FIREWORKS
-      fireworks: (sceneAlpha: number) => {
-        c.save();
-        c.globalCompositeOperation = 'lighter';
-        fireworksList.forEach(fw => {
-          if (fw.state === 'rising') {
-            c.fillStyle = 'rgba(255,230,150,0.95)';
-            c.beginPath();
-            c.arc(fw.x, fw.y, 2.5, 0, Math.PI * 2);
-            c.fill();
-          } else {
-            fw.pts.forEach(pt => {
-              const alpha = clamp(pt.life / pt.ml, 0, 1) * sceneAlpha;
-              const fGrad = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pt.sz * 2);
-              fGrad.addColorStop(0, `rgba(${fw.col.r}, ${fw.col.g}, ${fw.col.b}, ${alpha})`);
-              fGrad.addColorStop(1, 'rgba(0,0,0,0)');
-              c.fillStyle = fGrad;
-              c.beginPath();
-              c.arc(pt.x, pt.y, pt.sz * 2, 0, Math.PI * 2);
-              c.fill();
-            });
-          }
-        });
-        c.restore();
-      }
-    };
-
-    /* ═══════════════════════════════════════════════════════════
-       LAYER 10: PARTICLES ENGINE (Dust + Spectacular sky-wide Tricolor Rain)
-       ═══════════════════════════════════════════════════════════ */
-    const spawnParticles = (t: number, elapsed: number) => {
-      // 1. Fog Dust (tp=1: Slow, large, low opacity)
-      if (Math.random() < 0.12) {
-        const p = grab(pl); if (p) {
-          p.on = true; p.x = Math.random() * W; p.y = H * 0.6 + Math.random() * H * 0.3;
-          p.vx = (Math.random() - 0.5) * 0.2; p.vy = -0.05 - Math.random() * 0.05;
-          p.life = 8; p.ml = 8; p.sz = 35 + Math.random() * 40;
-          p.r = 230; p.g = 235; p.b = 245; p.a = 0.05; p.tp = 1;
+        if (c.p2 % (flag.cols + 1) !== 0) {
+          p2.x += offsetX;
+          p2.y += offsetY;
+          p2.z += offsetZ;
         }
       }
+    }
+  };
 
-      // 2. Gold Dust (tp=5: floats upwards with noise turbulence)
-      if (t > 4.0 && Math.random() < 0.4) {
-        const p = grab(pl); if (p) {
-          p.on = true; p.x = Math.random() * W; p.y = H + 10;
-          p.vx = (Math.random() - 0.5) * 0.5; p.vy = -0.4 - Math.random() * 0.7;
-          p.life = 6; p.ml = 6; p.sz = 2.0 + Math.random() * 3.5;
-          p.r = 255; p.g = 215; p.b = 0; p.a = 0.78; p.tp = 5;
+  // Update camera based on timeline
+  const updateCamera = (progress: number, time: number) => {
+    const camera = cameraRef.current;
+    
+    // Breathing effect
+    camera.breathing = Math.sin(time * 0.001) * 0.002;
+    
+    // Micro shake
+    camera.shakeX = Math.sin(time * 0.003) * 0.5 + Math.sin(time * 0.007) * 0.3;
+    camera.shakeY = Math.cos(time * 0.004) * 0.3 + Math.cos(time * 0.006) * 0.2;
+    
+    // Scene-based camera movement
+    if (progress < 0.167) {
+      // Scene 1: Static with subtle breathing
+      camera.x = 0;
+      camera.y = 0;
+      camera.zoom = 1;
+      camera.tilt = 0;
+    } else if (progress < 0.333) {
+      // Scene 2: Slow dolly forward
+      const t = smoothstep(0.167, 0.333, progress);
+      camera.x = lerp(0, 20, t);
+      camera.y = lerp(0, -10, t);
+      camera.zoom = lerp(1, 1.05, t);
+      camera.tilt = lerp(0, -0.02, t);
+    } else if (progress < 0.533) {
+      // Scene 3: Continue dolly, slight tilt up
+      const t = smoothstep(0.333, 0.533, progress);
+      camera.x = lerp(20, 50, t);
+      camera.y = lerp(-10, -20, t);
+      camera.zoom = lerp(1.05, 1.1, t);
+      camera.tilt = lerp(-0.02, -0.03, t);
+    } else if (progress < 0.667) {
+      // Scene 4: Continue dolly
+      const t = smoothstep(0.533, 0.667, progress);
+      camera.x = lerp(50, 80, t);
+      camera.y = lerp(-20, -15, t);
+      camera.zoom = lerp(1.1, 1.15, t);
+      camera.tilt = lerp(-0.03, -0.025, t);
+    } else if (progress < 0.867) {
+      // Scene 5: Continue dolly, prepare for zoom
+      const t = smoothstep(0.667, 0.867, progress);
+      camera.x = lerp(80, 100, t);
+      camera.y = lerp(-15, -5, t);
+      camera.zoom = lerp(1.15, 1.2, t);
+      camera.tilt = lerp(-0.025, -0.01, t);
+    } else {
+      // Scene 6: Push zoom into flag
+      const t = smoothstep(0.867, 1.0, progress);
+      camera.x = lerp(100, 150, t);
+      camera.y = lerp(-5, 0, t);
+      camera.zoom = lerp(1.2, 2.0, t);
+      camera.tilt = lerp(-0.01, 0, t);
+    }
+    
+    // Apply breathing and shake
+    camera.zoom += camera.breathing;
+    camera.x += camera.shakeX;
+    camera.y += camera.shakeY;
+  };
+
+  // Update lighting based on timeline
+  const updateLighting = (progress: number) => {
+    const lighting = lightingRef.current;
+    
+    if (progress < 0.167) {
+      // Scene 1: Night with torch
+      lighting.torchIntensity = 0.8;
+      lighting.ambientIntensity = 0.1;
+      lighting.sunIntensity = 0;
+      lighting.fogDensity = 0.4;
+      lighting.fogColor = { r: 20, g: 30, b: 50 };
+      lighting.exposure = 0.7;
+    } else if (progress < 0.333) {
+      // Scene 2: Torch brighter
+      const t = smoothstep(0.167, 0.333, progress);
+      lighting.torchIntensity = lerp(0.8, 1.0, t);
+      lighting.ambientIntensity = lerp(0.1, 0.15, t);
+      lighting.sunIntensity = 0;
+      lighting.fogDensity = lerp(0.4, 0.35, t);
+      lighting.exposure = lerp(0.7, 0.75, t);
+    } else if (progress < 0.533) {
+      // Scene 3: Sunrise begins
+      const t = smoothstep(0.333, 0.533, progress);
+      lighting.torchIntensity = lerp(1.0, 0.6, t);
+      lighting.ambientIntensity = lerp(0.15, 0.3, t);
+      lighting.sunIntensity = lerp(0, 0.4, t);
+      lighting.sunAngle = lerp(-0.5, -0.3, t);
+      lighting.sunColor = { r: 255, g: lerp(150, 200, t), b: lerp(50, 100, t) };
+      lighting.fogDensity = lerp(0.35, 0.25, t);
+      lighting.fogColor = { r: lerp(20, 60, t), g: lerp(30, 40, t), b: lerp(50, 50, t) };
+      lighting.exposure = lerp(0.75, 0.85, t);
+    } else if (progress < 0.667) {
+      // Scene 4: Sunrise continues
+      const t = smoothstep(0.533, 0.667, progress);
+      lighting.torchIntensity = lerp(0.6, 0.3, t);
+      lighting.ambientIntensity = lerp(0.3, 0.5, t);
+      lighting.sunIntensity = lerp(0.4, 0.7, t);
+      lighting.sunAngle = lerp(-0.3, -0.1, t);
+      lighting.sunColor = { r: 255, g: lerp(200, 220, t), b: lerp(100, 150, t) };
+      lighting.fogDensity = lerp(0.25, 0.2, t);
+      lighting.fogColor = { r: lerp(60, 100, t), g: lerp(40, 60, t), b: lerp(50, 50, t) };
+      lighting.exposure = lerp(0.85, 0.95, t);
+    } else if (progress < 0.867) {
+      // Scene 5: Full morning light
+      const t = smoothstep(0.667, 0.867, progress);
+      lighting.torchIntensity = lerp(0.3, 0.1, t);
+      lighting.ambientIntensity = lerp(0.5, 0.7, t);
+      lighting.sunIntensity = lerp(0.7, 1.0, t);
+      lighting.sunAngle = lerp(-0.1, 0.1, t);
+      lighting.sunColor = { r: 255, g: lerp(220, 240, t), b: lerp(150, 200, t) };
+      lighting.fogDensity = lerp(0.2, 0.15, t);
+      lighting.fogColor = { r: lerp(100, 140, t), g: lerp(60, 80, t), b: lerp(50, 60, t) };
+      lighting.exposure = lerp(0.95, 1.0, t);
+      lighting.backLightIntensity = lerp(0, 0.3, t);
+      lighting.rimLightIntensity = lerp(0, 0.5, t);
+    } else {
+      // Scene 6: Strong backlight
+      const t = smoothstep(0.867, 1.0, progress);
+      lighting.torchIntensity = lerp(0.1, 0, t);
+      lighting.ambientIntensity = lerp(0.7, 0.8, t);
+      lighting.sunIntensity = lerp(1.0, 1.2, t);
+      lighting.sunAngle = lerp(0.1, 0.2, t);
+      lighting.sunColor = { r: 255, g: lerp(240, 250, t), b: lerp(200, 230, t) };
+      lighting.fogDensity = lerp(0.15, 0.1, t);
+      lighting.fogColor = { r: lerp(140, 180, t), g: lerp(80, 100, t), b: lerp(60, 70, t) };
+      lighting.exposure = lerp(1.0, 1.1, t);
+      lighting.backLightIntensity = lerp(0.3, 0.6, t);
+      lighting.rimLightIntensity = lerp(0.5, 0.8, t);
+    }
+  };
+
+  // Update particles
+  const updateParticles = (progress: number, time: number, width: number, height: number) => {
+    const particles = particlesRef.current;
+    
+    // Activate particles based on scene
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      
+      if (!p.on) {
+        // Activate particles based on scene
+        if (progress > 0.333 && p.tp === 0 && Math.random() < 0.02) {
+          // Golden dust in scene 3+
+          p.on = true;
+          p.life = 0;
+          p.x = randomRange(0, width);
+          p.y = randomRange(height * 0.4, height * 0.9);
+          p.vx = randomRange(-0.3, 0.3);
+          p.vy = randomRange(-0.5, -0.1);
+        } else if (progress > 0.533 && p.tp === 1 && Math.random() < 0.01) {
+          // Embers in scene 4+
+          p.on = true;
+          p.life = 0;
+          p.x = randomRange(width * 0.2, width * 0.8);
+          p.y = height * 0.8;
+          p.vx = randomRange(-0.2, 0.2);
+          p.vy = randomRange(-1.5, -0.5);
+        } else if (progress > 0.667 && p.tp === 2 && Math.random() < 0.01) {
+          // Lens dust in scene 5+
+          p.on = true;
+          p.life = 0;
+          p.x = randomRange(0, width);
+          p.y = randomRange(0, height);
+          p.vx = randomRange(-0.1, 0.1);
+          p.vy = randomRange(-0.1, 0.1);
+        } else if (progress > 0.667 && p.tp === 3 && Math.random() < 0.015) {
+          // Confetti in scene 5+
+          p.on = true;
+          p.life = 0;
+          p.x = randomRange(0, width);
+          p.y = -10;
+          p.vx = randomRange(-1, 1);
+          p.vy = randomRange(0.5, 1.5);
+          p.confettiColor = randomInt(0, 2);
+        } else if (progress > 0.667 && p.tp === 4 && Math.random() < 0.02) {
+          // Sparkles in scene 5+
+          p.on = true;
+          p.life = 0;
+          p.x = randomRange(0, width);
+          p.y = randomRange(0, height);
+          p.vx = 0;
+          p.vy = 0;
+        } else if (progress > 0.533 && p.tp === 5 && Math.random() < 0.005) {
+          // Bokeh in scene 4+
+          p.on = true;
+          p.life = 0;
+          p.x = randomRange(0, width);
+          p.y = randomRange(0, height);
+          p.vx = randomRange(-0.05, 0.05);
+          p.vy = randomRange(-0.05, 0.05);
+          p.bokehRadius = randomRange(10, 30);
+          p.bokehAperture = randomRange(4, 10);
         }
-      }
-
-      // 3. Solar Particles (tp=6: diagonally drifting glowing rays)
-      if (t > 5.0 && Math.random() < 0.3) {
-        const p = grab(pl); if (p) {
-          p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 100; p.y = baseY - gateH * 0.4;
-          p.vx = 1.5 + Math.random() * 2.0; p.vy = 1.0 + Math.random() * 1.5;
-          p.life = 4; p.ml = 4; p.sz = 3.0 + Math.random() * 4.0;
-          p.r = 255; p.g = 245; p.b = 200; p.a = 0.9; p.tp = 6;
-        }
-      }
-
-      // 4. Tricolor Confetti (Fades/Spawns strictly AFTER Jets cross the screen at t >= 5.5s)
-      if (t >= 5.5 && t < 11.5) {
-        const rainCount = 1; // FIX: Reduced density (was 4) to keep scene incredibly elegant & clean
-        for (let i = 0; i < rainCount; i++) {
-          const p = grab(pl); if (p) {
-            p.on = true; p.x = Math.random() * W; p.y = -20 - Math.random() * 30; // Random offset to prevent clumping
-            p.vx = (Math.random() - 0.5) * 0.2; // Tiny lateral drift
-            p.vy = 1.8 + Math.random() * 1.8; // Steady rainfall descent
-            p.life = 6; p.ml = 6; p.sz = 5 + Math.random() * 4; // Variegated Size strictly between 5px and 9px
-            p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.08;
-            const rand = Math.random();
-            if (rand < 0.34) { p.r = 255; p.g = 153; p.b = 51; }
-            else if (rand < 0.67) { p.r = 255; p.g = 255; p.b = 255; }
-            else { p.r = 19; p.g = 136; p.b = 8; }
-            p.a = 0.9; p.tp = 2;
-          }
-        }
-      }
-
-      // 5. Torch Embers (tp=3: hot orange, rising quickly near the flame)
-      if (t > 2.0 && Math.random() < 0.25) {
-        const p = grab(pl); if (p) {
-          p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = H * 0.795;
-          p.vx = (Math.random() - 0.5) * 0.6; p.vy = -1.2 - Math.random() * 1.8;
-          p.life = 2.5; p.ml = 2.5; p.sz = 1.0 + Math.random() * 2.0;
-          p.r = 255; p.g = 120 + Math.random() * 80; p.b = 30; p.a = 0.95; p.tp = 3;
-        }
-      }
-    };
-
-    const updateParticles = (dt: number, elapsed: number) => {
-      for (let i = 0; i < pl.length; i++) {
-        const p = pl[i]; if (!p.on) continue;
-        p.life -= dt;
-
-        if (p.tp === 4) { // Smoke
-          p.x += p.vx; p.y += p.vy;
-          p.sz += 0.45; p.vx *= 0.985; p.vy *= 0.985;
-        } else if (p.tp === 2) { // Confetti falling with wind drift
-          p.vy += 0.050; // High gravity pull downwards
-          p.vy *= 0.980; // High terminal velocity drag
-          p.vx = p.vx * 0.92 + Math.sin(elapsed * 0.6 + p.y * 0.015) * 0.015; // Extremely reduced 10x smaller sway
-          p.x += p.vx; p.y += p.vy;
-          p.rot += p.rs;
-        } else if (p.tp === 5) { // Gold Dust (FBM flow noise)
-          p.vy *= 0.99;
-          p.vx = p.vx * 0.95 + noise.n2(elapsed * 0.5 + p.y * 0.01, p.turbOff) * 0.15;
-          p.x += p.vx; p.y += p.vy;
-        } else if (p.tp === 6) { // Solar (straight fast diagonal)
-          p.x += p.vx; p.y += p.vy;
-        } else { // Fog and Embers
-          p.x += p.vx; p.y += p.vy;
-        }
-
-        if (p.life <= 0 || p.x < -120 || p.x > W + 120 || p.y > H + 120) p.on = false;
-      }
-    };
-
-    const drawParticles = () => {
-      for (let i = 0; i < pl.length; i++) {
-        const p = pl[i]; if (!p.on) continue;
-        const alpha = clamp(p.life / p.ml, 0, 1) * p.a;
-
-        c.save();
-        c.globalAlpha = alpha;
-
-        if (p.tp === 4) { // Jet Smoke Renderer
-          c.globalCompositeOperation = 'screen';
-          const smokeGrad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz);
-          smokeGrad.addColorStop(0, `rgba(${p.r},${p.g},${p.b},0.35)`);
-          smokeGrad.addColorStop(1, 'rgba(0,0,0,0)');
-          c.fillStyle = smokeGrad;
-          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
-        } else if (p.tp === 2) { // Confetti solid shape renderer
-          c.translate(p.x, p.y);
-          c.rotate(p.rot);
-          c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
-          c.fillRect(-p.sz / 2, -p.sz / 4, p.sz, p.sz / 2);
-        } else if (p.tp === 5) { // Gold Dust sparkles (highly bright)
-          c.globalCompositeOperation = 'lighter';
-          c.fillStyle = `rgba(255, 215, 0, ${alpha})`;
-          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
-        } else if (p.tp === 6) { // Solar Particles (radiant diagonal streaks)
-          c.globalCompositeOperation = 'screen';
-          c.strokeStyle = `rgba(255, 230, 160, ${alpha * 0.4})`;
-          c.lineWidth = p.sz * 0.5;
-          c.beginPath();
-          c.moveTo(p.x, p.y);
-          c.lineTo(p.x - p.vx * 3, p.y - p.vy * 3);
-          c.stroke();
-        } else { // Embers & Fog Dust
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
-          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
-        }
-
-        c.restore();
-      }
-    };
-
-    // CHROMATIC ABERRATION
-    const drawChromaticAberration = () => {
-      c.save();
-      c.globalCompositeOperation = 'screen';
-      c.globalAlpha = 0.015;
-      c.drawImage(cv, -1.5, 0, W, H);
-      c.globalAlpha = 0.012;
-      c.drawImage(cv, 1.5, 0, W, H);
-      c.restore();
-    };
-
-    // POST FX (Film Grain & Vignette)
-    const drawPostFX = () => {
-      c.save();
-      c.globalCompositeOperation = 'soft-light';
-      const grade = c.createLinearGradient(0, 0, W, H);
-      grade.addColorStop(0, 'rgba(255, 140, 50, 0.18)');
-      grade.addColorStop(1, 'rgba(0, 50, 100, 0.25)');
-      c.fillStyle = grade; c.fillRect(0, 0, W, H);
-      c.restore();
-
-      const vignette = c.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.9);
-      vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.85)');
-      c.fillStyle = vignette; c.fillRect(0, 0, W, H);
-
-      c.save();
-      c.globalCompositeOperation = 'overlay';
-      c.globalAlpha = 0.03;
-      const pat = c.createPattern(grainCv, 'repeat');
-      if (pat) { c.fillStyle = pat; c.fillRect(0, 0, W, H); }
-      c.restore();
-    };
-
-    /* ═══════════════════════════════════════════════════════════
-       ANIMATION LOOP (Cinematic Cameras and Handheld breathe)
-       ═══════════════════════════════════════════════════════════ */
-    let prevTime = 0;
-    let fwTimer = 0;
-
-    const loop = (now: number) => {
-      if (!t0.current) { t0.current = now; prevTime = now; }
-      const t = (now - t0.current) / 1000;
-      const dt = Math.min((now - prevTime) / 1000, 0.05);
-      prevTime = now;
-
-      // FIX: End timeline exactly at 17.5s (3 seconds on white screen completed)
-      if (t >= DUR) {
-        if (!done.current) { done.current = true; cbR.current?.(); }
-        return;
-      }
-
-      // Spawns Festive fireworks strictly AFTER jets fly past (t >= 5.5s)
-      if (t >= 5.5 && t < 11.5) {
-        fwTimer += dt;
-        if (fwTimer > 0.8 + Math.random() * 0.6) {
-          spawnFirework();
-          fwTimer = 0;
-        }
-      }
-      updateFireworks(dt);
-
-      spawnParticles(t, now / 1000);
-      updateParticles(dt, now / 1000);
-
-      c.fillStyle = '#000000';
-      c.fillRect(0, 0, W, H);
-
-      // Cinematic Camera: Handheld breathing & shake decay
-      cameraShake *= 0.92; // Decay factor
-      const camDollyZ = lerp(1.0, 1.10, eOE(t / DUR)); // Ultra-slow dolly zoom
-      const breatheX = Math.sin(t * 0.4) * 2 + (Math.random() - 0.5) * cameraShake;
-      const breatheY = Math.cos(t * 0.3) * 1.5 + (Math.random() - 0.5) * cameraShake;
-      const camRot = Math.sin(t * 0.15) * 0.003;
-
-      c.save();
-      c.translate(W / 2 + breatheX, H / 2 + breatheY);
-      c.rotate(camRot);
-      c.scale(camDollyZ, camDollyZ);
-      c.translate(-W / 2, -H / 2);
-
-      const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
-
-      // Layer Assembly Sequence via encapsulated renderer object (Secure Reference Binding)
-      renderer.sky(t, sceneAlpha);
-      renderer.stars(t, sceneAlpha);
-      renderer.wavingFlagAndChakra(t, now / 1000, sceneAlpha);
-      renderer.indiaGate(t, sceneAlpha);
-      renderer.volumetricLighting(t, sceneAlpha); // UEFI-style god rays
-      renderer.torch(t, now / 1000, sceneAlpha);
-      renderer.jetsAndTrails(t, sceneAlpha);
-      drawParticles();
-      renderer.fireworks(sceneAlpha); // Back-end Fireworks bursting after jets exit
-      renderer.doves(t, now / 1000, sceneAlpha);
-
-      c.restore();
-
-      // EPIC ENDING TRANSITION: Solid tricolor backdrop expansion (t >= 11.5s)
-      if (t >= 11.5 && t < 14.5) {
-        const bgFade = clamp((t - 11.5) * 1.8, 0, 1);
-        c.save();
-        c.globalAlpha = bgFade;
-        const bgGrad = c.createLinearGradient(0, 0, 0, H);
-        bgGrad.addColorStop(0, '#060810');
-        bgGrad.addColorStop(1, '#0c101c');
-        c.fillStyle = bgGrad;
-        c.fillRect(0, 0, W, H);
-        c.restore();
-      }
-
-      renderer.typography(t);
-      drawChromaticAberration();
-      drawPostFX();
-
-      // ─── MASTER CLIMAX TRANSITION: 14.5s Pure White Screen & 3-second Ashoka Chakra Hold ───
-      if (t >= 14.5) {
-        const whiteFadeAlpha = clamp((t - 14.5) * 1.8, 0, 1); // 0.5s ultra smooth fade
-        c.save();
-        c.globalAlpha = whiteFadeAlpha;
-        c.fillStyle = '#FFFFFF';
-        c.fillRect(0, 0, W, H);
-
-        // Center display the majestic high-fidelity Navy Blue Ashoka Chakra
-        const chakraRadius = Math.min(W, H) * 0.16;
-        c.translate(W * 0.5, H * 0.5);
+      } else {
+        // Update active particles
+        p.life++;
         
-        // Slow organic rotation
-        c.rotate((t - 14.5) * 0.25);
-
-        c.strokeStyle = '#000080';
-        c.lineWidth = 6;
-        c.beginPath();
-        c.arc(0, 0, chakraRadius, 0, Math.PI * 2);
-        c.stroke();
-
-        c.lineWidth = 3;
-        c.beginPath();
-        c.arc(0, 0, chakraRadius * 0.84, 0, Math.PI * 2);
-        c.stroke();
-
-        // 24 Spokes
-        c.lineWidth = 2.5;
-        for (let i = 0; i < 24; i++) {
-          const ang = (i / 24) * Math.PI * 2;
-          c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(Math.cos(ang) * chakraRadius * 0.84, Math.sin(ang) * chakraRadius * 0.84);
-          c.stroke();
+        // Apply turbulence
+        const turbulenceX = Math.sin(time * 0.002 + p.turbOff) * 0.1;
+        const turbulenceY = Math.cos(time * 0.003 + p.turbOff) * 0.1;
+        
+        // Update position
+        p.x += p.vx + turbulenceX;
+        p.y += p.vy + turbulenceY;
+        p.rot += p.rs;
+        
+        // Special behavior for different particle types
+        if (p.tp === 1) { // Embers
+          p.vx += Math.sin(time * 0.005 + p.turbOff) * 0.02;
+          p.sz = lerp(p.sz, 0.5, 0.01);
+        } else if (p.tp === 3) { // Confetti
+          p.vx += Math.sin(time * 0.003 + p.turbOff) * 0.05;
+          p.vy += 0.01; // Gravity
+        } else if (p.tp === 4) { // Sparkles
+          p.sparklePhase += 0.1;
         }
-
-        c.fillStyle = '#000080';
-        c.beginPath();
-        c.arc(0, 0, chakraRadius * 0.18, 0, Math.PI * 2);
-        c.fill();
-
-        c.restore();
+        
+        // Reset if life exceeded
+        if (p.life > p.ml || p.y > height + 10 || p.x < -10 || p.x > width + 10) {
+          p.on = false;
+        }
       }
+    }
+  };
 
-      raf.current = requestAnimationFrame(loop);
+  // Update birds
+  const updateBirds = (progress: number, time: number, width: number, height: number) => {
+    if (progress < 0.667) return; // Birds only in scene 5+
+    
+    const birds = birdsRef.current;
+    const birdVisibility = smoothstep(0.667, 0.7, progress);
+    
+    for (const bird of birds) {
+      // Update wing animation
+      bird.wingPhase += bird.wingSpeed * 0.016;
+      
+      // Update position
+      bird.x += bird.vx * birdVisibility;
+      bird.y += bird.vy + Math.sin(time * 0.001 + bird.wingPhase) * 0.2;
+      
+      // Reset if off screen
+      if (bird.x > width + 100) {
+        bird.x = -100;
+        bird.y = randomRange(height * 0.2, height * 0.5);
+        bird.vx = randomRange(0.5, 1.5);
+      }
+    }
+  };
+
+  // Update Sukhois
+  const updateSukhois = (progress: number, time: number, width: number, height: number) => {
+    if (progress < 0.667 || progress > 0.867) return; // Sukhois only in scene 5
+    
+    const sukhois = sukhoisRef.current;
+    const jetVisibility = smoothstep(0.667, 0.7, progress) * (1 - smoothstep(0.83, 0.867, progress));
+    
+    for (const jet of sukhois) {
+      // Update position
+      jet.x += jet.vx * jetVisibility;
+      jet.y += jet.vy * jetVisibility;
+      
+      // Add to trail
+      if (jetVisibility > 0.1) {
+        jet.trail.push({ x: jet.x, y: jet.y, a: 1 });
+        
+        // Limit trail length
+        if (jet.trail.length > 100) {
+          jet.trail.shift();
+        }
+      }
+      
+      // Fade trail
+      for (const point of jet.trail) {
+        point.a *= 0.98;
+      }
+      
+      // Remove faded points
+      jet.trail = jet.trail.filter(point => point.a > 0.01);
+      
+      // Afterburner flicker
+      jet.afterburner = 0.7 + Math.sin(time * 0.02 + jet.depth * 10) * 0.3;
+      
+      // Reset if off screen
+      if (jet.x > width + 200) {
+        jet.x = -300;
+        jet.y = height * 0.15 + randomRange(-30, 30);
+        jet.trail = [];
+      }
+    }
+  };
+
+  // Update fog layers
+  const updateFogLayers = (progress: number, time: number, width: number) => {
+    const fogLayers = fogLayersRef.current;
+    const fogVisibility = 1 - smoothstep(0.867, 1.0, progress);
+    
+    for (const fog of fogLayers) {
+      // Move fog
+      fog.x += fog.speed * fogVisibility;
+      
+      // Add turbulence
+      const turbulence = Math.sin(time * 0.001 * fog.turbulence) * 20;
+      
+      // Reset if off screen
+      if (fog.x > width + fog.width) {
+        fog.x = -fog.width + turbulence;
+        fog.y += randomRange(-20, 20);
+      }
+    }
+  };
+
+  // Draw sky
+  const drawSky = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    // Night sky for scene 1-2
+    if (progress < 0.333) {
+      const nightOpacity = 1 - smoothstep(0.167, 0.333, progress) * 0.5;
+      const gradient = createGradient(ctx, 0, 0, 0, height, [
+        { pos: 0, color: `rgba(10, 15, 40, ${nightOpacity})` },
+        { pos: 0.5, color: `rgba(15, 25, 60, ${nightOpacity})` },
+        { pos: 1, color: `rgba(20, 30, 50, ${nightOpacity})` }
+      ]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+    }
+    
+    // Sunrise sky for scene 3-4
+    if (progress > 0.333 && progress < 0.667) {
+      const t = smoothstep(0.333, 0.667, progress);
+      const gradient = createGradient(ctx, 0, 0, 0, height, [
+        { pos: 0, color: `rgba(${lerp(10, 40, t)}, ${lerp(15, 50, t)}, ${lerp(40, 80, t)}, 1)` },
+        { pos: 0.4, color: `rgba(${lerp(15, 80, t)}, ${lerp(25, 60, t)}, ${lerp(60, 70, t)}, 1)` },
+        { pos: 0.7, color: `rgba(${lerp(20, 180, t)}, ${lerp(30, 100, t)}, ${lerp(50, 50, t)}, 1)` },
+        { pos: 1, color: `rgba(${lerp(20, 220, t)}, ${lerp(30, 150, t)}, ${lerp(50, 80, t)}, 1)` }
+      ]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+    }
+    
+    // Morning sky for scene 5-6
+    if (progress >= 0.667) {
+      const t = smoothstep(0.667, 0.867, progress);
+      const gradient = createGradient(ctx, 0, 0, 0, height, [
+        { pos: 0, color: `rgba(${lerp(40, 70, t)}, ${lerp(50, 100, t)}, ${lerp(80, 150, t)}, 1)` },
+        { pos: 0.4, color: `rgba(${lerp(80, 120, t)}, ${lerp(60, 90, t)}, ${lerp(70, 80, t)}, 1)` },
+        { pos: 0.7, color: `rgba(${lerp(180, 220, t)}, ${lerp(100, 140, t)}, ${lerp(50, 60, t)}, 1)` },
+        { pos: 1, color: `rgba(${lerp(220, 250, t)}, ${lerp(150, 180, t)}, ${lerp(80, 90, t)}, 1)` }
+      ]);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+    }
+    
+    // Stars (only in night scenes)
+    if (progress < 0.533) {
+      const starOpacity = 1 - smoothstep(0.333, 0.533, progress);
+      drawStars(ctx, time, starOpacity);
+    }
+    
+    // Moon (only in night scenes)
+    if (progress < 0.533) {
+      const moonOpacity = 1 - smoothstep(0.333, 0.533, progress);
+      drawMoon(ctx, width, height, moonOpacity);
+    }
+    
+    // Sun (appears in scene 3+)
+    if (progress > 0.333) {
+      const sunOpacity = smoothstep(0.333, 0.533, progress);
+      drawSun(ctx, width, height, progress, time, sunOpacity);
+    }
+  };
+
+  // Draw stars
+  const drawStars = (ctx: CanvasRenderingContext2D, time: number, opacity: number) => {
+    const stars = starsRef.current;
+    
+    for (const star of stars) {
+      const twinkle = Math.sin(time * 0.001 * star.tw + star.tp) * 0.3 + 0.7;
+      const alpha = star.br * twinkle * opacity;
+      
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.sz, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 240, ${alpha})`;
+      ctx.fill();
+      
+      // Add glow to brighter stars
+      if (star.sz > 1.5) {
+        const glow = createRadialGradient(ctx, star.x, star.y, 0, star.x, star.y, star.sz * 3, [
+          { pos: 0, color: `rgba(255, 255, 240, ${alpha * 0.5})` },
+          { pos: 1, color: `rgba(255, 255, 240, 0)` }
+        ]);
+        ctx.fillStyle = glow;
+        ctx.fillRect(star.x - star.sz * 3, star.y - star.sz * 3, star.sz * 6, star.sz * 6);
+      }
+    }
+  };
+
+  // Draw moon
+  const drawMoon = (ctx: CanvasRenderingContext2D, width: number, height: number, opacity: number) => {
+    const moonX = width * 0.8;
+    const moonY = height * 0.15;
+    const moonRadius = 30;
+    
+    // Moon glow
+    const glow = createRadialGradient(ctx, moonX, moonY, moonRadius * 0.8, moonX, moonY, moonRadius * 4, [
+      { pos: 0, color: `rgba(200, 210, 230, ${0.2 * opacity})` },
+      { pos: 1, color: `rgba(200, 210, 230, 0)` }
+    ]);
+    ctx.fillStyle = glow;
+    ctx.fillRect(moonX - moonRadius * 4, moonY - moonRadius * 4, moonRadius * 8, moonRadius * 8);
+    
+    // Moon body
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(220, 225, 235, ${opacity})`;
+    ctx.fill();
+    
+    // Moon craters
+    ctx.beginPath();
+    ctx.arc(moonX - 8, moonY - 5, 5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200, 205, 215, ${opacity * 0.7})`;
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.arc(moonX + 10, moonY + 8, 7, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200, 205, 215, ${opacity * 0.7})`;
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.arc(moonX + 5, moonY - 12, 4, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200, 205, 215, ${opacity * 0.7})`;
+    ctx.fill();
+  };
+
+  // Draw sun
+  const drawSun = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number, opacity: number) => {
+    const sunProgress = smoothstep(0.333, 0.667, progress);
+    const sunX = lerp(width * 0.3, width * 0.5, sunProgress);
+    const sunY = lerp(height * 0.8, height * 0.6, sunProgress);
+    const sunRadius = 40;
+    
+    // God rays
+    if (progress > 0.4) {
+      const rayOpacity = smoothstep(0.4, 0.6, progress) * opacity * 0.3;
+      ctx.save();
+      ctx.translate(sunX, sunY);
+      ctx.rotate(time * 0.0001);
+      
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const rayLength = sunRadius * 8;
+        const rayWidth = sunRadius * 0.3;
+        
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(
+          Math.cos(angle - 0.05) * rayLength,
+          Math.sin(angle - 0.05) * rayLength
+        );
+        ctx.lineTo(
+          Math.cos(angle + 0.05) * rayLength,
+          Math.sin(angle + 0.05) * rayLength
+        );
+        ctx.closePath();
+        
+        const rayGradient = createRadialGradient(ctx, 0, 0, sunRadius, 0, 0, rayLength, [
+          { pos: 0, color: `rgba(255, 200, 100, ${rayOpacity})` },
+          { pos: 1, color: `rgba(255, 200, 100, 0)` }
+        ]);
+        ctx.fillStyle = rayGradient;
+        ctx.fill();
+      }
+      
+      ctx.restore();
+    }
+    
+    // Sun glow
+    const glow = createRadialGradient(ctx, sunX, sunY, sunRadius * 0.5, sunX, sunY, sunRadius * 5, [
+      { pos: 0, color: `rgba(255, 200, 100, ${0.4 * opacity})` },
+      { pos: 0.5, color: `rgba(255, 150, 50, ${0.1 * opacity})` },
+      { pos: 1, color: `rgba(255, 100, 0, 0)` }
+    ]);
+    ctx.fillStyle = glow;
+    ctx.fillRect(sunX - sunRadius * 5, sunY - sunRadius * 5, sunRadius * 10, sunRadius * 10);
+    
+    // Sun body
+    const sunBody = createRadialGradient(ctx, sunX, sunY, 0, sunX, sunY, sunRadius, [
+      { pos: 0, color: `rgba(255, 255, 200, ${opacity})` },
+      { pos: 0.7, color: `rgba(255, 220, 150, ${opacity})` },
+      { pos: 1, color: `rgba(255, 180, 100, ${opacity * 0.8})` }
+    ]);
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2);
+    ctx.fillStyle = sunBody;
+    ctx.fill();
+    
+    // Lens flare (only in scene 5+)
+    if (progress > 0.667) {
+      const flareOpacity = smoothstep(0.667, 0.7, progress) * opacity * 0.5;
+      drawLensFlare(ctx, sunX, sunY, width, height, time, flareOpacity);
+    }
+  };
+
+  // Draw lens flare
+  const drawLensFlare = (ctx: CanvasRenderingContext2D, sunX: number, sunY: number, width: number, height: number, time: number, opacity: number) => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    // Flare elements between sun and center
+    const flareCount = 5;
+    for (let i = 1; i <= flareCount; i++) {
+      const t = i / (flareCount + 1);
+      const x = lerp(sunX, centerX, t);
+      const y = lerp(sunY, centerY, t);
+      const size = (1 - t) * 30 + 10;
+      
+      const flare = createRadialGradient(ctx, x, y, 0, x, y, size, [
+        { pos: 0, color: `rgba(255, 200, 100, ${opacity * (1 - t * 0.7)})` },
+        { pos: 0.5, color: `rgba(255, 150, 50, ${opacity * (1 - t * 0.7) * 0.5})` },
+        { pos: 1, color: `rgba(255, 100, 0, 0)` }
+      ]);
+      
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fillStyle = flare;
+      ctx.fill();
+    }
+    
+    // Anamorphic streak
+    ctx.save();
+    ctx.globalAlpha = opacity * 0.3;
+    ctx.beginPath();
+    ctx.ellipse(sunX, sunY, 200, 5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 200, 100, 0.5)';
+    ctx.fill();
+    ctx.restore();
+  };
+
+  // Draw fog layers
+  const drawFog = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    const fogLayers = fogLayersRef.current;
+    const lighting = lightingRef.current;
+    const fogVisibility = 1 - smoothstep(0.867, 1.0, progress);
+    
+    for (const fog of fogLayers) {
+      const opacity = fog.opacity * fogVisibility * lighting.fogDensity * 2;
+      const turbulence = Math.sin(time * 0.001 * fog.turbulence) * 20;
+      
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      
+      const fogGradient = createRadialGradient(
+        ctx, 
+        fog.x + fog.width / 2, 
+        fog.y + fog.height / 2, 
+        0,
+        fog.x + fog.width / 2, 
+        fog.y + fog.height / 2, 
+        fog.width / 2
+      );
+      
+      fogGradient.addColorStop(0, `rgba(${lighting.fogColor.r}, ${lighting.fogColor.g}, ${lighting.fogColor.b}, 0.8)`);
+      fogGradient.addColorStop(0.7, `rgba(${lighting.fogColor.r}, ${lighting.fogColor.g}, ${lighting.fogColor.b}, 0.3)`);
+      fogGradient.addColorStop(1, `rgba(${lighting.fogColor.r}, ${lighting.fogColor.g}, ${lighting.fogColor.b}, 0)`);
+      
+      ctx.fillStyle = fogGradient;
+      ctx.fillRect(fog.x + turbulence, fog.y, fog.width, fog.height);
+      
+      ctx.restore();
+    }
+  };
+
+  // Draw India Gate
+  const drawIndiaGate = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    // India Gate visibility
+    const visibility = smoothstep(0.167, 0.333, progress);
+    if (visibility <= 0) return;
+    
+    const lighting = lightingRef.current;
+    const camera = cameraRef.current;
+    
+    // Calculate position with camera transform
+    const gateX = width * 0.5 + camera.x;
+    const gateY = height * 0.4 + camera.y;
+    const gateScale = camera.zoom;
+    
+    ctx.save();
+    ctx.globalAlpha = visibility;
+    ctx.translate(gateX, gateY);
+    ctx.scale(gateScale, gateScale);
+    
+    // Apply tilt
+    ctx.transform(1, camera.tilt, 0, 1, 0, 0);
+    
+    // Main gate dimensions
+    const gateWidth = 300;
+    const gateHeight = 200;
+    const archWidth = 120;
+    const archHeight = 150;
+    const pillarWidth = 40;
+    const pillarHeight = gateHeight + 30;
+    const canopyWidth = gateWidth + 40;
+    const canopyHeight = 30;
+    
+    // Calculate lighting
+    const torchLightX = -gateWidth / 2 - 20;
+    const torchLightY = -pillarHeight / 2;
+    const sunLightX = Math.cos(lighting.sunAngle) * 100;
+    const sunLightY = Math.sin(lighting.sunAngle) * 100;
+    
+    // Ground shadow
+    ctx.save();
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * (lighting.sunIntensity + lighting.torchIntensity * 0.3)})`;
+    ctx.beginPath();
+    ctx.ellipse(0, pillarHeight / 2 + 20, gateWidth * 0.7, 30, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    
+    // Steps
+    for (let i = 0; i < 5; i++) {
+      const stepWidth = gateWidth + 40 + i * 10;
+      const stepHeight = 8;
+      const stepY = pillarHeight / 2 - i * stepHeight;
+      
+      ctx.fillStyle = `rgb(${180 - i * 5}, ${160 - i * 5}, ${130 - i * 5})`;
+      ctx.fillRect(-stepWidth / 2, stepY, stepWidth, stepHeight);
+      
+      // Step shadow
+      ctx.fillStyle = `rgba(0, 0, 0, ${0.1 + i * 0.02})`;
+      ctx.fillRect(-stepWidth / 2, stepY + stepHeight - 2, stepWidth, 2);
+    }
+    
+    // Left pillar
+    drawPillar(ctx, -gateWidth / 2, -pillarHeight / 2, pillarWidth, pillarHeight, lighting, torchLightX, torchLightY, sunLightX, sunLightY);
+    
+    // Right pillar
+    drawPillar(ctx, gateWidth / 2 - pillarWidth, -pillarHeight / 2, pillarWidth, pillarHeight, lighting, torchLightX, torchLightY, sunLightX, sunLightY);
+    
+    // Arch
+    drawArch(ctx, 0, 0, archWidth, archHeight, lighting, torchLightX, torchLightY, sunLightX, sunLightY);
+    
+    // Top canopy
+    drawCanopy(ctx, 0, -pillarHeight / 2 - canopyHeight, canopyWidth, canopyHeight, lighting, torchLightX, torchLightY, sunLightX, sunLightY);
+    
+    // Stone carvings and details
+    drawStoneDetails(ctx, 0, 0, gateWidth, gateHeight, archWidth, archHeight, lighting, time);
+    
+    ctx.restore();
+  };
+
+  // Draw a pillar with lighting
+  const drawPillar = (
+    ctx: CanvasRenderingContext2D, 
+    x: number, y: number, 
+    width: number, height: number,
+    lighting: Lighting,
+    torchLightX: number, torchLightY: number,
+    sunLightX: number, sunLightY: number
+  ) => {
+    // Base color
+    const baseR = 200;
+    const baseG = 180;
+    const baseB = 150;
+    
+    // Calculate lighting influence
+    const torchDist = Math.sqrt((x + width/2 - torchLightX) ** 2 + (y + height/2 - torchLightY) ** 2);
+    const torchInfluence = Math.max(0, 1 - torchDist / 300) * lighting.torchIntensity;
+    
+    const sunInfluence = lighting.sunIntensity;
+    const ambientInfluence = lighting.ambientIntensity;
+    
+    // Final color
+    const r = clamp(baseR * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.8), 0, 255);
+    const g = clamp(baseG * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.6), 0, 255);
+    const b = clamp(baseB * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.5), 0, 255);
+    
+    // Main pillar body
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(x, y, width, height);
+    
+    // Pillar gradient for depth
+    const pillarGradient = createGradient(ctx, x, y, x + width, y, [
+      { pos: 0, color: `rgba(0, 0, 0, 0.2)` },
+      { pos: 0.3, color: `rgba(255, 255, 255, 0.1)` },
+      { pos: 0.7, color: `rgba(0, 0, 0, 0.05)` },
+      { pos: 1, color: `rgba(0, 0, 0, 0.3)` }
+    ]);
+    ctx.fillStyle = pillarGradient;
+    ctx.fillRect(x, y, width, height);
+    
+    // Pillar edges
+    ctx.strokeStyle = `rgba(0, 0, 0, 0.3)`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, width, height);
+    
+    // Stone texture
+    for (let i = 0; i < height; i += 20) {
+      ctx.strokeStyle = `rgba(0, 0, 0, 0.05)`;
+      ctx.beginPath();
+      ctx.moveTo(x, y + i);
+      ctx.lineTo(x + width, y + i);
+      ctx.stroke();
+    }
+    
+    // Torch light highlight
+    if (torchInfluence > 0.1) {
+      const highlight = createRadialGradient(
+        ctx, 
+        torchLightX, torchLightY, 0,
+        torchLightX, torchLightY, 200
+      );
+      highlight.addColorStop(0, `rgba(255, 150, 50, ${torchInfluence * 0.3})`);
+      highlight.addColorStop(1, `rgba(255, 150, 50, 0)`);
+      
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = highlight;
+      ctx.fillRect(x, y, width, height);
+      ctx.restore();
+    }
+    
+    // Sun light highlight
+    if (sunInfluence > 0.3) {
+      const sunHighlight = createRadialGradient(
+        ctx,
+        x + width + sunLightX, y + height / 2 + sunLightY, 0,
+        x + width + sunLightX, y + height / 2 + sunLightY, 200
+      );
+      sunHighlight.addColorStop(0, `rgba(${lighting.sunColor.r}, ${lighting.sunColor.g}, ${lighting.sunColor.b}, ${(sunInfluence - 0.3) * 0.5})`);
+      sunHighlight.addColorStop(1, `rgba(${lighting.sunColor.r}, ${lighting.sunColor.g}, ${lighting.sunColor.b}, 0)`);
+      
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = sunHighlight;
+      ctx.fillRect(x, y, width, height);
+      ctx.restore();
+    }
+  };
+
+  // Draw arch with lighting
+  const drawArch = (
+    ctx: CanvasRenderingContext2D, 
+    centerX: number, centerY: number, 
+    width: number, height: number,
+    lighting: Lighting,
+    torchLightX: number, torchLightY: number,
+    sunLightX: number, sunLightY: number
+  ) => {
+    // Base color
+    const baseR = 190;
+    const baseG = 170;
+    const baseB = 140;
+    
+    // Calculate lighting influence
+    const torchDist = Math.sqrt((centerX - torchLightX) ** 2 + (centerY - torchLightY) ** 2);
+    const torchInfluence = Math.max(0, 1 - torchDist / 300) * lighting.torchIntensity;
+    
+    const sunInfluence = lighting.sunIntensity;
+    const ambientInfluence = lighting.ambientIntensity;
+    
+    // Final color
+    const r = clamp(baseR * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.8), 0, 255);
+    const g = clamp(baseG * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.6), 0, 255);
+    const b = clamp(baseB * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.5), 0, 255);
+    
+    // Arch path
+    ctx.beginPath();
+    ctx.moveTo(centerX - width / 2, centerY);
+    ctx.lineTo(centerX - width / 2, centerY - height + width / 2);
+    ctx.arc(centerX, centerY - height + width / 2, width / 2, Math.PI, 0, false);
+    ctx.lineTo(centerX + width / 2, centerY);
+    ctx.closePath();
+    
+    // Fill arch
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fill();
+    
+    // Arch gradient for depth
+    const archGradient = createGradient(ctx, centerX - width / 2, centerY, centerX + width / 2, centerY, [
+      { pos: 0, color: `rgba(0, 0, 0, 0.2)` },
+      { pos: 0.3, color: `rgba(255, 255, 255, 0.1)` },
+      { pos: 0.7, color: `rgba(0, 0, 0, 0.05)` },
+      { pos: 1, color: `rgba(0, 0, 0, 0.3)` }
+    ]);
+    ctx.fillStyle = archGradient;
+    ctx.fill();
+    
+    // Arch edges
+    ctx.strokeStyle = `rgba(0, 0, 0, 0.3)`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Arch inner shadow
+    ctx.beginPath();
+    ctx.moveTo(centerX - width / 2 + 5, centerY);
+    ctx.lineTo(centerX - width / 2 + 5, centerY - height + width / 2 + 5);
+    ctx.arc(centerX, centerY - height + width / 2 + 5, width / 2 - 5, Math.PI, 0, false);
+    ctx.lineTo(centerX + width / 2 - 5, centerY);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(0, 0, 0, 0.3)`;
+    ctx.fill();
+    
+    // Torch light highlight
+    if (torchInfluence > 0.1) {
+      const highlight = createRadialGradient(
+        ctx, 
+        torchLightX, torchLightY, 0,
+        torchLightX, torchLightY, 200
+      );
+      highlight.addColorStop(0, `rgba(255, 150, 50, ${torchInfluence * 0.3})`);
+      highlight.addColorStop(1, `rgba(255, 150, 50, 0)`);
+      
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = highlight;
+      ctx.fill();
+      ctx.restore();
+    }
+  };
+
+  // Draw canopy with lighting
+  const drawCanopy = (
+    ctx: CanvasRenderingContext2D, 
+    centerX: number, y: number, 
+    width: number, height: number,
+    lighting: Lighting,
+    torchLightX: number, torchLightY: number,
+    sunLightX: number, sunLightY: number
+  ) => {
+    // Base color
+    const baseR = 195;
+    const baseG = 175;
+    const baseB = 145;
+    
+    // Calculate lighting influence
+    const torchDist = Math.sqrt((centerX - torchLightX) ** 2 + (y - torchLightY) ** 2);
+    const torchInfluence = Math.max(0, 1 - torchDist / 300) * lighting.torchIntensity;
+    
+    const sunInfluence = lighting.sunIntensity;
+    const ambientInfluence = lighting.ambientIntensity;
+    
+    // Final color
+    const r = clamp(baseR * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.8), 0, 255);
+    const g = clamp(baseG * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.6), 0, 255);
+    const b = clamp(baseB * (ambientInfluence + sunInfluence * 0.7 + torchInfluence * 0.5), 0, 255);
+    
+    // Canopy shape
+    ctx.beginPath();
+    ctx.moveTo(centerX - width / 2, y + height);
+    ctx.lineTo(centerX - width / 2 + 10, y);
+    ctx.lineTo(centerX + width / 2 - 10, y);
+    ctx.lineTo(centerX + width / 2, y + height);
+    ctx.closePath();
+    
+    // Fill canopy
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fill();
+    
+    // Canopy gradient for depth
+    const canopyGradient = createGradient(ctx, centerX, y, centerX, y + height, [
+      { pos: 0, color: `rgba(255, 255, 255, 0.1)` },
+      { pos: 1, color: `rgba(0, 0, 0, 0.2)` }
+    ]);
+    ctx.fillStyle = canopyGradient;
+    ctx.fill();
+    
+    // Canopy edges
+    ctx.strokeStyle = `rgba(0, 0, 0, 0.3)`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Top decoration
+    ctx.beginPath();
+    ctx.moveTo(centerX - width / 2 + 15, y + 5);
+    ctx.lineTo(centerX + width / 2 - 15, y + 5);
+    ctx.strokeStyle = `rgba(0, 0, 0, 0.2)`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Torch light highlight
+    if (torchInfluence > 0.1) {
+      const highlight = createRadialGradient(
+        ctx, 
+        torchLightX, torchLightY, 0,
+        torchLightX, torchLightY, 200
+      );
+      highlight.addColorStop(0, `rgba(255, 150, 50, ${torchInfluence * 0.3})`);
+      highlight.addColorStop(1, `rgba(255, 150, 50, 0)`);
+      
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = highlight;
+      ctx.fill();
+      ctx.restore();
+    }
+  };
+
+  // Draw stone details and carvings
+  const drawStoneDetails = (
+    ctx: CanvasRenderingContext2D, 
+    centerX: number, centerY: number, 
+    gateWidth: number, gateHeight: number,
+    archWidth: number, archHeight: number,
+    lighting: Lighting,
+    time: number
+  ) => {
+    // Stone weathering effect
+    const weatheringIntensity = 0.05;
+    
+    // Add subtle noise texture
+    for (let i = 0; i < 100; i++) {
+      const x = centerX - gateWidth / 2 + Math.random() * gateWidth;
+      const y = centerY - gateHeight / 2 + Math.random() * gateHeight;
+      const size = Math.random() * 3 + 1;
+      
+      ctx.fillStyle = `rgba(0, 0, 0, ${Math.random() * weatheringIntensity})`;
+      ctx.fillRect(x, y, size, size);
+    }
+    
+    // Carved lines on pillars
+    const pillarWidth = 40;
+    const leftPillarX = centerX - gateWidth / 2;
+    const rightPillarX = centerX + gateWidth / 2 - pillarWidth;
+    
+    // Left pillar carvings
+    for (let i = 0; i < 5; i++) {
+      const y = centerY - gateHeight / 2 + 20 + i * 35;
+      ctx.strokeStyle = `rgba(0, 0, 0, 0.1)`;
+      ctx.lineWidth = 1;
+      
+      // Vertical lines
+      ctx.beginPath();
+      ctx.moveTo(leftPillarX + 10, y);
+      ctx.lineTo(leftPillarX + 10, y + 25);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(leftPillarX + pillarWidth - 10, y);
+      ctx.lineTo(leftPillarX + pillarWidth - 10, y + 25);
+      ctx.stroke();
+    }
+    
+    // Right pillar carvings
+    for (let i = 0; i < 5; i++) {
+      const y = centerY - gateHeight / 2 + 20 + i * 35;
+      ctx.strokeStyle = `rgba(0, 0, 0, 0.1)`;
+      ctx.lineWidth = 1;
+      
+      // Vertical lines
+      ctx.beginPath();
+      ctx.moveTo(rightPillarX + 10, y);
+      ctx.lineTo(rightPillarX + 10, y + 25);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(rightPillarX + pillarWidth - 10, y);
+      ctx.lineTo(rightPillarX + pillarWidth - 10, y + 25);
+      ctx.stroke();
+    }
+    
+    // Arch carvings
+    ctx.strokeStyle = `rgba(0, 0, 0, 0.1)`;
+    ctx.lineWidth = 1;
+    
+    // Small arches above main arch
+    for (let i = -2; i <= 2; i++) {
+      if (i === 0) continue;
+      
+      const x = centerX + i * 25;
+      const y = centerY - archHeight + 20;
+      const w = 15;
+      const h = 15;
+      
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2, y);
+      ctx.lineTo(x - w / 2, y - h + w / 2);
+      ctx.arc(x, y - h + w / 2, w / 2, Math.PI, 0, false);
+      ctx.lineTo(x + w / 2, y);
+      ctx.stroke();
+    }
+    
+    // Ambient occlusion in corners
+    const aoGradient = createRadialGradient(
+      ctx, 
+      centerX - gateWidth / 2, centerY - gateHeight / 2, 0,
+      centerX - gateWidth / 2, centerY - gateHeight / 2, 50
+    );
+    aoGradient.addColorStop(0, `rgba(0, 0, 0, 0.2)`);
+    aoGradient.addColorStop(1, `rgba(0, 0, 0, 0)`);
+    
+    ctx.fillStyle = aoGradient;
+    ctx.fillRect(centerX - gateWidth / 2 - 50, centerY - gateHeight / 2 - 50, 100, 100);
+    
+    const aoGradient2 = createRadialGradient(
+      ctx, 
+      centerX + gateWidth / 2, centerY - gateHeight / 2, 0,
+      centerX + gateWidth / 2, centerY - gateHeight / 2, 50
+    );
+    aoGradient2.addColorStop(0, `rgba(0, 0, 0, 0.2)`);
+    aoGradient2.addColorStop(1, `rgba(0, 0, 0, 0)`);
+    
+    ctx.fillStyle = aoGradient2;
+    ctx.fillRect(centerX + gateWidth / 2 - 50, centerY - gateHeight / 2 - 50, 100, 100);
+  };
+
+  // Draw torch
+  const drawTorch = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    // Torch visibility
+    const visibility = 1 - smoothstep(0.667, 0.867, progress);
+    if (visibility <= 0) return;
+    
+    const lighting = lightingRef.current;
+    const camera = cameraRef.current;
+    
+    // Calculate position with camera transform
+    const torchX = width * 0.35 + camera.x;
+    const torchY = height * 0.65 + camera.y;
+    const torchScale = camera.zoom;
+    
+    ctx.save();
+    ctx.globalAlpha = visibility;
+    ctx.translate(torchX, torchY);
+    ctx.scale(torchScale, torchScale);
+    
+    // Torch pole
+    ctx.fillStyle = '#4a3728';
+    ctx.fillRect(-5, -80, 10, 80);
+    
+    // Torch holder
+    ctx.fillStyle = '#5a4738';
+    ctx.fillRect(-15, -85, 30, 10);
+    ctx.fillRect(-12, -90, 24, 5);
+    
+    // Flame
+    drawFlame(ctx, 0, -90, time, lighting.torchIntensity);
+    
+    // Ground light from torch
+    const groundLight = createRadialGradient(ctx, 0, 0, 0, 0, 100);
+    groundLight.addColorStop(0, `rgba(255, 150, 50, ${0.2 * lighting.torchIntensity})`);
+    groundLight.addColorStop(1, `rgba(255, 150, 50, 0)`);
+    ctx.fillStyle = groundLight;
+    ctx.fillRect(-100, -20, 200, 40);
+    
+    ctx.restore();
+  };
+
+  // Draw flame
+  const drawFlame = (ctx: CanvasRenderingContext2D, x: number, y: number, time: number, intensity: number) => {
+    const flameHeight = 40 * intensity;
+    const flameWidth = 15 * intensity;
+    
+    // Outer flame
+    ctx.beginPath();
+    ctx.moveTo(x - flameWidth, y);
+    ctx.quadraticCurveTo(
+      x - flameWidth * 0.8, y - flameHeight * 0.5,
+      x + Math.sin(time * 0.01) * 5, y - flameHeight
+    );
+    ctx.quadraticCurveTo(
+      x + flameWidth * 0.8, y - flameHeight * 0.5,
+      x + flameWidth, y
+    );
+    ctx.closePath();
+    
+    const outerFlameGradient = createGradient(ctx, x, y, x, y - flameHeight, [
+      { pos: 0, color: `rgba(255, 100, 0, ${0.8 * intensity})` },
+      { pos: 0.5, color: `rgba(255, 150, 0, ${0.6 * intensity})` },
+      { pos: 1, color: `rgba(255, 200, 0, ${0.2 * intensity})` }
+    ]);
+    ctx.fillStyle = outerFlameGradient;
+    ctx.fill();
+    
+    // Inner flame
+    const innerFlameHeight = flameHeight * 0.7;
+    const innerFlameWidth = flameWidth * 0.6;
+    
+    ctx.beginPath();
+    ctx.moveTo(x - innerFlameWidth, y);
+    ctx.quadraticCurveTo(
+      x - innerFlameWidth * 0.8, y - innerFlameHeight * 0.5,
+      x + Math.sin(time * 0.015) * 3, y - innerFlameHeight
+    );
+    ctx.quadraticCurveTo(
+      x + innerFlameWidth * 0.8, y - innerFlameHeight * 0.5,
+      x + innerFlameWidth, y
+    );
+    ctx.closePath();
+    
+    const innerFlameGradient = createGradient(ctx, x, y, x, y - innerFlameHeight, [
+      { pos: 0, color: `rgba(255, 200, 50, ${0.9 * intensity})` },
+      { pos: 0.5, color: `rgba(255, 230, 100, ${0.7 * intensity})` },
+      { pos: 1, color: `rgba(255, 255, 200, ${0.3 * intensity})` }
+    ]);
+    ctx.fillStyle = innerFlameGradient;
+    ctx.fill();
+    
+    // Flame core
+    const coreHeight = flameHeight * 0.4;
+    const coreWidth = flameWidth * 0.3;
+    
+    ctx.beginPath();
+    ctx.moveTo(x - coreWidth, y);
+    ctx.quadraticCurveTo(
+      x - coreWidth * 0.8, y - coreHeight * 0.5,
+      x + Math.sin(time * 0.02) * 2, y - coreHeight
+    );
+    ctx.quadraticCurveTo(
+      x + coreWidth * 0.8, y - coreHeight * 0.5,
+      x + coreWidth, y
+    );
+    ctx.closePath();
+    
+    ctx.fillStyle = `rgba(255, 255, 230, ${0.8 * intensity})`;
+    ctx.fill();
+    
+    // Flame glow
+    const flameGlow = createRadialGradient(ctx, x, y - flameHeight * 0.5, 0, x, y - flameHeight * 0.5, flameHeight);
+    flameGlow.addColorStop(0, `rgba(255, 150, 50, ${0.3 * intensity})`);
+    flameGlow.addColorStop(1, `rgba(255, 100, 0, 0)`);
+    ctx.fillStyle = flameGlow;
+    ctx.fillRect(x - flameHeight, y - flameHeight * 1.5, flameHeight * 2, flameHeight * 2);
+    
+    // Smoke particles
+    for (let i = 0; i < 5; i++) {
+      const smokeY = y - flameHeight - i * 15 - Math.sin(time * 0.005 + i) * 10;
+      const smokeX = x + Math.sin(time * 0.003 + i * 2) * 10;
+      const smokeSize = 5 + i * 3;
+      const smokeOpacity = 0.1 * (1 - i / 5) * intensity;
+      
+      ctx.beginPath();
+      ctx.arc(smokeX, smokeY, smokeSize, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(100, 100, 100, ${smokeOpacity})`;
+      ctx.fill();
+    }
+    
+    // Embers
+    for (let i = 0; i < 3; i++) {
+      const emberX = x + Math.sin(time * 0.01 + i * 3) * 20;
+      const emberY = y - flameHeight - Math.abs(Math.sin(time * 0.02 + i * 2)) * 40;
+      const emberSize = 1 + Math.random();
+      
+      ctx.beginPath();
+      ctx.arc(emberX, emberY, emberSize, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 200, 50, ${0.5 + Math.random() * 0.5})`;
+      ctx.fill();
+    }
+  };
+
+  // Draw flag pole
+  const drawFlagPole = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    // Flag pole visibility (starts rising in scene 3)
+    const poleRiseProgress = smoothstep(0.333, 0.5, progress);
+    if (poleRiseProgress <= 0) return;
+    
+    const camera = cameraRef.current;
+    const lighting = lightingRef.current;
+    
+    // Calculate position with camera transform
+    const poleX = width * 0.25 + camera.x;
+    const poleBaseY = height * 0.7 + camera.y;
+    const poleTopY = height * 0.2 + camera.y;
+    const poleScale = camera.zoom;
+    
+    // Pole height based on rise progress
+    const currentPoleHeight = (poleBaseY - poleTopY) * poleRiseProgress;
+    const currentPoleTopY = poleBaseY - currentPoleHeight;
+    
+    ctx.save();
+    ctx.translate(poleX, poleBaseY);
+    ctx.scale(poleScale, poleScale);
+    
+    // Pole shadow
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * lighting.sunIntensity})`;
+    ctx.beginPath();
+    ctx.ellipse(10, 5, 5, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Main pole
+    const poleGradient = createGradient(ctx, -3, 0, 3, 0, [
+      { pos: 0, color: `rgba(100, 100, 100, 1)` },
+      { pos: 0.3, color: `rgba(180, 180, 180, 1)` },
+      { pos: 0.7, color: `rgba(150, 150, 150, 1)` },
+      { pos: 1, color: `rgba(80, 80, 80, 1)` }
+    ]);
+    ctx.fillStyle = poleGradient;
+    ctx.fillRect(-3, -currentPoleHeight, 6, currentPoleHeight);
+    
+    // Pole base
+    ctx.fillStyle = '#606060';
+    ctx.fillRect(-8, -10, 16, 10);
+    ctx.fillRect(-6, -15, 12, 5);
+    
+    // Golden finial at top
+    if (poleRiseProgress > 0.9) {
+      const finialOpacity = smoothstep(0.9, 1.0, poleRiseProgress);
+      
+      ctx.save();
+      ctx.globalAlpha = finialOpacity;
+      
+      // Finial base
+      ctx.fillStyle = '#d4af37';
+      ctx.beginPath();
+      ctx.arc(0, -currentPoleHeight, 8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Finial spike
+      ctx.beginPath();
+      ctx.moveTo(0, -currentPoleHeight - 20);
+      ctx.lineTo(-5, -currentPoleHeight - 5);
+      ctx.lineTo(5, -currentPoleHeight - 5);
+      ctx.closePath();
+      ctx.fillStyle = '#d4af37';
+      ctx.fill();
+      
+      // Finial highlight
+      ctx.beginPath();
+      ctx.arc(-2, -currentPoleHeight - 2, 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 200, 0.5)';
+      ctx.fill();
+      
+      ctx.restore();
+    }
+    
+    // Pole reflection
+    if (lighting.sunIntensity > 0.3) {
+      const reflectionOpacity = (lighting.sunIntensity - 0.3) * 0.5;
+      const reflectionX = Math.sin(lighting.sunAngle) * 2;
+      
+      ctx.beginPath();
+      ctx.moveTo(reflectionX - 1, 0);
+      ctx.lineTo(reflectionX - 1, -currentPoleHeight);
+      ctx.lineTo(reflectionX + 1, -currentPoleHeight);
+      ctx.lineTo(reflectionX + 1, 0);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(255, 255, 255, ${reflectionOpacity})`;
+      ctx.fill();
+    }
+    
+    ctx.restore();
+    
+    // Return pole top position for flag attachment
+    return {
+      x: poleX,
+      y: poleBaseY - currentPoleHeight * poleScale
     };
+  };
 
-    raf.current = requestAnimationFrame(loop);
+  // Draw flag with cloth simulation
+  const drawFlag = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    // Flag visibility (starts opening in scene 4)
+    const flagOpenProgress = smoothstep(0.533, 0.667, progress);
+    if (flagOpenProgress <= 0 || !flagRef.current) return;
+    
+    const camera = cameraRef.current;
+    const lighting = lightingRef.current;
+    
+    // Calculate position with camera transform
+    const poleX = width * 0.25 + camera.x;
+    const poleBaseY = height * 0.7 + camera.y;
+    const poleTopY = height * 0.2 + camera.y;
+    const poleScale = camera.zoom;
+    
+    // Pole height based on rise progress
+    const poleRiseProgress = smoothstep(0.333, 0.5, progress);
+    const currentPoleHeight = (poleBaseY - poleTopY) * poleRiseProgress;
+    const currentPoleTopY = poleBaseY - currentPoleHeight;
+    
+    // Flag attachment point
+    const flagAttachX = poleX;
+    const flagAttachY = currentPoleTopY * poleScale;
+    
+    // Update cloth simulation
+    const windStrength = 0.5 + flagOpenProgress * 1.5;
+    updateFlagCloth(time, windStrength);
+    
+    // Draw flag
+    const flag = flagRef.current;
+    
+    ctx.save();
+    ctx.translate(flagAttachX, flagAttachY);
+    ctx.scale(poleScale, poleScale);
+    
+    // Draw flag as triangulated mesh
+    for (let j = 0; j < flag.rows; j++) {
+      for (let i = 0; i < flag.cols; i++) {
+        const idx = j * (flag.cols + 1) + i;
+        const p1 = flag.points[idx];
+        const p2 = flag.points[idx + 1];
+        const p3 = flag.points[idx + (flag.cols + 1)];
+        const p4 = flag.points[idx + (flag.cols + 1) + 1];
+        
+        // Determine flag color based on position
+        const u = i / flag.cols;
+        const v = j / flag.rows;
+        
+        // Saffron (top third)
+        let r, g, b;
+        if (v < 0.33) {
+          r = 255; g = 153; b = 51;
+        } 
+        // White (middle third)
+        else if (v < 0.66) {
+          r = 255; g = 255; b = 255;
+        } 
+        // Green (bottom third)
+        else {
+          r = 19; g = 136; b = 8;
+        }
+        
+        // Apply lighting
+        const lightFactor = lighting.ambientIntensity + lighting.sunIntensity * 0.7;
+        r = clamp(r * lightFactor, 0, 255);
+        g = clamp(g * lightFactor, 0, 255);
+        b = clamp(b * lightFactor, 0, 255);
+        
+        // Calculate normal for shading (simplified)
+        const nx = (p2.z - p1.z + p4.z - p3.z) * 0.5;
+        const shade = clamp(1 + nx * 0.02, 0.7, 1.3);
+        
+        r = clamp(r * shade, 0, 255);
+        g = clamp(g * shade, 0, 255);
+        b = clamp(b * shade, 0, 255);
+        
+        // Draw two triangles for each quad
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.moveTo(p2.x, p2.y);
+        ctx.lineTo(p4.x, p4.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fill();
+      }
+    }
+    
+    // Draw Ashoka Chakra in the middle
+    if (flagOpenProgress > 0.5) {
+      const chakraOpacity = smoothstep(0.5, 0.7, flagOpenProgress);
+      const chakraCenterX = flag.width * 0.5;
+      const chakraCenterY = flag.height * 0.5;
+      
+      // Find the actual position of the chakra center from cloth simulation
+      const chakraIdx = Math.floor(flag.rows * 0.5) * (flag.cols + 1) + Math.floor(flag.cols * 0.5);
+      const chakraPoint = flag.points[chakraIdx];
+      
+      drawAshokaChakra(ctx, chakraPoint.x, chakraPoint.y, 20, time, chakraOpacity, lighting);
+    }
+    
+    // Flag shadow
+    ctx.globalAlpha = 0.2 * lighting.sunIntensity;
+    ctx.beginPath();
+    ctx.moveTo(0, flag.height + 5);
+    ctx.lineTo(flag.width, flag.height + 10);
+    ctx.lineTo(flag.width, flag.height + 15);
+    ctx.lineTo(0, flag.height + 10);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fill();
+    
+    ctx.restore();
+  };
 
+  // Draw Ashoka Chakra
+  const drawAshokaChakra = (
+    ctx: CanvasRenderingContext2D, 
+    x: number, y: number, 
+    radius: number, 
+    time: number, 
+    opacity: number,
+    lighting: Lighting
+  ) => {
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.translate(x, y);
+    
+    // Subtle rotation
+    ctx.rotate(time * 0.0002);
+    
+    // Chakra base
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0, 0, 128, 0.8)`;
+    ctx.fill();
+    
+    // Metallic effect
+    const metalGradient = createRadialGradient(ctx, -radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
+    metalGradient.addColorStop(0, 'rgba(100, 100, 200, 0.3)');
+    metalGradient.addColorStop(0.7, 'rgba(0, 0, 128, 0.1)');
+    metalGradient.addColorStop(1, 'rgba(0, 0, 80, 0.2)');
+    ctx.fillStyle = metalGradient;
+    ctx.fill();
+    
+    // Spokes
+    const spokeCount = 24;
+    ctx.strokeStyle = 'rgba(200, 200, 255, 0.8)';
+    ctx.lineWidth = 1;
+    
+    for (let i = 0; i < spokeCount; i++) {
+      const angle = (i / spokeCount) * Math.PI * 2;
+      const innerRadius = radius * 0.2;
+      const outerRadius = radius * 0.9;
+      
+      ctx.beginPath();
+      ctx.moveTo(
+        Math.cos(angle) * innerRadius,
+        Math.sin(angle) * innerRadius
+      );
+      ctx.lineTo(
+        Math.cos(angle) * outerRadius,
+        Math.sin(angle) * outerRadius
+      );
+      ctx.stroke();
+    }
+    
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 128, 0.9)';
+    ctx.fill();
+    
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(200, 200, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Small shine
+    ctx.beginPath();
+    ctx.arc(-radius * 0.3, -radius * 0.3, radius * 0.15, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fill();
+    
+    ctx.restore();
+  };
+
+  // Draw birds
+  const drawBirds = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    if (progress < 0.667) return;
+    
+    const birds = birdsRef.current;
+    const birdVisibility = smoothstep(0.667, 0.7, progress);
+    const camera = cameraRef.current;
+    
+    ctx.save();
+    ctx.globalAlpha = birdVisibility;
+    
+    for (const bird of birds) {
+      // Apply parallax based on depth
+      const parallaxX = bird.x + camera.x * bird.depth * 0.5;
+      const parallaxY = bird.y + camera.y * bird.depth * 0.5;
+      const scale = camera.zoom * bird.depth * 0.7;
+      
+      ctx.save();
+      ctx.translate(parallaxX, parallaxY);
+      ctx.scale(scale, scale);
+      
+      // Wing animation
+      const wingAngle = Math.sin(bird.wingPhase) * bird.flapAmplitude;
+      
+      // Bird body
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 3, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+      ctx.fill();
+      
+      // Left wing
+      ctx.save();
+      ctx.rotate(wingAngle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(-10, -5, -15, wingAngle * 10);
+      ctx.quadraticCurveTo(-10, 0, 0, 0);
+      ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+      ctx.fill();
+      ctx.restore();
+      
+      // Right wing
+      ctx.save();
+      ctx.rotate(-wingAngle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(10, -5, 15, -wingAngle * 10);
+      ctx.quadraticCurveTo(10, 0, 0, 0);
+      ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+      ctx.fill();
+      ctx.restore();
+      
+      ctx.restore();
+    }
+    
+    ctx.restore();
+  };
+
+  // Draw Sukhoi jets
+  const drawSukhois = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    if (progress < 0.667 || progress > 0.867) return;
+    
+    const sukhois = sukhoisRef.current;
+    const jetVisibility = smoothstep(0.667, 0.7, progress) * (1 - smoothstep(0.83, 0.867, progress));
+    const camera = cameraRef.current;
+    
+    ctx.save();
+    ctx.globalAlpha = jetVisibility;
+    
+    for (const jet of sukhois) {
+      // Apply parallax based on depth
+      const parallaxX = jet.x + camera.x * jet.depth * 0.3;
+      const parallaxY = jet.y + camera.y * jet.depth * 0.3;
+      const scale = camera.zoom * jet.depth * 0.8;
+      
+      // Draw smoke trail
+      if (jet.trail.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(jet.trail[0].x + camera.x * jet.depth * 0.3, jet.trail[0].y + camera.y * jet.depth * 0.3);
+        
+        for (let i = 1; i < jet.trail.length; i++) {
+          ctx.lineTo(
+            jet.trail[i].x + camera.x * jet.depth * 0.3, 
+            jet.trail[i].y + camera.y * jet.depth * 0.3
+          );
+        }
+        
+        ctx.strokeStyle = `rgba(200, 200, 200, ${0.3 * jetVisibility})`;
+        ctx.lineWidth = 3 * scale;
+        ctx.stroke();
+      }
+      
+      ctx.save();
+      ctx.translate(parallaxX, parallaxY);
+      ctx.scale(scale, scale);
+      
+      // Motion blur effect
+      ctx.globalAlpha = 0.7;
+      
+      // Jet body
+      ctx.beginPath();
+      ctx.moveTo(30, 0);  // Nose
+      ctx.lineTo(-20, -5);  // Top back
+      ctx.lineTo(-30, 0);  // Back center
+      ctx.lineTo(-20, 5);  // Bottom back
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(80, 80, 80, 0.9)';
+      ctx.fill();
+      
+      // Wings
+      ctx.beginPath();
+      ctx.moveTo(0, -5);  // Top wing root
+      ctx.lineTo(-10, -20);  // Top wing tip
+      ctx.lineTo(-15, -18);  // Top wing back
+      ctx.lineTo(-10, -5);  // Top wing inner back
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(70, 70, 70, 0.9)';
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.moveTo(0, 5);  // Bottom wing root
+      ctx.lineTo(-10, 20);  // Bottom wing tip
+      ctx.lineTo(-15, 18);  // Bottom wing back
+      ctx.lineTo(-10, 5);  // Bottom wing inner back
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(70, 70, 70, 0.9)';
+      ctx.fill();
+      
+      // Tail fin
+      ctx.beginPath();
+      ctx.moveTo(-20, -5);  // Tail root
+      ctx.lineTo(-25, -15);  // Tail tip
+      ctx.lineTo(-30, -12);  // Tail back
+      ctx.lineTo(-25, -5);  // Tail inner back
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(60, 60, 60, 0.9)';
+      ctx.fill();
+      
+      // Afterburner
+      ctx.beginPath();
+      ctx.moveTo(-30, -3);
+      ctx.lineTo(-40 - jet.afterburner * 10, 0);
+      ctx.lineTo(-30, 3);
+      ctx.closePath();
+      
+      const afterburnerGradient = createGradient(ctx, -30, 0, -50, 0, [
+        { pos: 0, color: 'rgba(255, 200, 50, 0.8)' },
+        { pos: 0.5, color: 'rgba(255, 100, 0, 0.5)' },
+        { pos: 1, color: 'rgba(255, 50, 0, 0)' }
+      ]);
+      ctx.fillStyle = afterburnerGradient;
+      ctx.fill();
+      
+      // Heat distortion effect
+      ctx.globalAlpha = 0.2;
+      ctx.beginPath();
+      ctx.ellipse(-35, 0, 15, 8, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 200, 100, 0.3)';
+      ctx.fill();
+      
+      ctx.restore();
+    }
+    
+    ctx.restore();
+  };
+
+  // Draw particles
+  const drawParticles = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    const particles = particlesRef.current;
+    const camera = cameraRef.current;
+    
+    for (const p of particles) {
+      if (!p.on) continue;
+      
+      // Calculate life ratio
+      const lifeRatio = p.life / p.ml;
+      const alpha = p.a * (1 - lifeRatio);
+      
+      // Apply parallax based on depth
+      const parallaxX = p.x + camera.x * p.depth * 0.3;
+      const parallaxY = p.y + camera.y * p.depth * 0.3;
+      const scale = camera.zoom * p.depth * 0.8;
+      
+      ctx.save();
+      ctx.translate(parallaxX, parallaxY);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = alpha;
+      
+      switch (p.tp) {
+        case 0: // Golden dust
+          ctx.beginPath();
+          ctx.arc(0, 0, p.sz, 0, Math.PI * 2);
+          ctx.fillStyle = `rgb(${p.r}, ${p.g}, ${p.b})`;
+          ctx.fill();
+          
+          // Glow
+          const dustGlow = createRadialGradient(ctx, 0, 0, 0, 0, 0, p.sz * 2);
+          dustGlow.addColorStop(0, `rgba(${p.r}, ${p.g}, ${p.b}, 0.3)`);
+          dustGlow.addColorStop(1, `rgba(${p.r}, ${p.g}, ${p.b}, 0)`);
+          ctx.fillStyle = dustGlow;
+          ctx.fillRect(-p.sz * 2, -p.sz * 2, p.sz * 4, p.sz * 4);
+          break;
+          
+        case 1: // Embers
+          ctx.beginPath();
+          ctx.arc(0, 0, p.sz, 0, Math.PI * 2);
+          ctx.fillStyle = `rgb(${p.r}, ${p.g}, ${p.b})`;
+          ctx.fill();
+          
+          // Ember glow
+          const emberGlow = createRadialGradient(ctx, 0, 0, 0, 0, 0, p.sz * 3);
+          emberGlow.addColorStop(0, `rgba(255, 150, 50, 0.5)`);
+          emberGlow.addColorStop(1, `rgba(255, 100, 0, 0)`);
+          ctx.fillStyle = emberGlow;
+          ctx.fillRect(-p.sz * 3, -p.sz * 3, p.sz * 6, p.sz * 6);
+          break;
+          
+        case 2: // Lens dust
+          ctx.beginPath();
+          ctx.arc(0, 0, p.sz * 0.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+          ctx.fill();
+          break;
+          
+        case 3: // Confetti
+          ctx.rotate(p.rot);
+          
+          // Set color based on confetti type
+          let confettiR, confettiG, confettiB;
+          if (p.confettiColor === 0) { // Saffron
+            confettiR = 255; confettiG = 153; confettiB = 51;
+          } else if (p.confettiColor === 1) { // White
+            confettiR = 255; confettiG = 255; confettiB = 255;
+          } else { // Green
+            confettiR = 19; confettiG = 136; confettiB = 8;
+          }
+          
+          ctx.fillStyle = `rgb(${confettiR}, ${confettiG}, ${confettiB})`;
+          ctx.fillRect(-p.sz, -p.sz * 0.5, p.sz * 2, p.sz);
+          break;
+          
+        case 4: // Sparkles
+          const sparkleAlpha = Math.sin(p.sparklePhase) * 0.5 + 0.5;
+          ctx.globalAlpha = alpha * sparkleAlpha;
+          
+          // Four-point star
+          ctx.beginPath();
+          ctx.moveTo(0, -p.sz * 2);
+          ctx.lineTo(p.sz * 0.3, -p.sz * 0.3);
+          ctx.lineTo(p.sz * 2, 0);
+          ctx.lineTo(p.sz * 0.3, p.sz * 0.3);
+          ctx.lineTo(0, p.sz * 2);
+          ctx.lineTo(-p.sz * 0.3, p.sz * 0.3);
+          ctx.lineTo(-p.sz * 2, 0);
+          ctx.lineTo(-p.sz * 0.3, -p.sz * 0.3);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(255, 255, 200, 0.8)';
+          ctx.fill();
+          break;
+          
+        case 5: // Bokeh
+          ctx.beginPath();
+          ctx.arc(0, 0, p.bokehRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          
+          // Bokeh highlight
+          ctx.beginPath();
+          ctx.arc(-p.bokehRadius * 0.3, -p.bokehRadius * 0.3, p.bokehAperture, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.fill();
+          break;
+      }
+      
+      ctx.restore();
+    }
+  };
+
+  // Draw typography
+  const drawTypography = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    if (progress < 0.667) return;
+    
+    const typographyProgress = smoothstep(0.667, 0.8, progress);
+    const fadeOutProgress = 1 - smoothstep(0.9, 1.0, progress);
+    const camera = cameraRef.current;
+    
+    ctx.save();
+    ctx.globalAlpha = typographyProgress * fadeOutProgress;
+    
+    // Calculate position with camera transform
+    const textX = width * 0.5 + camera.x;
+    const textY = height * 0.3 + camera.y;
+    const textScale = camera.zoom;
+    
+    ctx.translate(textX, textY);
+    ctx.scale(textScale, textScale);
+    
+    // "Happy Republic Day" text
+    const mainText = "Happy Republic Day";
+    const mainTextSize = 48;
+    
+    ctx.font = `bold ${mainTextSize}px 'Georgia', serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Text shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillText(mainText, 2, 2);
+    
+    // Gold gradient for text
+    const textGradient = createGradient(ctx, -200, -20, 200, 20, [
+      { pos: 0, color: '#d4af37' },
+      { pos: 0.3, color: '#f9e79f' },
+      { pos: 0.5, color: '#d4af37' },
+      { pos: 0.7, color: '#f9e79f' },
+      { pos: 1, color: '#d4af37' }
+    ]);
+    ctx.fillStyle = textGradient;
+    ctx.fillText(mainText, 0, 0);
+    
+    // Light sweep effect
+    const sweepX = Math.sin(time * 0.002) * 300 - 150;
+    const sweepGradient = createLinearGradient(ctx, sweepX - 50, 0, sweepX + 50, 0, [
+      { pos: 0, color: 'rgba(255, 255, 255, 0)' },
+      { pos: 0.5, color: 'rgba(255, 255, 255, 0.3)' },
+      { pos: 1, color: 'rgba(255, 255, 255, 0)' }
+    ]);
+    ctx.fillStyle = sweepGradient;
+    ctx.fillText(mainText, 0, 0);
+    
+    // "जय हिन्द" text
+    const hindiText = "जय हिन्द";
+    const hindiTextSize = 36;
+    
+    ctx.font = `bold ${hindiTextSize}px 'Noto Sans Devanagari', sans-serif`;
+    
+    // Text shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillText(hindiText, 2, mainTextSize + 22);
+    
+    // Gold gradient for Hindi text
+    const hindiTextGradient = createGradient(ctx, -100, mainTextSize, 100, mainTextSize + 40, [
+      { pos: 0, color: '#d4af37' },
+      { pos: 0.3, color: '#f9e79f' },
+      { pos: 0.5, color: '#d4af37' },
+      { pos: 0.7, color: '#f9e79f' },
+      { pos: 1, color: '#d4af37' }
+    ]);
+    ctx.fillStyle = hindiTextGradient;
+    ctx.fillText(hindiText, 0, mainTextSize + 20);
+    
+    // Light sweep effect for Hindi text
+    ctx.fillStyle = sweepGradient;
+    ctx.fillText(hindiText, 0, mainTextSize + 20);
+    
+    ctx.restore();
+  };
+
+  // Draw final zoom into flag
+  const drawFinalZoom = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    if (progress < 0.867) return;
+    
+    const zoomProgress = smoothstep(0.867, 1.0, progress);
+    const fadeOutProgress = smoothstep(0.9, 1.0, progress);
+    
+    // Get flag position
+    const camera = cameraRef.current;
+    const flagX = width * 0.25 + camera.x + flagRef.current ? flagRef.current.width * 0.5 : 0;
+    const flagY = height * 0.45 + camera.y + flagRef.current ? flagRef.current.height * 0.5 : 0;
+    
+    // Ashoka Chakra zoom
+    if (flagRef.current && zoomProgress > 0.5) {
+      const chakraZoomProgress = smoothstep(0.5, 1.0, zoomProgress);
+      const chakraIdx = Math.floor(flagRef.current.rows * 0.5) * (flagRef.current.cols + 1) + Math.floor(flagRef.current.cols * 0.5);
+      const chakraPoint = flagRef.current.points[chakraIdx];
+      
+      const chakraX = flagX + chakraPoint.x * camera.zoom;
+      const chakraY = flagY + chakraPoint.y * camera.zoom;
+      const chakraRadius = 20 * camera.zoom * (1 + chakraZoomProgress * 5);
+      
+      ctx.save();
+      ctx.globalAlpha = chakraZoomProgress * (1 - fadeOutProgress);
+      
+      // Draw enlarged Ashoka Chakra
+      drawAshokaChakra(ctx, chakraX, chakraY, chakraRadius, time, 1, lightingRef.current);
+      
+      ctx.restore();
+    }
+    
+    // Fade to black
+    if (fadeOutProgress > 0) {
+      ctx.fillStyle = `rgba(0, 0, 0, ${fadeOutProgress})`;
+      ctx.fillRect(0, 0, width, height);
+    }
+  };
+
+  // Apply post-processing effects
+  const applyPostProcessing = (ctx: CanvasRenderingContext2D, width: number, height: number, progress: number, time: number) => {
+    // Vignette
+    const vignetteGradient = createRadialGradient(ctx, width / 2, height / 2, width * 0.3, width / 2, height / 2, width * 0.7);
+    vignetteGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vignetteGradient.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+    ctx.fillStyle = vignetteGradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    // Film grain (subtle)
+    const grainIntensity = 0.03;
+    for (let i = 0; i < 100; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const size = Math.random() * 2 + 0.5;
+      const alpha = Math.random() * grainIntensity;
+      
+      ctx.fillStyle = `rgba(${Math.random() > 0.5 ? 255 : 0}, ${Math.random() > 0.5 ? 255 : 0}, ${Math.random() > 0.5 ? 255 : 0}, ${alpha})`;
+      ctx.fillRect(x, y, size, size);
+    }
+    
+    // Chromatic aberration (very subtle)
+    if (progress > 0.667) {
+      const aberrationIntensity = 0.5 * smoothstep(0.667, 0.8, progress);
+      
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = aberrationIntensity * 0.1;
+      
+      // Red channel offset
+      ctx.drawImage(ctx.canvas, -1, 0);
+      
+      // Blue channel offset
+      ctx.globalCompositeOperation = 'screen';
+      ctx.drawImage(ctx.canvas, 1, 0);
+      
+      ctx.restore();
+    }
+    
+    // Color grading based on scene
+    if (progress < 0.333) {
+      // Night scene - cool tones
+      ctx.fillStyle = 'rgba(0, 0, 30, 0.1)';
+      ctx.fillRect(0, 0, width, height);
+    } else if (progress < 0.667) {
+      // Sunrise scene - warm tones
+      const warmIntensity = smoothstep(0.333, 0.667, progress) * 0.1;
+      ctx.fillStyle = `rgba(50, 20, 0, ${warmIntensity})`;
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      // Day scene - slightly warm
+      ctx.fillStyle = 'rgba(20, 10, 0, 0.05)';
+      ctx.fillRect(0, 0, width, height);
+    }
+    
+    // Bloom effect (simplified)
+    if (progress > 0.533) {
+      const bloomIntensity = smoothstep(0.533, 0.667, progress) * 0.1;
+      
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = bloomIntensity;
+      ctx.filter = 'blur(10px)';
+      ctx.drawImage(ctx.canvas, 0, 0);
+      ctx.filter = 'none';
+      ctx.restore();
+    }
+    
+    // Exposure adaptation
+    const exposure = lightingRef.current.exposure;
+    if (exposure !== 1.0) {
+      ctx.fillStyle = exposure > 1.0 
+        ? `rgba(255, 255, 255, ${(exposure - 1.0) * 0.5})`
+        : `rgba(0, 0, 0, ${(1.0 - exposure) * 0.5})`;
+      ctx.fillRect(0, 0, width, height);
+    }
+  };
+
+  // Main animation loop
+  const animate = useCallback((timestamp: number) => {
+    if (!startTimeRef.current) {
+      startTimeRef.current = timestamp;
+    }
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Calculate progress (0-1)
+    const elapsedTime = timestamp - startTimeRef.current;
+    const progress = Math.min(elapsedTime / TOTAL_DURATION, 1.0);
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Update systems
+    updateCamera(progress, timestamp);
+    updateLighting(progress);
+    updateParticles(progress, timestamp, width, height);
+    updateBirds(progress, timestamp, width, height);
+    updateSukhois(progress, timestamp, width, height);
+    updateFogLayers(progress, timestamp, width);
+    
+    // Draw layers in order
+    drawSky(ctx, width, height, progress, timestamp);
+    drawFog(ctx, width, height, progress, timestamp);
+    drawIndiaGate(ctx, width, height, progress, timestamp);
+    drawTorch(ctx, width, height, progress, timestamp);
+    drawFlagPole(ctx, width, height, progress, timestamp);
+    drawFlag(ctx, width, height, progress, timestamp);
+    drawBirds(ctx, width, height, progress, timestamp);
+    drawSukhois(ctx, width, height, progress, timestamp);
+    drawParticles(ctx, width, height, progress, timestamp);
+    drawTypography(ctx, width, height, progress, timestamp);
+    drawFinalZoom(ctx, width, height, progress, timestamp);
+    applyPostProcessing(ctx, width, height, progress, timestamp);
+    
+    // Continue animation or complete
+    if (progress < 1.0) {
+      animationRef.current = requestAnimationFrame(animate);
+    } else if (!completedRef.current) {
+      completedRef.current = true;
+      if (onComplete) {
+        setTimeout(onComplete, 500); // Small delay after fade out
+      }
+    }
+  }, [onComplete]);
+
+  // Initialize and start animation
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    // Set canvas size to window size
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
+      // Reinitialize systems with new dimensions
+      initializeSystems(canvas.width, canvas.height);
+    };
+    
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Start animation
+    animationRef.current = requestAnimationFrame(animate);
+    
+    // Cleanup
     return () => {
-      cancelAnimationFrame(raf.current);
-      window.removeEventListener('resize', rsz);
-      if (audioCtxRef.current) {
-        try { audioCtxRef.current.close(); } catch (_) {}
-        audioCtxRef.current = null;
-      }
+      window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationRef.current);
     };
-  }, [mkPool, grab, triggerMilitaryAudio]);
+  }, [animate, initializeSystems]);
 
   return (
     <canvas
-      ref={cvRef}
+      ref={canvasRef}
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
         width: '100vw',
         height: '100vh',
-        display: 'block',
-        zIndex: 50,
+        zIndex: 9999,
+        pointerEvents: 'none'
       }}
     />
   );
-}
+};
+
+export default RepublicDayCinematicIntro;
