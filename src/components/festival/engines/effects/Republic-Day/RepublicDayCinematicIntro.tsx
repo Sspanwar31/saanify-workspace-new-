@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 /* ═══════════════════════════════════════════════════════════════
    TYPES & INTERFACES
    ═══════════════════════════════════════════════════════════════ */
-interface Props {                          // ← FIX: ये पूरा interface missing था
+interface Props {
   onComplete?: () => void;
 }
 
@@ -20,10 +20,6 @@ interface Particle {
 
 interface Jet {
   x: number; y: number; scale: number; smokeColor: string; vx: number; vy: number; active: boolean;
-}
-
-interface Cloud {
-  x: number; y: number; sz: number; speed: number; opacity: number;
 }
 
 interface BoidBird {
@@ -130,7 +126,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
-    const eIO = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
     const eOB = (t: number) => {
       const n = 7.5625, d = 2.75;
@@ -138,10 +133,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       if (t < 2/d) return n*(t-=1.5/d)*t+0.75;
       if (t < 2.5/d) return n*(t-=2.25/d)*t+0.9375;
       return n*(t-=2.625/d)*t+0.984375;
-    };
-    const ss = (e0: number, e1: number, x: number) => {
-      const t = clamp((x-e0)/(e1-e0),0,1);
-      return t*t*(3-2*t);
     };
 
     audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -163,15 +154,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       x: 0, y: 0, scale: 0.85, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true
     }));
 
-    /* ═══════════════════════════════════════════════════════════
-       FIX: starI sirf index store karega, stars rsz() ke andar
-       proper W/H ke saath initialize honge
-       ═══════════════════════════════════════════════════════════ */
     const starI: number[] = [];
-    for (let i = 0; i < 150; i++) {
-      starI.push(i);
-      // NOTE: yahan particles ko on=true MAT kar rahe — rsz() me karenge
-    }
+    for (let i = 0; i < 150; i++) starI.push(i);
 
     const birds: BoidBird[] = [];
 
@@ -189,17 +173,13 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       baseY = H * 0.82;
       cx = W * 0.5;
       pillarH = gateH * 0.72;
-      pillarY = baseY - 32 - pillarH;
 
-      /* ═══════════════════════════════════════════════════════
-         FIX: Stars ko YAHAN initialize karo — jab W aur H
-         proper values hai, naki upar jab W=0, H=0 tha
-         ═══════════════════════════════════════════════════════ */
+      /* FIX: Birds को gate के ऊपर cornice पर बिठाओ */
+      pillarY = baseY - gateH * 0.90;
+
       for (let i = 0; i < starI.length; i++) {
-        const idx = starI[i];
-        const p = pl[idx];
-        p.on = true;
-        p.tp = 0;
+        const idx = starI[i]; const p = pl[idx];
+        p.on = true; p.tp = 0;
         p.x = Math.random() * W;
         p.y = Math.random() * H * 0.75;
         p.sz = Math.random() * 1.2 + 0.2;
@@ -247,7 +227,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     gc.putImageData(gd, 0, 0);
 
     let cameraShake = 0;
-    const sunPos = (t: number) => ({ x: lerp(W*0.3, W*0.5, eOE(t/10)), y: lerp(H*1.2, H*0.15, eOE(t/10)) });
 
     const fireworksList: Firework[] = [];
     const fwColors = [{r:255,g:153,b:51}, {r:255,g:255,b:255}, {r:19,g:136,b:8}, {r:255,g:215,b:0}];
@@ -291,30 +270,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       }
     };
 
-    const drawSun = (t: number) => {
-      if (t >= 0.72) return;
-      const sun = sunPos(t);
-      const sunX = sun.x, sunY = sun.y;
-      const intensity = clamp(t / 0.72, 0, 1);
-
-      c.save();
-      c.globalCompositeOperation = 'screen';
-
-      const bloomGrad = c.createLinearGradient(0, sunY - H * 0.25, 0, H);
-      bloomGrad.addColorStop(0, 'rgba(255,220,160,0)');
-      bloomGrad.addColorStop(0.55, `rgba(255,180,70,${0.12 * intensity})`);
-      bloomGrad.addColorStop(1, `rgba(255,120,40,${0.35 * intensity})`);
-      c.fillStyle = bloomGrad;
-      c.fillRect(0, sunY - H * 0.25, W, H);
-
-      const coreGrad = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, 35);
-      coreGrad.addColorStop(0, `rgba(255,255,240,${0.8 * intensity})`);
-      coreGrad.addColorStop(1, 'rgba(255,255,240,0)');
-      c.fillStyle = coreGrad;
-      c.beginPath(); c.arc(sunX, sunY, 35, 0, Math.PI * 2); c.fill();
-
-      c.restore();
-    };
+    /* ═══════════════════════════════════════════════════════════
+       drawSun — REMOVED (यही गोला और सूरज बना रहा था)
+       ═══════════════════════════════════════════════════════════ */
 
     const renderer = {
       sky: (t: number, sceneAlpha: number) => {
@@ -331,21 +289,21 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         } else if (t < 7.5) {
           const interp = clamp((t - 3.5) / 4.0, 0, 1);
           const r1 = lerp(20, 50, interp), g1 = lerp(32, 35, interp), b1 = lerp(62, 75, interp);
-          const r2 = lerp(48, 140, interp), g2 = lerp(40, 70, interp), b2 = lerp(90, 80, interp);
+          const r2 = lerp(48, 120, interp), g2 = lerp(40, 60, interp), b2 = lerp(90, 85, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(0.7, `rgb(${(r2*0.6) | 0}, ${(g2*0.7) | 0}, ${(b2*1.1) | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else if (t < 11.5) {
           const interp = clamp((t - 7.5) / 4.0, 0, 1);
           const r1 = lerp(50, 90, interp), g1 = lerp(35, 80, interp), b1 = lerp(75, 120, interp);
-          const r2 = lerp(140, 170, interp), g2 = lerp(70, 110, interp), b2 = lerp(80, 100, interp);
+          const r2 = lerp(120, 150, interp), g2 = lerp(60, 100, interp), b2 = lerp(85, 110, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(0.7, `rgb(${(r2*0.7) | 0}, ${(g2*0.8) | 0}, ${(b2*1.05) | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         } else {
           const interp = clamp((t - 11.5) / 4.5, 0, 1);
           const r1 = lerp(90, 14, interp), g1 = lerp(80, 30, interp), b1 = lerp(120, 85, interp);
-          const r2 = lerp(170, 32, interp), g2 = lerp(110, 54, interp), b2 = lerp(100, 140, interp);
+          const r2 = lerp(150, 32, interp), g2 = lerp(100, 54, interp), b2 = lerp(110, 140, interp);
           grad.addColorStop(0, `rgb(${r1 | 0}, ${g1 | 0}, ${b1 | 0})`);
           grad.addColorStop(1, `rgb(${r2 | 0}, ${g2 | 0}, ${b2 | 0})`);
         }
@@ -370,39 +328,401 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
+      /* ═══════════════════════════════════════════════════════════
+         INDIA GATE — COMPLETE REWRITE with realistic details
+         ═══════════════════════════════════════════════════════════ */
       indiaGate: (t: number, sceneAlpha: number) => {
         const reveal = clamp((t - 0.8) * 0.4, 0, 1);
-        c.save(); c.globalAlpha = reveal * sceneAlpha;
+        c.save();
+        c.globalAlpha = reveal * sceneAlpha;
 
-        const sandstoneBase = '#c1805b';
-        const shadowBevel = '#613620';
-        const highlightBevel = '#eed2bc';
+        // ── Sandstone Color Palette ──
+        const S  = '#c4885e';
+        const SL = '#d9a87a';
+        const SD = '#a06a42';
+        const SV = '#7a4e30';
+        const HI = '#eaccad';
+        const SH = '#5a3420';
+        const DS = '#2a1508';
+        const AI = '#1a0e05';
 
-        const drawBevelBlock = (x: number, y: number, w: number, h: number) => {
-          c.fillStyle = 'rgba(0,0,0,0.32)';
-          c.fillRect(x - 3, y - 3, w + 6, h + 6);
-          const frontGrad = c.createLinearGradient(x, y, x, y + h);
-          frontGrad.addColorStop(0, highlightBevel);
-          frontGrad.addColorStop(0.3, sandstoneBase);
-          frontGrad.addColorStop(1, shadowBevel);
-          c.fillStyle = frontGrad; c.fillRect(x, y, w, h);
-          c.strokeStyle = highlightBevel; c.lineWidth = 1.5;
-          c.beginPath(); c.moveTo(x, y + h); c.lineTo(x, y); c.lineTo(x + w, y); c.stroke();
-          c.strokeStyle = shadowBevel; c.lineWidth = 2.0;
-          c.beginPath(); c.moveTo(x + w, y); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.stroke();
+        // ── Key Coordinates ──
+        const L  = cx - gateW / 2;
+        const R  = cx + gateW / 2;
+        const B  = baseY;
+        const MX = cx;
+        const pW = gateW * 0.19; // pillar width
+
+        // ── Helpers ──
+        const blk = (x: number, y: number, w: number, h: number) => {
+          const g = c.createLinearGradient(x, y, x, y + h);
+          g.addColorStop(0, HI);
+          g.addColorStop(0.06, SL);
+          g.addColorStop(0.35, S);
+          g.addColorStop(0.88, SD);
+          g.addColorStop(1, SH);
+          c.fillStyle = g;
+          c.fillRect(x, y, w, h);
         };
 
-        drawBevelBlock(cx - gateW * 0.52, baseY - 16, gateW * 1.04, 16);
-        drawBevelBlock(cx - gateW * 0.48, baseY - 32, gateW * 0.96, 16);
-        const pW = gateW * 0.26, pH = gateH * 0.72, pY = baseY - 32 - pH;
-        drawBevelBlock(cx - gateW * 0.46, pY, pW, pH);
-        drawBevelBlock(cx + gateW * 0.46 - pW, pY, pW, pH);
-        drawBevelBlock(cx - gateW * 0.5, pY - gateH * 0.1, gateW * 1.0, gateH * 0.1);
-        drawBevelBlock(cx - gateW * 0.42, pY - gateH * 0.22, gateW * 0.84, gateH * 0.12);
+        const crn = (x: number, y: number, w: number, h: number) => {
+          blk(x, y, w, h);
+          c.fillStyle = HI;  c.fillRect(x, y, w, 1.5);
+          c.fillStyle = SD;  c.fillRect(x, y + 2, w, 0.8);
+          c.fillStyle = SV;  c.fillRect(x, y + h - 2, w, 0.8);
+          c.fillStyle = DS;  c.fillRect(x, y + h - 1, w, 1);
+        };
+
+        // ── Vertical Section Heights ──
+        const ht = {
+          steps:  gateH * 0.050,
+          base:   gateH * 0.065,
+          lower:  gateH * 0.220,
+          arch:   gateH * 0.360,
+          crn1:   gateH * 0.040,
+          upper:  gateH * 0.100,
+          crn2:   gateH * 0.035,
+          top:    gateH * 0.080,
+          dome:   gateH * 0.050,
+        };
+
+        // ── Cumulative Y (bottom → top) ──
+        let y = B;
+        const Y: Record<string, number> = {};
+        Y.sB = y; y -= ht.steps;
+        Y.sT = y; y -= ht.base;
+        Y.bT = y; y -= ht.lower;
+        Y.lT = y; y -= ht.arch;
+        Y.aT = y; y -= ht.crn1;
+        Y.c1T = y; y -= ht.upper;
+        Y.uT = y; y -= ht.crn2;
+        Y.c2T = y; y -= ht.top;
+        Y.tT = y; y -= ht.dome;
+        Y.dT = y;
+
+        // ═════════════════════════════════════════
+        // 1. STEPS — 4 layers, progressively wider
+        // ═════════════════════════════════════════
+        for (let i = 0; i < 4; i++) {
+          const ext = (4 - i) * gateW * 0.018;
+          const sx = L - ext;
+          const sw = gateW + ext * 2;
+          const sy = Y.sB - i * (ht.steps / 4);
+          const sh = ht.steps / 4 + 0.5;
+          blk(sx, sy, sw, sh);
+          c.fillStyle = HI; c.fillRect(sx, sy, sw, 1);
+          c.fillStyle = DS; c.fillRect(sx, sy + sh - 0.5, sw, 0.5);
+        }
+
+        // ═════════════════════════════════════════
+        // 2. BASE PLATFORM
+        // ═════════════════════════════════════════
+        blk(L, Y.bT, gateW, ht.base);
+        c.fillStyle = HI; c.fillRect(L, Y.bT, gateW, 1.5);
+        c.fillStyle = DS; c.fillRect(L, Y.bT + ht.base - 1, gateW, 1);
+        // Base decorative line
+        c.fillStyle = SD;
+        c.fillRect(L + 4, Y.bT + ht.base * 0.45, gateW - 8, 1);
+
+        // ═════════════════════════════════════════
+        // 3. LOWER PILLARS
+        // ═════════════════════════════════════════
+        blk(L, Y.lT, pW, ht.lower);
+        blk(R - pW, Y.lT, pW, ht.lower);
+
+        // Thin wall between pillars at bottom
+        const wL = L + pW;
+        const wR = R - pW;
+        blk(wL, Y.lT, wR - wL, ht.lower * 0.10);
+
+        // Pillar horizontal lines (stone course marks)
+        c.strokeStyle = 'rgba(90,52,32,0.22)';
+        c.lineWidth = 0.6;
+        for (let i = 1; i <= 6; i++) {
+          const ly = Y.lT + i * (ht.lower / 7);
+          [L, R - pW].forEach(px => {
+            c.beginPath(); c.moveTo(px + 3, ly); c.lineTo(px + pW - 3, ly); c.stroke();
+          });
+        }
+
+        // Pillar vertical fluting
+        c.strokeStyle = 'rgba(90,52,32,0.10)';
+        c.lineWidth = 0.5;
+        for (let f = 1; f <= 3; f++) {
+          const fx = (pW / 4) * f;
+          [L + fx, R - pW + fx].forEach(fxx => {
+            c.beginPath(); c.moveTo(fxx, Y.lT + 2); c.lineTo(fxx, Y.aT - 2); c.stroke();
+          });
+        }
+
+        // Pillar edge highlights
+        c.strokeStyle = 'rgba(234,204,173,0.25)';
+        c.lineWidth = 1;
+        [L + 1.5, R - pW + 1.5].forEach(ex => {
+          c.beginPath(); c.moveTo(ex, Y.lT); c.lineTo(ex, Y.aT); c.stroke();
+        });
+
+        // ═════════════════════════════════════════
+        // 4. ARCH SECTION — pillars continue up
+        // ═════════════════════════════════════════
+        blk(L, Y.aT, pW, ht.arch);
+        blk(R - pW, Y.aT, pW, ht.arch);
+
+        // Continue fluting up through arch section
+        c.strokeStyle = 'rgba(90,52,32,0.10)';
+        for (let f = 1; f <= 3; f++) {
+          const fx = (pW / 4) * f;
+          [L + fx, R - pW + fx].forEach(fxx => {
+            c.beginPath(); c.moveTo(fxx, Y.aT + 2); c.lineTo(fxx, Y.aT + ht.arch - 2); c.stroke();
+          });
+        }
+
+        // ── Pointed (Ogival) Arch Opening ──
+        const aIW = (wR - wL) * 0.70;
+        const aIL = MX - aIW / 2;
+        const aIR = MX + aIW / 2;
+        const aBot = Y.lT;
+        const aPeak = Y.aT + ht.arch * 0.07;
+        const aSpring = aBot - ht.arch * 0.04;
+
         c.beginPath();
-        c.moveTo(cx - gateW * 0.2, pY - gateH * 0.22);
-        c.quadraticCurveTo(cx, pY - gateH * 0.35, cx + gateW * 0.2, pY - gateH * 0.22);
-        c.closePath(); c.fillStyle = shadowBevel; c.fill();
+        c.moveTo(aIL, aBot);
+        c.lineTo(aIL, aSpring);
+        // Left curve of pointed arch
+        c.bezierCurveTo(
+          aIL, aPeak + ht.arch * 0.20,
+          MX - aIW * 0.10, aPeak,
+          MX, aPeak
+        );
+        // Right curve of pointed arch
+        c.bezierCurveTo(
+          MX + aIW * 0.10, aPeak,
+          aIR, aPeak + ht.arch * 0.20,
+          aIR, aSpring
+        );
+        c.lineTo(aIR, aBot);
+        c.closePath();
+
+        // Dark interior
+        c.fillStyle = AI;
+        c.fill();
+
+        // Interior depth gradient
+        const ag = c.createLinearGradient(MX, aPeak, MX, aBot);
+        ag.addColorStop(0, 'rgba(60,35,15,0.4)');
+        ag.addColorStop(0.4, 'rgba(25,12,5,0.2)');
+        ag.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = ag;
+        c.fill();
+
+        // Inner shadow glow (deep inside arch)
+        const ag2 = c.createRadialGradient(MX, (aPeak + aBot) * 0.5, aIW * 0.05, MX, (aPeak + aBot) * 0.5, aIW * 0.55);
+        ag2.addColorStop(0, 'rgba(0,0,0,0.15)');
+        ag2.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = ag2;
+        c.fill();
+
+        // Arch border — double stroke for depth
+        c.strokeStyle = DS;
+        c.lineWidth = 3;
+        c.stroke();
+        c.strokeStyle = 'rgba(234,204,173,0.3)';
+        c.lineWidth = 1;
+        c.stroke();
+
+        // Arch ke andar small recessed line (decorative inner border)
+        c.beginPath();
+        const inOff = 6;
+        c.moveTo(aIL + inOff, aBot);
+        c.lineTo(aIL + inOff, aSpring + inOff);
+        c.bezierCurveTo(
+          aIL + inOff, aPeak + ht.arch * 0.20 + inOff,
+          MX - (aIW * 0.10 - inOff), aPeak + inOff * 0.5,
+          MX, aPeak + inOff * 0.5
+        );
+        c.bezierCurveTo(
+          MX + (aIW * 0.10 - inOff), aPeak + inOff * 0.5,
+          aIR - inOff, aPeak + ht.arch * 0.20 + inOff,
+          aIR - inOff, aSpring + inOff
+        );
+        c.lineTo(aIR - inOff, aBot);
+        c.strokeStyle = 'rgba(90,52,32,0.15)';
+        c.lineWidth = 0.8;
+        c.stroke();
+
+        // ═════════════════════════════════════════
+        // 5. FIRST CORNICE BAND
+        // ═════════════════════════════════════════
+        const c1i = gateW * 0.02;
+        crn(L + c1i, Y.c1T, gateW - c1i * 2, ht.crn1);
+
+        // Small dentil/molding pattern on cornice
+        c.fillStyle = 'rgba(90,52,32,0.15)';
+        const dentilW = 6;
+        const dentilGap = 4;
+        for (let dx = L + c1i + 8; dx < R - c1i - 8; dx += dentilW + dentilGap) {
+          c.fillRect(dx, Y.c1T + 2, dentilW, ht.crn1 * 0.4);
+        }
+
+        // ═════════════════════════════════════════
+        // 6. UPPER WALL — "INDIA" inscription
+        // ═════════════════════════════════════════
+        const uI = gateW * 0.06;
+        blk(L + uI, Y.uT, gateW - uI * 2, ht.upper);
+
+        // Decorative border
+        const brd = gateW * 0.14;
+        c.strokeStyle = 'rgba(90,52,32,0.35)';
+        c.lineWidth = 1.2;
+        c.strokeRect(L + brd, Y.uT + ht.upper * 0.12, gateW - brd * 2, ht.upper * 0.76);
+
+        // Inner border
+        c.strokeStyle = 'rgba(90,52,32,0.18)';
+        c.lineWidth = 0.6;
+        c.strokeRect(L + brd + 3, Y.uT + ht.upper * 0.12 + 3, gateW - brd * 2 - 6, ht.upper * 0.76 - 6);
+
+        // "INDIA" text
+        const tSz = Math.min(gateW * 0.075, 28);
+        c.save();
+        c.font = `700 ${tSz}px 'Cinzel', 'Playfair Display', Georgia, serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        // Shadow
+        c.fillStyle = DS;
+        c.fillText('INDIA', MX + 1.5, Y.uT + ht.upper / 2 + 1.5);
+        // Main text
+        c.fillStyle = SD;
+        c.fillText('INDIA', MX, Y.uT + ht.upper / 2);
+        c.restore();
+
+        // Decorative lines above/below text
+        c.strokeStyle = SH;
+        c.lineWidth = 0.8;
+        const lnW = gateW * 0.18;
+        c.beginPath(); c.moveTo(MX - lnW, Y.uT + ht.upper * 0.10); c.lineTo(MX + lnW, Y.uT + ht.upper * 0.10); c.stroke();
+        c.beginPath(); c.moveTo(MX - lnW, Y.uT + ht.upper * 0.90); c.lineTo(MX + lnW, Y.uT + ht.upper * 0.90); c.stroke();
+
+        // Small diamond ornaments on the lines
+        [MX - lnW - 4, MX + lnW + 4].forEach(ox => {
+          [Y.uT + ht.upper * 0.10, Y.uT + ht.upper * 0.90].forEach(oy => {
+            c.fillStyle = SD;
+            c.beginPath();
+            c.moveTo(ox, oy - 3); c.lineTo(ox + 3, oy);
+            c.lineTo(ox, oy + 3); c.lineTo(ox - 3, oy);
+            c.closePath(); c.fill();
+          });
+        });
+
+        // ═════════════════════════════════════════
+        // 7. SECOND CORNICE BAND
+        // ═════════════════════════════════════════
+        const c2i = gateW * 0.04;
+        crn(L + c2i, Y.c2T, gateW - c2i * 2, ht.crn2);
+
+        // ═════════════════════════════════════════
+        // 8. TOP SECTION
+        // ═════════════════════════════════════════
+        const tI = gateW * 0.14;
+        blk(L + tI, Y.tT, gateW - tI * 2, ht.top);
+
+        // Small decorative arches on top section
+        const smAW = gateW * 0.055;
+        const smAY = Y.tT + ht.top * 0.40;
+        c.strokeStyle = SH;
+        c.lineWidth = 1.2;
+        // Left small arch
+        c.beginPath();
+        c.arc(L + tI + smAW + 2, smAY, smAW, Math.PI, 0);
+        c.stroke();
+        // Right small arch
+        c.beginPath();
+        c.arc(R - tI - smAW - 2, smAY, smAW, Math.PI, 0);
+        c.stroke();
+        // Center small arch (slightly bigger)
+        const csmAW = gateW * 0.045;
+        c.beginPath();
+        c.arc(MX, smAY - 2, csmAW, Math.PI, 0);
+        c.stroke();
+
+        // Horizontal line on top section
+        c.strokeStyle = 'rgba(90,52,32,0.15)';
+        c.lineWidth = 0.5;
+        c.beginPath(); c.moveTo(L + tI + 4, Y.tT + ht.top * 0.15); c.lineTo(R - tI - 4, Y.tT + ht.top * 0.15); c.stroke();
+
+        // ═════════════════════════════════════════
+        // 9. DOME (Chhatri)
+        // ═════════════════════════════════════════
+        const dW = gateW * 0.10;
+        const dH = ht.dome;
+        const dY = Y.dT + dH;
+
+        c.beginPath();
+        c.moveTo(MX - dW, dY);
+        c.quadraticCurveTo(MX - dW, dY - dH * 1.3, MX, dY - dH * 1.3);
+        c.quadraticCurveTo(MX + dW, dY - dH * 1.3, MX + dW, dY);
+        c.closePath();
+        const dg = c.createLinearGradient(MX - dW, dY - dH * 1.3, MX + dW, dY);
+        dg.addColorStop(0, HI);
+        dg.addColorStop(0.3, SL);
+        dg.addColorStop(0.7, S);
+        dg.addColorStop(1, SD);
+        c.fillStyle = dg;
+        c.fill();
+        c.strokeStyle = SH;
+        c.lineWidth = 1.2;
+        c.stroke();
+
+        // Dome highlight line
+        c.strokeStyle = 'rgba(234,204,173,0.3)';
+        c.lineWidth = 0.8;
+        c.beginPath();
+        c.moveTo(MX - dW * 0.3, dY - dH * 1.1);
+        c.quadraticCurveTo(MX, dY - dH * 1.35, MX + dW * 0.3, dY - dH * 1.1);
+        c.stroke();
+
+        // Finial (कलश) on top
+        c.fillStyle = SD;
+        c.beginPath();
+        c.moveTo(MX - 3, dY - dH * 1.3);
+        c.lineTo(MX, dY - dH * 1.3 - 10);
+        c.lineTo(MX + 3, dY - dH * 1.3);
+        c.closePath();
+        c.fill();
+        c.beginPath();
+        c.arc(MX, dY - dH * 1.3 - 12, 3, 0, Math.PI * 2);
+        c.fill();
+        // Finial highlight
+        c.fillStyle = SL;
+        c.beginPath();
+        c.arc(MX - 1, dY - dH * 1.3 - 13, 1, 0, Math.PI * 2);
+        c.fill();
+
+        // ═════════════════════════════════════════
+        // 10. GROUND SHADOW (elliptical)
+        // ═════════════════════════════════════════
+        c.fillStyle = 'rgba(0,0,0,0.12)';
+        c.beginPath();
+        c.ellipse(MX, B + 4, gateW * 0.60, 6, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // ═════════════════════════════════════════
+        // 11. AMAR JAWAN JYOTI basin at bottom center
+        // ═════════════════════════════════════════
+        const bjW = gateW * 0.08;
+        const bjH = gateH * 0.025;
+        const bjX = MX - bjW / 2;
+        const bjY = B + 1;
+        const bjGrad = c.createLinearGradient(bjX, bjY, bjX, bjY + bjH);
+        bjGrad.addColorStop(0, SD);
+        bjGrad.addColorStop(1, SV);
+        c.fillStyle = bjGrad;
+        c.beginPath();
+        c.ellipse(MX, bjY + bjH / 2, bjW / 2, bjH / 2, 0, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = SH;
+        c.lineWidth = 0.8;
+        c.stroke();
+
         c.restore();
       },
 
@@ -412,15 +732,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
         c.save(); c.globalAlpha = fireAlpha; c.globalCompositeOperation = 'lighter';
 
-        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 50);
-        glowGrad.addColorStop(0, 'rgba(255, 120, 20, 0.3)');
-        glowGrad.addColorStop(0.4, 'rgba(255, 60, 5, 0.1)');
+        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 40);
+        glowGrad.addColorStop(0, 'rgba(255, 120, 20, 0.25)');
+        glowGrad.addColorStop(0.5, 'rgba(255, 60, 5, 0.08)');
         glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         c.fillStyle = glowGrad;
-        c.fillRect(tx - 50, ty - 50, 100, 100);
+        c.fillRect(tx - 40, ty - 40, 80, 80);
 
         const flicker = Math.sin(elapsed * 32) * 4;
-        const flameH = 42 + flicker, flameW = 11;
+        const flameH = 38 + flicker, flameW = 10;
         const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
         fireGrad.addColorStop(0, '#ffffff');
         fireGrad.addColorStop(0.2, 'rgba(255, 210, 80, 0.95)');
@@ -508,42 +828,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore(); c.restore();
       },
 
-      volumetricLighting: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 3.0) return;
-        const intensity = clamp((t - 3.0) * 0.3, 0, 0.08) * sceneAlpha;
-        const sunX = W * 0.5;
-        const sunY = baseY - gateH * 0.8;
-
-        c.save();
-        c.globalAlpha = intensity;
-        c.globalCompositeOperation = 'screen';
-
-        for (let i = 0; i < 8; i++) {
-          const angle = -Math.PI * 0.5 + (i / 8) * Math.PI - Math.PI * 0.5;
-          const length = H * 0.55;
-          const width = 40 + Math.sin(elapsed + i) * 12;
-          const halfW = width / 2;
-          const tipX = sunX + Math.cos(angle) * length;
-          const tipY = sunY + Math.sin(angle) * length;
-          const perpX = -Math.sin(angle);
-          const perpY = Math.cos(angle);
-
-          c.beginPath();
-          c.moveTo(sunX, sunY);
-          c.lineTo(tipX + perpX * halfW, tipY + perpY * halfW);
-          c.lineTo(tipX - perpX * halfW, tipY - perpY * halfW);
-          c.closePath();
-
-          const rayGrad = c.createLinearGradient(sunX, sunY, tipX, tipY);
-          rayGrad.addColorStop(0, `rgba(255,235,180,${0.02 * intensity})`);
-          rayGrad.addColorStop(0.5, 'rgba(255, 140, 50, 0.03)');
-          rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
-          c.fillStyle = rayGrad;
-          c.fill();
-        }
-
-        c.restore();
-      },
+      /* ═══════════════════════════════════════════════════════════
+         volumetricLighting — REMOVED (gate के पीछे glow बना रहा था)
+         ═══════════════════════════════════════════════════════════ */
 
       jetsAndTrails: (t: number, sceneAlpha: number) => {
         if (t < 2.5 || t > 9.0) return;
@@ -702,7 +989,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       }
     };
 
+    /* ═══════════════════════════════════════════════════════════
+       PARTICLES — tp=6 (solar streaks) REMOVED
+       ═══════════════════════════════════════════════════════════ */
     const spawnParticles = (t: number, elapsed: number) => {
+      // Fog Dust
       if (Math.random() < 0.12) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H * 0.6 + Math.random() * H * 0.3;
@@ -712,6 +1003,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
+      // Gold Dust
       if (t > 4.0 && Math.random() < 0.06) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H + 10;
@@ -721,18 +1013,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      if (t > 5.0 && Math.random() < 0.02) {
-        const p = grab(pl); if (p) {
-          p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 100; p.y = baseY - gateH * 0.4;
-          p.vx = 1.5 + Math.random() * 2.0; p.vy = 1.0 + Math.random() * 1.5;
-          p.life = 4; p.ml = 4; p.sz = 3.0 + Math.random() * 4.0;
-          p.r = 255; p.g = 245; p.b = 200; p.a = 0.9; p.tp = 6;
-        }
-      }
+      // tp=6 REMOVED — solar particles jo gate se golden streaks bana rahe the
 
+      // Confetti
       if (t >= 5.5 && t < 11.5) {
-        const rainCount = 1;
-        for (let i = 0; i < rainCount; i++) {
+        for (let i = 0; i < 1; i++) {
           const p = grab(pl); if (p) {
             p.on = true; p.x = Math.random() * W; p.y = -20 - Math.random() * 30;
             p.vx = (Math.random() - 0.5) * 0.2; p.vy = 1.8 + Math.random() * 1.8;
@@ -747,6 +1032,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
+      // Torch Embers
       if (t > 2.0 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = H * 0.795;
@@ -771,8 +1057,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         } else if (p.tp === 5) {
           p.vy *= 0.99;
           p.vx = p.vx * 0.95 + noise.n2(elapsed * 0.5 + p.y * 0.01, p.turbOff) * 0.15;
-          p.x += p.vx; p.y += p.vy;
-        } else if (p.tp === 6) {
           p.x += p.vx; p.y += p.vy;
         } else {
           p.x += p.vx; p.y += p.vy;
@@ -801,12 +1085,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.globalCompositeOperation = 'lighter';
           c.fillStyle = `rgba(255, 215, 0, ${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
-        } else if (p.tp === 6) {
-          c.globalCompositeOperation = 'screen';
-          c.strokeStyle = `rgba(255, 230, 160, ${alpha * 0.4})`;
-          c.lineWidth = p.sz * 0.5;
-          c.beginPath(); c.moveTo(p.x, p.y);
-          c.lineTo(p.x - p.vx * 3, p.y - p.vy * 3); c.stroke();
         } else {
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
@@ -827,8 +1105,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     const drawPostFX = () => {
       c.save(); c.globalCompositeOperation = 'soft-light';
       const grade = c.createLinearGradient(0, 0, W, H);
-      grade.addColorStop(0, 'rgba(255, 140, 50, 0.06)');
-      grade.addColorStop(1, 'rgba(0, 50, 100, 0.12)');
+      grade.addColorStop(0, 'rgba(255, 140, 50, 0.03)');
+      grade.addColorStop(1, 'rgba(0, 50, 100, 0.08)');
       c.fillStyle = grade; c.fillRect(0, 0, W, H);
       c.restore();
 
@@ -881,11 +1159,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
 
       renderer.sky(t, sceneAlpha);
-      drawSun(t);
+      // drawSun — REMOVED (गोला + सूरज हटाया)
       renderer.stars(t, sceneAlpha);
       renderer.wavingFlagAndChakra(t, now / 1000, sceneAlpha);
       renderer.indiaGate(t, sceneAlpha);
-      renderer.volumetricLighting(t, now / 1000, sceneAlpha);
+      // volumetricLighting — REMOVED (gate पीछे glow हटाया)
       renderer.torch(t, now / 1000, sceneAlpha);
       renderer.jetsAndTrails(t, sceneAlpha);
       drawParticles();
