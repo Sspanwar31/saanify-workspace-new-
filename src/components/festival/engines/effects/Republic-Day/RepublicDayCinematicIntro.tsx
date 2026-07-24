@@ -315,7 +315,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           grad.addColorStop(0.8, `rgb(${lerp(55,90,ip)|0},${lerp(40,60,ip)|0},${lerp(65,70,ip)|0})`);
           grad.addColorStop(1, `rgb(${lerp(70,110,ip)|0},${lerp(50,68,ip)|0},${lerp(58,55,ip)|0})`);
         } else {
-          // ★ FIXED: Darkening starts at 10.5s now (was 11.5) so sky is dark before text at 14.5s
+          // स्काई को 10.5s से ही डार्क करना शुरू करते हैं ताकि 14.5s पर टेक्स्ट के आने से पहले पूरी तरह रात का फील मिले
           const ip = clamp((t - 10.5) / 3.0, 0, 1);
           grad.addColorStop(0, `rgb(${lerp(55,8,ip)|0},${lerp(65,15,ip)|0},${lerp(105,55,ip)|0})`);
           grad.addColorStop(1, `rgb(${lerp(110,20,ip)|0},${lerp(68,30,ip)|0},${lerp(55,80,ip)|0})`);
@@ -361,7 +361,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       },
 
       /* ═══════════════════════════════════════════════════════════
-         GROUND / GARDEN
+         GROUND / GARDEN — "पत्थर" हटाने के लिए सुधारे गए मार्ग
          ═══════════════════════════════════════════════════════════ */
       ground: (t: number, sceneAlpha: number) => {
         const reveal = clamp((t - 0.8) * 0.4, 0, 1);
@@ -370,70 +370,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const gTop = baseY;
         const gBot = H;
 
-        // ── Paved plaza at gate base (LIGHTER area for visual connection) ──
-        const plzW = gateW * 1.25;
-        const plzH = 35;
-        const plzGrad = c.createLinearGradient(0, gTop - 5, 0, gTop + plzH);
-        plzGrad.addColorStop(0, '#4a3828');
-        plzGrad.addColorStop(0.3, '#3d2e20');
-        plzGrad.addColorStop(0.7, '#2e2218');
-        plzGrad.addColorStop(1, '#221a12');
-        c.fillStyle = plzGrad;
-        c.fillRect(cx - plzW / 2, gTop - 5, plzW, plzH);
-        // Plaza edge lines
-        c.strokeStyle = 'rgba(90,70,45,0.15)';
-        c.lineWidth = 1;
-        c.strokeRect(cx - plzW / 2, gTop - 5, plzW, plzH);
-
-        // ── Main Lawn ──
-        const lawnGrad = c.createLinearGradient(0, gTop + plzH * 0.4, 0, gBot);
-        lawnGrad.addColorStop(0, '#162e14');
-        lawnGrad.addColorStop(0.2, '#122810');
-        lawnGrad.addColorStop(0.6, '#0d1e0c');
-        lawnGrad.addColorStop(1, '#081208');
+        // ★★★ "पत्थर" हटाने का मुख्य सुधार: वर्टिकल राजपथ को पूरी तरह हटा दिया गया है
+        // अब पूरा ग्राउंड एक समान समतल हरी घास (Main Lawn) में कनवर्टेड है
+        const lawnGrad = c.createLinearGradient(0, gTop, 0, gBot);
+        lawnGrad.addColorStop(0, '#112510');
+        lawnGrad.addColorStop(0.3, '#0d1c0c');
+        lawnGrad.addColorStop(1, '#060a05');
         c.fillStyle = lawnGrad;
         c.fillRect(0, gTop, W, gBot - gTop);
 
-        // ── Rajpath ──
-        const pathW = gateW * 0.30;
-        const pathGrad = c.createLinearGradient(0, gTop, 0, gTop + 80);
-        pathGrad.addColorStop(0, '#3a2c1e');
-        pathGrad.addColorStop(0.5, '#2e2218');
-        pathGrad.addColorStop(1, '#1e1610');
-        c.fillStyle = pathGrad;
-        c.beginPath();
-        c.moveTo(cx - pathW / 2, gTop);
-        c.lineTo(cx + pathW / 2, gTop);
-        c.lineTo(cx + pathW * 0.65, gBot);
-        c.lineTo(cx - pathW * 0.65, gBot);
-        c.closePath();
-        c.fill();
-
-        c.strokeStyle = 'rgba(80,65,40,0.12)';
-        c.lineWidth = 1;
-        c.beginPath();
-        c.moveTo(cx - pathW / 2, gTop);
-        c.lineTo(cx - pathW * 0.65, gBot);
-        c.stroke();
-        c.beginPath();
-        c.moveTo(cx + pathW / 2, gTop);
-        c.lineTo(cx + pathW * 0.65, gBot);
-        c.stroke();
-
-        // ── Side pathways ──
-        const sPathW = gateW * 0.12;
-        [cx - gateW * 0.22, cx + gateW * 0.22].forEach(px => {
-          c.fillStyle = '#1c1610';
-          c.beginPath();
-          c.moveTo(px - sPathW / 2, gTop);
-          c.lineTo(px + sPathW / 2, gTop);
-          c.lineTo(px + sPathW * 0.8, gBot);
-          c.lineTo(px - sPathW * 0.8, gBot);
-          c.closePath();
-          c.fill();
-        });
-
-        // ── Flower beds ──
+        // ── बगीचे के पौधे और साइड के फूल ──
         const flowerColors = ['rgba(120,40,30,0.06)', 'rgba(255,180,50,0.04)', 'rgba(60,100,40,0.05)'];
         const flowerPositions = [
           { x: cx - gateW * 0.38, y: gTop + 15 },
@@ -450,7 +396,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fill();
         });
 
-        // ── Hedges at gate base ──
+        // ── गेट के निचले हिस्से की झाड़ियाँ (Hedges) ──
         const hedgeColor = '#1a3015';
         const hedgeH = 14;
         const hedgeW = gateW * 0.10;
@@ -465,7 +411,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fill();
         }
 
-        // ── Tree silhouettes ──
+        // ── पेड़ों का आकार (Tree Silhouettes) ──
         const drawTree = (tx: number, ty: number, s: number) => {
           c.fillStyle = '#14100a';
           c.fillRect(tx - 3 * s, ty - 25 * s, 6 * s, 28 * s);
@@ -495,7 +441,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         drawTree(cx - gateW * 0.96, gTop, 0.4);
         drawTree(cx + gateW * 0.94, gTop, 0.45);
 
-        // ── Ground fog ──
+        // ── कोहरा (Ground Fog) ──
         c.globalAlpha = reveal * sceneAlpha * 0.15;
         const fogGrad = c.createLinearGradient(0, gTop, 0, gTop + 40);
         fogGrad.addColorStop(0, 'rgba(20,30,40,0.3)');
@@ -506,9 +452,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════════════
-         INDIA GATE — FIXED GROUNDING
-         ═══════════════════════════════════════════════════════════ */
       indiaGate: (t: number, sceneAlpha: number) => {
         const reveal = clamp((t - 0.8) * 0.4, 0, 1);
         c.save(); c.globalAlpha = reveal * sceneAlpha;
@@ -539,36 +482,13 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fillStyle = highlightColor; c.fillRect(x, y, w, 1);
         };
 
-        // ═══★★★ FIXED: WIDE FOUNDATION PLATFORM — extends BELOW baseY into ground ★★★═══
-        // Ground-level shadow (ellipse on the ground)
+        // ग्राउंड शैडो
         c.fillStyle = 'rgba(0,0,0,0.45)';
         c.beginPath();
         c.ellipse(cx, baseY + 5, gateW * 0.62, 10, 0, 0, Math.PI * 2);
         c.fill();
 
-        // Wide foundation that sinks 15px below ground line
-        const fpW = gateW * 1.14;
-        const fpTop = baseY - 6;
-        const fpBot = baseY + 15; // 15px BELOW ground — creates grounding effect
-        const fpGrad = c.createLinearGradient(cx - fpW / 2, fpTop, cx + fpW / 2, fpBot);
-        fpGrad.addColorStop(0, highlightColor);
-        fpGrad.addColorStop(0.25, baseColor);
-        fpGrad.addColorStop(0.65, shadowColor);
-        fpGrad.addColorStop(1, '#3a1a0a');
-        c.fillStyle = fpGrad;
-        c.fillRect(cx - fpW / 2, fpTop, fpW, fpBot - fpTop);
-        // Top edge highlight
-        c.fillStyle = highlightColor;
-        c.fillRect(cx - fpW / 2, fpTop, fpW, 1.8);
-        // Side bevel shadows
-        c.fillStyle = 'rgba(0,0,0,0.25)';
-        c.fillRect(cx - fpW / 2, fpTop, 3, fpBot - fpTop);
-        c.fillRect(cx + fpW / 2 - 3, fpTop, 3, fpBot - fpTop);
-        // Bottom dark edge (sinks into ground)
-        c.fillStyle = 'rgba(0,0,0,0.35)';
-        c.fillRect(cx - fpW / 2, baseY + 8, fpW, 7);
-
-        // ═══ Stepped base blocks on top of foundation ═══
+        // सुधारे गए बेस स्टेप्स - सीधे समतल मैदान पर स्थापित
         drawBevelBlock(cx - gateW * 0.50, baseY - 18, gateW * 1.00, 12);
         drawBevelBlock(cx - gateW * 0.46, baseY - 28, gateW * 0.92, 10);
         drawBevelBlock(cx - gateW * 0.44, baseY - 36, gateW * 0.88, 8);
@@ -861,16 +781,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       },
 
       /* ═══════════════════════════════════════════════════════════
-         TYPOGRAPHY — ★ FIXED: Text appears at 14.5s (was 11.5s)
+         TYPOGRAPHY — ★ सुधारा गया समय: 14.5 सेकंड से शुरू होगा
          ═══════════════════════════════════════════════════════════ */
       typography: (t: number, elapsed: number) => {
-        // ★ FIXED: Changed from 11.5 to 14.5 — text appears near the end
+        // टेक्स्ट अब केवल तभी दिखाई देगा जब 14.5s पर इंडिया गेट पूरी तरह से ओझल हो जाएगा
         if (t < 14.5) return;
         const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 14.5) * 0.5));
         c.save();
 
-        /* ── Text Jets ── */
-        // ★ FIXED: Changed from 11.5/12.8 to 14.5/15.8
+        /* ── जेट प्लेन का एनीमेशन ── */
         if (t >= 14.5 && t < 15.8) {
           const jetPhase = (t - 14.5) / 1.3;
           const jetSpeed = W * 0.38;
@@ -916,8 +835,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           });
         }
 
-        /* ── Main Title ── */
-        // ★ FIXED: Changed from 11.5 to 14.5
+        /* ── मुख्य शीर्षक (Main Title) ── */
         const fontSize = Math.min(W * 0.065, 52);
         c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
         const title = "HAPPY REPUBLIC DAY";
@@ -925,7 +843,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         let xOff = W * 0.5 - totalW * 0.5;
         for (let i = 0; i < title.length; i++) {
           const charW = c.measureText(title[i]).width;
-          // ★ FIXED: Changed from 11.5 to 14.5
           const charT = clamp((t - 14.5 - i * 0.035) / 0.4, 0, 1);
           if (charT <= 0) { xOff += charW; continue; }
           const charY = titleY + (1 - eOB(charT)) * -15;
@@ -966,7 +883,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
 
         /* ── जय हिन्द ── */
-        // ★ FIXED: Changed from 13.0 to 16.0
         if (t > 16.0) {
           const subAlpha = clamp((t - 16.0) * 2, 0, 1);
           c.save(); c.globalAlpha = subAlpha;
@@ -1026,7 +942,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
        PARTICLES
        ═══════════════════════════════════════════════════════════ */
     const spawnParticles = (t: number, elapsed: number) => {
-      // Fog Dust
       if (Math.random() < 0.12) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H * 0.6 + Math.random() * H * 0.3;
@@ -1036,7 +951,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Gold Dust (t < 10.5 tak hi)
       if (t > 4.0 && t < 10.5 && Math.random() < 0.15) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H + 10;
@@ -1046,7 +960,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // ★ FIXED: Pre-text sparkles shifted to 14.0-14.5 (was 11.0-11.5)
+      // टेक्स्ट प्रकटीकरण से पहले छोटे चमकीले कण (Sparkles)
       if (t >= 14.0 && t < 14.5) {
         for (let i = 0; i < 2; i++) {
           const p = grab(pl); if (p) {
@@ -1067,7 +981,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Confetti (tricolor only, 5.5-11.5)
       if (t >= 5.5 && t < 11.5) {
         for (let i = 0; i < 1; i++) {
           const p = grab(pl); if (p) {
@@ -1084,7 +997,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Torch Embers
       if (t > 2.0 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = baseY - 36;
@@ -1170,7 +1082,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       MAIN LOOP
+       MAIN LOOP — टाइमिंग सिंक और फेड-आउट का क्रियान्वयन
        ═══════════════════════════════════════════════════════════ */
     let lastTs = 0;
     let fwTimer = 0;
@@ -1180,9 +1092,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       const dt = Math.min((ts - lastTs) / 1000, 0.05);
       lastTs = ts;
       const t = elapsed;
-      const sceneAlpha = t < 1.0 ? clamp(t, 0, 1) : (t > DUR - 1.0 ? clamp(DUR - t, 0, 1) : 1);
 
-      // Camera shake
+      // ★★★ टाइमिंग सुधारी गई: 13.0s से 14.5s के बीच इंडिया गेट फेड-आउट हो जाएगा
+      const sceneAlpha = t < 13.0 ? 1 : clamp(1 - (t - 13.0) * 0.66, 0, 1);
+
+      // कैमरा शेक
       let shakeX = 0, shakeY = 0;
       if (cameraShake > 0.1) {
         shakeX = (Math.random() - 0.5) * cameraShake * 2;
@@ -1195,11 +1109,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.save();
       c.translate(shakeX, shakeY);
 
-      // Clear
+      // बैकग्राउंड क्लियर
       c.fillStyle = '#000';
       c.fillRect(-10, -10, W + 20, H + 20);
 
-      // Render layers
+      // परतों को रेंडर करें (Render Layers)
       renderer.sky(t, sceneAlpha);
       renderer.stars(t, sceneAlpha);
       renderer.horizonGlow(t, sceneAlpha);
@@ -1209,26 +1123,28 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       renderer.wavingFlagAndChakra(t, elapsed, sceneAlpha);
       renderer.jetsAndTrails(t, sceneAlpha);
       renderer.doves(t, elapsed, sceneAlpha);
+      
+      // टेक्स्ट रेंडरिंग (14.5s से शुरू होगी जब गेट ओझल हो चुका होगा)
       renderer.typography(t, elapsed);
       renderer.fireworks(sceneAlpha);
       drawParticles();
 
-      // Spawn particles
+      // स्पॉन पार्टिकल्स
       spawnParticles(t, elapsed);
       updateParticles(dt, elapsed);
 
-      // ★ Firework spawning: starts at 11.0s, continues through text phase
+      // 11.0s के बाद से हल्की आतिशबाजी शुरू होती है जो टेक्स्ट तक चलती है
       if (t >= 11.0) {
         fwTimer += dt;
         if (fwTimer > 0.4) {
           fwTimer = 0;
           spawnFirework();
-          if (t >= 14.5 && Math.random() < 0.5) spawnFirework(); // Extra fireworks during text
+          if (t >= 14.5 && Math.random() < 0.5) spawnFirework(); 
         }
       }
       updateFireworks(dt);
 
-      // Film grain overlay
+      // फिल्म ग्रेन ओवरले
       c.save();
       c.globalAlpha = 0.04;
       c.globalCompositeOperation = 'overlay';
@@ -1239,7 +1155,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       }
       c.restore();
 
-      // Vignette
+      // विग्नेट (Vignette)
       c.save();
       const vigGrad = c.createRadialGradient(cx, H * 0.5, W * 0.25, cx, H * 0.5, W * 0.75);
       vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1248,7 +1164,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.fillRect(0, 0, W, H);
       c.restore();
 
-      // Fade to black at end
+      // समाप्ति पर अंतिम फेड-टू-ब्लैक
       if (t > DUR - 1.0) {
         const fadeAlpha = clamp((t - (DUR - 1.0)) / 1.0, 0, 1);
         c.fillStyle = `rgba(0,0,0,${fadeAlpha})`;
@@ -1257,7 +1173,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       c.restore();
 
-      // Completion check
+      // कम्प्लीशन चेक
       if (t >= DUR && !done.current) {
         done.current = true;
         if (cbR.current) cbR.current();
