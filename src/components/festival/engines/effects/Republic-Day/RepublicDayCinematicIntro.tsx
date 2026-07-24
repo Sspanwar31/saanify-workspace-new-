@@ -38,6 +38,14 @@ interface Firework {
   pts: { x: number; y: number; vx: number; vy: number; life: number; ml: number; sz: number }[];
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Text Jet (typography ke liye chhote jets)
+   ═══════════════════════════════════════════════════════════════ */
+interface TextJet {
+  x: number; y: number; vx: number; scale: number;
+  smokeColor: string; trail: { x: number; y: number; a: number }[];
+}
+
 const POOL_SIZE = 5000;
 const DUR = 17.5;
 
@@ -154,6 +162,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       x: 0, y: 0, scale: 0.85, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true
     }));
 
+    /* ═══════════════════════════════════════════════════════════
+       Text Phase ke liye chhote jets (tricolor smoke trail ke saath)
+       ═══════════════════════════════════════════════════════════ */
+    const textJets: TextJet[] = [];
+
     const starI: number[] = [];
     for (let i = 0; i < 150; i++) starI.push(i);
 
@@ -257,15 +270,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             for (let j = 0; j < count; j++) {
               let ang: number, spd: number;
               if (pattern < 0.3) {
-                // Ring burst
                 ang = (j / count) * Math.PI * 2;
                 spd = 2.5 + Math.random() * 0.8;
               } else if (pattern < 0.6) {
-                // Willow (long trails)
                 ang = (j / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
                 spd = 1.0 + Math.random() * 3.0;
               } else {
-                // Peony (round spread)
                 ang = Math.random() * Math.PI * 2;
                 spd = 0.5 + Math.random() * 3.5;
               }
@@ -290,41 +300,31 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     const renderer = {
-      /* ═══════════════════════════════════════════════════════════
-         2027 CINEMA LUT SKY — Deep teal → Indigo → Soft warm horizon
-         (पुराने orange/saffron sky replace किया)
-         ═══════════════════════════════════════════════════════════ */
       sky: (t: number, sceneAlpha: number) => {
         c.save(); c.globalAlpha = sceneAlpha;
         const grad = c.createLinearGradient(0, 0, 0, H);
-
         if (t < 3.5) {
-          // Phase 1: Deep midnight teal-blue
           const ip = clamp(t / 3.5, 0, 1);
           grad.addColorStop(0, `rgb(${lerp(3,12,ip)|0},${lerp(5,18,ip)|0},${lerp(15,40,ip)|0})`);
           grad.addColorStop(0.6, `rgb(${lerp(5,15,ip)|0},${lerp(8,20,ip)|0},${lerp(22,48,ip)|0})`);
           grad.addColorStop(1, `rgb(${lerp(8,18,ip)|0},${lerp(10,22,ip)|0},${lerp(28,55,ip)|0})`);
         } else if (t < 7.5) {
-          // Phase 2: Pre-dawn — Indigo top, soft purple-teal mid, NO orange
           const ip = clamp((t - 3.5) / 4.0, 0, 1);
           grad.addColorStop(0, `rgb(${lerp(12,25,ip)|0},${lerp(18,30,ip)|0},${lerp(40,68,ip)|0})`);
           grad.addColorStop(0.4, `rgb(${lerp(15,35,ip)|0},${lerp(20,28,ip)|0},${lerp(48,72,ip)|0})`);
           grad.addColorStop(0.75, `rgb(${lerp(18,55,ip)|0},${lerp(22,40,ip)|0},${lerp(55,65,ip)|0})`);
           grad.addColorStop(1, `rgb(${lerp(18,70,ip)|0},${lerp(22,50,ip)|0},${lerp(55,58,ip)|0})`);
         } else if (t < 11.5) {
-          // Phase 3: Dawn — Soft steel blue, muted warm bottom (NOT bright orange)
           const ip = clamp((t - 7.5) / 4.0, 0, 1);
           grad.addColorStop(0, `rgb(${lerp(25,55,ip)|0},${lerp(30,65,ip)|0},${lerp(68,105,ip)|0})`);
           grad.addColorStop(0.5, `rgb(${lerp(35,70,ip)|0},${lerp(28,55,ip)|0},${lerp(72,90,ip)|0})`);
           grad.addColorStop(0.8, `rgb(${lerp(55,90,ip)|0},${lerp(40,60,ip)|0},${lerp(65,70,ip)|0})`);
           grad.addColorStop(1, `rgb(${lerp(70,110,ip)|0},${lerp(50,68,ip)|0},${lerp(58,55,ip)|0})`);
         } else {
-          // Phase 4: Morning — Clean desaturated blue (no orange leftover)
           const ip = clamp((t - 11.5) / 4.5, 0, 1);
           grad.addColorStop(0, `rgb(${lerp(55,10,ip)|0},${lerp(65,22,ip)|0},${lerp(105,70,ip)|0})`);
           grad.addColorStop(1, `rgb(${lerp(110,28,ip)|0},${lerp(68,40,ip)|0},${lerp(55,110,ip)|0})`);
         }
-
         c.fillStyle = grad; c.fillRect(0, 0, W, H);
         c.restore();
       },
@@ -344,21 +344,14 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════════════
-         SUBTLE HORIZON GLOW — Replaces volumetricLighting
-         (gate के पीछे कोई गोला/rays NAHI, sirf horizon pe soft warmth)
-         ═══════════════════════════════════════════════════════════ */
       horizonGlow: (t: number, sceneAlpha: number) => {
         if (t < 4.0 || t > 11.0) return;
         const fadeIn = clamp((t - 4.0) * 0.5, 0, 1);
         const fadeOut = clamp((11.0 - t) * 0.5, 0, 1);
         const alpha = fadeIn * fadeOut * 0.12 * sceneAlpha;
-
         c.save();
         c.globalAlpha = alpha;
         c.globalCompositeOperation = 'screen';
-
-        // Very subtle wide horizontal glow at horizon — NOT a circle
         const glowY = baseY - gateH * 0.3;
         const glowH = gateH * 1.2;
         const grad = c.createLinearGradient(0, glowY - glowH / 2, 0, glowY + glowH / 2);
@@ -369,6 +362,144 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         c.fillStyle = grad;
         c.fillRect(cx - gateW * 0.8, glowY - glowH / 2, gateW * 1.6, glowH);
+        c.restore();
+      },
+
+      /* ═══════════════════════════════════════════════════════════
+         GROUND / GARDEN — India Gate ke neeche ka asli environment
+         Lawn, Rajpath, Trees, Hedges — pre-dawn silhouettes
+         ═══════════════════════════════════════════════════════════ */
+      ground: (t: number, sceneAlpha: number) => {
+        const reveal = clamp((t - 0.8) * 0.4, 0, 1);
+        c.save(); c.globalAlpha = reveal * sceneAlpha;
+
+        const gTop = baseY;
+        const gBot = H;
+
+        // ── Main Lawn (dark green gradient) ──
+        const lawnGrad = c.createLinearGradient(0, gTop, 0, gBot);
+        lawnGrad.addColorStop(0, '#162e14');
+        lawnGrad.addColorStop(0.2, '#122810');
+        lawnGrad.addColorStop(0.6, '#0d1e0c');
+        lawnGrad.addColorStop(1, '#081208');
+        c.fillStyle = lawnGrad;
+        c.fillRect(0, gTop, W, gBot - gTop);
+
+        // ── Rajpath — Central pathway (lighter sandstone) ──
+        const pathW = gateW * 0.30;
+        const pathGrad = c.createLinearGradient(0, gTop, 0, gTop + 80);
+        pathGrad.addColorStop(0, '#3a2c1e');
+        pathGrad.addColorStop(0.5, '#2e2218');
+        pathGrad.addColorStop(1, '#1e1610');
+        c.fillStyle = pathGrad;
+        c.beginPath();
+        c.moveTo(cx - pathW / 2, gTop);
+        c.lineTo(cx + pathW / 2, gTop);
+        c.lineTo(cx + pathW * 0.65, gBot);
+        c.lineTo(cx - pathW * 0.65, gBot);
+        c.closePath();
+        c.fill();
+
+        // Path edge lines (subtle)
+        c.strokeStyle = 'rgba(80,65,40,0.12)';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(cx - pathW / 2, gTop);
+        c.lineTo(cx - pathW * 0.65, gBot);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(cx + pathW / 2, gTop);
+        c.lineTo(cx + pathW * 0.65, gBot);
+        c.stroke();
+
+        // ── Side pathways ──
+        const sPathW = gateW * 0.12;
+        [cx - gateW * 0.22, cx + gateW * 0.22].forEach(px => {
+          c.fillStyle = '#1c1610';
+          c.beginPath();
+          c.moveTo(px - sPathW / 2, gTop);
+          c.lineTo(px + sPathW / 2, gTop);
+          c.lineTo(px + sPathW * 0.8, gBot);
+          c.lineTo(px - sPathW * 0.8, gBot);
+          c.closePath();
+          c.fill();
+        });
+
+        // ── Flower beds (subtle color spots) ──
+        const flowerColors = ['rgba(120,40,30,0.06)', 'rgba(255,180,50,0.04)', 'rgba(60,100,40,0.05)'];
+        const flowerPositions = [
+          { x: cx - gateW * 0.38, y: gTop + 15 },
+          { x: cx + gateW * 0.38, y: gTop + 20 },
+          { x: cx - gateW * 0.28, y: gTop + 25 },
+          { x: cx + gateW * 0.28, y: gTop + 18 },
+          { x: cx - gateW * 0.18, y: gTop + 12 },
+          { x: cx + gateW * 0.18, y: gTop + 22 },
+        ];
+        flowerPositions.forEach((fp, fi) => {
+          c.fillStyle = flowerColors[fi % flowerColors.length];
+          c.beginPath();
+          c.ellipse(fp.x, fp.y, gateW * 0.04, 8, 0, 0, Math.PI * 2);
+          c.fill();
+        });
+
+        // ── Hedges at gate base (rounded dark green shapes) ──
+        const hedgeColor = '#1a3015';
+        const hedgeH = 14;
+        const hedgeW = gateW * 0.10;
+        for (let i = 0; i < 4; i++) {
+          const hx = cx - gateW * 0.50 + i * (gateW * 0.065);
+          c.fillStyle = hedgeColor;
+          c.beginPath();
+          c.ellipse(hx, gTop + 3, hedgeW / 2, hedgeH / 2, 0, 0, Math.PI * 2);
+          c.fill();
+          c.beginPath();
+          c.ellipse(cx + gateW * 0.50 - i * (gateW * 0.065), gTop + 3, hedgeW / 2, hedgeH / 2, 0, 0, MathMath.PI * 2);
+          c.fill();
+        }
+
+        // ── Tree silhouettes (Neem/Banyan style) ──
+        const drawTree = (tx: number, ty: number, s: number) => {
+          // Trunk
+          c.fillStyle = '#14100a';
+          c.fillRect(tx - 3 * s, ty - 25 * s, 6 * s, 28 * s);
+          // Canopy layers (3 overlapping ellipses)
+          for (let layer = 0; layer < 3; layer++) {
+            const cw = (22 - layer * 5) * s;
+            const ch = (14 - layer * 2) * s;
+            const cy = ty - 25 * s - layer * 10 * s;
+            c.fillStyle = layer === 1 ? '#0f200f' : '#0c180c';
+            c.beginPath();
+            c.ellipse(tx + (layer - 1) * 4 * s, cy, cw, ch, 0, 0, Math.PI * 2);
+            c.fill();
+          }
+        };
+
+        // Near trees (left side)
+        drawTree(cx - gateW * 0.56, gTop, 1.3);
+        drawTree(cx - gateW * 0.65, gTop, 1.0);
+        drawTree(cx - gateW * 0.72, gTop, 1.15);
+
+        // Near trees (right side)
+        drawTree(cx + gateW * 0.56, gTop, 1.2);
+        drawTree(cx + gateW * 0.63, gTop, 1.35);
+        drawTree(cx + gateW * 0.70, gTop, 1.0);
+
+        // Far background trees (smaller, darker — depth illusion)
+        c.globalAlpha = reveal * sceneAlpha * 0.4;
+        drawTree(cx - gateW * 0.82, gTop, 0.75);
+        drawTree(cx + gateW * 0.80, gTop, 0.8);
+        drawTree(cx - gateW * 0.90, gTop, 0.55);
+        drawTree(cx + gateW * 0.88, gTop, 0.6);
+        drawTree(cx - gateW * 0.96, gTop, 0.4);
+        drawTree(cx + gateW * 0.94, gTop, 0.45);
+
+        // ── Ground fog (atmospheric depth) ──
+        c.globalAlpha = reveal * sceneAlpha * 0.15;
+        const fogGrad = c.createLinearGradient(0, gTop, 0, gTop + 40);
+        fogGrad.addColorStop(0, 'rgba(20,30,40,0.3)');
+        fogGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = fogGrad;
+        c.fillRect(0, gTop, W, 40);
 
         c.restore();
       },
@@ -484,24 +615,18 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════════════
-         TORCH — Glow DRAMATICALLY reduced (140→35, 0.9→0.2)
-         ═══════════════════════════════════════════════════════════ */
       torch: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 2.0) return;
         const tx = W * 0.5;
         const ty = baseY - 32;
         const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
         c.save(); c.globalAlpha = fireAlpha; c.globalCompositeOperation = 'lighter';
-
-        // FIX: 140→35 radius, 0.9→0.2 intensity (गोला हटाया)
         const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 35);
         glowGrad.addColorStop(0, 'rgba(255,120,20,0.2)');
         glowGrad.addColorStop(0.5, 'rgba(255,60,5,0.06)');
         glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
         c.fillStyle = glowGrad;
         c.fillRect(tx - 35, ty - 35, 70, 70);
-
         const flicker = Math.sin(elapsed * 32) * 3;
         const flameH = 36 + flicker, flameW = 9;
         const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
@@ -608,10 +733,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore(); c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════════════
-         volumetricLighting — COMPLETELY REMOVED (यही गोला बना रहा था)
-         ═══════════════════════════════════════════════════════════ */
-
       jetsAndTrails: (t: number, sceneAlpha: number) => {
         if (t < 2.5 || t > 9.0) return;
         c.save(); c.globalAlpha = sceneAlpha;
@@ -704,10 +825,65 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      typography: (t: number) => {
+      /* ═══════════════════════════════════════════════════════════
+         TYPOGRAPHY — Modernized with Text Jets + Tricolor Bursts
+         ═══════════════════════════════════════════════════════════ */
+      typography: (t: number, elapsed: number) => {
         if (t < 11.5) return;
         const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
         c.save();
+
+        /* ── Text Jets — 3 chhote jets tricolor smoke ke saath ── */
+        if (t >= 11.5 && t < 12.8) {
+          const jetPhase = (t - 11.5) / 1.3;
+          const jetSpeed = W * 0.38;
+          const jetY = titleY - 5;
+
+          // Initialize text jets on first call
+          if (textJets.length === 0) {
+            textJets.push(
+              { x: -60, y: jetY - 15, vx: jetSpeed, scale: 0.45, smokeColor: '#FF9933', trail: [] },
+              { x: -120, y: jetY, vx: jetSpeed * 1.02, scale: 0.38, smokeColor: '#FFFFFF', trail: [] },
+              { x: -80, y: jetY + 15, vx: jetSpeed * 0.98, scale: 0.38, smokeColor: '#138808', trail: [] },
+            );
+          }
+
+          c.save();
+          textJets.forEach((tj, ti) => {
+            tj.x += tj.vx;
+            // Add smoke trail point
+            if (Math.random() < 0.6) {
+              tj.trail.push({ x: tj.x - 18 * tj.scale, y: tj.y + (Math.random() - 0.5) * 4, a: 0.5 });
+              if (tj.trail.length > 30) tj.trail.shift();
+            }
+            // Draw trail
+            tj.trail.forEach((tp, tpi) => {
+              c.globalAlpha = tpi.a * clamp(1 - jetPhase * 0.3, 0, 1);
+              const hex = tj.smokeColor.replace('#', '');
+              c.fillStyle = `rgba(${parseInt(hex.substring(0,2),16)},${parseInt(hex.substring(2,4),16)},${tj.scale * 0.5})`;
+              c.beginPath();
+              c.arc(tp.x, tp.y, 4 * tj.scale, 0, Math.PI * 2);
+              c.fill();
+            });
+            // Draw jet silhouette
+            c.globalAlpha = clamp(1 - jetPhase * 0.5, 0, 1);
+            c.translate(tj.x, tj.y);
+            c.scale(tj.scale, tj.scale);
+            c.fillStyle = '#1a1a1a';
+            c.beginPath();
+            c.moveTo(20, 0); c.lineTo(8, -2); c.lineTo(0, -10);
+            c.lineTo(-5, -14); c.lineTo(-8, -14); c.lineTo(-5, -2);
+            c.lineTo(-14, 0); c.lineTo(-18, 5); c.lineTo(-18, -5);
+            c.lineTo(-14, 0); c.lineTo(-8, 14); c.lineTo(-5, 14);
+            c.lineTo(-18, -5); c.lineTo(-18, 5); c.lineTo(-14, 0);
+            c.lineTo(-5, 2); c.lineTo(0, 10); c.lineTo(8, 2);
+            c.closePath(); c.fill();
+            c.restore();
+          });
+          c.restore();
+        }
+
+        /* ── Main Title — letter by letter with tricolor burst ── */
         const fontSize = Math.min(W * 0.065, 52);
         c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
         const title = "HAPPY REPUBLIC DAY";
@@ -716,23 +892,85 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         for (let i = 0; i < title.length; i++) {
           const charW = c.measureText(title[i]).width;
           const charT = clamp((t - 11.5 - i * 0.035) / 0.4, 0, 1);
+          if (charT <= 0) { xOff += charW; continue; }
           const charY = titleY + (1 - eOB(charT)) * -15;
+
           c.save(); c.globalAlpha = eOC(charT);
-          c.fillStyle = 'rgba(0,0,0,0.92)'; c.fillText(title[i], xOff + 2, charY + 2);
+
+          // Shadow
+          c.fillStyle = 'rgba(0,0,0,0.92)';
+          c.fillText(title[i], xOff + 2, charY + 2);
+
+          // Tricolor gradient fill
           const sweepGrad = c.createLinearGradient(xOff, charY - fontSize * 0.5, xOff, charY + fontSize * 0.38);
           sweepGrad.addColorStop(0, '#FF9933'); sweepGrad.addColorStop(0.48, '#FFFFFF');
           sweepGrad.addColorStop(0.52, '#FFFFFF'); sweepGrad.addColorStop(1, '#138808');
-          c.fillStyle = sweepGrad; c.fillText(title[i], xOff, charY);
-          c.restore(); xOff += charW;
+          c.fillStyle = sweepGrad;
+          c.fillText(title[i], xOff, charY);
+          c.restore();
+
+          // ── Tricolor burst when letter appears ──
+          if (charT > 0.3 && charT < 0.5) {
+            const bx = xOff + charW / 2;
+            const by = charY - fontSize * 0.1;
+            const colors = [
+              { r: 255, g: 153, b: 51 },
+              { r: 255, g: 255, b: 255 },
+              { r: 19, g: 136, b: 8 },
+            ];
+            for (let bi = 0; bi < 5; bi++) {
+              const p = grab(pl); if (p) {
+                p.on = true; p.x = bx; p.y = by;
+                const ang = (bi / 5) * Math.PI * 2 + Math.random() * 0.8;
+                const spd = 1.5 + Math.random() * 2.5;
+                p.vx = Math.cos(ang) * spd;
+                p.vy = Math.sin(ang) * spd - 0.5;
+                p.life = 0.8 + Math.random() * 0.6; p.ml = 1.4; p.sz = 2.0 + Math.random() * 2.0;
+                const col = colors[bi % 3];
+                p.r = col.r; p.g = col.g; p.b = col.b;
+                p.a = 0.9; p.tp = 7; // tp=7: tricolor text burst
+              }
+            }
+          }
+
+          xOff += charW;
         }
+
+        /* ── जय हिन्द — with final tricolor burst ── */
         if (t > 13.0) {
           const subAlpha = clamp((t - 13.0) * 2, 0, 1);
           c.save(); c.globalAlpha = subAlpha;
           c.fillStyle = '#ffd700'; c.textAlign = 'center';
           c.font = `500 ${fontSize * 0.65}px 'Georgia', serif`;
           c.fillText("जय हिन्द", W * 0.5, titleY + fontSize * 1.1);
+
+          // Final tricolor burst for जय हिन्द
+          if (subAlpha > 0.1 && subAlpha < 0.4) {
+            const bx = W * 0.5, by = titleY + fontSize * 1.1;
+            const colors = [
+              { r: 255, g: 153, b: 51 },
+              { r: 255, g: 255, b: 255 },
+              { r: 19, g: 136, b: 8 },
+              { r: 255, g: 215, b: 0 },
+            ];
+            for (let bi = 0; bi < 12; bi++) {
+              const p = grab(pl); if (p) {
+                p.on = true; p.x = bx; p.y = by;
+                const ang = (bi / 12) * Math.PI * 2;
+                const spd = 2.0 + Math.random() * 3.0;
+                p.vx = Math.cos(ang) * spd;
+                p.vy = Math.sin(ang) * spd - 0.8;
+                p.life = 1.0 + Math.random() * 0.8; p.ml = 1.8; p.sz = 2.5 + Math.random() * 2.5;
+                const col = colors[bi % 4];
+                p.r = col.r; p.g = col.g; p.b = col.b;
+                p.a = 0.85; p.tp = 7;
+              }
+            }
+          }
+
           c.restore();
         }
+
         c.restore();
       },
 
@@ -758,9 +996,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       PARTICLES — tp=6 (solar streaks) COMPLETELY REMOVED
+       PARTICLES — tp=5 stop at t<10.5, ADD tp=7, tp=8
        ═══════════════════════════════════════════════════════════ */
     const spawnParticles = (t: number, elapsed: number) => {
+      // Fog Dust
       if (Math.random() < 0.12) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H * 0.6 + Math.random() * H * 0.3;
@@ -769,7 +1008,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           p.r = 230; p.g = 235; p.b = 245; p.a = 0.05; p.tp = 1;
         }
       }
-      if (t > 4.0 && Math.random() < 0.15) {
+
+      /* ═══════════════════════════════════════════════════════════
+         FIX: Gold Dust — t < 10.5 tak hi spawn (जय हिंद के नीचे sparkles remove)
+         ═════════════════════════════════════════════════════════ */
+      if (t > 4.0 && t < 10.5 && Math.random() < 0.15) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H + 10;
           p.vx = (Math.random() - 0.5) * 0.5; p.vy = -0.4 - Math.random() * 0.7;
@@ -777,8 +1020,33 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           p.r = 255; p.g = 215; p.b = 0; p.a = 0.3; p.tp = 5;
         }
       }
-      // tp=6 REMOVED — यही golden diagonal streaks बना रहा था
 
+      /* ═══════════════════════════════════════════════════════════
+         tp=8: Pre-text sparkles — ऊपर से नीचे गिरते हैं text se pehle (t=11.0-11.5)
+         White/gold tiny dots falling like curtain of light
+         ═══════════════════════════════════════════════════════════ */
+      if (t >= 11.0 && t < 11.5) {
+        for (let i = 0; i < 2; i++) {
+          const p = grab(pl); if (p) {
+            p.on = true;
+            p.x = Math.random() * W;
+            p.y = -10 - Math.random() * 20;
+            p.vx = (Math.random() - 0.5) * 0.3;
+            p.vy = 1.5 + Math.random() * 2.5;
+            p.life = 2.5; p.ml = 2.5;
+            p.sz = 1.0 + Math.random() * 1.5;
+            // White/gold mix
+            if (Math.random() < 0.6) {
+              p.r = 255; p.g = 230; p.b = 180; p.a = 0.7;
+            } else {
+              p.r = 255; p.g = 255; p.b = 255; p.a = 0.5;
+            }
+            p.tp = 8; // tp=8: pre-text sparkles
+          }
+        }
+      }
+
+      // Confetti (tricolor only, 5.5-11.5)
       if (t >= 5.5 && t < 11.5) {
         for (let i = 0; i < 1; i++) {
           const p = grab(pl); if (p) {
@@ -794,6 +1062,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           }
         }
       }
+
+      // Torch Embers
       if (t > 2.0 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = baseY - 32;
@@ -817,6 +1087,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         } else if (p.tp === 5) {
           p.vy *= 0.99;
           p.vx = p.vx * 0.95 + noise.n2(elapsed * 0.5 + p.y * 0.01, p.turbOff) * 0.15;
+          p.x += p.vx; p.y += p.vy;
+        } else if (p.tp === 7) {
+          // Tricolor text burst — fast fade, slight gravity
+          p.x += p.vx; p.y += p.vy;
+          p.vy += 0.8;
+          p.vx *= 0.97;
+          p.vy *= 0.97;
+        } else if (p.tp === 8) {
+          // Pre-text sparkles — gentle fall with drift
+          p.vx = p.vx * 0.98 + Math.sin(elapsed * 2 + p.y * 0.02) * 0.3;
           p.x += p.vx; p.y += p.vy;
         } else {
           p.x += p.vx; p.y += p.vy;
@@ -844,6 +1124,27 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.globalCompositeOperation = 'lighter';
           c.fillStyle = `rgba(255,215,0,${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
+        } else if (p.tp === 7) {
+          // Tricolor text burst — glowing dot
+          c.globalCompositeOperation = 'lighter';
+          const glow = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz * 2);
+          glow.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${alpha})`);
+          glow.addColorStop(0.4, `rgba(${p.r},${p.g},${p.b},${alpha * 0.4})`);
+          glow.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = glow;
+          c.beginPath(); c.arc(p.x, p.y, p.sz * 2, 0, Math.PI * 2); c.fill();
+        } else if (p.tp === 8) {
+          // Pre-text sparkles — small bright dot with tiny tail
+          c.globalCompositeOperation = 'lighter';
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha * 0.8})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
+          // Tiny upward tail
+          c.strokeStyle = `rgba(${p.r},${p.g},${p.b},${alpha * 0.3})`;
+          c.lineWidth = 0.5;
+          c.beginPath();
+          c.moveTo(p.x, p.y);
+          c.lineTo(p.x - p.vx * 2, p.y - p.vy * 2);
+          c.stroke();
         } else {
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
@@ -859,24 +1160,17 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.restore();
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       POST FX — 2027 Teal-Orange cinema grade (very subtle)
-       ═══════════════════════════════════════════════════════════ */
     const drawPostFX = () => {
-      // FIX: 0.18→0.04, 0.25→0.06 (golden wash हटाया)
       c.save(); c.globalCompositeOperation = 'soft-light';
       const grade = c.createLinearGradient(0, 0, W, H);
       grade.addColorStop(0, 'rgba(255,140,50,0.04)');
       grade.addColorStop(1, 'rgba(0,50,100,0.06)');
       c.fillStyle = grade; c.fillRect(0, 0, W, H);
       c.restore();
-
       const vignette = c.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.85);
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
       vignette.addColorStop(1, 'rgba(0,0,0,0.80)');
       c.fillStyle = vignette; c.fillRect(0, 0, W, H);
-
-      // 2027: Subtle anamorphic flare streak
       c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.02;
       const flareGrad = c.createLinearGradient(0, H * 0.48, W, H * 0.52);
       flareGrad.addColorStop(0, 'rgba(0,0,0,0)');
@@ -887,7 +1181,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.fillStyle = flareGrad;
       c.fillRect(0, H * 0.48, W, H * 0.04);
       c.restore();
-
       c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.025;
       const pat = c.createPattern(grainCv, 'repeat');
       if (pat) { c.fillStyle = pat; c.fillRect(0, 0, W, H); }
@@ -920,7 +1213,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       cameraShake *= 0.92;
 
-      // 2027: Smoother, slower zoom with eased deceleration
       const zoomClimax = t < 11.5
         ? lerp(1.0, 1.06, eOE(t / 11.5))
         : lerp(1.06, 1.8, clamp((t - 11.5) / 3.0, 0, 1));
@@ -940,9 +1232,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       renderer.sky(t, sceneAlpha);
       renderer.stars(t, sceneAlpha);
       renderer.horizonGlow(t, sceneAlpha);
+      renderer.ground(t, sceneAlpha);
       renderer.wavingFlagAndChakra(t, now / 1000, sceneAlpha);
       renderer.indiaGate(t, sceneAlpha);
-      // volumetricLighting — REMOVED
       renderer.torch(t, now / 1000, sceneAlpha);
       renderer.jetsAndTrails(t, sceneAlpha);
       drawParticles();
@@ -960,7 +1252,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       }
 
-      renderer.typography(t);
+      renderer.typography(t, now / 1000);
       drawChromaticAberration();
       drawPostFX();
 
