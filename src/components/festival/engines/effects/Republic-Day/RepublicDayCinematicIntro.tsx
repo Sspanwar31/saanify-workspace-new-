@@ -455,36 +455,50 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       wavingFlagAndChakra: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 3.0) return;
         const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
-        const scVal = Math.min(W, H);
-        const fw = scVal * 0.22, fh = fw * 0.66;
         
-        // झंडे का डंडा (Left Side) - जमीन पर स्थिर करने के लिए गणना
-        const poleHeight = gateH * 0.88;
-        const poleTopX = cx - gateW * 0.65; 
-        const poleTopY = baseY - poleHeight;
+        // संदर्भ छवि (Reference Image) के अनुसार झंडे को बड़ा (Hero size) किया गया है
+        const fw = gateW * 0.48; // विशाल और राजसी आकार (Attic/Dome चौड़ाई का लगभग आधा)
+        const fh = fw * 0.66;
+        
+        // इंडिया गेट के शीर्ष फ्लैट टेरेस (Dome/Attic level) की ऊंचाई का सटीक मिलान
+        const pH = gateH * 0.72;
+        const pY = baseY - 32 - pH;
+        const lintelH = gateH * 0.12;
+        const lintelY = pY - lintelH;
+        const attic1Y = lintelY - gateH * 0.08;
+        const attic2Y = attic1Y - gateH * 0.06;
+
+        const poleHeight = gateH * 0.48; // डंडे की ऊंचाई पर्याप्त रूप से ऊपर की तरफ
+        const poleTopX = cx; // बिल्कुल सेंटर में स्थापित
+        const poleTopY = attic2Y - poleHeight;
 
         if (flagNodes[0].x === 0) {
           for (let i = 0; i < numPoints; i++) {
-            // माइनस सिंबल (-) झंडे को बाईं तरफ (इंडिया गेट से दूर) लहराने के लिए दिशा बदलता है
-            flagNodes[i].x = poleTopX - (i * fw) / (numPoints - 1);
+            // झंडा दाईं ओर लहराएगा (जैसे स्क्रीनशॉट इमेज में दिखाया गया है)
+            flagNodes[i].x = poleTopX + (i * fw) / (numPoints - 1);
             flagNodes[i].y = poleTopY;
             flagNodes[i].ox = flagNodes[i].x; flagNodes[i].oy = flagNodes[i].y;
           }
         }
 
         for (let i = 1; i < numPoints; i++) {
-          // माइनस विंड फोर्स (-) हवा को बाईं तरफ धकेलता है
-          const wind = -0.22 - noise.n2(elapsed * 0.8 + i * 0.15, 0) * 0.18;
-          const gravity = 0.025;
+          // 'halka halka laharana' प्रभाव के लिए हवा की गति को धीमा और नियंत्रित किया गया
+          const wind = 0.15 + noise.n2(elapsed * 0.5 + i * 0.10, 0) * 0.12;
+          const gravity = 0.02;
+          
+          // कपड़े में एक समान गति से चलने वाली सुंदर तरंग उत्पन्न करने के लिए साइन वेव का उपयोग
+          const waveOffset = Math.sin(elapsed * 2.5 - i * 0.4) * 0.04;
+          
           flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.94 + wind;
-          flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.94 + gravity;
+          flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.94 + gravity + waveOffset;
           flagNodes[i].ox = flagNodes[i].x; flagNodes[i].oy = flagNodes[i].y;
           flagNodes[i].x += flagNodes[i].vx; flagNodes[i].y += flagNodes[i].vy;
         }
         flagNodes[0].x = poleTopX; flagNodes[0].y = poleTopY;
 
         const linkLength = fw / (numPoints - 1);
-        for (let steps = 0; steps < 4; steps++) {
+        // कपड़े की स्थिरता के लिए रिलेक्सेशन लूप को 6 बार रन किया जाता है
+        for (let steps = 0; steps < 6; steps++) {
           for (let i = 0; i < numPoints - 1; i++) {
             const n1 = flagNodes[i], n2 = flagNodes[i + 1];
             const dx = n2.x - n1.x, dy = n2.y - n1.y;
@@ -499,22 +513,19 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
         c.save(); c.globalAlpha = revealAlpha;
 
-        // खंभे का निचला स्टैंड (Base stand) - ताकि पोल हवा में तैरता हुआ न दिखे
-        c.fillStyle = '#5a3420';
-        c.fillRect(poleTopX - 8, baseY - 6, 16, 6);
-        c.fillStyle = '#eed2bc';
-        c.fillRect(poleTopX - 5, baseY - 10, 10, 4);
+        // पोल को गुंबद के संरचनात्मक भाग के अंदर गहराई से मजबूती से बांधा गया
+        const poleBaseY = attic2Y + 15;
 
-        // मजबूत मैटेलिक पोल
-        const poleGrad = c.createLinearGradient(poleTopX - 3, poleTopY, poleTopX + 3, baseY);
+        // शानदार क्रोम फिनिश धातु का पोल
+        const poleGrad = c.createLinearGradient(poleTopX - 3.5, poleTopY, poleTopX + 3.5, poleBaseY);
         poleGrad.addColorStop(0, '#f0f0f0'); 
         poleGrad.addColorStop(0.3, '#ffffff'); 
-        poleGrad.addColorStop(0.7, '#a8a8a8');
-        poleGrad.addColorStop(1, '#666666');
-        c.fillStyle = poleGrad; c.fillRect(poleTopX - 3, poleTopY, 6, poleHeight);
+        poleGrad.addColorStop(0.7, '#9e9e9e');
+        poleGrad.addColorStop(1, '#555555');
+        c.fillStyle = poleGrad; c.fillRect(poleTopX - 3.5, poleTopY, 7, poleBaseY - poleTopY);
         
-        // डंडे के ऊपर सोने का गोला (Golden Sphere)
-        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(poleTopX, poleTopY, 5, 0, Math.PI * 2); c.fill();
+        // शीर्ष पर स्वर्ण गुंबद (Golden Sphere)
+        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(poleTopX, poleTopY, 6, 0, Math.PI * 2); c.fill();
 
         for (let i = 0; i < numPoints - 1; i++) {
           const n1 = flagNodes[i], n2 = flagNodes[i + 1];
