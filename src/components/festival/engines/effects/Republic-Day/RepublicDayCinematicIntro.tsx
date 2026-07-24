@@ -38,9 +38,6 @@ interface Firework {
   pts: { x: number; y: number; vx: number; vy: number; life: number; ml: number; sz: number }[];
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Text Jet (typography ke liye chhote jets)
-   ═══════════════════════════════════════════════════════════════ */
 interface TextJet {
   x: number; y: number; vx: number; scale: number;
   smokeColor: string; trail: { x: number; y: number; a: number }[];
@@ -162,9 +159,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       x: 0, y: 0, scale: 0.85, smokeColor: '#FFFFFF', vx: 0, vy: 0, active: true
     }));
 
-    /* ═══════════════════════════════════════════════════════════
-       Text Phase ke liye chhote jets (tricolor smoke trail ke saath)
-       ═══════════════════════════════════════════════════════════ */
     const textJets: TextJet[] = [];
 
     const starI: number[] = [];
@@ -366,8 +360,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       },
 
       /* ═══════════════════════════════════════════════════════════
-         GROUND / GARDEN — India Gate ke neeche ka asli environment
-         Lawn, Rajpath, Trees, Hedges — pre-dawn silhouettes
+         GROUND / GARDEN
          ═══════════════════════════════════════════════════════════ */
       ground: (t: number, sceneAlpha: number) => {
         const reveal = clamp((t - 0.8) * 0.4, 0, 1);
@@ -376,7 +369,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const gTop = baseY;
         const gBot = H;
 
-        // ── Main Lawn (dark green gradient) ──
+        // ── Main Lawn ──
         const lawnGrad = c.createLinearGradient(0, gTop, 0, gBot);
         lawnGrad.addColorStop(0, '#162e14');
         lawnGrad.addColorStop(0.2, '#122810');
@@ -385,7 +378,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.fillStyle = lawnGrad;
         c.fillRect(0, gTop, W, gBot - gTop);
 
-        // ── Rajpath — Central pathway (lighter sandstone) ──
+        // ── Rajpath ──
         const pathW = gateW * 0.30;
         const pathGrad = c.createLinearGradient(0, gTop, 0, gTop + 80);
         pathGrad.addColorStop(0, '#3a2c1e');
@@ -400,7 +393,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         c.closePath();
         c.fill();
 
-        // Path edge lines (subtle)
+        // Path edge lines
         c.strokeStyle = 'rgba(80,65,40,0.12)';
         c.lineWidth = 1;
         c.beginPath();
@@ -425,7 +418,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fill();
         });
 
-        // ── Flower beds (subtle color spots) ──
+        // ── Flower beds ──
         const flowerColors = ['rgba(120,40,30,0.06)', 'rgba(255,180,50,0.04)', 'rgba(60,100,40,0.05)'];
         const flowerPositions = [
           { x: cx - gateW * 0.38, y: gTop + 15 },
@@ -442,7 +435,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fill();
         });
 
-        // ── Hedges at gate base (rounded dark green shapes) ──
+        // ── Hedges at gate base ──
         const hedgeColor = '#1a3015';
         const hedgeH = 14;
         const hedgeW = gateW * 0.10;
@@ -453,16 +446,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.ellipse(hx, gTop + 3, hedgeW / 2, hedgeH / 2, 0, 0, Math.PI * 2);
           c.fill();
           c.beginPath();
-          c.ellipse(cx + gateW * 0.50 - i * (gateW * 0.065), gTop + 3, hedgeW / 2, hedgeH / 2, 0, 0, MathMath.PI * 2);
+          // ✅ FIX: MathMath.PI → Math.PI
+          c.ellipse(cx + gateW * 0.50 - i * (gateW * 0.065), gTop + 3, hedgeW / 2, hedgeH / 2, 0, 0, Math.PI * 2);
           c.fill();
         }
 
-        // ── Tree silhouettes (Neem/Banyan style) ──
+        // ── Tree silhouettes ──
         const drawTree = (tx: number, ty: number, s: number) => {
-          // Trunk
           c.fillStyle = '#14100a';
           c.fillRect(tx - 3 * s, ty - 25 * s, 6 * s, 28 * s);
-          // Canopy layers (3 overlapping ellipses)
           for (let layer = 0; layer < 3; layer++) {
             const cw = (22 - layer * 5) * s;
             const ch = (14 - layer * 2) * s;
@@ -474,17 +466,13 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           }
         };
 
-        // Near trees (left side)
         drawTree(cx - gateW * 0.56, gTop, 1.3);
         drawTree(cx - gateW * 0.65, gTop, 1.0);
         drawTree(cx - gateW * 0.72, gTop, 1.15);
-
-        // Near trees (right side)
         drawTree(cx + gateW * 0.56, gTop, 1.2);
         drawTree(cx + gateW * 0.63, gTop, 1.35);
         drawTree(cx + gateW * 0.70, gTop, 1.0);
 
-        // Far background trees (smaller, darker — depth illusion)
         c.globalAlpha = reveal * sceneAlpha * 0.4;
         drawTree(cx - gateW * 0.82, gTop, 0.75);
         drawTree(cx + gateW * 0.80, gTop, 0.8);
@@ -493,7 +481,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         drawTree(cx - gateW * 0.96, gTop, 0.4);
         drawTree(cx + gateW * 0.94, gTop, 0.45);
 
-        // ── Ground fog (atmospheric depth) ──
+        // ── Ground fog ──
         c.globalAlpha = reveal * sceneAlpha * 0.15;
         const fogGrad = c.createLinearGradient(0, gTop, 0, gTop + 40);
         fogGrad.addColorStop(0, 'rgba(20,30,40,0.3)');
@@ -826,20 +814,19 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       },
 
       /* ═══════════════════════════════════════════════════════════
-         TYPOGRAPHY — Modernized with Text Jets + Tricolor Bursts
+         TYPOGRAPHY — Text Jets + Tricolor Bursts
          ═══════════════════════════════════════════════════════════ */
       typography: (t: number, elapsed: number) => {
         if (t < 11.5) return;
         const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
         c.save();
 
-        /* ── Text Jets — 3 chhote jets tricolor smoke ke saath ── */
+        /* ── Text Jets ── */
         if (t >= 11.5 && t < 12.8) {
           const jetPhase = (t - 11.5) / 1.3;
           const jetSpeed = W * 0.38;
           const jetY = titleY - 5;
 
-          // Initialize text jets on first call
           if (textJets.length === 0) {
             textJets.push(
               { x: -60, y: jetY - 15, vx: jetSpeed, scale: 0.45, smokeColor: '#FF9933', trail: [] },
@@ -848,24 +835,25 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             );
           }
 
-          c.save();
-          textJets.forEach((tj, ti) => {
+          textJets.forEach((tj) => {
             tj.x += tj.vx;
-            // Add smoke trail point
             if (Math.random() < 0.6) {
               tj.trail.push({ x: tj.x - 18 * tj.scale, y: tj.y + (Math.random() - 0.5) * 4, a: 0.5 });
               if (tj.trail.length > 30) tj.trail.shift();
             }
             // Draw trail
             tj.trail.forEach((tp, tpi) => {
-              c.globalAlpha = tpi.a * clamp(1 - jetPhase * 0.3, 0, 1);
+              c.save();
+              c.globalAlpha = tp.a * clamp(1 - jetPhase * 0.3, 0, 1);
               const hex = tj.smokeColor.replace('#', '');
-              c.fillStyle = `rgba(${parseInt(hex.substring(0,2),16)},${parseInt(hex.substring(2,4),16)},${tj.scale * 0.5})`;
+              c.fillStyle = `rgba(${parseInt(hex.substring(0,2),16)},${parseInt(hex.substring(2,4),16)},${parseInt(hex.substring(4,6),16)},0.5)`;
               c.beginPath();
               c.arc(tp.x, tp.y, 4 * tj.scale, 0, Math.PI * 2);
               c.fill();
+              c.restore();
             });
             // Draw jet silhouette
+            c.save();
             c.globalAlpha = clamp(1 - jetPhase * 0.5, 0, 1);
             c.translate(tj.x, tj.y);
             c.scale(tj.scale, tj.scale);
@@ -873,17 +861,15 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             c.beginPath();
             c.moveTo(20, 0); c.lineTo(8, -2); c.lineTo(0, -10);
             c.lineTo(-5, -14); c.lineTo(-8, -14); c.lineTo(-5, -2);
-            c.lineTo(-14, 0); c.lineTo(-18, 5); c.lineTo(-18, -5);
-            c.lineTo(-14, 0); c.lineTo(-8, 14); c.lineTo(-5, 14);
-            c.lineTo(-18, -5); c.lineTo(-18, 5); c.lineTo(-14, 0);
-            c.lineTo(-5, 2); c.lineTo(0, 10); c.lineTo(8, 2);
+            c.lineTo(-14, 0); c.lineTo(-18, -5); c.lineTo(-18, 5);
+            c.lineTo(-14, 0); c.lineTo(-5, 2); c.lineTo(0, 10);
+            c.lineTo(8, 2);
             c.closePath(); c.fill();
             c.restore();
           });
-          c.restore();
         }
 
-        /* ── Main Title — letter by letter with tricolor burst ── */
+        /* ── Main Title ── */
         const fontSize = Math.min(W * 0.065, 52);
         c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
         const title = "HAPPY REPUBLIC DAY";
@@ -896,12 +882,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           const charY = titleY + (1 - eOB(charT)) * -15;
 
           c.save(); c.globalAlpha = eOC(charT);
-
-          // Shadow
           c.fillStyle = 'rgba(0,0,0,0.92)';
           c.fillText(title[i], xOff + 2, charY + 2);
-
-          // Tricolor gradient fill
           const sweepGrad = c.createLinearGradient(xOff, charY - fontSize * 0.5, xOff, charY + fontSize * 0.38);
           sweepGrad.addColorStop(0, '#FF9933'); sweepGrad.addColorStop(0.48, '#FFFFFF');
           sweepGrad.addColorStop(0.52, '#FFFFFF'); sweepGrad.addColorStop(1, '#138808');
@@ -909,7 +891,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fillText(title[i], xOff, charY);
           c.restore();
 
-          // ── Tricolor burst when letter appears ──
           if (charT > 0.3 && charT < 0.5) {
             const bx = xOff + charW / 2;
             const by = charY - fontSize * 0.1;
@@ -928,15 +909,14 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
                 p.life = 0.8 + Math.random() * 0.6; p.ml = 1.4; p.sz = 2.0 + Math.random() * 2.0;
                 const col = colors[bi % 3];
                 p.r = col.r; p.g = col.g; p.b = col.b;
-                p.a = 0.9; p.tp = 7; // tp=7: tricolor text burst
+                p.a = 0.9; p.tp = 7;
               }
             }
           }
-
           xOff += charW;
         }
 
-        /* ── जय हिन्द — with final tricolor burst ── */
+        /* ── जय हिन्द ── */
         if (t > 13.0) {
           const subAlpha = clamp((t - 13.0) * 2, 0, 1);
           c.save(); c.globalAlpha = subAlpha;
@@ -944,7 +924,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.font = `500 ${fontSize * 0.65}px 'Georgia', serif`;
           c.fillText("जय हिन्द", W * 0.5, titleY + fontSize * 1.1);
 
-          // Final tricolor burst for जय हिन्द
           if (subAlpha > 0.1 && subAlpha < 0.4) {
             const bx = W * 0.5, by = titleY + fontSize * 1.1;
             const colors = [
@@ -967,10 +946,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
               }
             }
           }
-
           c.restore();
         }
-
         c.restore();
       },
 
@@ -996,7 +973,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       PARTICLES — tp=5 stop at t<10.5, ADD tp=7, tp=8
+       PARTICLES
        ═══════════════════════════════════════════════════════════ */
     const spawnParticles = (t: number, elapsed: number) => {
       // Fog Dust
@@ -1009,9 +986,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      /* ═══════════════════════════════════════════════════════════
-         FIX: Gold Dust — t < 10.5 tak hi spawn (जय हिंद के नीचे sparkles remove)
-         ═════════════════════════════════════════════════════════ */
+      // Gold Dust (t < 10.5 tak hi)
       if (t > 4.0 && t < 10.5 && Math.random() < 0.15) {
         const p = grab(pl); if (p) {
           p.on = true; p.x = Math.random() * W; p.y = H + 10;
@@ -1021,10 +996,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      /* ═══════════════════════════════════════════════════════════
-         tp=8: Pre-text sparkles — ऊपर से नीचे गिरते हैं text se pehle (t=11.0-11.5)
-         White/gold tiny dots falling like curtain of light
-         ═══════════════════════════════════════════════════════════ */
+      // Pre-text sparkles (tp=8)
       if (t >= 11.0 && t < 11.5) {
         for (let i = 0; i < 2; i++) {
           const p = grab(pl); if (p) {
@@ -1035,13 +1007,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
             p.vy = 1.5 + Math.random() * 2.5;
             p.life = 2.5; p.ml = 2.5;
             p.sz = 1.0 + Math.random() * 1.5;
-            // White/gold mix
             if (Math.random() < 0.6) {
               p.r = 255; p.g = 230; p.b = 180; p.a = 0.7;
             } else {
               p.r = 255; p.g = 255; p.b = 255; p.a = 0.5;
             }
-            p.tp = 8; // tp=8: pre-text sparkles
+            p.tp = 8;
           }
         }
       }
@@ -1089,13 +1060,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           p.vx = p.vx * 0.95 + noise.n2(elapsed * 0.5 + p.y * 0.01, p.turbOff) * 0.15;
           p.x += p.vx; p.y += p.vy;
         } else if (p.tp === 7) {
-          // Tricolor text burst — fast fade, slight gravity
           p.x += p.vx; p.y += p.vy;
           p.vy += 0.8;
           p.vx *= 0.97;
           p.vy *= 0.97;
         } else if (p.tp === 8) {
-          // Pre-text sparkles — gentle fall with drift
           p.vx = p.vx * 0.98 + Math.sin(elapsed * 2 + p.y * 0.02) * 0.3;
           p.x += p.vx; p.y += p.vy;
         } else {
@@ -1110,7 +1079,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const p = pl[i]; if (!p.on) continue;
         const alpha = clamp(p.life / p.ml, 0, 1) * p.a;
         c.save(); c.globalAlpha = alpha;
-        if (p.tp === 4) {
+        if (p.tp === 0) {
+          // Stars — already drawn in renderer.stars
+        } else if (p.tp === 4) {
           c.globalCompositeOperation = 'screen';
           const smokeGrad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz);
           smokeGrad.addColorStop(0, `rgba(${p.r},${p.g},${p.b},0.35)`);
@@ -1120,12 +1091,16 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.translate(p.x, p.y); c.rotate(p.rot);
           c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
           c.fillRect(-p.sz / 2, -p.sz / 4, p.sz, p.sz / 2);
+        } else if (p.tp === 3) {
+          // Torch embers
+          c.globalCompositeOperation = 'lighter';
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
         } else if (p.tp === 5) {
           c.globalCompositeOperation = 'lighter';
           c.fillStyle = `rgba(255,215,0,${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
         } else if (p.tp === 7) {
-          // Tricolor text burst — glowing dot
           c.globalCompositeOperation = 'lighter';
           const glow = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz * 2);
           glow.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${alpha})`);
@@ -1134,18 +1109,10 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           c.fillStyle = glow;
           c.beginPath(); c.arc(p.x, p.y, p.sz * 2, 0, Math.PI * 2); c.fill();
         } else if (p.tp === 8) {
-          // Pre-text sparkles — small bright dot with tiny tail
           c.globalCompositeOperation = 'lighter';
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha * 0.8})`;
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
-          // Tiny upward tail
-          c.strokeStyle = `rgba(${p.r},${p.g},${p.b},${alpha * 0.3})`;
-          c.lineWidth = 0.5;
-          c.beginPath();
-          c.moveTo(p.x, p.y);
-          c.lineTo(p.x - p.vx * 2, p.y - p.vy * 2);
-          c.stroke();
-        } else {
+        } else if (p.tp === 1) {
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
         }
@@ -1153,119 +1120,102 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       }
     };
 
-    const drawChromaticAberration = () => {
-      c.save(); c.globalCompositeOperation = 'screen';
-      c.globalAlpha = 0.012; c.drawImage(cv, -1.5, 0, W, H);
-      c.globalAlpha = 0.010; c.drawImage(cv, 1.5, 0, W, H);
-      c.restore();
-    };
-
-    const drawPostFX = () => {
-      c.save(); c.globalCompositeOperation = 'soft-light';
-      const grade = c.createLinearGradient(0, 0, W, H);
-      grade.addColorStop(0, 'rgba(255,140,50,0.04)');
-      grade.addColorStop(1, 'rgba(0,50,100,0.06)');
-      c.fillStyle = grade; c.fillRect(0, 0, W, H);
-      c.restore();
-      const vignette = c.createRadialGradient(W / 2, H / 2, H * 0.30, W / 2, H / 2, H * 0.85);
-      vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.80)');
-      c.fillStyle = vignette; c.fillRect(0, 0, W, H);
-      c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.02;
-      const flareGrad = c.createLinearGradient(0, H * 0.48, W, H * 0.52);
-      flareGrad.addColorStop(0, 'rgba(0,0,0,0)');
-      flareGrad.addColorStop(0.4, 'rgba(180,200,255,0.5)');
-      flareGrad.addColorStop(0.5, 'rgba(255,255,255,0.8)');
-      flareGrad.addColorStop(0.6, 'rgba(180,200,255,0.5)');
-      flareGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = flareGrad;
-      c.fillRect(0, H * 0.48, W, H * 0.04);
-      c.restore();
-      c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.025;
-      const pat = c.createPattern(grainCv, 'repeat');
-      if (pat) { c.fillStyle = pat; c.fillRect(0, 0, W, H); }
-      c.restore();
-    };
-
-    let prevTime = 0;
+    /* ═══════════════════════════════════════════════════════════
+       MAIN LOOP
+       ═══════════════════════════════════════════════════════════ */
+    let lastTs = 0;
     let fwTimer = 0;
+    const loop = (ts: number) => {
+      if (!t0.current) { t0.current = ts; lastTs = ts; }
+      const elapsed = (ts - t0.current) / 1000;
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts;
+      const t = elapsed;
+      const sceneAlpha = t < 1.0 ? clamp(t, 0, 1) : (t > DUR - 1.0 ? clamp(DUR - t, 0, 1) : 1);
 
-    const loop = (now: number) => {
-      if (!t0.current) { t0.current = now; prevTime = now; }
-      const t = (now - t0.current) / 1000;
-      const dt = Math.min((now - prevTime) / 1000, 0.05);
-      prevTime = now;
-
-      if (t >= DUR) {
-        if (!done.current) { done.current = true; cbR.current?.(); }
-        return;
+      // Camera shake
+      let shakeX = 0, shakeY = 0;
+      if (cameraShake > 0.1) {
+        shakeX = (Math.random() - 0.5) * cameraShake * 2;
+        shakeY = (Math.random() - 0.5) * cameraShake * 2;
+        cameraShake *= 0.92;
+      } else {
+        cameraShake = 0;
       }
-
-      if (t >= 5.5 && t < 11.5) {
-        fwTimer += dt;
-        if (fwTimer > 0.8 + Math.random() * 0.6) { spawnFirework(); fwTimer = 0; }
-      }
-      updateFireworks(dt);
-      spawnParticles(t, now / 1000);
-      updateParticles(dt, now / 1000);
-
-      c.fillStyle = '#000000'; c.fillRect(0, 0, W, H);
-
-      cameraShake *= 0.92;
-
-      const zoomClimax = t < 11.5
-        ? lerp(1.0, 1.06, eOE(t / 11.5))
-        : lerp(1.06, 1.8, clamp((t - 11.5) / 3.0, 0, 1));
-
-      const breatheX = Math.sin(t * 0.35) * 1.5 + (Math.random() - 0.5) * cameraShake;
-      const breatheY = Math.cos(t * 0.25) * 1.0 + (Math.random() - 0.5) * cameraShake;
-      const camRot = Math.sin(t * 0.12) * 0.002;
 
       c.save();
-      c.translate(W / 2 + breatheX, H / 2 + breatheY);
-      c.rotate(camRot);
-      c.scale(zoomClimax, zoomClimax);
-      c.translate(-W / 2, -H / 2);
+      c.translate(shakeX, shakeY);
 
-      const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
+      // Clear
+      c.fillStyle = '#000';
+      c.fillRect(-10, -10, W + 20, H + 20);
 
+      // Render layers
       renderer.sky(t, sceneAlpha);
       renderer.stars(t, sceneAlpha);
       renderer.horizonGlow(t, sceneAlpha);
       renderer.ground(t, sceneAlpha);
-      renderer.wavingFlagAndChakra(t, now / 1000, sceneAlpha);
       renderer.indiaGate(t, sceneAlpha);
-      renderer.torch(t, now / 1000, sceneAlpha);
+      renderer.torch(t, elapsed, sceneAlpha);
+      renderer.wavingFlagAndChakra(t, elapsed, sceneAlpha);
       renderer.jetsAndTrails(t, sceneAlpha);
+      renderer.doves(t, elapsed, sceneAlpha);
+
+      // Fireworks spawning
+      if (t >= 11.5) {
+        fwTimer += dt;
+        if (fwTimer > 0.6) {
+          fwTimer = 0;
+          spawnFirework();
+        }
+      }
+      updateFireworks(dt);
+
+      // Particles
+      spawnParticles(t, elapsed);
+      updateParticles(dt, elapsed);
       drawParticles();
+
+      // Typography (on top of everything)
+      renderer.typography(t, elapsed);
+
+      // Fireworks (on very top with lighter blend)
       renderer.fireworks(sceneAlpha);
-      renderer.doves(t, now / 1000, sceneAlpha);
 
       c.restore();
 
-      if (t >= 11.5 && t < 14.5) {
-        const bgFade = clamp((t - 11.5) * 1.8, 0, 1);
-        c.save(); c.globalAlpha = bgFade;
-        const bgGrad = c.createLinearGradient(0, 0, 0, H);
-        bgGrad.addColorStop(0, '#060810'); bgGrad.addColorStop(1, '#0c101c');
-        c.fillStyle = bgGrad; c.fillRect(0, 0, W, H);
-        c.restore();
+      // Film grain overlay
+      c.save();
+      c.globalAlpha = 0.035;
+      c.globalCompositeOperation = 'overlay';
+      const grainOffX = (Math.random() * 256) | 0;
+      const grainOffY = (Math.random() * 256) | 0;
+      const pat = c.createPattern(grainCv, 'repeat');
+      if (pat) {
+        c.translate(grainOffX, grainOffY);
+        c.fillStyle = pat;
+        c.fillRect(-256, -256, W + 512, H + 512);
+      }
+      c.restore();
+
+      // Vignette
+      c.save();
+      const vigGrad = c.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.85);
+      vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      vigGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
+      c.fillStyle = vigGrad;
+      c.fillRect(0, 0, W, H);
+      c.restore();
+
+      // Completion
+      if (t >= DUR && !done.current) {
+        done.current = true;
+        if (cbR.current) cbR.current();
       }
 
-      renderer.typography(t, now / 1000);
-      drawChromaticAberration();
-      drawPostFX();
-
-      if (t >= 14.5) {
-        const whiteFadeAlpha = clamp((t - 14.5) * 1.8, 0, 1);
-        c.save();
-        c.globalAlpha = whiteFadeAlpha;
-        c.fillStyle = '#FFFFFF';
-        c.fillRect(0, 0, W, H);
-        c.restore();
+      if (t < DUR + 0.5) {
+        raf.current = requestAnimationFrame(loop);
       }
-
-      raf.current = requestAnimationFrame(loop);
     };
 
     raf.current = requestAnimationFrame(loop);
@@ -1274,8 +1224,7 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
       if (audioCtxRef.current) {
-        try { audioCtxRef.current.close(); } catch (_) {}
-        audioCtxRef.current = null;
+        audioCtxRef.current.close().catch(() => {});
       }
     };
   }, [mkPool, grab, triggerMilitaryAudio]);
@@ -1284,9 +1233,14 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
     <canvas
       ref={cvRef}
       style={{
-        position: 'fixed', top: 0, left: 0,
-        width: '100vw', height: '100vh',
-        display: 'block', zIndex: 50,
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        display: 'block',
+        zIndex: 9999,
+        background: '#000',
       }}
     />
   );
