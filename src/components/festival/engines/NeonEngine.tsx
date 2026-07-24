@@ -27,7 +27,7 @@ interface PresetConfig {
   maxCount: number;
   minSize: number;
   maxSize: number;
-  sway: number; // Default sway added to configuration
+  sway: number;
 }
 
 const DEFAULT_COLORS = ['#fde047', '#facc15', '#f97316'];
@@ -40,13 +40,12 @@ const PRESET_COLORS: Record<string, string[]> = {
   INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807']
 };
 
-// ━━━ MASTER PRESET CONFIGS (Fully customizable from backend props) ━━━
 const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   GANESH_CHATURTHI: { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11, sway: 0.03 },
   HANUMAN_JAYANTI:  { scale: 1.0,  speed: 0.65, gravity: 0.0012, maxCount: 130, minSize: 6,   maxSize: 12, sway: 0.06 },
   NAVRATRI:         { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11, sway: 0.03 },
-  REPUBLIC_DAY:     { scale: 0.55, speed: 0.8,  gravity: 0.004,  maxCount: 100, minSize: 4,   maxSize: 8,  sway: 0.02 }, // Lowered speed & sway
-  INDEPENDENCE_DAY: { scale: 0.55, speed: 0.8,  gravity: 0.004,  maxCount: 100, minSize: 4,   maxSize: 8,  sway: 0.02 },
+  REPUBLIC_DAY:     { scale: 0.55, speed: 0.7,  gravity: 0.003,  maxCount: 120, minSize: 4,   maxSize: 9,  sway: 0.02 }, 
+  INDEPENDENCE_DAY: { scale: 0.55, speed: 0.7,  gravity: 0.003,  maxCount: 120, minSize: 4,   maxSize: 9,  sway: 0.02 },
   DEFAULT:          { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11, sway: 0.03 }
 };
 
@@ -59,7 +58,7 @@ export default function NeonEngine({
   customMinSize,   
   customMaxSize,   
   customMaxCount,
-  customSway, // 👈 New backend controller prop for taming sway
+  customSway,
 }: {
   preset?: string;
   customColors?: string[];
@@ -69,12 +68,11 @@ export default function NeonEngine({
   customMinSize?: number | null;
   customMaxSize?: number | null;
   customMaxCount?: number | null;
-  customSway?: number | null; // 👈 Controlled from backend/props
+  customSway?: number | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafId = useRef<number>(0);
   const timeRef = useRef<number>(0);
-  const spawnDebugCount = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -84,8 +82,6 @@ export default function NeonEngine({
 
     const normalizedPreset = (preset || '').toUpperCase().trim();
     const colors = customColors || PRESET_COLORS[normalizedPreset] || DEFAULT_COLORS;
-
-    // Resolve config from master table
     const presetConfig = MASTER_PRESET_CONFIGS[normalizedPreset] || MASTER_PRESET_CONFIGS.DEFAULT;
 
     const scaleFactor = customScale ?? presetConfig.scale;
@@ -94,14 +90,7 @@ export default function NeonEngine({
     const maxParticles = customMaxCount ?? presetConfig.maxCount;
     const minPartSize = customMinSize ?? presetConfig.minSize;
     const maxPartSize = customMaxSize ?? presetConfig.maxSize;
-    const swayFactor = customSway ?? presetConfig.sway; // Directly mapped to prop
-
-    // ── MOUNT DIAGNOSTICS LOG ──
-    console.log(
-      `%c🟢 NeonEngine Mounted! %c\nPreset: "${preset}"\nScale Factor: ${scaleFactor} (Prop: ${customScale})\nSpeed Factor: ${speedFactor} (Prop: ${customSpeed})\nGravity Factor: ${gravityFactor} (Prop: ${customGravity})\nMax Count: ${maxParticles} (Prop: ${customMaxCount})\nMin Size: ${minPartSize} (Prop: ${customMinSize})\nMax Size: ${maxPartSize} (Prop: ${customMaxSize})\nSway Control: ${swayFactor} (Prop: ${customSway})`,
-      "color: #22c55e; font-weight: bold; font-size: 13px;",
-      "color: #a3a3a3; font-size: 11px;"
-    );
+    const swayFactor = customSway ?? presetConfig.sway;
 
     const particles: NeonParticle[] = [];
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
@@ -122,12 +111,10 @@ export default function NeonEngine({
       c.translate(x, y);
       c.rotate(rot);
       c.globalAlpha = alpha;
-
       const grad = c.createLinearGradient(0, -size, 0, size);
       grad.addColorStop(0, color);
       grad.addColorStop(1, 'rgba(255,255,255,0.15)'); 
       c.fillStyle = grad;
-
       c.beginPath();
       c.ellipse(0, 0, size * 0.42, size, 0, 0, Math.PI * 2);
       c.fill();
@@ -140,26 +127,22 @@ export default function NeonEngine({
       c.translate(x, y);
       c.rotate(rot);
       c.globalAlpha = alpha;
-
       const grad = c.createLinearGradient(0, -size, 0, size);
       grad.addColorStop(0, '#16a34a'); 
       grad.addColorStop(1, '#14532d'); 
       c.fillStyle = grad;
-
       c.beginPath();
       c.moveTo(0, -size);
       c.quadraticCurveTo(size * 0.55, -size * 0.2, 0, size);
       c.quadraticCurveTo(-size * 0.55, -size * 0.2, 0, -size);
       c.closePath();
       c.fill();
-
       c.strokeStyle = '#15803d';
       c.lineWidth = 0.8;
       c.beginPath();
       c.moveTo(0, -size);
       c.lineTo(0, size * 0.5);
       c.stroke();
-
       c.restore();
     };
 
@@ -168,20 +151,18 @@ export default function NeonEngine({
       c.save();
       c.translate(x, y);
       c.globalAlpha = alpha;
-
       const grad = c.createRadialGradient(0, 0, 0, 0, 0, size * 1.5);
       grad.addColorStop(0, '#ffffff'); 
       grad.addColorStop(0.3, color);   
       grad.addColorStop(1, 'rgba(220,38,38,0)'); 
       c.fillStyle = grad;
-
       c.beginPath();
       c.arc(0, 0, size * 1.5, 0, Math.PI * 2);
       c.fill();
       c.restore();
     };
 
-    // Twinkling Sparkles
+    // Twinkling Sparkles (Star particles)
     const drawSparkle = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, color: string) => {
       c.save();
       c.translate(x, y);
@@ -190,7 +171,6 @@ export default function NeonEngine({
       c.lineWidth = 1.0;
       c.shadowBlur = size * 2;
       c.shadowColor = color;
-
       c.beginPath();
       c.moveTo(-size, 0); c.lineTo(size, 0);
       c.moveTo(0, -size); c.lineTo(0, size);
@@ -198,7 +178,7 @@ export default function NeonEngine({
       c.restore();
     };
 
-    // Patriotic Confetti
+    // Patriotic Confetti Drawing
     const drawConfetti = (c: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number, rot: number, color: string) => {
       c.save();
       c.translate(x, y);
@@ -217,7 +197,6 @@ export default function NeonEngine({
       ctx.clearRect(0, 0, w, h);
       timeRef.current += 0.015;
 
-      // ── SCREEN-WIDE EMITTER ──
       if (particles.length < maxParticles) {
         if (normalizedPreset === 'GANESH_CHATURTHI' && Math.random() < 0.35) {
           const isPetal = Math.random() < 0.7;
@@ -246,7 +225,6 @@ export default function NeonEngine({
             tp: isPetal ? 'petal' : 'sparkle'
           });
         } 
-        // 🚀 HANUMAN JAYANTI EMITTER
         else if (normalizedPreset === 'HANUMAN_JAYANTI' && Math.random() < 0.38) {
           const randType = Math.random();
           let newParticle: NeonParticle | null = null;
@@ -317,37 +295,38 @@ export default function NeonEngine({
             maxLife: rn(350, 550),
             tp: 'petal'
           });
-        } else if (['REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(normalizedPreset) && Math.random() < 0.3) {
+        } 
+        // ★★★ सुधार: रिपब्लिक डे और इंडिपेंडेंस डे में कंफ़ेटी और सुनहरे स्पार्कल्स का खूबसूरत मिक्सचर स्पॉन होगा
+        else if (['REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(normalizedPreset) && Math.random() < 0.35) {
+          const isConfetti = Math.random() < 0.65; // 65% कंफ़ेटी, 35% टिमटिमाते स्पार्कल्स
           particles.push({
             x: rn(-20, w + 20),
             y: rn(-30, -10),
-            vx: rn(-0.4, 0.4), // Kept centered
-            vy: rn(1.0, 2.2) * speedFactor, // Stable falling speed
-            size: rn(minPartSize, maxPartSize) * scaleFactor,
+            vx: rn(-0.5, 0.5),
+            vy: (isConfetti ? rn(1.0, 2.2) : rn(0.8, 1.8)) * speedFactor,
+            size: (isConfetti ? rn(minPartSize, maxPartSize) : rn(minPartSize * 0.4, maxPartSize * 0.5)) * scaleFactor,
             alpha: 1,
-            color: colors[Math.floor(Math.random() * colors.length)],
+            color: isConfetti 
+              ? colors[Math.floor(Math.random() * colors.length)]
+              : (Math.random() < 0.5 ? '#ffd700' : '#ffffff'), // सुनहरे/सफेद स्पार्कल्स
             rotation: rn(0, Math.PI * 2),
             rotSpeed: rn(-0.02, 0.02),
             life: 0,
             maxLife: rn(250, 420),
-            tp: 'confetti'
+            tp: isConfetti ? 'confetti' : 'sparkle'
           });
         }
       }
 
-      // ── UPDATE & DRAW PARTICLES ──
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.life++;
         p.x += p.vx;
         p.y += p.vy;
-
         p.vy += gravityFactor;
 
-        // FIX: Replaced globally synchronized wind wave with individual phase offsets (p.rotation)
-        // This completely prevents synchronized "hujo" (clumping)
         const individualSway = Math.sin(timeRef.current * 1.5 + p.y * 0.01 + p.rotation) * swayFactor;
-        p.vx = p.vx * 0.98 + individualSway; // Dampens previous vx & adds organic individual sway
+        p.vx = p.vx * 0.98 + individualSway; 
         
         if (p.tp !== 'sparkle' && p.tp !== 'ember') p.rotation += p.rotSpeed;
 
@@ -390,7 +369,7 @@ export default function NeonEngine({
     customMinSize,
     customMaxSize,
     customMaxCount,
-    customSway // Mapped directly so parent can control sway from backend props
+    customSway
   ]);
 
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 4 }} />;
