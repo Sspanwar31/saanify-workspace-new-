@@ -168,9 +168,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       sc = Math.min(W, H);
-      gateH = sc * 0.66;
+      
+      // कंपोजिशन सुधार: गेट को थोड़ा छोटा और नीचे की ओर संरेखित किया गया
+      gateH = sc * 0.48; 
       gateW = gateH * 0.84;
-      baseY = H * 0.82;
+      baseY = H * 0.86; 
       cx = W * 0.5;
       pillarH = gateH * 0.72;
       pillarY = baseY - 32 - pillarH;
@@ -428,7 +430,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
       torch: (t: number, elapsed: number, sceneAlpha: number) => {
         if (t < 2.0) return;
-        const tx = W * 0.5, ty = H * 0.795;
+        
+        // गेट पोजीशन के साथ संरेखित करने के लिए ty को डायनामिक किया गया है
+        const tx = W * 0.5;
+        const ty = baseY - 32; 
+        
         const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
         c.save(); c.globalAlpha = fireAlpha; c.globalCompositeOperation = 'lighter';
         const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 140);
@@ -456,11 +462,9 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         if (t < 3.0) return;
         const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
         
-        // संदर्भ छवि (Reference Image) के अनुसार झंडे को बड़ा (Hero size) किया गया है
-        const fw = gateW * 0.48; // विशाल और राजसी आकार (Attic/Dome चौड़ाई का लगभग आधा)
+        const fw = gateW * 0.48; 
         const fh = fw * 0.66;
         
-        // इंडिया गेट के शीर्ष फ्लैट टेरेस (Dome/Attic level) की ऊंचाई का सटीक मिलान
         const pH = gateH * 0.72;
         const pY = baseY - 32 - pH;
         const lintelH = gateH * 0.12;
@@ -468,13 +472,12 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         const attic1Y = lintelY - gateH * 0.08;
         const attic2Y = attic1Y - gateH * 0.06;
 
-        const poleHeight = gateH * 0.48; // डंडे की ऊंचाई पर्याप्त रूप से ऊपर की तरफ
-        const poleTopX = cx; // बिल्कुल सेंटर में स्थापित
+        const poleHeight = gateH * 0.48; 
+        const poleTopX = cx; 
         const poleTopY = attic2Y - poleHeight;
 
         if (flagNodes[0].x === 0) {
           for (let i = 0; i < numPoints; i++) {
-            // झंडा दाईं ओर लहराएगा (जैसे स्क्रीनशॉट इमेज में दिखाया गया है)
             flagNodes[i].x = poleTopX + (i * fw) / (numPoints - 1);
             flagNodes[i].y = poleTopY;
             flagNodes[i].ox = flagNodes[i].x; flagNodes[i].oy = flagNodes[i].y;
@@ -482,11 +485,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         }
 
         for (let i = 1; i < numPoints; i++) {
-          // 'halka halka laharana' प्रभाव के लिए हवा की गति को धीमा और नियंत्रित किया गया
           const wind = 0.15 + noise.n2(elapsed * 0.5 + i * 0.10, 0) * 0.12;
           const gravity = 0.02;
-          
-          // कपड़े में एक समान गति से चलने वाली सुंदर तरंग उत्पन्न करने के लिए साइन वेव का उपयोग
           const waveOffset = Math.sin(elapsed * 2.5 - i * 0.4) * 0.04;
           
           flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.94 + wind;
@@ -497,7 +497,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         flagNodes[0].x = poleTopX; flagNodes[0].y = poleTopY;
 
         const linkLength = fw / (numPoints - 1);
-        // कपड़े की स्थिरता के लिए रिलेक्सेशन लूप को 6 बार रन किया जाता है
         for (let steps = 0; steps < 6; steps++) {
           for (let i = 0; i < numPoints - 1; i++) {
             const n1 = flagNodes[i], n2 = flagNodes[i + 1];
@@ -513,10 +512,8 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
 
         c.save(); c.globalAlpha = revealAlpha;
 
-        // पोल को गुंबद के संरचनात्मक भाग के अंदर गहराई से मजबूती से बांधा गया
         const poleBaseY = attic2Y + 15;
 
-        // शानदार क्रोम फिनिश धातु का पोल
         const poleGrad = c.createLinearGradient(poleTopX - 3.5, poleTopY, poleTopX + 3.5, poleBaseY);
         poleGrad.addColorStop(0, '#f0f0f0'); 
         poleGrad.addColorStop(0.3, '#ffffff'); 
@@ -524,7 +521,6 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
         poleGrad.addColorStop(1, '#555555');
         c.fillStyle = poleGrad; c.fillRect(poleTopX - 3.5, poleTopY, 7, poleBaseY - poleTopY);
         
-        // शीर्ष पर स्वर्ण गुंबद (Golden Sphere)
         c.fillStyle = '#ffd700'; c.beginPath(); c.arc(poleTopX, poleTopY, 6, 0, Math.PI * 2); c.fill();
 
         for (let i = 0; i < numPoints - 1; i++) {
@@ -765,9 +761,11 @@ export default function RepublicDayCinematicIntro({ onComplete }: Props) {
           }
         }
       }
+      
+      // मशाल की चिंगारियों (embers) को भी baseY से डायनामिक किया गया है
       if (t > 2.0 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
-          p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = H * 0.795;
+          p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = baseY - 32;
           p.vx = (Math.random() - 0.5) * 0.6; p.vy = -1.2 - Math.random() * 1.8;
           p.life = 2.5; p.ml = 2.5; p.sz = 1.0 + Math.random() * 2.0;
           p.r = 255; p.g = 120 + Math.random() * 80; p.b = 30; p.a = 0.95; p.tp = 3;
