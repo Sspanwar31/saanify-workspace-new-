@@ -37,7 +37,8 @@ const PRESET_COLORS: Record<string, string[]> = {
   HANUMAN_JAYANTI: ['#dc2626', '#f97316', '#16a34a', '#fbbf24'], 
   NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
   REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
-  INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807']
+  INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807'],
+  RAY_ENGINE: ['#ff9933', '#ffffff', '#128807']
 };
 
 const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
@@ -46,6 +47,7 @@ const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   NAVRATRI:         { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11, sway: 0.03 },
   REPUBLIC_DAY:     { scale: 0.55, speed: 0.7,  gravity: 0.003,  maxCount: 120, minSize: 4,   maxSize: 9,  sway: 0.02 }, 
   INDEPENDENCE_DAY: { scale: 0.55, speed: 0.7,  gravity: 0.003,  maxCount: 120, minSize: 4,   maxSize: 9,  sway: 0.02 },
+  RAY_ENGINE:       { scale: 0.55, speed: 0.7,  gravity: 0.003,  maxCount: 120, minSize: 4,   maxSize: 9,  sway: 0.02 },
   DEFAULT:          { scale: 0.55, speed: 1.0,  gravity: 0.003,  maxCount: 90,  minSize: 5,   maxSize: 11, sway: 0.03 }
 };
 
@@ -296,9 +298,10 @@ export default function NeonEngine({
             tp: 'petal'
           });
         } 
-        // ★★★ सुधार: रिपब्लिक डे और इंडिपेंडेंस डे में कंफ़ेटी और सुनहरे स्पार्कल्स का खूबसूरत मिक्सचर स्पॉन होगा
-        else if (['REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(normalizedPreset) && Math.random() < 0.35) {
-          const isConfetti = Math.random() < 0.65; // 65% कंफ़ेटी, 35% टिमटिमाते स्पार्कल्स
+        // ★★★ सुधार: 'REPUBLIC_DAY' के साथ 'RAY_ENGINE' कीज़ को भी शामिल किया गया है 
+        // ताकि यदि डेटाबेस मिसमैच हो तो भी तिरंगा एनीमेशन फ्रंटएंड पर लोड हो जाए
+        else if (['REPUBLIC_DAY', 'INDEPENDENCE_DAY', 'RAY_ENGINE'].includes(normalizedPreset) && Math.random() < 0.35) {
+          const isConfetti = Math.random() < 0.65;
           particles.push({
             x: rn(-20, w + 20),
             y: rn(-30, -10),
@@ -308,12 +311,31 @@ export default function NeonEngine({
             alpha: 1,
             color: isConfetti 
               ? colors[Math.floor(Math.random() * colors.length)]
-              : (Math.random() < 0.5 ? '#ffd700' : '#ffffff'), // सुनहरे/सफेद स्पार्कल्स
+              : (Math.random() < 0.5 ? '#ffd700' : '#ffffff'),
             rotation: rn(0, Math.PI * 2),
             rotSpeed: rn(-0.02, 0.02),
             life: 0,
             maxLife: rn(250, 420),
             tp: isConfetti ? 'confetti' : 'sparkle'
+          });
+        }
+        // ★★★ सुधार: यूनिवर्सल फ़ॉलबैक (जैसे DEV_DEEPAWALI या DEFAULT के लिए)
+        // यह खाली स्क्रीन होने से बचाएगा और प्राथमिक थीम रंग के अनुसार स्वर्णिम कोमल अंगारे गिराएगा
+        else if (Math.random() < 0.32) {
+          const isEmber = Math.random() < 0.5;
+          particles.push({
+            x: rn(-20, w + 20),
+            y: rn(-30, -10),
+            vx: rn(-0.6, 0.6),
+            vy: rn(0.8, 2.0) * speedFactor,
+            size: rn(minPartSize, maxPartSize) * scaleFactor * (isEmber ? 0.8 : 0.5),
+            alpha: 1,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: rn(0, Math.PI * 2),
+            rotSpeed: rn(-0.015, 0.015),
+            life: 0,
+            maxLife: rn(280, 460),
+            tp: isEmber ? 'ember' : 'sparkle'
           });
         }
       }
