@@ -5,60 +5,52 @@ import React, { useEffect, useRef, useCallback } from 'react';
 /* ═══════════════════════════════════════════════════════════════
    TYPES & INTERFACES
    ═══════════════════════════════════════════════════════════════ */
-interface Props {
-  onComplete?: () => void;
-  imageUrl?: string;
-}
+interface Props { onComplete?: () => void; imageUrl?: string; }
 
 interface Particle {
   x: number; y: number; vx: number; vy: number;
   life: number; ml: number; sz: number;
   r: number; g: number; b: number; a: number;
-  tp: number;
-  rot: number; rs: number; on: boolean;
-  turbOff: number;
+  tp: number; rot: number; rs: number; on: boolean; turbOff: number;
 }
 
 interface Kite {
-  x: number; y: number; base_x: number; base_y: number;
-  target_y: number; scale: number;
-  vx: number; vy: number;
-  angle: number; swaySpeed: number; swayAmp: number;
-  colors: string[];
+  x: number; y: number; base_x: number; base_y: number; target_y: number;
+  scale: number; angle: number; swaySpeed: number; swayAmp: number;
+  tailPhase: number;
 }
 
 interface BoidBird {
   x: number; y: number; vx: number; vy: number; wing: number;
-  state: 'sitting' | 'flying';
-  side: 'left' | 'right';
-  noiseSeed: number;
-  bank: number;
+  state: 'sitting' | 'flying'; side: 'left' | 'right';
+  noiseSeed: number; bank: number;
 }
 
 interface Firework {
   x: number; y: number; vy: number;
-  state: 'rising' | 'burst';
-  burstT: number;
+  state: 'rising' | 'burst'; burstT: number;
   col: { r: number; g: number; b: number };
   pts: { x: number; y: number; vx: number; vy: number; life: number; ml: number; sz: number }[];
 }
 
-const POOL_SIZE = 5000;
-const DUR = 18.0;
+interface CloudPuff { x: number; y: number; w: number; h: number; a: number; speed: number; }
+
+const POOL = 5000;
+const DUR = 19.0;
 
 /* ═══════════════════════════════════════════════════════════════
-   SIMPLEX NOISE 2D
+   SIMPLEX NOISE
    ═══════════════════════════════════════════════════════════════ */
-class SimplexNoise {
-  private perm: Uint8Array;
-  private g2: number[][] = [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
-  constructor(seed: number = 42) {
-    this.perm = new Uint8Array(512);
-    const p = new Uint8Array(256);
-    for (let i = 0; i < 256; i++) p[i] = i;
-    let s = seed;
-    for (let i = 255; i > 0; i--) { s = (s * 16807) % 2147483647; const j = s % (i + 1); [p[i], p[j]] = [p[j], p[i]]; }
-    for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
+class SNoise {
+  private p: Uint8Array;
+  private g: number[][] = [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
+  constructor(s: number = 42) {
+    this.p = new Uint8Array(512);
+    const a = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) a[i] = i;
+    let v = s;
+    for (let i = 255; i > 0; i--) { v = (v * 16807) % 2147483647; const j = v % (i + 1); [a[i], a[j]] = [a[j], a[i]]; }
+    for (let i = 0; i < 512; i++) this.p[i] = a[i & 255];
   }
   n2(x: number, y: number): number {
     const F = 0.5 * (Math.sqrt(3) - 1), G = (3 - Math.sqrt(3)) / 6;
@@ -68,18 +60,18 @@ class SimplexNoise {
     const x1 = x0 - i1 + G, y1 = y0 - j1 + G, x2 = x0 - 1 + 2 * G, y2 = y0 - 1 + 2 * G;
     const ii = i & 255, jj = j & 255;
     let n0 = 0, n1 = 0, n2 = 0, t0 = 0.5 - x0 * x0 - y0 * y0;
-    if (t0 >= 0) { t0 *= t0; const gi = this.perm[ii + this.perm[jj]] % 8; n0 = t0 * t0 * (this.g2[gi][0] * x0 + this.g2[gi][1] * y0); }
+    if (t0 >= 0) { t0 *= t0; const gi = this.p[ii + this.p[jj]] % 8; n0 = t0 * t0 * (this.g[gi][0] * x0 + this.g[gi][1] * y0); }
     let t1 = 0.5 - x1 * x1 - y1 * y1;
-    if (t1 >= 0) { t1 *= t1; const gi = this.perm[ii + i1 + this.perm[jj + j1]] % 8; n1 = t1 * t1 * (this.g2[gi][0] * x1 + this.g2[gi][1] * y1); }
+    if (t1 >= 0) { t1 *= t1; const gi = this.p[ii + i1 + this.p[jj + j1]] % 8; n1 = t1 * t1 * (this.g[gi][0] * x1 + this.g[gi][1] * y1); }
     let t2 = 0.5 - x2 * x2 - y2 * y2;
-    if (t2 >= 0) { t2 *= t2; const gi = this.perm[ii + 1 + this.perm[jj + 1]] % 8; n2 = t2 * t2 * (this.g2[gi][0] * x2 + this.g2[gi][1] * y2); }
+    if (t2 >= 0) { t2 *= t2; const gi = this.p[ii + 1 + this.p[jj + 1]] % 8; n2 = t2 * t2 * (this.g[gi][0] * x2 + this.g[gi][1] * y2); }
     return 70 * (n0 + n1 + n2);
   }
 }
 
 export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
   const cvRef = useRef<HTMLCanvasElement>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
   const raf = useRef<number>(0);
   const t0 = useRef<number>(0);
   const done = useRef<boolean>(false);
@@ -88,12 +80,7 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
 
   const mkPool = useCallback(() => {
     const a: Particle[] = [];
-    for (let i = 0; i < POOL_SIZE; i++) {
-      a.push({
-        x:0,y:0,vx:0,vy:0,life:0,ml:1,sz:0,r:255,g:153,b:51,a:0,
-        tp:1,rot:0,rs:0,on:false,turbOff:Math.random()*1000
-      });
-    }
+    for (let i = 0; i < POOL; i++) a.push({ x:0,y:0,vx:0,vy:0,life:0,ml:1,sz:0,r:255,g:153,b:51,a:0,tp:1,rot:0,rs:0,on:false,turbOff:Math.random()*1000 });
     return a;
   }, []);
 
@@ -102,66 +89,61 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
     return null;
   }, []);
 
-  const triggerMilitaryAudio = useCallback(() => {
+  const playAudio = useCallback(() => {
     try {
-      if (!audioCtxRef.current) return;
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') ctx.resume();
-      for (let beat = 0; beat < 12; beat++) {
-        const bt = ctx.currentTime + beat * 0.35;
-        const kick = ctx.createOscillator();
-        const kg = ctx.createGain();
-        kick.frequency.setValueAtTime(120, bt);
-        kick.frequency.exponentialRampToValueAtTime(18, bt + 0.18);
-        kg.gain.setValueAtTime(0.3, bt);
-        kg.gain.exponentialRampToValueAtTime(0.001, bt + 0.20);
-        kick.connect(kg); kg.connect(ctx.destination);
-        kick.start(bt); kick.stop(bt + 0.20);
+      if (!audioRef.current) return;
+      const x = audioRef.current;
+      if (x.state === 'suspended') x.resume();
+      for (let b = 0; b < 8; b++) {
+        const bt = x.currentTime + b * 0.4;
+        const o = x.createOscillator(); const g = x.createGain();
+        o.frequency.setValueAtTime(90, bt);
+        o.frequency.exponentialRampToValueAtTime(20, bt + 0.22);
+        g.gain.setValueAtTime(0.22, bt);
+        g.gain.exponentialRampToValueAtTime(0.001, bt + 0.25);
+        o.connect(g); g.connect(x.destination);
+        o.start(bt); o.stop(bt + 0.25);
       }
-    } catch (e) { /* silent */ }
+    } catch (_) {}
   }, []);
 
   /* ═══════════════════════════════════════════════════════════
-     CANVAS LIFE CYCLE
+     MAIN CANVAS LIFECYCLE
      ═══════════════════════════════════════════════════════════ */
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return;
     const c = cv.getContext('2d', { alpha: false }); if (!c) return;
 
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-    const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
+    const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-    const eOB = (t: number) => {
-      const n = 7.5625, d = 2.75;
-      if (t < 1/d) return n*t*t;
-      if (t < 2/d) return n*(t-=1.5/d)*t+0.75;
-      if (t < 2.5/d) return n*(t-=2.25/d)*t+0.9375;
-      return n*(t-=2.625/d)*t+0.984375;
-    };
+    const eOB = (t: number) => { const n=7.5625,d=2.75; if(t<1/d)return n*t*t; if(t<2/d)return n*(t-=1.5/d)*t+.75; if(t<2.5/d)return n*(t-=2.25/d)*t+.9375; return n*(t-=2.625/d)*t+.984375; };
 
-    audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    triggerMilitaryAudio();
+    audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    playAudio();
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let W = 0, H = 0;
+    let W = 0, H = 0, sc = 0, cx = 0, baseY = 0, gateH = 0, gateW = 0;
 
-    const noise = new SimplexNoise(4822);
+    const noise = new SNoise(4822);
     const pl = mkPool();
+    const numPts = 14;
+    const fN: {x:number;y:number;ox:number;oy:number;vx:number;vy:number}[] = [];
+    for (let i = 0; i < numPts; i++) fN.push({x:0,y:0,ox:0,oy:0,vx:0,vy:0});
 
-    const numPoints = 14;
-    const flagNodes: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
-    for (let i = 0; i < numPoints; i++) {
-      flagNodes.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
-    }
-
-    const starI: number[] = [];
-    for (let i = 0; i < 150; i++) starI.push(i);
-
+    const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
     const birds: BoidBird[] = [];
     const kites: Kite[] = [];
+    const clouds: CloudPuff[] = [];
 
-    let sc = 0, gateH = 0, gateW = 0, baseY = 0, cx = 0;
+    // ── Red Fort architecture cache ──
+    let fort = {
+      wallL: 0, wallR: 0, wallTop: 0, wallBot: 0,
+      archX: 0, archW: 0, archH: 0, archBot: 0,
+      bastionL: {x:0,w:0,top:0}, bastionR: {x:0,w:0,top:0},
+      merlonW: 0, merlonH: 0, merlonGap: 0,
+    };
 
     const rsz = () => {
       W = window.innerWidth; H = window.innerHeight;
@@ -170,511 +152,774 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       sc = Math.min(W, H);
-      gateH = sc * 0.44; 
-      gateW = gateH * 1.5; 
-      baseY = H * 0.86;
+      gateH = sc * 0.42;
+      gateW = gateH * 1.45;
+      baseY = H * 0.82;
       cx = W * 0.5;
 
-      if (flagNodes.length > 0) flagNodes[0].x = 0;
+      const wallH = gateH * 0.68;
+      const wallW = gateW * 0.96;
+      const wallTop = baseY - wallH;
+      const bastionW = wallW * 0.11;
+      const bastionH = wallH * 1.12;
 
+      fort = {
+        wallL: cx - wallW / 2, wallR: cx + wallW / 2,
+        wallTop, wallBot: baseY,
+        archX: cx, archW: wallW * 0.15, archH: wallH * 0.62, archBot: baseY,
+        bastionL: { x: cx - wallW / 2 - bastionW * 0.3, w: bastionW, top: baseY - bastionH },
+        bastionR: { x: cx + wallW / 2 - bastionW * 0.7, w: bastionW, top: baseY - bastionH },
+        merlonW: Math.max(6, sc * 0.008), merlonH: Math.max(8, sc * 0.012), merlonGap: Math.max(5, sc * 0.007),
+      };
+
+      fN[0].x = 0;
       for (let i = 0; i < starI.length; i++) {
-        const idx = starI[i]; const p = pl[idx];
+        const p = pl[starI[i]];
         p.on = true; p.tp = 0;
-        p.x = Math.random() * W;
-        p.y = Math.random() * H * 0.75;
-        p.sz = Math.random() * 1.2 + 0.2;
-        p.ml = 999; p.life = 999;
-        p.r = 255; p.g = 250; p.b = 200;
-        p.a = Math.random() * 0.3 + 0.05;
+        p.x = Math.random() * W; p.y = Math.random() * H * 0.6;
+        p.sz = Math.random() * 1.0 + 0.2; p.ml = 999; p.life = 999;
+        p.r = 255; p.g = 245; p.b = 200; p.a = Math.random() * 0.25 + 0.05;
       }
 
       kites.length = 0;
-      kites.push(
-        { x: W * 0.15, y: H * 0.45, base_x: W * 0.15, base_y: H * 0.45, target_y: H * 0.15, scale: 0.9, vx: 0.8, vy: -0.4, angle: 0.1, swaySpeed: 1.2, swayAmp: 25, colors: ['#ff9933', '#ffffff', '#128807'] },
-        { x: W * 0.28, y: H * 0.55, base_x: W * 0.28, base_y: H * 0.55, target_y: H * 0.22, scale: 0.75, vx: 1.0, vy: -0.5, angle: -0.15, swaySpeed: 1.6, swayAmp: 18, colors: ['#ff9933', '#ffffff', '#128807'] },
-        { x: W * 0.72, y: H * 0.48, base_x: W * 0.72, base_y: H * 0.48, target_y: H * 0.18, scale: 0.82, vx: -0.7, vy: -0.4, angle: 0.05, swaySpeed: 1.1, swayAmp: 22, colors: ['#ff9933', '#ffffff', '#128807'] },
-        { x: W * 0.85, y: H * 0.58, base_x: W * 0.85, base_y: H * 0.58, target_y: H * 0.26, scale: 0.7, vx: -0.9, vy: -0.55, angle: -0.08, swaySpeed: 1.5, swayAmp: 15, colors: ['#ff9933', '#ffffff', '#128807'] }
-      );
+      const kiteData = [
+        { bx: W*0.12, by: H*0.50, ty: H*0.12, s: 1.0, ss: 1.1, sa: 28 },
+        { bx: W*0.24, by: H*0.58, ty: H*0.18, s: 0.8, ss: 1.5, sa: 20 },
+        { bx: W*0.76, by: H*0.52, ty: H*0.14, s: 0.9, ss: 1.0, sa: 24 },
+        { bx: W*0.88, by: H*0.60, ty: H*0.22, s: 0.72, ss: 1.4, sa: 16 },
+        { bx: W*0.40, by: H*0.65, ty: H*0.28, s: 0.6, ss: 1.8, sa: 12 },
+        { bx: W*0.62, by: H*0.62, ty: H*0.20, s: 0.65, ss: 1.3, sa: 14 },
+      ];
+      kiteData.forEach(d => kites.push({ x:d.bx, y:d.by, base_x:d.bx, base_y:d.by, target_y:d.ty, scale:d.s, angle:0, swaySpeed:d.ss, swayAmp:d.sa, tailPhase:Math.random()*100 }));
 
       birds.length = 0;
-      const leftTowerX = cx - gateW * 0.34;
-      const rightTowerX = cx + gateW * 0.34;
-      const towerY = baseY - gateH * 0.90;
+      const bY = fort.bastionL.top - 6;
+      for (let i = 0; i < 5; i++) {
+        birds.push({ x: fort.bastionL.x + fort.bastionL.w * 0.3 + i * 5, y: bY, vx:0, vy:0, wing:Math.random()*6.28, state:'sitting', side:'left', noiseSeed:Math.random()*1000, bank:0 });
+        birds.push({ x: fort.bastionR.x + fort.bastionR.w * 0.3 + i * 5, y: bY, vx:0, vy:0, wing:Math.random()*6.28, state:'sitting', side:'right', noiseSeed:Math.random()*1000, bank:0 });
+      }
 
+      clouds.length = 0;
       for (let i = 0; i < 6; i++) {
-        birds.push({
-          x: leftTowerX - 15 + i * 6,
-          y: towerY - 8, vx: 0, vy: 0,
-          wing: Math.random() * Math.PI * 2,
-          state: 'sitting', side: 'left',
-          noiseSeed: Math.random() * 1000, bank: 0
-        });
-        birds.push({
-          x: rightTowerX - 15 + i * 6,
-          y: towerY - 8, vx: 0, vy: 0,
-          wing: Math.random() * Math.PI * 2,
-          state: 'sitting', side: 'right',
-          noiseSeed: Math.random() * 1000, bank: 0
+        clouds.push({
+          x: Math.random() * W * 1.4 - W * 0.2,
+          y: H * 0.08 + Math.random() * H * 0.25,
+          w: 120 + Math.random() * 200,
+          h: 20 + Math.random() * 30,
+          a: 0.03 + Math.random() * 0.05,
+          speed: 0.15 + Math.random() * 0.25,
         });
       }
     };
     rsz(); window.addEventListener('resize', rsz);
 
+    // Film grain texture
     const grainCv = document.createElement('canvas');
     grainCv.width = 256; grainCv.height = 256;
     const gc = grainCv.getContext('2d')!;
     const gd = gc.createImageData(256, 256);
-    for (let i = 0; i < gd.data.length; i += 4) {
-      const v = Math.random() * 255 | 0;
-      gd.data[i] = v; gd.data[i + 1] = v; gd.data[i + 2] = v; gd.data[i + 3] = 255;
-    }
+    for (let i = 0; i < gd.data.length; i += 4) { const v = Math.random()*255|0; gd.data[i]=v; gd.data[i+1]=v; gd.data[i+2]=v; gd.data[i+3]=255; }
     gc.putImageData(gd, 0, 0);
 
-    let cameraShake = 0;
+    let camShake = 0;
+    const fwList: Firework[] = [];
+    const fwCols = [{r:255,g:153,b:51},{r:255,g:255,b:255},{r:19,g:136,b:8},{r:255,g:215,b:0},{r:255,g:100,b:60}];
 
-    const fireworksList: Firework[] = [];
-    const fwColors = [{r:255,g:153,b:51}, {r:255,g:255,b:255}, {r:19,g:136,b:8}, {r:255,g:215,b:0}];
-
-    const spawnFirework = () => {
-      const col = fwColors[Math.floor(Math.random() * fwColors.length)];
-      fireworksList.push({
-        x: W * 0.15 + Math.random() * W * 0.7, y: H,
-        vy: -5.0 - Math.random() * 3.5, state: 'rising', burstT: 0, col: col, pts: []
-      });
+    const spawnFW = () => {
+      const col = fwCols[Math.random()*fwCols.length|0];
+      fwList.push({ x: W*0.1+Math.random()*W*0.8, y: H, vy: -4.5-Math.random()*3, state:'rising', burstT:0, col, pts:[] });
     };
-
-    const updateFireworks = (dt: number) => {
-      for (let i = fireworksList.length - 1; i >= 0; i--) {
-        const fw = fireworksList[i];
+    const updateFW = (dt: number) => {
+      for (let i = fwList.length-1; i >= 0; i--) {
+        const fw = fwList[i];
         if (fw.state === 'rising') {
           fw.y += fw.vy; fw.vy += 0.04;
-          if (fw.vy >= -0.5 || fw.y < H * 0.2) {
+          if (fw.vy >= -0.5 || fw.y < H*0.18) {
             fw.state = 'burst';
-            const count = 40 + Math.random() * 30 | 0;
-            for (let j = 0; j < count; j++) {
-              const ang = (j / count) * Math.PI * 2;
-              const spd = 1.2 + Math.random() * 2.5;
-              fw.pts.push({
-                x: fw.x, y: fw.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
-                life: 1.5 + Math.random() * 1.5, ml: 3.0, sz: 1.5 + Math.random() * 2.0
-              });
+            const cnt = 45 + Math.random()*35|0;
+            const pat = Math.random();
+            for (let j = 0; j < cnt; j++) {
+              let ang: number, spd: number;
+              if (pat < 0.3) { ang = (j/cnt)*6.283; spd = 1.5+Math.random()*1.0; }
+              else if (pat < 0.6) { ang = (j/cnt)*6.283+(Math.random()-0.5)*0.4; spd = 0.8+Math.random()*2.5; }
+              else { ang = Math.random()*6.283; spd = 0.5+Math.random()*3.0; }
+              fw.pts.push({ x:fw.x, y:fw.y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, life:1.8+Math.random()*1.5, ml:3.3, sz:1.5+Math.random()*2.0 });
             }
           }
         } else {
           fw.burstT += dt;
-          for (let j = fw.pts.length - 1; j >= 0; j--) {
+          for (let j = fw.pts.length-1; j >= 0; j--) {
             const pt = fw.pts[j];
-            pt.x += pt.vx; pt.y += pt.vy;
-            pt.vy += 0.035; pt.vx *= 0.985; pt.vy *= 0.985;
-            pt.life -= dt;
+            pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.032; pt.vx *= 0.986; pt.vy *= 0.986; pt.life -= dt;
             if (pt.life <= 0) fw.pts.splice(j, 1);
           }
-          if (fw.pts.length === 0) fireworksList.splice(i, 1);
+          if (fw.pts.length === 0) fwList.splice(i, 1);
         }
       }
     };
 
-    const renderer = {
-      sky: (t: number, sceneAlpha: number) => {
-        c.save(); c.globalAlpha = sceneAlpha;
-        const grad = c.createLinearGradient(0, 0, 0, H);
-        if (t < 4.0) {
-          const ip = clamp(t / 4.0, 0, 1);
-          grad.addColorStop(0, `rgb(${lerp(15,24,ip)|0},${lerp(35,65,ip)|0},${lerp(75,130,ip)|0})`);
-          grad.addColorStop(0.65, `rgb(${lerp(45,180,ip)|0},${lerp(75,120,ip)|0},${lerp(120,60,ip)|0})`);
-          grad.addColorStop(1, `rgb(${lerp(120,250,ip)|0},${lerp(110,180,ip)|0},${lerp(80,100,ip)|0})`);
-        } else if (t < 10.0) {
-          const ip = clamp((t - 4.0) / 6.0, 0, 1);
-          grad.addColorStop(0, `rgb(${lerp(24,80,ip)|0},${lerp(65,145,ip)|0},${lerp(130,220,ip)|0})`);
-          grad.addColorStop(0.5, `rgb(${lerp(180,240,ip)|0},${lerp(120,180,ip)|0},${lerp(60,110,ip)|0})`);
-          grad.addColorStop(1, `rgb(${lerp(250,255,ip)|0},${lerp(180,210,ip)|0},${lerp(100,140,ip)|0})`);
+    /* ═══════════════════════════════════════════════════════════
+       RENDERER
+       ═══════════════════════════════════════════════════════════ */
+    const R = {
+      /* ── SKY: Realistic golden-hour dawn ── */
+      sky: (t: number, sa: number) => {
+        c.save(); c.globalAlpha = sa;
+        const g = c.createLinearGradient(0, 0, 0, H);
+        if (t < 5) {
+          const p = cl(t/5, 0, 1);
+          g.addColorStop(0, `rgb(${lerp(12,28,p)|0},${lerp(18,42,p)|0},${lerp(48,95,p)|0})`);
+          g.addColorStop(0.35, `rgb(${lerp(25,65,p)|0},${lerp(30,55,p)|0},${lerp(65,100,p)|0})`);
+          g.addColorStop(0.6, `rgb(${lerp(60,170,p)|0},${lerp(50,100,p)|0},${lerp(60,60,p)|0})`);
+          g.addColorStop(0.82, `rgb(${lerp(120,220,p)|0},${lerp(75,140,p)|0},${lerp(50,70,p)|0})`);
+          g.addColorStop(1, `rgb(${lerp(160,245,p)|0},${lerp(100,170,p)|0},${lerp(55,90,p)|0})`);
+        } else if (t < 11) {
+          const p = cl((t-5)/6, 0, 1);
+          g.addColorStop(0, `rgb(${lerp(28,55,p)|0},${lerp(42,80,p)|0},${lerp(95,140,p)|0})`);
+          g.addColorStop(0.45, `rgb(${lerp(65,140,p)|0},${lerp(55,110,p)|0},${lerp(60,85,p)|0})`);
+          g.addColorStop(0.75, `rgb(${lerp(170,235,p)|0},${lerp(100,155,p)|0},${lerp(60,80,p)|0})`);
+          g.addColorStop(1, `rgb(${lerp(220,250,p)|0},${lerp(140,190,p)|0},${lerp(70,100,p)|0})`);
         } else {
-          const ip = clamp((t - 10.0) / 4.5, 0, 1);
-          grad.addColorStop(0, `rgb(${lerp(80,10,ip)|0},${lerp(145,20,ip)|0},${lerp(220,65,ip)|0})`);
-          grad.addColorStop(1, `rgb(${lerp(255,25,ip)|0},${lerp(210,42,ip)|0},${lerp(140,110,ip)|0})`);
+          const p = cl((t-11)/4, 0, 1);
+          g.addColorStop(0, `rgb(${lerp(55,8,p)|0},${lerp(80,14,p)|0},${lerp(140,48,p)|0})`);
+          g.addColorStop(1, `rgb(${lerp(250,18,p)|0},${lerp(190,35,p)|0},${lerp(100,80,p)|0})`);
         }
-        c.fillStyle = grad; c.fillRect(0, 0, W, H);
-        c.restore();
-      },
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
 
-      stars: (t: number, sceneAlpha: number) => {
-        if (t > 4) return;
-        const alpha = clamp(1 - t / 4, 0, 1) * sceneAlpha;
-        c.save(); c.globalAlpha = alpha;
-        for (let i = 0; i < starI.length; i++) {
-          const idx = starI[i]; const p = pl[idx];
-          if (p && p.on) {
-            const twinkle = Math.sin(t * 3.5 + i) * 0.4 + 0.6;
-            c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * twinkle})`;
-            c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
-          }
-        }
-        c.restore();
-      },
-
-      redFort: (t: number, sceneAlpha: number) => {
-        const reveal = clamp((t - 0.8) * 0.4, 0, 1);
-        c.save(); c.globalAlpha = reveal * sceneAlpha;
-
-        const sandRed = '#a23c26';
-        const shadowRed = '#6e2012';
-        const lightSand = '#c4543d';
-        const domeWhite = '#f6f6f6';
-
-        const drawBlock = (x: number, y: number, w: number, h: number) => {
-          c.fillStyle = 'rgba(0,0,0,0.3)';
-          c.fillRect(x - 2, y - 2, w + 4, h + 4);
-          const blockGrad = c.createLinearGradient(x, y, x, y + h);
-          blockGrad.addColorStop(0, lightSand);
-          blockGrad.addColorStop(0.3, sandRed);
-          blockGrad.addColorStop(1, shadowRed);
-          c.fillStyle = blockGrad;
-          c.fillRect(x, y, w, h);
-        };
-
-        drawBlock(cx - gateW * 0.48, baseY - gateH * 0.45, gateW * 0.96, gateH * 0.45);
-
-        c.fillStyle = shadowRed;
-        const crenW = 8;
-        for (let xOff = -gateW * 0.47; xOff < gateW * 0.47; xOff += 15) {
-          c.fillRect(cx + xOff, baseY - gateH * 0.49, crenW, 6);
-        }
-
-        const twW = gateW * 0.12, twH = gateH * 0.80;
-        const leftTx = cx - gateW * 0.38;
-        drawBlock(leftTx, baseY - twH, twW, twH);
-
-        const rightTx = cx + gateW * 0.38 - twW;
-        drawBlock(rightTx, baseY - twH, twW, twH);
-
-        const alcW = gateW * 0.22, alcH = gateH * 0.35;
-        c.save();
-        c.beginPath();
-        c.moveTo(cx - alcW/2, baseY);
-        c.lineTo(cx - alcW/2, baseY - alcH * 0.7);
-        c.quadraticCurveTo(cx, baseY - alcH * 1.1, cx + alcW/2, baseY - alcH * 0.7);
-        c.lineTo(cx + alcW/2, baseY);
-        c.closePath(); c.clip();
-        c.fillStyle = '#220803';
-        c.fillRect(cx - alcW/2, baseY - alcH, alcW, alcH + 10);
-        c.restore();
-
-        const drawDomeChhatri = (tx: number, ty: number, w: number) => {
-          c.strokeStyle = domeWhite; c.lineWidth = 2;
-          for (let pIdx = 0; pIdx < 4; pIdx++) {
-            const px = tx + 3 + (w - 6) * (pIdx / 3);
-            c.beginPath(); c.moveTo(px, ty); c.lineTo(px, ty - 12); c.stroke();
-          }
-          c.fillStyle = sandRed; c.fillRect(tx, ty - 14, w, 3);
-          c.beginPath();
-          c.arc(tx + w / 2, ty - 14, w * 0.42, Math.PI, 0, false);
-          c.closePath();
-          c.fillStyle = domeWhite; c.fill();
-          c.strokeStyle = shadowRed; c.lineWidth = 0.8; c.stroke();
-          c.fillStyle = '#e0a924';
-          c.fillRect(tx + w / 2 - 1, ty - 14 - w * 0.42 - 5, 2, 6);
-        };
-
-        drawDomeChhatri(leftTx + 2, baseY - twH, twW - 4);
-        drawDomeChhatri(rightTx + 2, baseY - twH, twW - 4);
-
-        for (let i = -1; i <= 1; i += 2) {
-          drawDomeChhatri(cx + i * 40 - 10, baseY - gateH * 0.45, 20);
-        }
-
-        c.restore();
-      },
-
-      torch: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 2.0) return;
-        const tx = W * 0.5, ty = H * 0.795;
-        const fireAlpha = clamp((t - 2.0) * 1.5, 0, 1) * sceneAlpha;
-        c.save(); c.globalAlpha = fireAlpha; c.globalCompositeOperation = 'lighter';
-        const glowGrad = c.createRadialGradient(tx, ty, 0, tx, ty, 100);
-        glowGrad.addColorStop(0, 'rgba(255,140,20,0.8)');
-        glowGrad.addColorStop(0.5, 'rgba(255,60,5,0.25)');
-        glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = glowGrad; c.fillRect(tx - 100, ty - 100, 200, 280);
-        const flicker = Math.sin(elapsed * 28) * 3;
-        const flameH = 35 + flicker, flameW = 9;
-        const fireGrad = c.createLinearGradient(tx, ty, tx, ty - flameH);
-        fireGrad.addColorStop(0, '#ffffff');
-        fireGrad.addColorStop(0.2, 'rgba(255,210,80,0.95)');
-        fireGrad.addColorStop(0.6, 'rgba(255,120,20,0.6)');
-        fireGrad.addColorStop(1, 'rgba(255,50,0,0)');
-        c.fillStyle = fireGrad;
-        c.beginPath();
-        c.moveTo(tx - flameW, ty);
-        c.quadraticCurveTo(tx - flameW * 0.4, ty - flameH * 0.5, tx, ty - flameH);
-        c.quadraticCurveTo(tx + flameW * 0.4, ty - flameH * 0.5, tx + flameW, ty);
-        c.closePath(); c.fill();
-        c.restore();
-      },
-
-      wavingFlagAndChakra: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 3.0) return;
-        const revealAlpha = clamp((t - 3.0) * 1.2, 0, 1) * sceneAlpha;
-        const fw_static = sc * 0.22, fh = fw_static * 0.66;
-        
-        const poleTopX = cx;
-        const poleBaseY = baseY - gateH * 0.49;
-        const poleHeight = gateH * 0.85;
-        const poleTopY = poleBaseY - poleHeight;
-
-        const hoistProgress = clamp((t - 3.0) / 3.2, 0, 1);
-        const currentFlagY = lerp(poleBaseY - fh, poleTopY, eOC(hoistProgress));
-
-        const unfurlProgress = clamp((t - 5.8) * 2.0, 0, 1);
-        const fw = lerp(fw_static * 0.15, fw_static, eOC(unfurlProgress)); 
-
-        if (flagNodes[0].x === 0) {
-          for (let i = 0; i < numPoints; i++) {
-            flagNodes[i].x = poleTopX + (i * fw) / (numPoints - 1);
-            flagNodes[i].y = currentFlagY;
-            flagNodes[i].ox = flagNodes[i].x; flagNodes[i].oy = flagNodes[i].y;
-          }
-        }
-
-        for (let i = 1; i < numPoints; i++) {
-          const wind = 0.15 + noise.n2(elapsed * 0.6 + i * 0.12, 0) * 0.14;
-          const gravity = 0.022;
-          flagNodes[i].vx = (flagNodes[i].x - flagNodes[i].ox) * 0.94 + wind;
-          flagNodes[i].vy = (flagNodes[i].y - flagNodes[i].oy) * 0.94 + gravity;
-          flagNodes[i].ox = flagNodes[i].x; flagNodes[i].oy = flagNodes[i].y;
-          flagNodes[i].x += flagNodes[i].vx; flagNodes[i].y += flagNodes[i].vy;
-        }
-        flagNodes[0].x = poleTopX; flagNodes[0].y = currentFlagY;
-
-        const linkLength = fw / (numPoints - 1);
-        for (let steps = 0; steps < 5; steps++) {
-          for (let i = 0; i < numPoints - 1; i++) {
-            const n1 = flagNodes[i], n2 = flagNodes[i + 1];
-            const dx = n2.x - n1.x, dy = n2.y - n1.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const diff = linkLength - dist;
-            const percent = (diff / dist) * 0.5;
-            const offsetX = dx * percent, offsetY = dy * percent;
-            if (i > 0) { n1.x -= offsetX; n1.y -= offsetY; }
-            n2.x += offsetX; n2.y += offsetY;
-          }
-        }
-
-        c.save(); c.globalAlpha = revealAlpha;
-        
-        const poleGrad = c.createLinearGradient(cx - 2.5, poleTopY, cx + 2.5, poleBaseY);
-        poleGrad.addColorStop(0, '#f0f0f0'); poleGrad.addColorStop(0.5, '#ffffff'); poleGrad.addColorStop(1, '#a8a8a8');
-        c.fillStyle = poleGrad; c.fillRect(cx - 2.5, poleTopY, 5, poleHeight);
-        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, poleTopY, 4, 0, Math.PI * 2); c.fill();
-
-        for (let i = 0; i < numPoints - 1; i++) {
-          const n1 = flagNodes[i], n2 = flagNodes[i + 1];
-          const shade = 0.85 + Math.sin(i * 0.3 - elapsed * 4) * 0.15;
-          const applyShade = (hex: string) => {
-            const h = hex.replace('#', '');
-            const rr = parseInt(h.substring(0,2),16), gg = parseInt(h.substring(2,4),16), bb = parseInt(h.substring(4,6),16);
-            return `rgb(${rr*shade|0},${gg*shade|0},${bb*shade|0})`;
-          };
-          c.fillStyle = applyShade('#FF9933');
-          c.beginPath(); c.moveTo(n1.x, n1.y); c.lineTo(n2.x, n2.y);
-          c.lineTo(n2.x, n2.y + fh / 3); c.lineTo(n1.x, n1.y + fh / 3); c.closePath(); c.fill();
-          c.fillStyle = applyShade('#FFFFFF');
-          c.beginPath(); c.moveTo(n1.x, n1.y + fh / 3); c.lineTo(n2.x, n2.y + fh / 3);
-          c.lineTo(n2.x, n2.y + (fh * 2) / 3); c.lineTo(n1.x, n1.y + (fh * 2) / 3); c.closePath(); c.fill();
-          c.fillStyle = applyShade('#138808');
-          c.beginPath(); c.moveTo(n1.x, n1.y + (fh * 2) / 3); c.lineTo(n2.x, n2.y + (fh * 2) / 3);
-          c.lineTo(n2.x, n2.y + fh); c.lineTo(n1.x, n1.y + fh); c.closePath(); c.fill();
-        }
-
-        if (unfurlProgress > 0.15) {
-          const midIdx = numPoints / 2 | 0;
-          const cxV = flagNodes[midIdx].x, cyV = flagNodes[midIdx].y + fh / 2, cr = fh * 0.11 * unfurlProgress;
-          c.save(); c.translate(cxV, cyV); c.rotate(elapsed * 0.7);
-          c.strokeStyle = 'rgba(0,0,128,0.85)'; c.lineWidth = 1.8;
-          c.beginPath(); c.arc(0, 0, cr, 0, Math.PI * 2); c.stroke();
-          c.lineWidth = 0.8;
-          for (let i = 0; i < 24; i++) {
-            const ang = (i / 24) * Math.PI * 2;
-            c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(ang) * cr, Math.sin(ang) * cr); c.stroke();
-          }
+        // Sun glow near horizon
+        if (t > 2 && t < 12) {
+          const si = cl((t-2)/2, 0, 1) * cl((12-t)/1, 0, 1);
+          c.save(); c.globalAlpha = si * 0.35 * sa;
+          c.globalCompositeOperation = 'screen';
+          const sunX = cx + W * 0.15, sunY = baseY - gateH * 0.2;
+          const sg = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, sc * 0.5);
+          sg.addColorStop(0, 'rgba(255,220,140,0.5)');
+          sg.addColorStop(0.3, 'rgba(255,160,60,0.15)');
+          sg.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = sg;
+          c.fillRect(sunX - sc*0.5, sunY - sc*0.5, sc, sc);
           c.restore();
         }
         c.restore();
       },
 
-      volumetricLighting: (t: number, sceneAlpha: number) => {
-        if (t < 3.0) return;
-        const intensity = clamp((t - 3.0) * 0.22, 0, 0.65) * sceneAlpha;
-        const sunX = W * 0.5, sunY = baseY - gateH * 0.5;
-        c.save(); c.globalAlpha = intensity; c.globalCompositeOperation = 'screen';
-        for (let i = 0; i < 15; i++) {
-          const angle = -Math.PI * 0.5 + (i / 15) * Math.PI - Math.PI * 0.5;
-          const l = sc * 1.5;
-          c.beginPath(); c.moveTo(sunX, sunY);
-          c.lineTo(sunX + Math.cos(angle - 0.05) * l, sunY + Math.sin(angle - 0.05) * l);
-          c.lineTo(sunX + Math.cos(angle + 0.05) * l, sunY + Math.sin(angle + 0.05) * l);
-          c.closePath();
-          const rayGrad = c.createLinearGradient(sunX, sunY, sunX + Math.cos(angle) * l, sunY + Math.sin(angle) * l);
-          rayGrad.addColorStop(0, 'rgba(255,220,130,0.22)');
-          rayGrad.addColorStop(0.5, 'rgba(255,120,40,0.06)');
-          rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
-          c.fillStyle = rayGrad; c.fill();
+      /* ── STARS ── */
+      stars: (t: number, sa: number) => {
+        if (t > 5) return;
+        const a = cl(1 - t/5, 0, 1) * sa;
+        c.save(); c.globalAlpha = a;
+        for (const idx of starI) {
+          const p = pl[idx]; if (!p?.on) continue;
+          const tw = Math.sin(t*3.2 + idx) * 0.35 + 0.65;
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * tw})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
         }
         c.restore();
       },
 
-      drawKites: (t: number, sceneAlpha: number) => {
-        if (t < 1.5) return;
-        const kAlpha = clamp((t - 1.5) * 1.2, 0, 1) * sceneAlpha;
-        c.save(); c.globalAlpha = kAlpha;
+      /* ── CLOUDS: Subtle atmospheric haze ── */
+      clouds: (t: number, sa: number) => {
+        if (t < 2) return;
+        const a = cl((t-2)*0.3, 0, 1) * (t > 11 ? cl((12-t), 0, 1) : 1) * sa;
+        c.save(); c.globalAlpha = a;
+        clouds.forEach(cl_ => {
+          cl_.x += cl_.speed * 0.016;
+          if (cl_.x > W + cl_.w) cl_.x = -cl_.w;
+          c.fillStyle = `rgba(255,230,200,${cl_.a})`;
+          c.beginPath(); c.ellipse(cl_.x, cl_.y, cl_.w/2, cl_.h/2, 0, 0, 6.283); c.fill();
+          c.beginPath(); c.ellipse(cl_.x - cl_.w*0.25, cl_.y + 5, cl_.w*0.35, cl_.h*0.4, 0, 0, 6.283); c.fill();
+          c.beginPath(); c.ellipse(cl_.x + cl_.w*0.3, cl_.y + 3, cl_.w*0.3, cl_.h*0.35, 0, 0, 6.283); c.fill();
+        });
+        c.restore();
+      },
 
-        kites.forEach((kite, index) => {
-          const sway = Math.sin(t * kite.swaySpeed + index) * kite.swayAmp;
-          kite.x = kite.base_x + sway;
-          kite.y = lerp(kite.base_y, kite.target_y, clamp((t - 1.5) * 0.08, 0, 1));
+      /* ── GROUND: Red sandstone plaza + lawns + paths ── */
+      ground: (t: number, sa: number) => {
+        const rev = cl((t - 0.6) * 0.4, 0, 1);
+        c.save(); c.globalAlpha = rev * sa;
+        const gT = baseY;
 
+        // Main lawn
+        const lg = c.createLinearGradient(0, gT, 0, H);
+        lg.addColorStop(0, '#1a3318'); lg.addColorStop(0.15, '#152b13');
+        lg.addColorStop(0.5, '#0f200e'); lg.addColorStop(1, '#091209');
+        c.fillStyle = lg; c.fillRect(0, gT, W, H - gT);
+
+        // Red sandstone plaza
+        const plW = gateW * 1.05, plH = 32;
+        const pg = c.createLinearGradient(0, gT - 4, 0, gT + plH);
+        pg.addColorStop(0, '#8b4228'); pg.addColorStop(0.4, '#7a3820');
+        pg.addColorStop(1, '#5a2815');
+        c.fillStyle = pg; c.fillRect(cx - plW/2, gT - 4, plW, plH);
+        c.fillStyle = 'rgba(200,150,100,0.12)'; c.fillRect(cx - plW/2, gT - 4, plW, 1.5);
+
+        // Central path
+        const pathW = gateW * 0.18;
+        const pathG = c.createLinearGradient(0, gT, 0, gT + 60);
+        pathG.addColorStop(0, '#6b4028'); pathG.addColorStop(1, '#3d2215');
+        c.fillStyle = pathG;
+        c.beginPath(); c.moveTo(cx - pathW/2, gT); c.lineTo(cx + pathW/2, gT);
+        c.lineTo(cx + pathW*0.6, H); c.lineTo(cx - pathW*0.6, H); c.closePath(); c.fill();
+
+        // Side paths
+        [cx - gateW*0.3, cx + gateW*0.3].forEach(px => {
+          c.fillStyle = '#3d2215';
+          c.beginPath(); c.moveTo(px - 8, gT); c.lineTo(px + 8, gT);
+          c.lineTo(px + 14, H); c.lineTo(px - 14, H); c.closePath(); c.fill();
+        });
+
+        // Trees
+        const drawTree = (tx: number, ty: number, s: number, a: number) => {
+          c.save(); c.globalAlpha = a;
+          c.fillStyle = '#1a1008'; c.fillRect(tx - 2.5*s, ty - 22*s, 5*s, 24*s);
+          for (let l = 0; l < 3; l++) {
+            c.fillStyle = l === 1 ? '#0e1e0d' : '#0b180b';
+            c.beginPath();
+            c.ellipse(tx + (l-1)*3*s, ty - 22*s - l*9*s, (18-l*4)*s, (12-l*2)*s, 0, 0, 6.283);
+            c.fill();
+          }
+          c.restore();
+        };
+        drawTree(cx - gateW*0.52, gT, 1.2, 0.9);
+        drawTree(cx - gateW*0.62, gT, 0.9, 0.7);
+        drawTree(cx - gateW*0.72, gT, 1.1, 0.5);
+        drawTree(cx + gateW*0.52, gT, 1.15, 0.85);
+        drawTree(cx + gateW*0.62, gT, 1.0, 0.65);
+        drawTree(cx + gateW*0.72, gT, 0.85, 0.45);
+        drawTree(cx - gateW*0.85, gT, 0.6, 0.3);
+        drawTree(cx + gateW*0.85, gT, 0.55, 0.25);
+
+        // Ground fog
+        c.globalAlpha = rev * sa * 0.12;
+        const fg = c.createLinearGradient(0, gT, 0, gT + 35);
+        fg.addColorStop(0, 'rgba(180,140,100,0.25)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = fg; c.fillRect(0, gT, W, 35);
+
+        c.restore();
+      },
+
+      /* ═══════════════════════════════════════════════════════════
+         RED FORT — Cinematic Architectural Rendering
+         ═══════════════════════════════════════════════════════════ */
+      redFort: (t: number, sa: number) => {
+        const rev = cl((t - 0.8) * 0.35, 0, 1);
+        c.save(); c.globalAlpha = rev * sa;
+
+        const { wallL, wallR, wallTop, wallBot, archX, archW, archH, archBot,
+                bastionL, bastionR, merlonW, merlonH, merlonGap } = fort;
+
+        // Palette — Real red sandstone
+        const SAND = '#b84e34';
+        const SAND_LT = '#d06848';
+        const SAND_DK = '#7a3220';
+        const SAND_SH = '#4e1c0e';
+        const INLAY = '#e8d5b8';
+        const DOME = '#f0ebe0';
+        const GOLD = '#c89a18';
+
+        // ── Ground shadow ──
+        c.fillStyle = 'rgba(0,0,0,0.35)';
+        c.beginPath(); c.ellipse(cx, baseY + 6, gateW * 0.55, 10, 0, 0, 6.283); c.fill();
+
+        // ── Wide foundation (sinks into ground) ──
+        const fpW = gateW * 1.08;
+        const fpGrad = c.createLinearGradient(0, baseY - 6, 0, baseY + 14);
+        fpGrad.addColorStop(0, SAND_LT); fpGrad.addColorStop(0.4, SAND);
+        fpGrad.addColorStop(1, SAND_SH);
+        c.fillStyle = fpGrad; c.fillRect(cx - fpW/2, baseY - 6, fpW, 20);
+        c.fillStyle = 'rgba(220,180,140,0.15)'; c.fillRect(cx - fpW/2, baseY - 6, fpW, 1.5);
+        c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(cx - fpW/2, baseY + 10, fpW, 4);
+
+        // ── Stepped base ──
+        c.fillStyle = SAND; c.fillRect(cx - fpW*0.46, baseY - 14, fpW*0.92, 8);
+        c.fillStyle = 'rgba(220,180,140,0.1)'; c.fillRect(cx - fpW*0.46, baseY - 14, fpW*0.92, 1);
+
+        // ── Helper: draw textured block ──
+        const drawBlock = (x: number, y: number, w: number, h: number, shade: number) => {
+          // Shadow
+          c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x - 1.5, y - 1.5, w + 3, h + 3);
+          // Body gradient (left darker = shadow side, right lighter = sun side)
+          const bg = c.createLinearGradient(x, y, x + w, y);
+          const r = lerp(122, 208, shade) | 0, g2 = lerp(50, 104, shade) | 0, b = lerp(32, 72, shade) | 0;
+          bg.addColorStop(0, `rgb(${r*0.7|0},${g2*0.7|0},${b*0.7|0})`);
+          bg.addColorStop(0.5, `rgb(${r},${g2},${b})`);
+          bg.addColorStop(1, `rgb(${Math.min(255,r*1.15)|0},${Math.min(255,g2*1.12)|0},${Math.min(255,b*1.1)|0})`);
+          c.fillStyle = bg; c.fillRect(x, y, w, h);
+          // Top highlight
+          c.fillStyle = `rgba(220,180,140,${0.08 * shade})`; c.fillRect(x, y, w, 1.5);
+          // Stone block joints
+          c.strokeStyle = 'rgba(0,0,0,0.06)'; c.lineWidth = 0.5;
+          for (let by = y + 18; by < y + h; by += 18) {
+            c.beginPath(); c.moveTo(x, by); c.lineTo(x + w, by); c.stroke();
+          }
+        };
+
+        // ── Main wall body ──
+        const wallW = wallR - wallL;
+        const wallH = wallBot - wallTop;
+        drawBlock(wallL, wallTop, wallW, wallH - 6, 0.55);
+
+        // ── Horizontal inlay bands (Mughal architecture hallmark) ──
+        c.fillStyle = INLAY;
+        const bandPositions = [0.15, 0.45, 0.72, 0.92];
+        bandPositions.forEach(bp => {
+          const by = wallTop + wallH * bp;
+          c.globalAlpha = rev * sa * 0.35;
+          c.fillRect(wallL + 4, by, wallW - 8, 2);
+        });
+        c.globalAlpha = rev * sa;
+
+        // ── Vertical pillar suggestions ──
+        c.strokeStyle = 'rgba(0,0,0,0.08)'; c.lineWidth = 1;
+        const pillarCount = 12;
+        for (let i = 1; i < pillarCount; i++) {
+          const px = wallL + (wallW / pillarCount) * i;
+          c.beginPath(); c.moveTo(px, wallTop + 10); c.lineTo(px, wallBot - 10); c.stroke();
+        }
+
+        // ── Battlements (merlons) ──
+        c.fillStyle = SAND_LT;
+        for (let mx = wallL + merlonGap; mx < wallR - merlonW; mx += merlonW + merlonGap) {
+          c.fillRect(mx, wallTop - merlonH, merlonW, merlonH);
+          c.fillStyle = 'rgba(220,180,140,0.1)'; c.fillRect(mx, wallTop - merlonH, merlonW, 1);
+          c.fillStyle = SAND_LT;
+        }
+
+        // ── BASTIONS (corner towers) ──
+        const drawBastion = (bx: number, bw: number, btop: number) => {
+          const bh = wallBot - btop;
+          drawBlock(bx, btop, bw, bh, 0.6);
+
+          // Extra bands on bastion
+          c.fillStyle = INLAY; c.globalAlpha = rev * sa * 0.3;
+          c.fillRect(bx + 3, btop + bh * 0.3, bw - 6, 1.5);
+          c.fillRect(bx + 3, btop + bh * 0.7, bw - 6, 1.5);
+          c.globalAlpha = rev * sa;
+
+          // Merlons on bastion
+          const bmW = merlonW * 0.8, bmH = merlonH * 0.9;
+          c.fillStyle = SAND_LT;
+          for (let mx = bx + 2; mx < bx + bw - bmW; mx += bmW + merlonGap * 0.7) {
+            c.fillRect(mx, btop - bmH, bmW, bmH);
+          }
+
+          // ── Chhatri (dome on pillars) ──
+          const chW = bw * 0.7, chX = bx + (bw - chW) / 2, chY = btop - bmH;
+          const pilH = 14;
+
+          // Pillars
+          c.fillStyle = SAND_LT;
+          for (let pi = 0; pi < 4; pi++) {
+            const ppx = chX + 3 + (chW - 6) * (pi / 3);
+            c.fillRect(ppx, chY - pilH, 2.5, pilH);
+          }
+          // Platform
+          c.fillStyle = SAND; c.fillRect(chX, chY - 2, chW, 3);
+          // Dome
+          c.beginPath(); c.arc(chX + chW/2, chY - 2, chW * 0.42, Math.PI, 0, false); c.closePath();
+          const dg = c.createLinearGradient(chX, chY - 2 - chW*0.42, chX + chW, chY - 2);
+          dg.addColorStop(0, '#d8d0c4'); dg.addColorStop(0.4, DOME); dg.addColorStop(1, '#c8c0b4');
+          c.fillStyle = dg; c.fill();
+          c.strokeStyle = 'rgba(0,0,0,0.12)'; c.lineWidth = 0.7; c.stroke();
+          // Finial
+          c.fillStyle = GOLD;
+          c.fillRect(chX + chW/2 - 1, chY - 2 - chW*0.42 - 5, 2, 6);
+          c.beginPath(); c.arc(chX + chW/2, chY - 2 - chW*0.42 - 6, 2.5, 0, 6.283); c.fill();
+        };
+
+        drawBastion(bastionL.x, bastionL.w, bastionL.top);
+        drawBastion(bastionR.x, bastionR.w, bastionR.top);
+
+        // ── Small chhatris on wall ──
+        const drawSmallChhatri = (sx: number) => {
+          const sw = 18, sh = 10;
+          c.fillStyle = SAND_LT;
+          c.fillRect(sx - sw/2, wallTop - merlonH - 2, sw, 3);
+          c.beginPath(); c.arc(sx, wallTop - merlonH - 2, sw*0.42, Math.PI, 0, false); c.closePath();
+          c.fillStyle = DOME; c.fill();
+          c.strokeStyle = 'rgba(0,0,0,0.1)'; c.lineWidth = 0.5; c.stroke();
+          c.fillStyle = GOLD; c.fillRect(sx - 0.8, wallTop - merlonH - 2 - sw*0.42 - 3, 1.6, 4);
+        };
+        drawSmallChhatri(cx - wallW * 0.3);
+        drawSmallChhatri(cx + wallW * 0.3);
+        drawSmallChhatri(cx - wallW * 0.15);
+        drawSmallChhatri(cx + wallW * 0.15);
+
+        // ── LAHORE GATE — Central pointed arch ──
+        const aL = archX - archW/2, aR = archX + archW/2;
+        const aTop = archBot - archH;
+        const aNeckY = archBot - archH * 0.6;
+
+        // Arch border (inlay frame)
+        c.save();
+        c.beginPath();
+        c.moveTo(aL - 6, archBot);
+        c.lineTo(aL - 6, aNeckY - 4);
+        c.quadraticCurveTo(aL - 6, aTop - 4, archX, aTop - 4);
+        c.quadraticCurveTo(aR + 6, aTop - 4, aR + 6, aNeckY - 4);
+        c.lineTo(aR + 6, archBot);
+        c.closePath();
+        c.fillStyle = INLAY; c.globalAlpha = rev * sa * 0.5; c.fill();
+        c.globalAlpha = rev * sa;
+        c.restore();
+
+        // Arch shape
+        c.save();
+        c.beginPath();
+        c.moveTo(aL, archBot);
+        c.lineTo(aL, aNeckY);
+        c.quadraticCurveTo(aL, aTop, archX, aTop);
+        c.quadraticCurveTo(aR, aTop, aR, aNeckY);
+        c.lineTo(aR, archBot);
+        c.closePath(); c.clip();
+
+        // Deep interior shadow
+        const aShadow = c.createRadialGradient(archX, aTop + archH*0.3, archW*0.2, archX, aTop + archH*0.3, archW*0.7);
+        aShadow.addColorStop(0, '#0d0403');
+        aShadow.addColorStop(1, '#1a0805');
+        c.fillStyle = aShadow; c.fillRect(aL, aTop, archW, archH + 5);
+
+        // Inner arch hint
+        const iaw = archW * 0.55, iah = archH * 0.5;
+        c.strokeStyle = 'rgba(80,40,25,0.3)'; c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(archX - iaw/2, archBot);
+        c.lineTo(archX - iaw/2, archBot - iah * 0.6);
+        c.quadraticCurveTo(archX - iaw/2, archBot - iah, archX, archBot - iah);
+        c.quadraticCurveTo(archX + iaw/2, archBot - iah, archX + iaw/2, archBot - iah * 0.6);
+        c.lineTo(archX + iaw/2, archBot);
+        c.stroke();
+        c.restore();
+
+        // ── Side arched windows ──
+        const drawSideArch = (sx: number) => {
+          const sw = archW * 0.4, sh = archH * 0.38;
+          const sl = sx - sw/2, sr = sx + sw/2;
+          const sTop = archBot - sh;
+          const sNeck = archBot - sh * 0.6;
           c.save();
-          c.translate(kite.x, kite.y);
-          c.rotate(kite.angle + Math.sin(t * 1.5 + index) * 0.08);
-
-          const s = 18 * kite.scale;
-
-          const tricolorGrad = c.createLinearGradient(-s, 0, s, 0);
-          tricolorGrad.addColorStop(0, '#ff9933');
-          tricolorGrad.addColorStop(0.48, '#ffffff');
-          tricolorGrad.addColorStop(0.52, '#ffffff');
-          tricolorGrad.addColorStop(1, '#128807');
-          c.fillStyle = tricolorGrad;
-
           c.beginPath();
-          c.moveTo(0, -s * 1.4);
-          c.lineTo(s * 1.1, 0);
-          c.lineTo(0, s * 1.2);
-          c.lineTo(-s * 1.1, 0);
+          c.moveTo(sl, archBot); c.lineTo(sl, sNeck);
+          c.quadraticCurveTo(sl, sTop, sx, sTop);
+          c.quadraticCurveTo(sr, sTop, sr, sNeck);
+          c.lineTo(sr, archBot); c.closePath(); c.clip();
+          c.fillStyle = '#150604'; c.fillRect(sl, sTop, sw, sh + 2);
+          c.restore();
+          // Border
+          c.strokeStyle = 'rgba(200,160,120,0.15)'; c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(sl, archBot); c.lineTo(sl, sNeck);
+          c.quadraticCurveTo(sl, sTop, sx, sTop);
+          c.quadraticCurveTo(sr, sTop, sr, sNeck);
+          c.lineTo(sr, archBot); c.stroke();
+        };
+        drawSideArch(cx - wallW * 0.28);
+        drawSideArch(cx + wallW * 0.28);
+        drawSideArch(cx - wallW * 0.42);
+        drawSideArch(cx + wallW * 0.42);
+
+        // ── Rim light (golden hour sun from right) ──
+        c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = rev * sa * 0.12;
+        c.fillStyle = '#ffcc66';
+        c.fillRect(wallR - 3, wallTop - merlonH, 4, wallH + merlonH);
+        // Top edge rim
+        c.fillRect(wallL, wallTop - merlonH - 1, wallW, 2);
+        c.restore();
+
+        c.restore();
+      },
+
+      /* ── TORCH ── */
+      torch: (t: number, el: number, sa: number) => {
+        if (t < 2.5) return;
+        const tx = cx, ty = baseY - 6;
+        const fa = cl((t-2.5)*1.2, 0, 1) * sa;
+        c.save(); c.globalAlpha = fa; c.globalCompositeOperation = 'lighter';
+        const gg = c.createRadialGradient(tx, ty, 0, tx, ty, 80);
+        gg.addColorStop(0, 'rgba(255,140,20,0.6)'); gg.addColorStop(0.5, 'rgba(255,60,5,0.15)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = gg; c.fillRect(tx-80, ty-80, 160, 200);
+        const fl = Math.sin(el*30)*3, fH = 30+fl;
+        const fg = c.createLinearGradient(tx, ty, tx, ty-fH);
+        fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.2, 'rgba(255,210,80,0.9)');
+        fg.addColorStop(0.6, 'rgba(255,120,20,0.5)'); fg.addColorStop(1, 'rgba(255,50,0,0)');
+        c.fillStyle = fg; c.beginPath();
+        c.moveTo(tx-8, ty); c.quadraticCurveTo(tx-3, ty-fH*0.5, tx, ty-fH);
+        c.quadraticCurveTo(tx+3, ty-fH*0.5, tx+8, ty); c.closePath(); c.fill();
+        c.restore();
+      },
+
+      /* ── FLAG: Hoisting then waving ── */
+      flag: (t: number, el: number, sa: number) => {
+        if (t < 3.0) return;
+        const ra = cl((t-3.0)*1.0, 0, 1) * sa;
+        const fwS = sc * 0.20, fh = fwS * 0.66;
+        const pBaseY = baseY - 14;
+        const pH = gateH * 0.72;
+        const pTopY = pBaseY - pH;
+
+        const hoist = cl((t - 3.0) / 3.5, 0, 1);
+        const curY = lerp(pBaseY - fh, pTopY, eOC(hoist));
+        const unfurl = cl((t - 6.0) * 1.8, 0, 1);
+        const fw = lerp(fwS * 0.12, fwS, eOC(unfurl));
+
+        if (fN[0].x === 0) {
+          for (let i = 0; i < numPts; i++) {
+            fN[i].x = cx + (i * fw) / (numPts - 1);
+            fN[i].y = curY;
+            fN[i].ox = fN[i].x; fN[i].oy = fN[i].y;
+          }
+        }
+
+        for (let i = 1; i < numPts; i++) {
+          const wind = 0.14 + noise.n2(el*0.55 + i*0.11, 0) * 0.13;
+          fN[i].vx = (fN[i].x - fN[i].ox) * 0.94 + wind;
+          fN[i].vy = (fN[i].y - fN[i].oy) * 0.94 + 0.02;
+          fN[i].ox = fN[i].x; fN[i].oy = fN[i].y;
+          fN[i].x += fN[i].vx; fN[i].y += fN[i].vy;
+        }
+        fN[0].x = cx; fN[0].y = curY;
+
+        const ll = fw / (numPts - 1);
+        for (let s = 0; s < 5; s++) {
+          for (let i = 0; i < numPts - 1; i++) {
+            const a = fN[i], b = fN[i+1];
+            const dx = b.x-a.x, dy = b.y-a.y;
+            const d = Math.sqrt(dx*dx+dy*dy);
+            const diff = ll - d, pct = (diff/d)*0.5;
+            const ox = dx*pct, oy = dy*pct;
+            if (i > 0) { a.x -= ox; a.y -= oy; }
+            b.x += ox; b.y += oy;
+          }
+        }
+
+        c.save(); c.globalAlpha = ra;
+        // Pole
+        const pg = c.createLinearGradient(cx-2, pTopY, cx+2, pBaseY);
+        pg.addColorStop(0, '#eee'); pg.addColorStop(0.5, '#fff'); pg.addColorStop(1, '#aaa');
+        c.fillStyle = pg; c.fillRect(cx-2, pTopY, 4, pH);
+        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3.5, 0, 6.283); c.fill();
+
+        // Flag strips
+        for (let i = 0; i < numPts - 1; i++) {
+          const a = fN[i], b = fN[i+1];
+          const sh = 0.85 + Math.sin(i*0.3 - el*4) * 0.15;
+          const shade = (hex: string) => {
+            const h = hex.replace('#','');
+            return `rgb(${parseInt(h.substring(0,2),16)*sh|0},${parseInt(h.substring(2,4),16)*sh|0},${parseInt(h.substring(4,6),16)*sh|0})`;
+          };
+          c.fillStyle = shade('#FF9933');
+          c.beginPath(); c.moveTo(a.x,a.y); c.lineTo(b.x,b.y); c.lineTo(b.x,b.y+fh/3); c.lineTo(a.x,a.y+fh/3); c.closePath(); c.fill();
+          c.fillStyle = shade('#FFFFFF');
+          c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
+          c.fillStyle = shade('#138808');
+          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
+        }
+
+        // Chakra
+        if (unfurl > 0.15) {
+          const mi = numPts/2|0;
+          const chx = fN[mi].x, chy = fN[mi].y + fh/2, cr = fh*0.11*unfurl;
+          c.save(); c.translate(chx, chy); c.rotate(el*0.7);
+          c.strokeStyle = 'rgba(0,0,128,0.85)'; c.lineWidth = 1.6;
+          c.beginPath(); c.arc(0,0,cr,0,6.283); c.stroke();
+          c.lineWidth = 0.7;
+          for (let i = 0; i < 24; i++) { const a = (i/24)*6.283; c.beginPath(); c.moveTo(0,0); c.lineTo(Math.cos(a)*cr, Math.sin(a)*cr); c.stroke(); }
+          c.restore();
+        }
+        c.restore();
+      },
+
+      /* ── VOLUMETRIC LIGHT ── */
+      volLight: (t: number, sa: number) => {
+        if (t < 3.5 || t > 11) return;
+        const int = cl((t-3.5)*0.18, 0, 0.45) * cl((11-t)*0.3, 0, 1) * sa;
+        c.save(); c.globalAlpha = int; c.globalCompositeOperation = 'screen';
+        const sx = cx + W*0.12, sy = baseY - gateH*0.4;
+        for (let i = 0; i < 12; i++) {
+          const a = -1.2 + (i/12)*2.4;
+          const len = sc * 1.2;
+          c.beginPath(); c.moveTo(sx, sy);
+          c.lineTo(sx + Math.cos(a-0.04)*len, sy + Math.sin(a-0.04)*len);
+          c.lineTo(sx + Math.cos(a+0.04)*len, sy + Math.sin(a+0.04)*len);
           c.closePath();
+          const rg = c.createLinearGradient(sx, sy, sx + Math.cos(a)*len, sy + Math.sin(a)*len);
+          rg.addColorStop(0, 'rgba(255,210,120,0.18)'); rg.addColorStop(0.5, 'rgba(255,120,40,0.04)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = rg; c.fill();
+        }
+        c.restore();
+      },
+
+      /* ── KITES: Realistic patang with tail ── */
+      drawKites: (t: number, sa: number) => {
+        if (t < 1.5) return;
+        const ka = cl((t-1.5)*1.0, 0, 1) * (t > 11 ? cl((12-t),0,1) : 1) * sa;
+        c.save(); c.globalAlpha = ka;
+
+        kites.forEach((k, idx) => {
+          const sway = Math.sin(t * k.swaySpeed + k.tailPhase) * k.swayAmp;
+          k.x = k.base_x + sway;
+          k.y = lerp(k.base_y, k.target_y, cl((t-1.5)*0.07, 0, 1));
+          const tilt = Math.sin(t*1.3 + k.tailPhase) * 0.12 + Math.cos(t*k.swaySpeed*0.7)*0.06;
+
+          c.save(); c.translate(k.x, k.y); c.rotate(tilt);
+          const s = 16 * k.scale;
+
+          // Body - slight 3D curve effect
+          const bodyGrad = c.createLinearGradient(-s, 0, s, 0);
+          bodyGrad.addColorStop(0, '#ff9933'); bodyGrad.addColorStop(0.46, '#ffe0b0');
+          bodyGrad.addColorStop(0.50, '#ffffff'); bodyGrad.addColorStop(0.54, '#ffffff');
+          bodyGrad.addColorStop(0.58, '#c8f0c8'); bodyGrad.addColorStop(1, '#128807');
+          c.fillStyle = bodyGrad;
+          c.beginPath();
+          c.moveTo(0, -s*1.35);
+          c.bezierCurveTo(s*0.4, -s*0.8, s*1.05, -s*0.2, s*1.05, 0);
+          c.bezierCurveTo(s*1.05, s*0.2, s*0.4, s*0.7, 0, s*1.15);
+          c.bezierCurveTo(-s*0.4, s*0.7, -s*1.05, s*0.2, -s*1.05, 0);
+          c.bezierCurveTo(-s*1.05, -s*0.2, -s*0.4, -s*0.8, 0, -s*1.35);
           c.fill();
 
-          c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 0.8;
-          c.beginPath();
-          c.moveTo(0, -s * 1.4); c.lineTo(0, s * 1.2);
-          c.moveTo(-s * 1.1, 0); c.quadraticCurveTo(0, -s * 0.2, s * 1.1, 0);
+          // Bamboo frame
+          c.strokeStyle = 'rgba(120,80,30,0.35)'; c.lineWidth = 0.8;
+          c.beginPath(); c.moveTo(0, -s*1.35); c.lineTo(0, s*1.15); c.stroke();
+          c.beginPath(); c.moveTo(-s*1.05, 0); c.quadraticCurveTo(0, -s*0.15, s*1.05, 0); c.stroke();
+
+          // Tail with bows
+          c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 0.6;
+          c.beginPath(); c.moveTo(0, s*1.15);
+          const tailLen = Math.min(H - k.y, s * 18);
+          const tailWave = Math.sin(t*2 + k.tailPhase) * s * 0.4;
+          c.bezierCurveTo(tailWave, s*1.15 + tailLen*0.3, -tailWave*0.7, s*1.15 + tailLen*0.6, tailWave*0.3, s*1.15 + tailLen);
           c.stroke();
 
-          c.fillStyle = '#ff9933';
-          c.beginPath();
-          c.moveTo(0, s * 1.2);
-          c.lineTo(-s * 0.25, s * 1.5);
-          c.lineTo(s * 0.25, s * 1.5);
-          c.closePath();
-          c.fill();
+          // Tail bows (latexage)
+          for (let bi = 1; bi <= 5; bi++) {
+            const by = s*1.15 + tailLen * (bi/6);
+            const bx = Math.sin(t*2 + k.tailPhase + bi) * s * 0.3 * (bi/5);
+            const bowColors = ['#ff9933', '#ffffff', '#128807'];
+            c.fillStyle = bowColors[bi % 3]; c.globalAlpha = ka * 0.6;
+            c.beginPath(); c.arc(bx, by, s*0.2, 0, 6.283); c.fill();
+            c.globalAlpha = ka;
+          }
 
-          c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 0.6;
-          c.beginPath();
-          c.moveTo(0, s * 1.2);
-          c.bezierCurveTo(-s * 1.5, s * 4, s * 2, s * 10, -s * 10, H);
+          // String going down
+          c.strokeStyle = 'rgba(200,200,200,0.08)'; c.lineWidth = 0.4;
+          c.beginPath(); c.moveTo(0, s*1.15);
+          c.lineTo(Math.sin(t*0.5+k.tailPhase)*30, H - k.y + 50);
           c.stroke();
 
           c.restore();
         });
-
         c.restore();
       },
 
-      doves: (t: number, elapsed: number, sceneAlpha: number) => {
-        if (t < 2.0) return;
-        const dAlpha = clamp((t - 2.0) * 1.2, 0, 1) * sceneAlpha;
-        c.save(); c.globalAlpha = dAlpha;
-        if (t >= 3.6) { 
-          birds.forEach(b => {
-            if (b.state === 'sitting') {
-              b.state = 'flying';
-              const driftX = b.side === 'left' ? -0.8 : 0.8;
-              b.vx = driftX + (Math.random() - 0.5) * 0.5;
-              b.vy = -1.5 - Math.random() * 0.8;
-            }
-          });
-        }
+      /* ── DOVES ── */
+      doves: (t: number, el: number, sa: number) => {
+        if (t < 2.5) return;
+        const da = cl((t-2.5)*1.0, 0, 1) * sa;
+        c.save(); c.globalAlpha = da;
+        if (t >= 4.0) birds.forEach(b => {
+          if (b.state === 'sitting') {
+            b.state = 'flying';
+            b.vx = (b.side === 'left' ? -0.9 : 0.9) + (Math.random()-0.5)*0.4;
+            b.vy = -1.4 - Math.random()*0.8;
+          }
+        });
         birds.forEach(b => {
           if (b.state === 'flying') {
-            const noiseForceX = noise.n2(elapsed * 0.6, b.noiseSeed) * 0.5;
-            const noiseForceY = noise.n2(elapsed * 0.4, b.noiseSeed + 100) * 0.3;
-            b.vx = clamp(b.vx * 0.98 + noiseForceX, -3, 3);
-            b.vy = clamp(b.vy * 0.98 + noiseForceY, -3, -0.8);
+            b.vx = cl(b.vx*0.98 + noise.n2(el*0.6, b.noiseSeed)*0.5, -3, 3);
+            b.vy = cl(b.vy*0.98 + noise.n2(el*0.4, b.noiseSeed+100)*0.3, -3, -0.8);
             b.x += b.vx; b.y += b.vy;
-            const dutyCycle = Math.sin(elapsed * 4.2 + b.noiseSeed);
-            b.wing += dutyCycle > 0 ? 0.3 : 0.15;
+            b.wing += Math.sin(el*4 + b.noiseSeed) > 0 ? 0.28 : 0.14;
             b.bank = b.vx * 0.08;
           }
           c.save(); c.translate(b.x, b.y);
           c.rotate(b.state === 'flying' ? Math.atan2(b.vy, b.vx) + b.bank : 0);
-          const scale = 0.52; c.scale(scale, scale);
+          const s = 0.48; c.scale(s, s);
           if (b.state === 'flying') {
-            const wingFactor = Math.sin(b.wing);
-            c.fillStyle = '#ffffff';
-            c.beginPath(); c.ellipse(0, 0, 15, 5, 0, 0, Math.PI * 2); c.fill();
-            c.beginPath(); c.arc(13, -2, 4, 0, Math.PI * 2); c.fill();
-            [-1, 1].forEach(side => {
-              c.save(); c.scale(1, side); c.rotate(wingFactor * 0.5 - 0.15);
-              c.fillStyle = '#f2f2f2';
-              c.beginPath(); c.moveTo(0, 0); c.lineTo(-7, -15); c.lineTo(-13, -13); c.closePath(); c.fill();
+            const wf = Math.sin(b.wing);
+            c.fillStyle = '#f5f5f5';
+            c.beginPath(); c.ellipse(0, 0, 14, 5, 0, 0, 6.283); c.fill();
+            c.beginPath(); c.arc(12, -2, 3.5, 0, 6.283); c.fill();
+            [-1,1].forEach(sd => {
+              c.save(); c.scale(1, sd); c.rotate(wf*0.5 - 0.15);
+              c.fillStyle = '#eee';
+              c.beginPath(); c.moveTo(0,0); c.lineTo(-7,-14); c.lineTo(-12,-12); c.closePath(); c.fill();
               c.restore();
             });
           } else {
-            const headBob = Math.sin(elapsed * 4.5 + b.noiseSeed) * 1.0;
-            c.fillStyle = '#f0f0f0';
-            c.beginPath(); c.ellipse(0, 2, 13, 6.5, 0.1, 0, Math.PI * 2); c.fill();
-            c.beginPath(); c.arc(10, -2 + headBob, 4, 0, Math.PI * 2); c.fill();
+            const hb = Math.sin(el*4 + b.noiseSeed)*0.8;
+            c.fillStyle = '#eee';
+            c.beginPath(); c.ellipse(0, 2, 12, 6, 0.1, 0, 6.283); c.fill();
+            c.beginPath(); c.arc(9, -2+hb, 3.5, 0, 6.283); c.fill();
           }
           c.restore();
         });
         c.restore();
       },
 
+      /* ═══════════════════════════════════════════════════════════
+         TYPOGRAPHY — 80th Anniversary Edition
+         ═══════════════════════════════════════════════════════════ */
       typography: (t: number) => {
-        if (t < 11.5) return;
-        const titleY = lerp(H * 0.58, H * 0.44, eOE((t - 11.5) * 0.5));
+        if (t < 12.5) return;
+        const titleY = lerp(H*0.56, H*0.40, eOE((t-12.5)*0.45));
         c.save();
-        const fontSize = Math.min(W * 0.065, 52);
-        c.font = `600 ${fontSize}px 'Cinzel', 'Playfair Display', Georgia, serif`;
+
+        const fs = Math.min(W*0.06, 48);
+        c.font = `700 ${fs}px 'Cinzel','Playfair Display',Georgia,serif`;
         const title = "HAPPY INDEPENDENCE DAY";
-        const totalW = c.measureText(title).width;
-        let xOff = W * 0.5 - totalW * 0.5;
+        const tw = c.measureText(title).width;
+        let xo = W*0.5 - tw*0.5;
+
         for (let i = 0; i < title.length; i++) {
-          const charW = c.measureText(title[i]).width;
-          const charT = clamp((t - 11.5 - i * 0.035) / 0.4, 0, 1);
-          const charY = titleY + (1 - eOB(charT)) * -15;
-          c.save(); c.globalAlpha = eOC(charT);
-          c.fillStyle = 'rgba(0,0,0,0.92)'; c.fillText(title[i], xOff + 2, charY + 2);
-          const sweepGrad = c.createLinearGradient(xOff, charY - fontSize * 0.5, xOff, charY + fontSize * 0.38);
-          sweepGrad.addColorStop(0, '#FF9933'); sweepGrad.addColorStop(0.48, '#FFFFFF');
-          sweepGrad.addColorStop(0.52, '#FFFFFF'); sweepGrad.addColorStop(1, '#138808');
-          c.fillStyle = sweepGrad; c.fillText(title[i], xOff, charY);
-          c.restore(); xOff += charW;
+          const cw = c.measureText(title[i]).width;
+          const ct = cl((t - 12.5 - i*0.032) / 0.38, 0, 1);
+          if (ct <= 0) { xo += cw; continue; }
+          const cy = titleY + (1 - eOB(ct)) * -14;
+          c.save(); c.globalAlpha = eOC(ct);
+          c.fillStyle = 'rgba(0,0,0,0.9)'; c.fillText(title[i], xo+2, cy+2);
+          const sg = c.createLinearGradient(xo, cy-fs*0.5, xo, cy+fs*0.38);
+          sg.addColorStop(0, '#FF9933'); sg.addColorStop(0.47, '#FFFFFF');
+          sg.addColorStop(0.53, '#FFFFFF'); sg.addColorStop(1, '#138808');
+          c.fillStyle = sg; c.fillText(title[i], xo, cy);
+          c.restore(); xo += cw;
         }
-        if (t > 13.0) {
-          const subAlpha = clamp((t - 13.0) * 2, 0, 1);
-          c.save(); c.globalAlpha = subAlpha;
-          c.fillStyle = '#ffd700'; c.textAlign = 'center';
-          c.font = `500 ${fontSize * 0.65}px 'Georgia', serif`;
-          c.fillText("जय हिन्द", W * 0.5, titleY + fontSize * 1.1);
+
+        // 80th Anniversary
+        if (t > 14.0) {
+          const sa = cl((t-14.0)*1.8, 0, 1);
+          c.save(); c.globalAlpha = sa;
+          c.textAlign = 'center';
+          c.font = `400 ${fs*0.32}px 'Cinzel','Georgia',serif`;
+          c.fillStyle = '#c89a18';
+          c.fillText("80th Anniversary  •  1947 — 2027", W*0.5, titleY + fs*0.85);
+          c.restore();
+        }
+
+        // जय हिन्द
+        if (t > 15.0) {
+          const ja = cl((t-15.0)*2, 0, 1);
+          c.save(); c.globalAlpha = ja; c.textAlign = 'center';
+          c.font = `500 ${fs*0.6}px 'Georgia',serif`;
+          c.fillStyle = '#ffd700'; c.fillText("जय हिन्द", W*0.5, titleY + fs*1.35);
           c.restore();
         }
         c.restore();
       },
 
-      fireworks: (sceneAlpha: number) => {
+      fireworks: (sa: number) => {
         c.save(); c.globalCompositeOperation = 'lighter';
-        fireworksList.forEach(fw => {
+        fwList.forEach(fw => {
           if (fw.state === 'rising') {
             c.fillStyle = 'rgba(255,230,150,0.95)';
-            c.beginPath(); c.arc(fw.x, fw.y, 2.5, 0, Math.PI * 2); c.fill();
+            c.beginPath(); c.arc(fw.x, fw.y, 2.5, 0, 6.283); c.fill();
           } else {
             fw.pts.forEach(pt => {
-              const alpha = clamp(pt.life / pt.ml, 0, 1) * sceneAlpha;
-              const fGrad = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pt.sz * 2);
-              fGrad.addColorStop(0, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${alpha})`);
-              fGrad.addColorStop(1, 'rgba(0,0,0,0)');
-              c.fillStyle = fGrad;
-              c.beginPath(); c.arc(pt.x, pt.y, pt.sz * 2, 0, Math.PI * 2); c.fill();
+              const a = cl(pt.life/pt.ml, 0, 1) * sa;
+              const fg = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pt.sz*2);
+              fg.addColorStop(0, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${a})`);
+              fg.addColorStop(1, 'rgba(0,0,0,0)');
+              c.fillStyle = fg; c.beginPath(); c.arc(pt.x, pt.y, pt.sz*2, 0, 6.283); c.fill();
             });
           }
         });
@@ -682,194 +927,198 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
       }
     };
 
-    const spawnParticles = (t: number, elapsed: number) => {
-      if (Math.random() < 0.12) {
+    /* ═══════════════════════════════════════════════════════════
+       PARTICLES
+       ═══════════════════════════════════════════════════════════ */
+    const spawnP = (t: number, el: number) => {
+      // Fog
+      if (Math.random() < 0.10) {
+        const p = grab(pl); if (p) { p.on=true; p.x=Math.random()*W; p.y=H*0.6+Math.random()*H*0.3; p.vx=(Math.random()-0.5)*0.15; p.vy=-0.04; p.life=8; p.ml=8; p.sz=30+Math.random()*35; p.r=200; p.g=190; p.b=170; p.a=0.04; p.tp=1; }
+      }
+      // Gold dust
+      if (t > 4 && t < 11 && Math.random() < 0.3) {
+        const p = grab(pl); if (p) { p.on=true; p.x=Math.random()*W; p.y=H+10; p.vx=(Math.random()-0.5)*0.4; p.vy=-0.35-Math.random()*0.6; p.life=6; p.ml=6; p.sz=1.5+Math.random()*2.5; p.r=255; p.g=200; p.b=50; p.a=0.7; p.tp=5; }
+      }
+      // Marigold petals (Red Fort decoration)
+      if (t >= 4.5 && t < 11.5 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
-          p.on = true; p.x = Math.random() * W; p.y = H * 0.6 + Math.random() * H * 0.3;
-          p.vx = (Math.random() - 0.5) * 0.2; p.vy = -0.05 - Math.random() * 0.05;
-          p.life = 8; p.ml = 8; p.sz = 35 + Math.random() * 40;
-          p.r = 230; p.g = 235; p.b = 245; p.a = 0.05; p.tp = 1;
+          p.on=true; p.x=Math.random()*W; p.y=-15-Math.random()*25;
+          p.vx=-0.8+Math.random()*1.6; p.vy=1.0+Math.random()*1.3;
+          p.life=7; p.ml=7; p.sz=4+Math.random()*3;
+          p.rot=Math.random()*6.28; p.rs=(Math.random()-0.5)*0.04;
+          const r = Math.random();
+          if (r < 0.5) { p.r=255; p.g=107; p.b=53; }
+          else if (r < 0.85) { p.r=245; p.g=180; p.b=30; }
+          else { p.r=255; p.g=255; p.b=240; }
+          p.a=0.8; p.tp=2;
         }
       }
-      if (t > 4.0 && Math.random() < 0.4) {
-        const p = grab(pl); if (p) {
-          p.on = true; p.x = Math.random() * W; p.y = H + 10;
-          p.vx = (Math.random() - 0.5) * 0.5; p.vy = -0.4 - Math.random() * 0.7;
-          p.life = 6; p.ml = 6; p.sz = 2.0 + Math.random() * 3.5;
-          p.r = 255; p.g = 215; p.b = 0; p.a = 0.9; p.tp = 5;
-        }
-      }
-      if (t >= 5.0 && t < 11.5) {
-        for (let i = 0; i < 2; i++) {
-          const p = grab(pl); if (p) {
-            p.on = true; p.x = Math.random() * W; p.y = -20 - Math.random() * 30;
-            p.vx = -1.2 + Math.random() * 2.4; p.vy = 1.2 + Math.random() * 1.5;
-            p.life = 6; p.ml = 6; p.sz = 6 + Math.random() * 4;
-            p.rot = Math.random() * Math.PI * 2; p.rs = (Math.random() - 0.5) * 0.06;
-            
-            const rand = Math.random();
-            if (rand < 0.45) { p.r = 255; p.g = 107; p.b = 53; } 
-            else if (rand < 0.85) { p.r = 251; p.g = 191; p.b = 36; } 
-            else { p.r = 255; p.g = 255; p.b = 255; } 
-            
-            p.a = 0.85; p.tp = 2; 
-          }
-        }
-      }
-      if (t > 2.0 && Math.random() < 0.25) {
-        const p = grab(pl); if (p) {
-          p.on = true; p.x = W * 0.5 + (Math.random() - 0.5) * 15; p.y = H * 0.795;
-          p.vx = (Math.random() - 0.5) * 0.6; p.vy = -1.2 - Math.random() * 1.8;
-          p.life = 2.5; p.ml = 2.5; p.sz = 1.0 + Math.random() * 2.0;
-          p.r = 255; p.g = 120 + Math.random() * 80; p.b = 30; p.a = 0.95; p.tp = 3;
-        }
+      // Torch embers
+      if (t > 2.5 && Math.random() < 0.2) {
+        const p = grab(pl); if (p) { p.on=true; p.x=cx+(Math.random()-0.5)*12; p.y=baseY-6; p.vx=(Math.random()-0.5)*0.5; p.vy=-1.0-Math.random()*1.5; p.life=2.5; p.ml=2.5; p.sz=0.8+Math.random()*1.5; p.r=255; p.g=120+Math.random()*80|0; p.b=30; p.a=0.9; p.tp=3; }
       }
     };
 
-    const updateParticles = (dt: number, elapsed: number) => {
+    const updateP = (dt: number, el: number) => {
       for (let i = 0; i < pl.length; i++) {
-        const p = pl[i]; if (!p.on) continue;
-        p.life -= dt;
-        if (p.tp === 4) {
-          p.x += p.vx; p.y += p.vy; p.sz += 0.45; p.vx *= 0.985; p.vy *= 0.985;
-        } else if (p.tp === 2) {
-          p.vy += 0.015; p.vy *= 0.985;
-          p.vx = p.vx * 0.94 + Math.sin(elapsed * 0.8 + p.y * 0.012) * 0.035;
+        const p = pl[i]; if (!p.on) continue; p.life -= dt;
+        if (p.tp === 2) {
+          p.vy += 0.012; p.vy *= 0.988;
+          p.vx = p.vx*0.95 + Math.sin(el*0.7 + p.y*0.01)*0.025;
           p.x += p.vx; p.y += p.vy; p.rot += p.rs;
         } else if (p.tp === 5) {
-          p.vy *= 0.99;
-          p.vx = p.vx * 0.95 + noise.n2(elapsed * 0.5 + p.y * 0.01, p.turbOff) * 0.15;
+          p.vy *= 0.992;
+          p.vx = p.vx*0.96 + noise.n2(el*0.4+p.y*0.008, p.turbOff)*0.12;
           p.x += p.vx; p.y += p.vy;
-        } else {
-          p.x += p.vx; p.y += p.vy;
-        }
-        if (p.life <= 0 || p.x < -120 || p.x > W + 120 || p.y > H + 120) p.on = false;
+        } else { p.x += p.vx; p.y += p.vy; }
+        if (p.life <= 0 || p.x < -100 || p.x > W+100 || p.y > H+100) p.on = false;
       }
     };
 
-    const drawParticles = () => {
+    const drawP = () => {
       for (let i = 0; i < pl.length; i++) {
         const p = pl[i]; if (!p.on) continue;
-        const alpha = clamp(p.life / p.ml, 0, 1) * p.a;
-        c.save(); c.globalAlpha = alpha;
+        const a = cl(p.life/p.ml, 0, 1) * p.a;
+        c.save(); c.globalAlpha = a;
         if (p.tp === 2) {
           c.translate(p.x, p.y); c.rotate(p.rot);
           c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
-          c.beginPath();
-          c.ellipse(0, 0, p.sz * 0.7, p.sz, 0, 0, Math.PI * 2);
-          c.fill();
-          c.fillStyle = 'rgba(255,255,255,0.2)';
-          c.beginPath(); c.arc(0, 0, p.sz * 0.35, 0, Math.PI * 2); c.fill();
+          c.beginPath(); c.ellipse(0, 0, p.sz*0.6, p.sz, 0, 0, 6.283); c.fill();
+          c.fillStyle = 'rgba(255,255,255,0.15)';
+          c.beginPath(); c.arc(0, 0, p.sz*0.3, 0, 6.283); c.fill();
         } else if (p.tp === 5) {
           c.globalCompositeOperation = 'lighter';
-          c.fillStyle = `rgba(255,215,0,${alpha})`;
-          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
+        } else if (p.tp === 3) {
+          c.globalCompositeOperation = 'lighter';
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
         } else {
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
-          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.fill();
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
         }
         c.restore();
       }
     };
 
-    const drawChromaticAberration = () => {
-      c.save(); c.globalCompositeOperation = 'screen';
-      c.globalAlpha = 0.015; c.drawImage(cv, -1.5, 0, W, H);
-      c.globalAlpha = 0.012; c.drawImage(cv, 1.5, 0, W, H);
-      c.restore();
-    };
-
-    const drawPostFX = () => {
+    /* ═══════════════════════════════════════════════════════════
+       POST PROCESSING
+       ═══════════════════════════════════════════════════════════ */
+    const postFX = () => {
+      // Warm color grade
       c.save(); c.globalCompositeOperation = 'soft-light';
-      const grade = c.createLinearGradient(0, 0, W, H);
-      grade.addColorStop(0, 'rgba(255,140,50,0.18)');
-      grade.addColorStop(1, 'rgba(0,50,100,0.25)');
-      c.fillStyle = grade; c.fillRect(0, 0, W, H);
+      const cg = c.createLinearGradient(0, 0, W, H);
+      cg.addColorStop(0, 'rgba(255,140,50,0.12)');
+      cg.addColorStop(1, 'rgba(0,40,80,0.18)');
+      c.fillStyle = cg; c.fillRect(0, 0, W, H);
       c.restore();
-      const vignette = c.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.9);
-      vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.85)');
-      c.fillStyle = vignette; c.fillRect(0, 0, W, H);
-      c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.03;
+      // Vignette
+      const vg = c.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.85);
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+      c.fillStyle = vg; c.fillRect(0, 0, W, H);
+      // Grain
+      c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.025;
       const pat = c.createPattern(grainCv, 'repeat');
       if (pat) { c.fillStyle = pat; c.fillRect(0, 0, W, H); }
       c.restore();
     };
 
-    let prevTime = 0;
-    let fwTimer = 0;
+    let prev = 0, fwT = 0;
 
+    /* ═══════════════════════════════════════════════════════════
+       MAIN LOOP
+       ═══════════════════════════════════════════════════════════ */
     const loop = (now: number) => {
-      if (!t0.current) { t0.current = now; prevTime = now; }
+      if (!t0.current) { t0.current = now; prev = now; }
       const t = (now - t0.current) / 1000;
-      const dt = Math.min((now - prevTime) / 1000, 0.05);
-      prevTime = now;
+      const dt = Math.min((now - prev) / 1000, 0.05);
+      prev = now;
 
       if (t >= DUR) {
         if (!done.current) { done.current = true; cbR.current?.(); }
         return;
       }
 
-      if (t >= 5.5 && t < 11.5) {
-        fwTimer += dt;
-        if (fwTimer > 0.8 + Math.random() * 0.6) { spawnFirework(); fwTimer = 0; }
+      // Fireworks
+      if (t >= 6.0 && t < 12.0) {
+        fwT += dt;
+        if (fwT > 0.7 + Math.random()*0.5) { spawnFW(); fwT = 0; }
       }
-      updateFireworks(dt);
-      spawnParticles(t, now / 1000);
-      updateParticles(dt, now / 1000);
+      // Extra fireworks during text
+      if (t >= 13.0 && t < 17.0) {
+        fwT += dt;
+        if (fwT > 1.2) { spawnFW(); fwT = 0; }
+      }
+      updateFW(dt);
+      spawnP(t, now/1000);
+      updateP(dt, now/1000);
 
-      c.fillStyle = '#000000'; c.fillRect(0, 0, W, H);
+      // Clear
+      c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
 
-      cameraShake *= 0.92;
-
-      const zoomClimax = t < 11.5
-        ? lerp(1.0, 1.10, eOE(t / 11.5))
-        : lerp(1.10, 2.5, clamp((t - 11.5) / 2.5, 0, 1));
-
-      const breatheX = Math.sin(t * 0.4) * 2 + (Math.random() - 0.5) * cameraShake;
-      const breatheY = Math.cos(t * 0.3) * 1.5 + (Math.random() - 0.5) * cameraShake;
-      const camRot = Math.sin(t * 0.15) * 0.003;
+      // Subtle cinematic camera
+      camShake *= 0.92;
+      const bx = Math.sin(t*0.35)*1.5 + (Math.random()-0.5)*camShake;
+      const by = Math.cos(t*0.25)*1.0 + (Math.random()-0.5)*camShake;
+      const zoom = 1.0 + Math.sin(t*0.08)*0.008;
 
       c.save();
-      c.translate(W / 2 + breatheX, H / 2 + breatheY);
-      c.rotate(camRot);
-      c.scale(zoomClimax, zoomClimax);
-      c.translate(-W / 2, -H / 2);
+      c.translate(W/2 + bx, H/2 + by);
+      c.scale(zoom, zoom);
+      c.translate(-W/2, -H/2);
 
-      const sceneAlpha = t < 11.5 ? 1 : clamp(1 - (t - 11.5) * 1.8, 0, 1);
+      // Scene alpha: fade out scene before text
+      const sa = t < 11.5 ? 1 : cl(1 - (t-11.5)*1.5, 0, 1);
 
-      renderer.sky(t, sceneAlpha);
-      renderer.stars(t, sceneAlpha);
-      renderer.drawKites(t, sceneAlpha); 
-      renderer.wavingFlagAndChakra(t, now / 1000, sceneAlpha); 
-      renderer.redFort(t, sceneAlpha); 
-      renderer.volumetricLighting(t, sceneAlpha);
-      renderer.torch(t, now / 1000, sceneAlpha);
-      drawParticles();
-      renderer.fireworks(sceneAlpha);
-      renderer.doves(t, now / 1000, sceneAlpha);
+      R.sky(t, sa);
+      R.stars(t, sa);
+      R.clouds(t, sa);
+      R.drawKites(t, sa);
+      R.flag(t, now/1000, sa);
+      R.ground(t, sa);
+      R.redFort(t, sa);
+      R.volLight(t, sa);
+      R.torch(t, now/1000, sa);
+      drawP();
+      R.fireworks(sa);
+      R.doves(t, now/1000, sa);
 
       c.restore();
 
-      if (t >= 11.5 && t < 14.5) {
-        const bgFade = clamp((t - 11.5) * 1.8, 0, 1);
-        c.save(); c.globalAlpha = bgFade;
-        const bgGrad = c.createLinearGradient(0, 0, 0, H);
-        bgGrad.addColorStop(0, '#060810'); bgGrad.addColorStop(1, '#0c101c');
-        c.fillStyle = bgGrad; c.fillRect(0, 0, W, H);
+      // Transition to dark background for text
+      if (t >= 11.5 && t < 13.5) {
+        const bf = cl((t-11.5)*1.5, 0, 1);
+        c.save(); c.globalAlpha = bf;
+        const bg = c.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, '#060810'); bg.addColorStop(1, '#0c101c');
+        c.fillStyle = bg; c.fillRect(0, 0, W, H);
         c.restore();
       }
 
-      renderer.typography(t);
-      drawChromaticAberration();
-      drawPostFX();
+      // Typography (drawn on top of dark bg)
+      R.typography(t);
 
-      if (t >= 14.5) {
-        const whiteFadeAlpha = clamp((t - 14.5) * 1.8, 0, 1);
-        c.save();
-        c.globalAlpha = whiteFadeAlpha;
-        c.fillStyle = '#FFFFFF';
-        c.fillRect(0, 0, W, H);
+      // Post processing
+      postFX();
+
+      // Subtle chromatic aberration
+      c.save(); c.globalCompositeOperation = 'screen';
+      c.globalAlpha = 0.008; c.drawImage(cv, -1, 0, W, H);
+      c.globalAlpha = 0.006; c.drawImage(cv, 1, 0, W, H);
+      c.restore();
+
+      // Final fade to white then black
+      if (t >= 17.5) {
+        const wa = cl((t-17.5)*0.8, 0, 1);
+        c.save(); c.globalAlpha = wa;
+        c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
+        c.restore();
+      }
+      if (t >= 18.2) {
+        const ba = cl((t-18.2)*1.2, 0, 1);
+        c.save(); c.globalAlpha = ba;
+        c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
         c.restore();
       }
 
@@ -881,21 +1130,14 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
     return () => {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
-      if (audioCtxRef.current) {
-        try { audioCtxRef.current.close(); } catch (_) {}
-        audioCtxRef.current = null;
-      }
+      if (audioRef.current) { try { audioRef.current.close(); } catch(_){} audioRef.current = null; }
     };
-  }, [mkPool, grab, triggerMilitaryAudio]);
+  }, [mkPool, grab, playAudio]);
 
   return (
     <canvas
       ref={cvRef}
-      style={{
-        position: 'fixed', top: 0, left: 0,
-        width: '100vw', height: '100vh',
-        display: 'block', zIndex: 50,
-      }}
+      style={{ position:'fixed', top:0, left:0, width:'100vw', height:'100vh', display:'block', zIndex:50 }}
     />
   );
 }
