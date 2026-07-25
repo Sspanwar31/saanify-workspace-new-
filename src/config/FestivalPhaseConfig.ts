@@ -81,21 +81,12 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
     }
   },
 
-  // ━━━ PATRIOTIC DAYS ━━━
-  REPUBLIC_DAY: {
-    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
-    timings: {
-      FLASH: 1500,
-      SHOOTING: 3000,
-      HANDOVER: 1000
-    }
-  },
   INDEPENDENCE_DAY: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
-      FLASH: 1500,
-      SHOOTING: 3000,
-      HANDOVER: 1000
+      FLASH: 2500,     // 2.5s: लाल किला प्रकटीकरण, आसमान में उड़ती पतंगें (0s - 2.5s)
+      SHOOTING: 12000, // 12.0s: गेंदे की पुष्प वर्षा, ध्वजारोहण एनीमेशन, गेट फ़ेड-आउट (2.5s - 14.5s)
+      HANDOVER: 3500   // 3.5s: "Happy Independence Day" टेक्स्ट, शहनाई धुन, जय हिन्द हैंडओवर (14.5s - 18.0s)
     }
   },
 
