@@ -18,6 +18,8 @@ import GaneshChaturthiCinematicIntro from '../engines/effects/Ganesh-Chaturthi/G
 import HanumanJayantiCinematicIntro from '../engines/effects/Hanuman-Jayanti/HanumanJayantiCinematicIntro';
 import NavratriCinematicIntro from '../engines/effects/Navratri/NavratriCinematicIntro'; // 🚀 NAYA: Navratri Intro Import kiya
 import RepublicDayCinematicIntro from '../engines/effects/Republic-Day/RepublicDayCinematicIntro';
+import IndependenceDayCinematicIntro from '../engines/effects/Independence-Day/IndependenceDayCinematicIntro';
+
 
 
 export default function FestivalIntroController({
@@ -145,6 +147,15 @@ export default function FestivalIntroController({
     );
   }
 
+  // 🚀 11. INDEPENDENCE_DAY ACTIVATION
+  if (isActive && preset.toUpperCase() === 'INDEPENDENCE_DAY') {
+    return (
+      <IndependenceDayCinematicIntro 
+        onComplete={onHandover} 
+        imageUrl={heroConfig?.image_url} 
+      />
+    );
+  }
 
   return (
     <>
