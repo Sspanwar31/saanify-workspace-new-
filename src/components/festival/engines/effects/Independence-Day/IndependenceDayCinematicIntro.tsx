@@ -71,14 +71,24 @@ export default function NeonEngine({
   customMaxCount?: number | null;
   customSway?: number | null;
 }) {
+  // 1. Component Load hua ya nahi
+  console.log("✅ IndependenceDayCinematicIntro Mounted");
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafId = useRef<number>(0);
   const timeRef = useRef<number>(0);
 
   useEffect(() => {
+    // 2. useEffect chala ya nahi
+    console.log("✅ useEffect Started");
+
     const canvas = canvasRef.current;
+    // 3. Canvas mila ya nahi
+    console.log("Canvas =", canvas);
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    // 4. Context mila ya nahi
+    console.log("Context =", ctx);
     if (!ctx) return;
 
     const normalizedPreset = (preset || '').toUpperCase().trim();
@@ -102,6 +112,8 @@ export default function NeonEngine({
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // 9. Canvas Size
+      console.log(canvas.width, canvas.height);
     };
     setSize();
     window.addEventListener('resize', setSize);
@@ -237,10 +249,8 @@ export default function NeonEngine({
         c.moveTo(0, s * 0.8);
         for (let i = 0; i < p.tailPoints.length; i++) {
           const tp = p.tailPoints[i];
-          // tailPoints kite ke local space me hain
           const localX = tp.x - p.x;
           const localY = tp.y - p.y;
-          // Un-rotate karke local me draw karo
           const cos = Math.cos(-p.rotation);
           const sin = Math.sin(-p.rotation);
           const dx = localX * cos - localY * sin;
@@ -251,7 +261,7 @@ export default function NeonEngine({
         c.lineWidth = 0.7;
         c.stroke();
 
-        // Tail pe chhote bows (latexage)
+        // Tail pe chhote bows
         for (let i = 2; i < p.tailPoints.length; i += 4) {
           const tp = p.tailPoints[i];
           const localX = tp.x - p.x;
@@ -277,7 +287,6 @@ export default function NeonEngine({
       c.rotate(rot);
       c.globalAlpha = alpha;
 
-      // Bahar ka round petal layer
       const petalCount = 6;
       for (let i = 0; i < petalCount; i++) {
         const ang = (i / petalCount) * Math.PI * 2;
@@ -290,7 +299,6 @@ export default function NeonEngine({
         c.restore();
       }
 
-      // Andar ka golden center
       const centerGrad = c.createRadialGradient(0, 0, 0, 0, 0, size * 0.28);
       centerGrad.addColorStop(0, '#fde047');
       centerGrad.addColorStop(1, '#f59e0b');
@@ -320,7 +328,6 @@ export default function NeonEngine({
       c.lineCap = 'round';
       c.stroke();
 
-      // Streamer ka shine
       c.globalAlpha = p.alpha * 0.3;
       c.strokeStyle = '#ffffff';
       c.lineWidth = s * 0.08;
@@ -355,7 +362,6 @@ export default function NeonEngine({
         c.restore();
       }
 
-      // Center pin
       c.fillStyle = '#ffffff';
       c.beginPath();
       c.arc(0, 0, size * 0.1, 0, Math.PI * 2);
@@ -373,7 +379,6 @@ export default function NeonEngine({
       c.translate(x, y);
       c.globalAlpha = alpha;
 
-      // Bahar ka warm glow
       const outerGlow = c.createRadialGradient(0, 0, 0, 0, 0, size * 2.5);
       outerGlow.addColorStop(0, 'rgba(255,200,50,0.4)');
       outerGlow.addColorStop(0.5, 'rgba(255,140,20,0.1)');
@@ -383,7 +388,6 @@ export default function NeonEngine({
       c.arc(0, 0, size * 2.5, 0, Math.PI * 2);
       c.fill();
 
-      // Andar ka bright core
       const coreGrad = c.createRadialGradient(0, 0, 0, 0, 0, size);
       coreGrad.addColorStop(0, '#ffffff');
       coreGrad.addColorStop(0.4, '#ffe066');
@@ -399,13 +403,22 @@ export default function NeonEngine({
     /* ═══════════════════════════════════════════════════════════
        ANIMATION LOOP
        ═══════════════════════════════════════════════════════════ */
-    const animate = () => {
+    // 6. animate Function ke andar sabse pehli line
+    const animate = (time: number) => {
+      console.log("Frame", time);
+
       const rect = canvas.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
 
+      // 7. Drawing Sky
+      console.log("Drawing Sky");
+
       ctx.clearRect(0, 0, w, h);
       timeRef.current += 0.015;
+
+      // 8. Timeline Check
+      console.log("Elapsed =", timeRef.current);
 
       /* ─────────────────────────────────────────────────────
          PARTICLE SPAWNING — Har preset alag
@@ -461,7 +474,6 @@ export default function NeonEngine({
 
         // ═══════════════════════════════════════════════════════
         // ★ REPUBLIC DAY — Fauji, disciplined, controlled
-        // Confetti squares + Gold sparkles
         // ═══════════════════════════════════════════════════════
         else if (normalizedPreset === 'REPUBLIC_DAY' && Math.random() < 0.35) {
           const isConfetti = Math.random() < 0.65;
@@ -482,28 +494,25 @@ export default function NeonEngine({
 
         // ═══════════════════════════════════════════════════════
         // ★ INDEPENDENCE DAY — Azaad, udti hui, free-spirited
-        // Patang + Gainda + Streamer + Chakri + Diya
         // ═══════════════════════════════════════════════════════
         else if (normalizedPreset === 'INDEPENDENCE_DAY' && Math.random() < 0.32) {
           const roll = Math.random();
           let np: NeonParticle | null = null;
 
           if (roll < 0.28) {
-            // ── 🪁 PATANG (28%) — diamond + tail, floaty ──
             np = {
               x: rn(-10, w + 10), y: rn(-40, -10),
               vx: rn(-0.8, 0.8),
-              vy: rn(0.3, 1.0) * speedFactor,   // bahut slow fall — hawa me tairta hai
+              vy: rn(0.3, 1.0) * speedFactor,
               size: rn(minPartSize * 1.2, maxPartSize * 1.4) * scaleFactor,
               alpha: 1, color: '#ff9933',
               rotation: rn(-0.3, 0.3),
-              rotSpeed: rn(-0.025, 0.025),        // zyada tilt — hawa me dholak jaisa
-              life: 0, maxLife: rn(400, 650),      // zyada zinda rehta hai
+              rotSpeed: rn(-0.025, 0.025),
+              life: 0, maxLife: rn(400, 650),
               tp: 'kite',
-              tailPoints: []                        // tail animate me banega
+              tailPoints: []
             };
           } else if (roll < 0.50) {
-            // ── 🌸 GAINDA (22%) — orange-red marigold, Red Fort style ──
             const marigoldColors = ['#ff6b35', '#f97316', '#ea580c', '#dc2626'];
             np = {
               x: rn(-20, w + 20), y: rn(-30, -10),
@@ -514,39 +523,36 @@ export default function NeonEngine({
               color: marigoldColors[Math.floor(Math.random() * marigoldColors.length)],
               rotation: rn(0, Math.PI * 2), rotSpeed: rn(-0.012, 0.012),
               life: 0, maxLife: rn(300, 500),
-              tp: 'petal'  // drawMarigold se draw hoga (update loop me handle)
+              tp: 'petal'
             };
           } else if (roll < 0.72) {
-            // ── 🎊 STREAMER (22%) — lambe phooljhadi ke patte ──
             np = {
               x: rn(-20, w + 20), y: rn(-40, -10),
-              vx: rn(-1.0, 1.0),                   // wider spread
+              vx: rn(-1.0, 1.0),
               vy: rn(0.8, 2.0) * speedFactor,
               size: rn(minPartSize * 0.8, maxPartSize) * scaleFactor,
               alpha: 1,
               color: colors[Math.floor(Math.random() * colors.length)],
-              rotation: rn(0, Math.PI * 2), rotSpeed: rn(-0.03, 0.03),  // fast twist
+              rotation: rn(0, Math.PI * 2), rotSpeed: rn(-0.03, 0.03),
               life: 0, maxLife: rn(280, 440),
               tp: 'streamer'
             };
           } else if (roll < 0.88) {
-            // ── ✨ CHAKRI (16%) — spinning tricolor pinwheel ──
             np = {
               x: rn(-20, w + 20), y: rn(-30, -10),
               vx: rn(-0.5, 0.5),
               vy: rn(0.5, 1.4) * speedFactor,
               size: rn(minPartSize * 0.8, maxPartSize * 0.9) * scaleFactor,
               alpha: 1, color: '#ff9933',
-              rotation: rn(0, Math.PI * 2), rotSpeed: rn(0.08, 0.18),  // FAST spin
+              rotation: rn(0, Math.PI * 2), rotSpeed: rn(0.08, 0.18),
               life: 0, maxLife: rn(260, 400),
               tp: 'pinwheel'
             };
           } else {
-            // ── 🕯️ DIYA JYOTI (12%) — warm golden glow ──
             np = {
               x: rn(-20, w + 20), y: rn(-20, -5),
               vx: rn(-0.3, 0.3),
-              vy: rn(0.2, 0.7) * speedFactor,     // bahut slow — shanti se
+              vy: rn(0.2, 0.7) * speedFactor,
               size: rn(minPartSize * 0.5, maxPartSize * 0.6) * scaleFactor,
               alpha: 1, color: '#ffe066',
               rotation: 0, rotSpeed: 0,
@@ -561,69 +567,61 @@ export default function NeonEngine({
       /* ─────────────────────────────────────────────────────
          UPDATE & DRAW — Har particle type ka apna logic
          ───────────────────────────────────────────────────── */
+      // 7. Drawing Gate
+      console.log("Drawing Gate");
+
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.life++;
         p.x += p.vx;
         p.y += p.vy;
 
-        // ── Patang ka special gravity: bohot kam, hawa me tairta hai ──
         if (p.tp === 'kite') {
-          p.vy += gravityFactor * 0.3;  // 70% less gravity
-          // Extra wind lift — kabhi kabhi upar bhi jaye
+          p.vy += gravityFactor * 0.3;
           if (Math.random() < 0.02) p.vy -= 0.15;
         }
-        // ── Diya bhi slow fall ──
         else if (p.tp === 'diya') {
           p.vy += gravityFactor * 0.5;
         }
-        // ── Pinwheel thoda zigzag ──
         else if (p.tp === 'pinwheel') {
           p.vy += gravityFactor * 0.7;
           p.vx += Math.sin(p.life * 0.12) * 0.04;
         }
-        // ── Streamer ko thoda drag ──
         else if (p.tp === 'streamer') {
           p.vy += gravityFactor * 0.8;
         }
-        // ── Baaki sab normal gravity ──
         else {
           p.vy += gravityFactor;
         }
 
-        // ── Sway: har particle apni phase me hilta hai ──
         const individualSway = Math.sin(timeRef.current * 1.5 + p.y * 0.01 + p.rotation) * swayFactor;
         p.vx = p.vx * 0.98 + individualSway;
 
-        // ── Rotation update ──
         if (p.tp !== 'sparkle' && p.tp !== 'ember' && p.tp !== 'diya') {
           p.rotation += p.rotSpeed;
         }
-        // Pinwheel extra fast spin
         if (p.tp === 'pinwheel') {
-          p.rotation += p.rotSpeed * 0.5;  // double spin speed
+          p.rotation += p.rotSpeed * 0.5;
         }
 
-        // ── Patang ki tail update — last 8 positions store karo ──
         if (p.tp === 'kite') {
           if (!p.tailPoints) p.tailPoints = [];
           p.tailPoints.push({ x: p.x, y: p.y + p.size * 0.8 });
           if (p.tailPoints.length > 12) p.tailPoints.shift();
         }
 
-        // ── Alpha fade out at end of life ──
         const lt = p.life / p.maxLife;
         p.alpha = lt < 0.85 ? 1 : (1 - lt) / 0.15;
 
-        // ── Remove dead particles ──
         if (p.life >= p.maxLife || p.y > h + 40) {
           particles.splice(i, 1);
           continue;
         }
 
-        // ── DRAW ──
+        // 7. Drawing Flag
+        console.log("Drawing Flag");
+
         if (p.tp === 'petal') {
-          // Gainda marigold draw karo agar INDEPENDENCE_DAY hai
           if (normalizedPreset === 'INDEPENDENCE_DAY') {
             drawMarigold(ctx, p.x, p.y, p.size, p.alpha, p.rotation, p.color);
           } else {
@@ -651,9 +649,13 @@ export default function NeonEngine({
       rafId.current = requestAnimationFrame(animate);
     };
 
+    // 5. requestAnimationFrame Start hua ya nahi
+    console.log("🚀 Animation Started");
     animate();
 
     return () => {
+      // 10. Component Unmount ho raha hai kya
+      console.log("❌ Intro Unmounted");
       cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
     };
