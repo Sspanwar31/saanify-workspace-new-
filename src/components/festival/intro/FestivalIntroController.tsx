@@ -137,8 +137,8 @@ export default function FestivalIntroController({
     );
   }
 
-   // 🚀 10. REPUBLIC_DAY & INDEPENDENCE_DAY ACTIVATION (Tricolor Jet Smoke Trails & Confetti)
-  if (isActive && ['REPUBLIC_DAY', 'INDEPENDENCE_DAY'].includes(preset.toUpperCase())) {
+  // 🚀 10. REPUBLIC_DAY ACTIVATION (Tricolor Jet Smoke Trails & Confetti)
+  if (isActive && preset.toUpperCase() === 'REPUBLIC_DAY') {
     return (
       <RepublicDayCinematicIntro 
         onComplete={onHandover} 
@@ -147,7 +147,7 @@ export default function FestivalIntroController({
     );
   }
 
-  // 🚀 11. INDEPENDENCE_DAY ACTIVATION
+  // 🚀 11. INDEPENDENCE_DAY ACTIVATION (Lal Qila, Rising Flag & Kites)
   if (isActive && preset.toUpperCase() === 'INDEPENDENCE_DAY') {
     return (
       <IndependenceDayCinematicIntro 
@@ -156,7 +156,7 @@ export default function FestivalIntroController({
       />
     );
   }
-
+  
   return (
     <>
       {children(currentPhase)}
