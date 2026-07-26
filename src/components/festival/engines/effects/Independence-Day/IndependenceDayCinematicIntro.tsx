@@ -124,7 +124,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
     const eOB = (t: number) => { const n=7.5625,d=2.75; if(t<1/d)return n*t*t; if(t<2/d)return n*(t-=1.5/d)*t+.75; if(t<2.5/d)return n*(t-=2.25/d)*t+.9375; return n*(t-=2.625/d)*t+.984375; };
 
-    // सुरक्षात्मक सुधार: ऑडियो कॉन्टेक्स्ट को सुरक्षित ट्राई-कैच में लपेटना
     try {
       audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       playAudio();
@@ -132,7 +131,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       console.warn("AudioContext failed to initialize:", err);
     }
 
-    /* ── Load Red Fort image if provided ── */
     if (imageUrl) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -143,7 +141,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0, sc = 0, cx = 0, baseY = 0, gateH = 0, gateW = 0;
 
-    /* ── Camera state ── */
     let cam = { x: 0, y: 0, zoom: 1.0 };
 
     const noise = new SNoise(4822);
@@ -213,7 +210,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         roofY,
       };
 
-      // ★★★ सुरक्षात्मक सुधार: 'flagNodes' रिफ्रेन्स एरर को पूरी तरह ठीक कर दिया गया है
       if (fN.length > 0) fN[0].x = 0;
 
       for (let i = 0; i < starI.length; i++) {
@@ -479,11 +475,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.fillStyle = 'rgba(180,140,100,0.08)';
         c.fillRect(cx - pathW/2, gT, pathW, 3);
 
-        [cx - gateW*0.3, cx + gateW*0.3].forEach(px => {
-          c.fillStyle = '#3d2215';
-          c.beginPath(); c.moveTo(px - 8, gT); c.lineTo(px + 8, gT);
-          c.lineTo(px + 14, H); c.lineTo(px - 14, H); c.closePath(); c.fill();
-        });
+        // ★★★ "लाल किले की परछाई" सुधार: यहाँ बने वर्टिकल डार्क पिलर्स को हटा दिया गया है
+        // जिससे किला सीधे ज़मीन और नींव पर प्राकृतिक रूप से टिका हुआ दिखेगा।
 
         const drawTree = (tx: number, ty: number, s: number, a: number) => {
           c.save(); c.globalAlpha = a;
@@ -732,11 +725,19 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         const unfurl = cl((t - 6.5) * 1.5, 0, 1);
         const fw = lerp(fwS * 0.1, fwS, eOC(unfurl));
 
-        // ★★★ सुधार: 'flagNodes' (fN) की रिसाइज ट्रिगर इंडेक्स 0 को सिंक किया गया
         if (fN[0].x === 0) {
           for (let i = 0; i < numPts; i++) {
             fN[i].x = cx + (i * fw) / (numPts - 1);
             fN[i].y = curY; fN[i].ox = fN[i].x; fN[i].oy = fN[i].y;
+          }
+        }
+
+        // ★★★ सुधार: ध्वजारोहण एनीमेशन (Flag Physics) में खिंचाव ठीक करने के लिए
+        // चोटी पर पहुँचने से पहले सभी नोड्स की ऊंचाई को पोल की रस्सी के साथ लॉक किया गया
+        if (hoist < 0.99) {
+          for (let i = 0; i < numPts; i++) {
+            fN[i].y = curY;
+            fN[i].oy = curY;
           }
         }
 
@@ -783,7 +784,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = shade('#FFFFFF');
           c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
-          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
+          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
         }
 
         if (unfurl > 0.15) {
@@ -980,16 +981,18 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
+      // ★★★ सुधार 3: टेक्स्ट प्लेसमेंट को आसमान की ओर (centerY = H * 0.30) ऊपर खिसकाया गया
+      // जिससे टाइटल और लाल किला एक-दूसरे के ऊपर ओवरलैप न हों
       titleCard: (t: number, sa: number) => {
         if (t < 14) return;
         const lines = [
-          { text: 'HAPPY', start: 14.0, y: -70, size: 52, glow: true },
-          { text: 'INDEPENDENCE DAY', start: 14.3, y: -20, size: 38, glow: true },
-          { text: '80th Anniversary', start: 14.8, y: 22, size: 22, glow: false },
-          { text: '1947 – 2027', start: 15.2, y: 50, size: 20, glow: false },
-          { text: 'जय हिन्द', start: 15.6, y: 95, size: 44, glow: true },
+          { text: 'HAPPY', start: 14.0, y: -65, size: Math.min(W * 0.05, 42), glow: true },
+          { text: 'INDEPENDENCE DAY', start: 14.3, y: -25, size: Math.min(W * 0.045, 30), glow: true },
+          { text: '80th Anniversary', start: 14.8, y: 10, size: Math.min(W * 0.025, 18), glow: false },
+          { text: '1947 – 2027', start: 15.2, y: 32, size: Math.min(W * 0.022, 16), glow: false },
+          { text: 'जय हिन्द', start: 15.6, y: 72, size: Math.min(W * 0.05, 36), glow: true },
         ];
-        const centerY = H * 0.5;
+        const centerY = H * 0.30; // ★★★ सुधार
         lines.forEach(line => {
           const p = cl((t - line.start) / 0.7, 0, 1);
           if (p <= 0) return;
@@ -1187,7 +1190,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         position: 'fixed', top: 0, left: 0,
         width: '100vw', height: '100vh',
         background: '#000',
-        zIndex: 50, // ★★★ डैशबोर्ड के ऊपर रेंडर सुनिश्चित करने के लिए
+        zIndex: 50, 
       }}
     />
   );
