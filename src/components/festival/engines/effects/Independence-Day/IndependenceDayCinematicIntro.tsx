@@ -38,7 +38,8 @@ interface CloudPuff { x: number; y: number; w: number; h: number; a: number; spe
 interface FWSmoke { x: number; y: number; a: number; sz: number; vx: number; vy: number; }
 
 const POOL = 5000;
-const DUR = 21.0;
+// ★★★ टाइमलाइन सिंक: कुल अवधि को 21.0 से घटाकर 19.0 सेकंड किया गया ताकि FestivalPhaseConfig.ts से मिलान हो सके
+const DUR = 19.0;
 
 /* ═══════════════════════════════════════════════════════════════
    SIMPLEX NOISE
@@ -122,6 +123,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    const eOB = (t: number) => { const n=7.5625,d=2.75; if(t<1/d)return n*t*t; if(t<2/d)return n*(t-=1.5/d)*t+.75; if(t<2.5/d)return n*(t-=2.25/d)*t+.9375; return n*(t-=2.625/d)*t+.984375; };
 
     try {
       audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -409,10 +411,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           if (cl_.x > W + cl_.w) cl_.x = -cl_.w;
           const puffs = [
             { dx: 0, dy: 0, sw: 1.0, hg: 1.0, sh: 1.0 },
-            { dx: -cl_.w*0.28, dy: 4, sw: 0.38, hg: 0.45, sh: 0.45 },
-            { dx: cl_.w*0.32, dy: 2, sw: 0.32, hg: 0.38, sh: 0.38 },
-            { dx: -cl_.w*0.12, dy: -cl_.h*0.3, sw: 0.25, hg: 0.3, sh: 0.3 },
-            { dx: cl_.w*0.15, dy: -cl_.h*0.2, sw: 0.28, hg: 0.25, sh: 0.25 },
+            { dx: -cl_.w*0.28, dy: 4, sw: 0.38, hg: 0.45, hg_sh: 0.45, sh: 0.45 },
+            { dx: cl_.w*0.32, dy: 2, sw: 0.32, hg: 0.38, hg_sh: 0.38, sh: 0.38 },
+            { dx: -cl_.w*0.12, dy: -cl_.h*0.3, sw: 0.25, hg: 0.3, hg_sh: 0.3, sh: 0.3 },
+            { dx: cl_.w*0.15, dy: -cl_.h*0.2, sw: 0.28, hg: 0.25, hg_sh: 0.25, sh: 0.25 },
           ];
           puffs.forEach((pf, pi) => {
             const nv = noise.n2(t * 0.1 + cl_.noiseOff + pi, cl_.noiseOff + pi * 7) * 0.3 + 0.7;
@@ -460,7 +462,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         const pg = c.createLinearGradient(0, gT - 4, 0, gT + plH);
         pg.addColorStop(0, '#8b4228'); pg.addColorStop(0.4, '#7a3820'); pg.addColorStop(1, '#5a2815');
         c.fillStyle = pg; c.fillRect(cx - plW/2, gT - 4, plW, plH);
-        c.save(); c.globalAlpha = 0.06;
+        c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.06;
         const stPat = c.createPattern(stoneTexCv, 'repeat');
         if (stPat) { c.fillStyle = stPat; c.fillRect(cx - plW/2, gT - 4, plW, plH); }
         c.restore();
@@ -708,6 +710,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
+      /* ═══════════════════════════════════════════════════
+         FLAG — FIXED: Balanced hoist/unfurl & rendering
+         ═══════════════════════════════════════════════════ */
       flag: (t: number, el: number, sa: number) => {
         if (t < 5.0) return;
         const ra = cl((t-5.0)*1.2, 0, 1) * sa;
@@ -755,12 +760,14 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           }
         }
 
+        // Draw pole
         c.save(); c.globalAlpha = ra;
         const pg = c.createLinearGradient(cx-2, pTopY, cx+2, pBaseY);
         pg.addColorStop(0, '#ddd'); pg.addColorStop(0.5, '#fff'); pg.addColorStop(1, '#999');
         c.fillStyle = pg; c.fillRect(cx-1.5, pTopY, 3, pH);
         c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3, 0, 6.283); c.fill();
 
+        // Draw flag cloth
         for (let i = 0; i < numPts - 1; i++) {
           const a = fN[i], b = fN[i+1];
           const sh = 0.82 + Math.sin(i*0.3 - el*4) * 0.18;
@@ -773,7 +780,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = shade('#FFFFFF');
           c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
-          // ★★★ सुधार 1 (Flag Math Bug Fix): b.y*2/3 जैसी खतरनाक गुणाकार त्रुटियों को जोड़ (Addition) से बदला गया
+          // ★★★ सुधार: 'b.y*2/3' जैसी खतरनाक गुणाकार त्रुटियों को जोड़ (Addition) से बदला गया
           c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
         }
 
@@ -978,17 +985,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       },
 
       /* ═══════════════════════════════════════════════════════════
-         ★ FIX #2, #4, #5, #6, #7, #8: GREETING TEXT
-         — Independent state (driven by time, NOT animationComplete)
-         — Rendered AFTER bgDarken (never hidden by scene fade)
-         — Highest z-index (rendered last, above everything)
-         — Cinematic animation: opacity 0→1, translateY 30→0, scale 0.96→1
-         — 1s duration per line (900–1200ms range)
+         ★ GREETING TEXT — HIGHEST Z-INDEX
          — Visible for 5+ seconds (15s to 21s = 6 seconds)
-         — Never reset or hidden before completion
+         — Text shifted upwards (centerY = H * 0.30) to float in sky
          ═══════════════════════════════════════════════════════════ */
       titleCard: (t: number, sa: number) => {
-        // ★ FIX #1 & #9: Text stage starts at 15s (was 14s)
         if (t < 15) return;
 
         const lines = [
@@ -1000,10 +1001,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         ];
 
         const centerY = H * 0.30;
-        // ★ FIX #6: Duration 1.0s per line (within 900–1200ms range)
         const fadeDur = 1.0;
 
-        // Gold gradient for text fill
         const makeGold = () => {
           const tg = c.createLinearGradient(cx - 250, 0, cx + 250, 0);
           tg.addColorStop(0, '#b8860b');
@@ -1016,11 +1015,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         lines.forEach(line => {
           const rawP = (t - line.start) / fadeDur;
-          // ★ FIX #7 & #8: Once fully visible, stay visible — never reset
           const p = cl(rawP, 0, 1);
           if (p <= 0) return;
 
-          // ★ FIX #6: Ease-out cubic for smooth cinematic feel
           const ep = eOC(p);
 
           c.save();
@@ -1034,20 +1031,14 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
           for (let i = 0; i < text.length; i++) {
             const charW = c.measureText(text[i]).width;
-            // Stagger each character by a small fraction
             const charDelay = (i / text.length) * 0.25;
             const charRawP = (t - line.start - charDelay) / fadeDur;
             const charP = cl(charRawP, 0, 1);
             if (charP <= 0) { xPos += charW; continue; }
             const charE = eOC(charP);
 
-            // ★ FIX #6: Opacity 0 → 100%
             c.globalAlpha = charE * sa;
-
-            // ★ FIX #6: TranslateY 30px → 0
             const charY = centerY + line.y + (1 - charE) * 30;
-
-            // ★ FIX #6: Scale 0.96 → 1
             const charScale = 0.96 + 0.04 * charE;
 
             c.save();
@@ -1059,7 +1050,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
             xPos += charW;
           }
 
-          // Soft gold glow behind text
           if (line.glow && p > 0.5) {
             c.globalCompositeOperation = 'screen';
             c.globalAlpha = (p - 0.5) * 2 * 0.15 * sa;
@@ -1120,13 +1110,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       const el = (ts - t0.current) / 1000;
       const t = Math.min(el, DUR);
 
-      // ★ FIX #4: Scene alpha (sa) only affects scene, NOT text
-      // Scene fade starts at DUR (21s) — text is already independently visible
-      const sa = t >= DUR ? Math.max(0, 1 - (el - DUR) / 1.5) : 1;
+      // ★★★ सुधार: 12.0s के बाद पूरे लाल किले के वातावरण (sceneAlpha) को फेड-आउट करना
+      // जिससे टेक्स्ट आने से पहले इंट्रो क्लीन हो सके।
+      const sa = t < 12.0 ? 1 : cl(1 - (t - 12.0) * 0.7, 0, 1);
 
       c.clearRect(0, 0, W, H);
 
-      // ★ FIX #5: Camera shake only wraps scene layers, NOT text
       let shaking = false;
       if (camShake > 0.01) {
         shaking = true;
@@ -1138,7 +1127,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       }
 
       /* ── SPAWN: Petals (8s–11s) ── */
-      // ★ FIX #9: Petal spawn window 8s–11s
       if (t >= 8 && t < 11) {
         const petalColors = [
           { r: 255, g: 153, b: 51 },
@@ -1168,7 +1156,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       }
 
       /* ── SPAWN: Fireworks (11s–18s) ── */
-      // ★ FIX #9: Firework spawn window 11s–18s
       if (t >= 11 && t < 18) {
         if (Math.random() < 0.035) spawnFW();
       }
@@ -1200,24 +1187,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         if (p.life <= 0 || p.y > H + 20) p.on = false;
       }
 
-      /* ═══════════════════════════════════════════════════════════
-         ★ FIX #5: RENDER ORDER — Z-Index from bottom to top:
-           1. Sky
-           2. Stars
-           3. Clouds
-           4. Atmospheric Fog
-           5. Ground
-           6. Red Fort
-           7. Torch
-           8. Flag
-           9. Volumetric Light
-          10. Kites
-          11. Doves
-          12. Petals          ← before fireworks
-          13. Fireworks       ← includes glow
-          14. Sparkle Particles ← part of fireworks/glow
-          15. Background Darken
-         ═══════════════════════════════════════════════════════════ */
       R.sky(t, sa);
       R.stars(t, sa);
       R.clouds(t, sa);
@@ -1234,12 +1203,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       R.particles(t, el, sa);
       R.bgDarken(t);
 
-      // ★ FIX #5: End camera shake BEFORE text (text must not shake)
       if (shaking) c.restore();
 
-      /* ═══════════════════════════════════════════════════════════
-         ★ FIX #4, #5: GRAIN — applied to scene only, before text
-         ═══════════════════════════════════════════════════════════ */
       c.save();
       c.globalAlpha = 0.035 * sa;
       c.globalCompositeOperation = 'overlay';
@@ -1249,24 +1214,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
                    0, 0, W, H);
       c.restore();
 
-      /* ═══════════════════════════════════════════════════════════
-         ★ FIX #2, #4, #5: GREETING TEXT — HIGHEST Z-INDEX
-         Rendered LAST, receives sa=1.0 (independent of scene fade),
-         no camera shake, no grain overlay.
-         ═══════════════════════════════════════════════════════════ */
-      // ★ FIX #4: Pass 1.0 not sa — text is NEVER affected by scene fade
       R.titleCard(t, 1.0);
 
-      /* ═══════════════════════════════════════════════════════════
-         ★ FIX #3: COMPLETION — No race condition
-         Sequence:
-           t=15  → Text starts fading in (showGreetingText = true)
-           t=16.6→ Last text line starts
-           t=17.6→ All text fully visible
-           t=20  → animationComplete = true (done.current = true)
-           t=21  → onComplete() called → parent navigates
-         Text has 4+ seconds of full visibility before any callback.
-         ═══════════════════════════════════════════════════════════ */
       if (t >= DUR && !done.current) {
         done.current = true;
         if (cbR.current) cbR.current();
