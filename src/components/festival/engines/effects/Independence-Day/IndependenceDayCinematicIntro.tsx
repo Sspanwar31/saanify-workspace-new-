@@ -12,6 +12,7 @@ interface Particle {
   life: number; ml: number; sz: number;
   r: number; g: number; b: number; a: number;
   tp: number; rot: number; rs: number; on: boolean; turbOff: number;
+  prevX?: number; prevY?: number;
 }
 
 interface Kite {
@@ -33,7 +34,8 @@ interface Firework {
   pts: { x: number; y: number; vx: number; vy: number; life: number; ml: number; sz: number }[];
 }
 
-interface CloudPuff { x: number; y: number; w: number; h: number; a: number; speed: number; }
+interface CloudPuff { x: number; y: number; w: number; h: number; a: number; speed: number; noiseOff: number; }
+interface FWSmoke { x: number; y: number; a: number; sz: number; vx: number; vy: number; }
 
 const POOL = 5000;
 const DUR = 19.0;
@@ -136,14 +138,33 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
     const birds: BoidBird[] = [];
     const kites: Kite[] = [];
     const clouds: CloudPuff[] = [];
+    const fwSmoke: FWSmoke[] = [];
 
-    // ── Red Fort architecture cache ──
     let fort = {
       wallL: 0, wallR: 0, wallTop: 0, wallBot: 0,
       archX: 0, archW: 0, archH: 0, archBot: 0,
       bastionL: {x:0,w:0,top:0}, bastionR: {x:0,w:0,top:0},
       merlonW: 0, merlonH: 0, merlonGap: 0,
     };
+
+    // ── Procedural sandstone texture (generated once) ──
+    const stoneTexCv = document.createElement('canvas');
+    stoneTexCv.width = 128; stoneTexCv.height = 128;
+    const stCtx = stoneTexCv.getContext('2d')!;
+    const stImg = stCtx.createImageData(128, 128);
+    for (let py = 0; py < 128; py += 1) {
+      for (let px = 0; px < 128; px += 1) {
+        const n1 = noise.n2(px * 0.035, py * 0.035) * 0.5 + 0.5;
+        const n2 = noise.n2(px * 0.08 + 50, py * 0.08 + 50) * 0.3 + 0.5;
+        const n = n1 * 0.7 + n2 * 0.3;
+        const idx = (py * 128 + px) * 4;
+        stImg.data[idx] = (155 + n * 55) | 0;
+        stImg.data[idx+1] = (80 + n * 30) | 0;
+        stImg.data[idx+2] = (50 + n * 20) | 0;
+        stImg.data[idx+3] = 255;
+      }
+    }
+    stCtx.putImageData(stImg, 0, 0);
 
     const rsz = () => {
       W = window.innerWidth; H = window.innerHeight;
@@ -182,15 +203,13 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
       }
 
       kites.length = 0;
-      const kiteData = [
-        { bx: W*0.12, by: H*0.50, ty: H*0.12, s: 1.0, ss: 1.1, sa: 28 },
-        { bx: W*0.24, by: H*0.58, ty: H*0.18, s: 0.8, ss: 1.5, sa: 20 },
-        { bx: W*0.76, by: H*0.52, ty: H*0.14, s: 0.9, ss: 1.0, sa: 24 },
-        { bx: W*0.88, by: H*0.60, ty: H*0.22, s: 0.72, ss: 1.4, sa: 16 },
-        { bx: W*0.40, by: H*0.65, ty: H*0.28, s: 0.6, ss: 1.8, sa: 12 },
-        { bx: W*0.62, by: H*0.62, ty: H*0.20, s: 0.65, ss: 1.3, sa: 14 },
-      ];
-      kiteData.forEach(d => kites.push({ x:d.bx, y:d.by, base_x:d.bx, base_y:d.by, target_y:d.ty, scale:d.s, angle:0, swaySpeed:d.ss, swayAmp:d.sa, tailPhase:Math.random()*100 }));
+      [{ bx: W*0.12, by: H*0.50, ty: H*0.12, s: 1.0, ss: 1.1, sa: 28 },
+       { bx: W*0.24, by: H*0.58, ty: H*0.18, s: 0.8, ss: 1.5, sa: 20 },
+       { bx: W*0.76, by: H*0.52, ty: H*0.14, s: 0.9, ss: 1.0, sa: 24 },
+       { bx: W*0.88, by: H*0.60, ty: H*0.22, s: 0.72, ss: 1.4, sa: 16 },
+       { bx: W*0.40, by: H*0.65, ty: H*0.28, s: 0.6, ss: 1.8, sa: 12 },
+       { bx: W*0.62, by: H*0.62, ty: H*0.20, s: 0.65, ss: 1.3, sa: 14 },
+      ].forEach(d => kites.push({ x:d.bx, y:d.by, base_x:d.bx, base_y:d.by, target_y:d.ty, scale:d.s, angle:0, swaySpeed:d.ss, swayAmp:d.sa, tailPhase:Math.random()*100 }));
 
       birds.length = 0;
       const bY = fort.bastionL.top - 6;
@@ -204,16 +223,14 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         clouds.push({
           x: Math.random() * W * 1.4 - W * 0.2,
           y: H * 0.08 + Math.random() * H * 0.25,
-          w: 120 + Math.random() * 200,
-          h: 20 + Math.random() * 30,
-          a: 0.03 + Math.random() * 0.05,
-          speed: 0.15 + Math.random() * 0.25,
+          w: 120 + Math.random() * 200, h: 20 + Math.random() * 30,
+          a: 0.03 + Math.random() * 0.05, speed: 0.15 + Math.random() * 0.25,
+          noiseOff: Math.random() * 1000,
         });
       }
     };
     rsz(); window.addEventListener('resize', rsz);
 
-    // Film grain texture
     const grainCv = document.createElement('canvas');
     grainCv.width = 256; grainCv.height = 256;
     const gc = grainCv.getContext('2d')!;
@@ -233,9 +250,24 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
       for (let i = fwList.length-1; i >= 0; i--) {
         const fw = fwList[i];
         if (fw.state === 'rising') {
+          // IMPROVEMENT: Spawn smoke trail particles
+          if (Math.random() < 0.6) {
+            fwSmoke.push({ x: fw.x + (Math.random()-0.5)*3, y: fw.y, a: 0.25, sz: 4 + Math.random()*5, vx: (Math.random()-0.5)*0.3, vy: 0.2 + Math.random()*0.3 });
+          }
           fw.y += fw.vy; fw.vy += 0.04;
           if (fw.vy >= -0.5 || fw.y < H*0.18) {
             fw.state = 'burst';
+            // IMPROVEMENT: Spawn secondary sparks into main particle pool
+            for (let s = 0; s < 8; s++) {
+              const sp = grab(pl); if (sp) {
+                sp.on = true; sp.x = fw.x; sp.y = fw.y;
+                const a = Math.random() * 6.283, sp2 = 2.5 + Math.random() * 2;
+                sp.vx = Math.cos(a) * sp2; sp.vy = Math.sin(a) * sp2;
+                sp.life = 0.6 + Math.random() * 0.4; sp.ml = 1.0;
+                sp.sz = 0.8 + Math.random(); sp.r = 255; sp.g = 230; sp.b = 180;
+                sp.a = 0.9; sp.tp = 6;
+              }
+            }
             const cnt = 45 + Math.random()*35|0;
             const pat = Math.random();
             for (let j = 0; j < cnt; j++) {
@@ -256,54 +288,81 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           if (fw.pts.length === 0) fwList.splice(i, 1);
         }
       }
+      // IMPROVEMENT: Update smoke
+      for (let i = fwSmoke.length - 1; i >= 0; i--) {
+        const s = fwSmoke[i];
+        s.x += s.vx; s.y += s.vy; s.a -= 0.003; s.sz += 0.15;
+        if (s.a <= 0) fwSmoke.splice(i, 1);
+      }
     };
 
     /* ═══════════════════════════════════════════════════════════
        RENDERER
        ═══════════════════════════════════════════════════════════ */
     const R = {
-      /* ── SKY: Realistic golden-hour dawn ── */
+      /* ── SKY: Enhanced with atmospheric haze, sun disc, scattering ── */
       sky: (t: number, sa: number) => {
         c.save(); c.globalAlpha = sa;
         const g = c.createLinearGradient(0, 0, 0, H);
         if (t < 5) {
           const p = cl(t/5, 0, 1);
-          g.addColorStop(0, `rgb(${lerp(12,28,p)|0},${lerp(18,42,p)|0},${lerp(48,95,p)|0})`);
-          g.addColorStop(0.35, `rgb(${lerp(25,65,p)|0},${lerp(30,55,p)|0},${lerp(65,100,p)|0})`);
-          g.addColorStop(0.6, `rgb(${lerp(60,170,p)|0},${lerp(50,100,p)|0},${lerp(60,60,p)|0})`);
-          g.addColorStop(0.82, `rgb(${lerp(120,220,p)|0},${lerp(75,140,p)|0},${lerp(50,70,p)|0})`);
+          g.addColorStop(0, `rgb(${lerp(10,25,p)|0},${lerp(14,38,p)|0},${lerp(42,88,p)|0})`);
+          g.addColorStop(0.2, `rgb(${lerp(15,40,p)|0},${lerp(20,48,p)|0},${lerp(50,92,p)|0})`);
+          g.addColorStop(0.4, `rgb(${lerp(30,72,p)|0},${lerp(32,58,p)|0},${lerp(62,98,p)|0})`);
+          g.addColorStop(0.6, `rgb(${lerp(70,165,p)|0},${lerp(50,98,p)|0},${lerp(58,58,p)|0})`);
+          g.addColorStop(0.78, `rgb(${lerp(110,210,p)|0},${lerp(70,135,p)|0},${lerp(48,65,p)|0})`);
+          g.addColorStop(0.9, `rgb(${lerp(145,235,p)|0},${lerp(90,155,p)|0},${lerp(50,75,p)|0})`);
           g.addColorStop(1, `rgb(${lerp(160,245,p)|0},${lerp(100,170,p)|0},${lerp(55,90,p)|0})`);
         } else if (t < 11) {
           const p = cl((t-5)/6, 0, 1);
-          g.addColorStop(0, `rgb(${lerp(28,55,p)|0},${lerp(42,80,p)|0},${lerp(95,140,p)|0})`);
-          g.addColorStop(0.45, `rgb(${lerp(65,140,p)|0},${lerp(55,110,p)|0},${lerp(60,85,p)|0})`);
-          g.addColorStop(0.75, `rgb(${lerp(170,235,p)|0},${lerp(100,155,p)|0},${lerp(60,80,p)|0})`);
+          g.addColorStop(0, `rgb(${lerp(25,50,p)|0},${lerp(38,75,p)|0},${lerp(88,135,p)|0})`);
+          g.addColorStop(0.3, `rgb(${lerp(50,100,p)|0},${lerp(48,80,p)|0},${lerp(75,100,p)|0})`);
+          g.addColorStop(0.55, `rgb(${lerp(80,160,p)|0},${lerp(65,120,p)|0},${lerp(60,82,p)|0})`);
+          g.addColorStop(0.75, `rgb(${lerp(160,230,p)|0},${lerp(95,150,p)|0},${lerp(58,78,p)|0})`);
           g.addColorStop(1, `rgb(${lerp(220,250,p)|0},${lerp(140,190,p)|0},${lerp(70,100,p)|0})`);
         } else {
           const p = cl((t-11)/4, 0, 1);
-          g.addColorStop(0, `rgb(${lerp(55,8,p)|0},${lerp(80,14,p)|0},${lerp(140,48,p)|0})`);
-          g.addColorStop(1, `rgb(${lerp(250,18,p)|0},${lerp(190,35,p)|0},${lerp(100,80,p)|0})`);
+          g.addColorStop(0, `rgb(${lerp(50,6,p)|0},${lerp(75,10,p)|0},${lerp(135,42,p)|0})`);
+          g.addColorStop(1, `rgb(${lerp(250,15,p)|0},${lerp(190,30,p)|0},${lerp(100,75,p)|0})`);
         }
         c.fillStyle = g; c.fillRect(0, 0, W, H);
 
-        // Sun glow near horizon
-        if (t > 2 && t < 12) {
-          const si = cl((t-2)/2, 0, 1) * cl((12-t)/1, 0, 1);
-          c.save(); c.globalAlpha = si * 0.35 * sa;
-          c.globalCompositeOperation = 'screen';
-          const sunX = cx + W * 0.15, sunY = baseY - gateH * 0.2;
-          const sg = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, sc * 0.5);
-          sg.addColorStop(0, 'rgba(255,220,140,0.5)');
-          sg.addColorStop(0.3, 'rgba(255,160,60,0.15)');
-          sg.addColorStop(1, 'rgba(0,0,0,0)');
-          c.fillStyle = sg;
-          c.fillRect(sunX - sc*0.5, sunY - sc*0.5, sc, sc);
+        // IMPROVEMENT: Sun disc with corona
+        if (t > 1.5 && t < 12) {
+          const si = cl((t-1.5)/2.5, 0, 1) * cl((12-t)/1, 0, 1);
+          const sunX = cx + W * 0.15, sunY = baseY - gateH * 0.15;
+          c.save(); c.globalCompositeOperation = 'screen';
+          // Outer corona
+          c.globalAlpha = si * 0.15 * sa;
+          const cr = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, sc * 0.6);
+          cr.addColorStop(0, 'rgba(255,200,100,0.3)'); cr.addColorStop(0.5, 'rgba(255,120,40,0.05)'); cr.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = cr; c.fillRect(sunX-sc*0.6, sunY-sc*0.6, sc*1.2, sc*1.2);
+          // Inner glow
+          c.globalAlpha = si * 0.3 * sa;
+          const sg = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, sc * 0.25);
+          sg.addColorStop(0, 'rgba(255,240,200,0.7)'); sg.addColorStop(0.4, 'rgba(255,180,80,0.2)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = sg; c.fillRect(sunX-sc*0.25, sunY-sc*0.25, sc*0.5, sc*0.5);
+          // Sun disc
+          c.globalAlpha = si * 0.5 * sa;
+          const sd = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, sc * 0.04);
+          sd.addColorStop(0, 'rgba(255,250,230,0.9)'); sd.addColorStop(1, 'rgba(255,220,160,0)');
+          c.fillStyle = sd; c.beginPath(); c.arc(sunX, sunY, sc*0.04, 0, 6.283); c.fill();
           c.restore();
         }
+
+        // IMPROVEMENT: Atmospheric haze layers
+        if (t > 2 && t < 12) {
+          const hi = cl((t-2)*0.2, 0, 1) * cl((12-t)*0.3, 0, 1) * sa;
+          c.save(); c.globalAlpha = hi * 0.06;
+          const hg = c.createLinearGradient(0, baseY - gateH * 0.8, 0, baseY + 20);
+          hg.addColorStop(0, 'rgba(0,0,0,0)'); hg.addColorStop(0.5, 'rgba(200,160,120,0.3)'); hg.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = hg; c.fillRect(0, baseY - gateH * 0.8, W, gateH * 0.8 + 20);
+          c.restore();
+        }
+
         c.restore();
       },
 
-      /* ── STARS ── */
       stars: (t: number, sa: number) => {
         if (t > 5) return;
         const a = cl(1 - t/5, 0, 1) * sa;
@@ -311,13 +370,16 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         for (const idx of starI) {
           const p = pl[idx]; if (!p?.on) continue;
           const tw = Math.sin(t*3.2 + idx) * 0.35 + 0.65;
+          // IMPROVEMENT: Subtle star glow
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * tw * 0.3})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz * 2.5, 0, 6.283); c.fill();
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * tw})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
         }
         c.restore();
       },
 
-      /* ── CLOUDS: Subtle atmospheric haze ── */
+      /* ── CLOUDS: Noise-based layered shapes ── */
       clouds: (t: number, sa: number) => {
         if (t < 2) return;
         const a = cl((t-2)*0.3, 0, 1) * (t > 11 ? cl((12-t), 0, 1) : 1) * sa;
@@ -325,55 +387,96 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         clouds.forEach(cl_ => {
           cl_.x += cl_.speed * 0.016;
           if (cl_.x > W + cl_.w) cl_.x = -cl_.w;
-          c.fillStyle = `rgba(255,230,200,${cl_.a})`;
-          c.beginPath(); c.ellipse(cl_.x, cl_.y, cl_.w/2, cl_.h/2, 0, 0, 6.283); c.fill();
-          c.beginPath(); c.ellipse(cl_.x - cl_.w*0.25, cl_.y + 5, cl_.w*0.35, cl_.h*0.4, 0, 0, 6.283); c.fill();
-          c.beginPath(); c.ellipse(cl_.x + cl_.w*0.3, cl_.y + 3, cl_.w*0.3, cl_.h*0.35, 0, 0, 6.283); c.fill();
+          // IMPROVEMENT: Multiple overlapping puffs with noise-based variation
+          const puffs = [
+            { dx: 0, dy: 0, sw: 1.0, sh: 1.0 },
+            { dx: -cl_.w*0.28, dy: 4, sw: 0.38, sh: 0.45 },
+            { dx: cl_.w*0.32, dy: 2, sw: 0.32, sh: 0.38 },
+            { dx: -cl_.w*0.12, dy: -cl_.h*0.3, sw: 0.25, sh: 0.3 },
+            { dx: cl_.w*0.15, dy: -cl_.h*0.2, sw: 0.28, sh: 0.25 },
+          ];
+          puffs.forEach((pf, pi) => {
+            const nv = noise.n2(t * 0.1 + cl_.noiseOff + pi, cl_.noiseOff + pi * 7) * 0.3 + 0.7;
+            c.fillStyle = `rgba(255,225,195,${cl_.a * nv})`;
+            c.beginPath();
+            c.ellipse(cl_.x + pf.dx, cl_.y + pf.dy, cl_.w*pf.sw/2, cl_.h*pf.sh/2, 0, 0, 6.283);
+            c.fill();
+          });
         });
         c.restore();
       },
 
-      /* ── GROUND: Red sandstone plaza + lawns + paths ── */
+      /* ── GROUND: Enhanced with texture, stones, better shadow ── */
       ground: (t: number, sa: number) => {
         const rev = cl((t - 0.6) * 0.4, 0, 1);
         c.save(); c.globalAlpha = rev * sa;
         const gT = baseY;
 
-        // Main lawn
         const lg = c.createLinearGradient(0, gT, 0, H);
         lg.addColorStop(0, '#1a3318'); lg.addColorStop(0.15, '#152b13');
         lg.addColorStop(0.5, '#0f200e'); lg.addColorStop(1, '#091209');
         c.fillStyle = lg; c.fillRect(0, gT, W, H - gT);
 
+        // IMPROVEMENT: Grass noise variation
+        c.save(); c.globalAlpha = rev * sa * 0.08;
+        for (let gx = 0; gx < W; gx += 12) {
+          const gn = noise.n2(gx * 0.02, 0.5) * 0.5 + 0.5;
+          if (gn > 0.6) {
+            c.fillStyle = `rgba(30,${60 + gn*40|0},25,1)`;
+            c.fillRect(gx, gT + 2, 10, 4);
+          }
+        }
+        c.restore();
+
         // Red sandstone plaza
         const plW = gateW * 1.05, plH = 32;
         const pg = c.createLinearGradient(0, gT - 4, 0, gT + plH);
-        pg.addColorStop(0, '#8b4228'); pg.addColorStop(0.4, '#7a3820');
-        pg.addColorStop(1, '#5a2815');
+        pg.addColorStop(0, '#8b4228'); pg.addColorStop(0.4, '#7a3820'); pg.addColorStop(1, '#5a2815');
         c.fillStyle = pg; c.fillRect(cx - plW/2, gT - 4, plW, plH);
+        // IMPROVEMENT: Sandstone surface noise on plaza
+        c.save(); c.globalAlpha = 0.06;
+        const stPat = c.createPattern(stoneTexCv, 'repeat');
+        if (stPat) { c.fillStyle = stPat; c.fillRect(cx - plW/2, gT - 4, plW, plH); }
+        c.restore();
         c.fillStyle = 'rgba(200,150,100,0.12)'; c.fillRect(cx - plW/2, gT - 4, plW, 1.5);
 
-        // Central path
         const pathW = gateW * 0.18;
         const pathG = c.createLinearGradient(0, gT, 0, gT + 60);
         pathG.addColorStop(0, '#6b4028'); pathG.addColorStop(1, '#3d2215');
         c.fillStyle = pathG;
         c.beginPath(); c.moveTo(cx - pathW/2, gT); c.lineTo(cx + pathW/2, gT);
         c.lineTo(cx + pathW*0.6, H); c.lineTo(cx - pathW*0.6, H); c.closePath(); c.fill();
+        // IMPROVEMENT: Path surface texture
+        c.save(); c.globalAlpha = 0.04;
+        if (stPat) { c.fillStyle = stPat; c.fill(); }
+        c.restore();
 
-        // Side paths
         [cx - gateW*0.3, cx + gateW*0.3].forEach(px => {
           c.fillStyle = '#3d2215';
           c.beginPath(); c.moveTo(px - 8, gT); c.lineTo(px + 8, gT);
           c.lineTo(px + 14, H); c.lineTo(px - 14, H); c.closePath(); c.fill();
         });
 
-        // Trees
+        // IMPROVEMENT: Small stones near path edges
+        c.save(); c.globalAlpha = 0.15;
+        for (let si = 0; si < 20; si++) {
+          const sx = cx + (Math.sin(si * 7.3) * pathW * 0.8);
+          const sy = gT + 3 + (si * 3.7) % 25;
+          const ss = 1 + Math.sin(si * 3.1) * 0.8;
+          c.fillStyle = `rgb(${80+si*3|0},${60+si*2|0},${40+si|0})`;
+          c.beginPath(); c.ellipse(sx, sy, ss*1.5, ss, si*0.5, 0, 6.283); c.fill();
+        }
+        c.restore();
+
         const drawTree = (tx: number, ty: number, s: number, a: number) => {
           c.save(); c.globalAlpha = a;
+          // IMPROVEMENT: Tree shadow on ground
+          c.fillStyle = 'rgba(0,0,0,0.12)';
+          c.beginPath(); c.ellipse(tx + 8*s, ty + 3, 18*s, 4*s, 0.2, 0, 6.283); c.fill();
           c.fillStyle = '#1a1008'; c.fillRect(tx - 2.5*s, ty - 22*s, 5*s, 24*s);
           for (let l = 0; l < 3; l++) {
-            c.fillStyle = l === 1 ? '#0e1e0d' : '#0b180b';
+            const leafShade = l === 1 ? 1.1 : 0.9;
+            c.fillStyle = `rgb(${12*leafShade|0},${28*leafShade|0},${11*leafShade|0})`;
             c.beginPath();
             c.ellipse(tx + (l-1)*3*s, ty - 22*s - l*9*s, (18-l*4)*s, (12-l*2)*s, 0, 0, 6.283);
             c.fill();
@@ -389,17 +492,27 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         drawTree(cx - gateW*0.85, gT, 0.6, 0.3);
         drawTree(cx + gateW*0.85, gT, 0.55, 0.25);
 
-        // Ground fog
-        c.globalAlpha = rev * sa * 0.12;
-        const fg = c.createLinearGradient(0, gT, 0, gT + 35);
-        fg.addColorStop(0, 'rgba(180,140,100,0.25)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = fg; c.fillRect(0, gT, W, 35);
+        // IMPROVEMENT: Better ground fog with noise
+        c.globalAlpha = rev * sa * 0.1;
+        const fg = c.createLinearGradient(0, gT - 5, 0, gT + 40);
+        fg.addColorStop(0, 'rgba(0,0,0,0)');
+        fg.addColorStop(0.3, 'rgba(180,140,100,0.2)');
+        fg.addColorStop(0.7, 'rgba(180,140,100,0.12)');
+        fg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = fg; c.fillRect(0, gT - 5, W, 45);
+
+        // IMPROVEMENT: Bounce light from fort onto ground
+        c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = rev * sa * 0.04;
+        const blg = c.createRadialGradient(cx, gT, 0, cx, gT, gateW * 0.4);
+        blg.addColorStop(0, 'rgba(200,120,60,0.3)'); blg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = blg; c.fillRect(cx - gateW*0.4, gT - 5, gateW*0.8, 20);
+        c.restore();
 
         c.restore();
       },
 
       /* ═══════════════════════════════════════════════════════════
-         RED FORT — Cinematic Architectural Rendering
+         RED FORT — Enhanced with texture, cracks, AO, weathering
          ═══════════════════════════════════════════════════════════ */
       redFort: (t: number, sa: number) => {
         const rev = cl((t - 0.8) * 0.35, 0, 1);
@@ -408,120 +521,152 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         const { wallL, wallR, wallTop, wallBot, archX, archW, archH, archBot,
                 bastionL, bastionR, merlonW, merlonH, merlonGap } = fort;
 
-        // Palette — Real red sandstone
-        const SAND = '#b84e34';
-        const SAND_LT = '#d06848';
-        const SAND_DK = '#7a3220';
-        const SAND_SH = '#4e1c0e';
-        const INLAY = '#e8d5b8';
-        const DOME = '#f0ebe0';
-        const GOLD = '#c89a18';
+        const SAND = '#b84e34'; const SAND_LT = '#d06848'; const SAND_DK = '#7a3220';
+        const SAND_SH = '#4e1c0e'; const INLAY = '#e8d5b8'; const DOME = '#f0ebe0'; const GOLD = '#c89a18';
 
-        // ── Ground shadow ──
-        c.fillStyle = 'rgba(0,0,0,0.35)';
-        c.beginPath(); c.ellipse(cx, baseY + 6, gateW * 0.55, 10, 0, 0, 6.283); c.fill();
+        // IMPROVEMENT: Long morning shadow cast by fort
+        c.save(); c.globalAlpha = rev * sa * 0.12;
+        c.fillStyle = '#000';
+        c.beginPath();
+        c.moveTo(wallR, wallBot); c.lineTo(wallR + gateW * 0.15, wallBot + 8);
+        c.lineTo(wallR + gateW * 0.25, H); c.lineTo(wallR - 5, H);
+        c.closePath(); c.fill();
+        c.restore();
 
-        // ── Wide foundation (sinks into ground) ──
+        // Ground contact shadow
+        c.fillStyle = 'rgba(0,0,0,0.4)';
+        c.beginPath(); c.ellipse(cx, baseY + 8, gateW * 0.56, 12, 0, 0, 6.283); c.fill();
+        // Soft shadow gradient
+        const csg = c.createRadialGradient(cx, baseY + 8, gateW*0.3, cx, baseY + 8, gateW*0.6);
+        csg.addColorStop(0, 'rgba(0,0,0,0.2)'); csg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = csg; c.fillRect(cx - gateW*0.6, baseY, gateW*1.2, 30);
+
         const fpW = gateW * 1.08;
         const fpGrad = c.createLinearGradient(0, baseY - 6, 0, baseY + 14);
-        fpGrad.addColorStop(0, SAND_LT); fpGrad.addColorStop(0.4, SAND);
-        fpGrad.addColorStop(1, SAND_SH);
+        fpGrad.addColorStop(0, SAND_LT); fpGrad.addColorStop(0.4, SAND); fpGrad.addColorStop(1, SAND_SH);
         c.fillStyle = fpGrad; c.fillRect(cx - fpW/2, baseY - 6, fpW, 20);
         c.fillStyle = 'rgba(220,180,140,0.15)'; c.fillRect(cx - fpW/2, baseY - 6, fpW, 1.5);
         c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(cx - fpW/2, baseY + 10, fpW, 4);
 
-        // ── Stepped base ──
         c.fillStyle = SAND; c.fillRect(cx - fpW*0.46, baseY - 14, fpW*0.92, 8);
         c.fillStyle = 'rgba(220,180,140,0.1)'; c.fillRect(cx - fpW*0.46, baseY - 14, fpW*0.92, 1);
 
-        // ── Helper: draw textured block ──
         const drawBlock = (x: number, y: number, w: number, h: number, shade: number) => {
-          // Shadow
           c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x - 1.5, y - 1.5, w + 3, h + 3);
-          // Body gradient (left darker = shadow side, right lighter = sun side)
           const bg = c.createLinearGradient(x, y, x + w, y);
           const r = lerp(122, 208, shade) | 0, g2 = lerp(50, 104, shade) | 0, b = lerp(32, 72, shade) | 0;
-          bg.addColorStop(0, `rgb(${r*0.7|0},${g2*0.7|0},${b*0.7|0})`);
+          bg.addColorStop(0, `rgb(${r*0.65|0},${g2*0.65|0},${b*0.65|0})`);
+          bg.addColorStop(0.15, `rgb(${r*0.75|0},${g2*0.75|0},${b*0.75|0})`);
           bg.addColorStop(0.5, `rgb(${r},${g2},${b})`);
-          bg.addColorStop(1, `rgb(${Math.min(255,r*1.15)|0},${Math.min(255,g2*1.12)|0},${Math.min(255,b*1.1)|0})`);
+          bg.addColorStop(0.85, `rgb(${Math.min(255,r*1.12)|0},${Math.min(255,g2*1.1)|0},${Math.min(255,b*1.08)|0})`);
+          bg.addColorStop(1, `rgb(${Math.min(255,r*1.18)|0},${Math.min(255,g2*1.15)|0},${Math.min(255,b*1.12)|0})`);
           c.fillStyle = bg; c.fillRect(x, y, w, h);
-          // Top highlight
-          c.fillStyle = `rgba(220,180,140,${0.08 * shade})`; c.fillRect(x, y, w, 1.5);
-          // Stone block joints
-          c.strokeStyle = 'rgba(0,0,0,0.06)'; c.lineWidth = 0.5;
+
+          // IMPROVEMENT: Sandstone texture overlay
+          c.save(); c.globalAlpha = 0.08;
+          const stPat = c.createPattern(stoneTexCv, 'repeat');
+          if (stPat) { c.fillStyle = stPat; c.fillRect(x, y, w, h); }
+          c.restore();
+
+          c.fillStyle = `rgba(220,180,140,${0.1 * shade})`; c.fillRect(x, y, w, 1.5);
+          c.strokeStyle = 'rgba(0,0,0,0.05)'; c.lineWidth = 0.5;
           for (let by = y + 18; by < y + h; by += 18) {
             c.beginPath(); c.moveTo(x, by); c.lineTo(x + w, by); c.stroke();
           }
+          // IMPROVEMENT: Vertical mortar lines with offset
+          for (let bx = x + 22; bx < x + w; bx += 22 + ((bx / 22 | 0) % 2) * 4) {
+            c.beginPath(); c.moveTo(bx, y); c.lineTo(bx, y + h); c.stroke();
+          }
         };
 
-        // ── Main wall body ──
         const wallW = wallR - wallL;
         const wallH = wallBot - wallTop;
         drawBlock(wallL, wallTop, wallW, wallH - 6, 0.55);
 
-        // ── Horizontal inlay bands (Mughal architecture hallmark) ──
+        // IMPROVEMENT: Weathering stains
+        c.save(); c.globalAlpha = 0.06;
+        for (let wi = 0; wi < 5; wi++) {
+          const wx = wallL + wallW * (0.15 + wi * 0.18);
+          const wy = wallTop + wallH * (0.3 + noise.n2(wi * 3.7, 0) * 0.3);
+          c.fillStyle = 'rgba(40,20,10,1)';
+          c.beginPath(); c.ellipse(wx, wy, 8 + wi * 2, 15 + wi * 4, 0.2, 0, 6.283); c.fill();
+        }
+        c.restore();
+
+        // IMPROVEMENT: Subtle crack lines
+        c.save(); c.globalAlpha = 0.08; c.strokeStyle = 'rgba(30,15,5,1)'; c.lineWidth = 0.5;
+        for (let ci = 0; ci < 4; ci++) {
+          const cx0 = wallL + wallW * (0.2 + ci * 0.2);
+          const cy0 = wallTop + wallH * 0.2;
+          c.beginPath(); c.moveTo(cx0, cy0);
+          c.lineTo(cx0 + noise.n2(ci*5, 0)*8, cy0 + 20 + noise.n2(0, ci*5)*15);
+          c.lineTo(cx0 + noise.n2(ci*5, 1)*5, cy0 + 40 + noise.n2(1, ci*5)*10);
+          c.stroke();
+        }
+        c.restore();
+
         c.fillStyle = INLAY;
-        const bandPositions = [0.15, 0.45, 0.72, 0.92];
-        bandPositions.forEach(bp => {
+        [0.15, 0.45, 0.72, 0.92].forEach(bp => {
           const by = wallTop + wallH * bp;
           c.globalAlpha = rev * sa * 0.35;
           c.fillRect(wallL + 4, by, wallW - 8, 2);
         });
         c.globalAlpha = rev * sa;
 
-        // ── Vertical pillar suggestions ──
         c.strokeStyle = 'rgba(0,0,0,0.08)'; c.lineWidth = 1;
-        const pillarCount = 12;
-        for (let i = 1; i < pillarCount; i++) {
-          const px = wallL + (wallW / pillarCount) * i;
+        for (let i = 1; i < 12; i++) {
+          const px = wallL + (wallW / 12) * i;
           c.beginPath(); c.moveTo(px, wallTop + 10); c.lineTo(px, wallBot - 10); c.stroke();
         }
 
-        // ── Battlements (merlons) ──
         c.fillStyle = SAND_LT;
         for (let mx = wallL + merlonGap; mx < wallR - merlonW; mx += merlonW + merlonGap) {
           c.fillRect(mx, wallTop - merlonH, merlonW, merlonH);
           c.fillStyle = 'rgba(220,180,140,0.1)'; c.fillRect(mx, wallTop - merlonH, merlonW, 1);
+          // IMPROVEMENT: Merlon top highlight
+          c.fillStyle = 'rgba(255,200,150,0.06)'; c.fillRect(mx, wallTop - merlonH, merlonW, 1);
           c.fillStyle = SAND_LT;
         }
 
-        // ── BASTIONS (corner towers) ──
         const drawBastion = (bx: number, bw: number, btop: number) => {
           const bh = wallBot - btop;
           drawBlock(bx, btop, bw, bh, 0.6);
+          // IMPROVEMENT: Ambient occlusion at bastion-wall junction
+          c.save(); c.globalAlpha = 0.1;
+          const aoGrad = c.createLinearGradient(bx, btop, bx + bw, btop);
+          aoGrad.addColorStop(0, 'rgba(0,0,0,0.4)'); aoGrad.addColorStop(0.15, 'rgba(0,0,0,0)'); aoGrad.addColorStop(0.85, 'rgba(0,0,0,0)'); aoGrad.addColorStop(1, 'rgba(0,0,0,0.3)');
+          c.fillStyle = aoGrad; c.fillRect(bx - 5, btop, bw + 10, bh * 0.3);
+          c.restore();
 
-          // Extra bands on bastion
           c.fillStyle = INLAY; c.globalAlpha = rev * sa * 0.3;
           c.fillRect(bx + 3, btop + bh * 0.3, bw - 6, 1.5);
           c.fillRect(bx + 3, btop + bh * 0.7, bw - 6, 1.5);
           c.globalAlpha = rev * sa;
 
-          // Merlons on bastion
           const bmW = merlonW * 0.8, bmH = merlonH * 0.9;
           c.fillStyle = SAND_LT;
           for (let mx = bx + 2; mx < bx + bw - bmW; mx += bmW + merlonGap * 0.7) {
             c.fillRect(mx, btop - bmH, bmW, bmH);
           }
 
-          // ── Chhatri (dome on pillars) ──
           const chW = bw * 0.7, chX = bx + (bw - chW) / 2, chY = btop - bmH;
           const pilH = 14;
-
-          // Pillars
           c.fillStyle = SAND_LT;
           for (let pi = 0; pi < 4; pi++) {
             const ppx = chX + 3 + (chW - 6) * (pi / 3);
             c.fillRect(ppx, chY - pilH, 2.5, pilH);
           }
-          // Platform
           c.fillStyle = SAND; c.fillRect(chX, chY - 2, chW, 3);
-          // Dome
           c.beginPath(); c.arc(chX + chW/2, chY - 2, chW * 0.42, Math.PI, 0, false); c.closePath();
           const dg = c.createLinearGradient(chX, chY - 2 - chW*0.42, chX + chW, chY - 2);
           dg.addColorStop(0, '#d8d0c4'); dg.addColorStop(0.4, DOME); dg.addColorStop(1, '#c8c0b4');
           c.fillStyle = dg; c.fill();
+          // IMPROVEMENT: Dome highlight
+          c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.08;
+          c.fillStyle = '#fff';
+          c.beginPath(); c.arc(chX + chW*0.35, chY - 2 - chW*0.3, chW*0.15, 0, 6.283); c.fill();
+          c.restore();
           c.strokeStyle = 'rgba(0,0,0,0.12)'; c.lineWidth = 0.7; c.stroke();
-          // Finial
           c.fillStyle = GOLD;
           c.fillRect(chX + chW/2 - 1, chY - 2 - chW*0.42 - 5, 2, 6);
           c.beginPath(); c.arc(chX + chW/2, chY - 2 - chW*0.42 - 6, 2.5, 0, 6.283); c.fill();
@@ -530,125 +675,138 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         drawBastion(bastionL.x, bastionL.w, bastionL.top);
         drawBastion(bastionR.x, bastionR.w, bastionR.top);
 
-        // ── Small chhatris on wall ──
         const drawSmallChhatri = (sx: number) => {
-          const sw = 18, sh = 10;
-          c.fillStyle = SAND_LT;
-          c.fillRect(sx - sw/2, wallTop - merlonH - 2, sw, 3);
+          const sw = 18;
+          c.fillStyle = SAND_LT; c.fillRect(sx - sw/2, wallTop - merlonH - 2, sw, 3);
           c.beginPath(); c.arc(sx, wallTop - merlonH - 2, sw*0.42, Math.PI, 0, false); c.closePath();
           c.fillStyle = DOME; c.fill();
           c.strokeStyle = 'rgba(0,0,0,0.1)'; c.lineWidth = 0.5; c.stroke();
           c.fillStyle = GOLD; c.fillRect(sx - 0.8, wallTop - merlonH - 2 - sw*0.42 - 3, 1.6, 4);
         };
-        drawSmallChhatri(cx - wallW * 0.3);
-        drawSmallChhatri(cx + wallW * 0.3);
-        drawSmallChhatri(cx - wallW * 0.15);
-        drawSmallChhatri(cx + wallW * 0.15);
+        drawSmallChhatri(cx - wallW * 0.3); drawSmallChhatri(cx + wallW * 0.3);
+        drawSmallChhatri(cx - wallW * 0.15); drawSmallChhatri(cx + wallW * 0.15);
 
-        // ── LAHORE GATE — Central pointed arch ──
+        // LAHORE GATE
         const aL = archX - archW/2, aR = archX + archW/2;
-        const aTop = archBot - archH;
-        const aNeckY = archBot - archH * 0.6;
+        const aTop = archBot - archH, aNeckY = archBot - archH * 0.6;
 
-        // Arch border (inlay frame)
         c.save();
         c.beginPath();
-        c.moveTo(aL - 6, archBot);
-        c.lineTo(aL - 6, aNeckY - 4);
+        c.moveTo(aL - 6, archBot); c.lineTo(aL - 6, aNeckY - 4);
         c.quadraticCurveTo(aL - 6, aTop - 4, archX, aTop - 4);
         c.quadraticCurveTo(aR + 6, aTop - 4, aR + 6, aNeckY - 4);
-        c.lineTo(aR + 6, archBot);
-        c.closePath();
+        c.lineTo(aR + 6, archBot); c.closePath();
         c.fillStyle = INLAY; c.globalAlpha = rev * sa * 0.5; c.fill();
-        c.globalAlpha = rev * sa;
-        c.restore();
+        c.globalAlpha = rev * sa; c.restore();
 
-        // Arch shape
         c.save();
         c.beginPath();
-        c.moveTo(aL, archBot);
-        c.lineTo(aL, aNeckY);
+        c.moveTo(aL, archBot); c.lineTo(aL, aNeckY);
         c.quadraticCurveTo(aL, aTop, archX, aTop);
         c.quadraticCurveTo(aR, aTop, aR, aNeckY);
-        c.lineTo(aR, archBot);
-        c.closePath(); c.clip();
+        c.lineTo(aR, archBot); c.closePath(); c.clip();
 
-        // Deep interior shadow
-        const aShadow = c.createRadialGradient(archX, aTop + archH*0.3, archW*0.2, archX, aTop + archH*0.3, archW*0.7);
-        aShadow.addColorStop(0, '#0d0403');
+        // IMPROVEMENT: Better deep shadow with AO
+        const aShadow = c.createRadialGradient(archX, aTop + archH*0.3, archW*0.15, archX, aTop + archH*0.3, archW*0.65);
+        aShadow.addColorStop(0, '#060201');
+        aShadow.addColorStop(0.5, '#0a0303');
         aShadow.addColorStop(1, '#1a0805');
-        c.fillStyle = aShadow; c.fillRect(aL, aTop, archW, archH + 5);
+        c.fillStyle = aShadow; c.fillRect(aL - 5, aTop - 5, archW + 10, archH + 10);
 
-        // Inner arch hint
-        const iaw = archW * 0.55, iah = archH * 0.5;
-        c.strokeStyle = 'rgba(80,40,25,0.3)'; c.lineWidth = 1;
-        c.beginPath();
-        c.moveTo(archX - iaw/2, archBot);
-        c.lineTo(archX - iaw/2, archBot - iah * 0.6);
-        c.quadraticCurveTo(archX - iaw/2, archBot - iah, archX, archBot - iah);
-        c.quadraticCurveTo(archX + iaw/2, archBot - iah, archX + iaw/2, archBot - iah * 0.6);
-        c.lineTo(archX + iaw/2, archBot);
-        c.stroke();
+        // IMPROVEMENT: Interior depth hint — receding arches
+        for (let ai = 0; ai < 3; ai++) {
+          const aiw = archW * (0.7 - ai * 0.15), aih = archH * (0.55 - ai * 0.12);
+          const aiy = archBot - aih;
+          const ainy = archBot - aih * 0.6;
+          c.strokeStyle = `rgba(60,30,18,${0.15 - ai * 0.04})`; c.lineWidth = 0.8;
+          c.beginPath();
+          c.moveTo(archX - aiw/2, archBot); c.lineTo(archX - aiw/2, ainy);
+          c.quadraticCurveTo(archX - aiw/2, aiy, archX, aiy);
+          c.quadraticCurveTo(archX + aiw/2, aiy, archX + aiw/2, ainy);
+          c.lineTo(archX + aiw/2, archBot); c.stroke();
+        }
         c.restore();
 
-        // ── Side arched windows ──
         const drawSideArch = (sx: number) => {
           const sw = archW * 0.4, sh = archH * 0.38;
-          const sl = sx - sw/2, sr = sx + sw/2;
-          const sTop = archBot - sh;
-          const sNeck = archBot - sh * 0.6;
+          const sl = sx - sw/2, sTop = archBot - sh, sNeck = archBot - sh * 0.6;
           c.save();
           c.beginPath();
           c.moveTo(sl, archBot); c.lineTo(sl, sNeck);
           c.quadraticCurveTo(sl, sTop, sx, sTop);
-          c.quadraticCurveTo(sr, sTop, sr, sNeck);
-          c.lineTo(sr, archBot); c.closePath(); c.clip();
-          c.fillStyle = '#150604'; c.fillRect(sl, sTop, sw, sh + 2);
+          c.quadraticCurveTo(sx + sw/2, sTop, sx + sw/2, sNeck);
+          c.lineTo(sx + sw/2, archBot); c.closePath(); c.clip();
+          // IMPROVEMENT: Better window interior
+          const wShadow = c.createRadialGradient(sx, sTop + sh*0.3, 2, sx, sTop + sh*0.3, sw*0.5);
+          wShadow.addColorStop(0, '#080201'); wShadow.addColorStop(1, '#120503');
+          c.fillStyle = wShadow; c.fillRect(sl, sTop, sw, sh + 2);
           c.restore();
-          // Border
-          c.strokeStyle = 'rgba(200,160,120,0.15)'; c.lineWidth = 1;
+          c.strokeStyle = 'rgba(200,160,120,0.18)'; c.lineWidth = 1.2;
           c.beginPath();
           c.moveTo(sl, archBot); c.lineTo(sl, sNeck);
           c.quadraticCurveTo(sl, sTop, sx, sTop);
-          c.quadraticCurveTo(sr, sTop, sr, sNeck);
-          c.lineTo(sr, archBot); c.stroke();
+          c.quadraticCurveTo(sx + sw/2, sTop, sx + sw/2, sNeck);
+          c.lineTo(sx + sw/2, archBot); c.stroke();
+          // IMPROVEMENT: Window inlay border
+          c.strokeStyle = 'rgba(232,213,184,0.12)'; c.lineWidth = 0.6;
+          c.stroke();
         };
-        drawSideArch(cx - wallW * 0.28);
-        drawSideArch(cx + wallW * 0.28);
-        drawSideArch(cx - wallW * 0.42);
-        drawSideArch(cx + wallW * 0.42);
+        drawSideArch(cx - wallW * 0.28); drawSideArch(cx + wallW * 0.28);
+        drawSideArch(cx - wallW * 0.42); drawSideArch(cx + wallW * 0.42);
 
-        // ── Rim light (golden hour sun from right) ──
-        c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = rev * sa * 0.12;
-        c.fillStyle = '#ffcc66';
-        c.fillRect(wallR - 3, wallTop - merlonH, 4, wallH + merlonH);
+        // IMPROVEMENT: Enhanced rim light with gradient
+        c.save(); c.globalCompositeOperation = 'screen';
+        // Right edge rim
+        const rimG = c.createLinearGradient(wallR - 5, 0, wallR + 2, 0);
+        rimG.addColorStop(0, 'rgba(0,0,0,0)'); rimG.addColorStop(0.5, 'rgba(255,200,100,0.15)'); rimG.addColorStop(1, 'rgba(0,0,0,0)');
+        c.globalAlpha = rev * sa * 0.8;
+        c.fillStyle = rimG; c.fillRect(wallR - 5, wallTop - merlonH, 7, wallH + merlonH);
         // Top edge rim
-        c.fillRect(wallL, wallTop - merlonH - 1, wallW, 2);
+        const topRimG = c.createLinearGradient(0, wallTop - merlonH - 2, 0, wallTop - merlonH + 4);
+        topRimG.addColorStop(0, 'rgba(0,0,0,0)'); topRimG.addColorStop(0.4, 'rgba(255,200,100,0.12)'); topRimG.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = topRimG; c.fillRect(wallL, wallTop - merlonH - 2, wallW, 6);
+        // Merlon top rim
+        c.globalAlpha = rev * sa * 0.15;
+        c.fillStyle = '#ffcc66';
+        for (let mx = wallL + merlonGap; mx < wallR - merlonW; mx += merlonW + merlonGap) {
+          c.fillRect(mx, wallTop - merlonH - 0.5, merlonW, 1);
+        }
         c.restore();
 
         c.restore();
       },
 
-      /* ── TORCH ── */
+      /* ── TORCH: Enhanced glow with heat distortion hint ── */
       torch: (t: number, el: number, sa: number) => {
         if (t < 2.5) return;
         const tx = cx, ty = baseY - 6;
         const fa = cl((t-2.5)*1.2, 0, 1) * sa;
         c.save(); c.globalAlpha = fa; c.globalCompositeOperation = 'lighter';
-        const gg = c.createRadialGradient(tx, ty, 0, tx, ty, 80);
-        gg.addColorStop(0, 'rgba(255,140,20,0.6)'); gg.addColorStop(0.5, 'rgba(255,60,5,0.15)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = gg; c.fillRect(tx-80, ty-80, 160, 200);
-        const fl = Math.sin(el*30)*3, fH = 30+fl;
-        const fg = c.createLinearGradient(tx, ty, tx, ty-fH);
-        fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.2, 'rgba(255,210,80,0.9)');
-        fg.addColorStop(0.6, 'rgba(255,120,20,0.5)'); fg.addColorStop(1, 'rgba(255,50,0,0)');
-        c.fillStyle = fg; c.beginPath();
-        c.moveTo(tx-8, ty); c.quadraticCurveTo(tx-3, ty-fH*0.5, tx, ty-fH);
-        c.quadraticCurveTo(tx+3, ty-fH*0.5, tx+8, ty); c.closePath(); c.fill();
+        // IMPROVEMENT: Larger ambient glow
+        const ag = c.createRadialGradient(tx, ty - 15, 0, tx, ty - 15, 140);
+        ag.addColorStop(0, 'rgba(255,100,10,0.15)'); ag.addColorStop(0.5, 'rgba(255,60,5,0.04)'); ag.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = ag; c.fillRect(tx - 140, ty - 155, 280, 280);
+        // Core glow
+        const gg = c.createRadialGradient(tx, ty, 0, tx, ty, 60);
+        gg.addColorStop(0, 'rgba(255,180,40,0.7)'); gg.addColorStop(0.5, 'rgba(255,80,10,0.15)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = gg; c.fillRect(tx-60, ty-60, 120, 160);
+        const fl = Math.sin(el*30)*3 + Math.sin(el*47)*1.5, fH = 32+fl;
+        // IMPROVEMENT: Multi-layer flame
+        for (let fi = 0; fi < 3; fi++) {
+          const fOff = fi * 0.15, fW = 8 - fi * 2, fAlpha = 1 - fi * 0.3;
+          const ffg = c.createLinearGradient(tx, ty, tx, ty - fH * fAlpha);
+          ffg.addColorStop(0, fi === 0 ? '#ffffff' : 'rgba(255,220,100,0.6)');
+          ffg.addColorStop(0.15 + fOff, 'rgba(255,200,70,0.7)');
+          ffg.addColorStop(0.5, `rgba(255,${120-fi*30|0},20,0.4)`);
+          ffg.addColorStop(1, 'rgba(255,50,0,0)');
+          c.fillStyle = ffg; c.beginPath();
+          c.moveTo(tx - fW, ty); c.quadraticCurveTo(tx - fW*0.4, ty - fH*0.5, tx, ty - fH * fAlpha);
+          c.quadraticCurveTo(tx + fW*0.4, ty - fH*0.5, tx + fW, ty); c.closePath(); c.fill();
+        }
         c.restore();
       },
 
-      /* ── FLAG: Hoisting then waving ── */
+      /* ── FLAG: Enhanced cloth sim with fold shading ── */
       flag: (t: number, el: number, sa: number) => {
         if (t < 3.0) return;
         const ra = cl((t-3.0)*1.0, 0, 1) * sa;
@@ -670,17 +828,19 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           }
         }
 
+        // IMPROVEMENT: Better wind with turbulence
         for (let i = 1; i < numPts; i++) {
-          const wind = 0.14 + noise.n2(el*0.55 + i*0.11, 0) * 0.13;
-          fN[i].vx = (fN[i].x - fN[i].ox) * 0.94 + wind;
-          fN[i].vy = (fN[i].y - fN[i].oy) * 0.94 + 0.02;
+          const wind = 0.14 + noise.n2(el*0.55 + i*0.11, 0) * 0.13 + noise.n2(el*1.2 + i*0.3, 1) * 0.04;
+          fN[i].vx = (fN[i].x - fN[i].ox) * 0.93 + wind;
+          fN[i].vy = (fN[i].y - fN[i].oy) * 0.93 + 0.02 + noise.n2(el*0.8 + i*0.2, 2) * 0.01;
           fN[i].ox = fN[i].x; fN[i].oy = fN[i].y;
           fN[i].x += fN[i].vx; fN[i].y += fN[i].vy;
         }
         fN[0].x = cx; fN[0].y = curY;
 
         const ll = fw / (numPts - 1);
-        for (let s = 0; s < 5; s++) {
+        // IMPROVEMENT: More constraint iterations for stiffer cloth
+        for (let s = 0; s < 8; s++) {
           for (let i = 0; i < numPts - 1; i++) {
             const a = fN[i], b = fN[i+1];
             const dx = b.x-a.x, dy = b.y-a.y;
@@ -693,16 +853,24 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         }
 
         c.save(); c.globalAlpha = ra;
-        // Pole
         const pg = c.createLinearGradient(cx-2, pTopY, cx+2, pBaseY);
         pg.addColorStop(0, '#eee'); pg.addColorStop(0.5, '#fff'); pg.addColorStop(1, '#aaa');
         c.fillStyle = pg; c.fillRect(cx-2, pTopY, 4, pH);
+        // IMPROVEMENT: Pole shadow on wall
+        c.save(); c.globalAlpha = 0.06;
+        c.fillStyle = '#000';
+        c.fillRect(cx + 2, pTopY + 20, 6, pH - 20);
+        c.restore();
         c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3.5, 0, 6.283); c.fill();
 
-        // Flag strips
+        // Flag strips with fold shading
         for (let i = 0; i < numPts - 1; i++) {
           const a = fN[i], b = fN[i+1];
-          const sh = 0.85 + Math.sin(i*0.3 - el*4) * 0.15;
+          // IMPROVEMENT: Per-segment fold shading based on curvature
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const curvature = Math.abs(dy) / (Math.abs(dx) + 0.01);
+          const foldDarken = cl(1 - curvature * 0.3, 0.7, 1.0);
+          const sh = (0.82 + Math.sin(i*0.3 - el*4) * 0.18) * foldDarken;
           const shade = (hex: string) => {
             const h = hex.replace('#','');
             return `rgb(${parseInt(h.substring(0,2),16)*sh|0},${parseInt(h.substring(2,4),16)*sh|0},${parseInt(h.substring(4,6),16)*sh|0})`;
@@ -713,9 +881,30 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
           c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
+
+          // IMPROVEMENT: Fold crease lines
+          if (curvature > 0.15) {
+            c.save(); c.globalAlpha = ra * curvature * 0.12;
+            c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 0.5;
+            c.beginPath(); c.moveTo((a.x+b.x)/2, a.y); c.lineTo((a.x+b.x)/2, a.y + fh); c.stroke();
+            c.restore();
+          }
         }
 
-        // Chakra
+        // IMPROVEMENT: Flag edge flutter — small wave at free edge
+        if (unfurl > 0.5) {
+          const lastN = fN[numPts - 1];
+          const flutter = Math.sin(el * 6) * 2;
+          c.save(); c.globalAlpha = ra * 0.15;
+          c.fillStyle = '#000';
+          c.beginPath();
+          c.moveTo(lastN.x, lastN.y + fh);
+          c.quadraticCurveTo(lastN.x + 3 + flutter, lastN.y + fh * 0.5, lastN.x + 1 + flutter * 0.5, lastN.y);
+          c.quadraticCurveTo(lastN.x + 3 + flutter, lastN.y + fh * 1.5, lastN.x, lastN.y + fh);
+          c.fill();
+          c.restore();
+        }
+
         if (unfurl > 0.15) {
           const mi = numPts/2|0;
           const chx = fN[mi].x, chy = fN[mi].y + fh/2, cr = fh*0.11*unfurl;
@@ -729,27 +918,32 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      /* ── VOLUMETRIC LIGHT ── */
+      /* ── VOLUMETRIC LIGHT: Enhanced god rays ── */
       volLight: (t: number, sa: number) => {
         if (t < 3.5 || t > 11) return;
-        const int = cl((t-3.5)*0.18, 0, 0.45) * cl((11-t)*0.3, 0, 1) * sa;
+        const int = cl((t-3.5)*0.18, 0, 0.4) * cl((11-t)*0.3, 0, 1) * sa;
         c.save(); c.globalAlpha = int; c.globalCompositeOperation = 'screen';
         const sx = cx + W*0.12, sy = baseY - gateH*0.4;
-        for (let i = 0; i < 12; i++) {
-          const a = -1.2 + (i/12)*2.4;
-          const len = sc * 1.2;
+        // IMPROVEMENT: Variable width rays with noise
+        for (let i = 0; i < 16; i++) {
+          const a = -1.4 + (i/16)*2.8;
+          const nw = noise.n2(t * 0.3 + i, 0) * 0.015;
+          const len = sc * (1.0 + noise.n2(i * 0.5, t * 0.2) * 0.3);
           c.beginPath(); c.moveTo(sx, sy);
-          c.lineTo(sx + Math.cos(a-0.04)*len, sy + Math.sin(a-0.04)*len);
-          c.lineTo(sx + Math.cos(a+0.04)*len, sy + Math.sin(a+0.04)*len);
+          c.lineTo(sx + Math.cos(a - 0.03 + nw)*len, sy + Math.sin(a - 0.03 + nw)*len);
+          c.lineTo(sx + Math.cos(a + 0.03 + nw)*len, sy + Math.sin(a + 0.03 + nw)*len);
           c.closePath();
           const rg = c.createLinearGradient(sx, sy, sx + Math.cos(a)*len, sy + Math.sin(a)*len);
-          rg.addColorStop(0, 'rgba(255,210,120,0.18)'); rg.addColorStop(0.5, 'rgba(255,120,40,0.04)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+          rg.addColorStop(0, 'rgba(255,215,120,0.15)');
+          rg.addColorStop(0.3, 'rgba(255,140,50,0.06)');
+          rg.addColorStop(0.7, 'rgba(255,100,40,0.02)');
+          rg.addColorStop(1, 'rgba(0,0,0,0)');
           c.fillStyle = rg; c.fill();
         }
         c.restore();
       },
 
-      /* ── KITES: Realistic patang with tail ── */
+      /* ── KITES: Enhanced with cloth shading, wrinkles, translucency ── */
       drawKites: (t: number, sa: number) => {
         if (t < 1.5) return;
         const ka = cl((t-1.5)*1.0, 0, 1) * (t > 11 ? cl((12-t),0,1) : 1) * sa;
@@ -764,11 +958,18 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           c.save(); c.translate(k.x, k.y); c.rotate(tilt);
           const s = 16 * k.scale;
 
-          // Body - slight 3D curve effect
+          // IMPROVEMENT: Paper translucency — back-light glow
+          c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = ka * 0.1;
+          const tlg = c.createRadialGradient(0, 0, 0, 0, 0, s * 1.2);
+          tlg.addColorStop(0, 'rgba(255,240,200,0.3)'); tlg.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = tlg; c.beginPath(); c.arc(0, 0, s*1.2, 0, 6.283); c.fill();
+          c.restore();
+
           const bodyGrad = c.createLinearGradient(-s, 0, s, 0);
-          bodyGrad.addColorStop(0, '#ff9933'); bodyGrad.addColorStop(0.46, '#ffe0b0');
-          bodyGrad.addColorStop(0.50, '#ffffff'); bodyGrad.addColorStop(0.54, '#ffffff');
-          bodyGrad.addColorStop(0.58, '#c8f0c8'); bodyGrad.addColorStop(1, '#128807');
+          bodyGrad.addColorStop(0, '#e08830'); bodyGrad.addColorStop(0.20, '#ff9933');
+          bodyGrad.addColorStop(0.45, '#ffe8c0'); bodyGrad.addColorStop(0.50, '#ffffff');
+          bodyGrad.addColorStop(0.55, '#ffffff'); bodyGrad.addColorStop(0.60, '#d0f0d0');
+          bodyGrad.addColorStop(0.80, '#128807'); bodyGrad.addColorStop(1, '#0e6e06');
           c.fillStyle = bodyGrad;
           c.beginPath();
           c.moveTo(0, -s*1.35);
@@ -778,33 +979,44 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           c.bezierCurveTo(-s*1.05, -s*0.2, -s*0.4, -s*0.8, 0, -s*1.35);
           c.fill();
 
-          // Bamboo frame
-          c.strokeStyle = 'rgba(120,80,30,0.35)'; c.lineWidth = 0.8;
+          // IMPROVEMENT: Paper wrinkle lines
+          c.save(); c.globalAlpha = 0.08; c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 0.3;
+          for (let wl = 0; wl < 3; wl++) {
+            const wy = -s*0.6 + wl * s * 0.5;
+            c.beginPath(); c.moveTo(-s*0.8, wy);
+            c.quadraticCurveTo(0, wy + Math.sin(t*2 + wl)*s*0.1, s*0.8, wy);
+            c.stroke();
+          }
+          c.restore();
+
+          c.strokeStyle = 'rgba(100,65,25,0.3)'; c.lineWidth = 0.8;
           c.beginPath(); c.moveTo(0, -s*1.35); c.lineTo(0, s*1.15); c.stroke();
           c.beginPath(); c.moveTo(-s*1.05, 0); c.quadraticCurveTo(0, -s*0.15, s*1.05, 0); c.stroke();
 
-          // Tail with bows
-          c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 0.6;
+          // IMPROVEMENT: Better tail with more natural movement
+          c.strokeStyle = 'rgba(255,255,255,0.15)'; c.lineWidth = 0.5;
           c.beginPath(); c.moveTo(0, s*1.15);
           const tailLen = Math.min(H - k.y, s * 18);
-          const tailWave = Math.sin(t*2 + k.tailPhase) * s * 0.4;
-          c.bezierCurveTo(tailWave, s*1.15 + tailLen*0.3, -tailWave*0.7, s*1.15 + tailLen*0.6, tailWave*0.3, s*1.15 + tailLen);
+          const tw1 = Math.sin(t*2 + k.tailPhase) * s * 0.5;
+          const tw2 = Math.sin(t*1.5 + k.tailPhase + 2) * s * 0.3;
+          c.bezierCurveTo(tw1, s*1.15 + tailLen*0.25, -tw2, s*1.15 + tailLen*0.55, tw1*0.3, s*1.15 + tailLen);
           c.stroke();
 
-          // Tail bows (latexage)
           for (let bi = 1; bi <= 5; bi++) {
             const by = s*1.15 + tailLen * (bi/6);
-            const bx = Math.sin(t*2 + k.tailPhase + bi) * s * 0.3 * (bi/5);
+            const bx = Math.sin(t*2 + k.tailPhase + bi) * s * 0.35 * (bi/5);
             const bowColors = ['#ff9933', '#ffffff', '#128807'];
-            c.fillStyle = bowColors[bi % 3]; c.globalAlpha = ka * 0.6;
-            c.beginPath(); c.arc(bx, by, s*0.2, 0, 6.283); c.fill();
+            // IMPROVEMENT: 3D bow shape
+            c.fillStyle = bowColors[bi % 3]; c.globalAlpha = ka * 0.55;
+            c.beginPath();
+            c.ellipse(bx, by, s*0.25, s*0.12, Math.sin(t*3 + bi)*0.5, 0, 6.283);
+            c.fill();
             c.globalAlpha = ka;
           }
 
-          // String going down
-          c.strokeStyle = 'rgba(200,200,200,0.08)'; c.lineWidth = 0.4;
+          c.strokeStyle = 'rgba(200,200,200,0.06)'; c.lineWidth = 0.3;
           c.beginPath(); c.moveTo(0, s*1.15);
-          c.lineTo(Math.sin(t*0.5+k.tailPhase)*30, H - k.y + 50);
+          c.lineTo(Math.sin(t*0.5+k.tailPhase)*25, H - k.y + 50);
           c.stroke();
 
           c.restore();
@@ -812,7 +1024,7 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
-      /* ── DOVES ── */
+      /* ── DOVES: Enhanced silhouettes with motion blur ── */
       doves: (t: number, el: number, sa: number) => {
         if (t < 2.5) return;
         const da = cl((t-2.5)*1.0, 0, 1) * sa;
@@ -835,22 +1047,44 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           c.save(); c.translate(b.x, b.y);
           c.rotate(b.state === 'flying' ? Math.atan2(b.vy, b.vx) + b.bank : 0);
           const s = 0.48; c.scale(s, s);
+
+          // IMPROVEMENT: Motion blur trail for flying birds
+          if (b.state === 'flying') {
+            c.save(); c.globalAlpha = 0.15;
+            c.translate(-b.vx * 2, -b.vy * 2);
+            c.rotate(-b.bank * 0.3);
+            c.fillStyle = '#ddd';
+            c.beginPath(); c.ellipse(0, 0, 13, 4.5, 0, 0, 6.283); c.fill();
+            c.restore();
+          }
+
           if (b.state === 'flying') {
             const wf = Math.sin(b.wing);
-            c.fillStyle = '#f5f5f5';
+            // IMPROVEMENT: Better wing shape with feather suggestion
+            c.fillStyle = '#f0f0f0';
             c.beginPath(); c.ellipse(0, 0, 14, 5, 0, 0, 6.283); c.fill();
             c.beginPath(); c.arc(12, -2, 3.5, 0, 6.283); c.fill();
+            // Tail feathers
+            c.fillStyle = '#e8e8e8';
+            c.beginPath(); c.moveTo(-10, 2); c.lineTo(-18, 5); c.lineTo(-12, 3); c.closePath(); c.fill();
             [-1,1].forEach(sd => {
               c.save(); c.scale(1, sd); c.rotate(wf*0.5 - 0.15);
-              c.fillStyle = '#eee';
-              c.beginPath(); c.moveTo(0,0); c.lineTo(-7,-14); c.lineTo(-12,-12); c.closePath(); c.fill();
+              // IMPROVEMENT: Better wing silhouette
+              c.fillStyle = '#e8e8e8';
+              c.beginPath(); c.moveTo(0, 0); c.lineTo(-5, -8); c.lineTo(-9, -12); c.lineTo(-14, -10); c.lineTo(-12, -5); c.lineTo(-6, 0); c.closePath(); c.fill();
+              // Feather detail
+              c.strokeStyle = 'rgba(0,0,0,0.05)'; c.lineWidth = 0.3;
+              c.beginPath(); c.moveTo(-2, -2); c.lineTo(-8, -8); c.stroke();
               c.restore();
             });
           } else {
             const hb = Math.sin(el*4 + b.noiseSeed)*0.8;
-            c.fillStyle = '#eee';
-            c.beginPath(); c.ellipse(0, 2, 12, 6, 0.1, 0, 6.283); c.fill();
+            c.fillStyle = '#e8e8e8';
+            c.beginPath(); c.ellipse(0, 2, 12, 6, 0.1, 0,  6.283); c.fill();
             c.beginPath(); c.arc(9, -2+hb, 3.5, 0, 6.283); c.fill();
+            // Beak
+            c.fillStyle = '#d4a030';
+            c.beginPath(); c.moveTo(13, -2+hb); c.lineTo(16, -1+hb); c.lineTo(13, 0+hb); c.closePath(); c.fill();
           }
           c.restore();
         });
@@ -858,12 +1092,22 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
       },
 
       /* ═══════════════════════════════════════════════════════════
-         TYPOGRAPHY — 80th Anniversary Edition
+         TYPOGRAPHY: Enhanced with glow, shimmer, cinematic shadow
          ═══════════════════════════════════════════════════════════ */
       typography: (t: number) => {
         if (t < 12.5) return;
         const titleY = lerp(H*0.56, H*0.40, eOE((t-12.5)*0.45));
         c.save();
+
+        // IMPROVEMENT: Background glow behind text
+        if (t >= 12.5 && t < 17) {
+          const ga = cl((t-12.5)*0.8, 0, 1) * (t > 17 ? cl((17.5-t)*2, 0, 1) : 1);
+          c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = ga * 0.06;
+          const tg = c.createRadialGradient(W*0.5, titleY, 0, W*0.5, titleY, W*0.3);
+          tg.addColorStop(0, 'rgba(255,180,60,0.3)'); tg.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = tg; c.fillRect(0, titleY - 40, W, 80);
+          c.restore();
+        }
 
         const fs = Math.min(W*0.06, 48);
         c.font = `700 ${fs}px 'Cinzel','Playfair Display',Georgia,serif`;
@@ -877,29 +1121,48 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           if (ct <= 0) { xo += cw; continue; }
           const cy = titleY + (1 - eOB(ct)) * -14;
           c.save(); c.globalAlpha = eOC(ct);
-          c.fillStyle = 'rgba(0,0,0,0.9)'; c.fillText(title[i], xo+2, cy+2);
+
+          // IMPROVEMENT: Better shadow — offset + blur
+          c.fillStyle = 'rgba(0,0,0,0.7)'; c.fillText(title[i], xo+3, cy+3);
+          c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillText(title[i], xo+1, cy+1);
+
           const sg = c.createLinearGradient(xo, cy-fs*0.5, xo, cy+fs*0.38);
           sg.addColorStop(0, '#FF9933'); sg.addColorStop(0.47, '#FFFFFF');
           sg.addColorStop(0.53, '#FFFFFF'); sg.addColorStop(1, '#138808');
           c.fillStyle = sg; c.fillText(title[i], xo, cy);
+
+          // IMPROVEMENT: Gold shimmer on each letter
+          if (ct > 0.5 && ct < 0.9) {
+            const shimmer = Math.sin(t * 8 + i * 2.5) * 0.5 + 0.5;
+            c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = shimmer * 0.08;
+            c.fillStyle = '#ffd700';
+            c.fillText(title[i], xo, cy);
+            c.restore();
+          }
           c.restore(); xo += cw;
         }
 
-        // 80th Anniversary
         if (t > 14.0) {
           const sa = cl((t-14.0)*1.8, 0, 1);
-          c.save(); c.globalAlpha = sa;
-          c.textAlign = 'center';
+          c.save(); c.globalAlpha = sa; c.textAlign = 'center';
+          // IMPROVEMENT: Subtle glow on anniversary text
+          c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = sa * 0.15;
           c.font = `400 ${fs*0.32}px 'Cinzel','Georgia',serif`;
-          c.fillStyle = '#c89a18';
-          c.fillText("80th Anniversary  •  1947 — 2027", W*0.5, titleY + fs*0.85);
+          c.fillStyle = '#ffd700'; c.fillText("80th Anniversary  •  1947 — 2027", W*0.5, titleY + fs*0.85);
+          c.restore();
+          c.font = `400 ${fs*0.32}px 'Cinzel','Georgia',serif`;
+          c.fillStyle = '#c89a18'; c.fillText("80th Anniversary  •  1947 — 2027", W*0.5, titleY + fs*0.85);
           c.restore();
         }
 
-        // जय हिन्द
         if (t > 15.0) {
           const ja = cl((t-15.0)*2, 0, 1);
           c.save(); c.globalAlpha = ja; c.textAlign = 'center';
+          // IMPROVEMENT: Glow on जय हिन्द
+          c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = ja * 0.12;
+          c.font = `500 ${fs*0.6}px 'Georgia',serif`;
+          c.fillStyle = '#ffd700'; c.fillText("जय हिन्द", W*0.5, titleY + fs*1.35);
+          c.restore();
           c.font = `500 ${fs*0.6}px 'Georgia',serif`;
           c.fillStyle = '#ffd700'; c.fillText("जय हिन्द", W*0.5, titleY + fs*1.35);
           c.restore();
@@ -907,19 +1170,50 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       },
 
+      /* ── FIREWORKS: Enhanced with smoke, flash, trails ── */
       fireworks: (sa: number) => {
         c.save(); c.globalCompositeOperation = 'lighter';
+        // IMPROVEMENT: Draw smoke trails
+        fwSmoke.forEach(s => {
+          c.globalAlpha = s.a * sa * 0.5;
+          c.fillStyle = `rgba(180,170,160,${s.a * 0.15})`;
+          c.beginPath(); c.arc(s.x, s.y, s.sz, 0, 6.283); c.fill();
+        });
+        // Reset alpha for fireworks
+        c.globalAlpha = sa;
+
         fwList.forEach(fw => {
           if (fw.state === 'rising') {
+            // IMPROVEMENT: Rising trail glow
+            c.fillStyle = 'rgba(255,230,150,0.4)';
+            c.beginPath(); c.arc(fw.x, fw.y, 4, 0, 6.283); c.fill();
             c.fillStyle = 'rgba(255,230,150,0.95)';
-            c.beginPath(); c.arc(fw.x, fw.y, 2.5, 0, 6.283); c.fill();
+            c.beginPath(); c.arc(fw.x, fw.y, 2, 0, 6.283); c.fill();
           } else {
+            // IMPROVEMENT: Burst flash (first 0.15s)
+            if (fw.burstT < 0.15) {
+              const flashA = 1 - fw.burstT / 0.15;
+              c.globalAlpha = flashA * sa;
+              const flashG = c.createRadialGradient(fw.x, fw.y, 0, fw.x, fw.y, 30 + fw.burstT * 100);
+              flashG.addColorStop(0, 'rgba(255,255,255,0.6)');
+              flashG.addColorStop(1, 'rgba(0,0,0,0)');
+              c.fillStyle = flashG; c.beginPath(); c.arc(fw.x, fw.y, 30 + fw.burstT * 100, 0, 6.283); c.fill();
+              c.globalAlpha = sa;
+            }
             fw.pts.forEach(pt => {
               const a = cl(pt.life/pt.ml, 0, 1) * sa;
-              const fg = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pt.sz*2);
-              fg.addColorStop(0, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${a})`);
+              // IMPROVEMENT: Long fading trail
+              const trailA = a * 0.3;
+              if (trailA > 0.05) {
+                c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${trailA * 0.3})`;
+                c.beginPath(); c.arc(pt.x - pt.vx*1.5, pt.y - pt.vy*1.5, pt.sz*1.5, 0, 6.283); c.fill();
+              }
+              // Main particle with better glow
+              const fg = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pt.sz*2.5);
+              fg.addColorStop(0, `rgba(${Math.min(255,fw.col.r+60)},${Math.min(255,fw.col.g+60)},${Math.min(255,fw.col.b+60)},${a})`);
+              fg.addColorStop(0.4, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${a * 0.6})`);
               fg.addColorStop(1, 'rgba(0,0,0,0)');
-              c.fillStyle = fg; c.beginPath(); c.arc(pt.x, pt.y, pt.sz*2, 0, 6.283); c.fill();
+              c.fillStyle = fg; c.beginPath(); c.arc(pt.x, pt.y, pt.sz*2.5, 0, 6.283); c.fill();
             });
           }
         });
@@ -931,15 +1225,12 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
        PARTICLES
        ═══════════════════════════════════════════════════════════ */
     const spawnP = (t: number, el: number) => {
-      // Fog
       if (Math.random() < 0.10) {
         const p = grab(pl); if (p) { p.on=true; p.x=Math.random()*W; p.y=H*0.6+Math.random()*H*0.3; p.vx=(Math.random()-0.5)*0.15; p.vy=-0.04; p.life=8; p.ml=8; p.sz=30+Math.random()*35; p.r=200; p.g=190; p.b=170; p.a=0.04; p.tp=1; }
       }
-      // Gold dust
       if (t > 4 && t < 11 && Math.random() < 0.3) {
         const p = grab(pl); if (p) { p.on=true; p.x=Math.random()*W; p.y=H+10; p.vx=(Math.random()-0.5)*0.4; p.vy=-0.35-Math.random()*0.6; p.life=6; p.ml=6; p.sz=1.5+Math.random()*2.5; p.r=255; p.g=200; p.b=50; p.a=0.7; p.tp=5; }
       }
-      // Marigold petals (Red Fort decoration)
       if (t >= 4.5 && t < 11.5 && Math.random() < 0.25) {
         const p = grab(pl); if (p) {
           p.on=true; p.x=Math.random()*W; p.y=-15-Math.random()*25;
@@ -953,15 +1244,28 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           p.a=0.8; p.tp=2;
         }
       }
-      // Torch embers
       if (t > 2.5 && Math.random() < 0.2) {
         const p = grab(pl); if (p) { p.on=true; p.x=cx+(Math.random()-0.5)*12; p.y=baseY-6; p.vx=(Math.random()-0.5)*0.5; p.vy=-1.0-Math.random()*1.5; p.life=2.5; p.ml=2.5; p.sz=0.8+Math.random()*1.5; p.r=255; p.g=120+Math.random()*80|0; p.b=30; p.a=0.9; p.tp=3; }
+      }
+      // IMPROVEMENT: Floating pollen / atmospheric dust
+      if (t > 3 && t < 11 && Math.random() < 0.06) {
+        const p = grab(pl); if (p) {
+          p.on=true; p.x=Math.random()*W; p.y=Math.random()*H*0.7;
+          p.vx=(Math.random()-0.5)*0.15; p.vy=-0.02+Math.random()*0.03;
+          p.life=10; p.ml=10; p.sz=0.8+Math.random()*0.6;
+          p.r=255; p.g=240; p.b=180; p.a=0.25; p.tp=7;
+        }
       }
     };
 
     const updateP = (dt: number, el: number) => {
       for (let i = 0; i < pl.length; i++) {
         const p = pl[i]; if (!p.on) continue; p.life -= dt;
+        // IMPROVEMENT: Store previous position for motion blur
+        if (p.tp === 2 || p.tp === 3 || p.tp === 6) {
+          if (p.prevX === undefined) { p.prevX = p.x; p.prevY = p.y; }
+          else { p.prevX = p.x; p.prevY = p.y; }
+        }
         if (p.tp === 2) {
           p.vy += 0.012; p.vy *= 0.988;
           p.vx = p.vx*0.95 + Math.sin(el*0.7 + p.y*0.01)*0.025;
@@ -970,7 +1274,17 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           p.vy *= 0.992;
           p.vx = p.vx*0.96 + noise.n2(el*0.4+p.y*0.008, p.turbOff)*0.12;
           p.x += p.vx; p.y += p.vy;
-        } else { p.x += p.vx; p.y += p.vy; }
+        } else if (p.tp === 6) {
+          // Secondary firework sparks — fast decay
+          p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.vx *= 0.94; p.vy *= 0.94;
+        } else if (p.tp === 7) {
+          // Pollen — very gentle drift
+          p.vx += Math.sin(el*0.3 + p.turbOff)*0.005;
+          p.vy += Math.cos(el*0.2 + p.turbOff)*0.003;
+          p.x += p.vx; p.y += p.vy;
+        } else {
+          p.x += p.vx; p.y += p.vy;
+        }
         if (p.life <= 0 || p.x < -100 || p.x > W+100 || p.y > H+100) p.on = false;
       }
     };
@@ -981,6 +1295,18 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         const a = cl(p.life/p.ml, 0, 1) * p.a;
         c.save(); c.globalAlpha = a;
         if (p.tp === 2) {
+          // IMPROVEMENT: Motion blur for petals
+          if (p.prevX !== undefined) {
+            const dx = p.x - p.prevX, dy = p.y - p.prevY;
+            const spd = Math.sqrt(dx*dx + dy*dy);
+            if (spd > 0.5) {
+              c.save(); c.globalAlpha = a * 0.25;
+              c.translate(p.prevX - dx * 0.5, p.prevY - dy * 0.5); c.rotate(p.rot - p.rs);
+              c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
+              c.beginPath(); c.ellipse(0, 0, p.sz*0.5, p.sz*0.8, 0, 0, 6.283); c.fill();
+              c.restore();
+            }
+          }
           c.translate(p.x, p.y); c.rotate(p.rot);
           c.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
           c.beginPath(); c.ellipse(0, 0, p.sz*0.6, p.sz, 0, 0, 6.283); c.fill();
@@ -988,13 +1314,25 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
           c.beginPath(); c.arc(0, 0, p.sz*0.3, 0, 6.283); c.fill();
         } else if (p.tp === 5) {
           c.globalCompositeOperation = 'lighter';
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
-          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
+          const gg = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz*2);
+          gg.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a})`);
+          gg.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = gg; c.beginPath(); c.arc(p.x, p.y, p.sz*2, 0, 6.283); c.fill();
         } else if (p.tp === 3) {
           c.globalCompositeOperation = 'lighter';
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
-        } else {
+        } else if (p.tp === 6) {
+          // IMPROVEMENT: Secondary spark rendering
+          c.globalCompositeOperation = 'lighter';
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
+        } else if (p.tp === 7) {
+          // IMPROVEMENT: Pollen — tiny bright dot
+          c.globalCompositeOperation = 'lighter';
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a * 0.5})`;
+          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
+        } else if (p.tp === 1) {
           c.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
           c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
         }
@@ -1003,24 +1341,90 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
     };
 
     /* ═══════════════════════════════════════════════════════════
-       POST PROCESSING
+       POST PROCESSING: Cinematic film look
        ═══════════════════════════════════════════════════════════ */
     const postFX = () => {
-      // Warm color grade
+      // IMPROVEMENT: Filmic color grading — warm highlights, teal shadows
       c.save(); c.globalCompositeOperation = 'soft-light';
-      const cg = c.createLinearGradient(0, 0, W, H);
-      cg.addColorStop(0, 'rgba(255,140,50,0.12)');
-      cg.addColorStop(1, 'rgba(0,40,80,0.18)');
+      const cg = c.createLinearGradient(0, 0, W * 0.3, H);
+      cg.addColorStop(0, 'rgba(255,140,50,0.10)');
+      cg.addColorStop(0.5, 'rgba(255,180,100,0.06)');
+      cg.addColorStop(1, 'rgba(0,50,90,0.12)');
       c.fillStyle = cg; c.fillRect(0, 0, W, H);
       c.restore();
-      // Vignette
-      const vg = c.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.85);
-      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+
+      // IMPROVEMENT: Teal shadow push
+      c.save(); c.globalCompositeOperation = 'multiply';
+      c.globalAlpha = 0.03;
+      c.fillStyle = 'rgb(240,245,255)';
+      c.fillRect(0, 0, W, H);
+      c.restore();
+
+      // IMPROVEMENT: Soft contrast S-curve
+      c.save(); c.globalCompositeOperation 'soft-light'; c.globalAlpha = 0.04;
+      c.fillStyle = 'rgb(128,128,128)'; c.fillRect(0, 0, W, H);
+      c.restore();
+
+      // IMPROVEMENT: Better vignette — softer falloff
+      const vg = c.createRadialGradient(W/2, H/2, H*0.28, W/2, H/2, H*0.82);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(0.5, 'rgba(0,0,0,0.08)');
+      vg.addColorStop(0.8, 'rgba(0,0,0,0.35)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.6)');
       c.fillStyle = vg; c.fillRect(0, 0, W, H);
-      // Grain
-      c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.025;
+
+      // IMPROVEMENT: Soft bloom via screen overlay
+      c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.02;
+      const bloomG = c.createRadialGradient(W*0.65, baseY - gateH*0.3, 0, W*0.65, baseY - gateH*0.3, sc*0.4);
+      bloomG.addColorStop(0, 'rgba(255,180,80,0.15)'); bloomG.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = bloomG; c.fillRect(0, 0, W, H);
+      c.restore();
+
+      // IMPROVEMENT: Film grain — warmer, more subtle
+      c.save(); c.globalCompositeOperation = 'overlay'; c.globalAlpha = 0.018;
       const pat = c.createPattern(grainCv, 'repeat');
       if (pat) { c.fillStyle = pat; c.fillRect(0, 0, W, H); }
+      c.restore();
+    };
+
+    /* ═══════════════════════════════════════════════════════════
+       LENS EFFECTS: Flare, subtle CA
+       ═══════════════════════════════════════════════════════════ */
+    const lensFX = (t: number) => {
+      // IMPROVEMENT: Lens flare near sun
+      if (t > 2 && t < 12) {
+        const fi = cl((t-2)/2, 0, 1) * cl((12-t)/1, 0, 1);
+        if (fi > 0.1) {
+          const sunX = cx + W * 0.15, sunY = baseY - gateH * 0.15;
+          c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = fi * 0.06;
+          const flarePoints = [
+            { d: 0.08, r: 12, a: 0.4 }, { d: 0.15, r: 20, a: 0.2 },
+            { d: 0.25, r: 35, a: 0.1 }, { d: 0.4, r: 50, a: 0.05 },
+          ];
+          const dx = W/2 - sunX, dy = H/2 - sunY;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const nx = dx/dist, ny = dy/dist;
+          flarePoints.forEach(fp => {
+            const fx = sunX + nx * dist * fp.d, fy = sunY + ny * dist * fp.d;
+            const fg = c.createRadialGradient(fx, fy, 0, fx, fy, fp.r);
+            fg.addColorStop(0, `rgba(255,220,150,${fp.a})`);
+            fg.addColorStop(1, 'rgba(255,150,50,0)');
+            c.fillStyle = fg; c.beginPath(); c.arc(fx, fy, fp.r, 0, 6.283); c.fill();
+          });
+          // Anamorphic streak
+          c.globalAlpha = fi * 0.03;
+          const streakG = c.createLinearGradient(sunX, sunY, W/2, H/2);
+          streakG.addColorStop(0, 'rgba(255,200,120,0.5)');
+          streakG.addColorStop(1, 'rgba(255,200,120,0)');
+          c.fillStyle = streakG;
+          c.fillRect(Math.min(sunX, W/2), sunY - 2, Math.abs(W/2 - sunX) + 2, 4);
+          c.restore();
+        }
+      }
+      // IMPROVEMENT: Subtle chromatic aberration — only at edges
+      c.save(); c.globalCompositeOperation = 'screen';
+      c.globalAlpha = 0.006; c.drawImage(cv, -1.5, 0, W, H);
+      c.globalAlpha = 0.004; c.drawImage(cv, 1.5, 0, W, H);
       c.restore();
     };
 
@@ -1040,12 +1444,10 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         return;
       }
 
-      // Fireworks
       if (t >= 6.0 && t < 12.0) {
         fwT += dt;
         if (fwT > 0.7 + Math.random()*0.5) { spawnFW(); fwT = 0; }
       }
-      // Extra fireworks during text
       if (t >= 13.0 && t < 17.0) {
         fwT += dt;
         if (fwT > 1.2) { spawnFW(); fwT = 0; }
@@ -1054,12 +1456,12 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
       spawnP(t, now/1000);
       updateP(dt, now/1000);
 
-      // Clear
       c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
 
-      // Subtle cinematic camera
+      // IMPROVEMENT: Subtle cinematic dolly + breathing
       camShake *= 0.92;
-      const bx = Math.sin(t*0.35)*1.5 + (Math.random()-0.5)*camShake;
+      const dollyX = Math.sin(t * 0.05) * 3; // Very slow horizontal drift
+      const bx = Math.sin(t*0.35)*1.5 + (Math.random()-0.5)*camShake + dollyX;
       const by = Math.cos(t*0.25)*1.0 + (Math.random()-0.5)*camShake;
       const zoom = 1.0 + Math.sin(t*0.08)*0.008;
 
@@ -1068,7 +1470,6 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
       c.scale(zoom, zoom);
       c.translate(-W/2, -H/2);
 
-      // Scene alpha: fade out scene before text
       const sa = t < 11.5 ? 1 : cl(1 - (t-11.5)*1.5, 0, 1);
 
       R.sky(t, sa);
@@ -1086,7 +1487,6 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
 
       c.restore();
 
-      // Transition to dark background for text
       if (t >= 11.5 && t < 13.5) {
         const bf = cl((t-11.5)*1.5, 0, 1);
         c.save(); c.globalAlpha = bf;
@@ -1096,19 +1496,10 @@ export default function IndependenceDayCinematicIntro({ onComplete }: Props) {
         c.restore();
       }
 
-      // Typography (drawn on top of dark bg)
       R.typography(t);
-
-      // Post processing
       postFX();
+      lensFX(t);
 
-      // Subtle chromatic aberration
-      c.save(); c.globalCompositeOperation = 'screen';
-      c.globalAlpha = 0.008; c.drawImage(cv, -1, 0, W, H);
-      c.globalAlpha = 0.006; c.drawImage(cv, 1, 0, W, H);
-      c.restore();
-
-      // Final fade to white then black
       if (t >= 17.5) {
         const wa = cl((t-17.5)*0.8, 0, 1);
         c.save(); c.globalAlpha = wa;
