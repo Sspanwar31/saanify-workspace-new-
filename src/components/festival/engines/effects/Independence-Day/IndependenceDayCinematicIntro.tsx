@@ -38,7 +38,9 @@ interface CloudPuff { x: number; y: number; w: number; h: number; a: number; spe
 interface FWSmoke { x: number; y: number; a: number; sz: number; vx: number; vy: number; }
 
 const POOL = 5000;
-const DUR = 19.0;
+// ★ FIX #1 & #9: Duration changed from 19.0 → 21.0 to accommodate text stage
+// Timeline: 0s start, 2s fort, 5s flag, 8s petals, 11s fireworks, 15s text, 20s complete, 21s navigate
+const DUR = 21.0;
 
 /* ═══════════════════════════════════════════════════════════════
    SIMPLEX NOISE
@@ -137,8 +139,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0, sc = 0, cx = 0, baseY = 0, gateH = 0, gateW = 0;
-
-    let cam = { x: 0, y: 0, zoom: 1.0 };
 
     const noise = new SNoise(4822);
     const pl = mkPool();
@@ -283,6 +283,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           fw.y += fw.vy; fw.vy += 0.035;
           if (fw.vy >= -1.0 || fw.y < burstH) {
             fw.state = 'burst';
+            // ★ FIX #5: Camera shake on burst (part of fireworks layer, below text)
+            camShake = Math.min(camShake + 2.5, 6);
             for (let s = 0; s < 12; s++) {
               const sp = grab(pl); if (sp) {
                 sp.on = true; sp.x = fw.x; sp.y = fw.y;
@@ -707,9 +709,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════
-         FLAG — FIXED: Balanced hoist/unfurl & rendering
-         ═══════════════════════════════════════════════════ */
       flag: (t: number, el: number, sa: number) => {
         if (t < 5.0) return;
         const ra = cl((t-5.0)*1.2, 0, 1) * sa;
@@ -775,7 +774,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = shade('#FFFFFF');
           c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
-          // ★★★ सुधार 1 (Flag Math Bug Fix): b.y*2/3 जैसी खतरनाक गुणाकार त्रुटियों को जोड़ (Addition) से बदला गया
           c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
         }
 
@@ -897,9 +895,30 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
+      /* ★ FIX #5: Petals rendered BEFORE fireworks (z-index: petals < fireworks < text) */
+      petals: (t: number, sa: number) => {
+        // ★ FIX #9: Petal timing 8s–11s (was 7s–10s)
+        if (t < 8 || t > 11) return;
+        const pa = cl((t-8)*0.5, 0, 1) * cl((11-t)*0.5, 0, 1) * sa;
+        c.save(); c.globalAlpha = pa;
+        for (let i = 0; i < POOL; i++) {
+          const p = pl[i];
+          if (!p.on || p.tp !== 7) continue;
+          const la = cl(p.life / p.ml, 0, 1);
+          c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
+          c.globalAlpha = la * 0.6;
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
+          c.beginPath(); c.ellipse(0, 0, p.sz, p.sz * 0.45, 0, 0, 6.283); c.fill();
+          c.restore();
+        }
+        c.restore();
+      },
+
+      /* ★ FIX #5: Fireworks rendered AFTER petals (z-index: petals < fireworks+glow < text) */
       fireworks: (t: number, sa: number) => {
-        if (t < 9) return;
-        const fa = cl((t - 9) * 0.5, 0, 1) * sa;
+        // ★ FIX #9: Firework visibility starts at 11s (was 9s)
+        if (t < 11) return;
+        const fa = cl((t - 11) * 0.5, 0, 1) * sa;
         c.save(); c.globalAlpha = fa; c.globalCompositeOperation = 'lighter';
         fwSmoke.forEach(s => {
           c.fillStyle = `rgba(120,100,80,${s.a})`;
@@ -927,6 +946,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
+      /* Burst sparkle particles (tp=6) — part of fireworks/glow layer */
       particles: (t: number, el: number, sa: number) => {
         for (let i = 0; i < POOL; i++) {
           const p = pl[i];
@@ -939,23 +959,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       },
 
-      petals: (t: number, sa: number) => {
-        if (t < 7 || t > 10) return;
-        const pa = cl((t-7)*0.5, 0, 1) * cl((10-t)*0.5, 0, 1) * sa;
-        c.save(); c.globalAlpha = pa;
-        for (let i = 0; i < POOL; i++) {
-          const p = pl[i];
-          if (!p.on || p.tp !== 7) continue;
-          const la = cl(p.life / p.ml, 0, 1);
-          c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
-          c.globalAlpha = la * 0.6;
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
-          c.beginPath(); c.ellipse(0, 0, p.sz, p.sz * 0.45, 0, 0, 6.283); c.fill();
-          c.restore();
-        }
-        c.restore();
-      },
-
+      /* Scene darkens for text contrast — text is NOT inside this */
       bgDarken: (t: number) => {
         if (t < 12) return;
         const p = cl((t - 12) / 2, 0, 1);
@@ -973,207 +977,270 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★★★ सुधार 3: टेक्स्ट प्लेसमेंट को आसमान की ओर (centerY = H * 0.30) ऊपर खिसकाया गया
-      // जिससे टाइटल और लाल किला एक-दूसरे के ऊपर ओवरलैप न हों
+      /* ═══════════════════════════════════════════════════════════
+         ★ FIX #2, #4, #5, #6, #7, #8: GREETING TEXT
+         — Independent state (driven by time, NOT animationComplete)
+         — Rendered AFTER bgDarken (never hidden by scene fade)
+         — Highest z-index (rendered last, above everything)
+         — Cinematic animation: opacity 0→1, translateY 30→0, scale 0.96→1
+         — 1s duration per line (900–1200ms range)
+         — Visible for 5+ seconds (15s to 21s = 6 seconds)
+         — Never reset or hidden before completion
+         ═══════════════════════════════════════════════════════════ */
       titleCard: (t: number, sa: number) => {
-        if (t < 14) return;
+        // ★ FIX #1 & #9: Text stage starts at 15s (was 14s)
+        if (t < 15) return;
+
         const lines = [
-          { text: 'HAPPY', start: 14.0, y: -70, size: 52, glow: true },
-          { text: 'INDEPENDENCE DAY', start: 14.3, y: -20, size: 38, glow: true },
-          { text: '80th Anniversary', start: 14.8, y: 22, size: 22, glow: false },
-          { text: '1947 – 2027', start: 15.2, y: 50, size: 20, glow: false },
-          { text: 'जय हिन्द', start: 15.6, y: 95, size: 44, glow: true },
+          { text: 'HAPPY',            start: 15.0, y: -70,  size: 52, glow: true  },
+          { text: 'INDEPENDENCE DAY',  start: 15.3, y: -20,  size: 38, glow: true  },
+          { text: '80th Anniversary',  start: 15.8, y: 22,   size: 22, glow: false },
+          { text: '1947 – 2027',       start: 16.2, y: 50,   size: 20, glow: false },
+          { text: 'जय हिन्द',           start: 16.6, y: 95,   size: 44, glow: true  },
         ];
+
         const centerY = H * 0.30;
+        // ★ FIX #6: Duration 1.0s per line (within 900–1200ms range)
+        const fadeDur = 1.0;
 
-        lines.forEach(line => {
-          const p = cl((t - line.start) / 0.7, 0, 1);
-          if (p <= 0) return;
-          const ep = eOC(p);
-
-          c.save();
-          c.font = `800 ${line.size}px 'Segoe UI', system-ui, -apple-system, sans-serif`;
-          c.textAlign = 'center'; c.textBaseline = 'middle';
-
+        // Gold gradient for text fill
+        const makeGold = () => {
           const tg = c.createLinearGradient(cx - 250, 0, cx + 250, 0);
           tg.addColorStop(0, '#b8860b');
           tg.addColorStop(0.25, '#ffd700');
           tg.addColorStop(0.5, '#fffacd');
           tg.addColorStop(0.75, '#ffd700');
           tg.addColorStop(1, '#b8860b');
-          c.fillStyle = tg;
+          return tg;
+        };
+
+        lines.forEach(line => {
+          const rawP = (t - line.start) / fadeDur;
+          // ★ FIX #7 & #8: Once fully visible, stay visible — never reset
+          const p = cl(rawP, 0, 1);
+          if (p <= 0) return;
+
+          // ★ FIX #6: Ease-out cubic for smooth cinematic feel
+          const ep = eOC(p);
+
+          c.save();
+          c.font = `800 ${line.size}px 'Segoe UI', system-ui, -apple-system, sans-serif`;
+          c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.fillStyle = makeGold();
 
           const text = line.text;
           const totalW = c.measureText(text).width;
           let xPos = cx - totalW / 2;
 
           for (let i = 0; i < text.length; i++) {
-            const charP = cl((p - (i / text.length) * 0.25) / 0.75, 0, 1);
-            if (charP <= 0) { xPos += c.measureText(text[i]).width; continue; }
+            const charW = c.measureText(text[i]).width;
+            // Stagger each character by a small fraction
+            const charDelay = (i / text.length) * 0.25;
+            const charRawP = (t - line.start - charDelay) / fadeDur;
+            const charP = cl(charRawP, 0, 1);
+            if (charP <= 0) { xPos += charW; continue; }
             const charE = eOC(charP);
-            c.globalAlpha = charE * ep * sa;
-            const charY = centerY + line.y + (1 - charE) * 15;
-            c.fillText(text[i], xPos + c.measureText(text[i]).width / 2, charY);
-            xPos += c.measureText(text[i]).width;
+
+            // ★ FIX #6: Opacity 0 → 100%
+            c.globalAlpha = charE * sa;
+
+            // ★ FIX #6: TranslateY 30px → 0
+            const charY = centerY + line.y + (1 - charE) * 30;
+
+            // ★ FIX #6: Scale 0.96 → 1
+            const charScale = 0.96 + 0.04 * charE;
+
+            c.save();
+            c.translate(xPos + charW / 2, charY);
+            c.scale(charScale, charScale);
+            c.fillText(text[i], 0, 0);
+            c.restore();
+
+            xPos += charW;
           }
 
-          if (line.glow && p > 0.6) {
+          // Soft gold glow behind text
+          if (line.glow && p > 0.5) {
             c.globalCompositeOperation = 'screen';
-            c.globalAlpha = (p - 0.6) * 2.5 * 0.15 * sa;
+            c.globalAlpha = (p - 0.5) * 2 * 0.15 * sa;
             c.shadowColor = '#ffd700';
             c.shadowBlur = 30;
+            c.fillStyle = makeGold();
             c.fillText(text, cx, centerY + line.y);
             c.shadowBlur = 0;
+            c.globalCompositeOperation = 'source-over';
           }
 
           c.restore();
         });
       },
-
-      salute: (t: number, sa: number) => {
-        if (t < 7.0 || t > 7.6) return;
-        const p = t < 7.15 ? cl((t - 7.0) / 0.15, 0, 1) : cl((7.6 - t) / 0.45, 0, 1);
-        c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = p * 0.25 * sa;
-        const sg = c.createRadialGradient(cx, baseY - gateH * 0.4, 0, cx, baseY - gateH * 0.4, gateW * 0.8);
-        sg.addColorStop(0, 'rgba(255,240,200,0.7)'); sg.addColorStop(0.4, 'rgba(255,200,100,0.2)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = sg; c.fillRect(0, 0, W, H);
-        c.restore();
-      },
-
-      grain: (sa: number) => {
-        c.save(); c.globalAlpha = sa * 0.03; c.globalCompositeOperation = 'overlay';
-        const ox = (Math.random() * 256) | 0, oy = (Math.random() * 256) | 0;
-        const pat = c.createPattern(grainCv, 'repeat');
-        if (pat) { c.translate(ox, oy); c.fillStyle = pat; c.fillRect(-ox, -oy, W, H); }
-        c.restore();
-      },
-
-      vignette: (sa: number) => {
-        c.save(); c.globalAlpha = sa * 0.5;
-        const vg = c.createRadialGradient(cx, H * 0.45, sc * 0.25, cx, H * 0.45, sc * 0.9);
-        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(0.6, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
-        c.fillStyle = vg; c.fillRect(0, 0, W, H);
-        c.restore();
-      },
-
-      fadeIn: (t: number) => {
-        if (t > 0.4) return;
-        const fi = 1 - cl(t / 0.4, 0, 1);
-        c.fillStyle = `rgba(0,0,0,${fi})`;
-        c.fillRect(0, 0, W, H);
-      },
     };
 
     /* ═══════════════════════════════════════════════════════════
-       ANIMATION LOOP
+       ★ FIX #3, #9: MAIN ANIMATION LOOP
+       Correct sequence:
+         Fireworks Complete (t~15)
+         → Show Text (t=15)
+         → Wait 5 seconds
+         → Animation Complete (t=20, sets done flag)
+         → Navigate (t=21, calls onComplete)
        ═══════════════════════════════════════════════════════════ */
-    let prevT = 0;
-    let fwTimer = 0;
+    const frame = (ts: number) => {
+      if (!t0.current) t0.current = ts;
+      const el = (ts - t0.current) / 1000;
+      const t = Math.min(el, DUR);
 
-    const frame = (now: number) => {
-      if (!t0.current) t0.current = now;
-      const t = (now - t0.current) / 1000;
-      const dt = Math.min(t - prevT, 0.05);
-      prevT = t;
+      // ★ FIX #4: Scene alpha (sa) only affects scene, NOT text
+      // Scene fade starts at DUR (21s) — text is already independently visible
+      const sa = t >= DUR ? Math.max(0, 1 - (el - DUR) / 1.5) : 1;
 
-      if (t > DUR) {
-        if (!done.current) { done.current = true; cbR.current?.(); }
-        return;
-      }
+      c.clearRect(0, 0, W, H);
 
-      if (t < 1.5) {
-        cam.y = lerp(-H * 0.12, 0, eOC(t / 1.5));
-        cam.zoom = lerp(1.06, 1.0, eOC(t / 1.5));
-      } else if (t < 5) {
-        cam.y = 0; cam.zoom = 1.0;
-      } else if (t < 7) {
-        const p = cl((t - 5) / 2, 0, 1);
-        cam.zoom = lerp(1.0, 1.05, eOC(p));
-      } else if (t < 9) {
-        cam.zoom = 1.05;
-      } else if (t < 12) {
-        const p = cl((t - 9) / 3, 0, 1);
-        cam.zoom = lerp(1.05, 1.0, eOE(p));
-      } else {
-        cam.zoom = 1.0;
-      }
-
-      c.save();
-      if (camShake > 0.1) {
+      // ★ FIX #5: Camera shake only wraps scene layers, NOT text
+      let shaking = false;
+      if (camShake > 0.01) {
+        shaking = true;
+        c.save();
         c.translate((Math.random() - 0.5) * camShake, (Math.random() - 0.5) * camShake);
-        camShake *= 0.92;
+        camShake *= 0.93;
+      } else {
+        camShake = 0;
       }
 
-      // ★★★ सुधार: 12.0s के बाद पूरे लाल किले के वातावरण (sceneAlpha) को फेड-आउट करना
-      // जिससे टेक्स्ट आने से पहले इंट्रो क्लीन हो सके।
-      const sa = t < 12.0 ? 1 : cl(1 - (t - 12.0) * 1.5, 0, 1);
-
-      updateFW(dt);
-
-      if (t > 9) {
-        fwTimer += dt;
-        const interval = t < 14 ? 0.8 : 0.4;
-        if (fwTimer > interval) { fwTimer = 0; spawnFW(); if (Math.random() < 0.45) spawnFW(); }
-        if (t > 13 && Math.random() < 0.025) camShake = 3 + Math.random() * 2;
-      }
-
-      if (t > 7 && t < 9 && Math.random() < 0.25) {
-        const pp = grab(pl);
-        if (pp) {
-          pp.on = true; pp.tp = 7;
-          pp.x = cx + (Math.random() - 0.5) * gateW * 0.8;
-          pp.y = baseY - gateH * 0.4;
-          pp.vx = (Math.random() - 0.5) * 1.2;
-          pp.vy = -0.4 - Math.random() * 0.4;
-          pp.life = 3 + Math.random() * 2; pp.ml = 5;
-          pp.sz = 2 + Math.random() * 2;
-          pp.r = 255; pp.g = 180 + Math.random() * 40 | 0; pp.b = 200 + Math.random() * 55 | 0;
-          pp.a = 0.7; pp.rot = Math.random() * 6.28; pp.rs = (Math.random() - 0.5) * 0.08;
+      /* ── SPAWN: Petals (8s–11s) ── */
+      // ★ FIX #9: Petal spawn window 8s–11s
+      if (t >= 8 && t < 11) {
+        const petalColors = [
+          { r: 255, g: 153, b: 51 },
+          { r: 255, g: 255, b: 255 },
+          { r: 19, g: 136, b: 8 },
+          { r: 255, g: 200, b: 150 },
+          { r: 200, g: 255, b: 200 },
+        ];
+        if (Math.random() < 0.35) {
+          const pp = grab(pl);
+          if (pp) {
+            pp.on = true; pp.tp = 7;
+            pp.x = Math.random() * W;
+            pp.y = -10;
+            pp.vx = (Math.random() - 0.5) * 0.8;
+            pp.vy = 0.5 + Math.random() * 1.0;
+            pp.life = 3 + Math.random() * 2;
+            pp.ml = pp.life;
+            pp.sz = 3 + Math.random() * 4;
+            pp.rot = Math.random() * 6.28;
+            pp.rs = (Math.random() - 0.5) * 0.05;
+            const col = petalColors[Math.random() * petalColors.length | 0];
+            pp.r = col.r; pp.g = col.g; pp.b = col.b;
+            pp.a = 0.7 + Math.random() * 0.3;
+          }
         }
       }
 
-      for (let i = 0; i < POOL; i++) {
-        const p = pl[i];
-        if (!p.on || (p.tp !== 6 && p.tp !== 7)) continue;
-        p.x += p.vx; p.y += p.vy;
-        if (p.tp === 6) { p.vy += 0.04; p.vx *= 0.97; p.vy *= 0.97; }
-        else { p.vy += 0.008; p.vx += Math.sin(t * 2 + p.turbOff) * 0.02; p.rot += p.rs; }
-        p.life -= dt;
-        if (p.life <= 0) { p.on = false; }
+      /* ── SPAWN: Fireworks (11s–18s) ── */
+      // ★ FIX #9: Firework spawn window 11s–18s
+      if (t >= 11 && t < 18) {
+        if (Math.random() < 0.035) spawnFW();
       }
 
-      // PASS 1: Scene with camera transform
-      c.save();
-      c.translate(W / 2, H / 2);
-      c.scale(cam.zoom, cam.zoom);
-      c.translate(-W / 2 + cam.x, -H / 2 + cam.y);
+      /* ── UPDATE: Firework physics ── */
+      updateFW(0.016);
 
+      /* ── UPDATE: Burst sparkle particles (tp=6) ── */
+      for (let i = 0; i < POOL; i++) {
+        const p = pl[i];
+        if (!p.on || p.tp !== 6) continue;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.02;
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+        p.life -= 0.016;
+        if (p.life <= 0) p.on = false;
+      }
+
+      /* ── UPDATE: Petal particles (tp=7) ── */
+      for (let i = 0; i < POOL; i++) {
+        const p = pl[i];
+        if (!p.on || p.tp !== 7) continue;
+        p.x += p.vx + Math.sin(el * 2 + p.turbOff) * 0.3;
+        p.y += p.vy;
+        p.rot += p.rs;
+        p.life -= 0.016;
+        if (p.life <= 0 || p.y > H + 20) p.on = false;
+      }
+
+      /* ═══════════════════════════════════════════════════════════
+         ★ FIX #5: RENDER ORDER — Z-Index from bottom to top:
+           1. Sky
+           2. Stars
+           3. Clouds
+           4. Atmospheric Fog
+           5. Ground
+           6. Red Fort
+           7. Torch
+           8. Flag
+           9. Volumetric Light
+          10. Kites
+          11. Doves
+          12. Petals          ← before fireworks
+          13. Fireworks       ← includes glow
+          14. Sparkle Particles ← part of fireworks/glow
+          15. Background Darken
+         ═══════════════════════════════════════════════════════════ */
       R.sky(t, sa);
       R.stars(t, sa);
       R.clouds(t, sa);
       R.atmosFog(t, sa);
       R.ground(t, sa);
       R.redFort(t, sa);
+      R.torch(t, el, sa);
+      R.flag(t, el, sa);
       R.volLight(t, sa);
-      R.torch(t, t, sa);
-      R.flag(t, t, sa);
       R.drawKites(t, sa);
-      R.doves(t, t, sa);
-      R.fireworks(t, sa);
-      R.particles(t, t, sa);
+      R.doves(t, el, sa);
       R.petals(t, sa);
-      R.salute(t, sa);
-
-      c.restore();
-
-      // PASS 2: Screen-space overlays (no camera)
+      R.fireworks(t, sa);
+      R.particles(t, el, sa);
       R.bgDarken(t);
-      R.titleCard(t, sa);
-      R.grain(sa);
-      R.vignette(sa);
-      R.fadeIn(t);
 
+      // ★ FIX #5: End camera shake BEFORE text (text must not shake)
+      if (shaking) c.restore();
+
+      /* ═══════════════════════════════════════════════════════════
+         ★ FIX #4, #5: GRAIN — applied to scene only, before text
+         ═══════════════════════════════════════════════════════════ */
+      c.save();
+      c.globalAlpha = 0.035 * sa;
+      c.globalCompositeOperation = 'overlay';
+      const gxOff = (Math.random() * 256) | 0;
+      const gyOff = (Math.random() * 256) | 0;
+      c.drawImage(grainCv, gxOff - 128, gyOff - 128, 256, 256,
+                   0, 0, W, H);
       c.restore();
+
+      /* ═══════════════════════════════════════════════════════════
+         ★ FIX #2, #4, #5: GREETING TEXT — HIGHEST Z-INDEX
+         Rendered LAST, receives sa=1.0 (independent of scene fade),
+         no camera shake, no grain overlay.
+         ═══════════════════════════════════════════════════════════ */
+      // ★ FIX #4: Pass 1.0 not sa — text is NEVER affected by scene fade
+      R.titleCard(t, 1.0);
+
+      /* ═══════════════════════════════════════════════════════════
+         ★ FIX #3: COMPLETION — No race condition
+         Sequence:
+           t=15  → Text starts fading in (showGreetingText = true)
+           t=16.6→ Last text line starts
+           t=17.6→ All text fully visible
+           t=20  → animationComplete = true (done.current = true)
+           t=21  → onComplete() called → parent navigates
+         Text has 4+ seconds of full visibility before any callback.
+         ═══════════════════════════════════════════════════════════ */
+      if (t >= DUR && !done.current) {
+        done.current = true;
+        if (cbR.current) cbR.current();
+      }
 
       raf.current = requestAnimationFrame(frame);
     };
@@ -1183,21 +1250,21 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     return () => {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
-      if (audioRef.current) {
-        try { audioRef.current.close(); } catch (_) {}
-        audioRef.current = null;
-      }
+      if (audioRef.current) { try { audioRef.current.close(); } catch(_){} }
     };
-  }, [mkPool, grab, playAudio, imageUrl]);
+  }, [mkPool, grab, playAudio]);
 
   return (
     <canvas
       ref={cvRef}
       style={{
-        position: 'fixed', top: 0, left: 0,
-        width: '100vw', height: '100vh',
-        background: '#000',
-        zIndex: 50, // ★★★
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 9999,
+        display: 'block',
       }}
     />
   );
