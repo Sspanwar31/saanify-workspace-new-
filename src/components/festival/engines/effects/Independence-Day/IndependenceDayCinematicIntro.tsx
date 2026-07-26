@@ -310,7 +310,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           fw.burstT += dt;
           for (let j = fw.pts.length-1; j >= 0; j--) {
             const pt = fw.pts[j];
-            pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.025; pt.vx *= 0.988; pt.vy *= 0.988; pt.life -= dt;
+            pt.x += pt.vx; pt.y += pt.vy;
+            pt.vy += 0.025; pt.vx *= 0.988; pt.vy *= 0.988; pt.life -= dt;
             if (pt.life <= 0) fw.pts.splice(j, 1);
           }
           if (fw.burstT > 0.8 && fw.state === 'burst' && Math.random() < 0.4) {
@@ -474,9 +475,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.lineTo(cx + pathW*0.6, H); c.lineTo(cx - pathW*0.6, H); c.closePath(); c.fill();
         c.fillStyle = 'rgba(180,140,100,0.08)';
         c.fillRect(cx - pathW/2, gT, pathW, 3);
-
-        // ★★★ "लाल किले की परछाई" सुधार: यहाँ बने वर्टिकल डार्क पिलर्स को हटा दिया गया है
-        // जिससे किला सीधे ज़मीन और नींव पर प्राकृतिक रूप से टिका हुआ दिखेगा।
 
         const drawTree = (tx: number, ty: number, s: number, a: number) => {
           c.save(); c.globalAlpha = a;
@@ -771,10 +769,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         for (let i = 0; i < numPts - 1; i++) {
           const a = fN[i], b = fN[i+1];
-          const dx = b.x - a.x, dy = b.y - a.y;
-          const curvature = Math.abs(dy) / (Math.abs(dx) + 0.01);
-          const foldDarken = cl(1 - curvature * 0.3, 0.7, 1.0);
-          const sh = (0.82 + Math.sin(i*0.3 - el*4) * 0.18) * foldDarken;
+          const sh = 0.82 + Math.sin(i*0.3 - el*4) * 0.18;
           const shade = (hex: string) => {
             const h = hex.replace('#','');
             return `rgb(${parseInt(h.substring(0,2),16)*sh|0},${parseInt(h.substring(2,4),16)*sh|0},${parseInt(h.substring(4,6),16)*sh|0})`;
@@ -784,7 +779,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = shade('#FFFFFF');
           c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
-          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
+          // ★★★ सुधार 1 (Flag Math Bug Fix): b.y*2/3 जैसी खतरनाक गुणाकार त्रुटियों को जोड़ (Addition) से बदला गया
+          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
         }
 
         if (unfurl > 0.15) {
@@ -981,18 +977,16 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★★★ सुधार 3: टेक्स्ट प्लेसमेंट को आसमान की ओर (centerY = H * 0.30) ऊपर खिसकाया गया
-      // जिससे टाइटल और लाल किला एक-दूसरे के ऊपर ओवरलैप न हों
       titleCard: (t: number, sa: number) => {
         if (t < 14) return;
         const lines = [
-          { text: 'HAPPY', start: 14.0, y: -65, size: Math.min(W * 0.05, 42), glow: true },
-          { text: 'INDEPENDENCE DAY', start: 14.3, y: -25, size: Math.min(W * 0.045, 30), glow: true },
-          { text: '80th Anniversary', start: 14.8, y: 10, size: Math.min(W * 0.025, 18), glow: false },
-          { text: '1947 – 2027', start: 15.2, y: 32, size: Math.min(W * 0.022, 16), glow: false },
-          { text: 'जय हिन्द', start: 15.6, y: 72, size: Math.min(W * 0.05, 36), glow: true },
+          { text: 'HAPPY', start: 14.0, y: -70, size: 52, glow: true },
+          { text: 'INDEPENDENCE DAY', start: 14.3, y: -20, size: 38, glow: true },
+          { text: '80th Anniversary', start: 14.8, y: 22, size: 22, glow: false },
+          { text: '1947 – 2027', start: 15.2, y: 50, size: 20, glow: false },
+          { text: 'जय हिन्द', start: 15.6, y: 95, size: 44, glow: true },
         ];
-        const centerY = H * 0.30; // ★★★ सुधार
+        const centerY = H * 0.30; // ★★★ सुधार: ताकि यह लाल किले के ऊपर न टकराए
         lines.forEach(line => {
           const p = cl((t - line.start) / 0.7, 0, 1);
           if (p <= 0) return;
@@ -1101,7 +1095,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         camShake *= 0.92;
       }
 
-      const sa = 1;
+      // ★★★ सुधार 2: 12.0s के बाद पूरे लाल किले के वातावरण (sceneAlpha) को फेड-आउट करना
+      // जिससे टेक्स्ट आने से पहले इंट्रो क्लीन हो सके।
+      const sa = t < 12.0 ? 1 : cl(1 - (t - 12.0) * 0.7, 0, 1);
 
       updateFW(dt);
 
