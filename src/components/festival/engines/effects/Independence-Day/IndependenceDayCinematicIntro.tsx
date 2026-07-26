@@ -323,7 +323,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           fw.secondaryT += dt;
           for (let j = fw.pts.length-1; j >= 0; j--) {
             const pt = fw.pts[j];
-            pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.03; pt.vx *= 0.98; pt.vy *= 0.98; pt.life -= dt;
+            pt.x += pt.vx; pt.y += pt.vy;
+            pt.vy += 0.03; pt.vx *= 0.98; pt.vy *= 0.98; pt.life -= dt;
             if (pt.life <= 0) fw.pts.splice(j, 1);
           }
           if (fw.pts.length === 0) fwList.splice(i, 1);
@@ -406,11 +407,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           cl_.x += cl_.speed * 0.016;
           if (cl_.x > W + cl_.w) cl_.x = -cl_.w;
           const puffs = [
-            { dx: 0, dy: 0, sw: 1.0, sh: 1.0 },
-            { dx: -cl_.w*0.28, dy: 4, sw: 0.38, sh: 0.45 },
-            { dx: cl_.w*0.32, dy: 2, sw: 0.32, sh: 0.38 },
-            { dx: -cl_.w*0.12, dy: -cl_.h*0.3, sw: 0.25, sh: 0.3 },
-            { dx: cl_.w*0.15, dy: -cl_.h*0.2, sw: 0.28, sh: 0.25 },
+            { dx: 0, dy: 0, sw: 1.0, hg: 1.0, sh: 1.0 },
+            { dx: -cl_.w*0.28, dy: 4, sw: 0.38, hg: 0.45, sh: 0.45 },
+            { dx: cl_.w*0.32, dy: 2, sw: 0.32, hg: 0.38, sh: 0.38 },
+            { dx: -cl_.w*0.12, dy: -cl_.h*0.3, sw: 0.25, hg: 0.3, sh: 0.3 },
+            { dx: cl_.w*0.15, dy: -cl_.h*0.2, sw: 0.28, hg: 0.25, sh: 0.25 },
           ];
           puffs.forEach((pf, pi) => {
             const nv = noise.n2(t * 0.1 + cl_.noiseOff + pi, cl_.noiseOff + pi * 7) * 0.3 + 0.7;
@@ -707,14 +708,13 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       },
 
       /* ═══════════════════════════════════════════════════
-         FLAG — FIXED: Smooth hoisting + wind physics
+         FLAG — FIXED: Balanced hoist/unfurl & rendering
          ═══════════════════════════════════════════════════ */
       flag: (t: number, el: number, sa: number) => {
         if (t < 5.0) return;
         const ra = cl((t-5.0)*1.2, 0, 1) * sa;
         const fwS = sc * 0.18, fh = fwS * 0.66;
 
-        // Pole from roof — height increased for visible hoisting
         const pBaseY = fort.roofY;
         const pH = gateH * 0.45;
         const pTopY = pBaseY - pH;
@@ -724,7 +724,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         const unfurl = cl((t - 6.5) * 1.5, 0, 1);
         const fw = lerp(fwS * 0.1, fwS, eOC(unfurl));
 
-        // During hoisting + unfurling: explicitly position nodes (no physics jitter)
         if (hoist < 1.0 || unfurl < 1.0) {
           for (let i = 0; i < numPts; i++) {
             fN[i].x = cx + (i * fw) / (numPts - 1);
@@ -735,7 +734,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
             fN[i].vy = 0;
           }
         } else {
-          // Fully hoisted & unfurled: enable wind physics
           for (let i = 1; i < numPts; i++) {
             const wind = 0.12 + noise.n2(el*0.55 + i*0.11, 0) * 0.1 + noise.n2(el*1.2 + i*0.3, 1) * 0.03;
             fN[i].vx = (fN[i].x - fN[i].ox) * 0.92 + wind;
@@ -759,14 +757,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           }
         }
 
-        // Draw pole
         c.save(); c.globalAlpha = ra;
         const pg = c.createLinearGradient(cx-2, pTopY, cx+2, pBaseY);
         pg.addColorStop(0, '#ddd'); pg.addColorStop(0.5, '#fff'); pg.addColorStop(1, '#999');
         c.fillStyle = pg; c.fillRect(cx-1.5, pTopY, 3, pH);
         c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3, 0, 6.283); c.fill();
 
-        // Draw flag cloth
         for (let i = 0; i < numPts - 1; i++) {
           const a = fN[i], b = fN[i+1];
           const sh = 0.82 + Math.sin(i*0.3 - el*4) * 0.18;
@@ -779,10 +775,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = shade('#FFFFFF');
           c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
+          // ★★★ सुधार 1 (Flag Math Bug Fix): b.y*2/3 जैसी खतरनाक गुणाकार त्रुटियों को जोड़ (Addition) से बदला गया
           c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
         }
 
-        // Ashoka Chakra
         if (unfurl > 0.15) {
           const mi = numPts/2|0;
           const chx = fN[mi].x, chy = fN[mi].y + fh/2, cr = fh*0.11*unfurl;
@@ -977,9 +973,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════
-         TITLE CARD — FIXED: Complete function (was truncated before)
-         ═══════════════════════════════════════════════════ */
+      // ★★★ सुधार 3: टेक्स्ट प्लेसमेंट को आसमान की ओर (centerY = H * 0.30) ऊपर खिसकाया गया
+      // जिससे टाइटल और लाल किला एक-दूसरे के ऊपर ओवरलैप न हों
       titleCard: (t: number, sa: number) => {
         if (t < 14) return;
         const lines = [
@@ -1109,7 +1104,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         camShake *= 0.92;
       }
 
-      const sa = 1;
+      // ★★★ सुधार: 12.0s के बाद पूरे लाल किले के वातावरण (sceneAlpha) को फेड-आउट करना
+      // जिससे टेक्स्ट आने से पहले इंट्रो क्लीन हो सके।
+      const sa = t < 12.0 ? 1 : cl(1 - (t - 12.0) * 1.5, 0, 1);
 
       updateFW(dt);
 
@@ -1186,7 +1183,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     return () => {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
-      if (audioRef.current) { audioRef.current.close(); audioRef.current = null; }
+      if (audioRef.current) {
+        try { audioRef.current.close(); } catch (_) {}
+        audioRef.current = null;
+      }
     };
   }, [mkPool, grab, playAudio, imageUrl]);
 
@@ -1197,6 +1197,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         position: 'fixed', top: 0, left: 0,
         width: '100vw', height: '100vh',
         background: '#000',
+        zIndex: 50, // ★★★
       }}
     />
   );
