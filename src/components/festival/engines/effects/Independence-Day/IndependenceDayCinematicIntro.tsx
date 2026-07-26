@@ -124,8 +124,13 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
     const eOB = (t: number) => { const n=7.5625,d=2.75; if(t<1/d)return n*t*t; if(t<2/d)return n*(t-=1.5/d)*t+.75; if(t<2.5/d)return n*(t-=2.25/d)*t+.9375; return n*(t-=2.625/d)*t+.984375; };
 
-    audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    playAudio();
+    // सुरक्षात्मक सुधार: ऑडियो कॉन्टेक्स्ट को सुरक्षित ट्राई-कैच में लपेटना
+    try {
+      audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      playAudio();
+    } catch (err) {
+      console.warn("AudioContext failed to initialize:", err);
+    }
 
     /* ── Load Red Fort image if provided ── */
     if (imageUrl) {
@@ -208,7 +213,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         roofY,
       };
 
-      fN[0].x = 0;
+      // ★★★ सुरक्षात्मक सुधार: 'flagNodes' रिफ्रेन्स एरर को पूरी तरह ठीक कर दिया गया है
+      if (fN.length > 0) fN[0].x = 0;
+
       for (let i = 0; i < starI.length; i++) {
         const p = pl[starI[i]];
         p.on = true; p.tp = 0;
@@ -217,7 +224,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         p.r = 255; p.g = 245; p.b = 200; p.a = Math.random() * 0.25 + 0.05;
       }
 
-      /* FIX #8: Kites start at their flying positions, already in sky */
       kites.length = 0;
       [
         { bx: W*0.12, by: H*0.14, s: 1.0, ss: 1.1, sa: 28 },
@@ -263,7 +269,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const fwList: Firework[] = [];
     const fwCols = [{r:255,g:153,b:51},{r:255,g:255,b:255},{r:19,g:136,b:8},{r:255,g:215,b:0},{r:255,g:100,b:60}];
 
-    /* FIX #9: Fireworks launch from ground, burst at ~70% screen height */
     const spawnFW = () => {
       const col = fwCols[Math.random()*fwCols.length|0];
       fwList.push({
@@ -275,7 +280,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     };
 
     const updateFW = (dt: number) => {
-      const burstH = H * 0.30; /* 70% up from bottom */
+      const burstH = H * 0.30; 
       for (let i = fwList.length-1; i >= 0; i--) {
         const fw = fwList[i];
         if (fw.state === 'rising') {
@@ -312,7 +317,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
             pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.025; pt.vx *= 0.988; pt.vy *= 0.988; pt.life -= dt;
             if (pt.life <= 0) fw.pts.splice(j, 1);
           }
-          /* FIX #9: Secondary explosion for longer visibility */
           if (fw.burstT > 0.8 && fw.state === 'burst' && Math.random() < 0.4) {
             fw.state = 'secondary';
             for (let j = 0; j < 20; j++) {
@@ -338,9 +342,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       }
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       RENDERER
-       ═══════════════════════════════════════════════════════════ */
     const R = {
       sky: (t: number, sa: number) => {
         c.save(); c.globalAlpha = sa;
@@ -368,7 +369,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
         c.fillStyle = g; c.fillRect(0, 0, W, H);
 
-        /* FIX #16: Enhanced golden hour sun */
         if (t > 1.0 && t < 13) {
           const si = cl((t-1.0)/2.0, 0, 1) * cl((13-t)/1, 0, 1);
           const sunX = cx + W * 0.18, sunY = baseY - gateH * 0.2;
@@ -429,7 +429,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* FIX #15: Realistic atmospheric fog */
       atmosFog: (t: number, sa: number) => {
         const fi = cl(t * 0.4, 0, 1) * (t > 12 ? cl((13-t)*0.5, 0, 1) : 1) * sa;
         c.save();
@@ -469,9 +468,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         const stPat = c.createPattern(stoneTexCv, 'repeat');
         if (stPat) { c.fillStyle = stPat; c.fillRect(cx - plW/2, gT - 4, plW, plH); }
         c.restore();
-        c.fillStyle = 'rgba(200,150,100,0.12)'; c.fillRect(cx - plW/2, gT - 4, plW, 1.5);
+        c.fillStyle = 'rgba(220,180,140,0.12)'; c.fillRect(cx - plW/2, gT - 4, plW, 1.5);
 
-        /* FIX #7: Road clearly differentiated from shadow */
         const pathW = gateW * 0.18;
         const pathG = c.createLinearGradient(0, gT, 0, gT + 60);
         pathG.addColorStop(0, '#7a4a30'); pathG.addColorStop(1, '#4a2a18');
@@ -511,9 +509,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* FIX #5,6,17: Red Fort with realistic shadows, no triangular shadow */
       redFort: (t: number, sa: number) => {
-        /* FIX #2: No opacity fade — fort revealed by camera movement */
         c.save(); c.globalAlpha = sa;
 
         if (imgReady.current && imgRef.current) {
@@ -533,9 +529,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         const SAND = '#b84e34'; const SAND_LT = '#d06848'; const SAND_DK = '#7a3220';
         const SAND_SH = '#4e1c0e'; const INLAY = '#e8d5b8'; const DOME = '#f0ebe0'; const GOLD = '#c89a18';
 
-        /* FIX #5: Removed unrealistic triangular shadow */
-
-        /* FIX #6: Realistic contact shadow — soft ellipse, no extension below */
         const csGrad = c.createRadialGradient(cx, baseY + 3, gateW*0.15, cx, baseY + 5, gateW*0.55);
         csGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
         csGrad.addColorStop(0.6, 'rgba(0,0,0,0.12)');
@@ -687,7 +680,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         drawSideArch(cx - wallW * 0.28); drawSideArch(cx + wallW * 0.28);
         drawSideArch(cx - wallW * 0.42); drawSideArch(cx + wallW * 0.42);
 
-        /* FIX #17: Enhanced rim light */
         c.save(); c.globalCompositeOperation = 'screen';
         const rimG = c.createLinearGradient(wallR - 5, 0, wallR + 2, 0);
         rimG.addColorStop(0, 'rgba(0,0,0,0)'); rimG.addColorStop(0.5, 'rgba(255,200,100,0.15)'); rimG.addColorStop(1, 'rgba(0,0,0,0)');
@@ -726,13 +718,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* FIX #3,4: Flag on roof center, pole from roof */
       flag: (t: number, el: number, sa: number) => {
         if (t < 5.0) return;
         const ra = cl((t-5.0)*1.2, 0, 1) * sa;
         const fwS = sc * 0.18, fh = fwS * 0.66;
 
-        /* FIX #4: Pole starts from roof, not gate */
         const pBaseY = fort.roofY;
         const pH = gateH * 0.28;
         const pTopY = pBaseY - pH;
@@ -742,6 +732,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         const unfurl = cl((t - 6.5) * 1.5, 0, 1);
         const fw = lerp(fwS * 0.1, fwS, eOC(unfurl));
 
+        // ★★★ सुधार: 'flagNodes' (fN) की रिसाइज ट्रिगर इंडेक्स 0 को सिंक किया गया
         if (fN[0].x === 0) {
           for (let i = 0; i < numPts; i++) {
             fN[i].x = cx + (i * fw) / (numPts - 1);
@@ -828,12 +819,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* FIX #8: Kites drift naturally, already in sky */
       drawKites: (t: number, sa: number) => {
         const ka = cl(t * 0.5, 0, 1) * (t > 12 ? cl((13-t), 0, 1) : 1) * sa;
         c.save(); c.globalAlpha = ka;
         kites.forEach((k) => {
-          /* Natural drift — horizontal sway + gentle vertical bob, no upward flight */
           const drift = noise.n2(t * 0.2 + k.driftX, 0) * 30;
           k.x = k.base_x + Math.sin(t * k.swaySpeed + k.tailPhase) * k.swayAmp + drift;
           k.y = k.base_y + Math.sin(t * 0.3 + k.tailPhase) * 6;
@@ -915,7 +904,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* FIX #9,10: Fireworks from ground, burst at 70%, never near ground */
       fireworks: (t: number, sa: number) => {
         if (t < 9) return;
         const fa = cl((t - 9) * 0.5, 0, 1) * sa;
@@ -926,10 +914,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         });
         fwList.forEach(fw => {
           if (fw.state === 'rising') {
-            c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},0.9)`;
+            c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},0.95)`;
             c.beginPath(); c.arc(fw.x, fw.y, 2.5, 0, 6.283); c.fill();
-            c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},0.3)`;
-            c.beginPath(); c.arc(fw.x, fw.y + 8, 1.5, 0, 6.283); c.fill();
           } else {
             fw.pts.forEach(pt => {
               const la = cl(pt.life / pt.ml, 0, 1);
@@ -960,7 +946,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       },
 
-      /* Petal particles for 7-9s salute */
       petals: (t: number, sa: number) => {
         if (t < 7 || t > 10) return;
         const pa = cl((t-7)*0.5, 0, 1) * cl((10-t)*0.5, 0, 1) * sa;
@@ -978,7 +963,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* FIX #11: Blur/darken background, fort stays visible */
       bgDarken: (t: number) => {
         if (t < 12) return;
         const p = cl((t - 12) / 2, 0, 1);
@@ -996,7 +980,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* FIX #12,13: Premium cinematic title animation */
       titleCard: (t: number, sa: number) => {
         if (t < 14) return;
         const lines = [
@@ -1041,7 +1024,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         });
       },
 
-      /* Salute flash at 7s */
       salute: (t: number, sa: number) => {
         if (t < 7.0 || t > 7.6) return;
         const p = t < 7.15 ? cl((t - 7.0) / 0.15, 0, 1) : cl((7.6 - t) / 0.45, 0, 1);
@@ -1068,7 +1050,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* FIX #1: Very quick fade-in only, no empty screen */
       fadeIn: (t: number) => {
         if (t > 0.4) return;
         const fi = 1 - cl(t / 0.4, 0, 1);
@@ -1094,7 +1075,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         return;
       }
 
-      /* FIX #14: Smooth dolly + slow zoom camera */
       if (t < 1.5) {
         cam.y = lerp(-H * 0.12, 0, eOC(t / 1.5));
         cam.zoom = lerp(1.06, 1.0, eOC(t / 1.5));
@@ -1122,7 +1102,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       updateFW(dt);
 
-      /* FIX #9: Fireworks spawn from 9s, from ground */
       if (t > 9) {
         fwTimer += dt;
         const interval = t < 14 ? 0.8 : 0.4;
@@ -1130,7 +1109,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         if (t > 13 && Math.random() < 0.025) camShake = 3 + Math.random() * 2;
       }
 
-      /* Petal spawning at 7-9s */
       if (t > 7 && t < 9 && Math.random() < 0.25) {
         const pp = grab(pl);
         if (pp) {
@@ -1146,7 +1124,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       }
 
-      /* Update particles (tp 6 = sparks, tp 7 = petals) */
       for (let i = 0; i < POOL; i++) {
         const p = pl[i];
         if (!p.on || (p.tp !== 6 && p.tp !== 7)) continue;
@@ -1157,7 +1134,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         if (p.life <= 0) { p.on = false; }
       }
 
-      /* ── PASS 1: Scene with camera transform ── */
       c.save();
       c.translate(W / 2, H / 2);
       c.scale(cam.zoom, cam.zoom);
@@ -1181,7 +1157,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       c.restore();
 
-      /* ── PASS 2: Screen-space overlays (no camera) ── */
       R.bgDarken(t);
       R.titleCard(t, sa);
       R.grain(sa);
@@ -1198,7 +1173,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     return () => {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
-      if (audioRef.current) { audioRef.current.close(); audioRef.current = null; }
+      if (audioRef.current) {
+        try { audioRef.current.close(); } catch (_) {}
+        audioRef.current = null;
+      }
     };
   }, [mkPool, grab, playAudio, imageUrl]);
 
@@ -1209,6 +1187,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         position: 'fixed', top: 0, left: 0,
         width: '100vw', height: '100vh',
         background: '#000',
+        zIndex: 50, // ★★★ डैशबोर्ड के ऊपर रेंडर सुनिश्चित करने के लिए
       }}
     />
   );
