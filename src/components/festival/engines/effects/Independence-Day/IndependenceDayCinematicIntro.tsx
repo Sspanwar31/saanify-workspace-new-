@@ -38,8 +38,6 @@ interface CloudPuff { x: number; y: number; w: number; h: number; a: number; spe
 interface FWSmoke { x: number; y: number; a: number; sz: number; vx: number; vy: number; }
 
 const POOL = 5000;
-// ★ FIX #1 & #9: Duration changed from 19.0 → 21.0 to accommodate text stage
-// Timeline: 0s start, 2s fort, 5s flag, 8s petals, 11s fireworks, 15s text, 20s complete, 21s navigate
 const DUR = 21.0;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -139,6 +137,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let W = 0, H = 0, sc = 0, cx = 0, baseY = 0, gateH = 0, gateW = 0;
+
+    let cam = { x: 0, y: 0, zoom: 1.0 };
 
     const noise = new SNoise(4822);
     const pl = mkPool();
@@ -283,7 +283,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           fw.y += fw.vy; fw.vy += 0.035;
           if (fw.vy >= -1.0 || fw.y < burstH) {
             fw.state = 'burst';
-            // ★ FIX #5: Camera shake on burst (part of fireworks layer, below text)
             camShake = Math.min(camShake + 2.5, 6);
             for (let s = 0; s < 12; s++) {
               const sp = grab(pl); if (sp) {
@@ -774,6 +773,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = shade('#FFFFFF');
           c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
+          // ★★★ सुधार 1 (Flag Math Bug Fix): b.y*2/3 जैसी खतरनाक गुणाकार त्रुटियों को जोड़ (Addition) से बदला गया
           c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
         }
 
@@ -1074,17 +1074,47 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.restore();
         });
       },
+
+      salute: (t: number, sa: number) => {
+        if (t < 7.0 || t > 7.6) return;
+        const p = t < 7.15 ? cl((t - 7.0) / 0.15, 0, 1) : cl((7.6 - t) / 0.45, 0, 1);
+        c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = p * 0.25 * sa;
+        const sg = c.createRadialGradient(cx, baseY - gateH * 0.4, 0, cx, baseY - gateH * 0.4, gateW * 0.8);
+        sg.addColorStop(0, 'rgba(255,240,200,0.7)'); sg.addColorStop(0.4, 'rgba(255,200,100,0.2)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = sg; c.fillRect(0, 0, W, H);
+        c.restore();
+      },
+
+      grain: (sa: number) => {
+        c.save(); c.globalAlpha = sa * 0.03; c.globalCompositeOperation = 'overlay';
+        const ox = (Math.random() * 256) | 0, oy = (Math.random() * 256) | 0;
+        const pat = c.createPattern(grainCv, 'repeat');
+        if (pat) { c.translate(ox, oy); c.fillStyle = pat; c.fillRect(-ox, -oy, W, H); }
+        c.restore();
+      },
+
+      vignette: (sa: number) => {
+        c.save(); c.globalAlpha = sa * 0.5;
+        const vg = c.createRadialGradient(cx, H * 0.45, sc * 0.25, cx, H * 0.45, sc * 0.9);
+        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(0.6, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+        c.fillStyle = vg; c.fillRect(0, 0, W, H);
+        c.restore();
+      },
+
+      fadeIn: (t: number) => {
+        if (t > 0.4) return;
+        const fi = 1 - cl(t / 0.4, 0, 1);
+        c.fillStyle = `rgba(0,0,0,${fi})`;
+        c.fillRect(0, 0, W, H);
+      },
     };
 
     /* ═══════════════════════════════════════════════════════════
-       ★ FIX #3, #9: MAIN ANIMATION LOOP
-       Correct sequence:
-         Fireworks Complete (t~15)
-         → Show Text (t=15)
-         → Wait 5 seconds
-         → Animation Complete (t=20, sets done flag)
-         → Navigate (t=21, calls onComplete)
+       ANIMATION LOOP
        ═══════════════════════════════════════════════════════════ */
+    let prevT = 0;
+    let fwTimer = 0;
+
     const frame = (ts: number) => {
       if (!t0.current) t0.current = ts;
       const el = (ts - t0.current) / 1000;
