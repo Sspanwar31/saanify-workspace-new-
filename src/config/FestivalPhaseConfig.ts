@@ -84,12 +84,12 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   INDEPENDENCE_DAY: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
-      FLASH: 2500,     // 2.5s: लाल किला प्रकटीकरण, आसमान में उड़ती पतंगें (0s - 2.5s)
-      SHOOTING: 12000, // 12.0s: गेंदे की पुष्प वर्षा, ध्वजारोहण एनीमेशन, गेट फ़ेड-आउट (2.5s - 14.5s)
-      HANDOVER: 3500   // 3.5s: "Happy Independence Day" टेक्स्ट, शहनाई धुन, जय हिन्द हैंडओवर (14.5s - 18.0s)
+      FLASH: 5000,     // 5.0s: लाल किला प्रकटीकरण, आसमान में उड़ती पतंगें, कोहरा, पक्षी प्रस्थान (0s - 5.0s)
+      SHOOTING: 9000,  // 9.0s: राष्ट्रीय ध्वजारोहण, सलामी, गेंदा वर्षा, रात ढलना, आतिशबाजी (5.0s - 14.0s)
+      HANDOVER: 5000   // 5.0s: "Happy Independence Day" टेक्स्ट और कोमल फेड-आउट हैंडओवर (14.0s - 19.0s)
     }
   },
-
+  
   // ━━━ LOHRI (🚀 13.0s Cinematic Sequence Sync) ━━━
   LOHRI: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
