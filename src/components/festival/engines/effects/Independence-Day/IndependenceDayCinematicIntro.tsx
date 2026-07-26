@@ -122,14 +122,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-    const eOB = (t: number) => { const n=7.5625,d=2.75; if(t<1/d)return n*t*t; if(t<2/d)return n*(t-=1.5/d)*t+.75; if(t<2.5/d)return n*(t-=2.25/d)*t+.9375; return n*(t-=2.625/d)*t+.984375; };
 
     try {
       audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       playAudio();
-    } catch (err) {
-      console.warn("AudioContext failed to initialize:", err);
-    }
+    } catch (err) { console.warn("AudioContext failed:", err); }
 
     if (imageUrl) {
       const img = new Image();
@@ -276,7 +273,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     };
 
     const updateFW = (dt: number) => {
-      const burstH = H * 0.30; 
+      const burstH = H * 0.30;
       for (let i = fwList.length-1; i >= 0; i--) {
         const fw = fwList[i];
         if (fw.state === 'rising') {
@@ -709,13 +706,17 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
+      /* ═══════════════════════════════════════════════════
+         FLAG — FIXED: Smooth hoisting + wind physics
+         ═══════════════════════════════════════════════════ */
       flag: (t: number, el: number, sa: number) => {
         if (t < 5.0) return;
         const ra = cl((t-5.0)*1.2, 0, 1) * sa;
         const fwS = sc * 0.18, fh = fwS * 0.66;
 
+        // Pole from roof — height increased for visible hoisting
         const pBaseY = fort.roofY;
-        const pH = gateH * 0.28;
+        const pH = gateH * 0.45;
         const pTopY = pBaseY - pH;
 
         const hoist = cl((t - 5.0) / 2.0, 0, 1);
@@ -723,50 +724,49 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         const unfurl = cl((t - 6.5) * 1.5, 0, 1);
         const fw = lerp(fwS * 0.1, fwS, eOC(unfurl));
 
-        if (fN[0].x === 0) {
+        // During hoisting + unfurling: explicitly position nodes (no physics jitter)
+        if (hoist < 1.0 || unfurl < 1.0) {
           for (let i = 0; i < numPts; i++) {
             fN[i].x = cx + (i * fw) / (numPts - 1);
-            fN[i].y = curY; fN[i].ox = fN[i].x; fN[i].oy = fN[i].y;
-          }
-        }
-
-        // ★★★ सुधार: ध्वजारोहण एनीमेशन (Flag Physics) में खिंचाव ठीक करने के लिए
-        // चोटी पर पहुँचने से पहले सभी नोड्स की ऊंचाई को पोल की रस्सी के साथ लॉक किया गया
-        if (hoist < 0.99) {
-          for (let i = 0; i < numPts; i++) {
             fN[i].y = curY;
-            fN[i].oy = curY;
+            fN[i].ox = fN[i].x;
+            fN[i].oy = fN[i].y;
+            fN[i].vx = 0;
+            fN[i].vy = 0;
+          }
+        } else {
+          // Fully hoisted & unfurled: enable wind physics
+          for (let i = 1; i < numPts; i++) {
+            const wind = 0.12 + noise.n2(el*0.55 + i*0.11, 0) * 0.1 + noise.n2(el*1.2 + i*0.3, 1) * 0.03;
+            fN[i].vx = (fN[i].x - fN[i].ox) * 0.92 + wind;
+            fN[i].vy = (fN[i].y - fN[i].oy) * 0.92 + 0.015 + noise.n2(el*0.8 + i*0.2, 2) * 0.008;
+            fN[i].ox = fN[i].x; fN[i].oy = fN[i].y;
+            fN[i].x += fN[i].vx; fN[i].y += fN[i].vy;
+          }
+          fN[0].x = cx; fN[0].y = curY;
+
+          const ll = fw / (numPts - 1);
+          for (let s = 0; s < 6; s++) {
+            for (let i = 0; i < numPts - 1; i++) {
+              const a = fN[i], b = fN[i+1];
+              const dx = b.x-a.x, dy = b.y-a.y;
+              const d = Math.sqrt(dx*dx+dy*dy) || 0.01;
+              const diff = ll - d, pct = (diff/d)*0.5;
+              const ox = dx*pct, oy = dy*pct;
+              if (i > 0) { a.x -= ox; a.y -= oy; }
+              b.x += ox; b.y += oy;
+            }
           }
         }
 
-        for (let i = 1; i < numPts; i++) {
-          const wind = 0.12 + noise.n2(el*0.55 + i*0.11, 0) * 0.1 + noise.n2(el*1.2 + i*0.3, 1) * 0.03;
-          fN[i].vx = (fN[i].x - fN[i].ox) * 0.92 + wind;
-          fN[i].vy = (fN[i].y - fN[i].oy) * 0.92 + 0.015 + noise.n2(el*0.8 + i*0.2, 2) * 0.008;
-          fN[i].ox = fN[i].x; fN[i].oy = fN[i].y;
-          fN[i].x += fN[i].vx; fN[i].y += fN[i].vy;
-        }
-        fN[0].x = cx; fN[0].y = curY;
-
-        const ll = fw / (numPts - 1);
-        for (let s = 0; s < 6; s++) {
-          for (let i = 0; i < numPts - 1; i++) {
-            const a = fN[i], b = fN[i+1];
-            const dx = b.x-a.x, dy = b.y-a.y;
-            const d = Math.sqrt(dx*dx+dy*dy) || 0.01;
-            const diff = ll - d, pct = (diff/d)*0.5;
-            const ox = dx*pct, oy = dy*pct;
-            if (i > 0) { a.x -= ox; a.y -= oy; }
-            b.x += ox; b.y += oy;
-          }
-        }
-
+        // Draw pole
         c.save(); c.globalAlpha = ra;
         const pg = c.createLinearGradient(cx-2, pTopY, cx+2, pBaseY);
         pg.addColorStop(0, '#ddd'); pg.addColorStop(0.5, '#fff'); pg.addColorStop(1, '#999');
         c.fillStyle = pg; c.fillRect(cx-1.5, pTopY, 3, pH);
         c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3, 0, 6.283); c.fill();
 
+        // Draw flag cloth
         for (let i = 0; i < numPts - 1; i++) {
           const a = fN[i], b = fN[i+1];
           const sh = 0.82 + Math.sin(i*0.3 - el*4) * 0.18;
@@ -779,10 +779,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = shade('#FFFFFF');
           c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
-          // ★★★ सुधार 1 (Flag Math Bug Fix): b.y*2/3 जैसी खतरनाक गुणाकार त्रुटियों को जोड़ (Addition) से बदला गया
           c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
         }
 
+        // Ashoka Chakra
         if (unfurl > 0.15) {
           const mi = numPts/2|0;
           const chx = fN[mi].x, chy = fN[mi].y + fh/2, cr = fh*0.11*unfurl;
@@ -977,6 +977,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
+      /* ═══════════════════════════════════════════════════
+         TITLE CARD — FIXED: Complete function (was truncated before)
+         ═══════════════════════════════════════════════════ */
       titleCard: (t: number, sa: number) => {
         if (t < 14) return;
         const lines = [
@@ -986,21 +989,29 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           { text: '1947 – 2027', start: 15.2, y: 50, size: 20, glow: false },
           { text: 'जय हिन्द', start: 15.6, y: 95, size: 44, glow: true },
         ];
-        const centerY = H * 0.30; // ★★★ सुधार: ताकि यह लाल किले के ऊपर न टकराए
+        const centerY = H * 0.30;
+
         lines.forEach(line => {
           const p = cl((t - line.start) / 0.7, 0, 1);
           if (p <= 0) return;
           const ep = eOC(p);
+
           c.save();
           c.font = `800 ${line.size}px 'Segoe UI', system-ui, -apple-system, sans-serif`;
           c.textAlign = 'center'; c.textBaseline = 'middle';
+
           const tg = c.createLinearGradient(cx - 250, 0, cx + 250, 0);
-          tg.addColorStop(0, '#b8860b'); tg.addColorStop(0.25, '#ffd700');
-          tg.addColorStop(0.5, '#fffacd'); tg.addColorStop(0.75, '#ffd700'); tg.addColorStop(1, '#b8860b');
+          tg.addColorStop(0, '#b8860b');
+          tg.addColorStop(0.25, '#ffd700');
+          tg.addColorStop(0.5, '#fffacd');
+          tg.addColorStop(0.75, '#ffd700');
+          tg.addColorStop(1, '#b8860b');
           c.fillStyle = tg;
+
           const text = line.text;
           const totalW = c.measureText(text).width;
           let xPos = cx - totalW / 2;
+
           for (let i = 0; i < text.length; i++) {
             const charP = cl((p - (i / text.length) * 0.25) / 0.75, 0, 1);
             if (charP <= 0) { xPos += c.measureText(text[i]).width; continue; }
@@ -1010,13 +1021,16 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
             c.fillText(text[i], xPos + c.measureText(text[i]).width / 2, charY);
             xPos += c.measureText(text[i]).width;
           }
+
           if (line.glow && p > 0.6) {
             c.globalCompositeOperation = 'screen';
-            c.globalAlpha = (p - 0.6) * 2.5 * 0.12 * sa;
-            c.shadowColor = '#ffd700'; c.shadowBlur = 25;
+            c.globalAlpha = (p - 0.6) * 2.5 * 0.15 * sa;
+            c.shadowColor = '#ffd700';
+            c.shadowBlur = 30;
             c.fillText(text, cx, centerY + line.y);
             c.shadowBlur = 0;
           }
+
           c.restore();
         });
       },
@@ -1095,9 +1109,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         camShake *= 0.92;
       }
 
-      // ★★★ सुधार 2: 12.0s के बाद पूरे लाल किले के वातावरण (sceneAlpha) को फेड-आउट करना
-      // जिससे टेक्स्ट आने से पहले इंट्रो क्लीन हो सके।
-      const sa = t < 12.0 ? 1 : cl(1 - (t - 12.0) * 0.7, 0, 1);
+      const sa = 1;
 
       updateFW(dt);
 
@@ -1133,6 +1145,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         if (p.life <= 0) { p.on = false; }
       }
 
+      // PASS 1: Scene with camera transform
       c.save();
       c.translate(W / 2, H / 2);
       c.scale(cam.zoom, cam.zoom);
@@ -1156,6 +1169,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       c.restore();
 
+      // PASS 2: Screen-space overlays (no camera)
       R.bgDarken(t);
       R.titleCard(t, sa);
       R.grain(sa);
@@ -1172,10 +1186,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     return () => {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
-      if (audioRef.current) {
-        try { audioRef.current.close(); } catch (_) {}
-        audioRef.current = null;
-      }
+      if (audioRef.current) { audioRef.current.close(); audioRef.current = null; }
     };
   }, [mkPool, grab, playAudio, imageUrl]);
 
@@ -1186,7 +1197,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         position: 'fixed', top: 0, left: 0,
         width: '100vw', height: '100vh',
         background: '#000',
-        zIndex: 50, 
       }}
     />
   );
