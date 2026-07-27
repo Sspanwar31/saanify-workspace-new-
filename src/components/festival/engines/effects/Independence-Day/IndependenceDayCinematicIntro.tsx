@@ -82,7 +82,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
   const imgReady = useRef(false);
   cbR.current = onComplete;
 
-  // ★ FIX #1: `on,turbOff.random()` → `on: false, turbOff: Math.random()`
   const mkPool = useCallback(() => {
     const a: Particle[] = [];
     for (let i = 0; i < POOL; i++) a.push({
@@ -149,6 +148,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const numPts = 14;
     const fN: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < numPts; i++) fN.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
+
+    // ★ CHANGE 1: CLOSING FLAG — Cloth simulation points for the final flagpole scene
+    const cfNumPts = 14;
+    const cfPts: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
+    for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
     const birds: BoidBird[] = [];
@@ -266,7 +270,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const fwList: Firework[] = [];
     const fwCols = [{ r: 255, g: 153, b: 51 }, { r: 255, g: 255, b: 255 }, { r: 19, g: 136, b: 8 }, { r: 255, g: 215, b: 0 }, { r: 255, g: 100, b: 60 }];
 
-    // ★ Celebration cleanup flag
     let celebrationCleaned = false;
 
     const spawnFW = () => {
@@ -408,7 +411,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ FIX #3: Removed invalid `hg_sh` properties from cloud puffs
       clouds: (t: number, sa: number) => {
         const a = cl(t * 0.5, 0, 1) * (t > 12 ? cl((13 - t), 0, 1) : 1) * sa;
         c.save(); c.globalAlpha = a;
@@ -801,7 +803,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         if (unfurl > 0.15) {
           const mi = numPts / 2 | 0;
           const chx = fN[mi].x, chy = fN[mi].y + fh / 2;
-          // ★ FIX #2: `fh0.11unfurl` → `fh * 0.11 * unfurl`
           const cr = fh * 0.11 * unfurl;
           c.save(); c.translate(chx, chy); c.rotate(el * 0.7);
           c.strokeStyle = 'rgba(0,0,128,0.85)'; c.lineWidth = 1.4;
@@ -987,8 +988,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         if (t < 14) return;
         const lines = [
           { text: 'HAPPY INDEPENDENCE DAY', start: 14.0, y: -45, size: Math.min(W * 0.045, 34), glow: true },
-          { text: '80th Anniversary | 1947 – 2027', start: 14.6, y: 5, size: Math.min(W * 0.022, 17), glow: false },
-          { text: 'जय हिन्द', start: 15.2, y: 65, size: Math.min(W * 0.05, 38), glow: true },
+          { text: '80th Anniversary | 1947 \u2013 2027', start: 14.6, y: 5, size: Math.min(W * 0.022, 17), glow: false },
+          { text: '\u091C\u092F \u0939\u093F\u0928\u094D\u0926', start: 15.2, y: 65, size: Math.min(W * 0.05, 38), glow: true },
         ];
 
         const centerY = H * 0.26;
@@ -1004,200 +1005,393 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           return tg;
         };
 
+        c.save();
         lines.forEach(line => {
-          const rawP = (t - line.start) / fadeDur;
-          const p = cl(rawP, 0, 1);
-          if (p <= 0) return;
+          if (t < line.start) return;
+          const lineAlpha = cl((t - line.start) / fadeDur, 0, 1);
+          const fadeOut = t > DUR - 1.5 ? cl((DUR - t) / 1.5, 0, 1) : 1;
+          c.globalAlpha = lineAlpha * fadeOut * sa;
+          c.font = `bold ${line.size}px 'Georgia', serif`;
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
 
-          const ep = eOC(p);
-
-          c.save();
-          const isHindi = line.text.includes('जय');
-          c.font = `800 ${line.size}px ${isHindi ? "'Noto Sans Devanagari', 'Yatra One', Georgia, serif" : "'Segoe UI', system-ui, -apple-system, sans-serif"}`;
-          c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.fillStyle = makeGold();
-
-          c.globalAlpha = ep * sa;
-          const lineY = centerY + line.y + (1 - ep) * 20;
-          const lineScale = 0.97 + 0.03 * ep;
-
-          c.save();
-          c.translate(cx, lineY);
-          c.scale(lineScale, lineScale);
-          c.fillText(line.text, 0, 0);
-          c.restore();
-
-          if (line.glow && p > 0.5) {
-            c.globalCompositeOperation = 'screen';
-            c.globalAlpha = (p - 0.5) * 2 * 0.15 * sa;
-            c.shadowColor = '#ffd700';
-            c.shadowBlur = 30;
+          if (line.glow) {
             c.save();
-            c.translate(cx, lineY);
-            c.scale(lineScale, lineScale);
-            c.fillText(line.text, 0, 0);
+            c.shadowColor = 'rgba(255,215,0,0.6)';
+            c.shadowBlur = 20;
+            c.fillStyle = makeGold();
+            c.fillText(line.text, cx, centerY + line.y);
             c.restore();
-            c.globalCompositeOperation = 'source-over';
           }
 
-          c.restore();
+          c.fillStyle = makeGold();
+          c.fillText(line.text, cx, centerY + line.y);
         });
-      },
-
-      salute: (t: number, sa: number) => {
-        if (t < 7.0 || t > 7.6) return;
-        const p = t < 7.15 ? cl((t - 7.0) / 0.15, 0, 1) : cl((7.6 - t) / 0.45, 0, 1);
-        c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = p * 0.25 * sa;
-        const sg = c.createRadialGradient(cx, baseY - gateH * 0.4, 0, cx, baseY - gateH * 0.4, gateW * 0.8);
-        sg.addColorStop(0, 'rgba(255,240,200,0.7)'); sg.addColorStop(0.4, 'rgba(255,200,100,0.2)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = sg; c.fillRect(0, 0, W, H);
         c.restore();
       },
 
-      grain: (sa: number) => {
-        c.save(); c.globalAlpha = sa * 0.03; c.globalCompositeOperation = 'overlay';
+      /* ═══════════════════════════════════════════════════════════
+         ★ CHANGE 2: CLOSING FLAG — Flagpole with Tiranga for final scene
+         ═══════════════════════════════════════════════════════════ */
+      closingFlag: (t: number, el: number) => {
+        if (t < 14.5) return;
+        const fa = cl((t - 14.5) * 0.8, 0, 1);
+        const fadeOut = t > DUR - 1.5 ? cl((DUR - t) / 1.5, 0, 1) : 1;
+
+        const poleX = cx;
+        const poleTopY = H * 0.44;
+        const poleBotY = H * 0.88;
+        const poleH = poleBotY - poleTopY;
+        const flagW = sc * 0.22;
+        const flagH = flagW * 0.66;
+        const flagTopY = poleTopY + poleH * 0.05;
+
+        // ── Update cloth simulation points ──
+        for (let i = 1; i < cfNumPts; i++) {
+          const wind = 0.15 + noise.n2(el * 0.5 + i * 0.12, 10) * 0.12 + noise.n2(el * 1.1 + i * 0.25, 20) * 0.04;
+          cfPts[i].vx = (cfPts[i].x - cfPts[i].ox) * 0.90 + wind;
+          cfPts[i].vy = (cfPts[i].y - cfPts[i].oy) * 0.90 + 0.02 + noise.n2(el * 0.7 + i * 0.18, 30) * 0.01;
+          cfPts[i].ox = cfPts[i].x;
+          cfPts[i].oy = cfPts[i].y;
+          cfPts[i].x += cfPts[i].vx;
+          cfPts[i].y += cfPts[i].vy;
+        }
+        cfPts[0].x = poleX + 2;
+        cfPts[0].y = flagTopY;
+
+        // ── Constraint solving ──
+        const ll = flagW / (cfNumPts - 1);
+        for (let s = 0; s < 6; s++) {
+          for (let i = 0; i < cfNumPts - 1; i++) {
+            const a = cfPts[i], b = cfPts[i + 1];
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+            const diff = ll - d, pct = (diff / d) * 0.5;
+            const ox = dx * pct, oy = dy * pct;
+            if (i > 0) { a.x -= ox; a.y -= oy; }
+            b.x += ox; b.y += oy;
+          }
+        }
+
+        c.save();
+        c.globalAlpha = fa * fadeOut;
+
+        // ── Draw pole ──
+        const pg = c.createLinearGradient(poleX - 2.5, 0, poleX + 2.5, 0);
+        pg.addColorStop(0, '#999');
+        pg.addColorStop(0.3, '#e0e0e0');
+        pg.addColorStop(0.5, '#ffffff');
+        pg.addColorStop(0.7, '#d0d0d0');
+        pg.addColorStop(1, '#888');
+        c.fillStyle = pg;
+        c.fillRect(poleX - 2, poleTopY, 4, poleH);
+
+        // ── Pole top ornament (gold finial) ──
+        c.fillStyle = '#ffd700';
+        c.beginPath();
+        c.arc(poleX, poleTopY, 5, 0, 6.283);
+        c.fill();
+        c.fillStyle = '#ffec80';
+        c.beginPath();
+        c.arc(poleX - 1, poleTopY - 1, 2, 0, 6.283);
+        c.fill();
+        // Small spike on top
+        c.fillStyle = '#ffd700';
+        c.beginPath();
+        c.moveTo(poleX, poleTopY - 12);
+        c.lineTo(poleX - 2.5, poleTopY - 3);
+        c.lineTo(poleX + 2.5, poleTopY - 3);
+        c.closePath();
+        c.fill();
+
+        // ── Pole base ──
+        c.fillStyle = '#555';
+        c.fillRect(poleX - 10, poleBotY - 3, 20, 6);
+        c.fillStyle = '#444';
+        c.fillRect(poleX - 14, poleBotY + 3, 28, 4);
+
+        // ── Draw flag stripes using cloth points ──
+        for (let i = 0; i < cfNumPts - 1; i++) {
+          const a = cfPts[i];
+          const b = cfPts[i + 1];
+          const clothLight = 0.92 + Math.sin(i * 0.5 - el * 4.5) * 0.08 + Math.cos(i * 0.22 + el * 2.8) * 0.04;
+
+          const shadeR = (base: number) => Math.min(255, Math.max(0, (base * clothLight) | 0));
+
+          // Saffron stripe
+          c.fillStyle = `rgb(${shadeR(255)},${shadeR(153)},${shadeR(51)})`;
+          c.beginPath();
+          c.moveTo(a.x, a.y);
+          c.lineTo(b.x, b.y);
+          c.lineTo(b.x, b.y + flagH / 3);
+          c.lineTo(a.x, a.y + flagH / 3);
+          c.closePath();
+          c.fill();
+
+          // White stripe
+          c.fillStyle = `rgb(${shadeR(255)},${shadeR(255)},${shadeR(255)})`;
+          c.beginPath();
+          c.moveTo(a.x, a.y + flagH / 3);
+          c.lineTo(b.x, b.y + flagH / 3);
+          c.lineTo(b.x, b.y + (flagH * 2) / 3);
+          c.lineTo(a.x, a.y + (flagH * 2) / 3);
+          c.closePath();
+          c.fill();
+
+          // Green stripe
+          c.fillStyle = `rgb(${shadeR(19)},${shadeR(136)},${shadeR(8)})`;
+          c.beginPath();
+          c.moveTo(a.x, a.y + (flagH * 2) / 3);
+          c.lineTo(b.x, b.y + (flagH * 2) / 3);
+          c.lineTo(b.x, b.y + flagH);
+          c.lineTo(a.x, a.y + flagH);
+          c.closePath();
+          c.fill();
+
+          // Stripe dividers
+          c.strokeStyle = 'rgba(0,0,0,0.08)';
+          c.lineWidth = 0.5;
+          c.beginPath();
+          c.moveTo(a.x, a.y + flagH / 3);
+          c.lineTo(b.x, b.y + flagH / 3);
+          c.stroke();
+          c.beginPath();
+          c.moveTo(a.x, a.y + (flagH * 2) / 3);
+          c.lineTo(b.x, b.y + (flagH * 2) / 3);
+          c.stroke();
+        }
+
+        // ── Ashoka Chakra on flag ──
+        const chIdx = (cfNumPts / 2) | 0;
+        const chX = cfPts[chIdx].x;
+        const chY = cfPts[chIdx].y + flagH / 2;
+        const chR = flagH * 0.13;
+
+        c.save();
+        c.translate(chX, chY);
+        c.rotate(el * 0.6);
+
+        // Outer circle
+        c.strokeStyle = 'rgba(0,0,128,0.85)';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.arc(0, 0, chR, 0, 6.283);
+        c.stroke();
+
+        // 24 spokes
+        c.lineWidth = 0.6;
+        for (let i = 0; i < 24; i++) {
+          const a = (i / 24) * 6.283;
+          c.beginPath();
+          c.moveTo(0, 0);
+          c.lineTo(Math.cos(a) * chR, Math.sin(a) * chR);
+          c.stroke();
+        }
+
+        // Inner circle
+        c.strokeStyle = 'rgba(0,0,128,0.5)';
+        c.lineWidth = 0.5;
+        c.beginPath();
+        c.arc(0, 0, chR * 0.35, 0, 6.283);
+        c.stroke();
+
+        // Center dot
+        c.fillStyle = 'rgba(0,0,128,0.7)';
+        c.beginPath();
+        c.arc(0, 0, 1.5, 0, 6.283);
+        c.fill();
+
+        c.restore();
+
+        // ── Rope/tie connecting flag to pole ──
+        c.strokeStyle = 'rgba(180,150,80,0.6)';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(poleX + 2, flagTopY - 2);
+        c.lineTo(poleX + 2, flagTopY + flagH + 2);
+        c.stroke();
+
+        // Small knots
+        c.fillStyle = '#b8960b';
+        c.beginPath();
+        c.arc(poleX + 2, flagTopY - 2, 2.5, 0, 6.283);
+        c.fill();
+        c.beginPath();
+        c.arc(poleX + 2, flagTopY + flagH + 2, 2.5, 0, 6.283);
+        c.fill();
+
+        c.restore();
+      },
+
+      salute: (t: number, el: number, sa: number) => {
+        // Tricolor sparkle particles around the title area
+        if (t < 15.5 || t > DUR) return;
+        const si = cl((t - 15.5) * 0.6, 0, 1) * (t > DUR - 1.5 ? cl((DUR - t) / 1.5, 0, 1) : 1) * sa;
+        c.save(); c.globalAlpha = si * 0.6; c.globalCompositeOperation = 'lighter';
+        const colors = ['rgba(255,153,51,0.8)', 'rgba(255,255,255,0.8)', 'rgba(19,136,8,0.8)'];
+        for (let i = 0; i < 18; i++) {
+          const ang = (i / 18) * 6.283 + el * 0.3;
+          const rad = sc * 0.2 + Math.sin(el * 2 + i * 1.3) * sc * 0.04;
+          const px = cx + Math.cos(ang) * rad;
+          const py = H * 0.26 + Math.sin(ang) * rad * 0.4;
+          const sz = 1.5 + Math.sin(el * 3 + i * 2) * 0.8;
+          c.fillStyle = colors[i % 3];
+          c.beginPath(); c.arc(px, py, Math.max(0.5, sz), 0, 6.283); c.fill();
+        }
+        c.restore();
+      },
+
+      filmGrain: (t: number) => {
+        c.save();
+        c.globalAlpha = 0.035;
+        c.globalCompositeOperation = 'overlay';
         const ox = (Math.random() * 256) | 0, oy = (Math.random() * 256) | 0;
         const pat = c.createPattern(grainCv, 'repeat');
-        if (pat) { c.translate(ox, oy); c.fillStyle = pat; c.fillRect(-ox, -oy, W, H); }
+        if (pat) {
+          c.translate(ox, oy);
+          c.fillStyle = pat;
+          c.fillRect(-ox, -oy, W + 256, H + 256);
+        }
         c.restore();
-      },
-
-      vignette: (sa: number) => {
-        c.save(); c.globalAlpha = sa * 0.5;
-        const vg = c.createRadialGradient(cx, H * 0.45, sc * 0.25, cx, H * 0.45, sc * 0.9);
-        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(0.6, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
-        c.fillStyle = vg; c.fillRect(0, 0, W, H);
-        c.restore();
-      },
-
-      fadeIn: (t: number) => {
-        if (t > 0.4) return;
-        const fi = 1 - cl(t / 0.4, 0, 1);
-        c.fillStyle = `rgba(0,0,0,${fi})`;
-        c.fillRect(0, 0, W, H);
       },
     };
 
     /* ═══════════════════════════════════════════════════════════
-       ANIMATION LOOP
+       RENDER LOOP
        ═══════════════════════════════════════════════════════════ */
-    let fwTimer = 0;
+    let lastFW = 0;
+    let lastPetal = 0;
 
-    const frame = (ts: number) => {
-      if (!t0.current) t0.current = ts;
-      const el = (ts - t0.current) / 1000;
-      const t = Math.min(el, DUR);
+    const frame = (now: number) => {
+      if (!t0.current) t0.current = now;
+      const t = Math.min((now - t0.current) / 1000, DUR + 2);
+      const el = now / 1000;
+      const dt = 0.016;
 
-      const sa = t < 12.0 ? 1 : cl(1 - (t - 12.0) * 0.7, 0, 1);
-
-      c.clearRect(0, 0, W, H);
-
-      let shaking = false;
-      if (camShake > 0.01) {
-        shaking = true;
-        c.save();
+      // ── Camera shake ──
+      c.save();
+      if (camShake > 0.1) {
         c.translate((Math.random() - 0.5) * camShake, (Math.random() - 0.5) * camShake);
-        camShake *= 0.93;
+        camShake *= 0.92;
       } else {
         camShake = 0;
       }
 
-      /* ── SPAWN: Petals (8s–11s) ── */
-      if (t >= 8 && t < 11) {
-        const petalColors = [
-          { r: 255, g: 153, b: 51 },
-          { r: 255, g: 255, b: 255 },
-          { r: 19, g: 136, b: 8 },
-          { r: 255, g: 200, b: 150 },
-          { r: 200, g: 255, b: 200 },
-        ];
-        if (Math.random() < 0.35) {
+      // ── Scene alpha (fades out fort scene after t=12) ──
+      const sa = t > 13 ? cl((14 - t), 0, 1) : 1.0;
+
+      // ── Spawn fireworks ──
+      if (t > 11 && t < DUR - 1) {
+        if (t - lastFW > 0.35 + Math.random() * 0.3) {
+          spawnFW();
+          if (Math.random() < 0.4) spawnFW();
+          lastFW = t;
+        }
+      }
+
+      // ── Spawn petals ──
+      if (t > 8 && t < 11) {
+        if (t - lastPetal > 0.06) {
           const pp = grab(pl);
           if (pp) {
             pp.on = true; pp.tp = 7;
-            pp.x = Math.random() * W;
-            pp.y = -10;
-            pp.vx = (Math.random() - 0.5) * 0.8;
-            pp.vy = 0.5 + Math.random() * 1.0;
-            pp.life = 3 + Math.random() * 2;
-            pp.ml = pp.life;
-            pp.sz = 3 + Math.random() * 4;
-            pp.rot = Math.random() * 6.28;
-            pp.rs = (Math.random() - 0.5) * 0.05;
-            const col = petalColors[Math.random() * petalColors.length | 0];
-            pp.r = col.r; pp.g = col.g; pp.b = col.b;
-            pp.a = 0.7 + Math.random() * 0.3;
+            pp.x = cx + (Math.random() - 0.5) * gateW * 0.6;
+            pp.y = fort.wallTop - 10;
+            pp.vx = (Math.random() - 0.5) * 1.2;
+            pp.vy = 0.3 + Math.random() * 0.8;
+            pp.life = 3 + Math.random() * 2; pp.ml = 5;
+            pp.sz = 3 + Math.random() * 3;
+            pp.rot = Math.random() * 6.283;
+            pp.rs = (Math.random() - 0.5) * 0.08;
+            const pcol = Math.random();
+            if (pcol < 0.4) { pp.r = 255; pp.g = 180; pp.b = 200; }
+            else if (pcol < 0.7) { pp.r = 255; pp.g = 220; pp.b = 180; }
+            else { pp.r = 255; pp.g = 255; pp.b = 240; }
+            pp.a = 0.7;
           }
+          lastPetal = t;
         }
       }
 
-      /* ── SPAWN: Fireworks (8s–10.4s) — stop before text ── */
-      if (t >= 8 && t < 10.4 && !celebrationCleaned) {
-        fwTimer += 0.016;
-        if (fwTimer > 0.3) { spawnFW(); fwTimer = 0; }
-      }
-
-      /* ── FORCE CLEANUP at 10.4s ── */
-      if (t >= 10.4 && !celebrationCleaned) {
-        celebrationCleaned = true;
-        fwList.length = 0;
-        fwSmoke.length = 0;
+      // ── Update petals ──
+      if (t > 8 && t < 12) {
         for (let i = 0; i < POOL; i++) {
-          if (pl[i].tp === 6 || pl[i].tp === 7) { pl[i].on = false; pl[i].life = 0; }
+          const p = pl[i];
+          if (!p.on || p.tp !== 7) continue;
+          p.x += p.vx + Math.sin(el * 2 + p.turbOff) * 0.3;
+          p.y += p.vy;
+          p.rot += p.rs;
+          p.life -= dt;
+          if (p.life <= 0 || p.y > H + 10) { p.on = false; p.tp = 1; }
         }
-        camShake = 0;
       }
 
-      /* ── UPDATE ── */
-      if (!celebrationCleaned) {
-        updateFW(0.016);
-      }
+      // ── Update fireworks ──
+      updateFW(dt);
 
+      // ── Update burst particles ──
       for (let i = 0; i < POOL; i++) {
         const p = pl[i];
         if (!p.on || p.tp !== 6) continue;
         p.x += p.vx; p.y += p.vy;
-        p.vy += 0.02; p.vx *= 0.98; p.vy *= 0.98;
-        p.life -= 0.016;
-        if (p.life <= 0) p.on = false;
+        p.vy += 0.02;
+        p.vx *= 0.99; p.vy *= 0.99;
+        p.life -= dt;
+        if (p.life <= 0) { p.on = false; p.tp = 1; }
       }
 
-      for (let i = 0; i < POOL; i++) {
-        const p = pl[i];
-        if (!p.on || p.tp !== 7) continue;
-        p.x += p.vx + Math.sin(el * 2 + p.turbOff) * 0.3;
-        p.y += p.vy;
-        p.rot += p.rs;
-        p.life -= 0.016;
-        if (p.life <= 0 || p.y > H + 20) p.on = false;
+      // ── Celebration cleanup ──
+      if (t > 13 && !celebrationCleaned) {
+        celebrationCleaned = true;
+        for (let i = 0; i < POOL; i++) {
+          if (pl[i].tp === 6 || pl[i].tp === 7) {
+            pl[i].on = false;
+            pl[i].tp = 1;
+          }
+        }
+        fwList.length = 0;
+        fwSmoke.length = 0;
       }
 
-      /* ══════════ RENDER ORDER ══════════ */
+      // ── RENDER ALL LAYERS ──
       R.sky(t, sa);
       R.stars(t, sa);
       R.clouds(t, sa);
       R.atmosFog(t, sa);
+      R.volLight(t, sa);
       R.ground(t, sa);
       R.redFort(t, sa);
       R.torch(t, el, sa);
       R.flag(t, el, sa);
-      R.volLight(t, sa);
       R.drawKites(t, sa);
       R.doves(t, el, sa);
       R.petals(t, sa);
       R.fireworks(t, sa);
       R.particles(t, el, sa);
-      R.salute(t, sa);
       R.bgDarken(t);
-
-      if (shaking) c.restore();
-
-      R.grain(sa);
-      R.vignette(sa);
-      R.fadeIn(t);
 
       /* ── TEXT: Always highest z-index, independent of sa ── */
       R.titleCard(t, 1.0);
+
+      /* ── ★ CHANGE 3: CLOSING FLAG: Flagpole with Tiranga below text ── */
+      R.closingFlag(t, el);
+
+      // ── Salute sparkles ──
+      R.salute(t, el, 1.0);
+
+      // ── Film grain overlay ──
+      R.filmGrain(t);
+
+      // ── Vignette ──
+      c.save();
+      const vig = c.createRadialGradient(cx, H / 2, sc * 0.3, cx, H / 2, Math.max(W, H) * 0.75);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,0.4)');
+      c.fillStyle = vig;
+      c.fillRect(0, 0, W, H);
+      c.restore();
+
+      c.restore(); // camera shake restore
 
       /* ── COMPLETE ── */
       if (t >= DUR && !done.current) {
@@ -1205,7 +1399,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         if (cbR.current) cbR.current();
       }
 
-      raf.current = requestAnimationFrame(frame);
+      if (t < DUR + 2) {
+        raf.current = requestAnimationFrame(frame);
+      }
     };
 
     raf.current = requestAnimationFrame(frame);
@@ -1213,9 +1409,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     return () => {
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
-      if (audioRef.current) { try { audioRef.current.close(); } catch (_) {} }
     };
-  }, [mkPool, grab, playAudio]);
+  }, [mkPool, grab, playAudio, imageUrl]);
 
   return (
     <canvas
@@ -1224,10 +1419,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         position: 'fixed',
         top: 0,
         left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 9999,
+        width: '100vw',
+        height: '100vh',
         display: 'block',
+        background: '#000',
+        cursor: 'default',
+        zIndex: 99999,
       }}
     />
   );
