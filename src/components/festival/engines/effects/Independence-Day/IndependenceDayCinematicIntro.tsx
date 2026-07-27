@@ -149,7 +149,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const fN: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < numPts; i++) fN.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
-    // ★ CHANGE 1: CLOSING FLAG — Cloth simulation points for the final flagpole scene
+    // ★ CHANGE 1: CLOSING FLAG — Simulation points initialization configuration
     const cfNumPts = 14;
     const cfPts: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
@@ -217,6 +217,26 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       if (fN.length > 0) fN[0].x = 0;
 
+      // ★ PRE-INITIALIZE cfPts: Preventing snap on final scene entry
+      const cfPoleX = cx;
+      const cfPoleTopY = H * 0.44;
+      const cfPoleBotY = H * 0.88;
+      const cfPoleH = cfPoleBotY - cfPoleTopY;
+      const cfFlagW = Math.min(sc * 0.22, 220);
+      const cfFlagTopY = cfPoleTopY + cfPoleH * 0.05;
+      const cfLl = cfFlagW / (cfNumPts - 1);
+
+      for (let i = 0; i < cfNumPts; i++) {
+        cfPts[i] = {
+          x: cfPoleX + 2 + i * cfLl,
+          y: cfFlagTopY,
+          ox: cfPoleX + 2 + i * cfLl,
+          oy: cfFlagTopY,
+          vx: 0,
+          vy: 0
+        };
+      }
+
       for (let i = 0; i < starI.length; i++) {
         const p = pl[starI[i]];
         p.on = true; p.tp = 0;
@@ -226,6 +246,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       }
 
       kites.length = 0;
+      /* ────────────────────────────────────────────────────────
+         KITE POSITIONS (Patang jahan se ud rahi hai)
+         Yahan 'bx' aur 'by' positions ko change karke udne ki jagah badal sakte hain.
+         ──────────────────────────────────────────────────────── */
       [
         { bx: W * 0.12, by: H * 0.14, s: 1.0, ss: 1.1, sa: 28 },
         { bx: W * 0.24, by: H * 0.20, s: 0.8, ss: 1.5, sa: 20 },
@@ -1031,47 +1055,21 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       },
 
       /* ═══════════════════════════════════════════════════════════
-         ★ CHANGE 2: CLOSING FLAG — Flagpole with Tiranga for final scene
+         ★ CHANGE 2: CLOSING FLAG — Elegantly drawing the flagpole and Tiranga
          ═══════════════════════════════════════════════════════════ */
       closingFlag: (t: number, el: number) => {
         if (t < 14.5) return;
-        const fa = cl((t - 14.5) * 0.8, 0, 1);
+        // Smooth 2-second fade-in transition
+        const fa = cl((t - 14.5) * 0.5, 0, 1);
         const fadeOut = t > DUR - 1.5 ? cl((DUR - t) / 1.5, 0, 1) : 1;
 
         const poleX = cx;
         const poleTopY = H * 0.44;
         const poleBotY = H * 0.88;
         const poleH = poleBotY - poleTopY;
-        const flagW = sc * 0.22;
+        const flagW = Math.min(sc * 0.22, 220); // Standard flag proportion width limit
         const flagH = flagW * 0.66;
         const flagTopY = poleTopY + poleH * 0.05;
-
-        // ── Update cloth simulation points ──
-        for (let i = 1; i < cfNumPts; i++) {
-          const wind = 0.15 + noise.n2(el * 0.5 + i * 0.12, 10) * 0.12 + noise.n2(el * 1.1 + i * 0.25, 20) * 0.04;
-          cfPts[i].vx = (cfPts[i].x - cfPts[i].ox) * 0.90 + wind;
-          cfPts[i].vy = (cfPts[i].y - cfPts[i].oy) * 0.90 + 0.02 + noise.n2(el * 0.7 + i * 0.18, 30) * 0.01;
-          cfPts[i].ox = cfPts[i].x;
-          cfPts[i].oy = cfPts[i].y;
-          cfPts[i].x += cfPts[i].vx;
-          cfPts[i].y += cfPts[i].vy;
-        }
-        cfPts[0].x = poleX + 2;
-        cfPts[0].y = flagTopY;
-
-        // ── Constraint solving ──
-        const ll = flagW / (cfNumPts - 1);
-        for (let s = 0; s < 6; s++) {
-          for (let i = 0; i < cfNumPts - 1; i++) {
-            const a = cfPts[i], b = cfPts[i + 1];
-            const dx = b.x - a.x, dy = b.y - a.y;
-            const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
-            const diff = ll - d, pct = (diff / d) * 0.5;
-            const ox = dx * pct, oy = dy * pct;
-            if (i > 0) { a.x -= ox; a.y -= oy; }
-            b.x += ox; b.y += oy;
-          }
-        }
 
         c.save();
         c.globalAlpha = fa * fadeOut;
@@ -1279,6 +1277,40 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       // ── Scene alpha (fades out fort scene after t=12) ──
       const sa = t > 13 ? cl((14 - t), 0, 1) : 1.0;
+
+      // ── Background cloth physics calculations (always simulated to prevent jerk) ──
+      const poleX = cx;
+      const poleTopY = H * 0.44;
+      const poleBotY = H * 0.88;
+      const poleH = poleBotY - poleTopY;
+      const flagW = Math.min(sc * 0.22, 220);
+      const flagH = flagW * 0.66;
+      const flagTopY = poleTopY + poleH * 0.05;
+
+      for (let i = 1; i < cfNumPts; i++) {
+        const wind = 0.18 + noise.n2(el * 0.5 + i * 0.12, 10) * 0.15 + noise.n2(el * 1.3 + i * 0.25, 20) * 0.05;
+        cfPts[i].vx = (cfPts[i].x - cfPts[i].ox) * 0.88 + wind;
+        cfPts[i].vy = (cfPts[i].y - cfPts[i].oy) * 0.88 + 0.015 + noise.n2(el * 0.7 + i * 0.18, 30) * 0.01;
+        cfPts[i].ox = cfPts[i].x;
+        cfPts[i].oy = cfPts[i].y;
+        cfPts[i].x += cfPts[i].vx;
+        cfPts[i].y += cfPts[i].vy;
+      }
+      cfPts[0].x = poleX + 2;
+      cfPts[0].y = flagTopY;
+
+      const ll = flagW / (cfNumPts - 1);
+      for (let s = 0; s < 10; s++) { // Constraint iterations increased to 10 for realistic cloth motion
+        for (let i = 0; i < cfNumPts - 1; i++) {
+          const a = cfPts[i], b = cfPts[i + 1];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+          const diff = ll - d, pct = (diff / d) * 0.5;
+          const ox = dx * pct, oy = dy * pct;
+          if (i > 0) { a.x -= ox; a.y -= oy; }
+          b.x += ox; b.y += oy;
+        }
+      }
 
       // ── Spawn fireworks ──
       if (t > 11 && t < DUR - 1) {
