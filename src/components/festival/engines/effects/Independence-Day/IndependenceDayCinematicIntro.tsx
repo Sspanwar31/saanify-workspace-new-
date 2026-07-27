@@ -767,22 +767,79 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.fillStyle = pg; c.fillRect(cx-1.5, pTopY, 3, pH);
         c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3, 0, 6.283); c.fill();
 
-        // Draw flag cloth
-        for (let i = 0; i < numPts - 1; i++) {
-          const a = fN[i], b = fN[i+1];
-          const sh = 0.82 + Math.sin(i*0.3 - el*4) * 0.18;
-          const shade = (hex: string) => {
-            const h = hex.replace('#','');
-            return `rgb(${parseInt(h.substring(0,2),16)*sh|0},${parseInt(h.substring(2,4),16)*sh|0},${parseInt(h.substring(4,6),16)*sh|0})`;
-          };
-          c.fillStyle = shade('#FF9933');
-          c.beginPath(); c.moveTo(a.x,a.y); c.lineTo(b.x,b.y); c.lineTo(b.x,b.y+fh/3); c.lineTo(a.x,a.y+fh/3); c.closePath(); c.fill();
-          c.fillStyle = shade('#FFFFFF');
-          c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
-          c.fillStyle = shade('#138808');
-          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
-        }
+        // ===============================
+// Draw Modern Cinematic Flag Cloth (2027)
+// ===============================
+for (let i = 0; i < numPts - 1; i++) {
 
+  const a = fN[i];
+  const b = fN[i + 1];
+
+  // Dynamic cloth lighting
+  const clothLight =
+    0.90 +
+    Math.sin(i * 0.45 - el * 5.2) * 0.10 +
+    Math.cos(i * 0.20 + el * 2.5) * 0.05;
+
+  const shade = (hex: string) => {
+    const h = hex.replace("#", "");
+
+    const r = Math.min(255, Math.max(0, Math.round(parseInt(h.substring(0, 2), 16) * clothLight)));
+    const g = Math.min(255, Math.max(0, Math.round(parseInt(h.substring(2, 4), 16) * clothLight)));
+    const b = Math.min(255, Math.max(0, Math.round(parseInt(h.substring(4, 6), 16) * clothLight)));
+
+    return `rgb(${r},${g},${b})`;
+  };
+
+  // ---------- SAFFRON ----------
+  c.fillStyle = shade("#FF9933");
+  c.beginPath();
+  c.moveTo(a.x, a.y);
+  c.lineTo(b.x, b.y);
+  c.lineTo(b.x, b.y + fh / 3);
+  c.lineTo(a.x, a.y + fh / 3);
+  c.closePath();
+  c.fill();
+
+  // ---------- WHITE ----------
+  c.fillStyle = shade("#FFFFFF");
+  c.beginPath();
+  c.moveTo(a.x, a.y + fh / 3);
+  c.lineTo(b.x, b.y + fh / 3);
+
+  // ✅ FIXED BUG
+  c.lineTo(b.x, b.y + (fh * 2) / 3);
+  c.lineTo(a.x, a.y + (fh * 2) / 3);
+
+  c.closePath();
+  c.fill();
+
+  // ---------- GREEN ----------
+  c.fillStyle = shade("#138808");
+  c.beginPath();
+  c.moveTo(a.x, a.y + (fh * 2) / 3);
+  c.lineTo(b.x, b.y + (fh * 2) / 3);
+
+  // ✅ FIXED BUG
+  c.lineTo(b.x, b.y + fh);
+  c.lineTo(a.x, a.y + fh);
+
+  c.closePath();
+  c.fill();
+
+  // ---------- Cloth Highlight ----------
+  c.strokeStyle = "rgba(255,255,255,0.12)";
+  c.lineWidth = 0.5;
+  c.beginPath();
+  c.moveTo(a.x, a.y + fh / 3);
+  c.lineTo(b.x, b.y + fh / 3);
+  c.stroke();
+
+  c.beginPath();
+  c.moveTo(a.x, a.y + (fh * 2) / 3);
+  c.lineTo(b.x, b.y + (fh * 2) / 3);
+  c.stroke();
+}
         if (unfurl > 0.15) {
           const mi = numPts/2|0;
           const chx = fN[mi].x, chy = fN[mi].y + fh/2, cr = fh*0.11*unfurl;
