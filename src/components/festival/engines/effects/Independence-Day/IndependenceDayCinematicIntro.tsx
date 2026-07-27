@@ -778,10 +778,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = shade('#FF9933');
           c.beginPath(); c.moveTo(a.x,a.y); c.lineTo(b.x,b.y); c.lineTo(b.x,b.y+fh/3); c.lineTo(a.x,a.y+fh/3); c.closePath(); c.fill();
           c.fillStyle = shade('#FFFFFF');
-          c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
+          c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
           c.fillStyle = shade('#138808');
-          // ★★★ सुधार: 'b.y*2/3' जैसी खतरनाक गुणाकार त्रुटियों को जोड़ (Addition) से बदला गया
-          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
+          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
         }
 
         if (unfurl > 0.15) {
