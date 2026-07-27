@@ -38,7 +38,6 @@ interface CloudPuff { x: number; y: number; w: number; h: number; a: number; spe
 interface FWSmoke { x: number; y: number; a: number; sz: number; vx: number; vy: number; }
 
 const POOL = 5000;
-// ★★★ टाइमलाइन सिंक: कुल अवधि को 21.0 से घटाकर 19.0 सेकंड किया गया ताकि FestivalPhaseConfig.ts से मिलान हो सके
 const DUR = 19.0;
 
 /* ═══════════════════════════════════════════════════════════════
@@ -123,7 +122,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-    const eOB = (t: number) => { const n=7.5625,d=2.75; if(t<1/d)return n*t*t; if(t<2/d)return n*(t-=1.5/d)*t+.75; if(t<2.5/d)return n*(t-=2.25/d)*t+.9375; return n*(t-=2.625/d)*t+.984375; };
 
     try {
       audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -147,6 +145,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const numPts = 14;
     const fN: {x:number;y:number;ox:number;oy:number;vx:number;vy:number}[] = [];
     for (let i = 0; i < numPts; i++) fN.push({x:0,y:0,ox:0,oy:0,vx:0,vy:0});
+
+    // ★★★ 14s के बाद दिखने वाले अंत वाले स्वतंत्र झंडे की भौतिकी नोड्स (10 Points)
+    const numEndPts = 10;
+    const endFN: {x:number;y:number;ox:number;oy:number;vx:number;vy:number}[] = [];
+    for (let i = 0; i < numEndPts; i++) endFN.push({x:0,y:0,ox:0,oy:0,vx:0,vy:0});
 
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
     const birds: BoidBird[] = [];
@@ -210,6 +213,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       };
 
       if (fN.length > 0) fN[0].x = 0;
+      if (endFN.length > 0) endFN[0].x = 0; // अंत वाले झंडे का नोड्स रिसेट
 
       for (let i = 0; i < starI.length; i++) {
         const p = pl[starI[i]];
@@ -767,79 +771,22 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.fillStyle = pg; c.fillRect(cx-1.5, pTopY, 3, pH);
         c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3, 0, 6.283); c.fill();
 
-        // ===============================
-// Draw Modern Cinematic Flag Cloth (2027)
-// ===============================
-for (let i = 0; i < numPts - 1; i++) {
+        // Draw flag cloth
+        for (let i = 0; i < numPts - 1; i++) {
+          const a = fN[i], b = fN[i+1];
+          const sh = 0.82 + Math.sin(i*0.3 - el*4) * 0.18;
+          const shade = (hex: string) => {
+            const h = hex.replace('#','');
+            return `rgb(${parseInt(h.substring(0,2),16)*sh|0},${parseInt(h.substring(2,4),16)*sh|0},${parseInt(h.substring(4,6),16)*sh|0})`;
+          };
+          c.fillStyle = shade('#FF9933');
+          c.beginPath(); c.moveTo(a.x,a.y); c.lineTo(b.x,b.y); c.lineTo(b.x,b.y+fh/3); c.lineTo(a.x,a.y+fh/3); c.closePath(); c.fill();
+          c.fillStyle = shade('#FFFFFF');
+          c.beginPath(); c.moveTo(a.x,a.y+fh/3); c.lineTo(b.x,b.y+fh/3); c.lineTo(b.x,b.y+fh*2/3); c.lineTo(a.x,a.y+fh*2/3); c.closePath(); c.fill();
+          c.fillStyle = shade('#138808');
+          c.beginPath(); c.moveTo(a.x,a.y+fh*2/3); c.lineTo(b.x,b.y*2/3); c.lineTo(b.x,b.y+fh); c.lineTo(a.x,a.y+fh); c.closePath(); c.fill();
+        }
 
-  const a = fN[i];
-  const b = fN[i + 1];
-
-  // Dynamic cloth lighting
-  const clothLight =
-    0.90 +
-    Math.sin(i * 0.45 - el * 5.2) * 0.10 +
-    Math.cos(i * 0.20 + el * 2.5) * 0.05;
-
-  const shade = (hex: string) => {
-    const h = hex.replace("#", "");
-
-    const r = Math.min(255, Math.max(0, Math.round(parseInt(h.substring(0, 2), 16) * clothLight)));
-    const g = Math.min(255, Math.max(0, Math.round(parseInt(h.substring(2, 4), 16) * clothLight)));
-    const b = Math.min(255, Math.max(0, Math.round(parseInt(h.substring(4, 6), 16) * clothLight)));
-
-    return `rgb(${r},${g},${b})`;
-  };
-
-  // ---------- SAFFRON ----------
-  c.fillStyle = shade("#FF9933");
-  c.beginPath();
-  c.moveTo(a.x, a.y);
-  c.lineTo(b.x, b.y);
-  c.lineTo(b.x, b.y + fh / 3);
-  c.lineTo(a.x, a.y + fh / 3);
-  c.closePath();
-  c.fill();
-
-  // ---------- WHITE ----------
-  c.fillStyle = shade("#FFFFFF");
-  c.beginPath();
-  c.moveTo(a.x, a.y + fh / 3);
-  c.lineTo(b.x, b.y + fh / 3);
-
-  // ✅ FIXED BUG
-  c.lineTo(b.x, b.y + (fh * 2) / 3);
-  c.lineTo(a.x, a.y + (fh * 2) / 3);
-
-  c.closePath();
-  c.fill();
-
-  // ---------- GREEN ----------
-  c.fillStyle = shade("#138808");
-  c.beginPath();
-  c.moveTo(a.x, a.y + (fh * 2) / 3);
-  c.lineTo(b.x, b.y + (fh * 2) / 3);
-
-  // ✅ FIXED BUG
-  c.lineTo(b.x, b.y + fh);
-  c.lineTo(a.x, a.y + fh);
-
-  c.closePath();
-  c.fill();
-
-  // ---------- Cloth Highlight ----------
-  c.strokeStyle = "rgba(255,255,255,0.12)";
-  c.lineWidth = 0.5;
-  c.beginPath();
-  c.moveTo(a.x, a.y + fh / 3);
-  c.lineTo(b.x, b.y + fh / 3);
-  c.stroke();
-
-  c.beginPath();
-  c.moveTo(a.x, a.y + (fh * 2) / 3);
-  c.lineTo(b.x, b.y + (fh * 2) / 3);
-  c.stroke();
-}
         if (unfurl > 0.15) {
           const mi = numPts/2|0;
           const chx = fN[mi].x, chy = fN[mi].y + fh/2, cr = fh*0.11*unfurl;
@@ -1024,80 +971,103 @@ for (let i = 0; i < numPts - 1; i++) {
 
       /* Scene darkens for text contrast — text is NOT inside this */
       bgDarken: (t: number) => {
-  if (t < 12) return;
-  const p = cl((t - 12) / 2, 0, 1);
-  c.save();
-  c.globalAlpha = p; // 100% सॉलिड ओपेसिटी ताकि पिछला ब्लर पूरी तरह बंद हो जाए
-  c.fillStyle = '#02010c'; // गहरा काला-नीला रात का आकाश
-  c.fillRect(0, 0, W, H);
-  c.restore();
-},
+        if (t < 12) return;
+        const p = cl((t - 12) / 2, 0, 1);
+        c.save();
+        c.globalAlpha = p * 0.5;
+        c.fillStyle = '#020108';
+        c.fillRect(0, 0, W, H);
+        if (p > 0.3) {
+          const dofP = (p - 0.3) / 0.7;
+          c.globalAlpha = dofP * 0.25;
+          const vg = c.createRadialGradient(cx, H * 0.45, sc * 0.15, cx, H * 0.45, sc * 0.85);
+          vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+          c.fillStyle = vg; c.fillRect(0, 0, W, H);
+        }
+        c.restore();
+      },
+
       /* ═══════════════════════════════════════════════════════════
          ★ GREETING TEXT — HIGHEST Z-INDEX
          — Visible for 5+ seconds (15s to 21s = 6 seconds)
          — Text shifted upwards (centerY = H * 0.30) to float in sky
          ═══════════════════════════════════════════════════════════ */
-titleCard: (t: number, sa: number) => {
-  if (t < 14) return;
-  const lines = [
-    { text: 'HAPPY INDEPENDENCE DAY',         start: 14.0, y: -45, size: Math.min(W * 0.045, 34), glow: true  },
-    { text: '80th Anniversary | 1947 – 2027', start: 14.6, y: 5,   size: Math.min(W * 0.022, 17), glow: false },
-    { text: 'जय हिन्द',                       start: 15.2, y: 65,  size: Math.min(W * 0.05, 38),  glow: true  },
-  ];
+      titleCard: (t: number, sa: number) => {
+        if (t < 15) return;
 
-  const centerY = H * 0.26; // टेक्स्ट को थोड़ा ऊपर खिसकाया गया
-  const fadeDur = 1.0;
+        const lines = [
+          { text: 'HAPPY',            start: 15.0, y: -70,  size: 52, glow: true  },
+          { text: 'INDEPENDENCE DAY',  start: 15.3, y: -20,  size: 38, glow: true  },
+          { text: '80th Anniversary',  start: 15.8, y: 22,   size: 22, glow: false },
+          { text: '1947 – 2027',       start: 16.2, y: 50,   size: 20, glow: false },
+          { text: 'जय हिन्द',           start: 16.6, y: 95,   size: 44, glow: true  },
+        ];
 
-  const makeGold = () => {
-    const tg = c.createLinearGradient(cx - 250, 0, cx + 250, 0);
-    tg.addColorStop(0, '#b8860b');
-    tg.addColorStop(0.25, '#ffd700');
-    tg.addColorStop(0.5, '#fffacd');
-    tg.addColorStop(0.75, '#ffd700');
-    tg.addColorStop(1, '#b8860b');
-    return tg;
-  };
+        const centerY = H * 0.30;
+        const fadeDur = 1.0;
 
-  lines.forEach(line => {
-    const rawP = (t - line.start) / fadeDur;
-    const p = cl(rawP, 0, 1);
-    if (p <= 0) return;
+        const makeGold = () => {
+          const tg = c.createLinearGradient(cx - 250, 0, cx + 250, 0);
+          tg.addColorStop(0, '#b8860b');
+          tg.addColorStop(0.25, '#ffd700');
+          tg.addColorStop(0.5, '#fffacd');
+          tg.addColorStop(0.75, '#ffd700');
+          tg.addColorStop(1, '#b8860b');
+          return tg;
+        };
 
-    const ep = eOC(p);
+        lines.forEach(line => {
+          const rawP = (t - line.start) / fadeDur;
+          const p = cl(rawP, 0, 1);
+          if (p <= 0) return;
 
-    c.save();
-    const isHindi = line.text.includes('जय');
-    c.font = `800 ${line.size}px ${isHindi ? "'Noto Sans Devanagari', 'Yatra One', Georgia, serif" : "'Segoe UI', system-ui, -apple-system, sans-serif"}`;
-    c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillStyle = makeGold();
+          const ep = eOC(p);
 
-    // ★★★ संपूर्ण शब्द को एक साथ रेंडर करना ताकि देवनागरी मात्राएं (जय हिन्द) शुद्ध दिखें
-    c.globalAlpha = ep * sa;
-    const lineY = centerY + line.y + (1 - ep) * 20;
-    const lineScale = 0.97 + 0.03 * ep;
+          c.save();
+          c.font = `800 ${line.size}px 'Segoe UI', system-ui, -apple-system, sans-serif`;
+          c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.fillStyle = makeGold();
 
-    c.save();
-    c.translate(cx, lineY);
-    c.scale(lineScale, lineScale);
-    c.fillText(line.text, 0, 0);
-    c.restore();
+          const text = line.text;
+          const totalW = c.measureText(text).width;
+          let xPos = cx - totalW / 2;
 
-    if (line.glow && p > 0.5) {
-      c.globalCompositeOperation = 'screen';
-      c.globalAlpha = (p - 0.5) * 2 * 0.15 * sa;
-      c.shadowColor = '#ffd700';
-      c.shadowBlur = 30;
-      c.save();
-      c.translate(cx, lineY);
-      c.scale(lineScale, lineScale);
-      c.fillText(line.text, 0, 0);
-      c.restore();
-      c.globalCompositeOperation = 'source-over';
-    }
+          for (let i = 0; i < text.length; i++) {
+            const charW = c.measureText(text[i]).width;
+            const charDelay = (i / text.length) * 0.25;
+            const charRawP = (t - line.start - charDelay) / fadeDur;
+            const charP = cl(charRawP, 0, 1);
+            if (charP <= 0) { xPos += charW; continue; }
+            const charE = eOC(charP);
 
-    c.restore();
-  });
-},
+            c.globalAlpha = charE * sa;
+            const charY = centerY + line.y + (1 - charE) * 30;
+            const charScale = 0.96 + 0.04 * charE;
+
+            c.save();
+            c.translate(xPos + charW / 2, charY);
+            c.scale(charScale, charScale);
+            c.fillText(text[i], 0, 0);
+            c.restore();
+
+            xPos += charW;
+          }
+
+          if (line.glow && p > 0.5) {
+            c.globalCompositeOperation = 'screen';
+            c.globalAlpha = (p - 0.5) * 2 * 0.15 * sa;
+            c.shadowColor = '#ffd700';
+            c.shadowBlur = 30;
+            c.fillStyle = makeGold();
+            c.fillText(text, cx, centerY + line.y);
+            c.shadowBlur = 0;
+            c.globalCompositeOperation = 'source-over';
+          }
+
+          c.restore();
+        });
+      },
+
       salute: (t: number, sa: number) => {
         if (t < 7.0 || t > 7.6) return;
         const p = t < 7.15 ? cl((t - 7.0) / 0.15, 0, 1) : cl((7.6 - t) / 0.45, 0, 1);
@@ -1220,39 +1190,37 @@ titleCard: (t: number, sa: number) => {
         if (p.life <= 0 || p.y > H + 20) p.on = false;
       }
 
+      // PASS 1: Scene with camera transform
+      c.save();
+      c.translate(W / 2, H / 2);
+      c.scale(cam.zoom, cam.zoom);
+      c.translate(-W / 2 + cam.x, -H / 2 + cam.y);
+
       R.sky(t, sa);
       R.stars(t, sa);
       R.clouds(t, sa);
       R.atmosFog(t, sa);
       R.ground(t, sa);
       R.redFort(t, sa);
-      R.torch(t, el, sa);
-      R.flag(t, el, sa);
-      R.volLight(t, sa);
+      R.torch(t, t, sa);
+      R.flag(t, t, sa);
       R.drawKites(t, sa);
-      R.doves(t, el, sa);
-      R.petals(t, sa);
+      R.doves(t, t, sa);
       R.fireworks(t, sa);
-      R.particles(t, el, sa);
-      R.bgDarken(t);
+      R.particles(t, t, sa);
+      R.petals(t, sa);
+      R.salute(t, sa);
 
-      if (shaking) c.restore();
-
-      c.save();
-      c.globalAlpha = 0.035 * sa;
-      c.globalCompositeOperation = 'overlay';
-      const gxOff = (Math.random() * 256) | 0;
-      const gyOff = (Math.random() * 256) | 0;
-      c.drawImage(grainCv, gxOff - 128, gyOff - 128, 256, 256,
-                   0, 0, W, H);
       c.restore();
 
-      R.titleCard(t, 1.0);
+      // PASS 2: Screen-space overlays (no camera)
+      R.bgDarken(t);
+      R.titleCard(t, sa);
+      R.grain(sa);
+      R.vignette(sa);
+      R.fadeIn(t);
 
-      if (t >= DUR && !done.current) {
-        done.current = true;
-        if (cbR.current) cbR.current();
-      }
+      c.restore();
 
       raf.current = requestAnimationFrame(frame);
     };
