@@ -154,6 +154,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cfPts: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
+    // ★ HELIUM BALLOONS — Dynamic array for rising tricolor balloons
+    const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number }[] = [];
+
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
     const birds: BoidBird[] = [];
     const kites: Kite[] = [];
@@ -217,7 +220,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       if (fN.length > 0) fN[0].x = 0;
 
-      // ★ PRE-INITIALIZE cfPts: Positioning flagpole exactly where text begins on the left
+      // ★ PRE-INITIALIZE cfPts: Preventing snap on final scene entry
       const centerY = H * 0.26;
       c.save();
       c.font = `bold ${Math.min(W * 0.045, 34)}px 'Georgia', serif`;
@@ -242,6 +245,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           vy: 0
         };
       }
+
+      balloons.length = 0; // Reset balloons array on resize
 
       for (let i = 0; i < starI.length; i++) {
         const p = pl[starI[i]];
@@ -297,6 +302,69 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const fwCols = [{ r: 255, g: 153, b: 51 }, { r: 255, g: 255, b: 255 }, { r: 19, g: 136, b: 8 }, { r: 255, g: 215, b: 0 }, { r: 255, g: 100, b: 60 }];
 
     let celebrationCleaned = false;
+
+    const drawSoldierSilhouette = (sx: number, sy: number, scale: number) => {
+      c.save();
+      c.translate(sx, sy);
+      c.scale(scale, scale);
+      c.fillStyle = '#010008'; // Premium dark silhouette shade
+
+      // Ground shadow
+      c.beginPath();
+      c.ellipse(0, 0, 15, 3.5, 0, 0, 6.283);
+      c.fillStyle = 'rgba(0,0,0,0.4)';
+      c.fill();
+      c.fillStyle = '#010008';
+
+      // Legs
+      c.fillRect(-4, -18, 3, 18);
+      c.fillRect(1, -18, 3, 18);
+
+      // Torso & Jacket
+      c.beginPath();
+      c.moveTo(-6, -18);
+      c.lineTo(-8, -42);
+      c.lineTo(8, -42);
+      c.lineTo(6, -18);
+      c.closePath();
+      c.fill();
+
+      // Left Arm resting
+      c.beginPath();
+      c.moveTo(-7, -41);
+      c.lineTo(-12, -26);
+      c.lineTo(-9, -24);
+      c.lineTo(-5, -38);
+      c.closePath();
+      c.fill();
+
+      // Right Arm in dynamic salute pose
+      c.beginPath();
+      c.moveTo(7, -41);
+      c.lineTo(15, -45);
+      c.lineTo(10, -53);
+      c.lineTo(6, -39);
+      c.closePath();
+      c.fill();
+
+      // Head & Helmet
+      c.beginPath();
+      c.arc(0, -48, 5, 0, 6.283);
+      c.fill();
+      c.beginPath();
+      c.arc(0, -49, 6.2, Math.PI, 0);
+      c.fill();
+
+      // Subtle rifle outline on shoulder
+      c.strokeStyle = '#010008';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.moveTo(-11, -20);
+      c.lineTo(-11, -54);
+      c.stroke();
+
+      c.restore();
+    };
 
     const spawnFW = () => {
       const col = fwCols[Math.random() * fwCols.length | 0];
@@ -1010,6 +1078,170 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
+      // ★ NEW ELEMENT — Rotating Ashoka Chakra behind Title Card
+      drawBackgroundChakra: (t: number, sa: number) => {
+        if (t < 14) return;
+        c.save();
+        const centerY = H * 0.26;
+        c.globalAlpha = 0.07 * sa;
+        c.translate(cx, centerY);
+        c.rotate(t * 0.15); // Smooth rotation math
+
+        const r = sc * 0.24; // Balanced proportional scale
+        c.strokeStyle = '#000080';
+        c.lineWidth = 4.5;
+
+        // Outer circle
+        c.beginPath();
+        c.arc(0, 0, r, 0, 6.283);
+        c.stroke();
+
+        // 24 Spokes
+        c.lineWidth = 1.5;
+        for (let i = 0; i < 24; i++) {
+          const a = (i / 24) * 6.283;
+          c.beginPath();
+          c.moveTo(0, 0);
+          c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+          c.stroke();
+        }
+
+        // Inner circle rim
+        c.beginPath();
+        c.arc(0, 0, r * 0.15, 0, 6.283);
+        c.stroke();
+
+        c.restore();
+      },
+
+      // ★ NEW ELEMENT — Layered Fluid Tricolor Waves
+      drawTricolorWaves: (t: number, sa: number) => {
+        if (t < 14) return;
+        const fa = cl((t - 14) * 0.5, 0, 1) * sa;
+        c.save();
+        c.globalAlpha = fa;
+
+        const waveY = H * 0.78;
+        const waveH = 40;
+
+        // 1. Saffron Wave
+        c.fillStyle = 'rgba(255, 153, 51, 0.45)';
+        c.beginPath();
+        c.moveTo(0, H);
+        for (let x = 0; x <= W; x += 10) {
+          const y = waveY - 12 + Math.sin(x * 0.005 + t * 1.5) * 15 + Math.cos(x * 0.01 + t * 0.8) * 8;
+          c.lineTo(x, y);
+        }
+        c.lineTo(W, H);
+        c.closePath();
+        c.fill();
+
+        // 2. White Wave
+        c.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        c.beginPath();
+        c.moveTo(0, H);
+        for (let x = 0; x <= W; x += 10) {
+          const y = waveY + Math.sin(x * 0.006 - t * 1.2) * 12 + Math.cos(x * 0.008 + t * 1.0) * 6;
+          c.lineTo(x, y);
+        }
+        c.lineTo(W, H);
+        c.closePath();
+        c.fill();
+
+        // 3. Green Wave
+        c.fillStyle = 'rgba(19, 136, 8, 0.45)';
+        c.beginPath();
+        c.moveTo(0, H);
+        for (let x = 0; x <= W; x += 10) {
+          const y = waveY + waveH - 8 + Math.sin(x * 0.004 + t * 0.9) * 10 + Math.cos(x * 0.007 - t * 0.6) * 5;
+          c.lineTo(x, y);
+        }
+        c.lineTo(W, H);
+        c.closePath();
+        c.fill();
+
+        c.restore();
+      },
+
+      // ★ NEW ELEMENT — Saluting Soldiers Silhouettes to balance flagpole
+      drawSoldiers: (t: number, sa: number) => {
+        if (t < 14.5) return;
+        const fa = cl((t - 14.5) * 0.5, 0, 1) * sa;
+
+        c.save();
+        c.globalAlpha = fa;
+
+        const centerY = H * 0.26;
+        c.save();
+        c.font = `bold ${Math.min(W * 0.045, 34)}px 'Georgia', serif`;
+        const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width;
+        c.restore();
+
+        const waveY = H * 0.78;
+
+        // Soldier 1 (Large, right side)
+        const s1X = cx + titleW * 0.22;
+        const s1Y = waveY + Math.sin(s1X * 0.005 + t * 1.5) * 15;
+        drawSoldierSilhouette(s1X, s1Y, 1.0);
+
+        // Soldier 2 (Medium, depth adjustment)
+        const s2X = cx + titleW * 0.35;
+        const s2Y = waveY + Math.sin(s2X * 0.005 + t * 1.5) * 15;
+        drawSoldierSilhouette(s2X, s2Y, 0.9);
+
+        // Soldier 3 (Small, furthest right)
+        const s3X = cx + titleW * 0.46;
+        const s3Y = waveY + Math.sin(s3X * 0.005 + t * 1.5) * 15;
+        drawSoldierSilhouette(s3X, s3Y, 0.85);
+
+        c.restore();
+      },
+
+      // ★ NEW ELEMENT — Rising Tricolor Helium Balloons
+      drawBalloons: (t: number, sa: number) => {
+        if (t < 14) return;
+        c.save();
+        balloons.forEach(b => {
+          const sway = Math.sin(t * b.swaySpeed + b.phase) * b.swayAmp;
+          const bx = b.x + sway;
+          const by = b.y;
+
+          c.save();
+          c.globalAlpha = sa * 0.82;
+
+          // Thread/string wave geometry
+          c.strokeStyle = 'rgba(255,255,255,0.22)';
+          c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(bx, by + b.sz);
+          c.quadraticCurveTo(bx - 8, by + b.sz + b.sz * 0.7, bx + 4, by + b.sz * 2.5);
+          c.stroke();
+
+          // 3D Spherical balloon render
+          const grad = c.createRadialGradient(bx - b.sz * 0.25, by - b.sz * 0.25, 0, bx, by, b.sz);
+          grad.addColorStop(0, `rgb(${Math.min(255, b.r + 75)}, ${Math.min(255, b.g + 75)}, ${Math.min(255, b.b + 75)})`);
+          grad.addColorStop(0.65, `rgb(${b.r}, ${b.g}, ${b.b})`);
+          grad.addColorStop(1, `rgb(${Math.max(0, b.r - 80)}, ${Math.max(0, b.g - 80)}, ${Math.max(0, b.b - 80)})`);
+          c.fillStyle = grad;
+
+          c.beginPath();
+          c.ellipse(bx, by, b.sz * 0.84, b.sz, 0, 0, 6.283);
+          c.fill();
+
+          // Knot tie base
+          c.fillStyle = `rgb(${b.r}, ${b.g}, ${b.b})`;
+          c.beginPath();
+          c.moveTo(bx, by + b.sz);
+          c.lineTo(bx - 3.5, by + b.sz + 4);
+          c.lineTo(bx + 3.5, by + b.sz + 4);
+          c.closePath();
+          c.fill();
+
+          c.restore();
+        });
+        c.restore();
+      },
+
       titleCard: (t: number, sa: number) => {
         if (t < 14) return;
         const lines = [
@@ -1328,6 +1560,37 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       }
 
+      // ★ DYNAMIC UPDATE — Balloon rising and wind sway math
+      if (t >= 13.5 && t < DUR) {
+        if (balloons.length < 22 && Math.random() < 0.04) {
+          const cols = [
+            { r: 255, g: 153, b: 51 },  // Saffron
+            { r: 255, g: 255, b: 255 }, // White
+            { r: 19, g: 136, b: 8 }     // Green
+          ];
+          const col = cols[Math.random() * cols.length | 0];
+          balloons.push({
+            x: Math.random() * W,
+            y: H + 30,
+            r: col.r, g: col.g, b: col.b,
+            sz: 13 + Math.random() * 8,
+            swaySpeed: 0.7 + Math.random() * 1.1,
+            swayAmp: 12 + Math.random() * 16,
+            phase: Math.random() * 100,
+            seed: Math.random() * 1000
+          });
+        }
+      }
+
+      for (let i = balloons.length - 1; i >= 0; i--) {
+        const b = balloons[i];
+        b.y -= 1.1 + (b.sz * 0.04);
+        b.phase += 0.016;
+        if (b.y < -50) {
+          balloons.splice(i, 1);
+        }
+      }
+
       // ── Spawn fireworks ──
       if (t > 11 && t < DUR - 1) {
         if (t - lastFW > 0.35 + Math.random() * 0.3) {
@@ -1418,10 +1681,22 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       R.particles(t, el, sa);
       R.bgDarken(t);
 
+      /* ── ★ BACKGROUND CHAKRA WATERMARK ── */
+      R.drawBackgroundChakra(t, 1.0);
+
       /* ── TEXT: Always highest z-index, independent of sa ── */
       R.titleCard(t, 1.0);
 
-      /* ── ★ CHANGE 3: CLOSING FLAG: Flagpole with Tiranga below text ── */
+      /* ── ★ DYNAMIC BALLOONS LAYER ── */
+      R.drawBalloons(t, 1.0);
+
+      /* ── ★ NEW ELEMENT: TRICOLOR organic fluid bottom ribbons ── */
+      R.drawTricolorWaves(t, 1.0);
+
+      /* ── ★ NEW ELEMENT: Saluting soldiers silhouettes on the waves ── */
+      R.drawSoldiers(t, 1.0);
+
+      /* ── ★ CLOSING FLAG: Flagpole with Tiranga perfectly left-aligned ── */
       R.closingFlag(t, el);
 
       // ── Salute sparkles ──
