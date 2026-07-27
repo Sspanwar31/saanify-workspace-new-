@@ -967,103 +967,80 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       /* Scene darkens for text contrast — text is NOT inside this */
       bgDarken: (t: number) => {
-        if (t < 12) return;
-        const p = cl((t - 12) / 2, 0, 1);
-        c.save();
-        c.globalAlpha = p * 0.5;
-        c.fillStyle = '#020108';
-        c.fillRect(0, 0, W, H);
-        if (p > 0.3) {
-          const dofP = (p - 0.3) / 0.7;
-          c.globalAlpha = dofP * 0.25;
-          const vg = c.createRadialGradient(cx, H * 0.45, sc * 0.15, cx, H * 0.45, sc * 0.85);
-          vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
-          c.fillStyle = vg; c.fillRect(0, 0, W, H);
-        }
-        c.restore();
-      },
-
+  if (t < 12) return;
+  const p = cl((t - 12) / 2, 0, 1);
+  c.save();
+  c.globalAlpha = p; // 100% सॉलिड ओपेसिटी ताकि पिछला ब्लर पूरी तरह बंद हो जाए
+  c.fillStyle = '#02010c'; // गहरा काला-नीला रात का आकाश
+  c.fillRect(0, 0, W, H);
+  c.restore();
+},
       /* ═══════════════════════════════════════════════════════════
          ★ GREETING TEXT — HIGHEST Z-INDEX
          — Visible for 5+ seconds (15s to 21s = 6 seconds)
          — Text shifted upwards (centerY = H * 0.30) to float in sky
          ═══════════════════════════════════════════════════════════ */
-      titleCard: (t: number, sa: number) => {
-        if (t < 15) return;
+titleCard: (t: number, sa: number) => {
+  if (t < 14) return;
+  const lines = [
+    { text: 'HAPPY INDEPENDENCE DAY',         start: 14.0, y: -45, size: Math.min(W * 0.045, 34), glow: true  },
+    { text: '80th Anniversary | 1947 – 2027', start: 14.6, y: 5,   size: Math.min(W * 0.022, 17), glow: false },
+    { text: 'जय हिन्द',                       start: 15.2, y: 65,  size: Math.min(W * 0.05, 38),  glow: true  },
+  ];
 
-        const lines = [
-          { text: 'HAPPY',            start: 15.0, y: -70,  size: 52, glow: true  },
-          { text: 'INDEPENDENCE DAY',  start: 15.3, y: -20,  size: 38, glow: true  },
-          { text: '80th Anniversary',  start: 15.8, y: 22,   size: 22, glow: false },
-          { text: '1947 – 2027',       start: 16.2, y: 50,   size: 20, glow: false },
-          { text: 'जय हिन्द',           start: 16.6, y: 95,   size: 44, glow: true  },
-        ];
+  const centerY = H * 0.26; // टेक्स्ट को थोड़ा ऊपर खिसकाया गया
+  const fadeDur = 1.0;
 
-        const centerY = H * 0.30;
-        const fadeDur = 1.0;
+  const makeGold = () => {
+    const tg = c.createLinearGradient(cx - 250, 0, cx + 250, 0);
+    tg.addColorStop(0, '#b8860b');
+    tg.addColorStop(0.25, '#ffd700');
+    tg.addColorStop(0.5, '#fffacd');
+    tg.addColorStop(0.75, '#ffd700');
+    tg.addColorStop(1, '#b8860b');
+    return tg;
+  };
 
-        const makeGold = () => {
-          const tg = c.createLinearGradient(cx - 250, 0, cx + 250, 0);
-          tg.addColorStop(0, '#b8860b');
-          tg.addColorStop(0.25, '#ffd700');
-          tg.addColorStop(0.5, '#fffacd');
-          tg.addColorStop(0.75, '#ffd700');
-          tg.addColorStop(1, '#b8860b');
-          return tg;
-        };
+  lines.forEach(line => {
+    const rawP = (t - line.start) / fadeDur;
+    const p = cl(rawP, 0, 1);
+    if (p <= 0) return;
 
-        lines.forEach(line => {
-          const rawP = (t - line.start) / fadeDur;
-          const p = cl(rawP, 0, 1);
-          if (p <= 0) return;
+    const ep = eOC(p);
 
-          const ep = eOC(p);
+    c.save();
+    const isHindi = line.text.includes('जय');
+    c.font = `800 ${line.size}px ${isHindi ? "'Noto Sans Devanagari', 'Yatra One', Georgia, serif" : "'Segoe UI', system-ui, -apple-system, sans-serif"}`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = makeGold();
 
-          c.save();
-          c.font = `800 ${line.size}px 'Segoe UI', system-ui, -apple-system, sans-serif`;
-          c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.fillStyle = makeGold();
+    // ★★★ संपूर्ण शब्द को एक साथ रेंडर करना ताकि देवनागरी मात्राएं (जय हिन्द) शुद्ध दिखें
+    c.globalAlpha = ep * sa;
+    const lineY = centerY + line.y + (1 - ep) * 20;
+    const lineScale = 0.97 + 0.03 * ep;
 
-          const text = line.text;
-          const totalW = c.measureText(text).width;
-          let xPos = cx - totalW / 2;
+    c.save();
+    c.translate(cx, lineY);
+    c.scale(lineScale, lineScale);
+    c.fillText(line.text, 0, 0);
+    c.restore();
 
-          for (let i = 0; i < text.length; i++) {
-            const charW = c.measureText(text[i]).width;
-            const charDelay = (i / text.length) * 0.25;
-            const charRawP = (t - line.start - charDelay) / fadeDur;
-            const charP = cl(charRawP, 0, 1);
-            if (charP <= 0) { xPos += charW; continue; }
-            const charE = eOC(charP);
+    if (line.glow && p > 0.5) {
+      c.globalCompositeOperation = 'screen';
+      c.globalAlpha = (p - 0.5) * 2 * 0.15 * sa;
+      c.shadowColor = '#ffd700';
+      c.shadowBlur = 30;
+      c.save();
+      c.translate(cx, lineY);
+      c.scale(lineScale, lineScale);
+      c.fillText(line.text, 0, 0);
+      c.restore();
+      c.globalCompositeOperation = 'source-over';
+    }
 
-            c.globalAlpha = charE * sa;
-            const charY = centerY + line.y + (1 - charE) * 30;
-            const charScale = 0.96 + 0.04 * charE;
-
-            c.save();
-            c.translate(xPos + charW / 2, charY);
-            c.scale(charScale, charScale);
-            c.fillText(text[i], 0, 0);
-            c.restore();
-
-            xPos += charW;
-          }
-
-          if (line.glow && p > 0.5) {
-            c.globalCompositeOperation = 'screen';
-            c.globalAlpha = (p - 0.5) * 2 * 0.15 * sa;
-            c.shadowColor = '#ffd700';
-            c.shadowBlur = 30;
-            c.fillStyle = makeGold();
-            c.fillText(text, cx, centerY + line.y);
-            c.shadowBlur = 0;
-            c.globalCompositeOperation = 'source-over';
-          }
-
-          c.restore();
-        });
-      },
-
+    c.restore();
+  });
+},
       salute: (t: number, sa: number) => {
         if (t < 7.0 || t > 7.6) return;
         const p = t < 7.15 ? cl((t - 7.0) / 0.15, 0, 1) : cl((7.6 - t) / 0.45, 0, 1);
