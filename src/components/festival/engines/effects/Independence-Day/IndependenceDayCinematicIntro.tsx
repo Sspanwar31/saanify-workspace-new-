@@ -126,9 +126,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-    const eOB = (t: number) => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; };
-
-    try {
+    // ✅ NEW (is line ke BAAD ye ek line ADD karo)
+const eOB = (t: number) => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; };
+const eOBack = (t: number) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+     
+     try {
       audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       playAudio();
     } catch (err) { console.warn("AudioContext failed:", err); }
@@ -155,7 +157,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
     // ★ HELIUM BALLOONS — Dynamic array for rising tricolor balloons
-    const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number }[] = [];
+    // ✅ NEW (pura replace karo)
+const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number; vy: number; born: number }[] = [];
 
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
     const birds: BoidBird[] = [];
@@ -1027,9 +1030,218 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.beginPath(); c.ellipse(0, 0, p.sz, p.sz * 0.45, 0, 0, 6.283); c.fill();
           c.restore();
         }
+      // ✅ NEW
+ 
+     soldiers: (t: number, sa: number) => {
+        if (t < 2) return;
+        const a = cl((t - 2) * 0.8, 0, 1) * (t > 12 ? cl((13 - t) * 2, 0, 1) : 1) * sa;
+        c.save(); c.globalAlpha = a;
+        [{ x: cx - gateW * 0.22, s: 0.9 }, { x: cx - gateW * 0.17, s: 0.85 }, { x: cx - gateW * 0.12, s: 0.95 }, { x: cx + gateW * 0.12, s: 0.95 }, { x: cx + gateW * 0.17, s: 0.85 }, { x: cx + gateW * 0.22, s: 0.9 }].forEach(p => drawSoldierSilhouette(p.x, baseY, p.s));
         c.restore();
       },
 
+      celebration: (t: number, el: number, sa: number) => {
+        const skyP = cl((t - 12) / 1.8, 0, 1);
+        c.save(); c.globalAlpha = skyP * sa;
+        const mg = c.createLinearGradient(0, 0, 0, H);
+        mg.addColorStop(0, '#04040e'); mg.addColorStop(0.25, '#08061a');
+        mg.addColorStop(0.55, '#0c0816'); mg.addColorStop(0.80, '#0a0610');
+        mg.addColorStop(0.90, '#100a08'); mg.addColorStop(0.95, '#081008');
+        mg.addColorStop(1, '#04040e');
+        c.fillStyle = mg; c.fillRect(0, 0, W, H);
+        c.restore();
+        if (skyP > 0.4) {
+          const auA = (skyP - 0.4) / 0.6 * sa * 0.12;
+          c.save(); c.globalCompositeOperation = 'screen';
+          const a1 = c.createRadialGradient(W * 0.25, H * 0.92, 0, W * 0.25, H * 0.92, W * 0.35);
+          a1.addColorStop(0, `rgba(255,120,30,${auA})`); a1.addColorStop(1, 'rgba(255,120,30,0)');
+          c.fillStyle = a1; c.fillRect(0, H * 0.7, W, H * 0.3);
+          const a2 = c.createRadialGradient(W * 0.5, H * 0.95, 0, W * 0.5, H * 0.95, W * 0.25);
+          a2.addColorStop(0, `rgba(255,255,255,${auA * 0.4})`); a2.addColorStop(1, 'rgba(255,255,255,0)');
+          c.fillStyle = a2; c.fillRect(0, H * 0.78, W, H * 0.22);
+          const a3 = c.createRadialGradient(W * 0.75, H * 0.92, 0, W * 0.75, H * 0.92, W * 0.35);
+          a3.addColorStop(0, `rgba(20,140,20,${auA * 0.8})`); a3.addColorStop(1, 'rgba(20,140,20,0)');
+          c.fillStyle = a3; c.fillRect(0, H * 0.7, W, H * 0.3);
+          c.restore();
+        }
+        if (skyP > 0.2) {
+          const sA = (skyP - 0.2) / 0.8 * sa;
+          c.save(); c.globalAlpha = sA;
+          for (const idx of starI) {
+            const p = pl[idx]; if (!p?.on) continue;
+            const tw = Math.sin(el * 2.2 + idx * 1.7) * 0.45 + 0.55;
+            c.fillStyle = `rgba(255,250,230,${p.a * tw * 0.35})`; c.beginPath(); c.arc(p.x, p.y, p.sz * 3.5, 0, 6.283); c.fill();
+            c.fillStyle = `rgba(255,252,240,${p.a * tw * 0.9})`; c.beginPath(); c.arc(p.x, p.y, p.sz * 1.3, 0, 6.283); c.fill();
+          }
+          c.restore();
+        }
+        const tCY = H * 0.30;
+        const tA = cl((t - 12.4) * 0.9, 0, 1) * sa;
+        if (tA > 0) {
+          const tSz = Math.min(W * 0.054, 44);
+          c.save(); c.globalAlpha = tA; c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.font = `900 ${tSz}px 'Georgia', serif`;
+          if ('letterSpacing' in c) (c as any).letterSpacing = `${tSz * 0.12}px`;
+          c.shadowColor = 'rgba(255,180,40,0.55)'; c.shadowBlur = 28 + Math.sin(el * 2) * 8;
+          const tg = c.createLinearGradient(cx - 320, 0, cx + 320, 0);
+          tg.addColorStop(0, '#b88018'); tg.addColorStop(0.18, '#ffd700'); tg.addColorStop(0.35, '#fff4c0');
+          tg.addColorStop(0.50, '#ffd700'); tg.addColorStop(0.65, '#fff4c0'); tg.addColorStop(0.82, '#ffd700');
+          tg.addColorStop(1, '#b88018');
+          c.fillStyle = tg; c.fillText('HAPPY INDEPENDENCE DAY', cx, tCY);
+          c.shadowBlur = 0; c.globalAlpha = tA * 0.25; c.fillStyle = '#fff8e0';
+          c.fillText('HAPPY INDEPENDENCE DAY', cx, tCY);
+          if ('letterSpacing' in c) (c as any).letterSpacing = '0px';
+          c.restore();
+        }
+        const subA = cl((t - 12.8) * 1.0, 0, 1) * sa;
+        if (subA > 0) {
+          const subSz = Math.min(W * 0.022, 18);
+          c.save(); c.globalAlpha = subA * 0.85; c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.font = `300 ${subSz}px 'Georgia', serif`;
+          if ('letterSpacing' in c) (c as any).letterSpacing = `${subSz * 0.35}px`;
+          c.fillStyle = '#c8b898'; c.fillText('80th Anniversary  |  1947 — 2027', cx, tCY + tSz * 0.75 + 8);
+          if ('letterSpacing' in c) (c as any).letterSpacing = '0px';
+          c.restore();
+        }
+        const hiA = cl((t - 13.1) * 1.2, 0, 1) * sa;
+        if (hiA > 0) {
+          const hiSz = Math.min(W * 0.032, 26);
+          c.save(); c.globalAlpha = hiA * 0.7; c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.font = `400 ${hiSz}px 'Georgia', serif`;
+          c.fillStyle = '#a89878'; c.fillText('आज़ादी दिवस', cx, tCY + tSz * 0.75 + hiSz + 14);
+          c.restore();
+        }
+        const jhA = cl((t - 13.6) * 1.4, 0, 1) * sa;
+        if (jhA > 0) {
+          const jhScale = eOBack(cl((t - 13.6) * 0.7, 0, 1));
+          const jhSz = Math.min(W * 0.065, 56) * jhScale;
+          const jhY = tCY + tSz * 0.75 + Math.min(W * 0.032, 26) + jhSz * 0.6 + 30;
+          c.save(); c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.globalCompositeOperation = 'screen';
+          const burstR = jhSz * 3 * cl((t - 13.6) * 0.5, 0, 1);
+          const burstG = c.createRadialGradient(cx, jhY, 0, cx, jhY, burstR);
+          burstG.addColorStop(0, `rgba(255,200,60,${jhA * 0.25})`); burstG.addColorStop(0.4, `rgba(255,150,30,${jhA * 0.08})`); burstG.addColorStop(1, 'rgba(0,0,0,0)');
+          c.fillStyle = burstG; c.beginPath(); c.arc(cx, jhY, burstR, 0, 6.283); c.fill();
+          c.globalCompositeOperation = 'source-over';
+          c.globalAlpha = jhA;
+          c.font = `900 ${jhSz}px 'Georgia', serif`;
+          c.shadowColor = 'rgba(255,180,40,0.7)'; c.shadowBlur = 35;
+          const jhG = c.createLinearGradient(cx - 200, 0, cx + 200, 0);
+          jhG.addColorStop(0, '#d4a020'); jhG.addColorStop(0.3, '#ffe680'); jhG.addColorStop(0.5, '#fffbe8');
+          jhG.addColorStop(0.7, '#ffe680'); jhG.addColorStop(1, '#d4a020');
+          c.fillStyle = jhG; c.fillText('जय हिन्द', cx, jhY);
+          c.shadowBlur = 0; c.globalAlpha = jhA * 0.3; c.fillStyle = '#fffef5';
+          c.fillText('जय हिन्द', cx, jhY);
+          c.restore();
+        }
+        if (t > 13.0) {
+          const spA = cl((t - 13.0) * 0.5, 0, 1) * sa;
+          c.save(); c.globalCompositeOperation = 'lighter';
+          for (let i = 0; i < 40; i++) {
+            const sx = cx + Math.sin(el * 0.4 + i * 2.3) * W * 0.35;
+            const sy = tCY - 40 + Math.cos(el * 0.3 + i * 1.7) * 60 + i * 3;
+            const ssz = 0.8 + Math.sin(el * 3 + i * 4.1) * 0.6;
+            const salpha = (Math.sin(el * 2.5 + i * 3.3) * 0.4 + 0.5) * spA * 0.35;
+            c.fillStyle = `rgba(255,215,80,${salpha})`;
+            c.beginPath(); c.arc(sx, sy, Math.max(0.3, ssz), 0, 6.283); c.fill();
+          }
+          c.restore();
+        }
+        if (t > 13.2) {
+          const blA = cl((t - 13.2) * 0.8, 0, 1) * sa;
+          if (Math.floor(t * 2.5) > Math.floor((t - 0.016) * 2.5) && balloons.length < 18) {
+            const cols = [{ r: 255, g: 153, b: 51 }, { r: 255, g: 255, b: 255 }, { r: 19, g: 136, b: 8 }];
+            const col = cols[balloons.length % 3];
+            balloons.push({ x: W * 0.12 + Math.random() * W * 0.76, y: H + 30, r: col.r, g: col.g, b: col.b, sz: 14 + Math.random() * 10, swaySpeed: 0.8 + Math.random() * 0.6, swayAmp: 8 + Math.random() * 12, phase: Math.random() * 100, seed: Math.random() * 1000, vy: -0.6 - Math.random() * 0.4, born: t });
+          }
+          c.save(); c.globalAlpha = blA;
+          for (let i = balloons.length - 1; i >= 0; i--) {
+            const bl = balloons[i]; bl.y += bl.vy; bl.x += Math.sin(el * bl.swaySpeed + bl.phase) * 0.3;
+            if (bl.y < -bl.sz * 3) { balloons.splice(i, 1); continue; }
+            const age = t - bl.born, fadeIn = cl(age * 2, 0, 1);
+            c.save(); c.globalAlpha = blA * fadeIn; c.translate(bl.x, bl.y);
+            const bg = c.createRadialGradient(-bl.sz * 0.25, -bl.sz * 0.3, bl.sz * 0.1, 0, 0, bl.sz);
+            bg.addColorStop(0, `rgba(${Math.min(255, bl.r + 60)},${Math.min(255, bl.g + 60)},${Math.min(255, bl.b + 60)},0.95)`);
+            bg.addColorStop(0.6, `rgba(${bl.r},${bl.g},${bl.b},0.9)`);
+            bg.addColorStop(1, `rgba(${bl.r * 0.6 | 0},${bl.g * 0.6 | 0},${bl.b * 0.6 | 0},0.85)`);
+            c.fillStyle = bg; c.beginPath(); c.ellipse(0, 0, bl.sz * 0.7, bl.sz, 0, 0, 6.283); c.fill();
+            c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.ellipse(-bl.sz * 0.2, -bl.sz * 0.35, bl.sz * 0.15, bl.sz * 0.25, -0.3, 0, 6.283); c.fill();
+            c.fillStyle = `rgba(${bl.r * 0.5 | 0},${bl.g * 0.5 | 0},${bl.b * 0.5 | 0},1)`; c.beginPath(); c.moveTo(-2, bl.sz); c.lineTo(0, bl.sz + 5); c.lineTo(2, bl.sz); c.fill();
+            c.strokeStyle = 'rgba(200,190,170,0.3)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(0, bl.sz + 5); c.bezierCurveTo(3, bl.sz + 20, -4, bl.sz + 35, 2, bl.sz + 50); c.stroke();
+            c.restore();
+          }
+          c.restore();
+        }
+        const cfA = cl((t - 13.8) * 1.0, 0, 1) * sa;
+        if (cfA > 0) {
+          const cfFw = Math.min(sc * 0.24, 250), cfFh = cfFw * 0.66;
+          const cfPoleX = cx - cfFw * 0.45, cfPoleTopY = H * 0.48, cfPoleBotY = H * 0.92;
+          for (let i = 1; i < cfNumPts; i++) {
+            const wind = 0.10 + noise.n2(el * 0.5 + i * 0.12, 10) * 0.08 + noise.n2(el * 1.1 + i * 0.25, 20) * 0.025;
+            cfPts[i].vx = (cfPts[i].x - cfPts[i].ox) * 0.90 + wind; cfPts[i].vy = (cfPts[i].y - cfPts[i].oy) * 0.90 + 0.012 + noise.n2(el * 0.7 + i * 0.18, 30) * 0.006;
+            cfPts[i].ox = cfPts[i].x; cfPts[i].oy = cfPts[i].y; cfPts[i].x += cfPts[i].vx; cfPts[i].y += cfPts[i].vy;
+          }
+          cfPts[0].x = cfPoleX + 2; cfPts[0].y = cfPoleTopY + 8;
+          const cfLl = cfFw / (cfNumPts - 1);
+          for (let s = 0; s < 5; s++) for (let i = 0; i < cfNumPts - 1; i++) {
+            const a = cfPts[i], b = cfPts[i + 1]; const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+            const diff = cfLl - d, pct = (diff / d) * 0.5, ox = dx * pct, oy = dy * pct;
+            if (i > 0) { a.x -= ox; a.y -= oy; } b.x += ox; b.y += oy;
+          }
+          c.save(); c.globalAlpha = cfA;
+          const pGrad = c.createLinearGradient(cfPoleX - 1, cfPoleTopY, cfPoleX + 1, cfPoleBotY);
+          pGrad.addColorStop(0, '#ccc'); pGrad.addColorStop(0.3, '#eee'); pGrad.addColorStop(0.7, '#bbb'); pGrad.addColorStop(1, '#888');
+          c.fillStyle = pGrad; c.fillRect(cfPoleX - 1.5, cfPoleTopY, 3, cfPoleBotY - cfPoleTopY);
+          c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cfPoleX, cfPoleTopY, 3.5, 0, 6.283); c.fill();
+          for (let i = 0; i < cfNumPts - 1; i++) {
+            const a = cfPts[i], b = cfPts[i + 1];
+            const cl2 = 0.88 + Math.sin(i * 0.5 - el * 4.8) * 0.12;
+            const shade = (hex: string) => { const h = hex.replace("#", ""); return `rgb(${Math.min(255, Math.max(0, Math.round(parseInt(h.substring(0, 2), 16) * cl2)))},${Math.min(255, Math.max(0, Math.round(parseInt(h.substring(2, 4), 16) * cl2)))},${Math.min(255, Math.max(0, Math.round(parseInt(h.substring(4, 6), 16) * cl2)))})`; };
+            c.fillStyle = shade("#FF9933"); c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(b.x, b.y + cfFh / 3); c.lineTo(a.x, a.y + cfFh / 3); c.closePath(); c.fill();
+            c.fillStyle = shade("#FFFFFF"); c.beginPath(); c.moveTo(a.x, a.y + cfFh / 3); c.lineTo(b.x, b.y + cfFh / 3); c.lineTo(b.x, b.y + (cfFh * 2) / 3); c.lineTo(a.x, a.y + (cfFh * 2) / 3); c.closePath(); c.fill();
+            c.fillStyle = shade("#138808"); c.beginPath(); c.moveTo(a.x, a.y + (cfFh * 2) / 3); c.lineTo(b.x, b.y + (cfFh * 2) / 3); c.lineTo(b.x, b.y + cfFh); c.lineTo(a.x, a.y + cfFh); c.closePath(); c.fill();
+            c.strokeStyle = "rgba(255,255,255,0.1)"; c.lineWidth = 0.4;
+            c.beginPath(); c.moveTo(a.x, a.y + cfFh / 3); c.lineTo(b.x, b.y + cfFh / 3); c.stroke();
+            c.beginPath(); c.moveTo(a.x, a.y + (cfFh * 2) / 3); c.lineTo(b.x, b.y + (cfFh * 2) / 3); c.stroke();
+          }
+          if (cfA > 0.5) {
+            const mi = cfNumPts / 2 | 0, chx = cfPts[mi].x, chy = cfPts[mi].y + cfFh / 2, cr = cfFh * 0.11;
+            c.save(); c.translate(chx, chy); c.rotate(el * 0.6);
+            c.strokeStyle = 'rgba(0,0,120,0.8)'; c.lineWidth = 1.3; c.beginPath(); c.arc(0, 0, cr, 0, 6.283); c.stroke();
+            c.lineWidth = 0.5; for (let i = 0; i < 24; i++) { const a = (i / 24) * 6.283; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * cr, Math.sin(a) * cr); c.stroke(); }
+            c.restore();
+          }
+          c.restore();
+        }
+        if (t > 12.5 && Math.random() < 0.045) spawnFW();
+        if (t > 14.0 && Math.random() < 0.07) spawnFW();
+        if (t > 16.0 && Math.random() < 0.09) spawnFW();
+        c.save(); c.globalCompositeOperation = 'lighter';
+        for (const fw of fwList) {
+          for (const pt of fw.pts) {
+            const la = cl(pt.life / pt.ml, 0, 1), alpha = la * la * 0.85, sz = pt.sz * (0.3 + la * 0.7);
+            c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${alpha})`; c.beginPath(); c.arc(pt.x, pt.y, Math.max(0.5, sz), 0, 6.283); c.fill();
+            c.fillStyle = `rgba(${Math.min(255, fw.col.r + 50)},${Math.min(255, fw.col.g + 50)},${Math.min(255, fw.col.b + 30)},${alpha * 0.2})`; c.beginPath(); c.arc(pt.x, pt.y, Math.max(1, sz * 2.5), 0, 6.283); c.fill();
+          }
+        }
+        c.restore();
+        c.save(); for (const s of fwSmoke) { c.globalAlpha = s.a * 0.5; c.fillStyle = 'rgba(180,170,160,1)'; c.beginPath(); c.arc(s.x, s.y, Math.max(1, s.sz), 0, 6.283); c.fill(); } c.restore();
+        const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
+        c.save(); c.globalAlpha = vigA; const vig = c.createRadialGradient(cx, H * 0.45, sc * 0.25, cx, H * 0.45, sc * 0.9);
+        vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(0.6, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.7)');
+        c.fillStyle = vig; c.fillRect(0, 0, W, H); c.restore();
+        c.save(); c.globalAlpha = 0.035; c.globalCompositeOperation = 'overlay';
+        const gOff = (el * 60 | 0) % 256; c.drawImage(grainCv, 0, 0, 256, 256, -gOff, -gOff, W + 256, H + 256); c.restore();
+        if (t > 13.5) {
+          const lnA = cl((t - 13.5) * 0.6, 0, 1) * sa * 0.4;
+          c.save(); c.globalAlpha = lnA; const lnH = 3, lnW = W * 0.3, lnY = H - 20;
+          c.fillStyle = '#FF9933'; c.fillRect(cx - lnW / 2, lnY, lnW / 3, lnH);
+          c.fillStyle = '#FFFFFF'; c.fillRect(cx - lnW / 6, lnY, lnW / 3, lnH);
+          c.fillStyle = '#138808'; c.fillRect(cx + lnW / 6, lnY, lnW / 3, lnH);
+          c.restore();
+        }
+      },
+       
       fireworks: (t: number, sa: number) => {
         if (t < 11) return;
         const fa = cl((t - 11) * 0.5, 0, 1) * sa;
@@ -1669,6 +1881,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       R.stars(t, sa);
       R.clouds(t, sa);
       R.atmosFog(t, sa);
+      // ✅ NEW
       R.volLight(t, sa);
       R.ground(t, sa);
       R.redFort(t, sa);
@@ -1677,10 +1890,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       R.drawKites(t, sa);
       R.doves(t, el, sa);
       R.petals(t, sa);
+      R.soldiers(t, sa);
+      if (t > 12) { R.celebration(t, el, 1); } else {
       R.fireworks(t, sa);
       R.particles(t, el, sa);
       R.bgDarken(t);
-
+      }
       /* ── ★ BACKGROUND CHAKRA WATERMARK ── */
       R.drawBackgroundChakra(t, 1.0);
 
