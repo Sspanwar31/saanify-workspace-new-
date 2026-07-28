@@ -29,7 +29,7 @@ interface BoidBird {
 
 interface Firework {
   x: number; y: number; vy: number;
-  state: 'rising' | 'burst' | 'secondary'; burstT: number; secondaryT: number;
+  state: 'rising' | 'burst' | 'secondary'; burstT: 0; secondaryT: 0;
   col: { r: number; g: number; b: number };
   pts: { x: number; y: number; vx: number; vy: number; life: number; ml: number; sz: number }[];
 }
@@ -710,7 +710,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.strokeStyle = 'rgba(0,0,0,0.12)'; c.lineWidth = 0.7; c.stroke();
           c.fillStyle = GOLD;
           c.fillRect(chX + chW / 2 - 1, chY - 2 - chW * 0.42 - 5, 2, 6);
-          c.beginPath(); c.arc(chX + chW / 2, chY - 2 - chW * 0.42 - 6, 2.5, 0, 6.283); c.fill();
+          c.beginPath(); c.arc(chX + chW / 2, x => chY - 2 - chW * 0.42 - 6, 2.5, 0, 6.283); c.fill();
         };
         drawBastion(bastionL.x, bastionL.w, bastionL.top);
         drawBastion(bastionR.x, bastionR.w, bastionR.top);
