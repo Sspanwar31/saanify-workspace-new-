@@ -29,7 +29,7 @@ interface BoidBird {
 
 interface Firework {
   x: number; y: number; vy: number;
-  state: 'rising' | 'burst' | 'secondary'; burstT: 0; secondaryT: 0;
+  state: 'rising' | 'burst' | 'secondary'; burstT: number; secondaryT: number;
   col: { r: number; g: number; b: number };
   pts: { x: number; y: number; vx: number; vy: number; life: number; ml: number; sz: number }[];
 }
@@ -242,7 +242,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           x: cfPoleX + 2 + i * cfLl,
           y: cfFlagTopY,
           ox: cfPoleX + 2 + i * cfLl,
-          oy: cfFlagTopY,
+          oy: cfPoleX + 2 + i * cfLl,
           vx: 0,
           vy: 0
         };
@@ -1436,7 +1436,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = grad;
 
           c.beginPath();
-          c.ellipse(bx, by, b.sz * 0.84, b.sz, 0, 0, 6.283);
+          c.ellipse(bx, by, b.sz * 0.84, b.sz);
           c.fill();
 
           // Knot tie base
