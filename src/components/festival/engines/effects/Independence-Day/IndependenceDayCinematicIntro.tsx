@@ -126,11 +126,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-    // ✅ NEW (is line ke BAAD ye ek line ADD karo)
-const eOB = (t: number) => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; };
-const eOBack = (t: number) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+    
+    const eOB = (t: number) => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; };
+    const eOBack = (t: number) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
      
-     try {
+    try {
       audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       playAudio();
     } catch (err) { console.warn("AudioContext failed:", err); }
@@ -151,14 +151,13 @@ const eOBack = (t: number) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 *
     const fN: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < numPts; i++) fN.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
-    // ★ CHANGE 1: CLOSING FLAG — Simulation points initialization configuration
+    // ★ CLOSING FLAG — Simulation points initialization configuration
     const cfNumPts = 14;
     const cfPts: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
     // ★ HELIUM BALLOONS — Dynamic array for rising tricolor balloons
-    // ✅ NEW (pura replace karo)
-const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number; vy: number; born: number }[] = [];
+    const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number; vy: number; born: number }[] = [];
 
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
     const birds: BoidBird[] = [];
@@ -866,7 +865,7 @@ const balloons: { x: number; y: number; r: number; g: number; b: number; sz: num
         const pg = c.createLinearGradient(cx - 2, pTopY, cx + 2, pBaseY);
         pg.addColorStop(0, '#ddd'); pg.addColorStop(0.5, '#fff'); pg.addColorStop(1, '#999');
         c.fillStyle = pg; c.fillRect(cx - 1.5, pTopY, 3, pH);
-        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3, 0, 6.283); c.fill();
+        c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cx, pTopY, 3.5, 0, 6.283); c.fill();
 
         for (let i = 0; i < numPts - 1; i++) {
           const a = fN[i]; const b = fN[i + 1];
@@ -1030,9 +1029,9 @@ const balloons: { x: number; y: number; r: number; g: number; b: number; sz: num
           c.beginPath(); c.ellipse(0, 0, p.sz, p.sz * 0.45, 0, 0, 6.283); c.fill();
           c.restore();
         }
-      // ✅ NEW
- 
-     soldiers: (t: number, sa: number) => {
+      }, // 🌟 FIXED: Added missing bracket and comma here
+
+      soldiers: (t: number, sa: number) => {
         if (t < 2) return;
         const a = cl((t - 2) * 0.8, 0, 1) * (t > 12 ? cl((13 - t) * 2, 0, 1) : 1) * sa;
         c.save(); c.globalAlpha = a;
@@ -1366,7 +1365,7 @@ const balloons: { x: number; y: number; r: number; g: number; b: number; sz: num
         c.moveTo(0, H);
         for (let x = 0; x <= W; x += 10) {
           const y = waveY + waveH - 8 + Math.sin(x * 0.004 + t * 0.9) * 10 + Math.cos(x * 0.007 - t * 0.6) * 5;
-          c.lineTo(x, y);
+          c.lineTo(W, H);
         }
         c.lineTo(W, H);
         c.closePath();
@@ -1789,14 +1788,16 @@ const balloons: { x: number; y: number; r: number; g: number; b: number; sz: num
             swaySpeed: 0.7 + Math.random() * 1.1,
             swayAmp: 12 + Math.random() * 16,
             phase: Math.random() * 100,
-            seed: Math.random() * 1000
+            seed: Math.random() * 1000,
+            vy: -0.6 - Math.random() * 0.4,
+            born: t
           });
         }
       }
 
       for (let i = balloons.length - 1; i >= 0; i--) {
         const b = balloons[i];
-        b.y -= 1.1 + (b.sz * 0.04);
+        b.y += b.vy;
         b.phase += 0.016;
         if (b.y < -50) {
           balloons.splice(i, 1);
@@ -1881,7 +1882,6 @@ const balloons: { x: number; y: number; r: number; g: number; b: number; sz: num
       R.stars(t, sa);
       R.clouds(t, sa);
       R.atmosFog(t, sa);
-      // ✅ NEW
       R.volLight(t, sa);
       R.ground(t, sa);
       R.redFort(t, sa);
@@ -1891,11 +1891,14 @@ const balloons: { x: number; y: number; r: number; g: number; b: number; sz: num
       R.doves(t, el, sa);
       R.petals(t, sa);
       R.soldiers(t, sa);
-      if (t > 12) { R.celebration(t, el, 1); } else {
-      R.fireworks(t, sa);
-      R.particles(t, el, sa);
-      R.bgDarken(t);
+      if (t > 12) { 
+        R.celebration(t, el, 1); 
+      } else {
+        R.fireworks(t, sa);
+        R.particles(t, el, sa);
+        R.bgDarken(t);
       }
+      
       /* ── ★ BACKGROUND CHAKRA WATERMARK ── */
       R.drawBackgroundChakra(t, 1.0);
 
