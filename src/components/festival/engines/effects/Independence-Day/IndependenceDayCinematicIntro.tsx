@@ -1074,12 +1074,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           }
           c.restore();
         }
+        // ✅ NEW
         const tCY = H * 0.30;
+        const tSz = Math.min(W * 0.054, 44);
         const tA = cl((t - 12.4) * 0.9, 0, 1) * sa;
         if (tA > 0) {
-          const tSz = Math.min(W * 0.054, 44);
-          c.save(); c.globalAlpha = tA; c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.font = `900 ${tSz}px 'Georgia', serif`;
+          c.save(); c.globalAlpha = tA; c.textAlign = 'center'; c.textBaseline = 'middle';  c.font = `900 ${tSz}px 'Georgia', serif`;
           if ('letterSpacing' in c) (c as any).letterSpacing = `${tSz * 0.12}px`;
           c.shadowColor = 'rgba(255,180,40,0.55)'; c.shadowBlur = 28 + Math.sin(el * 2) * 8;
           const tg = c.createLinearGradient(cx - 320, 0, cx + 320, 0);
