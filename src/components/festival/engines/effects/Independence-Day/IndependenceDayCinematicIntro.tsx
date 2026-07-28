@@ -1435,9 +1435,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           grad.addColorStop(1, `rgb(${Math.max(0, b.r - 80)}, ${Math.max(0, b.g - 80)}, ${Math.max(0, b.b - 80)})`);
           c.fillStyle = grad;
 
-          c.beginPath();
-          c.ellipse(bx, by, b.sz * 0.84, b.sz);
-          c.fill();
+          // ✅ NEW — 7 args
+         c.beginPath();
+         c.ellipse(bx, by, b.sz * 0.84, b.sz, 0, 0, 6.283);
+         c.fill();
 
           // Knot tie base
           c.fillStyle = `rgb(${b.r}, ${b.g}, ${b.b})`;
