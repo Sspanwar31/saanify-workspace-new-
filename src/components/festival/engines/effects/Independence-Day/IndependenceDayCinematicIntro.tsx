@@ -1074,144 +1074,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           }
           c.restore();
         }
-        // ✅ NEW
-        const tCY = H * 0.30;
-        const tSz = Math.min(W * 0.054, 44);
-        const tA = cl((t - 12.4) * 0.9, 0, 1) * sa;
-        if (tA > 0) {
-          c.save(); c.globalAlpha = tA; c.textAlign = 'center'; c.textBaseline = 'middle';  c.font = `900 ${tSz}px 'Georgia', serif`;
-          if ('letterSpacing' in c) (c as any).letterSpacing = `${tSz * 0.12}px`;
-          c.shadowColor = 'rgba(255,180,40,0.55)'; c.shadowBlur = 28 + Math.sin(el * 2) * 8;
-          const tg = c.createLinearGradient(cx - 320, 0, cx + 320, 0);
-          tg.addColorStop(0, '#b88018'); tg.addColorStop(0.18, '#ffd700'); tg.addColorStop(0.35, '#fff4c0');
-          tg.addColorStop(0.50, '#ffd700'); tg.addColorStop(0.65, '#fff4c0'); tg.addColorStop(0.82, '#ffd700');
-          tg.addColorStop(1, '#b88018');
-          c.fillStyle = tg; c.fillText('HAPPY INDEPENDENCE DAY', cx, tCY);
-          c.shadowBlur = 0; c.globalAlpha = tA * 0.25; c.fillStyle = '#fff8e0';
-          c.fillText('HAPPY INDEPENDENCE DAY', cx, tCY);
-          if ('letterSpacing' in c) (c as any).letterSpacing = '0px';
-          c.restore();
-        }
-        const subA = cl((t - 12.8) * 1.0, 0, 1) * sa;
-        if (subA > 0) {
-          const subSz = Math.min(W * 0.022, 18);
-          c.save(); c.globalAlpha = subA * 0.85; c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.font = `300 ${subSz}px 'Georgia', serif`;
-          if ('letterSpacing' in c) (c as any).letterSpacing = `${subSz * 0.35}px`;
-          c.fillStyle = '#c8b898'; c.fillText('80th Anniversary  |  1947 — 2027', cx, tCY + tSz * 0.75 + 8);
-          if ('letterSpacing' in c) (c as any).letterSpacing = '0px';
-          c.restore();
-        }
-        const hiA = cl((t - 13.1) * 1.2, 0, 1) * sa;
-        if (hiA > 0) {
-          const hiSz = Math.min(W * 0.032, 26);
-          c.save(); c.globalAlpha = hiA * 0.7; c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.font = `400 ${hiSz}px 'Georgia', serif`;
-          c.fillStyle = '#a89878'; c.fillText('आज़ादी दिवस', cx, tCY + tSz * 0.75 + hiSz + 14);
-          c.restore();
-        }
-        const jhA = cl((t - 13.6) * 1.4, 0, 1) * sa;
-        if (jhA > 0) {
-          const jhScale = eOBack(cl((t - 13.6) * 0.7, 0, 1));
-          const jhSz = Math.min(W * 0.065, 56) * jhScale;
-          const jhY = tCY + tSz * 0.75 + Math.min(W * 0.032, 26) + jhSz * 0.6 + 30;
-          c.save(); c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.globalCompositeOperation = 'screen';
-          const burstR = jhSz * 3 * cl((t - 13.6) * 0.5, 0, 1);
-          const burstG = c.createRadialGradient(cx, jhY, 0, cx, jhY, burstR);
-          burstG.addColorStop(0, `rgba(255,200,60,${jhA * 0.25})`); burstG.addColorStop(0.4, `rgba(255,150,30,${jhA * 0.08})`); burstG.addColorStop(1, 'rgba(0,0,0,0)');
-          c.fillStyle = burstG; c.beginPath(); c.arc(cx, jhY, burstR, 0, 6.283); c.fill();
-          c.globalCompositeOperation = 'source-over';
-          c.globalAlpha = jhA;
-          c.font = `900 ${jhSz}px 'Georgia', serif`;
-          c.shadowColor = 'rgba(255,180,40,0.7)'; c.shadowBlur = 35;
-          const jhG = c.createLinearGradient(cx - 200, 0, cx + 200, 0);
-          jhG.addColorStop(0, '#d4a020'); jhG.addColorStop(0.3, '#ffe680'); jhG.addColorStop(0.5, '#fffbe8');
-          jhG.addColorStop(0.7, '#ffe680'); jhG.addColorStop(1, '#d4a020');
-          c.fillStyle = jhG; c.fillText('जय हिन्द', cx, jhY);
-          c.shadowBlur = 0; c.globalAlpha = jhA * 0.3; c.fillStyle = '#fffef5';
-          c.fillText('जय हिन्द', cx, jhY);
-          c.restore();
-        }
-        if (t > 13.0) {
-          const spA = cl((t - 13.0) * 0.5, 0, 1) * sa;
-          c.save(); c.globalCompositeOperation = 'lighter';
-          for (let i = 0; i < 40; i++) {
-            const sx = cx + Math.sin(el * 0.4 + i * 2.3) * W * 0.35;
-            const sy = tCY - 40 + Math.cos(el * 0.3 + i * 1.7) * 60 + i * 3;
-            const ssz = 0.8 + Math.sin(el * 3 + i * 4.1) * 0.6;
-            const salpha = (Math.sin(el * 2.5 + i * 3.3) * 0.4 + 0.5) * spA * 0.35;
-            c.fillStyle = `rgba(255,215,80,${salpha})`;
-            c.beginPath(); c.arc(sx, sy, Math.max(0.3, ssz), 0, 6.283); c.fill();
-          }
-          c.restore();
-        }
-        if (t > 13.2) {
-          const blA = cl((t - 13.2) * 0.8, 0, 1) * sa;
-          if (Math.floor(t * 2.5) > Math.floor((t - 0.016) * 2.5) && balloons.length < 18) {
-            const cols = [{ r: 255, g: 153, b: 51 }, { r: 255, g: 255, b: 255 }, { r: 19, g: 136, b: 8 }];
-            const col = cols[balloons.length % 3];
-            balloons.push({ x: W * 0.12 + Math.random() * W * 0.76, y: H + 30, r: col.r, g: col.g, b: col.b, sz: 14 + Math.random() * 10, swaySpeed: 0.8 + Math.random() * 0.6, swayAmp: 8 + Math.random() * 12, phase: Math.random() * 100, seed: Math.random() * 1000, vy: -0.6 - Math.random() * 0.4, born: t });
-          }
-          c.save(); c.globalAlpha = blA;
-          for (let i = balloons.length - 1; i >= 0; i--) {
-            const bl = balloons[i]; bl.y += bl.vy; bl.x += Math.sin(el * bl.swaySpeed + bl.phase) * 0.3;
-            if (bl.y < -bl.sz * 3) { balloons.splice(i, 1); continue; }
-            const age = t - bl.born, fadeIn = cl(age * 2, 0, 1);
-            c.save(); c.globalAlpha = blA * fadeIn; c.translate(bl.x, bl.y);
-            const bg = c.createRadialGradient(-bl.sz * 0.25, -bl.sz * 0.3, bl.sz * 0.1, 0, 0, bl.sz);
-            bg.addColorStop(0, `rgba(${Math.min(255, bl.r + 60)},${Math.min(255, bl.g + 60)},${Math.min(255, bl.b + 60)},0.95)`);
-            bg.addColorStop(0.6, `rgba(${bl.r},${bl.g},${bl.b},0.9)`);
-            bg.addColorStop(1, `rgba(${bl.r * 0.6 | 0},${bl.g * 0.6 | 0},${bl.b * 0.6 | 0},0.85)`);
-            c.fillStyle = bg; c.beginPath(); c.ellipse(0, 0, bl.sz * 0.7, bl.sz, 0, 0, 6.283); c.fill();
-            c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.ellipse(-bl.sz * 0.2, -bl.sz * 0.35, bl.sz * 0.15, bl.sz * 0.25, -0.3, 0, 6.283); c.fill();
-            c.fillStyle = `rgba(${bl.r * 0.5 | 0},${bl.g * 0.5 | 0},${bl.b * 0.5 | 0},1)`; c.beginPath(); c.moveTo(-2, bl.sz); c.lineTo(0, bl.sz + 5); c.lineTo(2, bl.sz); c.fill();
-            c.strokeStyle = 'rgba(200,190,170,0.3)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(0, bl.sz + 5); c.bezierCurveTo(3, bl.sz + 20, -4, bl.sz + 35, 2, bl.sz + 50); c.stroke();
-            c.restore();
-          }
-          c.restore();
-        }
-        const cfA = cl((t - 13.8) * 1.0, 0, 1) * sa;
-        if (cfA > 0) {
-          const cfFw = Math.min(sc * 0.24, 250), cfFh = cfFw * 0.66;
-          const cfPoleX = cx - cfFw * 0.45, cfPoleTopY = H * 0.48, cfPoleBotY = H * 0.92;
-          for (let i = 1; i < cfNumPts; i++) {
-            const wind = 0.10 + noise.n2(el * 0.5 + i * 0.12, 10) * 0.08 + noise.n2(el * 1.1 + i * 0.25, 20) * 0.025;
-            cfPts[i].vx = (cfPts[i].x - cfPts[i].ox) * 0.90 + wind; cfPts[i].vy = (cfPts[i].y - cfPts[i].oy) * 0.90 + 0.012 + noise.n2(el * 0.7 + i * 0.18, 30) * 0.006;
-            cfPts[i].ox = cfPts[i].x; cfPts[i].oy = cfPts[i].y; cfPts[i].x += cfPts[i].vx; cfPts[i].y += cfPts[i].vy;
-          }
-          cfPts[0].x = cfPoleX + 2; cfPts[0].y = cfPoleTopY + 8;
-          const cfLl = cfFw / (cfNumPts - 1);
-          for (let s = 0; s < 5; s++) for (let i = 0; i < cfNumPts - 1; i++) {
-            const a = cfPts[i], b = cfPts[i + 1]; const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01;
-            const diff = cfLl - d, pct = (diff / d) * 0.5, ox = dx * pct, oy = dy * pct;
-            if (i > 0) { a.x -= ox; a.y -= oy; } b.x += ox; b.y += oy;
-          }
-          c.save(); c.globalAlpha = cfA;
-          const pGrad = c.createLinearGradient(cfPoleX - 1, cfPoleTopY, cfPoleX + 1, cfPoleBotY);
-          pGrad.addColorStop(0, '#ccc'); pGrad.addColorStop(0.3, '#eee'); pGrad.addColorStop(0.7, '#bbb'); pGrad.addColorStop(1, '#888');
-          c.fillStyle = pGrad; c.fillRect(cfPoleX - 1.5, cfPoleTopY, 3, cfPoleBotY - cfPoleTopY);
-          c.fillStyle = '#ffd700'; c.beginPath(); c.arc(cfPoleX, cfPoleTopY, 3.5, 0, 6.283); c.fill();
-          for (let i = 0; i < cfNumPts - 1; i++) {
-            const a = cfPts[i], b = cfPts[i + 1];
-            const cl2 = 0.88 + Math.sin(i * 0.5 - el * 4.8) * 0.12;
-            const shade = (hex: string) => { const h = hex.replace("#", ""); return `rgb(${Math.min(255, Math.max(0, Math.round(parseInt(h.substring(0, 2), 16) * cl2)))},${Math.min(255, Math.max(0, Math.round(parseInt(h.substring(2, 4), 16) * cl2)))},${Math.min(255, Math.max(0, Math.round(parseInt(h.substring(4, 6), 16) * cl2)))})`; };
-            c.fillStyle = shade("#FF9933"); c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(b.x, b.y + cfFh / 3); c.lineTo(a.x, a.y + cfFh / 3); c.closePath(); c.fill();
-            c.fillStyle = shade("#FFFFFF"); c.beginPath(); c.moveTo(a.x, a.y + cfFh / 3); c.lineTo(b.x, b.y + cfFh / 3); c.lineTo(b.x, b.y + (cfFh * 2) / 3); c.lineTo(a.x, a.y + (cfFh * 2) / 3); c.closePath(); c.fill();
-            c.fillStyle = shade("#138808"); c.beginPath(); c.moveTo(a.x, a.y + (cfFh * 2) / 3); c.lineTo(b.x, b.y + (cfFh * 2) / 3); c.lineTo(b.x, b.y + cfFh); c.lineTo(a.x, a.y + cfFh); c.closePath(); c.fill();
-            c.strokeStyle = "rgba(255,255,255,0.1)"; c.lineWidth = 0.4;
-            c.beginPath(); c.moveTo(a.x, a.y + cfFh / 3); c.lineTo(b.x, b.y + cfFh / 3); c.stroke();
-            c.beginPath(); c.moveTo(a.x, a.y + (cfFh * 2) / 3); c.lineTo(b.x, b.y + (cfFh * 2) / 3); c.stroke();
-          }
-          if (cfA > 0.5) {
-            const mi = cfNumPts / 2 | 0, chx = cfPts[mi].x, chy = cfPts[mi].y + cfFh / 2, cr = cfFh * 0.11;
-            c.save(); c.translate(chx, chy); c.rotate(el * 0.6);
-            c.strokeStyle = 'rgba(0,0,120,0.8)'; c.lineWidth = 1.3; c.beginPath(); c.arc(0, 0, cr, 0, 6.283); c.stroke();
-            c.lineWidth = 0.5; for (let i = 0; i < 24; i++) { const a = (i / 24) * 6.283; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * cr, Math.sin(a) * cr); c.stroke(); }
-            c.restore();
-          }
-          c.restore();
-        }
+        
+        // ★ THE DUPILICATE TEXT ELEMENTS & RE-DECLARED CF-FLAG WERE REMOVED FROM HERE 
+        // to prevent overlapping with outer layers. Only basic sky and firework updates remain.
+
         if (t > 12.5 && Math.random() < 0.045) spawnFW();
         if (t > 14.0 && Math.random() < 0.07) spawnFW();
         if (t > 16.0 && Math.random() < 0.09) spawnFW();
@@ -1435,10 +1301,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           grad.addColorStop(1, `rgb(${Math.max(0, b.r - 80)}, ${Math.max(0, b.g - 80)}, ${Math.max(0, b.b - 80)})`);
           c.fillStyle = grad;
 
-          // ✅ NEW — 7 args
-         c.beginPath();
-         c.ellipse(bx, by, b.sz * 0.84, b.sz, 0, 0, 6.283);
-         c.fill();
+          // Fixed 7-args parameters ellipse
+          c.beginPath();
+          c.ellipse(bx, by, b.sz * 0.84, b.sz, 0, 0, 6.283);
+          c.fill();
 
           // Knot tie base
           c.fillStyle = `rgb(${b.r}, ${b.g}, ${b.b})`;
@@ -1457,9 +1323,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       titleCard: (t: number, sa: number) => {
         if (t < 14) return;
         const lines = [
-          { text: 'HAPPY INDEPENDENCE DAY', start: 14.0, y: -45, size: Math.min(W * 0.045, 34), glow: true },
-          { text: '80th Anniversary | 1947 \u2013 2027', start: 14.6, y: 5, size: Math.min(W * 0.022, 17), glow: false },
-          { text: '\u091C\u092F \u0939\u093F\u0928\u094D\u0926', start: 15.2, y: 65, size: Math.min(W * 0.05, 38), glow: true },
+          { text: 'HAPPY INDEPENDENCE DAY', start: 14.0, y: -65, size: Math.min(W * 0.045, 34), glow: true },
+          { text: '80th Anniversary | 1947 \u2013 2027', start: 14.6, y: -15, size: Math.min(W * 0.022, 17), glow: false },
+          { text: 'आज़ादी दिवस', start: 15.0, y: 25, size: Math.min(W * 0.03, 24), glow: false },
+          { text: '\u091C\u092F \u0939\u093F\u0928\u094D\u0926', start: 15.4, y: 80, size: Math.min(W * 0.05, 38), glow: true },
         ];
 
         const centerY = H * 0.26;
@@ -1878,7 +1745,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         fwSmoke.length = 0;
       }
 
-     // ✅ NEW
       // ── RENDER ALL LAYERS ──
       if (t > 12) {
         R.celebration(t, el, 1);
