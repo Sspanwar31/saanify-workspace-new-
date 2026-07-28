@@ -1878,23 +1878,24 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         fwSmoke.length = 0;
       }
 
+     // ✅ NEW
       // ── RENDER ALL LAYERS ──
-      R.sky(t, sa);
-      R.stars(t, sa);
-      R.clouds(t, sa);
-      R.atmosFog(t, sa);
-      R.volLight(t, sa);
-      R.ground(t, sa);
-      R.redFort(t, sa);
-      R.torch(t, el, sa);
-      R.flag(t, el, sa);
-      R.drawKites(t, sa);
-      R.doves(t, el, sa);
-      R.petals(t, sa);
-      R.soldiers(t, sa);
-      if (t > 12) { 
-        R.celebration(t, el, 1); 
+      if (t > 12) {
+        R.celebration(t, el, 1);
       } else {
+        R.sky(t, sa);
+        R.stars(t, sa);
+        R.clouds(t, sa);
+        R.atmosFog(t, sa);
+        R.volLight(t, sa);
+        R.ground(t, sa);
+        R.redFort(t, sa);
+        R.torch(t, el, sa);
+        R.flag(t, el, sa);
+        R.drawKites(t, sa);
+        R.doves(t, el, sa);
+        R.petals(t, sa);
+        R.soldiers(t, sa);
         R.fireworks(t, sa);
         R.particles(t, el, sa);
         R.bgDarken(t);
