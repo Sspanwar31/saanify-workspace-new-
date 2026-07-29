@@ -1204,37 +1204,25 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      drawTricolorWaves: (t: number, sa: number) => {
+            drawTricolorWaves: (t: number, sa: number) => {
         if (t < 14) return;
         const fa = cl((t - 14) * 0.5, 0, 1) * sa;
         c.save();
         c.globalAlpha = fa;
 
         const waveY = H * 0.78;
+        const groundStartY = waveY + 15; // Flat ground starting point
 
+        // 1. Saffron Flat Strip
         c.fillStyle = 'rgba(255, 153, 51, 0.45)';
-        c.beginPath();
-        c.moveTo(0, H);
-        for (let x = 0; x <= W; x += 15) {
-          const y = waveY - 15 + Math.sin(x * 0.005 + t * 1.2) * 12 + Math.cos(x * 0.01 + t * 0.6) * 6;
-          c.lineTo(x, y);
-        }
-        c.lineTo(W, H);
-        c.closePath();
-        c.fill();
+        c.fillRect(0, groundStartY - 10, W, 10);
 
+        // 2. White Flat Strip
         c.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        c.beginPath();
-        c.moveTo(0, H);
-        for (let x = 0; x <= W; x += 15) {
-          const y = waveY + Math.sin(x * 0.006 - t * 1.0) * 10 + Math.cos(x * 0.008 + t * 0.8) * 5;
-          c.lineTo(x, y);
-        }
-        c.lineTo(W, H);
-        c.closePath();
-        c.fill();
+        c.fillRect(0, groundStartY, W, 10);
 
-        const hillGrad = c.createLinearGradient(0, waveY, 0, H);
+        // 3. Cinematic Realistic Flat Maidan (Green Ground)
+        const hillGrad = c.createLinearGradient(0, groundStartY + 10, 0, H);
         hillGrad.addColorStop(0.00, "#4D7C35");
         hillGrad.addColorStop(0.18, "#3E6B2E");
         hillGrad.addColorStop(0.45, "#2C5220");
@@ -1242,34 +1230,21 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         hillGrad.addColorStop(1.00, "#0B180C");
 
         c.fillStyle = hillGrad;
-        c.beginPath();
-        c.moveTo(0, H);
+        c.fillRect(0, groundStartY + 10, W, H - (groundStartY + 10));
 
-        for (let x = 0; x <= W; x += 10) {
-          const y =
-              waveY +
-              12 +
-              Math.sin(x * 0.0025) * 2 +
-              Math.cos(x * 0.0050) * 1.5 +
-              noise.n2(x * 0.01, 5) * 2.2;
-          c.lineTo(x, y);
-        }
-
-        c.lineTo(W, H);
-        c.closePath();
-        c.fill();
-
-        const groundShadow = c.createLinearGradient(0, waveY, 0, waveY + 80);
+        // ---------- Soft Ground Shadow ----------
+        const groundShadow = c.createLinearGradient(0, groundStartY + 10, 0, groundStartY + 90);
         groundShadow.addColorStop(0, "rgba(0,0,0,0.16)");
         groundShadow.addColorStop(1, "rgba(0,0,0,0)");
         c.fillStyle = groundShadow;
-        c.fillRect(0, waveY, W, 80);
+        c.fillRect(0, groundStartY + 10, W, 80);
 
+        // ---------- Grass Texture ----------
         c.save();
         c.globalAlpha = 0.18;
         for (let i = 0; i < 350; i++) {
           const gx = Math.random() * W;
-          const gy = waveY + 8 + Math.random() * (H - waveY - 10);
+          const gy = groundStartY + 10 + Math.random() * (H - groundStartY - 20);
           const h = 2 + Math.random() * 4;
           c.strokeStyle = "rgba(130,190,90,0.45)";
           c.beginPath();
@@ -1279,11 +1254,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
         c.restore();
 
+        // ---------- Bright Grass Highlights ----------
         c.save();
         c.globalAlpha = 0.08;
         for (let i = 0; i < 180; i++) {
           const gx = Math.random() * W;
-          const gy = waveY + Math.random() * 35;
+          const gy = groundStartY + 10 + Math.random() * 35;
           c.fillStyle = "rgba(255,255,180,0.35)";
           c.fillRect(gx, gy, 1, 1);
         }
@@ -1291,7 +1267,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         c.restore();
       },
-
+       
       drawSoldiers: (t: number, sa: number) => {
         if (t < 14.5) return;
         const fa = cl((t - 14.5) * 0.5, 0, 1) * sa;
