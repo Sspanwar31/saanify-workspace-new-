@@ -576,23 +576,20 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ LUSH Fresh Green Maidan / Grassland Implementation
-     
+     // ★ LUSH Fresh Green Maidan / Grassland Implementation
+
     ground: (t: number, sa: number) => {
+
     const rev = cl(t * 0.6, 0, 1);
-    c.save(); c.globalAlpha = rev * sa;
+
+    c.save();
+    c.globalAlpha = rev * sa;
+
     const gT = baseY;
-    
--   // Background hilly landscape gradient
--   c.fillStyle = '#0f240d'; // Deep mountain/hill green
--   c.beginPath();
--   c.moveTo(0, H);
--   for (let x = 0; x <= W; x += 20) {
--     c.lineTo(x, gT - 8 + Math.sin(x * 0.003) * 6);
--   }
--   c.lineTo(W, H);
--   c.closePath();
--   c.fill();
+
+    // ★ 2027 Flat Cinematic Maidan Base
+    c.fillStyle = '#0f240d';
+    c.fillRect(0, gT - 4, W, H - gT + 4);
        
 +   // Flat maidan base layer — no wave distortion
 +   c.fillStyle = '#0f240d';
