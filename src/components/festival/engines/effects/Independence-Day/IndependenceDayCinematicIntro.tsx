@@ -1120,20 +1120,57 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         // ★ THE DUPILICATE TEXT ELEMENTS & RE-DECLARED CF-FLAG WERE REMOVED FROM HERE 
         // to prevent overlapping with outer layers. Only basic sky and firework updates remain.
 
-        if (t > 12.5 && Math.random() < 0.045) spawnFW();
-        if (t > 14.0 && Math.random() < 0.07) spawnFW();
-        if (t > 16.0 && Math.random() < 0.09) spawnFW();
-        c.save(); c.globalCompositeOperation = 'lighter';
-        for (const fw of fwList) {
-          for (const pt of fw.pts) {
-            const la = cl(pt.life / pt.ml, 0, 1), alpha = la * la * 0.85, sz = pt.sz * (0.3 + la * 0.7);
-            c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${alpha})`; c.beginPath(); c.arc(pt.x, pt.y, Math.max(0.5, sz), 0, 6.283); c.fill();
-            c.fillStyle = `rgba(${Math.min(255, fw.col.r + 50)},${Math.min(255, fw.col.g + 50)},${Math.min(255, fw.col.b + 30)},${alpha * 0.2})`; c.beginPath(); c.arc(pt.x, pt.y, Math.max(1, sz * 2.5), 0, 6.283); c.fill();
-          }
-        }
-        c.restore();
-        c.save(); for (const s of fwSmoke) { c.globalAlpha = s.a * 0.5; c.fillStyle = 'rgba(180,170,160,1)'; c.beginPath(); c.arc(s.x, s.y, Math.max(1, s.sz), 0, 6.283); c.fill(); } c.restore();
-        const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
+       // ===== Cinematic Fireworks (2027 Style) =====
+
+// Soft opening
+if (t >= 13.8 && t < 15.0 && Math.random() < 0.015) {
+  spawnFW();
+}
+
+// Celebration
+if (t >= 15.0 && t < 16.3 && Math.random() < 0.028) {
+  spawnFW();
+}
+
+// Grand Finale
+if (t >= 16.3 && t < 17.4 && Math.random() < 0.040) {
+  spawnFW();
+}
+
+// Final Burst
+if (t >= 17.4 && t < 18.0 && Math.random() < 0.010) {
+  spawnFW();
+}
+
+// After 18 seconds:
+// No new fireworks are created.
+// Existing fireworks finish naturally.
+
+c.save();
+c.globalCompositeOperation = 'lighter';
+
+for (const fw of fwList) {
+  for (const pt of fw.pts) {
+
+    const la = cl(pt.life / pt.ml, 0, 1);
+    const alpha = la * la * 0.85;
+    const sz = pt.sz * (0.35 + la * 0.65);
+
+    c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${alpha})`;
+    c.beginPath();
+    c.arc(pt.x, pt.y, Math.max(0.5, sz), 0, Math.PI * 2);
+    c.fill();
+
+    c.fillStyle = `rgba(${Math.min(255, fw.col.r + 55)},${Math.min(255, fw.col.g + 55)},${Math.min(255, fw.col.b + 40)},${alpha * 0.18})`;
+    c.beginPath();
+    c.arc(pt.x, pt.y, Math.max(1, sz * 2.2), 0, Math.PI * 2);
+    c.fill();
+  }
+}
+
+c.restore();
+         
+const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
         c.save(); c.globalAlpha = vigA; const vig = c.createRadialGradient(cx, H * 0.45, sc * 0.25, cx, H * 0.45, sc * 0.9);
         vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(0.6, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.7)');
         c.fillStyle = vig; c.fillRect(0, 0, W, H); c.restore();
