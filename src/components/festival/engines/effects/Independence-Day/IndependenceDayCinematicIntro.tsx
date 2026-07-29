@@ -1268,7 +1268,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
        
-      drawSoldiers: (t: number, sa: number) => {
+     drawSoldiers: (t: number, sa: number) => {
         if (t < 14.5) return;
         const fa = cl((t - 14.5) * 0.5, 0, 1) * sa;
 
@@ -1281,15 +1281,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width;
         c.restore();
 
-        const waveY = H * 0.78;
+        // 🛠️ FIX: Flat ground ke hisaab se soldiers ka Y position
+        // (H * 0.78 = waveY) + 15 + 10 = Flat green ground ka top edge
+        const flatGroundY = H * 0.78 + 25; 
 
         const s1X = cx + titleW * 0.22;
-        const s1Y =
-          waveY +
-          12 +
-          Math.sin(s1X * 0.0025) * 2 +
-          Math.cos(s1X * 0.005) * 1 +
-          noise.n2(s1X * 0.01, 5) * 2;
+        const s1Y = flatGroundY; // Ab wave math hata diya gaya hai
 
         c.save();
         c.shadowColor = "rgba(0,0,0,0.35)";
@@ -1299,12 +1296,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
 
         const s2X = cx + titleW * 0.35;
-        const s2Y =
-          waveY +
-          12 +
-          Math.sin(s2X * 0.0025) * 2 +
-          Math.cos(s2X * 0.005) * 1 +
-          noise.n2(s2X * 0.01, 5) * 2;
+        const s2Y = flatGroundY; // Ab wave math hata diya gaya hai
 
         c.save();
         c.globalAlpha = 0.82;
@@ -1315,12 +1307,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
 
         const s3X = cx + titleW * 0.46;
-        const s3Y =
-          waveY +
-          12 +
-          Math.sin(s3X * 0.0025) * 2 +
-          Math.cos(s3X * 0.005) * 1 +
-          noise.n2(s3X * 0.01, 5) * 2;
+        const s3Y = flatGroundY; // Ab wave math hata diya gaya hai
 
         c.save();
         c.globalAlpha = 0.65;
@@ -1334,7 +1321,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         c.restore();
       },
-
       drawBalloons: (t: number, sa: number) => {
         if (t < 14) return;
         c.save();
