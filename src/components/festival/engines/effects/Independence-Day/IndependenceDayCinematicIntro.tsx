@@ -156,7 +156,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cfPts: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
-    // ★ BALLOONS ARRAY
+    // ★ HELIUM BALLOONS — Dynamic array for rising tricolor balloons
     const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number; vy: number; born: number }[] = [];
 
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
@@ -751,7 +751,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.strokeStyle = 'rgba(0,0,0,0.12)'; c.lineWidth = 0.7; c.stroke();
           c.fillStyle = GOLD;
           c.fillRect(chX + chW / 2 - 1, chY - 2 - chW * 0.42 - 5, 2, 6);
-          c.beginPath(); c.arc(chX + chW / 2, x => chY - 2 - chW * 0.42 - 6, 2.5, 0, 6.283); c.fill();
+          c.beginPath(); c.arc(chX + chW / 2, chY - 2 - chW * 0.42 - 6, 2.5, 0, 6.283); c.fill();
         };
         drawBastion(bastionL.x, bastionL.w, bastionL.top);
         drawBastion(bastionR.x, bastionR.w, bastionR.top);
@@ -1468,17 +1468,16 @@ const s3Y =
   noise.n2(s3X * 0.01, 5) * 2;
 
 c.save();
-    c.globalAlpha = 0.65;
-    c.filter = "blur(0.5px)";
-    c.shadowColor = "rgba(0,0,0,0.18)";
-    c.shadowBlur = 4;
-    c.shadowOffsetY = 2;
-    drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
-    c.filter = "none";
-    c.restore();
+c.globalAlpha = 0.65;
+c.filter = "blur(0.5px)";
+c.shadowColor = "rgba(0,0,0,0.18)";
+c.shadowBlur = 4;
+c.shadowOffsetY = 2;
+drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
+c.filter = "none";
+c.restore();
 
-    c.restore(); 
-  }, // 🌟 FIXED: Added closing brace and comma here!
+c.restore();
 
       // ★ Rising Tricolor Helium Balloons
       drawBalloons: (t: number, sa: number) => {
@@ -1584,8 +1583,8 @@ c.save();
         
         // Dynamically measuring the left boundary of our centered title text
         c.save();
-        c.font = `bold ${Math.min(W * 0.045, 34)}px 'Georgia', serif`;
-        const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width;
+        c.font = `bold ${Math.min(W * 0.045, 34) * dpr}px 'Georgia', serif`;
+        const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width / dpr;
         c.restore();
 
         const poleX = cx - titleW / 2; // Pole aligned precisely with the left edge of 'HAPPY INDEPENDENCE DAY'
@@ -1807,8 +1806,8 @@ c.save();
       const centerY = H * 0.26;
       
       c.save();
-      c.font = `bold ${Math.min(W * 0.045, 34)}px 'Georgia', serif`;
-      const tW = c.measureText('HAPPY INDEPENDENCE DAY').width;
+      c.font = `bold ${Math.min(W * 0.045, 34) * dpr}px 'Georgia', serif`;
+      const tW = c.measureText('HAPPY INDEPENDENCE DAY').width / dpr;
       c.restore();
 
       const poleX = cx - tW / 2; // Match exact left edge aligned with text start
