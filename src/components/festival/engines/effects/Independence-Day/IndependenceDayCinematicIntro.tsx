@@ -125,11 +125,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
-    const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
     
-    const eOB = (t: number) => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; };
-    const eOBack = (t: number) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
-     
     try {
       audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       playAudio();
@@ -576,25 +572,18 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-     // ★ LUSH Fresh Green Maidan / Grassland Implementation
+      // ★ LUSH Fresh Green Maidan / Grassland Implementation
+      ground: (t: number, sa: number) => {
+        const rev = cl(t * 0.6, 0, 1);
+        c.save();
+        c.globalAlpha = rev * sa;
 
-    ground: (t: number, sa: number) => {
+        const gT = baseY;
 
-    const rev = cl(t * 0.6, 0, 1);
-
-    c.save();
-    c.globalAlpha = rev * sa;
-
-    const gT = baseY;
-
-    // ★ 2027 Flat Cinematic Maidan Base
-    c.fillStyle = '#0f240d';
-    c.fillRect(0, gT - 4, W, H - gT + 4);
-       
-+   // Flat maidan base layer — no wave distortion
-+   c.fillStyle = '#0f240d';
-+   c.fillRect(0, gT - 4, W, H - gT + 4);
-       
+        // ★ 2027 Flat Cinematic Maidan Base
+        c.fillStyle = '#0f240d';
+        c.fillRect(0, gT - 4, W, H - gT + 4);
+           
         // Layer 2: Lush Fresh green dynamic maidan lawn
         const lg = c.createLinearGradient(0, gT - 4, 0, H);
         lg.addColorStop(0, '#1c4217'); // Rich grass green
@@ -1062,6 +1051,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.beginPath(); c.ellipse(0, 0, p.sz, p.sz * 0.45, 0, 0, 6.283); c.fill();
           c.restore();
         }
+        c.restore();
       }, 
 
       // ★ Harmonized Soldiers rendering over the dynamic landscape maidan
@@ -1108,61 +1098,44 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           }
           c.restore();
         }
-        
-        // ★ THE DUPILICATE TEXT ELEMENTS & RE-DECLARED CF-FLAG WERE REMOVED FROM HERE 
-        // to prevent overlapping with outer layers. Only basic sky and firework updates remain.
 
-       // ===== Cinematic Fireworks (2027 Style) =====
+        // Cinematic Fireworks
+        if (t >= 13.8 && t < 15.0 && Math.random() < 0.015) {
+          spawnFW();
+        }
+        if (t >= 15.0 && t < 16.3 && Math.random() < 0.028) {
+          spawnFW();
+        }
+        if (t >= 16.3 && t < 17.4 && Math.random() < 0.040) {
+          spawnFW();
+        }
+        if (t >= 17.4 && t < 18.0 && Math.random() < 0.010) {
+          spawnFW();
+        }
 
-// Soft opening
-if (t >= 13.8 && t < 15.0 && Math.random() < 0.015) {
-  spawnFW();
-}
+        c.save();
+        c.globalCompositeOperation = 'lighter';
 
-// Celebration
-if (t >= 15.0 && t < 16.3 && Math.random() < 0.028) {
-  spawnFW();
-}
+        for (const fw of fwList) {
+          for (const pt of fw.pts) {
+            const la = cl(pt.life / pt.ml, 0, 1);
+            const alpha = la * la * 0.85;
+            const sz = pt.sz * (0.35 + la * 0.65);
 
-// Grand Finale
-if (t >= 16.3 && t < 17.4 && Math.random() < 0.040) {
-  spawnFW();
-}
+            c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${alpha})`;
+            c.beginPath();
+            c.arc(pt.x, pt.y, Math.max(0.5, sz), 0, Math.PI * 2);
+            c.fill();
 
-// Final Burst
-if (t >= 17.4 && t < 18.0 && Math.random() < 0.010) {
-  spawnFW();
-}
-
-// After 18 seconds:
-// No new fireworks are created.
-// Existing fireworks finish naturally.
-
-c.save();
-c.globalCompositeOperation = 'lighter';
-
-for (const fw of fwList) {
-  for (const pt of fw.pts) {
-
-    const la = cl(pt.life / pt.ml, 0, 1);
-    const alpha = la * la * 0.85;
-    const sz = pt.sz * (0.35 + la * 0.65);
-
-    c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${alpha})`;
-    c.beginPath();
-    c.arc(pt.x, pt.y, Math.max(0.5, sz), 0, Math.PI * 2);
-    c.fill();
-
-    c.fillStyle = `rgba(${Math.min(255, fw.col.r + 55)},${Math.min(255, fw.col.g + 55)},${Math.min(255, fw.col.b + 40)},${alpha * 0.18})`;
-    c.beginPath();
-    c.arc(pt.x, pt.y, Math.max(1, sz * 2.2), 0, Math.PI * 2);
-    c.fill();
-  }
-}
-
-c.restore();
+            c.fillStyle = `rgba(${Math.min(255, fw.col.r + 55)},${Math.min(255, fw.col.g + 55)},${Math.min(255, fw.col.b + 40)},${alpha * 0.18})`;
+            c.beginPath();
+            c.arc(pt.x, pt.y, Math.max(1, sz * 2.2), 0, Math.PI * 2);
+            c.fill();
+          }
+        }
+        c.restore();
          
-const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
+        const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
         c.save(); c.globalAlpha = vigA; const vig = c.createRadialGradient(cx, H * 0.45, sc * 0.25, cx, H * 0.45, sc * 0.9);
         vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(0.6, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.7)');
         c.fillStyle = vig; c.fillRect(0, 0, W, H); c.restore();
@@ -1295,111 +1268,67 @@ const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
         c.closePath();
         c.fill();
 
-       // 3. Cinematic Realistic Maidan (2027)
+        // 3. Cinematic Realistic Maidan (2027)
+        const hillGrad = c.createLinearGradient(0, waveY, 0, H);
+        hillGrad.addColorStop(0.00, "#4D7C35");
+        hillGrad.addColorStop(0.18, "#3E6B2E");
+        hillGrad.addColorStop(0.45, "#2C5220");
+        hillGrad.addColorStop(0.75, "#1B3717");
+        hillGrad.addColorStop(1.00, "#0B180C");
 
-const hillGrad = c.createLinearGradient(0, waveY, 0, H);
+        c.fillStyle = hillGrad;
+        c.beginPath();
+        c.moveTo(0, H);
 
-hillGrad.addColorStop(0.00, "#4D7C35");
-hillGrad.addColorStop(0.18, "#3E6B2E");
-hillGrad.addColorStop(0.45, "#2C5220");
-hillGrad.addColorStop(0.75, "#1B3717");
-hillGrad.addColorStop(1.00, "#0B180C");
+        for (let x = 0; x <= W; x += 10) {
+          const y =
+              waveY +
+              12 +
+              Math.sin(x * 0.0025) * 2 +
+              Math.cos(x * 0.0050) * 1.5 +
+              noise.n2(x * 0.01, 5) * 2.2;
+          c.lineTo(x, y);
+        }
 
-c.fillStyle = hillGrad;
+        c.lineTo(W, H);
+        c.closePath();
+        c.fill();
 
-c.beginPath();
-c.moveTo(0, H);
+        // ---------- Soft Ground Shadow ----------
+        const groundShadow = c.createLinearGradient(0, waveY, 0, waveY + 80);
+        groundShadow.addColorStop(0, "rgba(0,0,0,0.16)");
+        groundShadow.addColorStop(1, "rgba(0,0,0,0)");
+        c.fillStyle = groundShadow;
+        c.fillRect(0, waveY, W, 80);
 
-for (let x = 0; x <= W; x += 10) {
+        // ---------- Grass Texture ----------
+        c.save();
+        c.globalAlpha = 0.18;
+        for (let i = 0; i < 350; i++) {
+          const gx = Math.random() * W;
+          const gy = waveY + 8 + Math.random() * (H - waveY - 10);
+          const h = 2 + Math.random() * 4;
+          c.strokeStyle = "rgba(130,190,90,0.45)";
+          c.beginPath();
+          c.moveTo(gx, gy);
+          c.lineTo(gx + (Math.random() - 0.5) * 1.2, gy - h);
+          c.stroke();
+        }
+        c.restore();
 
-    const y =
-        waveY +
-        12 +
-        Math.sin(x * 0.0025) * 2 +
-        Math.cos(x * 0.0050) * 1.5 +
-        noise.n2(x * 0.01, 5) * 2.2;
+        // ---------- Bright Grass Highlights ----------
+        c.save();
+        c.globalAlpha = 0.08;
+        for (let i = 0; i < 180; i++) {
+          const gx = Math.random() * W;
+          const gy = waveY + Math.random() * 35;
+          c.fillStyle = "rgba(255,255,180,0.35)";
+          c.fillRect(gx, gy, 1, 1);
+        }
+        c.restore();
 
-    c.lineTo(x, y);
-}
-
-c.lineTo(W, H);
-c.closePath();
-c.fill();
-
-
-// ---------- Soft Ground Shadow ----------
-
-const groundShadow = c.createLinearGradient(
-    0,
-    waveY,
-    0,
-    waveY + 80
-);
-
-groundShadow.addColorStop(0, "rgba(0,0,0,0.16)");
-groundShadow.addColorStop(1, "rgba(0,0,0,0)");
-
-c.fillStyle = groundShadow;
-c.fillRect(0, waveY, W, 80);
-
-
-// ---------- Grass Texture ----------
-
-c.save();
-
-c.globalAlpha = 0.18;
-
-for (let i = 0; i < 350; i++) {
-
-    const gx = Math.random() * W;
-
-    const gy =
-        waveY +
-        8 +
-        Math.random() * (H - waveY - 10);
-
-    const h = 2 + Math.random() * 4;
-
-    c.strokeStyle = "rgba(130,190,90,0.45)";
-
-    c.beginPath();
-
-    c.moveTo(gx, gy);
-
-    c.lineTo(
-        gx + (Math.random() - 0.5) * 1.2,
-        gy - h
-    );
-
-    c.stroke();
-}
-
-c.restore();
-
+        c.restore();
       },
-
-// ---------- Bright Grass Highlights ----------
-
-c.save();
-
-c.globalAlpha = 0.08;
-
-for (let i = 0; i < 180; i++) {
-
-    const gx = Math.random() * W;
-
-    const gy =
-        waveY +
-        Math.random() * 35;
-
-    c.fillStyle = "rgba(255,255,180,0.35)";
-
-    c.fillRect(gx, gy, 1, 1);
-
-}
-
-c.restore();
-      }, // 🌟 FIXED: Added missing bracket and comma here!
 
       // ★ Saluting Soldiers Silhouettes aligned on the waves
       drawSoldiers: (t: number, sa: number) => {
@@ -1417,62 +1346,60 @@ c.restore();
 
         const waveY = H * 0.78;
 
-     // Soldier 1 (Front - Hero Soldier)
-const s1X = cx + titleW * 0.22;
-const s1Y =
-  waveY +
-  12 +
-  Math.sin(s1X * 0.0025) * 2 +
-  Math.cos(s1X * 0.005) * 1 +
-  noise.n2(s1X * 0.01, 5) * 2;
+        // Soldier 1 (Front - Hero Soldier)
+        const s1X = cx + titleW * 0.22;
+        const s1Y =
+          waveY +
+          12 +
+          Math.sin(s1X * 0.0025) * 2 +
+          Math.cos(s1X * 0.005) * 1 +
+          noise.n2(s1X * 0.01, 5) * 2;
 
-c.save();
-c.shadowColor = "rgba(0,0,0,0.35)";
-c.shadowBlur = 8;
-c.shadowOffsetY = 4;
-drawRealisticSoldierSilhouette(s1X, s1Y, 1.0);
-c.restore();
+        c.save();
+        c.shadowColor = "rgba(0,0,0,0.35)";
+        c.shadowBlur = 8;
+        c.shadowOffsetY = 4;
+        drawRealisticSoldierSilhouette(s1X, s1Y, 1.0);
+        c.restore();
 
+        // Soldier 2 (Middle Depth)
+        const s2X = cx + titleW * 0.35;
+        const s2Y =
+          waveY +
+          12 +
+          Math.sin(s2X * 0.0025) * 2 +
+          Math.cos(s2X * 0.005) * 1 +
+          noise.n2(s2X * 0.01, 5) * 2;
 
-// Soldier 2 (Middle Depth)
-const s2X = cx + titleW * 0.35;
-const s2Y =
-  waveY +
-  12 +
-  Math.sin(s2X * 0.0025) * 2 +
-  Math.cos(s2X * 0.005) * 1 +
-  noise.n2(s2X * 0.01, 5) * 2;
+        c.save();
+        c.globalAlpha = 0.82;
+        c.shadowColor = "rgba(0,0,0,0.25)";
+        c.shadowBlur = 6;
+        c.shadowOffsetY = 3;
+        drawRealisticSoldierSilhouette(s2X, s2Y, 0.88);
+        c.restore();
 
-c.save();
-c.globalAlpha = 0.82;
-c.shadowColor = "rgba(0,0,0,0.25)";
-c.shadowBlur = 6;
-c.shadowOffsetY = 3;
-drawRealisticSoldierSilhouette(s2X, s2Y, 0.88);
-c.restore();
+        // Soldier 3 (Background Soldier)
+        const s3X = cx + titleW * 0.46;
+        const s3Y =
+          waveY +
+          12 +
+          Math.sin(s3X * 0.0025) * 2 +
+          Math.cos(s3X * 0.005) * 1 +
+          noise.n2(s3X * 0.01, 5) * 2;
 
+        c.save();
+        c.globalAlpha = 0.65;
+        c.filter = "blur(0.5px)";
+        c.shadowColor = "rgba(0,0,0,0.18)";
+        c.shadowBlur = 4;
+        c.shadowOffsetY = 2;
+        drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
+        c.filter = "none";
+        c.restore();
 
-// Soldier 3 (Background Soldier)
-const s3X = cx + titleW * 0.46;
-const s3Y =
-  waveY +
-  12 +
-  Math.sin(s3X * 0.0025) * 2 +
-  Math.cos(s3X * 0.005) * 1 +
-  noise.n2(s3X * 0.01, 5) * 2;
-
-c.save();
-c.globalAlpha = 0.65;
-c.filter = "blur(0.5px)";
-c.shadowColor = "rgba(0,0,0,0.18)";
-c.shadowBlur = 4;
-c.shadowOffsetY = 2;
-drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
-c.filter = "none";
-c.restore();
-
-c.restore();
-      }, // 🌟 FIXED: Added missing bracket and comma here!
+        c.restore();
+      },
 
       // ★ Rising Tricolor Helium Balloons
       drawBalloons: (t: number, sa: number) => {
