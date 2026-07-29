@@ -1468,16 +1468,17 @@ const s3Y =
   noise.n2(s3X * 0.01, 5) * 2;
 
 c.save();
-c.globalAlpha = 0.65;
-c.filter = "blur(0.5px)";
-c.shadowColor = "rgba(0,0,0,0.18)";
-c.shadowBlur = 4;
-c.shadowOffsetY = 2;
-drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
-c.filter = "none";
-c.restore();
+    c.globalAlpha = 0.65;
+    c.filter = "blur(0.5px)";
+    c.shadowColor = "rgba(0,0,0,0.18)";
+    c.shadowBlur = 4;
+    c.shadowOffsetY = 2;
+    drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
+    c.filter = "none";
+    c.restore();
 
-c.restore();
+    c.restore(); 
+  }, // 🌟 FIXED: Added closing brace and comma here!
 
       // ★ Rising Tricolor Helium Balloons
       drawBalloons: (t: number, sa: number) => {
