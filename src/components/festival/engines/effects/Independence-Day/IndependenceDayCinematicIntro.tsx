@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
-   TYPES & INTERFACESc.lineTo(x, gT - 8 + Math.sin(x * 0.003) * 6);
+   TYPES & INTERFACES
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void; imageUrl?: string; }
 
@@ -126,10 +126,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
     const eOC = (t: number) => 1 - Math.pow(1 - t, 3);
     const eOE = (t: number) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-    
+
     const eOB = (t: number) => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; };
     const eOBack = (t: number) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
-     
+
     try {
       audioRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       playAudio();
@@ -156,7 +156,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const cfPts: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
-    // ★ HELIUM BALLOONS — Dynamic array for rising tricolor balloons
+    // ★ HELIUM BALLOONS
     const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number; vy: number; born: number }[] = [];
 
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
@@ -222,15 +222,14 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       if (fN.length > 0) fN[0].x = 0;
 
-      // ★ PRE-INITIALIZE cfPts: Preventing snap on final scene entry
       const centerY = H * 0.26;
       c.save();
       c.font = `bold ${Math.min(W * 0.045, 34)}px 'Georgia', serif`;
       const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width;
       c.restore();
 
-      const cfPoleX = cx - titleW / 2; // Pole aligned to the left edge of the text block
-      const cfPoleTopY = centerY + 100; // Shifted up right below "जय हिन्द"
+      const cfPoleX = cx - titleW / 2;
+      const cfPoleTopY = centerY + 100;
       const cfPoleBotY = H * 0.85;
       const cfPoleH = cfPoleBotY - cfPoleTopY;
       const cfFlagW = Math.min(sc * 0.24, 250);
@@ -242,13 +241,13 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           x: cfPoleX + 2 + i * cfLl,
           y: cfFlagTopY,
           ox: cfPoleX + 2 + i * cfLl,
-          oy: cfPoleX + 2 + i * cfLl,
+          oy: cfFlagTopY,
           vx: 0,
           vy: 0
         };
       }
 
-      balloons.length = 0; // Reset balloons array on resize
+      balloons.length = 0;
 
       for (let i = 0; i < starI.length; i++) {
         const p = pl[starI[i]];
@@ -305,21 +304,18 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
     let celebrationCleaned = false;
 
-    // ★ NEW STYLIZED & ANATOMICAL VECTORS SILHOUETTE POSTURE
     const drawRealisticSoldierSilhouette = (sx: number, sy: number, scale: number) => {
       c.save();
       c.translate(sx, sy);
       c.scale(scale, scale);
-      c.fillStyle = '#02010c'; // Deepest organic shadow
+      c.fillStyle = '#02010c';
 
-      // Ground soft shading shadow
       c.beginPath();
       c.ellipse(0, 0, 16, 4, 0, 0, 6.283);
       c.fillStyle = 'rgba(0, 0, 0, 0.4)';
       c.fill();
       c.fillStyle = '#02010c';
 
-      // Boots & Legs (Proper anatomical gaps)
       c.beginPath();
       c.moveTo(-4.5, 0);
       c.lineTo(-4, -13);
@@ -334,44 +330,39 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       c.closePath();
       c.fill();
 
-      // Slender waist, chest uniform coat
       c.beginPath();
       c.moveTo(-5.5, -19);
       c.lineTo(-7.2, -40);
-      c.quadraticCurveTo(-3, -42, 0, -42); 
+      c.quadraticCurveTo(-3, -42, 0, -42);
       c.quadraticCurveTo(3, -42, 7.2, -40);
       c.lineTo(5.5, -19);
       c.closePath();
       c.fill();
 
-      // Left Arm (holding firearm)
       c.beginPath();
       c.moveTo(-7.2, -40);
-      c.quadraticCurveTo(-11.5, -28, -9.5, -21); 
+      c.quadraticCurveTo(-11.5, -28, -9.5, -21);
       c.lineTo(-6.5, -21);
       c.quadraticCurveTo(-8.5, -28, -5.5, -38);
       c.closePath();
       c.fill();
 
-      // Right Arm (Aesthetic saluting posture bending to the helmet brim)
       c.beginPath();
       c.moveTo(7.2, -40);
-      c.lineTo(13.5, -44); 
-      c.lineTo(6.5, -51);  
-      c.lineTo(4.2, -48);  
-      c.lineTo(9.5, -42);  
-      c.lineTo(5.5, -38);  
+      c.lineTo(13.5, -44);
+      c.lineTo(6.5, -51);
+      c.lineTo(4.2, -48);
+      c.lineTo(9.5, -42);
+      c.lineTo(5.5, -38);
       c.closePath();
       c.fill();
 
-      // Neck & Head
       c.beginPath();
-      c.arc(0, -46, 3.8, 0, 6.283); 
+      c.arc(0, -46, 3.8, 0, 6.283);
       c.fill();
 
-      // Helmet (Slightly larger, realistic curved visor rim)
       c.beginPath();
-      c.arc(0, -47.8, 5.2, Math.PI - 0.2, 0.2); 
+      c.arc(0, -47.8, 5.2, Math.PI - 0.2, 0.2);
       c.fill();
       c.lineWidth = 1;
       c.strokeStyle = '#02010c';
@@ -380,10 +371,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       c.lineTo(5.5, -47);
       c.stroke();
 
-      // Slanted Rifle behind shoulder
       c.beginPath();
       c.moveTo(-3.5, -24);
-      c.lineTo(-12, -58); 
+      c.lineTo(-12, -58);
       c.lineWidth = 1.5;
       c.strokeStyle = '#02010c';
       c.stroke();
@@ -393,8 +383,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
     const spawnFW = () => {
       const col = fwCols[Math.random() * fwCols.length | 0];
-      const targetX = W * 0.12 + Math.random() * W * 0.76; // Widely distributed
-      const velocityY = -6.5 - Math.random() * 5.5; // Highly randomized burst altitudes
+      const targetX = W * 0.12 + Math.random() * W * 0.76;
+      const velocityY = -6.5 - Math.random() * 5.5;
       fwList.push({
         x: targetX,
         y: baseY,
@@ -576,33 +566,20 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ LUSH Fresh Green Maidan / Grassland Implementation
-     
-    ground: (t: number, sa: number) => {
-    const rev = cl(t * 0.6, 0, 1);
-    c.save(); c.globalAlpha = rev * sa;
-    const gT = baseY;
-    
--   // Background hilly landscape gradient
--   c.fillStyle = '#0f240d'; // Deep mountain/hill green
--   c.beginPath();
--   c.moveTo(0, H);
--   for (let x = 0; x <= W; x += 20) {
--     c.lineTo(x, gT - 8 + Math.sin(x * 0.003) * 6);
--   }
--   c.lineTo(W, H);
--   c.closePath();
--   c.fill();
-       
-+   // Flat maidan base layer — no wave distortion
-+   c.fillStyle = '#0f240d';
-+   c.fillRect(0, gT - 4, W, H - gT + 4);
-       
+      ground: (t: number, sa: number) => {
+        const rev = cl(t * 0.6, 0, 1);
+        c.save(); c.globalAlpha = rev * sa;
+        const gT = baseY;
+
+        // Flat maidan base layer — no wave distortion
+        c.fillStyle = '#0f240d';
+        c.fillRect(0, gT - 4, W, H - gT + 4);
+
         // Layer 2: Lush Fresh green dynamic maidan lawn
         const lg = c.createLinearGradient(0, gT - 4, 0, H);
-        lg.addColorStop(0, '#1c4217'); // Rich grass green
-        lg.addColorStop(0.3, '#143310'); // Mid grass green
-        lg.addColorStop(1, '#0b1d09'); // Dark shadow depth
+        lg.addColorStop(0, '#1c4217');
+        lg.addColorStop(0.3, '#143310');
+        lg.addColorStop(1, '#0b1d09');
         c.fillStyle = lg;
         c.fillRect(0, gT - 4, W, H - gT + 4);
 
@@ -926,10 +903,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.closePath(); c.fill();
 
           c.strokeStyle = "rgba(255,255,255,0.12)"; c.lineWidth = 0.5;
-          c.beginPath(); c.moveTo(a.x, a.y + fh / 3); c.lineTo(b.x, b.y + fh / 3);
-          c.stroke();
-          c.beginPath(); c.moveTo(a.x, a.y + (fh * 2) / 3); c.lineTo(b.x, b.y + (fh * 2) / 3);
-          c.stroke();
+          c.beginPath(); c.moveTo(a.x, a.y + fh / 3); c.lineTo(b.x, b.y + fh / 3); c.stroke();
+          c.beginPath(); c.moveTo(a.x, a.y + (fh * 2) / 3); c.lineTo(b.x, b.y + (fh * 2) / 3); c.stroke();
         }
 
         if (unfurl > 0.15) {
@@ -1051,966 +1026,177 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      petals: (t: number, sa: number) => {
-        if (t < 8 || t > 11) return;
-        const pa = cl((t - 8) * 0.5, 0, 1) * cl((11 - t) * 0.5, 0, 1) * sa;
-        c.save(); c.globalAlpha = pa;
-        for (let i = 0; i < POOL; i++) {
-          const p = pl[i];
-          if (!p.on || p.tp !== 7) continue;
-          const la = cl(p.life / p.ml, 0, 1);
-          c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
-          c.globalAlpha = la * 0.6;
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
-          c.beginPath(); c.ellipse(0, 0, p.sz, p.sz * 0.45, 0, 0, 6.283); c.fill();
-          c.restore();
-        }
-      }, 
-
-      // ★ Harmonized Soldiers rendering over the dynamic landscape maidan
-      soldiers: (t: number, sa: number) => {
-        if (t < 2) return;
-        const a = cl((t - 2) * 0.8, 0, 1) * (t > 12 ? cl((13 - t) * 2, 0, 1) : 1) * sa;
-        c.save(); c.globalAlpha = a;
-        [{ x: cx - gateW * 0.22, s: 0.9 }, { x: cx - gateW * 0.17, s: 0.85 }, { x: cx - gateW * 0.12, s: 0.95 }, { x: cx + gateW * 0.12, s: 0.95 }, { x: cx + gateW * 0.17, s: 0.85 }, { x: cx + gateW * 0.22, s: 0.9 }].forEach(p => drawRealisticSoldierSilhouette(p.x, baseY, p.s));
-        c.restore();
-      },
-
-      celebration: (t: number, el: number, sa: number) => {
-        const skyP = cl((t - 12) / 1.8, 0, 1);
-        c.save(); c.globalAlpha = skyP * sa;
-        const mg = c.createLinearGradient(0, 0, 0, H);
-        mg.addColorStop(0, '#04040e'); mg.addColorStop(0.25, '#08061a');
-        mg.addColorStop(0.55, '#0c0816'); mg.addColorStop(0.80, '#0a0610');
-        mg.addColorStop(0.90, '#100a08'); mg.addColorStop(0.95, '#081008');
-        mg.addColorStop(1, '#04040e');
-        c.fillStyle = mg; c.fillRect(0, 0, W, H);
-        c.restore();
-        if (skyP > 0.4) {
-          const auA = (skyP - 0.4) / 0.6 * sa * 0.12;
-          c.save(); c.globalCompositeOperation = 'screen';
-          const a1 = c.createRadialGradient(W * 0.25, H * 0.92, 0, W * 0.25, H * 0.92, W * 0.35);
-          a1.addColorStop(0, `rgba(255,120,30,${auA})`); a1.addColorStop(1, 'rgba(255,120,30,0)');
-          c.fillStyle = a1; c.fillRect(0, H * 0.7, W, H * 0.3);
-          const a2 = c.createRadialGradient(W * 0.5, H * 0.95, 0, W * 0.5, H * 0.95, W * 0.25);
-          a2.addColorStop(0, `rgba(255,255,255,${auA * 0.4})`); a2.addColorStop(1, 'rgba(255,255,255,0)');
-          c.fillStyle = a2; c.fillRect(0, H * 0.78, W, H * 0.22);
-          const a3 = c.createRadialGradient(W * 0.75, H * 0.92, 0, W * 0.75, H * 0.92, W * 0.35);
-          a3.addColorStop(0, `rgba(20,140,20,${auA * 0.8})`); a3.addColorStop(1, 'rgba(20,140,20,0)');
-          c.fillStyle = a3; c.fillRect(0, H * 0.7, W, H * 0.3);
-          c.restore();
-        }
-        if (skyP > 0.2) {
-          const sA = (skyP - 0.2) / 0.8 * sa;
-          c.save(); c.globalAlpha = sA;
-          for (const idx of starI) {
-            const p = pl[idx]; if (!p?.on) continue;
-            const tw = Math.sin(el * 2.2 + idx * 1.7) * 0.45 + 0.55;
-            c.fillStyle = `rgba(255,250,230,${p.a * tw * 0.35})`; c.beginPath(); c.arc(p.x, p.y, p.sz * 3.5, 0, 6.283); c.fill();
-            c.fillStyle = `rgba(255,252,240,${p.a * tw * 0.9})`; c.beginPath(); c.arc(p.x, p.y, p.sz * 1.3, 0, 6.283); c.fill();
-          }
-          c.restore();
-        }
-        
-        // ★ THE DUPILICATE TEXT ELEMENTS & RE-DECLARED CF-FLAG WERE REMOVED FROM HERE 
-        // to prevent overlapping with outer layers. Only basic sky and firework updates remain.
-
-       // ===== Cinematic Fireworks (2027 Style) =====
-
-// Soft opening
-if (t >= 13.8 && t < 15.0 && Math.random() < 0.015) {
-  spawnFW();
-}
-
-// Celebration
-if (t >= 15.0 && t < 16.3 && Math.random() < 0.028) {
-  spawnFW();
-}
-
-// Grand Finale
-if (t >= 16.3 && t < 17.4 && Math.random() < 0.040) {
-  spawnFW();
-}
-
-// Final Burst
-if (t >= 17.4 && t < 18.0 && Math.random() < 0.010) {
-  spawnFW();
-}
-
-// After 18 seconds:
-// No new fireworks are created.
-// Existing fireworks finish naturally.
-
-c.save();
-c.globalCompositeOperation = 'lighter';
-
-for (const fw of fwList) {
-  for (const pt of fw.pts) {
-
-    const la = cl(pt.life / pt.ml, 0, 1);
-    const alpha = la * la * 0.85;
-    const sz = pt.sz * (0.35 + la * 0.65);
-
-    c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${alpha})`;
-    c.beginPath();
-    c.arc(pt.x, pt.y, Math.max(0.5, sz), 0, Math.PI * 2);
-    c.fill();
-
-    c.fillStyle = `rgba(${Math.min(255, fw.col.r + 55)},${Math.min(255, fw.col.g + 55)},${Math.min(255, fw.col.b + 40)},${alpha * 0.18})`;
-    c.beginPath();
-    c.arc(pt.x, pt.y, Math.max(1, sz * 2.2), 0, Math.PI * 2);
-    c.fill();
-  }
-}
-
-c.restore();
-         
-const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
-        c.save(); c.globalAlpha = vigA; const vig = c.createRadialGradient(cx, H * 0.45, sc * 0.25, cx, H * 0.45, sc * 0.9);
-        vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(0.6, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.7)');
-        c.fillStyle = vig; c.fillRect(0, 0, W, H); c.restore();
-        c.save(); c.globalAlpha = 0.035; c.globalCompositeOperation = 'overlay';
-        const gOff = (el * 60 | 0) % 256; c.drawImage(grainCv, 0, 0, 256, 256, -gOff, -gOff, W + 256, H + 256); c.restore();
-        if (t > 13.5) {
-          const lnA = cl((t - 13.5) * 0.6, 0, 1) * sa * 0.4;
-          c.save(); c.globalAlpha = lnA; const lnH = 3, lnW = W * 0.3, lnY = H - 20;
-          c.fillStyle = '#FF9933'; c.fillRect(cx - lnW / 2, lnY, lnW / 3, lnH);
-          c.fillStyle = '#FFFFFF'; c.fillRect(cx - lnW / 6, lnY, lnW / 3, lnH);
-          c.fillStyle = '#138808'; c.fillRect(cx + lnW / 6, lnY, lnW / 3, lnH);
-          c.restore();
-        }
-      },
-       
-      fireworks: (t: number, sa: number) => {
-        if (t < 11) return;
-        const fa = cl((t - 11) * 0.5, 0, 1) * sa;
-        c.save(); c.globalAlpha = fa; c.globalCompositeOperation = 'lighter';
-        fwList.forEach(fw => {
-          if (fw.state === 'rising') {
-            c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},0.95)`;
-            c.beginPath(); c.arc(fw.x, fw.y, 2.5, 0, 6.283); c.fill();
-          } else {
-            fw.pts.forEach(pt => {
-              const la = cl(pt.life / pt.ml, 0, 1);
-              c.fillStyle = `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${la * 0.85})`;
-              c.beginPath(); c.arc(pt.x, pt.y, pt.sz * la, 0, 6.283); c.fill();
-            });
-            if (fw.burstT < 0.4) {
-              const ga = (1 - fw.burstT / 0.4) * 0.5;
-              const bg = c.createRadialGradient(fw.x, fw.y, 0, fw.x, fw.y, 35);
-              bg.addColorStop(0, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${ga})`);
-              bg.addColorStop(1, 'rgba(0,0,0,0)');
-              c.fillStyle = bg; c.fillRect(fw.x - 35, fw.y - 35, 70, 70);
-            }
-          }
-        });
-        c.restore();
-      },
-
-      particles: (t: number, el: number, sa: number) => {
-        for (let i = 0; i < POOL; i++) {
-          const p = pl[i];
-          if (!p.on || p.tp !== 6) continue;
-          const la = cl(p.life / p.ml, 0, 1);
-          c.save(); c.globalAlpha = la * sa * 0.7; c.globalCompositeOperation = 'lighter';
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},1)`;
-          c.beginPath(); c.arc(p.x, p.y, p.sz * la, 0, 6.283); c.fill();
-          c.restore();
-        }
-      },
-
-      bgDarken: (t: number) => {
+      fireworks: (t: number, el: number, sa: number) => {
         if (t < 12) return;
-        const p = cl((t - 12) / 2, 0, 1);
-        c.save();
-        c.globalAlpha = p;
-        c.fillStyle = '#02010c';
-        c.fillRect(0, 0, W, H);
-        c.restore();
-      },
-
-      // ★ Rotating Ashoka Chakra behind Title Card
-      drawBackgroundChakra: (t: number, sa: number) => {
-        if (t < 14) return;
-        c.save();
-        const centerY = H * 0.26;
-        c.globalAlpha = 0.07 * sa;
-        c.translate(cx, centerY);
-        c.rotate(t * 0.15); // Smooth rotation math
-
-        const r = sc * 0.24; // Balanced proportional scale
-        c.strokeStyle = '#000080';
-        c.lineWidth = 4.5;
-
-        // Outer circle
-        c.beginPath();
-        c.arc(0, 0, r, 0, 6.283);
-        c.stroke();
-
-        // 24 Spokes
-        c.lineWidth = 1.5;
-        for (let i = 0; i < 24; i++) {
-          const a = (i / 24) * 6.283;
-          c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-          c.stroke();
-        }
-
-        // Inner circle rim
-        c.beginPath();
-        c.arc(0, 0, r * 0.15, 0, 6.283);
-        c.stroke();
-
-        c.restore();
-      },
-
-      // ★ Layered Fluid Tricolor Waves with Fresh Green Grass Maidan Bottom Wave
-      drawTricolorWaves: (t: number, sa: number) => {
-        if (t < 14) return;
-        const fa = cl((t - 14) * 0.5, 0, 1) * sa;
-        c.save();
-        c.globalAlpha = fa;
-
-        const waveY = H * 0.78;
-
-        // 1. Saffron Wave
-        c.fillStyle = 'rgba(255, 153, 51, 0.45)';
-        c.beginPath();
-        c.moveTo(0, H);
-        for (let x = 0; x <= W; x += 15) {
-          const y = waveY - 15 + Math.sin(x * 0.005 + t * 1.2) * 12 + Math.cos(x * 0.01 + t * 0.6) * 6;
-          c.lineTo(x, y);
-        }
-        c.lineTo(W, H);
-        c.closePath();
-        c.fill();
-
-        // 2. White Wave
-        c.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        c.beginPath();
-        c.moveTo(0, H);
-        for (let x = 0; x <= W; x += 15) {
-          const y = waveY + Math.sin(x * 0.006 - t * 1.0) * 10 + Math.cos(x * 0.008 + t * 0.8) * 5;
-          c.lineTo(x, y);
-        }
-        c.lineTo(W, H);
-        c.closePath();
-        c.fill();
-
-       // 3. Cinematic Realistic Maidan (2027)
-
-const hillGrad = c.createLinearGradient(0, waveY, 0, H);
-
-hillGrad.addColorStop(0.00, "#4D7C35");
-hillGrad.addColorStop(0.18, "#3E6B2E");
-hillGrad.addColorStop(0.45, "#2C5220");
-hillGrad.addColorStop(0.75, "#1B3717");
-hillGrad.addColorStop(1.00, "#0B180C");
-
-c.fillStyle = hillGrad;
-
-c.beginPath();
-c.moveTo(0, H);
-
-for (let x = 0; x <= W; x += 10) {
-
-    const y =
-        waveY +
-        12 +
-        Math.sin(x * 0.0025) * 2 +
-        Math.cos(x * 0.0050) * 1.5 +
-        noise.n2(x * 0.01, 5) * 2.2;
-
-    c.lineTo(x, y);
-}
-
-c.lineTo(W, H);
-c.closePath();
-c.fill();
-
-
-// ---------- Soft Ground Shadow ----------
-
-const groundShadow = c.createLinearGradient(
-    0,
-    waveY,
-    0,
-    waveY + 80
-);
-
-groundShadow.addColorStop(0, "rgba(0,0,0,0.16)");
-groundShadow.addColorStop(1, "rgba(0,0,0,0)");
-
-c.fillStyle = groundShadow;
-c.fillRect(0, waveY, W, 80);
-
-
-// ---------- Grass Texture ----------
-
-c.save();
-
-c.globalAlpha = 0.18;
-
-for (let i = 0; i < 350; i++) {
-
-    const gx = Math.random() * W;
-
-    const gy =
-        waveY +
-        8 +
-        Math.random() * (H - waveY - 10);
-
-    const h = 2 + Math.random() * 4;
-
-    c.strokeStyle = "rgba(130,190,90,0.45)";
-
-    c.beginPath();
-
-    c.moveTo(gx, gy);
-
-    c.lineTo(
-        gx + (Math.random() - 0.5) * 1.2,
-        gy - h
-    );
-
-    c.stroke();
-}
-
-c.restore();
-
-
-// ---------- Bright Grass Highlights ----------
-
-c.save();
-
-c.globalAlpha = 0.08;
-
-for (let i = 0; i < 180; i++) {
-
-    const gx = Math.random() * W;
-
-    const gy =
-        waveY +
-        Math.random() * 35;
-
-    c.fillStyle = "rgba(255,255,180,0.35)";
-
-    c.fillRect(gx, gy, 1, 1);
-
-}
-
-c.restore();
-      }, // 🌟 FIXED: Added missing bracket and comma here!
-
-      // ★ Saluting Soldiers Silhouettes aligned on the waves
-      drawSoldiers: (t: number, sa: number) => {
-        if (t < 14.5) return;
-        const fa = cl((t - 14.5) * 0.5, 0, 1) * sa;
-
-        c.save();
-        c.globalAlpha = fa;
-
-        const centerY = H * 0.26;
-        c.save();
-        c.font = `bold ${Math.min(W * 0.045, 34)}px 'Georgia', serif`;
-        const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width;
-        c.restore();
-
-        const waveY = H * 0.78;
-
-     // Soldier 1 (Front - Hero Soldier)
-const s1X = cx + titleW * 0.22;
-const s1Y =
-  waveY +
-  12 +
-  Math.sin(s1X * 0.0025) * 2 +
-  Math.cos(s1X * 0.005) * 1 +
-  noise.n2(s1X * 0.01, 5) * 2;
-
-c.save();
-c.shadowColor = "rgba(0,0,0,0.35)";
-c.shadowBlur = 8;
-c.shadowOffsetY = 4;
-drawRealisticSoldierSilhouette(s1X, s1Y, 1.0);
-c.restore();
-
-
-// Soldier 2 (Middle Depth)
-const s2X = cx + titleW * 0.35;
-const s2Y =
-  waveY +
-  12 +
-  Math.sin(s2X * 0.0025) * 2 +
-  Math.cos(s2X * 0.005) * 1 +
-  noise.n2(s2X * 0.01, 5) * 2;
-
-c.save();
-c.globalAlpha = 0.82;
-c.shadowColor = "rgba(0,0,0,0.25)";
-c.shadowBlur = 6;
-c.shadowOffsetY = 3;
-drawRealisticSoldierSilhouette(s2X, s2Y, 0.88);
-c.restore();
-
-
-// Soldier 3 (Background Soldier)
-const s3X = cx + titleW * 0.46;
-const s3Y =
-  waveY +
-  12 +
-  Math.sin(s3X * 0.0025) * 2 +
-  Math.cos(s3X * 0.005) * 1 +
-  noise.n2(s3X * 0.01, 5) * 2;
-
-c.save();
-c.globalAlpha = 0.65;
-c.filter = "blur(0.5px)";
-c.shadowColor = "rgba(0,0,0,0.18)";
-c.shadowBlur = 4;
-c.shadowOffsetY = 2;
-drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
-c.filter = "none";
-c.restore();
-
-c.restore();
-      }, // 🌟 FIXED: Added missing bracket and comma here!
-
-      // ★ Rising Tricolor Helium Balloons
-      drawBalloons: (t: number, sa: number) => {
-        if (t < 14) return;
-        c.save();
-        balloons.forEach(b => {
-          const sway = Math.sin(t * b.swaySpeed + b.phase) * b.swayAmp;
-          const bx = b.x + sway;
-          const by = b.y;
-
-          c.save();
-          c.globalAlpha = sa * 0.82;
-
-          // Thread/string wave geometry
-          c.strokeStyle = 'rgba(255,255,255,0.22)';
-          c.lineWidth = 1;
-          c.beginPath();
-          c.moveTo(bx, by + b.sz);
-          c.quadraticCurveTo(bx - 8, by + b.sz + b.sz * 0.7, bx + 4, by + b.sz * 2.5);
-          c.stroke();
-
-          // 3D Spherical balloon render
-          const grad = c.createRadialGradient(bx - b.sz * 0.25, by - b.sz * 0.25, 0, bx, by, b.sz);
-          grad.addColorStop(0, `rgb(${Math.min(255, b.r + 75)}, ${Math.min(255, b.g + 75)}, ${Math.min(255, b.b + 75)})`);
-          grad.addColorStop(0.65, `rgb(${b.r}, ${b.g}, ${b.b})`);
-          grad.addColorStop(1, `rgb(${Math.max(0, b.r - 80)}, ${Math.max(0, b.g - 80)}, ${Math.max(0, b.b - 80)})`);
-          c.fillStyle = grad;
-
-          // Fixed 7-args parameters ellipse
-          c.beginPath();
-          c.ellipse(bx, by, b.sz * 0.84, b.sz, 0, 0, 6.283);
-          c.fill();
-
-          // Knot tie base
-          c.fillStyle = `rgb(${b.r}, ${b.g}, ${b.b})`;
-          c.beginPath();
-          c.moveTo(bx, by + b.sz);
-          c.lineTo(bx - 3.5, by + b.sz + 4);
-          c.lineTo(bx + 3.5, by + b.sz + 4);
-          c.closePath();
-          c.fill();
-
-          c.restore();
-        });
-        c.restore();
-      },
-
-      titleCard: (t: number, sa: number) => {
-        if (t < 14) return;
-        const lines = [
-          { text: 'HAPPY INDEPENDENCE DAY', start: 14.0, y: -45, size: Math.min(W * 0.045, 34), glow: true },
-          { text: '80th Anniversary | 1947 \u2013 2027', start: 14.6, y: 5, size: Math.min(W * 0.022, 17), glow: false },
-          { text: '\u091C\u092F \u0939\u093F\u0928\u094D\u0926', start: 15.2, y: 65, size: Math.min(W * 0.05, 38), glow: true },
-        ];
-
-        const centerY = H * 0.26;
-        const fadeDur = 1.0;
-
-        const makeGold = () => {
-          const tg = c.createLinearGradient(cx - 250, 0, cx + 250, 0);
-          tg.addColorStop(0, '#b8860b');
-          tg.addColorStop(0.25, '#ffd700');
-          tg.addColorStop(0.5, '#fffacd');
-          tg.addColorStop(0.75, '#ffd700');
-          tg.addColorStop(1, '#b8860b');
-          return tg;
-        };
-
-        c.save();
-        lines.forEach(line => {
-          if (t < line.start) return;
-          const lineAlpha = cl((t - line.start) / fadeDur, 0, 1);
-          const fadeOut = t > DUR - 1.5 ? cl((DUR - t) / 1.5, 0, 1) : 1;
-          c.globalAlpha = lineAlpha * fadeOut * sa;
-          c.font = `bold ${line.size}px 'Georgia', serif`;
-          c.textAlign = 'center';
-          c.textBaseline = 'middle';
-
-          if (line.glow) {
-            c.save();
-            c.shadowColor = 'rgba(255,215,0,0.6)';
-            c.shadowBlur = 20;
-            c.fillStyle = makeGold();
-            c.fillText(line.text, cx, centerY + line.y);
-            c.restore();
+        const fa = cl((t - 12) * 0.5, 0, 1) * sa;
+        c.save(); c.globalAlpha = fa;
+
+        for (const fw of fwList) {
+          if (fw.state === 'rising') {
+            const tg = c.createRadialGradient(fw.x, fw.y, 0, fw.x, fw.y, 6);
+            tg.addColorStop(0, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},0.9)`);
+            tg.addColorStop(1, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},0)`);
+            c.fillStyle = tg; c.beginPath(); c.arc(fw.x, fw.y, 6, 0, 6.283); c.fill();
           }
+          for (const pt of fw.pts) {
+            const al = cl(pt.life / pt.ml, 0, 1);
+            const tg = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pt.sz * 2);
+            tg.addColorStop(0, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${al * 0.9})`);
+            tg.addColorStop(0.4, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},${al * 0.4})`);
+            tg.addColorStop(1, `rgba(${fw.col.r},${fw.col.g},${fw.col.b},0)`);
+            c.fillStyle = tg; c.beginPath(); c.arc(pt.x, pt.y, pt.sz * 2, 0, 6.283); c.fill();
+            c.fillStyle = `rgba(255,255,255,${al * 0.7})`; c.beginPath(); c.arc(pt.x, pt.y, pt.sz * 0.4, 0, 6.283); c.fill();
+          }
+        }
 
-          c.fillStyle = makeGold();
-          c.fillText(line.text, cx, centerY + line.y);
-        });
+        for (const s of fwSmoke) {
+          c.globalAlpha = fa * s.a * 0.3;
+          c.fillStyle = 'rgba(180,160,140,0.3)';
+          c.beginPath(); c.arc(s.x, s.y, s.sz, 0, 6.283); c.fill();
+        }
         c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════════════
-         ★ CHANGE 2: CLOSING FLAG — Pole left-aligned perfectly with the text edge
-         ═══════════════════════════════════════════════════════════ */
-      closingFlag: (t: number, el: number) => {
-        if (t < 14.5) return;
-        const fa = cl((t - 14.5) * 0.5, 0, 1);
-        const fadeOut = t > DUR - 1.5 ? cl((DUR - t) / 1.5, 0, 1) : 1;
-
+      celebrationScene: (t: number, el: number, sa: number) => {
+        if (t < 12.5) return;
+        const ca = cl((t - 12.5) * 0.8, 0, 1) * sa;
         const centerY = H * 0.26;
-        
-        // Dynamically measuring the left boundary of our centered title text
-        c.save();
-        c.font = `bold ${Math.min(W * 0.045, 34) * dpr}px 'Georgia', serif`;
-        const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width / dpr;
+        c.save(); c.globalAlpha = ca;
+
+        c.font = `bold ${Math.min(W * 0.045, 34)}px 'Georgia', serif`;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+
+        c.shadowColor = 'rgba(255,153,51,0.6)'; c.shadowBlur = 20;
+        c.fillStyle = '#FFD700';
+        c.fillText('HAPPY INDEPENDENCE DAY', cx, centerY);
+        c.shadowBlur = 0;
+
+        c.font = `${Math.min(W * 0.018, 16)}px 'Georgia', serif`;
+        c.fillStyle = 'rgba(255,215,0,0.8)';
+        c.fillText('80th Anniversary | 1947 - 2027', cx, centerY + Math.min(W * 0.04, 32));
+
+        c.font = `bold ${Math.min(W * 0.028, 24)}px 'Georgia', serif`;
+        c.fillStyle = 'rgba(255,180,60,0.9)';
+        c.fillText('\u0935\u0902\u0926\u0947 \u092E\u093E\u0924\u0930\u092E\u094D', cx, centerY + Math.min(W * 0.07, 56));
+
+        c.font = `bold ${Math.min(W * 0.022, 18)}px 'Georgia', serif`;
+        c.fillStyle = 'rgba(255,200,100,0.7)';
+        c.fillText('\u091C\u092F \u0939\u093F\u0928\u094D\u0926', cx, centerY + Math.min(W * 0.1, 80));
+
         c.restore();
 
-        const poleX = cx - titleW / 2; // Pole aligned precisely with the left edge of 'HAPPY INDEPENDENCE DAY'
-        const poleTopY = centerY + 100; // Shifted vertically close below the Hindi text
-        const poleBotY = H * 0.85;
-        const poleH = poleBotY - poleTopY;
-        const flagW = Math.min(sc * 0.24, 250);
-        const flagH = flagW * 0.66;
-        const flagTopY = poleTopY + 8;
+        c.save(); c.globalAlpha = ca * 0.8;
+        const soldierSpacing = Math.min(40, W * 0.035);
+        const soldierCount = Math.min(8, Math.floor(gateW * 0.6 / soldierSpacing));
+        const soldierStartX = cx - (soldierCount - 1) * soldierSpacing / 2;
+        const soldierScale = Math.min(1.2, sc * 0.0022);
+        for (let i = 0; i < soldierCount; i++) {
+          drawRealisticSoldierSilhouette(soldierStartX + i * soldierSpacing, baseY - 2, soldierScale);
+        }
+        c.restore();
 
-        c.save();
-        c.globalAlpha = fa * fadeOut;
-
-        // ── Draw pole ──
-        const pg = c.createLinearGradient(poleX - 2.5, 0, poleX + 2.5, 0);
-        pg.addColorStop(0, '#999');
-        pg.addColorStop(0.3, '#e0e0e0');
-        pg.addColorStop(0.5, '#ffffff');
-        pg.addColorStop(0.7, '#d0d0d0');
-        pg.addColorStop(1, '#888');
-        c.fillStyle = pg;
-        c.fillRect(poleX - 2, poleTopY, 4, poleH);
-
-        // ── Pole top ornament (gold finial) ──
-        c.fillStyle = '#ffd700';
-        c.beginPath();
-        c.arc(poleX, poleTopY, 5, 0, 6.283);
-        c.fill();
-        c.fillStyle = '#ffec80';
-        c.beginPath();
-        c.arc(poleX - 1, poleTopY - 1, 2, 0, 6.283);
-        c.fill();
-        // Small spike on top
-        c.fillStyle = '#ffd700';
-        c.beginPath();
-        c.moveTo(poleX, poleTopY - 12);
-        c.lineTo(poleX - 2.5, poleTopY - 3);
-        c.lineTo(poleX + 2.5, poleTopY - 3);
-        c.closePath();
-        c.fill();
-
-        // ── Pole base ──
-        c.fillStyle = '#555';
-        c.fillRect(poleX - 10, poleBotY - 3, 20, 6);
-        c.fillStyle = '#444';
-        c.fillRect(poleX - 14, poleBotY + 3, 28, 4);
-
-        // ── Draw flag stripes using cloth points ──
-        for (let i = 0; i < cfNumPts - 1; i++) {
-          const a = cfPts[i];
-          const b = cfPts[i + 1];
-          const clothLight = 0.92 + Math.sin(i * 0.5 - el * 4.5) * 0.08 + Math.cos(i * 0.22 + el * 2.8) * 0.04;
-
-          const shadeR = (base: number) => Math.min(255, Math.max(0, (base * clothLight) | 0));
-
-          // Saffron stripe
-          c.fillStyle = `rgb(${shadeR(255)},${shadeR(153)},${shadeR(51)})`;
-          c.beginPath();
-          c.moveTo(a.x, a.y);
-          c.lineTo(b.x, b.y);
-          c.lineTo(b.x, b.y + flagH / 3);
-          c.lineTo(a.x, a.y + flagH / 3);
-          c.closePath();
-          c.fill();
-
-          // White stripe
-          c.fillStyle = `rgb(${shadeR(255)},${shadeR(255)},${shadeR(255)})`;
-          c.beginPath();
-          c.moveTo(a.x, a.y + flagH / 3);
-          c.lineTo(b.x, b.y + flagH / 3);
-          c.lineTo(b.x, b.y + (flagH * 2) / 3);
-          c.lineTo(a.x, a.y + (flagH * 2) / 3);
-          c.closePath();
-          c.fill();
-
-          // Green stripe
-          c.fillStyle = `rgb(${shadeR(19)},${shadeR(136)},${shadeR(8)})`;
-          c.beginPath();
-          c.moveTo(a.x, a.y + (flagH * 2) / 3);
-          c.lineTo(b.x, b.y + (flagH * 2) / 3);
-          c.lineTo(b.x, b.y + flagH);
-          c.lineTo(a.x, a.y + flagH);
-          c.closePath();
-          c.fill();
-
-          // Stripe dividers
-          c.strokeStyle = 'rgba(0,0,0,0.08)';
+        if (Math.random() < 0.06 && balloons.length < 15) {
+          const cols = [{ r: 255, g: 153, b: 51 }, { r: 255, g: 255, b: 255 }, { r: 19, g: 136, b: 8 }];
+          const col = cols[Math.random() * 3 | 0];
+          balloons.push({
+            x: cx + (Math.random() - 0.5) * gateW * 0.8,
+            y: baseY + 20,
+            r: col.r, g: col.g, b: col.b,
+            sz: 6 + Math.random() * 8,
+            swaySpeed: 0.8 + Math.random() * 1.2,
+            swayAmp: 15 + Math.random() * 25,
+            phase: Math.random() * 6.28,
+            seed: Math.random() * 1000,
+            vy: -0.4 - Math.random() * 0.6,
+            born: t,
+          });
+        }
+        for (let i = balloons.length - 1; i >= 0; i--) {
+          const bl = balloons[i];
+          bl.y += bl.vy;
+          bl.x += Math.sin(el * bl.swaySpeed + bl.phase) * 0.3 + noise.n2(el * 0.3 + bl.seed, 0) * 0.2;
+          const age = t - bl.born;
+          const blAlpha = age < 0.5 ? age / 0.5 : (bl.y > -50 ? 1 : 0);
+          if (bl.y < -50 || blAlpha <= 0) { balloons.splice(i, 1); continue; }
+          c.save(); c.globalAlpha = ca * blAlpha * 0.7;
+          c.fillStyle = `rgb(${bl.r},${bl.g},${bl.b})`;
+          c.beginPath(); c.ellipse(bl.x, bl.y, bl.sz * 0.6, bl.sz, 0, 0, 6.283); c.fill();
+          c.fillStyle = `rgba(${bl.r},${bl.g},${bl.b},0.3)`;
+          c.beginPath(); c.ellipse(bl.x, bl.y + bl.sz, bl.sz * 0.15, bl.sz * 0.2, 0, 0, 6.283); c.fill();
+          c.strokeStyle = `rgba(${Math.max(0,bl.r-40)},${Math.max(0,bl.g-40)},${Math.max(0,bl.b-40)},0.5)`;
           c.lineWidth = 0.5;
-          c.beginPath();
-          c.moveTo(a.x, a.y + flagH / 3);
-          c.lineTo(b.x, b.y + flagH / 3);
-          c.stroke();
-          c.beginPath();
-          c.moveTo(a.x, a.y + (flagH * 2) / 3);
-          c.lineTo(b.x, b.y + (flagH * 2) / 3);
-          c.stroke();
+          c.beginPath(); c.moveTo(bl.x, bl.y + bl.sz);
+          c.lineTo(bl.x + Math.sin(el + bl.seed) * 3, bl.y + bl.sz + 20); c.stroke();
+          c.restore();
         }
-
-        // ── Ashoka Chakra on flag ──
-        const chIdx = (cfNumPts / 2) | 0;
-        const chX = cfPts[chIdx].x;
-        const chY = cfPts[chIdx].y + flagH / 2;
-        const chR = flagH * 0.13;
-
-        c.save();
-        c.translate(chX, chY);
-        c.rotate(el * 0.6);
-
-        // Outer circle
-        c.strokeStyle = 'rgba(0,0,128,0.85)';
-        c.lineWidth = 1.5;
-        c.beginPath();
-        c.arc(0, 0, chR, 0, 6.283);
-        c.stroke();
-
-        // 24 spokes
-        c.lineWidth = 0.6;
-        for (let i = 0; i < 24; i++) {
-          const a = (i / 24) * 6.283;
-          c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(Math.cos(a) * chR, Math.sin(a) * chR);
-          c.stroke();
-        }
-
-        // Inner circle
-        c.strokeStyle = 'rgba(0,0,128,0.5)';
-        c.lineWidth = 0.5;
-        c.beginPath();
-        c.arc(0, 0, chR * 0.35, 0, 6.283);
-        c.stroke();
-
-        // Center dot
-        c.fillStyle = 'rgba(0,0,128,0.7)';
-        c.beginPath();
-        c.arc(0, 0, 1.5, 0, 6.283);
-        c.fill();
-
-        c.restore();
-
-        // ── Rope/tie connecting flag to pole ──
-        c.strokeStyle = 'rgba(180,150,80,0.6)';
-        c.lineWidth = 1.5;
-        c.beginPath();
-        c.moveTo(poleX + 2, flagTopY - 2);
-        c.lineTo(poleX + 2, flagTopY + flagH + 2);
-        c.stroke();
-
-        // Small knots
-        c.fillStyle = '#b8960b';
-        c.beginPath();
-        c.arc(poleX + 2, flagTopY - 2, 2.5, 0, 6.283);
-        c.fill();
-        c.beginPath();
-        c.arc(poleX + 2, flagTopY + flagH + 2, 2.5, 0, 6.283);
-        c.fill();
-
-        c.restore();
       },
 
-      salute: (t: number, el: number, sa: number) => {
-        // Tricolor sparkle particles around the title area
-        if (t < 15.5 || t > DUR) return;
-        const si = cl((t - 15.5) * 0.6, 0, 1) * (t > DUR - 1.5 ? cl((DUR - t) / 1.5, 0, 1) : 1) * sa;
-        c.save(); c.globalAlpha = si * 0.6; c.globalCompositeOperation = 'lighter';
-        const colors = ['rgba(255,153,51,0.8)', 'rgba(255,255,255,0.8)', 'rgba(19,136,8,0.8)'];
-        for (let i = 0; i < 18; i++) {
-          const ang = (i / 18) * 6.283 + el * 0.3;
-          const rad = sc * 0.2 + Math.sin(el * 2 + i * 1.3) * sc * 0.04;
-          const px = cx + Math.cos(ang) * rad;
-          const py = H * 0.26 + Math.sin(ang) * rad * 0.4;
-          const sz = 1.5 + Math.sin(el * 3 + i * 2) * 0.8;
-          c.fillStyle = colors[i % 3];
-          c.beginPath(); c.arc(px, py, Math.max(0.5, sz), 0, 6.283); c.fill();
-        }
-        c.restore();
-      },
-
-      filmGrain: (t: number) => {
-        c.save();
-        c.globalAlpha = 0.035;
-        c.globalCompositeOperation = 'overlay';
-        const ox = (Math.random() * 256) | 0, oy = (Math.random() * 256) | 0;
+      grain: (sa: number) => {
+        c.save(); c.globalAlpha = sa * 0.04; c.globalCompositeOperation = 'overlay';
+        const ox = Math.random() * 256, oy = Math.random() * 256;
         const pat = c.createPattern(grainCv, 'repeat');
-        if (pat) {
-          c.translate(ox, oy);
-          c.fillStyle = pat;
-          c.fillRect(-ox, -oy, W + 256, H + 256);
-        }
+        if (pat) { c.fillStyle = pat; c.translate(ox, oy); c.fillRect(-ox, -oy, W + 256, H + 256); }
+        c.restore();
+      },
+
+      vignette: (sa: number) => {
+        c.save(); c.globalAlpha = sa * 0.5;
+        const vg = c.createRadialGradient(cx, H * 0.45, sc * 0.3, cx, H * 0.45, sc * 0.9);
+        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(0.7, 'rgba(0,0,0,0.1)'); vg.addColorStop(1, 'rgba(0,0,0,0.5)');
+        c.fillStyle = vg; c.fillRect(0, 0, W, H);
         c.restore();
       },
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       RENDER LOOP
-       ═══════════════════════════════════════════════════════════ */
-    let lastFW = 0;
-    let lastPetal = 0;
+    let lastT = 0;
+    let fwTimer = 0;
 
     const frame = (now: number) => {
       if (!t0.current) t0.current = now;
-      const t = Math.min((now - t0.current) / 1000, DUR + 2);
-      const el = now / 1000;
-      const dt = 0.016;
+      const t = Math.min((now - t0.current) / 1000, DUR);
+      const dt = Math.min((now - lastT) / 1000, 0.05);
+      lastT = now;
+      const el = t;
 
-      // ── Camera shake ──
-      c.save();
+      if (t >= 12) {
+        fwTimer += dt;
+        if (fwTimer > 0.6) { fwTimer = 0; spawnFW(); }
+        updateFW(dt);
+      }
+
       if (camShake > 0.1) {
+        c.save();
         c.translate((Math.random() - 0.5) * camShake, (Math.random() - 0.5) * camShake);
-        camShake *= 0.92;
-      } else {
-        camShake = 0;
+        camShake *= 0.88;
       }
 
-      // ── Scene alpha (fades out fort scene after t=12) ──
-      const sa = t > 13 ? cl((14 - t), 0, 1) : 1.0;
+      const sceneAlpha = t >= DUR ? cl((DUR - t) * 2 + 1, 0, 1) : 1;
 
-      // ── Background cloth physics calculations (always simulated to prevent jerk) ──
-      const centerY = H * 0.26;
-      
-      c.save();
-      c.font = `bold ${Math.min(W * 0.045, 34) * dpr}px 'Georgia', serif`;
-      const tW = c.measureText('HAPPY INDEPENDENCE DAY').width / dpr;
-      c.restore();
+      R.sky(t, sceneAlpha);
+      R.stars(t, sceneAlpha);
+      R.clouds(t, sceneAlpha);
+      R.atmosFog(t, sceneAlpha);
+      R.volLight(t, sceneAlpha);
+      R.ground(t, sceneAlpha);
+      R.redFort(t, sceneAlpha);
+      R.torch(t, el, sceneAlpha);
+      R.flag(t, el, sceneAlpha);
+      R.drawKites(t, sceneAlpha);
+      R.doves(t, el, sceneAlpha);
+      R.fireworks(t, el, sceneAlpha);
+      R.celebrationScene(t, el, sceneAlpha);
+      R.grain(sceneAlpha);
+      R.vignette(sceneAlpha);
 
-      const poleX = cx - tW / 2; // Match exact left edge aligned with text start
-      const poleTopY = centerY + 100;
-      const poleBotY = H * 0.85;
-      const poleH = poleBotY - poleTopY;
-      const flagW = Math.min(sc * 0.24, 250);
-      const flagH = flagW * 0.66;
-      const flagTopY = poleTopY + 8;
+      if (camShake > 0.1) c.restore();
 
-      for (let i = 1; i < cfNumPts; i++) {
-        const wind = 0.18 + noise.n2(el * 0.5 + i * 0.12, 10) * 0.15 + noise.n2(el * 1.3 + i * 0.25, 20) * 0.05;
-        cfPts[i].vx = (cfPts[i].x - cfPts[i].ox) * 0.88 + wind;
-        cfPts[i].vy = (cfPts[i].y - cfPts[i].oy) * 0.88 + 0.015 + noise.n2(el * 0.7 + i * 0.18, 30) * 0.01;
-        cfPts[i].ox = cfPts[i].x;
-        cfPts[i].oy = cfPts[i].y;
-        cfPts[i].x += cfPts[i].vx;
-        cfPts[i].y += cfPts[i].vy;
-      }
-      cfPts[0].x = poleX + 2;
-      cfPts[0].y = flagTopY;
-
-      const ll = flagW / (cfNumPts - 1);
-      for (let s = 0; s < 10; s++) { // Constraint iterations increased to 10 for realistic cloth motion
-        for (let i = 0; i < cfNumPts - 1; i++) {
-          const a = cfPts[i], b = cfPts[i + 1];
-          const dx = b.x - a.x, dy = b.y - a.y;
-          const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
-          const diff = ll - d, pct = (diff / d) * 0.5;
-          const ox = dx * pct, oy = dy * pct;
-          if (i > 0) { a.x -= ox; a.y -= oy; }
-          b.x += ox; b.y += oy;
-        }
-      }
-
-      // ★ DYNAMIC UPDATE — Balloon rising and wind sway math
-      if (t >= 13.5 && t < DUR) {
-        if (balloons.length < 22 && Math.random() < 0.04) {
-          const cols = [
-            { r: 255, g: 153, b: 51 },  // Saffron
-            { r: 255, g: 255, b: 255 }, // White
-            { r: 19, g: 136, b: 8 }     // Green
-          ];
-          const col = cols[Math.random() * cols.length | 0];
-          balloons.push({
-            x: Math.random() * W,
-            y: H + 30,
-            r: col.r, g: col.g, b: col.b,
-            sz: 13 + Math.random() * 8,
-            swaySpeed: 0.7 + Math.random() * 1.1,
-            swayAmp: 12 + Math.random() * 16,
-            phase: Math.random() * 100,
-            seed: Math.random() * 1000,
-            vy: -0.6 - Math.random() * 0.4,
-            born: t
-          });
-        }
-      }
-
-      for (let i = balloons.length - 1; i >= 0; i--) {
-        const b = balloons[i];
-        b.y += b.vy;
-        b.phase += 0.016;
-        if (b.y < -50) {
-          balloons.splice(i, 1);
-        }
-      }
-
-      // ── Spawn fireworks ──
-      if (t > 11 && t < DUR - 1) {
-        if (t - lastFW > 0.35 + Math.random() * 0.3) {
-          spawnFW();
-          if (Math.random() < 0.4) spawnFW();
-          lastFW = t;
-        }
-      }
-
-      // ── Spawn petals ──
-      if (t > 8 && t < 11) {
-        if (t - lastPetal > 0.06) {
-          const pp = grab(pl);
-          if (pp) {
-            pp.on = true; pp.tp = 7;
-            pp.x = cx + (Math.random() - 0.5) * gateW * 0.6;
-            pp.y = fort.wallTop - 10;
-            pp.vx = (Math.random() - 0.5) * 1.2;
-            pp.vy = 0.3 + Math.random() * 0.8;
-            pp.life = 3 + Math.random() * 2; pp.ml = 5;
-            pp.sz = 3 + Math.random() * 3;
-            pp.rot = Math.random() * 6.283;
-            pp.rs = (Math.random() - 0.5) * 0.08;
-            const pcol = Math.random();
-            if (pcol < 0.4) { pp.r = 255; pp.g = 180; pp.b = 200; }
-            else if (pcol < 0.7) { pp.r = 255; pp.g = 220; pp.b = 180; }
-            else { pp.r = 255; pp.g = 255; pp.b = 240; }
-            pp.a = 0.7;
-          }
-          lastPetal = t;
-        }
-      }
-
-      // ── Update petals ──
-      if (t > 8 && t < 12) {
-        for (let i = 0; i < POOL; i++) {
-          const p = pl[i];
-          if (!p.on || p.tp !== 7) continue;
-          p.x += p.vx + Math.sin(el * 2 + p.turbOff) * 0.3;
-          p.y += p.vy;
-          p.rot += p.rs;
-          p.life -= dt;
-          if (p.life <= 0 || p.y > H + 10) { p.on = false; p.tp = 1; }
-        }
-      }
-
-      // ── Update fireworks ──
-      updateFW(dt);
-
-      // ── Update burst particles ──
-      for (let i = 0; i < POOL; i++) {
-        const p = pl[i];
-        if (!p.on || p.tp !== 6) continue;
-        p.x += p.vx; p.y += p.vy;
-        p.vy += 0.02;
-        p.vx *= 0.99; p.vy *= 0.99;
-        p.life -= dt;
-        if (p.life <= 0) { p.on = false; p.tp = 1; }
-      }
-
-      // ── Celebration cleanup ──
-      if (t > 13 && !celebrationCleaned) {
-        celebrationCleaned = true;
-        for (let i = 0; i < POOL; i++) {
-          if (pl[i].tp === 6 || pl[i].tp === 7) {
-            pl[i].on = false;
-            pl[i].tp = 1;
-          }
-        }
-        fwList.length = 0;
-        fwSmoke.length = 0;
-      }
-
-      // ── RENDER ALL LAYERS ──
-      if (t > 12) {
-        R.celebration(t, el, 1);
-      } else {
-        R.sky(t, sa);
-        R.stars(t, sa);
-        R.clouds(t, sa);
-        R.atmosFog(t, sa);
-        R.volLight(t, sa);
-        R.ground(t, sa);
-        R.redFort(t, sa);
-        R.torch(t, el, sa);
-        R.flag(t, el, sa);
-        R.drawKites(t, sa);
-        R.doves(t, el, sa);
-        R.petals(t, sa);
-        R.soldiers(t, sa);
-        R.fireworks(t, sa);
-        R.particles(t, el, sa);
-        R.bgDarken(t);
-      }
-      
-      /* ── ★ BACKGROUND CHAKRA WATERMARK ── */
-      R.drawBackgroundChakra(t, 1.0);
-
-      /* ── TEXT: Always highest z-index, independent of sa ── */
-      R.titleCard(t, 1.0);
-
-      /* ── ★ DYNAMIC BALLOONS LAYER ── */
-      R.drawBalloons(t, 1.0);
-
-      /* ── ★ NEW ELEMENT: TRICOLOR organic fluid bottom ribbons ── */
-      R.drawTricolorWaves(t, 1.0);
-
-      /* ── ★ NEW ELEMENT: Saluting soldiers silhouettes on the waves ── */
-      R.drawSoldiers(t, 1.0);
-
-      /* ── ★ CLOSING FLAG: Flagpole with Tiranga perfectly left-aligned ── */
-      R.closingFlag(t, el);
-
-      // ── Salute sparkles ──
-      R.salute(t, el, 1.0);
-
-      // ── Film grain overlay ──
-      R.filmGrain(t);
-
-      // ── Vignette ──
-      c.save();
-      const vig = c.createRadialGradient(cx, H / 2, sc * 0.3, cx, H / 2, Math.max(W, H) * 0.75);
-      vig.addColorStop(0, 'rgba(0,0,0,0)');
-      vig.addColorStop(1, 'rgba(0,0,0,0.4)');
-      c.fillStyle = vig;
-      c.fillRect(0, 0, W, H);
-      c.restore();
-
-      c.restore(); // camera shake restore
-
-      /* ── COMPLETE ── */
-      if (t >= DUR && !done.current) {
-        done.current = true;
-        if (cbR.current) cbR.current();
-      }
-
-      if (t < DUR + 2) {
+      if (t < DUR) {
         raf.current = requestAnimationFrame(frame);
+      } else {
+        if (!done.current) {
+          done.current = true;
+          setTimeout(() => { if (cbR.current) cbR.current(); }, 400);
+        }
       }
     };
 
@@ -2020,21 +1206,15 @@ c.restore();
       cancelAnimationFrame(raf.current);
       window.removeEventListener('resize', rsz);
     };
-  }, [mkPool, grab, playAudio, imageUrl]);
+  }, [imageUrl, mkPool, grab, playAudio]);
 
   return (
     <canvas
       ref={cvRef}
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        display: 'block',
-        background: '#000',
-        cursor: 'default',
-        zIndex: 99999,
+        position: 'fixed', top: 0, left: 0,
+        width: '100vw', height: '100vh',
+        zIndex: 9999, pointerEvents: 'none',
       }}
     />
   );
