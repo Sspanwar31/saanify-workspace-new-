@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════
-   TYPES & INTERFACESc.lineTo(x, gT - 8 + Math.sin(x * 0.003) * 6);
+   TYPES & INTERFACES
    ═══════════════════════════════════════════════════════════════ */
 interface Props { onComplete?: () => void; imageUrl?: string; }
 
