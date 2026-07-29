@@ -1303,24 +1303,109 @@ const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
         c.closePath();
         c.fill();
 
-        // 3. Green Wave (Maidan)
-        const hillGrad = c.createLinearGradient(0, waveY, 0, H);
-        hillGrad.addColorStop(0, '#1e4620'); // Fresh green grass
-        hillGrad.addColorStop(0.5, '#123014'); // Mid shade
-        hillGrad.addColorStop(1, '#071808'); // Dark depth
-        c.fillStyle = hillGrad;
-        c.beginPath();
-        c.moveTo(0, H);
-        for (let x = 0; x <= W; x += 15) {
-          const y = waveY + 15 + Math.sin(x * 0.004 + t * 0.8) * 8 + Math.cos(x * 0.007 - t * 0.5) * 4;
-          c.lineTo(x, y);
-        }
-        c.lineTo(W, H);
-        c.closePath();
-        c.fill();
+       // 3. Cinematic Realistic Maidan (2027)
 
-        c.restore();
-      },
+const hillGrad = c.createLinearGradient(0, waveY, 0, H);
+
+hillGrad.addColorStop(0.00, "#4D7C35");
+hillGrad.addColorStop(0.18, "#3E6B2E");
+hillGrad.addColorStop(0.45, "#2C5220");
+hillGrad.addColorStop(0.75, "#1B3717");
+hillGrad.addColorStop(1.00, "#0B180C");
+
+c.fillStyle = hillGrad;
+
+c.beginPath();
+c.moveTo(0, H);
+
+for (let x = 0; x <= W; x += 10) {
+
+    const y =
+        waveY +
+        12 +
+        Math.sin(x * 0.0025) * 2 +
+        Math.cos(x * 0.0050) * 1.5 +
+        noise.n2(x * 0.01, 5) * 2.2;
+
+    c.lineTo(x, y);
+}
+
+c.lineTo(W, H);
+c.closePath();
+c.fill();
+
+
+// ---------- Soft Ground Shadow ----------
+
+const groundShadow = c.createLinearGradient(
+    0,
+    waveY,
+    0,
+    waveY + 80
+);
+
+groundShadow.addColorStop(0, "rgba(0,0,0,0.16)");
+groundShadow.addColorStop(1, "rgba(0,0,0,0)");
+
+c.fillStyle = groundShadow;
+c.fillRect(0, waveY, W, 80);
+
+
+// ---------- Grass Texture ----------
+
+c.save();
+
+c.globalAlpha = 0.18;
+
+for (let i = 0; i < 350; i++) {
+
+    const gx = Math.random() * W;
+
+    const gy =
+        waveY +
+        8 +
+        Math.random() * (H - waveY - 10);
+
+    const h = 2 + Math.random() * 4;
+
+    c.strokeStyle = "rgba(130,190,90,0.45)";
+
+    c.beginPath();
+
+    c.moveTo(gx, gy);
+
+    c.lineTo(
+        gx + (Math.random() - 0.5) * 1.2,
+        gy - h
+    );
+
+    c.stroke();
+}
+
+c.restore();
+
+
+// ---------- Bright Grass Highlights ----------
+
+c.save();
+
+c.globalAlpha = 0.08;
+
+for (let i = 0; i < 180; i++) {
+
+    const gx = Math.random() * W;
+
+    const gy =
+        waveY +
+        Math.random() * 35;
+
+    c.fillStyle = "rgba(255,255,180,0.35)";
+
+    c.fillRect(gx, gy, 1, 1);
+
+}
+
+c.restore();
 
       // ★ Saluting Soldiers Silhouettes aligned on the waves
       drawSoldiers: (t: number, sa: number) => {
@@ -1338,23 +1423,61 @@ const vigA = cl((t - 12) * 0.4, 0, 1) * 0.65 * sa;
 
         const waveY = H * 0.78;
 
-        // Soldier 1 (Large, right side)
-        const s1X = cx + titleW * 0.22;
-        const s1Y = waveY + Math.sin(s1X * 0.005 + t * 1.5) * 15 + 13;
-        drawRealisticSoldierSilhouette(s1X, s1Y, 1.0);
+     // Soldier 1 (Front - Hero Soldier)
+const s1X = cx + titleW * 0.22;
+const s1Y =
+  waveY +
+  12 +
+  Math.sin(s1X * 0.0025) * 2 +
+  Math.cos(s1X * 0.005) * 1 +
+  noise.n2(s1X * 0.01, 5) * 2;
 
-        // Soldier 2 (Medium, depth adjustment)
-        const s2X = cx + titleW * 0.35;
-        const s2Y = waveY + Math.sin(s2X * 0.005 + t * 1.5) * 15 + 14;
-        drawRealisticSoldierSilhouette(s2X, s2Y, 0.9);
+c.save();
+c.shadowColor = "rgba(0,0,0,0.35)";
+c.shadowBlur = 8;
+c.shadowOffsetY = 4;
+drawRealisticSoldierSilhouette(s1X, s1Y, 1.0);
+c.restore();
 
-        // Soldier 3 (Small, furthest right)
-        const s3X = cx + titleW * 0.46;
-        const s3Y = waveY + Math.sin(s3X * 0.005 + t * 1.5) * 15 + 15;
-        drawRealisticSoldierSilhouette(s3X, s3Y, 0.85);
 
-        c.restore();
-      },
+// Soldier 2 (Middle Depth)
+const s2X = cx + titleW * 0.35;
+const s2Y =
+  waveY +
+  12 +
+  Math.sin(s2X * 0.0025) * 2 +
+  Math.cos(s2X * 0.005) * 1 +
+  noise.n2(s2X * 0.01, 5) * 2;
+
+c.save();
+c.globalAlpha = 0.82;
+c.shadowColor = "rgba(0,0,0,0.25)";
+c.shadowBlur = 6;
+c.shadowOffsetY = 3;
+drawRealisticSoldierSilhouette(s2X, s2Y, 0.88);
+c.restore();
+
+
+// Soldier 3 (Background Soldier)
+const s3X = cx + titleW * 0.46;
+const s3Y =
+  waveY +
+  12 +
+  Math.sin(s3X * 0.0025) * 2 +
+  Math.cos(s3X * 0.005) * 1 +
+  noise.n2(s3X * 0.01, 5) * 2;
+
+c.save();
+c.globalAlpha = 0.65;
+c.filter = "blur(0.5px)";
+c.shadowColor = "rgba(0,0,0,0.18)";
+c.shadowBlur = 4;
+c.shadowOffsetY = 2;
+drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
+c.filter = "none";
+c.restore();
+
+c.restore();
 
       // ★ Rising Tricolor Helium Balloons
       drawBalloons: (t: number, sa: number) => {
