@@ -1379,6 +1379,7 @@ for (let i = 0; i < 350; i++) {
 
 c.restore();
 
+      },
 
 // ---------- Bright Grass Highlights ----------
 
