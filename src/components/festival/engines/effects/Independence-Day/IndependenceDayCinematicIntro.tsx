@@ -1617,14 +1617,15 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       const el = now / 1000;
       const dt = 0.016;
 
-      c.save();
-      if (camShake > 0.1) {
+           c.save();
+      // 🛠️ FIX: Screen shake sirf Fort scene (t<13) tak hi rahega, last scene me nahi
+      if (camShake > 0.1 && t < 13) { 
         c.translate((Math.random() - 0.5) * camShake, (Math.random() - 0.5) * camShake);
         camShake *= 0.92;
       } else {
         camShake = 0;
       }
-
+       
       const sa = t > 13 ? cl((14 - t), 0, 1) : 1.0;
 
       const centerY = H * 0.26;
@@ -1667,8 +1668,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       }
 
-      if (t >= 13.5 && t < DUR) {
-        if (balloons.length < 22 && Math.random() < 0.04) {
+            if (t >= 13.5 && t < DUR) {
+        // 🛠️ FIX: Zyada balloons aur tezi se upar uthega
+        if (balloons.length < 35 && Math.random() < 0.08) { 
           const cols = [
             { r: 255, g: 153, b: 51 },  
             { r: 255, g: 255, b: 255 }, 
@@ -1684,12 +1686,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
             swayAmp: 12 + Math.random() * 16,
             phase: Math.random() * 100,
             seed: Math.random() * 1000,
-            vy: -0.6 - Math.random() * 0.4,
+            vy: -2.5 - Math.random() * 1.5, // Speed badha di taaki screen khatam hone tak upar pahunche
             born: t
           });
         }
       }
-
+       
       for (let i = balloons.length - 1; i >= 0; i--) {
         const b = balloons[i];
         b.y += b.vy;
