@@ -524,10 +524,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         for (const idx of starI) {
           const p = pl[idx]; if (!p?.on) continue;
           const tw = Math.sin(t * 3.2 + idx) * 0.35 + 0.65;
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * tw * 0.3})`;
-          c.beginPath(); c.arc(p.x, p.y, p.sz * 2.5, 0, 6.283); c.fill();
-          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * tw})`;
-          c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * tw * 0.35})`; c.beginPath(); c.arc(p.x, p.y, p.sz * 2.5, 0, 6.283); c.fill();
+          c.fillStyle = `rgba(${p.r},${p.g},${p.b},${p.a * tw})`; c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
         }
         c.restore();
       },
@@ -741,16 +739,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.fillStyle = SAND_LT;
           for (let pi = 0; pi < 4; pi++) { const ppx = chX + 3 + (chW - 6) * (pi / 3); c.fillRect(ppx, chY - 14, 2.5, 14); }
           c.fillStyle = SAND; c.fillRect(chX, chY - 2, chW, 3);
-          c.beginPath(); c.arc(chX + chW / 2, chY - 2, chW * 0.42, Math.PI, 0, false); c.closePath();
-          const dg = c.createLinearGradient(chX, chY - 2 - chW * 0.42, chX + chW, chY - 2);
-          dg.addColorStop(0, '#d8d0c4'); dg.addColorStop(0.4, DOME); dg.addColorStop(1, '#c8c0b4');
-          c.fillStyle = dg; c.fill();
-          c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.08;
-          c.fillStyle = '#fff'; c.beginPath(); c.arc(chX + chW * 0.35, chY - 2 - chW * 0.3, chW * 0.15, 0, 6.283); c.fill();
-          c.restore();
-          c.strokeStyle = 'rgba(0,0,0,0.12)'; c.lineWidth = 0.7; c.stroke();
-          c.fillStyle = GOLD;
-          c.fillRect(chX + chW / 2 - 1, chY - 2 - chW * 0.42 - 5, 2, 6);
           c.beginPath(); c.arc(chX + chW / 2, chY - 2 - chW * 0.42 - 6, 2.5, 0, 6.283); c.fill();
         };
         drawBastion(bastionL.x, bastionL.w, bastionL.top);
@@ -933,8 +921,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.closePath(); c.fill();
 
           c.strokeStyle = "rgba(255,255,255,0.12)"; c.lineWidth = 0.5;
-          c.beginPath(); c.moveTo(a.x, a.y + fh / 3); c.lineTo(b.x, b.y + fh / 3); c.stroke();
-          c.beginPath(); c.moveTo(a.x, a.y + (fh * 2) / 3); c.lineTo(b.x, b.y + (fh * 2) / 3); c.stroke();
+          c.beginPath(); c.moveTo(a.x, a.y + fh / 3); c.lineTo(b.x, b.y + fh / 3);
+          c.stroke();
+          c.beginPath(); c.moveTo(a.x, a.y + (fh * 2) / 3); c.lineTo(b.x, b.y + (fh * 2) / 3);
+          c.stroke();
         }
 
         if (unfurl > 0.15) {
@@ -1406,6 +1396,7 @@ for (let i = 0; i < 180; i++) {
 }
 
 c.restore();
+      }, // 🌟 FIXED: Added missing bracket and comma here!
 
       // ★ Saluting Soldiers Silhouettes aligned on the waves
       drawSoldiers: (t: number, sa: number) => {
@@ -1478,6 +1469,7 @@ c.filter = "none";
 c.restore();
 
 c.restore();
+      }, // 🌟 FIXED: Added missing bracket and comma here!
 
       // ★ Rising Tricolor Helium Balloons
       drawBalloons: (t: number, sa: number) => {
