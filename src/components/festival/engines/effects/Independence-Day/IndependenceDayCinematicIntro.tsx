@@ -115,12 +115,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     } catch (_) {}
   }, []);
 
-  /* ═══════════════════════════════════════════════════════════
-     MAIN CANVAS LIFECYCLE
-     ═══════════════════════════════════════════════════════════ */
   useEffect(() => {
     const cv = cvRef.current; if (!cv) return;
-    const c = cv.getContext('2d', { alpha: false }); if (!c) return;
+    const c = cv.getContext('2d', { alpha: false }) as CanvasRenderingContext2D; 
+    if (!c) return;
 
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const cl = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
@@ -147,12 +145,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const fN: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < numPts; i++) fN.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
-    // ★ CLOTH FLAG SIMULATION SYSTEM
     const cfNumPts = 14;
     const cfPts: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
-    // ★ HELIUM BALLOONS — Dynamic array for rising tricolor balloons
     const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number; vy: number; born: number }[] = [];
 
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
@@ -218,15 +214,14 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
       if (fN.length > 0) fN[0].x = 0;
 
-      // ★ PRE-INITIALIZE cfPts: Preventing snap on final scene entry
       const centerY = H * 0.26;
       c.save();
       c.font = `bold ${Math.min(W * 0.045, 34)}px 'Georgia', serif`;
       const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width;
       c.restore();
 
-      const cfPoleX = cx - titleW / 2; // Pole aligned to the left edge of the text block
-      const cfPoleTopY = centerY + 100; // Shifted up right below "जय हिन्द"
+      const cfPoleX = cx - titleW / 2; 
+      const cfPoleTopY = centerY + 100; 
       const cfPoleBotY = H * 0.85;
       const cfPoleH = cfPoleBotY - cfPoleTopY;
       const cfFlagW = Math.min(sc * 0.24, 250);
@@ -238,13 +233,13 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           x: cfPoleX + 2 + i * cfLl,
           y: cfFlagTopY,
           ox: cfPoleX + 2 + i * cfLl,
-          oy: cfPoleX + 2 + i * cfLl,
+          oy: cfFlagTopY, // 🛠️ FIXED BUG HERE (was using X coord instead of Y)
           vx: 0,
           vy: 0
         };
       }
 
-      balloons.length = 0; // Reset balloons array on resize
+      balloons.length = 0; 
 
       for (let i = 0; i < starI.length; i++) {
         const p = pl[starI[i]];
@@ -301,21 +296,18 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
     let celebrationCleaned = false;
 
-    // ★ NEW STYLIZED & ANATOMICAL VECTORS SILHOUETTE POSTURE
     const drawRealisticSoldierSilhouette = (sx: number, sy: number, scale: number) => {
       c.save();
       c.translate(sx, sy);
       c.scale(scale, scale);
-      c.fillStyle = '#02010c'; // Deepest organic shadow
+      c.fillStyle = '#02010c'; 
 
-      // Ground soft shading shadow
       c.beginPath();
       c.ellipse(0, 0, 16, 4, 0, 0, 6.283);
       c.fillStyle = 'rgba(0, 0, 0, 0.4)';
       c.fill();
       c.fillStyle = '#02010c';
 
-      // Boots & Legs (Proper anatomical gaps)
       c.beginPath();
       c.moveTo(-4.5, 0);
       c.lineTo(-4, -13);
@@ -330,7 +322,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       c.closePath();
       c.fill();
 
-      // Slender waist, chest uniform coat
       c.beginPath();
       c.moveTo(-5.5, -19);
       c.lineTo(-7.2, -40);
@@ -340,7 +331,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       c.closePath();
       c.fill();
 
-      // Left Arm (holding firearm)
       c.beginPath();
       c.moveTo(-7.2, -40);
       c.quadraticCurveTo(-11.5, -28, -9.5, -21); 
@@ -349,7 +339,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       c.closePath();
       c.fill();
 
-      // Right Arm (Aesthetic saluting posture bending to the helmet brim)
       c.beginPath();
       c.moveTo(7.2, -40);
       c.lineTo(13.5, -44); 
@@ -360,12 +349,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       c.closePath();
       c.fill();
 
-      // Neck & Head
       c.beginPath();
       c.arc(0, -46, 3.8, 0, 6.283); 
       c.fill();
 
-      // Helmet (Slightly larger, realistic curved visor rim)
       c.beginPath();
       c.arc(0, -47.8, 5.2, Math.PI - 0.2, 0.2); 
       c.fill();
@@ -376,7 +363,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       c.lineTo(5.5, -47);
       c.stroke();
 
-      // Slanted Rifle behind shoulder
       c.beginPath();
       c.moveTo(-3.5, -24);
       c.lineTo(-12, -58); 
@@ -389,8 +375,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
     const spawnFW = () => {
       const col = fwCols[Math.random() * fwCols.length | 0];
-      const targetX = W * 0.12 + Math.random() * W * 0.76; // Widely distributed
-      const velocityY = -6.5 - Math.random() * 5.5; // Highly randomized burst altitudes
+      const targetX = W * 0.12 + Math.random() * W * 0.76; 
+      const velocityY = -6.5 - Math.random() * 5.5; 
       fwList.push({
         x: targetX,
         y: baseY,
@@ -572,7 +558,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ LUSH Fresh Green Maidan / Grassland Implementation
       ground: (t: number, sa: number) => {
         const rev = cl(t * 0.6, 0, 1);
         c.save();
@@ -580,15 +565,13 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         const gT = baseY;
 
-        // ★ 2027 Flat Cinematic Maidan Base
         c.fillStyle = '#0f240d';
         c.fillRect(0, gT - 4, W, H - gT + 4);
            
-        // Layer 2: Lush Fresh green dynamic maidan lawn
         const lg = c.createLinearGradient(0, gT - 4, 0, H);
-        lg.addColorStop(0, '#1c4217'); // Rich grass green
-        lg.addColorStop(0.3, '#143310'); // Mid grass green
-        lg.addColorStop(1, '#0b1d09'); // Dark shadow depth
+        lg.addColorStop(0, '#1c4217'); 
+        lg.addColorStop(0.3, '#143310'); 
+        lg.addColorStop(1, '#0b1d09'); 
         c.fillStyle = lg;
         c.fillRect(0, gT - 4, W, H - gT + 4);
 
@@ -1054,7 +1037,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       }, 
 
-      // ★ Harmonized Soldiers rendering over the dynamic landscape maidan
       soldiers: (t: number, sa: number) => {
         if (t < 2) return;
         const a = cl((t - 2) * 0.8, 0, 1) * (t > 12 ? cl((13 - t) * 2, 0, 1) : 1) * sa;
@@ -1099,19 +1081,10 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.restore();
         }
 
-        // Cinematic Fireworks
-        if (t >= 13.8 && t < 15.0 && Math.random() < 0.015) {
-          spawnFW();
-        }
-        if (t >= 15.0 && t < 16.3 && Math.random() < 0.028) {
-          spawnFW();
-        }
-        if (t >= 16.3 && t < 17.4 && Math.random() < 0.040) {
-          spawnFW();
-        }
-        if (t >= 17.4 && t < 18.0 && Math.random() < 0.010) {
-          spawnFW();
-        }
+        if (t >= 13.8 && t < 15.0 && Math.random() < 0.015) spawnFW();
+        if (t >= 15.0 && t < 16.3 && Math.random() < 0.028) spawnFW();
+        if (t >= 16.3 && t < 17.4 && Math.random() < 0.040) spawnFW();
+        if (t >= 17.4 && t < 18.0 && Math.random() < 0.010) spawnFW();
 
         c.save();
         c.globalCompositeOperation = 'lighter';
@@ -1199,25 +1172,22 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ Rotating Ashoka Chakra behind Title Card
       drawBackgroundChakra: (t: number, sa: number) => {
         if (t < 14) return;
         c.save();
         const centerY = H * 0.26;
         c.globalAlpha = 0.07 * sa;
         c.translate(cx, centerY);
-        c.rotate(t * 0.15); // Smooth rotation math
+        c.rotate(t * 0.15); 
 
-        const r = sc * 0.24; // Balanced proportional scale
+        const r = sc * 0.24; 
         c.strokeStyle = '#000080';
         c.lineWidth = 4.5;
 
-        // Outer circle
         c.beginPath();
         c.arc(0, 0, r, 0, 6.283);
         c.stroke();
 
-        // 24 Spokes
         c.lineWidth = 1.5;
         for (let i = 0; i < 24; i++) {
           const a = (i / 24) * 6.283;
@@ -1227,7 +1197,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.stroke();
         }
 
-        // Inner circle rim
         c.beginPath();
         c.arc(0, 0, r * 0.15, 0, 6.283);
         c.stroke();
@@ -1235,7 +1204,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ Layered Fluid Tricolor Waves with Fresh Green Grass Maidan Bottom Wave
       drawTricolorWaves: (t: number, sa: number) => {
         if (t < 14) return;
         const fa = cl((t - 14) * 0.5, 0, 1) * sa;
@@ -1244,7 +1212,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         const waveY = H * 0.78;
 
-        // 1. Saffron Wave
         c.fillStyle = 'rgba(255, 153, 51, 0.45)';
         c.beginPath();
         c.moveTo(0, H);
@@ -1256,7 +1223,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.closePath();
         c.fill();
 
-        // 2. White Wave
         c.fillStyle = 'rgba(255, 255, 255, 0.45)';
         c.beginPath();
         c.moveTo(0, H);
@@ -1268,7 +1234,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.closePath();
         c.fill();
 
-        // 3. Cinematic Realistic Maidan (2027)
         const hillGrad = c.createLinearGradient(0, waveY, 0, H);
         hillGrad.addColorStop(0.00, "#4D7C35");
         hillGrad.addColorStop(0.18, "#3E6B2E");
@@ -1294,14 +1259,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.closePath();
         c.fill();
 
-        // ---------- Soft Ground Shadow ----------
         const groundShadow = c.createLinearGradient(0, waveY, 0, waveY + 80);
         groundShadow.addColorStop(0, "rgba(0,0,0,0.16)");
         groundShadow.addColorStop(1, "rgba(0,0,0,0)");
         c.fillStyle = groundShadow;
         c.fillRect(0, waveY, W, 80);
 
-        // ---------- Grass Texture ----------
         c.save();
         c.globalAlpha = 0.18;
         for (let i = 0; i < 350; i++) {
@@ -1316,7 +1279,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
         c.restore();
 
-        // ---------- Bright Grass Highlights ----------
         c.save();
         c.globalAlpha = 0.08;
         for (let i = 0; i < 180; i++) {
@@ -1330,7 +1292,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ Saluting Soldiers Silhouettes aligned on the waves
       drawSoldiers: (t: number, sa: number) => {
         if (t < 14.5) return;
         const fa = cl((t - 14.5) * 0.5, 0, 1) * sa;
@@ -1346,7 +1307,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         const waveY = H * 0.78;
 
-        // Soldier 1 (Front - Hero Soldier)
         const s1X = cx + titleW * 0.22;
         const s1Y =
           waveY +
@@ -1362,7 +1322,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         drawRealisticSoldierSilhouette(s1X, s1Y, 1.0);
         c.restore();
 
-        // Soldier 2 (Middle Depth)
         const s2X = cx + titleW * 0.35;
         const s2Y =
           waveY +
@@ -1379,7 +1338,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         drawRealisticSoldierSilhouette(s2X, s2Y, 0.88);
         c.restore();
 
-        // Soldier 3 (Background Soldier)
         const s3X = cx + titleW * 0.46;
         const s3Y =
           waveY +
@@ -1390,18 +1348,17 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         c.save();
         c.globalAlpha = 0.65;
-        c.filter = "blur(0.5px)";
+        (c as any).filter = "blur(0.5px)"; // Cast to any to bypass strict TS DOM lib issues
         c.shadowColor = "rgba(0,0,0,0.18)";
         c.shadowBlur = 4;
         c.shadowOffsetY = 2;
         drawRealisticSoldierSilhouette(s3X, s3Y, 0.76);
-        c.filter = "none";
+        (c as any).filter = "none";
         c.restore();
 
         c.restore();
       },
 
-      // ★ Rising Tricolor Helium Balloons
       drawBalloons: (t: number, sa: number) => {
         if (t < 14) return;
         c.save();
@@ -1413,7 +1370,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.save();
           c.globalAlpha = sa * 0.82;
 
-          // Thread/string wave geometry
           c.strokeStyle = 'rgba(255,255,255,0.22)';
           c.lineWidth = 1;
           c.beginPath();
@@ -1421,19 +1377,16 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.quadraticCurveTo(bx - 8, by + b.sz + b.sz * 0.7, bx + 4, by + b.sz * 2.5);
           c.stroke();
 
-          // 3D Spherical balloon render
           const grad = c.createRadialGradient(bx - b.sz * 0.25, by - b.sz * 0.25, 0, bx, by, b.sz);
           grad.addColorStop(0, `rgb(${Math.min(255, b.r + 75)}, ${Math.min(255, b.g + 75)}, ${Math.min(255, b.b + 75)})`);
           grad.addColorStop(0.65, `rgb(${b.r}, ${b.g}, ${b.b})`);
           grad.addColorStop(1, `rgb(${Math.max(0, b.r - 80)}, ${Math.max(0, b.g - 80)}, ${Math.max(0, b.b - 80)})`);
           c.fillStyle = grad;
 
-          // Fixed 7-args parameters ellipse
           c.beginPath();
           c.ellipse(bx, by, b.sz * 0.84, b.sz, 0, 0, 6.283);
           c.fill();
 
-          // Knot tie base
           c.fillStyle = `rgb(${b.r}, ${b.g}, ${b.b})`;
           c.beginPath();
           c.moveTo(bx, by + b.sz);
@@ -1493,9 +1446,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      /* ═══════════════════════════════════════════════════════════
-         ★ CHANGE 2: CLOSING FLAG — Pole left-aligned perfectly with the text edge
-         ═══════════════════════════════════════════════════════════ */
       closingFlag: (t: number, el: number) => {
         if (t < 14.5) return;
         const fa = cl((t - 14.5) * 0.5, 0, 1);
@@ -1503,14 +1453,13 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         const centerY = H * 0.26;
         
-        // Dynamically measuring the left boundary of our centered title text
         c.save();
         c.font = `bold ${Math.min(W * 0.045, 34) * dpr}px 'Georgia', serif`;
         const titleW = c.measureText('HAPPY INDEPENDENCE DAY').width / dpr;
         c.restore();
 
-        const poleX = cx - titleW / 2; // Pole aligned precisely with the left edge of 'HAPPY INDEPENDENCE DAY'
-        const poleTopY = centerY + 100; // Shifted vertically close below the Hindi text
+        const poleX = cx - titleW / 2; 
+        const poleTopY = centerY + 100; 
         const poleBotY = H * 0.85;
         const poleH = poleBotY - poleTopY;
         const flagW = Math.min(sc * 0.24, 250);
@@ -1520,7 +1469,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.save();
         c.globalAlpha = fa * fadeOut;
 
-        // ── Draw pole ──
         const pg = c.createLinearGradient(poleX - 2.5, 0, poleX + 2.5, 0);
         pg.addColorStop(0, '#999');
         pg.addColorStop(0.3, '#e0e0e0');
@@ -1530,7 +1478,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.fillStyle = pg;
         c.fillRect(poleX - 2, poleTopY, 4, poleH);
 
-        // ── Pole top ornament (gold finial) ──
         c.fillStyle = '#ffd700';
         c.beginPath();
         c.arc(poleX, poleTopY, 5, 0, 6.283);
@@ -1539,7 +1486,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.beginPath();
         c.arc(poleX - 1, poleTopY - 1, 2, 0, 6.283);
         c.fill();
-        // Small spike on top
         c.fillStyle = '#ffd700';
         c.beginPath();
         c.moveTo(poleX, poleTopY - 12);
@@ -1548,13 +1494,11 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.closePath();
         c.fill();
 
-        // ── Pole base ──
         c.fillStyle = '#555';
         c.fillRect(poleX - 10, poleBotY - 3, 20, 6);
         c.fillStyle = '#444';
         c.fillRect(poleX - 14, poleBotY + 3, 28, 4);
 
-        // ── Draw flag stripes using cloth points ──
         for (let i = 0; i < cfNumPts - 1; i++) {
           const a = cfPts[i];
           const b = cfPts[i + 1];
@@ -1562,7 +1506,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
           const shadeR = (base: number) => Math.min(255, Math.max(0, (base * clothLight) | 0));
 
-          // Saffron stripe
           c.fillStyle = `rgb(${shadeR(255)},${shadeR(153)},${shadeR(51)})`;
           c.beginPath();
           c.moveTo(a.x, a.y);
@@ -1572,7 +1515,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.closePath();
           c.fill();
 
-          // White stripe
           c.fillStyle = `rgb(${shadeR(255)},${shadeR(255)},${shadeR(255)})`;
           c.beginPath();
           c.moveTo(a.x, a.y + flagH / 3);
@@ -1582,7 +1524,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.closePath();
           c.fill();
 
-          // Green stripe
           c.fillStyle = `rgb(${shadeR(19)},${shadeR(136)},${shadeR(8)})`;
           c.beginPath();
           c.moveTo(a.x, a.y + (flagH * 2) / 3);
@@ -1592,7 +1533,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.closePath();
           c.fill();
 
-          // Stripe dividers
           c.strokeStyle = 'rgba(0,0,0,0.08)';
           c.lineWidth = 0.5;
           c.beginPath();
@@ -1605,7 +1545,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.stroke();
         }
 
-        // ── Ashoka Chakra on flag ──
         const chIdx = (cfNumPts / 2) | 0;
         const chX = cfPts[chIdx].x;
         const chY = cfPts[chIdx].y + flagH / 2;
@@ -1615,14 +1554,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.translate(chX, chY);
         c.rotate(el * 0.6);
 
-        // Outer circle
         c.strokeStyle = 'rgba(0,0,128,0.85)';
         c.lineWidth = 1.5;
         c.beginPath();
         c.arc(0, 0, chR, 0, 6.283);
         c.stroke();
 
-        // 24 spokes
         c.lineWidth = 0.6;
         for (let i = 0; i < 24; i++) {
           const a = (i / 24) * 6.283;
@@ -1632,14 +1569,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.stroke();
         }
 
-        // Inner circle
         c.strokeStyle = 'rgba(0,0,128,0.5)';
         c.lineWidth = 0.5;
         c.beginPath();
         c.arc(0, 0, chR * 0.35, 0, 6.283);
         c.stroke();
 
-        // Center dot
         c.fillStyle = 'rgba(0,0,128,0.7)';
         c.beginPath();
         c.arc(0, 0, 1.5, 0, 6.283);
@@ -1647,7 +1582,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         c.restore();
 
-        // ── Rope/tie connecting flag to pole ──
         c.strokeStyle = 'rgba(180,150,80,0.6)';
         c.lineWidth = 1.5;
         c.beginPath();
@@ -1655,7 +1589,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.lineTo(poleX + 2, flagTopY + flagH + 2);
         c.stroke();
 
-        // Small knots
         c.fillStyle = '#b8960b';
         c.beginPath();
         c.arc(poleX + 2, flagTopY - 2, 2.5, 0, 6.283);
@@ -1668,7 +1601,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       },
 
       salute: (t: number, el: number, sa: number) => {
-        // Tricolor sparkle particles around the title area
         if (t < 15.5 || t > DUR) return;
         const si = cl((t - 15.5) * 0.6, 0, 1) * (t > DUR - 1.5 ? cl((DUR - t) / 1.5, 0, 1) : 1) * sa;
         c.save(); c.globalAlpha = si * 0.6; c.globalCompositeOperation = 'lighter';
@@ -1700,9 +1632,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       },
     };
 
-    /* ═══════════════════════════════════════════════════════════
-       RENDER LOOP
-       ═══════════════════════════════════════════════════════════ */
     let lastFW = 0;
     let lastPetal = 0;
 
@@ -1712,7 +1641,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       const el = now / 1000;
       const dt = 0.016;
 
-      // ── Camera shake ──
       c.save();
       if (camShake > 0.1) {
         c.translate((Math.random() - 0.5) * camShake, (Math.random() - 0.5) * camShake);
@@ -1721,10 +1649,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         camShake = 0;
       }
 
-      // ── Scene alpha (fades out fort scene after t=12) ──
       const sa = t > 13 ? cl((14 - t), 0, 1) : 1.0;
 
-      // ── Background cloth physics calculations (always simulated to prevent jerk) ──
       const centerY = H * 0.26;
       
       c.save();
@@ -1732,7 +1658,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       const tW = c.measureText('HAPPY INDEPENDENCE DAY').width / dpr;
       c.restore();
 
-      const poleX = cx - tW / 2; // Match exact left edge aligned with text start
+      const poleX = cx - tW / 2; 
       const poleTopY = centerY + 100;
       const poleBotY = H * 0.85;
       const poleH = poleBotY - poleTopY;
@@ -1753,7 +1679,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       cfPts[0].y = flagTopY;
 
       const ll = flagW / (cfNumPts - 1);
-      for (let s = 0; s < 10; s++) { // Constraint iterations increased to 10 for realistic cloth motion
+      for (let s = 0; s < 10; s++) { 
         for (let i = 0; i < cfNumPts - 1; i++) {
           const a = cfPts[i], b = cfPts[i + 1];
           const dx = b.x - a.x, dy = b.y - a.y;
@@ -1765,13 +1691,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       }
 
-      // ★ DYNAMIC UPDATE — Balloon rising and wind sway math
       if (t >= 13.5 && t < DUR) {
         if (balloons.length < 22 && Math.random() < 0.04) {
           const cols = [
-            { r: 255, g: 153, b: 51 },  // Saffron
-            { r: 255, g: 255, b: 255 }, // White
-            { r: 19, g: 136, b: 8 }     // Green
+            { r: 255, g: 153, b: 51 },  
+            { r: 255, g: 255, b: 255 }, 
+            { r: 19, g: 136, b: 8 }     
           ];
           const col = cols[Math.random() * cols.length | 0];
           balloons.push({
@@ -1798,7 +1723,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       }
 
-      // ── Spawn fireworks ──
       if (t > 11 && t < DUR - 1) {
         if (t - lastFW > 0.35 + Math.random() * 0.3) {
           spawnFW();
@@ -1807,7 +1731,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       }
 
-      // ── Spawn petals ──
       if (t > 8 && t < 11) {
         if (t - lastPetal > 0.06) {
           const pp = grab(pl);
@@ -1831,7 +1754,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       }
 
-      // ── Update petals ──
       if (t > 8 && t < 12) {
         for (let i = 0; i < POOL; i++) {
           const p = pl[i];
@@ -1844,10 +1766,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         }
       }
 
-      // ── Update fireworks ──
       updateFW(dt);
 
-      // ── Update burst particles ──
       for (let i = 0; i < POOL; i++) {
         const p = pl[i];
         if (!p.on || p.tp !== 6) continue;
@@ -1858,7 +1778,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         if (p.life <= 0) { p.on = false; p.tp = 1; }
       }
 
-      // ── Celebration cleanup ──
       if (t > 13 && !celebrationCleaned) {
         celebrationCleaned = true;
         for (let i = 0; i < POOL; i++) {
@@ -1871,7 +1790,6 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         fwSmoke.length = 0;
       }
 
-      // ── RENDER ALL LAYERS ──
       if (t > 12) {
         R.celebration(t, el, 1);
       } else {
@@ -1893,31 +1811,15 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         R.bgDarken(t);
       }
       
-      /* ── ★ BACKGROUND CHAKRA WATERMARK ── */
       R.drawBackgroundChakra(t, 1.0);
-
-      /* ── TEXT: Always highest z-index, independent of sa ── */
       R.titleCard(t, 1.0);
-
-      /* ── ★ DYNAMIC BALLOONS LAYER ── */
       R.drawBalloons(t, 1.0);
-
-      /* ── ★ NEW ELEMENT: TRICOLOR organic fluid bottom ribbons ── */
       R.drawTricolorWaves(t, 1.0);
-
-      /* ── ★ NEW ELEMENT: Saluting soldiers silhouettes on the waves ── */
       R.drawSoldiers(t, 1.0);
-
-      /* ── ★ CLOSING FLAG: Flagpole with Tiranga perfectly left-aligned ── */
       R.closingFlag(t, el);
-
-      // ── Salute sparkles ──
       R.salute(t, el, 1.0);
-
-      // ── Film grain overlay ──
       R.filmGrain(t);
 
-      // ── Vignette ──
       c.save();
       const vig = c.createRadialGradient(cx, H / 2, sc * 0.3, cx, H / 2, Math.max(W, H) * 0.75);
       vig.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1926,9 +1828,8 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       c.fillRect(0, 0, W, H);
       c.restore();
 
-      c.restore(); // camera shake restore
+      c.restore(); 
 
-      /* ── COMPLETE ── */
       if (t >= DUR && !done.current) {
         done.current = true;
         if (cbR.current) cbR.current();
