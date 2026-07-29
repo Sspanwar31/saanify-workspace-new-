@@ -151,12 +151,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
     const fN: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < numPts; i++) fN.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
-    // ★ CLOSING FLAG — Simulation points initialization configuration
+    // ★ CLOTH FLAG SIMULATION SYSTEM
     const cfNumPts = 14;
     const cfPts: { x: number; y: number; ox: number; oy: number; vx: number; vy: number }[] = [];
     for (let i = 0; i < cfNumPts; i++) cfPts.push({ x: 0, y: 0, ox: 0, oy: 0, vx: 0, vy: 0 });
 
-    // ★ HELIUM BALLOONS — Dynamic array for rising tricolor balloons
+    // ★ BALLOONS ARRAY
     const balloons: { x: number; y: number; r: number; g: number; b: number; sz: number; swaySpeed: number; swayAmp: number; phase: number; seed: number; vy: number; born: number }[] = [];
 
     const starI: number[] = []; for (let i = 0; i < 120; i++) starI.push(i);
@@ -305,64 +305,87 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
     let celebrationCleaned = false;
 
-    const drawSoldierSilhouette = (sx: number, sy: number, scale: number) => {
+    // ★ NEW STYLIZED & ANATOMICAL VECTORS SILHOUETTE POSTURE
+    const drawRealisticSoldierSilhouette = (sx: number, sy: number, scale: number) => {
       c.save();
       c.translate(sx, sy);
       c.scale(scale, scale);
-      c.fillStyle = '#010008'; // Premium dark silhouette shade
+      c.fillStyle = '#02010c'; // Deepest organic shadow
 
-      // Ground shadow
+      // Ground soft shading shadow
       c.beginPath();
-      c.ellipse(0, 0, 15, 3.5, 0, 0, 6.283);
-      c.fillStyle = 'rgba(0,0,0,0.4)';
+      c.ellipse(0, 0, 16, 4, 0, 0, 6.283);
+      c.fillStyle = 'rgba(0, 0, 0, 0.4)';
       c.fill();
-      c.fillStyle = '#010008';
+      c.fillStyle = '#02010c';
 
-      // Legs
-      c.fillRect(-4, -18, 3, 18);
-      c.fillRect(1, -18, 3, 18);
-
-      // Torso & Jacket
+      // Boots & Legs (Proper anatomical gaps)
       c.beginPath();
-      c.moveTo(-6, -18);
-      c.lineTo(-8, -42);
-      c.lineTo(8, -42);
-      c.lineTo(6, -18);
+      c.moveTo(-4.5, 0);
+      c.lineTo(-4, -13);
+      c.lineTo(-2.2, -19);
+      c.lineTo(2.2, -19);
+      c.lineTo(4, -13);
+      c.lineTo(4.5, 0);
+      c.lineTo(2.2, 0);
+      c.lineTo(1.8, -12);
+      c.lineTo(-1.8, -12);
+      c.lineTo(-2.2, 0);
       c.closePath();
       c.fill();
 
-      // Left Arm resting
+      // Slender waist, chest uniform coat
       c.beginPath();
-      c.moveTo(-7, -41);
-      c.lineTo(-12, -26);
-      c.lineTo(-9, -24);
-      c.lineTo(-5, -38);
+      c.moveTo(-5.5, -19);
+      c.lineTo(-7.2, -40);
+      c.quadraticCurveTo(-3, -42, 0, -42); 
+      c.quadraticCurveTo(3, -42, 7.2, -40);
+      c.lineTo(5.5, -19);
       c.closePath();
       c.fill();
 
-      // Right Arm in dynamic salute pose
+      // Left Arm (holding firearm)
       c.beginPath();
-      c.moveTo(7, -41);
-      c.lineTo(15, -45);
-      c.lineTo(10, -53);
-      c.lineTo(6, -39);
+      c.moveTo(-7.2, -40);
+      c.quadraticCurveTo(-11.5, -28, -9.5, -21); 
+      c.lineTo(-6.5, -21);
+      c.quadraticCurveTo(-8.5, -28, -5.5, -38);
       c.closePath();
       c.fill();
 
-      // Head & Helmet
+      // Right Arm (Aesthetic saluting posture bending to the helmet brim)
       c.beginPath();
-      c.arc(0, -48, 5, 0, 6.283);
-      c.fill();
-      c.beginPath();
-      c.arc(0, -49, 6.2, Math.PI, 0);
+      c.moveTo(7.2, -40);
+      c.lineTo(13.5, -44); 
+      c.lineTo(6.5, -51);  
+      c.lineTo(4.2, -48);  
+      c.lineTo(9.5, -42);  
+      c.lineTo(5.5, -38);  
+      c.closePath();
       c.fill();
 
-      // Subtle rifle outline on shoulder
-      c.strokeStyle = '#010008';
-      c.lineWidth = 1.6;
+      // Neck & Head
       c.beginPath();
-      c.moveTo(-11, -20);
-      c.lineTo(-11, -54);
+      c.arc(0, -46, 3.8, 0, 6.283); 
+      c.fill();
+
+      // Helmet (Slightly larger, realistic curved visor rim)
+      c.beginPath();
+      c.arc(0, -47.8, 5.2, Math.PI - 0.2, 0.2); 
+      c.fill();
+      c.lineWidth = 1;
+      c.strokeStyle = '#02010c';
+      c.beginPath();
+      c.moveTo(-5.5, -47);
+      c.lineTo(5.5, -47);
+      c.stroke();
+
+      // Slanted Rifle behind shoulder
+      c.beginPath();
+      c.moveTo(-3.5, -24);
+      c.lineTo(-12, -58); 
+      c.lineWidth = 1.5;
+      c.strokeStyle = '#02010c';
       c.stroke();
 
       c.restore();
@@ -370,10 +393,12 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
     const spawnFW = () => {
       const col = fwCols[Math.random() * fwCols.length | 0];
+      const targetX = W * 0.12 + Math.random() * W * 0.76; // Widely distributed
+      const velocityY = -6.5 - Math.random() * 5.5; // Highly randomized burst altitudes
       fwList.push({
-        x: W * 0.15 + Math.random() * W * 0.7,
+        x: targetX,
         y: baseY,
-        vy: -7 - Math.random() * 4,
+        vy: velocityY,
         state: 'rising', burstT: 0, secondaryT: 0, col, pts: []
       });
     };
@@ -553,14 +578,30 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
+      // ★ LUSH Fresh Green Maidan / Grassland Implementation
       ground: (t: number, sa: number) => {
         const rev = cl(t * 0.6, 0, 1);
         c.save(); c.globalAlpha = rev * sa;
         const gT = baseY;
-        const lg = c.createLinearGradient(0, gT, 0, H);
-        lg.addColorStop(0, '#1a3318'); lg.addColorStop(0.15, '#152b13');
-        lg.addColorStop(0.5, '#0f200e'); lg.addColorStop(1, '#091209');
-        c.fillStyle = lg; c.fillRect(0, gT, W, H - gT);
+        
+        // Background hilly landscape gradient
+        c.fillStyle = '#0f240d'; // Deep mountain/hill green
+        c.beginPath();
+        c.moveTo(0, H);
+        for (let x = 0; x <= W; x += 20) {
+          c.lineTo(x, gT - 8 + Math.sin(x * 0.003) * 6);
+        }
+        c.lineTo(W, H);
+        c.closePath();
+        c.fill();
+
+        // Layer 2: Lush Fresh green dynamic maidan lawn
+        const lg = c.createLinearGradient(0, gT - 4, 0, H);
+        lg.addColorStop(0, '#1c4217'); // Rich grass green
+        lg.addColorStop(0.3, '#143310'); // Mid grass green
+        lg.addColorStop(1, '#0b1d09'); // Dark shadow depth
+        c.fillStyle = lg;
+        c.fillRect(0, gT - 4, W, H - gT + 4);
 
         const plW = gateW * 1.05, plH = 32;
         const pg = c.createLinearGradient(0, gT - 4, 0, gT + plH);
@@ -1029,13 +1070,14 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
           c.beginPath(); c.ellipse(0, 0, p.sz, p.sz * 0.45, 0, 0, 6.283); c.fill();
           c.restore();
         }
-      }, // 🌟 FIXED: Added missing bracket and comma here
+      }, 
 
+      // ★ Harmonized Soldiers rendering over the dynamic landscape maidan
       soldiers: (t: number, sa: number) => {
         if (t < 2) return;
         const a = cl((t - 2) * 0.8, 0, 1) * (t > 12 ? cl((13 - t) * 2, 0, 1) : 1) * sa;
         c.save(); c.globalAlpha = a;
-        [{ x: cx - gateW * 0.22, s: 0.9 }, { x: cx - gateW * 0.17, s: 0.85 }, { x: cx - gateW * 0.12, s: 0.95 }, { x: cx + gateW * 0.12, s: 0.95 }, { x: cx + gateW * 0.17, s: 0.85 }, { x: cx + gateW * 0.22, s: 0.9 }].forEach(p => drawSoldierSilhouette(p.x, baseY, p.s));
+        [{ x: cx - gateW * 0.22, s: 0.9 }, { x: cx - gateW * 0.17, s: 0.85 }, { x: cx - gateW * 0.12, s: 0.95 }, { x: cx + gateW * 0.12, s: 0.95 }, { x: cx + gateW * 0.17, s: 0.85 }, { x: cx + gateW * 0.22, s: 0.9 }].forEach(p => drawRealisticSoldierSilhouette(p.x, baseY, p.s));
         c.restore();
       },
 
@@ -1155,7 +1197,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ NEW ELEMENT — Rotating Ashoka Chakra behind Title Card
+      // ★ Rotating Ashoka Chakra behind Title Card
       drawBackgroundChakra: (t: number, sa: number) => {
         if (t < 14) return;
         c.save();
@@ -1191,7 +1233,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ NEW ELEMENT — Layered Fluid Tricolor Waves
+      // ★ Layered Fluid Tricolor Waves with Fresh Green Grass Maidan Bottom Wave
       drawTricolorWaves: (t: number, sa: number) => {
         if (t < 14) return;
         const fa = cl((t - 14) * 0.5, 0, 1) * sa;
@@ -1199,14 +1241,13 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.globalAlpha = fa;
 
         const waveY = H * 0.78;
-        const waveH = 40;
 
         // 1. Saffron Wave
         c.fillStyle = 'rgba(255, 153, 51, 0.45)';
         c.beginPath();
         c.moveTo(0, H);
-        for (let x = 0; x <= W; x += 10) {
-          const y = waveY - 12 + Math.sin(x * 0.005 + t * 1.5) * 15 + Math.cos(x * 0.01 + t * 0.8) * 8;
+        for (let x = 0; x <= W; x += 15) {
+          const y = waveY - 15 + Math.sin(x * 0.005 + t * 1.2) * 12 + Math.cos(x * 0.01 + t * 0.6) * 6;
           c.lineTo(x, y);
         }
         c.lineTo(W, H);
@@ -1217,21 +1258,25 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.fillStyle = 'rgba(255, 255, 255, 0.45)';
         c.beginPath();
         c.moveTo(0, H);
-        for (let x = 0; x <= W; x += 10) {
-          const y = waveY + Math.sin(x * 0.006 - t * 1.2) * 12 + Math.cos(x * 0.008 + t * 1.0) * 6;
+        for (let x = 0; x <= W; x += 15) {
+          const y = waveY + Math.sin(x * 0.006 - t * 1.0) * 10 + Math.cos(x * 0.008 + t * 0.8) * 5;
           c.lineTo(x, y);
         }
         c.lineTo(W, H);
         c.closePath();
         c.fill();
 
-        // 3. Green Wave
-        c.fillStyle = 'rgba(19, 136, 8, 0.45)';
+        // 3. Green Wave (Maidan)
+        const hillGrad = c.createLinearGradient(0, waveY, 0, H);
+        hillGrad.addColorStop(0, '#1e4620'); // Fresh green grass
+        hillGrad.addColorStop(0.5, '#123014'); // Mid shade
+        hillGrad.addColorStop(1, '#071808'); // Dark depth
+        c.fillStyle = hillGrad;
         c.beginPath();
         c.moveTo(0, H);
-        for (let x = 0; x <= W; x += 10) {
-          const y = waveY + waveH - 8 + Math.sin(x * 0.004 + t * 0.9) * 10 + Math.cos(x * 0.007 - t * 0.6) * 5;
-          c.lineTo(W, H);
+        for (let x = 0; x <= W; x += 15) {
+          const y = waveY + 15 + Math.sin(x * 0.004 + t * 0.8) * 8 + Math.cos(x * 0.007 - t * 0.5) * 4;
+          c.lineTo(x, y);
         }
         c.lineTo(W, H);
         c.closePath();
@@ -1240,7 +1285,7 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
         c.restore();
       },
 
-      // ★ NEW ELEMENT — Saluting Soldiers Silhouettes to balance flagpole
+      // ★ Saluting Soldiers Silhouettes aligned on the waves
       drawSoldiers: (t: number, sa: number) => {
         if (t < 14.5) return;
         const fa = cl((t - 14.5) * 0.5, 0, 1) * sa;
@@ -1258,23 +1303,23 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
 
         // Soldier 1 (Large, right side)
         const s1X = cx + titleW * 0.22;
-        const s1Y = waveY + Math.sin(s1X * 0.005 + t * 1.5) * 15;
-        drawSoldierSilhouette(s1X, s1Y, 1.0);
+        const s1Y = waveY + Math.sin(s1X * 0.005 + t * 1.5) * 15 + 13;
+        drawRealisticSoldierSilhouette(s1X, s1Y, 1.0);
 
         // Soldier 2 (Medium, depth adjustment)
         const s2X = cx + titleW * 0.35;
-        const s2Y = waveY + Math.sin(s2X * 0.005 + t * 1.5) * 15;
-        drawSoldierSilhouette(s2X, s2Y, 0.9);
+        const s2Y = waveY + Math.sin(s2X * 0.005 + t * 1.5) * 15 + 14;
+        drawRealisticSoldierSilhouette(s2X, s2Y, 0.9);
 
         // Soldier 3 (Small, furthest right)
         const s3X = cx + titleW * 0.46;
-        const s3Y = waveY + Math.sin(s3X * 0.005 + t * 1.5) * 15;
-        drawSoldierSilhouette(s3X, s3Y, 0.85);
+        const s3Y = waveY + Math.sin(s3X * 0.005 + t * 1.5) * 15 + 15;
+        drawRealisticSoldierSilhouette(s3X, s3Y, 0.85);
 
         c.restore();
       },
 
-      // ★ NEW ELEMENT — Rising Tricolor Helium Balloons
+      // ★ Rising Tricolor Helium Balloons
       drawBalloons: (t: number, sa: number) => {
         if (t < 14) return;
         c.save();
@@ -1323,10 +1368,9 @@ export default function IndependenceDayCinematicIntro({ onComplete, imageUrl }: 
       titleCard: (t: number, sa: number) => {
         if (t < 14) return;
         const lines = [
-          { text: 'HAPPY INDEPENDENCE DAY', start: 14.0, y: -65, size: Math.min(W * 0.045, 34), glow: true },
-          { text: '80th Anniversary | 1947 \u2013 2027', start: 14.6, y: -15, size: Math.min(W * 0.022, 17), glow: false },
-          { text: 'आज़ादी दिवस', start: 15.0, y: 25, size: Math.min(W * 0.03, 24), glow: false },
-          { text: '\u091C\u092F \u0939\u093F\u0928\u094D\u0926', start: 15.4, y: 80, size: Math.min(W * 0.05, 38), glow: true },
+          { text: 'HAPPY INDEPENDENCE DAY', start: 14.0, y: -45, size: Math.min(W * 0.045, 34), glow: true },
+          { text: '80th Anniversary | 1947 \u2013 2027', start: 14.6, y: 5, size: Math.min(W * 0.022, 17), glow: false },
+          { text: '\u091C\u092F \u0939\u093F\u0928\u094D\u0926', start: 15.2, y: 65, size: Math.min(W * 0.05, 38), glow: true },
         ];
 
         const centerY = H * 0.26;
