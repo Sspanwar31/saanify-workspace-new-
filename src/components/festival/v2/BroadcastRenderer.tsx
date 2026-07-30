@@ -43,13 +43,13 @@ export default function BroadcastPopup({
   const cardGlow =
     broadcast.theme_config?.card_glow || 'theme';
 
-  // Master Title Styles
+  // 🚀 Master Title Styles (Moved uppercase control dynamically to individual variants)
   const titleStyles: any = {
-    royal: 'font-black italic tracking-tight',
-    modern: 'font-bold tracking-wide',
-    minimal: 'font-semibold tracking-normal',
-    gradient: 'font-black bg-clip-text text-transparent',
-    glow: 'font-black drop-shadow-[0_0_20px_currentColor]',
+    royal: 'font-normal italic tracking-wide drop-shadow-[0_2px_15px_rgba(0,0,0,0.5)] normal-case', // Cursive style logic
+    modern: 'font-bold tracking-wide uppercase',
+    minimal: 'font-semibold tracking-normal uppercase',
+    gradient: 'font-black bg-clip-text text-transparent uppercase',
+    glow: 'font-black drop-shadow-[0_0_20px_currentColor] uppercase',
   };
 
   const cardClasses: any = {
@@ -183,14 +183,24 @@ export default function BroadcastPopup({
               />
             </div>
 
-            {/* 🚀 FIXED: Dynamic inline background-clip forcing for gradient titles. Non-gradient titles remain unaffected. */}
+            {/* 🚀 FIXED: Dynamic inline font family and case overrides for premium cursive feeling */}
             <h1
-              className={`text-3xl uppercase leading-none drop-shadow-lg ${titleStyles[titleVariant]}`}
+              className={`text-3xl leading-none drop-shadow-lg ${titleStyles[titleVariant]}`}
               style={{
+                fontFamily:
+                  titleVariant === 'royal'
+                    ? "'Dancing Script', 'Georgia', cursive"
+                    : undefined,
+
+                textTransform:
+                  titleVariant === 'royal'
+                    ? 'none'
+                    : undefined, // Royal variant will preserve standard casing instead of forced uppercase
+
                 color:
                   titleVariant !== 'gradient'
                     ? themeColor
-                    : 'transparent', // Gradient ke case me text color transparent hona chahiye
+                    : 'transparent',
 
                 background:
                   titleVariant === 'gradient'
