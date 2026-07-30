@@ -250,7 +250,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ HYPER-REALISTIC RAM MANDIR ============
+    // ============ HYPER-REALISTIC 3D RAM MANDIR ============
 
     function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
       const reveal = smoothstep(2.5, 6, t);
@@ -265,86 +265,200 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       targetCtx.save();
       targetCtx.globalAlpha = vis;
 
-      const goldGlow = `rgba(255, 200, 100, ${0.7 + 0.3 * Math.sin(t * 3)})`;
+      // Colors & Sandstone Textures
       const darkSandstone = '#2b1005';
       const midSandstone = '#6b3517';
       const lightSandstone = '#a35527';
+      const goldGlow = `rgba(255, 200, 100, ${0.7 + 0.3 * Math.sin(t * 3)})`;
 
-      // Golden Backlight Aura
-      const auraGrad = targetCtx.createRadialGradient(mx, baseY - 140 * s, 10 * s, mx, baseY - 140 * s, 240 * s);
-      auraGrad.addColorStop(0, 'rgba(255, 180, 60, 0.5)');
-      auraGrad.addColorStop(0.5, 'rgba(200, 90, 20, 0.2)');
+      // Volumetric Backlight Aura
+      const auraGrad = targetCtx.createRadialGradient(mx, baseY - 140 * s, 10 * s, mx, baseY - 140 * s, 280 * s);
+      auraGrad.addColorStop(0, 'rgba(255, 180, 60, 0.6)');
+      auraGrad.addColorStop(0.4, 'rgba(200, 90, 20, 0.2)');
       auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       targetCtx.fillStyle = auraGrad;
-      targetCtx.fillRect(mx - 300 * s, baseY - 350 * s, 600 * s, 400 * s);
+      targetCtx.fillRect(mx - 400 * s, baseY - 450 * s, 800 * s, 500 * s);
 
-      // Inner Garbhagriha Light
-      const garbhaGlow = targetCtx.createRadialGradient(mx, baseY - 40 * s, 0, mx, baseY - 40 * s, 80 * s);
+      // 1. MULTI-LEVEL PLATFORMS (JAGATI & PRANALA) - 3D Extruded
+      const drawPlatform = (pw: number, ph: number, py: number, depth: number) => {
+        // Front Face
+        const frontGrad = targetCtx.createLinearGradient(mx - pw/2, py, mx + pw/2, py);
+        frontGrad.addColorStop(0, darkSandstone);
+        frontGrad.addColorStop(0.3, midSandstone);
+        frontGrad.addColorStop(0.5, lightSandstone);
+        frontGrad.addColorStop(0.7, midSandstone);
+        frontGrad.addColorStop(1, darkSandstone);
+        targetCtx.fillStyle = frontGrad;
+        targetCtx.fillRect(mx - pw / 2, py, pw, ph);
+        
+        // Top Face (3D Depth)
+        targetCtx.fillStyle = '#7a3d1a';
+        targetCtx.beginPath();
+        targetCtx.moveTo(mx - pw / 2, py);
+        targetCtx.lineTo(mx - pw / 2 + depth, py - depth);
+        targetCtx.lineTo(mx + pw / 2 + depth, py - depth);
+        targetCtx.lineTo(mx + pw / 2, py);
+        targetCtx.closePath();
+        targetCtx.fill();
+        
+        // Right Side Face (Ambient Occlusion)
+        targetCtx.fillStyle = '#1a0702';
+        targetCtx.beginPath();
+        targetCtx.moveTo(mx + pw / 2, py);
+        targetCtx.lineTo(mx + pw / 2 + depth, py - depth);
+        targetCtx.lineTo(mx + pw / 2 + depth, py + ph - depth);
+        targetCtx.lineTo(mx + pw / 2, py + ph);
+        targetCtx.closePath();
+        targetCtx.fill();
+
+        // Stone Joints & Carvings
+        targetCtx.strokeStyle = 'rgba(20, 10, 5, 0.6)';
+        targetCtx.lineWidth = 1 * s;
+        for(let i=0; i<5; i++) {
+          const lx = mx - pw/2 + (pw / 5) * i;
+          targetCtx.beginPath();
+          targetCtx.moveTo(lx, py);
+          targetCtx.lineTo(lx, py + ph);
+          targetCtx.stroke();
+        }
+        targetCtx.strokeStyle = goldGlow;
+        targetCtx.lineWidth = 1.2 * s;
+        targetCtx.strokeRect(mx - pw / 2, py, pw, ph);
+      };
+
+      drawPlatform(380 * s, 18 * s, baseY - 18 * s, 12 * s);
+      drawPlatform(340 * s, 14 * s, baseY - 32 * s, 10 * s);
+      drawPlatform(300 * s, 12 * s, baseY - 44 * s, 8 * s);
+
+      // 2. SCULPTED DOOR FRAME & GARBHAGRIHA (INNER SANCTUM)
+      const sanctumY = baseY - 44 * s;
+      const sanctumW = 160 * s;
+      const sanctumH = 90 * s;
+      
+      // Inner Glow
+      const garbhaGlow = targetCtx.createRadialGradient(mx, sanctumY - 40 * s, 0, mx, sanctumY - 40 * s, 90 * s);
       garbhaGlow.addColorStop(0, 'rgba(255, 240, 160, 1)');
-      garbhaGlow.addColorStop(0.4, 'rgba(255, 150, 40, 0.7)');
+      garbhaGlow.addColorStop(0.4, 'rgba(255, 150, 40, 0.8)');
       garbhaGlow.addColorStop(1, 'rgba(0,0,0,0)');
       targetCtx.fillStyle = garbhaGlow;
-      targetCtx.fillRect(mx - 120 * s, baseY - 90 * s, 240 * s, 100 * s);
+      targetCtx.fillRect(mx - 120 * s, sanctumY - 100 * s, 240 * s, 120 * s);
 
-      // 1. GRAND BASE STEPS
-      for (let i = 0; i < 4; i++) {
-        const pw = (340 - i * 25) * s;
-        const ph = 12 * s;
-        const px = mx - pw / 2;
-        const py = baseY - (i + 1) * ph;
+      // Dark Sanctum Interior
+      targetCtx.fillStyle = '#0a0201';
+      targetCtx.fillRect(mx - sanctumW/2, sanctumY - sanctumH, sanctumW, sanctumH);
 
-        const platGrad = targetCtx.createLinearGradient(px, py, px + pw, py);
-        platGrad.addColorStop(0, darkSandstone);
-        platGrad.addColorStop(0.2, midSandstone);
-        platGrad.addColorStop(0.5, lightSandstone);
-        platGrad.addColorStop(0.8, midSandstone);
-        platGrad.addColorStop(1, darkSandstone);
-
-        targetCtx.fillStyle = platGrad;
-        targetCtx.fillRect(px, py, pw, ph);
+      // Door Frame Layers (3D Depth)
+      const doorLayers = [
+        { w: sanctumW, h: sanctumH, c: '#5e2d14' },
+        { w: sanctumW * 0.85, h: sanctumH * 0.9, c: '#7a3d1a' },
+        { w: sanctumW * 0.7, h: sanctumH * 0.8, c: '#994d22' }
+      ];
+      doorLayers.forEach(layer => {
+        const dy = sanctumY - layer.h;
+        targetCtx.fillStyle = layer.c;
+        targetCtx.beginPath();
+        targetCtx.moveTo(mx - layer.w/2, sanctumY);
+        targetCtx.lineTo(mx - layer.w/2, dy + layer.w * 0.2);
+        targetCtx.quadraticCurveTo(mx, dy - layer.w * 0.1, mx + layer.w/2, dy + layer.w * 0.2);
+        targetCtx.lineTo(mx + layer.w/2, sanctumY);
+        targetCtx.closePath();
+        targetCtx.fill();
         targetCtx.strokeStyle = goldGlow;
-        targetCtx.lineWidth = 0.8 * s;
-        targetCtx.strokeRect(px, py, pw, ph);
-      }
-
-      // 2. CARVED PILLARS & ARCHED ENTRANCE
-      const pillarCols = [-120, -80, -40, 0, 40, 80, 120];
-      pillarCols.forEach((colX) => {
-        const x = mx + colX * s;
-        const y = baseY - 95 * s;
-        const w = 10 * s;
-        const h = 50 * s;
-
-        const pilGrad = targetCtx.createLinearGradient(x - w / 2, y, x + w / 2, y);
-        pilGrad.addColorStop(0, '#1c0903');
-        pilGrad.addColorStop(0.5, lightSandstone);
-        pilGrad.addColorStop(1, '#1c0903');
-
-        targetCtx.fillStyle = pilGrad;
-        targetCtx.fillRect(x - w / 2, y, w, h);
-
-        targetCtx.fillStyle = '#ffb347';
-        targetCtx.fillRect(x - w * 0.7, y, w * 1.4, 4 * s);
-        targetCtx.fillRect(x - w * 0.7, y + h - 4 * s, w * 1.4, 4 * s);
+        targetCtx.lineWidth = 1.5 * s;
+        targetCtx.stroke();
       });
 
+      // Silver/Gold Doors
+      targetCtx.fillStyle = '#1a0702';
+      targetCtx.fillRect(mx - 40 * s, sanctumY - 60 * s, 80 * s, 60 * s);
+      targetCtx.strokeStyle = `rgba(255, 215, 0, ${0.8 + 0.2 * Math.sin(t*2)})`;
+      targetCtx.lineWidth = 2 * s;
+      targetCtx.strokeRect(mx - 40 * s, sanctumY - 60 * s, 80 * s, 60 * s);
+      targetCtx.beginPath();
+      targetCtx.moveTo(mx, sanctumY - 60 * s);
+      targetCtx.lineTo(mx, sanctumY);
+      targetCtx.stroke();
+
+      // 3. CARVED PILLARS (DETAILED 3D)
+      const drawCarvedPillar = (px: number, py: number, pw: number, ph: number) => {
+        // Base
+        targetCtx.fillStyle = '#3d210d';
+        targetCtx.fillRect(px - pw * 0.6, py, pw * 1.2, ph * 0.1);
+        targetCtx.fillStyle = '#1a0702';
+        targetCtx.fillRect(px - pw * 0.6, py + ph * 0.08, pw * 1.2, ph * 0.02);
+        
+        // Shaft (Cylindrical Gradient for 3D)
+        const pilGrad = targetCtx.createLinearGradient(px - pw / 2, 0, px + pw / 2, 0);
+        pilGrad.addColorStop(0, '#2b1005');
+        pilGrad.addColorStop(0.2, '#5e2d14');
+        pilGrad.addColorStop(0.5, '#b3622d'); // Center Light
+        pilGrad.addColorStop(0.8, '#5e2d14');
+        pilGrad.addColorStop(1, '#2b1005');
+        targetCtx.fillStyle = pilGrad;
+        targetCtx.fillRect(px - pw / 2, py - ph * 0.9, pw, ph * 0.9);
+        
+        // Flutes/Grooves
+        targetCtx.strokeStyle = 'rgba(0,0,0,0.4)';
+        targetCtx.lineWidth = 1 * s;
+        for (let i = 1; i < 3; i++) {
+          targetCtx.beginPath();
+          targetCtx.moveTo(px - pw / 2 + (pw / 3) * i, py - ph * 0.9);
+          targetCtx.lineTo(px - pw / 2 + (pw / 3) * i, py);
+          targetCtx.stroke();
+        }
+        
+        // Capital (Top Carving)
+        targetCtx.fillStyle = '#b3622d';
+        targetCtx.fillRect(px - pw * 0.7, py - ph * 0.9, pw * 1.4, ph * 0.08);
+        targetCtx.fillStyle = '#7a3d1a';
+        targetCtx.fillRect(px - pw * 0.6, py - ph * 0.98, pw * 1.2, ph * 0.08);
+        targetCtx.strokeStyle = goldGlow;
+        targetCtx.lineWidth = 1 * s;
+        targetCtx.strokeRect(px - pw * 0.7, py - ph * 0.9, pw * 1.4, ph * 0.08);
+      };
+
+      const pillarColsX = [-110, -70, -30, 30, 70, 110];
+      pillarColsX.forEach(colX => {
+        drawCarvedPillar(mx + colX * s, sanctumY, 12 * s, 80 * s);
+      });
+
+      // Arches connecting pillars
       targetCtx.strokeStyle = goldGlow;
-      targetCtx.lineWidth = 1.4 * s;
-      for (let i = 0; i < pillarCols.length - 1; i++) {
-        const x1 = mx + pillarCols[i] * s;
-        const x2 = mx + pillarCols[i + 1] * s;
+      targetCtx.lineWidth = 2 * s;
+      for (let i = 0; i < pillarColsX.length - 1; i++) {
+        const x1 = mx + pillarColsX[i] * s;
+        const x2 = mx + pillarColsX[i + 1] * s;
         targetCtx.beginPath();
-        targetCtx.arc((x1 + x2) / 2, baseY - 92 * s, (x2 - x1) / 2, Math.PI, 0);
+        targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s, (x2 - x1) / 2, Math.PI, 0);
         targetCtx.stroke();
+        
+        // Hanging Bells
+        targetCtx.fillStyle = `rgba(255, 200, 50, ${0.6 + 0.4 * Math.sin(t*4 + i)})`;
+        targetCtx.beginPath();
+        targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s + 6 * s, 4 * s, 0, Math.PI * 2);
+        targetCtx.fill();
       }
 
-      // 3. DETAILED SHIKHARA (3D NAGARA STYLE)
+      // 4. LAYERED NAGARA SHIKHARAS (3D HYPER-REALISTIC)
       const drawNagaraShikhara = (cx: number, cy: number, w: number, h: number, isMain = false) => {
-        const shikhGrad = targetCtx.createLinearGradient(cx - w / 2, cy, cx + w / 2, cy);
-        shikhGrad.addColorStop(0, '#240b03');
-        shikhGrad.addColorStop(0.25, midSandstone);
-        shikhGrad.addColorStop(0.5, lightSandstone);
-        shikhGrad.addColorStop(0.75, midSandstone);
+        // Back shadow for 3D separation
+        targetCtx.fillStyle = 'rgba(0,0,0,0.7)';
+        targetCtx.beginPath();
+        targetCtx.moveTo(cx - w / 2 - 4 * s, cy);
+        targetCtx.bezierCurveTo(cx - w * 0.5, cy - h * 0.4, cx - w * 0.25, cy - h * 0.85, cx, cy - h - 4 * s);
+        targetCtx.lineTo(cx, cy - h - 4 * s);
+        targetCtx.bezierCurveTo(cx + w * 0.25, cy - h * 0.85, cx + w * 0.5, cy - h * 0.4, cx + w / 2 + 4 * s, cy);
+        targetCtx.closePath();
+        targetCtx.fill();
+
+        // Main 3D Body Curvature Gradient
+        const shikhGrad = targetCtx.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
+        shikhGrad.addColorStop(0, '#1a0702');
+        shikhGrad.addColorStop(0.15, '#421d0d');
+        shikhGrad.addColorStop(0.4, '#8c451e');
+        shikhGrad.addColorStop(0.5, '#c67033'); // Center Sunlight
+        shikhGrad.addColorStop(0.6, '#8c451e');
+        shikhGrad.addColorStop(0.85, '#421d0d');
         shikhGrad.addColorStop(1, '#1a0702');
 
         targetCtx.fillStyle = shikhGrad;
@@ -356,89 +470,175 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         targetCtx.closePath();
         targetCtx.fill();
 
-        targetCtx.strokeStyle = goldGlow;
-        targetCtx.lineWidth = 1.0 * s;
+        // Rim Light (Edge Highlight)
+        targetCtx.strokeStyle = 'rgba(255, 220, 150, 0.4)';
+        targetCtx.lineWidth = 1.5 * s;
         targetCtx.stroke();
 
-        const tiers = isMain ? 12 : 8;
+        // Horizontal Tiers & Carvings
+        const tiers = isMain ? 16 : 10;
         for (let i = 1; i < tiers; i++) {
           const f = i / tiers;
           const ty = cy - h * f;
-          const tw = lerp(w, w * 0.16, Math.pow(f, 1.2));
+          const tw = lerp(w, w * 0.16, Math.pow(f, 1.15));
 
+          // Molding base
+          targetCtx.fillStyle = `rgba(30, 15, 5, ${0.6 - f * 0.2})`;
+          targetCtx.fillRect(cx - tw / 2, ty - 2 * s, tw, 3 * s);
+          
+          // Golden strip
+          targetCtx.fillStyle = `rgba(255, 210, 120, ${0.2 + 0.2 * (1 - f)})`;
+          targetCtx.fillRect(cx - tw / 2, ty, tw, 1.5 * s);
+        }
+
+        // Vertical Ribs (Grooves)
+        targetCtx.strokeStyle = 'rgba(10, 5, 2, 0.5)';
+        targetCtx.lineWidth = 1 * s;
+        const ribs = isMain ? 5 : 3;
+        for (let r = 1; r < ribs; r++) {
           targetCtx.beginPath();
-          targetCtx.moveTo(cx - tw / 2, ty);
-          targetCtx.lineTo(cx + tw / 2, ty);
-          targetCtx.strokeStyle = `rgba(255, 210, 120, ${0.4 + 0.4 * (1 - f)})`;
+          for (let i = 0; i <= tiers; i++) {
+            const f = i / tiers;
+            const ty = cy - h * f;
+            const tw = lerp(w, w * 0.16, Math.pow(f, 1.15));
+            const rx = cx - tw / 2 + (tw / ribs) * r;
+            if (i === 0) targetCtx.moveTo(rx, ty);
+            else targetCtx.lineTo(rx, ty);
+          }
           targetCtx.stroke();
+        }
 
-          if (isMain && i < 7 && i % 2 === 0) {
+        // Urushringas (Mini Side Spires) for 3D depth
+        if (isMain) {
+          for (let i = 0; i < 4; i++) {
+            const f = 0.2 + i * 0.15;
+            const ty = cy - h * f;
+            const tw = lerp(w, w * 0.16, Math.pow(f, 1.15));
+            // Left
             targetCtx.fillStyle = '#421d0d';
-            targetCtx.fillRect(cx - tw / 2 - 4 * s, ty, 4 * s, 8 * s);
-            targetCtx.fillRect(cx + tw / 2, ty, 4 * s, 8 * s);
+            targetCtx.beginPath();
+            targetCtx.moveTo(cx - tw / 2, ty);
+            targetCtx.lineTo(cx - tw / 2 - 10 * s, ty - 18 * s);
+            targetCtx.lineTo(cx - tw / 2 - 2 * s, ty);
+            targetCtx.closePath();
+            targetCtx.fill();
+            // Right
+            targetCtx.beginPath();
+            targetCtx.moveTo(cx + tw / 2, ty);
+            targetCtx.lineTo(cx + tw / 2 + 10 * s, ty - 18 * s);
+            targetCtx.lineTo(cx + tw / 2 + 2 * s, ty);
+            targetCtx.closePath();
+            targetCtx.fill();
           }
         }
 
         // CROWN: AMALAKA & KALASH
         const topY = cy - h;
-        const amalakaW = w * 0.3;
-        const amalakaH = 10 * s;
+        const amalakaW = w * 0.35;
+        const amalakaH = 14 * s;
 
-        targetCtx.fillStyle = '#d48031';
+        // Amalaka (Ribbed Disc)
+        const amalakaGrad = targetCtx.createRadialGradient(cx, topY - amalakaH / 2, 0, cx, topY - amalakaH / 2, amalakaW / 2);
+        amalakaGrad.addColorStop(0, '#ffaa00');
+        amalakaGrad.addColorStop(0.5, '#d48031');
+        amalakaGrad.addColorStop(1, '#5e2d14');
+        targetCtx.fillStyle = amalakaGrad;
         targetCtx.beginPath();
         targetCtx.ellipse(cx, topY - amalakaH / 2, amalakaW / 2, amalakaH / 2, 0, 0, Math.PI * 2);
         targetCtx.fill();
-        targetCtx.strokeStyle = '#fff';
+        targetCtx.strokeStyle = '#ffea00';
+        targetCtx.lineWidth = 1.5 * s;
         targetCtx.stroke();
 
+        // Kalash (Golden Pot)
         const kalashY = topY - amalakaH;
-        const kGrad = targetCtx.createLinearGradient(cx - 6 * s, kalashY, cx + 6 * s, kalashY);
-        kGrad.addColorStop(0, '#ffaa00');
+        const kGrad = targetCtx.createLinearGradient(cx - 10 * s, kalashY, cx + 10 * s, kalashY);
+        kGrad.addColorStop(0, '#cc7700');
+        kGrad.addColorStop(0.3, '#ffff00');
         kGrad.addColorStop(0.5, '#ffffff');
-        kGrad.addColorStop(1, '#ff8800');
+        kGrad.addColorStop(0.7, '#ffff00');
+        kGrad.addColorStop(1, '#cc7700');
 
         targetCtx.fillStyle = kGrad;
         targetCtx.beginPath();
-        targetCtx.arc(cx, kalashY - 7 * s, 6 * s, 0, Math.PI * 2);
+        targetCtx.arc(cx, kalashY - 10 * s, 10 * s, 0, Math.PI * 2);
         targetCtx.fill();
 
+        // Kalash Neck
+        targetCtx.fillRect(cx - 4 * s, kalashY - 15 * s, 8 * s, 5 * s);
+
+        // Finial Spike
         targetCtx.beginPath();
-        targetCtx.moveTo(cx, kalashY - 13 * s);
-        targetCtx.lineTo(cx - 3 * s, kalashY - 20 * s);
-        targetCtx.lineTo(cx + 3 * s, kalashY - 20 * s);
+        targetCtx.moveTo(cx, kalashY - 15 * s);
+        targetCtx.lineTo(cx - 3 * s, kalashY - 28 * s);
+        targetCtx.lineTo(cx + 3 * s, kalashY - 28 * s);
         targetCtx.closePath();
         targetCtx.fill();
 
-        return kalashY - 20 * s;
+        return kalashY - 28 * s;
       };
 
-      const topCenterY = drawNagaraShikhara(mx, baseY - 95 * s, 105 * s, 230 * s, true);
-      drawNagaraShikhara(mx - 65 * s, baseY - 95 * s, 60 * s, 140 * s);
-      drawNagaraShikhara(mx + 65 * s, baseY - 95 * s, 60 * s, 140 * s);
-      drawNagaraShikhara(mx - 120 * s, baseY - 95 * s, 45 * s, 95 * s);
-      drawNagaraShikhara(mx + 120 * s, baseY - 95 * s, 45 * s, 95 * s);
+      // Draw 5 Shikharas
+      const topCenterY = drawNagaraShikhara(mx, sanctumY, 120 * s, 260 * s, true);
+      drawNagaraShikhara(mx - 80 * s, sanctumY, 70 * s, 160 * s);
+      drawNagaraShikhara(mx + 80 * s, sanctumY, 70 * s, 160 * s);
+      drawNagaraShikhara(mx - 140 * s, sanctumY, 55 * s, 110 * s);
+      drawNagaraShikhara(mx + 140 * s, sanctumY, 55 * s, 110 * s);
 
-      // 4. DIVINE SAFFRON FLAG
-      const flagPoleTop = topCenterY - 25 * s;
-      targetCtx.strokeStyle = '#d4aa70';
-      targetCtx.lineWidth = 3 * s;
+      // 5. DIVINE SAFFRON FLAG (PHYSICS BASED)
+      const flagPoleTop = topCenterY - 30 * s;
+      
+      // Pole Base Ornament
+      targetCtx.fillStyle = `rgba(200, 130, 40, ${0.8})`;
       targetCtx.beginPath();
-      targetCtx.moveTo(mx, topCenterY);
-      targetCtx.lineTo(mx, flagPoleTop);
-      targetCtx.stroke();
-
-      const wave = Math.sin(t * 8) * 5 * s;
-      targetCtx.fillStyle = '#ff5500';
-      targetCtx.beginPath();
-      targetCtx.moveTo(mx, flagPoleTop);
-      targetCtx.quadraticCurveTo(mx + 15 * s, flagPoleTop + wave, mx + 30 * s + wave, flagPoleTop + 10 * s);
-      targetCtx.quadraticCurveTo(mx + 15 * s, flagPoleTop + 20 * s + wave, mx, flagPoleTop + 22 * s);
-      targetCtx.closePath();
+      targetCtx.arc(mx, topCenterY, 6 * s, 0, Math.PI * 2);
       targetCtx.fill();
 
-      targetCtx.fillStyle = '#ffea00';
+      // Metallic Pole
+      const poleGrad = targetCtx.createLinearGradient(mx - 3 * s, 0, mx + 3 * s, 0);
+      poleGrad.addColorStop(0, '#5e3818');
+      poleGrad.addColorStop(0.4, '#d4aa70');
+      poleGrad.addColorStop(0.5, '#fff5e0');
+      poleGrad.addColorStop(0.6, '#d4aa70');
+      poleGrad.addColorStop(1, '#5e3818');
+      targetCtx.fillStyle = poleGrad;
+      targetCtx.fillRect(mx - 2 * s, flagPoleTop, 4 * s, topCenterY - flagPoleTop);
+      
+      // Golden Finial Ball
+      const finialGrad = targetCtx.createRadialGradient(mx - 1 * s, flagPoleTop - 4 * s, 0, mx, flagPoleTop - 4 * s, 6 * s);
+      finialGrad.addColorStop(0, '#ffffff');
+      finialGrad.addColorStop(0.4, '#ffd700');
+      finialGrad.addColorStop(1, '#994d22');
+      targetCtx.fillStyle = finialGrad;
       targetCtx.beginPath();
-      targetCtx.arc(mx + 10 * s, flagPoleTop + 10 * s + wave * 0.5, 3 * s, 0, Math.PI * 2);
+      targetCtx.arc(mx, flagPoleTop - 4 * s, 5 * s, 0, Math.PI * 2);
+      targetCtx.fill();
+
+      // Cloth Simulation
+      const wave1 = Math.sin(t * 6) * 6 * s;
+      const wave2 = Math.sin(t * 6 + 1.5) * 4 * s;
+      
+      targetCtx.beginPath();
+      targetCtx.moveTo(mx, flagPoleTop);
+      targetCtx.quadraticCurveTo(mx + 15 * s, flagPoleTop + wave1, mx + 35 * s + wave1, flagPoleTop + 12 * s + wave2);
+      targetCtx.quadraticCurveTo(mx + 15 * s, flagPoleTop + 24 * s + wave2, mx, flagPoleTop + 26 * s);
+      targetCtx.closePath();
+      
+      const flagGrad = targetCtx.createLinearGradient(mx, flagPoleTop, mx + 35 * s, flagPoleTop);
+      flagGrad.addColorStop(0, '#cc3300');
+      flagGrad.addColorStop(0.5, '#ff5500');
+      flagGrad.addColorStop(1, '#ff7700');
+      targetCtx.fillStyle = flagGrad;
+      targetCtx.fill();
+      
+      targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      targetCtx.lineWidth = 1 * s;
+      targetCtx.stroke();
+
+      // Sun Emblem on Flag
+      targetCtx.fillStyle = `rgba(255, 234, 0, ${0.8 + 0.2 * Math.sin(t*3)})`;
+      targetCtx.beginPath();
+      targetCtx.arc(mx + 12 * s, flagPoleTop + 13 * s + wave1 * 0.5, 4 * s, 0, Math.PI * 2);
       targetCtx.fill();
 
       targetCtx.restore();
