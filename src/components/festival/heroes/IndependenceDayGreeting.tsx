@@ -466,16 +466,6 @@ export default function IndependenceDayGreeting({ className }: Props) {
 
   return (
     <div className={`relative w-full h-full min-h-[360px] max-h-[500px] overflow-hidden ${className}`}>
-      {/* Cursive greeting text adjusted proportionally */}
-      <div className="absolute top-6 left-0 right-0 z-10 text-center select-none pointer-events-none">
-        <h1 
-          className="text-2xl md:text-3xl lg:text-4xl text-white font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] tracking-wide"
-          style={{ fontFamily: "'Dancing Script', 'Georgia', cursive" }}
-        >
-          Happy Independence Day
-        </h1>
-      </div>
-
       <canvas 
         ref={canvasRef} 
         className="block w-full h-full"
