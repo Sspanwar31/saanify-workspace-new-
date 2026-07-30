@@ -17,8 +17,8 @@ const smoothstep = (a: number, b: number, t: number) => {
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 
-// ============ PARTICLE POOL ============
-type PType = 'dust' | 'petal' | 'text' | 'bird';
+// ============ PARTICLE SYSTEM ============
+type PType = 'dust' | 'petal' | 'sparkle' | 'smoke';
 
 interface Particle {
   idx: number;
@@ -30,7 +30,6 @@ interface Particle {
   type: PType;
   tx: number; ty: number;
   rot: number; rotSpd: number;
-  flap: number;
   active: boolean;
   delay: number;
 }
@@ -44,7 +43,7 @@ class ParticlePool {
         idx: i, x: 0, y: 0, vx: 0, vy: 0,
         size: 1, life: 0, maxLife: 1, alpha: 0,
         type: 'dust', tx: 0, ty: 0,
-        rot: 0, rotSpd: 0, flap: 0,
+        rot: 0, rotSpd: 0,
         active: false, delay: 0
       });
       this.free.push(i);
@@ -70,7 +69,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onCompleteRef = useRef(onComplete);
 
-  // Keep ref up to date to prevent closure capture issues
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
@@ -86,17 +84,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     let rafId = 0;
     let running = true;
     let lastTime = 0;
-    let birdsSpawned = false;
     let handoverTriggered = false;
     let lastSampleTime = 0;
 
-    // Offscreen canvases for bloom & texture effects
     const bloom = document.createElement('canvas');
     const bctx = bloom.getContext('2d')!;
     const grain = document.createElement('canvas');
     const gctx = grain.getContext('2d')!;
 
-    // Pre-rendered radial sprites for optimal rendering performance
+    // Procedural light sprites
     function makeSprite(size: number, inner: string, mid: string): HTMLCanvasElement {
       const c = document.createElement('canvas');
       c.width = c.height = size;
@@ -109,10 +105,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       cx.fillRect(0, 0, size, size);
       return c;
     }
-    const dustSprite = makeSprite(32, 'rgba(255,220,150,1)', 'rgba(255,140,40,0.4)');
-    const sparkSprite = makeSprite(32, 'rgba(255,250,220,1)', 'rgba(255,180,80,0.4)');
+    const dustSprite = makeSprite(32, 'rgba(255,210,130,1)', 'rgba(255,130,40,0.3)');
+    const sparkSprite = makeSprite(32, 'rgba(255,250,220,1)', 'rgba(255,180,80,0.35)');
 
-    const pool = new ParticlePool(1200);
+    const pool = new ParticlePool(1000);
     const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
     let ramPoints: { x: number; y: number }[] = [];
 
@@ -138,20 +134,19 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       for (let i = 0; i < d.length; i += 4) {
         const n = Math.random() * 255;
         d[i] = n; d[i + 1] = n; d[i + 2] = n;
-        d[i + 3] = 20;
+        d[i + 3] = 18;
       }
       gctx.putImageData(id, 0, 0);
     }
 
     function sampleText() {
-      // Dynamic fallback rendering of Devanagari text
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
-      const fontSize = Math.min(W * 0.13, 140);
+      const fontSize = Math.min(W * 0.13, 130);
       tc.width = Math.floor(W);
       tc.height = Math.floor(fontSize * 2);
       tctx.fillStyle = 'white';
-      tctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", "Arial Unicode MS", sans-serif`;
+      tctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
       tctx.textAlign = 'center';
       tctx.textBaseline = 'middle';
       tctx.fillText('श्री राम', tc.width / 2, tc.height / 2);
@@ -172,389 +167,391 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 4, t);
-      const cx = W / 2, cy = H * 0.62;
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.9);
-      const ir = Math.floor(lerp(6, 75, reveal));
-      const ig = Math.floor(lerp(3, 32, reveal));
-      const ib = Math.floor(lerp(10, 22, reveal));
+      const cx = W / 2, cy = H * 0.52;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.85);
+      const ir = Math.floor(lerp(8, 65, reveal));
+      const ig = Math.floor(lerp(4, 25, reveal));
+      const ib = Math.floor(lerp(2, 10, reveal));
       grad.addColorStop(0, `rgb(${ir},${ig},${ib})`);
-      grad.addColorStop(0.4, `rgb(${Math.floor(ir * 0.4)},${Math.floor(ig * 0.3)},${Math.floor(ib * 0.6)})`);
+      grad.addColorStop(0.5, `rgb(${Math.floor(ir * 0.35)},${Math.floor(ig * 0.25)},${Math.floor(ib * 0.15)})`);
       grad.addColorStop(1, '#020104');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
     }
 
-    function drawSunrise(t: number) {
-      const reveal = smoothstep(1.8, 4.5, t);
+    function drawDivineLight(t: number) {
+      const reveal = smoothstep(1.8, 5, t);
       const fade = smoothstep(16, 17.5, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
-      const sy = H * 0.62 - reveal * H * 0.04;
-      const sunR = W * 0.18;
+      const sy = H * 0.44; // Positioned behind Rama's crown
+      const sunR = W * 0.22;
       const sunGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
-      sunGrad.addColorStop(0, `rgba(255, 235, 170, ${0.85 * vis})`);
-      sunGrad.addColorStop(0.15, `rgba(255, 190, 90, ${0.55 * vis})`);
-      sunGrad.addColorStop(0.45, `rgba(220, 110, 30, ${0.18 * vis})`);
-      sunGrad.addColorStop(1, 'rgba(80, 30, 10, 0)');
+      sunGrad.addColorStop(0, `rgba(255, 230, 160, ${0.9 * vis})`);
+      sunGrad.addColorStop(0.2, `rgba(255, 170, 70, ${0.6 * vis})`);
+      sunGrad.addColorStop(0.5, `rgba(180, 80, 20, ${0.2 * vis})`);
+      sunGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = sunGrad;
       ctx.fillRect(0, 0, W, H);
-      drawGodRays(sx, sy, t, vis);
-    }
 
-    function drawGodRays(cx: number, cy: number, t: number, intensity: number) {
+      // Rotating God Rays from behind Mukut
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      const rayCount = 28;
-      const maxLen = Math.max(W, H) * 1.3;
+      const rayCount = 24;
+      const maxLen = Math.max(W, H) * 1.2;
       for (let i = 0; i < rayCount; i++) {
         const baseAngle = (i / rayCount) * Math.PI * 2;
-        const angle = baseAngle + t * 0.03 + Math.sin(t * 0.4 + i * 0.7) * 0.04;
-        const len = maxLen * (0.55 + 0.45 * Math.sin(t * 0.6 + i * 1.9));
-        const flicker = 0.5 + 0.5 * Math.sin(t * 1.2 + i * 2.3);
-        const a = 0.07 * intensity * flicker;
-        if (a < 0.005) continue;
-        const ex = cx + Math.cos(angle) * len;
-        const ey = cy + Math.sin(angle) * len;
-        const grad = ctx.createLinearGradient(cx, cy, ex, ey);
-        grad.addColorStop(0, `rgba(255, 210, 130, ${a})`);
-        grad.addColorStop(0.4, `rgba(255, 170, 70, ${a * 0.6})`);
-        grad.addColorStop(1, 'rgba(255, 130, 40, 0)');
+        const angle = baseAngle + t * 0.04 + Math.sin(t * 0.3 + i * 0.8) * 0.03;
+        const len = maxLen * (0.6 + 0.4 * Math.sin(t * 0.5 + i * 1.7));
+        const flicker = 0.7 + 0.3 * Math.sin(t * 1.5 + i * 2.3);
+        const a = 0.08 * vis * flicker;
+        const ex = sx + Math.cos(angle) * len;
+        const ey = sy + Math.sin(angle) * len;
+        const grad = ctx.createLinearGradient(sx, sy, ex, ey);
+        grad.addColorStop(0, `rgba(255, 215, 140, ${a})`);
+        grad.addColorStop(0.4, `rgba(255, 150, 50, ${a * 0.5})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
-        const w = 0.035 + Math.sin(t * 0.5 + i * 2.1) * 0.015;
+        const w = 0.04 + Math.sin(t * 0.4 + i * 2) * 0.015;
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(angle - w) * len, cy + Math.sin(angle - w) * len);
-        ctx.lineTo(cx + Math.cos(angle + w) * len, cy + Math.sin(angle + w) * len);
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + Math.cos(angle - w) * len, sy + Math.sin(angle - w) * len);
+        ctx.lineTo(sx + Math.cos(angle + w) * len, sy + Math.sin(angle + w) * len);
         ctx.closePath();
         ctx.fill();
       }
       ctx.restore();
     }
 
-    function drawCitySilhouette(t: number) {
-      const reveal = smoothstep(2, 4.5, t);
+    // ============ NOBLE COURT & DARBAR SILHOUETTES ============
+
+    function drawDarbarPillars(s: number, vis: number) {
+      ctx.save();
+      ctx.globalAlpha = vis * 0.45;
+      ctx.fillStyle = '#060305';
+      ctx.strokeStyle = `rgba(255, 160, 70, ${0.15 * vis})`;
+      ctx.lineWidth = 1;
+
+      // Draw pillars in background
+      const pillarW = 28 * s;
+      const positions = [-1.8, -1.2, 1.2, 1.8];
+      for (const pos of positions) {
+        const px = W / 2 + pos * 110 * s - pillarW / 2;
+        ctx.fillRect(px, 0, pillarW, H);
+        ctx.strokeRect(px, 0, pillarW, H);
+      }
+
+      // Arch frames
+      ctx.beginPath();
+      ctx.ellipse(W / 2, H * 0.4, 180 * s, 180 * s, 0, Math.PI, 0);
+      ctx.strokeStyle = `rgba(255, 150, 60, ${0.12 * vis})`;
+      ctx.lineWidth = 4 * s;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawSinghasan(cx: number, cy: number, s: number, vis: number, t: number) {
+      // Background Ornate Throne Backrest (Glowing Rings)
+      ctx.save();
+      ctx.globalAlpha = vis;
+      
+      const flicker = 0.9 + 0.1 * Math.sin(t * 8);
+
+      // Outer arch
+      ctx.lineWidth = 3 * s;
+      ctx.strokeStyle = `rgba(180, 110, 30, ${0.85 * flicker})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy + 10 * s, 85 * s, Math.PI, 0, false);
+      ctx.stroke();
+
+      // Middle gold halo ring
+      const goldGrad = ctx.createLinearGradient(cx - 70 * s, cy, cx + 70 * s, cy);
+      goldGrad.addColorStop(0, '#8c5315');
+      goldGrad.addColorStop(0.3, '#dfb55c');
+      goldGrad.addColorStop(0.5, '#fff4cb');
+      goldGrad.addColorStop(0.7, '#dfb55c');
+      goldGrad.addColorStop(1, '#8c5315');
+
+      ctx.strokeStyle = goldGrad;
+      ctx.lineWidth = 7 * s;
+      ctx.beginPath();
+      ctx.arc(cx, cy + 10 * s, 70 * s, Math.PI * 1.05, -Math.PI * 0.05, false);
+      ctx.stroke();
+
+      // Detailed back rest padding (Dark royal velvet red)
+      ctx.fillStyle = '#2d0406';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 20 * s, 62 * s, Math.PI, 0, false);
+      ctx.lineTo(cx + 62 * s, cy + 85 * s);
+      ctx.lineTo(cx - 62 * s, cy + 85 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255, 190, 80, ${0.45 * flicker})`;
+      ctx.lineWidth = 1.5 * s;
+      ctx.stroke();
+
+      // Golden lion head carvings on left/right arms
+      ctx.fillStyle = '#b38230';
+      ctx.beginPath();
+      ctx.arc(cx - 74 * s, cy + 60 * s, 10 * s, 0, Math.PI * 2);
+      ctx.arc(cx + 74 * s, cy + 60 * s, 10 * s, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Throne Base
+      ctx.fillStyle = '#0f0709';
+      ctx.strokeStyle = `rgba(255, 175, 70, ${0.35 * flicker})`;
+      ctx.lineWidth = 1 * s;
+      ctx.beginPath();
+      ctx.rect(cx - 95 * s, cy + 85 * s, 190 * s, 25 * s);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawLordRamaSilhouette(cx: number, cy: number, s: number, vis: number, t: number) {
+      ctx.save();
+      ctx.globalAlpha = vis;
+
+      // Glow calculation based on diya flickering
+      const glow = Math.sin(t * 8) * 0.06;
+      ctx.shadowBlur = (25 + glow * 50) * s;
+      ctx.shadowColor = `rgba(255, 170, 60, ${0.85 + glow})`;
+
+      // Deep, majestic silhouette body
+      ctx.fillStyle = '#060305';
+      ctx.beginPath();
+      
+      // Seated cross-legged base
+      ctx.moveTo(cx - 52 * s, cy + 85 * s);
+      ctx.bezierCurveTo(cx - 65 * s, cy + 85 * s, cx - 74 * s, cy + 70 * s, cx - 50 * s, cy + 64 * s); // Left knee
+      ctx.bezierCurveTo(cx - 40 * s, cy + 60 * s, cx - 35 * s, cy + 50 * s, cx - 35 * s, cy + 30 * s); // Left arm base
+      
+      // Left arm and torso upward
+      ctx.bezierCurveTo(cx - 35 * s, cy + 18 * s, cx - 22 * s, cy - 10 * s, cx - 18 * s, cy - 20 * s); // Shoulder left
+      
+      // Neck and chin
+      ctx.lineTo(cx - 5 * s, cy - 24 * s);
+      ctx.bezierCurveTo(cx - 8 * s, cy - 29 * s, cx - 8 * s, cy - 35 * s, cx - 6 * s, cy - 39 * s); // Face left
+      ctx.bezierCurveTo(cx - 10 * s, cy - 42 * s, cx - 8 * s, cy - 48 * s, cx - 4 * s, cy - 48 * s); // Hair/Crown base
+      
+      // Majestic Mukut (Crown with top finial)
+      ctx.lineTo(cx - 6 * s, cy - 54 * s);
+      ctx.lineTo(cx - 12 * s, cy - 56 * s);
+      ctx.lineTo(cx, cy - 78 * s); // Mukut peak
+      ctx.lineTo(cx + 12 * s, cy - 56 * s);
+      ctx.lineTo(cx + 6 * s, cy - 54 * s);
+
+      // Face Right
+      ctx.lineTo(cx + 4 * s, cy - 48 * s);
+      ctx.bezierCurveTo(cx + 8 * s, cy - 48 * s, cx + 10 * s, cy - 42 * s, cx + 6 * s, cy - 39 * s);
+      ctx.bezierCurveTo(cx + 8 * s, cy - 35 * s, cx + 8 * s, cy - 29 * s, cx + 5 * s, cy - 24 * s); // Face right
+
+      // Right arm and torso downward
+      ctx.lineTo(cx + 18 * s, cy - 20 * s); // Shoulder right
+      ctx.bezierCurveTo(cx + 22 * s, cy - 10 * s, cx + 35 * s, cy + 18 * s, cx + 35 * s, cy + 30 * s);
+      ctx.bezierCurveTo(cx + 35 * s, cy + 50 * s, cx + 40 * s, cy + 60 * s, cx + 50 * s, cy + 64 * s); // Right knee
+      ctx.bezierCurveTo(cx + 74 * s, cy + 70 * s, cx + 65 * s, cy + 85 * s, cx + 52 * s, cy + 85 * s);
+      ctx.closePath();
+      ctx.fill();
+
+      // Saffron/Golden Rim light highlights tracing the edges of Lord Rama
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = `rgba(255, 195, 90, ${0.75 + glow})`;
+      ctx.lineWidth = 1.4 * s;
+      ctx.beginPath();
+      // Highlight crown & shoulders
+      ctx.moveTo(cx - 15 * s, cy - 12 * s);
+      ctx.quadraticCurveTo(cx - 18 * s, cy - 20 * s, cx - 6 * s, cy - 39 * s);
+      ctx.lineTo(cx - 12 * s, cy - 56 * s);
+      ctx.lineTo(cx, cy - 78 * s);
+      ctx.lineTo(cx + 12 * s, cy - 56 * s);
+      ctx.lineTo(cx + 6 * s, cy - 39 * s);
+      ctx.quadraticCurveTo(cx + 18 * s, cy - 20 * s, cx + 15 * s, cy - 12 * s);
+      ctx.stroke();
+
+      // Bow (Kodanda Dhanush) silhouette placed next to the throne
+      ctx.strokeStyle = '#060305';
+      ctx.lineWidth = 4 * s;
+      ctx.beginPath();
+      ctx.arc(cx - 45 * s, cy + 25 * s, 90 * s, -Math.PI * 0.7, -Math.PI * 0.1, false);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 180, 80, ${0.4 * vis})`;
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawHanumanSilhouette(cx: number, cy: number, s: number, vis: number, t: number) {
+      // Bowed on the right side of the throne, looking leftward toward Lord Rama
+      ctx.save();
+      ctx.globalAlpha = vis;
+
+      const flicker = Math.sin(t * 8) * 0.05;
+      ctx.shadowBlur = (20 + flicker * 40) * s;
+      ctx.shadowColor = `rgba(255, 160, 60, ${0.75 + flicker})`;
+
+      const hx = cx + 80 * s;
+      const hy = cy + 85 * s;
+
+      ctx.fillStyle = '#060305';
+      ctx.beginPath();
+      // Kneeling profile posture
+      ctx.moveTo(hx + 30 * s, hy);
+      ctx.bezierCurveTo(hx + 35 * s, hy, hx + 32 * s, hy - 20 * s, hx + 22 * s, hy - 32 * s); // Back leg
+      ctx.bezierCurveTo(hx + 18 * s, hy - 40 * s, hx + 18 * s, hy - 50 * s, hx + 8 * s, hy - 56 * s); // Hunched back
+      ctx.bezierCurveTo(hx - 2 * s, hy - 60 * s, hx - 5 * s, hy - 66 * s, hx - 4 * s, hy - 72 * s); // Crown base
+      
+      // Small crown (Kirita)
+      ctx.lineTo(hx - 6 * s, hy - 80 * s);
+      ctx.lineTo(hx - 1 * s, hy - 84 * s);
+      ctx.lineTo(hx + 2 * s, hy - 72 * s);
+
+      // Bowed profile head & snout
+      ctx.bezierCurveTo(hx - 3 * s, hy - 68 * s, hx - 12 * s, hy - 68 * s, hx - 10 * s, hy - 60 * s); // Head bowed down left
+      ctx.lineTo(hx - 4 * s, hy - 56 * s); // Snout/chin
+      
+      // Folded hands extended towards Rama's feet
+      ctx.bezierCurveTo(hx - 12 * s, hy - 52 * s, hx - 22 * s, hy - 44 * s, hx - 28 * s, hy - 34 * s); // Extended hands
+      ctx.bezierCurveTo(hx - 22 * s, hy - 30 * s, hx - 10 * s, hy - 36 * s, hx - 2 * s, hy - 40 * s); // Lower arms
+
+      // Knees folded
+      ctx.bezierCurveTo(hx - 4 * s, hy - 25 * s, hx - 6 * s, hy - 5 * s, hx - 18 * s, hy); // Seated knees
+      ctx.lineTo(hx + 30 * s, hy);
+      ctx.closePath();
+      ctx.fill();
+
+      // Tail curve
+      ctx.strokeStyle = '#060305';
+      ctx.lineWidth = 3.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(hx + 22 * s, hy - 10 * s);
+      ctx.bezierCurveTo(hx + 45 * s, hy - 18 * s, hx + 50 * s, hy - 65 * s, hx + 36 * s, hy - 70 * s);
+      ctx.stroke();
+
+      // Golden highlights on tail and hunched back
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = `rgba(255, 175, 70, ${0.65 + flicker})`;
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // ============ ATMOSPHERIC ENVIRONMENT & DETAILS ============
+
+    function drawCourtroomVisuals(t: number) {
+      const reveal = smoothstep(4.0, 7.5, t);
       const fade = smoothstep(16, 17.5, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
-      ctx.save();
-      ctx.globalAlpha = vis * 0.85;
-      ctx.fillStyle = '#0a0508';
-      const baseY = H * 0.74;
-      ctx.beginPath();
-      ctx.moveTo(0, H);
-      ctx.lineTo(0, baseY);
-      const buildings = [
-        [0.02, 0.05, 0.04, 0], [0.08, 0.06, 0.06, 1], [0.15, 0.04, 0.04, 0],
-        [0.20, 0.06, 0.07, 1], [0.27, 0.04, 0.035, 0], [0.32, 0.03, 0.05, 1],
-        [0.66, 0.04, 0.045, 0], [0.71, 0.06, 0.06, 1], [0.78, 0.04, 0.035, 0],
-        [0.83, 0.07, 0.055, 1], [0.91, 0.05, 0.045, 0], [0.97, 0.03, 0.04, 0]
-      ];
-      for (const [bx, bw, bh, ty] of buildings) {
-        const px = bx * W, pw = bw * W, ph = bh * H;
-        ctx.lineTo(px, baseY);
-        ctx.lineTo(px, baseY - ph);
-        if (ty === 1) {
-          ctx.lineTo(px + pw / 2, baseY - ph - pw * 0.4);
-          ctx.lineTo(px + pw, baseY - ph);
-        } else {
-          ctx.lineTo(px + pw, baseY - ph);
-        }
-      }
-      ctx.lineTo(W, baseY);
-      ctx.lineTo(W, H);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-
-    function drawTemple(t: number) {
-      const edge = smoothstep(4, 6, t);
-      const full = smoothstep(10, 12, t);
-      const fade = smoothstep(16, 17.5, t);
-      if (edge <= 0 && full <= 0) return;
-      const vis = 1 - fade;
-      const cx = W * 0.5;
-      const baseY = H * 0.85;
       const s = Math.min(W, H) * 0.0011;
-      ctx.save();
-      ctx.globalAlpha = vis;
-      drawTempleStructure(cx, baseY, s, t, edge, full);
-      ctx.restore();
+      const cx = W * 0.5;
+      const cy = H * 0.52;
+
+      drawDarbarPillars(s, vis);
+      drawSinghasan(cx, cy, s, vis, t);
+      drawLordRamaSilhouette(cx, cy, s, vis, t);
+      drawHanumanSilhouette(cx, cy, s, vis, t);
     }
 
-    function drawTempleStructure(cx: number, baseY: number, s: number, t: number, edge: number, full: number) {
-      const platColor = 'rgba(16, 9, 5, 0.95)';
-      const edgeColor = `rgba(255, 180, 90, ${edge * 0.7 + full * 0.3})`;
-      ctx.fillStyle = platColor;
-      ctx.strokeStyle = edgeColor;
-      ctx.lineWidth = 1.2;
-
-      // Three-tier platform
-      const platW = 420 * s;
-      const tierDefs = [
-        { w: platW, h: 25 * s },
-        { w: platW * 0.85, h: 20 * s },
-        { w: platW * 0.75, h: 20 * s }
-      ];
-      let curY = baseY;
-      for (const tier of tierDefs) {
-        ctx.beginPath();
-        ctx.rect(cx - tier.w / 2, curY - tier.h, tier.w, tier.h);
-        ctx.fill();
-        ctx.stroke();
-        curY -= tier.h;
-      }
-      const platTop = curY;
-
-      // Mandapa (main hall)
-      const mandaW = 300 * s;
-      const mandaH = 110 * s;
-      ctx.beginPath();
-      ctx.rect(cx - mandaW / 2, platTop - mandaH, mandaW, mandaH);
-      ctx.fill();
-      ctx.stroke();
-
-      // Three arches on mandapa
-      for (let i = -1; i <= 1; i++) {
-        const ax = cx + i * 85 * s;
-        const ay = platTop - mandaH * 0.25;
-        const aw = 38 * s;
-        const ah = 65 * s;
-        ctx.beginPath();
-        ctx.moveTo(ax - aw / 2, ay + ah);
-        ctx.lineTo(ax - aw / 2, ay + aw / 2);
-        ctx.arc(ax, ay + aw / 2, aw / 2, Math.PI, 0, false);
-        ctx.lineTo(ax + aw / 2, ay + ah);
-        ctx.fillStyle = 'rgba(0,0,0,0.85)';
-        ctx.fill();
-        ctx.strokeStyle = edgeColor;
-        ctx.stroke();
-        ctx.fillStyle = platColor;
-      }
-
-      // Main central shikhara
-      const mainBaseY = platTop - mandaH;
-      drawShikhara(cx, mainBaseY, 200 * s, 380 * s, 9, edge, full, true, s);
-
-      // Side shikharas
-      drawShikhara(cx - 150 * s, platTop - 40 * s, 95 * s, 200 * s, 6, edge, full, false, s);
-      drawShikhara(cx + 150 * s, platTop - 40 * s, 95 * s, 200 * s, 6, edge, full, false, s);
-
-      // Corner small spires
-      drawShikhara(cx - 200 * s, platTop - 10 * s, 50 * s, 110 * s, 4, edge, full, false, s);
-      drawShikhara(cx + 200 * s, platTop - 10 * s, 50 * s, 110 * s, 4, edge, full, false, s);
-
-      // Flag pole rising from main shikhara top
-      const mainTop = mainBaseY - 380 * s;
-      ctx.strokeStyle = `rgba(190, 140, 70, ${edge * 0.8 + full * 0.4})`;
-      ctx.lineWidth = 2.5 * s;
-      ctx.beginPath();
-      ctx.moveTo(cx, mainTop);
-      ctx.lineTo(cx, mainTop - 70 * s);
-      ctx.stroke();
-
-      // Kalasha (sacred finial pot)
-      ctx.fillStyle = `rgba(255, 200, 100, ${edge * 0.9 + full * 0.5})`;
-      ctx.beginPath();
-      ctx.arc(cx, mainTop - 75 * s, 7 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(255, 240, 180, ${(edge + full) * 0.5})`;
-      ctx.beginPath();
-      ctx.arc(cx - 2 * s, mainTop - 77 * s, 2.5 * s, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    function drawShikhara(cx: number, baseY: number, baseW: number, height: number, tiers: number, edge: number, full: number, isMain: boolean, s: number) {
-      const topY = baseY - height;
-      const topW = baseW * 0.18;
-
-      ctx.fillStyle = 'rgba(16, 9, 5, 0.95)';
-      ctx.beginPath();
-      ctx.moveTo(cx - baseW / 2, baseY);
-      ctx.bezierCurveTo(
-        cx - baseW / 2, baseY - height * 0.35,
-        cx - topW / 2 - baseW * 0.1, baseY - height * 0.78,
-        cx - topW / 2, topY
-      );
-      ctx.lineTo(cx + topW / 2, topY);
-      ctx.bezierCurveTo(
-        cx + topW / 2 + baseW * 0.1, baseY - height * 0.78,
-        cx + baseW / 2, baseY - height * 0.35,
-        cx + baseW / 2, baseY
-      );
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = `rgba(255, 180, 90, ${edge * 0.75 + full * 0.25})`;
-      ctx.lineWidth = isMain ? 1.4 : 1;
-      ctx.stroke();
-
-      ctx.strokeStyle = `rgba(255, 165, 75, ${edge * 0.5 + full * 0.3})`;
-      ctx.lineWidth = 0.7;
-      for (let i = 1; i < tiers; i++) {
-        const f = i / tiers;
-        const y = baseY - height * f;
-        const w = lerp(baseW, topW, easeInCubic(f));
-        ctx.beginPath();
-        ctx.moveTo(cx - w / 2, y);
-        ctx.lineTo(cx + w / 2, y);
-        ctx.stroke();
-      }
-
-      if (isMain) {
-        ctx.strokeStyle = `rgba(255, 150, 60, ${edge * 0.4 + full * 0.25})`;
-        ctx.lineWidth = 0.6;
-        for (let i = -1; i <= 1; i++) {
-          ctx.beginPath();
-          const xo = i * baseW * 0.25;
-          ctx.moveTo(cx + xo, baseY);
-          ctx.quadraticCurveTo(cx + xo * 0.5, baseY - height * 0.5, cx + xo * 0.15, topY);
-          ctx.stroke();
-        }
-        ctx.fillStyle = 'rgba(18, 10, 6, 0.95)';
-        ctx.beginPath();
-        ctx.moveTo(cx - topW * 0.6, topY);
-        ctx.lineTo(cx, topY - 20 * s);
-        ctx.lineTo(cx + topW * 0.6, topY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = `rgba(255, 180, 90, ${edge * 0.7 + full * 0.3})`;
-        ctx.stroke();
-      }
-    }
-
-    function drawFlag(t: number) {
-      const reveal = smoothstep(6, 8, t);
+    function drawDiyas(t: number) {
+      const reveal = smoothstep(6.5, 9, t);
       const fade = smoothstep(16, 17.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
-      const cx = W * 0.5;
-      const baseY = H * 0.85;
       const s = Math.min(W, H) * 0.0011;
-      const platH = (25 + 20 + 20) * s;
-      const mandaH = 110 * s;
-      const shikharaH = 380 * s;
-      const mainTop = baseY - platH - mandaH - shikharaH;
-      const poleTop = mainTop - 70 * s;
+      const positions = [
+        { x: W * 0.15, y: H * 0.85 },
+        { x: W * 0.85, y: H * 0.85 },
+        { x: W * 0.08, y: H * 0.9 },
+        { x: W * 0.92, y: H * 0.9 },
+      ];
 
       ctx.save();
       ctx.globalAlpha = vis;
 
-      const poleW = 3 * s;
-      const poleGrad = ctx.createLinearGradient(cx - poleW, 0, cx + poleW, 0);
-      poleGrad.addColorStop(0, '#2a1a08');
-      poleGrad.addColorStop(0.4, '#7a5a28');
-      poleGrad.addColorStop(0.5, '#d4a850');
-      poleGrad.addColorStop(0.6, '#7a5a28');
-      poleGrad.addColorStop(1, '#2a1a08');
-      ctx.fillStyle = poleGrad;
-      ctx.fillRect(cx - poleW / 2, poleTop, poleW, 70 * s);
+      positions.forEach((pos, i) => {
+        const flamePulse = Math.sin(t * 12 + i * 2.3) * 1.5 + Math.cos(t * 7 + i * 1.5) * 0.8;
+        const baseW = 32 * s;
+        const baseH = 14 * s;
 
-      ctx.fillStyle = '#e8b850';
-      ctx.beginPath();
-      ctx.arc(cx, poleTop, 4 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255, 240, 180, 0.9)';
-      ctx.beginPath();
-      ctx.arc(cx - 1 * s, poleTop - 1 * s, 1.5 * s, 0, Math.PI * 2);
-      ctx.fill();
+        // Brass base of Diya
+        const brassGrad = ctx.createLinearGradient(pos.x - baseW, pos.y, pos.x + baseW, pos.y);
+        brassGrad.addColorStop(0, '#5e380f');
+        brassGrad.addColorStop(0.5, '#dfb55c');
+        brassGrad.addColorStop(1, '#5e380f');
+        ctx.fillStyle = brassGrad;
+        ctx.beginPath();
+        ctx.moveTo(pos.x - baseW / 2, pos.y);
+        ctx.bezierCurveTo(pos.x - baseW * 0.6, pos.y + baseH, pos.x + baseW * 0.6, pos.y + baseH, pos.x + baseW / 2, pos.y);
+        ctx.lineTo(pos.x, pos.y + 3 * s);
+        ctx.closePath();
+        ctx.fill();
 
-      const flagW = 90 * s;
-      const flagH = 55 * s;
-      const unfurl = smoothstep(6, 8, t);
-      const wind = Math.sin(t * 0.7) * 0.4 + Math.sin(t * 1.9 + 1) * 0.2;
-      const segs = 18;
-      const rows = 6;
+        // Glowing flame layer 1
+        const flameH = (22 + flamePulse) * s;
+        const flameW = 8 * s;
+        const fGrad = ctx.createLinearGradient(pos.x, pos.y, pos.x, pos.y - flameH);
+        fGrad.addColorStop(0, 'rgba(255, 60, 0, 0.9)');
+        fGrad.addColorStop(0.5, 'rgba(255, 150, 20, 0.95)');
+        fGrad.addColorStop(0.9, 'rgba(255, 235, 170, 0.99)');
+        fGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = fGrad;
 
-      for (let row = 0; row < rows; row++) {
-        for (let seg = 0; seg < segs; seg++) {
-          const u1 = seg / segs;
-          const u2 = (seg + 1) / segs;
-          const v1 = row / rows;
-          const v2 = (row + 1) / rows;
-          if (u1 > unfurl) continue;
-          const u2c = Math.min(u2, unfurl);
-          const x1 = cx + u1 * flagW;
-          const x2 = cx + u2c * flagW;
-          const wave1 = Math.sin(u1 * Math.PI * 2.5 + t * 2.5) * 7 * s * u1;
-          const wave2 = Math.sin(u2c * Math.PI * 2.5 + t * 2.5) * 7 * s * u2c;
-          const lift1 = (1 - v1) * Math.sin(u1 * Math.PI) * wind * 4 * s;
-          const lift2 = (1 - v1) * Math.sin(u2c * Math.PI) * wind * 4 * s;
-          const y1T = poleTop + v1 * flagH + wave1 + lift1;
-          const y2T = poleTop + v1 * flagH + wave2 + lift2;
-          const y1B = poleTop + v2 * flagH + wave1 * 0.95 + lift1 * 0.95;
-          const y2B = poleTop + v2 * flagH + wave2 * 0.95 + lift2 * 0.95;
-          const shade = 0.6 + 0.4 * Math.sin(u1 * Math.PI * 2.5 + t * 2.5 + v1 * Math.PI);
-          const r = Math.floor(230 * shade);
-          const g = Math.floor(110 * shade);
-          const b = Math.floor(30 * shade);
-          ctx.fillStyle = `rgba(${r},${g},${b},0.95)`;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1T);
-          ctx.lineTo(x2, y2T);
-          ctx.lineTo(x2, y2B);
-          ctx.lineTo(x1, y1B);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
+        ctx.beginPath();
+        ctx.moveTo(pos.x - flameW / 2, pos.y - 1);
+        ctx.quadraticCurveTo(pos.x - flameW * 0.8, pos.y - flameH * 0.45, pos.x, pos.y - flameH);
+        ctx.quadraticCurveTo(pos.x + flameW * 0.8, pos.y - flameH * 0.45, pos.x + flameW / 2, pos.y - 1);
+        ctx.closePath();
+        ctx.fill();
+
+        // 3D glow map behind diya flame
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const glowR = (50 + flamePulse * 3) * s;
+        const gGrad = ctx.createRadialGradient(pos.x, pos.y - flameH * 0.5, 0, pos.x, pos.y - flameH * 0.5, glowR);
+        gGrad.addColorStop(0, 'rgba(255, 140, 50, 0.28)');
+        gGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gGrad;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y - flameH * 0.5, glowR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
       ctx.restore();
     }
 
-    function drawFog(t: number) {
-      const intensity = smoothstep(2, 5, t) * (1 - smoothstep(16, 17.5, t));
+    function drawFogAndHaze(t: number) {
+      const intensity = smoothstep(1.5, 5, t) * (1 - smoothstep(16, 17.5, t));
       if (intensity <= 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
+      
+      // Floating light fog drifts
       for (let layer = 0; layer < 3; layer++) {
-        const y = H * (0.68 + layer * 0.04);
-        const speed = 8 + layer * 6;
-        const offset = (t * speed + layer * 137) % (W * 1.5);
-        const grad = ctx.createLinearGradient(0, y - 40, 0, y + 100);
-        const a = 0.07 * intensity * (1 - layer * 0.2);
-        grad.addColorStop(0, 'rgba(190, 140, 80, 0)');
-        grad.addColorStop(0.4, `rgba(190, 140, 80, ${a})`);
-        grad.addColorStop(0.6, `rgba(160, 100, 60, ${a * 0.8})`);
-        grad.addColorStop(1, 'rgba(140, 80, 40, 0)');
+        const y = H * (0.64 + layer * 0.05);
+        const speed = 6 + layer * 5;
+        const offset = (t * speed + layer * 149) % (W * 1.5);
+        const grad = ctx.createLinearGradient(0, y - 30, 0, y + 80);
+        const a = 0.06 * intensity * (1 - layer * 0.2);
+        grad.addColorStop(0, 'rgba(180, 110, 40, 0)');
+        grad.addColorStop(0.5, `rgba(180, 110, 40, ${a})`);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = grad;
-        ctx.fillRect(-offset, y - 40, W * 2.5, 140);
+        ctx.fillRect(-offset, y - 30, W * 2.5, 110);
       }
       ctx.restore();
     }
 
-    function drawBellPulse(t: number) {
-      const pulses = [
-        { time: 8, intensity: 1 },
-        { time: 13, intensity: 0.7 },
-        { time: 13.6, intensity: 0.5 },
-        { time: 14.2, intensity: 0.4 }
-      ];
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      const cx = W * 0.5, cy = H * 0.62;
-      for (const p of pulses) {
-        const dt = t - p.time;
-        if (dt < 0 || dt > 1.8) continue;
-        const f = dt / 1.8;
-        const r = f * W * 0.7;
-        const a = (1 - f) * 0.12 * p.intensity * (1 - smoothstep(16, 17.5, t));
-        if (a <= 0) continue;
-        const grad = ctx.createRadialGradient(cx, cy, r * 0.7, cx, cy, r);
-        grad.addColorStop(0, 'rgba(255, 200, 100, 0)');
-        grad.addColorStop(0.7, `rgba(255, 200, 100, ${a})`);
-        grad.addColorStop(1, 'rgba(255, 200, 100, 0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, W, H);
-      }
-      ctx.restore();
-    }
-
-    // ============ PARTICLE LOGIC ============
+    // ============ PARTICLE SPAWN & UPDATES ============
 
     function spawnDust(t: number) {
-      const target = Math.floor(70 * smoothstep(0, 3, t));
+      const target = Math.floor(65 * smoothstep(0, 3, t));
       let count = 0;
       for (const p of pool.particles) if (p.active && p.type === 'dust') count++;
       let attempts = 0;
@@ -564,9 +561,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         p.type = 'dust';
         p.x = Math.random() * W;
         p.y = Math.random() * H;
-        p.vx = (Math.random() - 0.5) * 0.4;
-        p.vy = -0.05 - Math.random() * 0.35;
-        p.size = 0.6 + Math.random() * 1.6;
+        p.vx = (Math.random() - 0.5) * 0.35;
+        p.vy = -0.05 - Math.random() * 0.3;
+        p.size = 0.5 + Math.random() * 1.4;
         p.maxLife = 5 + Math.random() * 5;
         p.life = Math.random() * p.maxLife * 0.4;
         p.alpha = 0;
@@ -578,70 +575,70 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function spawnPetals(t: number) {
-      const intensity = smoothstep(4, 6, t) * (1 - smoothstep(16, 17.5, t));
+      const intensity = smoothstep(6.5, 9.5, t) * (1 - smoothstep(16, 17.5, t));
       if (intensity <= 0) return;
-      if (Math.random() > intensity * 0.4) return;
+      if (Math.random() > intensity * 0.35) return;
       const p = pool.spawn();
       if (!p) return;
       p.type = 'petal';
       p.x = Math.random() * W;
       p.y = -20;
-      p.vx = (Math.random() - 0.5) * 0.8;
-      p.vy = 0.4 + Math.random() * 0.7;
-      p.size = 5 + Math.random() * 6;
-      p.maxLife = 20;
+      p.vx = (Math.random() - 0.5) * 0.7;
+      p.vy = 0.4 + Math.random() * 0.65;
+      p.size = 4.5 + Math.random() * 5.5;
+      p.maxLife = 18;
       p.life = 0;
       p.alpha = 0;
       p.rot = Math.random() * Math.PI * 2;
-      p.rotSpd = (Math.random() - 0.5) * 2.5;
+      p.rotSpd = (Math.random() - 0.5) * 2.2;
     }
 
     function spawnTextParticles(t: number) {
       if (t < 7.5 || t > 9.5) return;
       if (ramPoints.length === 0) return;
-      const target = Math.min(ramPoints.length, 700);
+      const target = Math.min(ramPoints.length, 650);
       let active = 0;
-      for (const p of pool.particles) if (p.active && p.type === 'text') active++;
+      for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
       let attempts = 0;
       while (active < target && attempts < 10) {
         const p = pool.spawn();
         if (!p) break;
         const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
-        p.type = 'text';
-        p.x = W / 2 + (Math.random() - 0.5) * W * 1.4;
-        p.y = H * 0.4 + (Math.random() - 0.5) * H * 1.2;
+        p.type = 'sparkle';
+        p.x = W / 2 + (Math.random() - 0.5) * W * 1.3;
+        p.y = H * 0.36 + (Math.random() - 0.5) * H * 1.1;
         p.tx = W / 2 + pt.x;
-        p.ty = H * 0.4 + pt.y;
+        p.ty = H * 0.36 + pt.y; // Center vertically near Rama's aura
         p.vx = 0; p.vy = 0;
-        p.size = 1.2 + Math.random() * 1.6;
-        p.maxLife = 8;
+        p.size = 1.1 + Math.random() * 1.4;
+        p.maxLife = 7;
         p.life = 0;
         p.alpha = 0;
-        p.delay = Math.random() * 1.2;
+        p.delay = Math.random() * 1.1;
         active++;
         attempts++;
       }
     }
 
-    function spawnBirds(t: number) {
-      if (t < 9.8 || t > 10.5) return;
-      if (birdsSpawned) return;
-      birdsSpawned = true;
-      const count = 12;
-      for (let i = 0; i < count; i++) {
-        const p = pool.spawn();
-        if (!p) break;
-        p.type = 'bird';
-        p.x = -60 - i * 18 + Math.random() * 15;
-        p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12;
-        p.vx = 2.2 + Math.random() * 0.6;
-        p.vy = (Math.random() - 0.5) * 0.15;
-        p.size = 7 + Math.random() * 4;
-        p.maxLife = 25;
-        p.life = 0;
-        p.alpha = 0.65;
-        p.flap = Math.random() * Math.PI * 2;
-      }
+    function spawnIncenseSmoke(t: number) {
+      const intensity = smoothstep(8, 10, t) * (1 - smoothstep(16, 17.5, t));
+      if (intensity <= 0) return;
+      if (Math.random() > 0.08 * intensity) return;
+      
+      const s = Math.min(W, H) * 0.0011;
+      const emitterX = Math.random() < 0.5 ? W * 0.15 : W * 0.85;
+
+      const p = pool.spawn();
+      if (!p) return;
+      p.type = 'smoke';
+      p.x = emitterX;
+      p.y = H * 0.85 - 12 * s;
+      p.vx = (Math.random() - 0.5) * 0.25;
+      p.vy = -0.5 - Math.random() * 0.45;
+      p.size = 6 + Math.random() * 8;
+      p.maxLife = 4.5 + Math.random() * 3.5;
+      p.life = 0;
+      p.alpha = 0;
     }
 
     function updateParticles(dt: number, t: number) {
@@ -652,28 +649,23 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         if (p.type === 'dust') {
           p.x += p.vx;
           p.y += p.vy;
-          p.vx += (Math.random() - 0.5) * 0.04;
-          p.vy += -0.003;
+          p.vx += (Math.random() - 0.5) * 0.03;
+          p.vy += -0.002;
           p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
-          const fadeIn = smoothstep(0, 0.3, lr);
-          const fadeOut = 1 - smoothstep(0.7, 1, lr);
           const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17.5, t));
-          p.alpha = fadeIn * fadeOut * 0.7 * env;
+          p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env;
           if (p.life > p.maxLife || p.y < -30) {
-            p.life = 0;
-            p.x = Math.random() * W;
-            p.y = H + 20;
-            p.alpha = 0;
+            p.life = 0; p.x = Math.random() * W; p.y = H + 20; p.alpha = 0;
           }
         } else if (p.type === 'petal') {
-          p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.01) * 0.4;
+          p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
           p.y += p.vy;
           p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.1, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
+          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
           if (p.y > H + 30 || p.life > p.maxLife) pool.release(p);
-        } else if (p.type === 'text') {
+        } else if (p.type === 'sparkle') {
           if (p.delay > 0) {
             p.delay -= dt;
             p.alpha = 0;
@@ -683,25 +675,26 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           const dy = p.ty - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 1.5) {
-            const speed = clamp(dist * 4, 80, 500);
+            const speed = clamp(dist * 4.5, 90, 520);
             p.vx = (dx / dist) * speed;
             p.vy = (dy / dist) * speed;
             p.x += p.vx * dt;
             p.y += p.vy * dt;
-            p.alpha = clamp(p.alpha + dt * 1.5, 0, 0.7);
+            p.alpha = clamp(p.alpha + dt * 1.6, 0, 0.7);
           } else {
-            p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.4;
-            p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.4;
-            p.alpha = clamp(p.alpha + dt * 2, 0, 1);
+            p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.35;
+            p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.35;
+            p.alpha = clamp(p.alpha + dt * 1.8, 0, 1);
           }
           if (t > 12) p.alpha *= 1 - smoothstep(12, 14, t);
           if (t > 14.5 && p.alpha < 0.01) pool.release(p);
-        } else if (p.type === 'bird') {
-          p.x += p.vx;
+        } else if (p.type === 'smoke') {
+          p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
           p.y += p.vy;
-          p.flap += dt * 9;
-          p.alpha = 0.65 * (1 - smoothstep(15, 16, t));
-          if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
+          p.size += dt * 5.2; // Expand smoke
+          const lr = p.life / p.maxLife;
+          p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18;
+          if (p.life > p.maxLife || p.y < -30) pool.release(p);
         }
       }
     }
@@ -713,11 +706,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         if (!p.active || p.alpha <= 0.01) continue;
         if (p.type === 'dust') {
           ctx.globalAlpha = p.alpha;
-          const sz = p.size * 6;
+          const sz = p.size * 5.2;
           ctx.drawImage(dustSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
-        } else if (p.type === 'text') {
+        } else if (p.type === 'sparkle') {
           ctx.globalAlpha = p.alpha;
-          const sz = p.size * 5;
+          const sz = p.size * 4.4;
           ctx.drawImage(sparkSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
         }
       }
@@ -729,24 +722,21 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           ctx.save();
           ctx.translate(p.x, p.y);
           ctx.rotate(p.rot);
-          ctx.fillStyle = `rgba(240, 140, 70, ${p.alpha})`;
+          ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; // Elegant Saffron Petal color
           ctx.beginPath();
-          ctx.ellipse(0, 0, p.size, p.size * 0.5, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
-        } else if (p.type === 'bird') {
+        } else if (p.type === 'smoke') {
+          // Dynamic smoke trail paths
           ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.fillStyle = `rgba(10, 5, 2, ${p.alpha})`;
-          const flap = Math.sin(p.flap) * 0.7;
-          const sz = p.size;
+          const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+          rad.addColorStop(0, `rgba(255, 230, 200, ${p.alpha})`);
+          rad.addColorStop(0.3, `rgba(220, 160, 100, ${p.alpha * 0.5})`);
+          rad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = rad;
           ctx.beginPath();
-          ctx.moveTo(-sz, 0);
-          ctx.quadraticCurveTo(-sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), 0, 0);
-          ctx.quadraticCurveTo(sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), sz, 0);
-          ctx.quadraticCurveTo(sz * 0.4, sz * 0.15, 0, sz * 0.1);
-          ctx.quadraticCurveTo(-sz * 0.4, sz * 0.15, -sz, 0);
-          ctx.closePath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
@@ -758,18 +748,17 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       if (t < 8.5) return;
       const intensity = smoothstep(8.5, 10, t) * (1 - smoothstep(12, 14, t));
       if (intensity <= 0.01) return;
-      const fontSize = Math.min(W * 0.13, 140);
-      const cy = H * 0.4;
+      const fontSize = Math.min(W * 0.12, 125);
+      const cy = H * 0.36;
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
       ctx.globalCompositeOperation = 'screen';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2.2);
-      haloGrad.addColorStop(0, `rgba(255, 200, 100, ${0.18 * intensity})`);
-      haloGrad.addColorStop(0.4, `rgba(255, 150, 50, ${0.08 * intensity})`);
-      haloGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2);
+      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.16 * intensity})`);
+      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
@@ -778,23 +767,23 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const rayCount = 18;
       for (let i = 0; i < rayCount; i++) {
         const a = (i / rayCount) * Math.PI * 2 + t * 0.06;
-        const len = fontSize * 1.8 + Math.sin(t * 1.5 + i) * fontSize * 0.3;
-        const flicker = 0.6 + 0.4 * Math.sin(t * 2 + i * 1.7);
+        const len = fontSize * 1.6;
+        const flicker = 0.6 + 0.4 * Math.sin(t * 1.8 + i);
         const grad = ctx.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
-        grad.addColorStop(0, `rgba(255, 200, 100, ${0.12 * intensity * flicker})`);
-        grad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+        grad.addColorStop(0, `rgba(255, 190, 80, ${0.1 * intensity * flicker})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a - 0.04) * len, Math.sin(a - 0.04) * len);
-        ctx.lineTo(Math.cos(a + 0.04) * len, Math.sin(a + 0.04) * len);
+        ctx.lineTo(Math.cos(a - 0.035) * len, Math.sin(a - 0.035) * len);
+        ctx.lineTo(Math.cos(a + 0.035) * len, Math.sin(a + 0.035) * len);
         ctx.closePath();
         ctx.fill();
       }
       ctx.restore();
 
       ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = `rgba(255, 220, 140, ${0.03 * intensity})`;
+      ctx.fillStyle = `rgba(255, 215, 120, ${0.04 * intensity})`;
       ctx.fillText('श्री राम', W / 2, cy);
       ctx.restore();
     }
@@ -804,8 +793,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const fade = smoothstep(16, 17.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0.01) return;
-      const fontSize = Math.min(W * 0.058, 56);
-      const cy = H * 0.6;
+      const fontSize = Math.min(W * 0.054, 52);
+      const cy = H * 0.54;
       const line1 = 'राम नवमी की';
       const line2 = 'हार्दिक शुभकामनाएँ';
       ctx.save();
@@ -814,9 +803,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.font = `600 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
       ctx.globalCompositeOperation = 'screen';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 4);
-      haloGrad.addColorStop(0, `rgba(255, 180, 80, ${0.12 * vis})`);
-      haloGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 3.5);
+      haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.11 * vis})`);
+      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
@@ -824,23 +813,23 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const y1 = cy - fontSize * 0.65;
       const y2 = cy + fontSize * 0.65;
 
-      ctx.shadowBlur = 30;
-      ctx.shadowColor = `rgba(255, 170, 70, ${vis})`;
-      ctx.fillStyle = `rgba(180, 100, 30, ${vis * 0.5})`;
+      ctx.shadowBlur = 24;
+      ctx.shadowColor = `rgba(255, 160, 50, ${vis})`;
+      ctx.fillStyle = `rgba(180, 90, 20, ${vis * 0.5})`;
       ctx.fillText(line1, W / 2, y1);
       ctx.fillText(line2, W / 2, y2);
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = `rgba(255, 200, 100, ${vis})`;
-      ctx.fillStyle = `rgba(220, 150, 60, ${vis * 0.7})`;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = `rgba(255, 190, 80, ${vis})`;
+      ctx.fillStyle = `rgba(220, 140, 50, ${vis * 0.7})`;
       ctx.fillText(line1, W / 2, y1);
       ctx.fillText(line2, W / 2, y2);
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = `rgba(255, 230, 150, ${vis})`;
-      ctx.fillStyle = `rgba(255, 225, 160, ${vis})`;
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = `rgba(255, 220, 130, ${vis})`;
+      ctx.fillStyle = `rgba(255, 220, 150, ${vis})`;
       ctx.fillText(line1, W / 2, y1);
       ctx.fillText(line2, W / 2, y2);
       ctx.shadowBlur = 0;
-      ctx.fillStyle = `rgba(255, 250, 220, ${vis * 0.5})`;
+      ctx.fillStyle = `rgba(255, 245, 210, ${vis * 0.5})`;
       ctx.fillText(line1, W / 2 - 0.5, y1 - 0.5);
       ctx.fillText(line2, W / 2 - 0.5, y2 - 0.5);
       ctx.restore();
@@ -850,12 +839,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function applyBloom() {
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(6px) brightness(1.3)';
+      bctx.filter = 'blur(5px) brightness(1.25)';
       bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.5;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(bloom, 0, 0, W, H);
       ctx.restore();
@@ -865,9 +854,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, 'rgba(80, 35, 5, 0.18)');
-      grad.addColorStop(0.5, 'rgba(40, 15, 5, 0.08)');
-      grad.addColorStop(1, 'rgba(20, 5, 0, 0.15)');
+      grad.addColorStop(0, 'rgba(80, 32, 4, 0.16)');
+      grad.addColorStop(0.5, 'rgba(40, 12, 3, 0.06)');
+      grad.addColorStop(1, 'rgba(20, 4, 0, 0.12)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
@@ -875,9 +864,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function applyVignette(t: number) {
       const fade = smoothstep(16, 17.5, t);
-      const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.85);
+      const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.22, W / 2, H / 2, W * 0.82);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, `rgba(0,0,0,${0.55 + fade * 0.4})`);
+      grad.addColorStop(1, `rgba(0,0,0,${0.5 + fade * 0.45})`);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
     }
@@ -885,7 +874,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     function applyGrain() {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.4;
+      ctx.globalAlpha = 0.35;
       const ox = Math.floor(Math.random() * 64);
       const oy = Math.floor(Math.random() * 64);
       for (let x = -ox; x < W; x += grain.width) {
@@ -899,12 +888,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     // ============ CAMERA ============
 
     function updateCamera(t: number) {
-      cam.zoom = 1 + smoothstep(0, 17.5, t) * 0.04;
-      cam.rot = Math.sin(t * 0.13) * 0.004;
-      cam.x = Math.sin(t * 0.28) * 4;
-      cam.y = Math.cos(t * 0.22) * 3;
-      const tiltUp = smoothstep(6, 8, t) * 8 - smoothstep(11, 15, t) * 8;
-      cam.y -= tiltUp;
+      cam.zoom = 1 + smoothstep(0, 17.5, t) * 0.035;
+      cam.rot = Math.sin(t * 0.11) * 0.003;
+      cam.x = Math.sin(t * 0.25) * 3;
+      cam.y = Math.cos(t * 0.2) * 2;
     }
 
     function applyCamera() {
@@ -920,7 +907,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       spawnDust(t);
       spawnPetals(t);
       spawnTextParticles(t);
-      spawnBirds(t);
+      spawnIncenseSmoke(t);
       updateParticles(dt, t);
       updateCamera(t);
 
@@ -931,11 +918,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       applyCamera();
       drawBackground(t);
-      drawSunrise(t);
+      drawDivineLight(t);
       drawCitySilhouette(t);
-      drawTemple(t);
-      drawFlag(t);
-      drawFog(t);
+      drawCourtroomVisuals(t);
+      drawDiyas(t);
+      drawFogAndHaze(t);
       drawBellPulse(t);
       drawParticles();
       ctx.restore();
@@ -964,7 +951,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
       lastTime = now;
 
-      // Smart dynamic re-sampling to catch late loaded web-fonts
       if (t > 4 && lastSampleTime === 0) {
         sampleText();
         lastSampleTime = t;
@@ -972,7 +958,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       if (t < 9.7) birdsSpawned = false;
 
-      // Dynamic Handover Trigger at the end of the transition (around 16.5-17.5s)
       if (t >= 16.5 && !handoverTriggered) {
         handoverTriggered = true;
         if (onCompleteRef.current) {
@@ -983,7 +968,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       if (t < 17.5) {
         render(t, dt);
       } else {
-        // Hold pure black frame
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
