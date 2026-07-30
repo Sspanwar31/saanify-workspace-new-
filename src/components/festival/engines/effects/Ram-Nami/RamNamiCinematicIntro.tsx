@@ -4,10 +4,9 @@ import React, { useEffect, useRef } from 'react';
 
 interface Props {
   onComplete?: () => void;
-  imageUrl?: string;
 }
 
-// ============ EASING & MATH ============
+// ============ MATH & EASING ============
 const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const smoothstep = (a: number, b: number, t: number) => {
   if (b === a) return t < a ? 0 : 1;
@@ -54,31 +53,19 @@ class ParticlePool {
 
 // REALISTIC FIREWORKS DATA STRUCTURES
 interface FireworkRocket {
-  x: number; y: number;
-  targetY: number;
-  vx: number; vy: number;
-  color: string;
-  trail: { x: number; y: number; alpha: number }[];
+  x: number; y: number; targetY: number; vx: number; vy: number;
+  color: string; trail: { x: number; y: number; alpha: number }[];
 }
 
 interface FireworkSpark {
-  x: number; y: number;
-  vx: number; vy: number;
-  color: string;
-  alpha: number;
-  life: number; maxLife: number;
-  size: number;
-  gravity: number;
-  drag: number;
-  flicker: boolean;
+  x: number; y: number; vx: number; vy: number; color: string;
+  alpha: number; life: number; maxLife: number; size: number;
+  gravity: number; drag: number; flicker: boolean;
 }
 
 interface FloatingDiya {
-  x: number; y: number;
-  scale: number;
-  speed: number;
-  phase: number;
-  flamePulse: number;
+  x: number; y: number; scale: number; speed: number;
+  phase: number; flamePulse: number;
 }
 
 export default function RamNamiCinematicIntro({ onComplete }: Props) {
@@ -104,6 +91,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     let handoverTriggered = false;
     let lastSampleTime = 0;
 
+    // Offscreen canvases for cinematic post-processing
     const reflectCanvas = document.createElement('canvas');
     const rctx = reflectCanvas.getContext('2d')!;
     const bloom = document.createElement('canvas');
@@ -111,6 +99,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     const grain = document.createElement('canvas');
     const gctx = grain.getContext('2d')!;
 
+    // Pre-rendered sprites for performance (HDR Glow)
     function makeSprite(size: number, inner: string, mid: string): HTMLCanvasElement {
       const c = document.createElement('canvas');
       c.width = c.height = size;
@@ -123,15 +112,14 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       cx.fillRect(0, 0, size, size);
       return c;
     }
-    const dustSprite = makeSprite(32, 'rgba(255,215,130,1)', 'rgba(255,130,40,0.3)');
-    const sparkSprite = makeSprite(32, 'rgba(255,250,210,1)', 'rgba(255,160,60,0.35)');
+    const dustSprite = makeSprite(64, 'rgba(255,220,150,1)', 'rgba(255,140,40,0.4)');
+    const sparkSprite = makeSprite(64, 'rgba(255,250,220,1)', 'rgba(255,180,80,0.4)');
 
-    const pool = new ParticlePool(1200);
+    const pool = new ParticlePool(1500);
     const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
     let ramPoints: { x: number; y: number }[] = [];
     let diyas: FloatingDiya[] = [];
     
-    // FIREWORKS ARRAYS
     const rockets: FireworkRocket[] = [];
     const sparks: FireworkSpark[] = [];
     const activeFireworkBursts: { x: number; y: number; color: string; r: number; maxR: number; alpha: number }[] = [];
@@ -159,23 +147,23 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const d = id.data;
       for (let i = 0; i < d.length; i += 4) {
         const n = Math.random() * 255;
-        d[i] = n; d[i + 1] = n; d[i + 2] = n; d[i + 3] = 16;
+        d[i] = n; d[i + 1] = n; d[i + 2] = n; d[i + 3] = 18;
       }
       gctx.putImageData(id, 0, 0);
     }
 
     function initializeDiyas() {
       diyas.length = 0;
-      const count = 38;
+      const count = 45; // Increased density
       for (let i = 0; i < count; i++) {
         const progress = Math.random();
-        const y = lerp(H * 0.65, H * 0.96, progress);
-        const scale = lerp(0.18, 0.88, progress);
+        const y = lerp(H * 0.64, H * 0.98, progress);
+        const scale = lerp(0.15, 1.0, progress);
         diyas.push({
           x: Math.random() * W,
           y: y,
           scale,
-          speed: lerp(3, 10, progress) * (Math.random() < 0.5 ? -1 : 1),
+          speed: lerp(2, 12, progress) * (Math.random() < 0.5 ? -1 : 1),
           phase: Math.random() * Math.PI * 2,
           flamePulse: Math.random() * 10,
         });
@@ -185,7 +173,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     function sampleText() {
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
-      const fontSize = Math.min(W * 0.13, 125);
+      const fontSize = Math.min(W * 0.14, 140); // Bigger text
       tc.width = Math.floor(W); tc.height = Math.floor(fontSize * 2);
       tctx.fillStyle = 'white';
       tctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", sans-serif`;
@@ -207,9 +195,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 4, t);
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      const ir = Math.floor(lerp(4, 45, reveal));
-      const ig = Math.floor(lerp(2, 22, reveal));
-      const ib = Math.floor(lerp(5, 12, reveal));
+      const ir = Math.floor(lerp(4, 50, reveal));
+      const ig = Math.floor(lerp(2, 25, reveal));
+      const ib = Math.floor(lerp(5, 15, reveal));
       grad.addColorStop(0, '#020104');
       grad.addColorStop(0.6, `rgb(${ir},${ig},${ib})`);
       grad.addColorStop(1, '#0c0502');
@@ -223,31 +211,32 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
-      const sy = H * 0.44; 
-      const sunR = W * 0.22;
+      const sy = H * 0.42; 
+      const sunR = W * 0.25;
       const sunGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
-      sunGrad.addColorStop(0, `rgba(255, 230, 160, ${0.9 * vis})`);
-      sunGrad.addColorStop(0.2, `rgba(255, 170, 70, ${0.6 * vis})`);
-      sunGrad.addColorStop(0.5, `rgba(180, 80, 20, ${0.2 * vis})`);
+      sunGrad.addColorStop(0, `rgba(255, 240, 180, ${0.95 * vis})`);
+      sunGrad.addColorStop(0.2, `rgba(255, 180, 80, ${0.65 * vis})`);
+      sunGrad.addColorStop(0.5, `rgba(200, 90, 30, ${0.25 * vis})`);
       sunGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = sunGrad;
       ctx.fillRect(0, 0, W, H);
 
+      // Cinematic God Rays
       ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      const rayCount = 24;
+      ctx.globalCompositeOperation = 'lighter'; // HDR Blend
+      const rayCount = 28;
       const maxLen = Math.max(W, H) * 1.2;
       for (let i = 0; i < rayCount; i++) {
         const baseAngle = (i / rayCount) * Math.PI * 2;
         const angle = baseAngle + t * 0.04 + Math.sin(t * 0.3 + i * 0.8) * 0.03;
         const len = maxLen * (0.6 + 0.4 * Math.sin(t * 0.5 + i * 1.7));
         const flicker = 0.7 + 0.3 * Math.sin(t * 1.5 + i * 2.3);
-        const a = 0.08 * vis * flicker;
+        const a = 0.09 * vis * flicker;
         const ex = sx + Math.cos(angle) * len;
         const ey = sy + Math.sin(angle) * len;
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
-        grad.addColorStop(0, `rgba(255, 215, 140, ${a})`);
-        grad.addColorStop(0.4, `rgba(255, 150, 50, ${a * 0.5})`);
+        grad.addColorStop(0, `rgba(255, 220, 150, ${a})`);
+        grad.addColorStop(0.4, `rgba(255, 160, 60, ${a * 0.5})`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
         const w = 0.04 + Math.sin(t * 0.4 + i * 2) * 0.015;
@@ -261,7 +250,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ ULTRA-BHAVYA RAM MANDIR (3D DETAILED ARCHITECTURE) ============
+    // ============ HYPER-REALISTIC RAM MANDIR ============
 
     function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
       const reveal = smoothstep(2.5, 6, t);
@@ -269,38 +258,38 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
 
-      const s = Math.min(W, H) * 0.00125;
+      const s = Math.min(W, H) * 0.0013;
       const mx = W * 0.72; 
       const baseY = H * 0.64;
 
       targetCtx.save();
       targetCtx.globalAlpha = vis;
 
-      const goldGlow = `rgba(255, 190, 90, ${0.6 + 0.4 * Math.sin(t * 3)})`;
+      const goldGlow = `rgba(255, 200, 100, ${0.7 + 0.3 * Math.sin(t * 3)})`;
       const darkSandstone = '#2b1005';
       const midSandstone = '#6b3517';
       const lightSandstone = '#a35527';
 
-      // Golden Backlight Aura behind Ram Mandir
-      const auraGrad = targetCtx.createRadialGradient(mx, baseY - 120 * s, 10 * s, mx, baseY - 120 * s, 220 * s);
-      auraGrad.addColorStop(0, 'rgba(255, 170, 50, 0.45)');
-      auraGrad.addColorStop(0.5, 'rgba(200, 90, 20, 0.15)');
+      // Golden Backlight Aura
+      const auraGrad = targetCtx.createRadialGradient(mx, baseY - 140 * s, 10 * s, mx, baseY - 140 * s, 240 * s);
+      auraGrad.addColorStop(0, 'rgba(255, 180, 60, 0.5)');
+      auraGrad.addColorStop(0.5, 'rgba(200, 90, 20, 0.2)');
       auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       targetCtx.fillStyle = auraGrad;
-      targetCtx.fillRect(mx - 250 * s, baseY - 300 * s, 500 * s, 350 * s);
+      targetCtx.fillRect(mx - 300 * s, baseY - 350 * s, 600 * s, 400 * s);
 
-      // Inner Garbhagriha Light Glow (Glow from inside arches)
-      const garbhaGlow = targetCtx.createRadialGradient(mx, baseY - 35 * s, 0, mx, baseY - 35 * s, 70 * s);
-      garbhaGlow.addColorStop(0, 'rgba(255, 230, 150, 0.95)');
-      garbhaGlow.addColorStop(0.4, 'rgba(255, 140, 30, 0.6)');
+      // Inner Garbhagriha Light
+      const garbhaGlow = targetCtx.createRadialGradient(mx, baseY - 40 * s, 0, mx, baseY - 40 * s, 80 * s);
+      garbhaGlow.addColorStop(0, 'rgba(255, 240, 160, 1)');
+      garbhaGlow.addColorStop(0.4, 'rgba(255, 150, 40, 0.7)');
       garbhaGlow.addColorStop(1, 'rgba(0,0,0,0)');
       targetCtx.fillStyle = garbhaGlow;
-      targetCtx.fillRect(mx - 100 * s, baseY - 80 * s, 200 * s, 90 * s);
+      targetCtx.fillRect(mx - 120 * s, baseY - 90 * s, 240 * s, 100 * s);
 
-      // 1. GRAND BASE STEPS (JAGATI PLATFORM)
+      // 1. GRAND BASE STEPS
       for (let i = 0; i < 4; i++) {
-        const pw = (320 - i * 25) * s;
-        const ph = 10 * s;
+        const pw = (340 - i * 25) * s;
+        const ph = 12 * s;
         const px = mx - pw / 2;
         const py = baseY - (i + 1) * ph;
 
@@ -314,17 +303,17 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         targetCtx.fillStyle = platGrad;
         targetCtx.fillRect(px, py, pw, ph);
         targetCtx.strokeStyle = goldGlow;
-        targetCtx.lineWidth = 0.7 * s;
+        targetCtx.lineWidth = 0.8 * s;
         targetCtx.strokeRect(px, py, pw, ph);
       }
 
-      // 2. CARVED PILLARS & ARCHED ENTRANCE (MANDAP COLUMNS)
-      const pillarCols = [-110, -75, -40, 0, 40, 75, 110];
+      // 2. CARVED PILLARS & ARCHED ENTRANCE
+      const pillarCols = [-120, -80, -40, 0, 40, 80, 120];
       pillarCols.forEach((colX) => {
         const x = mx + colX * s;
-        const y = baseY - 85 * s;
-        const w = 9 * s;
-        const h = 45 * s;
+        const y = baseY - 95 * s;
+        const w = 10 * s;
+        const h = 50 * s;
 
         const pilGrad = targetCtx.createLinearGradient(x - w / 2, y, x + w / 2, y);
         pilGrad.addColorStop(0, '#1c0903');
@@ -334,26 +323,23 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         targetCtx.fillStyle = pilGrad;
         targetCtx.fillRect(x - w / 2, y, w, h);
 
-        // Pillar Capital / Carving Base
         targetCtx.fillStyle = '#ffb347';
-        targetCtx.fillRect(x - w * 0.7, y, w * 1.4, 3 * s);
-        targetCtx.fillRect(x - w * 0.7, y + h - 3 * s, w * 1.4, 3 * s);
+        targetCtx.fillRect(x - w * 0.7, y, w * 1.4, 4 * s);
+        targetCtx.fillRect(x - w * 0.7, y + h - 4 * s, w * 1.4, 4 * s);
       });
 
-      // Decorative Arches (Toran Gates)
       targetCtx.strokeStyle = goldGlow;
-      targetCtx.lineWidth = 1.2 * s;
+      targetCtx.lineWidth = 1.4 * s;
       for (let i = 0; i < pillarCols.length - 1; i++) {
         const x1 = mx + pillarCols[i] * s;
         const x2 = mx + pillarCols[i + 1] * s;
         targetCtx.beginPath();
-        targetCtx.arc((x1 + x2) / 2, baseY - 82 * s, (x2 - x1) / 2, Math.PI, 0);
+        targetCtx.arc((x1 + x2) / 2, baseY - 92 * s, (x2 - x1) / 2, Math.PI, 0);
         targetCtx.stroke();
       }
 
-      // 3. DETAILED SHIKHARA DRAWING FUNCTION (3D NAGARA STYLE)
+      // 3. DETAILED SHIKHARA (3D NAGARA STYLE)
       const drawNagaraShikhara = (cx: number, cy: number, w: number, h: number, isMain = false) => {
-        // Main Tower Curved Silhouette
         const shikhGrad = targetCtx.createLinearGradient(cx - w / 2, cy, cx + w / 2, cy);
         shikhGrad.addColorStop(0, '#240b03');
         shikhGrad.addColorStop(0.25, midSandstone);
@@ -371,11 +357,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         targetCtx.fill();
 
         targetCtx.strokeStyle = goldGlow;
-        targetCtx.lineWidth = 0.9 * s;
+        targetCtx.lineWidth = 1.0 * s;
         targetCtx.stroke();
 
-        // Horizontal Tier Carvings (Urushringa Ridges)
-        const tiers = isMain ? 10 : 6;
+        const tiers = isMain ? 12 : 8;
         for (let i = 1; i < tiers; i++) {
           const f = i / tiers;
           const ty = cy - h * f;
@@ -384,23 +369,21 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           targetCtx.beginPath();
           targetCtx.moveTo(cx - tw / 2, ty);
           targetCtx.lineTo(cx + tw / 2, ty);
-          targetCtx.strokeStyle = `rgba(255, 200, 110, ${0.3 + 0.4 * (1 - f)})`;
+          targetCtx.strokeStyle = `rgba(255, 210, 120, ${0.4 + 0.4 * (1 - f)})`;
           targetCtx.stroke();
 
-          // Miniature side spires (Urushringas for 3D depth)
-          if (isMain && i < 6 && i % 2 === 0) {
+          if (isMain && i < 7 && i % 2 === 0) {
             targetCtx.fillStyle = '#421d0d';
-            targetCtx.fillRect(cx - tw / 2 - 3 * s, ty, 3 * s, 6 * s);
-            targetCtx.fillRect(cx + tw / 2, ty, 3 * s, 6 * s);
+            targetCtx.fillRect(cx - tw / 2 - 4 * s, ty, 4 * s, 8 * s);
+            targetCtx.fillRect(cx + tw / 2, ty, 4 * s, 8 * s);
           }
         }
 
-        // CROWN: AMALAKA (Disc) & KALASH (Golden Spire)
+        // CROWN: AMALAKA & KALASH
         const topY = cy - h;
-        const amalakaW = w * 0.28;
-        const amalakaH = 8 * s;
+        const amalakaW = w * 0.3;
+        const amalakaH = 10 * s;
 
-        // Amalaka (Ribbed disc)
         targetCtx.fillStyle = '#d48031';
         targetCtx.beginPath();
         targetCtx.ellipse(cx, topY - amalakaH / 2, amalakaW / 2, amalakaH / 2, 0, 0, Math.PI * 2);
@@ -408,64 +391,60 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         targetCtx.strokeStyle = '#fff';
         targetCtx.stroke();
 
-        // Golden Kalash
         const kalashY = topY - amalakaH;
-        const kGrad = targetCtx.createLinearGradient(cx - 5 * s, kalashY, cx + 5 * s, kalashY);
+        const kGrad = targetCtx.createLinearGradient(cx - 6 * s, kalashY, cx + 6 * s, kalashY);
         kGrad.addColorStop(0, '#ffaa00');
         kGrad.addColorStop(0.5, '#ffffff');
         kGrad.addColorStop(1, '#ff8800');
 
         targetCtx.fillStyle = kGrad;
         targetCtx.beginPath();
-        targetCtx.arc(cx, kalashY - 6 * s, 5 * s, 0, Math.PI * 2);
+        targetCtx.arc(cx, kalashY - 7 * s, 6 * s, 0, Math.PI * 2);
         targetCtx.fill();
 
-        // Spike tip
         targetCtx.beginPath();
-        targetCtx.moveTo(cx, kalashY - 11 * s);
-        targetCtx.lineTo(cx - 2 * s, kalashY - 18 * s);
-        targetCtx.lineTo(cx + 2 * s, kalashY - 18 * s);
+        targetCtx.moveTo(cx, kalashY - 13 * s);
+        targetCtx.lineTo(cx - 3 * s, kalashY - 20 * s);
+        targetCtx.lineTo(cx + 3 * s, kalashY - 20 * s);
         targetCtx.closePath();
         targetCtx.fill();
 
-        return kalashY - 18 * s;
+        return kalashY - 20 * s;
       };
 
-      // DRAW THE 5 SHIKHARAS / MANDAPS OF RAM MANDIR
-      const topCenterY = drawNagaraShikhara(mx, baseY - 85 * s, 95 * s, 210 * s, true);      // Garbhagriha Main Shikhara
-      drawNagaraShikhara(mx - 60 * s, baseY - 85 * s, 55 * s, 125 * s); // Gudh Mandap
-      drawNagaraShikhara(mx + 60 * s, baseY - 85 * s, 55 * s, 125 * s); // Nritya Mandap
-      drawNagaraShikhara(mx - 110 * s, baseY - 85 * s, 42 * s, 85 * s); // Rang Mandap
-      drawNagaraShikhara(mx + 110 * s, baseY - 85 * s, 42 * s, 85 * s); // Sabha Mandap
+      const topCenterY = drawNagaraShikhara(mx, baseY - 95 * s, 105 * s, 230 * s, true);
+      drawNagaraShikhara(mx - 65 * s, baseY - 95 * s, 60 * s, 140 * s);
+      drawNagaraShikhara(mx + 65 * s, baseY - 95 * s, 60 * s, 140 * s);
+      drawNagaraShikhara(mx - 120 * s, baseY - 95 * s, 45 * s, 95 * s);
+      drawNagaraShikhara(mx + 120 * s, baseY - 95 * s, 45 * s, 95 * s);
 
-      // 4. DIVINE SAFFRON FLAG (DWAJA) WITH WAVING MOTION
-      const flagPoleTop = topCenterY - 20 * s;
+      // 4. DIVINE SAFFRON FLAG
+      const flagPoleTop = topCenterY - 25 * s;
       targetCtx.strokeStyle = '#d4aa70';
-      targetCtx.lineWidth = 2 * s;
+      targetCtx.lineWidth = 3 * s;
       targetCtx.beginPath();
       targetCtx.moveTo(mx, topCenterY);
       targetCtx.lineTo(mx, flagPoleTop);
       targetCtx.stroke();
 
-      // Triangular Flag
-      const wave = Math.sin(t * 7) * 4 * s;
+      const wave = Math.sin(t * 8) * 5 * s;
       targetCtx.fillStyle = '#ff5500';
       targetCtx.beginPath();
       targetCtx.moveTo(mx, flagPoleTop);
-      targetCtx.quadraticCurveTo(mx + 12 * s, flagPoleTop + wave, mx + 24 * s + wave, flagPoleTop + 8 * s);
-      targetCtx.quadraticCurveTo(mx + 12 * s, flagPoleTop + 16 * s + wave, mx, flagPoleTop + 18 * s);
+      targetCtx.quadraticCurveTo(mx + 15 * s, flagPoleTop + wave, mx + 30 * s + wave, flagPoleTop + 10 * s);
+      targetCtx.quadraticCurveTo(mx + 15 * s, flagPoleTop + 20 * s + wave, mx, flagPoleTop + 22 * s);
       targetCtx.closePath();
       targetCtx.fill();
 
-      // Sun emblem on Flag
       targetCtx.fillStyle = '#ffea00';
       targetCtx.beginPath();
-      targetCtx.arc(mx + 8 * s, flagPoleTop + 8 * s + wave * 0.5, 2.5 * s, 0, Math.PI * 2);
+      targetCtx.arc(mx + 10 * s, flagPoleTop + 10 * s + wave * 0.5, 3 * s, 0, Math.PI * 2);
       targetCtx.fill();
 
       targetCtx.restore();
     }
 
+    // ============ UNREAL ENGINE STYLE WATER ============
     function drawWater(t: number) {
       const reveal = smoothstep(1, 4.5, t);
       const fade = smoothstep(16, 17.5, t);
@@ -484,47 +463,49 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillRect(0, waterY, W, H - waterY);
 
       ctx.save();
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 0.55;
       ctx.translate(0, waterY * 2);
       ctx.scale(1, -1);
       
-      const sliceH = 4;
+      const sliceH = 3; // Finer slices for better reflection
       for (let y = waterY; y < H; y += sliceH) {
         const dist = y - waterY;
         const distanceFactor = dist / (H - waterY);
-        const ripple = Math.sin(y * 0.12 + t * 5.5) * 4 * distanceFactor + 
-                       Math.cos(y * 0.28 - t * 3.2) * 1.5 * distanceFactor;
+        // Layered ripples for hyper-realism
+        const ripple = Math.sin(y * 0.15 + t * 6.5) * 5 * distanceFactor + 
+                       Math.cos(y * 0.35 - t * 4.2) * 2 * distanceFactor;
         ctx.drawImage(reflectCanvas, 0, y, W, sliceH, ripple, y, W, sliceH);
       }
       ctx.restore();
 
-      ctx.globalCompositeOperation = 'screen';
+      ctx.globalCompositeOperation = 'lighter';
       for (let y = waterY + 2; y < H; y += 4) {
         const distanceFactor = (y - waterY) / (H - waterY);
-        const waveX = Math.sin(y * 0.12 + t * 4.5) * 5 * distanceFactor;
-        const lineAlpha = lerp(0.03, 0.14, distanceFactor);
+        const waveX = Math.sin(y * 0.12 + t * 4.5) * 6 * distanceFactor;
+        const lineAlpha = lerp(0.03, 0.16, distanceFactor);
 
-        ctx.strokeStyle = `rgba(255, 195, 90, ${lineAlpha})`;
+        ctx.strokeStyle = `rgba(255, 200, 100, ${lineAlpha})`;
         ctx.lineWidth = 0.8;
         ctx.beginPath();
         const mandirX = W * 0.72;
-        const refW = 150 * Math.min(W, H) * 0.0012;
+        const refW = 160 * Math.min(W, H) * 0.0013;
         ctx.moveTo(mandirX - (refW / 2) * distanceFactor + waveX, y);
         ctx.lineTo(mandirX + (refW / 2) * distanceFactor + waveX, y);
         ctx.stroke();
       }
 
+      // Firework Reflections
       activeFireworkBursts.forEach((b) => {
         if (b.y > waterY) return;
         const rY = waterY + (waterY - b.y); 
         const dy = rY - waterY;
-        const rfGrad = ctx.createRadialGradient(b.x, rY, 0, b.x, rY, b.r * 1.6);
-        rfGrad.addColorStop(0, `${b.color}${Math.floor(b.alpha * 45).toString(16).padStart(2, '0')}`);
+        const rfGrad = ctx.createRadialGradient(b.x, rY, 0, b.x, rY, b.r * 1.8);
+        rfGrad.addColorStop(0, `${b.color}${Math.floor(b.alpha * 50).toString(16).padStart(2, '0')}`);
         rfGrad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = rfGrad;
         
         ctx.beginPath();
-        ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.3, b.r * 0.24, 0, 0, Math.PI * 2);
+        ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.4, b.r * 0.25, 0, 0, Math.PI * 2);
         ctx.fill();
       });
 
@@ -547,19 +528,19 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         if (d.x < -40) d.x = W + 40;
         if (d.x > W + 40) d.x = -40;
 
-        const waveY = d.y + Math.sin(t * 1.5 + d.phase) * 1.8 * d.scale;
+        const waveY = d.y + Math.sin(t * 1.5 + d.phase) * 2.0 * d.scale;
         if (waveY < waterY) return;
 
-        const flamePulse = Math.sin(t * 15 + d.flamePulse) * 1;
-        const s = d.scale * 15; 
-        const flameH = (s * 1.5) + flamePulse * d.scale;
+        const flamePulse = Math.sin(t * 15 + d.flamePulse) * 1.5;
+        const s = d.scale * 16; 
+        const flameH = (s * 1.8) + flamePulse * d.scale;
 
         ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const trailH = s * 5;
+        ctx.globalCompositeOperation = 'lighter';
+        const trailH = s * 6;
         const trailGrad = ctx.createLinearGradient(d.x, waveY, d.x, waveY + trailH);
-        trailGrad.addColorStop(0, 'rgba(255, 170, 40, 0.4)');
-        trailGrad.addColorStop(0.5, 'rgba(255, 120, 20, 0.15)');
+        trailGrad.addColorStop(0, 'rgba(255, 180, 50, 0.5)');
+        trailGrad.addColorStop(0.5, 'rgba(255, 130, 30, 0.2)');
         trailGrad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = trailGrad;
         ctx.fillRect(d.x - s * 0.3, waveY, s * 0.6, trailH);
@@ -580,9 +561,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fill();
 
         const fGrad = ctx.createLinearGradient(d.x, waveY, d.x, waveY - flameH);
-        fGrad.addColorStop(0, 'rgba(255, 80, 0, 0.95)');
-        fGrad.addColorStop(0.4, 'rgba(255, 180, 30, 0.99)');
-        fGrad.addColorStop(0.8, 'rgba(255, 245, 190, 0.99)');
+        fGrad.addColorStop(0, 'rgba(255, 80, 0, 0.98)');
+        fGrad.addColorStop(0.4, 'rgba(255, 190, 40, 1)');
+        fGrad.addColorStop(0.8, 'rgba(255, 250, 200, 1)');
         fGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
         ctx.fillStyle = fGrad;
 
@@ -594,9 +575,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fill();
 
         ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        ctx.globalAlpha = 0.55 * vis;
-        ctx.drawImage(dustSprite, d.x - s * 1.5, waveY - flameH - s * 0.5, s * 3, s * 3);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.6 * vis;
+        ctx.drawImage(dustSprite, d.x - s * 1.8, waveY - flameH - s * 0.5, s * 3.6, s * 3.6);
         ctx.restore();
       });
 
@@ -624,12 +605,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ REALISTIC GRAND FIREWORKS SYSTEM ============
+    // ============ REALISTIC GRAND FIREWORKS ============
 
     function launchFireworks(t: number) {
       if (t < 4.0 || t > 15.5) return;
-      
-      // Launch a rocket upward periodically
       if (Math.random() < 0.06) {
         const startX = W * 0.1 + Math.random() * W * 0.8;
         const targetY = H * 0.1 + Math.random() * H * 0.28;
@@ -637,51 +616,38 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         const color = colors[Math.floor(Math.random() * colors.length)];
 
         rockets.push({
-          x: startX,
-          y: H * 0.62,
-          targetY,
+          x: startX, y: H * 0.62, targetY,
           vx: (Math.random() - 0.5) * 1.5,
-          vy: -6 - Math.random() * 3,
-          color,
-          trail: []
+          vy: -7 - Math.random() * 3,
+          color, trail: []
         });
       }
     }
 
     function createBurst(fx: number, fy: number, color: string) {
-      activeFireworkBursts.push({
-        x: fx, y: fy, color, r: 0, maxR: 50 + Math.random() * 45, alpha: 1
-      });
+      activeFireworkBursts.push({ x: fx, y: fy, color, r: 0, maxR: 60 + Math.random() * 50, alpha: 1 });
 
-      const particleCount = 80 + Math.floor(Math.random() * 40);
+      const particleCount = 90 + Math.floor(Math.random() * 50);
       for (let i = 0; i < particleCount; i++) {
         const ang = (i / particleCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
-        const spd = 1.8 + Math.random() * 4.5;
+        const spd = 2.0 + Math.random() * 5.0;
         sparks.push({
           x: fx, y: fy,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd,
-          color,
-          alpha: 1,
-          life: 0,
-          maxLife: 1.8 + Math.random() * 1.4,
-          size: 1.2 + Math.random() * 2.0,
-          gravity: 0.045,
-          drag: 0.982,
+          vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+          color, alpha: 1, life: 0, maxLife: 1.8 + Math.random() * 1.4,
+          size: 1.5 + Math.random() * 2.5, gravity: 0.05, drag: 0.982,
           flicker: Math.random() < 0.4
         });
       }
     }
 
     function updateFireworks(dt: number) {
-      // Update rockets moving upward
       for (let i = rockets.length - 1; i >= 0; i--) {
         const r = rockets[i];
-        r.x += r.vx;
-        r.y += r.vy;
+        r.x += r.vx; r.y += r.vy;
         r.trail.push({ x: r.x, y: r.y, alpha: 1 });
 
-        if (r.trail.length > 12) r.trail.shift();
+        if (r.trail.length > 14) r.trail.shift();
         r.trail.forEach(t => t.alpha -= 0.08);
 
         if (r.y <= r.targetY || r.vy >= 0) {
@@ -690,43 +656,32 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Update exploding sparks
       for (let i = sparks.length - 1; i >= 0; i--) {
         const s = sparks[i];
         s.life += dt;
-        s.x += s.vx;
-        s.y += s.vy;
+        s.x += s.vx; s.y += s.vy;
         s.vy += s.gravity; 
-        s.vx *= s.drag;
-        s.vy *= s.drag;
+        s.vx *= s.drag; s.vy *= s.drag;
+        s.alpha = 1 - s.life / s.maxLife;
 
-        const lr = s.life / s.maxLife;
-        s.alpha = 1 - lr;
-
-        if (s.life > s.maxLife || s.y > H * 0.62) {
-          sparks.splice(i, 1);
-        }
+        if (s.life > s.maxLife || s.y > H * 0.62) sparks.splice(i, 1);
       }
 
-      // Update light glow bursts
       for (let i = activeFireworkBursts.length - 1; i >= 0; i--) {
         const b = activeFireworkBursts[i];
         b.r += (b.maxR - b.r) * 0.14;
         b.alpha -= 0.035;
-        if (b.alpha <= 0) {
-          activeFireworkBursts.splice(i, 1);
-        }
+        if (b.alpha <= 0) activeFireworkBursts.splice(i, 1);
       }
     }
 
     function drawFireworks() {
       ctx.save();
-      ctx.globalCompositeOperation = 'screen';
+      ctx.globalCompositeOperation = 'lighter';
 
-      // Draw Rocket Ascent Trails
       rockets.forEach(r => {
         ctx.strokeStyle = r.color;
-        ctx.lineWidth = 2.2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
         if (r.trail.length > 0) {
           ctx.moveTo(r.trail[0].x, r.trail[0].y);
@@ -734,14 +689,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         }
         ctx.stroke();
 
-        // Rocket Head Spark
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(r.x, r.y, 2.5, 0, Math.PI * 2);
+        ctx.arc(r.x, r.y, 3, 0, Math.PI * 2);
         ctx.fill();
       });
 
-      // Draw Burst Radial Lights
       activeFireworkBursts.forEach((b) => {
         const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
         grad.addColorStop(0, `${b.color}cc`);
@@ -753,7 +706,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fill();
       });
 
-      // Draw Exploding Sparks
       sparks.forEach((s) => {
         const alpha = s.flicker ? (Math.random() < 0.5 ? s.alpha * 0.3 : s.alpha) : s.alpha;
         ctx.globalAlpha = clamp(alpha, 0, 1);
@@ -768,72 +720,50 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     // ============ PARTICLE SPAWN & UPDATES ============
 
     function spawnDust(t: number) {
-      const target = Math.floor(65 * smoothstep(0, 3, t));
+      const target = Math.floor(75 * smoothstep(0, 3, t));
       let count = 0;
       for (const p of pool.particles) if (p.active && p.type === 'dust') count++;
       let attempts = 0;
       while (count < target && attempts < 8) {
-        const p = pool.spawn();
-        if (!p) break;
-        p.type = 'dust';
-        p.x = Math.random() * W;
-        p.y = Math.random() * H;
-        p.vx = (Math.random() - 0.5) * 0.35;
-        p.vy = -0.05 - Math.random() * 0.3;
-        p.size = 0.5 + Math.random() * 1.4;
-        p.maxLife = 5 + Math.random() * 5;
-        p.life = Math.random() * p.maxLife * 0.4;
-        p.alpha = 0;
-        p.rot = Math.random() * Math.PI * 2;
-        p.rotSpd = (Math.random() - 0.5) * 0.5;
-        count++;
-        attempts++;
+        const p = pool.spawn(); if (!p) break;
+        p.type = 'dust'; p.x = Math.random() * W; p.y = Math.random() * H;
+        p.vx = (Math.random() - 0.5) * 0.4; p.vy = -0.05 - Math.random() * 0.35;
+        p.size = 0.6 + Math.random() * 1.6; p.maxLife = 5 + Math.random() * 5;
+        p.life = Math.random() * p.maxLife * 0.4; p.alpha = 0;
+        p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 0.5;
+        count++; attempts++;
       }
     }
 
     function spawnPetals(t: number) {
       const intensity = smoothstep(6.5, 9.5, t) * (1 - smoothstep(16, 17.5, t));
       if (intensity <= 0) return;
-      if (Math.random() > intensity * 0.35) return;
-      const p = pool.spawn();
-      if (!p) return;
-      p.type = 'petal';
-      p.x = Math.random() * W;
-      p.y = -20;
-      p.vx = (Math.random() - 0.5) * 0.7;
-      p.vy = 0.4 + Math.random() * 0.65;
-      p.size = 4.5 + Math.random() * 5.5;
-      p.maxLife = 18;
-      p.life = 0;
-      p.alpha = 0;
-      p.rot = Math.random() * Math.PI * 2;
-      p.rotSpd = (Math.random() - 0.5) * 2.2;
+      if (Math.random() > intensity * 0.4) return;
+      const p = pool.spawn(); if (!p) return;
+      p.type = 'petal'; p.x = Math.random() * W; p.y = -20;
+      p.vx = (Math.random() - 0.5) * 0.8; p.vy = 0.5 + Math.random() * 0.8;
+      p.size = 5 + Math.random() * 6; p.maxLife = 18; p.life = 0; p.alpha = 0;
+      p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
     function spawnTextParticles(t: number) {
       if (t < 7.5 || t > 9.5) return;
       if (ramPoints.length === 0) return;
-      const target = Math.min(ramPoints.length, 650);
+      const target = Math.min(ramPoints.length, 800);
       let active = 0;
       for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
       let attempts = 0;
       while (active < target && attempts < 10) {
-        const p = pool.spawn();
-        if (!p) break;
+        const p = pool.spawn(); if (!p) break;
         const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
         p.type = 'sparkle';
         p.x = W / 2 + (Math.random() - 0.5) * W * 1.3;
         p.y = H * 0.36 + (Math.random() - 0.5) * H * 1.1;
-        p.tx = W / 2 + pt.x;
-        p.ty = H * 0.36 + pt.y; 
+        p.tx = W / 2 + pt.x; p.ty = H * 0.36 + pt.y; 
         p.vx = 0; p.vy = 0;
-        p.size = 1.1 + Math.random() * 1.4;
-        p.maxLife = 7;
-        p.life = 0;
-        p.alpha = 0;
+        p.size = 1.2 + Math.random() * 1.6; p.maxLife = 7; p.life = 0; p.alpha = 0;
         p.delay = Math.random() * 1.1;
-        active++;
-        attempts++;
+        active++; attempts++;
       }
     }
 
@@ -845,37 +775,26 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const s = Math.min(W, H) * 0.0011;
       const emitterX = Math.random() < 0.5 ? W * 0.15 : W * 0.85;
 
-      const p = pool.spawn();
-      if (!p) return;
-      p.type = 'smoke';
-      p.x = emitterX;
-      p.y = H * 0.85 - 12 * s;
-      p.vx = (Math.random() - 0.5) * 0.25;
-      p.vy = -0.5 - Math.random() * 0.45;
-      p.size = 6 + Math.random() * 8;
-      p.maxLife = 4.5 + Math.random() * 3.5;
-      p.life = 0;
-      p.alpha = 0;
+      const p = pool.spawn(); if (!p) return;
+      p.type = 'smoke'; p.x = emitterX; p.y = H * 0.85 - 12 * s;
+      p.vx = (Math.random() - 0.5) * 0.25; p.vy = -0.5 - Math.random() * 0.45;
+      p.size = 6 + Math.random() * 8; p.maxLife = 4.5 + Math.random() * 3.5;
+      p.life = 0; p.alpha = 0;
     }
 
     function spawnBirds(t: number) {
       if (t < 9.8 || t > 10.5) return;
       if (birdsSpawned) return;
       birdsSpawned = true;
-      const count = 12;
+      const count = 14;
       for (let i = 0; i < count; i++) {
-        const p = pool.spawn();
-        if (!p) break;
+        const p = pool.spawn(); if (!p) break;
         p.type = 'bird';
         p.x = -60 - i * 18 + Math.random() * 15;
         p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12;
-        p.vx = 2.2 + Math.random() * 0.6;
-        p.vy = (Math.random() - 0.5) * 0.15;
-        p.size = 7 + Math.random() * 4;
-        p.maxLife = 25;
-        p.life = 0;
-        p.alpha = 0.65;
-        p.flap = Math.random() * Math.PI * 2;
+        p.vx = 2.2 + Math.random() * 0.6; p.vy = (Math.random() - 0.5) * 0.15;
+        p.size = 7 + Math.random() * 4; p.maxLife = 25; p.life = 0;
+        p.alpha = 0.65; p.flap = Math.random() * Math.PI * 2;
       }
     }
 
@@ -885,10 +804,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         p.life += dt;
 
         if (p.type === 'dust') {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vx += (Math.random() - 0.5) * 0.03;
-          p.vy += -0.002;
+          p.x += p.vx; p.y += p.vy;
+          p.vx += (Math.random() - 0.5) * 0.03; p.vy += -0.002;
           p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
           const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17.5, t));
@@ -898,26 +815,18 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           }
         } else if (p.type === 'petal') {
           p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
-          p.y += p.vy;
-          p.rot += p.rotSpd * dt;
+          p.y += p.vy; p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
           p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
           if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p);
         } else if (p.type === 'sparkle') {
-          if (p.delay > 0) {
-            p.delay -= dt;
-            p.alpha = 0;
-            continue;
-          }
-          const dx = p.tx - p.x;
-          const dy = p.ty - p.y;
+          if (p.delay > 0) { p.delay -= dt; p.alpha = 0; continue; }
+          const dx = p.tx - p.x, dy = p.ty - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 1.5) {
             const speed = clamp(dist * 4.5, 90, 520);
-            p.vx = (dx / dist) * speed;
-            p.vy = (dy / dist) * speed;
-            p.x += p.vx * dt;
-            p.y += p.vy * dt;
+            p.vx = (dx / dist) * speed; p.vy = (dy / dist) * speed;
+            p.x += p.vx * dt; p.y += p.vy * dt;
             p.alpha = clamp(p.alpha + dt * 1.6, 0, 0.7);
           } else {
             p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.35;
@@ -928,15 +837,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           if (t > 14.5 && p.alpha < 0.01) pool.release(p);
         } else if (p.type === 'smoke') {
           p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
-          p.y += p.vy;
-          p.size += dt * 5.2; 
+          p.y += p.vy; p.size += dt * 5.2; 
           const lr = p.life / p.maxLife;
           p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18;
           if (p.life > p.maxLife || p.y < -30) pool.release(p);
         } else if (p.type === 'bird') {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.flap += dt * 9;
+          p.x += p.vx; p.y += p.vy; p.flap += dt * 9;
           p.alpha = 0.65 * (1 - smoothstep(15, 16, t));
           if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
         }
@@ -945,7 +851,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function drawParticles() {
       ctx.save();
-      ctx.globalCompositeOperation = 'screen';
+      ctx.globalCompositeOperation = 'lighter';
       for (const p of pool.particles) {
         if (!p.active || p.alpha <= 0.01) continue;
         if (p.type === 'dust') {
@@ -964,8 +870,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         if (!p.active || p.alpha <= 0.01) continue;
         if (p.type === 'petal') {
           ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.rotate(p.rot);
+          ctx.translate(p.x, p.y); ctx.rotate(p.rot);
           ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; 
           ctx.beginPath();
           ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
@@ -1009,13 +914,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const fontSize = Math.min(W * 0.12, 125);
       const cy = H * 0.32;
       ctx.save();
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      ctx.globalCompositeOperation = 'screen';
+      ctx.globalCompositeOperation = 'lighter';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2);
-      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.16 * intensity})`);
+      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.18 * intensity})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
@@ -1056,40 +960,36 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const line1 = 'राम नवमी की';
       const line2 = 'हार्दिक शुभकामनाएँ';
       ctx.save();
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = `600 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      ctx.globalCompositeOperation = 'screen';
+      ctx.globalCompositeOperation = 'lighter';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 3.5);
-      haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.11 * vis})`);
+      haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.12 * vis})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
       ctx.globalCompositeOperation = 'source-over';
-      const y1 = cy - fontSize * 0.65;
-      const y2 = cy + fontSize * 0.65;
+      const y1 = cy - fontSize * 0.65, y2 = cy + fontSize * 0.65;
 
-      ctx.shadowBlur = 24;
-      ctx.shadowColor = `rgba(255, 160, 50, ${vis})`;
+      // 3D Gold Emboss Layering
+      ctx.shadowBlur = 24; ctx.shadowColor = `rgba(255, 160, 50, ${vis})`;
       ctx.fillStyle = `rgba(180, 90, 20, ${vis * 0.5})`;
-      ctx.fillText(line1, W / 2, y1);
-      ctx.fillText(line2, W / 2, y2);
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = `rgba(255, 190, 80, ${vis})`;
+      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
+      
+      ctx.shadowBlur = 12; ctx.shadowColor = `rgba(255, 190, 80, ${vis})`;
       ctx.fillStyle = `rgba(220, 140, 50, ${vis * 0.7})`;
-      ctx.fillText(line1, W / 2, y1);
-      ctx.fillText(line2, W / 2, y2);
-      ctx.shadowBlur = 6;
-      ctx.shadowColor = `rgba(255, 220, 130, ${vis})`;
+      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
+      
+      ctx.shadowBlur = 6; ctx.shadowColor = `rgba(255, 220, 130, ${vis})`;
       ctx.fillStyle = `rgba(255, 220, 150, ${vis})`;
-      ctx.fillText(line1, W / 2, y1);
-      ctx.fillText(line2, W / 2, y2);
+      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
+      
+      // Highlight for 3D pop effect
       ctx.shadowBlur = 0;
       ctx.fillStyle = `rgba(255, 245, 210, ${vis * 0.5})`;
-      ctx.fillText(line1, W / 2 - 0.5, y1 - 0.5);
-      ctx.fillText(line2, W / 2 - 0.5, y2 - 0.5);
+      ctx.fillText(line1, W / 2 - 0.5, y1 - 0.5); ctx.fillText(line2, W / 2 - 0.5, y2 - 0.5);
       ctx.restore();
     }
 
@@ -1097,12 +997,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function applyBloom() {
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(5px) brightness(1.25)';
+      bctx.filter = 'blur(6px) brightness(1.4)';
       bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
       ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = 0.5;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.55;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(bloom, 0, 0, W, H);
       ctx.restore();
@@ -1112,9 +1012,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, 'rgba(80, 32, 4, 0.16)');
-      grad.addColorStop(0.5, 'rgba(40, 12, 3, 0.06)');
-      grad.addColorStop(1, 'rgba(20, 4, 0, 0.12)');
+      grad.addColorStop(0, 'rgba(80, 32, 4, 0.18)');
+      grad.addColorStop(0.5, 'rgba(40, 12, 3, 0.08)');
+      grad.addColorStop(1, 'rgba(20, 4, 0, 0.14)');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
@@ -1122,9 +1022,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function applyVignette(t: number) {
       const fade = smoothstep(16, 17.5, t);
-      const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.22, W / 2, H / 2, W * 0.82);
+      const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.22, W / 2, H / 2, W * 0.85);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, `rgba(0,0,0,${0.5 + fade * 0.45})`);
+      grad.addColorStop(1, `rgba(0,0,0,${0.55 + fade * 0.4})`);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
     }
@@ -1132,24 +1032,20 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     function applyGrain() {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.35;
-      const ox = Math.floor(Math.random() * 64);
-      const oy = Math.floor(Math.random() * 64);
+      ctx.globalAlpha = 0.4;
+      const ox = Math.floor(Math.random() * 64), oy = Math.floor(Math.random() * 64);
       for (let x = -ox; x < W; x += grain.width) {
-        for (let y = -oy; y < H; y += grain.height) {
-          ctx.drawImage(grain, x, y);
-        }
+        for (let y = -oy; y < H; y += grain.height) ctx.drawImage(grain, x, y);
       }
       ctx.restore();
     }
 
     // ============ CAMERA ============
-
     function updateCamera(t: number) {
-      cam.zoom = 1 + smoothstep(0, 17.5, t) * 0.035;
-      cam.rot = Math.sin(t * 0.11) * 0.003;
-      cam.x = Math.sin(t * 0.25) * 3;
-      cam.y = Math.cos(t * 0.2) * 2;
+      cam.zoom = 1 + smoothstep(0, 17.5, t) * 0.045;
+      cam.rot = Math.sin(t * 0.11) * 0.004;
+      cam.x = Math.sin(t * 0.25) * 4;
+      cam.y = Math.cos(t * 0.2) * 3;
     }
 
     function applyCamera() {
@@ -1162,17 +1058,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     // ============ RENDER PIPELINE ============
 
     function render(t: number, dt: number) {
-      spawnDust(t);
-      spawnPetals(t);
-      spawnTextParticles(t);
-      spawnIncenseSmoke(t);
-      spawnBirds(t);
-      launchFireworks(t);
-      updateFireworks(dt);
-      updateParticles(dt, t);
-      updateCamera(t);
+      spawnDust(t); spawnPetals(t); spawnTextParticles(t);
+      spawnIncenseSmoke(t); spawnBirds(t); launchFireworks(t);
+      updateFireworks(dt); updateParticles(dt, t); updateCamera(t);
 
-      // Render temple to reflection canvas for Saryu river reflection
+      // Render temple to reflection canvas
       rctx.clearRect(0, 0, W, H);
       drawRamMandir(t, rctx);
 
@@ -1184,10 +1074,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       applyCamera();
       drawBackground(t);
       drawDivineLight(t);
-      drawWater(t);                   // Saryu River with Water Reflections
-      drawRamMandir(t, ctx);          // Ultra-Bhavya Ram Mandir Architecture
-      drawFireworks();                // Realistic Upward Rocket Fireworks
-      updateAndDrawFloatingDiyas(t);  // Floating water diyas
+      drawWater(t);
+      drawRamMandir(t, ctx);
+      drawFireworks();
+      updateAndDrawFloatingDiyas(t);
       drawFogAndHaze(t);
       drawParticles();
       ctx.restore();
@@ -1225,9 +1115,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       if (t >= 16.5 && !handoverTriggered) {
         handoverTriggered = true;
-        if (onCompleteRef.current) {
-          onCompleteRef.current();
-        }
+        if (onCompleteRef.current) onCompleteRef.current();
       }
 
       if (t < 17.5) {
