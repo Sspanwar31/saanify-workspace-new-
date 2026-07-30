@@ -18,7 +18,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 
 // ============ PARTICLE SYSTEM ============
-type PType = 'dust' | 'petal' | 'sparkle' | 'smoke';
+type PType = 'dust' | 'petal' | 'sparkle' | 'smoke' | 'bird';
 
 interface Particle {
   idx: number;
@@ -30,6 +30,7 @@ interface Particle {
   type: PType;
   tx: number; ty: number;
   rot: number; rotSpd: number;
+  flap: number;
   active: boolean;
   delay: number;
 }
@@ -43,7 +44,7 @@ class ParticlePool {
         idx: i, x: 0, y: 0, vx: 0, vy: 0,
         size: 1, life: 0, maxLife: 1, alpha: 0,
         type: 'dust', tx: 0, ty: 0,
-        rot: 0, rotSpd: 0,
+        rot: 0, rotSpd: 0, flap: 0,
         active: false, delay: 0
       });
       this.free.push(i);
@@ -84,7 +85,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     let rafId = 0;
     let running = true;
     let lastTime = 0;
-    let birdsSpawned = false; // 🚀 FIXED: Added missing variable declaration
+    let birdsSpawned = false; 
     let handoverTriggered = false;
     let lastSampleTime = 0;
 
@@ -225,6 +226,42 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     // ============ NOBLE COURT & DARBAR SILHOUETTES ============
+
+    function drawCitySilhouette(t: number) {
+      const reveal = smoothstep(2, 4.5, t);
+      const fade = smoothstep(16, 17.5, t);
+      if (reveal <= 0) return;
+      const vis = reveal * (1 - fade);
+      ctx.save();
+      ctx.globalAlpha = vis * 0.85;
+      ctx.fillStyle = '#0a0508';
+      const baseY = H * 0.74;
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      ctx.lineTo(0, baseY);
+      const buildings = [
+        [0.02, 0.05, 0.04, 0], [0.08, 0.06, 0.06, 1], [0.15, 0.04, 0.04, 0],
+        [0.20, 0.06, 0.07, 1], [0.27, 0.04, 0.035, 0], [0.32, 0.03, 0.05, 1],
+        [0.66, 0.04, 0.045, 0], [0.71, 0.06, 0.06, 1], [0.78, 0.04, 0.035, 0],
+        [0.83, 0.07, 0.055, 1], [0.91, 0.05, 0.045, 0], [0.97, 0.03, 0.04, 0]
+      ];
+      for (const [bx, bw, bh, ty] of buildings) {
+        const px = bx * W, pw = bw * W, ph = bh * H;
+        ctx.lineTo(px, baseY);
+        ctx.lineTo(px, baseY - ph);
+        if (ty === 1) {
+          ctx.lineTo(px + pw / 2, baseY - ph - pw * 0.4);
+          ctx.lineTo(px + pw, baseY - ph);
+        } else {
+          ctx.lineTo(px + pw, baseY - ph);
+        }
+      }
+      ctx.lineTo(W, baseY);
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
 
     function drawDarbarPillars(s: number, vis: number) {
       ctx.save();
@@ -601,6 +638,27 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       p.alpha = 0;
     }
 
+    function spawnBirds(t: number) {
+      if (t < 9.8 || t > 10.5) return;
+      if (birdsSpawned) return;
+      birdsSpawned = true;
+      const count = 12;
+      for (let i = 0; i < count; i++) {
+        const p = pool.spawn();
+        if (!p) break;
+        p.type = 'bird';
+        p.x = -60 - i * 18 + Math.random() * 15;
+        p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12;
+        p.vx = 2.2 + Math.random() * 0.6;
+        p.vy = (Math.random() - 0.5) * 0.15;
+        p.size = 7 + Math.random() * 4;
+        p.maxLife = 25;
+        p.life = 0;
+        p.alpha = 0.65;
+        p.flap = Math.random() * Math.PI * 2;
+      }
+    }
+
     function updateParticles(dt: number, t: number) {
       for (const p of pool.particles) {
         if (!p.active) continue;
@@ -655,6 +713,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           const lr = p.life / p.maxLife;
           p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18;
           if (p.life > p.maxLife || p.y < -30) pool.release(p);
+        } else if (p.type === 'bird') {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.flap += dt * 9;
+          p.alpha = 0.65 * (1 - smoothstep(15, 16, t));
+          if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
         }
       }
     }
@@ -696,6 +760,21 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           ctx.fillStyle = rad;
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (p.type === 'bird') {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.fillStyle = `rgba(10, 5, 2, ${p.alpha})`;
+          const flap = Math.sin(p.flap) * 0.7;
+          const sz = p.size;
+          ctx.beginPath();
+          ctx.moveTo(-sz, 0);
+          ctx.quadraticCurveTo(-sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), 0, 0);
+          ctx.quadraticCurveTo(sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), sz, 0);
+          ctx.quadraticCurveTo(sz * 0.4, sz * 0.15, 0, sz * 0.1);
+          ctx.quadraticCurveTo(-sz * 0.4, sz * 0.15, -sz, 0);
+          ctx.closePath();
           ctx.fill();
           ctx.restore();
         }
@@ -878,7 +957,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       applyCamera();
       drawBackground(t);
       drawDivineLight(t);
-      drawCitySilhouette(t);
+      drawCitySilhouette(t); // <-- FIXED: ReferenceError resolved
       drawCourtroomVisuals(t);
       drawDiyas(t);
       drawFogAndHaze(t);
