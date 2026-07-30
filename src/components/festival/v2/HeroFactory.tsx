@@ -16,6 +16,7 @@ import NavratriHero from '../heroes/NavratriHero';
 import Crystal2027Hero from '../heroes/Crystal2027Hero'; // 🚀 
 // 🚀 नाम सुधार दिया गया है (VALENTINESDAY की जगह GlassmorphicHeartHero किया गया)
 import GlassmorphicHeartHero from '../heroes/GlassmorphicHeartHero';  
+import IndependenceDayGreeting from '../heroes/IndependenceDayGreeting'; // 🚀 नया: लाल किला और तिरंगा कंपोनेंट इम्पोर्ट किया
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
 const ComponentMap: any = {
@@ -48,7 +49,7 @@ const ComponentMap: any = {
   'HARVEST_POT': <span className="text-[110px] drop-shadow-2xl">🏺</span>,
   'HOLY_KAABA': <span className="text-[110px] drop-shadow-2xl">🕋</span>,
   'NY_COUNTDOWN':  <Crystal2027Hero />, // 🚀 अब घड़ी की जगह हमारा खुद का 3D क्रिस्टल 2027 रेंडर होगा!
-  'NATIONAL_PRIDE': <span className="text-[110px] drop-shadow-2xl">🏛️</span>,
+  'NATIONAL_PRIDE': <IndependenceDayGreeting />,
   'SIKH_KHANDA': <span className="text-[110px] drop-shadow-2xl">☬</span>,
  // 🚀 एक्टिवेशन कीज़: वैलेंटाइन और ग्लास हार्ट के लिए
   'VALENTINE_HEART': <GlassmorphicHeartHero onOpenLetter={() => {}} />,
