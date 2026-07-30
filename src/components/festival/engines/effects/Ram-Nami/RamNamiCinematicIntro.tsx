@@ -1,7 +1,10 @@
+'use client';
+
 import React, { useEffect, useRef } from 'react';
 
-interface IntroProps {
+interface Props {
   onComplete?: () => void;
+  imageUrl?: string;
 }
 
 // ============ EASING & MATH ============
@@ -14,8 +17,8 @@ const smoothstep = (a: number, b: number, t: number) => {
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 
-// ============ POOLS & STATE ============
-type PType = 'dust' | 'petal' | 'text' | 'bird' | 'firework';
+// ============ PARTICLE SYSTEM ============
+type PType = 'dust' | 'petal' | 'sparkle' | 'smoke' | 'bird';
 
 interface Particle {
   idx: number; x: number; y: number; vx: number; vy: number;
@@ -49,9 +52,30 @@ class ParticlePool {
   }
 }
 
-const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
+interface FireworkSpark {
+  x: number; y: number;
+  vx: number; vy: number;
+  color: string;
+  alpha: number;
+  life: number; maxLife: number;
+  size: number;
+}
+
+interface FloatingDiya {
+  x: number; y: number;
+  scale: number;
+  speed: number;
+  phase: number;
+  flamePulse: number;
+}
+
+export default function RamNamiCinematicIntro({ onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -64,8 +88,10 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
     let rafId = 0;
     let running = true;
     let lastTime = 0;
+    let birdsSpawned = false;
+    let handoverTriggered = false;
+    let lastSampleTime = 0;
 
-    // Offscreen canvases for post-processing and reflections
     const reflectCanvas = document.createElement('canvas');
     const rctx = reflectCanvas.getContext('2d')!;
     const bloom = document.createElement('canvas');
@@ -85,14 +111,15 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
       cx.fillRect(0, 0, size, size);
       return c;
     }
-    const dustSprite = makeSprite(32, 'rgba(255,220,150,1)', 'rgba(255,140,40,0.4)');
-    const sparkSprite = makeSprite(32, 'rgba(255,250,220,1)', 'rgba(255,180,80,0.4)');
+    const dustSprite = makeSprite(32, 'rgba(255,215,130,1)', 'rgba(255,130,40,0.3)');
+    const sparkSprite = makeSprite(32, 'rgba(255,250,210,1)', 'rgba(255,160,60,0.35)');
 
-    const pool = new ParticlePool(1500);
+    const pool = new ParticlePool(1200);
     const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
     let ramPoints: { x: number; y: number }[] = [];
-    let diyas: { x: number; z: number; y: number; phase: number }[] = [];
-    let birdsSpawned = false;
+    let diyas: FloatingDiya[] = [];
+    const sparks: FireworkSpark[] = [];
+    const activeFireworkBursts: { x: number; y: number; color: string; r: number; maxR: number; alpha: number }[] = [];
 
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -109,7 +136,7 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
       grain.width = 256; grain.height = 256;
       generateGrain();
       sampleText();
-      generateDiyas();
+      initializeDiyas();
     }
 
     function generateGrain() {
@@ -117,15 +144,33 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
       const d = id.data;
       for (let i = 0; i < d.length; i += 4) {
         const n = Math.random() * 255;
-        d[i] = n; d[i + 1] = n; d[i + 2] = n; d[i + 3] = 25;
+        d[i] = n; d[i + 1] = n; d[i + 2] = n; d[i + 3] = 16;
       }
       gctx.putImageData(id, 0, 0);
+    }
+
+    function initializeDiyas() {
+      diyas.length = 0;
+      const count = 38;
+      for (let i = 0; i < count; i++) {
+        const progress = Math.random();
+        const y = lerp(H * 0.65, H * 0.96, progress);
+        const scale = lerp(0.18, 0.88, progress);
+        diyas.push({
+          x: Math.random() * W,
+          y: y,
+          scale,
+          speed: lerp(3, 10, progress) * (Math.random() < 0.5 ? -1 : 1),
+          phase: Math.random() * Math.PI * 2,
+          flamePulse: Math.random() * 10,
+        });
+      }
     }
 
     function sampleText() {
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
-      const fontSize = Math.min(W * 0.14, 160);
+      const fontSize = Math.min(W * 0.13, 125);
       tc.width = Math.floor(W); tc.height = Math.floor(fontSize * 2);
       tctx.fillStyle = 'white';
       tctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", sans-serif`;
@@ -142,59 +187,55 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
       }
     }
 
-    function generateDiyas() {
-      diyas = [];
-      for (let i = 0; i < 40; i++) {
-        const z = Math.random();
-        diyas.push({
-          x: (Math.random() - 0.5) * 1.4,
-          z: z, 
-          y: 0,
-          phase: Math.random() * Math.PI * 2
-        });
-      }
-    }
-
     // ============ DRAW FUNCTIONS ============
 
     function drawBackground(t: number) {
-      const reveal = smoothstep(0, 5, t);
-      const cx = W * 0.5, cy = H * 0.55;
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.9);
-      const ir = Math.floor(lerp(6, 85, reveal));
-      const ig = Math.floor(lerp(3, 35, reveal));
-      const ib = Math.floor(lerp(10, 22, reveal));
-      grad.addColorStop(0, `rgb(${ir},${ig},${ib})`);
-      grad.addColorStop(0.4, `rgb(${Math.floor(ir * 0.4)},${Math.floor(ig * 0.3)},${Math.floor(ib * 0.6)})`);
-      grad.addColorStop(1, '#020104');
+      const reveal = smoothstep(0, 4, t);
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      const ir = Math.floor(lerp(4, 45, reveal));
+      const ig = Math.floor(lerp(2, 22, reveal));
+      const ib = Math.floor(lerp(5, 12, reveal));
+      grad.addColorStop(0, '#020104');
+      grad.addColorStop(0.6, `rgb(${ir},${ig},${ib})`);
+      grad.addColorStop(1, '#0c0502');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
     }
 
-    function drawGodRays(t: number) {
-      const reveal = smoothstep(2, 4.5, t);
-      const fade = smoothstep(16.5, 18, t);
+    function drawDivineLight(t: number) {
+      const reveal = smoothstep(1.8, 5, t);
+      const fade = smoothstep(16, 17.5, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
-      const sx = W * 0.5, sy = H * 0.55;
-      
+      const sx = W * 0.5;
+      const sy = H * 0.44; 
+      const sunR = W * 0.22;
+      const sunGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
+      sunGrad.addColorStop(0, `rgba(255, 230, 160, ${0.9 * vis})`);
+      sunGrad.addColorStop(0.2, `rgba(255, 170, 70, ${0.6 * vis})`);
+      sunGrad.addColorStop(0.5, `rgba(180, 80, 20, ${0.2 * vis})`);
+      sunGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sunGrad;
+      ctx.fillRect(0, 0, W, H);
+
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       const rayCount = 24;
-      const maxLen = Math.max(W, H) * 1.3;
+      const maxLen = Math.max(W, H) * 1.2;
       for (let i = 0; i < rayCount; i++) {
         const baseAngle = (i / rayCount) * Math.PI * 2;
-        const angle = baseAngle + t * 0.03 + Math.sin(t * 0.4 + i * 0.7) * 0.04;
-        const len = maxLen * (0.55 + 0.45 * Math.sin(t * 0.6 + i * 1.9));
-        const flicker = 0.5 + 0.5 * Math.sin(t * 1.2 + i * 2.3);
+        const angle = baseAngle + t * 0.04 + Math.sin(t * 0.3 + i * 0.8) * 0.03;
+        const len = maxLen * (0.6 + 0.4 * Math.sin(t * 0.5 + i * 1.7));
+        const flicker = 0.7 + 0.3 * Math.sin(t * 1.5 + i * 2.3);
         const a = 0.08 * vis * flicker;
-        if (a < 0.005) continue;
-        const ex = sx + Math.cos(angle) * len, ey = sy + Math.sin(angle) * len;
+        const ex = sx + Math.cos(angle) * len;
+        const ey = sy + Math.sin(angle) * len;
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
-        grad.addColorStop(0, `rgba(255, 210, 130, ${a})`);
-        grad.addColorStop(1, 'rgba(255, 130, 40, 0)');
+        grad.addColorStop(0, `rgba(255, 215, 140, ${a})`);
+        grad.addColorStop(0.4, `rgba(255, 150, 50, ${a * 0.5})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
-        const w = 0.035 + Math.sin(t * 0.5 + i * 2.1) * 0.015;
+        const w = 0.04 + Math.sin(t * 0.4 + i * 2) * 0.015;
         ctx.beginPath();
         ctx.moveTo(sx, sy);
         ctx.lineTo(sx + Math.cos(angle - w) * len, sy + Math.sin(angle - w) * len);
@@ -205,275 +246,464 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
       ctx.restore();
     }
 
-    function drawTemple(t: number, targetCtx: CanvasRenderingContext2D) {
-      const edge = smoothstep(2.5, 5, t);
-      const full = smoothstep(10, 12, t);
-      const fade = smoothstep(16.5, 18, t);
-      if (edge <= 0 && full <= 0) return;
-      const vis = 1 - fade;
-      const cx = W * 0.5;
-      const baseY = H * 0.65;
+    function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
+      const reveal = smoothstep(2.5, 6, t);
+      const fade = smoothstep(16, 17.5, t);
+      if (reveal <= 0) return;
+      const vis = reveal * (1 - fade);
+
       const s = Math.min(W, H) * 0.0012;
-      
+      const mx = W * 0.72; 
+      const baseY = H * 0.64;
+
       targetCtx.save();
       targetCtx.globalAlpha = vis;
-      
-      const platColor = 'rgba(16, 9, 5, 0.95)';
-      const edgeColor = `rgba(255, 180, 90, ${edge * 0.7 + full * 0.3})`;
-      targetCtx.fillStyle = platColor;
-      targetCtx.strokeStyle = edgeColor;
-      targetCtx.lineWidth = 1.2;
 
-      const platW = 420 * s;
-      const tiers = [{ w: platW, h: 25 * s }, { w: platW * 0.85, h: 20 * s }, { w: platW * 0.75, h: 20 * s }];
-      let curY = baseY;
-      for (const tier of tiers) {
+      // Realistic Sandstone texture shaders (3D depth)
+      const stoneColor = '#502413';
+      const highlightColor = `rgba(255, 185, 90, ${0.45 * (0.6 + 0.4 * Math.sin(t * 4))})`;
+
+      const drawShikhara = (tx: number, ty: number, tw: number, th: number) => {
+        const shikhGrad = targetCtx.createLinearGradient(tx - tw / 2, ty, tx + tw / 2, ty);
+        shikhGrad.addColorStop(0, '#321408');
+        shikhGrad.addColorStop(0.3, '#743d1a');
+        shikhGrad.addColorStop(0.5, '#9e5a2c');
+        shikhGrad.addColorStop(0.8, '#743d1a');
+        shikhGrad.addColorStop(1, '#2c0f05');
+
+        targetCtx.fillStyle = shikhGrad;
         targetCtx.beginPath();
-        targetCtx.rect(cx - tier.w / 2, curY - tier.h, tier.w, tier.h);
-        targetCtx.fill(); targetCtx.stroke();
-        curY -= tier.h;
-      }
-      const platTop = curY;
+        targetCtx.moveTo(tx - tw / 2, ty);
+        targetCtx.bezierCurveTo(tx - tw / 2, ty - th * 0.35, tx - tw * 0.15, ty - th * 0.78, tx - tw * 0.08, ty - th);
+        targetCtx.lineTo(tx + tw * 0.08, ty - th);
+        targetCtx.bezierCurveTo(tx + tw * 0.15, ty - th * 0.78, tx + tw / 2, ty - th * 0.35, tx + tw / 2, ty);
+        targetCtx.closePath();
+        targetCtx.fill();
 
-      const mandaW = 300 * s, mandaH = 110 * s;
+        targetCtx.strokeStyle = highlightColor;
+        targetCtx.lineWidth = 0.8 * s;
+        targetCtx.stroke();
+
+        // Tier carvings
+        for (let i = 1; i < 7; i++) {
+          const f = i / 7;
+          const y = ty - th * f;
+          const w = lerp(tw, tw * 0.16, f * f);
+          targetCtx.beginPath();
+          targetCtx.moveTo(tx - w / 2, y);
+          targetCtx.lineTo(tx + w / 2, y);
+          targetCtx.stroke();
+        }
+      };
+
+      // Mandapa platforms with stone gradient
+      const platformGrad = targetCtx.createLinearGradient(mx - 130*s, baseY, mx + 130*s, baseY);
+      platformGrad.addColorStop(0, '#3a1a0d');
+      platformGrad.addColorStop(0.5, '#7a3e1f');
+      platformGrad.addColorStop(1, '#3a1a0d');
+      
+      targetCtx.fillStyle = platformGrad;
+      targetCtx.fillRect(mx - 130 * s, baseY - 24 * s, 260 * s, 24 * s);
+      targetCtx.strokeStyle = highlightColor;
+      targetCtx.strokeRect(mx - 130 * s, baseY - 24 * s, 260 * s, 24 * s);
+
+      targetCtx.fillRect(mx - 100 * s, baseY - 48 * s, 200 * s, 24 * s);
+      targetCtx.strokeRect(mx - 100 * s, baseY - 48 * s, 200 * s, 24 * s);
+
+      // Pillars/Columns
+      const columns = [-80, -40, 0, 40, 80];
+      targetCtx.fillStyle = '#210e05';
+      columns.forEach(col => {
+        targetCtx.fillRect(mx + col * s - 4 * s, baseY - 48 * s, 8 * s, 24 * s);
+        targetCtx.strokeRect(mx + col * s - 4 * s, baseY - 48 * s, 8 * s, 24 * s);
+      });
+
+      // Towers (Shikharas)
+      drawShikhara(mx, baseY - 48 * s, 85 * s, 180 * s); // Main center
+      drawShikhara(mx - 65 * s, baseY - 48 * s, 50 * s, 110 * s); // Left
+      drawShikhara(mx + 65 * s, baseY - 48 * s, 50 * s, 110 * s); // Right
+
+      // Flags
+      targetCtx.strokeStyle = '#7c381a';
+      targetCtx.lineWidth = 1.5 * s;
       targetCtx.beginPath();
-      targetCtx.rect(cx - mandaW / 2, platTop - mandaH, mandaW, mandaH);
-      targetCtx.fill(); targetCtx.stroke();
-
-      const mainBaseY = platTop - mandaH;
-      drawShikhara(cx, mainBaseY, 200 * s, 380 * s, 9, edge, full, true, s, targetCtx);
-      drawShikhara(cx - 150 * s, platTop - 40 * s, 95 * s, 200 * s, 6, edge, full, false, s, targetCtx);
-      drawShikhara(cx + 150 * s, platTop - 40 * s, 95 * s, 200 * s, 6, edge, full, false, s, targetCtx);
-      drawShikhara(cx - 200 * s, platTop - 10 * s, 50 * s, 110 * s, 4, edge, full, false, s, targetCtx);
-      drawShikhara(cx + 200 * s, platTop - 10 * s, 50 * s, 110 * s, 4, edge, full, false, s, targetCtx);
-
-      const mainTop = mainBaseY - 380 * s;
-      targetCtx.strokeStyle = `rgba(190, 140, 70, ${edge * 0.8 + full * 0.4})`;
-      targetCtx.lineWidth = 2.5 * s;
-      targetCtx.beginPath();
-      targetCtx.moveTo(cx, mainTop); targetCtx.lineTo(cx, mainTop - 70 * s);
+      targetCtx.moveTo(mx, baseY - 228 * s);
+      targetCtx.lineTo(mx, baseY - 248 * s);
       targetCtx.stroke();
 
-      targetCtx.fillStyle = `rgba(255, 200, 100, ${edge * 0.9 + full * 0.5})`;
-      targetCtx.beginPath(); targetCtx.arc(cx, mainTop - 75 * s, 7 * s, 0, Math.PI * 2); targetCtx.fill();
-      targetCtx.restore();
-    }
-
-    function drawShikhara(cx: number, baseY: number, baseW: number, height: number, tiers: number, edge: number, full: number, isMain: boolean, s: number, targetCtx: CanvasRenderingContext2D) {
-      const topY = baseY - height;
-      const topW = baseW * 0.18;
-
-      targetCtx.fillStyle = 'rgba(16, 9, 5, 0.95)';
+      targetCtx.fillStyle = '#ff7300';
       targetCtx.beginPath();
-      targetCtx.moveTo(cx - baseW / 2, baseY);
-      targetCtx.bezierCurveTo(cx - baseW / 2, baseY - height * 0.35, cx - topW / 2 - baseW * 0.1, baseY - height * 0.78, cx - topW / 2, topY);
-      targetCtx.lineTo(cx + topW / 2, topY);
-      targetCtx.bezierCurveTo(cx + topW / 2 + baseW * 0.1, baseY - height * 0.78, cx + baseW / 2, baseY - height * 0.35, cx + baseW / 2, baseY);
+      targetCtx.moveTo(mx, baseY - 248 * s);
+      targetCtx.lineTo(mx + 15 * s + Math.sin(t * 6) * 3, baseY - 241 * s);
+      targetCtx.lineTo(mx, baseY - 234 * s);
       targetCtx.closePath();
       targetCtx.fill();
 
-      targetCtx.strokeStyle = `rgba(255, 180, 90, ${edge * 0.75 + full * 0.25})`;
-      targetCtx.lineWidth = isMain ? 1.4 : 1;
-      targetCtx.stroke();
-
-      targetCtx.strokeStyle = `rgba(255, 165, 75, ${edge * 0.5 + full * 0.3})`;
-      targetCtx.lineWidth = 0.7;
-      for (let i = 1; i < tiers; i++) {
-        const f = i / tiers;
-        const y = baseY - height * f;
-        const w = lerp(baseW, topW, easeInOutCubic(f));
-        targetCtx.beginPath();
-        targetCtx.moveTo(cx - w / 2, y); targetCtx.lineTo(cx + w / 2, y);
-        targetCtx.stroke();
-      }
+      targetCtx.restore();
     }
 
     function drawWater(t: number) {
-      const waterY = H * 0.65;
-      const fade = smoothstep(16.5, 18, t);
-      
-      // 1. Base Water Gradient
-      const wGrad = ctx.createLinearGradient(0, waterY, 0, H);
-      wGrad.addColorStop(0, `rgba(25, 10, 5, ${1 - fade})`);
-      wGrad.addColorStop(1, `rgba(5, 2, 0, ${1 - fade})`);
-      ctx.fillStyle = wGrad;
-      ctx.fillRect(0, waterY, W, H - waterY);
-
-      // 2. Reflection Layer
-      ctx.save();
-      ctx.globalAlpha = 0.4 * (1 - fade);
-      ctx.translate(0, waterY * 2);
-      ctx.scale(1, -1);
-      
-      // Ripple distortion via horizontal slices
-      const sliceH = 4;
-      for (let y = waterY; y < H; y += sliceH) {
-        const dist = y - waterY;
-        const wave = Math.sin((y + t * 80) * 0.04) * (dist * 0.08);
-        ctx.drawImage(reflectCanvas, 0, y, W, sliceH, wave, y, W, sliceH);
-      }
-      ctx.restore();
-
-      // 3. Water Surface Tint & Highlights
-      ctx.save();
-      ctx.globalCompositeOperation = 'overlay';
-      const tintGrad = ctx.createLinearGradient(0, waterY, 0, H);
-      tintGrad.addColorStop(0, `rgba(80, 35, 5, ${0.3 * (1 - fade)})`);
-      tintGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = tintGrad;
-      ctx.fillRect(0, waterY, W, H - waterY);
-      ctx.restore();
-
-      // 4. Ripple highlights
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      ctx.strokeStyle = `rgba(255, 200, 100, ${0.05 * (1 - fade)})`;
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 15; i++) {
-        const ry = waterY + (i / 15) * (H - waterY);
-        ctx.beginPath();
-        for (let x = 0; x < W; x += 20) {
-          const y = ry + Math.sin(x * 0.02 + t * 2 + i) * 2;
-          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    function drawDiyas(t: number) {
-      const reveal = smoothstep(5, 7, t);
-      const fade = smoothstep(16.5, 18, t);
+      const reveal = smoothstep(1, 4.5, t);
+      const fade = smoothstep(16, 17.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
-      const waterY = H * 0.65;
+      const waterY = H * 0.62;
       ctx.save();
+      ctx.globalAlpha = vis;
 
-      for (const diya of diyas) {
-        // Perspective mapping
-        const perspY = waterY + Math.pow(diya.z, 1.5) * (H - waterY) * 0.8;
-        const perspX = W / 2 + diya.x * W * (0.5 + diya.z * 0.8);
-        const scale = 0.3 + diya.z * 0.9;
-        const flameFlick = Math.sin(t * 8 + diya.phase) * 0.2 + Math.sin(t * 23 + diya.phase) * 0.1;
+      // Deep dark water base gradient
+      const wGrad = ctx.createLinearGradient(0, waterY, 0, H);
+      wGrad.addColorStop(0, '#060301');
+      wGrad.addColorStop(0.5, '#040101');
+      wGrad.addColorStop(1, '#020000');
+      ctx.fillStyle = wGrad;
+      ctx.fillRect(0, waterY, W, H - waterY);
 
-        // Diya bowl (Brass)
-        ctx.fillStyle = `rgba(190, 130, 50, ${vis})`;
+      // Reflection of temple & sunset
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.translate(0, waterY * 2);
+      ctx.scale(1, -1);
+      
+      const sliceH = 4;
+      for (let y = waterY; y < H; y += sliceH) {
+        const dist = y - waterY;
+        const distanceFactor = dist / (H - waterY);
+        // Double sine wave horizontal ripple offset for premium water shimmer
+        const ripple = Math.sin(y * 0.12 + t * 5.5) * 4 * distanceFactor + 
+                       Math.cos(y * 0.28 - t * 3.2) * 1.5 * distanceFactor;
+        ctx.drawImage(reflectCanvas, 0, y, W, sliceH, ripple, y, W, sliceH);
+      }
+      ctx.restore();
+
+      // Horizontal wave lines overlays
+      ctx.globalCompositeOperation = 'screen';
+      for (let y = waterY + 2; y < H; y += 4) {
+        const distanceFactor = (y - waterY) / (H - waterY);
+        const waveX = Math.sin(y * 0.12 + t * 4.5) * 5 * distanceFactor;
+        const lineAlpha = lerp(0.03, 0.14, distanceFactor);
+
+        ctx.strokeStyle = `rgba(255, 195, 90, ${lineAlpha})`;
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.ellipse(perspX, perspY, 12 * scale, 5 * scale, 0, 0, Math.PI);
+        const mandirX = W * 0.72;
+        const refW = 150 * Math.min(W, H) * 0.0012;
+        ctx.moveTo(mandirX - (refW / 2) * distanceFactor + waveX, y);
+        ctx.lineTo(mandirX + (refW / 2) * distanceFactor + waveX, y);
+        ctx.stroke();
+      }
+
+      // Dynamic Firework reflections in the water
+      activeFireworkBursts.forEach((b) => {
+        if (b.y > waterY) return;
+        const rY = waterY + (waterY - b.y); 
+        const dy = rY - waterY;
+        const rfGrad = ctx.createRadialGradient(b.x, rY, 0, b.x, rY, b.r * 1.6);
+        rfGrad.addColorStop(0, `${b.color}${Math.floor(b.alpha * 45).toString(16).padStart(2, '0')}`);
+        rfGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = rfGrad;
+        
+        ctx.beginPath();
+        ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.3, b.r * 0.24, 0, 0, Math.PI * 2);
         ctx.fill();
-        
-        // Flame
-        const fX = perspX;
-        const fY = perspY - 8 * scale;
-        const fH = (10 + flameFlick * 4) * scale;
-        
-        const glowGrad = ctx.createRadialGradient(fX, fY, 0, fX, fY, 30 * scale);
-        glowGrad.addColorStop(0, `rgba(255, 220, 100, ${0.6 * vis})`);
-        glowGrad.addColorStop(0.4, `rgba(255, 140, 40, ${0.2 * vis})`);
-        glowGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
-        ctx.fillStyle = glowGrad;
-        ctx.fillRect(fX - 30*scale, fY - 30*scale, 60*scale, 60*scale);
+      });
 
-        ctx.fillStyle = `rgba(255, 240, 180, ${vis})`;
+      ctx.restore();
+    }
+
+    function updateAndDrawFloatingDiyas(t: number) {
+      const reveal = smoothstep(5, 7.5, t);
+      const fade = smoothstep(16, 17.5, t);
+      const vis = reveal * (1 - fade);
+      if (vis <= 0) return;
+
+      const waterY = H * 0.62;
+
+      ctx.save();
+      ctx.globalAlpha = vis;
+
+      diyas.forEach((d, i) => {
+        d.x += (d.speed * 0.016);
+        if (d.x < -40) d.x = W + 40;
+        if (d.x > W + 40) d.x = -40;
+
+        const waveY = d.y + Math.sin(t * 1.5 + d.phase) * 1.8 * d.scale;
+        if (waveY < waterY) return;
+
+        const flamePulse = Math.sin(t * 15 + d.flamePulse) * 1;
+        const s = d.scale * 15; 
+        const flameH = (s * 1.5) + flamePulse * d.scale;
+
+        // Long soft reflection trail underneath individual diya
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const trailH = s * 5;
+        const trailGrad = ctx.createLinearGradient(d.x, waveY, d.x, waveY + trailH);
+        trailGrad.addColorStop(0, 'rgba(255, 170, 40, 0.4)');
+        trailGrad.addColorStop(0.5, 'rgba(255, 120, 20, 0.15)');
+        trailGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = trailGrad;
+        ctx.fillRect(d.x - s * 0.3, waveY, s * 0.6, trailH);
+        ctx.restore();
+
+        // 3D shaded Clay Bowl
+        const dGrad = ctx.createLinearGradient(d.x - s, waveY, d.x + s, waveY);
+        dGrad.addColorStop(0, '#4a1b05');
+        dGrad.addColorStop(0.5, '#a64f1d');
+        dGrad.addColorStop(1, '#4a1b05');
+        ctx.fillStyle = dGrad;
         ctx.beginPath();
-        ctx.ellipse(fX, fY, 2 * scale, fH * 0.3, 0, 0, Math.PI * 2);
+        ctx.ellipse(d.x, waveY + s * 0.25, s, s * 0.35, 0, 0, Math.PI);
         ctx.fill();
-        
-        ctx.fillStyle = `rgba(255, 180, 60, ${vis})`;
+
+        // Inside liquid oil recess
+        ctx.fillStyle = '#170300';
         ctx.beginPath();
-        ctx.moveTo(fX - 2*scale, fY);
-        ctx.quadraticCurveTo(fX, fY - fH, fX + 2*scale, fY);
+        ctx.ellipse(d.x, waveY + s * 0.15, s * 0.88, s * 0.22, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Flickering Flame shape
+        const fGrad = ctx.createLinearGradient(d.x, waveY, d.x, waveY - flameH);
+        fGrad.addColorStop(0, 'rgba(255, 80, 0, 0.95)');
+        fGrad.addColorStop(0.4, 'rgba(255, 180, 30, 0.99)');
+        fGrad.addColorStop(0.8, 'rgba(255, 245, 190, 0.99)');
+        fGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = fGrad;
+
+        ctx.beginPath();
+        ctx.moveTo(d.x - s * 0.18, waveY + s * 0.1);
+        ctx.quadraticCurveTo(d.x - s * 0.25, waveY - flameH * 0.45, d.x, waveY - flameH);
+        ctx.quadraticCurveTo(d.x + s * 0.25, waveY - flameH * 0.45, d.x + s * 0.18, waveY + s * 0.1);
         ctx.closePath();
         ctx.fill();
 
-        // Reflection in water
-        const reflY = perspY + (perspY - fY);
-        const reflGrad = ctx.createLinearGradient(fX, perspY, fX, reflY);
-        reflGrad.addColorStop(0, `rgba(255, 200, 80, ${0.5 * vis})`);
-        reflGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
-        ctx.fillStyle = reflGrad;
-        ctx.fillRect(fX - 3*scale, perspY, 6*scale, reflY - perspY);
+        // Dynamic 3D flame glow halo
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = 0.55 * vis;
+        ctx.drawImage(dustSprite, d.x - s * 1.5, waveY - flameH - s * 0.5, s * 3, s * 3);
+        ctx.restore();
+      });
+
+      ctx.restore();
+    }
+
+    function drawFogAndHaze(t: number) {
+      const intensity = smoothstep(1.5, 5, t) * (1 - smoothstep(16, 17.5, t));
+      if (intensity <= 0) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      
+      for (let layer = 0; layer < 3; layer++) {
+        const y = H * (0.64 + layer * 0.05);
+        const speed = 6 + layer * 5;
+        const offset = (t * speed + layer * 149) % (W * 1.5);
+        const grad = ctx.createLinearGradient(0, y - 30, 0, y + 80);
+        const a = 0.06 * intensity * (1 - layer * 0.2);
+        grad.addColorStop(0, 'rgba(180, 110, 40, 0)');
+        grad.addColorStop(0.5, `rgba(180, 110, 40, ${a})`);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(-offset, y - 30, W * 2.5, 110);
       }
       ctx.restore();
     }
 
-    // ============ PARTICLE LOGIC ============
+    // ============ FIREWORKS LOGIC ============
+
+    function launchFireworks(t: number) {
+      if (t < 4.5 || t > 15) return;
+      if (Math.random() < 0.05) {
+        const fx = W * 0.15 + Math.random() * W * 0.55;
+        const fy = H * 0.12 + Math.random() * H * 0.24;
+        const colors = ['#dfb55c', '#ff7300', '#fcfbf7', '#dfb55c', '#00ffcc'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        
+        activeFireworkBursts.push({
+          x: fx, y: fy, color, r: 0, maxR: 45 + Math.random() * 45, alpha: 1
+        });
+
+        for (let i = 0; i < 48; i++) {
+          const ang = (i / 48) * Math.PI * 2 + Math.random() * 0.2;
+          const spd = 1.5 + Math.random() * 3.5;
+          sparks.push({
+            x: fx, y: fy,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            color,
+            alpha: 1,
+            life: 0,
+            maxLife: 2.5 + Math.random() * 1.5,
+            size: 1 + Math.random() * 1.8
+          });
+        }
+      }
+    }
+
+    function updateFireworks(dt: number) {
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i];
+        s.life += dt;
+        s.x += s.vx;
+        s.y += s.vy;
+        s.vy += 0.035; 
+        s.vx *= 0.985;
+        s.vy *= 0.985;
+        const lr = s.life / s.maxLife;
+        s.alpha = 1 - lr;
+        if (s.life > s.maxLife || s.y > H * 0.62) {
+          sparks.splice(i, 1);
+        }
+      }
+
+      for (let i = activeFireworkBursts.length - 1; i >= 0; i--) {
+        const b = activeFireworkBursts[i];
+        b.r += (b.maxR - b.r) * 0.12;
+        b.alpha -= 0.04;
+        if (b.alpha <= 0) {
+          activeFireworkBursts.splice(i, 1);
+        }
+      }
+    }
+
+    function drawFireworks() {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      activeFireworkBursts.forEach((b) => {
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+        grad.addColorStop(0, `${b.color}aa`);
+        grad.addColorStop(0.3, `${b.color}33`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      sparks.forEach((s) => {
+        ctx.globalAlpha = s.alpha;
+        ctx.fillStyle = s.color;
+        const sz = s.size;
+        ctx.drawImage(sparkSprite, s.x - sz * 3, s.y - sz * 3, sz * 6, sz * 6);
+      });
+
+      ctx.restore();
+    }
+
+    // ============ PARTICLE SPAWN & UPDATES ============
 
     function spawnDust(t: number) {
-      const target = Math.floor(70 * smoothstep(0, 3, t));
+      const target = Math.floor(65 * smoothstep(0, 3, t));
       let count = 0;
       for (const p of pool.particles) if (p.active && p.type === 'dust') count++;
       let attempts = 0;
       while (count < target && attempts < 8) {
-        const p = pool.spawn(); if (!p) break;
-        p.type = 'dust'; p.x = Math.random() * W; p.y = Math.random() * H * 0.7;
-        p.vx = (Math.random() - 0.5) * 0.4; p.vy = -0.05 - Math.random() * 0.35;
-        p.size = 0.6 + Math.random() * 1.6; p.maxLife = 5 + Math.random() * 5;
-        p.life = Math.random() * p.maxLife * 0.4; p.alpha = 0;
-        count++; attempts++;
+        const p = pool.spawn();
+        if (!p) break;
+        p.type = 'dust';
+        p.x = Math.random() * W;
+        p.y = Math.random() * H;
+        p.vx = (Math.random() - 0.5) * 0.35;
+        p.vy = -0.05 - Math.random() * 0.3;
+        p.size = 0.5 + Math.random() * 1.4;
+        p.maxLife = 5 + Math.random() * 5;
+        p.life = Math.random() * p.maxLife * 0.4;
+        p.alpha = 0;
+        p.rot = Math.random() * Math.PI * 2;
+        p.rotSpd = (Math.random() - 0.5) * 0.5;
+        count++;
+        attempts++;
       }
     }
 
     function spawnPetals(t: number) {
-      const intensity = smoothstep(10, 12, t) * (1 - smoothstep(16.5, 18, t));
+      const intensity = smoothstep(6.5, 9.5, t) * (1 - smoothstep(16, 17.5, t));
       if (intensity <= 0) return;
-      if (Math.random() > intensity * 0.5) return;
-      const p = pool.spawn(); if (!p) return;
-      p.type = 'petal'; p.x = Math.random() * W; p.y = -20;
-      p.vx = (Math.random() - 0.5) * 1.2; p.vy = 0.6 + Math.random() * 0.8;
-      p.size = 4 + Math.random() * 5; p.maxLife = 20; p.life = 0; p.alpha = 0;
-      p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
+      if (Math.random() > intensity * 0.35) return;
+      const p = pool.spawn();
+      if (!p) return;
+      p.type = 'petal';
+      p.x = Math.random() * W;
+      p.y = -20;
+      p.vx = (Math.random() - 0.5) * 0.7;
+      p.vy = 0.4 + Math.random() * 0.65;
+      p.size = 4.5 + Math.random() * 5.5;
+      p.maxLife = 18;
+      p.life = 0;
+      p.alpha = 0;
+      p.rot = Math.random() * Math.PI * 2;
+      p.rotSpd = (Math.random() - 0.5) * 2.2;
     }
 
     function spawnTextParticles(t: number) {
       if (t < 7.5 || t > 9.5) return;
       if (ramPoints.length === 0) return;
-      const target = Math.min(ramPoints.length, 800);
+      const target = Math.min(ramPoints.length, 650);
       let active = 0;
-      for (const p of pool.particles) if (p.active && p.type === 'text') active++;
+      for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
       let attempts = 0;
       while (active < target && attempts < 10) {
-        const p = pool.spawn(); if (!p) break;
+        const p = pool.spawn();
+        if (!p) break;
         const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
-        p.type = 'text';
-        p.x = W / 2 + (Math.random() - 0.5) * W * 0.5;
-        p.y = H * 0.65 + Math.random() * 50; // Start from river ghat
-        p.tx = W / 2 + pt.x; p.ty = H * 0.35 + pt.y;
-        p.vx = (Math.random() - 0.5) * 50; p.vy = -Math.random() * 50;
-        p.size = 1.2 + Math.random() * 1.6; p.maxLife = 8; p.life = 0; p.alpha = 0;
-        p.delay = Math.random() * 1.0;
-        active++; attempts++;
+        p.type = 'sparkle';
+        p.x = W / 2 + (Math.random() - 0.5) * W * 1.3;
+        p.y = H * 0.36 + (Math.random() - 0.5) * H * 1.1;
+        p.tx = W / 2 + pt.x;
+        p.ty = H * 0.36 + pt.y; 
+        p.vx = 0; p.vy = 0;
+        p.size = 1.1 + Math.random() * 1.4;
+        p.maxLife = 7;
+        p.life = 0;
+        p.alpha = 0;
+        p.delay = Math.random() * 1.1;
+        active++;
+        attempts++;
       }
+    }
+
+    function spawnIncenseSmoke(t: number) {
+      const intensity = smoothstep(8, 10, t) * (1 - smoothstep(16, 17.5, t));
+      if (intensity <= 0) return;
+      if (Math.random() > 0.08 * intensity) return;
+      
+      const s = Math.min(W, H) * 0.0011;
+      const emitterX = Math.random() < 0.5 ? W * 0.15 : W * 0.85;
+
+      const p = pool.spawn();
+      if (!p) return;
+      p.type = 'smoke';
+      p.x = emitterX;
+      p.y = H * 0.85 - 12 * s;
+      p.vx = (Math.random() - 0.5) * 0.25;
+      p.vy = -0.5 - Math.random() * 0.45;
+      p.size = 6 + Math.random() * 8;
+      p.maxLife = 4.5 + Math.random() * 3.5;
+      p.life = 0;
+      p.alpha = 0;
     }
 
     function spawnBirds(t: number) {
-      if (t < 5.2 || t > 6.5) return;
+      if (t < 9.8 || t > 10.5) return;
       if (birdsSpawned) return;
       birdsSpawned = true;
-      const count = 14;
+      const count = 12;
       for (let i = 0; i < count; i++) {
-        const p = pool.spawn(); if (!p) break;
+        const p = pool.spawn();
+        if (!p) break;
         p.type = 'bird';
-        p.x = -60 - i * 25 + Math.random() * 15;
-        p.y = H * 0.2 + Math.random() * 80 + (i % 3) * 12;
-        p.vx = 2.5 + Math.random() * 0.6; p.vy = (Math.random() - 0.5) * 0.2;
-        p.size = 7 + Math.random() * 5; p.maxLife = 25; p.life = 0;
-        p.alpha = 0.6; p.flap = Math.random() * Math.PI * 2;
+        p.x = -60 - i * 18 + Math.random() * 15;
+        p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12;
+        p.vx = 2.2 + Math.random() * 0.6;
+        p.vy = (Math.random() - 0.5) * 0.15;
+        p.size = 7 + Math.random() * 4;
+        p.maxLife = 25;
+        p.life = 0;
+        p.alpha = 0.65;
+        p.flap = Math.random() * Math.PI * 2;
       }
-    }
-
-    function launchFireworks(t: number) {
-      if (t < 10 || t > 12.5) return;
-      if (Math.random() > 0.06) return;
-      const p = pool.spawn(); if (!p) return;
-      p.type = 'firework';
-      p.x = W * (0.2 + Math.random() * 0.6);
-      p.y = H;
-      p.ty = H * (0.15 + Math.random() * 0.2);
-      p.vx = 0; p.vy = -8 - Math.random() * 4;
-      p.size = 2; p.maxLife = 1.5; p.life = 0; p.alpha = 1;
-      p.color = ['#FF9933', '#FFD700', '#FF5555', '#FFFFFF'][Math.floor(Math.random()*4)];
     }
 
     function updateParticles(dt: number, t: number) {
@@ -482,86 +712,77 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
         p.life += dt;
 
         if (p.type === 'dust') {
-          p.x += p.vx; p.y += p.vy;
-          p.vx += (Math.random() - 0.5) * 0.04; p.vy += -0.003;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vx += (Math.random() - 0.5) * 0.03;
+          p.vy += -0.002;
+          p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
-          const env = smoothstep(0, 2, t) * (1 - smoothstep(16.5, 18, t));
-          p.alpha = smoothstep(0, 0.3, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.7 * env;
+          const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17.5, t));
+          p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env;
           if (p.life > p.maxLife || p.y < -30) {
-            p.life = 0; p.x = Math.random() * W; p.y = H * 0.7; p.alpha = 0;
+            p.life = 0; p.x = Math.random() * W; p.y = H * 0.6; p.alpha = 0;
           }
         } else if (p.type === 'petal') {
-          p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.01) * 0.4;
-          p.y += p.vy; p.rot += p.rotSpd * dt;
-          p.alpha = smoothstep(0, 0.1, p.life / p.maxLife) * 0.85 * (1 - smoothstep(16.5, 18, t));
-          if (p.y > H * 0.65 || p.life > p.maxLife) pool.release(p);
-        } else if (p.type === 'text') {
-          if (p.delay > 0) { p.delay -= dt; p.alpha = 0; continue; }
-          const dx = p.tx - p.x, dy = p.ty - p.y;
+          p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
+          p.y += p.vy;
+          p.rot += p.rotSpd * dt;
+          const lr = p.life / p.maxLife;
+          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
+          if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p);
+        } else if (p.type === 'sparkle') {
+          if (p.delay > 0) {
+            p.delay -= dt;
+            p.alpha = 0;
+            continue;
+          }
+          const dx = p.tx - p.x;
+          const dy = p.ty - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 1.5) {
-            const swirl = Math.sin(t * 3 + p.idx) * 0.5;
-            const ang = Math.atan2(dy, dx) + swirl;
-            const speed = clamp(dist * 4, 80, 600);
-            p.vx = Math.cos(ang) * speed; p.vy = Math.sin(ang) * speed;
-            p.x += p.vx * dt; p.y += p.vy * dt;
-            p.alpha = clamp(p.alpha + dt * 1.5, 0, 0.7);
+            const speed = clamp(dist * 4.5, 90, 520);
+            p.vx = (dx / dist) * speed;
+            p.vy = (dy / dist) * speed;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.alpha = clamp(p.alpha + dt * 1.6, 0, 0.7);
           } else {
-            p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.4;
-            p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.4;
-            p.alpha = clamp(p.alpha + dt * 2, 0, 1);
+            p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.35;
+            p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.35;
+            p.alpha = clamp(p.alpha + dt * 1.8, 0, 1);
           }
-          if (t > 13) p.alpha *= 1 - smoothstep(13, 14.5, t);
+          if (t > 12) p.alpha *= 1 - smoothstep(12, 14, t);
           if (t > 14.5 && p.alpha < 0.01) pool.release(p);
+        } else if (p.type === 'smoke') {
+          p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
+          p.y += p.vy;
+          p.size += dt * 5.2; 
+          const lr = p.life / p.maxLife;
+          p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18;
+          if (p.life > p.maxLife || p.y < -30) pool.release(p);
         } else if (p.type === 'bird') {
-          p.x += p.vx; p.y += p.vy; p.flap += dt * 9;
-          p.alpha = 0.6 * (1 - smoothstep(15.5, 16.5, t));
+          p.x += p.vx;
+          p.y += p.vy;
+          p.flap += dt * 9;
+          p.alpha = 0.65 * (1 - smoothstep(15, 16, t));
           if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
-        } else if (p.type === 'firework') {
-          if (p.vy < 0) {
-            p.x += p.vx; p.y += p.vy; p.vy += 0.15;
-            p.trail.push({x: p.x, y: p.y});
-            if (p.trail.length > 10) p.trail.shift();
-          } else {
-            p.maxLife -= dt;
-            p.size += dt * 40;
-            p.alpha = clamp(p.maxLife / 1.5, 0, 1) * 0.8;
-            if (p.maxLife <= 0) pool.release(p);
-          }
         }
       }
     }
 
-    function drawParticles(t: number) {
+    function drawParticles() {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       for (const p of pool.particles) {
         if (!p.active || p.alpha <= 0.01) continue;
         if (p.type === 'dust') {
           ctx.globalAlpha = p.alpha;
-          const sz = p.size * 6;
+          const sz = p.size * 5.2;
           ctx.drawImage(dustSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
-        } else if (p.type === 'text') {
+        } else if (p.type === 'sparkle') {
           ctx.globalAlpha = p.alpha;
-          const sz = p.size * 5;
+          const sz = p.size * 4.4;
           ctx.drawImage(sparkSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
-        } else if (p.type === 'firework') {
-          if (p.vy < 0) {
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = p.color;
-            for(let i=0; i<p.trail.length; i++) {
-              ctx.globalAlpha = (i / p.trail.length) * 0.8;
-              ctx.fillRect(p.trail[i].x, p.trail[i].y, 2, 2);
-            }
-          } else {
-            ctx.globalAlpha = p.alpha;
-            const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-            grad.addColorStop(0, p.color);
-            grad.addColorStop(0.4, p.color.replace(')', ', 0.4)').replace('rgb', 'rgba'));
-            grad.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
-          }
         }
       }
       ctx.globalAlpha = 1;
@@ -570,10 +791,22 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
         if (!p.active || p.alpha <= 0.01) continue;
         if (p.type === 'petal') {
           ctx.save();
-          ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-          ctx.fillStyle = `rgba(255, 153, 51, ${p.alpha})`;
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; 
           ctx.beginPath();
-          ctx.ellipse(0, 0, p.size, p.size * 0.5, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (p.type === 'smoke') {
+          ctx.save();
+          const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+          rad.addColorStop(0, `rgba(255, 230, 200, ${p.alpha})`);
+          rad.addColorStop(0.3, `rgba(220, 160, 100, ${p.alpha * 0.5})`);
+          rad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = rad;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         } else if (p.type === 'bird') {
@@ -596,49 +829,94 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
       ctx.restore();
     }
 
+    function drawTitle(t: number) {
+      if (t < 8.5) return;
+      const intensity = smoothstep(8.5, 10, t) * (1 - smoothstep(12, 14, t));
+      if (intensity <= 0.01) return;
+      const fontSize = Math.min(W * 0.12, 125);
+      const cy = H * 0.32;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
+
+      ctx.globalCompositeOperation = 'screen';
+      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2);
+      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.16 * intensity})`);
+      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = haloGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.save();
+      ctx.translate(W / 2, cy);
+      const rayCount = 18;
+      for (let i = 0; i < rayCount; i++) {
+        const a = (i / rayCount) * Math.PI * 2 + t * 0.06;
+        const len = fontSize * 1.6;
+        const flicker = 0.6 + 0.4 * Math.sin(t * 1.8 + i);
+        const grad = ctx.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
+        grad.addColorStop(0, `rgba(255, 190, 80, ${0.1 * intensity * flicker})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a - 0.035) * len, Math.sin(a - 0.035) * len);
+        ctx.lineTo(Math.cos(a + 0.035) * len, Math.sin(a + 0.035) * len);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = `rgba(255, 215, 120, ${0.04 * intensity})`;
+      ctx.fillText('श्री राम', W / 2, cy);
+      ctx.restore();
+    }
+
     function drawGreeting(t: number) {
       const reveal = smoothstep(13, 14.5, t);
-      const fade = smoothstep(16.5, 18, t);
+      const fade = smoothstep(16, 17.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0.01) return;
-      
-      const fontSize = Math.min(W * 0.06, 58);
-      const cy = H * 0.42;
+      const fontSize = Math.min(W * 0.054, 52);
+      const cy = H * 0.54;
       const line1 = 'राम नवमी की';
       const line2 = 'हार्दिक शुभकामनाएँ';
-      
       ctx.save();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = `600 ${fontSize}px "Noto Sans Devanagari", "Mangal", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `600 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      // Halo
       ctx.globalCompositeOperation = 'screen';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 4);
-      haloGrad.addColorStop(0, `rgba(255, 180, 80, ${0.15 * vis})`);
-      haloGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 3.5);
+      haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.11 * vis})`);
+      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
       ctx.globalCompositeOperation = 'source-over';
-      const y1 = cy - fontSize * 0.65, y2 = cy + fontSize * 0.65;
+      const y1 = cy - fontSize * 0.65;
+      const y2 = cy + fontSize * 0.65;
 
-      // 3D Gold Emboss Layering
-      ctx.shadowBlur = 30; ctx.shadowColor = `rgba(255, 170, 70, ${vis})`;
-      ctx.fillStyle = `rgba(120, 60, 10, ${vis})`;
-      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
-      
-      ctx.shadowBlur = 15; ctx.shadowColor = `rgba(255, 200, 100, ${vis})`;
-      ctx.fillStyle = `rgba(200, 130, 40, ${vis * 0.8})`;
-      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
-      
-      ctx.shadowBlur = 8; ctx.shadowColor = `rgba(255, 230, 150, ${vis})`;
-      ctx.fillStyle = `rgba(255, 225, 160, ${vis})`;
-      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
-      
-      // Top Highlight for 3D effect
+      ctx.shadowBlur = 24;
+      ctx.shadowColor = `rgba(255, 160, 50, ${vis})`;
+      ctx.fillStyle = `rgba(180, 90, 20, ${vis * 0.5})`;
+      ctx.fillText(line1, W / 2, y1);
+      ctx.fillText(line2, W / 2, y2);
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = `rgba(255, 190, 80, ${vis})`;
+      ctx.fillStyle = `rgba(220, 140, 50, ${vis * 0.7})`;
+      ctx.fillText(line1, W / 2, y1);
+      ctx.fillText(line2, W / 2, y2);
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = `rgba(255, 220, 130, ${vis})`;
+      ctx.fillStyle = `rgba(255, 220, 150, ${vis})`;
+      ctx.fillText(line1, W / 2, y1);
+      ctx.fillText(line2, W / 2, y2);
       ctx.shadowBlur = 0;
-      ctx.fillStyle = `rgba(255, 250, 220, ${vis * 0.6})`;
-      ctx.fillText(line1, W / 2 - 0.5, y1 - 1); ctx.fillText(line2, W / 2 - 0.5, y2 - 1);
+      ctx.fillStyle = `rgba(255, 245, 210, ${vis * 0.5})`;
+      ctx.fillText(line1, W / 2 - 0.5, y1 - 0.5);
+      ctx.fillText(line2, W / 2 - 0.5, y2 - 0.5);
       ctx.restore();
     }
 
@@ -646,22 +924,34 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
 
     function applyBloom() {
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(6px) brightness(1.4)';
+      bctx.filter = 'blur(5px) brightness(1.25)';
       bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = 0.6;
+      ctx.globalAlpha = 0.5;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(bloom, 0, 0, W, H);
       ctx.restore();
     }
 
+    function applyColorGrade() {
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, 'rgba(80, 32, 4, 0.16)');
+      grad.addColorStop(0.5, 'rgba(40, 12, 3, 0.06)');
+      grad.addColorStop(1, 'rgba(20, 4, 0, 0.12)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
     function applyVignette(t: number) {
-      const fade = smoothstep(16.5, 18, t);
-      const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.85);
+      const fade = smoothstep(16, 17.5, t);
+      const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.22, W / 2, H / 2, W * 0.82);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, `rgba(0,0,0,${0.55 + fade * 0.4})`);
+      grad.addColorStop(1, `rgba(0,0,0,${0.5 + fade * 0.45})`);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
     }
@@ -669,83 +959,72 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
     function applyGrain() {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.4;
-      const ox = Math.floor(Math.random() * 64), oy = Math.floor(Math.random() * 64);
+      ctx.globalAlpha = 0.35;
+      const ox = Math.floor(Math.random() * 64);
+      const oy = Math.floor(Math.random() * 64);
       for (let x = -ox; x < W; x += grain.width) {
-        for (let y = -oy; y < H; y += grain.height) ctx.drawImage(grain, x, y);
+        for (let y = -oy; y < H; y += grain.height) {
+          ctx.drawImage(grain, x, y);
+        }
       }
       ctx.restore();
     }
 
     // ============ CAMERA ============
+
     function updateCamera(t: number) {
-      cam.zoom = 1 + smoothstep(0, 18, t) * 0.06;
-      cam.rot = Math.sin(t * 0.13) * 0.004;
-      cam.x = Math.sin(t * 0.28) * 4;
-      cam.y = Math.cos(t * 0.22) * 3;
+      cam.zoom = 1 + smoothstep(0, 17.5, t) * 0.035;
+      cam.rot = Math.sin(t * 0.11) * 0.003;
+      cam.x = Math.sin(t * 0.25) * 3;
+      cam.y = Math.cos(t * 0.2) * 2;
     }
 
-    function applyCamera(targetCtx: CanvasRenderingContext2D) {
-      targetCtx.translate(W / 2 + cam.x, H / 2 + cam.y);
-      targetCtx.rotate(cam.rot);
-      targetCtx.scale(cam.zoom, cam.zoom);
-      targetCtx.translate(-W / 2, -H / 2);
+    function applyCamera() {
+      ctx.translate(W / 2 + cam.x, H / 2 + cam.y);
+      ctx.rotate(cam.rot);
+      ctx.scale(cam.zoom, cam.zoom);
+      ctx.translate(-W / 2, -H / 2);
     }
 
     // ============ RENDER PIPELINE ============
 
     function render(t: number, dt: number) {
-      spawnDust(t); spawnPetals(t); spawnTextParticles(t); spawnBirds(t); launchFireworks(t);
+      spawnDust(t);
+      spawnPetals(t);
+      spawnTextParticles(t);
+      spawnIncenseSmoke(t);
       updateParticles(dt, t);
       updateCamera(t);
 
-      // 1. Render Scene to Reflection Canvas first
-      rctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      rctx.fillStyle = '#000';
-      rctx.fillRect(0, 0, W, H);
-      rctx.save();
-      applyCamera(rctx);
-      drawBackground(t);
-      drawGodRays(t);
-      drawTemple(t, rctx);
-      rctx.restore();
-
-      // 2. Render Main Canvas
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
-      
+
       ctx.save();
-      applyCamera(ctx);
+      applyCamera();
       drawBackground(t);
-      drawGodRays(t);
-      drawTemple(t, ctx);
+      drawDivineLight(t);
+      drawWater(t);                   // Saryu River with Reflections
+      drawRamMandir(t);               // Majestic Sandstone Temple on the right bank
+      drawFireworks();                // Spectacular explosive sky fireworks
+      updateAndDrawFloatingDiyas(t);  // Beautiful glowing floating water diyas
+      drawFogAndHaze(t);
+      drawParticles();
       ctx.restore();
 
-      // 3. Draw Water (uses reflection canvas)
-      drawWater(t);
-
-      // 4. Draw Diyas & Particles
-      ctx.save();
-      applyCamera(ctx);
-      drawDiyas(t);
-      drawParticles(t);
-      ctx.restore();
-
-      // 5. Draw Text
+      drawTitle(t);
       drawGreeting(t);
 
-      // 6. Master Fade
       const fadeIn = 1 - smoothstep(0, 1.2, t);
-      const fadeOut = smoothstep(16.5, 18, t);
+      const fadeOut = smoothstep(16, 17.5, t);
       const fadeAmt = Math.max(fadeIn, fadeOut);
       if (fadeAmt > 0.001) {
         ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
         ctx.fillRect(0, 0, W, H);
       }
 
-      // 7. Post Processing
       applyBloom();
+      applyColorGrade();
       applyVignette(t);
       applyGrain();
     }
@@ -757,33 +1036,32 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
       const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
       lastTime = now;
 
-      if (t < 5.0) birdsSpawned = false;
-
-      // Trigger onComplete
-      if (t >= 16.5 && !completedRef.current) {
-        completedRef.current = true;
-        if (onComplete) onComplete();
+      if (t > 4 && lastSampleTime === 0) {
+        sampleText();
+        lastSampleTime = t;
       }
 
-      if (t < 18.5) {
+      if (t < 9.7) birdsSpawned = false;
+
+      if (t >= 16.5 && !handoverTriggered) {
+        handoverTriggered = true;
+        if (onCompleteRef.current) {
+          onCompleteRef.current();
+        }
+      }
+
+      if (t < 17.5) {
         render(t, dt);
-      } else if (t < 20) {
+      } else {
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
-      } else {
-        // Auto loop for continuous preview
-        startTime = now;
-        lastTime = 0;
-        completedRef.current = false;
-        birdsSpawned = false;
-        for (const p of pool.particles) if (p.active) pool.release(p);
       }
       rafId = requestAnimationFrame(loop);
     }
 
     resize();
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', resize);draw // <--- इस लाइन पर गलती से 'draw' शब्द लिखा हुआ है!
     rafId = requestAnimationFrame(loop);
 
     return () => {
@@ -791,19 +1069,19 @@ const RamNavamiDivineArrivalIntro: React.FC<IntroProps> = ({ onComplete }) => {
       cancelAnimationFrame(rafId);
       window.removeEventListener('resize', resize);
     };
-  }, [onComplete]);
+  }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'block',
-        background: '#000',
-      }}
-    />
+    <div className="fixed inset-0 w-full h-full bg-black z-[99999]">
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          background: '#000',
+        }}
+      />
+    </div>
   );
-};
-
-export default RamNavamiDivineArrivalIntro;
+}
