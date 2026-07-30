@@ -1,7 +1,13 @@
+'use client';
+
 import React, { useEffect, useRef } from 'react';
 
+interface Props {
+  onComplete?: () => void;
+  imageUrl?: string;
+}
+
 // ============ EASING & MATH ============
-const easeInOutCubic = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const easeInCubic = (t: number) => t * t * t;
 const smoothstep = (a: number, b: number, t: number) => {
   if (b === a) return t < a ? 0 : 1;
@@ -60,9 +66,14 @@ class ParticlePool {
   }
 }
 
-// ============ COMPONENT ============
-const RamNavamiDivineArrivalIntro: React.FC = () => {
+export default function RamNamiCinematicIntro({ onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const onCompleteRef = useRef(onComplete);
+
+  // Keep ref up to date to prevent closure capture issues
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -76,14 +87,16 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
     let running = true;
     let lastTime = 0;
     let birdsSpawned = false;
+    let handoverTriggered = false;
+    let lastSampleTime = 0;
 
-    // Offscreen canvases for post-processing
+    // Offscreen canvases for bloom & texture effects
     const bloom = document.createElement('canvas');
     const bctx = bloom.getContext('2d')!;
     const grain = document.createElement('canvas');
     const gctx = grain.getContext('2d')!;
 
-    // Pre-rendered radial sprites for particle glow (avoids per-particle gradients)
+    // Pre-rendered radial sprites for optimal rendering performance
     function makeSprite(size: number, inner: string, mid: string): HTMLCanvasElement {
       const c = document.createElement('canvas');
       c.width = c.height = size;
@@ -131,10 +144,10 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
     }
 
     function sampleText() {
-      // Sample pixel positions of Devanagari text for particle convergence
+      // Dynamic fallback rendering of Devanagari text
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
-      const fontSize = Math.min(W * 0.13, 150);
+      const fontSize = Math.min(W * 0.13, 140);
       tc.width = Math.floor(W);
       tc.height = Math.floor(fontSize * 2);
       tctx.fillStyle = 'white';
@@ -155,7 +168,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       }
     }
 
-    // ============ DRAW FUNCTIONS ============
+    // ============ RENDER LAYERS ============
 
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 4, t);
@@ -173,7 +186,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
 
     function drawSunrise(t: number) {
       const reveal = smoothstep(1.8, 4.5, t);
-      const fade = smoothstep(16, 17, t);
+      const fade = smoothstep(16, 17.5, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
@@ -221,7 +234,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
 
     function drawCitySilhouette(t: number) {
       const reveal = smoothstep(2, 4.5, t);
-      const fade = smoothstep(16, 17, t);
+      const fade = smoothstep(16, 17.5, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       ctx.save();
@@ -258,7 +271,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
     function drawTemple(t: number) {
       const edge = smoothstep(4, 6, t);
       const full = smoothstep(10, 12, t);
-      const fade = smoothstep(16, 17, t);
+      const fade = smoothstep(16, 17.5, t);
       if (edge <= 0 && full <= 0) return;
       const vis = 1 - fade;
       const cx = W * 0.5;
@@ -356,7 +369,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       const topY = baseY - height;
       const topW = baseW * 0.18;
 
-      // Curved spire body using bezier curves (Nagara style)
       ctx.fillStyle = 'rgba(16, 9, 5, 0.95)';
       ctx.beginPath();
       ctx.moveTo(cx - baseW / 2, baseY);
@@ -374,12 +386,10 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       ctx.closePath();
       ctx.fill();
 
-      // Illuminated edge
       ctx.strokeStyle = `rgba(255, 180, 90, ${edge * 0.75 + full * 0.25})`;
       ctx.lineWidth = isMain ? 1.4 : 1;
       ctx.stroke();
 
-      // Horizontal tier divisions
       ctx.strokeStyle = `rgba(255, 165, 75, ${edge * 0.5 + full * 0.3})`;
       ctx.lineWidth = 0.7;
       for (let i = 1; i < tiers; i++) {
@@ -392,7 +402,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
         ctx.stroke();
       }
 
-      // Vertical bands on main shikhara
       if (isMain) {
         ctx.strokeStyle = `rgba(255, 150, 60, ${edge * 0.4 + full * 0.25})`;
         ctx.lineWidth = 0.6;
@@ -403,7 +412,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
           ctx.quadraticCurveTo(cx + xo * 0.5, baseY - height * 0.5, cx + xo * 0.15, topY);
           ctx.stroke();
         }
-        // Mini spire cap
         ctx.fillStyle = 'rgba(18, 10, 6, 0.95)';
         ctx.beginPath();
         ctx.moveTo(cx - topW * 0.6, topY);
@@ -418,7 +426,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
 
     function drawFlag(t: number) {
       const reveal = smoothstep(6, 8, t);
-      const fade = smoothstep(16, 17, t);
+      const fade = smoothstep(16, 17.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -434,7 +442,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       ctx.save();
       ctx.globalAlpha = vis;
 
-      // Metallic pole with vertical gradient
       const poleW = 3 * s;
       const poleGrad = ctx.createLinearGradient(cx - poleW, 0, cx + poleW, 0);
       poleGrad.addColorStop(0, '#2a1a08');
@@ -445,7 +452,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       ctx.fillStyle = poleGrad;
       ctx.fillRect(cx - poleW / 2, poleTop, poleW, 70 * s);
 
-      // Golden finial sphere
       ctx.fillStyle = '#e8b850';
       ctx.beginPath();
       ctx.arc(cx, poleTop, 4 * s, 0, Math.PI * 2);
@@ -455,7 +461,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       ctx.arc(cx - 1 * s, poleTop - 1 * s, 1.5 * s, 0, Math.PI * 2);
       ctx.fill();
 
-      // Saffron flag — physically simulated cloth with wind
       const flagW = 90 * s;
       const flagH = 55 * s;
       const unfurl = smoothstep(6, 8, t);
@@ -499,7 +504,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
     }
 
     function drawFog(t: number) {
-      const intensity = smoothstep(2, 5, t) * (1 - smoothstep(16, 17, t));
+      const intensity = smoothstep(2, 5, t) * (1 - smoothstep(16, 17.5, t));
       if (intensity <= 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
@@ -520,7 +525,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
     }
 
     function drawBellPulse(t: number) {
-      // Visual representation of bell hits at 8s and 13s
       const pulses = [
         { time: 8, intensity: 1 },
         { time: 13, intensity: 0.7 },
@@ -535,7 +539,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
         if (dt < 0 || dt > 1.8) continue;
         const f = dt / 1.8;
         const r = f * W * 0.7;
-        const a = (1 - f) * 0.12 * p.intensity * (1 - smoothstep(16, 17, t));
+        const a = (1 - f) * 0.12 * p.intensity * (1 - smoothstep(16, 17.5, t));
         if (a <= 0) continue;
         const grad = ctx.createRadialGradient(cx, cy, r * 0.7, cx, cy, r);
         grad.addColorStop(0, 'rgba(255, 200, 100, 0)');
@@ -574,7 +578,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
     }
 
     function spawnPetals(t: number) {
-      const intensity = smoothstep(4, 6, t) * (1 - smoothstep(16, 17, t));
+      const intensity = smoothstep(4, 6, t) * (1 - smoothstep(16, 17.5, t));
       if (intensity <= 0) return;
       if (Math.random() > intensity * 0.4) return;
       const p = pool.spawn();
@@ -654,7 +658,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
           const lr = p.life / p.maxLife;
           const fadeIn = smoothstep(0, 0.3, lr);
           const fadeOut = 1 - smoothstep(0.7, 1, lr);
-          const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17, t));
+          const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17.5, t));
           p.alpha = fadeIn * fadeOut * 0.7 * env;
           if (p.life > p.maxLife || p.y < -30) {
             p.life = 0;
@@ -667,7 +671,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
           p.y += p.vy;
           p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.1, lr) * 0.85 * (1 - smoothstep(16, 17, t));
+          p.alpha = smoothstep(0, 0.1, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
           if (p.y > H + 30 || p.life > p.maxLife) pool.release(p);
         } else if (p.type === 'text') {
           if (p.delay > 0) {
@@ -679,7 +683,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
           const dy = p.ty - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 1.5) {
-            // Ease toward target — naturally decelerates as it approaches
             const speed = clamp(dist * 4, 80, 500);
             p.vx = (dx / dist) * speed;
             p.vy = (dy / dist) * speed;
@@ -687,7 +690,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
             p.y += p.vy * dt;
             p.alpha = clamp(p.alpha + dt * 1.5, 0, 0.7);
           } else {
-            // Arrived — subtle shimmer
             p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.4;
             p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.4;
             p.alpha = clamp(p.alpha + dt * 2, 0, 1);
@@ -704,10 +706,9 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       }
     }
 
-    function drawParticles(t: number) {
+    function drawParticles() {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      // Dust + text via sprites (fast)
       for (const p of pool.particles) {
         if (!p.active || p.alpha <= 0.01) continue;
         if (p.type === 'dust') {
@@ -722,7 +723,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
-      // Petals + birds as shapes
       for (const p of pool.particles) {
         if (!p.active || p.alpha <= 0.01) continue;
         if (p.type === 'petal') {
@@ -758,14 +758,13 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       if (t < 8.5) return;
       const intensity = smoothstep(8.5, 10, t) * (1 - smoothstep(12, 14, t));
       if (intensity <= 0.01) return;
-      const fontSize = Math.min(W * 0.13, 150);
+      const fontSize = Math.min(W * 0.13, 140);
       const cy = H * 0.4;
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      // Halo behind text
       ctx.globalCompositeOperation = 'screen';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2.2);
       haloGrad.addColorStop(0, `rgba(255, 200, 100, ${0.18 * intensity})`);
@@ -774,7 +773,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // Rotating light rays
       ctx.save();
       ctx.translate(W / 2, cy);
       const rayCount = 18;
@@ -795,7 +793,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       }
       ctx.restore();
 
-      // Extremely faint text underlay (particles are the main form)
       ctx.globalCompositeOperation = 'source-over';
       ctx.fillStyle = `rgba(255, 220, 140, ${0.03 * intensity})`;
       ctx.fillText('श्री राम', W / 2, cy);
@@ -804,7 +801,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
 
     function drawGreeting(t: number) {
       const reveal = smoothstep(13, 14.5, t);
-      const fade = smoothstep(16, 17, t);
+      const fade = smoothstep(16, 17.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0.01) return;
       const fontSize = Math.min(W * 0.058, 56);
@@ -816,7 +813,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       ctx.textBaseline = 'middle';
       ctx.font = `600 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      // Soft halo
       ctx.globalCompositeOperation = 'screen';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 4);
       haloGrad.addColorStop(0, `rgba(255, 180, 80, ${0.12 * vis})`);
@@ -828,7 +824,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       const y1 = cy - fontSize * 0.65;
       const y2 = cy + fontSize * 0.65;
 
-      // Layered glow for embossed golden look
       ctx.shadowBlur = 30;
       ctx.shadowColor = `rgba(255, 170, 70, ${vis})`;
       ctx.fillStyle = `rgba(180, 100, 30, ${vis * 0.5})`;
@@ -844,7 +839,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       ctx.fillStyle = `rgba(255, 225, 160, ${vis})`;
       ctx.fillText(line1, W / 2, y1);
       ctx.fillText(line2, W / 2, y2);
-      // Top-left highlight for emboss effect
       ctx.shadowBlur = 0;
       ctx.fillStyle = `rgba(255, 250, 220, ${vis * 0.5})`;
       ctx.fillText(line1, W / 2 - 0.5, y1 - 0.5);
@@ -880,7 +874,7 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
     }
 
     function applyVignette(t: number) {
-      const fade = smoothstep(16, 17, t);
+      const fade = smoothstep(16, 17.5, t);
       const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.85);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
       grad.addColorStop(1, `rgba(0,0,0,${0.55 + fade * 0.4})`);
@@ -905,14 +899,10 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
     // ============ CAMERA ============
 
     function updateCamera(t: number) {
-      // Slow cinematic zoom
-      cam.zoom = 1 + smoothstep(0, 17, t) * 0.04;
-      // Tiny rotation drift
+      cam.zoom = 1 + smoothstep(0, 17.5, t) * 0.04;
       cam.rot = Math.sin(t * 0.13) * 0.004;
-      // Breathing motion
       cam.x = Math.sin(t * 0.28) * 4;
       cam.y = Math.cos(t * 0.22) * 3;
-      // Subtle upward tilt during flag reveal
       const tiltUp = smoothstep(6, 8, t) * 8 - smoothstep(11, 15, t) * 8;
       cam.y -= tiltUp;
     }
@@ -938,7 +928,6 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
 
-      // World space — camera transforms applied
       ctx.save();
       applyCamera();
       drawBackground(t);
@@ -948,23 +937,20 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       drawFlag(t);
       drawFog(t);
       drawBellPulse(t);
-      drawParticles(t);
+      drawParticles();
       ctx.restore();
 
-      // Screen space — UI text stays stable
       drawTitle(t);
       drawGreeting(t);
 
-      // Master fade in/out
       const fadeIn = 1 - smoothstep(0, 1.2, t);
-      const fadeOut = smoothstep(16, 17, t);
+      const fadeOut = smoothstep(16, 17.5, t);
       const fadeAmt = Math.max(fadeIn, fadeOut);
       if (fadeAmt > 0.001) {
         ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
         ctx.fillRect(0, 0, W, H);
       }
 
-      // Cinematic post-processing stack
       applyBloom();
       applyColorGrade();
       applyVignette(t);
@@ -978,21 +964,29 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
       const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
       lastTime = now;
 
+      // Smart dynamic re-sampling to catch late loaded web-fonts
+      if (t > 4 && lastSampleTime === 0) {
+        sampleText();
+        lastSampleTime = t;
+      }
+
       if (t < 9.7) birdsSpawned = false;
 
-      if (t < 17.2) {
+      // Dynamic Handover Trigger at the end of the transition (around 16.5-17.5s)
+      if (t >= 16.5 && !handoverTriggered) {
+        handoverTriggered = true;
+        if (onCompleteRef.current) {
+          onCompleteRef.current();
+        }
+      }
+
+      if (t < 17.5) {
         render(t, dt);
-      } else if (t < 19) {
-        // Hold final black frame
+      } else {
+        // Hold pure black frame
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
-      } else {
-        // Auto-loop for continuous showcase
-        startTime = now;
-        lastTime = 0;
-        birdsSpawned = false;
-        for (const p of pool.particles) if (p.active) pool.release(p);
       }
       rafId = requestAnimationFrame(loop);
     }
@@ -1009,16 +1003,16 @@ const RamNavamiDivineArrivalIntro: React.FC = () => {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'block',
-        background: '#000',
-      }}
-    />
+    <div className="fixed inset-0 w-full h-full bg-black z-[99999]">
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          background: '#000',
+        }}
+      />
+    </div>
   );
-};
-
-export default RamNavamiDivineArrivalIntro;
+}
