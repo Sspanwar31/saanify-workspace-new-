@@ -785,54 +785,102 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     // ============ ULTRA REALISTIC CINEMATIC FIREWORKS ============
 
-    function launchFireworks(t: number) {
-      if (t < 4.0 || t > 15.5) return;
-      if (Math.random() < 0.04) {
-        const startX = W * 0.1 + Math.random() * W * 0.8;
-        const targetY = H * 0.1 + Math.random() * H * 0.28;
-        const cPair = fwColors[Math.floor(Math.random() * fwColors.length)];
-        const type = explosionTypes[Math.floor(Math.random() * explosionTypes.length)];
+   function launchFireworks(t: number) {
+      // 14.5s के बाद नए फटाके बिल्कुल नहीं
+      if (t < 4.0 || t > 14.5) return;
 
-        rockets.push({
-          x: startX, y: H * 0.62, 
-          vx: (Math.random() - 0.5) * 1.5,
-          vy: -10 - Math.random() * 4,
-          ax: 0, ay: 0.18 + Math.random() * 0.05,
-          targetY, color: cPair[0], color2: cPair[1], type,
-          trail: [], flicker: 0, smokeTimer: 0, sparkTimer: 0
-        });
+      // टाइमलाइन इंटेंसिटी (Timeline Intensity)
+      let intensity = 0;
+      if (t >= 4.0 && t < 7.0) intensity = 0.3;       // विरल (Sparse)
+      else if (t >= 7.0 && t < 10.0) intensity = 0.6;  // मध्यम (Medium)
+      else if (t >= 10.0 && t < 13.0) intensity = 1.0; // भव्य (Grand)
+      else if (t >= 13.0 && t < 14.5) intensity = 0.3; // कम होता (Reduce)
+
+      // अधिकतम 3 रॉकेट्स एक साथ और 350-500ms का गैप
+      if (rockets.length >= 3) return;
+      if (t - lastRocketLaunchTime < 0.35 + Math.random() * 0.15) return;
+
+      // रैंडम एक्स पोजीशन (बीच के 40%-60% हिस्से को छोड़कर ताकि टेक्स्ट साफ दिखे)
+      let startX = 0;
+      if (Math.random() < 0.5) startX = lerp(W * 0.2, W * 0.4, Math.random());
+      else startX = lerp(W * 0.6, W * 0.8, Math.random());
+
+      // वाई रेंज 10% से 35% (मंदिर के ऊपर)
+      const targetY = lerp(H * 0.35, H * 0.1, Math.random());
+
+      // ओवरलैपिंग से बचने के लिए 100 पिक्सल की जांच
+      for (const b of activeFireworkBursts) {
+        if (b.alpha > 0.1) {
+          const dx = b.x - startX;
+          const dy = b.y - targetY;
+          if (Math.sqrt(dx * dx + dy * dy) < 100) return;
+        }
       }
+
+      // वेटेड प्रोबेबिलिटी (Weighted Probability)
+      let type = 'small';
+      const r = Math.random();
+      if (r < 0.5) type = 'small';
+      else if (r < 0.75) type = 'medium';
+      else if (r < 0.90) type = 'chrysanthemum';
+      else if (r < 0.95) type = 'willow';
+      else type = 'finale';
+
+      const cPair = fwColors[Math.floor(Math.random() * fwColors.length)];
+
+      rockets.push({
+        x: startX, y: H * 0.62,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: -9 - Math.random() * 3,
+        ax: 0, ay: 0.15 + Math.random() * 0.03,
+        targetY, color: cPair[0], color2: cPair[1], type,
+        trail: [], flicker: 0, smokeTimer: 0, sparkTimer: 0
+      });
+
+      lastRocketLaunchTime = t;
     }
 
     function createBurst(fx: number, fy: number, color: string, color2: string, type: string, isSecondary: boolean = false) {
-      screenFlash = Math.min(1, screenFlash + (isSecondary ? 0.4 : 0.8));
-      cameraShake = Math.min(10, cameraShake + (isSecondary ? 4 : 8));
-      
-      activeFireworkBursts.push({ x: fx, y: fy, color, r: 0, maxR: 80 + Math.random() * 60, alpha: 1, type: 'flash' });
-      activeFireworkBursts.push({ x: fx, y: fy, color: '#ffffff', r: 0, maxR: 40 + Math.random() * 30, alpha: 0.8, type: 'core' });
+      let particleCount = 45;
+      let maxR = 50;
+      let shake = 0;
+      let flash = 0;
 
-      const particleCount = isSecondary ? 80 : (250 + Math.floor(Math.random() * 150));
-      
+      // प्रकार के अनुसार पार्टिकल्स और साइज
+      if (type === 'small') { particleCount = 45; maxR = 50; }
+      else if (type === 'medium') { particleCount = 55; maxR = 70; }
+      else if (type === 'chrysanthemum') { particleCount = 70; maxR = 90; }
+      else if (type === 'willow') { particleCount = 60; maxR = 80; }
+      else if (type === 'finale') { particleCount = 90; maxR = 120; shake = 3; flash = 0.3; } // केवल फिनाले के लिए हल्का कैमरा शेक
+
+      if (isSecondary) {
+        particleCount = 30;
+        shake = 0;
+        flash = 0;
+      }
+
+      // ब्लूम और फ्लैश कम किया गया है
+      screenFlash = Math.min(1, screenFlash + flash);
+      cameraShake = Math.min(4, cameraShake + shake); // अधिकतम 4 पिक्सल शेक
+
+      activeFireworkBursts.push({ x: fx, y: fy, color, r: 0, maxR, alpha: 0.6, type: 'flash' });
+
       for (let i = 0; i < particleCount; i++) {
         let ang = (i / particleCount) * Math.PI * 2;
-        let spd = 2.0 + Math.random() * 6.0;
+        let spd = 2.0 + Math.random() * 4.0;
         let vx = 0, vy = 0;
         let gravity = 0.05;
         let drag = 0.982;
-        let maxLife = 1.8 + Math.random() * 1.4;
+        let maxLife = 1.5 + Math.random() * 1.2;
         let pColor = color;
         let pColor2 = color2;
         let pType = 'core';
         let stage = 0;
         let delay = 0;
-        let size = 1.5 + Math.random() * 2.5;
+        let size = 1.2 + Math.random() * 1.8; // आकार छोटा किया गया
 
-        // Explosion Type Logic
-        if (type === 'ring' || type === 'doublering') {
-          spd = 5.5 + Math.random() * 1.0;
-          if (type === 'doublering' && i > particleCount / 2) {
-            spd = 3.0 + Math.random() * 1.0;
-          }
+        if (type === 'ring') {
+          spd = 4.5 + Math.random() * 1.0;
         } else if (type === 'heart') {
           const ht = (i / particleCount) * Math.PI * 2;
           vx = 16 * Math.pow(Math.sin(ht), 3);
@@ -841,22 +889,22 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           ang = Math.atan2(vy, vx);
         } else if (type === 'spiral') {
           ang = (i / particleCount) * Math.PI * 8;
-          spd = 2.0 + (i / particleCount) * 6.0;
+          spd = 2.0 + (i / particleCount) * 4.0;
         } else if (type === 'palm') {
           ang = -Math.PI/2 + (Math.random() - 0.5) * 0.8;
-          spd = 6.0 + Math.random() * 4.0;
+          spd = 5.0 + Math.random() * 3.0;
           gravity = 0.12;
           drag = 0.99;
         } else if (type === 'willow') {
           gravity = 0.15;
           drag = 0.995;
-          maxLife = 3.5 + Math.random() * 1.5;
+          maxLife = 2.5 + Math.random() * 1.5;
           pColor = '#ffd700';
           pColor2 = '#ffaa00';
         } else if (type === 'cross') {
           ang = Math.floor(Math.random() * 4) * (Math.PI / 2) + (Math.random() - 0.5) * 0.2;
-          spd = 4.0 + Math.random() * 4.0;
-        } else if (type === 'multistage' || type === 'doubleburst' || type === 'tripleburst') {
+          spd = 4.0 + Math.random() * 3.0;
+        } else if (type === 'finale') {
           if (Math.random() < 0.2) {
             stage = 1;
             delay = 0.5 + Math.random() * 0.5;
@@ -872,35 +920,43 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
         sparks.push({
           x: fx, y: fy, vx, vy, color: pColor, color2: pColor2,
-          alpha: 1, life: 0, maxLife, size, gravity, drag, 
+          alpha: 1, life: 0, maxLife, size, gravity, drag,
           flicker: Math.random() < 0.3, type: pType,
           temp: 1.0, rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 0.2,
           wind: (Math.random() - 0.5) * 0.1, turb: Math.random() * 0.05,
           stage, delay, hasExploded: false, isSecondary
         });
       }
-      
-      // Secondary bursts
-      if (!isSecondary && (type === 'multistage' || type === 'doubleburst' || type === 'tripleburst')) {
-        const secondaryCount = type === 'tripleburst' ? 3 : 2;
-        for(let i=0; i<secondaryCount; i++) {
+
+      // केवल फिनाले के लिए सेकेंडरी बर्स्ट
+      if (!isSecondary && type === 'finale') {
+        for(let i=0; i<2; i++) {
           setTimeout(() => {
             if (running) {
-              const offX = (Math.random() - 0.5) * 100;
-              const offY = (Math.random() - 0.5) * 60;
-              createBurst(fx + offX, fy + offY, color2, color, 'sphere', true);
+              const offX = (Math.random() - 0.5) * 80;
+              const offY = (Math.random() - 0.5) * 40;
+              createBurst(fx + offX, fy + offY, color2, color, 'small', true);
             }
-          }, 600 + i * 400);
+          }, 500 + i * 300);
         }
       }
     }
 
-    function updateFireworks(dt: number) {
+    function updateFireworks(dt: number, t: number) {
+      // 15.0s तक सब कुछ साफ (cleanup) कर दें
+      const forceCleanup = t >= 15.0;
+
       screenFlash = Math.max(0, screenFlash - dt * 1.5);
       cameraShake = Math.max(0, cameraShake - dt * 20.0);
 
       for (let i = rockets.length - 1; i >= 0; i--) {
         const r = rockets[i];
+        
+        if (forceCleanup) {
+          rockets.splice(i, 1);
+          continue;
+        }
+
         r.vy += r.ay * dt * 60;
         r.vx += r.ax * dt * 60;
         r.x += r.vx * dt * 60;
@@ -910,32 +966,32 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         r.smokeTimer += dt;
         r.sparkTimer += dt;
 
+        // पतले और तेजी से फेड होने वाले ट्रेल्स
         r.trail.push({ x: r.x, y: r.y, alpha: 1, type: 'core' });
-        if (r.trail.length > 12) r.trail.shift();
-        r.trail.forEach(tt => tt.alpha -= 0.06);
+        if (r.trail.length > 6) r.trail.shift(); 
+        r.trail.forEach(tt => tt.alpha -= 0.12); 
 
-        // Emit smoke
-        if (r.smokeTimer > 0.05) {
+        // कम धुआं
+        if (r.smokeTimer > 0.15) {
           r.smokeTimer = 0;
           sparks.push({
             x: r.x + (Math.random()-0.5)*2, y: r.y + 5, 
             vx: (Math.random()-0.5)*0.5, vy: 1 + Math.random()*0.5,
             color: 'rgba(150,130,110,1)', color2: 'rgba(100,80,60,1)',
-            alpha: 0.6, life: 0, maxLife: 2.0, size: 3 + Math.random()*2,
+            alpha: 0.3, life: 0, maxLife: 1.5, size: 2 + Math.random()*2,
             gravity: -0.02, drag: 0.98, flicker: false, type: 'smoke',
             temp: 0, rot: 0, rotSpd: 0, wind: 0.1, turb: 0.02,
             stage: 0, delay: 0, hasExploded: false, isSecondary: false
           });
         }
         
-        // Emit sparks
-        if (r.sparkTimer > 0.02) {
+        if (r.sparkTimer > 0.03) {
           r.sparkTimer = 0;
           sparks.push({
             x: r.x, y: r.y + 4, 
             vx: (Math.random()-0.5)*1, vy: 2 + Math.random()*1.5,
             color: '#ffffff', color2: r.color,
-            alpha: 1, life: 0, maxLife: 0.5, size: 1.5,
+            alpha: 1, life: 0, maxLife: 0.4, size: 1.0, 
             gravity: 0.1, drag: 0.95, flicker: true, type: 'ember',
             temp: 1, rot: 0, rotSpd: 0, wind: 0, turb: 0,
             stage: 0, delay: 0, hasExploded: false, isSecondary: false
@@ -948,17 +1004,21 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Cap sparks to prevent memory leak
-      if (sparks.length > 3000) sparks.splice(0, sparks.length - 3000);
-
+      // स्पार्क्स की क्लीनिंग
       for (let i = sparks.length - 1; i >= 0; i--) {
         const s = sparks[i];
+
+        if (forceCleanup) {
+          sparks.splice(i, 1);
+          continue;
+        }
+
         s.life += dt;
         
         if (s.type === 'delayed' && !s.hasExploded) {
           if (s.life > s.delay) {
             s.hasExploded = true;
-            createBurst(s.x, s.y, s.color2, s.color, 'fragment', true);
+            createBurst(s.x, s.y, s.color2, s.color, 'small', true);
             s.alpha = 0;
           }
         } else {
@@ -975,7 +1035,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           
           if (s.type === 'smoke') {
             s.size += dt * 8;
-            s.alpha = Math.max(0, 0.5 * (1 - s.life / s.maxLife));
+            s.alpha = Math.max(0, 0.3 * (1 - s.life / s.maxLife));
           } else if (s.type === 'ember') {
             s.alpha = s.temp;
           } else {
@@ -989,10 +1049,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         }
       }
 
+      // बर्स्ट्स की क्लीनिंग
       for (let i = activeFireworkBursts.length - 1; i >= 0; i--) {
         const b = activeFireworkBursts[i];
+        if (forceCleanup) {
+          activeFireworkBursts.splice(i, 1);
+          continue;
+        }
         b.r += (b.maxR - b.r) * 0.15;
-        b.alpha -= 0.045;
+        b.alpha -= 0.05; // तेजी से फेड
         if (b.alpha <= 0) activeFireworkBursts.splice(i, 1);
       }
     }
@@ -1002,43 +1067,43 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.globalCompositeOperation = 'lighter';
 
       rockets.forEach(r => {
-        // Trail
+        // पतले ट्रेल्स
         r.trail.forEach(tt => {
           if (tt.alpha > 0) {
-            ctx.globalAlpha = tt.alpha;
+            ctx.globalAlpha = tt.alpha * 0.8;
             ctx.fillStyle = r.color;
             ctx.beginPath();
-            ctx.arc(tt.x, tt.y, 2.5, 0, Math.PI * 2);
+            ctx.arc(tt.x, tt.y, 1.5, 0, Math.PI * 2); 
             ctx.fill();
           }
         });
         
-        // Engine Flame & Head
+        // साफ इंजन फ्लेम
         ctx.globalAlpha = 1;
-        const flameLen = 8 + Math.random() * 4;
+        const flameLen = 6 + Math.random() * 3; 
         const fGrad = ctx.createLinearGradient(r.x, r.y, r.x, r.y + flameLen);
         fGrad.addColorStop(0, '#ffffff');
         fGrad.addColorStop(0.5, '#ffaa00');
         fGrad.addColorStop(1, 'rgba(255,0,0,0)');
         ctx.fillStyle = fGrad;
         ctx.beginPath();
-        ctx.moveTo(r.x - 2, r.y);
-        ctx.lineTo(r.x + 2, r.y);
+        ctx.moveTo(r.x - 1.5, r.y); 
+        ctx.lineTo(r.x + 1.5, r.y);
         ctx.lineTo(r.x, r.y + flameLen);
         ctx.closePath();
         ctx.fill();
 
-        // Rocket Head
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(r.x, r.y, 2.5 + r.flicker, 0, Math.PI * 2);
+        ctx.arc(r.x, r.y, 2.0 + r.flicker, 0, Math.PI * 2); 
         ctx.fill();
       });
 
+      // बर्स्ट्स के लिए कम ग्लो
       activeFireworkBursts.forEach((b) => {
         const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-        grad.addColorStop(0, `${b.color}cc`);
-        grad.addColorStop(0.4, `${b.color}44`);
+        grad.addColorStop(0, `${b.color}80`); 
+        grad.addColorStop(0.4, `${b.color}20`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
         ctx.globalAlpha = b.alpha;
@@ -1049,18 +1114,18 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.globalAlpha = 1;
 
-      // Draw Sparks (Multiple passes for HDR Glow)
+      // स्पार्क्स के लिए कम ग्लो
       sparks.forEach((s) => {
         if (s.alpha <= 0 || s.type === 'smoke') return;
         
         const alpha = clamp(s.alpha, 0, 1);
         const sz = s.size;
         
-        // Outer Glow
-        ctx.globalAlpha = alpha * 0.4;
+        // आउटर ग्लो - कम मात्रा में
+        ctx.globalAlpha = alpha * 0.25;
         ctx.drawImage(sparkSprite, s.x - sz * 4, s.y - sz * 4, sz * 8, sz * 8);
         
-        // Core
+        // कोर
         ctx.globalAlpha = alpha;
         ctx.fillStyle = s.temp > 0.5 ? '#ffffff' : s.color;
         ctx.beginPath();
@@ -1070,10 +1135,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.globalCompositeOperation = 'source-over';
       
-      // Draw Smoke
+      // कम धुएं की अपेक्षित ओपैसिटी
       sparks.forEach((s) => {
         if (s.alpha <= 0 || s.type !== 'smoke') return;
-        ctx.globalAlpha = s.alpha * 0.5;
+        ctx.globalAlpha = s.alpha * 0.3;
         ctx.fillStyle = s.color;
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
@@ -1082,197 +1147,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.restore();
     }
-
-    // ============ PARTICLE SPAWN & UPDATES ============
-
-    function spawnDust(t: number) {
-      const target = Math.floor(75 * smoothstep(0, 3, t));
-      let count = 0;
-      for (const p of pool.particles) if (p.active && p.type === 'dust') count++;
-      let attempts = 0;
-      while (count < target && attempts < 8) {
-        const p = pool.spawn(); if (!p) break;
-        p.type = 'dust'; p.x = Math.random() * W; p.y = Math.random() * H;
-        p.vx = (Math.random() - 0.5) * 0.4; p.vy = -0.05 - Math.random() * 0.35;
-        p.size = 0.6 + Math.random() * 1.6; p.maxLife = 5 + Math.random() * 5;
-        p.life = Math.random() * p.maxLife * 0.4; p.alpha = 0;
-        p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 0.5;
-        count++; attempts++;
-      }
-    }
-
-    function spawnPetals(t: number) {
-      const intensity = smoothstep(6.5, 9.5, t) * (1 - smoothstep(16, 17.5, t));
-      if (intensity <= 0) return;
-      if (Math.random() > intensity * 0.4) return;
-      const p = pool.spawn(); if (!p) return;
-      p.type = 'petal'; p.x = Math.random() * W; p.y = -20;
-      p.vx = (Math.random() - 0.5) * 0.8; p.vy = 0.5 + Math.random() * 0.8;
-      p.size = 5 + Math.random() * 6; p.maxLife = 18; p.life = 0; p.alpha = 0;
-      p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
-    }
-
-    function spawnTextParticles(t: number) {
-      if (t < 7.5 || t > 9.5) return;
-      if (ramPoints.length === 0) return;
-      const target = Math.min(ramPoints.length, 800);
-      let active = 0;
-      for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
-      let attempts = 0;
-      while (active < target && attempts < 10) {
-        const p = pool.spawn(); if (!p) break;
-        const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
-        p.type = 'sparkle';
-        p.x = W / 2 + (Math.random() - 0.5) * W * 1.3;
-        p.y = H * 0.36 + (Math.random() - 0.5) * H * 1.1;
-        p.tx = W / 2 + pt.x; p.ty = H * 0.36 + pt.y; 
-        p.vx = 0; p.vy = 0;
-        p.size = 1.2 + Math.random() * 1.6; p.maxLife = 7; p.life = 0; p.alpha = 0;
-        p.delay = Math.random() * 1.1;
-        active++; attempts++;
-      }
-    }
-
-    function spawnIncenseSmoke(t: number) {
-      const intensity = smoothstep(8, 10, t) * (1 - smoothstep(16, 17.5, t));
-      if (intensity <= 0) return;
-      if (Math.random() > 0.08 * intensity) return;
-      
-      const s = Math.min(W, H) * 0.0011;
-      const emitterX = Math.random() < 0.5 ? W * 0.15 : W * 0.85;
-
-      const p = pool.spawn(); if (!p) return;
-      p.type = 'smoke'; p.x = emitterX; p.y = H * 0.85 - 12 * s;
-      p.vx = (Math.random() - 0.5) * 0.25; p.vy = -0.5 - Math.random() * 0.45;
-      p.size = 6 + Math.random() * 8; p.maxLife = 4.5 + Math.random() * 3.5;
-      p.life = 0; p.alpha = 0;
-    }
-
-    function spawnBirds(t: number) {
-      if (t < 9.8 || t > 10.5) return;
-      if (birdsSpawned) return;
-      birdsSpawned = true;
-      const count = 14;
-      for (let i = 0; i < count; i++) {
-        const p = pool.spawn(); if (!p) break;
-        p.type = 'bird';
-        p.x = -60 - i * 18 + Math.random() * 15;
-        p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12;
-        p.vx = 2.2 + Math.random() * 0.6; p.vy = (Math.random() - 0.5) * 0.15;
-        p.size = 7 + Math.random() * 4; p.maxLife = 25; p.life = 0;
-        p.alpha = 0.65; p.flap = Math.random() * Math.PI * 2;
-      }
-    }
-
-    function updateParticles(dt: number, t: number) {
-      for (const p of pool.particles) {
-        if (!p.active) continue;
-        p.life += dt;
-
-        if (p.type === 'dust') {
-          p.x += p.vx; p.y += p.vy;
-          p.vx += (Math.random() - 0.5) * 0.03; p.vy += -0.002;
-          p.rot += p.rotSpd * dt;
-          const lr = p.life / p.maxLife;
-          const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17.5, t));
-          p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env;
-          if (p.life > p.maxLife || p.y < -30) {
-            p.life = 0; p.x = Math.random() * W; p.y = H * 0.6; p.alpha = 0;
-          }
-        } else if (p.type === 'petal') {
-          p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
-          p.y += p.vy; p.rot += p.rotSpd * dt;
-          const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
-          if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p);
-        } else if (p.type === 'sparkle') {
-          if (p.delay > 0) { p.delay -= dt; p.alpha = 0; continue; }
-          const dx = p.tx - p.x, dy = p.ty - p.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist > 1.5) {
-            const speed = clamp(dist * 4.5, 90, 520);
-            p.vx = (dx / dist) * speed; p.vy = (dy / dist) * speed;
-            p.x += p.vx * dt; p.y += p.vy * dt;
-            p.alpha = clamp(p.alpha + dt * 1.6, 0, 0.7);
-          } else {
-            p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.35;
-            p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.35;
-            p.alpha = clamp(p.alpha + dt * 1.8, 0, 1);
-          }
-          if (t > 12) p.alpha *= 1 - smoothstep(12, 14, t);
-          if (t > 14.5 && p.alpha < 0.01) pool.release(p);
-        } else if (p.type === 'smoke') {
-          p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
-          p.y += p.vy; p.size += dt * 5.2; 
-          const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18;
-          if (p.life > p.maxLife || p.y < -30) pool.release(p);
-        } else if (p.type === 'bird') {
-          p.x += p.vx; p.y += p.vy; p.flap += dt * 9;
-          p.alpha = 0.65 * (1 - smoothstep(15, 16, t));
-          if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
-        }
-      }
-    }
-
-    function drawParticles() {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (const p of pool.particles) {
-        if (!p.active || p.alpha <= 0.01) continue;
-        if (p.type === 'dust') {
-          ctx.globalAlpha = p.alpha;
-          const sz = p.size * 5.2;
-          ctx.drawImage(dustSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
-        } else if (p.type === 'sparkle') {
-          ctx.globalAlpha = p.alpha;
-          const sz = p.size * 4.4;
-          ctx.drawImage(sparkSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
-        }
-      }
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
-      for (const p of pool.particles) {
-        if (!p.active || p.alpha <= 0.01) continue;
-        if (p.type === 'petal') {
-          ctx.save();
-          ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-          ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; 
-          ctx.beginPath();
-          ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        } else if (p.type === 'smoke') {
-          ctx.save();
-          const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-          rad.addColorStop(0, `rgba(255, 230, 200, ${p.alpha})`);
-          rad.addColorStop(0.3, `rgba(220, 160, 100, ${p.alpha * 0.5})`);
-          rad.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = rad;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        } else if (p.type === 'bird') {
-          ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.fillStyle = `rgba(10, 5, 2, ${p.alpha})`;
-          const flap = Math.sin(p.flap) * 0.7;
-          const sz = p.size;
-          ctx.beginPath();
-          ctx.moveTo(-sz, 0);
-          ctx.quadraticCurveTo(-sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), 0, 0);
-          ctx.quadraticCurveTo(sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), sz, 0);
-          ctx.quadraticCurveTo(sz * 0.4, sz * 0.15, 0, sz * 0.1);
-          ctx.quadraticCurveTo(-sz * 0.4, sz * 0.15, -sz, 0);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-      ctx.restore();
-    }
-
+    
     function drawTitle(t: number) {
       if (t < 8.5) return;
       const intensity = smoothstep(8.5, 10, t) * (1 - smoothstep(12, 14, t));
