@@ -35,7 +35,7 @@ export default function IndependenceDayGreeting({ className }: Props) {
     }
 
     const resizeCanvas = () => {
-      // Set responsive height/width
+      // Set responsive height/width based on the parent container
       const container = canvas.parentElement;
       width = container ? container.clientWidth : window.innerWidth;
       height = container ? container.clientHeight : window.innerHeight;
@@ -47,15 +47,15 @@ export default function IndependenceDayGreeting({ className }: Props) {
       canvas.style.height = `${height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Determine scale based on portrait/landscape viewport
-      scale = Math.min(width / 600, height / 900);
-      if (scale < 0.5) scale = 0.5;
+      // Compact scaling factor optimized for greeting layouts
+      scale = Math.min(width / 500, height / 750);
+      if (scale < 0.25) scale = 0.25; // Lower clamp limit for better mobile compatibility
     };
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Helpers for procedural textures
+    // Helpers for procedural sandstone textures
     const drawSandstoneGradient = (
       ctx: CanvasRenderingContext2D,
       x1: number,
@@ -85,22 +85,19 @@ export default function IndependenceDayGreeting({ className }: Props) {
       r: number
     ) => {
       ctx.save();
-      // Base shadow
       const shadowGrad = ctx.createRadialGradient(cx, cy + r * 0.2, 0, cx, cy + r * 0.2, r);
-      shadowGrad.addColorStop(0, 'rgba(10, 30, 5, 0.6)');
+      shadowGrad.addColorStop(0, 'rgba(10, 30, 5, 0.55)');
       shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = shadowGrad;
       ctx.beginPath();
       ctx.ellipse(cx, cy + r * 0.3, r, r * 0.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Multi-layered organic leaf structures
       const layers = 5;
       for (let i = 0; i < layers; i++) {
         const layerR = r * (1 - i * 0.15);
-        const offsetMax = i * 4;
+        const offsetMax = i * 3;
         
-        // Coloring from deep shadow green to bright highlight green
         const rVal = Math.floor(15 + i * 15);
         const gVal = Math.floor(45 + i * 25);
         const bVal = Math.floor(10 + i * 10);
@@ -125,31 +122,29 @@ export default function IndependenceDayGreeting({ className }: Props) {
       const t = time * 0.001;
       ctx.clearRect(0, 0, width, height);
 
-      // Center the coordinates around base of the fort dynamically
+      // Centering and structural calculations with updated compact sizes
       const centerX = width * 0.5;
-      const fortBaseY = height * 0.78;
-      const fortWidth = 480 * scale;
-      const fortHeight = 220 * scale;
+      const fortBaseY = height * 0.72; // Adjusted upward to avoid bottom cutoff
+      const fortWidth = 360 * scale;   // Reduced baseline width (was 480)
+      const fortHeight = 170 * scale;  // Reduced baseline height (was 220)
 
       ctx.save();
 
       // ==========================================
       // 1. FOREGROUND GARDEN & HILL (MOUND)
       // ==========================================
-      // Grassy Mound under the flagpole
-      const hillGrad = ctx.createLinearGradient(0, fortBaseY - 30 * scale, 0, height);
+      const hillGrad = ctx.createLinearGradient(0, fortBaseY - 20 * scale, 0, height);
       hillGrad.addColorStop(0, '#557c3e');
       hillGrad.addColorStop(0.3, '#325222');
       hillGrad.addColorStop(1, '#1b3211');
       ctx.fillStyle = hillGrad;
       ctx.beginPath();
-      ctx.ellipse(centerX, fortBaseY + 30 * scale, fortWidth * 0.62, 50 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(centerX, fortBaseY + 20 * scale, fortWidth * 0.65, 40 * scale, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // ==========================================
       // 2. RED FORT (LAL QILA) ARCHITECTURE
       // ==========================================
-      // Red Fort Main Wall
       const wallX = centerX - fortWidth / 2;
       const wallY = fortBaseY - fortHeight * 0.6;
       const wallW = fortWidth;
@@ -158,11 +153,11 @@ export default function IndependenceDayGreeting({ className }: Props) {
       ctx.fillStyle = drawSandstoneGradient(ctx, wallX, wallY, wallX + wallW, wallY, false);
       ctx.fillRect(wallX, wallY, wallW, wallH);
 
-      // Procedural Brick Patterns on Main Wall
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
-      ctx.lineWidth = 0.8;
-      const brickRows = 16;
-      const brickCols = 32;
+      // Brick Patterns
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+      ctx.lineWidth = 0.6;
+      const brickRows = 14;
+      const brickCols = 28;
       const rowHeight = wallH / brickRows;
       const colWidth = wallW / brickCols;
       for (let i = 0; i < brickRows; i++) {
@@ -189,12 +184,11 @@ export default function IndependenceDayGreeting({ className }: Props) {
       const archSpacing = wallW / (archCount + 1);
       for (let i = 1; i <= archCount; i++) {
         const ax = wallX + i * archSpacing;
-        const ay = fortBaseY - 10 * scale;
-        const aw = 24 * scale;
-        const ah = 40 * scale;
+        const ay = fortBaseY - 8 * scale;
+        const aw = 18 * scale;
+        const ah = 30 * scale;
 
-        // Arch Shadow
-        ctx.fillStyle = 'rgba(25, 5, 2, 0.82)';
+        ctx.fillStyle = 'rgba(25, 5, 2, 0.85)';
         ctx.beginPath();
         ctx.moveTo(ax - aw / 2, ay);
         ctx.lineTo(ax - aw / 2, ay - ah + aw / 2);
@@ -203,19 +197,17 @@ export default function IndependenceDayGreeting({ className }: Props) {
         ctx.closePath();
         ctx.fill();
 
-        // Arch Border Accent
-        ctx.strokeStyle = 'rgba(232, 213, 184, 0.15)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(232, 213, 184, 0.12)';
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
 
       // Main Central Balcony (Archway structure)
-      const centerArchW = 75 * scale;
-      const centerArchH = 90 * scale;
+      const centerArchW = 60 * scale;
+      const centerArchH = 72 * scale;
       const centerArchX = centerX;
       const centerArchY = fortBaseY - centerArchH * 0.4;
 
-      // Dark shadow recess
       ctx.fillStyle = '#1c0702';
       ctx.beginPath();
       ctx.moveTo(centerArchX - centerArchW / 2, centerArchY);
@@ -225,9 +217,8 @@ export default function IndependenceDayGreeting({ className }: Props) {
       ctx.closePath();
       ctx.fill();
 
-      // White/Cream Marble inlay arches
       ctx.strokeStyle = '#e6d9be';
-      ctx.lineWidth = 3 * scale;
+      ctx.lineWidth = 2 * scale;
       ctx.beginPath();
       ctx.moveTo(centerArchX - centerArchW * 0.46, centerArchY);
       ctx.lineTo(centerArchX - centerArchW * 0.46, centerArchY - centerArchH + centerArchW * 0.46);
@@ -236,28 +227,24 @@ export default function IndependenceDayGreeting({ className }: Props) {
       ctx.stroke();
 
       // Left and Right Octagonal Pillars (Grand Bastions)
-      const pillarW = 44 * scale;
+      const pillarW = 34 * scale;
       const pillarH = fortHeight * 0.82;
-      const pillarLX = wallX + 40 * scale;
-      const pillarRX = wallX + wallW - 40 * scale - pillarW;
+      const pillarLX = wallX + 30 * scale;
+      const pillarRX = wallX + wallW - 30 * scale - pillarW;
       const pillarY = fortBaseY - pillarH;
 
       [pillarLX, pillarRX].forEach((px) => {
-        // Base Pillar
         ctx.fillStyle = drawSandstoneGradient(ctx, px, pillarY, px + pillarW, pillarY, true);
         ctx.fillRect(px, pillarY, pillarW, pillarH);
 
-        // Shadow Edge
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
         ctx.fillRect(px + pillarW * 0.7, pillarY, pillarW * 0.3, pillarH);
 
-        // Tower Chhatri (Dome Top)
         const domeR = pillarW * 0.55;
-        const domeCY = pillarY - 15 * scale;
+        const domeCY = pillarY - 12 * scale;
 
-        // Pillars supporting dome
         ctx.strokeStyle = '#bc5333';
-        ctx.lineWidth = 3 * scale;
+        ctx.lineWidth = 2 * scale;
         for (let k = 0; k < 4; k++) {
           const pxOffset = px + (pillarW / 3) * k;
           ctx.beginPath();
@@ -266,14 +253,12 @@ export default function IndependenceDayGreeting({ className }: Props) {
           ctx.stroke();
         }
 
-        // Dome Base platform
         ctx.fillStyle = '#94381c';
-        ctx.fillRect(px - 4 * scale, domeCY, pillarW + 8 * scale, 5 * scale);
+        ctx.fillRect(px - 3 * scale, domeCY, pillarW + 6 * scale, 4 * scale);
 
-        // White Marble Dome Cupola
         ctx.fillStyle = '#f6f4eb';
         ctx.strokeStyle = '#d7ccc8';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
         ctx.arc(px + pillarW / 2, domeCY, domeR, Math.PI, 0);
         ctx.quadraticCurveTo(px + pillarW / 2, domeCY - domeR * 1.3, px + pillarW / 2, domeCY - domeR * 1.4);
@@ -282,30 +267,27 @@ export default function IndependenceDayGreeting({ className }: Props) {
         ctx.fill();
         ctx.stroke();
 
-        // Kalash (Golden Tip)
         ctx.fillStyle = '#dfb15b';
         ctx.beginPath();
-        ctx.arc(px + pillarW / 2, domeCY - domeR * 1.45, 2.5 * scale, 0, Math.PI * 2);
+        ctx.arc(px + pillarW / 2, domeCY - domeR * 1.45, 2 * scale, 0, Math.PI * 2);
         ctx.fill();
       });
 
-      // Upper center miniature cupolas (Chhatris)
+      // Upper center miniature cupolas
       const miniCupolaCount = 5;
-      const miniCupolaW = 18 * scale;
-      const miniCupolaH = 26 * scale;
-      const startMiniX = centerX - (miniCupolaW + 8 * scale) * (miniCupolaCount - 1) * 0.5;
+      const miniCupolaW = 14 * scale;
+      const miniCupolaH = 20 * scale;
+      const startMiniX = centerX - (miniCupolaW + 6 * scale) * (miniCupolaCount - 1) * 0.5;
 
       for (let i = 0; i < miniCupolaCount; i++) {
-        const cx_ = startMiniX + i * (miniCupolaW + 8 * scale);
-        const cy_ = wallY - 14 * scale;
+        const cx_ = startMiniX + i * (miniCupolaW + 6 * scale);
+        const cy_ = wallY - 10 * scale;
 
-        // Sandstone base
         ctx.fillStyle = '#94381c';
-        ctx.fillRect(cx_ - miniCupolaW / 2, cy_, miniCupolaW, 4 * scale);
+        ctx.fillRect(cx_ - miniCupolaW / 2, cy_, miniCupolaW, 3 * scale);
 
-        // Columns
         ctx.strokeStyle = '#d16a49';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(cx_ - miniCupolaW / 3, cy_);
         ctx.lineTo(cx_ - miniCupolaW / 3, cy_ - miniCupolaH * 0.4);
@@ -313,7 +295,6 @@ export default function IndependenceDayGreeting({ className }: Props) {
         ctx.lineTo(cx_ + miniCupolaW / 3, cy_ - miniCupolaH * 0.4);
         ctx.stroke();
 
-        // Small white dome
         ctx.fillStyle = '#fcfbf7';
         ctx.beginPath();
         ctx.arc(cx_, cy_ - miniCupolaH * 0.4, miniCupolaW / 2, Math.PI, 0);
@@ -321,59 +302,52 @@ export default function IndependenceDayGreeting({ className }: Props) {
         ctx.fill();
       }
 
-      // Balcony guard railing (White Jali details)
-      ctx.fillStyle = 'rgba(240, 235, 225, 0.85)';
-      ctx.fillRect(wallX + 15 * scale, wallY, wallW - 30 * scale, 4 * scale);
+      // Balcony guard railing
+      ctx.fillStyle = 'rgba(240, 235, 225, 0.8)';
+      ctx.fillRect(wallX + 10 * scale, wallY, wallW - 20 * scale, 3 * scale);
 
       // ==========================================
       // 3. MAIN FLAGPOLE (SILVER/CHROME)
       // ==========================================
-      const poleX = centerX - 25 * scale;
-      const poleBaseY = fortBaseY - 10 * scale;
-      const poleH = 260 * scale;
+      const poleX = centerX - 20 * scale;
+      const poleBaseY = fortBaseY - 8 * scale;
+      const poleH = 210 * scale; // Reduced height (was 260)
       const poleTopY = poleBaseY - poleH;
-      const poleW = 4.5 * scale;
+      const poleW = 3.5 * scale;
 
-      // Chrome metallic gradient
       const chromeGrad = ctx.createLinearGradient(poleX - poleW, 0, poleX + poleW, 0);
       chromeGrad.addColorStop(0, '#757575');
       chromeGrad.addColorStop(0.3, '#bdbdbd');
       chromeGrad.addColorStop(0.5, '#f5f5f5');
-      chromeGrad.addColorStop(0.8, '#eeeeee');
       chromeGrad.addColorStop(1, '#616161');
 
       ctx.fillStyle = chromeGrad;
       ctx.fillRect(poleX - poleW / 2, poleTopY, poleW, poleH);
 
-      // Gold sphere on top of the pole
       ctx.fillStyle = '#ffd700';
       ctx.beginPath();
-      ctx.arc(poleX, poleTopY, 5 * scale, 0, Math.PI * 2);
+      ctx.arc(poleX, poleTopY, 4 * scale, 0, Math.PI * 2);
       ctx.fill();
 
       // ==========================================
       // 4. ANIMATED WAVING INDIAN FLAG (TIRANGA)
       // ==========================================
-      const flagW = 150 * scale;
-      const flagH = 95 * scale;
+      const flagW = 120 * scale; // Reduced size (was 150)
+      const flagH = 76 * scale;  // Reduced size (was 95)
       const stripeH = flagH / 3;
 
-      // Configure/Step flag physical points
-      const frequency = 4.8;
       const waveSpeed = 6.2;
-      const amplitude = 5.2 * scale;
+      const amplitude = 4 * scale;
 
       for (let i = 0; i < wavePointsCount; i++) {
         const pt = flagPoints[i];
         pt.x = poleX + (i * flagW) / (wavePointsCount - 1);
         
-        // Complex trigonometric wave equation for highly organic movement
         const waveOffset1 = Math.sin(t * waveSpeed - i * 0.36) * amplitude;
-        const waveOffset2 = Math.cos(t * waveSpeed * 1.4 - i * 0.18) * (amplitude * 0.35);
+        const waveOffset2 = Math.cos(t * waveSpeed * 1.4 - i * 0.18) * (amplitude * 0.3);
         
-        // Dampen wave close to the flagpole attachment point
         const dampeningFactor = Math.min(i / 5, 1.0);
-        pt.y = poleTopY + 15 * scale + (waveOffset1 + waveOffset2) * dampeningFactor;
+        pt.y = poleTopY + 12 * scale + (waveOffset1 + waveOffset2) * dampeningFactor;
       }
 
       // Draw the flag mesh segments
@@ -381,11 +355,9 @@ export default function IndependenceDayGreeting({ className }: Props) {
         const p1 = flagPoints[i];
         const p2 = flagPoints[i + 1];
 
-        // Slopes for calculating dynamic light folds
         const slope = (p2.y - p1.y) / (p2.x - p1.x);
         const foldShadow = Math.max(-0.4, Math.min(0.4, slope * 1.8));
 
-        // Color manipulation helper to render dynamic shadows/highlights on folds
         const getFoldAdjustedColor = (hex: string, shadow: number) => {
           const cleanHex = hex.replace('#', '');
           let r = parseInt(cleanHex.substring(0, 2), 16);
@@ -393,12 +365,10 @@ export default function IndependenceDayGreeting({ className }: Props) {
           let b = parseInt(cleanHex.substring(4, 6), 16);
 
           if (shadow < 0) {
-            // Shadowing
             r = Math.floor(r * (1 + shadow * 0.7));
             g = Math.floor(g * (1 + shadow * 0.7));
             b = Math.floor(b * (1 + shadow * 0.7));
           } else {
-            // Highlighting
             r = Math.floor(r + (255 - r) * shadow * 0.5);
             g = Math.floor(g + (255 - g) * shadow * 0.5);
             b = Math.floor(b + (255 - b) * shadow * 0.5);
@@ -438,7 +408,7 @@ export default function IndependenceDayGreeting({ className }: Props) {
         ctx.fill();
       }
 
-      // Draw Ashoka Chakra on the center (White) stripe of the flag
+      // Draw Ashoka Chakra
       const centerPointIdx = Math.floor(wavePointsCount * 0.42);
       const chakraX = flagPoints[centerPointIdx].x;
       const chakraY = flagPoints[centerPointIdx].y + stripeH * 1.5;
@@ -447,21 +417,18 @@ export default function IndependenceDayGreeting({ className }: Props) {
       ctx.save();
       ctx.translate(chakraX, chakraY);
       
-      // Calculate dynamic tilt of chakra based on local flag fold slope
       const chakraP1 = flagPoints[centerPointIdx - 1];
       const chakraP2 = flagPoints[centerPointIdx + 1];
       const chakraSlope = (chakraP2.y - chakraP1.y) / (chakraP2.x - chakraP1.x);
       ctx.rotate(Math.atan(chakraSlope));
 
-      // Outer circle
       ctx.strokeStyle = '#000080';
-      ctx.lineWidth = 1.5 * scale;
+      ctx.lineWidth = 1 * scale;
       ctx.beginPath();
       ctx.arc(0, 0, chakraR, 0, Math.PI * 2);
       ctx.stroke();
 
-      // spokes
-      ctx.lineWidth = 0.5 * scale;
+      ctx.lineWidth = 0.4 * scale;
       for (let k = 0; k < 24; k++) {
         const spAngle = (k / 24) * Math.PI * 2;
         ctx.beginPath();
@@ -472,19 +439,17 @@ export default function IndependenceDayGreeting({ className }: Props) {
       ctx.restore();
 
       // ==========================================
-      // 5. GARDEN BUSHES (AGAINST BASE WALL)
+      // 5. GARDEN BUSHES
       // ==========================================
-      // Procedural round hedges / topiary bushes at the base of fort
-      const bushScale = scale * 1.15;
-      drawRealisticBush(ctx, centerX - 190 * scale, fortBaseY + 35 * scale, 34 * bushScale);
-      drawRealisticBush(ctx, centerX - 130 * scale, fortBaseY + 40 * scale, 24 * bushScale);
+      const bushScale = scale * 1.1;
+      drawRealisticBush(ctx, centerX - 140 * scale, fortBaseY + 28 * scale, 24 * bushScale);
+      drawRealisticBush(ctx, centerX - 90 * scale, fortBaseY + 32 * scale, 18 * bushScale);
       
-      drawRealisticBush(ctx, centerX + 120 * scale, fortBaseY + 42 * scale, 28 * bushScale);
-      drawRealisticBush(ctx, centerX + 180 * scale, fortBaseY + 35 * scale, 32 * bushScale);
+      drawRealisticBush(ctx, centerX + 90 * scale, fortBaseY + 34 * scale, 20 * bushScale);
+      drawRealisticBush(ctx, centerX + 140 * scale, fortBaseY + 28 * scale, 24 * bushScale);
 
-      // Main big trimmed bushes in the central front courtyard
-      drawRealisticBush(ctx, centerX - 240 * scale, fortBaseY + 65 * scale, 38 * bushScale);
-      drawRealisticBush(ctx, centerX + 240 * scale, fortBaseY + 65 * scale, 38 * bushScale);
+      drawRealisticBush(ctx, centerX - 180 * scale, fortBaseY + 50 * scale, 28 * bushScale);
+      drawRealisticBush(ctx, centerX + 180 * scale, fortBaseY + 50 * scale, 28 * bushScale);
 
       ctx.restore();
 
@@ -500,11 +465,11 @@ export default function IndependenceDayGreeting({ className }: Props) {
   }, []);
 
   return (
-    <div className={`relative w-full h-full min-h-[500px] overflow-hidden ${className}`}>
-      {/* Elegantly overlayed handwriting cursive greeting text */}
-      <div className="absolute top-12 left-0 right-0 z-10 text-center select-none pointer-events-none">
+    <div className={`relative w-full h-full min-h-[360px] max-h-[500px] overflow-hidden ${className}`}>
+      {/* Cursive greeting text adjusted proportionally */}
+      <div className="absolute top-6 left-0 right-0 z-10 text-center select-none pointer-events-none">
         <h1 
-          className="text-4xl md:text-5xl lg:text-6xl text-white font-normal drop-shadow-[0_2px_15px_rgba(0,0,0,0.5)] tracking-wide"
+          className="text-2xl md:text-3xl lg:text-4xl text-white font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] tracking-wide"
           style={{ fontFamily: "'Dancing Script', 'Georgia', cursive" }}
         >
           Happy Independence Day
