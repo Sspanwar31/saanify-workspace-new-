@@ -96,7 +96,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     let lastSampleTime = 0;
     let screenFlash = 0;
     let cameraShake = 0;
-    let lastRocketLaunchTime = 0; // Added missing variable
+    let lastRocketLaunchTime = 0;
 
     // Offscreen canvases for cinematic post-processing
     const reflectCanvas = document.createElement('canvas');
@@ -121,7 +121,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
     const dustSprite = makeSprite(64, 'rgba(255,220,150,1)', 'rgba(255,140,40,0.4)');
     const sparkSprite = makeSprite(64, 'rgba(255,250,220,1)', 'rgba(255,180,80,0.4)');
-    const smokeSprite = makeSprite(64, 'rgba(100,80,60,0.5)', 'rgba(50,40,30,0.2)');
 
     const pool = new ParticlePool(1500);
     const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
@@ -137,7 +136,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ['#ffaa00', '#ff3300'], ['#00e5ff', '#0055ff'], ['#ff00aa', '#aa00ff'],
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
-    const explosionTypes = ['sphere', 'chrysanthemum', 'peony', 'palm', 'willow', 'ring', 'doublering', 'heart', 'spiral', 'crown', 'waterfall', 'multistage', 'doubleburst', 'cross', 'galaxy'];
 
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -208,18 +206,19 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     // ============ DRAW FUNCTIONS ============
 
     function drawBackground(t: number) {
-      const reveal = smoothstep(0, 4, t);
+      const reveal = smoothstep(0, 1.5, t); // Scene 1: 0.0s to 1.5s
+      const fadeOut = smoothstep(19.5, 20.0, t); // Scene 7: 19.5s to 20.0s
+      const vis = reveal * (1 - fadeOut);
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      const ir = Math.floor(lerp(4, 50, reveal));
-      const ig = Math.floor(lerp(2, 25, reveal));
-      const ib = Math.floor(lerp(5, 15, reveal));
+      const ir = Math.floor(lerp(4, 50, vis));
+      const ig = Math.floor(lerp(2, 25, vis));
+      const ib = Math.floor(lerp(5, 15, vis));
       grad.addColorStop(0, '#020104');
       grad.addColorStop(0.6, `rgb(${ir},${ig},${ib})`);
       grad.addColorStop(1, '#0c0502');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
       
-      // Screen Flash
       if (screenFlash > 0.01) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
@@ -230,8 +229,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function drawDivineLight(t: number) {
-      const reveal = smoothstep(1.8, 5, t);
-      const fade = smoothstep(16, 17.5, t);
+      const reveal = smoothstep(0.5, 1.5, t); // Scene 1: 0.5s to 1.5s
+      const fade = smoothstep(10.2, 12.5, t); // Scene 4: 10.2s to 12.5s
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
@@ -276,8 +275,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     // ============ HYPER-REALISTIC 3D RAM MANDIR ============
 
     function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
-      const reveal = smoothstep(2.5, 6, t);
-      const fade = smoothstep(16, 17.5, t);
+      const reveal = smoothstep(2.5, 5.5, t); // Scene 2: 2.5s to 5.5s
+      const fade = smoothstep(10.2, 12.5, t); // Scene 4: 10.2s to 12.5s
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
 
@@ -627,8 +626,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     // ============ UNREAL ENGINE STYLE WATER ============
     function drawWater(t: number) {
-      const reveal = smoothstep(1, 4.5, t);
-      const fade = smoothstep(16, 17.5, t);
+      const reveal = smoothstep(3.5, 5.0, t); // Scene 2: 3.5s
+      const fade = smoothstep(10.2, 12.5, t); // Scene 4: 10.2s
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -692,8 +691,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function updateAndDrawFloatingDiyas(t: number) {
-      const reveal = smoothstep(5, 7.5, t);
-      const fade = smoothstep(16, 17.5, t);
+      const reveal = smoothstep(4.0, 5.5, t); // Scene 2: 4.0s
+      const fade = smoothstep(10.2, 12.5, t); // Scene 4: 10.2s
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -764,7 +763,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function drawFogAndHaze(t: number) {
-      const intensity = smoothstep(1.5, 5, t) * (1 - smoothstep(16, 17.5, t));
+      const intensity = smoothstep(0.5, 5.0, t) * (1 - smoothstep(10.2, 12.5, t)); // Scene 1 to 4
       if (intensity <= 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
@@ -787,13 +786,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     // ============ ULTRA REALISTIC CINEMATIC FIREWORKS ============
 
     function launchFireworks(t: number) {
-      if (t < 4.0 || t > 14.5) return;
+      if (t < 5.5 || t > 10.0) return; // Scene 3: 5.5s to 10.0s
 
       let intensity = 0;
-      if (t >= 4.0 && t < 7.0) intensity = 0.3;       // विरल (Sparse)
-      else if (t >= 7.0 && t < 10.0) intensity = 0.6;  // मध्यम (Medium)
-      else if (t >= 10.0 && t < 13.0) intensity = 1.0; // भव्य (Grand)
-      else if (t >= 13.0 && t < 14.5) intensity = 0.3; // कम होता (Reduce)
+      if (t >= 5.5 && t < 7.5) intensity = 0.3;       // विरल (Sparse)
+      else if (t >= 7.5 && t < 9.0) intensity = 0.6;  // मध्यम (Medium)
+      else if (t >= 9.0 && t < 10.0) intensity = 1.0; // भव्य (Grand)
 
       if (rockets.length >= 3) return;
       if (t - lastRocketLaunchTime < 0.35 + Math.random() * 0.15) return;
@@ -814,11 +812,16 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       let type = 'small';
       const r = Math.random();
-      if (r < 0.5) type = 'small';
-      else if (r < 0.75) type = 'medium';
-      else if (r < 0.90) type = 'chrysanthemum';
-      else if (r < 0.95) type = 'willow';
-      else type = 'finale';
+      if (t >= 9.0 && t < 10.0) { // During Grand Finale
+        if (r < 0.4) type = 'finale';
+        else if (r < 0.7) type = 'chrysanthemum';
+        else type = 'medium';
+      } else {
+        if (r < 0.5) type = 'small';
+        else if (r < 0.75) type = 'medium';
+        else if (r < 0.90) type = 'chrysanthemum';
+        else type = 'willow';
+      }
 
       const cPair = fwColors[Math.floor(Math.random() * fwColors.length)];
 
@@ -873,12 +876,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
         if (type === 'ring') {
           spd = 4.5 + Math.random() * 1.0;
-        } else if (type === 'heart') {
-          const ht = (i / particleCount) * Math.PI * 2;
-          vx = 16 * Math.pow(Math.sin(ht), 3);
-          vy = -(13 * Math.cos(ht) - 5 * Math.cos(2*ht) - 2 * Math.cos(3*ht) - Math.cos(4*ht));
-          spd = Math.sqrt(vx*vx + vy*vy) * 0.4;
-          ang = Math.atan2(vy, vx);
         } else if (type === 'spiral') {
           ang = (i / particleCount) * Math.PI * 8;
           spd = 2.0 + (i / particleCount) * 4.0;
@@ -893,9 +890,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           maxLife = 2.5 + Math.random() * 1.5;
           pColor = '#ffd700';
           pColor2 = '#ffaa00';
-        } else if (type === 'cross') {
-          ang = Math.floor(Math.random() * 4) * (Math.PI / 2) + (Math.random() - 0.5) * 0.2;
-          spd = 4.0 + Math.random() * 3.0;
         } else if (type === 'finale') {
           if (Math.random() < 0.2) {
             stage = 1;
@@ -934,7 +928,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function updateFireworks(dt: number, t: number) {
-      const forceCleanup = t >= 15.0;
+      const forceCleanup = t >= 10.8; // Scene 3: 10.8s fully cleaned
 
       screenFlash = Math.max(0, screenFlash - dt * 1.5);
       cameraShake = Math.max(0, cameraShake - dt * 20.0);
@@ -1127,7 +1121,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ PARTICLE SPAWN & UPDATES ============ (Restored Missing Functions)
+    // ============ PARTICLE SPAWN & UPDATES ============ 
 
     function spawnDust(t: number) {
       const target = Math.floor(75 * smoothstep(0, 3, t));
@@ -1146,7 +1140,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function spawnPetals(t: number) {
-      const intensity = smoothstep(6.5, 9.5, t) * (1 - smoothstep(16, 17.5, t));
+      const intensity = smoothstep(4.0, 6.5, t) * (1 - smoothstep(10.2, 12.5, t));
       if (intensity <= 0) return;
       if (Math.random() > intensity * 0.4) return;
       const p = pool.spawn(); if (!p) return;
@@ -1157,7 +1151,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function spawnTextParticles(t: number) {
-      if (t < 7.5 || t > 9.5) return;
+      if (t < 12.0 || t > 13.5) return; // Scene 5: Start forming at 12.0s
       if (ramPoints.length === 0) return;
       const target = Math.min(ramPoints.length, 800);
       let active = 0;
@@ -1178,7 +1172,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function spawnIncenseSmoke(t: number) {
-      const intensity = smoothstep(8, 10, t) * (1 - smoothstep(16, 17.5, t));
+      const intensity = smoothstep(2.5, 5.0, t) * (1 - smoothstep(10.2, 12.5, t));
       if (intensity <= 0) return;
       if (Math.random() > 0.08 * intensity) return;
       
@@ -1193,7 +1187,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function spawnBirds(t: number) {
-      if (t < 9.8 || t > 10.5) return;
+      if (t < 4.5 || t > 5.5) return; // Scene 2: 4.5s
       if (birdsSpawned) return;
       birdsSpawned = true;
       const count = 14;
@@ -1218,7 +1212,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           p.vx += (Math.random() - 0.5) * 0.03; p.vy += -0.002;
           p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
-          const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17.5, t));
+          const env = smoothstep(0, 2, t) * (1 - smoothstep(19.5, 20.0, t));
           p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env;
           if (p.life > p.maxLife || p.y < -30) {
             p.life = 0; p.x = Math.random() * W; p.y = H * 0.6; p.alpha = 0;
@@ -1227,7 +1221,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
           p.y += p.vy; p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
+          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(10.2, 12.5, t));
           if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p);
         } else if (p.type === 'sparkle') {
           if (p.delay > 0) { p.delay -= dt; p.alpha = 0; continue; }
@@ -1243,8 +1237,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
             p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.35;
             p.alpha = clamp(p.alpha + dt * 1.8, 0, 1);
           }
-          if (t > 12) p.alpha *= 1 - smoothstep(12, 14, t);
-          if (t > 14.5 && p.alpha < 0.01) pool.release(p);
+          // Scene 7: Reduce glow at 19.0s
+          if (t > 19.0) p.alpha *= 1 - smoothstep(19.0, 20.0, t);
+          if (t > 20.0 && p.alpha < 0.01) pool.release(p);
         } else if (p.type === 'smoke') {
           p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
           p.y += p.vy; p.size += dt * 5.2; 
@@ -1253,7 +1248,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           if (p.life > p.maxLife || p.y < -30) pool.release(p);
         } else if (p.type === 'bird') {
           p.x += p.vx; p.y += p.vy; p.flap += dt * 9;
-          p.alpha = 0.65 * (1 - smoothstep(15, 16, t));
+          // Scene 4: Birds disappear by 12.5s
+          p.alpha = 0.65 * (1 - smoothstep(10.2, 12.5, t));
           if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
         }
       }
@@ -1318,18 +1314,21 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
     
     function drawTitle(t: number) {
-      if (t < 8.5) return;
-      const intensity = smoothstep(8.5, 10, t) * (1 - smoothstep(12, 14, t));
+      if (t < 12.5) return; // Scene 5: 12.5s
+      const intensity = smoothstep(12.5, 14.0, t) * (1 - smoothstep(19.0, 20.0, t));
       if (intensity <= 0.01) return;
+      
       const fontSize = Math.min(W * 0.12, 125);
       const cy = H * 0.32;
+      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5); // Breathing glow pulse
+      
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
       ctx.globalCompositeOperation = 'lighter';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2);
-      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.18 * intensity})`);
+      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.18 * intensity * pulse})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
@@ -1361,43 +1360,66 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function drawGreeting(t: number) {
-      const reveal = smoothstep(13, 14.5, t);
-      const fade = smoothstep(16, 17.5, t);
+      if (t < 15.5) return; // Scene 6: 15.5s
+      const reveal = smoothstep(15.5, 16.5, t);
+      const fade = smoothstep(18.5, 19.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0.01) return;
-      const fontSize = Math.min(W * 0.054, 52);
-      const cy = H * 0.54;
-      const line1 = 'राम नवमी की';
-      const line2 = 'हार्दिक शुभकामनाएँ';
+      
+      const fontSize = Math.min(W * 0.045, 40);
+      const slideY = 40 * (1 - reveal); // Slide from bottom
+      const cy = H * 0.65 + slideY;
+      
+      const line1 = 'जय श्री राम';
+      const line2 = 'आपको और आपके परिवार को';
+      const line3 = 'राम नवमी की हार्दिक शुभकामनाएँ';
+      
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = `600 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
       ctx.globalCompositeOperation = 'lighter';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 3.5);
-      haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.12 * vis})`);
+      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 4);
+      haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.1 * vis})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
       ctx.globalCompositeOperation = 'source-over';
-      const y1 = cy - fontSize * 0.65, y2 = cy + fontSize * 0.65;
+      const y1 = cy - fontSize * 1.2;
+      const y2 = cy;
+      const y3 = cy + fontSize * 1.2;
 
+      // Draw Line 1 (Bold)
       ctx.shadowBlur = 24; ctx.shadowColor = `rgba(255, 160, 50, ${vis})`;
       ctx.fillStyle = `rgba(180, 90, 20, ${vis * 0.5})`;
-      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
+      ctx.fillText(line1, W / 2, y1); 
       
       ctx.shadowBlur = 12; ctx.shadowColor = `rgba(255, 190, 80, ${vis})`;
       ctx.fillStyle = `rgba(220, 140, 50, ${vis * 0.7})`;
-      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
+      ctx.fillText(line1, W / 2, y1); 
       
       ctx.shadowBlur = 6; ctx.shadowColor = `rgba(255, 220, 130, ${vis})`;
       ctx.fillStyle = `rgba(255, 220, 150, ${vis})`;
-      ctx.fillText(line1, W / 2, y1); ctx.fillText(line2, W / 2, y2);
+      ctx.fillText(line1, W / 2, y1); 
       
       ctx.shadowBlur = 0;
       ctx.fillStyle = `rgba(255, 245, 210, ${vis * 0.5})`;
-      ctx.fillText(line1, W / 2 - 0.5, y1 - 0.5); ctx.fillText(line2, W / 2 - 0.5, y2 - 0.5);
+      ctx.fillText(line1, W / 2 - 0.5, y1 - 0.5);
+
+      // Draw Line 2 & 3 (Normal)
+      ctx.shadowBlur = 12; ctx.shadowColor = `rgba(255, 190, 80, ${vis})`;
+      ctx.fillStyle = `rgba(220, 140, 50, ${vis * 0.7})`;
+      ctx.fillText(line2, W / 2, y2); ctx.fillText(line3, W / 2, y3);
+      
+      ctx.shadowBlur = 6; ctx.shadowColor = `rgba(255, 220, 130, ${vis})`;
+      ctx.fillStyle = `rgba(255, 220, 150, ${vis})`;
+      ctx.fillText(line2, W / 2, y2); ctx.fillText(line3, W / 2, y3);
+      
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = `rgba(255, 245, 210, ${vis * 0.5})`;
+      ctx.fillText(line2, W / 2 - 0.5, y2 - 0.5); ctx.fillText(line3, W / 2 - 0.5, y3 - 0.5);
+      
       ctx.restore();
     }
 
@@ -1429,7 +1451,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function applyVignette(t: number) {
-      const fade = smoothstep(16, 17.5, t);
+      const fade = smoothstep(19.5, 20.0, t);
       const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.22, W / 2, H / 2, W * 0.85);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
       grad.addColorStop(1, `rgba(0,0,0,${0.55 + fade * 0.4})`);
@@ -1450,10 +1472,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     // ============ CAMERA ============
     function updateCamera(t: number) {
-      cam.zoom = 1 + smoothstep(0, 17.5, t) * 0.045 + cameraShake * 0.005;
-      cam.rot = Math.sin(t * 0.11) * 0.004 + cameraShake * 0.002 * Math.sin(t * 50);
-      cam.x = Math.sin(t * 0.25) * 4 + (Math.random() - 0.5) * cameraShake;
-      cam.y = Math.cos(t * 0.2) * 3 + (Math.random() - 0.5) * cameraShake;
+      const camActive = 1 - smoothstep(10.2, 12.5, t); // Scene 4: Camera stops
+      cam.zoom = 1 + smoothstep(2.5, 5.5, t) * 0.045 * camActive + cameraShake * 0.005;
+      cam.rot = Math.sin(t * 0.11) * 0.004 * camActive + cameraShake * 0.002 * Math.sin(t * 50);
+      cam.x = Math.sin(t * 0.25) * 4 * camActive + (Math.random() - 0.5) * cameraShake;
+      cam.y = Math.cos(t * 0.2) * 3 * camActive + (Math.random() - 0.5) * cameraShake;
     }
 
     function applyCamera() {
@@ -1492,8 +1515,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       drawTitle(t);
       drawGreeting(t);
 
-      const fadeIn = 1 - smoothstep(0, 1.2, t);
-      const fadeOut = smoothstep(16, 17.5, t);
+      // Scene 7: Final fade to black
+      const fadeIn = 1 - smoothstep(0, 1.5, t);
+      const fadeOut = smoothstep(19.5, 20.0, t);
       const fadeAmt = Math.max(fadeIn, fadeOut);
       if (fadeAmt > 0.001) {
         ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
@@ -1518,14 +1542,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         lastSampleTime = t;
       }
 
-      if (t < 9.7) birdsSpawned = false;
+      if (t < 4.5) birdsSpawned = false;
 
-      if (t >= 16.5 && !handoverTriggered) {
+      // Scene 7: Animation Complete at 20.0s
+      if (t >= 20.0 && !handoverTriggered) {
         handoverTriggered = true;
         if (onCompleteRef.current) onCompleteRef.current();
       }
 
-      if (t < 17.5) {
+      if (t < 20.5) {
         render(t, dt);
       } else {
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
