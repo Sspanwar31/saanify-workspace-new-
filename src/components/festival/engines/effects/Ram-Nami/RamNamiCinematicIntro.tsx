@@ -84,6 +84,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     let rafId = 0;
     let running = true;
     let lastTime = 0;
+    let birdsSpawned = false; // 🚀 FIXED: Added missing variable declaration
     let handoverTriggered = false;
     let lastSampleTime = 0;
 
@@ -185,7 +186,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
-      const sy = H * 0.44; // Positioned behind Rama's crown
+      const sy = H * 0.44; 
       const sunR = W * 0.22;
       const sunGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
       sunGrad.addColorStop(0, `rgba(255, 230, 160, ${0.9 * vis})`);
@@ -195,7 +196,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = sunGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // Rotating God Rays from behind Mukut
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       const rayCount = 24;
@@ -233,7 +233,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.strokeStyle = `rgba(255, 160, 70, ${0.15 * vis})`;
       ctx.lineWidth = 1;
 
-      // Draw pillars in background
       const pillarW = 28 * s;
       const positions = [-1.8, -1.2, 1.2, 1.8];
       for (const pos of positions) {
@@ -242,7 +241,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.strokeRect(px, 0, pillarW, H);
       }
 
-      // Arch frames
       ctx.beginPath();
       ctx.ellipse(W / 2, H * 0.4, 180 * s, 180 * s, 0, Math.PI, 0);
       ctx.strokeStyle = `rgba(255, 150, 60, ${0.12 * vis})`;
@@ -252,20 +250,17 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function drawSinghasan(cx: number, cy: number, s: number, vis: number, t: number) {
-      // Background Ornate Throne Backrest (Glowing Rings)
       ctx.save();
       ctx.globalAlpha = vis;
       
       const flicker = 0.9 + 0.1 * Math.sin(t * 8);
 
-      // Outer arch
       ctx.lineWidth = 3 * s;
       ctx.strokeStyle = `rgba(180, 110, 30, ${0.85 * flicker})`;
       ctx.beginPath();
       ctx.arc(cx, cy + 10 * s, 85 * s, Math.PI, 0, false);
       ctx.stroke();
 
-      // Middle gold halo ring
       const goldGrad = ctx.createLinearGradient(cx - 70 * s, cy, cx + 70 * s, cy);
       goldGrad.addColorStop(0, '#8c5315');
       goldGrad.addColorStop(0.3, '#dfb55c');
@@ -279,7 +274,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.arc(cx, cy + 10 * s, 70 * s, Math.PI * 1.05, -Math.PI * 0.05, false);
       ctx.stroke();
 
-      // Detailed back rest padding (Dark royal velvet red)
       ctx.fillStyle = '#2d0406';
       ctx.beginPath();
       ctx.arc(cx, cy + 20 * s, 62 * s, Math.PI, 0, false);
@@ -291,14 +285,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.lineWidth = 1.5 * s;
       ctx.stroke();
 
-      // Golden lion head carvings on left/right arms
       ctx.fillStyle = '#b38230';
       ctx.beginPath();
       ctx.arc(cx - 74 * s, cy + 60 * s, 10 * s, 0, Math.PI * 2);
       ctx.arc(cx + 74 * s, cy + 60 * s, 10 * s, 0, Math.PI * 2);
       ctx.fill();
 
-      // Throne Base
       ctx.fillStyle = '#0f0709';
       ctx.strokeStyle = `rgba(255, 175, 70, ${0.35 * flicker})`;
       ctx.lineWidth = 1 * s;
@@ -314,54 +306,39 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalAlpha = vis;
 
-      // Glow calculation based on diya flickering
       const glow = Math.sin(t * 8) * 0.06;
       ctx.shadowBlur = (25 + glow * 50) * s;
       ctx.shadowColor = `rgba(255, 170, 60, ${0.85 + glow})`;
 
-      // Deep, majestic silhouette body
       ctx.fillStyle = '#060305';
       ctx.beginPath();
       
-      // Seated cross-legged base
       ctx.moveTo(cx - 52 * s, cy + 85 * s);
-      ctx.bezierCurveTo(cx - 65 * s, cy + 85 * s, cx - 74 * s, cy + 70 * s, cx - 50 * s, cy + 64 * s); // Left knee
-      ctx.bezierCurveTo(cx - 40 * s, cy + 60 * s, cx - 35 * s, cy + 50 * s, cx - 35 * s, cy + 30 * s); // Left arm base
-      
-      // Left arm and torso upward
-      ctx.bezierCurveTo(cx - 35 * s, cy + 18 * s, cx - 22 * s, cy - 10 * s, cx - 18 * s, cy - 20 * s); // Shoulder left
-      
-      // Neck and chin
+      ctx.bezierCurveTo(cx - 65 * s, cy + 85 * s, cx - 74 * s, cy + 70 * s, cx - 50 * s, cy + 64 * s); 
+      ctx.bezierCurveTo(cx - 40 * s, cy + 60 * s, cx - 35 * s, cy + 50 * s, cx - 35 * s, cy + 30 * s); 
+      ctx.bezierCurveTo(cx - 35 * s, cy + 18 * s, cx - 22 * s, cy - 10 * s, cx - 18 * s, cy - 20 * s); 
       ctx.lineTo(cx - 5 * s, cy - 24 * s);
-      ctx.bezierCurveTo(cx - 8 * s, cy - 29 * s, cx - 8 * s, cy - 35 * s, cx - 6 * s, cy - 39 * s); // Face left
-      ctx.bezierCurveTo(cx - 10 * s, cy - 42 * s, cx - 8 * s, cy - 48 * s, cx - 4 * s, cy - 48 * s); // Hair/Crown base
-      
-      // Majestic Mukut (Crown with top finial)
+      ctx.bezierCurveTo(cx - 8 * s, cy - 29 * s, cx - 8 * s, cy - 35 * s, cx - 6 * s, cy - 39 * s); 
+      ctx.bezierCurveTo(cx - 10 * s, cy - 42 * s, cx - 8 * s, cy - 48 * s, cx - 4 * s, cy - 48 * s); 
       ctx.lineTo(cx - 6 * s, cy - 54 * s);
       ctx.lineTo(cx - 12 * s, cy - 56 * s);
-      ctx.lineTo(cx, cy - 78 * s); // Mukut peak
+      ctx.lineTo(cx, cy - 78 * s); 
       ctx.lineTo(cx + 12 * s, cy - 56 * s);
       ctx.lineTo(cx + 6 * s, cy - 54 * s);
-
-      // Face Right
       ctx.lineTo(cx + 4 * s, cy - 48 * s);
       ctx.bezierCurveTo(cx + 8 * s, cy - 48 * s, cx + 10 * s, cy - 42 * s, cx + 6 * s, cy - 39 * s);
-      ctx.bezierCurveTo(cx + 8 * s, cy - 35 * s, cx + 8 * s, cy - 29 * s, cx + 5 * s, cy - 24 * s); // Face right
-
-      // Right arm and torso downward
-      ctx.lineTo(cx + 18 * s, cy - 20 * s); // Shoulder right
+      ctx.bezierCurveTo(cx + 8 * s, cy - 35 * s, cx + 8 * s, cy - 29 * s, cx + 5 * s, cy - 24 * s); 
+      ctx.lineTo(cx + 18 * s, cy - 20 * s); 
       ctx.bezierCurveTo(cx + 22 * s, cy - 10 * s, cx + 35 * s, cy + 18 * s, cx + 35 * s, cy + 30 * s);
-      ctx.bezierCurveTo(cx + 35 * s, cy + 50 * s, cx + 40 * s, cy + 60 * s, cx + 50 * s, cy + 64 * s); // Right knee
+      ctx.bezierCurveTo(cx + 35 * s, cy + 50 * s, cx + 40 * s, cy + 60 * s, cx + 50 * s, cy + 64 * s); 
       ctx.bezierCurveTo(cx + 74 * s, cy + 70 * s, cx + 65 * s, cy + 85 * s, cx + 52 * s, cy + 85 * s);
       ctx.closePath();
       ctx.fill();
 
-      // Saffron/Golden Rim light highlights tracing the edges of Lord Rama
       ctx.shadowBlur = 0;
       ctx.strokeStyle = `rgba(255, 195, 90, ${0.75 + glow})`;
       ctx.lineWidth = 1.4 * s;
       ctx.beginPath();
-      // Highlight crown & shoulders
       ctx.moveTo(cx - 15 * s, cy - 12 * s);
       ctx.quadraticCurveTo(cx - 18 * s, cy - 20 * s, cx - 6 * s, cy - 39 * s);
       ctx.lineTo(cx - 12 * s, cy - 56 * s);
@@ -371,7 +348,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.quadraticCurveTo(cx + 18 * s, cy - 20 * s, cx + 15 * s, cy - 12 * s);
       ctx.stroke();
 
-      // Bow (Kodanda Dhanush) silhouette placed next to the throne
       ctx.strokeStyle = '#060305';
       ctx.lineWidth = 4 * s;
       ctx.beginPath();
@@ -385,7 +361,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function drawHanumanSilhouette(cx: number, cy: number, s: number, vis: number, t: number) {
-      // Bowed on the right side of the throne, looking leftward toward Lord Rama
       ctx.save();
       ctx.globalAlpha = vis;
 
@@ -398,32 +373,22 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.fillStyle = '#060305';
       ctx.beginPath();
-      // Kneeling profile posture
       ctx.moveTo(hx + 30 * s, hy);
-      ctx.bezierCurveTo(hx + 35 * s, hy, hx + 32 * s, hy - 20 * s, hx + 22 * s, hy - 32 * s); // Back leg
-      ctx.bezierCurveTo(hx + 18 * s, hy - 40 * s, hx + 18 * s, hy - 50 * s, hx + 8 * s, hy - 56 * s); // Hunched back
-      ctx.bezierCurveTo(hx - 2 * s, hy - 60 * s, hx - 5 * s, hy - 66 * s, hx - 4 * s, hy - 72 * s); // Crown base
-      
-      // Small crown (Kirita)
+      ctx.bezierCurveTo(hx + 35 * s, hy, hx + 32 * s, hy - 20 * s, hx + 22 * s, hy - 32 * s); 
+      ctx.bezierCurveTo(hx + 18 * s, hy - 40 * s, hx + 18 * s, hy - 50 * s, hx + 8 * s, hy - 56 * s); 
+      ctx.bezierCurveTo(hx - 2 * s, hy - 60 * s, hx - 5 * s, hy - 66 * s, hx - 4 * s, hy - 72 * s); 
       ctx.lineTo(hx - 6 * s, hy - 80 * s);
       ctx.lineTo(hx - 1 * s, hy - 84 * s);
       ctx.lineTo(hx + 2 * s, hy - 72 * s);
-
-      // Bowed profile head & snout
-      ctx.bezierCurveTo(hx - 3 * s, hy - 68 * s, hx - 12 * s, hy - 68 * s, hx - 10 * s, hy - 60 * s); // Head bowed down left
-      ctx.lineTo(hx - 4 * s, hy - 56 * s); // Snout/chin
-      
-      // Folded hands extended towards Rama's feet
-      ctx.bezierCurveTo(hx - 12 * s, hy - 52 * s, hx - 22 * s, hy - 44 * s, hx - 28 * s, hy - 34 * s); // Extended hands
-      ctx.bezierCurveTo(hx - 22 * s, hy - 30 * s, hx - 10 * s, hy - 36 * s, hx - 2 * s, hy - 40 * s); // Lower arms
-
-      // Knees folded
-      ctx.bezierCurveTo(hx - 4 * s, hy - 25 * s, hx - 6 * s, hy - 5 * s, hx - 18 * s, hy); // Seated knees
+      ctx.bezierCurveTo(hx - 3 * s, hy - 68 * s, hx - 12 * s, hy - 68 * s, hx - 10 * s, hy - 60 * s); 
+      ctx.lineTo(hx - 4 * s, hy - 56 * s); 
+      ctx.bezierCurveTo(hx - 12 * s, hy - 52 * s, hx - 22 * s, hy - 44 * s, hx - 28 * s, hy - 34 * s); 
+      ctx.bezierCurveTo(hx - 22 * s, hy - 30 * s, hx - 10 * s, hy - 36 * s, hx - 2 * s, hy - 40 * s); 
+      ctx.bezierCurveTo(hx - 4 * s, hy - 25 * s, hx - 6 * s, hy - 5 * s, hx - 18 * s, hy); 
       ctx.lineTo(hx + 30 * s, hy);
       ctx.closePath();
       ctx.fill();
 
-      // Tail curve
       ctx.strokeStyle = '#060305';
       ctx.lineWidth = 3.5 * s;
       ctx.beginPath();
@@ -431,7 +396,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.bezierCurveTo(hx + 45 * s, hy - 18 * s, hx + 50 * s, hy - 65 * s, hx + 36 * s, hy - 70 * s);
       ctx.stroke();
 
-      // Golden highlights on tail and hunched back
       ctx.shadowBlur = 0;
       ctx.strokeStyle = `rgba(255, 175, 70, ${0.65 + flicker})`;
       ctx.lineWidth = 1 * s;
@@ -479,7 +443,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         const baseW = 32 * s;
         const baseH = 14 * s;
 
-        // Brass base of Diya
         const brassGrad = ctx.createLinearGradient(pos.x - baseW, pos.y, pos.x + baseW, pos.y);
         brassGrad.addColorStop(0, '#5e380f');
         brassGrad.addColorStop(0.5, '#dfb55c');
@@ -492,7 +455,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.closePath();
         ctx.fill();
 
-        // Glowing flame layer 1
         const flameH = (22 + flamePulse) * s;
         const flameW = 8 * s;
         const fGrad = ctx.createLinearGradient(pos.x, pos.y, pos.x, pos.y - flameH);
@@ -509,7 +471,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.closePath();
         ctx.fill();
 
-        // 3D glow map behind diya flame
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
         const glowR = (50 + flamePulse * 3) * s;
@@ -532,7 +493,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       
-      // Floating light fog drifts
       for (let layer = 0; layer < 3; layer++) {
         const y = H * (0.64 + layer * 0.05);
         const speed = 6 + layer * 5;
@@ -608,7 +568,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         p.x = W / 2 + (Math.random() - 0.5) * W * 1.3;
         p.y = H * 0.36 + (Math.random() - 0.5) * H * 1.1;
         p.tx = W / 2 + pt.x;
-        p.ty = H * 0.36 + pt.y; // Center vertically near Rama's aura
+        p.ty = H * 0.36 + pt.y; 
         p.vx = 0; p.vy = 0;
         p.size = 1.1 + Math.random() * 1.4;
         p.maxLife = 7;
@@ -691,7 +651,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         } else if (p.type === 'smoke') {
           p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
           p.y += p.vy;
-          p.size += dt * 5.2; // Expand smoke
+          p.size += dt * 5.2; 
           const lr = p.life / p.maxLife;
           p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18;
           if (p.life > p.maxLife || p.y < -30) pool.release(p);
@@ -722,13 +682,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           ctx.save();
           ctx.translate(p.x, p.y);
           ctx.rotate(p.rot);
-          ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; // Elegant Saffron Petal color
+          ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; 
           ctx.beginPath();
           ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         } else if (p.type === 'smoke') {
-          // Dynamic smoke trail paths
           ctx.save();
           const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
           rad.addColorStop(0, `rgba(255, 230, 200, ${p.alpha})`);
@@ -923,7 +882,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       drawCourtroomVisuals(t);
       drawDiyas(t);
       drawFogAndHaze(t);
-      drawBellPulse(t);
       drawParticles();
       ctx.restore();
 
