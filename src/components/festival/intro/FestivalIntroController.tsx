@@ -19,6 +19,7 @@ import HanumanJayantiCinematicIntro from '../engines/effects/Hanuman-Jayanti/Han
 import NavratriCinematicIntro from '../engines/effects/Navratri/NavratriCinematicIntro'; // 🚀 NAYA: Navratri Intro Import kiya
 import RepublicDayCinematicIntro from '../engines/effects/Republic-Day/RepublicDayCinematicIntro';
 import IndependenceDayCinematicIntro from '../engines/effects/Independence-Day/IndependenceDayCinematicIntro';
+import RamNamiCinematicIntro from '../engines/effects/Ram-Nami/RamNamiCinematicIntro';
 
 
 
@@ -79,7 +80,7 @@ export default function FestivalIntroController({
 
   // 🚀 3. LIGHT REVEAL GROUP (Christmas, Ram Navami, Eid, etc.)
    // ✅ NAYA (Ise replace karein):
-  const isLightRevealPreset = ['CHRISTMAS', 'RAM_NAVAMI', 'EID_UL_FITR', 'EID_AL_ADHA'].includes(preset.toUpperCase());
+  const isLightRevealPreset = ['CHRISTMAS', 'EID_UL_FITR', 'EID_AL_ADHA'].includes(preset.toUpperCase());
 
   if (isActive && isLightRevealPreset && heroConfig) {
     return (
@@ -151,6 +152,16 @@ export default function FestivalIntroController({
   if (isActive && preset.toUpperCase() === 'INDEPENDENCE_DAY') {
     return (
       <IndependenceDayCinematicIntro 
+        onComplete={onHandover} 
+        imageUrl={heroConfig?.image_url} 
+      />
+    );
+  }
+
+  // 🚀 12. RAM_NAVAMI ACTIVATION (Suryavanshi Solar Halo & Bow Reveal)
+  if (isActive && preset.toUpperCase() === 'RAM_NAVAMI') {
+    return (
+      <RamNamiCinematicIntro 
         onComplete={onHandover} 
         imageUrl={heroConfig?.image_url} 
       />
