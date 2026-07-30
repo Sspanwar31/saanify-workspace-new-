@@ -52,6 +52,15 @@ class ParticlePool {
   }
 }
 
+// REALISTIC FIREWORKS DATA STRUCTURES
+interface FireworkRocket {
+  x: number; y: number;
+  targetY: number;
+  vx: number; vy: number;
+  color: string;
+  trail: { x: number; y: number; alpha: number }[];
+}
+
 interface FireworkSpark {
   x: number; y: number;
   vx: number; vy: number;
@@ -59,6 +68,9 @@ interface FireworkSpark {
   alpha: number;
   life: number; maxLife: number;
   size: number;
+  gravity: number;
+  drag: number;
+  flicker: boolean;
 }
 
 interface FloatingDiya {
@@ -118,6 +130,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
     let ramPoints: { x: number; y: number }[] = [];
     let diyas: FloatingDiya[] = [];
+    
+    // FIREWORKS ARRAYS
+    const rockets: FireworkRocket[] = [];
     const sparks: FireworkSpark[] = [];
     const activeFireworkBursts: { x: number; y: number; color: string; r: number; maxR: number; alpha: number }[] = [];
 
@@ -246,90 +261,206 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
+    // ============ ULTRA-BHAVYA RAM MANDIR (3D DETAILED ARCHITECTURE) ============
+
     function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
       const reveal = smoothstep(2.5, 6, t);
       const fade = smoothstep(16, 17.5, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
 
-      const s = Math.min(W, H) * 0.0012;
+      const s = Math.min(W, H) * 0.00125;
       const mx = W * 0.72; 
       const baseY = H * 0.64;
 
       targetCtx.save();
       targetCtx.globalAlpha = vis;
 
-      const highlightColor = `rgba(255, 185, 90, ${0.45 * (0.6 + 0.4 * Math.sin(t * 4))})`;
+      const goldGlow = `rgba(255, 190, 90, ${0.6 + 0.4 * Math.sin(t * 3)})`;
+      const darkSandstone = '#2b1005';
+      const midSandstone = '#6b3517';
+      const lightSandstone = '#a35527';
 
-      const drawShikhara = (tx: number, ty: number, tw: number, th: number) => {
-        const shikhGrad = targetCtx.createLinearGradient(tx - tw / 2, ty, tx + tw / 2, ty);
-        shikhGrad.addColorStop(0, '#321408');
-        shikhGrad.addColorStop(0.3, '#743d1a');
-        shikhGrad.addColorStop(0.5, '#9e5a2c');
-        shikhGrad.addColorStop(0.8, '#743d1a');
-        shikhGrad.addColorStop(1, '#2c0f05');
+      // Golden Backlight Aura behind Ram Mandir
+      const auraGrad = targetCtx.createRadialGradient(mx, baseY - 120 * s, 10 * s, mx, baseY - 120 * s, 220 * s);
+      auraGrad.addColorStop(0, 'rgba(255, 170, 50, 0.45)');
+      auraGrad.addColorStop(0.5, 'rgba(200, 90, 20, 0.15)');
+      auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      targetCtx.fillStyle = auraGrad;
+      targetCtx.fillRect(mx - 250 * s, baseY - 300 * s, 500 * s, 350 * s);
+
+      // Inner Garbhagriha Light Glow (Glow from inside arches)
+      const garbhaGlow = targetCtx.createRadialGradient(mx, baseY - 35 * s, 0, mx, baseY - 35 * s, 70 * s);
+      garbhaGlow.addColorStop(0, 'rgba(255, 230, 150, 0.95)');
+      garbhaGlow.addColorStop(0.4, 'rgba(255, 140, 30, 0.6)');
+      garbhaGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      targetCtx.fillStyle = garbhaGlow;
+      targetCtx.fillRect(mx - 100 * s, baseY - 80 * s, 200 * s, 90 * s);
+
+      // 1. GRAND BASE STEPS (JAGATI PLATFORM)
+      for (let i = 0; i < 4; i++) {
+        const pw = (320 - i * 25) * s;
+        const ph = 10 * s;
+        const px = mx - pw / 2;
+        const py = baseY - (i + 1) * ph;
+
+        const platGrad = targetCtx.createLinearGradient(px, py, px + pw, py);
+        platGrad.addColorStop(0, darkSandstone);
+        platGrad.addColorStop(0.2, midSandstone);
+        platGrad.addColorStop(0.5, lightSandstone);
+        platGrad.addColorStop(0.8, midSandstone);
+        platGrad.addColorStop(1, darkSandstone);
+
+        targetCtx.fillStyle = platGrad;
+        targetCtx.fillRect(px, py, pw, ph);
+        targetCtx.strokeStyle = goldGlow;
+        targetCtx.lineWidth = 0.7 * s;
+        targetCtx.strokeRect(px, py, pw, ph);
+      }
+
+      // 2. CARVED PILLARS & ARCHED ENTRANCE (MANDAP COLUMNS)
+      const pillarCols = [-110, -75, -40, 0, 40, 75, 110];
+      pillarCols.forEach((colX) => {
+        const x = mx + colX * s;
+        const y = baseY - 85 * s;
+        const w = 9 * s;
+        const h = 45 * s;
+
+        const pilGrad = targetCtx.createLinearGradient(x - w / 2, y, x + w / 2, y);
+        pilGrad.addColorStop(0, '#1c0903');
+        pilGrad.addColorStop(0.5, lightSandstone);
+        pilGrad.addColorStop(1, '#1c0903');
+
+        targetCtx.fillStyle = pilGrad;
+        targetCtx.fillRect(x - w / 2, y, w, h);
+
+        // Pillar Capital / Carving Base
+        targetCtx.fillStyle = '#ffb347';
+        targetCtx.fillRect(x - w * 0.7, y, w * 1.4, 3 * s);
+        targetCtx.fillRect(x - w * 0.7, y + h - 3 * s, w * 1.4, 3 * s);
+      });
+
+      // Decorative Arches (Toran Gates)
+      targetCtx.strokeStyle = goldGlow;
+      targetCtx.lineWidth = 1.2 * s;
+      for (let i = 0; i < pillarCols.length - 1; i++) {
+        const x1 = mx + pillarCols[i] * s;
+        const x2 = mx + pillarCols[i + 1] * s;
+        targetCtx.beginPath();
+        targetCtx.arc((x1 + x2) / 2, baseY - 82 * s, (x2 - x1) / 2, Math.PI, 0);
+        targetCtx.stroke();
+      }
+
+      // 3. DETAILED SHIKHARA DRAWING FUNCTION (3D NAGARA STYLE)
+      const drawNagaraShikhara = (cx: number, cy: number, w: number, h: number, isMain = false) => {
+        // Main Tower Curved Silhouette
+        const shikhGrad = targetCtx.createLinearGradient(cx - w / 2, cy, cx + w / 2, cy);
+        shikhGrad.addColorStop(0, '#240b03');
+        shikhGrad.addColorStop(0.25, midSandstone);
+        shikhGrad.addColorStop(0.5, lightSandstone);
+        shikhGrad.addColorStop(0.75, midSandstone);
+        shikhGrad.addColorStop(1, '#1a0702');
 
         targetCtx.fillStyle = shikhGrad;
         targetCtx.beginPath();
-        targetCtx.moveTo(tx - tw / 2, ty);
-        targetCtx.bezierCurveTo(tx - tw / 2, ty - th * 0.35, tx - tw * 0.15, ty - th * 0.78, tx - tw * 0.08, ty - th);
-        targetCtx.lineTo(tx + tw * 0.08, ty - th);
-        targetCtx.bezierCurveTo(tx + tw * 0.15, ty - th * 0.78, tx + tw / 2, ty - th * 0.35, tx + tw / 2, ty);
+        targetCtx.moveTo(cx - w / 2, cy);
+        targetCtx.bezierCurveTo(cx - w * 0.48, cy - h * 0.4, cx - w * 0.22, cy - h * 0.82, cx - w * 0.08, cy - h);
+        targetCtx.lineTo(cx + w * 0.08, cy - h);
+        targetCtx.bezierCurveTo(cx + w * 0.22, cy - h * 0.82, cx + w * 0.48, cy - h * 0.4, cx + w / 2, cy);
         targetCtx.closePath();
         targetCtx.fill();
 
-        targetCtx.strokeStyle = highlightColor;
-        targetCtx.lineWidth = 0.8 * s;
+        targetCtx.strokeStyle = goldGlow;
+        targetCtx.lineWidth = 0.9 * s;
         targetCtx.stroke();
 
-        for (let i = 1; i < 7; i++) {
-          const f = i / 7;
-          const y = ty - th * f;
-          const w = lerp(tw, tw * 0.16, f * f);
+        // Horizontal Tier Carvings (Urushringa Ridges)
+        const tiers = isMain ? 10 : 6;
+        for (let i = 1; i < tiers; i++) {
+          const f = i / tiers;
+          const ty = cy - h * f;
+          const tw = lerp(w, w * 0.16, Math.pow(f, 1.2));
+
           targetCtx.beginPath();
-          targetCtx.moveTo(tx - w / 2, y);
-          targetCtx.lineTo(tx + w / 2, y);
+          targetCtx.moveTo(cx - tw / 2, ty);
+          targetCtx.lineTo(cx + tw / 2, ty);
+          targetCtx.strokeStyle = `rgba(255, 200, 110, ${0.3 + 0.4 * (1 - f)})`;
           targetCtx.stroke();
+
+          // Miniature side spires (Urushringas for 3D depth)
+          if (isMain && i < 6 && i % 2 === 0) {
+            targetCtx.fillStyle = '#421d0d';
+            targetCtx.fillRect(cx - tw / 2 - 3 * s, ty, 3 * s, 6 * s);
+            targetCtx.fillRect(cx + tw / 2, ty, 3 * s, 6 * s);
+          }
         }
+
+        // CROWN: AMALAKA (Disc) & KALASH (Golden Spire)
+        const topY = cy - h;
+        const amalakaW = w * 0.28;
+        const amalakaH = 8 * s;
+
+        // Amalaka (Ribbed disc)
+        targetCtx.fillStyle = '#d48031';
+        targetCtx.beginPath();
+        targetCtx.ellipse(cx, topY - amalakaH / 2, amalakaW / 2, amalakaH / 2, 0, 0, Math.PI * 2);
+        targetCtx.fill();
+        targetCtx.strokeStyle = '#fff';
+        targetCtx.stroke();
+
+        // Golden Kalash
+        const kalashY = topY - amalakaH;
+        const kGrad = targetCtx.createLinearGradient(cx - 5 * s, kalashY, cx + 5 * s, kalashY);
+        kGrad.addColorStop(0, '#ffaa00');
+        kGrad.addColorStop(0.5, '#ffffff');
+        kGrad.addColorStop(1, '#ff8800');
+
+        targetCtx.fillStyle = kGrad;
+        targetCtx.beginPath();
+        targetCtx.arc(cx, kalashY - 6 * s, 5 * s, 0, Math.PI * 2);
+        targetCtx.fill();
+
+        // Spike tip
+        targetCtx.beginPath();
+        targetCtx.moveTo(cx, kalashY - 11 * s);
+        targetCtx.lineTo(cx - 2 * s, kalashY - 18 * s);
+        targetCtx.lineTo(cx + 2 * s, kalashY - 18 * s);
+        targetCtx.closePath();
+        targetCtx.fill();
+
+        return kalashY - 18 * s;
       };
 
-      const platformGrad = targetCtx.createLinearGradient(mx - 130 * s, baseY, mx + 130 * s, baseY);
-      platformGrad.addColorStop(0, '#3a1a0d');
-      platformGrad.addColorStop(0.5, '#7a3e1f');
-      platformGrad.addColorStop(1, '#3a1a0d');
-      
-      targetCtx.fillStyle = platformGrad;
-      targetCtx.fillRect(mx - 130 * s, baseY - 24 * s, 260 * s, 24 * s);
-      targetCtx.strokeStyle = highlightColor;
-      targetCtx.strokeRect(mx - 130 * s, baseY - 24 * s, 260 * s, 24 * s);
+      // DRAW THE 5 SHIKHARAS / MANDAPS OF RAM MANDIR
+      const topCenterY = drawNagaraShikhara(mx, baseY - 85 * s, 95 * s, 210 * s, true);      // Garbhagriha Main Shikhara
+      drawNagaraShikhara(mx - 60 * s, baseY - 85 * s, 55 * s, 125 * s); // Gudh Mandap
+      drawNagaraShikhara(mx + 60 * s, baseY - 85 * s, 55 * s, 125 * s); // Nritya Mandap
+      drawNagaraShikhara(mx - 110 * s, baseY - 85 * s, 42 * s, 85 * s); // Rang Mandap
+      drawNagaraShikhara(mx + 110 * s, baseY - 85 * s, 42 * s, 85 * s); // Sabha Mandap
 
-      targetCtx.fillRect(mx - 100 * s, baseY - 48 * s, 200 * s, 24 * s);
-      targetCtx.strokeRect(mx - 100 * s, baseY - 48 * s, 200 * s, 24 * s);
-
-      const columns = [-80, -40, 0, 40, 80];
-      targetCtx.fillStyle = '#210e05';
-      columns.forEach(col => {
-        targetCtx.fillRect(mx + col * s - 4 * s, baseY - 48 * s, 8 * s, 24 * s);
-        targetCtx.strokeRect(mx + col * s - 4 * s, baseY - 48 * s, 8 * s, 24 * s);
-      });
-
-      drawShikhara(mx, baseY - 48 * s, 85 * s, 180 * s);
-      drawShikhara(mx - 65 * s, baseY - 48 * s, 50 * s, 110 * s);
-      drawShikhara(mx + 65 * s, baseY - 48 * s, 50 * s, 110 * s);
-
-      targetCtx.strokeStyle = '#7c381a';
-      targetCtx.lineWidth = 1.5 * s;
+      // 4. DIVINE SAFFRON FLAG (DWAJA) WITH WAVING MOTION
+      const flagPoleTop = topCenterY - 20 * s;
+      targetCtx.strokeStyle = '#d4aa70';
+      targetCtx.lineWidth = 2 * s;
       targetCtx.beginPath();
-      targetCtx.moveTo(mx, baseY - 228 * s);
-      targetCtx.lineTo(mx, baseY - 248 * s);
+      targetCtx.moveTo(mx, topCenterY);
+      targetCtx.lineTo(mx, flagPoleTop);
       targetCtx.stroke();
 
-      targetCtx.fillStyle = '#ff7300';
+      // Triangular Flag
+      const wave = Math.sin(t * 7) * 4 * s;
+      targetCtx.fillStyle = '#ff5500';
       targetCtx.beginPath();
-      targetCtx.moveTo(mx, baseY - 248 * s);
-      targetCtx.lineTo(mx + 15 * s + Math.sin(t * 6) * 3, baseY - 241 * s);
-      targetCtx.lineTo(mx, baseY - 234 * s);
+      targetCtx.moveTo(mx, flagPoleTop);
+      targetCtx.quadraticCurveTo(mx + 12 * s, flagPoleTop + wave, mx + 24 * s + wave, flagPoleTop + 8 * s);
+      targetCtx.quadraticCurveTo(mx + 12 * s, flagPoleTop + 16 * s + wave, mx, flagPoleTop + 18 * s);
       targetCtx.closePath();
+      targetCtx.fill();
+
+      // Sun emblem on Flag
+      targetCtx.fillStyle = '#ffea00';
+      targetCtx.beginPath();
+      targetCtx.arc(mx + 8 * s, flagPoleTop + 8 * s + wave * 0.5, 2.5 * s, 0, Math.PI * 2);
       targetCtx.fill();
 
       targetCtx.restore();
@@ -493,55 +624,95 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ FIREWORKS LOGIC ============
+    // ============ REALISTIC GRAND FIREWORKS SYSTEM ============
 
     function launchFireworks(t: number) {
-      if (t < 4.5 || t > 15) return;
-      if (Math.random() < 0.05) {
-        const fx = W * 0.15 + Math.random() * W * 0.55;
-        const fy = H * 0.12 + Math.random() * H * 0.24;
-        const colors = ['#dfb55c', '#ff7300', '#fcfbf7', '#dfb55c', '#00ffcc'];
+      if (t < 4.0 || t > 15.5) return;
+      
+      // Launch a rocket upward periodically
+      if (Math.random() < 0.06) {
+        const startX = W * 0.1 + Math.random() * W * 0.8;
+        const targetY = H * 0.1 + Math.random() * H * 0.28;
+        const colors = ['#ffaa00', '#ff3300', '#00e5ff', '#ff00aa', '#ffd700', '#00ff66'];
         const color = colors[Math.floor(Math.random() * colors.length)];
-        
-        activeFireworkBursts.push({
-          x: fx, y: fy, color, r: 0, maxR: 45 + Math.random() * 45, alpha: 1
-        });
 
-        for (let i = 0; i < 48; i++) {
-          const ang = (i / 48) * Math.PI * 2 + Math.random() * 0.2;
-          const spd = 1.5 + Math.random() * 3.5;
-          sparks.push({
-            x: fx, y: fy,
-            vx: Math.cos(ang) * spd,
-            vy: Math.sin(ang) * spd,
-            color,
-            alpha: 1,
-            life: 0,
-            maxLife: 2.5 + Math.random() * 1.5,
-            size: 1 + Math.random() * 1.8
-          });
-        }
+        rockets.push({
+          x: startX,
+          y: H * 0.62,
+          targetY,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: -6 - Math.random() * 3,
+          color,
+          trail: []
+        });
+      }
+    }
+
+    function createBurst(fx: number, fy: number, color: string) {
+      activeFireworkBursts.push({
+        x: fx, y: fy, color, r: 0, maxR: 50 + Math.random() * 45, alpha: 1
+      });
+
+      const particleCount = 80 + Math.floor(Math.random() * 40);
+      for (let i = 0; i < particleCount; i++) {
+        const ang = (i / particleCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
+        const spd = 1.8 + Math.random() * 4.5;
+        sparks.push({
+          x: fx, y: fy,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          color,
+          alpha: 1,
+          life: 0,
+          maxLife: 1.8 + Math.random() * 1.4,
+          size: 1.2 + Math.random() * 2.0,
+          gravity: 0.045,
+          drag: 0.982,
+          flicker: Math.random() < 0.4
+        });
       }
     }
 
     function updateFireworks(dt: number) {
+      // Update rockets moving upward
+      for (let i = rockets.length - 1; i >= 0; i--) {
+        const r = rockets[i];
+        r.x += r.vx;
+        r.y += r.vy;
+        r.trail.push({ x: r.x, y: r.y, alpha: 1 });
+
+        if (r.trail.length > 12) r.trail.shift();
+        r.trail.forEach(t => t.alpha -= 0.08);
+
+        if (r.y <= r.targetY || r.vy >= 0) {
+          createBurst(r.x, r.y, r.color);
+          rockets.splice(i, 1);
+        }
+      }
+
+      // Update exploding sparks
       for (let i = sparks.length - 1; i >= 0; i--) {
         const s = sparks[i];
         s.life += dt;
         s.x += s.vx;
         s.y += s.vy;
-        s.vy += 0.035; 
-        s.vx *= 0.985;
-        s.vy *= 0.985;
+        s.vy += s.gravity; 
+        s.vx *= s.drag;
+        s.vy *= s.drag;
+
+        const lr = s.life / s.maxLife;
+        s.alpha = 1 - lr;
+
         if (s.life > s.maxLife || s.y > H * 0.62) {
           sparks.splice(i, 1);
         }
       }
 
+      // Update light glow bursts
       for (let i = activeFireworkBursts.length - 1; i >= 0; i--) {
         const b = activeFireworkBursts[i];
-        b.r += (b.maxR - b.r) * 0.12;
-        b.alpha -= 0.04;
+        b.r += (b.maxR - b.r) * 0.14;
+        b.alpha -= 0.035;
         if (b.alpha <= 0) {
           activeFireworkBursts.splice(i, 1);
         }
@@ -552,10 +723,29 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
+      // Draw Rocket Ascent Trails
+      rockets.forEach(r => {
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        if (r.trail.length > 0) {
+          ctx.moveTo(r.trail[0].x, r.trail[0].y);
+          for (let p of r.trail) ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+
+        // Rocket Head Spark
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Draw Burst Radial Lights
       activeFireworkBursts.forEach((b) => {
         const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-        grad.addColorStop(0, `${b.color}aa`);
-        grad.addColorStop(0.3, `${b.color}33`);
+        grad.addColorStop(0, `${b.color}cc`);
+        grad.addColorStop(0.4, `${b.color}44`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -563,8 +753,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fill();
       });
 
+      // Draw Exploding Sparks
       sparks.forEach((s) => {
-        ctx.globalAlpha = s.alpha;
+        const alpha = s.flicker ? (Math.random() < 0.5 ? s.alpha * 0.3 : s.alpha) : s.alpha;
+        ctx.globalAlpha = clamp(alpha, 0, 1);
         ctx.fillStyle = s.color;
         const sz = s.size;
         ctx.drawImage(sparkSprite, s.x - sz * 3, s.y - sz * 3, sz * 6, sz * 6);
@@ -992,9 +1184,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       applyCamera();
       drawBackground(t);
       drawDivineLight(t);
-      drawWater(t);                   // Saryu River with Reflections
-      drawRamMandir(t, ctx);          // Main Temple on canvas
-      drawFireworks();                // Sky fireworks
+      drawWater(t);                   // Saryu River with Water Reflections
+      drawRamMandir(t, ctx);          // Ultra-Bhavya Ram Mandir Architecture
+      drawFireworks();                // Realistic Upward Rocket Fireworks
       updateAndDrawFloatingDiyas(t);  // Floating water diyas
       drawFogAndHaze(t);
       drawParticles();
