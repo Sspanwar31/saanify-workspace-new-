@@ -259,8 +259,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       targetCtx.save();
       targetCtx.globalAlpha = vis;
 
-      // Realistic Sandstone texture shaders (3D depth)
-      const stoneColor = '#502413';
       const highlightColor = `rgba(255, 185, 90, ${0.45 * (0.6 + 0.4 * Math.sin(t * 4))})`;
 
       const drawShikhara = (tx: number, ty: number, tw: number, th: number) => {
@@ -284,7 +282,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         targetCtx.lineWidth = 0.8 * s;
         targetCtx.stroke();
 
-        // Tier carvings
         for (let i = 1; i < 7; i++) {
           const f = i / 7;
           const y = ty - th * f;
@@ -296,8 +293,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         }
       };
 
-      // Mandapa platforms with stone gradient
-      const platformGrad = targetCtx.createLinearGradient(mx - 130*s, baseY, mx + 130*s, baseY);
+      const platformGrad = targetCtx.createLinearGradient(mx - 130 * s, baseY, mx + 130 * s, baseY);
       platformGrad.addColorStop(0, '#3a1a0d');
       platformGrad.addColorStop(0.5, '#7a3e1f');
       platformGrad.addColorStop(1, '#3a1a0d');
@@ -310,7 +306,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       targetCtx.fillRect(mx - 100 * s, baseY - 48 * s, 200 * s, 24 * s);
       targetCtx.strokeRect(mx - 100 * s, baseY - 48 * s, 200 * s, 24 * s);
 
-      // Pillars/Columns
       const columns = [-80, -40, 0, 40, 80];
       targetCtx.fillStyle = '#210e05';
       columns.forEach(col => {
@@ -318,12 +313,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         targetCtx.strokeRect(mx + col * s - 4 * s, baseY - 48 * s, 8 * s, 24 * s);
       });
 
-      // Towers (Shikharas)
-      drawShikhara(mx, baseY - 48 * s, 85 * s, 180 * s); // Main center
-      drawShikhara(mx - 65 * s, baseY - 48 * s, 50 * s, 110 * s); // Left
-      drawShikhara(mx + 65 * s, baseY - 48 * s, 50 * s, 110 * s); // Right
+      drawShikhara(mx, baseY - 48 * s, 85 * s, 180 * s);
+      drawShikhara(mx - 65 * s, baseY - 48 * s, 50 * s, 110 * s);
+      drawShikhara(mx + 65 * s, baseY - 48 * s, 50 * s, 110 * s);
 
-      // Flags
       targetCtx.strokeStyle = '#7c381a';
       targetCtx.lineWidth = 1.5 * s;
       targetCtx.beginPath();
@@ -352,7 +345,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalAlpha = vis;
 
-      // Deep dark water base gradient
       const wGrad = ctx.createLinearGradient(0, waterY, 0, H);
       wGrad.addColorStop(0, '#060301');
       wGrad.addColorStop(0.5, '#040101');
@@ -360,7 +352,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = wGrad;
       ctx.fillRect(0, waterY, W, H - waterY);
 
-      // Reflection of temple & sunset
       ctx.save();
       ctx.globalAlpha = 0.5;
       ctx.translate(0, waterY * 2);
@@ -370,14 +361,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       for (let y = waterY; y < H; y += sliceH) {
         const dist = y - waterY;
         const distanceFactor = dist / (H - waterY);
-        // Double sine wave horizontal ripple offset for premium water shimmer
         const ripple = Math.sin(y * 0.12 + t * 5.5) * 4 * distanceFactor + 
                        Math.cos(y * 0.28 - t * 3.2) * 1.5 * distanceFactor;
         ctx.drawImage(reflectCanvas, 0, y, W, sliceH, ripple, y, W, sliceH);
       }
       ctx.restore();
 
-      // Horizontal wave lines overlays
       ctx.globalCompositeOperation = 'screen';
       for (let y = waterY + 2; y < H; y += 4) {
         const distanceFactor = (y - waterY) / (H - waterY);
@@ -394,7 +383,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.stroke();
       }
 
-      // Dynamic Firework reflections in the water
       activeFireworkBursts.forEach((b) => {
         if (b.y > waterY) return;
         const rY = waterY + (waterY - b.y); 
@@ -423,7 +411,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalAlpha = vis;
 
-      diyas.forEach((d, i) => {
+      diyas.forEach((d) => {
         d.x += (d.speed * 0.016);
         if (d.x < -40) d.x = W + 40;
         if (d.x > W + 40) d.x = -40;
@@ -435,7 +423,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         const s = d.scale * 15; 
         const flameH = (s * 1.5) + flamePulse * d.scale;
 
-        // Long soft reflection trail underneath individual diya
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
         const trailH = s * 5;
@@ -447,7 +434,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fillRect(d.x - s * 0.3, waveY, s * 0.6, trailH);
         ctx.restore();
 
-        // 3D shaded Clay Bowl
         const dGrad = ctx.createLinearGradient(d.x - s, waveY, d.x + s, waveY);
         dGrad.addColorStop(0, '#4a1b05');
         dGrad.addColorStop(0.5, '#a64f1d');
@@ -457,13 +443,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.ellipse(d.x, waveY + s * 0.25, s, s * 0.35, 0, 0, Math.PI);
         ctx.fill();
 
-        // Inside liquid oil recess
         ctx.fillStyle = '#170300';
         ctx.beginPath();
         ctx.ellipse(d.x, waveY + s * 0.15, s * 0.88, s * 0.22, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Flickering Flame shape
         const fGrad = ctx.createLinearGradient(d.x, waveY, d.x, waveY - flameH);
         fGrad.addColorStop(0, 'rgba(255, 80, 0, 0.95)');
         fGrad.addColorStop(0.4, 'rgba(255, 180, 30, 0.99)');
@@ -478,7 +462,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.closePath();
         ctx.fill();
 
-        // Dynamic 3D flame glow halo
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
         ctx.globalAlpha = 0.55 * vis;
@@ -550,8 +533,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         s.vy += 0.035; 
         s.vx *= 0.985;
         s.vy *= 0.985;
-        const lr = s.life / s.maxLife;
-        s.alpha = 1 - lr;
         if (s.life > s.maxLife || s.y > H * 0.62) {
           sparks.splice(i, 1);
         }
@@ -993,8 +974,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       spawnPetals(t);
       spawnTextParticles(t);
       spawnIncenseSmoke(t);
+      spawnBirds(t);
+      launchFireworks(t);
+      updateFireworks(dt);
       updateParticles(dt, t);
       updateCamera(t);
+
+      // Render temple to reflection canvas for Saryu river reflection
+      rctx.clearRect(0, 0, W, H);
+      drawRamMandir(t, rctx);
 
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx.fillStyle = '#000';
@@ -1005,9 +993,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       drawBackground(t);
       drawDivineLight(t);
       drawWater(t);                   // Saryu River with Reflections
-      drawRamMandir(t);               // Majestic Sandstone Temple on the right bank
-      drawFireworks();                // Spectacular explosive sky fireworks
-      updateAndDrawFloatingDiyas(t);  // Beautiful glowing floating water diyas
+      drawRamMandir(t, ctx);          // Main Temple on canvas
+      drawFireworks();                // Sky fireworks
+      updateAndDrawFloatingDiyas(t);  // Floating water diyas
       drawFogAndHaze(t);
       drawParticles();
       ctx.restore();
@@ -1061,7 +1049,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     resize();
-    window.addEventListener('resize', resize);draw // <--- इस लाइन पर गलती से 'draw' शब्द लिखा हुआ है!
+    window.addEventListener('resize', resize);
     rafId = requestAnimationFrame(loop);
 
     return () => {
