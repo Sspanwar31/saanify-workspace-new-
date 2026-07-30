@@ -1359,70 +1359,96 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    function drawGreeting(t: number) {
-      if (t < 15.5) return; // Scene 6: 15.5s
-      const reveal = smoothstep(15.5, 16.5, t);
-      const fade = smoothstep(18.5, 19.5, t);
-      const vis = reveal * (1 - fade);
-      if (vis <= 0.01) return;
-      
-      const fontSize = Math.min(W * 0.045, 40);
-      const slideY = 40 * (1 - reveal); // Slide from bottom
-      const cy = H * 0.65 + slideY;
-      
-      const line1 = 'जय श्री राम';
-      const line2 = 'आपको और आपके परिवार को';
-      const line3 = 'राम नवमी की हार्दिक शुभकामनाएँ';
-      
-      ctx.save();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = `600 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
+function drawGreeting(t: number) {
+  if (t < 15.5) return;
 
-      ctx.globalCompositeOperation = 'lighter';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 4);
-      haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.1 * vis})`);
-      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = haloGrad;
-      ctx.fillRect(0, 0, W, H);
+  const reveal = smoothstep(15.5, 16.5, t);
+  const fade = smoothstep(18.8, 20.0, t);
+  const vis = reveal * (1 - fade);
 
-      ctx.globalCompositeOperation = 'source-over';
-      const y1 = cy - fontSize * 1.2;
-      const y2 = cy;
-      const y3 = cy + fontSize * 1.2;
+  if (vis <= 0.01) return;
 
-      // Draw Line 1 (Bold)
-      ctx.shadowBlur = 24; ctx.shadowColor = `rgba(255, 160, 50, ${vis})`;
-      ctx.fillStyle = `rgba(180, 90, 20, ${vis * 0.5})`;
-      ctx.fillText(line1, W / 2, y1); 
-      
-      ctx.shadowBlur = 12; ctx.shadowColor = `rgba(255, 190, 80, ${vis})`;
-      ctx.fillStyle = `rgba(220, 140, 50, ${vis * 0.7})`;
-      ctx.fillText(line1, W / 2, y1); 
-      
-      ctx.shadowBlur = 6; ctx.shadowColor = `rgba(255, 220, 130, ${vis})`;
-      ctx.fillStyle = `rgba(255, 220, 150, ${vis})`;
-      ctx.fillText(line1, W / 2, y1); 
-      
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = `rgba(255, 245, 210, ${vis * 0.5})`;
-      ctx.fillText(line1, W / 2 - 0.5, y1 - 0.5);
+  const fontSize = Math.min(W * 0.043, 38);
 
-      // Draw Line 2 & 3 (Normal)
-      ctx.shadowBlur = 12; ctx.shadowColor = `rgba(255, 190, 80, ${vis})`;
-      ctx.fillStyle = `rgba(220, 140, 50, ${vis * 0.7})`;
-      ctx.fillText(line2, W / 2, y2); ctx.fillText(line3, W / 2, y3);
-      
-      ctx.shadowBlur = 6; ctx.shadowColor = `rgba(255, 220, 130, ${vis})`;
-      ctx.fillStyle = `rgba(255, 220, 150, ${vis})`;
-      ctx.fillText(line2, W / 2, y2); ctx.fillText(line3, W / 2, y3);
-      
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = `rgba(255, 245, 210, ${vis * 0.5})`;
-      ctx.fillText(line2, W / 2 - 0.5, y2 - 0.5); ctx.fillText(line3, W / 2 - 0.5, y3 - 0.5);
-      
-      ctx.restore();
-    }
+  // Smooth slide from bottom
+  const slideOffset = (1 - reveal) * 45;
 
+  // Soft breathing effect
+  const pulse = 1 + Math.sin(t * 2.2) * 0.03;
+
+  const centerY = H * 0.73 + slideOffset;
+
+  const line1 = "🙏 जय श्री राम 🙏";
+  const line2 = "आपको एवं आपके परिवार को";
+  const line3 = "राम नवमी की हार्दिक शुभकामनाएँ";
+
+  ctx.save();
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // ---------- Golden Halo ----------
+  ctx.globalCompositeOperation = "lighter";
+
+  const halo = ctx.createRadialGradient(
+    W / 2,
+    centerY,
+    0,
+    W / 2,
+    centerY,
+    fontSize * 6
+  );
+
+  halo.addColorStop(0, `rgba(255,190,80,${0.18 * vis})`);
+  halo.addColorStop(0.4, `rgba(255,140,30,${0.08 * vis})`);
+  halo.addColorStop(1, "rgba(0,0,0,0)");
+
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.globalCompositeOperation = "source-over";
+
+  const y1 = centerY - fontSize * 1.4;
+  const y2 = centerY;
+  const y3 = centerY + fontSize * 1.4;
+
+  //-----------------------------
+  // LINE 1
+  //-----------------------------
+
+  ctx.save();
+
+  ctx.translate(W / 2, y1);
+  ctx.scale(pulse, pulse);
+
+  ctx.font = `700 ${fontSize}px "Noto Sans Devanagari","Mangal","Nirmala UI",sans-serif`;
+
+  ctx.shadowColor = `rgba(255,180,60,${vis})`;
+  ctx.shadowBlur = 22;
+
+  ctx.fillStyle = `rgba(255,235,180,${vis})`;
+
+  ctx.fillText(line1, 0, 0);
+
+  ctx.restore();
+
+  //-----------------------------
+  // LINE 2 & 3
+  //-----------------------------
+
+  ctx.font = `500 ${fontSize * 0.82}px "Noto Sans Devanagari","Mangal","Nirmala UI",sans-serif`;
+
+  ctx.shadowColor = `rgba(255,170,60,${vis * 0.8})`;
+  ctx.shadowBlur = 10;
+
+  ctx.fillStyle = `rgba(255,225,170,${vis})`;
+
+  ctx.fillText(line2, W / 2, y2);
+
+  ctx.fillText(line3, W / 2, y3);
+
+  ctx.restore();
+}
     // ============ POST-PROCESSING ============
 
     function applyBloom() {
