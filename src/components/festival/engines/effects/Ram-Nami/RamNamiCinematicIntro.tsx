@@ -991,10 +991,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       applyCamera();
       drawBackground(t);
       drawDivineLight(t);
-      drawCitySilhouette(t); // <-- FIXED: ReferenceError resolved
-      drawCourtroomVisuals(t);
-      drawDiyas(t);
-      drawFogAndHaze(t);
+      drawWater(t);                   // 🚀 नया: सरयू नदी और परावर्तन (Reflection)
+      drawRamMandir(t);               // 🚀 नया: भव्य राम मंदिर
+      drawFireworks();                // 🚀 नया: आसमान में आतिशबाज़ी
+      updateAndDrawFloatingDiyas(t);  // 🚀 नया: पानी पर तैरते दीये      drawFogAndHaze(t);
       drawParticles();
       ctx.restore();
 
@@ -1047,7 +1047,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     resize();
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', resize);draw
     rafId = requestAnimationFrame(loop);
 
     return () => {
