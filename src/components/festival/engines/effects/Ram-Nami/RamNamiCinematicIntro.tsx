@@ -991,10 +991,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       applyCamera();
       drawBackground(t);
       drawDivineLight(t);
-      drawWater(t);                   // 🚀 नया: सरयू नदी और परावर्तन (Reflection)
-      drawRamMandir(t);               // 🚀 नया: भव्य राम मंदिर
-      drawFireworks();                // 🚀 नया: आसमान में आतिशबाज़ी
-      updateAndDrawFloatingDiyas(t);  // 🚀 नया: पानी पर तैरते दीये      drawFogAndHaze(t);
+      drawWater(t);                   // Saryu River with Reflections
+      drawRamMandir(t);               // Majestic Sandstone Temple on the right bank
+      drawFireworks();                // Spectacular explosive sky fireworks
+      updateAndDrawFloatingDiyas(t);  // Beautiful glowing floating water diyas
+      drawFogAndHaze(t);
       drawParticles();
       ctx.restore();
 
@@ -1047,7 +1048,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     resize();
-    window.addEventListener('resize', resize);draw
+    window.addEventListener('resize', resize);
     rafId = requestAnimationFrame(loop);
 
     return () => {
