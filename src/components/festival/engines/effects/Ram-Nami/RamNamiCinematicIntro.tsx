@@ -991,6 +991,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       applyCamera();
       drawBackground(t);
       drawDivineLight(t);
+      drawCitySilhouette(t); // <-- FIXED: ReferenceError resolved
+      drawCourtroomVisuals(t);
+      drawDiyas(t);
       drawFogAndHaze(t);
       drawParticles();
       ctx.restore();
