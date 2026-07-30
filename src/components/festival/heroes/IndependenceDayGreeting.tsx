@@ -35,7 +35,6 @@ export default function IndependenceDayGreeting({ className }: Props) {
     }
 
     const resizeCanvas = () => {
-      // Set responsive height/width based on the parent container
       const container = canvas.parentElement;
       width = container ? container.clientWidth : window.innerWidth;
       height = container ? container.clientHeight : window.innerHeight;
@@ -47,9 +46,10 @@ export default function IndependenceDayGreeting({ className }: Props) {
       canvas.style.height = `${height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Compact scaling factor optimized for greeting layouts
-      scale = Math.min(width / 500, height / 750);
-      if (scale < 0.25) scale = 0.25; // Lower clamp limit for better mobile compatibility
+      // 🚀 Centered scale ratio for square-ish card headers
+      scale = Math.min(width / 400, height / 310);
+      if (scale < 0.35) scale = 0.35; 
+      if (scale > 1.1) scale = 1.1;
     };
 
     resizeCanvas();
@@ -124,9 +124,12 @@ export default function IndependenceDayGreeting({ className }: Props) {
 
       // Centering and structural calculations with updated compact sizes
       const centerX = width * 0.5;
-      const fortBaseY = height * 0.72; // Adjusted upward to avoid bottom cutoff
-      const fortWidth = 360 * scale;   // Reduced baseline width (was 480)
-      const fortHeight = 170 * scale;  // Reduced baseline height (was 220)
+      
+      // 🚀 Mathematical Vertical Center Offset (Perfectly Centers the Fort + Flagpole)
+      const fortBaseY = height / 2 + 70 * scale; 
+      
+      const fortWidth = 360 * scale;   
+      const fortHeight = 170 * scale;  
 
       ctx.save();
 
@@ -311,7 +314,7 @@ export default function IndependenceDayGreeting({ className }: Props) {
       // ==========================================
       const poleX = centerX - 20 * scale;
       const poleBaseY = fortBaseY - 8 * scale;
-      const poleH = 210 * scale; // Reduced height (was 260)
+      const poleH = 210 * scale; 
       const poleTopY = poleBaseY - poleH;
       const poleW = 3.5 * scale;
 
@@ -332,8 +335,8 @@ export default function IndependenceDayGreeting({ className }: Props) {
       // ==========================================
       // 4. ANIMATED WAVING INDIAN FLAG (TIRANGA)
       // ==========================================
-      const flagW = 120 * scale; // Reduced size (was 150)
-      const flagH = 76 * scale;  // Reduced size (was 95)
+      const flagW = 120 * scale; 
+      const flagH = 76 * scale;  
       const stripeH = flagH / 3;
 
       const waveSpeed = 6.2;
