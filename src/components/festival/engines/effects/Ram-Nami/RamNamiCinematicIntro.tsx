@@ -14,8 +14,57 @@ const smoothstep = (a: number, b: number, t: number) => {
   return x * x * (3 - 2 * x);
 };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const clamp = (v: number, mn: number, mx: number) => Math.max(mn, Math.min(mx, v));
 
-// ============ FIREWORK & DIYA CLASSES ============
+// ============ PARTICLE SYSTEM ============
+type PType = 'dust' | 'petal' | 'sparkle' | 'smoke' | 'bird';
+
+interface Particle {
+  idx: number;
+  x: number; y: number;
+  vx: number; vy: number;
+  size: number;
+  life: number; maxLife: number;
+  alpha: number;
+  type: PType;
+  tx: number; ty: number;
+  rot: number; rotSpd: number;
+  flap: number;
+  active: boolean;
+  delay: number;
+}
+
+class ParticlePool {
+  particles: Particle[] = [];
+  free: number[] = [];
+  constructor(size: number) {
+    for (let i = 0; i < size; i++) {
+      this.particles.push({
+        idx: i, x: 0, y: 0, vx: 0, vy: 0,
+        size: 1, life: 0, maxLife: 1, alpha: 0,
+        type: 'dust', tx: 0, ty: 0,
+        rot: 0, rotSpd: 0, flap: 0,
+        active: false, delay: 0
+      });
+      this.free.push(i);
+    }
+  }
+  spawn(): Particle | null {
+    const idx = this.free.pop();
+    if (idx === undefined) return null;
+    const p = this.particles[idx];
+    p.active = true;
+    p.life = 0;
+    p.alpha = 0;
+    p.delay = 0;
+    return p;
+  }
+  release(p: Particle) {
+    p.active = false;
+    this.free.push(p.idx);
+  }
+}
+
 interface FireworkSpark {
   x: number; y: number;
   vx: number; vy: number;
@@ -52,29 +101,38 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     let rafId = 0;
     let running = true;
     let lastTime = 0;
+    let birdsSpawned = false; 
     let handoverTriggered = false;
+    let lastSampleTime = 0;
 
-    // Post-processing buffers
     const bloom = document.createElement('canvas');
     const bctx = bloom.getContext('2d')!;
     const grain = document.createElement('canvas');
     const gctx = grain.getContext('2d')!;
 
-    // Arrays for dynamic elements
     const diyas: FloatingDiya[] = [];
     const sparks: FireworkSpark[] = [];
     const activeFireworkBursts: { x: number; y: number; color: string; r: number; maxR: number; alpha: number }[] = [];
 
-    // Pre-rendered glow sprite
-    const glowSprite = document.createElement('canvas');
-    glowSprite.width = glowSprite.height = 32;
-    const gcx = glowSprite.getContext('2d')!;
-    const grad = gcx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grad.addColorStop(0, 'rgba(255, 230, 150, 1)');
-    grad.addColorStop(0.35, 'rgba(255, 140, 40, 0.35)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    gcx.fillStyle = grad;
-    gcx.fillRect(0, 0, 32, 32);
+    // Procedural light sprites
+    function makeSprite(size: number, inner: string, mid: string): HTMLCanvasElement {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const cx = c.getContext('2d')!;
+      const grad = cx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      grad.addColorStop(0, inner);
+      grad.addColorStop(0.35, mid);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      cx.fillStyle = grad;
+      cx.fillRect(0, 0, size, size);
+      return c;
+    }
+    const dustSprite = makeSprite(32, 'rgba(255,210,130,1)', 'rgba(255,130,40,0.3)');
+    const sparkSprite = makeSprite(32, 'rgba(255,250,220,1)', 'rgba(255,180,80,0.35)');
+
+    const pool = new ParticlePool(1000);
+    const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
+    let ramPoints: { x: number; y: number }[] = [];
 
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -89,6 +147,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       grain.width = 256;
       grain.height = 256;
       generateGrain();
+      sampleText();
       initializeDiyas();
     }
 
@@ -98,16 +157,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       for (let i = 0; i < d.length; i += 4) {
         const n = Math.random() * 255;
         d[i] = n; d[i + 1] = n; d[i + 2] = n;
-        d[i + 3] = 15;
+        d[i + 3] = 18;
       }
       gctx.putImageData(id, 0, 0);
     }
 
     function initializeDiyas() {
       diyas.length = 0;
-      const count = 42;
+      const count = 35;
       for (let i = 0; i < count; i++) {
-        // Perspective distribution: higher up (closer to horizon) means smaller and slower
         const progress = Math.random();
         const y = lerp(H * 0.65, H * 0.96, progress);
         const scale = lerp(0.18, 0.9, progress);
@@ -115,16 +173,40 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           x: Math.random() * W,
           y: y,
           scale,
-          speed: lerp(4, 15, progress) * (Math.random() < 0.5 ? -1 : 1),
+          speed: lerp(3, 12, progress) * (Math.random() < 0.5 ? -1 : 1),
           phase: Math.random() * Math.PI * 2,
           flamePulse: Math.random() * 10,
         });
       }
     }
 
+    function sampleText() {
+      const tc = document.createElement('canvas');
+      const tctx = tc.getContext('2d')!;
+      const fontSize = Math.min(W * 0.13, 130);
+      tc.width = Math.floor(W);
+      tc.height = Math.floor(fontSize * 2);
+      tctx.fillStyle = 'white';
+      tctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
+      tctx.textAlign = 'center';
+      tctx.textBaseline = 'middle';
+      tctx.fillText('श्री राम', tc.width / 2, tc.height / 2);
+      const id = tctx.getImageData(0, 0, tc.width, tc.height);
+      ramPoints = [];
+      const step = 3;
+      for (let y = 0; y < tc.height; y += step) {
+        for (let x = 0; x < tc.width; x += step) {
+          const i = (y * tc.width + x) * 4;
+          if (id.data[i + 3] > 128) {
+            ramPoints.push({ x: x - tc.width / 2, y: y - tc.height / 2 });
+          }
+        }
+      }
+    }
+
     // ============ RENDER LAYERS ============
 
-    function drawGhatBackground(t: number) {
+    function drawBackground(t: number) {
       const reveal = smoothstep(0, 4, t);
       const grad = ctx.createLinearGradient(0, 0, 0, H);
       const ir = Math.floor(lerp(4, 45, reveal));
@@ -137,14 +219,58 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillRect(0, 0, W, H);
     }
 
-    function drawRamMandirSilhouette(t: number) {
+    function drawDivineLight(t: number) {
+      const reveal = smoothstep(1.8, 5, t);
+      const fade = smoothstep(16, 17.5, t);
+      if (reveal <= 0) return;
+      const vis = reveal * (1 - fade);
+      const sx = W * 0.5;
+      const sy = H * 0.44; 
+      const sunR = W * 0.22;
+      const sunGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
+      sunGrad.addColorStop(0, `rgba(255, 230, 160, ${0.9 * vis})`);
+      sunGrad.addColorStop(0.2, `rgba(255, 170, 70, ${0.6 * vis})`);
+      sunGrad.addColorStop(0.5, `rgba(180, 80, 20, ${0.2 * vis})`);
+      sunGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sunGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const rayCount = 24;
+      const maxLen = Math.max(W, H) * 1.2;
+      for (let i = 0; i < rayCount; i++) {
+        const baseAngle = (i / rayCount) * Math.PI * 2;
+        const angle = baseAngle + t * 0.04 + Math.sin(t * 0.3 + i * 0.8) * 0.03;
+        const len = maxLen * (0.6 + 0.4 * Math.sin(t * 0.5 + i * 1.7));
+        const flicker = 0.7 + 0.3 * Math.sin(t * 1.5 + i * 2.3);
+        const a = 0.08 * vis * flicker;
+        const ex = sx + Math.cos(angle) * len;
+        const ey = sy + Math.sin(angle) * len;
+        const grad = ctx.createLinearGradient(sx, sy, ex, ey);
+        grad.addColorStop(0, `rgba(255, 215, 140, ${a})`);
+        grad.addColorStop(0.4, `rgba(255, 150, 50, ${a * 0.5})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        const w = 0.04 + Math.sin(t * 0.4 + i * 2) * 0.015;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + Math.cos(angle - w) * len, sy + Math.sin(angle - w) * len);
+        ctx.lineTo(sx + Math.cos(angle + w) * len, sy + Math.sin(angle + w) * len);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawRamMandir(t: number) {
       const reveal = smoothstep(2.5, 6, t);
       const fade = smoothstep(16, 17.5, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
 
       const s = Math.min(W, H) * 0.0012;
-      const mx = W * 0.72; // Placed majestic temple on the right bank
+      const mx = W * 0.72; 
       const baseY = H * 0.64;
 
       ctx.save();
@@ -216,96 +342,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ FIREWORKS LOGIC ============
-
-    function launchFireworks(t: number) {
-      if (t < 4.5 || t > 15) return;
-      // Periodic launches
-      if (Math.random() < 0.05) {
-        const fx = W * 0.15 + Math.random() * W * 0.55;
-        const fy = H * 0.12 + Math.random() * H * 0.24;
-        const colors = ['#dfb55c', '#ff7300', '#fcfbf7', '#dfb55c', '#00ffcc'];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        
-        activeFireworkBursts.push({
-          x: fx, y: fy, color, r: 0, maxR: 45 + Math.random() * 45, alpha: 1
-        });
-
-        // Spawn sparkling trail particles
-        for (let i = 0; i < 48; i++) {
-          const ang = (i / 48) * Math.PI * 2 + Math.random() * 0.2;
-          const spd = 1.5 + Math.random() * 3.5;
-          sparks.push({
-            x: fx, y: fy,
-            vx: Math.cos(ang) * spd,
-            vy: Math.sin(ang) * spd,
-            color,
-            alpha: 1,
-            life: 0,
-            maxLife: 2.5 + Math.random() * 1.5,
-            size: 1 + Math.random() * 1.8
-          });
-        }
-      }
-    }
-
-    function updateFireworks(dt: number) {
-      // Update sparks falling down
-      for (let i = sparks.length - 1; i >= 0; i--) {
-        const s = sparks[i];
-        s.life += dt;
-        s.x += s.vx;
-        s.y += s.vy;
-        s.vy += 0.035; // gravity pulls sparks down
-        s.vx *= 0.985;
-        s.vy *= 0.985;
-        const lr = s.life / s.maxLife;
-        s.alpha = 1 - lr;
-        if (s.life > s.maxLife || s.y > H * 0.62) {
-          sparks.splice(i, 1);
-        }
-      }
-
-      // Update core light circles
-      for (let i = activeFireworkBursts.length - 1; i >= 0; i--) {
-        const b = activeFireworkBursts[i];
-        b.r += (b.maxR - b.r) * 0.12;
-        b.alpha -= 0.04;
-        if (b.alpha <= 0) {
-          activeFireworkBursts.splice(i, 1);
-        }
-      }
-    }
-
-    function drawFireworks() {
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-
-      // 1. Drawing the burst center glows
-      activeFireworkBursts.forEach((b) => {
-        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-        grad.addColorStop(0, `${b.color}aa`);
-        grad.addColorStop(0.3, `${b.color}33`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // 2. Drawing individual spark particles
-      sparks.forEach((s) => {
-        ctx.globalAlpha = s.alpha;
-        ctx.fillStyle = s.color;
-        const sz = s.size;
-        ctx.drawImage(glowSprite, s.x - sz * 3, s.y - sz * 3, sz * 6, sz * 6);
-      });
-
-      ctx.restore();
-    }
-
-    // ============ WATER ENGINE & REFLECTIONS ============
-
     function drawWater(t: number) {
       const reveal = smoothstep(1, 4.5, t);
       const fade = smoothstep(16, 17.5, t);
@@ -324,10 +360,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = wGrad;
       ctx.fillRect(0, waterY, W, H - waterY);
 
-      // Render vertical reflection trails on Saryu River (Temple & Sun light)
+      // Render Saryu River reflection columns (Temple & Sun light)
       ctx.globalCompositeOperation = 'screen';
       
-      // Temple reflection column
       const mandirX = W * 0.72;
       const refW = 140 * Math.min(W, H) * 0.0012;
       const colGrad = ctx.createLinearGradient(mandirX - refW / 2, 0, mandirX + refW / 2, 0);
@@ -353,8 +388,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       // Dynamic Firework reflections in the water
       activeFireworkBursts.forEach((b) => {
-        if (b.y > waterY) return; // avoid rendering below water line
-        const rY = waterY + (waterY - b.y); // mirror Y position
+        if (b.y > waterY) return;
+        const rY = waterY + (waterY - b.y); 
         const dy = rY - waterY;
         const rfGrad = ctx.createRadialGradient(b.x, rY, 0, b.x, rY, b.r * 1.5);
         rfGrad.addColorStop(0, `${b.color}${Math.floor(b.alpha * 45).toString(16).padStart(2, '0')}`);
@@ -362,15 +397,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fillStyle = rfGrad;
         
         ctx.beginPath();
-        // Squeeze vertically for reflection perspective angle
         ctx.ellipse(b.x, waterY + dy * 0.6, b.r * 1.2, b.r * 0.22, 0, 0, Math.PI * 2);
         ctx.fill();
       });
 
       ctx.restore();
     }
-
-    // ============ FLOATING DIYAS LOGIC ============
 
     function updateAndDrawFloatingDiyas(t: number) {
       const reveal = smoothstep(5, 7.5, t);
@@ -384,20 +416,17 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = vis;
 
       diyas.forEach((d, i) => {
-        // Horizontal floating movement
         d.x += (d.speed * 0.016);
         if (d.x < -40) d.x = W + 40;
         if (d.x > W + 40) d.x = -40;
 
-        // Vertical wavy drift
         const waveY = d.y + Math.sin(t * 1.5 + d.phase) * 1.8 * d.scale;
         if (waveY < waterY) return;
 
         const flamePulse = Math.sin(t * 15 + d.flamePulse) * 1;
-        const s = d.scale * 15; // physical radius
+        const s = d.scale * 15; 
         const flameH = (s * 1.5) + flamePulse * d.scale;
 
-        // Long soft reflection trail underneath individual diya
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
         const trailH = s * 4.5;
@@ -409,7 +438,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fillRect(d.x - s * 0.3, waveY, s * 0.6, trailH);
         ctx.restore();
 
-        // Clay Base
         const dGrad = ctx.createLinearGradient(d.x - s, waveY, d.x + s, waveY);
         dGrad.addColorStop(0, '#502008');
         dGrad.addColorStop(0.5, '#9e4a1a');
@@ -419,13 +447,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.ellipse(d.x, waveY + s * 0.25, s, s * 0.35, 0, 0, Math.PI);
         ctx.fill();
 
-        // Inside dark recess
         ctx.fillStyle = '#1c0500';
         ctx.beginPath();
         ctx.ellipse(d.x, waveY + s * 0.15, s * 0.88, s * 0.22, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Flickering Flame shape
         const fGrad = ctx.createLinearGradient(d.x, waveY, d.x, waveY - flameH);
         fGrad.addColorStop(0, 'rgba(255, 80, 0, 0.95)');
         fGrad.addColorStop(0.4, 'rgba(255, 180, 30, 0.99)');
@@ -440,116 +466,162 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.closePath();
         ctx.fill();
 
-        // Small flame halos (Fast)
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
         ctx.globalAlpha = 0.5 * vis;
-        ctx.drawImage(glowSprite, d.x - s * 1.5, waveY - flameH - s * 0.5, s * 3, s * 3);
+        ctx.drawImage(dustSprite, d.x - s * 1.5, waveY - flameH - s * 0.5, s * 3, s * 3);
         ctx.restore();
       });
 
       ctx.restore();
     }
 
-    // ============ ATMOSPHERIC SPARKS & SMOKE ============
-
-    function updateParticles(dt: number, t: number) {
-      for (const p of pool.particles) {
-        if (!p.active) continue;
-        p.life += dt;
-
-        if (p.type === 'dust') {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vx += (Math.random() - 0.5) * 0.02;
-          p.vy += -0.002;
-          const lr = p.life / p.maxLife;
-          const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17.5, t));
-          p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env;
-          if (p.life > p.maxLife || p.y < -30) {
-            p.life = 0; p.x = Math.random() * W; p.y = H * 0.6; p.alpha = 0;
-          }
-        } else if (p.type === 'petal') {
-          p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
-          p.y += p.vy;
-          p.rot += p.rotSpd * dt;
-          const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
-          if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p); // Petals landing on water
-        } else if (p.type === 'smoke') {
-          p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
-          p.y += p.vy;
-          p.size += dt * 5.2; 
-          const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.16;
-          if (p.life > p.maxLife || p.y < -30) pool.release(p);
-        }
-      }
-    }
-
-    function drawParticles() {
+    function drawFogAndHaze(t: number) {
+      const intensity = smoothstep(1.5, 5, t) * (1 - smoothstep(16, 17.5, t));
+      if (intensity <= 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      for (const p of pool.particles) {
-        if (!p.active || p.alpha <= 0.01) continue;
-        if (p.type === 'dust') {
-          ctx.globalAlpha = p.alpha;
-          const sz = p.size * 5.2;
-          ctx.drawImage(dustSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
-        }
-      }
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
-      for (const p of pool.particles) {
-        if (!p.active || p.alpha <= 0.01) continue;
-        if (p.type === 'petal') {
-          ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.rotate(p.rot);
-          ctx.fillStyle = `rgba(242, 128, 48, ${p.alpha})`; // Marigold petal color matching ghat theme
-          ctx.beginPath();
-          ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        } else if (p.type === 'smoke') {
-          ctx.save();
-          const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-          rad.addColorStop(0, `rgba(220, 160, 100, ${p.alpha * 0.4})`);
-          rad.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = rad;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
+      
+      for (let layer = 0; layer < 3; layer++) {
+        const y = H * (0.64 + layer * 0.05);
+        const speed = 6 + layer * 5;
+        const offset = (t * speed + layer * 149) % (W * 1.5);
+        const grad = ctx.createLinearGradient(0, y - 30, 0, y + 80);
+        const a = 0.06 * intensity * (1 - layer * 0.2);
+        grad.addColorStop(0, 'rgba(180, 110, 40, 0)');
+        grad.addColorStop(0.5, `rgba(180, 110, 40, ${a})`);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(-offset, y - 30, W * 2.5, 110);
       }
       ctx.restore();
     }
 
-    // ============ RE-SAMPLE "SHRI RAM" TEXTS ============
+    // ============ FIREWORKS LOGIC ============
 
-    function sampleText() {
-      const tc = document.createElement('canvas');
-      const tctx = tc.getContext('2d')!;
-      const fontSize = Math.min(W * 0.13, 130);
-      tc.width = Math.floor(W);
-      tc.height = Math.floor(fontSize * 2);
-      tctx.fillStyle = 'white';
-      tctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
-      tctx.textAlign = 'center';
-      tctx.textBaseline = 'middle';
-      tctx.fillText('श्री राम', tc.width / 2, tc.height / 2);
-      const id = tctx.getImageData(0, 0, tc.width, tc.height);
-      ramPoints = [];
-      const step = 3;
-      for (let y = 0; y < tc.height; y += step) {
-        for (let x = 0; x < tc.width; x += step) {
-          const i = (y * tc.width + x) * 4;
-          if (id.data[i + 3] > 128) {
-            ramPoints.push({ x: x - tc.width / 2, y: y - tc.height / 2 });
-          }
+    function launchFireworks(t: number) {
+      if (t < 4.5 || t > 15) return;
+      if (Math.random() < 0.05) {
+        const fx = W * 0.15 + Math.random() * W * 0.55;
+        const fy = H * 0.12 + Math.random() * H * 0.24;
+        const colors = ['#dfb55c', '#ff7300', '#fcfbf7', '#dfb55c', '#00ffcc'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        
+        activeFireworkBursts.push({
+          x: fx, y: fy, color, r: 0, maxR: 45 + Math.random() * 45, alpha: 1
+        });
+
+        for (let i = 0; i < 48; i++) {
+          const ang = (i / 48) * Math.PI * 2 + Math.random() * 0.2;
+          const spd = 1.5 + Math.random() * 3.5;
+          sparks.push({
+            x: fx, y: fy,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            color,
+            alpha: 1,
+            life: 0,
+            maxLife: 2.5 + Math.random() * 1.5,
+            size: 1 + Math.random() * 1.8
+          });
         }
       }
+    }
+
+    function updateFireworks(dt: number) {
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i];
+        s.life += dt;
+        s.x += s.vx;
+        s.y += s.vy;
+        s.vy += 0.035; 
+        s.vx *= 0.985;
+        s.vy *= 0.985;
+        const lr = s.life / s.maxLife;
+        s.alpha = 1 - lr;
+        if (s.life > s.maxLife || s.y > H * 0.62) {
+          sparks.splice(i, 1);
+        }
+      }
+
+      for (let i = activeFireworkBursts.length - 1; i >= 0; i--) {
+        const b = activeFireworkBursts[i];
+        b.r += (b.maxR - b.r) * 0.12;
+        b.alpha -= 0.04;
+        if (b.alpha <= 0) {
+          activeFireworkBursts.splice(i, 1);
+        }
+      }
+    }
+
+    function drawFireworks() {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      activeFireworkBursts.forEach((b) => {
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+        grad.addColorStop(0, `${b.color}aa`);
+        grad.addColorStop(0.3, `${b.color}33`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      sparks.forEach((s) => {
+        ctx.globalAlpha = s.alpha;
+        ctx.fillStyle = s.color;
+        const sz = s.size;
+        ctx.drawImage(sparkSprite, s.x - sz * 3, s.y - sz * 3, sz * 6, sz * 6);
+      });
+
+      ctx.restore();
+    }
+
+    // ============ PARTICLE SPAWN & UPDATES ============
+
+    function spawnDust(t: number) {
+      const target = Math.floor(65 * smoothstep(0, 3, t));
+      let count = 0;
+      for (const p of pool.particles) if (p.active && p.type === 'dust') count++;
+      let attempts = 0;
+      while (count < target && attempts < 8) {
+        const p = pool.spawn();
+        if (!p) break;
+        p.type = 'dust';
+        p.x = Math.random() * W;
+        p.y = Math.random() * H;
+        p.vx = (Math.random() - 0.5) * 0.35;
+        p.vy = -0.05 - Math.random() * 0.3;
+        p.size = 0.5 + Math.random() * 1.4;
+        p.maxLife = 5 + Math.random() * 5;
+        p.life = Math.random() * p.maxLife * 0.4;
+        p.alpha = 0;
+        p.rot = Math.random() * Math.PI * 2;
+        p.rotSpd = (Math.random() - 0.5) * 0.5;
+        count++;
+        attempts++;
+      }
+    }
+
+    function spawnPetals(t: number) {
+      const intensity = smoothstep(6.5, 9.5, t) * (1 - smoothstep(16, 17.5, t));
+      if (intensity <= 0) return;
+      if (Math.random() > intensity * 0.35) return;
+      const p = pool.spawn();
+      if (!p) return;
+      p.type = 'petal';
+      p.x = Math.random() * W;
+      p.y = -20;
+      p.vx = (Math.random() - 0.5) * 0.7;
+      p.vy = 0.4 + Math.random() * 0.65;
+      p.size = 4.5 + Math.random() * 5.5;
+      p.maxLife = 18;
+      p.life = 0;
+      p.alpha = 0;
+      p.rot = Math.random() * Math.PI * 2;
+      p.rotSpd = (Math.random() - 0.5) * 2.2;
     }
 
     function spawnTextParticles(t: number) {
@@ -565,9 +637,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
         p.type = 'sparkle';
         p.x = W / 2 + (Math.random() - 0.5) * W * 1.3;
-        p.y = H * 0.32 + (Math.random() - 0.5) * H * 1.1;
+        p.y = H * 0.36 + (Math.random() - 0.5) * H * 1.1;
         p.tx = W / 2 + pt.x;
-        p.ty = H * 0.32 + pt.y; 
+        p.ty = H * 0.36 + pt.y; 
         p.vx = 0; p.vy = 0;
         p.size = 1.1 + Math.random() * 1.4;
         p.maxLife = 7;
@@ -577,6 +649,171 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         active++;
         attempts++;
       }
+    }
+
+    function spawnIncenseSmoke(t: number) {
+      const intensity = smoothstep(8, 10, t) * (1 - smoothstep(16, 17.5, t));
+      if (intensity <= 0) return;
+      if (Math.random() > 0.08 * intensity) return;
+      
+      const s = Math.min(W, H) * 0.0011;
+      const emitterX = Math.random() < 0.5 ? W * 0.15 : W * 0.85;
+
+      const p = pool.spawn();
+      if (!p) return;
+      p.type = 'smoke';
+      p.x = emitterX;
+      p.y = H * 0.85 - 12 * s;
+      p.vx = (Math.random() - 0.5) * 0.25;
+      p.vy = -0.5 - Math.random() * 0.45;
+      p.size = 6 + Math.random() * 8;
+      p.maxLife = 4.5 + Math.random() * 3.5;
+      p.life = 0;
+      p.alpha = 0;
+    }
+
+    function spawnBirds(t: number) {
+      if (t < 9.8 || t > 10.5) return;
+      if (birdsSpawned) return;
+      birdsSpawned = true;
+      const count = 12;
+      for (let i = 0; i < count; i++) {
+        const p = pool.spawn();
+        if (!p) break;
+        p.type = 'bird';
+        p.x = -60 - i * 18 + Math.random() * 15;
+        p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12;
+        p.vx = 2.2 + Math.random() * 0.6;
+        p.vy = (Math.random() - 0.5) * 0.15;
+        p.size = 7 + Math.random() * 4;
+        p.maxLife = 25;
+        p.life = 0;
+        p.alpha = 0.65;
+        p.flap = Math.random() * Math.PI * 2;
+      }
+    }
+
+    function updateParticles(dt: number, t: number) {
+      for (const p of pool.particles) {
+        if (!p.active) continue;
+        p.life += dt;
+
+        if (p.type === 'dust') {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vx += (Math.random() - 0.5) * 0.03;
+          p.vy += -0.002;
+          p.rot += p.rotSpd * dt;
+          const lr = p.life / p.maxLife;
+          const env = smoothstep(0, 2, t) * (1 - smoothstep(16, 17.5, t));
+          p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env;
+          if (p.life > p.maxLife || p.y < -30) {
+            p.life = 0; p.x = Math.random() * W; p.y = H * 0.6; p.alpha = 0;
+          }
+        } else if (p.type === 'petal') {
+          p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
+          p.y += p.vy;
+          p.rot += p.rotSpd * dt;
+          const lr = p.life / p.maxLife;
+          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(16, 17.5, t));
+          if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p);
+        } else if (p.type === 'sparkle') {
+          if (p.delay > 0) {
+            p.delay -= dt;
+            p.alpha = 0;
+            continue;
+          }
+          const dx = p.tx - p.x;
+          const dy = p.ty - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 1.5) {
+            const speed = clamp(dist * 4.5, 90, 520);
+            p.vx = (dx / dist) * speed;
+            p.vy = (dy / dist) * speed;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.alpha = clamp(p.alpha + dt * 1.6, 0, 0.7);
+          } else {
+            p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.35;
+            p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.35;
+            p.alpha = clamp(p.alpha + dt * 1.8, 0, 1);
+          }
+          if (t > 12) p.alpha *= 1 - smoothstep(12, 14, t);
+          if (t > 14.5 && p.alpha < 0.01) pool.release(p);
+        } else if (p.type === 'smoke') {
+          p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
+          p.y += p.vy;
+          p.size += dt * 5.2; 
+          const lr = p.life / p.maxLife;
+          p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18;
+          if (p.life > p.maxLife || p.y < -30) pool.release(p);
+        } else if (p.type === 'bird') {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.flap += dt * 9;
+          p.alpha = 0.65 * (1 - smoothstep(15, 16, t));
+          if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
+        }
+      }
+    }
+
+    function drawParticles() {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      for (const p of pool.particles) {
+        if (!p.active || p.alpha <= 0.01) continue;
+        if (p.type === 'dust') {
+          ctx.globalAlpha = p.alpha;
+          const sz = p.size * 5.2;
+          ctx.drawImage(dustSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
+        } else if (p.type === 'sparkle') {
+          ctx.globalAlpha = p.alpha;
+          const sz = p.size * 4.4;
+          ctx.drawImage(sparkSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
+        }
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      for (const p of pool.particles) {
+        if (!p.active || p.alpha <= 0.01) continue;
+        if (p.type === 'petal') {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; 
+          ctx.beginPath();
+          ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (p.type === 'smoke') {
+          ctx.save();
+          const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+          rad.addColorStop(0, `rgba(255, 230, 200, ${p.alpha})`);
+          rad.addColorStop(0.3, `rgba(220, 160, 100, ${p.alpha * 0.5})`);
+          rad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = rad;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (p.type === 'bird') {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.fillStyle = `rgba(10, 5, 2, ${p.alpha})`;
+          const flap = Math.sin(p.flap) * 0.7;
+          const sz = p.size;
+          ctx.beginPath();
+          ctx.moveTo(-sz, 0);
+          ctx.quadraticCurveTo(-sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), 0, 0);
+          ctx.quadraticCurveTo(sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), sz, 0);
+          ctx.quadraticCurveTo(sz * 0.4, sz * 0.15, 0, sz * 0.1);
+          ctx.quadraticCurveTo(-sz * 0.4, sz * 0.15, -sz, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      ctx.restore();
     }
 
     function drawTitle(t: number) {
@@ -629,7 +866,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const vis = reveal * (1 - fade);
       if (vis <= 0.01) return;
       const fontSize = Math.min(W * 0.054, 52);
-      const cy = H * 0.5;
+      const cy = H * 0.54;
       const line1 = 'राम नवमी की';
       const line2 = 'हार्दिक शुभकामनाएँ';
       ctx.save();
@@ -670,7 +907,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ POST-PROCESSING & CAM ============
+    // ============ POST-PROCESSING ============
 
     function applyBloom() {
       bctx.clearRect(0, 0, bloom.width, bloom.height);
@@ -720,6 +957,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
+    // ============ CAMERA ============
+
     function updateCamera(t: number) {
       cam.zoom = 1 + smoothstep(0, 17.5, t) * 0.035;
       cam.rot = Math.sin(t * 0.11) * 0.003;
@@ -734,15 +973,13 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.translate(-W / 2, -H / 2);
     }
 
-    // ============ MAIN PIPELINE ============
+    // ============ RENDER PIPELINE ============
 
     function render(t: number, dt: number) {
-      launchFireworks(t);
       spawnDust(t);
       spawnPetals(t);
       spawnTextParticles(t);
       spawnIncenseSmoke(t);
-      updateFireworks(dt);
       updateParticles(dt, t);
       updateCamera(t);
 
@@ -752,11 +989,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.save();
       applyCamera();
-      drawGhatBackground(t);
-      drawWater(t);
-      drawRamMandirSilhouette(t);
-      drawFireworks();
-      updateAndDrawFloatingDiyas(t);
+      drawBackground(t);
+      drawDivineLight(t);
+      drawCitySilhouette(t); // <-- FIXED: ReferenceError resolved
+      drawCourtroomVisuals(t);
+      drawDiyas(t);
       drawFogAndHaze(t);
       drawParticles();
       ctx.restore();
@@ -789,6 +1026,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         sampleText();
         lastSampleTime = t;
       }
+
+      if (t < 9.7) birdsSpawned = false;
 
       if (t >= 16.5 && !handoverTriggered) {
         handoverTriggered = true;
