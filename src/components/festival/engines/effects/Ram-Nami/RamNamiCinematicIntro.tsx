@@ -180,7 +180,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // SAMPLE "जय श्री राम" FOR TEXT PARTICLES
     function sampleText() {
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
@@ -205,7 +204,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 1.5, t);
-      const fadeOut = smoothstep(19.5, 20.0, t);
+      const fadeOut = smoothstep(19.6, 20.0, t);
       const vis = reveal * (1 - fadeOut);
       const grad = ctx.createLinearGradient(0, 0, 0, H);
       const ir = Math.floor(lerp(4, 50, vis));
@@ -1133,23 +1132,24 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
+    // 1. PARTICLES GATHER FIRST (11.5s to 13.5s)
     function spawnTextParticles(t: number) {
-      if (t < 12.0 || t > 13.5) return;
+      if (t < 11.5 || t > 13.5) return;
       if (ramPoints.length === 0) return;
-      const target = Math.min(ramPoints.length, 800);
+      const target = Math.min(ramPoints.length, 900);
       let active = 0;
       for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
       let attempts = 0;
-      while (active < target && attempts < 10) {
+      while (active < target && attempts < 12) {
         const p = pool.spawn(); if (!p) break;
         const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
         p.type = 'sparkle';
-        p.x = W / 2 + (Math.random() - 0.5) * W * 1.3;
-        p.y = H * 0.35 + (Math.random() - 0.5) * H * 1.1;
+        p.x = W / 2 + (Math.random() - 0.5) * W * 1.4;
+        p.y = H * 0.35 + (Math.random() - 0.5) * H * 1.2;
         p.tx = W / 2 + pt.x; p.ty = H * 0.35 + pt.y; 
         p.vx = 0; p.vy = 0;
-        p.size = 1.2 + Math.random() * 1.6; p.maxLife = 7; p.life = 0; p.alpha = 0;
-        p.delay = Math.random() * 1.1;
+        p.size = 1.2 + Math.random() * 1.8; p.maxLife = 8; p.life = 0; p.alpha = 0;
+        p.delay = Math.random() * 0.8;
         active++; attempts++;
       }
     }
@@ -1195,7 +1195,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           p.vx += (Math.random() - 0.5) * 0.03; p.vy += -0.002;
           p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
-          const env = smoothstep(0, 2, t) * (1 - smoothstep(19.5, 20.0, t));
+          const env = smoothstep(0, 2, t) * (1 - smoothstep(19.6, 20.0, t));
           p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env;
           if (p.life > p.maxLife || p.y < -30) {
             p.life = 0; p.x = Math.random() * W; p.y = H * 0.6; p.alpha = 0;
@@ -1211,16 +1211,16 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           const dx = p.tx - p.x, dy = p.ty - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 1.5) {
-            const speed = clamp(dist * 4.5, 90, 520);
+            const speed = clamp(dist * 5.0, 100, 580);
             p.vx = (dx / dist) * speed; p.vy = (dy / dist) * speed;
             p.x += p.vx * dt; p.y += p.vy * dt;
-            p.alpha = clamp(p.alpha + dt * 1.6, 0, 0.7);
+            p.alpha = clamp(p.alpha + dt * 2.0, 0, 0.85);
           } else {
             p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.35;
             p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.35;
-            p.alpha = clamp(p.alpha + dt * 1.8, 0, 1);
+            p.alpha = clamp(p.alpha + dt * 1.5, 0, 1);
           }
-          if (t > 19.0) p.alpha *= 1 - smoothstep(19.0, 20.0, t);
+          if (t > 19.5) p.alpha *= 1 - smoothstep(19.5, 20.0, t);
           if (t > 20.0 && p.alpha < 0.01) pool.release(p);
         } else if (p.type === 'smoke') {
           p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
@@ -1296,7 +1296,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     
     // ============ ORNAMENTAL GRAPHICS HELPERS ============
 
-    // 1. Divine Tilak Ornament on Top of 'श्री'
     function drawTilakOrnament(x: number, y: number, scale: number, alpha: number) {
       ctx.save();
       ctx.translate(x, y);
@@ -1313,7 +1312,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 1.2;
 
-      // Teardrop Tilak Flame
       ctx.beginPath();
       ctx.moveTo(0, -24);
       ctx.quadraticCurveTo(-9, -12, 0, 2);
@@ -1321,13 +1319,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fill();
       ctx.stroke();
 
-      // Top glowing dot
       ctx.beginPath();
       ctx.arc(0, -31, 3.2, 0, Math.PI * 2);
       ctx.fillStyle = '#FFFFFF';
       ctx.fill();
 
-      // Side Lotus Curves
       ctx.beginPath();
       ctx.moveTo(-2, -6);
       ctx.quadraticCurveTo(-18, -14, -24, -2);
@@ -1341,7 +1337,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // 2. Starburst Lens Flares on Glyphs
     function drawStarFlare(x: number, y: number, size: number, angle: number, alpha: number) {
       ctx.save();
       ctx.translate(x, y);
@@ -1373,7 +1368,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // 3. Ornamental Center Divider Line
     function drawOrnamentalDivider(x: number, y: number, width: number, alpha: number) {
       ctx.save();
       ctx.translate(x, y);
@@ -1381,7 +1375,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       const halfW = width / 2;
 
-      // Left Tapering Line
       const gradL = ctx.createLinearGradient(-halfW, 0, -18, 0);
       gradL.addColorStop(0, 'rgba(255, 215, 0, 0)');
       gradL.addColorStop(0.7, 'rgba(255, 215, 0, 0.8)');
@@ -1394,7 +1387,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.lineTo(-18, 0);
       ctx.stroke();
 
-      // Right Tapering Line
       const gradR = ctx.createLinearGradient(18, 0, halfW, 0);
       gradR.addColorStop(0, '#FFFFFF');
       gradR.addColorStop(0.3, 'rgba(255, 215, 0, 0.8)');
@@ -1406,7 +1398,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.lineTo(halfW, 0);
       ctx.stroke();
 
-      // Center Diamond Motif
       ctx.fillStyle = '#FFD700';
       ctx.beginPath();
       ctx.arc(0, 0, 4, 0, Math.PI * 2);
@@ -1421,7 +1412,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = '#FFFFFF';
       ctx.fill();
 
-      // Side End Dots
       ctx.fillStyle = '#FFD700';
       ctx.beginPath();
       ctx.arc(-halfW + 4, 0, 2, 0, Math.PI * 2);
@@ -1431,11 +1421,14 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ ROYAL GOLDEN TITLE ("जय श्री राम") ============
+    // 2. SOLID TITLE REVEALS AFTER PARTICLES GATHER (13.2s to 14.8s)
     function drawTitle(t: number) {
-      if (t < 12.5) return;
-      const intensity = smoothstep(12.5, 14.0, t) * (1 - smoothstep(19.0, 20.0, t));
-      if (intensity <= 0.01) return;
+      if (t < 13.2) return; // Don't show solid text until particles gather!
+
+      const fadeIn = smoothstep(13.2, 14.8, t);
+      const fadeOut = smoothstep(19.6, 20.0, t); // Stay solid until end
+      const intensity = fadeIn * (1 - fadeOut);
+      if (intensity <= 0.001) return;
       
       const fontSize = Math.min(W * 0.125, 130);
       const cy = H * 0.35;
@@ -1445,7 +1438,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      // Ambient Golden Halo Rays
       ctx.globalCompositeOperation = 'lighter';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2.5);
       haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.22 * intensity * pulse})`);
@@ -1473,7 +1465,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
       ctx.restore();
 
-      // Royal Metallic Gold Gradient for Text
       ctx.globalCompositeOperation = 'source-over';
       const goldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.6, 0, cy + fontSize * 0.6);
       goldGrad.addColorStop(0, '#FFFFFF');
@@ -1483,13 +1474,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       goldGrad.addColorStop(0.9, '#FF8F00');
       goldGrad.addColorStop(1, '#FF6F00');
 
-      // Outer Deep Gold Glow
       ctx.shadowBlur = 30;
       ctx.shadowColor = `rgba(255, 160, 0, ${intensity})`;
       ctx.fillStyle = goldGrad;
       ctx.fillText('जय श्री राम', W / 2, cy);
 
-      // Inner Bright Metallic Highlight
       ctx.shadowBlur = 12;
       ctx.shadowColor = `rgba(255, 255, 220, ${intensity})`;
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 * intensity})`;
@@ -1497,29 +1486,27 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.strokeText('जय श्री राम', W / 2, cy);
       ctx.shadowBlur = 0;
 
-      // Draw Top Tilak Ornament above 'श्री'
       const tilakX = W / 2 + fontSize * 0.02;
       const tilakY = cy - fontSize * 0.52;
       const tilakScale = (fontSize / 130) * 1.1;
       drawTilakOrnament(tilakX, tilakY, tilakScale, intensity);
 
-      // Starburst Lens Flares on Glyphs
       const flareSize = fontSize * 0.28 * pulse;
       const fAngle = t * 1.5;
-      drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.85); // On 'ज'
-      drawStarFlare(tilakX, tilakY - 18 * tilakScale, flareSize * 1.2, -fAngle, intensity);              // On Tilak
-      drawStarFlare(W / 2 + fontSize * 1.1, cy - fontSize * 0.2, flareSize, fAngle * 0.8, intensity * 0.9); // On 'म'
+      drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.85);
+      drawStarFlare(tilakX, tilakY - 18 * tilakScale, flareSize * 1.2, -fAngle, intensity);
+      drawStarFlare(W / 2 + fontSize * 1.1, cy - fontSize * 0.2, flareSize, fAngle * 0.8, intensity * 0.9);
 
       ctx.restore();
     }
 
-    // ============ ROYAL GREETING WITH ORNAMENTAL LINES ============
+    // 3. GREETING SLIDES IN & STAYS SOLID UNTIL END (15.0s to 20.0s)
     function drawGreeting(t: number) {
       if (t < 15.0) return;
       const reveal = smoothstep(15.0, 16.2, t);
-      const fade = smoothstep(18.8, 19.8, t);
+      const fade = smoothstep(19.6, 20.0, t); // Stay visible until end
       const vis = reveal * (1 - fade);
-      if (vis <= 0.01) return;
+      if (vis <= 0.001) return;
       
       const fontSize1 = Math.min(W * 0.038, 30);
       const fontSize2 = Math.min(W * 0.048, 38);
@@ -1533,7 +1520,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; 
       ctx.textBaseline = 'middle';
 
-      // Background Ambient Glow
       ctx.globalCompositeOperation = 'lighter';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize2 * 6);
       haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.14 * vis})`);
@@ -1543,18 +1529,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. Center Ornamental Divider Line 1
       const divY1 = cy - fontSize1 * 1.2;
       drawOrnamentalDivider(W / 2, divY1, Math.min(W * 0.35, 280), vis);
 
-      // 2. Line 1: "आपको एवं आपके परिवार को"
       ctx.font = `500 ${fontSize1}px "Noto Sans Devanagari", "Mangal", sans-serif`;
       ctx.shadowBlur = 12;
       ctx.shadowColor = `rgba(255, 180, 50, ${vis * 0.8})`;
       ctx.fillStyle = `rgba(255, 245, 220, ${vis * 0.95})`;
       ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
 
-      // 3. Line 2: "राम नवमी की हार्दिक शुभकामनाएँ" (Metallic Gold)
       const y2 = cy + fontSize2 * 1.1;
       const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2 * 0.5, 0, y2 + fontSize2 * 0.5);
       goldGrad2.addColorStop(0, '#FFFFFF');
@@ -1568,7 +1551,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
 
-      // 4. Center Ornamental Divider Line 2 (Under Greeting)
       const divY2 = y2 + fontSize2 * 0.95;
       drawOrnamentalDivider(W / 2, divY2, Math.min(W * 0.45, 360), vis);
 
@@ -1603,7 +1585,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function applyVignette(t: number) {
-      const fade = smoothstep(19.5, 20.0, t);
+      const fade = smoothstep(19.6, 20.0, t);
       const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.22, W / 2, H / 2, W * 0.85);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
       grad.addColorStop(1, `rgba(0,0,0,${0.55 + fade * 0.4})`);
@@ -1668,7 +1650,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       drawGreeting(t);
 
       const fadeIn = 1 - smoothstep(0, 1.5, t);
-      const fadeOut = smoothstep(19.5, 20.0, t);
+      const fadeOut = smoothstep(19.6, 20.0, t);
       const fadeAmt = Math.max(fadeIn, fadeOut);
       if (fadeAmt > 0.001) {
         ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
