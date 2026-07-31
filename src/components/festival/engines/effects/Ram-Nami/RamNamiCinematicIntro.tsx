@@ -1378,129 +1378,103 @@ function drawGreeting(t: number) {
   if (vis <= 0.01) return;
 
   // Premium typography sizing
-  const fontSize = Math.min(W * 0.04, 36);
+  const baseFontSize = Math.min(W * 0.045, 42);
+  const subFontSize = Math.min(W * 0.028, 24);
 
-  // Smooth upward slide
-  const slideOffset = (1 - reveal) * 30;
+  // Smooth upward slide and very subtle modern floating animation
+  const slideOffset = (1 - reveal) * 40;
+  const floatY = Math.sin(t * 1.2) * 3; // Subtle float for 2027 modern vibe
 
-  // Very subtle breathing glow
-  const pulse = 1 + Math.sin(t * 2.0) * 0.015;
+  // Positioning slightly below center for a cinematic look
+  const centerY = H * 0.65 + slideOffset + floatY;
 
-  // Position slightly below center
-  const centerY = H * 0.74 + slideOffset;
-
-  const line1 = 'आपको एवं आपके परिवार को';
-  const line2 = 'राम नवमी की हार्दिक शुभकामनाएँ';
+  // Text Content (Exactly as per your screenshot)
+  const line1 = 'स्वच्छ समाज मानेस'; 
+  const line2 = 'स्वच्छता की शिक्षा के लिए अपना प्रयास बढ़ाने का सर्वोत्तम तरीका है';
 
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // =========================================
-  // GOLDEN HALO BACKGROUND
-  // =========================================
+  // ==========================================
+  // MODERN MINIMAL HALO BACKGROUND
+  // ==========================================
   ctx.globalCompositeOperation = 'lighter';
-
-  const halo = ctx.createRadialGradient(
-    W / 2,
-    centerY,
-    0,
-    W / 2,
-    centerY,
-    fontSize * 7
-  );
-
-  halo.addColorStop(0, `rgba(255,200,90,${0.22 * vis})`);
-  halo.addColorStop(0.35, `rgba(255,150,40,${0.10 * vis})`);
+  const halo = ctx.createRadialGradient(W / 2, centerY - baseFontSize * 0.5, 0, W / 2, centerY - baseFontSize * 0.5, W * 0.35);
+  halo.addColorStop(0, `rgba(255,220,150,${0.10 * vis})`);
   halo.addColorStop(1, 'rgba(0,0,0,0)');
-
   ctx.fillStyle = halo;
   ctx.fillRect(0, 0, W, H);
-
   ctx.globalCompositeOperation = 'source-over';
 
-  // =========================================
-  // GOLDEN DIVIDER LINE
-  // =========================================
-  const dividerY = centerY - fontSize * 1.05;
-  const dividerW = Math.min(W * 0.32, 320);
+  // ==========================================
+  // LINE 1 (Main Heading - Crisp Gradient Text)
+  // ==========================================
+  const y1 = centerY - baseFontSize * 0.6;
+  ctx.save();
+  ctx.font = `800 ${baseFontSize}px "Noto Sans Devanagari","Mangal","Nirmala UI",sans-serif`;
+  
+  // Soft, controlled glow (no muddy heavy blurs)
+  ctx.shadowColor = `rgba(255, 180, 50, ${0.6 * vis})`;
+  ctx.shadowBlur = 18;
+  
+  // Premium Golden Gradient Fill
+  const textGrad1 = ctx.createLinearGradient(0, y1 - baseFontSize/2, 0, y1 + baseFontSize/2);
+  textGrad1.addColorStop(0, `rgba(255, 255, 240, ${vis})`);
+  textGrad1.addColorStop(0.5, `rgba(255, 215, 100, ${vis})`);
+  textGrad1.addColorStop(1, `rgba(230, 150, 40, ${vis})`);
+  ctx.fillStyle = textGrad1;
+  ctx.fillText(line1, W / 2, y1);
+  ctx.restore();
 
-  const lineGrad = ctx.createLinearGradient(
-    W / 2 - dividerW / 2,
-    dividerY,
-    W / 2 + dividerW / 2,
-    dividerY
-  );
-
-  lineGrad.addColorStop(0, 'rgba(255,200,90,0)');
-  lineGrad.addColorStop(0.5, `rgba(255,220,150,${0.9 * vis})`);
-  lineGrad.addColorStop(1, 'rgba(255,200,90,0)');
-
+  // ==========================================
+  // SLEEK MODERN DIVIDER
+  // ==========================================
+  const dividerY = y1 + baseFontSize * 0.9;
+  const dividerW = Math.min(W * 0.12, 100);
+  
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const lineGrad = ctx.createLinearGradient(W / 2 - dividerW / 2, dividerY, W / 2 + dividerW / 2, dividerY);
+  lineGrad.addColorStop(0, 'rgba(255, 215, 100, 0)');
+  lineGrad.addColorStop(0.5, `rgba(255, 235, 180, ${0.9 * vis})`);
+  lineGrad.addColorStop(1, 'rgba(255, 215, 100, 0)');
   ctx.strokeStyle = lineGrad;
-  ctx.lineWidth = 1.5;
-
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(W / 2 - dividerW / 2, dividerY);
   ctx.lineTo(W / 2 + dividerW / 2, dividerY);
   ctx.stroke();
-
-  // Small center ornament
+  
+  // Small diamond accent in center (Modern UI touch)
+  ctx.fillStyle = `rgba(255, 240, 200, ${vis})`;
   ctx.beginPath();
-  ctx.arc(W / 2, dividerY, 2.5, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(255,235,180,${vis})`;
+  ctx.moveTo(W / 2, dividerY - 4);
+  ctx.lineTo(W / 2 + 4, dividerY);
+  ctx.lineTo(W / 2, dividerY + 4);
+  ctx.lineTo(W / 2 - 4, dividerY);
+  ctx.closePath();
   ctx.fill();
+  ctx.restore();
 
-  // =========================================
-  // TEXT POSITIONS
-  // =========================================
-  const y1 = centerY - fontSize * 0.15;
-  const y2 = centerY + fontSize * 1.15;
-
-  // =========================================
-  // LINE 1 (Elegant Gold)
-  // =========================================
+  // ==========================================
+  // LINE 2 (Subtitle - Clean & Elegant)
+  // ==========================================
+  const y2 = dividerY + subFontSize * 1.3;
   ctx.save();
-  ctx.translate(W / 2, y1);
-  ctx.scale(pulse, pulse);
-
-  ctx.font = `600 ${fontSize}px "Noto Sans Devanagari","Mangal","Nirmala UI",sans-serif`;
-
-  // Outer glow
-  ctx.shadowColor = `rgba(255,180,70,${vis})`;
-  ctx.shadowBlur = 14;
-  ctx.fillStyle = `rgba(255,210,130,${vis})`;
-  ctx.fillText(line1, 0, 0);
-
-  // Inner bright layer
-  ctx.shadowBlur = 10;
-  ctx.fillStyle = `rgba(255,245,220,${vis})`;
-  ctx.fillText(line1, 0, 0);
-
-  ctx.restore();
-
-  // =========================================
-  // LINE 2 (Slightly Brighter)
-  // =========================================
-  ctx.save();
-  ctx.translate(W / 2, y2);
-  ctx.scale(pulse, pulse);
-
-  ctx.font = `700 ${fontSize}px "Noto Sans Devanagari","Mangal","Nirmala UI",sans-serif`;
-
-  ctx.shadowColor = `rgba(255,180,70,${vis})`;
-  ctx.shadowBlur = 28;
-  ctx.fillStyle = `rgba(255,220,150,${vis})`;
-  ctx.fillText(line2, 0, 0);
-
-  ctx.shadowBlur = 12;
-  ctx.fillStyle = `rgba(255,250,230,${vis})`;
-  ctx.fillText(line2, 0, 0);
-
+  ctx.font = `500 ${subFontSize}px "Noto Sans Devanagari","Mangal","Nirmala UI",sans-serif`;
+  
+  // Subtle dark shadow for depth without muddiness
+  ctx.shadowColor = `rgba(0, 0, 0, ${0.7 * vis})`;
+  ctx.shadowBlur = 4;
+  
+  // Clean Off-white color
+  ctx.fillStyle = `rgba(240, 240, 240, ${0.95 * vis})`;
+  ctx.fillText(line2, W / 2, y2);
   ctx.restore();
 
   ctx.restore();
-}
-    // ============ POST-PROCESSING ============
+}    // ============ POST-PROCESSING ============
 
     function applyBloom() {
       bctx.clearRect(0, 0, bloom.width, bloom.height);
