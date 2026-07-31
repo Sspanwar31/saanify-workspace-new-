@@ -1598,7 +1598,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.translate(-W / 2, -H / 2);
     }
 
-    // ============ RENDER PIPELINE ============
+      // ============ RENDER PIPELINE ============
 
     function render(t: number, dt: number) {
       spawnDust(t); spawnPetals(t); spawnTextParticles(t);
@@ -1624,10 +1624,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       drawParticles();
       ctx.restore();
 
-      drawTitle(t);
-      drawGreeting(t);
-
-      // Scene 7: Final fade to black
+      // ==========================================
+      // 1. BACKGROUND BLACK KARNA (Text se pehle)
+      // ==========================================
       const fadeIn = 1 - smoothstep(0, 1.5, t);
       const fadeOut = smoothstep(19.5, 20.0, t);
       const textBgFade = smoothstep(11.5, 12.5, t) * (1 - fadeOut); // 11.5s se black hota hoga
@@ -1636,12 +1635,19 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
         ctx.fillRect(0, 0, W, H);
       }
+
+      // ==========================================
+      // 2. AB TEXT DRAW KARNA (Black background ke baad)
+      // ==========================================
+      drawTitle(t);
+      drawGreeting(t);
+
+      // Post Processing
       applyBloom();
       applyColorGrade();
       applyVignette(t);
       applyGrain();
     }
-
     function loop(now: number) {
       if (!running) return;
       if (!startTime) startTime = now;
