@@ -122,7 +122,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     const dustSprite = makeSprite(64, 'rgba(255,220,150,1)', 'rgba(255,140,40,0.4)');
     const sparkSprite = makeSprite(64, 'rgba(255,250,220,1)', 'rgba(255,180,80,0.4)');
 
-    const pool = new ParticlePool(1500);
+    const pool = new ParticlePool(3000);
     const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
     let ramPoints: { x: number; y: number }[] = [];
     let diyas: FloatingDiya[] = [];
@@ -183,14 +183,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
     }
 
-        function sampleText() {
+           function sampleText() {
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
-      const fontSize = Math.min(W * 0.12, 120); // Slightly reduced for perfect fit
+      const fontSize = Math.min(W * 0.12, 120);
       tc.width = Math.floor(W); tc.height = Math.floor(fontSize * 2.4);
       tctx.fillStyle = 'white';
       tctx.font = `700 ${fontSize}px "Noto Sans Devanagari","Nirmala UI","Mangal",sans-serif`;
       tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
+      // Yahan apna text likhein (Agar 'स्वच्छ समाज' chahiye toh yahan change karein)
       tctx.fillText('जय श्री राम', tc.width / 2, tc.height / 2);
       const id = tctx.getImageData(0, 0, tc.width, tc.height);
       ramPoints = [];
@@ -1150,14 +1151,17 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
-        function spawnTextParticles(t: number) {
-      if (t < 11.8 || t > 14.2) return; // Scene 5: Start forming at 12.0s
+            function spawnTextParticles(t: number) {
+      if (t < 11.8 || t > 14.2) return; 
       if (ramPoints.length === 0) return;
-      const target = Math.min(Math.floor(ramPoints.length * 0.68), 520);
+      
+      // BADHA HUA PARTICLE TARGET (Text solid banne ke liye)
+      const target = Math.min(Math.floor(ramPoints.length * 0.85), 2500);
       let active = 0;
       for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
       let attempts = 0;
-      while (active < target && attempts < 10) {
+      
+      while (active < target && attempts < 20) {
         const p = pool.spawn(); if (!p) break;
         let pt;
 
@@ -1169,9 +1173,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         p.x = W / 2 + (Math.random() - 0.5) * W * 0.9;
         p.y = H * 0.32 + (Math.random() - 0.5) * H * 0.75;
         p.tx = W / 2 + pt.x;
-        p.ty = H * 0.32 + pt.y; // Fixed Y position to match drawTitle
+        p.ty = H * 0.32 + pt.y; 
         p.vx = 0; p.vy = 0;
-        p.size = 0.9 + Math.random() * 0.9; p.maxLife = 8.5; p.life = 0; p.alpha = 0;
+        p.size = 1.2 + Math.random() * 1.2; // Particle size thoda badha
+        p.maxLife = 8.5; p.life = 0; p.alpha = 0;
         p.delay = Math.random() * 0.55;
         active++; attempts++;
       }
@@ -1368,14 +1373,14 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
     
-    function drawTitle(t: number) {
-      if (t < 12.5) return; // Scene 5: 12.5s
+        function drawTitle(t: number) {
+      if (t < 12.5) return; 
       const intensity = smoothstep(12.5, 14.0, t) * (1 - smoothstep(19.0, 20.0, t));
       if (intensity <= 0.01) return;
       
-      const fontSize = Math.min(W * 0.12, 125);
+      const fontSize = Math.min(W * 0.12, 120);
       const cy = H * 0.32;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5); // Breathing glow pulse
+      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5); 
       
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1383,7 +1388,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.globalCompositeOperation = 'lighter';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2);
-      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.18 * intensity * pulse})`);
+      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.20 * intensity * pulse})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
@@ -1408,13 +1413,16 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
       ctx.restore();
 
-      ctx.globalCompositeOperation = 'source-over';
-      // FIX: Yahan 'श्री राम' ki jagah 'जय श्री राम' kiya hai taaki particles ke saath match kare
-      ctx.fillStyle = `rgba(255, 215, 120, ${0.04 * intensity})`;
-      ctx.fillText('जय श्री राम', W / 2, cy);
+      // BASE TEXT: Iski opacity 0.4 kar di hai taaki ekdum solid dikhe
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.shadowColor = `rgba(255, 160, 40, ${0.6 * intensity})`;
+      ctx.shadowBlur = 15;
+      ctx.fillStyle = `rgba(255, 215, 120, ${0.4 * intensity})`;
+      
+      // Yahan bhi same text hona chahiye jo sampleText me likha hai
+      ctx.fillText('जय श्री राम', W / 2, cy); 
       ctx.restore();
     }
-
         function drawGreeting(t: number) {
       if (t < 15.5) return;
 
