@@ -183,13 +183,13 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
     }
 
-    function sampleText() {
+        function sampleText() {
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
-      const fontSize = Math.min(W * 0.14, 140);
+      const fontSize = Math.min(W * 0.12, 120); // Slightly reduced for perfect fit
       tc.width = Math.floor(W); tc.height = Math.floor(fontSize * 2.4);
       tctx.fillStyle = 'white';
-      tctx.font = `900 ${fontSize}px "Noto Sans Devanagari","Nirmala UI","Mangal",sans-serif`;
+      tctx.font = `700 ${fontSize}px "Noto Sans Devanagari","Nirmala UI","Mangal",sans-serif`;
       tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
       tctx.fillText('जय श्री राम', tc.width / 2, tc.height / 2);
       const id = tctx.getImageData(0, 0, tc.width, tc.height);
@@ -202,7 +202,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         }
       }
     }
-
+    
     // ============ DRAW FUNCTIONS ============
 
     function drawBackground(t: number) {
@@ -1150,13 +1150,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
-    function spawnTextParticles(t: number) {
+        function spawnTextParticles(t: number) {
       if (t < 11.8 || t > 14.2) return; // Scene 5: Start forming at 12.0s
       if (ramPoints.length === 0) return;
-      const target = Math.min(
-  Math.floor(ramPoints.length * 0.68),
-  520
-);
+      const target = Math.min(Math.floor(ramPoints.length * 0.68), 520);
       let active = 0;
       for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
       let attempts = 0;
@@ -1164,21 +1161,22 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         const p = pool.spawn(); if (!p) break;
         let pt;
 
-      do {
-      pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
-      } while (Math.random() < 0.30);
+        do {
+          pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
+        } while (Math.random() < 0.30);
+        
         p.type = 'sparkle';
         p.x = W / 2 + (Math.random() - 0.5) * W * 0.9;
-        p.y = H * 0.34 + (Math.random() - 0.5) * H * 0.75;
+        p.y = H * 0.32 + (Math.random() - 0.5) * H * 0.75;
         p.tx = W / 2 + pt.x;
-        p.ty = H * 0.34 + pt.y;
+        p.ty = H * 0.32 + pt.y; // Fixed Y position to match drawTitle
         p.vx = 0; p.vy = 0;
         p.size = 0.9 + Math.random() * 0.9; p.maxLife = 8.5; p.life = 0; p.alpha = 0;
         p.delay = Math.random() * 0.55;
         active++; attempts++;
       }
     }
-
+    
     function spawnIncenseSmoke(t: number) {
       const intensity = smoothstep(2.5, 5.0, t) * (1 - smoothstep(10.2, 12.5, t));
       if (intensity <= 0) return;
@@ -1321,14 +1319,14 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
     
-    function drawTitle(t: number) {
+        function drawTitle(t: number) {
       if (t < 12.5) return; // Scene 5: 12.5s
       const intensity = smoothstep(12.5, 14.0, t) * (1 - smoothstep(19.0, 20.0, t));
       if (intensity <= 0.01) return;
       
-      const fontSize = Math.min(W * 0.12, 125);
-      const cy = H * 0.32;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5); // Breathing glow pulse
+      const fontSize = Math.min(W * 0.12, 120);
+      const cy = H * 0.32; // Exact same position as particles
+      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5); 
       
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1336,7 +1334,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.globalCompositeOperation = 'lighter';
       const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2);
-      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.18 * intensity * pulse})`);
+      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.20 * intensity * pulse})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
@@ -1361,12 +1359,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
       ctx.restore();
 
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = `rgba(255, 215, 120, ${0.04 * intensity})`;
-      ctx.fillText('श्री राम', W / 2, cy);
+      // Slightly more visible base text so particles blend perfectly
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.shadowColor = `rgba(255, 160, 40, ${0.6 * intensity})`;
+      ctx.shadowBlur = 25;
+      ctx.fillStyle = `rgba(255, 215, 120, ${0.15 * intensity})`;
+      ctx.fillText('जय श्री राम', W / 2, cy);
       ctx.restore();
     }
-
+    
     function drawTitle(t: number) {
       if (t < 12.5) return; // Scene 5: 12.5s
       const intensity = smoothstep(12.5, 14.0, t) * (1 - smoothstep(19.0, 20.0, t));
@@ -1414,7 +1415,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    function drawGreeting(t: number) {
+        function drawGreeting(t: number) {
       if (t < 15.5) return;
 
       const reveal = smoothstep(15.5, 16.5, t);
@@ -1427,11 +1428,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const mainFontSize = Math.min(W * 0.05, 48);
       const subFontSize = Math.min(W * 0.03, 26);
 
-      // Smooth upward slide & subtle floating animation for modern feel
+      // Smooth upward slide & subtle floating animation
       const slideOffset = (1 - reveal) * 40;
       const floatY = Math.sin(t * 1.5) * 2.5; 
 
-      const centerY = H * 0.72 + slideOffset + floatY;
+      // Gap kam karne ke liye position H * 0.62 kar di gayi hai
+      const centerY = H * 0.62 + slideOffset + floatY;
 
       const line1 = 'आपको एवं आपके परिवार को';
       const line2 = 'राम नवमी की हार्दिक शुभकामनाएँ';
@@ -1440,9 +1442,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // ==========================================
-      // CINEMATIC SOFT HALO BACKGROUND
-      // ==========================================
+      // HALO BACKGROUND
       ctx.globalCompositeOperation = 'lighter';
       const halo = ctx.createRadialGradient(W / 2, centerY, 0, W / 2, centerY, W * 0.4);
       halo.addColorStop(0, `rgba(255, 200, 90, ${0.12 * vis})`);
@@ -1451,23 +1451,18 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'source-over';
 
-      // ==========================================
-      // LINE 1: SUBTITLE (Clean & Crisp)
-      // ==========================================
+      // LINE 1: SUBTITLE
       const y1 = centerY - mainFontSize * 0.55;
       ctx.save();
       ctx.font = `500 ${subFontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
       
-      // Subtle shadow for depth instead of muddy glow
       ctx.shadowColor = `rgba(0, 0, 0, ${0.8 * vis})`;
       ctx.shadowBlur = 6;
       ctx.fillStyle = `rgba(230, 230, 230, ${0.9 * vis})`;
       ctx.fillText(line1, W / 2, y1);
       ctx.restore();
 
-      // ==========================================
       // MODERN SLEEK DIVIDER
-      // ==========================================
       const dividerY = y1 + subFontSize * 1.1;
       const dividerW = Math.min(W * 0.1, 80);
       
@@ -1484,7 +1479,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.lineTo(W / 2 + dividerW / 2, dividerY);
       ctx.stroke();
       
-      // Glowing diamond accent (Modern UI touch)
       ctx.fillStyle = `rgba(255, 240, 200, ${vis})`;
       ctx.beginPath();
       ctx.moveTo(W / 2, dividerY - 4);
@@ -1495,18 +1489,14 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fill();
       ctx.restore();
 
-      // ==========================================
-      // LINE 2: MAIN TITLE (Premium Gold Gradient)
-      // ==========================================
+      // LINE 2: MAIN TITLE
       const y2 = dividerY + mainFontSize * 0.75;
       ctx.save();
       ctx.font = `800 ${mainFontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
       
-      // Controlled, premium glow
       ctx.shadowColor = `rgba(255, 160, 40, ${0.6 * vis})`;
       ctx.shadowBlur = 20;
       
-      // Premium 3D Golden Gradient
       const textGrad = ctx.createLinearGradient(0, y2 - mainFontSize/2, 0, y2 + mainFontSize/2);
       textGrad.addColorStop(0, `rgba(255, 255, 240, ${vis})`);
       textGrad.addColorStop(0.4, `rgba(255, 220, 120, ${vis})`);
@@ -1517,6 +1507,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.restore();
     }
+    
     // ============ POST-PROCESSING ============
 
     function applyBloom() {
