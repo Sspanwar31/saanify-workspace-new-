@@ -1324,62 +1324,32 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
     
-            function drawTitle(t: number) {
+                // 1. DRAW TITLE FUNCTION (Sirf ek baar likha gaya hai)
+    function drawTitle(t: number) {
       if (t < 12.5) return; 
       const intensity = smoothstep(12.5, 14.0, t) * (1 - smoothstep(19.0, 20.0, t));
       if (intensity <= 0.01) return;
       
-      const fontSize = Math.min(W * 0.14, 140); // Thoda bada kiya hai
+      const fontSize = Math.min(W * 0.14, 140);
       const cy = H * 0.32;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5); 
       
       ctx.save();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center'; 
+      ctx.textBaseline = 'middle';
       ctx.font = `800 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      // 1. DARK BACKDROP (Ye text ke peeche kaala mask banayega taaki vo background me na mile)
-      ctx.globalCompositeOperation = 'source-over';
-      const darkBg = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 3);
-      darkBg.addColorStop(0, `rgba(0, 0, 0, ${0.85 * intensity})`);
-      darkBg.addColorStop(0.6, `rgba(0, 0, 0, ${0.5 * intensity})`);
-      darkBg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = darkBg;
-      ctx.fillRect(0, 0, W, H);
-
-      // 2. DIVINE GOLDEN HALO (Text ke peeche wala deep glow)
+      // 1. HALO (Sirf text ke peeche halka sa golden glow)
       ctx.globalCompositeOperation = 'lighter';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2.2);
-      haloGrad.addColorStop(0, `rgba(255, 200, 80, ${0.5 * intensity * pulse})`);
-      haloGrad.addColorStop(0.4, `rgba(255, 140, 30, ${0.2 * intensity * pulse})`);
+      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 1.5);
+      haloGrad.addColorStop(0, `rgba(255, 180, 50, ${0.4 * intensity})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // 3. DIVINE LIGHT RAYS (Kiranaye)
-      ctx.save();
-      ctx.translate(W / 2, cy);
-      const rayCount = 24;
-      for (let i = 0; i < rayCount; i++) {
-        const a = (i / rayCount) * Math.PI * 2 + t * 0.05;
-        const len = fontSize * 2.5;
-        const flicker = 0.7 + 0.3 * Math.sin(t * 2.0 + i);
-        const grad = ctx.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
-        grad.addColorStop(0, `rgba(255, 200, 80, ${0.15 * intensity * flicker})`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a - 0.035) * len, Math.sin(a - 0.035) * len);
-        ctx.lineTo(Math.cos(a + 0.035) * len, Math.sin(a + 0.035) * len);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-
-      // 4. SOLID CRISP TEXT (Ekdum solid golden text, 2nd image jaisa)
-      ctx.globalCompositeOperation = 'source-over'; // 'lighter' ki jagah 'source-over' use kiya hai taaki text solid rahe
-      ctx.shadowColor = `rgba(255, 180, 50, ${0.9 * intensity})`;
-      ctx.shadowBlur = 40;
+      // 2. SOLID CRISP TEXT (Bina kisi dark backdrop ya rays ke)
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.shadowColor = `rgba(255, 160, 40, ${0.9 * intensity})`;
+      ctx.shadowBlur = 25;
       
       // Premium Golden Gradient
       const textGrad = ctx.createLinearGradient(0, cy - fontSize/2, 0, cy + fontSize/2);
@@ -1392,56 +1362,91 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillText('जय श्री राम', W / 2, cy); 
       ctx.restore();
     }
-           function drawTitle(t: number) {
-      if (t < 12.5) return; 
-      const intensity = smoothstep(12.5, 14.0, t) * (1 - smoothstep(19.0, 20.0, t));
-      if (intensity <= 0.01) return;
-      
-      const fontSize = Math.min(W * 0.12, 120);
-      const cy = H * 0.32;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5); 
-      
-      ctx.save();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      // DEEP DIVINE HALO (2nd image wala effect)
+    // 2. DRAW GREETING FUNCTION (Sirf ek baar likha gaya hai)
+    function drawGreeting(t: number) {
+      if (t < 15.5) return;
+
+      const reveal = smoothstep(15.5, 16.5, t);
+      const fade = smoothstep(18.8, 20.0, t);
+      const vis = reveal * (1 - fade);
+
+      if (vis <= 0.01) return;
+
+      const mainFontSize = Math.min(W * 0.05, 48);
+      const subFontSize = Math.min(W * 0.03, 26);
+
+      const slideOffset = (1 - reveal) * 40;
+      const floatY = Math.sin(t * 1.5) * 2.5; 
+
+      const centerY = H * 0.62 + slideOffset + floatY;
+
+      // Aapka Original Greeting Text
+      const line1 = 'आपको एवं आपके परिवार को';
+      const line2 = 'राम नवमी की हार्दिक शुभकामनाएँ';
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // HALO BACKGROUND
       ctx.globalCompositeOperation = 'lighter';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2.5);
-      haloGrad.addColorStop(0, `rgba(255, 220, 100, ${0.35 * intensity * pulse})`);
-      haloGrad.addColorStop(0.4, `rgba(255, 150, 30, ${0.15 * intensity * pulse})`);
-      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = haloGrad;
+      const halo = ctx.createRadialGradient(W / 2, centerY, 0, W / 2, centerY, W * 0.4);
+      halo.addColorStop(0, `rgba(255, 200, 90, ${0.12 * vis})`);
+      halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = halo;
       ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'source-over';
 
-      // DIVINE LIGHT RAYS
+      // LINE 1: SUBTITLE
+      const y1 = centerY - mainFontSize * 0.55;
       ctx.save();
-      ctx.translate(W / 2, cy);
-      const rayCount = 24;
-      for (let i = 0; i < rayCount; i++) {
-        const a = (i / rayCount) * Math.PI * 2 + t * 0.04;
-        const len = fontSize * 2.5;
-        const flicker = 0.7 + 0.3 * Math.sin(t * 2.0 + i);
-        const grad = ctx.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
-        grad.addColorStop(0, `rgba(255, 200, 80, ${0.12 * intensity * flicker})`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a - 0.03) * len, Math.sin(a - 0.03) * len);
-        ctx.lineTo(Math.cos(a + 0.03) * len, Math.sin(a + 0.03) * len);
-        ctx.closePath();
-        ctx.fill();
-      }
+      ctx.font = `500 ${subFontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
+      ctx.shadowColor = `rgba(0, 0, 0, ${0.8 * vis})`;
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = `rgba(230, 230, 230, ${0.9 * vis})`;
+      ctx.fillText(line1, W / 2, y1);
       ctx.restore();
 
-      // BRIGHT SOLID TEXT BASE
+      // SLEEK DIVIDER
+      const dividerY = y1 + subFontSize * 1.1;
+      const dividerW = Math.min(W * 0.1, 80);
+      ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.shadowColor = `rgba(255, 180, 50, ${0.8 * intensity})`;
-      ctx.shadowBlur = 30;
-      ctx.fillStyle = `rgba(255, 220, 130, ${0.6 * intensity})`;
-      // Aapka Original Text
-      ctx.fillText('जय श्री राम', W / 2, cy); 
+      const lineGrad = ctx.createLinearGradient(W / 2 - dividerW / 2, dividerY, W / 2 + dividerW / 2, dividerY);
+      lineGrad.addColorStop(0, 'rgba(255, 215, 100, 0)');
+      lineGrad.addColorStop(0.5, `rgba(255, 240, 180, ${0.9 * vis})`);
+      lineGrad.addColorStop(1, 'rgba(255, 215, 100, 0)');
+      ctx.strokeStyle = lineGrad;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(W / 2 - dividerW / 2, dividerY);
+      ctx.lineTo(W / 2 + dividerW / 2, dividerY);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(255, 240, 200, ${vis})`;
+      ctx.beginPath();
+      ctx.moveTo(W / 2, dividerY - 4);
+      ctx.lineTo(W / 2 + 4, dividerY);
+      ctx.lineTo(W / 2, dividerY + 4);
+      ctx.lineTo(W / 2 - 4, dividerY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // LINE 2: MAIN TITLE
+      const y2 = dividerY + mainFontSize * 0.75;
+      ctx.save();
+      ctx.font = `800 ${mainFontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
+      ctx.shadowColor = `rgba(255, 160, 40, ${0.6 * vis})`;
+      ctx.shadowBlur = 20;
+      const textGrad = ctx.createLinearGradient(0, y2 - mainFontSize/2, 0, y2 + mainFontSize/2);
+      textGrad.addColorStop(0, `rgba(255, 255, 240, ${vis})`);
+      textGrad.addColorStop(0.4, `rgba(255, 220, 120, ${vis})`);
+      textGrad.addColorStop(1, `rgba(220, 140, 30, ${vis})`);
+      ctx.fillStyle = textGrad;
+      ctx.fillText(line2, W / 2, y2);
+      ctx.restore();
+
       ctx.restore();
     }
            function drawGreeting(t: number) {
@@ -1625,12 +1630,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       // Scene 7: Final fade to black
       const fadeIn = 1 - smoothstep(0, 1.5, t);
       const fadeOut = smoothstep(19.5, 20.0, t);
-      const fadeAmt = Math.max(fadeIn, fadeOut);
+      const textBgFade = smoothstep(11.5, 12.5, t) * (1 - fadeOut); // 11.5s se black hota hoga
+      const fadeAmt = Math.max(fadeIn, fadeOut, textBgFade);
       if (fadeAmt > 0.001) {
         ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
         ctx.fillRect(0, 0, W, H);
       }
-
       applyBloom();
       applyColorGrade();
       applyVignette(t);
