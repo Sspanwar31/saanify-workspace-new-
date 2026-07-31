@@ -183,7 +183,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
     }
 
-           function sampleText() {
+              function sampleText() {
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
       const fontSize = Math.min(W * 0.12, 120);
@@ -191,7 +191,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       tctx.fillStyle = 'white';
       tctx.font = `700 ${fontSize}px "Noto Sans Devanagari","Nirmala UI","Mangal",sans-serif`;
       tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
-      // Yahan apna text likhein (Agar 'स्वच्छ समाज' chahiye toh yahan change karein)
+      // Aapka Original Text
       tctx.fillText('जय श्री राम', tc.width / 2, tc.height / 2);
       const id = tctx.getImageData(0, 0, tc.width, tc.height);
       ramPoints = [];
@@ -1373,7 +1373,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
     
-        function drawTitle(t: number) {
+           function drawTitle(t: number) {
       if (t < 12.5) return; 
       const intensity = smoothstep(12.5, 14.0, t) * (1 - smoothstep(19.0, 20.0, t));
       if (intensity <= 0.01) return;
@@ -1386,44 +1386,46 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
+      // DEEP DIVINE HALO (2nd image wala effect)
       ctx.globalCompositeOperation = 'lighter';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2);
-      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.20 * intensity * pulse})`);
+      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2.5);
+      haloGrad.addColorStop(0, `rgba(255, 220, 100, ${0.35 * intensity * pulse})`);
+      haloGrad.addColorStop(0.4, `rgba(255, 150, 30, ${0.15 * intensity * pulse})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
+      // DIVINE LIGHT RAYS
       ctx.save();
       ctx.translate(W / 2, cy);
-      const rayCount = 18;
+      const rayCount = 24;
       for (let i = 0; i < rayCount; i++) {
-        const a = (i / rayCount) * Math.PI * 2 + t * 0.06;
-        const len = fontSize * 1.6;
-        const flicker = 0.6 + 0.4 * Math.sin(t * 1.8 + i);
+        const a = (i / rayCount) * Math.PI * 2 + t * 0.04;
+        const len = fontSize * 2.5;
+        const flicker = 0.7 + 0.3 * Math.sin(t * 2.0 + i);
         const grad = ctx.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
-        grad.addColorStop(0, `rgba(255, 190, 80, ${0.1 * intensity * flicker})`);
+        grad.addColorStop(0, `rgba(255, 200, 80, ${0.12 * intensity * flicker})`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a - 0.035) * len, Math.sin(a - 0.035) * len);
-        ctx.lineTo(Math.cos(a + 0.035) * len, Math.sin(a + 0.035) * len);
+        ctx.lineTo(Math.cos(a - 0.03) * len, Math.sin(a - 0.03) * len);
+        ctx.lineTo(Math.cos(a + 0.03) * len, Math.sin(a + 0.03) * len);
         ctx.closePath();
         ctx.fill();
       }
       ctx.restore();
 
-      // BASE TEXT: Iski opacity 0.4 kar di hai taaki ekdum solid dikhe
+      // BRIGHT SOLID TEXT BASE
       ctx.globalCompositeOperation = 'lighter';
-      ctx.shadowColor = `rgba(255, 160, 40, ${0.6 * intensity})`;
-      ctx.shadowBlur = 15;
-      ctx.fillStyle = `rgba(255, 215, 120, ${0.4 * intensity})`;
-      
-      // Yahan bhi same text hona chahiye jo sampleText me likha hai
+      ctx.shadowColor = `rgba(255, 180, 50, ${0.8 * intensity})`;
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = `rgba(255, 220, 130, ${0.6 * intensity})`;
+      // Aapka Original Text
       ctx.fillText('जय श्री राम', W / 2, cy); 
       ctx.restore();
     }
-        function drawGreeting(t: number) {
+           function drawGreeting(t: number) {
       if (t < 15.5) return;
 
       const reveal = smoothstep(15.5, 16.5, t);
@@ -1432,17 +1434,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       if (vis <= 0.01) return;
 
-      // Premium typography sizing
       const mainFontSize = Math.min(W * 0.05, 48);
       const subFontSize = Math.min(W * 0.03, 26);
 
-      // Smooth upward slide & subtle floating animation
       const slideOffset = (1 - reveal) * 40;
       const floatY = Math.sin(t * 1.5) * 2.5; 
 
-      // Gap kam karne ke liye position H * 0.62 kar di gayi hai
       const centerY = H * 0.62 + slideOffset + floatY;
 
+      // Aapka Original Greeting Text
       const line1 = 'आपको एवं आपके परिवार को';
       const line2 = 'राम नवमी की हार्दिक शुभकामनाएँ';
 
@@ -1463,17 +1463,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const y1 = centerY - mainFontSize * 0.55;
       ctx.save();
       ctx.font = `500 ${subFontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
-      
       ctx.shadowColor = `rgba(0, 0, 0, ${0.8 * vis})`;
       ctx.shadowBlur = 6;
       ctx.fillStyle = `rgba(230, 230, 230, ${0.9 * vis})`;
       ctx.fillText(line1, W / 2, y1);
       ctx.restore();
 
-      // MODERN SLEEK DIVIDER
+      // SLEEK DIVIDER
       const dividerY = y1 + subFontSize * 1.1;
       const dividerW = Math.min(W * 0.1, 80);
-      
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const lineGrad = ctx.createLinearGradient(W / 2 - dividerW / 2, dividerY, W / 2 + dividerW / 2, dividerY);
@@ -1486,7 +1484,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.moveTo(W / 2 - dividerW / 2, dividerY);
       ctx.lineTo(W / 2 + dividerW / 2, dividerY);
       ctx.stroke();
-      
       ctx.fillStyle = `rgba(255, 240, 200, ${vis})`;
       ctx.beginPath();
       ctx.moveTo(W / 2, dividerY - 4);
@@ -1501,10 +1498,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const y2 = dividerY + mainFontSize * 0.75;
       ctx.save();
       ctx.font = `800 ${mainFontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
-      
       ctx.shadowColor = `rgba(255, 160, 40, ${0.6 * vis})`;
       ctx.shadowBlur = 20;
-      
       const textGrad = ctx.createLinearGradient(0, y2 - mainFontSize/2, 0, y2 + mainFontSize/2);
       textGrad.addColorStop(0, `rgba(255, 255, 240, ${vis})`);
       textGrad.addColorStop(0.4, `rgba(255, 220, 120, ${vis})`);
