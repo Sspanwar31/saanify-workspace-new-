@@ -187,14 +187,14 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
       const fontSize = Math.min(W * 0.14, 140);
-      tc.width = Math.floor(W); tc.height = Math.floor(fontSize * 2);
+      tc.width = Math.floor(W); tc.height = Math.floor(fontSize * 2.4);
       tctx.fillStyle = 'white';
-      tctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", sans-serif`;
+      tctx.font = `900 ${fontSize}px "Noto Sans Devanagari","Nirmala UI","Mangal",sans-serif`;
       tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
-      tctx.fillText('श्री राम', tc.width / 2, tc.height / 2);
+      tctx.fillText('जय श्री राम', tc.width / 2, tc.height / 2);
       const id = tctx.getImageData(0, 0, tc.width, tc.height);
       ramPoints = [];
-      const step = 3;
+      const step = 2;
       for (let y = 0; y < tc.height; y += step) {
         for (let x = 0; x < tc.width; x += step) {
           const i = (y * tc.width + x) * 4;
@@ -1151,22 +1151,30 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function spawnTextParticles(t: number) {
-      if (t < 12.0 || t > 13.5) return; // Scene 5: Start forming at 12.0s
+      if (t < 11.8 || t > 14.2) return; // Scene 5: Start forming at 12.0s
       if (ramPoints.length === 0) return;
-      const target = Math.min(ramPoints.length, 800);
+      const target = Math.min(
+  Math.floor(ramPoints.length * 0.68),
+  520
+);
       let active = 0;
       for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
       let attempts = 0;
       while (active < target && attempts < 10) {
         const p = pool.spawn(); if (!p) break;
-        const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
+        let pt;
+
+      do {
+      pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
+      } while (Math.random() < 0.30);
         p.type = 'sparkle';
-        p.x = W / 2 + (Math.random() - 0.5) * W * 1.3;
-        p.y = H * 0.36 + (Math.random() - 0.5) * H * 1.1;
-        p.tx = W / 2 + pt.x; p.ty = H * 0.36 + pt.y; 
+        p.x = W / 2 + (Math.random() - 0.5) * W * 0.9;
+        p.y = H * 0.34 + (Math.random() - 0.5) * H * 0.75;
+        p.tx = W / 2 + pt.x;
+        p.ty = H * 0.34 + pt.y;
         p.vx = 0; p.vy = 0;
-        p.size = 1.2 + Math.random() * 1.6; p.maxLife = 7; p.life = 0; p.alpha = 0;
-        p.delay = Math.random() * 1.1;
+        p.size = 0.9 + Math.random() * 0.9; p.maxLife = 8.5; p.life = 0; p.alpha = 0;
+        p.delay = Math.random() * 0.55;
         active++; attempts++;
       }
     }
@@ -1379,7 +1387,7 @@ function drawGreeting(t: number) {
   const pulse = 1 + Math.sin(t * 2.0) * 0.015;
 
   // Position slightly below center
-  const centerY = H * 0.72 + slideOffset;
+  const centerY = H * 0.74 + slideOffset;
 
   const line1 = 'आपको एवं आपके परिवार को';
   const line2 = 'राम नवमी की हार्दिक शुभकामनाएँ';
@@ -1459,7 +1467,7 @@ function drawGreeting(t: number) {
 
   // Outer glow
   ctx.shadowColor = `rgba(255,180,70,${vis})`;
-  ctx.shadowBlur = 24;
+  ctx.shadowBlur = 14;
   ctx.fillStyle = `rgba(255,210,130,${vis})`;
   ctx.fillText(line1, 0, 0);
 
@@ -1496,12 +1504,12 @@ function drawGreeting(t: number) {
 
     function applyBloom() {
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(6px) brightness(1.4)';
+      bctx.filter = 'blur(4px) brightness(1.4)';
       bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.30;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(bloom, 0, 0, W, H);
       ctx.restore();
@@ -1511,7 +1519,7 @@ function drawGreeting(t: number) {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, 'rgba(80, 32, 4, 0.18)');
+      grad.addColorStop(0, 'rgba(55,18,4,0.12)');
       grad.addColorStop(0.5, 'rgba(40, 12, 3, 0.08)');
       grad.addColorStop(1, 'rgba(20, 4, 0, 0.14)');
       ctx.fillStyle = grad;
@@ -1531,7 +1539,7 @@ function drawGreeting(t: number) {
     function applyGrain() {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.4;
+      ctx.globalAlpha = 0.18;
       const ox = Math.floor(Math.random() * 64), oy = Math.floor(Math.random() * 64);
       for (let x = -ox; x < W; x += grain.width) {
         for (let y = -oy; y < H; y += grain.height) ctx.drawImage(grain, x, y);
