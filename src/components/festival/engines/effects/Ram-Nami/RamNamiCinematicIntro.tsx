@@ -202,21 +202,27 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     // ============ DRAW FUNCTIONS ============
 
+    // FIX 1: Pure Deep Black Background for Text Scene
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 1.5, t);
       const fadeOut = smoothstep(19.6, 20.0, t);
       const vis = reveal * (1 - fadeOut);
+
+      // Transition to Pure Black when Text Scene starts (t >= 10.5s)
+      const textSceneDarkness = smoothstep(10.5, 12.0, t);
+
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      const ir = Math.floor(lerp(4, 50, vis));
-      const ig = Math.floor(lerp(2, 25, vis));
-      const ib = Math.floor(lerp(5, 15, vis));
-      grad.addColorStop(0, '#020104');
+      const ir = Math.floor(lerp(lerp(4, 50, vis), 0, textSceneDarkness));
+      const ig = Math.floor(lerp(lerp(2, 25, vis), 0, textSceneDarkness));
+      const ib = Math.floor(lerp(lerp(5, 15, vis), 0, textSceneDarkness));
+
+      grad.addColorStop(0, '#000000');
       grad.addColorStop(0.6, `rgb(${ir},${ig},${ib})`);
-      grad.addColorStop(1, '#0c0502');
+      grad.addColorStop(1, '#000000');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
       
-      if (screenFlash > 0.01) {
+      if (screenFlash > 0.01 && t < 10.5) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = `rgba(255, 240, 200, ${screenFlash * 0.4})`;
@@ -1132,7 +1138,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
-    // 1. PARTICLES GATHER FIRST (11.5s to 13.5s)
     function spawnTextParticles(t: number) {
       if (t < 11.5 || t > 13.5) return;
       if (ramPoints.length === 0) return;
@@ -1421,12 +1426,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // 2. SOLID TITLE REVEALS AFTER PARTICLES GATHER (13.2s to 14.8s)
+    // FIX 2: SOLID TITLE WITH HIGH CONTRAST STROKE BACKING
     function drawTitle(t: number) {
-      if (t < 13.2) return; // Don't show solid text until particles gather!
+      if (t < 13.2) return;
 
       const fadeIn = smoothstep(13.2, 14.8, t);
-      const fadeOut = smoothstep(19.6, 20.0, t); // Stay solid until end
+      const fadeOut = smoothstep(19.6, 20.0, t);
       const intensity = fadeIn * (1 - fadeOut);
       if (intensity <= 0.001) return;
       
@@ -1438,59 +1443,48 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
 
-      ctx.globalCompositeOperation = 'lighter';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2.5);
-      haloGrad.addColorStop(0, `rgba(255, 190, 80, ${0.22 * intensity * pulse})`);
+      // Central Gold Glow Light behind text
+      ctx.globalCompositeOperation = 'screen';
+      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize * 2.2);
+      haloGrad.addColorStop(0, `rgba(255, 170, 40, ${0.25 * intensity * pulse})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H);
 
-      ctx.save();
-      ctx.translate(W / 2, cy);
-      const rayCount = 18;
-      for (let i = 0; i < rayCount; i++) {
-        const a = (i / rayCount) * Math.PI * 2 + t * 0.06;
-        const len = fontSize * 1.8;
-        const flicker = 0.6 + 0.4 * Math.sin(t * 1.8 + i);
-        const grad = ctx.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
-        grad.addColorStop(0, `rgba(255, 190, 80, ${0.12 * intensity * flicker})`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(a - 0.035) * len, Math.sin(a - 0.035) * len);
-        ctx.lineTo(Math.cos(a + 0.035) * len, Math.sin(a + 0.035) * len);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-
       ctx.globalCompositeOperation = 'source-over';
-      const goldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.6, 0, cy + fontSize * 0.6);
-      goldGrad.addColorStop(0, '#FFFFFF');
-      goldGrad.addColorStop(0.2, '#FFF59D');
-      goldGrad.addColorStop(0.45, '#FFD54F');
-      goldGrad.addColorStop(0.7, '#FFB300');
-      goldGrad.addColorStop(0.9, '#FF8F00');
-      goldGrad.addColorStop(1, '#FF6F00');
 
-      ctx.shadowBlur = 30;
-      ctx.shadowColor = `rgba(255, 160, 0, ${intensity})`;
+      // Deep Black Backing Stroke for 100% Crisp Legibility
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = fontSize * 0.08;
+      ctx.lineJoin = 'round';
+      ctx.strokeText('जय श्री राम', W / 2, cy);
+
+      // Gold Metallic Fill Gradient
+      const goldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.5, 0, cy + fontSize * 0.5);
+      goldGrad.addColorStop(0, '#FFFFFF');
+      goldGrad.addColorStop(0.25, '#FFF59D');
+      goldGrad.addColorStop(0.5, '#FFD54F');
+      goldGrad.addColorStop(0.75, '#FFB300');
+      goldGrad.addColorStop(1, '#E65100');
+
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = `rgba(255, 180, 0, ${intensity})`;
       ctx.fillStyle = goldGrad;
       ctx.fillText('जय श्री राम', W / 2, cy);
 
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = `rgba(255, 255, 220, ${intensity})`;
-      ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 * intensity})`;
+      // Inner Metallic Highlight Stroke
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * intensity})`;
       ctx.lineWidth = fontSize * 0.015;
       ctx.strokeText('जय श्री राम', W / 2, cy);
-      ctx.shadowBlur = 0;
 
+      // Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
       const tilakY = cy - fontSize * 0.52;
       const tilakScale = (fontSize / 130) * 1.1;
       drawTilakOrnament(tilakX, tilakY, tilakScale, intensity);
 
+      // Star Flares
       const flareSize = fontSize * 0.28 * pulse;
       const fAngle = t * 1.5;
       drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.85);
@@ -1500,11 +1494,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // 3. GREETING SLIDES IN & STAYS SOLID UNTIL END (15.0s to 20.0s)
+    // FIX 3: SOLID HIGH-CONTRAST GREETING WITH CRISP STROKES
     function drawGreeting(t: number) {
       if (t < 15.0) return;
       const reveal = smoothstep(15.0, 16.2, t);
-      const fade = smoothstep(19.6, 20.0, t); // Stay visible until end
+      const fade = smoothstep(19.6, 20.0, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0.001) return;
       
@@ -1520,24 +1514,21 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; 
       ctx.textBaseline = 'middle';
 
-      ctx.globalCompositeOperation = 'lighter';
-      const haloGrad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, fontSize2 * 6);
-      haloGrad.addColorStop(0, `rgba(255, 170, 60, ${0.14 * vis})`);
-      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = haloGrad;
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.globalCompositeOperation = 'source-over';
-
+      // Divider 1
       const divY1 = cy - fontSize1 * 1.2;
       drawOrnamentalDivider(W / 2, divY1, Math.min(W * 0.35, 280), vis);
 
-      ctx.font = `500 ${fontSize1}px "Noto Sans Devanagari", "Mangal", sans-serif`;
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = `rgba(255, 180, 50, ${vis * 0.8})`;
-      ctx.fillStyle = `rgba(255, 245, 220, ${vis * 0.95})`;
+      // Line 1: Black Stroke + Bright Cream/Gold Fill
+      ctx.font = `600 ${fontSize1}px "Noto Sans Devanagari", "Mangal", sans-serif`;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = fontSize1 * 0.15;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(line1, W / 2, cy - fontSize1 * 0.2);
+
+      ctx.fillStyle = `#FFFDD0`;
       ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
 
+      // Line 2: Black Stroke + Metallic Gold Fill
       const y2 = cy + fontSize2 * 1.1;
       const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2 * 0.5, 0, y2 + fontSize2 * 0.5);
       goldGrad2.addColorStop(0, '#FFFFFF');
@@ -1546,11 +1537,17 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       goldGrad2.addColorStop(1, '#FF8F00');
 
       ctx.font = `700 ${fontSize2}px "Noto Sans Devanagari", "Mangal", sans-serif`;
-      ctx.shadowBlur = 20;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = fontSize2 * 0.15;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(line2, W / 2, y2);
+
+      ctx.shadowBlur = 15;
       ctx.shadowColor = `rgba(255, 160, 0, ${vis})`;
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
 
+      // Divider 2
       const divY2 = y2 + fontSize2 * 0.95;
       drawOrnamentalDivider(W / 2, divY2, Math.min(W * 0.45, 360), vis);
 
@@ -1572,13 +1569,18 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    function applyColorGrade() {
+    // FIX 4: Remove muddy brown overlay on dark text background
+    function applyColorGrade(t: number) {
+      const textSceneDarkness = smoothstep(10.5, 12.0, t);
+      const gradeAlpha = 0.18 * (1 - textSceneDarkness); // Reduces to 0 in text scene
+      if (gradeAlpha <= 0.001) return;
+
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, 'rgba(80, 32, 4, 0.18)');
-      grad.addColorStop(0.5, 'rgba(40, 12, 3, 0.08)');
-      grad.addColorStop(1, 'rgba(20, 4, 0, 0.14)');
+      grad.addColorStop(0, `rgba(80, 32, 4, ${gradeAlpha})`);
+      grad.addColorStop(0.5, `rgba(40, 12, 3, ${gradeAlpha * 0.5})`);
+      grad.addColorStop(1, `rgba(20, 4, 0, ${gradeAlpha * 0.8})`);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
@@ -1658,7 +1660,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
 
       applyBloom();
-      applyColorGrade();
+      applyColorGrade(t);
       applyVignette(t);
       applyGrain();
     }
