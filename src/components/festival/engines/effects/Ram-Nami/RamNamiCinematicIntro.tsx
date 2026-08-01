@@ -143,7 +143,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
 
-    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR (UPDATED STEP 3, 4, 5) ============
+    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR ============
     function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
       const size = 256;
       const pCanvas = document.createElement("canvas");
@@ -151,9 +151,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       pCanvas.height = size;
       const pctx = pCanvas.getContext("2d")!;
 
-      // ==========================
-      // GOLD BASE (STEP 3)
-      // ==========================
+      // GOLD BASE
       const grad = pctx.createLinearGradient(0, 0, size, size);
       grad.addColorStop(0.00, "#FFE98A");
       grad.addColorStop(0.08, "#FFD95A");
@@ -167,9 +165,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       pctx.fillStyle = grad;
       pctx.fillRect(0,0,size,size);
 
-      // ==========================
-      // MICRO GLITTER (STEP 4)
-      // ==========================
+      // MICRO GLITTER
       for(let i = 0; i < 3200; i++){
           const x = Math.random() * size;
           const y = Math.random() * size;
@@ -191,9 +187,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.fill();
       }
 
-      // ==========================
-      // GOLD FLAKES (STEP 5)
-      // ==========================
+      // GOLD FLAKES
       for(let i=0;i<600;i++){
           const x=Math.random()*size;
           const y=Math.random()*size;
@@ -208,9 +202,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.restore();
       }
 
-      // ==========================
       // METALLIC STREAKS
-      // ==========================
       for(let i=0;i<180;i++){
           const x=Math.random()*size;
           const y=Math.random()*size;
@@ -219,9 +211,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           const gx=x+Math.cos(ang)*len;
           const gy=y+Math.sin(ang)*len;
           const g=pctx.createLinearGradient(x,y,gx,gy);
-          g.addColorStop(0,"rgba(255,255,255,0)");
-          g.addColorStop(.5,"rgba(255,255,255,.16)");
-          g.addColorStop(1,"rgba(255,255,255,0)");
+          g.addColorStop(0,"rgba(255,250,220,0)");
+          g.addColorStop(.5,"rgba(255,245,180,.16)");
+          g.addColorStop(1,"rgba(255,250,220,0)");
           pctx.strokeStyle=g;
           pctx.lineWidth=.8;
           pctx.beginPath();
@@ -230,15 +222,13 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.stroke();
       }
 
-      // ==========================
       // RANDOM BRIGHT STARS
-      // ==========================
       for(let i=0;i<130;i++){
           const x=Math.random()*size;
           const y=Math.random()*size;
           const r=1+Math.random()*2;
           const g=pctx.createRadialGradient(x,y,0,x,y,r*5);
-          g.addColorStop(0,"rgba(255,255,255,.95)");
+          g.addColorStop(0,"rgba(255,250,220,.95)");
           g.addColorStop(.2,"rgba(255,240,180,.9)");
           g.addColorStop(.5,"rgba(255,210,80,.4)");
           g.addColorStop(1,"rgba(255,180,0,0)");
@@ -248,9 +238,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.fill();
       }
 
-      // ==========================
       // FINE NOISE
-      // ==========================
       const img=pctx.getImageData(0,0,size,size);
       const d=img.data;
       for(let i=0;i<d.length;i+=4){
@@ -1482,13 +1470,13 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = alpha;
       
       const grad = ctx.createLinearGradient(0, -22, 0, 5);
-      grad.addColorStop(0, '#FFFFFF');
+      grad.addColorStop(0, '#FFEC8B');
       grad.addColorStop(0.3, '#FFE57F');
       grad.addColorStop(0.7, '#FFC107');
       grad.addColorStop(1, '#FF8F00');
       
       ctx.fillStyle = grad;
-      ctx.strokeStyle = '#FFFFFF';
+      ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 1.2;
 
       ctx.beginPath();
@@ -1500,7 +1488,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.beginPath();
       ctx.arc(0, -31, 3.2, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#FFF8E0';
       ctx.fill();
 
       ctx.beginPath();
@@ -1523,7 +1511,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = alpha;
 
       const swashGrad = ctx.createLinearGradient(-30, 0, 110, 40);
-      swashGrad.addColorStop(0, '#FFFFFF');
+      swashGrad.addColorStop(0, '#FFEC8B');
       swashGrad.addColorStop(0.2, '#FFE57F');
       swashGrad.addColorStop(0.5, '#FFD700');
       swashGrad.addColorStop(0.8, '#C59B27');
@@ -1548,7 +1536,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.globalCompositeOperation = 'lighter';
 
       const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
-      grad.addColorStop(0, '#FFFFFF');
+      grad.addColorStop(0, '#FFF8E0');
       grad.addColorStop(0.25, '#FFF59D');
       grad.addColorStop(0.6, '#FFB300');
       grad.addColorStop(1, 'rgba(255, 143, 0, 0)');
@@ -1558,7 +1546,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.arc(0, 0, size * 0.45, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#FFF8E0';
       for (let i = 0; i < 2; i++) {
         ctx.rotate(Math.PI / 2);
         ctx.beginPath();
@@ -1581,7 +1569,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const gradL = ctx.createLinearGradient(-halfW, 0, -18, 0);
       gradL.addColorStop(0, 'rgba(255, 215, 0, 0)');
       gradL.addColorStop(0.7, 'rgba(255, 215, 0, 0.8)');
-      gradL.addColorStop(1, '#FFFFFF');
+      gradL.addColorStop(1, '#FFF8E0');
 
       ctx.strokeStyle = gradL;
       ctx.lineWidth = 1.4;
@@ -1591,7 +1579,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.stroke();
 
       const gradR = ctx.createLinearGradient(18, 0, halfW, 0);
-      gradR.addColorStop(0, '#FFFFFF');
+      gradR.addColorStop(0, '#FFF8E0');
       gradR.addColorStop(0.3, 'rgba(255, 215, 0, 0.8)');
       gradR.addColorStop(1, 'rgba(255, 215, 0, 0)');
 
@@ -1612,7 +1600,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.lineTo(0, 8);
       ctx.lineTo(-5, 0);
       ctx.closePath();
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#FFF8E0';
       ctx.fill();
 
       ctx.fillStyle = '#FFD700';
@@ -1624,7 +1612,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // 24K SPARKLING GOLD FOIL TITLE ("जय श्री RAM") - IMAGE 2 EXACT MATCH
+    // MODERN 2027 LIQUID 3D GOLD FOIL TITLE
     function drawTitle(t: number) {
       if (t < 13.0) return;
 
@@ -1640,79 +1628,85 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       
-      // PREFERRED ROYAL DEVANAGARI FONT
       ctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal","Kokila",serif`;
 
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
       ctx.miterLimit = 12;
 
-      // Top Divine Rays
       drawTopGodRays(t, intensity);
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // STEP 6 - 1. Black Outline Stroke
-      ctx.strokeStyle = `rgba(72,38,5,${0.72 * intensity})`;
-      ctx.lineWidth = fontSize * 0.028;
-
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = `rgba(255,170,35,${0.28 * intensity})`;
-
+      // 1. Deep Drop Shadow (Modern 3D Depth)
+      ctx.shadowColor = `rgba(0, 0, 0, 0.85)`;
+      ctx.shadowBlur = 30 * intensity;
+      ctx.shadowOffsetY = fontSize * 0.05;
+      
+      // Base Dark Outline for 3D Cutout effect
+      ctx.strokeStyle = `rgba(15, 8, 0, 1)`;
+      ctx.lineWidth = fontSize * 0.03;
       ctx.strokeText("जय श्री राम", W / 2, cy);
 
       ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
       
       // 2. Sparkling Gold Foil Texture Fill
       const goldPattern = createGoldGlitterPattern();
 
-      // STEP 1 - GOLD GRADIENT
+      // 2027 Modern Liquid Gold Gradient (No pure white)
       const goldGrad = ctx.createLinearGradient(
           0,
-          cy - fontSize * 0.65,
+          cy - fontSize * 0.7,
           0,
-          cy + fontSize * 0.65
+          cy + fontSize * 0.7
       );
 
-      goldGrad.addColorStop(0.00, "#FFF1A3");
-      goldGrad.addColorStop(0.12, "#FFD966");
-      goldGrad.addColorStop(0.28, "#FFC928");
-      goldGrad.addColorStop(0.48, "#F5A900");
-      goldGrad.addColorStop(0.68, "#D98A08");
-      goldGrad.addColorStop(0.84, "#A86505");
-      goldGrad.addColorStop(1.00, "#6B3D00");
+      goldGrad.addColorStop(0.00, "#FFF3B0"); // Soft champagne
+      goldGrad.addColorStop(0.20, "#FFD700"); // Bright gold
+      goldGrad.addColorStop(0.45, "#D4AF37"); // Metallic gold
+      goldGrad.addColorStop(0.60, "#F5C531"); // Rich reflective gold
+      goldGrad.addColorStop(0.85, "#A67C00"); // Dark gold
+      goldGrad.addColorStop(1.00, "#4A3000"); // Deep bronze base
 
       ctx.fillStyle = goldGrad;
       ctx.fillText("जय श्री राम", W / 2, cy);
 
-      ctx.globalAlpha = 0.22;
+      // Apply Gold Texture with Overlay for realism
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.globalAlpha = 0.6 * intensity;
       ctx.fillStyle = goldPattern;
       ctx.fillText("जय श्री राम", W / 2, cy);
-      ctx.globalAlpha = 1;
+      ctx.restore();
       
-      // STEP 2 - 3. Inner Metallic Highlight Stroke
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = `rgba(255, 218, 105, ${0.48 * intensity})`;
-      ctx.lineWidth = fontSize * 0.009;
+      // 3. Dark Inner Edge (Removes white, adds modern crisp bevel)
+      ctx.strokeStyle = `rgba(30, 15, 0, 0.4)`;
+      ctx.lineWidth = fontSize * 0.006;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 4. Tilak Ornament
+      // 4. Top Glossy Highlight (Swept light effect, very faint pale gold instead of white)
+      ctx.strokeStyle = `rgba(255, 248, 220, ${0.15 * intensity})`;
+      ctx.lineWidth = fontSize * 0.002;
+      ctx.strokeText('जय श्री राम', W / 2, cy);
+
+      // 5. Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
       const tilakY = cy - fontSize * 0.52;
       const tilakScale = (fontSize / 130) * 1.1;
       drawTilakOrnament(tilakX, tilakY, tilakScale, intensity);
 
-      // 5. Golden Curve Swash under 'म'
+      // 6. Golden Curve Swash under 'म'
       const swashX = W / 2 + fontSize * 1.15;
       const swashY = cy + fontSize * 0.28;
       drawRamSwash(swashX, swashY, fontSize / 130, intensity);
 
-      // 6. Starburst Lens Flares
+      // 7. Starburst Lens Flares (Adjusted to match gold theme)
       const flareSize = fontSize * 0.28 * pulse;
       const fAngle = t * 1.5;
-      drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.85);
-      drawStarFlare(tilakX, tilakY - 18 * tilakScale, flareSize * 1.2, -fAngle, intensity);
-      drawStarFlare(W / 2 + fontSize * 1.1, cy - fontSize * 0.2, flareSize, fAngle * 0.8, intensity * 0.9);
+      drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.7);
+      drawStarFlare(tilakX, tilakY - 18 * tilakScale, flareSize * 1.2, -fAngle, intensity * 0.8);
+      drawStarFlare(W / 2 + fontSize * 1.1, cy - fontSize * 0.2, flareSize, fAngle * 0.8, intensity * 0.7);
 
       ctx.restore();
     }
@@ -1760,12 +1754,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         y2 + fontSize2
       );
 
-      goldGrad2.addColorStop(0.00,"#FFFFFF");
-      goldGrad2.addColorStop(0.08,"#FFFCE6");
-      goldGrad2.addColorStop(0.20,"#FFF1A8");
-      goldGrad2.addColorStop(0.40,"#FFD84A");
-      goldGrad2.addColorStop(0.60,"#FFB400");
-      goldGrad2.addColorStop(0.82,"#C88200");
+      goldGrad2.addColorStop(0.00,"#FFF3B0"); // Changed from FFFFFF to soft champagne
+      goldGrad2.addColorStop(0.10,"#FFE57F");
+      goldGrad2.addColorStop(0.30,"#FFD84A");
+      goldGrad2.addColorStop(0.50,"#FFB400");
+      goldGrad2.addColorStop(0.80,"#C88200");
       goldGrad2.addColorStop(1.00,"#5A3400");
       ctx.font = `700 ${fontSize2}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
       ctx.strokeStyle = '#000000';
@@ -1773,7 +1766,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.lineJoin = 'round';
       ctx.strokeText(line2, W / 2, y2);
 
-      // STEP 8 - Fixed Overwritten Shadow
       ctx.shadowBlur = 12;
       ctx.shadowColor = `rgba(255, 160, 0, ${vis * 0.42})`;
       ctx.fillStyle = goldGrad2;
@@ -1790,16 +1782,13 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function applyBloom(t: number) {
       const textSceneVis = smoothstep(11.0, 13.0, t);
-      // STEP 7 - Lower Bloom Alpha
       const bloomAlpha = lerp(0.28, 0.08, textSceneVis);
 
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      // STEP 7 - Reduced Brightness & Blur
       bctx.filter = 'blur(4px) brightness(1.05)';
       bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
       ctx.save();
-      // STEP 7 - Switched from 'lighter' to 'screen'
       ctx.globalCompositeOperation = 'screen';
       ctx.globalAlpha = bloomAlpha;
       ctx.imageSmoothingEnabled = true;
