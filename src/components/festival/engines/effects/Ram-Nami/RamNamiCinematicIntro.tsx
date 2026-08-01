@@ -1736,7 +1736,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       
       // PREFERRED ROYAL DEVANAGARI FONT
-      ctx.font = `700 ${fontSize}px "Tiro Devanagari Hindi", "Rozha One", "Mangal", "Nirmala UI", serif`;
+      ctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal","Kokila",serif`;
+
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.miterLimit = 12;
 
       // Top Divine Rays
       drawTopGodRays(t, intensity);
@@ -1744,21 +1748,51 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.globalCompositeOperation = 'source-over';
 
       // 1. Black Outline Stroke
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = fontSize * 0.06;
-      ctx.miterLimit = 8;
-      ctx.strokeText('जय श्री राम', W / 2, cy);
+      ctx.strokeStyle = "rgba(45,18,0,0.55)";
+      ctx.lineWidth = fontSize * 0.022;
 
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = "rgba(255,180,50,.45)";
+
+     ctx.strokeText("जय श्री राम",W/2,cy);
+
+     ctx.shadowBlur = 0;
+      
       // 2. Sparkling Gold Foil Texture Fill
       const goldPattern = createGoldGlitterPattern();
-      ctx.fillStyle = goldPattern;
-      ctx.fillText('जय श्री राम', W / 2, cy);
 
-      // 3. Inner Metallic Highlight Stroke
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = `rgba(255, 255, 230, ${0.85 * intensity})`;
-      ctx.lineWidth = fontSize * 0.012;
-      ctx.strokeText('जय श्री राम', W / 2, cy);
+const goldGrad = ctx.createLinearGradient(
+    0,
+    cy-fontSize,
+    0,
+    cy+fontSize
+);
+
+goldGrad.addColorStop(0.00,"#FFFFFF");
+goldGrad.addColorStop(0.08,"#FFF8D8");
+goldGrad.addColorStop(0.20,"#FFE88A");
+goldGrad.addColorStop(0.42,"#FFD54A");
+goldGrad.addColorStop(0.62,"#FFBD12");
+goldGrad.addColorStop(0.82,"#B97B08");
+goldGrad.addColorStop(1.00,"#5A3300");
+
+ctx.fillStyle = goldGrad;
+
+ctx.fillText("जय श्री राम",W/2,cy);
+
+ctx.globalAlpha=.45;
+
+ctx.fillStyle=goldPattern;
+
+ctx.fillText("जय श्री राम",W/2,cy);
+
+ctx.globalAlpha=1;
+      
+// 3. Inner Metallic Highlight Stroke
+   ctx.shadowBlur = 0;
+   ctx.strokeStyle = `rgba(255, 255, 230, ${0.85 * intensity})`;
+   ctx.lineWidth = fontSize * 0.012;
+   ctx.strokeText('जय श्री राम', W / 2, cy);
 
       // 4. Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
