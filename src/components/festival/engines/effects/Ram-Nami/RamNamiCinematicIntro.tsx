@@ -78,6 +78,15 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
+
+    // Load Google Fonts Dynamically for Royal Devanagari Styling
+    if (!document.getElementById('ram-mandir-google-font')) {
+      const link = document.createElement('link');
+      link.id = 'ram-mandir-google-font';
+      link.href = 'https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi:ital@0;1&display=swap';
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+    }
   }, [onComplete]);
 
   useEffect(() => {
@@ -134,6 +143,36 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
 
+    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR ============
+    function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
+      const pCanvas = document.createElement('canvas');
+      pCanvas.width = 128; pCanvas.height = 128;
+      const pctx = pCanvas.getContext('2d')!;
+
+      const grad = pctx.createLinearGradient(0, 0, 128, 128);
+      grad.addColorStop(0, '#FFF59D');
+      grad.addColorStop(0.25, '#FFD700');
+      grad.addColorStop(0.5, '#FFB300');
+      grad.addColorStop(0.75, '#C59B27');
+      grad.addColorStop(1, '#8E5A10');
+      pctx.fillStyle = grad;
+      pctx.fillRect(0, 0, 128, 128);
+
+      // Overlay sparkling noise dots
+      for (let i = 0; i < 350; i++) {
+        const x = Math.random() * 128;
+        const y = Math.random() * 128;
+        const r = Math.random() * 1.6;
+        pctx.fillStyle = Math.random() < 0.4 ? '#FFFFFF' : (Math.random() < 0.7 ? '#FFF8DC' : '#FFD700');
+        pctx.globalAlpha = Math.random() * 0.9;
+        pctx.beginPath();
+        pctx.arc(x, y, r, 0, Math.PI * 2);
+        pctx.fill();
+      }
+
+      return ctx.createPattern(pCanvas, 'repeat') || ctx.createLinearGradient(0,0,0,H);
+    }
+
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
@@ -180,14 +219,13 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // SAMPLE "जय श्री राम" FOR TEXT PARTICLES ASSEMBLY
     function sampleText() {
       const tc = document.createElement('canvas');
       const tctx = tc.getContext('2d')!;
       const fontSize = Math.min(W * 0.125, 130);
       tc.width = Math.floor(W); tc.height = Math.floor(fontSize * 2);
       tctx.fillStyle = 'white';
-      tctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", sans-serif`;
+      tctx.font = `700 ${fontSize}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
       tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
       tctx.fillText('जय श्री राम', tc.width / 2, tc.height / 2);
       const id = tctx.getImageData(0, 0, tc.width, tc.height);
@@ -274,7 +312,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // TOP GOD RAYS FOR TEXT SCENE (IMAGE 2 REPLICA)
     function drawTopGodRays(t: number, vis: number) {
       if (vis <= 0) return;
       ctx.save();
@@ -1168,7 +1205,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
-    // 1. GOLD PARTICLES RUSH IN FROM ALL SIDES TO FORM TEXT (11.5s to 13.5s)
     function spawnTextParticles(t: number) {
       if (t < 11.5 || t > 13.8) return;
       if (ramPoints.length === 0) return;
@@ -1180,7 +1216,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         const p = pool.spawn(); if (!p) break;
         const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
         p.type = 'sparkle';
-        // Spawn randomly from screen borders
         const side = Math.floor(Math.random() * 4);
         if (side === 0) { p.x = Math.random() * W; p.y = -20; }
         else if (side === 1) { p.x = W + 20; p.y = Math.random() * H; }
@@ -1380,7 +1415,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SWASH CURVE UNDER 'म' (LIKE IMAGE 2)
     function drawRamSwash(x: number, y: number, scale: number, alpha: number) {
       ctx.save();
       ctx.translate(x, y);
@@ -1489,7 +1523,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // 24K ROYAL METALLIC GOLD TITLE ("जय श्री राम") - IMAGE 2 EXACT REPLICA
+    // 24K SPARKLING GOLD FOIL TITLE ("जय श्री RAM") - IMAGE 2 EXACT MATCH
     function drawTitle(t: number) {
       if (t < 13.0) return;
 
@@ -1504,46 +1538,39 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = `700 ${fontSize}px "Noto Sans Devanagari", "Mangal", "Nirmala UI", sans-serif`;
+      
+      // PREFERRED ROYAL DEVANAGARI FONT
+      ctx.font = `700 ${fontSize}px "Tiro Devanagari Hindi", "Rozha One", "Mangal", "Nirmala UI", serif`;
 
-      // Top Divine God-Rays
+      // Top Divine Rays
       drawTopGodRays(t, intensity);
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. Deep Crisp Black Stroke Outline for maximum contrast
+      // 1. Black Outline Stroke
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = fontSize * 0.06;
       ctx.lineJoin = 'round';
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 2. 6-Stop Authentic Royal Gold Gradient
-      const goldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.5, 0, cy + fontSize * 0.5);
-      goldGrad.addColorStop(0, '#FFFFFF');      // Pure highlight top
-      goldGrad.addColorStop(0.18, '#FFF59D');   // Pale gold
-      goldGrad.addColorStop(0.40, '#FFD700');   // Rich gold
-      goldGrad.addColorStop(0.65, '#C59B27');   // Metallic amber
-      goldGrad.addColorStop(0.85, '#8E5A10');   // Bronze gold
-      goldGrad.addColorStop(1, '#5C3806');      // Dark metallic base
-
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = `rgba(255, 180, 0, ${0.5 * intensity})`;
-      ctx.fillStyle = goldGrad;
+      // 2. Sparkling Gold Foil Texture Fill
+      const goldPattern = createGoldGlitterPattern();
+      ctx.fillStyle = goldPattern;
       ctx.fillText('जय श्री राम', W / 2, cy);
 
-      // 3. Crisp Highlight Inner Line
+      // 3. Inner Metallic Highlight Stroke
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = `rgba(255, 255, 230, ${0.8 * intensity})`;
+      ctx.strokeStyle = `rgba(255, 255, 230, ${0.85 * intensity})`;
       ctx.lineWidth = fontSize * 0.012;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 4. Tilak Ornament above 'श्री'
+      // 4. Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
       const tilakY = cy - fontSize * 0.52;
       const tilakScale = (fontSize / 130) * 1.1;
       drawTilakOrnament(tilakX, tilakY, tilakScale, intensity);
 
-      // 5. Golden Curved Swash under 'म'
+      // 5. Golden Curve Swash under 'म'
       const swashX = W / 2 + fontSize * 1.15;
       const swashY = cy + fontSize * 0.28;
       drawRamSwash(swashX, swashY, fontSize / 130, intensity);
@@ -1558,7 +1585,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ROYAL GREETING WITH DIVIDERS (IMAGE 2 REPLICA)
+    // ROYAL GREETING WITH DIVIDERS
     function drawGreeting(t: number) {
       if (t < 15.0) return;
       const reveal = smoothstep(15.0, 16.2, t);
@@ -1578,12 +1605,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; 
       ctx.textBaseline = 'middle';
 
-      // Center Divider Line 1
+      // Divider Line 1
       const divY1 = cy - fontSize1 * 1.25;
       drawOrnamentalDivider(W / 2, divY1, Math.min(W * 0.38, 300), vis);
 
-      // Line 1: "आपको एवं आपके परिवार को" (Cream Gold)
-      ctx.font = `500 ${fontSize1}px "Noto Sans Devanagari", "Mangal", sans-serif`;
+      // Line 1: "आपको एवं आपके परिवार को"
+      ctx.font = `500 ${fontSize1}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = fontSize1 * 0.15;
       ctx.lineJoin = 'round';
@@ -1592,7 +1619,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = `#FFFDD0`;
       ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
 
-      // Line 2: "राम नवमी की हार्दिक शुभकामनाएँ" (Metallic Gold)
+      // Line 2: "राम नवमी की हार्दिक शुभकामनाएँ"
       const y2 = cy + fontSize2 * 1.15;
       const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2 * 0.5, 0, y2 + fontSize2 * 0.5);
       goldGrad2.addColorStop(0, '#FFFFFF');
@@ -1600,7 +1627,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       goldGrad2.addColorStop(0.7, '#FFC107');
       goldGrad2.addColorStop(1, '#FF8F00');
 
-      ctx.font = `700 ${fontSize2}px "Noto Sans Devanagari", "Mangal", sans-serif`;
+      ctx.font = `700 ${fontSize2}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = fontSize2 * 0.15;
       ctx.lineJoin = 'round';
@@ -1611,7 +1638,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
 
-      // Center Divider Line 2 (Under Subtitle)
+      // Divider Line 2
       const divY2 = y2 + fontSize2 * 0.95;
       drawOrnamentalDivider(W / 2, divY2, Math.min(W * 0.48, 380), vis);
 
