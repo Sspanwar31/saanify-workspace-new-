@@ -144,37 +144,196 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     ];
 
     // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR ============
-    function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
-      const pCanvas = document.createElement('canvas');
-      pCanvas.width = 128; pCanvas.height = 128;
-      const pctx = pCanvas.getContext('2d')!;
+   function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
 
-      const grad = pctx.createLinearGradient(0, 0, 128, 128);
-      grad.addColorStop(0, '#FFF59D');
-      grad.addColorStop(0.25, '#FFD700');
-      grad.addColorStop(0.5, '#FFB300');
-      grad.addColorStop(0.75, '#C59B27');
-      grad.addColorStop(1, '#8E5A10');
-      pctx.fillStyle = grad;
-      pctx.fillRect(0, 0, 128, 128);
+    const size = 256;
 
-      // Overlay sparkling noise dots
-      for (let i = 0; i < 350; i++) {
-        const x = Math.random() * 128;
-        const y = Math.random() * 128;
-        const r = Math.random() * 1.6;
-        pctx.fillStyle = Math.random() < 0.4 ? '#FFFFFF' : (Math.random() < 0.7 ? '#FFF8DC' : '#FFD700');
-        pctx.globalAlpha = Math.random() * 0.9;
+    const pCanvas = document.createElement("canvas");
+
+    pCanvas.width = size;
+    pCanvas.height = size;
+
+    const pctx = pCanvas.getContext("2d")!;
+
+    // ==========================
+    // GOLD BASE
+    // ==========================
+
+    const grad = pctx.createLinearGradient(0, 0, size, size);
+
+    grad.addColorStop(0.00, "#FFFDF5");
+    grad.addColorStop(0.08, "#FFF7C8");
+    grad.addColorStop(0.18, "#FFE98A");
+    grad.addColorStop(0.34, "#FFD54A");
+    grad.addColorStop(0.48, "#FFC107");
+    grad.addColorStop(0.63, "#E2A319");
+    grad.addColorStop(0.78, "#B57A0A");
+    grad.addColorStop(1.00, "#6A4200");
+
+    pctx.fillStyle = grad;
+    pctx.fillRect(0,0,size,size);
+
+    // ==========================
+    // MICRO GLITTER
+    // ==========================
+
+    for(let i=0;i<4500;i++){
+
+        const x=Math.random()*size;
+        const y=Math.random()*size;
+
+        const r=Math.random()*1.1;
+
+        const alpha=0.2+Math.random()*0.9;
+
+        const c=Math.random();
+
+        if(c<0.33)
+            pctx.fillStyle=`rgba(255,255,255,${alpha})`;
+
+        else if(c<0.66)
+            pctx.fillStyle=`rgba(255,245,180,${alpha})`;
+
+        else
+            pctx.fillStyle=`rgba(255,210,80,${alpha})`;
+
         pctx.beginPath();
-        pctx.arc(x, y, r, 0, Math.PI * 2);
-        pctx.fill();
-      }
 
-      return ctx.createPattern(pCanvas, 'repeat') || ctx.createLinearGradient(0,0,0,H);
+        pctx.arc(x,y,r,0,Math.PI*2);
+
+        pctx.fill();
+
     }
 
+    // ==========================
+    // GOLD FLAKES
+    // ==========================
+
+    for(let i=0;i<600;i++){
+
+        const x=Math.random()*size;
+
+        const y=Math.random()*size;
+
+        const w=2+Math.random()*8;
+
+        const h=0.4+Math.random()*1.2;
+
+        pctx.save();
+
+        pctx.translate(x,y);
+
+        pctx.rotate(Math.random()*Math.PI);
+
+        pctx.globalAlpha=0.12+Math.random()*0.2;
+
+        pctx.fillStyle="#FFFFFF";
+
+        pctx.fillRect(-w/2,-h/2,w,h);
+
+        pctx.restore();
+
+    }
+
+    // ==========================
+    // METALLIC STREAKS
+    // ==========================
+
+    for(let i=0;i<180;i++){
+
+        const x=Math.random()*size;
+
+        const y=Math.random()*size;
+
+        const len=20+Math.random()*70;
+
+        const ang=(-25+Math.random()*50)*Math.PI/180;
+
+        const gx=x+Math.cos(ang)*len;
+
+        const gy=y+Math.sin(ang)*len;
+
+        const g=pctx.createLinearGradient(x,y,gx,gy);
+
+        g.addColorStop(0,"rgba(255,255,255,0)");
+
+        g.addColorStop(.5,"rgba(255,255,255,.16)");
+
+        g.addColorStop(1,"rgba(255,255,255,0)");
+
+        pctx.strokeStyle=g;
+
+        pctx.lineWidth=.8;
+
+        pctx.beginPath();
+
+        pctx.moveTo(x,y);
+
+        pctx.lineTo(gx,gy);
+
+        pctx.stroke();
+
+    }
+
+    // ==========================
+    // RANDOM BRIGHT STARS
+    // ==========================
+
+    for(let i=0;i<130;i++){
+
+        const x=Math.random()*size;
+
+        const y=Math.random()*size;
+
+        const r=1+Math.random()*2;
+
+        const g=pctx.createRadialGradient(x,y,0,x,y,r*5);
+
+        g.addColorStop(0,"rgba(255,255,255,.95)");
+
+        g.addColorStop(.2,"rgba(255,240,180,.9)");
+
+        g.addColorStop(.5,"rgba(255,210,80,.4)");
+
+        g.addColorStop(1,"rgba(255,180,0,0)");
+
+        pctx.fillStyle=g;
+
+        pctx.beginPath();
+
+        pctx.arc(x,y,r*5,0,Math.PI*2);
+
+        pctx.fill();
+
+    }
+
+    // ==========================
+    // FINE NOISE
+    // ==========================
+
+    const img=pctx.getImageData(0,0,size,size);
+
+    const d=img.data;
+
+    for(let i=0;i<d.length;i+=4){
+
+        const n=(Math.random()-0.5)*14;
+
+        d[i]+=n;
+
+        d[i+1]+=n;
+
+        d[i+2]+=n;
+
+    }
+
+    pctx.putImageData(img,0,0);
+
+    return ctx.createPattern(pCanvas,"repeat")!;
+
+}
     function resize() {
-      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      DPR = Math.min(window.devicePixelRatio || 1, 3);
       const rect = canvas.getBoundingClientRect();
       W = rect.width; H = rect.height;
       canvas.width = Math.floor(W * DPR);
@@ -220,25 +379,62 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function sampleText() {
-      const tc = document.createElement('canvas');
-      const tctx = tc.getContext('2d')!;
-      const fontSize = Math.min(W * 0.125, 130);
-      tc.width = Math.floor(W); tc.height = Math.floor(fontSize * 2);
-      tctx.fillStyle = 'white';
-      tctx.font = `700 ${fontSize}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
-      tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
-      tctx.fillText('जय श्री राम', tc.width / 2, tc.height / 2);
-      const id = tctx.getImageData(0, 0, tc.width, tc.height);
-      ramPoints = [];
-      const step = 3;
-      for (let y = 0; y < tc.height; y += step) {
-        for (let x = 0; x < tc.width; x += step) {
-          const i = (y * tc.width + x) * 4;
-          if (id.data[i + 3] > 128) ramPoints.push({ x: x - tc.width / 2, y: y - tc.height / 2 });
+
+    const tc = document.createElement("canvas");
+
+    const tctx = tc.getContext("2d")!;
+
+    const fontSize = Math.min(W * 0.125, 135);
+
+    tc.width = Math.floor(W);
+
+    tc.height = Math.floor(fontSize * 2.4);
+
+    tctx.clearRect(0,0,tc.width,tc.height);
+
+    tctx.fillStyle="#fff";
+
+    tctx.textAlign="center";
+
+    tctx.textBaseline="middle";
+
+    tctx.font=`900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+
+    tctx.lineJoin="round";
+
+    tctx.lineCap="round";
+
+    tctx.fillText("जय श्री राम",tc.width/2,tc.height/2);
+
+    const img=tctx.getImageData(0,0,tc.width,tc.height);
+
+    ramPoints=[];
+
+    const step=2;
+
+    for(let y=0;y<tc.height;y+=step){
+
+        for(let x=0;x<tc.width;x+=step){
+
+            const i=(y*tc.width+x)*4;
+
+            if(img.data[i+3]>20){
+
+                ramPoints.push({
+
+                    x:x-tc.width/2,
+
+                    y:y-tc.height/2
+
+                });
+
+            }
+
         }
-      }
+
     }
 
+}
     // ============ DRAW FUNCTIONS ============
 
     function drawBackground(t: number) {
@@ -1532,7 +1728,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const intensity = fadeIn * (1 - fadeOut);
       if (intensity <= 0.001) return;
       
-      const fontSize = Math.min(W * 0.125, 130);
+      const fontSize = Math.min(W * 0.135, 145);
       const cy = H * 0.38;
       const pulse = 0.85 + 0.15 * Math.sin(t * 2.5);
       
@@ -1550,7 +1746,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       // 1. Black Outline Stroke
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = fontSize * 0.06;
-      ctx.lineJoin = 'round';
+      ctx.miterLimit = 8;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
       // 2. Sparkling Gold Foil Texture Fill
@@ -1616,24 +1812,33 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.lineJoin = 'round';
       ctx.strokeText(line1, W / 2, cy - fontSize1 * 0.2);
 
-      ctx.fillStyle = `#FFFDD0`;
+      ctx.fillStyle="#FFF8E0";
       ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
 
       // Line 2: "राम नवमी की हार्दिक शुभकामनाएँ"
       const y2 = cy + fontSize2 * 1.15;
-      const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2 * 0.5, 0, y2 + fontSize2 * 0.5);
-      goldGrad2.addColorStop(0, '#FFFFFF');
-      goldGrad2.addColorStop(0.3, '#FFF59D');
-      goldGrad2.addColorStop(0.7, '#FFC107');
-      goldGrad2.addColorStop(1, '#FF8F00');
+      const goldGrad2 = ctx.createLinearGradient(
+    0,
+    y2 - fontSize2,
+    0,
+    y2 + fontSize2
+);
 
+     goldGrad2.addColorStop(0.00,"#FFFFFF");
+     goldGrad2.addColorStop(0.08,"#FFFCE6");
+     goldGrad2.addColorStop(0.20,"#FFF1A8");
+     goldGrad2.addColorStop(0.40,"#FFD84A");
+     goldGrad2.addColorStop(0.60,"#FFB400");
+      goldGrad2.addColorStop(0.82,"#C88200");
+      goldGrad2.addColorStop(1.00,"#5A3400");
       ctx.font = `700 ${fontSize2}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = fontSize2 * 0.15;
+      ctx.lineWidth = fontSize2 * 0.06;
       ctx.lineJoin = 'round';
       ctx.strokeText(line2, W / 2, y2);
 
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 35;
+      ctx.shadowColor = "#FFD54A";
       ctx.shadowColor = `rgba(255, 160, 0, ${vis * 0.5})`;
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
