@@ -51,7 +51,7 @@ class ParticlePool {
   }
 }
 
-// ============ REALISTIC FIREWORKS DATA STRUCTURES ============
+// ============ FIREWORKS DATA STRUCTURES ============
 interface FireworkRocket {
   x: number; y: number; vx: number; vy: number; ax: number; ay: number;
   targetY: number; color: string; color2: string; type: string;
@@ -143,47 +143,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
 
-    // PURE GOLD FOIL GLITTER PATTERN GENERATOR (NO WHITE)
-    function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
-      const size = 256;
-      const pCanvas = document.createElement("canvas");
-      pCanvas.width = size; pCanvas.height = size;
-      const pctx = pCanvas.getContext("2d")!;
-
-      const grad = pctx.createLinearGradient(0, 0, size, size);
-      grad.addColorStop(0.00, "#FFE066");
-      grad.addColorStop(0.20, "#FFD700");
-      grad.addColorStop(0.45, "#FFB300");
-      grad.addColorStop(0.70, "#C59B27");
-      grad.addColorStop(0.85, "#8E5A10");
-      grad.addColorStop(1.00, "#4A2800");
-
-      pctx.fillStyle = grad;
-      pctx.fillRect(0,0,size,size);
-
-      // Gold glitter speckles without white
-      for(let i = 0; i < 3000; i++){
-          const x = Math.random() * size;
-          const y = Math.random() * size;
-          const r = 0.25 + Math.random() * 0.85;
-          const alpha = 0.15 + Math.random() * 0.5;
-          const c = Math.random();
-
-          if(c < 0.25)
-              pctx.fillStyle = `rgba(255,236,139,${alpha})`; 
-          else if(c < 0.65)
-              pctx.fillStyle = `rgba(255,215,0,${alpha})`;
-          else
-              pctx.fillStyle = `rgba(184,134,11,${alpha})`;
-
-          pctx.beginPath();
-          pctx.arc(x, y, r, 0, Math.PI * 2);
-          pctx.fill();
-      }
-
-      return ctx.createPattern(pCanvas, "repeat") || grad;
-    }
-
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 3);
       const rect = canvas.getBoundingClientRect();
@@ -262,6 +221,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     
     // ============ DRAW FUNCTIONS ============
 
+    // SCENE 1 & 4: BACKGROUND LOGIC
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 1.5, t);
       const fadeOut = smoothstep(19.6, 20.0, t);
@@ -289,6 +249,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       }
     }
 
+    // SCENE 1: DIVINE SUNLIGHT RAYS
     function drawDivineLight(t: number) {
       const reveal = smoothstep(0.5, 1.5, t);
       const fade = smoothstep(10.2, 12.5, t);
@@ -333,6 +294,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
+    // SCENE 6: TOP GOD RAYS
     function drawTopGodRays(t: number, vis: number) {
       if (vis <= 0) return;
       ctx.save();
@@ -363,8 +325,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ HYPER-REALISTIC 3D RAM MANDIR ============
-
+    // SCENE 2: HYPER-REALISTIC 3D RAM MANDIR
     function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
       const reveal = smoothstep(2.5, 5.5, t);
       const fade = smoothstep(10.2, 12.5, t);
@@ -715,7 +676,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       targetCtx.restore();
     }
 
-    // ============ UNREAL ENGINE STYLE WATER ============
+    // SCENE 2: UNREAL ENGINE STYLE WATER
     function drawWater(t: number) {
       const reveal = smoothstep(3.5, 5.0, t);
       const fade = smoothstep(10.2, 12.5, t);
@@ -774,13 +735,14 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         ctx.fillStyle = rfGrad;
         
         ctx.beginPath();
-        ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.3, b.r * 0.25, 0, 0, Math.PI * 2);
+        ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.4, b.r * 0.25, 0, 0, Math.PI * 2);
         ctx.fill();
       });
 
       ctx.restore();
     }
 
+    // SCENE 3: FLOATING DIYAS
     function updateAndDrawFloatingDiyas(t: number) {
       const reveal = smoothstep(4.0, 5.5, t);
       const fade = smoothstep(10.2, 12.5, t);
@@ -874,8 +836,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ ULTRA REALISTIC CINEMATIC FIREWORKS ============
-
+    // SCENE 3: REALISTIC FIREWORKS
     function launchFireworks(t: number) {
       if (t < 5.5 || t > 10.0) return;
 
@@ -1226,6 +1187,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
+    // SCENE 5: GOLD PARTICLES RUSH IN FROM BORDERS TO FORM TEXT (11.5s to 13.5s)
     function spawnTextParticles(t: number) {
       if (t < 11.5 || t > 13.8) return;
       if (ramPoints.length === 0) return;
@@ -1545,7 +1507,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // PURE 100% GOLD TITLE - NO WHITE BORDER
+    // SCENE 6: PURE 100% GOLD TITLE - NO WHITE BORDER (13.0s - 19.5s)
     function drawTitle(t: number) {
       if (t < 13.0) return;
 
@@ -1608,7 +1570,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ROYAL GREETING WITH DIVIDERS (NO WHITE BORDER)
+    // SCENE 7: ROYAL GREETING WITH DIVIDERS (15.0s - 19.5s)
     function drawGreeting(t: number) {
       if (t < 15.0) return;
       const reveal = smoothstep(15.0, 16.2, t);
