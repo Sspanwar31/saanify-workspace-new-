@@ -143,7 +143,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
 
-    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR ============
+    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR (FIXED NO WHITE) ============
     function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
       const size = 256;
       const pCanvas = document.createElement("canvas");
@@ -165,7 +165,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       pctx.fillStyle = grad;
       pctx.fillRect(0,0,size,size);
 
-      // MICRO GLITTER
+      // MICRO GLITTER (Replaced all whites with rich gold)
       for(let i = 0; i < 3200; i++){
           const x = Math.random() * size;
           const y = Math.random() * size;
@@ -174,7 +174,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           const c = Math.random();
 
           if(c < 0.08)
-              pctx.fillStyle = `rgba(255,250,220,${alpha})`;
+              pctx.fillStyle = `rgba(255,235,150,${alpha})`; // No white
           else if(c < 0.45)
               pctx.fillStyle = `rgba(255,224,105,${alpha})`;
           else if(c < 0.78)
@@ -212,7 +212,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           const gy=y+Math.sin(ang)*len;
           const g=pctx.createLinearGradient(x,y,gx,gy);
           g.addColorStop(0,"rgba(255,250,220,0)");
-          g.addColorStop(.5,"rgba(255,245,180,.16)");
+          g.addColorStop(.5,"rgba(255,215,0,.16)"); // Gold tint
           g.addColorStop(1,"rgba(255,250,220,0)");
           pctx.strokeStyle=g;
           pctx.lineWidth=.8;
@@ -222,13 +222,13 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.stroke();
       }
 
-      // RANDOM BRIGHT STARS
+      // RANDOM BRIGHT STARS (Replaced white core with gold)
       for(let i=0;i<130;i++){
           const x=Math.random()*size;
           const y=Math.random()*size;
           const r=1+Math.random()*2;
           const g=pctx.createRadialGradient(x,y,0,x,y,r*5);
-          g.addColorStop(0,"rgba(255,250,220,.95)");
+          g.addColorStop(0,"rgba(255,224,105,.95)"); // No white
           g.addColorStop(.2,"rgba(255,240,180,.9)");
           g.addColorStop(.5,"rgba(255,210,80,.4)");
           g.addColorStop(1,"rgba(255,180,0,0)");
@@ -1612,7 +1612,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // MODERN 2027 LIQUID 3D GOLD FOIL TITLE
+    // MODERN 2027 LIQUID 3D GOLD FOIL TITLE (FULLY FIXED NO WHITE)
     function drawTitle(t: number) {
       if (t < 13.0) return;
 
@@ -1654,7 +1654,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       // 2. Sparkling Gold Foil Texture Fill
       const goldPattern = createGoldGlitterPattern();
 
-      // 2027 Modern Liquid Gold Gradient (No pure white)
+      // 2027 Modern Liquid Gold Gradient (NO PURE WHITE COLORS)
       const goldGrad = ctx.createLinearGradient(
           0,
           cy - fontSize * 0.7,
@@ -1662,12 +1662,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           cy + fontSize * 0.7
       );
 
-      goldGrad.addColorStop(0.00, "#FFF3B0"); // Soft champagne
-      goldGrad.addColorStop(0.20, "#FFD700"); // Bright gold
-      goldGrad.addColorStop(0.45, "#D4AF37"); // Metallic gold
-      goldGrad.addColorStop(0.60, "#F5C531"); // Rich reflective gold
-      goldGrad.addColorStop(0.85, "#A67C00"); // Dark gold
-      goldGrad.addColorStop(1.00, "#4A3000"); // Deep bronze base
+      goldGrad.addColorStop(0.00, "#FFD700"); // Bright Gold
+      goldGrad.addColorStop(0.20, "#FFC107"); // Rich Gold
+      goldGrad.addColorStop(0.45, "#D4AF37"); // Metallic Gold
+      goldGrad.addColorStop(0.60, "#F5C531"); // Reflective Gold
+      goldGrad.addColorStop(0.85, "#A67C00"); // Dark Gold
+      goldGrad.addColorStop(1.00, "#4A3000"); // Deep Bronze Base
 
       ctx.fillStyle = goldGrad;
       ctx.fillText("जय श्री राम", W / 2, cy);
@@ -1675,20 +1675,17 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       // Apply Gold Texture with Overlay for realism
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.6 * intensity;
+      ctx.globalAlpha = 0.4 * intensity;
       ctx.fillStyle = goldPattern;
       ctx.fillText("जय श्री राम", W / 2, cy);
       ctx.restore();
       
       // 3. Dark Inner Edge (Removes white, adds modern crisp bevel)
-      ctx.strokeStyle = `rgba(30, 15, 0, 0.4)`;
+      ctx.strokeStyle = `rgba(30, 15, 0, 0.6)`;
       ctx.lineWidth = fontSize * 0.006;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 4. Top Glossy Highlight (Swept light effect, very faint pale gold instead of white)
-      ctx.strokeStyle = `rgba(255, 248, 220, ${0.15 * intensity})`;
-      ctx.lineWidth = fontSize * 0.002;
-      ctx.strokeText('जय श्री राम', W / 2, cy);
+      // 4. REMOVED THE WHITE HIGHLIGHT STROKE ENTIRELY 
 
       // 5. Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
@@ -1754,7 +1751,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
         y2 + fontSize2
       );
 
-      goldGrad2.addColorStop(0.00,"#FFF3B0"); // Changed from FFFFFF to soft champagne
+      goldGrad2.addColorStop(0.00,"#FFD700"); // Removed White
       goldGrad2.addColorStop(0.10,"#FFE57F");
       goldGrad2.addColorStop(0.30,"#FFD84A");
       goldGrad2.addColorStop(0.50,"#FFB400");
@@ -1785,7 +1782,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       const bloomAlpha = lerp(0.28, 0.08, textSceneVis);
 
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(4px) brightness(1.05)';
+      // FIXED: Removed brightness(1.05) so the bloom doesn't turn bright gold into pure white
+      bctx.filter = 'blur(4px)';
       bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
       ctx.save();
