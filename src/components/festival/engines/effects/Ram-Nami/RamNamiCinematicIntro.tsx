@@ -143,7 +143,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
 
-    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR (FIXED NO WHITE) ============
+    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR ============
     function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
       const size = 256;
       const pCanvas = document.createElement("canvas");
@@ -151,7 +151,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       pCanvas.height = size;
       const pctx = pCanvas.getContext("2d")!;
 
-      // GOLD BASE
       const grad = pctx.createLinearGradient(0, 0, size, size);
       grad.addColorStop(0.00, "#FFE98A");
       grad.addColorStop(0.08, "#FFD95A");
@@ -165,7 +164,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       pctx.fillStyle = grad;
       pctx.fillRect(0,0,size,size);
 
-      // MICRO GLITTER (Replaced all whites with rich gold)
       for(let i = 0; i < 3200; i++){
           const x = Math.random() * size;
           const y = Math.random() * size;
@@ -174,7 +172,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           const c = Math.random();
 
           if(c < 0.08)
-              pctx.fillStyle = `rgba(255,235,150,${alpha})`; // No white
+              pctx.fillStyle = `rgba(255,235,150,${alpha})`; 
           else if(c < 0.45)
               pctx.fillStyle = `rgba(255,224,105,${alpha})`;
           else if(c < 0.78)
@@ -187,7 +185,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.fill();
       }
 
-      // GOLD FLAKES
       for(let i=0;i<600;i++){
           const x=Math.random()*size;
           const y=Math.random()*size;
@@ -202,7 +199,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.restore();
       }
 
-      // METALLIC STREAKS
       for(let i=0;i<180;i++){
           const x=Math.random()*size;
           const y=Math.random()*size;
@@ -212,7 +208,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           const gy=y+Math.sin(ang)*len;
           const g=pctx.createLinearGradient(x,y,gx,gy);
           g.addColorStop(0,"rgba(255,250,220,0)");
-          g.addColorStop(.5,"rgba(255,215,0,.16)"); // Gold tint
+          g.addColorStop(.5,"rgba(255,215,0,.16)"); 
           g.addColorStop(1,"rgba(255,250,220,0)");
           pctx.strokeStyle=g;
           pctx.lineWidth=.8;
@@ -222,13 +218,12 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.stroke();
       }
 
-      // RANDOM BRIGHT STARS (Replaced white core with gold)
       for(let i=0;i<130;i++){
           const x=Math.random()*size;
           const y=Math.random()*size;
           const r=1+Math.random()*2;
           const g=pctx.createRadialGradient(x,y,0,x,y,r*5);
-          g.addColorStop(0,"rgba(255,224,105,.95)"); // No white
+          g.addColorStop(0,"rgba(255,224,105,.95)"); 
           g.addColorStop(.2,"rgba(255,240,180,.9)");
           g.addColorStop(.5,"rgba(255,210,80,.4)");
           g.addColorStop(1,"rgba(255,180,0,0)");
@@ -238,7 +233,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           pctx.fill();
       }
 
-      // FINE NOISE
       const img=pctx.getImageData(0,0,size,size);
       const d=img.data;
       for(let i=0;i<d.length;i+=4){
@@ -1546,7 +1540,8 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.arc(0, 0, size * 0.45, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#FFF8E0';
+      // FIX: Changed to Pure Gold instead of White
+      ctx.fillStyle = '#FFD700'; 
       for (let i = 0; i < 2; i++) {
         ctx.rotate(Math.PI / 2);
         ctx.beginPath();
@@ -1612,7 +1607,7 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // MODERN 2027 LIQUID 3D GOLD FOIL TITLE (FULLY FIXED NO WHITE)
+    // MODERN 2027 LIQUID 3D GOLD FOIL TITLE
     function drawTitle(t: number) {
       if (t < 13.0) return;
 
@@ -1638,12 +1633,11 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. Deep Drop Shadow (Modern 3D Depth)
+      // 1. Deep Drop Shadow
       ctx.shadowColor = `rgba(0, 0, 0, 0.85)`;
       ctx.shadowBlur = 30 * intensity;
       ctx.shadowOffsetY = fontSize * 0.05;
       
-      // Base Dark Outline for 3D Cutout effect
       ctx.strokeStyle = `rgba(15, 8, 0, 1)`;
       ctx.lineWidth = fontSize * 0.03;
       ctx.strokeText("जय श्री राम", W / 2, cy);
@@ -1654,7 +1648,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       // 2. Sparkling Gold Foil Texture Fill
       const goldPattern = createGoldGlitterPattern();
 
-      // 2027 Modern Liquid Gold Gradient (NO PURE WHITE COLORS)
       const goldGrad = ctx.createLinearGradient(
           0,
           cy - fontSize * 0.7,
@@ -1662,43 +1655,42 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
           cy + fontSize * 0.7
       );
 
-      goldGrad.addColorStop(0.00, "#FFD700"); // Bright Gold
-      goldGrad.addColorStop(0.20, "#FFC107"); // Rich Gold
-      goldGrad.addColorStop(0.45, "#D4AF37"); // Metallic Gold
-      goldGrad.addColorStop(0.60, "#F5C531"); // Reflective Gold
-      goldGrad.addColorStop(0.85, "#A67C00"); // Dark Gold
-      goldGrad.addColorStop(1.00, "#4A3000"); // Deep Bronze Base
+      goldGrad.addColorStop(0.00, "#FFD700"); 
+      goldGrad.addColorStop(0.20, "#FFC107"); 
+      goldGrad.addColorStop(0.45, "#D4AF37"); 
+      goldGrad.addColorStop(0.60, "#F5C531"); 
+      goldGrad.addColorStop(0.85, "#A67C00"); 
+      goldGrad.addColorStop(1.00, "#4A3000"); 
 
       ctx.fillStyle = goldGrad;
       ctx.fillText("जय श्री राम", W / 2, cy);
 
-      // Apply Gold Texture with Overlay for realism
+      // FIX: Apply Gold Texture with Multiply to PREVENT WHITE EDGES
       ctx.save();
-      ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.4 * intensity;
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = 0.6 * intensity;
       ctx.fillStyle = goldPattern;
       ctx.fillText("जय श्री राम", W / 2, cy);
+      ctx.globalCompositeOperation = 'source-over';
       ctx.restore();
       
-      // 3. Dark Inner Edge (Removes white, adds modern crisp bevel)
+      // 3. Dark Inner Edge
       ctx.strokeStyle = `rgba(30, 15, 0, 0.6)`;
       ctx.lineWidth = fontSize * 0.006;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 4. REMOVED THE WHITE HIGHLIGHT STROKE ENTIRELY 
-
-      // 5. Tilak Ornament
+      // 4. Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
       const tilakY = cy - fontSize * 0.52;
       const tilakScale = (fontSize / 130) * 1.1;
       drawTilakOrnament(tilakX, tilakY, tilakScale, intensity);
 
-      // 6. Golden Curve Swash under 'म'
+      // 5. Golden Curve Swash under 'म'
       const swashX = W / 2 + fontSize * 1.15;
       const swashY = cy + fontSize * 0.28;
       drawRamSwash(swashX, swashY, fontSize / 130, intensity);
 
-      // 7. Starburst Lens Flares (Adjusted to match gold theme)
+      // 6. Starburst Lens Flares
       const flareSize = fontSize * 0.28 * pulse;
       const fAngle = t * 1.5;
       drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.7);
@@ -1728,11 +1720,9 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; 
       ctx.textBaseline = 'middle';
 
-      // Divider Line 1
       const divY1 = cy - fontSize1 * 1.25;
       drawOrnamentalDivider(W / 2, divY1, Math.min(W * 0.38, 300), vis);
 
-      // Line 1: "आपको एवं आपके परिवार को"
       ctx.font = `500 ${fontSize1}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = fontSize1 * 0.15;
@@ -1742,16 +1732,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle="#FFF8E0";
       ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
 
-      // Line 2: "राम नवमी की हार्दिक शुभकामनाएँ"
       const y2 = cy + fontSize2 * 1.15;
-      const goldGrad2 = ctx.createLinearGradient(
-        0,
-        y2 - fontSize2,
-        0,
-        y2 + fontSize2
-      );
+      const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2, 0, y2 + fontSize2);
 
-      goldGrad2.addColorStop(0.00,"#FFD700"); // Removed White
+      goldGrad2.addColorStop(0.00,"#FFD700"); 
       goldGrad2.addColorStop(0.10,"#FFE57F");
       goldGrad2.addColorStop(0.30,"#FFD84A");
       goldGrad2.addColorStop(0.50,"#FFB400");
@@ -1768,7 +1752,6 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
 
-      // Divider Line 2
       const divY2 = y2 + fontSize2 * 0.95;
       drawOrnamentalDivider(W / 2, divY2, Math.min(W * 0.48, 380), vis);
 
@@ -1779,10 +1762,10 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
     function applyBloom(t: number) {
       const textSceneVis = smoothstep(11.0, 13.0, t);
-      const bloomAlpha = lerp(0.28, 0.08, textSceneVis);
+      // FIX: Reduced Bloom Alpha significantly so text doesn't glow white
+      const bloomAlpha = lerp(0.15, 0.04, textSceneVis);
 
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      // FIXED: Removed brightness(1.05) so the bloom doesn't turn bright gold into pure white
       bctx.filter = 'blur(4px)';
       bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
