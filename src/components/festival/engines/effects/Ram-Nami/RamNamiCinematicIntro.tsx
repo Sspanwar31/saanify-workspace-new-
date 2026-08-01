@@ -143,195 +143,127 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
 
-    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR ============
-   function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
+    // ============ REAL GOLD FOIL GLITTER PATTERN GENERATOR (UPDATED STEP 3, 4, 5) ============
+    function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
+      const size = 256;
+      const pCanvas = document.createElement("canvas");
+      pCanvas.width = size;
+      pCanvas.height = size;
+      const pctx = pCanvas.getContext("2d")!;
 
-    const size = 256;
+      // ==========================
+      // GOLD BASE (STEP 3)
+      // ==========================
+      const grad = pctx.createLinearGradient(0, 0, size, size);
+      grad.addColorStop(0.00, "#FFE98A");
+      grad.addColorStop(0.08, "#FFD95A");
+      grad.addColorStop(0.18, "#FFC928");
+      grad.addColorStop(0.34, "#F5B515");
+      grad.addColorStop(0.48, "#E5A00A");
+      grad.addColorStop(0.63, "#C98508");
+      grad.addColorStop(0.78, "#9A5E05");
+      grad.addColorStop(1.00, "#603700");
 
-    const pCanvas = document.createElement("canvas");
+      pctx.fillStyle = grad;
+      pctx.fillRect(0,0,size,size);
 
-    pCanvas.width = size;
-    pCanvas.height = size;
+      // ==========================
+      // MICRO GLITTER (STEP 4)
+      // ==========================
+      for(let i = 0; i < 3200; i++){
+          const x = Math.random() * size;
+          const y = Math.random() * size;
+          const r = 0.25 + Math.random() * 0.85;
+          const alpha = 0.12 + Math.random() * 0.48;
+          const c = Math.random();
 
-    const pctx = pCanvas.getContext("2d")!;
+          if(c < 0.08)
+              pctx.fillStyle = `rgba(255,250,220,${alpha})`;
+          else if(c < 0.45)
+              pctx.fillStyle = `rgba(255,224,105,${alpha})`;
+          else if(c < 0.78)
+              pctx.fillStyle = `rgba(255,190,35,${alpha})`;
+          else
+              pctx.fillStyle = `rgba(190,112,5,${alpha})`;
 
-    // ==========================
-    // GOLD BASE
-    // ==========================
+          pctx.beginPath();
+          pctx.arc(x, y, r, 0, Math.PI * 2);
+          pctx.fill();
+      }
 
-    const grad = pctx.createLinearGradient(0, 0, size, size);
+      // ==========================
+      // GOLD FLAKES (STEP 5)
+      // ==========================
+      for(let i=0;i<600;i++){
+          const x=Math.random()*size;
+          const y=Math.random()*size;
+          const w=2+Math.random()*8;
+          const h=0.4+Math.random()*1.2;
+          pctx.save();
+          pctx.translate(x,y);
+          pctx.rotate(Math.random()*Math.PI);
+          pctx.globalAlpha = 0.06 + Math.random() * 0.12;
+          pctx.fillStyle = Math.random() < 0.35 ? "#FFE9A0" : "#F5B51B";
+          pctx.fillRect(-w/2,-h/2,w,h);
+          pctx.restore();
+      }
 
-    grad.addColorStop(0.00, "#FFFDF5");
-    grad.addColorStop(0.08, "#FFF7C8");
-    grad.addColorStop(0.18, "#FFE98A");
-    grad.addColorStop(0.34, "#FFD54A");
-    grad.addColorStop(0.48, "#FFC107");
-    grad.addColorStop(0.63, "#E2A319");
-    grad.addColorStop(0.78, "#B57A0A");
-    grad.addColorStop(1.00, "#6A4200");
+      // ==========================
+      // METALLIC STREAKS
+      // ==========================
+      for(let i=0;i<180;i++){
+          const x=Math.random()*size;
+          const y=Math.random()*size;
+          const len=20+Math.random()*70;
+          const ang=(-25+Math.random()*50)*Math.PI/180;
+          const gx=x+Math.cos(ang)*len;
+          const gy=y+Math.sin(ang)*len;
+          const g=pctx.createLinearGradient(x,y,gx,gy);
+          g.addColorStop(0,"rgba(255,255,255,0)");
+          g.addColorStop(.5,"rgba(255,255,255,.16)");
+          g.addColorStop(1,"rgba(255,255,255,0)");
+          pctx.strokeStyle=g;
+          pctx.lineWidth=.8;
+          pctx.beginPath();
+          pctx.moveTo(x,y);
+          pctx.lineTo(gx,gy);
+          pctx.stroke();
+      }
 
-    pctx.fillStyle = grad;
-    pctx.fillRect(0,0,size,size);
+      // ==========================
+      // RANDOM BRIGHT STARS
+      // ==========================
+      for(let i=0;i<130;i++){
+          const x=Math.random()*size;
+          const y=Math.random()*size;
+          const r=1+Math.random()*2;
+          const g=pctx.createRadialGradient(x,y,0,x,y,r*5);
+          g.addColorStop(0,"rgba(255,255,255,.95)");
+          g.addColorStop(.2,"rgba(255,240,180,.9)");
+          g.addColorStop(.5,"rgba(255,210,80,.4)");
+          g.addColorStop(1,"rgba(255,180,0,0)");
+          pctx.fillStyle=g;
+          pctx.beginPath();
+          pctx.arc(x,y,r*5,0,Math.PI*2);
+          pctx.fill();
+      }
 
-    // ==========================
-    // MICRO GLITTER
-    // ==========================
+      // ==========================
+      // FINE NOISE
+      // ==========================
+      const img=pctx.getImageData(0,0,size,size);
+      const d=img.data;
+      for(let i=0;i<d.length;i+=4){
+          const n=(Math.random()-0.5)*14;
+          d[i]+=n;
+          d[i+1]+=n;
+          d[i+2]+=n;
+      }
+      pctx.putImageData(img,0,0);
 
-    for(let i=0;i<4500;i++){
-
-        const x=Math.random()*size;
-        const y=Math.random()*size;
-
-        const r=Math.random()*1.1;
-
-        const alpha=0.2+Math.random()*0.9;
-
-        const c=Math.random();
-
-        if(c<0.33)
-            pctx.fillStyle=`rgba(255,255,255,${alpha})`;
-
-        else if(c<0.66)
-            pctx.fillStyle=`rgba(255,245,180,${alpha})`;
-
-        else
-            pctx.fillStyle=`rgba(255,210,80,${alpha})`;
-
-        pctx.beginPath();
-
-        pctx.arc(x,y,r,0,Math.PI*2);
-
-        pctx.fill();
-
+      return ctx.createPattern(pCanvas,"repeat")!;
     }
 
-    // ==========================
-    // GOLD FLAKES
-    // ==========================
-
-    for(let i=0;i<600;i++){
-
-        const x=Math.random()*size;
-
-        const y=Math.random()*size;
-
-        const w=2+Math.random()*8;
-
-        const h=0.4+Math.random()*1.2;
-
-        pctx.save();
-
-        pctx.translate(x,y);
-
-        pctx.rotate(Math.random()*Math.PI);
-
-        pctx.globalAlpha=0.12+Math.random()*0.2;
-
-        pctx.fillStyle="#FFFFFF";
-
-        pctx.fillRect(-w/2,-h/2,w,h);
-
-        pctx.restore();
-
-    }
-
-    // ==========================
-    // METALLIC STREAKS
-    // ==========================
-
-    for(let i=0;i<180;i++){
-
-        const x=Math.random()*size;
-
-        const y=Math.random()*size;
-
-        const len=20+Math.random()*70;
-
-        const ang=(-25+Math.random()*50)*Math.PI/180;
-
-        const gx=x+Math.cos(ang)*len;
-
-        const gy=y+Math.sin(ang)*len;
-
-        const g=pctx.createLinearGradient(x,y,gx,gy);
-
-        g.addColorStop(0,"rgba(255,255,255,0)");
-
-        g.addColorStop(.5,"rgba(255,255,255,.16)");
-
-        g.addColorStop(1,"rgba(255,255,255,0)");
-
-        pctx.strokeStyle=g;
-
-        pctx.lineWidth=.8;
-
-        pctx.beginPath();
-
-        pctx.moveTo(x,y);
-
-        pctx.lineTo(gx,gy);
-
-        pctx.stroke();
-
-    }
-
-    // ==========================
-    // RANDOM BRIGHT STARS
-    // ==========================
-
-    for(let i=0;i<130;i++){
-
-        const x=Math.random()*size;
-
-        const y=Math.random()*size;
-
-        const r=1+Math.random()*2;
-
-        const g=pctx.createRadialGradient(x,y,0,x,y,r*5);
-
-        g.addColorStop(0,"rgba(255,255,255,.95)");
-
-        g.addColorStop(.2,"rgba(255,240,180,.9)");
-
-        g.addColorStop(.5,"rgba(255,210,80,.4)");
-
-        g.addColorStop(1,"rgba(255,180,0,0)");
-
-        pctx.fillStyle=g;
-
-        pctx.beginPath();
-
-        pctx.arc(x,y,r*5,0,Math.PI*2);
-
-        pctx.fill();
-
-    }
-
-    // ==========================
-    // FINE NOISE
-    // ==========================
-
-    const img=pctx.getImageData(0,0,size,size);
-
-    const d=img.data;
-
-    for(let i=0;i<d.length;i+=4){
-
-        const n=(Math.random()-0.5)*14;
-
-        d[i]+=n;
-
-        d[i+1]+=n;
-
-        d[i+2]+=n;
-
-    }
-
-    pctx.putImageData(img,0,0);
-
-    return ctx.createPattern(pCanvas,"repeat")!;
-
-}
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 3);
       const rect = canvas.getBoundingClientRect();
@@ -379,62 +311,35 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
     }
 
     function sampleText() {
-
-    const tc = document.createElement("canvas");
-
-    const tctx = tc.getContext("2d")!;
-
-    const fontSize = Math.min(W * 0.125, 135);
-
-    tc.width = Math.floor(W);
-
-    tc.height = Math.floor(fontSize * 2.4);
-
-    tctx.clearRect(0,0,tc.width,tc.height);
-
-    tctx.fillStyle="#fff";
-
-    tctx.textAlign="center";
-
-    tctx.textBaseline="middle";
-
-    tctx.font=`900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
-
-    tctx.lineJoin="round";
-
-    tctx.lineCap="round";
-
-    tctx.fillText("जय श्री राम",tc.width/2,tc.height/2);
-
-    const img=tctx.getImageData(0,0,tc.width,tc.height);
-
-    ramPoints=[];
-
-    const step=2;
-
-    for(let y=0;y<tc.height;y+=step){
-
-        for(let x=0;x<tc.width;x+=step){
-
-            const i=(y*tc.width+x)*4;
-
-            if(img.data[i+3]>20){
-
-                ramPoints.push({
-
-                    x:x-tc.width/2,
-
-                    y:y-tc.height/2
-
-                });
-
-            }
-
-        }
-
+      const tc = document.createElement("canvas");
+      const tctx = tc.getContext("2d")!;
+      const fontSize = Math.min(W * 0.125, 135);
+      tc.width = Math.floor(W);
+      tc.height = Math.floor(fontSize * 2.4);
+      tctx.clearRect(0,0,tc.width,tc.height);
+      tctx.fillStyle="#fff";
+      tctx.textAlign="center";
+      tctx.textBaseline="middle";
+      tctx.font=`900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      tctx.lineJoin="round";
+      tctx.lineCap="round";
+      tctx.fillText("जय श्री राम",tc.width/2,tc.height/2);
+      const img=tctx.getImageData(0,0,tc.width,tc.height);
+      ramPoints=[];
+      const step=2;
+      for(let y=0;y<tc.height;y+=step){
+          for(let x=0;x<tc.width;x+=step){
+              const i=(y*tc.width+x)*4;
+              if(img.data[i+3]>20){
+                  ramPoints.push({
+                      x:x-tc.width/2,
+                      y:y-tc.height/2
+                  });
+              }
+          }
+      }
     }
-
-}
+    
     // ============ DRAW FUNCTIONS ============
 
     function drawBackground(t: number) {
@@ -1747,52 +1652,49 @@ export default function RamNamiCinematicIntro({ onComplete }: Props) {
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. Black Outline Stroke
-      ctx.strokeStyle = "rgba(45,18,0,0.55)";
-      ctx.lineWidth = fontSize * 0.022;
+      // STEP 6 - 1. Black Outline Stroke
+      ctx.strokeStyle = `rgba(72,38,5,${0.72 * intensity})`;
+      ctx.lineWidth = fontSize * 0.028;
 
-      ctx.shadowBlur = 18;
-      ctx.shadowColor = "rgba(255,180,50,.45)";
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = `rgba(255,170,35,${0.28 * intensity})`;
 
-     ctx.strokeText("जय श्री राम",W/2,cy);
+      ctx.strokeText("जय श्री राम", W / 2, cy);
 
-     ctx.shadowBlur = 0;
+      ctx.shadowBlur = 0;
       
       // 2. Sparkling Gold Foil Texture Fill
       const goldPattern = createGoldGlitterPattern();
 
-const goldGrad = ctx.createLinearGradient(
-    0,
-    cy-fontSize,
-    0,
-    cy+fontSize
-);
+      // STEP 1 - GOLD GRADIENT
+      const goldGrad = ctx.createLinearGradient(
+          0,
+          cy - fontSize * 0.65,
+          0,
+          cy + fontSize * 0.65
+      );
 
-goldGrad.addColorStop(0.00,"#FFFFFF");
-goldGrad.addColorStop(0.08,"#FFF8D8");
-goldGrad.addColorStop(0.20,"#FFE88A");
-goldGrad.addColorStop(0.42,"#FFD54A");
-goldGrad.addColorStop(0.62,"#FFBD12");
-goldGrad.addColorStop(0.82,"#B97B08");
-goldGrad.addColorStop(1.00,"#5A3300");
+      goldGrad.addColorStop(0.00, "#FFF1A3");
+      goldGrad.addColorStop(0.12, "#FFD966");
+      goldGrad.addColorStop(0.28, "#FFC928");
+      goldGrad.addColorStop(0.48, "#F5A900");
+      goldGrad.addColorStop(0.68, "#D98A08");
+      goldGrad.addColorStop(0.84, "#A86505");
+      goldGrad.addColorStop(1.00, "#6B3D00");
 
-ctx.fillStyle = goldGrad;
+      ctx.fillStyle = goldGrad;
+      ctx.fillText("जय श्री राम", W / 2, cy);
 
-ctx.fillText("जय श्री राम",W/2,cy);
-
-ctx.globalAlpha=.45;
-
-ctx.fillStyle=goldPattern;
-
-ctx.fillText("जय श्री राम",W/2,cy);
-
-ctx.globalAlpha=1;
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = goldPattern;
+      ctx.fillText("जय श्री राम", W / 2, cy);
+      ctx.globalAlpha = 1;
       
-// 3. Inner Metallic Highlight Stroke
-   ctx.shadowBlur = 0;
-   ctx.strokeStyle = `rgba(255, 255, 230, ${0.85 * intensity})`;
-   ctx.lineWidth = fontSize * 0.012;
-   ctx.strokeText('जय श्री राम', W / 2, cy);
+      // STEP 2 - 3. Inner Metallic Highlight Stroke
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = `rgba(255, 218, 105, ${0.48 * intensity})`;
+      ctx.lineWidth = fontSize * 0.009;
+      ctx.strokeText('जय श्री राम', W / 2, cy);
 
       // 4. Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
@@ -1852,17 +1754,17 @@ ctx.globalAlpha=1;
       // Line 2: "राम नवमी की हार्दिक शुभकामनाएँ"
       const y2 = cy + fontSize2 * 1.15;
       const goldGrad2 = ctx.createLinearGradient(
-    0,
-    y2 - fontSize2,
-    0,
-    y2 + fontSize2
-);
+        0,
+        y2 - fontSize2,
+        0,
+        y2 + fontSize2
+      );
 
-     goldGrad2.addColorStop(0.00,"#FFFFFF");
-     goldGrad2.addColorStop(0.08,"#FFFCE6");
-     goldGrad2.addColorStop(0.20,"#FFF1A8");
-     goldGrad2.addColorStop(0.40,"#FFD84A");
-     goldGrad2.addColorStop(0.60,"#FFB400");
+      goldGrad2.addColorStop(0.00,"#FFFFFF");
+      goldGrad2.addColorStop(0.08,"#FFFCE6");
+      goldGrad2.addColorStop(0.20,"#FFF1A8");
+      goldGrad2.addColorStop(0.40,"#FFD84A");
+      goldGrad2.addColorStop(0.60,"#FFB400");
       goldGrad2.addColorStop(0.82,"#C88200");
       goldGrad2.addColorStop(1.00,"#5A3400");
       ctx.font = `700 ${fontSize2}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
@@ -1871,9 +1773,9 @@ ctx.globalAlpha=1;
       ctx.lineJoin = 'round';
       ctx.strokeText(line2, W / 2, y2);
 
-      ctx.shadowBlur = 35;
-      ctx.shadowColor = "#FFD54A";
-      ctx.shadowColor = `rgba(255, 160, 0, ${vis * 0.5})`;
+      // STEP 8 - Fixed Overwritten Shadow
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = `rgba(255, 160, 0, ${vis * 0.42})`;
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
 
@@ -1888,14 +1790,17 @@ ctx.globalAlpha=1;
 
     function applyBloom(t: number) {
       const textSceneVis = smoothstep(11.0, 13.0, t);
-      const bloomAlpha = lerp(0.55, 0.2, textSceneVis);
+      // STEP 7 - Lower Bloom Alpha
+      const bloomAlpha = lerp(0.28, 0.08, textSceneVis);
 
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(5px) brightness(1.2)';
+      // STEP 7 - Reduced Brightness & Blur
+      bctx.filter = 'blur(4px) brightness(1.05)';
       bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
+      // STEP 7 - Switched from 'lighter' to 'screen'
+      ctx.globalCompositeOperation = 'screen';
       ctx.globalAlpha = bloomAlpha;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(bloom, 0, 0, W, H);
