@@ -1286,483 +1286,461 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    function drawParticles() {
+        function drawParticles() {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (const p of pool.particles) {
         if (!p.active || p.alpha <= 0.01) continue;
+
         if (p.type === 'dust') {
           ctx.globalAlpha = p.alpha;
-          const sz = p.size * 5.2;
-          ctx.drawImage(dustSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
+          ctx.drawImage(dustSprite, p.x - p.size * 4, p.y - p.size * 4, p.size * 8, p.size * 8);
         } else if (p.type === 'sparkle') {
+          const dist = Math.sqrt((p.tx - p.x) ** 2 + (p.ty - p.y) ** 2);
+          const nearTarget = dist < 5;
+          ctx.globalAlpha = p.alpha * (nearTarget ? 0.9 : 0.7);
+          const sz = nearTarget ? p.size * 0.9 : p.size;
+          ctx.drawImage(sparkSprite, p.x - sz * 3, p.y - sz * 3, sz * 6, sz * 6);
           ctx.globalAlpha = p.alpha;
-          const sz = p.size * 4.4;
-          ctx.drawImage(sparkSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
-        }
-      }
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
-      for (const p of pool.particles) {
-        if (!p.active || p.alpha <= 0.01) continue;
-        if (p.type === 'petal') {
-          ctx.save();
-          ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-          ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; 
+          ctx.fillStyle = nearTarget ? '#FFD700' : '#FFB300';
           ctx.beginPath();
-          ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, sz * 0.6, 0, Math.PI * 2);
           ctx.fill();
-          ctx.restore();
+          if (nearTarget && Math.random() < 0.03) {
+            ctx.globalAlpha = p.alpha * 0.5;
+            ctx.fillStyle = '#FFF8E0';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, sz * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
         } else if (p.type === 'smoke') {
-          ctx.save();
-          const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-          rad.addColorStop(0, `rgba(255, 230, 200, ${p.alpha})`);
-          rad.addColorStop(0.3, `rgba(220, 160, 100, ${p.alpha * 0.5})`);
-          rad.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = rad;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = p.alpha;
+          const sg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+          sg.addColorStop(0, 'rgba(160,130,100,0.3)');
+          sg.addColorStop(0.5, 'rgba(120,95,70,0.15)');
+          sg.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = sg;
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
           ctx.fill();
-          ctx.restore();
-        } else if (p.type === 'bird') {
+          ctx.globalCompositeOperation = 'lighter';
+        } else if (p.type === 'petal') {
+          ctx.globalCompositeOperation = 'source-over';
           ctx.save();
+          ctx.globalAlpha = p.alpha;
           ctx.translate(p.x, p.y);
-          ctx.fillStyle = `rgba(10, 5, 2, ${p.alpha})`;
-          const flap = Math.sin(p.flap) * 0.7;
-          const sz = p.size;
+          ctx.rotate(p.rot);
+          ctx.fillStyle = '#ff8844';
           ctx.beginPath();
-          ctx.moveTo(-sz, 0);
-          ctx.quadraticCurveTo(-sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), 0, 0);
-          ctx.quadraticCurveTo(sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), sz, 0);
-          ctx.quadraticCurveTo(sz * 0.4, sz * 0.15, 0, sz * 0.1);
-          ctx.quadraticCurveTo(-sz * 0.4, sz * 0.15, -sz, 0);
-          ctx.closePath();
+          ctx.ellipse(0, 0, p.size, p.size * 0.45, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffaa66';
+          ctx.beginPath();
+          ctx.ellipse(p.size * 0.15, 0, p.size * 0.5, p.size * 0.25, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
+          ctx.globalCompositeOperation = 'lighter';
+        } else if (p.type === 'bird') {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = p.alpha;
+          ctx.strokeStyle = '#0d0603';
+          ctx.lineWidth = 1.5;
+          ctx.lineCap = 'round';
+          const wing = Math.sin(p.flap) * p.size * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(p.x - p.size, p.y + wing);
+          ctx.quadraticCurveTo(p.x - p.size * 0.2, p.y - p.size * 0.2, p.x, p.y);
+          ctx.quadraticCurveTo(p.x + p.size * 0.2, p.y - p.size * 0.2, p.x + p.size, p.y + wing);
+          ctx.stroke();
+          ctx.globalCompositeOperation = 'lighter';
         }
       }
       ctx.restore();
     }
-    
-    // ============ ORNAMENTAL GRAPHICS HELPERS ============
 
-    function drawTilakOrnament(x: number, y: number, scale: number, alpha: number) {
+    // ============ FIXED: 24K GOLD TITLE — NO WHITE BORDER ============
+
+    function drawGoldTitle(t: number) {
+      const reveal = smoothstep(10.5, 12.0, t);
+      const fadeOut = smoothstep(17.0, 17.5, t);
+      const vis = reveal * (1 - fadeOut);
+      if (vis <= 0.01) return;
+
+      const fontSize = Math.min(W * 0.125, 130);
+      const cx = W / 2;
+      const cy = H * 0.38;
+      const text = "जय श्री राम";
+
       ctx.save();
-      ctx.translate(x, y);
-      ctx.scale(scale, scale);
-      ctx.globalAlpha = alpha;
-      
-      const grad = ctx.createLinearGradient(0, -22, 0, 5);
-      grad.addColorStop(0, '#FFEC8B');
-      grad.addColorStop(0.3, '#FFE57F');
-      grad.addColorStop(0.7, '#FFC107');
-      grad.addColorStop(1, '#FF8F00');
-      
-      ctx.fillStyle = grad;
-      ctx.strokeStyle = '#FFD700';
-      ctx.lineWidth = 1.2;
+      ctx.globalAlpha = vis;
 
-      ctx.beginPath();
-      ctx.moveTo(0, -24);
-      ctx.quadraticCurveTo(-9, -12, 0, 2);
-      ctx.quadraticCurveTo(9, -12, 0, -24);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(0, -31, 3.2, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFF8E0';
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(-2, -6);
-      ctx.quadraticCurveTo(-18, -14, -24, -2);
-      ctx.quadraticCurveTo(-14, 4, 0, 0);
-      ctx.moveTo(2, -6);
-      ctx.quadraticCurveTo(18, -14, 24, -2);
-      ctx.quadraticCurveTo(14, 4, 0, 0);
-      ctx.fillStyle = grad;
-      ctx.fill();
-
-      ctx.restore();
-    }
-
-    function drawRamSwash(x: number, y: number, scale: number, alpha: number) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.scale(scale, scale);
-      ctx.globalAlpha = alpha;
-
-      const swashGrad = ctx.createLinearGradient(-30, 0, 110, 40);
-      swashGrad.addColorStop(0, '#FFEC8B');
-      swashGrad.addColorStop(0.2, '#FFE57F');
-      swashGrad.addColorStop(0.5, '#FFD700');
-      swashGrad.addColorStop(0.8, '#C59B27');
-      swashGrad.addColorStop(1, 'rgba(197, 155, 39, 0)');
-
-      ctx.strokeStyle = swashGrad;
-      ctx.lineWidth = 3.5;
+      // ── STEP 1: DARK CHOCOLATE OUTLINE (NEVER WHITE) ──
+      ctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-15, 0);
-      ctx.bezierCurveTo(20, 35, 75, 45, 110, 15);
-      ctx.stroke();
 
-      ctx.restore();
-    }
+      // Deepest shadow
+      ctx.strokeStyle = '#0a0401';
+      ctx.lineWidth = fontSize * 0.08;
+      ctx.strokeText(text, cx, cy + 2);
 
-    function drawStarFlare(x: number, y: number, size: number, angle: number, alpha: number) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.globalAlpha = alpha;
-      ctx.globalCompositeOperation = 'lighter';
+      // Main dark chocolate outline
+      ctx.strokeStyle = '#261102';
+      ctx.lineWidth = fontSize * 0.055;
+      ctx.strokeText(text, cx, cy);
 
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
-      grad.addColorStop(0, '#FFE066');
-      grad.addColorStop(0.3, '#FFD700');
-      grad.addColorStop(0.7, '#FF9800');
-      grad.addColorStop(1, 'rgba(255, 143, 0, 0)');
+      // ── STEP 2: METALLIC GOLD FILL ──
+      const topY = cy - fontSize * 0.45;
+      const botY = cy + fontSize * 0.45;
+      const goldGrad = ctx.createLinearGradient(cx, topY, cx, botY);
+      goldGrad.addColorStop(0.00, '#FFF1A8');
+      goldGrad.addColorStop(0.10, '#FFE066');
+      goldGrad.addColorStop(0.22, '#FFD700');
+      goldGrad.addColorStop(0.40, '#FFB300');
+      goldGrad.addColorStop(0.58, '#C59B27');
+      goldGrad.addColorStop(0.75, '#8A5A0A');
+      goldGrad.addColorStop(0.90, '#5A3A08');
+      goldGrad.addColorStop(1.00, '#4A2800');
+      ctx.fillStyle = goldGrad;
+      ctx.fillText(text, cx, cy);
 
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 0.45, 0, Math.PI * 2);
-      ctx.fill();
+      // ── STEP 3: MOVING REFLECTION SWEEP (source-atop trick) ──
+      const textBounds = ctx.measureText(text);
+      const tw = textBounds.width;
+      const th = fontSize * 1.2;
+      const tempCvs = document.createElement('canvas');
+      tempCvs.width = Math.ceil((tw + 40) * DPR);
+      tempCvs.height = Math.ceil(th * DPR);
+      const tctx = tempCvs.getContext('2d')!;
+      tctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-      ctx.fillStyle = '#FFE066';
-      for (let i = 0; i < 2; i++) {
-        ctx.rotate(Math.PI / 2);
-        ctx.beginPath();
-        ctx.moveTo(-size, 0);
-        ctx.quadraticCurveTo(0, -size * 0.08, size, 0);
-        ctx.quadraticCurveTo(0, size * 0.08, -size, 0);
-        ctx.fill();
+      // Draw same gold text on temp
+      tctx.font = ctx.font;
+      tctx.textAlign = 'center';
+      tctx.textBaseline = 'middle';
+      tctx.lineJoin = 'round';
+      tctx.lineCap = 'round';
+
+      // Outline on temp too
+      tctx.strokeStyle = '#261102';
+      tctx.lineWidth = fontSize * 0.055;
+      tctx.strokeText(text, (tw + 40) / 2, th / 2);
+
+      const tGrad = tctx.createLinearGradient((tw + 40) / 2, th * 0.1, (tw + 40) / 2, th * 0.9);
+      tGrad.addColorStop(0.00, '#FFF1A8');
+      tGrad.addColorStop(0.10, '#FFE066');
+      tGrad.addColorStop(0.22, '#FFD700');
+      tGrad.addColorStop(0.40, '#FFB300');
+      tGrad.addColorStop(0.58, '#C59B27');
+      tGrad.addColorStop(0.75, '#8A5A0A');
+      tGrad.addColorStop(0.90, '#5A3A08');
+      tGrad.addColorStop(1.00, '#4A2800');
+      tctx.fillStyle = tGrad;
+      tctx.fillText(text, (tw + 40) / 2, th / 2);
+
+      // source-atop: reflection sweep only on text pixels
+      tctx.globalCompositeOperation = 'source-atop';
+      const sweepX = (tw + 40) / 2 + Math.sin(t * 0.35) * tw * 0.6;
+      const sweepW = 80 + fontSize * 0.3;
+      const sweepGrad = tctx.createLinearGradient(sweepX - sweepW, 0, sweepX + sweepW, 0);
+      sweepGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      sweepGrad.addColorStop(0.3, 'rgba(255,255,220,0.06)');
+      sweepGrad.addColorStop(0.5, 'rgba(255,255,240,0.12)');
+      sweepGrad.addColorStop(0.7, 'rgba(255,255,220,0.06)');
+      sweepGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      tctx.fillStyle = sweepGrad;
+      tctx.fillRect(0, 0, tw + 40, th);
+
+      // Micro glitter flakes
+      for (let i = 0; i < 15; i++) {
+        const gx = (tw + 40) / 2 - tw / 2 + Math.random() * tw;
+        const gy = th * 0.15 + Math.random() * th * 0.7;
+        tctx.beginPath();
+        tctx.arc(gx, gy, 0.4 + Math.random() * 0.6, 0, Math.PI * 2);
+        tctx.fillStyle = `rgba(255,255,230,${0.15 + Math.random() * 0.3})`;
+        tctx.fill();
       }
 
-      ctx.restore();
-    }
+      // Tiny specular highlights (only on upper curves, not outline)
+      const specPoints = [
+        { rx: -0.3, ry: -0.28 }, { rx: 0.08, ry: -0.32 }, { rx: 0.35, ry: -0.22 }
+      ];
+      for (const sp of specPoints) {
+        const sx = (tw + 40) / 2 + sp.rx * tw;
+        const sy = th / 2 + sp.ry * fontSize;
+        const sg = tctx.createRadialGradient(sx, sy, 0, sx, sy, 2.5);
+        sg.addColorStop(0, 'rgba(255,255,240,0.45)');
+        sg.addColorStop(1, 'rgba(255,255,240,0)');
+        tctx.fillStyle = sg;
+        tctx.fillRect(sx - 3, sy - 3, 6, 6);
+      }
 
-    function drawOrnamentalDivider(x: number, y: number, width: number, alpha: number) {
+      tctx.globalCompositeOperation = 'source-over';
+
+      // Draw temp canvas onto main canvas
       ctx.save();
-      ctx.translate(x, y);
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = vis;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(tempCvs, cx - (tw + 40) / 2, cy - th / 2, tw + 40, th);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.restore();
 
-      const halfW = width / 2;
-
-      const gradL = ctx.createLinearGradient(-halfW, 0, -18, 0);
-      gradL.addColorStop(0, 'rgba(255, 215, 0, 0)');
-      gradL.addColorStop(0.7, 'rgba(255, 215, 0, 0.8)');
-      gradL.addColorStop(1, '#FFF8E0');
-
-      ctx.strokeStyle = gradL;
-      ctx.lineWidth = 1.4;
+      // ── STEP 4: VERY SUBTLE WARM GLOW BEHIND TEXT ──
+      ctx.save();
+      ctx.globalAlpha = vis * 0.04;
+      ctx.globalCompositeOperation = 'lighter';
+      const glowR = Math.max(tw, fontSize) * 0.6;
+      const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+      glowGrad.addColorStop(0, '#FFB300');
+      glowGrad.addColorStop(0.5, 'rgba(255,179,0,0.15)');
+      glowGrad.addColorStop(1, 'rgba(255,179,0,0)');
+      ctx.fillStyle = glowGrad;
       ctx.beginPath();
-      ctx.moveTo(-halfW, 0);
-      ctx.lineTo(-18, 0);
-      ctx.stroke();
-
-      const gradR = ctx.createLinearGradient(18, 0, halfW, 0);
-      gradR.addColorStop(0, '#FFF8E0');
-      gradR.addColorStop(0.3, 'rgba(255, 215, 0, 0.8)');
-      gradR.addColorStop(1, 'rgba(255, 215, 0, 0)');
-
-      ctx.strokeStyle = gradR;
-      ctx.beginPath();
-      ctx.moveTo(18, 0);
-      ctx.lineTo(halfW, 0);
-      ctx.stroke();
-
-      ctx.fillStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.arc(0, 0, 4, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, glowR, glowR * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(0, -8);
-      ctx.lineTo(5, 0);
-      ctx.lineTo(0, 8);
-      ctx.lineTo(-5, 0);
-      ctx.closePath();
-      ctx.fillStyle = '#FFF8E0';
-      ctx.fill();
-
-      ctx.fillStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.arc(-halfW + 4, 0, 2, 0, Math.PI * 2);
-      ctx.arc(halfW - 4, 0, 2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.restore();
 
       ctx.restore();
     }
 
-    // SCENE 6: SOLID GOLD TITLE REVEALS (10.0s - 17.5s)
-    function drawTitle(t: number) {
-      if (t < 10.0) return;
+    // ============ SUBTITLE TEXT ============
 
-      const fadeIn = smoothstep(10.0, 11.5, t);
+    function drawSubtitle(t: number) {
+      const reveal = smoothstep(12.0, 13.5, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
-      const intensity = fadeIn * (1 - fadeOut);
-      if (intensity <= 0.001) return;
-      
-      const fontSize = Math.min(W * 0.13, 140);
-      const cy = H * 0.38;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5);
-      
+      const vis = reveal * (1 - fadeOut);
+      if (vis <= 0.01) return;
+
+      const fontSize = Math.min(W * 0.035, 28);
+      const cx = W / 2;
+      const titleY = H * 0.38;
+      const sub1Y = titleY + Math.min(W * 0.125, 130) * 0.55;
+      const sub2Y = sub1Y + fontSize * 1.6;
+
       ctx.save();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      
-      ctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal","Kokila",serif`;
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-
-      drawTopGodRays(t, intensity);
-
-      ctx.globalCompositeOperation = 'source-over';
-
-      // 1. Dark Chocolate Stroke Background (No White Border)
-      ctx.strokeStyle = '#261102';
-      ctx.lineWidth = fontSize * 0.04;
-      ctx.strokeText('जय श्री राम', W / 2, cy);
-
-      // 2. 24K Pure Gold Gradient Fill
-      const richGoldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.5, 0, cy + fontSize * 0.5);
-      richGoldGrad.addColorStop(0.00, '#FFE066'); 
-      richGoldGrad.addColorStop(0.25, '#FFD700'); 
-      richGoldGrad.addColorStop(0.50, '#FFB300'); 
-      richGoldGrad.addColorStop(0.75, '#C59B27'); 
-      richGoldGrad.addColorStop(1.00, '#4A2800'); 
-
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = `rgba(255, 160, 0, ${0.6 * intensity})`;
-      ctx.fillStyle = richGoldGrad;
-      ctx.fillText('जय श्री राम', W / 2, cy);
-
-      // 3. Tilak Ornament
-      const tilakX = W / 2 + fontSize * 0.02;
-      const tilakY = cy - fontSize * 0.52;
-      const tilakScale = (fontSize / 130) * 1.1;
-      drawTilakOrnament(tilakX, tilakY, tilakScale, intensity);
-
-      // 4. Golden Swash Curve under 'म'
-      const swashX = W / 2 + fontSize * 1.15;
-      const swashY = cy + fontSize * 0.28;
-      drawRamSwash(swashX, swashY, fontSize / 130, intensity);
-
-      // 5. Golden Star Flares
-      const flareSize = fontSize * 0.25 * pulse;
-      const fAngle = t * 1.5;
-      drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.7);
-      drawStarFlare(tilakX, tilakY - 18 * tilakScale, flareSize * 1.1, -fAngle, intensity * 0.8);
-      drawStarFlare(W / 2 + fontSize * 1.1, cy - fontSize * 0.2, flareSize, fAngle * 0.8, intensity * 0.7);
-
-      ctx.restore();
-    }
-
-    // SCENE 7: ROYAL GREETING WITH DIVIDERS (11.5s - 17.5s)
-    function drawGreeting(t: number) {
-      if (t < 11.5) return;
-      const reveal = smoothstep(11.5, 12.8, t);
-      const fade = smoothstep(17.0, 17.5, t);
-      const vis = reveal * (1 - fade);
-      if (vis <= 0.001) return;
-      
-      const fontSize1 = Math.min(W * 0.038, 30);
-      const fontSize2 = Math.min(W * 0.048, 38);
-      const slideY = 20 * (1 - reveal);
-      const cy = H * 0.65 + slideY;
-      
-      const line1 = 'आपको एवं आपके परिवार को';
-      const line2 = 'राम नवमी की हार्दिक शुभकामनाएँ';
-      
-      ctx.save();
-      ctx.textAlign = 'center'; 
+      ctx.font = `${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Divider Line 1
-      const divY1 = cy - fontSize1 * 1.25;
-      drawOrnamentalDivider(W / 2, divY1, Math.min(W * 0.38, 300), vis);
+      // Divider line above sub1
+      const divY = sub1Y - fontSize * 0.7;
+      const divW = Math.min(W * 0.3, 200);
+      ctx.globalAlpha = vis * 0.6;
+      const divGrad = ctx.createLinearGradient(cx - divW, 0, cx + divW, 0);
+      divGrad.addColorStop(0, 'rgba(197,155,39,0)');
+      divGrad.addColorStop(0.3, 'rgba(197,155,39,0.5)');
+      divGrad.addColorStop(0.5, 'rgba(255,215,0,0.7)');
+      divGrad.addColorStop(0.7, 'rgba(197,155,39,0.5)');
+      divGrad.addColorStop(1, 'rgba(197,155,39,0)');
+      ctx.strokeStyle = divGrad;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx - divW, divY);
+      ctx.lineTo(cx + divW, divY);
+      ctx.stroke();
 
-      // Line 1: Dark Chocolate Stroke + Cream Gold Fill
-      ctx.font = `500 ${fontSize1}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
-      ctx.strokeStyle = '#261102';
-      ctx.lineWidth = fontSize1 * 0.12;
-      ctx.lineJoin = 'round';
-      ctx.strokeText(line1, W / 2, cy - fontSize1 * 0.2);
-
-      ctx.fillStyle = '#FFE082';
-      ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
-
-      // Line 2: Dark Chocolate Stroke + Metallic Gold Fill
-      const y2 = cy + fontSize2 * 1.15;
-      const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2 * 0.5, 0, y2 + fontSize2 * 0.5);
-      goldGrad2.addColorStop(0.00, '#FFE066');
-      goldGrad2.addColorStop(0.35, '#FFD700');
-      goldGrad2.addColorStop(0.70, '#FF9800');
-      goldGrad2.addColorStop(1.00, '#5A3400');
-
-      ctx.font = `700 ${fontSize2}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
-      ctx.strokeStyle = '#261102';
-      ctx.lineWidth = fontSize2 * 0.12;
-      ctx.lineJoin = 'round';
-      ctx.strokeText(line2, W / 2, y2);
-
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = `rgba(255, 160, 0, ${vis * 0.5})`;
-      ctx.fillStyle = goldGrad2;
-      ctx.fillText(line2, W / 2, y2);
-
-      // Divider Line 2
-      const divY2 = y2 + fontSize2 * 0.95;
-      drawOrnamentalDivider(W / 2, divY2, Math.min(W * 0.48, 380), vis);
-
-      ctx.restore();
-    }
-
-    // ============ POST-PROCESSING ============
-
-    function applyBloom(t: number) {
-      const textSceneVis = smoothstep(8.5, 10.5, t);
-      const bloomAlpha = lerp(0.55, 0.15, textSceneVis);
-
-      bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(5px) brightness(1.2)';
-      bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
-      bctx.filter = 'none';
+      // Center diamond
+      ctx.fillStyle = '#FFD700';
       ctx.save();
+      ctx.translate(cx, divY);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-2.5, -2.5, 5, 5);
+      ctx.restore();
+
+      // Sub text 1
+      ctx.globalAlpha = vis * 0.85;
+      ctx.fillStyle = '#dcc890';
+      ctx.fillText("आपको एवं आपके परिवार को", cx, sub1Y);
+
+      // Sub text 2 - metallic gold
+      const sub2Size = Math.min(W * 0.04, 32);
+      ctx.font = `${sub2Size}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+
+      // Very subtle glow (NOT white)
+      ctx.globalAlpha = vis * 0.05;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = bloomAlpha;
-      ctx.imageSmoothingEnabled = true;
+      ctx.fillStyle = '#FFB300';
+      ctx.fillText("राम नवमी की हार्दिक शुभकामनाएँ", cx, sub2Y);
+      ctx.globalCompositeOperation = 'source-over';
+
+      // Main text
+      ctx.globalAlpha = vis;
+      const s2g = ctx.createLinearGradient(cx - divW, sub2Y, cx + divW, sub2Y);
+      s2g.addColorStop(0, '#C59B27');
+      s2g.addColorStop(0.25, '#FFD700');
+      s2g.addColorStop(0.5, '#FFE066');
+      s2g.addColorStop(0.75, '#FFD700');
+      s2g.addColorStop(1, '#C59B27');
+      ctx.fillStyle = s2g;
+      ctx.fillText("राम नवमी की हार्दिक शुभकामनाएँ", cx, sub2Y);
+
+      // Divider below sub2
+      const div2Y = sub2Y + sub2Size * 0.7;
+      ctx.globalAlpha = vis * 0.5;
+      ctx.strokeStyle = divGrad;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx - divW, div2Y);
+      ctx.lineTo(cx + divW, div2Y);
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFD700';
+      ctx.save();
+      ctx.translate(cx, div2Y);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-2.5, -2.5, 5, 5);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    // ============ POST-PROCESSING — CONTROLLED BLOOM ============
+
+    function applyPostProcessing(t: number) {
+      // Vignette
+      const vg = ctx.createRadialGradient(W / 2, H / 2, W * 0.2, W / 2, H / 2, W * 0.8);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(0.5, 'rgba(0,0,0,0.15)');
+      vg.addColorStop(0.8, 'rgba(0,0,0,0.4)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.65)');
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Bloom — VERY REDUCED to prevent white border
+      const bloomIntensity = 0.12;
+      bctx.setTransform(1, 0, 0, 1, 0, 0);
+      bctx.clearRect(0, 0, bloom.width, bloom.height);
+      bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
+      bctx.filter = `blur(${8}px)`;
+      bctx.drawImage(bloom, 0, 0);
+      bctx.filter = 'none';
+
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = bloomIntensity;
       ctx.drawImage(bloom, 0, 0, W, H);
-      ctx.restore();
-    }
-
-    function applyColorGrade(t: number) {
-      const textSceneDarkness = smoothstep(6.5, 8.0, t);
-      const gradeAlpha = 0.18 * (1 - textSceneDarkness);
-      if (gradeAlpha <= 0.001) return;
-
-      ctx.save();
-      ctx.globalCompositeOperation = 'overlay';
-      const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, `rgba(80, 32, 4, ${gradeAlpha})`);
-      grad.addColorStop(0.5, `rgba(40, 12, 3, ${gradeAlpha * 0.5})`);
-      grad.addColorStop(1, `rgba(20, 4, 0, ${gradeAlpha * 0.8})`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
-      ctx.restore();
-    }
-
-    function applyVignette(t: number) {
-      const fade = smoothstep(17.0, 17.5, t);
-      const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.22, W / 2, H / 2, W * 0.85);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, `rgba(0,0,0,${0.55 + fade * 0.4})`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    function applyGrain() {
-      ctx.save();
-      ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.4;
-      const ox = Math.floor(Math.random() * 64), oy = Math.floor(Math.random() * 64);
-      for (let x = -ox; x < W; x += grain.width) {
-        for (let y = -oy; y < H; y += grain.height) ctx.drawImage(grain, x, y);
-      }
-      ctx.restore();
-    }
-
-    // ============ CAMERA ============
-    function updateCamera(t: number) {
-      const camActive = 1 - smoothstep(6.5, 8.0, t);
-      cam.zoom = 1 + smoothstep(1.8, 4.0, t) * 0.045 * camActive + cameraShake * 0.005;
-      cam.rot = Math.sin(t * 0.11) * 0.004 * camActive + cameraShake * 0.002 * Math.sin(t * 50);
-      cam.x = Math.sin(t * 0.25) * 4 * camActive + (Math.random() - 0.5) * cameraShake;
-      cam.y = Math.cos(t * 0.2) * 3 * camActive + (Math.random() - 0.5) * cameraShake;
-    }
-
-    function applyCamera() {
-      ctx.translate(W / 2 + cam.x, H / 2 + cam.y);
-      ctx.rotate(cam.rot);
-      ctx.scale(cam.zoom, cam.zoom);
-      ctx.translate(-W / 2, -H / 2);
-    }
-
-    // ============ RENDER PIPELINE ============
-
-    function render(t: number, dt: number) {
-      spawnDust(t); spawnPetals(t); spawnTextParticles(t);
-      spawnIncenseSmoke(t); spawnBirds(t); launchFireworks(t);
-      updateFireworks(dt, t); updateParticles(dt, t); updateCamera(t);
-
-      rctx.clearRect(0, 0, W, H);
-      drawRamMandir(t, rctx);
-
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.save();
-      applyCamera();
-      drawBackground(t);
-      drawDivineLight(t);
-      drawWater(t);
-      drawRamMandir(t, ctx);
-      drawFireworks();
-      updateAndDrawFloatingDiyas(t);
-      drawFogAndHaze(t);
-      drawParticles();
       ctx.restore();
 
-      drawTitle(t);
-      drawGreeting(t);
-
-      const fadeIn = 1 - smoothstep(0, 1.2, t);
-      const fadeOut = smoothstep(17.0, 17.5, t);
-      const fadeAmt = Math.max(fadeIn, fadeOut);
-      if (fadeAmt > 0.001) {
-        ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
-        ctx.fillRect(0, 0, W, H);
-      }
-
-      applyBloom(t);
-      applyColorGrade(t);
-      applyVignette(t);
-      applyGrain();
+      // Film grain
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const grainOffset = Math.floor(t * 15) % 256;
+      ctx.drawImage(grain, grainOffset, 0, 256, 256, 0, 0, W, H);
+      ctx.drawImage(grain, grainOffset - 256, 0, 256, 256, 0, 0, W, H);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.restore();
     }
 
-    function loop(now: number) {
+    // ============ MAIN RENDER LOOP ============
+
+    function render(timestamp: number) {
       if (!running) return;
-      if (!startTime) startTime = now;
-      const t = (now - startTime) / 1000;
-      const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
-      lastTime = now;
+      if (startTime === 0) startTime = timestamp;
+      const t = (timestamp - startTime) / 1000;
+      const dt = Math.min(0.05, (timestamp - lastTime) / 1000);
+      lastTime = timestamp;
 
-      if (t > 3 && lastSampleTime === 0) {
-        sampleText();
-        lastSampleTime = t;
+      // Camera shake
+      ctx.save();
+      if (cameraShake > 0.1) {
+        ctx.translate(
+          (Math.random() - 0.5) * cameraShake,
+          (Math.random() - 0.5) * cameraShake
+        );
       }
 
-      if (t < 3.5) birdsSpawned = false;
+      // Clear
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
 
-      if (t >= 17.5 && !handoverTriggered) {
+      // 1. Background
+      drawBackground(t);
+
+      // 2. Divine light
+      drawDivineLight(t);
+
+      // 3. Top god rays (during text scene)
+      const textSceneVis = smoothstep(8.0, 10.0, t) * (1 - smoothstep(17.0, 17.5, t));
+      drawTopGodRays(t, textSceneVis);
+
+      // 4. Temple (drawn to reflect canvas for water reflection)
+      reflectCtx.clearRect(0, 0, W, H);
+      drawRamMandir(t, reflectCtx);
+      ctx.drawImage(reflectCanvas, 0, 0);
+
+      // 5. Water
+      drawWater(t);
+
+      // 6. Fog
+      drawFogAndHaze(t);
+
+      // 7. Floating diyas
+      updateAndDrawFloatingDiyas(t);
+
+      // 8. Fireworks
+      launchFireworks(t);
+      updateFireworks(dt, t);
+      drawFireworks();
+
+      // 9. Particles (dust, petals, birds, smoke, text sparkles)
+      spawnDust(t);
+      spawnPetals(t);
+      spawnIncenseSmoke(t);
+      spawnBirds(t);
+      spawnTextParticles(t);
+      updateParticles(dt, t);
+      drawParticles();
+
+      // 10. GOLD TITLE (fixed — no white border)
+      drawGoldTitle(t);
+
+      // 11. Subtitle
+      drawSubtitle(t);
+
+      // 12. Post-processing
+      applyPostProcessing(t);
+
+      ctx.restore(); // camera shake
+
+      // Handover
+      if (t > 18.0 && !handoverTriggered) {
         handoverTriggered = true;
-        if (onCompleteRef.current) onCompleteRef.current();
+        setTimeout(() => {
+          if (running) onCompleteRef.current?.();
+        }, 500);
       }
 
-      if (t < 18.0) {
-        render(t, dt);
+      if (t < 19.0) {
+        rafId = requestAnimationFrame(render);
       } else {
-        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, W, H);
+        running = false;
+        onCompleteRef.current?.();
       }
-      rafId = requestAnimationFrame(loop);
     }
 
-    resize();
-    window.addEventListener('resize', resize);
-    rafId = requestAnimationFrame(loop);
+    // ============ INIT ============
+
+    function init() {
+      resize();
+      lastTime = performance.now();
+      rafId = requestAnimationFrame(render);
+    }
+
+    window.addEventListener('resize', () => {
+      resize();
+    });
+
+    // Wait for font then start
+    const fontPromise = document.fonts.load('900 130px "Tiro Devanagari Hindi"');
+    fontPromise.then(init).catch(() => {
+      setTimeout(init, 3000);
+    });
 
     return () => {
       running = false;
@@ -1772,16 +1750,17 @@ export default function CinematicIntro({ onComplete }: Props) {
   }, []);
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-black z-[99999]">
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'block',
-          background: '#000',
-        }}
-      />
-    </div>
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        display: 'block',
+        background: '#000',
+      }}
+    />
   );
 }
