@@ -138,6 +138,45 @@ export default function CinematicIntro({ onComplete }: Props) {
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
 
+    // ============ REAL GOLD FOIL GLITTER TEXTURE PATTERN ============
+    function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
+      const sz = 256;
+      const pCanvas = document.createElement('canvas');
+      pCanvas.width = sz; pCanvas.height = sz;
+      const pctx = pCanvas.getContext('2d')!;
+
+      const grad = pctx.createLinearGradient(0, 0, sz, sz);
+      grad.addColorStop(0.00, '#FFFDF0');
+      grad.addColorStop(0.18, '#FFEA75');
+      grad.addColorStop(0.40, '#FFD700');
+      grad.addColorStop(0.65, '#D4AF37');
+      grad.addColorStop(0.85, '#996515');
+      grad.addColorStop(1.00, '#4A2800');
+
+      pctx.fillStyle = grad;
+      pctx.fillRect(0, 0, sz, sz);
+
+      // Gold glitter speckles overlay (Image 2 Replica)
+      for (let i = 0; i < 3500; i++) {
+        const x = Math.random() * sz;
+        const y = Math.random() * sz;
+        const r = 0.2 + Math.random() * 0.9;
+        const alpha = 0.2 + Math.random() * 0.6;
+        const c = Math.random();
+
+        if (c < 0.2) pctx.fillStyle = `rgba(255,255,240,${alpha})`;
+        else if (c < 0.6) pctx.fillStyle = `rgba(255,235,130,${alpha})`;
+        else if (c < 0.85) pctx.fillStyle = `rgba(255,215,0,${alpha})`;
+        else pctx.fillStyle = `rgba(184,134,11,${alpha})`;
+
+        pctx.beginPath();
+        pctx.arc(x, y, r, 0, Math.PI * 2);
+        pctx.fill();
+      }
+
+      return ctx.createPattern(pCanvas, 'repeat') || grad;
+    }
+
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
@@ -260,19 +299,19 @@ export default function CinematicIntro({ onComplete }: Props) {
       if (vis <= 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const rayCount = 18;
+      const rayCount = 20;
       const sx = W / 2;
       const sy = -20;
       for (let i = 0; i < rayCount; i++) {
         const angle = (Math.PI * 0.2) + (i / rayCount) * (Math.PI * 0.6) + Math.sin(t * 0.2 + i) * 0.015;
-        const len = H * 0.65;
-        const a = 0.035 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
+        const len = H * 0.7;
+        const a = 0.045 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
         const ex = sx + Math.cos(angle) * len;
         const ey = sy + Math.sin(angle) * len;
 
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
-        grad.addColorStop(0, `rgba(255, 215, 100, ${a * 1.6})`);
-        grad.addColorStop(0.5, `rgba(225, 150, 30, ${a})`);
+        grad.addColorStop(0, `rgba(255, 225, 140, ${a * 1.8})`);
+        grad.addColorStop(0.5, `rgba(255, 170, 50, ${a})`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
 
         ctx.fillStyle = grad;
@@ -697,7 +736,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.fillStyle = rfGrad;
         
         ctx.beginPath();
-        ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.4, b.r * 0.25, 0, 0, Math.PI * 2);
+        ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.3, b.r * 0.25, 0, 0, Math.PI * 2);
         ctx.fill();
       });
 
@@ -1260,6 +1299,32 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
       ctx.restore();
     }
+
+    // ============ AMBIENT GOLDEN STAR DUST AROUND TEXT ============
+    function drawAmbientTextSparkles(t: number, cy: number, vis: number) {
+      if (vis <= 0.001) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      const sparkCount = 80;
+      for (let i = 0; i < sparkCount; i++) {
+        const seed = i * 19.83;
+        const x = (W / 2 - W * 0.4) + ((seed * 117) % (W * 0.8));
+        const y = (cy - H * 0.25) + ((seed * 223) % (H * 0.5));
+        
+        const floatY = Math.sin(t * 1.2 + seed) * 12;
+        const twinkle = 0.3 + 0.7 * Math.sin(t * 3.5 + seed * 2);
+        const sz = (1.0 + (i % 3) * 0.8) * twinkle;
+        const alpha = 0.25 * vis * twinkle;
+
+        ctx.fillStyle = i % 2 === 0 ? `rgba(255, 225, 120, ${alpha})` : `rgba(255, 180, 50, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y + floatY, sz, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
     
     // ============ ORNAMENTAL GRAPHICS HELPERS ============
 
@@ -1328,6 +1393,37 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
+    function drawStarFlare(x: number, y: number, size: number, angle: number, alpha: number) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.globalAlpha = alpha;
+      ctx.globalCompositeOperation = 'lighter';
+
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+      grad.addColorStop(0, '#FFFDF0');
+      grad.addColorStop(0.25, '#FFE8A3');
+      grad.addColorStop(0.6, '#FFC837');
+      grad.addColorStop(1, 'rgba(229, 160, 13, 0)');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#FFE8A3';
+      for (let i = 0; i < 2; i++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(-size, 0);
+        ctx.quadraticCurveTo(0, -size * 0.08, size, 0);
+        ctx.quadraticCurveTo(0, size * 0.08, -size, 0);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
     function drawOrnamentalDivider(x: number, y: number, width: number, alpha: number) {
       ctx.save();
       ctx.translate(x, y);
@@ -1381,7 +1477,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // DIRECT REVEAL: 24K METALLIC GOLD TITLE (100% CLEAR, BOLD, NO WHITE)
+    // 100% IMAGE 2 REPLICA: GLITTERING 24K GOLD TITLE WITH BOKEH & STAR FLARES
     function drawTitle(t: number) {
       if (t < 8.5) return;
 
@@ -1392,6 +1488,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       
       const fontSize = Math.min(W * 0.13, 140);
       const cy = H * 0.38;
+      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5);
       
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1400,23 +1497,25 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
 
+      // Top God Rays & Ambient Gold Star Dust
       drawTopGodRays(t, intensity);
+      drawAmbientTextSparkles(t, cy, intensity);
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. Dark Chocolate Outer Stroke Edge for 100% Sharp Contrast
+      // 1. Dark Chocolate Outer Stroke Edge for Crispness
       ctx.strokeStyle = '#1d0b02';
       ctx.lineWidth = fontSize * 0.045;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 2. Pure 24K Metallic Royal Gold Fill Gradient
+      // 2. Pure 24K Metallic Gold Fill
       const pure24kGoldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.45, 0, cy + fontSize * 0.45);
-      pure24kGoldGrad.addColorStop(0.00, '#FFE8A3'); // Polished gold top highlight
-      pure24kGoldGrad.addColorStop(0.20, '#FFC837'); // Pure 24k gold
-      pure24kGoldGrad.addColorStop(0.45, '#E5A00D'); // Deep amber gold
-      pure24kGoldGrad.addColorStop(0.70, '#B87B00'); // Metallic bronze gold
-      pure24kGoldGrad.addColorStop(0.90, '#7A4B00'); // Deep gold shadow
-      pure24kGoldGrad.addColorStop(1.00, '#3A1F00'); // Dark metallic base
+      pure24kGoldGrad.addColorStop(0.00, '#FFFDF0'); // Bright gold top
+      pure24kGoldGrad.addColorStop(0.20, '#FFE8A3'); // Polished highlight
+      pure24kGoldGrad.addColorStop(0.40, '#FFC837'); // 24k Gold core
+      pure24kGoldGrad.addColorStop(0.65, '#E5A00D'); // Deep amber gold
+      pure24kGoldGrad.addColorStop(0.85, '#B87B00'); // Bronze gold
+      pure24kGoldGrad.addColorStop(1.00, '#3A1F00'); // Base shadow
 
       ctx.shadowBlur = 10;
       ctx.shadowColor = `rgba(229, 160, 13, ${0.5 * intensity})`;
@@ -1434,10 +1533,17 @@ export default function CinematicIntro({ onComplete }: Props) {
       const swashY = cy + fontSize * 0.28;
       drawRamSwash(swashX, swashY, fontSize / 130, intensity);
 
+      // 5. Image 2 Shining Starburst Lens Flares
+      const flareSize = fontSize * 0.28 * pulse;
+      const fAngle = t * 1.5;
+      drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.9); // Top 'ज'
+      drawStarFlare(tilakX, tilakY - 18 * tilakScale, flareSize * 1.25, -fAngle, intensity);              // Top Tilak
+      drawStarFlare(W / 2 + fontSize * 1.1, cy - fontSize * 0.2, flareSize, fAngle * 0.8, intensity * 0.9); // Top 'म'
+
       ctx.restore();
     }
 
-    // DIRECT REVEAL: ROYAL GREETING WITH DIVIDERS
+    // ROYAL GREETING WITH DIVIDERS (IMAGE 2 REPLICA)
     function drawGreeting(t: number) {
       if (t < 10.0) return;
       const reveal = smoothstep(10.0, 11.5, t);
