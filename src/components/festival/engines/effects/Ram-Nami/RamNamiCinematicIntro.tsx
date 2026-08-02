@@ -1196,7 +1196,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       subGrad.addColorStop(0.5, 'rgba(255, 235, 150, 0.9)');
       subGrad.addColorStop(1, 'rgba(255, 215, 0, 0.7)');
       ctx.fillStyle = subGrad;
-      ctx.fillText('स्वच्छ समाज प्रशासन', W / 2, subtitleY);
+      ctx.fillText(' आपको और आपके परिवार को राम नवमी की हार्दिक शुभकामनाएं', W / 2, subtitleY);
 
       ctx.restore();
     }
