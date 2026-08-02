@@ -138,45 +138,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ['#ffd700', '#ffffff'], ['#00ff66', '#00aa00'], ['#ff0033', '#ffffff']
     ];
 
-    // ============ REAL GOLD FOIL GLITTER TEXTURE PATTERN ============
-    function createGoldGlitterPattern(): CanvasPattern | CanvasGradient {
-      const sz = 256;
-      const pCanvas = document.createElement('canvas');
-      pCanvas.width = sz; pCanvas.height = sz;
-      const pctx = pCanvas.getContext('2d')!;
-
-      const grad = pctx.createLinearGradient(0, 0, sz, sz);
-      grad.addColorStop(0.00, '#FFFDF0');
-      grad.addColorStop(0.18, '#FFEA75');
-      grad.addColorStop(0.40, '#FFD700');
-      grad.addColorStop(0.65, '#D4AF37');
-      grad.addColorStop(0.85, '#996515');
-      grad.addColorStop(1.00, '#4A2800');
-
-      pctx.fillStyle = grad;
-      pctx.fillRect(0, 0, sz, sz);
-
-      // Gold glitter speckles overlay (Image 2 Replica)
-      for (let i = 0; i < 3500; i++) {
-        const x = Math.random() * sz;
-        const y = Math.random() * sz;
-        const r = 0.2 + Math.random() * 0.9;
-        const alpha = 0.2 + Math.random() * 0.6;
-        const c = Math.random();
-
-        if (c < 0.2) pctx.fillStyle = `rgba(255,255,240,${alpha})`;
-        else if (c < 0.6) pctx.fillStyle = `rgba(255,235,130,${alpha})`;
-        else if (c < 0.85) pctx.fillStyle = `rgba(255,215,0,${alpha})`;
-        else pctx.fillStyle = `rgba(184,134,11,${alpha})`;
-
-        pctx.beginPath();
-        pctx.arc(x, y, r, 0, Math.PI * 2);
-        pctx.fill();
-      }
-
-      return ctx.createPattern(pCanvas, 'repeat') || grad;
-    }
-
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
@@ -258,7 +219,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
       const sy = H * 0.42; 
-      const sunR = W * 0.25;
+      const sunR = Math.max(0.1, W * 0.25);
       const sunGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
       sunGrad.addColorStop(0, `rgba(255, 240, 180, ${0.95 * vis})`);
       sunGrad.addColorStop(0.2, `rgba(255, 180, 80, ${0.65 * vis})`);
@@ -299,13 +260,13 @@ export default function CinematicIntro({ onComplete }: Props) {
       if (vis <= 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const rayCount = 20;
+      const rayCount = 18;
       const sx = W / 2;
       const sy = -20;
       for (let i = 0; i < rayCount; i++) {
         const angle = (Math.PI * 0.2) + (i / rayCount) * (Math.PI * 0.6) + Math.sin(t * 0.2 + i) * 0.015;
-        const len = H * 0.7;
-        const a = 0.045 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
+        const len = H * 0.65;
+        const a = 0.04 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
         const ex = sx + Math.cos(angle) * len;
         const ey = sy + Math.sin(angle) * len;
 
@@ -486,7 +447,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         const x1 = mx + pillarColsX[i] * s;
         const x2 = mx + pillarColsX[i + 1] * s;
         targetCtx.beginPath();
-        targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s, (x2 - x1) / 2, Math.PI, 0);
+        targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s, Math.max(0.1, (x2 - x1) / 2), Math.PI, 0);
         targetCtx.stroke();
         
         targetCtx.fillStyle = `rgba(255, 200, 50, ${0.6 + 0.4 * Math.sin(t*4 + i)})`;
@@ -578,8 +539,8 @@ export default function CinematicIntro({ onComplete }: Props) {
         }
 
         const topY = cy - h;
-        const amalakaW = w * 0.35;
-        const amalakaH = 14 * s;
+        const amalakaW = Math.max(0.1, w * 0.35);
+        const amalakaH = Math.max(0.1, 14 * s);
 
         const amalakaGrad = targetCtx.createRadialGradient(cx, topY - amalakaH / 2, 0, cx, topY - amalakaH / 2, amalakaW / 2);
         amalakaGrad.addColorStop(0, '#ffaa00');
@@ -603,7 +564,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
         targetCtx.fillStyle = kGrad;
         targetCtx.beginPath();
-        targetCtx.arc(cx, kalashY - 10 * s, 10 * s, 0, Math.PI * 2);
+        targetCtx.arc(cx, kalashY - 10 * s, Math.max(0.1, 10 * s), 0, Math.PI * 2);
         targetCtx.fill();
 
         targetCtx.fillRect(cx - 4 * s, kalashY - 15 * s, 8 * s, 5 * s);
@@ -628,7 +589,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       
       targetCtx.fillStyle = `rgba(200, 130, 40, ${0.8})`;
       targetCtx.beginPath();
-      targetCtx.arc(mx, topCenterY, 6 * s, 0, Math.PI * 2);
+      targetCtx.arc(mx, topCenterY, Math.max(0.1, 6 * s), 0, Math.PI * 2);
       targetCtx.fill();
 
       const poleGrad = targetCtx.createLinearGradient(mx - 3 * s, 0, mx + 3 * s, 0);
@@ -640,13 +601,13 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.fillStyle = poleGrad;
       targetCtx.fillRect(mx - 2 * s, flagPoleTop, 4 * s, topCenterY - flagPoleTop);
       
-      const finialGrad = targetCtx.createRadialGradient(mx - 1 * s, flagPoleTop - 4 * s, 0, mx, flagPoleTop - 4 * s, 6 * s);
+      const finialGrad = targetCtx.createRadialGradient(mx - 1 * s, flagPoleTop - 4 * s, 0, mx, flagPoleTop - 4 * s, Math.max(0.1, 6 * s));
       finialGrad.addColorStop(0, '#ffffff');
       finialGrad.addColorStop(0.4, '#ffd700');
       finialGrad.addColorStop(1, '#994d22');
       targetCtx.fillStyle = finialGrad;
       targetCtx.beginPath();
-      targetCtx.arc(mx, flagPoleTop - 4 * s, 5 * s, 0, Math.PI * 2);
+      targetCtx.arc(mx, flagPoleTop - 4 * s, Math.max(0.1, 5 * s), 0, Math.PI * 2);
       targetCtx.fill();
 
       const wave1 = Math.sin(t * 6) * 6 * s;
@@ -671,13 +632,13 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       targetCtx.fillStyle = `rgba(255, 234, 0, ${0.8 + 0.2 * Math.sin(t*3)})`;
       targetCtx.beginPath();
-      targetCtx.arc(mx + 12 * s, flagPoleTop + 13 * s + wave1 * 0.5, 4 * s, 0, Math.PI * 2);
+      targetCtx.arc(mx + 12 * s, flagPoleTop + 13 * s + wave1 * 0.5, Math.max(0.1, 4 * s), 0, Math.PI * 2);
       targetCtx.fill();
 
       targetCtx.restore();
     }
 
-    // SCENE 2: UNREAL ENGINE STYLE WATER
+    // SCENE 2: WATER REFLECTIONS
     function drawWater(t: number) {
       const reveal = smoothstep(2.2, 4.0, t);
       const fade = smoothstep(6.5, 8.0, t);
@@ -730,13 +691,13 @@ export default function CinematicIntro({ onComplete }: Props) {
         if (b.y > waterY) return;
         const rY = waterY + (waterY - b.y); 
         const dy = rY - waterY;
-        const rfGrad = ctx.createRadialGradient(b.x, rY, 0, b.x, rY, b.r * 1.8);
+        const rfGrad = ctx.createRadialGradient(b.x, rY, 0, b.x, rY, Math.max(0.1, b.r * 1.8));
         rfGrad.addColorStop(0, `${b.color}${Math.floor(b.alpha * 50).toString(16).padStart(2, '0')}`);
         rfGrad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = rfGrad;
         
         ctx.beginPath();
-        ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.3, b.r * 0.25, 0, 0, Math.PI * 2);
+        ctx.ellipse(b.x, waterY + dy * 0.65, Math.max(0.1, b.r * 1.4), Math.max(0.1, b.r * 0.25), 0, 0, Math.PI * 2);
         ctx.fill();
       });
 
@@ -783,12 +744,12 @@ export default function CinematicIntro({ onComplete }: Props) {
         dGrad.addColorStop(1, '#4a1b05');
         ctx.fillStyle = dGrad;
         ctx.beginPath();
-        ctx.ellipse(d.x, waveY + s * 0.25, s, s * 0.35, 0, 0, Math.PI);
+        ctx.ellipse(d.x, waveY + s * 0.25, Math.max(0.1, s), Math.max(0.1, s * 0.35), 0, 0, Math.PI);
         ctx.fill();
 
         ctx.fillStyle = '#170300';
         ctx.beginPath();
-        ctx.ellipse(d.x, waveY + s * 0.15, s * 0.88, s * 0.22, 0, 0, Math.PI * 2);
+        ctx.ellipse(d.x, waveY + s * 0.15, Math.max(0.1, s * 0.88), Math.max(0.1, s * 0.18), 0, 0, Math.PI * 2);
         ctx.fill();
 
         const fGrad = ctx.createLinearGradient(d.x, waveY, d.x, waveY - flameH);
@@ -1103,19 +1064,19 @@ export default function CinematicIntro({ onComplete }: Props) {
 
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(r.x, r.y, 2.0 + r.flicker, 0, Math.PI * 2); 
+        ctx.arc(r.x, r.y, Math.max(0.1, 2.0 + r.flicker), 0, Math.PI * 2); 
         ctx.fill();
       });
 
       activeFireworkBursts.forEach((b) => {
-        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, Math.max(0.1, b.r));
         grad.addColorStop(0, `${b.color}80`); 
         grad.addColorStop(0.4, `${b.color}20`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = grad;
         ctx.globalAlpha = b.alpha;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, Math.max(0.1, b.r), 0, Math.PI * 2);
         ctx.fill();
       });
 
@@ -1125,7 +1086,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         if (s.alpha <= 0 || s.type === 'smoke') return;
         
         const alpha = clamp(s.alpha, 0, 1);
-        const sz = s.size;
+        const sz = Math.max(0.1, s.size);
         
         ctx.globalAlpha = alpha * 0.25;
         ctx.drawImage(sparkSprite, s.x - sz * 4, s.y - sz * 4, sz * 8, sz * 8);
@@ -1144,7 +1105,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.globalAlpha = s.alpha * 0.3;
         ctx.fillStyle = s.color;
         ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.arc(s.x, s.y, Math.max(0.1, s.size), 0, Math.PI * 2);
         ctx.fill();
       });
 
@@ -1266,18 +1227,18 @@ export default function CinematicIntro({ onComplete }: Props) {
           ctx.translate(p.x, p.y); ctx.rotate(p.rot);
           ctx.fillStyle = `rgba(240, 120, 60, ${p.alpha})`; 
           ctx.beginPath();
-          ctx.ellipse(0, 0, p.size, p.size * 0.48, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, Math.max(0.1, p.size), Math.max(0.1, p.size * 0.48), 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         } else if (p.type === 'smoke') {
           ctx.save();
-          const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+          const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, Math.max(0.1, p.size));
           rad.addColorStop(0, `rgba(255, 230, 200, ${p.alpha})`);
           rad.addColorStop(0.3, `rgba(220, 160, 100, ${p.alpha * 0.5})`);
           rad.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = rad;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         } else if (p.type === 'bird') {
@@ -1301,6 +1262,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     // ============ AMBIENT GOLDEN STAR DUST AROUND TEXT ============
+    // ✅ CRASH FIX: twinkle logic and Math.max guard to prevent negative radius!
     function drawAmbientTextSparkles(t: number, cy: number, vis: number) {
       if (vis <= 0.001) return;
       ctx.save();
@@ -1313,8 +1275,9 @@ export default function CinematicIntro({ onComplete }: Props) {
         const y = (cy - H * 0.25) + ((seed * 223) % (H * 0.5));
         
         const floatY = Math.sin(t * 1.2 + seed) * 12;
-        const twinkle = 0.3 + 0.7 * Math.sin(t * 3.5 + seed * 2);
-        const sz = (1.0 + (i % 3) * 0.8) * twinkle;
+        // ✅ CRASH FIX: twinkle is ALWAYS positive (0.1 to 1.0)
+        const twinkle = 0.55 + 0.45 * Math.sin(t * 3.5 + seed * 2);
+        const sz = Math.max(0.1, (1.0 + (i % 3) * 0.8) * twinkle);
         const alpha = 0.25 * vis * twinkle;
 
         ctx.fillStyle = i % 2 === 0 ? `rgba(255, 225, 120, ${alpha})` : `rgba(255, 180, 50, ${alpha})`;
@@ -1393,37 +1356,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    function drawStarFlare(x: number, y: number, size: number, angle: number, alpha: number) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.globalAlpha = alpha;
-      ctx.globalCompositeOperation = 'lighter';
-
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
-      grad.addColorStop(0, '#FFFDF0');
-      grad.addColorStop(0.25, '#FFE8A3');
-      grad.addColorStop(0.6, '#FFC837');
-      grad.addColorStop(1, 'rgba(229, 160, 13, 0)');
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 0.45, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#FFE8A3';
-      for (let i = 0; i < 2; i++) {
-        ctx.rotate(Math.PI / 2);
-        ctx.beginPath();
-        ctx.moveTo(-size, 0);
-        ctx.quadraticCurveTo(0, -size * 0.08, size, 0);
-        ctx.quadraticCurveTo(0, size * 0.08, -size, 0);
-        ctx.fill();
-      }
-
-      ctx.restore();
-    }
-
     function drawOrnamentalDivider(x: number, y: number, width: number, alpha: number) {
       ctx.save();
       ctx.translate(x, y);
@@ -1477,7 +1409,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // 100% IMAGE 2 REPLICA: GLITTERING 24K GOLD TITLE WITH BOKEH & STAR FLARES
+    // 100% IMAGE 2 REPLICA: GLITTERING 24K GOLD TITLE WITH BOKEH (NO WHITE BORDER / NO WEIRD BLOBS)
     function drawTitle(t: number) {
       if (t < 8.5) return;
 
@@ -1488,7 +1420,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       
       const fontSize = Math.min(W * 0.13, 140);
       const cy = H * 0.38;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5);
       
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1532,13 +1463,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       const swashX = W / 2 + fontSize * 1.15;
       const swashY = cy + fontSize * 0.28;
       drawRamSwash(swashX, swashY, fontSize / 130, intensity);
-
-      // 5. Image 2 Shining Starburst Lens Flares
-      const flareSize = fontSize * 0.28 * pulse;
-      const fAngle = t * 1.5;
-      drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.9); // Top 'ज'
-      drawStarFlare(tilakX, tilakY - 18 * tilakScale, flareSize * 1.25, -fAngle, intensity);              // Top Tilak
-      drawStarFlare(W / 2 + fontSize * 1.1, cy - fontSize * 0.2, flareSize, fAngle * 0.8, intensity * 0.9); // Top 'म'
 
       ctx.restore();
     }
