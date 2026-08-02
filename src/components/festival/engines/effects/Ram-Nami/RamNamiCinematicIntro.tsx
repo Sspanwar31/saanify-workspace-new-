@@ -33,12 +33,8 @@ class ParticlePool {
   release(p: Particle) { p.active = false; this.free.push(p.idx); }
 }
 
-// ✅ FIX: Space हटाया — "FW Rocket" → "FWRocket"
 interface FWRocket { x: number; y: number; vx: number; vy: number; ay: number; targetY: number; color: string; color2: string; type: string; trail: { x: number; y: number; alpha: number }[]; flicker: number; }
-
-// ✅ FIX: Space हटाया — "FWS park" → "FWSpark"
 interface FWSpark { x: number; y: number; vx: number; vy: number; color: string; color2: string; alpha: number; life: number; maxLife: number; size: number; gravity: number; drag: number; flicker: boolean; type: string; temp: number; wind: number; turb: number; stage: number; delay: number; hasExploded: boolean; isSecondary: boolean; }
-
 interface Diya { x: number; y: number; scale: number; speed: number; phase: number; flamePulse: number; }
 
 const TITLE_TEXT = 'जय श्री राम';
@@ -157,17 +153,24 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
+    // ===================== ✅ FIX 1: SKY — Smooth horizon, no hard line =====================
     function drawSky(t: number) {
       const v = smoothstep(0,1.2,t) * (1 - smoothstep(6.5,8.5,t)) * (1 - smoothstep(6.5,8,t));
       const g = ctx.createLinearGradient(0,0,0,H);
       g.addColorStop(0, '#000000');
-      g.addColorStop(0.25, `rgb(${Math.floor(lerp(0,5,v))},${Math.floor(lerp(0,2,v))},${Math.floor(lerp(0,8,v))})`);
-      g.addColorStop(0.45, `rgb(${Math.floor(lerp(0,20,v))},${Math.floor(lerp(0,6,v))},${Math.floor(lerp(0,8,v))})`);
-      g.addColorStop(0.6, `rgb(${Math.floor(lerp(0,55,v))},${Math.floor(lerp(0,18,v))},${Math.floor(lerp(0,8,v))})`);
-      g.addColorStop(0.75, `rgb(${Math.floor(lerp(0,120,v))},${Math.floor(lerp(0,45,v))},${Math.floor(lerp(0,12,v))})`);
-      g.addColorStop(0.88, `rgb(${Math.floor(lerp(0,195,v))},${Math.floor(lerp(0,85,v))},${Math.floor(lerp(0,25,v))})`);
-      g.addColorStop(HORIZON, `rgb(${Math.floor(lerp(0,240,v))},${Math.floor(lerp(0,125,v))},${Math.floor(lerp(0,40,v))})`);
-      g.addColorStop(HORIZON + 0.005, `rgb(${Math.floor(lerp(0,12,v))},${Math.floor(lerp(0,5,v))},${Math.floor(lerp(0,2,v))})`);
+      g.addColorStop(0.2, `rgb(${Math.floor(lerp(0,3,v))},${Math.floor(lerp(0,1,v))},${Math.floor(lerp(0,6,v))})`);
+      g.addColorStop(0.4, `rgb(${Math.floor(lerp(0,15,v))},${Math.floor(lerp(0,5,v))},${Math.floor(lerp(0,8,v))})`);
+      g.addColorStop(0.55, `rgb(${Math.floor(lerp(0,45,v))},${Math.floor(lerp(0,15,v))},${Math.floor(lerp(0,10,v))})`);
+      g.addColorStop(0.68, `rgb(${Math.floor(lerp(0,100,v))},${Math.floor(lerp(0,38,v))},${Math.floor(lerp(0,14,v))})`);
+      g.addColorStop(0.8, `rgb(${Math.floor(lerp(0,170,v))},${Math.floor(lerp(0,75,v))},${Math.floor(lerp(0,25,v))})`);
+      // ✅ Smooth transition zone — no hard jump
+      g.addColorStop(0.88, `rgb(${Math.floor(lerp(0,220,v))},${Math.floor(lerp(0,110,v))},${Math.floor(lerp(0,35,v))})`);
+      g.addColorStop(0.93, `rgb(${Math.floor(lerp(0,160,v))},${Math.floor(lerp(0,65,v))},${Math.floor(lerp(0,20,v))})`);
+      g.addColorStop(HORIZON, `rgb(${Math.floor(lerp(0,60,v))},${Math.floor(lerp(0,22,v))},${Math.floor(lerp(0,8,v))})`);
+      // ✅ Below horizon: warm reflected sky fading to dark (NOT instant black)
+      g.addColorStop(HORIZON + 0.015, `rgb(${Math.floor(lerp(0,25,v))},${Math.floor(lerp(0,9,v))},${Math.floor(lerp(0,4,v))})`);
+      g.addColorStop(HORIZON + 0.05, `rgb(${Math.floor(lerp(0,10,v))},${Math.floor(lerp(0,4,v))},${Math.floor(lerp(0,3,v))})`);
+      g.addColorStop(HORIZON + 0.12, `rgb(${Math.floor(lerp(0,4,v))},${Math.floor(lerp(0,2,v))},${Math.floor(lerp(0,3,v))})`);
       g.addColorStop(1, '#000000');
       ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
     }
@@ -205,11 +208,13 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       ctx.restore();
 
-      const bg = ctx.createRadialGradient(sx,sy+8,0,sx,sy+8,R*3);
-      bg.addColorStop(0, `rgba(255,185,85,${0.1*vis})`);
-      bg.addColorStop(0.4, `rgba(200,105,35,${0.04*vis})`);
+      // ✅ Below horizon warmth — soft glow ON the water surface
+      const bg = ctx.createRadialGradient(sx,sy+5,0,sx,sy+5,R*2.5);
+      bg.addColorStop(0, `rgba(255,190,90,${0.12*vis})`);
+      bg.addColorStop(0.3, `rgba(220,120,45,${0.06*vis})`);
+      bg.addColorStop(0.6, `rgba(150,60,20,${0.02*vis})`);
       bg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = bg; ctx.fillRect(sx-R*3.5,sy,R*7,R*3);
+      ctx.fillStyle = bg; ctx.fillRect(sx-R*3,sy,R*6,R*2.5);
     }
 
     function drawRaysOffscreen(t: number) {
@@ -381,6 +386,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
+    // ===================== ✅ FIX 3: TEMPLE — Sandstone color, not black =====================
     function drawTempleSilhouette(t: number) {
       const reveal = smoothstep(1.8,4.0,t);
       const fade = 1 - smoothstep(6.5,8.0,t);
@@ -394,39 +400,87 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalAlpha = vis;
 
-      ctx.shadowColor = `rgba(255,195,85,${0.85*vis*gp})`;
-      ctx.shadowBlur = 40*s;
+      // ✅ Backlit rim glow
+      ctx.shadowColor = `rgba(255,200,90,${0.9*vis*gp})`;
+      ctx.shadowBlur = 35*s;
 
-      const DARK = '#020100';
-      const gold = `rgba(255,205,105,${0.75*gp})`;
-      const goldSoft = `rgba(255,205,105,${0.4*gp})`;
+      // ✅ Sandstone colors — dark but visible, NOT black
+      const SAND_DARK = '#1a0e06';    // deep shadow side
+      const SAND_MID = '#2d1810';     // mid tone
+      const SAND_LIGHT = '#4a2a18';   // light side (edge near sun)
+      const SAND_PILLAR = '#35200f';  // pillar face
+      const gold = `rgba(255,210,110,${0.8*gp})`;
+      const goldSoft = `rgba(255,210,110,${0.45*gp})`;
 
+      // --- Platforms with 3D face ---
       const plat = (pw:number, ph:number, py:number) => {
-        ctx.fillStyle = DARK;
-        ctx.fillRect(mx-pw/2, py, pw, ph);
+        // Top face (lighter - catches light)
+        const topG = ctx.createLinearGradient(mx-pw/2,py,mx+pw/2,py);
+        topG.addColorStop(0, SAND_DARK);
+        topG.addColorStop(0.3, SAND_MID);
+        topG.addColorStop(0.5, SAND_LIGHT);
+        topG.addColorStop(0.7, SAND_MID);
+        topG.addColorStop(1, SAND_DARK);
+        ctx.fillStyle = topG;
+        ctx.fillRect(mx-pw/2, py, pw, ph*0.4);
+        // Front face (darker)
+        const fG = ctx.createLinearGradient(mx-pw/2,py+ph*0.4,mx+pw/2,py+ph*0.4);
+        fG.addColorStop(0, '#100804');
+        fG.addColorStop(0.5, SAND_DARK);
+        fG.addColorStop(1, '#100804');
+        ctx.fillStyle = fG;
+        ctx.fillRect(mx-pw/2, py+ph*0.4, pw, ph*0.6);
+        // Gold edge lines
         ctx.strokeStyle = gold; ctx.lineWidth = 1.5*s;
         ctx.strokeRect(mx-pw/2, py, pw, ph);
+        // Decorative band
+        ctx.fillStyle = `rgba(255,200,100,${0.15*gp})`;
+        ctx.fillRect(mx-pw/2, py+ph*0.35, pw, ph*0.08);
       };
-      plat(420*s, 18*s, baseY-18*s);
-      plat(380*s, 14*s, baseY-32*s);
-      plat(340*s, 12*s, baseY-44*s);
+      plat(420*s, 20*s, baseY-20*s);
+      plat(380*s, 15*s, baseY-35*s);
+      plat(340*s, 13*s, baseY-48*s);
 
-      const sY = baseY - 44*s;
-      const sW = 175*s, sH = 90*s;
+      const sY = baseY - 48*s;
+      const sW = 175*s, sH = 95*s;
 
-      ctx.fillStyle = DARK;
+      // --- Sanctum wall with face shading ---
+      const wallG = ctx.createLinearGradient(mx-sW/2,0,mx+sW/2,0);
+      wallG.addColorStop(0, '#0f0804');
+      wallG.addColorStop(0.15, SAND_DARK);
+      wallG.addColorStop(0.4, SAND_MID);
+      wallG.addColorStop(0.6, SAND_MID);
+      wallG.addColorStop(0.85, SAND_DARK);
+      wallG.addColorStop(1, '#0f0804');
+      ctx.fillStyle = wallG;
       ctx.fillRect(mx-sW/2, sY-sH, sW, sH);
 
-      ctx.strokeStyle = `rgba(255,215,125,${0.55*gp})`;
-      ctx.lineWidth = 2*s;
+      // --- Door arches with depth ---
+      // Outer arch
+      ctx.strokeStyle = `rgba(255,220,130,${0.6*gp})`;
+      ctx.lineWidth = 2.2*s;
       ctx.beginPath();
       ctx.moveTo(mx-sW*0.35, sY);
       ctx.lineTo(mx-sW*0.35, sY-sH*0.55);
       ctx.quadraticCurveTo(mx, sY-sH*0.88, mx+sW*0.35, sY-sH*0.55);
       ctx.lineTo(mx+sW*0.35, sY);
       ctx.stroke();
-      ctx.strokeStyle = `rgba(255,205,95,${0.35*gp})`;
-      ctx.lineWidth = 1.2*s;
+
+      // Inner door fill — warm glow from inside
+      const doorG = ctx.createRadialGradient(mx, sY-sH*0.45, 0, mx, sY-sH*0.45, sW*0.25);
+      doorG.addColorStop(0, `rgba(255,220,140,${0.25*gp})`);
+      doorG.addColorStop(0.5, `rgba(200,140,60,${0.1*gp})`);
+      doorG.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = doorG;
+      ctx.beginPath();
+      ctx.moveTo(mx-sW*0.32, sY);
+      ctx.lineTo(mx-sW*0.32, sY-sH*0.52);
+      ctx.quadraticCurveTo(mx, sY-sH*0.82, mx+sW*0.32, sY-sH*0.52);
+      ctx.lineTo(mx+sW*0.32, sY);
+      ctx.closePath(); ctx.fill();
+
+      ctx.strokeStyle = `rgba(255,210,100,${0.4*gp})`;
+      ctx.lineWidth = 1.3*s;
       ctx.beginPath();
       ctx.moveTo(mx-sW*0.2, sY);
       ctx.lineTo(mx-sW*0.2, sY-sH*0.4);
@@ -435,69 +489,117 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.stroke();
       ctx.beginPath(); ctx.moveTo(mx, sY-sH*0.68); ctx.lineTo(mx, sY); ctx.stroke();
 
+      // --- Pillars with 3D cylindrical shading ---
       const pXs = [-115,-78,-40,40,78,115];
       pXs.forEach(px => {
-        const pw = 12*s, ph = 78*s, ppx = mx+px*s;
-        ctx.fillStyle = '#030200';
+        const pw = 13*s, ph = 82*s, ppx = mx+px*s;
+        // Cylindrical gradient — light from center
+        const pilG = ctx.createLinearGradient(ppx-pw/2,0,ppx+pw/2,0);
+        pilG.addColorStop(0, '#120a04');
+        pilG.addColorStop(0.2, SAND_DARK);
+        pilG.addColorStop(0.4, SAND_PILLAR);
+        pilG.addColorStop(0.55, SAND_LIGHT);
+        pilG.addColorStop(0.7, SAND_PILLAR);
+        pilG.addColorStop(0.85, SAND_DARK);
+        pilG.addColorStop(1, '#120a04');
+        ctx.fillStyle = pilG;
         ctx.fillRect(ppx-pw/2, sY-ph, pw, ph);
-        ctx.strokeStyle = gold; ctx.lineWidth = 0.9*s;
+        // Capital
+        const capG = ctx.createLinearGradient(ppx-pw*0.9,0,ppx+pw*0.9,0);
+        capG.addColorStop(0, SAND_DARK);
+        capG.addColorStop(0.5, SAND_LIGHT);
+        capG.addColorStop(1, SAND_DARK);
+        ctx.fillStyle = capG;
+        ctx.fillRect(ppx-pw*0.9, sY-ph, pw*1.8, 7*s);
+        // Base
+        ctx.fillStyle = SAND_DARK;
+        ctx.fillRect(ppx-pw*0.85, sY-4*s, pw*1.7, 4*s);
+        // Gold edges
+        ctx.strokeStyle = goldSoft; ctx.lineWidth = 0.8*s;
         ctx.strokeRect(ppx-pw/2, sY-ph, pw, ph);
-        ctx.fillStyle = DARK;
-        ctx.fillRect(ppx-pw*0.85, sY-ph, pw*1.7, 6*s);
-        ctx.strokeStyle = goldSoft; ctx.lineWidth = 0.7*s;
-        ctx.strokeRect(ppx-pw*0.85, sY-ph, pw*1.7, 6*s);
+        // Vertical fluting lines
+        ctx.strokeStyle = `rgba(80,45,20,0.4)`; ctx.lineWidth = 0.5*s;
+        ctx.beginPath(); ctx.moveTo(ppx-pw*0.15, sY-ph); ctx.lineTo(ppx-pw*0.15, sY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ppx+pw*0.15, sY-ph); ctx.lineTo(ppx+pw*0.15, sY); ctx.stroke();
       });
 
-      ctx.strokeStyle = `rgba(255,205,105,${0.4*gp})`; ctx.lineWidth = 1.3*s;
+      // --- Arches between pillars ---
+      ctx.strokeStyle = `rgba(255,210,110,${0.5*gp})`; ctx.lineWidth = 1.4*s;
       for (let i = 0; i < pXs.length-1; i++) {
-        const x1 = mx+pXs[i]*s, x2 = mx+pXs[i+1]*s, aY = sY-68*s;
+        const x1 = mx+pXs[i]*s, x2 = mx+pXs[i+1]*s, aY = sY-72*s;
         ctx.beginPath(); ctx.arc((x1+x2)/2, aY, (x2-x1)/2, Math.PI, 0); ctx.stroke();
-        ctx.fillStyle = `rgba(255,220,55,${0.55*gp})`;
-        ctx.beginPath(); ctx.arc((x1+x2)/2, aY+4*s, 3.5*s, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = `rgba(255,225,60,${0.6*gp})`;
+        ctx.beginPath(); ctx.arc((x1+x2)/2, aY+5*s, 4*s, 0, Math.PI*2); ctx.fill();
       }
 
+      // --- Shikharas with sandstone + gold ---
       const drawShikhara = (cx:number, cy:number, w:number, h:number, main:boolean) => {
-        ctx.fillStyle = DARK;
+        // Face gradient — lighter on sun-facing side
+        const shG = ctx.createLinearGradient(cx-w/2,0,cx+w/2,0);
+        shG.addColorStop(0, '#0e0703');
+        shG.addColorStop(0.15, SAND_DARK);
+        shG.addColorStop(0.35, SAND_MID);
+        shG.addColorStop(0.5, SAND_LIGHT);
+        shG.addColorStop(0.65, SAND_MID);
+        shG.addColorStop(0.85, SAND_DARK);
+        shG.addColorStop(1, '#0e0703');
+
+        ctx.fillStyle = shG;
         ctx.beginPath();
         ctx.moveTo(cx-w/2, cy);
         ctx.bezierCurveTo(cx-w*0.46, cy-h*0.38, cx-w*0.2, cy-h*0.8, cx-w*0.06, cy-h);
         ctx.lineTo(cx+w*0.06, cy-h);
         ctx.bezierCurveTo(cx+w*0.2, cy-h*0.8, cx+w*0.46, cy-h*0.38, cx+w/2, cy);
         ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = `rgba(255,215,135,${0.5*gp})`; ctx.lineWidth = 1.8*s; ctx.stroke();
 
+        // Gold outline — rim light
+        ctx.strokeStyle = `rgba(255,220,140,${0.55*gp})`; ctx.lineWidth = 1.8*s; ctx.stroke();
+
+        // Tier lines with slight color
         const tiers = main ? 16 : 9;
-        ctx.strokeStyle = `rgba(255,205,105,${0.18*gp})`; ctx.lineWidth = 0.7*s;
         for (let i = 1; i < tiers; i++) {
           const f = i/tiers, ty = cy-h*f, tw = lerp(w, w*0.12, Math.pow(f,1.15));
-          ctx.beginPath(); ctx.moveTo(cx-tw/2, ty); ctx.lineTo(cx+tw/2, ty); ctx.stroke();
+          // Dark groove
+          ctx.fillStyle = `rgba(10,5,2,${0.5})`;
+          ctx.fillRect(cx-tw/2, ty-1.5*s, tw, 3*s);
+          // Gold highlight line
+          ctx.fillStyle = `rgba(255,210,110,${0.2*gp})`;
+          ctx.fillRect(cx-tw/2, ty, tw, 1.2*s);
         }
 
+        // Side spires
         if (main) {
           for (let i = 0; i < 4; i++) {
             const f = 0.18+i*0.14, ty = cy-h*f, tw = lerp(w, w*0.12, Math.pow(f,1.15));
-            ctx.fillStyle = DARK;
+            ctx.fillStyle = SAND_MID;
             ctx.beginPath(); ctx.moveTo(cx-tw/2, ty); ctx.lineTo(cx-tw/2-12*s, ty-22*s); ctx.lineTo(cx-tw/2-2*s, ty); ctx.closePath(); ctx.fill();
             ctx.beginPath(); ctx.moveTo(cx+tw/2, ty); ctx.lineTo(cx+tw/2+12*s, ty-22*s); ctx.lineTo(cx+tw/2+2*s, ty); ctx.closePath(); ctx.fill();
           }
         }
 
+        // Amalaka — golden disc
         const topY = cy-h, amW = w*0.32, amH = 13*s;
-        ctx.fillStyle = DARK;
+        const amG = ctx.createRadialGradient(cx, topY-amH/2, 0, cx, topY-amH/2, amW/2);
+        amG.addColorStop(0, `rgba(255,230,140,${0.8*gp})`);
+        amG.addColorStop(0.5, `rgba(220,170,60,${0.5*gp})`);
+        amG.addColorStop(1, SAND_DARK);
+        ctx.fillStyle = amG;
         ctx.beginPath(); ctx.ellipse(cx, topY-amH/2, amW/2, amH/2, 0, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = `rgba(255,225,110,${0.7*gp})`; ctx.lineWidth = 1.8*s; ctx.stroke();
+        ctx.strokeStyle = `rgba(255,230,120,${0.8*gp})`; ctx.lineWidth = 1.8*s; ctx.stroke();
 
+        // KALASH — MAXIMUM GLOW
         const kY = topY-amH, kG = main ? gp : gp*0.65;
-        const kGlow = ctx.createRadialGradient(cx, kY-10*s, 0, cx, kY-10*s, 28*s);
-        kGlow.addColorStop(0, `rgba(255,235,160,${0.6*kG})`);
-        kGlow.addColorStop(0.4, `rgba(255,185,65,${0.2*kG})`);
+        const kGlow = ctx.createRadialGradient(cx, kY-10*s, 0, cx, kY-10*s, 30*s);
+        kGlow.addColorStop(0, `rgba(255,240,170,${0.65*kG})`);
+        kGlow.addColorStop(0.35, `rgba(255,190,70,${0.25*kG})`);
         kGlow.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = kGlow;
-        ctx.beginPath(); ctx.arc(cx, kY-10*s, 28*s, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, kY-10*s, 30*s, 0, Math.PI*2); ctx.fill();
 
         const kg = ctx.createLinearGradient(cx-10*s, kY, cx+10*s, kY);
-        kg.addColorStop(0, '#8a5500'); kg.addColorStop(0.25, '#ffd700');
-        kg.addColorStop(0.5, '#fffbe8'); kg.addColorStop(0.75, '#ffd700'); kg.addColorStop(1, '#8a5500');
+        kg.addColorStop(0, '#8a5500'); kg.addColorStop(0.2, '#ffd700');
+        kg.addColorStop(0.45, '#fffbe8'); kg.addColorStop(0.55, '#fffbe8');
+        kg.addColorStop(0.8, '#ffd700'); kg.addColorStop(1, '#8a5500');
         ctx.fillStyle = kg;
         ctx.beginPath(); ctx.arc(cx, kY-10*s, 10*s, 0, Math.PI*2); ctx.fill();
         ctx.fillRect(cx-4*s, kY-16*s, 8*s, 6*s);
@@ -513,10 +615,11 @@ export default function CinematicIntro({ onComplete }: Props) {
       drawShikhara(mx-200*s, sY, 40*s, 85*s, false);
       drawShikhara(mx+200*s, sY, 40*s, 85*s, false);
 
+      // Flag pole
       const pTop = mainTop-28*s;
       ctx.shadowBlur = 0;
       const pg = ctx.createLinearGradient(mx-2*s,0,mx+2*s,0);
-      pg.addColorStop(0,'#120600'); pg.addColorStop(0.5,'#2d1508'); pg.addColorStop(1,'#120600');
+      pg.addColorStop(0,'#1a0e06'); pg.addColorStop(0.5,SAND_LIGHT); pg.addColorStop(1,'#1a0e06');
       ctx.fillStyle = pg;
       ctx.fillRect(mx-1.8*s, pTop, 3.6*s, mainTop-pTop);
 
@@ -563,7 +666,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       gaps.forEach((gap, i) => {
         const gx = mx + gap.x*s;
-        const gy = baseY - 44*s - 90*s;
+        const gy = baseY - 48*s - 90*s;
         const len = gap.h * s;
         const w = gap.w * s;
         const a = gap.op * vis * pulse * (0.7 + 0.3*Math.sin(t*2.5+i*1.3));
@@ -583,23 +686,6 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.closePath(); ctx.fill();
       });
 
-      const edgePoints = [
-        { x: -210, y: 44 }, { x: -155, y: 44 }, { x: -90, y: 44 },
-        { x: 0, y: 44 }, { x: 90, y: 44 }, { x: 155, y: 44 }, { x: 210, y: 44 },
-      ];
-      edgePoints.forEach((ep, i) => {
-        const ex = mx + ep.x*s;
-        const ey = baseY - ep.y*s;
-        const er = (i === 3 ? 50 : 30)*s;
-        const ea = (i === 3 ? 0.07 : 0.04)*vis*pulse;
-        const eg = ctx.createRadialGradient(ex, ey-80*s, 0, ex, ey-80*s, er);
-        eg.addColorStop(0, `rgba(255,220,140,${ea})`);
-        eg.addColorStop(0.5, `rgba(255,170,60,${ea*0.3})`);
-        eg.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = eg;
-        ctx.beginPath(); ctx.arc(ex, ey-80*s, er, 0, Math.PI*2); ctx.fill();
-      });
-
       ctx.restore();
     }
 
@@ -610,14 +696,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       const p = 0.55+0.45*Math.sin(t*2.2);
 
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      const pts = [
-        {x:mx-165*s, y:baseY-200*s, r:48*s},
-        {x:mx-95*s, y:baseY-280*s, r:42*s},
-        {x:mx+95*s, y:baseY-280*s, r:42*s},
-        {x:mx+165*s, y:baseY-200*s, r:48*s},
-        {x:mx, y:baseY-370*s, r:60*s},
-      ];
-      pts.forEach((lp,i) => {
+      [{x:mx-165*s, y:baseY-200*s, r:48*s},{x:mx-95*s, y:baseY-280*s, r:42*s},{x:mx+95*s, y:baseY-280*s, r:42*s},{x:mx+165*s, y:baseY-200*s, r:48*s},{x:mx, y:baseY-370*s, r:60*s}].forEach((lp,i) => {
         const a = 0.08*vis*p*(0.6+0.4*Math.sin(t*3+i*1.5));
         const g = ctx.createRadialGradient(lp.x,lp.y,0,lp.x,lp.y,lp.r);
         g.addColorStop(0, `rgba(255,215,140,${a})`);
@@ -649,64 +728,88 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
+    // ===================== ✅ FIX 2: WATER — Dark blue-black, not brown =====================
     function drawWater(t: number) {
       const vis = smoothstep(2,3.5,t)*(1-smoothstep(6.5,8,t));
       if (vis <= 0) return;
       const wY = H*HORIZON, sv = sunVis(t);
       ctx.save(); ctx.globalAlpha = vis;
 
+      // ✅ Dark blue-black water base — NOT brown
       const wg = ctx.createLinearGradient(0,wY,0,H);
-      wg.addColorStop(0,'#0a0402'); wg.addColorStop(0.4,'#050201'); wg.addColorStop(1,'#020000');
+      wg.addColorStop(0, '#060408');
+      wg.addColorStop(0.15, '#040308');
+      wg.addColorStop(0.4, '#020205');
+      wg.addColorStop(1, '#000000');
       ctx.fillStyle = wg; ctx.fillRect(0,wY,W,H-wY);
 
+      // ✅ Warm reflected sky glow at water surface top
+      if (sv > 0) {
+        const skyRefG = ctx.createLinearGradient(0,wY,0,wY+H*0.06);
+        skyRefG.addColorStop(0, `rgba(180,90,30,${0.08*sv})`);
+        skyRefG.addColorStop(0.5, `rgba(120,50,15,${0.03*sv})`);
+        skyRefG.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = skyRefG;
+        ctx.fillRect(0,wY,W,H*0.06);
+      }
+
+      // ✅ Brighter golden shimmer path
       if (sv > 0) {
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
         const sx = W*0.5;
-        for (let y = wY+2; y < H; y += 2.5) {
+        for (let y = wY+1; y < H; y += 2) {
           const d = (y-wY)/(H-wY);
-          const wx = Math.sin(y*0.11+t*3.8)*(10+d*18)+Math.cos(y*0.07-t*2.2)*5;
-          const lw = lerp(75,18,d)*(0.65+0.35*Math.sin(y*0.18+t*2.8));
-          const a = lerp(0.08,0.025,d)*sv;
+          const wx = Math.sin(y*0.11+t*3.8)*(12+d*22)+Math.cos(y*0.07-t*2.2)*6;
+          const lw = lerp(90,20,d)*(0.6+0.4*Math.sin(y*0.18+t*2.8));
+          const a = lerp(0.1,0.03,d)*sv;
           const rg = ctx.createLinearGradient(sx+wx-lw,y,sx+wx+lw,y);
           rg.addColorStop(0,'rgba(0,0,0,0)');
-          rg.addColorStop(0.25,`rgba(255,205,105,${a})`);
-          rg.addColorStop(0.5,`rgba(255,245,185,${a*1.6})`);
-          rg.addColorStop(0.75,`rgba(255,205,105,${a})`);
+          rg.addColorStop(0.15,`rgba(255,210,110,${a*0.6})`);
+          rg.addColorStop(0.35,`rgba(255,235,160,${a})`);
+          rg.addColorStop(0.5,`rgba(255,250,200,${a*1.8})`);
+          rg.addColorStop(0.65,`rgba(255,235,160,${a})`);
+          rg.addColorStop(0.85,`rgba(255,210,110,${a*0.6})`);
           rg.addColorStop(1,'rgba(0,0,0,0)');
           ctx.fillStyle = rg; ctx.fillRect(sx+wx-lw,y,lw*2,2);
         }
         ctx.restore();
       }
 
+      // Temple reflection — subtle dark shapes
       const tr = smoothstep(2.5,4,t);
       if (tr > 0) {
-        ctx.save(); ctx.globalAlpha = 0.12*tr;
+        ctx.save(); ctx.globalAlpha = 0.15*tr;
         const s = Math.min(W,H)*0.0017, mx = W*0.5, bY = H*HORIZON;
-        ctx.fillStyle = '#000';
-        const shikRef = [
-          {x:0, tw:65, th:280}, {x:-90, tw:36, th:170}, {x:90, tw:36, th:170},
-          {x:-155, tw:28, th:120}, {x:155, tw:28, th:120}
-        ];
-        shikRef.forEach(sr => {
+        ctx.fillStyle = '#020104';
+        [{x:0, tw:65, th:280},{x:-90, tw:36, th:170},{x:90, tw:36, th:170},{x:-155, tw:28, th:120},{x:155, tw:28, th:120}].forEach(sr => {
           ctx.beginPath();
           ctx.moveTo(mx+sr.x*s-sr.tw*s, bY);
-          ctx.lineTo(mx+sr.x*s-5*s, bY-sr.th*s*0.4);
-          ctx.lineTo(mx+sr.x*s+5*s, bY-sr.th*s*0.4);
+          ctx.lineTo(mx+sr.x*s-5*s, bY-sr.th*s*0.35);
+          ctx.lineTo(mx+sr.x*s+5*s, bY-sr.th*s*0.35);
           ctx.lineTo(mx+sr.x*s+sr.tw*s, bY);
           ctx.closePath(); ctx.fill();
         });
+        // ✅ Golden reflection of temple glow
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.04*tr;
+        const tRG = ctx.createRadialGradient(mx,bY-s*30,0,mx,bY-s*30,120*s);
+        tRG.addColorStop(0,'rgba(255,200,100,1)');
+        tRG.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle = tRG;
+        ctx.beginPath(); ctx.ellipse(mx,bY,120*s,40*s,0,0,Math.PI*2); ctx.fill();
         ctx.restore();
       }
 
+      // Firework reflections
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       fwBursts.forEach(b => {
         const rY = wY+(wY-b.y)*0.45;
         if (rY < wY || rY > H) return;
         const rg = ctx.createRadialGradient(b.x,rY,0,b.x,rY,b.r*1.5);
-        rg.addColorStop(0, `${b.color}${Math.floor(b.alpha*35).toString(16).padStart(2,'0')}`);
+        rg.addColorStop(0, `${b.color}${Math.floor(b.alpha*40).toString(16).padStart(2,'0')}`);
         rg.addColorStop(1,'rgba(0,0,0,0)');
         ctx.fillStyle = rg;
-        ctx.beginPath(); ctx.ellipse(b.x,rY,b.r*1.2,b.r*0.18,0,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(b.x,rY,b.r*1.3,b.r*0.2,0,0,Math.PI*2); ctx.fill();
       });
       ctx.restore();
       ctx.restore();
@@ -725,7 +828,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
         const fg = ctx.createRadialGradient(d.x,wy-fh*0.3,0,d.x,wy-fh*0.3,sz*3.5);
-        fg.addColorStop(0,'rgba(255,185,55,0.3)'); fg.addColorStop(1,'rgba(0,0,0,0)');
+        fg.addColorStop(0,'rgba(255,185,55,0.35)'); fg.addColorStop(1,'rgba(0,0,0,0)');
         ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(d.x,wy-fh*0.3,sz*3.5,0,Math.PI*2); ctx.fill();
         ctx.restore();
 
