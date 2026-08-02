@@ -183,27 +183,28 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // ============ DRAW BACKGROUND & LIGHTS ============
+    // ============ SCENE 1: CINEMATIC SUNRISE & SKY ============
 
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 1.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
       const vis = reveal * (1 - fadeOut);
 
-      const textSceneDarkness = smoothstep(6.5, 8.0, t);
+      // Smooth Sky Transition: Sunrise -> Dusk -> Deep Black Night
+      const textSceneDarkness = smoothstep(6.8, 8.0, t);
 
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      const ir = Math.floor(lerp(lerp(4, 50, vis), 0, textSceneDarkness));
-      const ig = Math.floor(lerp(lerp(2, 25, vis), 0, textSceneDarkness));
-      const ib = Math.floor(lerp(lerp(5, 15, vis), 0, textSceneDarkness));
+      const ir = Math.floor(lerp(lerp(10, 80, vis), 0, textSceneDarkness));
+      const ig = Math.floor(lerp(lerp(5, 35, vis), 0, textSceneDarkness));
+      const ib = Math.floor(lerp(lerp(2, 15, vis), 0, textSceneDarkness));
 
       grad.addColorStop(0, '#000000');
-      grad.addColorStop(0.6, `rgb(${ir},${ig},${ib})`);
+      grad.addColorStop(0.55, `rgb(${ir},${ig},${ib})`);
       grad.addColorStop(1, '#000000');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
       
-      if (screenFlash > 0.01 && t < 7.0) {
+      if (screenFlash > 0.01 && t < 6.5) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = `rgba(255, 240, 200, ${screenFlash * 0.4})`;
@@ -212,32 +213,60 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
+    // SCENE 1: SMOOTH HALF-SUN ON HORIZON (NO BANDING ARTIFACTS)
+    function drawSun(t: number) {
+      const vis = smoothstep(0.2, 1.5, t) * (1 - smoothstep(3.2, 5.0, t));
+      if (vis <= 0) return;
+
+      const sx = W * 0.5;
+      const sy = H * 0.62; // Horizon
+      const sunR = Math.max(0.1, Math.min(W, H) * 0.22);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      // 1. Soft Volumetric Atmosphere Glow
+      const haloGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(0.1, sunR * 3));
+      haloGrad.addColorStop(0, `rgba(255, 220, 140, ${0.85 * vis})`);
+      haloGrad.addColorStop(0.25, `rgba(255, 150, 50, ${0.45 * vis})`);
+      haloGrad.addColorStop(0.65, `rgba(180, 70, 20, ${0.12 * vis})`);
+      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = haloGrad;
+      ctx.fillRect(0, 0, W, H * 0.62);
+
+      // 2. Smooth Half-Sun Core on Horizon
+      const coreGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(0.1, sunR));
+      coreGrad.addColorStop(0, `rgba(255, 255, 240, ${vis})`);
+      coreGrad.addColorStop(0.35, `rgba(255, 215, 100, ${vis * 0.95})`);
+      coreGrad.addColorStop(0.75, `rgba(255, 130, 20, ${vis * 0.4})`);
+      coreGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+      
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(sx, sy, Math.max(0.1, sunR), Math.PI, 0); // Smooth half sun
+      ctx.fill();
+
+      ctx.restore();
+    }
+
     function drawDivineLight(t: number) {
       const reveal = smoothstep(0.5, 1.5, t);
-      const fade = smoothstep(6.5, 8.0, t);
+      const fade = smoothstep(5.0, 7.0, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
       const sy = H * 0.42; 
-      const sunR = Math.max(0.1, W * 0.25);
-      const sunGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
-      sunGrad.addColorStop(0, `rgba(255, 240, 180, ${0.95 * vis})`);
-      sunGrad.addColorStop(0.2, `rgba(255, 180, 80, ${0.65 * vis})`);
-      sunGrad.addColorStop(0.5, `rgba(200, 90, 30, ${0.25 * vis})`);
-      sunGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = sunGrad;
-      ctx.fillRect(0, 0, W, H);
+      const maxLen = Math.max(W, H) * 1.2;
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const rayCount = 28;
-      const maxLen = Math.max(W, H) * 1.2;
       for (let i = 0; i < rayCount; i++) {
         const baseAngle = (i / rayCount) * Math.PI * 2;
         const angle = baseAngle + t * 0.04 + Math.sin(t * 0.3 + i * 0.8) * 0.03;
         const len = maxLen * (0.6 + 0.4 * Math.sin(t * 0.5 + i * 1.7));
         const flicker = 0.7 + 0.3 * Math.sin(t * 1.5 + i * 2.3);
-        const a = 0.09 * vis * flicker;
+        const a = 0.08 * vis * flicker;
         const ex = sx + Math.cos(angle) * len;
         const ey = sy + Math.sin(angle) * len;
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
@@ -266,7 +295,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       for (let i = 0; i < rayCount; i++) {
         const angle = (Math.PI * 0.2) + (i / rayCount) * (Math.PI * 0.6) + Math.sin(t * 0.2 + i) * 0.015;
         const len = H * 0.65;
-        const a = 0.04 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
+        const a = 0.035 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
         const ex = sx + Math.cos(angle) * len;
         const ey = sy + Math.sin(angle) * len;
 
@@ -286,11 +315,11 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ HYPER-REALISTIC 3D RAM MANDIR ============
+    // ============ SCENE 2: 3D NAGARA RAM MANDIR ============
 
     function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
-      const reveal = smoothstep(1.8, 4.0, t);
-      const fade = smoothstep(6.5, 8.0, t);
+      const reveal = smoothstep(2.8, 4.8, t);
+      const fade = smoothstep(6.8, 8.2, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
 
@@ -363,7 +392,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       const sanctumW = 160 * s;
       const sanctumH = 90 * s;
       
-      const garbhaGlow = targetCtx.createRadialGradient(mx, sanctumY - 40 * s, 0, mx, sanctumY - 40 * s, 90 * s);
+      const garbhaGlow = targetCtx.createRadialGradient(mx, sanctumY - 40 * s, 0, mx, sanctumY - 40 * s, Math.max(0.1, 90 * s));
       garbhaGlow.addColorStop(0, 'rgba(255, 240, 160, 1)');
       garbhaGlow.addColorStop(0.4, 'rgba(255, 150, 40, 0.8)');
       garbhaGlow.addColorStop(1, 'rgba(0,0,0,0)');
@@ -452,7 +481,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         
         targetCtx.fillStyle = `rgba(255, 200, 50, ${0.6 + 0.4 * Math.sin(t*4 + i)})`;
         targetCtx.beginPath();
-        targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s + 6 * s, 4 * s, 0, Math.PI * 2);
+        targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s + 6 * s, Math.max(0.1, 4 * s), 0, Math.PI * 2);
         targetCtx.fill();
       }
 
@@ -542,13 +571,13 @@ export default function CinematicIntro({ onComplete }: Props) {
         const amalakaW = Math.max(0.1, w * 0.35);
         const amalakaH = Math.max(0.1, 14 * s);
 
-        const amalakaGrad = targetCtx.createRadialGradient(cx, topY - amalakaH / 2, 0, cx, topY - amalakaH / 2, amalakaW / 2);
+        const amalakaGrad = targetCtx.createRadialGradient(cx, topY - amalakaH / 2, 0, cx, topY - amalakaH / 2, Math.max(0.1, amalakaW / 2));
         amalakaGrad.addColorStop(0, '#ffaa00');
         amalakaGrad.addColorStop(0.5, '#d48031');
         amalakaGrad.addColorStop(1, '#5e2d14');
         targetCtx.fillStyle = amalakaGrad;
         targetCtx.beginPath();
-        targetCtx.ellipse(cx, topY - amalakaH / 2, amalakaW / 2, amalakaH / 2, 0, 0, Math.PI * 2);
+        targetCtx.ellipse(cx, topY - amalakaH / 2, Math.max(0.1, amalakaW / 2), Math.max(0.1, amalakaH / 2), 0, 0, Math.PI * 2);
         targetCtx.fill();
         targetCtx.strokeStyle = '#ffea00';
         targetCtx.lineWidth = 1.5 * s;
@@ -638,10 +667,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.restore();
     }
 
-    // SCENE 2: WATER REFLECTIONS
     function drawWater(t: number) {
       const reveal = smoothstep(2.2, 4.0, t);
-      const fade = smoothstep(6.5, 8.0, t);
+      const fade = smoothstep(6.8, 8.2, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -705,8 +733,8 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function updateAndDrawFloatingDiyas(t: number) {
-      const reveal = smoothstep(3.0, 4.5, t);
-      const fade = smoothstep(6.5, 8.0, t);
+      const reveal = smoothstep(3.0, 4.8, t);
+      const fade = smoothstep(6.8, 8.2, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -769,7 +797,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = 0.6 * vis;
-        ctx.drawImage(dustSprite, d.x - s * 1.8, waveY - flameH - s * 0.5, s * 3.6, s * 3.6);
+        ctx.drawImage(dustSprite, d.x - s * 1.8, waveY - flameH - s * 0.5, Math.max(0.1, s * 3.6), Math.max(0.1, s * 3.6));
         ctx.restore();
       });
 
@@ -799,7 +827,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
     // SCENE 3: REALISTIC FIREWORKS
     function launchFireworks(t: number) {
-      if (t < 3.5 || t > 6.5) return;
+      if (t < 3.2 || t > 6.8) return;
 
       if (rockets.length >= 3) return;
       if (t - lastRocketLaunchTime < 0.35 + Math.random() * 0.15) return;
@@ -1043,7 +1071,7 @@ export default function CinematicIntro({ onComplete }: Props) {
             ctx.globalAlpha = tt.alpha * 0.8;
             ctx.fillStyle = r.color;
             ctx.beginPath();
-            ctx.arc(tt.x, tt.y, 1.5, 0, Math.PI * 2); 
+            ctx.arc(tt.x, tt.y, Math.max(0.1, 1.5), 0, Math.PI * 2); 
             ctx.fill();
           }
         });
@@ -1157,7 +1185,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function spawnBirds(t: number) {
-      if (t < 3.0 || t > 4.5) return;
+      if (t < 0.8 || t > 3.2) return;
       if (birdsSpawned) return;
       birdsSpawned = true;
       const count = 14;
@@ -1262,7 +1290,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     // ============ AMBIENT GOLDEN STAR DUST AROUND TEXT ============
-    // ✅ CRASH FIX: twinkle logic and Math.max guard to prevent negative radius!
+    // ✅ CRASH FIX: Guaranteed positive twinkle multiplier
     function drawAmbientTextSparkles(t: number, cy: number, vis: number) {
       if (vis <= 0.001) return;
       ctx.save();
@@ -1275,7 +1303,6 @@ export default function CinematicIntro({ onComplete }: Props) {
         const y = (cy - H * 0.25) + ((seed * 223) % (H * 0.5));
         
         const floatY = Math.sin(t * 1.2 + seed) * 12;
-        // ✅ CRASH FIX: twinkle is ALWAYS positive (0.1 to 1.0)
         const twinkle = 0.55 + 0.45 * Math.sin(t * 3.5 + seed * 2);
         const sz = Math.max(0.1, (1.0 + (i % 3) * 0.8) * twinkle);
         const alpha = 0.25 * vis * twinkle;
@@ -1315,7 +1342,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(0, -31, 3.2, 0, Math.PI * 2);
+      ctx.arc(0, -31, Math.max(0.1, 3.2), 0, Math.PI * 2);
       ctx.fillStyle = '#FFE8A3';
       ctx.fill();
 
@@ -1388,7 +1415,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       ctx.fillStyle = '#FFC837';
       ctx.beginPath();
-      ctx.arc(0, 0, 4, 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.max(0.1, 4), 0, Math.PI * 2);
       ctx.fill();
 
       ctx.beginPath();
@@ -1402,18 +1429,18 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       ctx.fillStyle = '#FFC837';
       ctx.beginPath();
-      ctx.arc(-halfW + 4, 0, 2, 0, Math.PI * 2);
-      ctx.arc(halfW - 4, 0, 2, 0, Math.PI * 2);
+      ctx.arc(-halfW + 4, 0, Math.max(0.1, 2), 0, Math.PI * 2);
+      ctx.arc(halfW - 4, 0, Math.max(0.1, 2), 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
     }
 
-    // 100% IMAGE 2 REPLICA: GLITTERING 24K GOLD TITLE WITH BOKEH (NO WHITE BORDER / NO WEIRD BLOBS)
+    // SCENE 3: DIRECT REVEAL - 24K METALLIC GOLD TITLE (100% CLEAR, BOLD, NO WHITE BORDER)
     function drawTitle(t: number) {
-      if (t < 8.5) return;
+      if (t < 7.5) return;
 
-      const fadeIn = smoothstep(8.5, 10.2, t);
+      const fadeIn = smoothstep(7.5, 9.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
       const intensity = fadeIn * (1 - fadeOut);
       if (intensity <= 0.001) return;
@@ -1428,7 +1455,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
 
-      // Top God Rays & Ambient Gold Star Dust
       drawTopGodRays(t, intensity);
       drawAmbientTextSparkles(t, cy, intensity);
 
@@ -1439,7 +1465,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.lineWidth = fontSize * 0.045;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 2. Pure 24K Metallic Gold Fill
+      // 2. Pure 24K Metallic Gold Fill Gradient
       const pure24kGoldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.45, 0, cy + fontSize * 0.45);
       pure24kGoldGrad.addColorStop(0.00, '#FFFDF0'); // Bright gold top
       pure24kGoldGrad.addColorStop(0.20, '#FFE8A3'); // Polished highlight
@@ -1467,10 +1493,10 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ROYAL GREETING WITH DIVIDERS (IMAGE 2 REPLICA)
+    // SCENE 3: ROYAL GREETING WITH DIVIDERS
     function drawGreeting(t: number) {
-      if (t < 10.0) return;
-      const reveal = smoothstep(10.0, 11.5, t);
+      if (t < 9.0) return;
+      const reveal = smoothstep(9.0, 10.5, t);
       const fade = smoothstep(17.0, 17.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0.001) return;
@@ -1530,7 +1556,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     // ============ POST-PROCESSING ============
 
     function applyBloom(t: number) {
-      const textSceneVis = smoothstep(8.5, 10.5, t);
+      const textSceneVis = smoothstep(7.5, 9.5, t);
       const bloomAlpha = lerp(0.55, 0.12, textSceneVis);
 
       bctx.clearRect(0, 0, bloom.width, bloom.height);
@@ -1614,17 +1640,18 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       applyCamera();
       drawBackground(t);
+      drawSun(t); // SCENE 1: SMOOTH HALF-SUN ON HORIZON
       drawDivineLight(t);
       drawWater(t);
-      drawRamMandir(t, ctx);
+      drawRamMandir(t, ctx); // SCENE 2: 3D SANDSTONE MANDIR
       drawFireworks();
       updateAndDrawFloatingDiyas(t);
       drawFogAndHaze(t);
       drawParticles();
       ctx.restore();
 
-      drawTitle(t);
-      drawGreeting(t);
+      drawTitle(t); // SCENE 3: 24K GOLD TITLE
+      drawGreeting(t); // SCENE 3: ROYAL GREETING
 
       const fadeIn = 1 - smoothstep(0, 1.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
