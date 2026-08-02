@@ -106,9 +106,12 @@ export default function CinematicIntro({ onComplete }: Props) {
     let screenFlash = 0;
     let cameraShake = 0;
     let lastRocketLaunchTime = 0;
+    
+    // Track timeouts to prevent memory leaks
+    const timeoutIds: number[] = [];
 
     const reflectCanvas = document.createElement('canvas');
-    const rctx = reflectCanvas.getContext('2d')!;
+    const rctx = reflectCanvas.getContext('2d', { alpha: true })!;
     const bloom = document.createElement('canvas');
     const bctx = bloom.getContext('2d')!;
     const grain = document.createElement('canvas');
@@ -151,8 +154,11 @@ export default function CinematicIntro({ onComplete }: Props) {
       canvas.height = Math.floor(H * DPR);
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       
-      reflectCanvas.width = Math.floor(W);
-      reflectCanvas.height = Math.floor(H);
+      // Fix Reflection Canvas Resolution with DPR
+      reflectCanvas.width = Math.floor(W * DPR);
+      reflectCanvas.height = Math.floor(H * DPR);
+      rctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
       bloom.width = Math.max(2, Math.floor(W / 2));
       bloom.height = Math.max(2, Math.floor(H / 2));
       grain.width = 256; grain.height = 256;
@@ -193,35 +199,42 @@ export default function CinematicIntro({ onComplete }: Props) {
       const tc = document.createElement("canvas");
       const tctx = tc.getContext("2d")!;
       const fontSize = Math.min(W * 0.125, 135);
-      tc.width = Math.floor(W);
-      tc.height = Math.floor(fontSize * 2.4);
-      tctx.clearRect(0,0,tc.width,tc.height);
-      tctx.fillStyle="#fff";
-      tctx.textAlign="center";
-      tctx.textBaseline="middle";
-      tctx.font=`900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
-      tctx.lineJoin="round";
-      tctx.lineCap="round";
-      tctx.fillText("जय श्री राम",tc.width/2,tc.height/2);
-      const img=tctx.getImageData(0,0,tc.width,tc.height);
-      ramPoints=[];
-      const step=2;
-      for(let y=0;y<tc.height;y+=step){
-          for(let x=0;x<tc.width;x+=step){
-              const i=(y*tc.width+x)*4;
-              if(img.data[i+3]>20){
-                  ramPoints.push({
-                      x:x-tc.width/2,
-                      y:y-tc.height/2
-                  });
-              }
+      
+      // Fix DPR Issue in Text Sampling
+      tc.width = Math.floor(W * DPR);
+      tc.height = Math.floor(fontSize * 2.4 * DPR);
+      tctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      
+      tctx.clearRect(0, 0, tc.width, tc.height);
+      tctx.fillStyle = "#fff";
+      tctx.textAlign = "center";
+      tctx.textBaseline = "middle";
+      tctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      tctx.lineJoin = "round";
+      tctx.lineCap = "round";
+      tctx.fillText("जय श्री राम", W / 2, (fontSize * 2.4) / 2);
+      
+      const img = tctx.getImageData(0, 0, tc.width, tc.height);
+      ramPoints = [];
+      const step = 2 * DPR;
+      for (let y = 0; y < tc.height; y += step) {
+        for (let x = 0; x < tc.width; x += step) {
+          const i = (y * tc.width + x) * 4;
+          if (img.data[i + 3] > 20) {
+            // Convert physical pixels back to CSS pixels
+            const cssX = x / DPR;
+            const cssY = y / DPR;
+            ramPoints.push({
+              x: cssX - W / 2,
+              y: cssY - (fontSize * 2.4) / 2
+            });
           }
+        }
       }
     }
     
     // ============ DRAW FUNCTIONS ============
 
-    // SCENE 1 & 4: BACKGROUND LOGIC
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 1.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
@@ -249,7 +262,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // SCENE 1: DIVINE SUNLIGHT RAYS
     function drawDivineLight(t: number) {
       const reveal = smoothstep(0.5, 1.5, t);
       const fade = smoothstep(6.5, 8.0, t);
@@ -294,7 +306,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 6: TOP GOD RAYS
     function drawTopGodRays(t: number, vis: number) {
       if (vis <= 0) return;
       ctx.save();
@@ -325,7 +336,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 2: HYPER-REALISTIC 3D RAM MANDIR
     function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
       const reveal = smoothstep(1.8, 4.0, t);
       const fade = smoothstep(6.5, 8.0, t);
@@ -352,7 +362,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.fillRect(mx - 400 * s, baseY - 450 * s, 800 * s, 500 * s);
 
       const drawPlatform = (pw: number, ph: number, py: number, depth: number) => {
-        const frontGrad = targetCtx.createLinearGradient(mx - pw/2, py, mx + pw/2, py);
+        const frontGrad = targetCtx.createLinearGradient(mx - pw / 2, py, mx + pw / 2, py);
         frontGrad.addColorStop(0, darkSandstone);
         frontGrad.addColorStop(0.3, midSandstone);
         frontGrad.addColorStop(0.5, lightSandstone);
@@ -381,8 +391,8 @@ export default function CinematicIntro({ onComplete }: Props) {
 
         targetCtx.strokeStyle = 'rgba(20, 10, 5, 0.6)';
         targetCtx.lineWidth = 1 * s;
-        for(let i=0; i<5; i++) {
-          const lx = mx - pw/2 + (pw / 5) * i;
+        for (let i = 0; i < 5; i++) {
+          const lx = mx - pw / 2 + (pw / 5) * i;
           targetCtx.beginPath();
           targetCtx.moveTo(lx, py);
           targetCtx.lineTo(lx, py + ph);
@@ -409,7 +419,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.fillRect(mx - 120 * s, sanctumY - 100 * s, 240 * s, 120 * s);
 
       targetCtx.fillStyle = '#0a0201';
-      targetCtx.fillRect(mx - sanctumW/2, sanctumY - sanctumH, sanctumW, sanctumH);
+      targetCtx.fillRect(mx - sanctumW / 2, sanctumY - sanctumH, sanctumW, sanctumH);
 
       const doorLayers = [
         { w: sanctumW, h: sanctumH, c: '#5e2d14' },
@@ -420,10 +430,10 @@ export default function CinematicIntro({ onComplete }: Props) {
         const dy = sanctumY - layer.h;
         targetCtx.fillStyle = layer.c;
         targetCtx.beginPath();
-        targetCtx.moveTo(mx - layer.w/2, sanctumY);
-        targetCtx.lineTo(mx - layer.w/2, dy + layer.w * 0.2);
-        targetCtx.quadraticCurveTo(mx, dy - layer.w * 0.1, mx + layer.w/2, dy + layer.w * 0.2);
-        targetCtx.lineTo(mx + layer.w/2, sanctumY);
+        targetCtx.moveTo(mx - layer.w / 2, sanctumY);
+        targetCtx.lineTo(mx - layer.w / 2, dy + layer.w * 0.2);
+        targetCtx.quadraticCurveTo(mx, dy - layer.w * 0.1, mx + layer.w / 2, dy + layer.w * 0.2);
+        targetCtx.lineTo(mx + layer.w / 2, sanctumY);
         targetCtx.closePath();
         targetCtx.fill();
         targetCtx.strokeStyle = goldGlow;
@@ -433,7 +443,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       targetCtx.fillStyle = '#1a0702';
       targetCtx.fillRect(mx - 40 * s, sanctumY - 60 * s, 80 * s, 60 * s);
-      targetCtx.strokeStyle = `rgba(255, 215, 0, ${0.8 + 0.2 * Math.sin(t*2)})`;
+      targetCtx.strokeStyle = `rgba(255, 215, 0, ${0.8 + 0.2 * Math.sin(t * 2)})`;
       targetCtx.lineWidth = 2 * s;
       targetCtx.strokeRect(mx - 40 * s, sanctumY - 60 * s, 80 * s, 60 * s);
       targetCtx.beginPath();
@@ -488,7 +498,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s, (x2 - x1) / 2, Math.PI, 0);
         targetCtx.stroke();
         
-        targetCtx.fillStyle = `rgba(255, 200, 50, ${0.6 + 0.4 * Math.sin(t*4 + i)})`;
+        targetCtx.fillStyle = `rgba(255, 200, 50, ${0.6 + 0.4 * Math.sin(t * 4 + i)})`;
         targetCtx.beginPath();
         targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s + 6 * s, 4 * s, 0, Math.PI * 2);
         targetCtx.fill();
@@ -668,7 +678,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.lineWidth = 1 * s;
       targetCtx.stroke();
 
-      targetCtx.fillStyle = `rgba(255, 234, 0, ${0.8 + 0.2 * Math.sin(t*3)})`;
+      targetCtx.fillStyle = `rgba(255, 234, 0, ${0.8 + 0.2 * Math.sin(t * 3)})`;
       targetCtx.beginPath();
       targetCtx.arc(mx + 12 * s, flagPoleTop + 13 * s + wave1 * 0.5, 4 * s, 0, Math.PI * 2);
       targetCtx.fill();
@@ -676,7 +686,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.restore();
     }
 
-    // SCENE 2: UNREAL ENGINE STYLE WATER
     function drawWater(t: number) {
       const reveal = smoothstep(2.2, 4.0, t);
       const fade = smoothstep(6.5, 8.0, t);
@@ -705,7 +714,8 @@ export default function CinematicIntro({ onComplete }: Props) {
         const distanceFactor = dist / (H - waterY);
         const ripple = Math.sin(y * 0.15 + t * 6.5) * 5 * distanceFactor + 
                        Math.cos(y * 0.35 - t * 4.2) * 2 * distanceFactor;
-        ctx.drawImage(reflectCanvas, 0, y, W, sliceH, ripple, y, W, sliceH);
+        // Fixed reflectCanvas draw to match DPR correctly
+        ctx.drawImage(reflectCanvas, 0, y * DPR, W * DPR, sliceH * DPR, ripple, y, W, sliceH);
       }
       ctx.restore();
 
@@ -835,7 +845,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 3: REALISTIC FIREWORKS
     function launchFireworks(t: number) {
       if (t < 3.5 || t > 6.5) return;
 
@@ -944,14 +953,16 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
 
       if (!isSecondary && type === 'finale') {
-        for(let i=0; i<2; i++) {
-          setTimeout(() => {
+        for (let i = 0; i < 2; i++) {
+          // Fix: Track timeout to clear on unmount
+          const id = window.setTimeout(() => {
             if (running) {
               const offX = (Math.random() - 0.5) * 70;
               const offY = (Math.random() - 0.5) * 30;
               createBurst(fx + offX, fy + offY, color2, color, 'small', true);
             }
           }, 500 + i * 300);
+          timeoutIds.push(id);
         }
       }
     }
@@ -986,10 +997,10 @@ export default function CinematicIntro({ onComplete }: Props) {
         if (r.smokeTimer > 0.15) {
           r.smokeTimer = 0;
           sparks.push({
-            x: r.x + (Math.random()-0.5)*2, y: r.y + 5, 
-            vx: (Math.random()-0.5)*0.5, vy: 1 + Math.random()*0.5,
+            x: r.x + (Math.random() - 0.5) * 2, y: r.y + 5, 
+            vx: (Math.random() - 0.5) * 0.5, vy: 1 + Math.random() * 0.5,
             color: 'rgba(150,130,110,1)', color2: 'rgba(100,80,60,1)',
-            alpha: 0.3, life: 0, maxLife: 1.5, size: 2 + Math.random()*2,
+            alpha: 0.3, life: 0, maxLife: 1.5, size: 2 + Math.random() * 2,
             gravity: -0.02, drag: 0.98, flicker: false, type: 'smoke',
             temp: 0, rot: 0, rotSpd: 0, wind: 0.1, turb: 0.02,
             stage: 0, delay: 0, hasExploded: false, isSecondary: false
@@ -1000,7 +1011,7 @@ export default function CinematicIntro({ onComplete }: Props) {
           r.sparkTimer = 0;
           sparks.push({
             x: r.x, y: r.y + 4, 
-            vx: (Math.random()-0.5)*1, vy: 2 + Math.random()*1.5,
+            vx: (Math.random() - 0.5) * 1, vy: 2 + Math.random() * 1.5,
             color: '#ffffff', color2: r.color,
             alpha: 1, life: 0, maxLife: 0.4, size: 1.0, 
             gravity: 0.1, drag: 0.95, flicker: true, type: 'ember',
@@ -1179,7 +1190,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
-    // SCENE 5: PARTICLES FLY IN TO ASSEMBLE TEXT (8.5s - 10.5s)
     function spawnTextParticles(t: number) {
       if (t < 8.5 || t > 10.5) return;
       if (ramPoints.length === 0) return;
@@ -1498,7 +1508,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 6: SOLID GOLD TITLE REVEALS (10.0s - 17.5s)
     function drawTitle(t: number) {
       if (t < 10.0) return;
 
@@ -1522,12 +1531,10 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. Dark Chocolate Stroke Background (No White Border)
       ctx.strokeStyle = '#261102';
       ctx.lineWidth = fontSize * 0.04;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 2. 24K Pure Gold Gradient Fill
       const richGoldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.5, 0, cy + fontSize * 0.5);
       richGoldGrad.addColorStop(0.00, '#FFE066'); 
       richGoldGrad.addColorStop(0.25, '#FFD700'); 
@@ -1540,18 +1547,15 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = richGoldGrad;
       ctx.fillText('जय श्री राम', W / 2, cy);
 
-      // 3. Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
       const tilakY = cy - fontSize * 0.52;
       const tilakScale = (fontSize / 130) * 1.1;
       drawTilakOrnament(tilakX, tilakY, tilakScale, intensity);
 
-      // 4. Golden Swash Curve under 'म'
       const swashX = W / 2 + fontSize * 1.15;
       const swashY = cy + fontSize * 0.28;
       drawRamSwash(swashX, swashY, fontSize / 130, intensity);
 
-      // 5. Golden Star Flares
       const flareSize = fontSize * 0.25 * pulse;
       const fAngle = t * 1.5;
       drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.7);
@@ -1561,7 +1565,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 7: ROYAL GREETING WITH DIVIDERS (11.5s - 17.5s)
     function drawGreeting(t: number) {
       if (t < 11.5) return;
       const reveal = smoothstep(11.5, 12.8, t);
@@ -1581,11 +1584,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center'; 
       ctx.textBaseline = 'middle';
 
-      // Divider Line 1
       const divY1 = cy - fontSize1 * 1.25;
       drawOrnamentalDivider(W / 2, divY1, Math.min(W * 0.38, 300), vis);
 
-      // Line 1: Dark Chocolate Stroke + Cream Gold Fill
       ctx.font = `500 ${fontSize1}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
       ctx.strokeStyle = '#261102';
       ctx.lineWidth = fontSize1 * 0.12;
@@ -1595,7 +1596,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = '#FFE082';
       ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
 
-      // Line 2: Dark Chocolate Stroke + Metallic Gold Fill
       const y2 = cy + fontSize2 * 1.15;
       const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2 * 0.5, 0, y2 + fontSize2 * 0.5);
       goldGrad2.addColorStop(0.00, '#FFE066');
@@ -1614,7 +1614,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
 
-      // Divider Line 2
       const divY2 = y2 + fontSize2 * 0.95;
       drawOrnamentalDivider(W / 2, divY2, Math.min(W * 0.48, 380), vis);
 
@@ -1765,11 +1764,30 @@ export default function CinematicIntro({ onComplete }: Props) {
 
     resize();
     window.addEventListener('resize', resize);
-    rafId = requestAnimationFrame(loop);
+
+    // Fix: Ensure fonts are loaded before starting the animation loop to avoid incorrect text point sampling
+    const initFontsAndStart = async () => {
+      try {
+        await document.fonts.load(`900 135px "Tiro Devanagari Hindi"`);
+        await document.fonts.load(`700 38px "Tiro Devanagari Hindi"`);
+        await document.fonts.load(`500 30px "Tiro Devanagari Hindi"`);
+      } catch (e) {
+        console.warn("Font loading failed, falling back to default fonts.");
+      }
+      // Resample text with the correct font loaded
+      sampleText();
+      if (running) {
+        rafId = requestAnimationFrame(loop);
+      }
+    };
+
+    initFontsAndStart();
 
     return () => {
       running = false;
       cancelAnimationFrame(rafId);
+      // Fix: Clear all pending timeouts
+      timeoutIds.forEach(id => clearTimeout(id));
       window.removeEventListener('resize', resize);
     };
   }, []);
