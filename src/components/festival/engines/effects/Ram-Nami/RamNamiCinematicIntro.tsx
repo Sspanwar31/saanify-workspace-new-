@@ -23,7 +23,7 @@ interface Particle {
   idx: number; x: number; y: number; vx: number; vy: number;
   size: number; life: number; maxLife: number; alpha: number;
   type: PType; tx: number; ty: number; rot: number; rotSpd: number;
-  flap: number; active: boolean; delay: number; color: string; trail: {x: number, y: number}[];
+  flap: number; active: boolean; delay: number; color: string; trail: { x: number; y: number }[];
 }
 
 class ParticlePool {
@@ -79,7 +79,6 @@ export default function CinematicIntro({ onComplete }: Props) {
   useEffect(() => {
     onCompleteRef.current = onComplete;
 
-    // Load Google Fonts Dynamically for Royal Devanagari Styling
     if (!document.getElementById('ram-mandir-google-font')) {
       const link = document.createElement('link');
       link.id = 'ram-mandir-google-font';
@@ -114,6 +113,12 @@ export default function CinematicIntro({ onComplete }: Props) {
     const grain = document.createElement('canvas');
     const gctx = grain.getContext('2d')!;
 
+    // Cached title offscreen canvas — built once, reused every frame
+    let titleOffscreen: HTMLCanvasElement | null = null;
+    let titleOffscreenW = 0;
+    let titleOffscreenH = 0;
+    let lastTitleFontSize = 0;
+
     function makeSprite(size: number, inner: string, mid: string): HTMLCanvasElement {
       const c = document.createElement('canvas');
       c.width = c.height = size;
@@ -133,7 +138,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
     let ramPoints: { x: number; y: number }[] = [];
     let diyas: FloatingDiya[] = [];
-    
+
     const rockets: FireworkRocket[] = [];
     const sparks: FireworkSpark[] = [];
     const activeFireworkBursts: { x: number; y: number; color: string; r: number; maxR: number; alpha: number; type: string }[] = [];
@@ -150,7 +155,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       canvas.width = Math.floor(W * DPR);
       canvas.height = Math.floor(H * DPR);
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      
+
       reflectCanvas.width = Math.floor(W);
       reflectCanvas.height = Math.floor(H);
       bloom.width = Math.max(2, Math.floor(W / 2));
@@ -159,6 +164,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       generateGrain();
       sampleText();
       initializeDiyas();
+      // Invalidate title cache on resize
+      titleOffscreen = null;
+      lastTitleFontSize = 0;
     }
 
     function generateGrain() {
@@ -195,30 +203,30 @@ export default function CinematicIntro({ onComplete }: Props) {
       const fontSize = Math.min(W * 0.125, 130);
       tc.width = Math.floor(W);
       tc.height = Math.floor(fontSize * 2.4);
-      tctx.clearRect(0,0,tc.width,tc.height);
-      tctx.fillStyle="#fff";
-      tctx.textAlign="center";
-      tctx.textBaseline="middle";
-      tctx.font=`900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
-      tctx.lineJoin="round";
-      tctx.lineCap="round";
-      tctx.fillText("जय श्री राम",tc.width/2,tc.height/2);
-      const img=tctx.getImageData(0,0,tc.width,tc.height);
-      ramPoints=[];
-      const step=2;
-      for(let y=0;y<tc.height;y+=step){
-          for(let x=0;x<tc.width;x+=step){
-              const i=(y*tc.width+x)*4;
-              if(img.data[i+3]>20){
-                  ramPoints.push({
-                      x:x-tc.width/2,
-                      y:y-tc.height/2
-                  });
-              }
+      tctx.clearRect(0, 0, tc.width, tc.height);
+      tctx.fillStyle = "#fff";
+      tctx.textAlign = "center";
+      tctx.textBaseline = "middle";
+      tctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      tctx.lineJoin = "round";
+      tctx.lineCap = "round";
+      tctx.fillText("जय श्री राम", tc.width / 2, tc.height / 2);
+      const img = tctx.getImageData(0, 0, tc.width, tc.height);
+      ramPoints = [];
+      const step = 2;
+      for (let y = 0; y < tc.height; y += step) {
+        for (let x = 0; x < tc.width; x += step) {
+          const i = (y * tc.width + x) * 4;
+          if (img.data[i + 3] > 20) {
+            ramPoints.push({
+              x: x - tc.width / 2,
+              y: y - tc.height / 2
+            });
           }
+        }
       }
     }
-    
+
     // ============ DRAW FUNCTIONS ============
 
     function drawBackground(t: number) {
@@ -238,7 +246,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       grad.addColorStop(1, '#000000');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
-      
+
       if (screenFlash > 0.01 && t < 7.0) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
@@ -254,7 +262,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
-      const sy = H * 0.42; 
+      const sy = H * 0.42;
       const sunR = W * 0.25;
       const sunGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
       sunGrad.addColorStop(0, `rgba(255, 240, 180, ${0.95 * vis})`);
@@ -331,7 +339,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       const vis = reveal * (1 - fade);
 
       const s = Math.min(W, H) * 0.0013;
-      const mx = W * 0.72; 
+      const mx = W * 0.72;
       const baseY = H * 0.64;
 
       targetCtx.save();
@@ -350,7 +358,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.fillRect(mx - 400 * s, baseY - 450 * s, 800 * s, 500 * s);
 
       const drawPlatform = (pw: number, ph: number, py: number, depth: number) => {
-        const frontGrad = targetCtx.createLinearGradient(mx - pw/2, py, mx + pw/2, py);
+        const frontGrad = targetCtx.createLinearGradient(mx - pw / 2, py, mx + pw / 2, py);
         frontGrad.addColorStop(0, darkSandstone);
         frontGrad.addColorStop(0.3, midSandstone);
         frontGrad.addColorStop(0.5, lightSandstone);
@@ -358,7 +366,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         frontGrad.addColorStop(1, darkSandstone);
         targetCtx.fillStyle = frontGrad;
         targetCtx.fillRect(mx - pw / 2, py, pw, ph);
-        
+
         targetCtx.fillStyle = '#7a3d1a';
         targetCtx.beginPath();
         targetCtx.moveTo(mx - pw / 2, py);
@@ -367,7 +375,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         targetCtx.lineTo(mx + pw / 2, py);
         targetCtx.closePath();
         targetCtx.fill();
-        
+
         targetCtx.fillStyle = '#1a0702';
         targetCtx.beginPath();
         targetCtx.moveTo(mx + pw / 2, py);
@@ -379,8 +387,8 @@ export default function CinematicIntro({ onComplete }: Props) {
 
         targetCtx.strokeStyle = 'rgba(20, 10, 5, 0.6)';
         targetCtx.lineWidth = 1 * s;
-        for(let i=0; i<5; i++) {
-          const lx = mx - pw/2 + (pw / 5) * i;
+        for (let i = 0; i < 5; i++) {
+          const lx = mx - pw / 2 + (pw / 5) * i;
           targetCtx.beginPath();
           targetCtx.moveTo(lx, py);
           targetCtx.lineTo(lx, py + ph);
@@ -398,7 +406,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       const sanctumY = baseY - 44 * s;
       const sanctumW = 160 * s;
       const sanctumH = 90 * s;
-      
+
       const garbhaGlow = targetCtx.createRadialGradient(mx, sanctumY - 40 * s, 0, mx, sanctumY - 40 * s, 90 * s);
       garbhaGlow.addColorStop(0, 'rgba(255, 240, 160, 1)');
       garbhaGlow.addColorStop(0.4, 'rgba(255, 150, 40, 0.8)');
@@ -407,7 +415,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.fillRect(mx - 120 * s, sanctumY - 100 * s, 240 * s, 120 * s);
 
       targetCtx.fillStyle = '#0a0201';
-      targetCtx.fillRect(mx - sanctumW/2, sanctumY - sanctumH, sanctumW, sanctumH);
+      targetCtx.fillRect(mx - sanctumW / 2, sanctumY - sanctumH, sanctumW, sanctumH);
 
       const doorLayers = [
         { w: sanctumW, h: sanctumH, c: '#5e2d14' },
@@ -418,10 +426,10 @@ export default function CinematicIntro({ onComplete }: Props) {
         const dy = sanctumY - layer.h;
         targetCtx.fillStyle = layer.c;
         targetCtx.beginPath();
-        targetCtx.moveTo(mx - layer.w/2, sanctumY);
-        targetCtx.lineTo(mx - layer.w/2, dy + layer.w * 0.2);
-        targetCtx.quadraticCurveTo(mx, dy - layer.w * 0.1, mx + layer.w/2, dy + layer.w * 0.2);
-        targetCtx.lineTo(mx + layer.w/2, sanctumY);
+        targetCtx.moveTo(mx - layer.w / 2, sanctumY);
+        targetCtx.lineTo(mx - layer.w / 2, dy + layer.w * 0.2);
+        targetCtx.quadraticCurveTo(mx, dy - layer.w * 0.1, mx + layer.w / 2, dy + layer.w * 0.2);
+        targetCtx.lineTo(mx + layer.w / 2, sanctumY);
         targetCtx.closePath();
         targetCtx.fill();
         targetCtx.strokeStyle = goldGlow;
@@ -431,7 +439,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       targetCtx.fillStyle = '#1a0702';
       targetCtx.fillRect(mx - 40 * s, sanctumY - 60 * s, 80 * s, 60 * s);
-      targetCtx.strokeStyle = `rgba(255, 215, 0, ${0.8 + 0.2 * Math.sin(t*2)})`;
+      targetCtx.strokeStyle = `rgba(255, 215, 0, ${0.8 + 0.2 * Math.sin(t * 2)})`;
       targetCtx.lineWidth = 2 * s;
       targetCtx.strokeRect(mx - 40 * s, sanctumY - 60 * s, 80 * s, 60 * s);
       targetCtx.beginPath();
@@ -444,7 +452,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         targetCtx.fillRect(px - pw * 0.6, py, pw * 1.2, ph * 0.1);
         targetCtx.fillStyle = '#1a0702';
         targetCtx.fillRect(px - pw * 0.6, py + ph * 0.08, pw * 1.2, ph * 0.02);
-        
+
         const pilGrad = targetCtx.createLinearGradient(px - pw / 2, 0, px + pw / 2, 0);
         pilGrad.addColorStop(0, '#2b1005');
         pilGrad.addColorStop(0.2, '#5e2d14');
@@ -453,7 +461,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         pilGrad.addColorStop(1, '#2b1005');
         targetCtx.fillStyle = pilGrad;
         targetCtx.fillRect(px - pw / 2, py - ph * 0.9, pw, ph * 0.9);
-        
+
         targetCtx.strokeStyle = 'rgba(0,0,0,0.4)';
         targetCtx.lineWidth = 1 * s;
         for (let i = 1; i < 3; i++) {
@@ -462,7 +470,7 @@ export default function CinematicIntro({ onComplete }: Props) {
           targetCtx.lineTo(px - pw / 2 + (pw / 3) * i, py);
           targetCtx.stroke();
         }
-        
+
         targetCtx.fillStyle = '#b3622d';
         targetCtx.fillRect(px - pw * 0.7, py - ph * 0.9, pw * 1.4, ph * 0.08);
         targetCtx.fillStyle = '#7a3d1a';
@@ -485,8 +493,8 @@ export default function CinematicIntro({ onComplete }: Props) {
         targetCtx.beginPath();
         targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s, (x2 - x1) / 2, Math.PI, 0);
         targetCtx.stroke();
-        
-        targetCtx.fillStyle = `rgba(255, 200, 50, ${0.6 + 0.4 * Math.sin(t*4 + i)})`;
+
+        targetCtx.fillStyle = `rgba(255, 200, 50, ${0.6 + 0.4 * Math.sin(t * 4 + i)})`;
         targetCtx.beginPath();
         targetCtx.arc((x1 + x2) / 2, sanctumY - 70 * s + 6 * s, 4 * s, 0, Math.PI * 2);
         targetCtx.fill();
@@ -532,7 +540,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
           targetCtx.fillStyle = `rgba(30, 15, 5, ${0.6 - f * 0.2})`;
           targetCtx.fillRect(cx - tw / 2, ty - 2 * s, tw, 3 * s);
-          
+
           targetCtx.fillStyle = `rgba(255, 210, 120, ${0.2 + 0.2 * (1 - f)})`;
           targetCtx.fillRect(cx - tw / 2, ty, tw, 1.5 * s);
         }
@@ -622,7 +630,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       drawNagaraShikhara(mx + 140 * s, sanctumY, 55 * s, 110 * s);
 
       const flagPoleTop = topCenterY - 30 * s;
-      
+
       targetCtx.fillStyle = `rgba(200, 130, 40, ${0.8})`;
       targetCtx.beginPath();
       targetCtx.arc(mx, topCenterY, 6 * s, 0, Math.PI * 2);
@@ -636,7 +644,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       poleGrad.addColorStop(1, '#5e3818');
       targetCtx.fillStyle = poleGrad;
       targetCtx.fillRect(mx - 2 * s, flagPoleTop, 4 * s, topCenterY - flagPoleTop);
-      
+
       const finialGrad = targetCtx.createRadialGradient(mx - 1 * s, flagPoleTop - 4 * s, 0, mx, flagPoleTop - 4 * s, 6 * s);
       finialGrad.addColorStop(0, '#ffffff');
       finialGrad.addColorStop(0.4, '#ffd700');
@@ -648,25 +656,25 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       const wave1 = Math.sin(t * 6) * 6 * s;
       const wave2 = Math.sin(t * 6 + 1.5) * 4 * s;
-      
+
       targetCtx.beginPath();
       targetCtx.moveTo(mx, flagPoleTop);
       targetCtx.quadraticCurveTo(mx + 15 * s, flagPoleTop + wave1, mx + 35 * s + wave1, flagPoleTop + 12 * s + wave2);
       targetCtx.quadraticCurveTo(mx + 15 * s, flagPoleTop + 24 * s + wave2, mx, flagPoleTop + 26 * s);
       targetCtx.closePath();
-      
+
       const flagGrad = targetCtx.createLinearGradient(mx, flagPoleTop, mx + 35 * s, flagPoleTop);
       flagGrad.addColorStop(0, '#cc3300');
       flagGrad.addColorStop(0.5, '#ff5500');
       flagGrad.addColorStop(1, '#ff7700');
       targetCtx.fillStyle = flagGrad;
       targetCtx.fill();
-      
+
       targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
       targetCtx.lineWidth = 1 * s;
       targetCtx.stroke();
 
-      targetCtx.fillStyle = `rgba(255, 234, 0, ${0.8 + 0.2 * Math.sin(t*3)})`;
+      targetCtx.fillStyle = `rgba(255, 234, 0, ${0.8 + 0.2 * Math.sin(t * 3)})`;
       targetCtx.beginPath();
       targetCtx.arc(mx + 12 * s, flagPoleTop + 13 * s + wave1 * 0.5, 4 * s, 0, Math.PI * 2);
       targetCtx.fill();
@@ -695,13 +703,13 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = 0.55;
       ctx.translate(0, waterY * 2);
       ctx.scale(1, -1);
-      
+
       const sliceH = 3;
       for (let y = waterY; y < H; y += sliceH) {
         const dist = y - waterY;
         const distanceFactor = dist / (H - waterY);
-        const ripple = Math.sin(y * 0.15 + t * 6.5) * 5 * distanceFactor + 
-                       Math.cos(y * 0.35 - t * 4.2) * 2 * distanceFactor;
+        const ripple = Math.sin(y * 0.15 + t * 6.5) * 5 * distanceFactor +
+          Math.cos(y * 0.35 - t * 4.2) * 2 * distanceFactor;
         ctx.drawImage(reflectCanvas, 0, y, W, sliceH, ripple, y, W, sliceH);
       }
       ctx.restore();
@@ -724,13 +732,13 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       activeFireworkBursts.forEach((b) => {
         if (b.y > waterY) return;
-        const rY = waterY + (waterY - b.y); 
+        const rY = waterY + (waterY - b.y);
         const dy = rY - waterY;
         const rfGrad = ctx.createRadialGradient(b.x, rY, 0, b.x, rY, b.r * 1.8);
         rfGrad.addColorStop(0, `${b.color}${Math.floor(b.alpha * 50).toString(16).padStart(2, '0')}`);
         rfGrad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = rfGrad;
-        
+
         ctx.beginPath();
         ctx.ellipse(b.x, waterY + dy * 0.65, b.r * 1.4, b.r * 0.25, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -759,7 +767,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         if (waveY < waterY) return;
 
         const flamePulse = Math.sin(t * 15 + d.flamePulse) * 1.5;
-        const s = d.scale * 16; 
+        const s = d.scale * 16;
         const flameH = (s * 1.8) + flamePulse * d.scale;
 
         ctx.save();
@@ -816,7 +824,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       if (intensity <= 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      
+
       for (let layer = 0; layer < 3; layer++) {
         const y = H * (0.64 + layer * 0.05);
         const speed = 6 + layer * 5;
@@ -885,11 +893,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       else if (type === 'willow') { particleCount = 60; maxR = 80; }
       else if (type === 'finale') { particleCount = 90; maxR = 120; shake = 3; flash = 0.3; }
 
-      if (isSecondary) {
-        particleCount = 30;
-        shake = 0;
-        flash = 0;
-      }
+      if (isSecondary) { particleCount = 30; shake = 0; flash = 0; }
 
       screenFlash = Math.min(1, screenFlash + flash);
       cameraShake = Math.min(4, cameraShake + shake);
@@ -910,259 +914,74 @@ export default function CinematicIntro({ onComplete }: Props) {
         let delay = 0;
         let size = 1.2 + Math.random() * 1.8;
 
-        if (type === 'willow') {
-          gravity = 0.15;
-          drag = 0.995;
-          maxLife = 2.5 + Math.random() * 1.5;
-          pColor = '#ffd700';
-          pColor2 = '#ffaa00';
-        } else if (type === 'finale') {
-          if (Math.random() < 0.2) {
-            stage = 1;
-            delay = 0.5 + Math.random() * 0.5;
-            maxLife = delay + 0.5;
-            pType = 'delayed';
-            pColor = '#ffffff';
-            spd = 1.0 + Math.random() * 2.0;
-          }
+        if (type === 'willow') { gravity = 0.15; drag = 0.995; maxLife = 2.5 + Math.random() * 1.5; pColor = '#ffd700'; pColor2 = '#ffaa00'; }
+        else if (type === 'finale') {
+          if (Math.random() < 0.2) { stage = 1; delay = 0.5 + Math.random() * 0.5; maxLife = delay + 0.5; pType = 'delayed'; pColor = '#ffffff'; spd = 1.0 + Math.random() * 2.0; }
         }
 
         vx = Math.cos(ang) * spd;
         vy = Math.sin(ang) * spd;
 
-        sparks.push({
-          x: fx, y: fy, vx, vy, color: pColor, color2: pColor2,
-          alpha: 1, life: 0, maxLife, size, gravity, drag,
-          flicker: Math.random() < 0.3, type: pType,
-          temp: 1.0, rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 0.2,
-          wind: (Math.random() - 0.5) * 0.1, turb: Math.random() * 0.05,
-          stage, delay, hasExploded: false, isSecondary
-        });
+        sparks.push({ x: fx, y: fy, vx, vy, color: pColor, color2: pColor2, alpha: 1, life: 0, maxLife, size, gravity, drag, flicker: Math.random() < 0.3, type: pType, temp: 1.0, rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 0.2, wind: (Math.random() - 0.5) * 0.1, turb: Math.random() * 0.05, stage, delay, hasExploded: false, isSecondary });
       }
 
       if (!isSecondary && type === 'finale') {
-        for(let i=0; i<2; i++) {
-          setTimeout(() => {
-            if (running) {
-              const offX = (Math.random() - 0.5) * 80;
-              const offY = (Math.random() - 0.5) * 40;
-              createBurst(fx + offX, fy + offY, color2, color, 'small', true);
-            }
-          }, 500 + i * 300);
+        for (let i = 0; i < 2; i++) {
+          setTimeout(() => { if (running) { createBurst(fx + (Math.random() - 0.5) * 80, fy + (Math.random() - 0.5) * 40, color2, color, 'small', true); } }, 500 + i * 300);
         }
       }
     }
 
     function updateFireworks(dt: number, t: number) {
       const forceCleanup = t >= 7.5;
-
       screenFlash = Math.max(0, screenFlash - dt * 1.5);
       cameraShake = Math.max(0, cameraShake - dt * 20.0);
 
       for (let i = rockets.length - 1; i >= 0; i--) {
         const r = rockets[i];
-        
-        if (forceCleanup) {
-          rockets.splice(i, 1);
-          continue;
-        }
-
-        r.vy += r.ay * dt * 60;
-        r.vx += r.ax * dt * 60;
-        r.x += r.vx * dt * 60;
-        r.y += r.vy * dt * 60;
-        
-        r.flicker = 0.5 + Math.random() * 0.5;
-        r.smokeTimer += dt;
-        r.sparkTimer += dt;
-
+        if (forceCleanup) { rockets.splice(i, 1); continue; }
+        r.vy += r.ay * dt * 60; r.vx += r.ax * dt * 60; r.x += r.vx * dt * 60; r.y += r.vy * dt * 60;
+        r.flicker = 0.5 + Math.random() * 0.5; r.smokeTimer += dt; r.sparkTimer += dt;
         r.trail.push({ x: r.x, y: r.y, alpha: 1, type: 'core' });
-        if (r.trail.length > 6) r.trail.shift(); 
-        r.trail.forEach(tt => tt.alpha -= 0.12); 
-
-        if (r.smokeTimer > 0.15) {
-          r.smokeTimer = 0;
-          sparks.push({
-            x: r.x + (Math.random()-0.5)*2, y: r.y + 5, 
-            vx: (Math.random()-0.5)*0.5, vy: 1 + Math.random()*0.5,
-            color: 'rgba(150,130,110,1)', color2: 'rgba(100,80,60,1)',
-            alpha: 0.3, life: 0, maxLife: 1.5, size: 2 + Math.random()*2,
-            gravity: -0.02, drag: 0.98, flicker: false, type: 'smoke',
-            temp: 0, rot: 0, rotSpd: 0, wind: 0.1, turb: 0.02,
-            stage: 0, delay: 0, hasExploded: false, isSecondary: false
-          });
-        }
-        
-        if (r.sparkTimer > 0.03) {
-          r.sparkTimer = 0;
-          sparks.push({
-            x: r.x, y: r.y + 4, 
-            vx: (Math.random()-0.5)*1, vy: 2 + Math.random()*1.5,
-            color: '#ffffff', color2: r.color,
-            alpha: 1, life: 0, maxLife: 0.4, size: 1.0, 
-            gravity: 0.1, drag: 0.95, flicker: true, type: 'ember',
-            temp: 1, rot: 0, rotSpd: 0, wind: 0, turb: 0,
-            stage: 0, delay: 0, hasExploded: false, isSecondary: false
-          });
-        }
-
-        if (r.y <= r.targetY || r.vy >= 0) {
-          createBurst(r.x, r.y, r.color, r.color2, r.type);
-          rockets.splice(i, 1);
-        }
+        if (r.trail.length > 6) r.trail.shift();
+        r.trail.forEach(tt => tt.alpha -= 0.12);
+        if (r.smokeTimer > 0.15) { r.smokeTimer = 0; sparks.push({ x: r.x + (Math.random() - 0.5) * 2, y: r.y + 5, vx: (Math.random() - 0.5) * 0.5, vy: 1 + Math.random() * 0.5, color: 'rgba(150,130,110,1)', color2: 'rgba(100,80,60,1)', alpha: 0.3, life: 0, maxLife: 1.5, size: 2 + Math.random() * 2, gravity: -0.02, drag: 0.98, flicker: false, type: 'smoke', temp: 0, rot: 0, rotSpd: 0, wind: 0.1, turb: 0.02, stage: 0, delay: 0, hasExploded: false, isSecondary: false }); }
+        if (r.sparkTimer > 0.03) { r.sparkTimer = 0; sparks.push({ x: r.x, y: r.y + 4, vx: (Math.random() - 0.5) * 1, vy: 2 + Math.random() * 1.5, color: '#ffffff', color2: r.color, alpha: 1, life: 0, maxLife: 0.4, size: 1.0, gravity: 0.1, drag: 0.95, flicker: true, type: 'ember', temp: 1, rot: 0, rotSpd: 0, wind: 0, turb: 0, stage: 0, delay: 0, hasExploded: false, isSecondary: false }); }
+        if (r.y <= r.targetY || r.vy >= 0) { createBurst(r.x, r.y, r.color, r.color2, r.type); rockets.splice(i, 1); }
       }
 
       for (let i = sparks.length - 1; i >= 0; i--) {
         const s = sparks[i];
-
-        if (forceCleanup) {
-          sparks.splice(i, 1);
-          continue;
-        }
-
+        if (forceCleanup) { sparks.splice(i, 1); continue; }
         s.life += dt;
-        
-        if (s.type === 'delayed' && !s.hasExploded) {
-          if (s.life > s.delay) {
-            s.hasExploded = true;
-            createBurst(s.x, s.y, s.color2, s.color, 'small', true);
-            s.alpha = 0;
-          }
-        } else {
-          s.vy += s.gravity * dt * 60;
-          s.vx *= (1 - (1 - s.drag) * dt * 60);
-          s.vy *= (1 - (1 - s.drag) * dt * 60);
-          s.vx += Math.sin(s.life * 5 + s.x * 0.1) * s.turb * dt * 60;
-          s.vx += s.wind * dt * 60;
-          s.x += s.vx * dt * 60;
-          s.y += s.vy * dt * 60;
-          s.rot += s.rotSpd * dt * 60;
-
-          s.temp = Math.max(0, 1 - s.life / s.maxLife);
-          
-          if (s.type === 'smoke') {
-            s.size += dt * 8;
-            s.alpha = Math.max(0, 0.3 * (1 - s.life / s.maxLife));
-          } else if (s.type === 'ember') {
-            s.alpha = s.temp;
-          } else {
-            s.alpha = Math.max(0, 1 - s.life / s.maxLife);
-            if (s.flicker) s.alpha *= (0.5 + Math.random() * 0.5);
-          }
-        }
-
-        if (s.life > s.maxLife || s.y > H * 0.62 || s.alpha <= 0.01) {
-          sparks.splice(i, 1);
-        }
+        if (s.type === 'delayed' && !s.hasExploded) { if (s.life > s.delay) { s.hasExploded = true; createBurst(s.x, s.y, s.color2, s.color, 'small', true); s.alpha = 0; } }
+        else { s.vy += s.gravity * dt * 60; s.vx *= (1 - (1 - s.drag) * dt * 60); s.vy *= (1 - (1 - s.drag) * dt * 60); s.vx += Math.sin(s.life * 5 + s.x * 0.1) * s.turb * dt * 60; s.vx += s.wind * dt * 60; s.x += s.vx * dt * 60; s.y += s.vy * dt * 60; s.rot += s.rotSpd * dt * 60; s.temp = Math.max(0, 1 - s.life / s.maxLife); if (s.type === 'smoke') { s.size += dt * 8; s.alpha = Math.max(0, 0.3 * (1 - s.life / s.maxLife)); } else if (s.type === 'ember') { s.alpha = s.temp; } else { s.alpha = Math.max(0, 1 - s.life / s.maxLife); if (s.flicker) s.alpha *= (0.5 + Math.random() * 0.5); } }
+        if (s.life > s.maxLife || s.y > H * 0.62 || s.alpha <= 0.01) { sparks.splice(i, 1); }
       }
 
-      for (let i = activeFireworkBursts.length - 1; i >= 0; i--) {
-        const b = activeFireworkBursts[i];
-        if (forceCleanup) {
-          activeFireworkBursts.splice(i, 1);
-          continue;
-        }
-        b.r += (b.maxR - b.r) * 0.15;
-        b.alpha -= 0.05;
-        if (b.alpha <= 0) activeFireworkBursts.splice(i, 1);
-      }
+      for (let i = activeFireworkBursts.length - 1; i >= 0; i--) { const b = activeFireworkBursts[i]; if (forceCleanup) { activeFireworkBursts.splice(i, 1); continue; } b.r += (b.maxR - b.r) * 0.15; b.alpha -= 0.05; if (b.alpha <= 0) activeFireworkBursts.splice(i, 1); }
     }
 
     function drawFireworks() {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-
-      rockets.forEach(r => {
-        r.trail.forEach(tt => {
-          if (tt.alpha > 0) {
-            ctx.globalAlpha = tt.alpha * 0.8;
-            ctx.fillStyle = r.color;
-            ctx.beginPath();
-            ctx.arc(tt.x, tt.y, 1.5, 0, Math.PI * 2); 
-            ctx.fill();
-          }
-        });
-        
-        ctx.globalAlpha = 1;
-        const flameLen = 6 + Math.random() * 3; 
-        const fGrad = ctx.createLinearGradient(r.x, r.y, r.x, r.y + flameLen);
-        fGrad.addColorStop(0, '#ffffff');
-        fGrad.addColorStop(0.5, '#ffaa00');
-        fGrad.addColorStop(1, 'rgba(255,0,0,0)');
-        ctx.fillStyle = fGrad;
-        ctx.beginPath();
-        ctx.moveTo(r.x - 1.5, r.y); 
-        ctx.lineTo(r.x + 1.5, r.y);
-        ctx.lineTo(r.x, r.y + flameLen);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, 2.0 + r.flicker, 0, Math.PI * 2); 
-        ctx.fill();
-      });
-
-      activeFireworkBursts.forEach((b) => {
-        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-        grad.addColorStop(0, `${b.color}80`); 
-        grad.addColorStop(0.4, `${b.color}20`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad;
-        ctx.globalAlpha = b.alpha;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
+      rockets.forEach(r => { r.trail.forEach(tt => { if (tt.alpha > 0) { ctx.globalAlpha = tt.alpha * 0.8; ctx.fillStyle = r.color; ctx.beginPath(); ctx.arc(tt.x, tt.y, 1.5, 0, Math.PI * 2); ctx.fill(); } }); ctx.globalAlpha = 1; const fl = 6 + Math.random() * 3; const fg = ctx.createLinearGradient(r.x, r.y, r.x, r.y + fl); fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.5, '#ffaa00'); fg.addColorStop(1, 'rgba(255,0,0,0)'); ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(r.x - 1.5, r.y); ctx.lineTo(r.x + 1.5, r.y); ctx.lineTo(r.x, r.y + fl); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(r.x, r.y, 2.0 + r.flicker, 0, Math.PI * 2); ctx.fill(); });
+      activeFireworkBursts.forEach((b) => { const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r); g.addColorStop(0, `${b.color}80`); g.addColorStop(0.4, `${b.color}20`); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.globalAlpha = b.alpha; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); });
       ctx.globalAlpha = 1;
-
-      sparks.forEach((s) => {
-        if (s.alpha <= 0 || s.type === 'smoke') return;
-        
-        const alpha = clamp(s.alpha, 0, 1);
-        const sz = s.size;
-        
-        ctx.globalAlpha = alpha * 0.25;
-        ctx.drawImage(sparkSprite, s.x - sz * 4, s.y - sz * 4, sz * 8, sz * 8);
-        
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = s.temp > 0.5 ? '#ffffff' : s.color;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, sz, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
+      sparks.forEach((s) => { if (s.alpha <= 0 || s.type === 'smoke') return; const a = clamp(s.alpha, 0, 1); ctx.globalAlpha = a * 0.25; ctx.drawImage(sparkSprite, s.x - s.size * 4, s.y - s.size * 4, s.size * 8, s.size * 8); ctx.globalAlpha = a; ctx.fillStyle = s.temp > 0.5 ? '#ffffff' : s.color; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill(); });
       ctx.globalCompositeOperation = 'source-over';
-      
-      sparks.forEach((s) => {
-        if (s.alpha <= 0 || s.type !== 'smoke') return;
-        ctx.globalAlpha = s.alpha * 0.3;
-        ctx.fillStyle = s.color;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
+      sparks.forEach((s) => { if (s.alpha <= 0 || s.type !== 'smoke') return; ctx.globalAlpha = s.alpha * 0.3; ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill(); });
       ctx.restore();
     }
 
-    // ============ PARTICLE SPAWN & UPDATES ============ 
+    // ============ PARTICLE SPAWN & UPDATES ============
 
     function spawnDust(t: number) {
       const target = Math.floor(85 * smoothstep(0, 3, t));
       let count = 0;
       for (const p of pool.particles) if (p.active && p.type === 'dust') count++;
       let attempts = 0;
-      while (count < target && attempts < 8) {
-        const p = pool.spawn(); if (!p) break;
-        p.type = 'dust'; p.x = Math.random() * W; p.y = Math.random() * H;
-        p.vx = (Math.random() - 0.5) * 0.4; p.vy = -0.05 - Math.random() * 0.35;
-        p.size = 0.6 + Math.random() * 1.8; p.maxLife = 5 + Math.random() * 5;
-        p.life = Math.random() * p.maxLife * 0.4; p.alpha = 0;
-        p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 0.5;
-        count++; attempts++;
-      }
+      while (count < target && attempts < 8) { const p = pool.spawn(); if (!p) break; p.type = 'dust'; p.x = Math.random() * W; p.y = Math.random() * H; p.vx = (Math.random() - 0.5) * 0.4; p.vy = -0.05 - Math.random() * 0.35; p.size = 0.6 + Math.random() * 1.8; p.maxLife = 5 + Math.random() * 5; p.life = Math.random() * p.maxLife * 0.4; p.alpha = 0; p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 0.5; count++; attempts++; }
     }
 
     function spawnPetals(t: number) {
@@ -1170,13 +989,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       if (intensity <= 0) return;
       if (Math.random() > intensity * 0.4) return;
       const p = pool.spawn(); if (!p) return;
-      p.type = 'petal'; p.x = Math.random() * W; p.y = -20;
-      p.vx = (Math.random() - 0.5) * 0.8; p.vy = 0.5 + Math.random() * 0.8;
-      p.size = 5 + Math.random() * 6; p.maxLife = 18; p.life = 0; p.alpha = 0;
-      p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
+      p.type = 'petal'; p.x = Math.random() * W; p.y = -20; p.vx = (Math.random() - 0.5) * 0.8; p.vy = 0.5 + Math.random() * 0.8; p.size = 5 + Math.random() * 6; p.maxLife = 18; p.life = 0; p.alpha = 0; p.rot = Math.random() * Math.PI * 2; p.rotSpd = (Math.random() - 0.5) * 2.5;
     }
 
-    // SCENE 5: PARTICLES FLY IN TO ASSEMBLE TEXT (8.5s - 10.5s)
     function spawnTextParticles(t: number) {
       if (t < 8.5 || t > 10.5) return;
       if (ramPoints.length === 0) return;
@@ -1184,118 +999,45 @@ export default function CinematicIntro({ onComplete }: Props) {
       let active = 0;
       for (const p of pool.particles) if (p.active && p.type === 'sparkle') active++;
       let attempts = 0;
-      while (active < target && attempts < 16) {
-        const p = pool.spawn(); if (!p) break;
-        const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)];
-        p.type = 'sparkle';
-        const side = Math.floor(Math.random() * 4);
-        if (side === 0) { p.x = Math.random() * W; p.y = -20; }
-        else if (side === 1) { p.x = W + 20; p.y = Math.random() * H; }
-        else if (side === 2) { p.x = Math.random() * W; p.y = H + 20; }
-        else { p.x = -20; p.y = Math.random() * H; }
-
-        p.tx = W / 2 + pt.x; 
-        p.ty = H * 0.38 + pt.y; 
-        p.vx = 0; p.vy = 0;
-        p.size = 1.2 + Math.random() * 2.0; 
-        p.maxLife = 8; p.life = 0; p.alpha = 0;
-        p.delay = Math.random() * 0.5;
-        active++; attempts++;
-      }
+      while (active < target && attempts < 16) { const p = pool.spawn(); if (!p) break; const pt = ramPoints[Math.floor(Math.random() * ramPoints.length)]; p.type = 'sparkle'; const side = Math.floor(Math.random() * 4); if (side === 0) { p.x = Math.random() * W; p.y = -20; } else if (side === 1) { p.x = W + 20; p.y = Math.random() * H; } else if (side === 2) { p.x = Math.random() * W; p.y = H + 20; } else { p.x = -20; p.y = Math.random() * H; } p.tx = W / 2 + pt.x; p.ty = H * 0.38 + pt.y; p.vx = 0; p.vy = 0; p.size = 1.2 + Math.random() * 2.0; p.maxLife = 8; p.life = 0; p.alpha = 0; p.delay = Math.random() * 0.5; active++; attempts++; }
     }
 
     function spawnIncenseSmoke(t: number) {
       const intensity = smoothstep(1.5, 4.0, t) * (1 - smoothstep(6.5, 8.0, t));
       if (intensity <= 0) return;
       if (Math.random() > 0.08 * intensity) return;
-      
       const s = Math.min(W, H) * 0.0011;
       const emitterX = Math.random() < 0.5 ? W * 0.15 : W * 0.85;
-
       const p = pool.spawn(); if (!p) return;
-      p.type = 'smoke'; p.x = emitterX; p.y = H * 0.85 - 12 * s;
-      p.vx = (Math.random() - 0.5) * 0.25; p.vy = -0.5 - Math.random() * 0.45;
-      p.size = 6 + Math.random() * 8; p.maxLife = 4.5 + Math.random() * 3.5;
-      p.life = 0; p.alpha = 0;
+      p.type = 'smoke'; p.x = emitterX; p.y = H * 0.85 - 12 * s; p.vx = (Math.random() - 0.5) * 0.25; p.vy = -0.5 - Math.random() * 0.45; p.size = 6 + Math.random() * 8; p.maxLife = 4.5 + Math.random() * 3.5; p.life = 0; p.alpha = 0;
     }
 
     function spawnBirds(t: number) {
       if (t < 3.0 || t > 4.5) return;
       if (birdsSpawned) return;
       birdsSpawned = true;
-      const count = 14;
-      for (let i = 0; i < count; i++) {
-        const p = pool.spawn(); if (!p) break;
-        p.type = 'bird';
-        p.x = -60 - i * 18 + Math.random() * 15;
-        p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12;
-        p.vx = 2.2 + Math.random() * 0.6; p.vy = (Math.random() - 0.5) * 0.15;
-        p.size = 7 + Math.random() * 4; p.maxLife = 25; p.life = 0;
-        p.alpha = 0.65; p.flap = Math.random() * Math.PI * 2;
-      }
+      for (let i = 0; i < 14; i++) { const p = pool.spawn(); if (!p) break; p.type = 'bird'; p.x = -60 - i * 18 + Math.random() * 15; p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12; p.vx = 2.2 + Math.random() * 0.6; p.vy = (Math.random() - 0.5) * 0.15; p.size = 7 + Math.random() * 4; p.maxLife = 25; p.life = 0; p.alpha = 0.65; p.flap = Math.random() * Math.PI * 2; }
     }
 
     function updateParticles(dt: number, t: number) {
       for (const p of pool.particles) {
         if (!p.active) continue;
         p.life += dt;
-
-        if (p.type === 'dust') {
-          p.x += p.vx; p.y += p.vy;
-          p.vx += (Math.random() - 0.5) * 0.03; p.vy += -0.002;
-          p.rot += p.rotSpd * dt;
-          const lr = p.life / p.maxLife;
-          const env = smoothstep(0, 2, t) * (1 - smoothstep(17.0, 17.5, t));
-          p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env;
-          if (p.life > p.maxLife || p.y < -30) {
-            p.life = 0; p.x = Math.random() * W; p.y = H * 0.6; p.alpha = 0;
-          }
-        } else if (p.type === 'petal') {
-          p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
-          p.y += p.vy; p.rot += p.rotSpd * dt;
-          const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(6.5, 8.0, t));
-          if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p);
-        } else if (p.type === 'sparkle') {
-          if (p.delay > 0) { p.delay -= dt; p.alpha = 0; continue; }
-          const dx = p.tx - p.x, dy = p.ty - p.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist > 1.5) {
-            const speed = clamp(dist * 6.0, 140, 750);
-            p.vx = (dx / dist) * speed; p.vy = (dy / dist) * speed;
-            p.x += p.vx * dt; p.y += p.vy * dt;
-            p.alpha = clamp(p.alpha + dt * 3.0, 0, 0.9);
-          } else {
-            p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.35;
-            p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.35;
-            p.alpha = clamp(p.alpha + dt * 2.0, 0, 1);
-          }
-          if (t > 17.0) p.alpha *= 1 - smoothstep(17.0, 17.5, t);
-          if (t > 17.5 && p.alpha < 0.01) pool.release(p);
-        } else if (p.type === 'smoke') {
-          p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
-          p.y += p.vy; p.size += dt * 5.2; 
-          const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18;
-          if (p.life > p.maxLife || p.y < -30) pool.release(p);
-        } else if (p.type === 'bird') {
-          p.x += p.vx; p.y += p.vy; p.flap += dt * 9;
-          p.alpha = 0.65 * (1 - smoothstep(6.5, 8.0, t));
-          if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
-        }
+        if (p.type === 'dust') { p.x += p.vx; p.y += p.vy; p.vx += (Math.random() - 0.5) * 0.03; p.vy += -0.002; p.rot += p.rotSpd * dt; const lr = p.life / p.maxLife; const env = smoothstep(0, 2, t) * (1 - smoothstep(17.0, 17.5, t)); p.alpha = smoothstep(0, 0.25, lr) * (1 - smoothstep(0.75, 1, lr)) * 0.65 * env; if (p.life > p.maxLife || p.y < -30) { p.life = 0; p.x = Math.random() * W; p.y = H * 0.6; p.alpha = 0; } }
+        else if (p.type === 'petal') { p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35; p.y += p.vy; p.rot += p.rotSpd * dt; const lr = p.life / p.maxLife; p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(6.5, 8.0, t)); if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p); }
+        else if (p.type === 'sparkle') { if (p.delay > 0) { p.delay -= dt; p.alpha = 0; continue; } const dx = p.tx - p.x, dy = p.ty - p.y; const dist = Math.sqrt(dx * dx + dy * dy); if (dist > 1.5) { const speed = clamp(dist * 6.0, 140, 750); p.vx = (dx / dist) * speed; p.vy = (dy / dist) * speed; p.x += p.vx * dt; p.y += p.vy * dt; p.alpha = clamp(p.alpha + dt * 3.0, 0, 0.9); } else { p.x = p.tx + Math.sin(t * 4 + p.idx) * 0.35; p.y = p.ty + Math.cos(t * 4 + p.idx * 1.3) * 0.35; p.alpha = clamp(p.alpha + dt * 2.0, 0, 1); } if (t > 17.0) p.alpha *= 1 - smoothstep(17.0, 17.5, t); if (t > 17.5 && p.alpha < 0.01) pool.release(p); }
+        else if (p.type === 'smoke') { p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25; p.y += p.vy; p.size += dt * 5.2; const lr = p.life / p.maxLife; p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.7, 1, lr)) * 0.18; if (p.life > p.maxLife || p.y < -30) pool.release(p); }
+        else if (p.type === 'bird') { p.x += p.vx; p.y += p.vy; p.flap += dt * 9; p.alpha = 0.65 * (1 - smoothstep(6.5, 8.0, t)); if (p.x > W + 60 || p.alpha < 0.01) pool.release(p); }
       }
     }
 
-        function drawParticles() {
+    function drawParticles() {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (const p of pool.particles) {
         if (!p.active || p.alpha <= 0.01) continue;
-
-        if (p.type === 'dust') {
-          ctx.globalAlpha = p.alpha;
-          ctx.drawImage(dustSprite, p.x - p.size * 4, p.y - p.size * 4, p.size * 8, p.size * 8);
-        } else if (p.type === 'sparkle') {
+        if (p.type === 'dust') { ctx.globalAlpha = p.alpha; ctx.drawImage(dustSprite, p.x - p.size * 4, p.y - p.size * 4, p.size * 8, p.size * 8); }
+        else if (p.type === 'sparkle') {
           const dist = Math.sqrt((p.tx - p.x) ** 2 + (p.ty - p.y) ** 2);
           const nearTarget = dist < 5;
           ctx.globalAlpha = p.alpha * (nearTarget ? 0.9 : 0.7);
@@ -1303,63 +1045,109 @@ export default function CinematicIntro({ onComplete }: Props) {
           ctx.drawImage(sparkSprite, p.x - sz * 3, p.y - sz * 3, sz * 6, sz * 6);
           ctx.globalAlpha = p.alpha;
           ctx.fillStyle = nearTarget ? '#FFD700' : '#FFB300';
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, sz * 0.6, 0, Math.PI * 2);
-          ctx.fill();
-          if (nearTarget && Math.random() < 0.03) {
-            ctx.globalAlpha = p.alpha * 0.5;
-            ctx.fillStyle = '#FFF8E0';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, sz * 1.8, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        } else if (p.type === 'smoke') {
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = p.alpha;
-          const sg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-          sg.addColorStop(0, 'rgba(160,130,100,0.3)');
-          sg.addColorStop(0.5, 'rgba(120,95,70,0.15)');
-          sg.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = sg;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalCompositeOperation = 'lighter';
-        } else if (p.type === 'petal') {
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.save();
-          ctx.globalAlpha = p.alpha;
-          ctx.translate(p.x, p.y);
-          ctx.rotate(p.rot);
-          ctx.fillStyle = '#ff8844';
-          ctx.beginPath();
-          ctx.ellipse(0, 0, p.size, p.size * 0.45, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#ffaa66';
-          ctx.beginPath();
-          ctx.ellipse(p.size * 0.15, 0, p.size * 0.5, p.size * 0.25, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-          ctx.globalCompositeOperation = 'lighter';
-        } else if (p.type === 'bird') {
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = p.alpha;
-          ctx.strokeStyle = '#0d0603';
-          ctx.lineWidth = 1.5;
-          ctx.lineCap = 'round';
-          const wing = Math.sin(p.flap) * p.size * 0.6;
-          ctx.beginPath();
-          ctx.moveTo(p.x - p.size, p.y + wing);
-          ctx.quadraticCurveTo(p.x - p.size * 0.2, p.y - p.size * 0.2, p.x, p.y);
-          ctx.quadraticCurveTo(p.x + p.size * 0.2, p.y - p.size * 0.2, p.x + p.size, p.y + wing);
-          ctx.stroke();
-          ctx.globalCompositeOperation = 'lighter';
+          ctx.beginPath(); ctx.arc(p.x, p.y, sz * 0.6, 0, Math.PI * 2); ctx.fill();
+          if (nearTarget && Math.random() < 0.03) { ctx.globalAlpha = p.alpha * 0.5; ctx.fillStyle = '#FFF8E0'; ctx.beginPath(); ctx.arc(p.x, p.y, sz * 1.8, 0, Math.PI * 2); ctx.fill(); }
         }
+        else if (p.type === 'smoke') { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = p.alpha; const sg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size); sg.addColorStop(0, 'rgba(160,130,100,0.3)'); sg.addColorStop(0.5, 'rgba(120,95,70,0.15)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'lighter'; }
+        else if (p.type === 'petal') { ctx.globalCompositeOperation = 'source-over'; ctx.save(); ctx.globalAlpha = p.alpha; ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = '#ff8844'; ctx.beginPath(); ctx.ellipse(0, 0, p.size, p.size * 0.45, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#ffaa66'; ctx.beginPath(); ctx.ellipse(p.size * 0.15, 0, p.size * 0.5, p.size * 0.25, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); ctx.globalCompositeOperation = 'lighter'; }
+        else if (p.type === 'bird') { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = p.alpha; ctx.strokeStyle = '#0d0603'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; const wing = Math.sin(p.flap) * p.size * 0.6; ctx.beginPath(); ctx.moveTo(p.x - p.size, p.y + wing); ctx.quadraticCurveTo(p.x - p.size * 0.2, p.y - p.size * 0.2, p.x, p.y); ctx.quadraticCurveTo(p.x + p.size * 0.2, p.y - p.size * 0.2, p.x + p.size, p.y + wing); ctx.stroke(); ctx.globalCompositeOperation = 'lighter'; }
       }
       ctx.restore();
     }
 
     // ============ FIXED: 24K GOLD TITLE — NO WHITE BORDER ============
+    // Uses cached offscreen canvas for the gold fill, drawn ONCE per font-size,
+    // so reflection sweep never bleeds onto the dark chocolate outline.
+
+    function buildTitleOffscreen(fontSize: number) {
+      const text = "जय श्री राम";
+      const fontStr = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+
+      // Measure
+      ctx.save();
+      ctx.font = fontStr;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const m = ctx.measureText(text);
+      ctx.restore();
+
+      const tw = m.width;
+      const th = fontSize * 1.3;
+      const pad = 30;
+      const cw = Math.ceil((tw + pad * 2) * DPR);
+      const ch = Math.ceil(th * DPR);
+
+      const cvs = document.createElement('canvas');
+      cvs.width = cw; cvs.height = ch;
+      const tc = cvs.getContext('2d')!;
+      tc.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+      const cx = cw / (2 * DPR);
+      const cy = ch / (2 * DPR);
+
+      // Gold fill
+      const topY = cy - fontSize * 0.45;
+      const botY = cy + fontSize * 0.45;
+      const goldGrad = tc.createLinearGradient(cx, topY, cx, botY);
+      goldGrad.addColorStop(0.00, '#FFF1A8');
+      goldGrad.addColorStop(0.10, '#FFE066');
+      goldGrad.addColorStop(0.22, '#FFD700');
+      goldGrad.addColorStop(0.40, '#FFB300');
+      goldGrad.addColorStop(0.58, '#C59B27');
+      goldGrad.addColorStop(0.75, '#8A5A0A');
+      goldGrad.addColorStop(0.90, '#5A3A08');
+      goldGrad.addColorStop(1.00, '#4A2800');
+
+      tc.font = fontStr;
+      tc.textAlign = 'center';
+      tc.textBaseline = 'middle';
+      tc.lineJoin = 'round';
+      tc.lineCap = 'round';
+      tc.fillStyle = goldGrad;
+      tc.fillText(text, cx, cy);
+
+      // source-atop: moving reflection sweep ONLY on gold pixels
+      tc.globalCompositeOperation = 'source-atop';
+      const sweepX = cx + Math.sin(0) * tw * 0.6;
+      const sweepW = 80 + fontSize * 0.3;
+      const sweepGrad = tc.createLinearGradient(sweepX - sweepW, 0, sweepX + sweepW, 0);
+      sweepGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      sweepGrad.addColorStop(0.3, 'rgba(255,255,220,0.08)');
+      sweepGrad.addColorStop(0.5, 'rgba(255,255,240,0.14)');
+      sweepGrad.addColorStop(0.7, 'rgba(255,255,220,0.08)');
+      sweepGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      tc.fillStyle = sweepGrad;
+      tc.fillRect(0, 0, tw + pad * 2, th);
+
+      // Micro glitter
+      for (let i = 0; i < 20; i++) {
+        const gx = cx - tw / 2 + Math.random() * tw;
+        const gy = topY + Math.random() * (botY - topY);
+        tc.beginPath();
+        tc.arc(gx, gy, 0.4 + Math.random() * 0.6, 0, Math.PI * 2);
+        tc.fillStyle = `rgba(255,255,230,${0.15 + Math.random() * 0.3})`;
+        tc.fill();
+      }
+
+      // Tiny specular highlights on upper curves ONLY
+      const specs = [{ rx: -0.3, ry: -0.28 }, { rx: 0.08, ry: -0.32 }, { rx: 0.35, ry: -0.22 }];
+      for (const sp of specs) {
+        const sx = cx + sp.rx * tw;
+        const sy = cy + sp.ry * fontSize;
+        const sg = tc.createRadialGradient(sx, sy, 0, sx, sy, 2.5);
+        sg.addColorStop(0, 'rgba(255,255,240,0.5)');
+        sg.addColorStop(1, 'rgba(255,255,240,0)');
+        tc.fillStyle = sg;
+        tc.fillRect(sx - 3, sy - 3, 6, 6);
+      }
+
+      tc.globalCompositeOperation = 'source-over';
+
+      titleOffscreen = cvs;
+      titleOffscreenW = tw + pad * 2;
+      titleOffscreenH = th;
+      lastTitleFontSize = fontSize;
+    }
 
     function drawGoldTitle(t: number) {
       const reveal = smoothstep(10.5, 12.0, t);
@@ -1371,128 +1159,74 @@ export default function CinematicIntro({ onComplete }: Props) {
       const cx = W / 2;
       const cy = H * 0.38;
       const text = "जय श्री राम";
+      const fontStr = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+
+      // Build offscreen if needed
+      if (!titleOffscreen || lastTitleFontSize !== fontSize) {
+        buildTitleOffscreen(fontSize);
+      }
 
       ctx.save();
       ctx.globalAlpha = vis;
-
-      // ── STEP 1: DARK CHOCOLATE OUTLINE (NEVER WHITE) ──
-      ctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      ctx.font = fontStr;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
 
-      // Deepest shadow
+      // STEP 1: DARK CHOCOLATE OUTLINE — NEVER WHITE
       ctx.strokeStyle = '#0a0401';
       ctx.lineWidth = fontSize * 0.08;
       ctx.strokeText(text, cx, cy + 2);
 
-      // Main dark chocolate outline
       ctx.strokeStyle = '#261102';
       ctx.lineWidth = fontSize * 0.055;
       ctx.strokeText(text, cx, cy);
 
-      // ── STEP 2: METALLIC GOLD FILL ──
-      const topY = cy - fontSize * 0.45;
-      const botY = cy + fontSize * 0.45;
-      const goldGrad = ctx.createLinearGradient(cx, topY, cx, botY);
-      goldGrad.addColorStop(0.00, '#FFF1A8');
-      goldGrad.addColorStop(0.10, '#FFE066');
-      goldGrad.addColorStop(0.22, '#FFD700');
-      goldGrad.addColorStop(0.40, '#FFB300');
-      goldGrad.addColorStop(0.58, '#C59B27');
-      goldGrad.addColorStop(0.75, '#8A5A0A');
-      goldGrad.addColorStop(0.90, '#5A3A08');
-      goldGrad.addColorStop(1.00, '#4A2800');
-      ctx.fillStyle = goldGrad;
-      ctx.fillText(text, cx, cy);
+      // STEP 2: Draw cached gold fill from offscreen canvas
+      // Update sweep position by redrawing the sweep layer
+      const tc = titleOffscreen.getContext('2d')!;
+      tc.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-      // ── STEP 3: MOVING REFLECTION SWEEP (source-atop trick) ──
-      const textBounds = ctx.measureText(text);
-      const tw = textBounds.width;
-      const th = fontSize * 1.2;
-      const tempCvs = document.createElement('canvas');
-      tempCvs.width = Math.ceil((tw + 40) * DPR);
-      tempCvs.height = Math.ceil(th * DPR);
-      const tctx = tempCvs.getContext('2d')!;
-      tctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
-      // Draw same gold text on temp
-      tctx.font = ctx.font;
-      tctx.textAlign = 'center';
-      tctx.textBaseline = 'middle';
-      tctx.lineJoin = 'round';
-      tctx.lineCap = 'round';
-
-      // Outline on temp too
-      tctx.strokeStyle = '#261102';
-      tctx.lineWidth = fontSize * 0.055;
-      tctx.strokeText(text, (tw + 40) / 2, th / 2);
-
-      const tGrad = tctx.createLinearGradient((tw + 40) / 2, th * 0.1, (tw + 40) / 2, th * 0.9);
-      tGrad.addColorStop(0.00, '#FFF1A8');
-      tGrad.addColorStop(0.10, '#FFE066');
-      tGrad.addColorStop(0.22, '#FFD700');
-      tGrad.addColorStop(0.40, '#FFB300');
-      tGrad.addColorStop(0.58, '#C59B27');
-      tGrad.addColorStop(0.75, '#8A5A0A');
-      tGrad.addColorStop(0.90, '#5A3A08');
-      tGrad.addColorStop(1.00, '#4A2800');
-      tctx.fillStyle = tGrad;
-      tctx.fillText(text, (tw + 40) / 2, th / 2);
-
-      // source-atop: reflection sweep only on text pixels
-      tctx.globalCompositeOperation = 'source-atop';
-      const sweepX = (tw + 40) / 2 + Math.sin(t * 0.35) * tw * 0.6;
+      // Re-apply sweep with current time
+      tc.globalCompositeOperation = 'source-atop';
+      const tw = titleOffscreenW / DPR - 60;
+      const sweepX = titleOffscreenW / (2 * DPR) + Math.sin(t * 0.35) * tw * 0.6;
       const sweepW = 80 + fontSize * 0.3;
-      const sweepGrad = tctx.createLinearGradient(sweepX - sweepW, 0, sweepX + sweepW, 0);
+      const sweepGrad = tc.createLinearGradient(sweepX - sweepW, 0, sweepX + sweepW, 0);
       sweepGrad.addColorStop(0, 'rgba(255,255,255,0)');
-      sweepGrad.addColorStop(0.3, 'rgba(255,255,220,0.06)');
-      sweepGrad.addColorStop(0.5, 'rgba(255,255,240,0.12)');
-      sweepGrad.addColorStop(0.7, 'rgba(255,255,220,0.06)');
+      sweepGrad.addColorStop(0.3, 'rgba(255,255,220,0.08)');
+      sweepGrad.addColorStop(0.5, 'rgba(255,255,240,0.14)');
+      sweepGrad.addColorStop(0.7, 'rgba(255,255,220,0.08)');
       sweepGrad.addColorStop(1, 'rgba(255,255,255,0)');
-      tctx.fillStyle = sweepGrad;
-      tctx.fillRect(0, 0, tw + 40, th);
+      tc.fillStyle = sweepGrad;
+      tc.fillRect(0, 0, titleOffscreenW, titleOffscreenH);
 
-      // Micro glitter flakes
-      for (let i = 0; i < 15; i++) {
-        const gx = (tw + 40) / 2 - tw / 2 + Math.random() * tw;
-        const gy = th * 0.15 + Math.random() * th * 0.7;
-        tctx.beginPath();
-        tctx.arc(gx, gy, 0.4 + Math.random() * 0.6, 0, Math.PI * 2);
-        tctx.fillStyle = `rgba(255,255,230,${0.15 + Math.random() * 0.3})`;
-        tctx.fill();
+      // Update glitter
+      for (let i = 0; i < 5; i++) {
+        const gx = titleOffscreenW / (2 * DPR) - tw / 2 + Math.random() * tw;
+        const gy = titleOffscreenH / (2 * DPR) - fontSize * 0.45 + Math.random() * fontSize * 0.9;
+        tc.beginPath();
+        tc.arc(gx, gy, 0.4 + Math.random() * 0.6, 0, Math.PI * 2);
+        tc.fillStyle = `rgba(255,255,230,${0.15 + Math.random() * 0.3})`;
+        tc.fill();
       }
 
-      // Tiny specular highlights (only on upper curves, not outline)
-      const specPoints = [
-        { rx: -0.3, ry: -0.28 }, { rx: 0.08, ry: -0.32 }, { rx: 0.35, ry: -0.22 }
-      ];
-      for (const sp of specPoints) {
-        const sx = (tw + 40) / 2 + sp.rx * tw;
-        const sy = th / 2 + sp.ry * fontSize;
-        const sg = tctx.createRadialGradient(sx, sy, 0, sx, sy, 2.5);
-        sg.addColorStop(0, 'rgba(255,255,240,0.45)');
-        sg.addColorStop(1, 'rgba(255,255,240,0)');
-        tctx.fillStyle = sg;
-        tctx.fillRect(sx - 3, sy - 3, 6, 6);
-      }
+      tc.globalCompositeOperation = 'source-over';
 
-      tctx.globalCompositeOperation = 'source-over';
-
-      // Draw temp canvas onto main canvas
+      // Draw offscreen onto main
       ctx.save();
       ctx.globalAlpha = vis;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(tempCvs, cx - (tw + 40) / 2, cy - th / 2, tw + 40, th);
+      ctx.drawImage(titleOffscreen, cx - titleOffscreenW / 2, cy - titleOffscreenH / 2, titleOffscreenW, titleOffscreenH);
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx.restore();
 
-      // ── STEP 4: VERY SUBTLE WARM GLOW BEHIND TEXT ──
+      // STEP 3: Very subtle warm amber glow BEHIND text — NOT white
       ctx.save();
       ctx.globalAlpha = vis * 0.04;
       ctx.globalCompositeOperation = 'lighter';
-      const glowR = Math.max(tw, fontSize) * 0.6;
+      const glowR = Math.max(titleOffscreenW, fontSize) * 0.55;
       const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
       glowGrad.addColorStop(0, '#FFB300');
       glowGrad.addColorStop(0.5, 'rgba(255,179,0,0.15)');
@@ -1525,7 +1259,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Divider line above sub1
       const divY = sub1Y - fontSize * 0.7;
       const divW = Math.min(W * 0.3, 200);
       ctx.globalAlpha = vis * 0.6;
@@ -1537,36 +1270,24 @@ export default function CinematicIntro({ onComplete }: Props) {
       divGrad.addColorStop(1, 'rgba(197,155,39,0)');
       ctx.strokeStyle = divGrad;
       ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(cx - divW, divY);
-      ctx.lineTo(cx + divW, divY);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - divW, divY); ctx.lineTo(cx + divW, divY); ctx.stroke();
 
-      // Center diamond
       ctx.fillStyle = '#FFD700';
-      ctx.save();
-      ctx.translate(cx, divY);
-      ctx.rotate(Math.PI / 4);
-      ctx.fillRect(-2.5, -2.5, 5, 5);
-      ctx.restore();
+      ctx.save(); ctx.translate(cx, divY); ctx.rotate(Math.PI / 4); ctx.fillRect(-2.5, -2.5, 5, 5); ctx.restore();
 
-      // Sub text 1
       ctx.globalAlpha = vis * 0.85;
       ctx.fillStyle = '#dcc890';
       ctx.fillText("आपको एवं आपके परिवार को", cx, sub1Y);
 
-      // Sub text 2 - metallic gold
       const sub2Size = Math.min(W * 0.04, 32);
       ctx.font = `${sub2Size}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
 
-      // Very subtle glow (NOT white)
       ctx.globalAlpha = vis * 0.05;
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = '#FFB300';
       ctx.fillText("राम नवमी की हार्दिक शुभकामनाएँ", cx, sub2Y);
       ctx.globalCompositeOperation = 'source-over';
 
-      // Main text
       ctx.globalAlpha = vis;
       const s2g = ctx.createLinearGradient(cx - divW, sub2Y, cx + divW, sub2Y);
       s2g.addColorStop(0, '#C59B27');
@@ -1577,22 +1298,14 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = s2g;
       ctx.fillText("राम नवमी की हार्दिक शुभकामनाएँ", cx, sub2Y);
 
-      // Divider below sub2
       const div2Y = sub2Y + sub2Size * 0.7;
       ctx.globalAlpha = vis * 0.5;
       ctx.strokeStyle = divGrad;
       ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(cx - divW, div2Y);
-      ctx.lineTo(cx + divW, div2Y);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - divW, div2Y); ctx.lineTo(cx + divW, div2Y); ctx.stroke();
 
       ctx.fillStyle = '#FFD700';
-      ctx.save();
-      ctx.translate(cx, div2Y);
-      ctx.rotate(Math.PI / 4);
-      ctx.fillRect(-2.5, -2.5, 5, 5);
-      ctx.restore();
+      ctx.save(); ctx.translate(cx, div2Y); ctx.rotate(Math.PI / 4); ctx.fillRect(-2.5, -2.5, 5, 5); ctx.restore();
 
       ctx.restore();
     }
@@ -1600,7 +1313,6 @@ export default function CinematicIntro({ onComplete }: Props) {
     // ============ POST-PROCESSING — CONTROLLED BLOOM ============
 
     function applyPostProcessing(t: number) {
-      // Vignette
       const vg = ctx.createRadialGradient(W / 2, H / 2, W * 0.2, W / 2, H / 2, W * 0.8);
       vg.addColorStop(0, 'rgba(0,0,0,0)');
       vg.addColorStop(0.5, 'rgba(0,0,0,0.15)');
@@ -1609,7 +1321,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
-      // Bloom — VERY REDUCED to prevent white border
+      // Bloom — REDUCED to prevent white border
       const bloomIntensity = 0.12;
       bctx.setTransform(1, 0, 0, 1, 0, 0);
       bctx.clearRect(0, 0, bloom.width, bloom.height);
@@ -1626,7 +1338,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx.restore();
 
-      // Film grain
       ctx.save();
       ctx.globalAlpha = 0.25;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1646,49 +1357,30 @@ export default function CinematicIntro({ onComplete }: Props) {
       const dt = Math.min(0.05, (timestamp - lastTime) / 1000);
       lastTime = timestamp;
 
-      // Camera shake
       ctx.save();
-      if (cameraShake > 0.1) {
-        ctx.translate(
-          (Math.random() - 0.5) * cameraShake,
-          (Math.random() - 0.5) * cameraShake
-        );
-      }
+      if (cameraShake > 0.1) { ctx.translate((Math.random() - 0.5) * cameraShake, (Math.random() - 0.5) * cameraShake); }
 
-      // Clear
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, W, H);
 
-      // 1. Background
       drawBackground(t);
-
-      // 2. Divine light
       drawDivineLight(t);
 
-      // 3. Top god rays (during text scene)
       const textSceneVis = smoothstep(8.0, 10.0, t) * (1 - smoothstep(17.0, 17.5, t));
       drawTopGodRays(t, textSceneVis);
 
-      // 4. Temple (drawn to reflect canvas for water reflection)
-      reflectCtx.clearRect(0, 0, W, H);
-      drawRamMandir(t, reflectCtx);
+      rctx.clearRect(0, 0, W, H);
+      drawRamMandir(t, rctx);
       ctx.drawImage(reflectCanvas, 0, 0);
 
-      // 5. Water
       drawWater(t);
-
-      // 6. Fog
       drawFogAndHaze(t);
-
-      // 7. Floating diyas
       updateAndDrawFloatingDiyas(t);
 
-      // 8. Fireworks
       launchFireworks(t);
       updateFireworks(dt, t);
       drawFireworks();
 
-      // 9. Particles (dust, petals, birds, smoke, text sparkles)
       spawnDust(t);
       spawnPetals(t);
       spawnIncenseSmoke(t);
@@ -1697,31 +1389,14 @@ export default function CinematicIntro({ onComplete }: Props) {
       updateParticles(dt, t);
       drawParticles();
 
-      // 10. GOLD TITLE (fixed — no white border)
       drawGoldTitle(t);
-
-      // 11. Subtitle
       drawSubtitle(t);
-
-      // 12. Post-processing
       applyPostProcessing(t);
 
-      ctx.restore(); // camera shake
+      ctx.restore();
 
-      // Handover
-      if (t > 18.0 && !handoverTriggered) {
-        handoverTriggered = true;
-        setTimeout(() => {
-          if (running) onCompleteRef.current?.();
-        }, 500);
-      }
-
-      if (t < 19.0) {
-        rafId = requestAnimationFrame(render);
-      } else {
-        running = false;
-        onCompleteRef.current?.();
-      }
+      if (t > 18.0 && !handoverTriggered) { handoverTriggered = true; setTimeout(() => { if (running) onCompleteRef.current?.(); }, 500); }
+      if (t < 19.0) { rafId = requestAnimationFrame(render); } else { running = false; onCompleteRef.current?.(); }
     }
 
     // ============ INIT ============
@@ -1732,15 +1407,10 @@ export default function CinematicIntro({ onComplete }: Props) {
       rafId = requestAnimationFrame(render);
     }
 
-    window.addEventListener('resize', () => {
-      resize();
-    });
+    window.addEventListener('resize', () => { resize(); });
 
-    // Wait for font then start
     const fontPromise = document.fonts.load('900 130px "Tiro Devanagari Hindi"');
-    fontPromise.then(init).catch(() => {
-      setTimeout(init, 3000);
-    });
+    fontPromise.then(init).catch(() => { setTimeout(init, 3000); });
 
     return () => {
       running = false;
