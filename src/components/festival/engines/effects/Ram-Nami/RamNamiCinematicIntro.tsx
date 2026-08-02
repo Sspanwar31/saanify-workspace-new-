@@ -72,6 +72,9 @@ interface FloatingDiya {
   phase: number; flamePulse: number;
 }
 
+// ============ एक ही जगह नाम लिखा है — यही PARTICLES और TITLE दोनों के लिए use होगा ============
+const TITLE_TEXT = 'जय श्री राम';
+
 export default function CinematicIntro({ onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onCompleteRef = useRef(onComplete);
@@ -197,6 +200,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
+    // ============ FIXED: एक ही constant TITLE_TEXT use कर रहे हैं ============
     function sampleText() {
       const tc = document.createElement("canvas");
       const tctx = tc.getContext("2d")!;
@@ -210,7 +214,8 @@ export default function CinematicIntro({ onComplete }: Props) {
       tctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
       tctx.lineJoin = "round";
       tctx.lineCap = "round";
-      tctx.fillText("जय श्री राम", tc.width / 2, tc.height / 2);
+      // ✅ FIX: TITLE_TEXT constant use — "जय श्री राम"
+      tctx.fillText(TITLE_TEXT, tc.width / 2, tc.height / 2);
       const img = tctx.getImageData(0, 0, tc.width, tc.height);
       ramPoints = [];
       const step = 2;
@@ -1044,6 +1049,7 @@ export default function CinematicIntro({ onComplete }: Props) {
           const sz = nearTarget ? p.size * 0.9 : p.size;
           ctx.drawImage(sparkSprite, p.x - sz * 3, p.y - sz * 3, sz * 6, sz * 6);
           ctx.globalAlpha = p.alpha;
+          // ✅ FIX: Particle color gold — same as title
           ctx.fillStyle = nearTarget ? '#FFD700' : '#FFB300';
           ctx.beginPath(); ctx.arc(p.x, p.y, sz * 0.6, 0, Math.PI * 2); ctx.fill();
           if (nearTarget && Math.random() < 0.03) { ctx.globalAlpha = p.alpha * 0.5; ctx.fillStyle = '#FFF8E0'; ctx.beginPath(); ctx.arc(p.x, p.y, sz * 1.8, 0, Math.PI * 2); ctx.fill(); }
@@ -1055,362 +1061,284 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ FIXED: 24K GOLD TITLE — NO WHITE BORDER ============
-    // Uses cached offscreen canvas for the gold fill, drawn ONCE per font-size,
-    // so reflection sweep never bleeds onto the dark chocolate outline.
+    // ============ ✅ FIXED: 24K GOLD TITLE — SAME TEXT AS PARTICLES, NO WHITE BORDER ============
 
-    function buildTitleOffscreen(fontSize: number) {
-      const text = "जय श्री राम";
-      const fontStr = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+    function buildTitleOffscreen(fontSize: number): HTMLCanvasElement {
+      const padding = 40;
+      const tc = document.createElement("canvas");
+      const tctx = tc.getContext("2d")!;
+      // ✅ FIX: measure the SAME text — TITLE_TEXT = "जय श्री राम"
+      tctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      const metrics = tctx.measureText(TITLE_TEXT);
+      const textW = metrics.width;
+      const textH = fontSize * 1.2;
 
-      // Measure
-      ctx.save();
-      ctx.font = fontStr;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const m = ctx.measureText(text);
-      ctx.restore();
+      tc.width = Math.ceil(textW + padding * 2);
+      tc.height = Math.ceil(textH + padding * 2);
 
-      const tw = m.width;
-      const th = fontSize * 1.3;
-      const pad = 30;
-      const cw = Math.ceil((tw + pad * 2) * DPR);
-      const ch = Math.ceil(th * DPR);
+      // Re-set font after resize (canvas resize clears state)
+      tctx.font = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      tctx.textAlign = "center";
+      tctx.textBaseline = "middle";
+      tctx.lineJoin = "round";
+      tctx.lineCap = "round";
 
-      const cvs = document.createElement('canvas');
-      cvs.width = cw; cvs.height = ch;
-      const tc = cvs.getContext('2d')!;
-      tc.setTransform(DPR, 0, 0, DPR, 0, 0);
+      const cx = tc.width / 2;
+      const cy = tc.height / 2;
 
-      const cx = cw / (2 * DPR);
-      const cy = ch / (2 * DPR);
+      // ✅ FIX: NO white stroke/border — only gold glow behind
+      // Soft outer glow — gold, NOT white
+      tctx.save();
+      tctx.shadowColor = 'rgba(255, 180, 0, 0.8)';
+      tctx.shadowBlur = fontSize * 0.35;
+      tctx.shadowOffsetX = 0;
+      tctx.shadowOffsetY = 0;
+      tctx.fillStyle = 'rgba(255, 200, 50, 0.5)';
+      tctx.fillText(TITLE_TEXT, cx, cy);
+      tctx.restore();
 
-      // Gold fill
-      const topY = cy - fontSize * 0.45;
-      const botY = cy + fontSize * 0.45;
-      const goldGrad = tc.createLinearGradient(cx, topY, cx, botY);
-      goldGrad.addColorStop(0.00, '#FFF1A8');
-      goldGrad.addColorStop(0.10, '#FFE066');
-      goldGrad.addColorStop(0.22, '#FFD700');
-      goldGrad.addColorStop(0.40, '#FFB300');
-      goldGrad.addColorStop(0.58, '#C59B27');
-      goldGrad.addColorStop(0.75, '#8A5A0A');
-      goldGrad.addColorStop(0.90, '#5A3A08');
-      goldGrad.addColorStop(1.00, '#4A2800');
+      // Second glow layer — warmer
+      tctx.save();
+      tctx.shadowColor = 'rgba(255, 140, 0, 0.6)';
+      tctx.shadowBlur = fontSize * 0.2;
+      tctx.fillStyle = 'rgba(255, 180, 30, 0.6)';
+      tctx.fillText(TITLE_TEXT, cx, cy);
+      tctx.restore();
 
-      tc.font = fontStr;
-      tc.textAlign = 'center';
-      tc.textBaseline = 'middle';
-      tc.lineJoin = 'round';
-      tc.lineCap = 'round';
-      tc.fillStyle = goldGrad;
-      tc.fillText(text, cx, cy);
+      // ✅ FIX: Main text — 24K Gold gradient, NO white stroke
+      const goldGrad = tctx.createLinearGradient(cx - textW / 2, cy - textH / 2, cx + textW / 2, cy + textH / 2);
+      goldGrad.addColorStop(0, '#FFF1B8');    // light gold highlight
+      goldGrad.addColorStop(0.2, '#FFD700');   // pure gold
+      goldGrad.addColorStop(0.45, '#FFAA00');  // deep gold
+      goldGrad.addColorStop(0.55, '#FF8C00');  // dark gold
+      goldGrad.addColorStop(0.8, '#FFD700');   // pure gold
+      goldGrad.addColorStop(1, '#FFF1B8');     // light gold highlight
+      tctx.fillStyle = goldGrad;
+      tctx.fillText(TITLE_TEXT, cx, cy);
 
-      // source-atop: moving reflection sweep ONLY on gold pixels
-      tc.globalCompositeOperation = 'source-atop';
-      const sweepX = cx + Math.sin(0) * tw * 0.6;
-      const sweepW = 80 + fontSize * 0.3;
-      const sweepGrad = tc.createLinearGradient(sweepX - sweepW, 0, sweepX + sweepW, 0);
-      sweepGrad.addColorStop(0, 'rgba(255,255,255,0)');
-      sweepGrad.addColorStop(0.3, 'rgba(255,255,220,0.08)');
-      sweepGrad.addColorStop(0.5, 'rgba(255,255,240,0.14)');
-      sweepGrad.addColorStop(0.7, 'rgba(255,255,220,0.08)');
-      sweepGrad.addColorStop(1, 'rgba(255,255,255,0)');
-      tc.fillStyle = sweepGrad;
-      tc.fillRect(0, 0, tw + pad * 2, th);
+      // ✅ FIX: Inner highlight — NOT white stroke, just a subtle lighter pass
+      tctx.save();
+      tctx.globalCompositeOperation = 'lighter';
+      tctx.globalAlpha = 0.15;
+      const hlGrad = tctx.createLinearGradient(cx - textW / 2, cy - textH / 2, cx - textW / 2, cy);
+      hlGrad.addColorStop(0, '#FFFFFF');
+      hlGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      tctx.fillStyle = hlGrad;
+      tctx.fillText(TITLE_TEXT, cx, cy);
+      tctx.restore();
 
-      // Micro glitter
-      for (let i = 0; i < 20; i++) {
-        const gx = cx - tw / 2 + Math.random() * tw;
-        const gy = topY + Math.random() * (botY - topY);
-        tc.beginPath();
-        tc.arc(gx, gy, 0.4 + Math.random() * 0.6, 0, Math.PI * 2);
-        tc.fillStyle = `rgba(255,255,230,${0.15 + Math.random() * 0.3})`;
-        tc.fill();
-      }
-
-      // Tiny specular highlights on upper curves ONLY
-      const specs = [{ rx: -0.3, ry: -0.28 }, { rx: 0.08, ry: -0.32 }, { rx: 0.35, ry: -0.22 }];
-      for (const sp of specs) {
-        const sx = cx + sp.rx * tw;
-        const sy = cy + sp.ry * fontSize;
-        const sg = tc.createRadialGradient(sx, sy, 0, sx, sy, 2.5);
-        sg.addColorStop(0, 'rgba(255,255,240,0.5)');
-        sg.addColorStop(1, 'rgba(255,255,240,0)');
-        tc.fillStyle = sg;
-        tc.fillRect(sx - 3, sy - 3, 6, 6);
-      }
-
-      tc.globalCompositeOperation = 'source-over';
-
-      titleOffscreen = cvs;
-      titleOffscreenW = tw + pad * 2;
-      titleOffscreenH = th;
+      titleOffscreenW = tc.width;
+      titleOffscreenH = tc.height;
       lastTitleFontSize = fontSize;
+
+      return tc;
     }
 
-    function drawGoldTitle(t: number) {
-      const reveal = smoothstep(10.5, 12.0, t);
+    function drawTitle(t: number) {
+      // Title appears after particles settle (t > 10.5) and fades before handover (t > 17)
+      const fadeIn = smoothstep(10.5, 11.5, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
-      const vis = reveal * (1 - fadeOut);
-      if (vis <= 0.01) return;
+      const vis = fadeIn * (1 - fadeOut);
+      if (vis <= 0) return;
 
       const fontSize = Math.min(W * 0.125, 130);
-      const cx = W / 2;
-      const cy = H * 0.38;
-      const text = "जय श्री राम";
-      const fontStr = `900 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
 
-      // Build offscreen if needed
-      if (!titleOffscreen || lastTitleFontSize !== fontSize) {
-        buildTitleOffscreen(fontSize);
+      // Rebuild cache if needed (resize or first time)
+      if (!titleOffscreen || Math.abs(lastTitleFontSize - fontSize) > 1) {
+        titleOffscreen = buildTitleOffscreen(fontSize);
       }
 
       ctx.save();
       ctx.globalAlpha = vis;
-      ctx.font = fontStr;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
 
-      // STEP 1: DARK CHOCOLATE OUTLINE — NEVER WHITE
-      ctx.strokeStyle = '#0a0401';
-      ctx.lineWidth = fontSize * 0.08;
-      ctx.strokeText(text, cx, cy + 2);
+      // Draw the cached gold title centered on screen
+      const drawX = (W - titleOffscreenW) / 2;
+      const drawY = (H * 0.38 - titleOffscreenH / 2);
 
-      ctx.strokeStyle = '#261102';
-      ctx.lineWidth = fontSize * 0.055;
-      ctx.strokeText(text, cx, cy);
-
-      // STEP 2: Draw cached gold fill from offscreen canvas
-      // Update sweep position by redrawing the sweep layer
-      const tc = titleOffscreen.getContext('2d')!;
-      tc.setTransform(DPR, 0, 0, DPR, 0, 0);
-
-      // Re-apply sweep with current time
-      tc.globalCompositeOperation = 'source-atop';
-      const tw = titleOffscreenW / DPR - 60;
-      const sweepX = titleOffscreenW / (2 * DPR) + Math.sin(t * 0.35) * tw * 0.6;
-      const sweepW = 80 + fontSize * 0.3;
-      const sweepGrad = tc.createLinearGradient(sweepX - sweepW, 0, sweepX + sweepW, 0);
-      sweepGrad.addColorStop(0, 'rgba(255,255,255,0)');
-      sweepGrad.addColorStop(0.3, 'rgba(255,255,220,0.08)');
-      sweepGrad.addColorStop(0.5, 'rgba(255,255,240,0.14)');
-      sweepGrad.addColorStop(0.7, 'rgba(255,255,220,0.08)');
-      sweepGrad.addColorStop(1, 'rgba(255,255,255,0)');
-      tc.fillStyle = sweepGrad;
-      tc.fillRect(0, 0, titleOffscreenW, titleOffscreenH);
-
-      // Update glitter
-      for (let i = 0; i < 5; i++) {
-        const gx = titleOffscreenW / (2 * DPR) - tw / 2 + Math.random() * tw;
-        const gy = titleOffscreenH / (2 * DPR) - fontSize * 0.45 + Math.random() * fontSize * 0.9;
-        tc.beginPath();
-        tc.arc(gx, gy, 0.4 + Math.random() * 0.6, 0, Math.PI * 2);
-        tc.fillStyle = `rgba(255,255,230,${0.15 + Math.random() * 0.3})`;
-        tc.fill();
-      }
-
-      tc.globalCompositeOperation = 'source-over';
-
-      // Draw offscreen onto main
+      // ✅ FIX: No extra white glow around the title
+      // Only a very subtle gold ambient glow
       ctx.save();
-      ctx.globalAlpha = vis;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(titleOffscreen, cx - titleOffscreenW / 2, cy - titleOffscreenH / 2, titleOffscreenW, titleOffscreenH);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.restore();
-
-      // STEP 3: Very subtle warm amber glow BEHIND text — NOT white
-      ctx.save();
-      ctx.globalAlpha = vis * 0.04;
       ctx.globalCompositeOperation = 'lighter';
-      const glowR = Math.max(titleOffscreenW, fontSize) * 0.55;
-      const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
-      glowGrad.addColorStop(0, '#FFB300');
-      glowGrad.addColorStop(0.5, 'rgba(255,179,0,0.15)');
-      glowGrad.addColorStop(1, 'rgba(255,179,0,0)');
-      ctx.fillStyle = glowGrad;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, glowR, glowR * 0.3, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalAlpha = vis * 0.3;
+      const ambientGlow = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, titleOffscreenW * 0.8);
+      ambientGlow.addColorStop(0, 'rgba(255, 180, 0, 0.25)');
+      ambientGlow.addColorStop(0.5, 'rgba(255, 120, 0, 0.08)');
+      ambientGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = ambientGlow;
+      ctx.fillRect(0, 0, W, H);
       ctx.restore();
+
+      // Draw the cached title
+      ctx.drawImage(titleOffscreen, drawX, drawY);
 
       ctx.restore();
     }
 
-    // ============ SUBTITLE TEXT ============
-
+    // ============ SUBTITLE ============
     function drawSubtitle(t: number) {
-      const reveal = smoothstep(12.0, 13.5, t);
+      const fadeIn = smoothstep(11.5, 12.5, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
-      const vis = reveal * (1 - fadeOut);
-      if (vis <= 0.01) return;
+      const vis = fadeIn * (1 - fadeOut);
+      if (vis <= 0) return;
 
-      const fontSize = Math.min(W * 0.035, 28);
-      const cx = W / 2;
-      const titleY = H * 0.38;
-      const sub1Y = titleY + Math.min(W * 0.125, 130) * 0.55;
-      const sub2Y = sub1Y + fontSize * 1.6;
+      const fontSize = Math.min(W * 0.032, 28);
+      const subtitleY = H * 0.38 + Math.min(W * 0.125, 130) * 0.8;
 
       ctx.save();
-      ctx.font = `${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      const divY = sub1Y - fontSize * 0.7;
-      const divW = Math.min(W * 0.3, 200);
-      ctx.globalAlpha = vis * 0.6;
-      const divGrad = ctx.createLinearGradient(cx - divW, 0, cx + divW, 0);
-      divGrad.addColorStop(0, 'rgba(197,155,39,0)');
-      divGrad.addColorStop(0.3, 'rgba(197,155,39,0.5)');
-      divGrad.addColorStop(0.5, 'rgba(255,215,0,0.7)');
-      divGrad.addColorStop(0.7, 'rgba(197,155,39,0.5)');
-      divGrad.addColorStop(1, 'rgba(197,155,39,0)');
-      ctx.strokeStyle = divGrad;
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.moveTo(cx - divW, divY); ctx.lineTo(cx + divW, divY); ctx.stroke();
-
-      ctx.fillStyle = '#FFD700';
-      ctx.save(); ctx.translate(cx, divY); ctx.rotate(Math.PI / 4); ctx.fillRect(-2.5, -2.5, 5, 5); ctx.restore();
-
       ctx.globalAlpha = vis * 0.85;
-      ctx.fillStyle = '#dcc890';
-      ctx.fillText("आपको एवं आपके परिवार को", cx, sub1Y);
+      ctx.font = `400 ${fontSize}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
 
-      const sub2Size = Math.min(W * 0.04, 32);
-      ctx.font = `${sub2Size}px "Tiro Devanagari Hindi","Nirmala UI","Mangal",serif`;
-
-      ctx.globalAlpha = vis * 0.05;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = '#FFB300';
-      ctx.fillText("राम नवमी की हार्दिक शुभकामनाएँ", cx, sub2Y);
-      ctx.globalCompositeOperation = 'source-over';
-
-      ctx.globalAlpha = vis;
-      const s2g = ctx.createLinearGradient(cx - divW, sub2Y, cx + divW, sub2Y);
-      s2g.addColorStop(0, '#C59B27');
-      s2g.addColorStop(0.25, '#FFD700');
-      s2g.addColorStop(0.5, '#FFE066');
-      s2g.addColorStop(0.75, '#FFD700');
-      s2g.addColorStop(1, '#C59B27');
-      ctx.fillStyle = s2g;
-      ctx.fillText("राम नवमी की हार्दिक शुभकामनाएँ", cx, sub2Y);
-
-      const div2Y = sub2Y + sub2Size * 0.7;
-      ctx.globalAlpha = vis * 0.5;
-      ctx.strokeStyle = divGrad;
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.moveTo(cx - divW, div2Y); ctx.lineTo(cx + divW, div2Y); ctx.stroke();
-
-      ctx.fillStyle = '#FFD700';
-      ctx.save(); ctx.translate(cx, div2Y); ctx.rotate(Math.PI / 4); ctx.fillRect(-2.5, -2.5, 5, 5); ctx.restore();
+      // Gold color matching the title
+      const subGrad = ctx.createLinearGradient(W / 2 - 150, subtitleY, W / 2 + 150, subtitleY);
+      subGrad.addColorStop(0, 'rgba(255, 215, 0, 0.7)');
+      subGrad.addColorStop(0.5, 'rgba(255, 235, 150, 0.9)');
+      subGrad.addColorStop(1, 'rgba(255, 215, 0, 0.7)');
+      ctx.fillStyle = subGrad;
+      ctx.fillText('स्वच्छ समाज प्रशासन', W / 2, subtitleY);
 
       ctx.restore();
     }
 
-    // ============ POST-PROCESSING — CONTROLLED BLOOM ============
-
-    function applyPostProcessing(t: number) {
-      const vg = ctx.createRadialGradient(W / 2, H / 2, W * 0.2, W / 2, H / 2, W * 0.8);
-      vg.addColorStop(0, 'rgba(0,0,0,0)');
-      vg.addColorStop(0.5, 'rgba(0,0,0,0.15)');
-      vg.addColorStop(0.8, 'rgba(0,0,0,0.4)');
-      vg.addColorStop(1, 'rgba(0,0,0,0.65)');
-      ctx.fillStyle = vg;
+    // ============ VIGNETTE & GRAIN ============
+    function drawVignette() {
+      const grad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
+    }
 
-      // Bloom — REDUCED to prevent white border
-      const bloomIntensity = 0.12;
-      bctx.setTransform(1, 0, 0, 1, 0, 0);
-      bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.drawImage(canvas, 0, 0, bloom.width, bloom.height);
-      bctx.filter = `blur(${8}px)`;
-      bctx.drawImage(bloom, 0, 0);
-      bctx.filter = 'none';
-
+    function drawGrain() {
       ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = bloomIntensity;
-      ctx.drawImage(bloom, 0, 0, W, H);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.restore();
-
-      ctx.save();
-      ctx.globalAlpha = 0.25;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      const grainOffset = Math.floor(t * 15) % 256;
-      ctx.drawImage(grain, grainOffset, 0, 256, 256, 0, 0, W, H);
-      ctx.drawImage(grain, grainOffset - 256, 0, 256, 256, 0, 0, W, H);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.globalAlpha = 0.035;
+      ctx.globalCompositeOperation = 'overlay';
+      // Tile the grain texture
+      const pattern = ctx.createPattern(grain, 'repeat');
+      if (pattern) {
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, W, H);
+      }
       ctx.restore();
     }
 
-    // ============ MAIN RENDER LOOP ============
-
-    function render(timestamp: number) {
+    // ============ MAIN ANIMATION LOOP ============
+    function animate(timestamp: number) {
       if (!running) return;
-      if (startTime === 0) startTime = timestamp;
-      const t = (timestamp - startTime) / 1000;
-      const dt = Math.min(0.05, (timestamp - lastTime) / 1000);
+
+      if (startTime === 0) {
+        startTime = timestamp;
+        lastTime = timestamp;
+      }
+
+      const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
       lastTime = timestamp;
+      const t = (timestamp - startTime) / 1000;
+
+      // Camera shake
+      let shakeX = 0, shakeY = 0;
+      if (cameraShake > 0.01) {
+        shakeX = (Math.random() - 0.5) * cameraShake * 2;
+        shakeY = (Math.random() - 0.5) * cameraShake * 2;
+      }
 
       ctx.save();
-      if (cameraShake > 0.1) { ctx.translate((Math.random() - 0.5) * cameraShake, (Math.random() - 0.5) * cameraShake); }
+      ctx.translate(shakeX, shakeY);
 
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, W, H);
-
+      // 1. Background
       drawBackground(t);
+
+      // 2. Divine light (Scene 1-2)
       drawDivineLight(t);
 
-      const textSceneVis = smoothstep(8.0, 10.0, t) * (1 - smoothstep(17.0, 17.5, t));
-      drawTopGodRays(t, textSceneVis);
+      // 3. Ram Mandir (Scene 2)
+      drawRamMandir(t, ctx);
 
-      rctx.clearRect(0, 0, W, H);
-      drawRamMandir(t, rctx);
-      ctx.drawImage(reflectCanvas, 0, 0);
+      // 4. Capture reflection before water
+      if (t > 2.0 && t < 8.0) {
+        rctx.clearRect(0, 0, reflectCanvas.width, reflectCanvas.height);
+        rctx.drawImage(canvas, 0, 0, reflectCanvas.width, reflectCanvas.height);
+      }
 
+      // 5. Water reflection (Scene 2)
       drawWater(t);
-      drawFogAndHaze(t);
+
+      // 6. Floating diyas (Scene 2)
       updateAndDrawFloatingDiyas(t);
 
+      // 7. Fog (Scene 2)
+      drawFogAndHaze(t);
+
+      // 8. Fireworks (Scene 2-3 transition)
       launchFireworks(t);
       updateFireworks(dt, t);
       drawFireworks();
 
+      // 9. Text scene god rays (Scene 3)
+      const textVis = smoothstep(8.0, 9.5, t) * (1 - smoothstep(17.0, 17.5, t));
+      drawTopGodRays(t, textVis);
+
+      // 10. Spawn particles
       spawnDust(t);
       spawnPetals(t);
+      spawnTextParticles(t);
       spawnIncenseSmoke(t);
       spawnBirds(t);
-      spawnTextParticles(t);
+
+      // 11. Update & draw particles
       updateParticles(dt, t);
       drawParticles();
 
-      drawGoldTitle(t);
+      // 12. ✅ FIXED: Gold title — same text as particles, no white border
+      drawTitle(t);
+
+      // 13. Subtitle
       drawSubtitle(t);
-      applyPostProcessing(t);
+
+      // 14. Post-processing
+      drawVignette();
+      drawGrain();
 
       ctx.restore();
 
-      if (t > 18.0 && !handoverTriggered) { handoverTriggered = true; setTimeout(() => { if (running) onCompleteRef.current?.(); }, 500); }
-      if (t < 19.0) { rafId = requestAnimationFrame(render); } else { running = false; onCompleteRef.current?.(); }
+      // Handover trigger
+      if (t > 18.0 && !handoverTriggered) {
+        handoverTriggered = true;
+        setTimeout(() => {
+          if (running && onCompleteRef.current) {
+            onCompleteRef.current();
+          }
+        }, 200);
+      }
+
+      // Stop after handover + fade
+      if (t > 19.0) {
+        running = false;
+        return;
+      }
+
+      rafId = requestAnimationFrame(animate);
     }
 
     // ============ INIT ============
+    resize();
+    window.addEventListener('resize', resize);
 
-    function init() {
-      resize();
-      lastTime = performance.now();
-      rafId = requestAnimationFrame(render);
+    // Wait for font to load before starting
+    const startAnimation = () => {
+      sampleText();
+      titleOffscreen = null;
+      lastTitleFontSize = 0;
+      rafId = requestAnimationFrame(animate);
+    };
+
+    // Try to start after font loads, with fallback
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(startAnimation);
+    } else {
+      setTimeout(startAnimation, 500);
     }
-
-    window.addEventListener('resize', () => { resize(); });
-
-    const fontPromise = document.fonts.load('900 130px "Tiro Devanagari Hindi"');
-    fontPromise.then(init).catch(() => { setTimeout(init, 3000); });
 
     return () => {
       running = false;
@@ -1428,7 +1356,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         left: 0,
         width: '100vw',
         height: '100vh',
-        display: 'block',
+        zIndex: 9999,
         background: '#000',
       }}
     />
