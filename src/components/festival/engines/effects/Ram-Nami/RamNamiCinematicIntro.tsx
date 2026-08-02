@@ -33,8 +33,12 @@ class ParticlePool {
   release(p: Particle) { p.active = false; this.free.push(p.idx); }
 }
 
-interface FW Rocket { x: number; y: number; vx: number; vy: number; ay: number; targetY: number; color: string; color2: string; type: string; trail: { x: number; y: number; alpha: number }[]; flicker: number; }
-interface FWS park { x: number; y: number; vx: number; vy: number; color: string; color2: string; alpha: number; life: number; maxLife: number; size: number; gravity: number; drag: number; flicker: boolean; type: string; temp: number; wind: number; turb: number; stage: number; delay: number; hasExploded: boolean; isSecondary: boolean; }
+// ✅ FIX: Space हटाया — "FW Rocket" → "FWRocket"
+interface FWRocket { x: number; y: number; vx: number; vy: number; ay: number; targetY: number; color: string; color2: string; type: string; trail: { x: number; y: number; alpha: number }[]; flicker: number; }
+
+// ✅ FIX: Space हटाया — "FWS park" → "FWSpark"
+interface FWSpark { x: number; y: number; vx: number; vy: number; color: string; color2: string; alpha: number; life: number; maxLife: number; size: number; gravity: number; drag: number; flicker: boolean; type: string; temp: number; wind: number; turb: number; stage: number; delay: number; hasExploded: boolean; isSecondary: boolean; }
+
 interface Diya { x: number; y: number; scale: number; speed: number; phase: number; flamePulse: number; }
 
 const TITLE_TEXT = 'जय श्री राम';
@@ -86,7 +90,6 @@ export default function CinematicIntro({ onComplete }: Props) {
     let birdsSpawned = false, handoverTriggered = false;
     let screenFlash = 0, cameraShake = 0, lastRocketTime = 0;
 
-    // ====== OFFSCREEN CANVASES for Volumetric Blur ======
     const rayCanvas = document.createElement('canvas');
     const rayCtx = rayCanvas.getContext('2d')!;
     const grain = document.createElement('canvas');
@@ -95,9 +98,9 @@ export default function CinematicIntro({ onComplete }: Props) {
     const pool = new ParticlePool(2000);
     let ramPoints: { x: number; y: number }[] = [];
     let diyas: Diya[] = [];
-    const fwRockets: any[] = [];
-    const fwSparks: any[] = [];
-    const fwBursts: any[] = [];
+    const fwRockets: FWRocket[] = [];
+    const fwSparks: FWSpark[] = [];
+    const fwBursts: { x: number; y: number; color: string; r: number; maxR: number; alpha: number }[] = [];
 
     const fwColors = [['#ffaa00','#ff3300'],['#00e5ff','#0055ff'],['#ff00aa','#aa00ff'],['#ffd700','#ffffff'],['#00ff66','#00aa00'],['#ff0033','#ffffff']];
 
@@ -122,7 +125,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       canvas.width = Math.floor(W * DPR);
       canvas.height = Math.floor(H * DPR);
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      // Ray canvas at HALF res for perf + natural softness
       rayCanvas.width = Math.floor(W / 2);
       rayCanvas.height = Math.floor(H / 2);
       grain.width = 256; grain.height = 256;
@@ -155,7 +157,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // ===================== SKY — Rich warm gradient =====================
     function drawSky(t: number) {
       const v = smoothstep(0,1.2,t) * (1 - smoothstep(6.5,8.5,t)) * (1 - smoothstep(6.5,8,t));
       const g = ctx.createLinearGradient(0,0,0,H);
@@ -171,20 +172,17 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
     }
 
-    // ===================== SUN — Bigger, half at horizon =====================
     function drawSun(t: number) {
       const vis = sunVis(t);
       if (vis <= 0) return;
       const sx = W*0.5, sy = H*HORIZON;
-      const R = Math.min(W,H) * 0.22; // BIGGER sun
+      const R = Math.min(W,H) * 0.22;
       const breath = Math.sin(t*0.4)*0.05;
       const bR = clamp(255+breath*30,242,255), bG = clamp(242+breath*20,225,255), bB = clamp(185-breath*40,145,205);
 
       ctx.save();
-      // CLIP: only above horizon — half sun
       ctx.beginPath(); ctx.rect(0,0,W,H*HORIZON+2); ctx.clip();
 
-      // Massive atmospheric glow
       const ag = ctx.createRadialGradient(sx,sy,R*0.2,sx,sy,R*5);
       ag.addColorStop(0, `rgba(${Math.floor(bR)},${Math.floor(bG*0.88)},${Math.floor(bB*0.65)},${0.4*vis})`);
       ag.addColorStop(0.15, `rgba(255,175,70,${0.18*vis})`);
@@ -193,13 +191,11 @@ export default function CinematicIntro({ onComplete }: Props) {
       ag.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = ag; ctx.fillRect(0,0,W,H*HORIZON);
 
-      // Glow rings (lens effect)
       ctx.strokeStyle = `rgba(255,215,140,${0.1*vis})`; ctx.lineWidth = R*0.1;
       ctx.beginPath(); ctx.arc(sx,sy,R*1.4,0,Math.PI*2); ctx.stroke();
       ctx.strokeStyle = `rgba(255,235,190,${0.05*vis})`; ctx.lineWidth = R*0.06;
       ctx.beginPath(); ctx.arc(sx,sy,R*1.8,0,Math.PI*2); ctx.stroke();
 
-      // Sun disk — white-hot core
       const dg = ctx.createRadialGradient(sx,sy-R*0.06,0,sx,sy,R);
       dg.addColorStop(0, `rgba(${Math.floor(bR)},${Math.floor(bG)},${Math.floor(bB)},${vis})`);
       dg.addColorStop(0.4, `rgba(255,228,165,${vis*0.92})`);
@@ -209,7 +205,6 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       ctx.restore();
 
-      // Warmth glow below horizon on water
       const bg = ctx.createRadialGradient(sx,sy+8,0,sx,sy+8,R*3);
       bg.addColorStop(0, `rgba(255,185,85,${0.1*vis})`);
       bg.addColorStop(0.4, `rgba(200,105,35,${0.04*vis})`);
@@ -217,14 +212,13 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = bg; ctx.fillRect(sx-R*3.5,sy,R*7,R*3);
     }
 
-    // ===================== VOLUMETRIC RAYS — Offscreen + Blur =====================
     function drawRaysOffscreen(t: number) {
       const vis = sunVis(t);
       const tReveal = smoothstep(1.8,3.5,t);
       if (vis <= 0) return;
 
       const rW = rayCanvas.width, rH = rayCanvas.height;
-      const sc = 0.5; // half-res scale
+      const sc = 0.5;
       rayCtx.clearRect(0,0,rW,rH);
       rayCtx.globalCompositeOperation = 'lighter';
 
@@ -273,7 +267,6 @@ export default function CinematicIntro({ onComplete }: Props) {
           }
         } else {
           const ex = sx+dx*length, ey = sy+dy*length;
-          // Wide soft
           const g1 = rayCtx.createLinearGradient(sx,sy,ex,ey);
           g1.addColorStop(0, `rgba(255,250,235,${op*1.8})`);
           g1.addColorStop(0.15, `rgba(255,215,145,${op})`);
@@ -287,7 +280,6 @@ export default function CinematicIntro({ onComplete }: Props) {
           rayCtx.lineTo(ex+px*width*0.1, ey+py*width*0.1);
           rayCtx.closePath(); rayCtx.fill();
 
-          // Narrow bright core
           const g2 = rayCtx.createLinearGradient(sx,sy,ex,ey);
           g2.addColorStop(0, `rgba(255,255,248,${op*2.5})`);
           g2.addColorStop(0.2, `rgba(255,240,200,${op*1.5})`);
@@ -303,7 +295,6 @@ export default function CinematicIntro({ onComplete }: Props) {
         }
       }
 
-      // Scattering spots
       for (let i = 0; i < 25; i++) {
         const sa = (i/25)*Math.PI*1.5 - Math.PI*0.75 - Math.PI/2;
         const sd = H*sc*(0.12 + 0.38*((Math.sin(i*3.7)+1)/2));
@@ -323,12 +314,10 @@ export default function CinematicIntro({ onComplete }: Props) {
     function compositeRaysBlurred() {
       if (rayCanvas.width === 0) return;
       ctx.save();
-      // PASS 1: Heavy blur — soft volumetric body
       ctx.filter = 'blur(18px)';
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.85;
       ctx.drawImage(rayCanvas, 0, 0, rayCanvas.width, rayCanvas.height, 0, 0, W, H);
-      // PASS 2: Light blur — sharper core detail
       ctx.filter = 'blur(6px)';
       ctx.globalAlpha = 0.5;
       ctx.drawImage(rayCanvas, 0, 0, rayCanvas.width, rayCanvas.height, 0, 0, W, H);
@@ -336,7 +325,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== HEAT SHIMMER =====================
     function drawHeatShimmer(t: number) {
       const vis = sunVis(t); if (vis <= 0) return;
       const sx = W*0.5, sy = H*HORIZON, r = Math.min(W,H)*0.22;
@@ -356,7 +344,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== TEMPLE GLOW (BEHIND silhouette) =====================
     function drawTempleGlow(t: number) {
       const reveal = smoothstep(1.8,4.0,t);
       const fade = 1 - smoothstep(6.5,8.0,t);
@@ -370,7 +357,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // Large golden aura behind entire temple
       const aura = ctx.createRadialGradient(mx, baseY-160*s, 15*s, mx, baseY-160*s, 380*s);
       aura.addColorStop(0, `rgba(255,225,130,${0.45*vis*pulse})`);
       aura.addColorStop(0.2, `rgba(255,180,70,${0.25*vis*pulse})`);
@@ -379,7 +365,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = aura;
       ctx.fillRect(mx-450*s, baseY-550*s, 900*s, 550*s);
 
-      // Extra bright glow at shikhara tops
       const tops = [0, -80, 80, -140, 140];
       tops.forEach((ox, i) => {
         const h = i === 0 ? 280*s : (i < 3 ? 170*s : 120*s);
@@ -396,21 +381,19 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== TEMPLE SILHOUETTE — Big, Bold, Rim Lit =====================
     function drawTempleSilhouette(t: number) {
       const reveal = smoothstep(1.8,4.0,t);
       const fade = 1 - smoothstep(6.5,8.0,t);
       const vis = reveal * fade;
       if (vis <= 0) return;
 
-      const s = Math.min(W,H) * 0.0017; // 40% BIGGER
+      const s = Math.min(W,H) * 0.0017;
       const mx = W*0.5, baseY = H*HORIZON;
       const gp = 0.55 + 0.45*Math.sin(t*2.5);
 
       ctx.save();
       ctx.globalAlpha = vis;
 
-      // STRONG rim lighting
       ctx.shadowColor = `rgba(255,195,85,${0.85*vis*gp})`;
       ctx.shadowBlur = 40*s;
 
@@ -418,7 +401,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       const gold = `rgba(255,205,105,${0.75*gp})`;
       const goldSoft = `rgba(255,205,105,${0.4*gp})`;
 
-      // Platforms
       const plat = (pw:number, ph:number, py:number) => {
         ctx.fillStyle = DARK;
         ctx.fillRect(mx-pw/2, py, pw, ph);
@@ -432,11 +414,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       const sY = baseY - 44*s;
       const sW = 175*s, sH = 90*s;
 
-      // Sanctum wall
       ctx.fillStyle = DARK;
       ctx.fillRect(mx-sW/2, sY-sH, sW, sH);
 
-      // Door arches — gold outline
       ctx.strokeStyle = `rgba(255,215,125,${0.55*gp})`;
       ctx.lineWidth = 2*s;
       ctx.beginPath();
@@ -455,7 +435,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.stroke();
       ctx.beginPath(); ctx.moveTo(mx, sY-sH*0.68); ctx.lineTo(mx, sY); ctx.stroke();
 
-      // Pillars
       const pXs = [-115,-78,-40,40,78,115];
       pXs.forEach(px => {
         const pw = 12*s, ph = 78*s, ppx = mx+px*s;
@@ -469,7 +448,6 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.strokeRect(ppx-pw*0.85, sY-ph, pw*1.7, 6*s);
       });
 
-      // Arches between pillars
       ctx.strokeStyle = `rgba(255,205,105,${0.4*gp})`; ctx.lineWidth = 1.3*s;
       for (let i = 0; i < pXs.length-1; i++) {
         const x1 = mx+pXs[i]*s, x2 = mx+pXs[i+1]*s, aY = sY-68*s;
@@ -478,7 +456,6 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.beginPath(); ctx.arc((x1+x2)/2, aY+4*s, 3.5*s, 0, Math.PI*2); ctx.fill();
       }
 
-      // Shikharas
       const drawShikhara = (cx:number, cy:number, w:number, h:number, main:boolean) => {
         ctx.fillStyle = DARK;
         ctx.beginPath();
@@ -489,7 +466,6 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.closePath(); ctx.fill();
         ctx.strokeStyle = `rgba(255,215,135,${0.5*gp})`; ctx.lineWidth = 1.8*s; ctx.stroke();
 
-        // Tier lines
         const tiers = main ? 16 : 9;
         ctx.strokeStyle = `rgba(255,205,105,${0.18*gp})`; ctx.lineWidth = 0.7*s;
         for (let i = 1; i < tiers; i++) {
@@ -497,7 +473,6 @@ export default function CinematicIntro({ onComplete }: Props) {
           ctx.beginPath(); ctx.moveTo(cx-tw/2, ty); ctx.lineTo(cx+tw/2, ty); ctx.stroke();
         }
 
-        // Side spires (main only)
         if (main) {
           for (let i = 0; i < 4; i++) {
             const f = 0.18+i*0.14, ty = cy-h*f, tw = lerp(w, w*0.12, Math.pow(f,1.15));
@@ -507,13 +482,11 @@ export default function CinematicIntro({ onComplete }: Props) {
           }
         }
 
-        // Amalaka
         const topY = cy-h, amW = w*0.32, amH = 13*s;
         ctx.fillStyle = DARK;
         ctx.beginPath(); ctx.ellipse(cx, topY-amH/2, amW/2, amH/2, 0, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = `rgba(255,225,110,${0.7*gp})`; ctx.lineWidth = 1.8*s; ctx.stroke();
 
-        // KALASH — MAXIMUM GLOW
         const kY = topY-amH, kG = main ? gp : gp*0.65;
         const kGlow = ctx.createRadialGradient(cx, kY-10*s, 0, cx, kY-10*s, 28*s);
         kGlow.addColorStop(0, `rgba(255,235,160,${0.6*kG})`);
@@ -540,7 +513,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       drawShikhara(mx-200*s, sY, 40*s, 85*s, false);
       drawShikhara(mx+200*s, sY, 40*s, 85*s, false);
 
-      // Flag pole
       const pTop = mainTop-28*s;
       ctx.shadowBlur = 0;
       const pg = ctx.createLinearGradient(mx-2*s,0,mx+2*s,0);
@@ -566,7 +538,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== DIVINE EMERGENCE — Light from BEHIND temple =====================
     function drawDivineEmergence(t: number) {
       const reveal = smoothstep(2.5,4.5,t);
       const fade = 1 - smoothstep(6.5,8.0,t);
@@ -580,11 +551,10 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // Bright shafts from gaps between shikharas — pointing UPWARD
       const gaps = [
         { x: -55, w: 25, h: 200, op: 0.06 },
         { x: -25, w: 18, h: 260, op: 0.08 },
-        { x: 0, w: 22, h: 300, op: 0.1 },  // center — brightest
+        { x: 0, w: 22, h: 300, op: 0.1 },
         { x: 25, w: 18, h: 260, op: 0.08 },
         { x: 55, w: 25, h: 200, op: 0.06 },
         { x: -120, w: 15, h: 140, op: 0.04 },
@@ -593,7 +563,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       gaps.forEach((gap, i) => {
         const gx = mx + gap.x*s;
-        const gy = baseY - 44*s - 90*s; // start from mid-temple height
+        const gy = baseY - 44*s - 90*s;
         const len = gap.h * s;
         const w = gap.w * s;
         const a = gap.op * vis * pulse * (0.7 + 0.3*Math.sin(t*2.5+i*1.3));
@@ -613,7 +583,6 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.closePath(); ctx.fill();
       });
 
-      // Edge glow along temple outline — light "leaking"
       const edgePoints = [
         { x: -210, y: 44 }, { x: -155, y: 44 }, { x: -90, y: 44 },
         { x: 0, y: 44 }, { x: 90, y: 44 }, { x: 155, y: 44 }, { x: 210, y: 44 },
@@ -634,7 +603,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== LIGHT LEAK — edges =====================
     function drawLightLeak(t: number) {
       const vis = smoothstep(2.8,4.2,t)*(1-smoothstep(6.5,8.0,t));
       if (vis <= 0) return;
@@ -661,7 +629,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== FOG =====================
     function drawFog(t: number) {
       const intensity = smoothstep(0.5,3,t)*(1-smoothstep(6.5,8,t));
       if (intensity <= 0) return;
@@ -682,7 +649,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== WATER =====================
     function drawWater(t: number) {
       const vis = smoothstep(2,3.5,t)*(1-smoothstep(6.5,8,t));
       if (vis <= 0) return;
@@ -712,13 +678,11 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.restore();
       }
 
-      // Temple reflection (dark shapes)
       const tr = smoothstep(2.5,4,t);
       if (tr > 0) {
         ctx.save(); ctx.globalAlpha = 0.12*tr;
         const s = Math.min(W,H)*0.0017, mx = W*0.5, bY = H*HORIZON;
         ctx.fillStyle = '#000';
-        // Simplified shikhara reflections
         const shikRef = [
           {x:0, tw:65, th:280}, {x:-90, tw:36, th:170}, {x:90, tw:36, th:170},
           {x:-155, tw:28, th:120}, {x:155, tw:28, th:120}
@@ -734,7 +698,6 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.restore();
       }
 
-      // Firework reflections
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       fwBursts.forEach(b => {
         const rY = wY+(wY-b.y)*0.45;
@@ -749,7 +712,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== DIYAS =====================
     function drawDiyas(t: number) {
       const vis = smoothstep(3,4.5,t)*(1-smoothstep(6.5,8,t));
       if (vis <= 0) return;
@@ -787,7 +749,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== FIREWORKS =====================
     function launchFW(t: number) {
       if (t<3.5||t>6.5||fwRockets.length>=3) return;
       if (t-lastRocketTime<0.4+Math.random()*0.2) return;
@@ -830,7 +791,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== PARTICLES =====================
     function spawnDust(t:number){const tgt=Math.floor(65*smoothstep(0,3,t));let cnt=0;for(const p of pool.particles)if(p.active&&p.type==='dust')cnt++;let a=0;while(cnt<tgt&&a<5){const p=pool.spawn();if(!p)break;p.type='dust';p.x=Math.random()*W;p.y=Math.random()*H*HORIZON;p.vx=(Math.random()-0.5)*0.3;p.vy=-0.04-Math.random()*0.28;p.size=0.5+Math.random()*1.4;p.maxLife=5+Math.random()*5;p.life=Math.random()*p.maxLife*0.4;p.alpha=0;cnt++;a++;}}
     function spawnPetals(t:number){const i=smoothstep(2,5,t)*(1-smoothstep(6.5,8,t));if(i<=0||Math.random()>i*0.3)return;const p=pool.spawn();if(!p)return;p.type='petal';p.x=Math.random()*W;p.y=-15;p.vx=(Math.random()-0.5)*0.6;p.vy=0.4+Math.random()*0.6;p.size=4+Math.random()*4;p.maxLife=16;p.life=0;p.alpha=0;p.rot=Math.random()*Math.PI*2;p.rotSpd=(Math.random()-0.5)*2;}
     function spawnSmoke(t:number){const i=smoothstep(1.5,4,t)*(1-smoothstep(6.5,8,t));if(i<=0||Math.random()>0.05*i)return;const p=pool.spawn();if(!p)return;p.type='smoke';p.x=Math.random()<0.5?W*0.2:W*0.8;p.y=H*0.8;p.vx=(Math.random()-0.5)*0.2;p.vy=-0.4-Math.random()*0.35;p.size=5+Math.random()*6;p.maxLife=4+Math.random()*3;p.life=0;p.alpha=0;}
@@ -859,12 +819,10 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ===================== LENS FLARE =====================
     function drawLensFlare(t:number){const v=sunVis(t);if(v<0.12)return;const sx=W*0.5,sy=H*HORIZON;ctx.save();ctx.globalCompositeOperation='lighter';[{d:0.12,sz:9,a:0.025,c:'185,205,255'},{d:0.25,sz:18,a:0.018,c:'255,225,185'},{d:0.4,sz:7,a:0.03,c:'205,185,255'},{d:0.55,sz:22,a:0.012,c:'255,205,155'}].forEach((e,i)=>{const fx=sx-0.2*W*e.d,fy=sy-0.4*H*e.d,sz=e.sz*v,a=e.a*v*(0.65+0.35*Math.sin(t*0.8+i*1.2));if(a<=0)return;const g=ctx.createRadialGradient(fx,fy,0,fx,fy,sz);g.addColorStop(0,`rgba(${e.c},${a})`);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(fx,fy,sz,0,Math.PI*2);ctx.fill();});ctx.restore();}
 
     function drawVignette(){const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.25,W/2,H/2,Math.max(W,H)*0.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.6)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
 
-    // ===================== MAIN RENDER =====================
     function render(ts:number) {
       if(!startTime) startTime=ts;
       const t=(ts-startTime)/1000;
@@ -876,40 +834,21 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
 
-      // === BACK LAYER ===
       drawSky(t);
       drawSun(t);
       drawHeatShimmer(t);
-
-      // === VOLUMETRIC RAYS (offscreen + blur) ===
       drawRaysOffscreen(t);
       compositeRaysBlurred();
-
-      // === TEMPLE GLOW (behind silhouette) ===
       drawTempleGlow(t);
-
-      // === TEMPLE SILHOUETTE (dark, rim-lit) ===
       drawTempleSilhouette(t);
-
-      // === DIVINE EMERGENCE (light FROM BEHIND temple) ===
       drawDivineEmergence(t);
-
-      // === LIGHT LEAK ===
       drawLightLeak(t);
-
-      // === FRONT LAYER ===
       drawFog(t);
       drawWater(t);
       drawDiyas(t);
-
-      // === FIREWORKS ===
       launchFW(t); updateFW(dt,t); drawFW();
-
-      // === PARTICLES ===
       spawnDust(t); spawnPetals(t); spawnSmoke(t); spawnBirds(t); spawnText(t);
       updateParts(dt,t); drawParts();
-
-      // === POST ===
       drawLensFlare(t);
       drawVignette();
 
@@ -917,7 +856,6 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       ctx.save();ctx.globalAlpha=0.055;ctx.drawImage(grain,0,0,W,H);ctx.restore();
 
-      // Text bg glow
       const tBg=smoothstep(8,9,t)*(1-smoothstep(17,17.5,t));
       if(tBg>0){ctx.save();ctx.globalCompositeOperation='lighter';const tg=ctx.createRadialGradient(W/2,H*0.38,0,W/2,H*0.38,W*0.3);tg.addColorStop(0,`rgba(255,185,65,${0.07*tBg})`);tg.addColorStop(0.5,`rgba(200,105,35,${0.025*tBg})`);tg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=tg;ctx.fillRect(0,0,W,H);ctx.restore();}
 
