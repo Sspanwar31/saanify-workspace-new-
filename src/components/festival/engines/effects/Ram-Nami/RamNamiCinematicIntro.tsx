@@ -266,13 +266,13 @@ export default function CinematicIntro({ onComplete }: Props) {
       for (let i = 0; i < rayCount; i++) {
         const angle = (Math.PI * 0.2) + (i / rayCount) * (Math.PI * 0.6) + Math.sin(t * 0.2 + i) * 0.015;
         const len = H * 0.65;
-        const a = 0.04 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
+        const a = 0.035 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
         const ex = sx + Math.cos(angle) * len;
         const ey = sy + Math.sin(angle) * len;
 
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
-        grad.addColorStop(0, `rgba(255, 225, 140, ${a * 1.8})`);
-        grad.addColorStop(0.5, `rgba(255, 170, 50, ${a})`);
+        grad.addColorStop(0, `rgba(255, 215, 100, ${a * 1.6})`);
+        grad.addColorStop(0.5, `rgba(225, 150, 30, ${a})`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
 
         ctx.fillStyle = grad;
@@ -1270,13 +1270,13 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = alpha;
       
       const grad = ctx.createLinearGradient(0, -22, 0, 5);
-      grad.addColorStop(0, '#FFEC8B');
-      grad.addColorStop(0.3, '#FFE57F');
-      grad.addColorStop(0.7, '#FFC107');
-      grad.addColorStop(1, '#FF8F00');
+      grad.addColorStop(0, '#FFE8A3');
+      grad.addColorStop(0.3, '#FFC837');
+      grad.addColorStop(0.7, '#E5A00D');
+      grad.addColorStop(1, '#B87B00');
       
       ctx.fillStyle = grad;
-      ctx.strokeStyle = '#FFD700';
+      ctx.strokeStyle = '#FFC837';
       ctx.lineWidth = 1.2;
 
       ctx.beginPath();
@@ -1288,7 +1288,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       ctx.beginPath();
       ctx.arc(0, -31, 3.2, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFF8E0';
+      ctx.fillStyle = '#FFE8A3';
       ctx.fill();
 
       ctx.beginPath();
@@ -1311,11 +1311,11 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = alpha;
 
       const swashGrad = ctx.createLinearGradient(-30, 0, 110, 40);
-      swashGrad.addColorStop(0, '#FFEC8B');
-      swashGrad.addColorStop(0.2, '#FFE57F');
-      swashGrad.addColorStop(0.5, '#FFD700');
-      swashGrad.addColorStop(0.8, '#C59B27');
-      swashGrad.addColorStop(1, 'rgba(197, 155, 39, 0)');
+      swashGrad.addColorStop(0, '#FFE8A3');
+      swashGrad.addColorStop(0.2, '#FFC837');
+      swashGrad.addColorStop(0.5, '#E5A00D');
+      swashGrad.addColorStop(0.8, '#B87B00');
+      swashGrad.addColorStop(1, 'rgba(184, 123, 0, 0)');
 
       ctx.strokeStyle = swashGrad;
       ctx.lineWidth = 3.5;
@@ -1328,37 +1328,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    function drawStarFlare(x: number, y: number, size: number, angle: number, alpha: number) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.globalAlpha = alpha;
-      ctx.globalCompositeOperation = 'lighter';
-
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
-      grad.addColorStop(0, '#FFE066');
-      grad.addColorStop(0.3, '#FFD700');
-      grad.addColorStop(0.7, '#FF9800');
-      grad.addColorStop(1, 'rgba(255, 143, 0, 0)');
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, size * 0.45, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#FFE066';
-      for (let i = 0; i < 2; i++) {
-        ctx.rotate(Math.PI / 2);
-        ctx.beginPath();
-        ctx.moveTo(-size, 0);
-        ctx.quadraticCurveTo(0, -size * 0.08, size, 0);
-        ctx.quadraticCurveTo(0, size * 0.08, -size, 0);
-        ctx.fill();
-      }
-
-      ctx.restore();
-    }
-
     function drawOrnamentalDivider(x: number, y: number, width: number, alpha: number) {
       ctx.save();
       ctx.translate(x, y);
@@ -1367,9 +1336,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       const halfW = width / 2;
 
       const gradL = ctx.createLinearGradient(-halfW, 0, -18, 0);
-      gradL.addColorStop(0, 'rgba(255, 215, 0, 0)');
-      gradL.addColorStop(0.7, 'rgba(255, 215, 0, 0.8)');
-      gradL.addColorStop(1, '#FFF8E0');
+      gradL.addColorStop(0, 'rgba(184, 123, 0, 0)');
+      gradL.addColorStop(0.7, 'rgba(255, 200, 55, 0.8)');
+      gradL.addColorStop(1, '#FFE8A3');
 
       ctx.strokeStyle = gradL;
       ctx.lineWidth = 1.4;
@@ -1379,9 +1348,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.stroke();
 
       const gradR = ctx.createLinearGradient(18, 0, halfW, 0);
-      gradR.addColorStop(0, '#FFF8E0');
-      gradR.addColorStop(0.3, 'rgba(255, 215, 0, 0.8)');
-      gradR.addColorStop(1, 'rgba(255, 215, 0, 0)');
+      gradR.addColorStop(0, '#FFE8A3');
+      gradR.addColorStop(0.3, 'rgba(255, 200, 55, 0.8)');
+      gradR.addColorStop(1, 'rgba(184, 123, 0, 0)');
 
       ctx.strokeStyle = gradR;
       ctx.beginPath();
@@ -1389,7 +1358,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.lineTo(halfW, 0);
       ctx.stroke();
 
-      ctx.fillStyle = '#FFD700';
+      ctx.fillStyle = '#FFC837';
       ctx.beginPath();
       ctx.arc(0, 0, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -1400,10 +1369,10 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.lineTo(0, 8);
       ctx.lineTo(-5, 0);
       ctx.closePath();
-      ctx.fillStyle = '#FFF8E0';
+      ctx.fillStyle = '#FFE8A3';
       ctx.fill();
 
-      ctx.fillStyle = '#FFD700';
+      ctx.fillStyle = '#FFC837';
       ctx.beginPath();
       ctx.arc(-halfW + 4, 0, 2, 0, Math.PI * 2);
       ctx.arc(halfW - 4, 0, 2, 0, Math.PI * 2);
@@ -1412,30 +1381,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SACRED RISING FIRE EMBERS EFFECT AROUND TITLE
-    function drawFieryEmbers(t: number, vis: number) {
-      if (vis <= 0.001) return;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const count = 35;
-      for (let i = 0; i < count; i++) {
-        const seed = i * 17.31;
-        const loopSpeed = 0.5 + (i % 3) * 0.2;
-        const progress = ((t * loopSpeed + seed) % 2.5) / 2.5;
-        const x = (W / 2 - 280) + ((seed * 43) % 560) + Math.sin(t * 2.5 + i) * 18;
-        const y = (H * 0.38 + 25) - progress * 110;
-        const alpha = Math.sin(progress * Math.PI) * vis * 0.75;
-        const sz = (1.2 + (i % 4) * 0.7) * (1 - progress * 0.4);
-
-        ctx.fillStyle = i % 2 === 0 ? `rgba(255, 215, 0, ${alpha})` : `rgba(255, 110, 0, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(x, y, sz, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    // DIRECT REVEAL: FIERY METALLIC 24K GOLD TITLE (CRISTAL CLEAR & BOLD)
+    // DIRECT REVEAL: 24K METALLIC GOLD TITLE (100% CLEAR, BOLD, NO WHITE)
     function drawTitle(t: number) {
       if (t < 8.5) return;
 
@@ -1446,7 +1392,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       
       const fontSize = Math.min(W * 0.13, 140);
       const cy = H * 0.38;
-      const pulse = 0.85 + 0.15 * Math.sin(t * 2.5);
       
       ctx.save();
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1456,27 +1401,26 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.lineCap = "round";
 
       drawTopGodRays(t, intensity);
-      drawFieryEmbers(t, intensity);
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. Dark Chocolate Stroke Background for 100% Sharp Edge Contrast
-      ctx.strokeStyle = '#1a0702';
-      ctx.lineWidth = fontSize * 0.05;
+      // 1. Dark Chocolate Outer Stroke Edge for 100% Sharp Contrast
+      ctx.strokeStyle = '#1d0b02';
+      ctx.lineWidth = fontSize * 0.045;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 2. Fiery Metallic 24K Gold Gradient Fill
-      const fireGoldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.5, 0, cy + fontSize * 0.5);
-      fireGoldGrad.addColorStop(0.00, '#FFFFFF'); // Hot white core top
-      fireGoldGrad.addColorStop(0.18, '#FFE066'); // Bright flame gold
-      fireGoldGrad.addColorStop(0.40, '#FFD700'); // Pure 24k gold
-      fireGoldGrad.addColorStop(0.65, '#FF9800'); // Deep amber flame
-      fireGoldGrad.addColorStop(0.85, '#E65100'); // Fiery orange
-      fireGoldGrad.addColorStop(1.00, '#4E1A00'); // Dark flame base
+      // 2. Pure 24K Metallic Royal Gold Fill Gradient
+      const pure24kGoldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.45, 0, cy + fontSize * 0.45);
+      pure24kGoldGrad.addColorStop(0.00, '#FFE8A3'); // Polished gold top highlight
+      pure24kGoldGrad.addColorStop(0.20, '#FFC837'); // Pure 24k gold
+      pure24kGoldGrad.addColorStop(0.45, '#E5A00D'); // Deep amber gold
+      pure24kGoldGrad.addColorStop(0.70, '#B87B00'); // Metallic bronze gold
+      pure24kGoldGrad.addColorStop(0.90, '#7A4B00'); // Deep gold shadow
+      pure24kGoldGrad.addColorStop(1.00, '#3A1F00'); // Dark metallic base
 
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = `rgba(255, 150, 0, ${0.7 * intensity})`;
-      ctx.fillStyle = fireGoldGrad;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = `rgba(229, 160, 13, ${0.5 * intensity})`;
+      ctx.fillStyle = pure24kGoldGrad;
       ctx.fillText('जय श्री राम', W / 2, cy);
 
       // 3. Tilak Ornament
@@ -1489,13 +1433,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       const swashX = W / 2 + fontSize * 1.15;
       const swashY = cy + fontSize * 0.28;
       drawRamSwash(swashX, swashY, fontSize / 130, intensity);
-
-      // 5. Golden Star Flares
-      const flareSize = fontSize * 0.25 * pulse;
-      const fAngle = t * 1.5;
-      drawStarFlare(W / 2 - fontSize * 1.35, cy - fontSize * 0.15, flareSize, fAngle, intensity * 0.7);
-      drawStarFlare(tilakX, tilakY - 18 * tilakScale, flareSize * 1.1, -fAngle, intensity * 0.8);
-      drawStarFlare(W / 2 + fontSize * 1.1, cy - fontSize * 0.2, flareSize, fAngle * 0.8, intensity * 0.7);
 
       ctx.restore();
     }
@@ -1524,32 +1461,32 @@ export default function CinematicIntro({ onComplete }: Props) {
       const divY1 = cy - fontSize1 * 1.25;
       drawOrnamentalDivider(W / 2, divY1, Math.min(W * 0.38, 300), vis);
 
-      // Line 1: Dark Chocolate Stroke + Warm Gold Fill
+      // Line 1: Dark Chocolate Stroke + Warm Cream Gold Fill
       ctx.font = `500 ${fontSize1}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
-      ctx.strokeStyle = '#1a0702';
-      ctx.lineWidth = fontSize1 * 0.14;
+      ctx.strokeStyle = '#1d0b02';
+      ctx.lineWidth = fontSize1 * 0.12;
       ctx.lineJoin = 'round';
       ctx.strokeText(line1, W / 2, cy - fontSize1 * 0.2);
 
-      ctx.fillStyle = '#FFE082';
+      ctx.fillStyle = '#FFE5B4';
       ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
 
       // Line 2: Dark Chocolate Stroke + Metallic Gold Fill
       const y2 = cy + fontSize2 * 1.15;
       const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2 * 0.5, 0, y2 + fontSize2 * 0.5);
-      goldGrad2.addColorStop(0.00, '#FFE066');
-      goldGrad2.addColorStop(0.35, '#FFD700');
-      goldGrad2.addColorStop(0.70, '#FF9800');
-      goldGrad2.addColorStop(1.00, '#5A3400');
+      goldGrad2.addColorStop(0.00, '#FFE8A3');
+      goldGrad2.addColorStop(0.35, '#FFC837');
+      goldGrad2.addColorStop(0.70, '#B87B00');
+      goldGrad2.addColorStop(1.00, '#3A1F00');
 
       ctx.font = `700 ${fontSize2}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
-      ctx.strokeStyle = '#1a0702';
-      ctx.lineWidth = fontSize2 * 0.14;
+      ctx.strokeStyle = '#1d0b02';
+      ctx.lineWidth = fontSize2 * 0.12;
       ctx.lineJoin = 'round';
       ctx.strokeText(line2, W / 2, y2);
 
       ctx.shadowBlur = 8;
-      ctx.shadowColor = `rgba(255, 160, 0, ${vis * 0.5})`;
+      ctx.shadowColor = `rgba(229, 160, 13, ${vis * 0.5})`;
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
 
@@ -1564,7 +1501,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
     function applyBloom(t: number) {
       const textSceneVis = smoothstep(8.5, 10.5, t);
-      const bloomAlpha = lerp(0.55, 0.15, textSceneVis);
+      const bloomAlpha = lerp(0.55, 0.12, textSceneVis);
 
       bctx.clearRect(0, 0, bloom.width, bloom.height);
       bctx.filter = 'blur(5px) brightness(1.2)';
