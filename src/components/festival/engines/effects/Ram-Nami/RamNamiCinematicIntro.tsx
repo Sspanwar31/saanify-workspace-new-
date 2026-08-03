@@ -183,28 +183,28 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // ============ SCENE 1: CINEMATIC SUNRISE & SKY ============
+    // ============ BACKGROUND & SKY LOGIC ============
 
     function drawBackground(t: number) {
       const reveal = smoothstep(0, 1.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
       const vis = reveal * (1 - fadeOut);
 
-      // Smooth Sky Transition: Sunrise -> Dusk -> Deep Black Night
+      // Strict Darkness Transition at Stage 2 end (6.8s to 8.0s)
       const textSceneDarkness = smoothstep(6.8, 8.0, t);
 
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      const ir = Math.floor(lerp(lerp(10, 80, vis), 0, textSceneDarkness));
-      const ig = Math.floor(lerp(lerp(5, 35, vis), 0, textSceneDarkness));
-      const ib = Math.floor(lerp(lerp(2, 15, vis), 0, textSceneDarkness));
+      const ir = Math.floor(lerp(lerp(4, 50, vis), 0, textSceneDarkness));
+      const ig = Math.floor(lerp(lerp(2, 25, vis), 0, textSceneDarkness));
+      const ib = Math.floor(lerp(lerp(5, 15, vis), 0, textSceneDarkness));
 
       grad.addColorStop(0, '#000000');
-      grad.addColorStop(0.55, `rgb(${ir},${ig},${ib})`);
+      grad.addColorStop(0.6, `rgb(${ir},${ig},${ib})`);
       grad.addColorStop(1, '#000000');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
       
-      if (screenFlash > 0.01 && t < 6.5) {
+      if (screenFlash > 0.01 && t < 6.8) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = `rgba(255, 240, 200, ${screenFlash * 0.4})`;
@@ -213,19 +213,20 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // SCENE 1: SMOOTH HALF-SUN ON HORIZON (NO BANDING ARTIFACTS)
+    // STAGE 1: SUNRISE (0.0s to 3.0s ONLY - 100% GONE BY 3.0s)
     function drawSun(t: number) {
-      const vis = smoothstep(0.2, 1.5, t) * (1 - smoothstep(3.2, 5.0, t));
+      const reveal = smoothstep(0.2, 1.2, t);
+      const fade = smoothstep(2.0, 3.0, t); // Completely 0% by 3.0s!
+      const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
       const sx = W * 0.5;
-      const sy = H * 0.62; // Horizon
+      const sy = H * 0.62;
       const sunR = Math.max(0.1, Math.min(W, H) * 0.22);
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // 1. Soft Volumetric Atmosphere Glow
       const haloGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(0.1, sunR * 3));
       haloGrad.addColorStop(0, `rgba(255, 220, 140, ${0.85 * vis})`);
       haloGrad.addColorStop(0.25, `rgba(255, 150, 50, ${0.45 * vis})`);
@@ -234,7 +235,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = haloGrad;
       ctx.fillRect(0, 0, W, H * 0.62);
 
-      // 2. Smooth Half-Sun Core on Horizon
       const coreGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(0.1, sunR));
       coreGrad.addColorStop(0, `rgba(255, 255, 240, ${vis})`);
       coreGrad.addColorStop(0.35, `rgba(255, 215, 100, ${vis * 0.95})`);
@@ -243,15 +243,16 @@ export default function CinematicIntro({ onComplete }: Props) {
       
       ctx.fillStyle = coreGrad;
       ctx.beginPath();
-      ctx.arc(sx, sy, Math.max(0.1, sunR), Math.PI, 0); // Smooth half sun
+      ctx.arc(sx, sy, Math.max(0.1, sunR), Math.PI, 0);
       ctx.fill();
 
       ctx.restore();
     }
 
+    // STAGE 1: SUNLIGHT RAYS (0.0s to 3.0s ONLY)
     function drawDivineLight(t: number) {
       const reveal = smoothstep(0.5, 1.5, t);
-      const fade = smoothstep(5.0, 7.0, t);
+      const fade = smoothstep(2.0, 3.0, t); // Completely 0% by 3.0s!
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
       const sx = W * 0.5;
@@ -266,7 +267,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         const angle = baseAngle + t * 0.04 + Math.sin(t * 0.3 + i * 0.8) * 0.03;
         const len = maxLen * (0.6 + 0.4 * Math.sin(t * 0.5 + i * 1.7));
         const flicker = 0.7 + 0.3 * Math.sin(t * 1.5 + i * 2.3);
-        const a = 0.08 * vis * flicker;
+        const a = 0.09 * vis * flicker;
         const ex = sx + Math.cos(angle) * len;
         const ey = sy + Math.sin(angle) * len;
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
@@ -285,6 +286,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
+    // STAGE 4 & 5: TOP GOD RAYS (9.0s to 17.5s ONLY)
     function drawTopGodRays(t: number, vis: number) {
       if (vis <= 0) return;
       ctx.save();
@@ -315,13 +317,13 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ SCENE 2: 3D NAGARA RAM MANDIR ============
-
+    // STAGE 2: 3D RAM MANDIR (3.0s to 8.0s ONLY - 100% GONE BY 8.0s)
     function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
-      const reveal = smoothstep(2.8, 4.8, t);
-      const fade = smoothstep(6.8, 8.2, t);
+      const reveal = smoothstep(3.0, 4.2, t);
+      const fade = smoothstep(6.8, 8.0, t); // Completely 0% by 8.0s!
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
+      if (vis <= 0) return;
 
       const s = Math.min(W, H) * 0.0013;
       const mx = W * 0.72; 
@@ -667,9 +669,10 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.restore();
     }
 
+    // STAGE 2: SARYU WATER REFLECTIONS (3.0s to 8.0s ONLY)
     function drawWater(t: number) {
-      const reveal = smoothstep(2.2, 4.0, t);
-      const fade = smoothstep(6.8, 8.2, t);
+      const reveal = smoothstep(3.0, 4.2, t);
+      const fade = smoothstep(6.8, 8.0, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -732,9 +735,10 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
+    // STAGE 2: FLOATING DIYAS (3.0s to 8.0s ONLY)
     function updateAndDrawFloatingDiyas(t: number) {
-      const reveal = smoothstep(3.0, 4.8, t);
-      const fade = smoothstep(6.8, 8.2, t);
+      const reveal = smoothstep(3.2, 4.5, t);
+      const fade = smoothstep(6.8, 8.0, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -805,7 +809,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function drawFogAndHaze(t: number) {
-      const intensity = smoothstep(0.5, 4.0, t) * (1 - smoothstep(6.5, 8.0, t));
+      const intensity = smoothstep(0.5, 4.0, t) * (1 - smoothstep(6.8, 8.0, t));
       if (intensity <= 0) return;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
@@ -825,9 +829,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 3: REALISTIC FIREWORKS
+    // STAGE 2: REALISTIC FIREWORKS (3.8s to 6.8s ONLY)
     function launchFireworks(t: number) {
-      if (t < 3.2 || t > 6.8) return;
+      if (t < 3.8 || t > 6.8) return;
 
       if (rockets.length >= 3) return;
       if (t - lastRocketLaunchTime < 0.35 + Math.random() * 0.15) return;
@@ -947,7 +951,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function updateFireworks(dt: number, t: number) {
-      const forceCleanup = t >= 7.5;
+      const forceCleanup = t >= 7.8;
 
       screenFlash = Math.max(0, screenFlash - dt * 1.5);
       cameraShake = Math.max(0, cameraShake - dt * 20.0);
@@ -1159,7 +1163,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function spawnPetals(t: number) {
-      const intensity = smoothstep(4.0, 6.5, t) * (1 - smoothstep(6.5, 8.0, t));
+      const intensity = smoothstep(4.0, 6.5, t) * (1 - smoothstep(6.8, 8.0, t));
       if (intensity <= 0) return;
       if (Math.random() > intensity * 0.4) return;
       const p = pool.spawn(); if (!p) return;
@@ -1170,7 +1174,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function spawnIncenseSmoke(t: number) {
-      const intensity = smoothstep(1.5, 4.0, t) * (1 - smoothstep(6.5, 8.0, t));
+      const intensity = smoothstep(1.5, 4.0, t) * (1 - smoothstep(6.8, 8.0, t));
       if (intensity <= 0) return;
       if (Math.random() > 0.08 * intensity) return;
       
@@ -1185,7 +1189,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function spawnBirds(t: number) {
-      if (t < 0.8 || t > 3.2) return;
+      if (t < 0.8 || t > 2.8) return; // STAGE 1 ONLY
       if (birdsSpawned) return;
       birdsSpawned = true;
       const count = 14;
@@ -1219,7 +1223,7 @@ export default function CinematicIntro({ onComplete }: Props) {
           p.x += p.vx + Math.sin(t * 0.8 + p.y * 0.012) * 0.35;
           p.y += p.vy; p.rot += p.rotSpd * dt;
           const lr = p.life / p.maxLife;
-          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(6.5, 8.0, t));
+          p.alpha = smoothstep(0, 0.12, lr) * 0.85 * (1 - smoothstep(6.8, 8.0, t));
           if (p.y > H * 0.62 || p.life > p.maxLife) pool.release(p);
         } else if (p.type === 'smoke') {
           p.x += p.vx + Math.sin(t * 1.4 + p.y * 0.01) * 0.25;
@@ -1229,7 +1233,7 @@ export default function CinematicIntro({ onComplete }: Props) {
           if (p.life > p.maxLife || p.y < -30) pool.release(p);
         } else if (p.type === 'bird') {
           p.x += p.vx; p.y += p.vy; p.flap += dt * 9;
-          p.alpha = 0.65 * (1 - smoothstep(6.5, 8.0, t));
+          p.alpha = 0.65 * (1 - smoothstep(2.5, 3.2, t));
           if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
         }
       }
@@ -1290,7 +1294,6 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     // ============ AMBIENT GOLDEN STAR DUST AROUND TEXT ============
-    // ✅ CRASH FIX: Guaranteed positive twinkle multiplier
     function drawAmbientTextSparkles(t: number, cy: number, vis: number) {
       if (vis <= 0.001) return;
       ctx.save();
@@ -1436,11 +1439,11 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 3: DIRECT REVEAL - 24K METALLIC GOLD TITLE (100% CLEAR, BOLD, NO WHITE BORDER)
+    // STAGE 4: DIRECT REVEAL - 24K METALLIC GOLD TITLE (9.0s to 17.5s STRICT)
     function drawTitle(t: number) {
-      if (t < 7.5) return;
+      if (t < 9.0) return; // STRICT: Does not start until Stage 2 is 100% gone at 8.0s!
 
-      const fadeIn = smoothstep(7.5, 9.2, t);
+      const fadeIn = smoothstep(9.0, 10.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
       const intensity = fadeIn * (1 - fadeOut);
       if (intensity <= 0.001) return;
@@ -1493,10 +1496,10 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 3: ROYAL GREETING WITH DIVIDERS
+    // STAGE 5: ROYAL GREETING WITH DIVIDERS (10.8s to 17.5s STRICT)
     function drawGreeting(t: number) {
-      if (t < 9.0) return;
-      const reveal = smoothstep(9.0, 10.5, t);
+      if (t < 10.8) return;
+      const reveal = smoothstep(10.8, 12.0, t);
       const fade = smoothstep(17.0, 17.5, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0.001) return;
@@ -1556,7 +1559,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     // ============ POST-PROCESSING ============
 
     function applyBloom(t: number) {
-      const textSceneVis = smoothstep(7.5, 9.5, t);
+      const textSceneVis = smoothstep(8.5, 10.5, t);
       const bloomAlpha = lerp(0.55, 0.12, textSceneVis);
 
       bctx.clearRect(0, 0, bloom.width, bloom.height);
@@ -1572,7 +1575,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function applyColorGrade(t: number) {
-      const textSceneDarkness = smoothstep(6.5, 8.0, t);
+      const textSceneDarkness = smoothstep(6.8, 8.0, t);
       const gradeAlpha = 0.18 * (1 - textSceneDarkness);
       if (gradeAlpha <= 0.001) return;
 
@@ -1609,7 +1612,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
     // ============ CAMERA ============
     function updateCamera(t: number) {
-      const camActive = 1 - smoothstep(6.5, 8.0, t);
+      const camActive = 1 - smoothstep(6.8, 8.0, t);
       cam.zoom = 1 + smoothstep(1.8, 4.0, t) * 0.045 * camActive + cameraShake * 0.005;
       cam.rot = Math.sin(t * 0.11) * 0.004 * camActive + cameraShake * 0.002 * Math.sin(t * 50);
       cam.x = Math.sin(t * 0.25) * 4 * camActive + (Math.random() - 0.5) * cameraShake;
@@ -1640,18 +1643,18 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       applyCamera();
       drawBackground(t);
-      drawSun(t); // SCENE 1: SMOOTH HALF-SUN ON HORIZON
-      drawDivineLight(t);
-      drawWater(t);
-      drawRamMandir(t, ctx); // SCENE 2: 3D SANDSTONE MANDIR
-      drawFireworks();
-      updateAndDrawFloatingDiyas(t);
+      drawSun(t);                  // STAGE 1: SUNRISE (0.0s - 3.0s STRICT)
+      drawDivineLight(t);          // STAGE 1: SUNLIGHT RAYS (0.0s - 3.0s STRICT)
+      drawWater(t);                // STAGE 2: SARYU WATER (3.0s - 8.0s STRICT)
+      drawRamMandir(t, ctx);       // STAGE 2: 3D SANDSTONE TEMPLE (3.0s - 8.0s STRICT)
+      drawFireworks();             // STAGE 2: FIREWORKS (3.8s - 6.8s)
+      updateAndDrawFloatingDiyas(t); // STAGE 2: FLOATING DIYAS (3.0s - 8.0s STRICT)
       drawFogAndHaze(t);
       drawParticles();
       ctx.restore();
 
-      drawTitle(t); // SCENE 3: 24K GOLD TITLE
-      drawGreeting(t); // SCENE 3: ROYAL GREETING
+      drawTitle(t);                // STAGE 4: 24K GOLD TITLE (9.0s - 17.5s STRICT)
+      drawGreeting(t);             // STAGE 5: ROYAL GREETING (10.8s - 17.5s STRICT)
 
       const fadeIn = 1 - smoothstep(0, 1.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
@@ -1674,7 +1677,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
       lastTime = now;
 
-      if (t < 3.5) birdsSpawned = false;
+      if (t < 2.8) birdsSpawned = false;
 
       if (t >= 17.5 && !handoverTriggered) {
         handoverTriggered = true;
