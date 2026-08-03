@@ -252,40 +252,303 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // SCENE 1: NATURAL MISTY UPWARD GOD-RAYS (NO CARTOON SPOKES)
-    function drawDivineLight(t: number) {
-      const reveal = smoothstep(0.4, 1.4, t);
-      const fade = smoothstep(2.0, 3.0, t); // Completely 0% by 3.0s!
-      if (reveal <= 0) return;
-      const vis = reveal * (1 - fade);
-      const sx = W * 0.5;
-      const sy = H * 0.62; // Horizon
+    // SCENE 1: CINEMATIC NATURAL SUNRISE GOD-RAYS
+// Soft atmospheric light — no hard cartoon spokes
+function drawDivineLight(t: number) {
 
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const rayCount = 14;
-      for (let i = 0; i < rayCount; i++) {
-        const angle = -Math.PI + (i / (rayCount - 1)) * Math.PI; // Upward semi-circle ONLY
-        const len = H * (0.45 + 0.25 * Math.sin(t * 0.8 + i * 1.5));
-        const width = 0.07 + Math.sin(t * 0.4 + i * 2) * 0.02;
-        const a = 0.035 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
+  const reveal = smoothstep(0.0, 1.0, t);
+  const fade = smoothstep(2.4, 3.2, t);
+  const vis = reveal * (1 - fade);
 
-        const grad = ctx.createLinearGradient(sx, sy, sx + Math.cos(angle) * len, sy + Math.sin(angle) * len);
-        grad.addColorStop(0, `rgba(255, 230, 160, ${a * 2.2})`);
-        grad.addColorStop(0.35, `rgba(255, 150, 50, ${a})`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
+  if (vis <= 0.001) return;
 
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(sx + Math.cos(angle - width) * len, sy + Math.sin(angle - width) * len);
-        ctx.lineTo(sx + Math.cos(angle + width) * len, sy + Math.sin(angle + width) * len);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
+  // -----------------------------------------
+  // HORIZON LIGHT SOURCE
+  // -----------------------------------------
 
+  const sx = W * 0.50;
+  const sy = H * 0.62;
+
+  ctx.save();
+
+  ctx.globalCompositeOperation = 'screen';
+
+  // -----------------------------------------
+  // SOFT SUNRISE ATMOSPHERIC GLOW
+  // -----------------------------------------
+
+  const glowRadius = Math.min(W, H) * 0.40;
+
+  const glow = ctx.createRadialGradient(
+    sx,
+    sy,
+    0,
+    sx,
+    sy,
+    glowRadius
+  );
+
+  glow.addColorStop(
+    0.00,
+    `rgba(255, 190, 85, ${0.16 * vis})`
+  );
+
+  glow.addColorStop(
+    0.18,
+    `rgba(255, 150, 50, ${0.12 * vis})`
+  );
+
+  glow.addColorStop(
+    0.38,
+    `rgba(235, 100, 30, ${0.065 * vis})`
+  );
+
+  glow.addColorStop(
+    0.65,
+    `rgba(150, 50, 20, ${0.025 * vis})`
+  );
+
+  glow.addColorStop(
+    1.00,
+    'rgba(0,0,0,0)'
+  );
+
+  ctx.fillStyle = glow;
+
+  ctx.fillRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+  // -----------------------------------------
+  // SOFT HORIZON ATMOSPHERE
+  // -----------------------------------------
+
+  const horizonGrad = ctx.createLinearGradient(
+    0,
+    H * 0.48,
+    0,
+    H * 0.72
+  );
+
+  horizonGrad.addColorStop(
+    0.00,
+    'rgba(255, 120, 35, 0)'
+  );
+
+  horizonGrad.addColorStop(
+    0.40,
+    `rgba(255, 145, 45, ${0.025 * vis})`
+  );
+
+  horizonGrad.addColorStop(
+    0.60,
+    `rgba(255, 180, 70, ${0.045 * vis})`
+  );
+
+  horizonGrad.addColorStop(
+    0.80,
+    `rgba(255, 120, 30, ${0.018 * vis})`
+  );
+
+  horizonGrad.addColorStop(
+    1.00,
+    'rgba(0,0,0,0)'
+  );
+
+  ctx.fillStyle = horizonGrad;
+
+  ctx.fillRect(
+    0,
+    H * 0.40,
+    W,
+    H * 0.38
+  );
+
+  // -----------------------------------------
+  // SOFT UPWARD GOD-RAYS
+  // -----------------------------------------
+
+  ctx.save();
+
+  ctx.globalCompositeOperation = 'screen';
+
+  const rayCount = 10;
+
+  for (let i = 0; i < rayCount; i++) {
+
+    const n = i / (rayCount - 1);
+
+    // From left horizon → center sky → right horizon
+    const angle =
+      -Math.PI +
+      n * Math.PI;
+
+    const movement =
+      Math.sin(
+        t * 0.45 +
+        i * 1.7
+      ) * 0.010;
+
+    const finalAngle =
+      angle + movement;
+
+    const len =
+      H *
+      (
+        0.30 +
+        0.07 *
+        Math.sin(
+          t * 0.5 +
+          i * 1.4
+        )
+      );
+
+    // MUCH thinner than old rays
+    const width =
+      0.012 +
+      0.004 *
+      Math.sin(
+        t * 0.6 +
+        i
+      );
+
+    // Very low opacity
+    const alpha =
+      0.010 *
+      vis *
+      (
+        0.75 +
+        0.25 *
+        Math.sin(
+          t * 0.8 +
+          i * 1.3
+        )
+      );
+
+    const ex =
+      sx +
+      Math.cos(finalAngle) *
+      len;
+
+    const ey =
+      sy +
+      Math.sin(finalAngle) *
+      len;
+
+    const rayGrad =
+      ctx.createLinearGradient(
+        sx,
+        sy,
+        ex,
+        ey
+      );
+
+    rayGrad.addColorStop(
+      0.00,
+      `rgba(255, 215, 145, ${alpha * 1.5})`
+    );
+
+    rayGrad.addColorStop(
+      0.28,
+      `rgba(255, 175, 85, ${alpha})`
+    );
+
+    rayGrad.addColorStop(
+      0.60,
+      `rgba(255, 135, 45, ${alpha * 0.30})`
+    );
+
+    rayGrad.addColorStop(
+      1.00,
+      'rgba(255, 100, 30, 0)'
+    );
+
+    ctx.fillStyle = rayGrad;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      sx,
+      sy
+    );
+
+    ctx.lineTo(
+      sx +
+      Math.cos(
+        finalAngle - width
+      ) *
+      len,
+
+      sy +
+      Math.sin(
+        finalAngle - width
+      ) *
+      len
+    );
+
+    ctx.lineTo(
+      sx +
+      Math.cos(
+        finalAngle + width
+      ) *
+      len,
+
+      sy +
+      Math.sin(
+        finalAngle + width
+      ) *
+      len
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+  }
+
+  ctx.restore();
+
+  // -----------------------------------------
+  // FINAL SOFT CENTRAL HAZE
+  // -----------------------------------------
+
+  const haze = ctx.createRadialGradient(
+    sx,
+    sy,
+    0,
+    sx,
+    sy,
+    H * 0.28
+  );
+
+  haze.addColorStop(
+    0.00,
+    `rgba(255, 205, 125, ${0.025 * vis})`
+  );
+
+  haze.addColorStop(
+    0.35,
+    `rgba(255, 155, 65, ${0.012 * vis})`
+  );
+
+  haze.addColorStop(
+    1.00,
+    'rgba(0,0,0,0)'
+  );
+
+  ctx.fillStyle = haze;
+
+  ctx.fillRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+  ctx.restore();
+}
     // STAGE 4 & 5: TOP GOD RAYS FOR TEXT (9.0s to 17.5s ONLY)
     function drawTopGodRays(t: number, vis: number) {
       if (vis <= 0) return;
