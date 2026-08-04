@@ -2268,6 +2268,8 @@ if (fadeAmt > 0.001) {
 // applyColorGrade(t);
 // applyVignette(t);
 // applyGrain();
+
+} // render close
       
     function loop(now: number) {
       if (!running) return;
