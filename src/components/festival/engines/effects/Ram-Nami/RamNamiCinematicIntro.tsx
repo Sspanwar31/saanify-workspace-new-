@@ -2247,35 +2247,28 @@ if (t >= 3.8 && t < 6.8) {
 ctx.restore();
 
 
-// =====================================================
-// SCENE 4 — GOLD TITLE
-// 9.0s → 17.5s
-// =====================================================
-
 drawTitle(t);
-
-
-// =====================================================
-// SCENE 5 — GREETING
-// 10.8s → 17.5s
-// =====================================================
-
 drawGreeting(t);
+
+const fadeIn = 1 - smoothstep(0, 1.2, t);
+const fadeOut = smoothstep(17.0, 17.5, t);
+const fadeAmt = Math.max(fadeIn, fadeOut);
+
+if (fadeAmt > 0.001) {
+  ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// =====================================================
+// POST PROCESSING
+// =====================================================
+
+// TEMPORARILY OFF FOR DEBUGGING
+// applyBloom(t);
+// applyColorGrade(t);
+// applyVignette(t);
+// applyGrain();
       
-      const fadeIn = 1 - smoothstep(0, 1.2, t);
-      const fadeOut = smoothstep(17.0, 17.5, t);
-      const fadeAmt = Math.max(fadeIn, fadeOut);
-      if (fadeAmt > 0.001) {
-        ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
-        ctx.fillRect(0, 0, W, H);
-      }
-
-      applyBloom(t);
-      applyColorGrade(t);
-      applyVignette(t);
-      applyGrain();
-    }
-
     function loop(now: number) {
       if (!running) return;
       if (!startTime) startTime = now;
