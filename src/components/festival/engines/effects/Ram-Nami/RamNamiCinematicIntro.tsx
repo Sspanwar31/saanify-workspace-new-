@@ -2187,92 +2187,72 @@ function drawRamMandir(
       ctx.translate(-W / 2, -H / 2);
     }
 
-    // ============ RENDER PIPELINE ============
+ // ============ RENDER PIPELINE (CORRECTED) ============
 
-    function render(t: number, dt: number) {
-      spawnDust(t); spawnPetals(t);
-      spawnIncenseSmoke(t); spawnBirds(t); launchFireworks(t);
-      updateFireworks(dt, t); updateParticles(dt, t); updateCamera(t);
+function render(t: number, dt: number) {
+  spawnDust(t); 
+  spawnPetals(t);
+  spawnIncenseSmoke(t); 
+  spawnBirds(t); 
+  launchFireworks(t);
 
-      rctx.clearRect(0, 0, W, H);
-      drawRamMandir(t, rctx);
+  updateFireworks(dt, t); 
+  updateParticles(dt, t); 
+  updateCamera(t);
 
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, W, H);
+  rctx.clearRect(0, 0, W, H);
+  drawRamMandir(t, rctx);
 
-     ctx.save();
-applyCamera();
-
-// =====================================================
-// SCENE 1 — DIVINE SUNRISE
-// 0.0s → 3.0s
-// =====================================================
-
-// =====================================================
-// DEBUG TEST — SUN + GOD RAYS + BACKGROUND OFF
-// =====================================================
-
-drawBackground(t);
-
-// drawSun(t);
-// drawDivineLight(t);
-      
-// =====================================================
-// SCENE 2 — SARYU + RAM MANDIR + DIYAS
-// 3.0s → 8.0s
-// =====================================================
-
-if (t >= 3.0 && t < 8.0) {
-  drawWater(t);
-  drawRamMandir(t, ctx);
-  updateAndDrawFloatingDiyas(t);
-  drawFogAndHaze(t);
-}
-
-// =====================================================
-// FIREWORKS
-// 3.8s → 6.8s
-// =====================================================
-
-if (t >= 3.8 && t < 6.8) {
-  drawFireworks();
-}
-
-// =====================================================
-// PARTICLES
-// TEMPORARILY DISABLED
-// =====================================================
-
-// drawParticles();
-
-ctx.restore();
-
-
-drawTitle(t);
-drawGreeting(t);
-
-const fadeIn = 1 - smoothstep(0, 1.2, t);
-const fadeOut = smoothstep(17.0, 17.5, t);
-const fadeAmt = Math.max(fadeIn, fadeOut);
-
-if (fadeAmt > 0.001) {
-  ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, W, H);
-}
 
-// =====================================================
-// POST PROCESSING
-// =====================================================
+  ctx.save();
+  applyCamera();
 
-// TEMPORARILY OFF FOR DEBUGGING
-// applyBloom(t);
-// applyColorGrade(t);
-// applyVignette(t);
-// applyGrain();
+  // 1. BACKGROUND & SCENE 1 (0.0s -> 3.2s)
+  drawBackground(t);
+  drawSun(t);          // ✅ UNCOMMENTED
+  drawDivineLight(t);   // ✅ UNCOMMENTED
 
-} // render close
-      
+  // 2. SCENE 2 — SARYU + RAM MANDIR + DIYAS (3.0s -> 8.5s)
+  if (t >= 3.0 && t < 8.5) {
+    drawWater(t);
+    drawRamMandir(t, ctx);
+    updateAndDrawFloatingDiyas(t);
+    drawFogAndHaze(t);
+  }
+
+  // 3. FIREWORKS (3.8s -> 6.8s)
+  if (t >= 3.8 && t < 6.8) {
+    drawFireworks();
+  }
+
+  // 4. PARTICLES
+  drawParticles();    // ✅ UNCOMMENTED
+
+  ctx.restore();
+
+  // 5. TEXT & GREETINGS (8.5s onwards)
+  drawTitle(t);
+  drawGreeting(t);
+
+  // FADE IN / FADE OUT OVERLAY
+  const fadeIn = 1 - smoothstep(0, 1.2, t);
+  const fadeOut = smoothstep(17.0, 17.5, t);
+  const fadeAmt = Math.max(fadeIn, fadeOut);
+
+  if (fadeAmt > 0.001) {
+    ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // 6. POST PROCESSING (CINEMATIC LOOK)
+  applyBloom(t);       // ✅ UNCOMMENTED
+  applyColorGrade(t);  // ✅ UNCOMMENTED
+  applyVignette(t);    // ✅ UNCOMMENTED
+  applyGrain();        // ✅ UNCOMMENTED
+}     
     function loop(now: number) {
       if (!running) return;
       if (!startTime) startTime = now;
