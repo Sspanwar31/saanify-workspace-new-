@@ -191,55 +191,42 @@ export default function CinematicIntro({ onComplete }: Props) {
       const vis = reveal * (1 - fadeOut);
       const sunrise = smoothstep(0.0, 1.8, t);
 
-      // Text Scene (t >= 7.5s) ke waqt background ko dark rakhenge taaki "जय श्री राम" aur sundar dikhe
       const textSceneDarkening = smoothstep(7.2, 8.5, t);
       const skyBrightness = (1 - textSceneDarkening * 0.55);
 
-      // --------------------------------------------------
-      // NATURAL DEEP SKY TO DARK GROUND GRADIENT (FULL HEIGHT H)
-      // --------------------------------------------------
-      const grad = ctx.createLinearGradient(0, 0, 0, H); // Fix: Full height H tak gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, H); 
 
-      // Top Sky — Almost Black / Deep Night
       grad.addColorStop(0.00, '#040207');
 
-      // Upper Sky — Deep Royal Violet/Maroon
       grad.addColorStop(0.25, `rgb(
         ${Math.floor(lerp(8, 28, sunrise) * skyBrightness)},
         ${Math.floor(lerp(5, 12, sunrise) * skyBrightness)},
         ${Math.floor(lerp(12, 22, sunrise) * skyBrightness)}
       )`);
 
-      // Mid Sky — Deep Warm Atmosphere
       grad.addColorStop(0.48, `rgb(
         ${Math.floor(lerp(20, 95, sunrise) * skyBrightness)},
         ${Math.floor(lerp(8, 30, sunrise) * skyBrightness)},
         ${Math.floor(lerp(10, 18, sunrise) * skyBrightness)}
       )`);
 
-      // Horizon Sunrise Accent (Around 62% Height)
       grad.addColorStop(0.62, `rgb(
         ${Math.floor(lerp(40, 190, sunrise) * skyBrightness)},
         ${Math.floor(lerp(15, 80, sunrise) * skyBrightness)},
         ${Math.floor(lerp(10, 25, sunrise) * skyBrightness)}
       )`);
 
-      // Lower Atmosphere — Fades Back into Dark Mahogany
       grad.addColorStop(0.78, `rgb(
         ${Math.floor(lerp(18, 55, sunrise) * skyBrightness)},
         ${Math.floor(lerp(8, 18, sunrise) * skyBrightness)},
         ${Math.floor(lerp(5, 12, sunrise) * skyBrightness)}
       )`);
 
-      // Bottom Ground — Deep Dark Night Black (Yellow/Orange gayab!)
       grad.addColorStop(1.00, '#050201');
 
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
 
-      // --------------------------------------------------
-      // CONTROLLED HORIZON GLOW (NO OVERPOWERING GLOW)
-      // --------------------------------------------------
       if (vis > 0.001 && textSceneDarkening < 0.9) {
         const horizonGlow = ctx.createRadialGradient(
           W * 0.5, H * 0.62, 0,
@@ -275,7 +262,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
-      // Soft Halo Light
       const glowR = Math.min(W, H) * 0.32;
       const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
       halo.addColorStop(0.00, `rgba(255, 180, 70, ${0.18 * vis})`);
@@ -286,7 +272,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = halo;
       ctx.fillRect(sx - glowR, sy - glowR, glowR * 2, glowR * 2);
 
-      // Small Sun Core
       const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
       core.addColorStop(0.00, `rgba(255, 248, 215, ${0.95 * vis})`);
       core.addColorStop(0.30, `rgba(255, 200, 90, ${0.80 * vis})`);
@@ -302,417 +287,247 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     } 
  
-   // SCENE 1: CINEMATIC NATURAL SUNRISE GOD-RAYS
-// Soft atmospheric light — no hard cartoon spokes
-function drawDivineLight(t: number) {
-
-  const reveal = smoothstep(0.0, 1.0, t);
-  const fade = smoothstep(2.4, 3.2, t);
-  const vis = reveal * (1 - fade);
-
-  if (vis <= 0.001) return;
-
-  // -----------------------------------------
-  // HORIZON LIGHT SOURCE
-  // -----------------------------------------
-
-  const sx = W * 0.50;
-  const sy = H * 0.62;
-
-  ctx.save();
-
-  ctx.globalCompositeOperation = 'screen';
-
-  // -----------------------------------------
-  // SOFT SUNRISE ATMOSPHERIC GLOW
-  // -----------------------------------------
-
-  const glowRadius = Math.min(W, H) * 0.40;
-
-  const glow = ctx.createRadialGradient(
-    sx,
-    sy,
-    0,
-    sx,
-    sy,
-    glowRadius
-  );
-
-  glow.addColorStop(
-    0.00,
-    `rgba(255, 190, 85, ${0.16 * vis})`
-  );
-
-  glow.addColorStop(
-    0.18,
-    `rgba(255, 150, 50, ${0.12 * vis})`
-  );
-
-  glow.addColorStop(
-    0.38,
-    `rgba(235, 100, 30, ${0.065 * vis})`
-  );
-
-  glow.addColorStop(
-    0.65,
-    `rgba(150, 50, 20, ${0.025 * vis})`
-  );
-
-  glow.addColorStop(
-    1.00,
-    'rgba(0,0,0,0)'
-  );
-
-  ctx.fillStyle = glow;
-
-  ctx.fillRect(
-    0,
-    0,
-    W,
-    H
-  );
-
-  // -----------------------------------------
-  // SOFT HORIZON ATMOSPHERE
-  // -----------------------------------------
-
-  const horizonGrad = ctx.createLinearGradient(
-    0,
-    H * 0.48,
-    0,
-    H * 0.72
-  );
-
-  horizonGrad.addColorStop(
-    0.00,
-    'rgba(255, 120, 35, 0)'
-  );
-
-  horizonGrad.addColorStop(
-    0.40,
-    `rgba(255, 145, 45, ${0.025 * vis})`
-  );
-
-  horizonGrad.addColorStop(
-    0.60,
-    `rgba(255, 180, 70, ${0.045 * vis})`
-  );
-
-  horizonGrad.addColorStop(
-    0.80,
-    `rgba(255, 120, 30, ${0.018 * vis})`
-  );
-
-  horizonGrad.addColorStop(
-    1.00,
-    'rgba(0,0,0,0)'
-  );
-
-  ctx.fillStyle = horizonGrad;
-
-  ctx.fillRect(
-    0,
-    H * 0.40,
-    W,
-    H * 0.38
-  );
-
-  // -----------------------------------------
-  // SOFT UPWARD GOD-RAYS
-  // -----------------------------------------
-
-  ctx.save();
-
-  ctx.globalCompositeOperation = 'screen';
-
-  const rayCount = 10;
-
-  for (let i = 0; i < rayCount; i++) {
-
-    const n = i / (rayCount - 1);
-
-    const angle =
-      -Math.PI +
-      n * Math.PI;
-
-    const movement =
-      Math.sin(
-        t * 0.45 +
-        i * 1.7
-      ) * 0.010;
-
-    const finalAngle =
-      angle + movement;
-
-    const len =
-      H *
-      (
-        0.30 +
-        0.07 *
-        Math.sin(
-          t * 0.5 +
-          i * 1.4
-        )
-      );
-
-    const width =
-      0.012 +
-      0.004 *
-      Math.sin(
-        t * 0.6 +
-        i
-      );
-
-    const alpha =
-      0.010 *
-      vis *
-      (
-        0.75 +
-        0.25 *
-        Math.sin(
-          t * 0.8 +
-          i * 1.3
-        )
-      );
-
-    const ex =
-      sx +
-      Math.cos(finalAngle) *
-      len;
-
-    const ey =
-      sy +
-      Math.sin(finalAngle) *
-      len;
-
-    const rayGrad =
-      ctx.createLinearGradient(
-        sx,
-        sy,
-        ex,
-        ey
-      );
-
-    rayGrad.addColorStop(
-      0.00,
-      `rgba(255, 215, 145, ${alpha * 1.5})`
-    );
-
-    rayGrad.addColorStop(
-      0.28,
-      `rgba(255, 175, 85, ${alpha})`
-    );
-
-    rayGrad.addColorStop(
-      0.60,
-      `rgba(255, 135, 45, ${alpha * 0.30})`
-    );
-
-    rayGrad.addColorStop(
-      1.00,
-      'rgba(255, 100, 30, 0)'
-    );
-
-    ctx.fillStyle = rayGrad;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      sx,
-      sy
-    );
-
-    ctx.lineTo(
-      sx +
-      Math.cos(
-        finalAngle - width
-      ) *
-      len,
-
-      sy +
-      Math.sin(
-        finalAngle - width
-      ) *
-      len
-    );
-
-    ctx.lineTo(
-      sx +
-      Math.cos(
-        finalAngle + width
-      ) *
-      len,
-
-      sy +
-      Math.sin(
-        finalAngle + width
-      ) *
-      len
-    );
-
-    ctx.closePath();
-
-    ctx.fill();
-  }
-
-  // Close the inner ray drawing state
-  ctx.restore();
-
-  // -----------------------------------------
-  // FINAL SOFT CENTRAL HAZE
-  // -----------------------------------------
-
-  const haze = ctx.createRadialGradient(
-    sx,
-    sy,
-    0,
-    sx,
-    sy,
-    H * 0.28
-  );
-
-  haze.addColorStop(
-    0.00,
-    `rgba(255, 205, 125, ${0.025 * vis})`
-  );
-
-  haze.addColorStop(
-    0.35,
-    `rgba(255, 155, 65, ${0.012 * vis})`
-  );
-
-  haze.addColorStop(
-    1.00,
-    'rgba(0,0,0,0)'
-  );
-
-  ctx.fillStyle = haze;
-
-  ctx.fillRect(
-    0,
-    0,
-    W,
-    H
-  );
-
-  // -----------------------------------------
-  // CLOSE drawDivineLight()
-  // -----------------------------------------
-
-  ctx.restore();
-}
-
-
-// STAGE 4 & 5: TOP GOD RAYS FOR TEXT
-// 9.0s to 17.5s ONLY
-function drawTopGodRays(t: number, vis: number) {
-
-  if (vis <= 0) return;
-
-  ctx.save();
-
-  ctx.globalCompositeOperation = 'lighter';
-
-  const rayCount = 18;
-
-  const sx = W / 2;
-  const sy = -20;
-
-  for (let i = 0; i < rayCount; i++) {
-
-    const angle =
-      (Math.PI * 0.2) +
-      (i / rayCount) * (Math.PI * 0.6) +
-      Math.sin(t * 0.2 + i) * 0.015;
-
-    const len = H * 0.65;
-
-    const a =
-      0.035 *
-      vis *
-      (
-        0.7 +
-        0.3 *
-        Math.sin(t * 1.5 + i)
-      );
-
-    const ex =
-      sx +
-      Math.cos(angle) *
-      len;
-
-    const ey =
-      sy +
-      Math.sin(angle) *
-      len;
-
-    const grad =
-      ctx.createLinearGradient(
-        sx,
-        sy,
-        ex,
-        ey
-      );
-
-    grad.addColorStop(
-      0,
-      `rgba(255, 225, 140, ${a * 1.8})`
-    );
-
-    grad.addColorStop(
-      0.5,
-      `rgba(255, 170, 50, ${a})`
-    );
-
-    grad.addColorStop(
-      1,
-      'rgba(0,0,0,0)'
-    );
-
-    ctx.fillStyle = grad;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      sx,
-      sy
-    );
-
-    ctx.lineTo(
-      sx +
-      Math.cos(angle - 0.035) *
-      len,
-
-      sy +
-      Math.sin(angle - 0.035) *
-      len
-    );
-
-    ctx.lineTo(
-      sx +
-      Math.cos(angle + 0.035) *
-      len,
-
-      sy +
-      Math.sin(angle + 0.035) *
-      len
-    );
-
-    ctx.closePath();
-
-    ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-
-// STAGE 2: 3D RAM MANDIR
-// 3.0s to 8.0s ONLY
-function drawRamMandir(
-  t: number,
-  targetCtx: CanvasRenderingContext2D
-) {   const reveal = smoothstep(3.0, 4.2, t);
+    // ============ SCENE 1: MORNING SUNSET CLOUDS ============
+
+    function drawClouds(t: number) {
+      const reveal = smoothstep(0.0, 1.5, t);
+      const fade = smoothstep(2.8, 3.6, t);
+      const vis = reveal * (1 - fade);
+
+      if (vis <= 0.001) return;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      const cloudLayers = [
+        { y: H * 0.22, speed: 8, scale: 1.2, alpha: 0.12 },
+        { y: H * 0.38, speed: 12, scale: 0.9, alpha: 0.18 },
+        { y: H * 0.48, speed: 15, scale: 0.7, alpha: 0.15 }
+      ];
+
+      cloudLayers.forEach((layer, idx) => {
+        const offset = (t * layer.speed + idx * 220) % (W + 400) - 200;
+        const cy = layer.y;
+
+        const cloudGrad = ctx.createLinearGradient(0, cy - 30, 0, cy + 40);
+        cloudGrad.addColorStop(0, `rgba(255, 200, 130, ${layer.alpha * vis})`);
+        cloudGrad.addColorStop(0.5, `rgba(235, 120, 40, ${layer.alpha * 0.6 * vis})`);
+        cloudGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = cloudGrad;
+
+        ctx.beginPath();
+        ctx.arc(offset, cy, 45 * layer.scale, 0, Math.PI * 2);
+        ctx.arc(offset + 40 * layer.scale, cy - 12 * layer.scale, 35 * layer.scale, 0, Math.PI * 2);
+        ctx.arc(offset + 80 * layer.scale, cy, 40 * layer.scale, 0, Math.PI * 2);
+        ctx.arc(offset + 120 * layer.scale, cy + 5, 28 * layer.scale, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.restore();
+    }
+
+    // ============ SCENE 1: NATURAL SCENERY (HARIYALI, TREES & HILLS) ============
+
+    function drawNatureLandscape(t: number) {
+      const reveal = smoothstep(0.0, 1.2, t);
+      const fade = smoothstep(2.8, 3.6, t);
+      const vis = reveal * (1 - fade);
+
+      if (vis <= 0.001) return;
+
+      ctx.save();
+      ctx.globalAlpha = vis;
+
+      const horizonY = H * 0.62;
+
+      // 1. DISTANT MOUNTAINS / HILLS
+      ctx.fillStyle = '#14060b';
+      ctx.beginPath();
+      ctx.moveTo(0, horizonY);
+      ctx.quadraticCurveTo(W * 0.2, horizonY - 45, W * 0.4, horizonY - 15);
+      ctx.quadraticCurveTo(W * 0.65, horizonY - 60, W * 0.85, horizonY - 20);
+      ctx.quadraticCurveTo(W * 0.95, horizonY - 35, W, horizonY);
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. MIDGROUND DENSE FOREST / HARIYALI
+      ctx.fillStyle = '#0a0305';
+      ctx.beginPath();
+      ctx.moveTo(0, horizonY + 10);
+      
+      const treeCount = 60;
+      for (let i = 0; i <= treeCount; i++) {
+        const x = (i / treeCount) * W;
+        const treeH = 15 + Math.sin(i * 12.5) * 12 + Math.cos(i * 4.1) * 8;
+        ctx.lineTo(x, horizonY - treeH);
+      }
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. FOREGROUND LUSH TREE BRANCHES / FRAMING
+      ctx.fillStyle = '#050102';
+
+      // Left Corner Big Tree Silhouette
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.1);
+      ctx.quadraticCurveTo(W * 0.12, H * 0.18, W * 0.18, H * 0.35);
+      ctx.quadraticCurveTo(W * 0.08, H * 0.42, 0, H * 0.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Left Tree Leaves / Foliage Cluster
+      for (let i = 0; i < 7; i++) {
+        const lx = Math.sin(i * 1.5) * 40 + W * 0.08;
+        const ly = Math.cos(i * 2.1) * 35 + H * 0.22;
+        const rad = 25 + (i % 3) * 12;
+        ctx.beginPath();
+        ctx.arc(lx, ly, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Right Corner Tree Silhouette
+      ctx.beginPath();
+      ctx.moveTo(W, H * 0.08);
+      ctx.quadraticCurveTo(W * 0.85, H * 0.22, W * 0.82, H * 0.38);
+      ctx.quadraticCurveTo(W * 0.92, H * 0.48, W, H * 0.55);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right Tree Leaves Cluster
+      for (let i = 0; i < 6; i++) {
+        const rx = W - (Math.sin(i * 1.8) * 35 + W * 0.07);
+        const ry = Math.cos(i * 1.9) * 30 + H * 0.20;
+        const rad = 22 + (i % 3) * 10;
+        ctx.beginPath();
+        ctx.arc(rx, ry, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+    
+    // SCENE 1: CINEMATIC NATURAL SUNRISE GOD-RAYS
+    function drawDivineLight(t: number) {
+
+      const reveal = smoothstep(0.0, 1.0, t);
+      const fade = smoothstep(2.4, 3.2, t);
+      const vis = reveal * (1 - fade);
+
+      if (vis <= 0.001) return;
+
+      const sx = W * 0.50;
+      const sy = H * 0.62;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      const glowRadius = Math.min(W, H) * 0.40;
+      const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowRadius);
+
+      glow.addColorStop(0.00, `rgba(255, 190, 85, ${0.16 * vis})`);
+      glow.addColorStop(0.18, `rgba(255, 150, 50, ${0.12 * vis})`);
+      glow.addColorStop(0.38, `rgba(235, 100, 30, ${0.065 * vis})`);
+      glow.addColorStop(0.65, `rgba(150, 50, 20, ${0.025 * vis})`);
+      glow.addColorStop(1.00, 'rgba(0,0,0,0)');
+
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, H);
+
+      const horizonGrad = ctx.createLinearGradient(0, H * 0.48, 0, H * 0.72);
+      horizonGrad.addColorStop(0.00, 'rgba(255, 120, 35, 0)');
+      horizonGrad.addColorStop(0.40, `rgba(255, 145, 45, ${0.025 * vis})`);
+      horizonGrad.addColorStop(0.60, `rgba(255, 180, 70, ${0.045 * vis})`);
+      horizonGrad.addColorStop(0.80, `rgba(255, 120, 30, ${0.018 * vis})`);
+      horizonGrad.addColorStop(1.00, 'rgba(0,0,0,0)');
+
+      ctx.fillStyle = horizonGrad;
+      ctx.fillRect(0, H * 0.40, W, H * 0.38);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      const rayCount = 10;
+      for (let i = 0; i < rayCount; i++) {
+        const n = i / (rayCount - 1);
+        const angle = -Math.PI + n * Math.PI;
+        const movement = Math.sin(t * 0.45 + i * 1.7) * 0.010;
+        const finalAngle = angle + movement;
+
+        const len = H * (0.30 + 0.07 * Math.sin(t * 0.5 + i * 1.4));
+        const width = 0.012 + 0.004 * Math.sin(t * 0.6 + i);
+        const alpha = 0.010 * vis * (0.75 + 0.25 * Math.sin(t * 0.8 + i * 1.3));
+
+        const ex = sx + Math.cos(finalAngle) * len;
+        const ey = sy + Math.sin(finalAngle) * len;
+
+        const rayGrad = ctx.createLinearGradient(sx, sy, ex, ey);
+        rayGrad.addColorStop(0.00, `rgba(255, 215, 145, ${alpha * 1.5})`);
+        rayGrad.addColorStop(0.28, `rgba(255, 175, 85, ${alpha})`);
+        rayGrad.addColorStop(0.60, `rgba(255, 135, 45, ${alpha * 0.30})`);
+        rayGrad.addColorStop(1.00, 'rgba(255, 100, 30, 0)');
+
+        ctx.fillStyle = rayGrad;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + Math.cos(finalAngle - width) * len, sy + Math.sin(finalAngle - width) * len);
+        ctx.lineTo(sx + Math.cos(finalAngle + width) * len, sy + Math.sin(finalAngle + width) * len);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      const haze = ctx.createRadialGradient(sx, sy, 0, sx, sy, H * 0.28);
+      haze.addColorStop(0.00, `rgba(255, 205, 125, ${0.025 * vis})`);
+      haze.addColorStop(0.35, `rgba(255, 155, 65, ${0.012 * vis})`);
+      haze.addColorStop(1.00, 'rgba(0,0,0,0)');
+
+      ctx.fillStyle = haze;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.restore();
+    }
+
+    // STAGE 4 & 5: TOP GOD RAYS FOR TEXT
+    function drawTopGodRays(t: number, vis: number) {
+      if (vis <= 0) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      const rayCount = 18;
+      const sx = W / 2;
+      const sy = -20;
+
+      for (let i = 0; i < rayCount; i++) {
+        const angle = (Math.PI * 0.2) + (i / rayCount) * (Math.PI * 0.6) + Math.sin(t * 0.2 + i) * 0.015;
+        const len = H * 0.65;
+        const a = 0.035 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
+        const ex = sx + Math.cos(angle) * len;
+        const ey = sy + Math.sin(angle) * len;
+
+        const grad = ctx.createLinearGradient(sx, sy, ex, ey);
+        grad.addColorStop(0, `rgba(255, 225, 140, ${a * 1.8})`);
+        grad.addColorStop(0.5, `rgba(255, 170, 50, ${a})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + Math.cos(angle - 0.035) * len, sy + Math.sin(angle - 0.035) * len);
+        ctx.lineTo(sx + Math.cos(angle + 0.035) * len, sy + Math.sin(angle + 0.035) * len);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // STAGE 2: 3D RAM MANDIR
+    function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {   
+      const reveal = smoothstep(3.0, 4.2, t);
       const fade = smoothstep(6.8, 8.0, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
@@ -1064,8 +879,8 @@ function drawRamMandir(
 
     // STAGE 2: SARYU WATER REFLECTIONS (3.0s to 8.0s ONLY - ALWAYS VISIBLE FROM 0.0s)
     function drawWater(t: number) {
-      const reveal = smoothstep(0.0, 1.5, t); // Water active from first second
-      const fade = smoothstep(6.8, 8.0, t);  // Fades out cleanly before text scene
+      const reveal = smoothstep(0.0, 1.5, t);
+      const fade = smoothstep(6.8, 8.0, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -1131,7 +946,7 @@ function drawRamMandir(
     // STAGE 2: FLOATING DIYAS (3.0s to 8.0s ONLY)
     function updateAndDrawFloatingDiyas(t: number) {
       const reveal = smoothstep(3.0, 4.2, t);
-      const fade = smoothstep(6.8, 8.0, t); // Completely 0% by 8.0s!
+      const fade = smoothstep(6.8, 8.0, t);
       const vis = reveal * (1 - fade);
       if (vis <= 0) return;
 
@@ -1582,7 +1397,7 @@ function drawRamMandir(
     }
 
     function spawnBirds(t: number) {
-      if (t < 0.8 || t > 2.8) return; // STAGE 1 ONLY
+      if (t < 0.8 || t > 2.8) return;
       if (birdsSpawned) return;
       birdsSpawned = true;
       const count = 14;
@@ -1687,7 +1502,6 @@ function drawRamMandir(
     }
 
     // ============ AMBIENT GOLDEN STAR DUST AROUND TEXT ============
-    // ✅ CRASH FIX: Guaranteed positive twinkle multiplier
     function drawAmbientTextSparkles(t: number, cy: number, vis: number) {
       if (vis <= 0.001) return;
       ctx.save();
@@ -1835,7 +1649,7 @@ function drawRamMandir(
 
     // STAGE 4: DIRECT REVEAL - 24K METALLIC GOLD TITLE (9.0s to 17.5s STRICT)
     function drawTitle(t: number) {
-      if (t < 9.0) return; // STRICT: Does not start until Stage 2 is 100% gone at 8.0s!
+      if (t < 9.0) return;
 
       const fadeIn = smoothstep(9.0, 10.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
@@ -1857,32 +1671,28 @@ function drawRamMandir(
 
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. Dark Chocolate Outer Stroke Edge for Crispness
       ctx.strokeStyle = '#1d0b02';
       ctx.lineWidth = fontSize * 0.045;
       ctx.strokeText('जय श्री राम', W / 2, cy);
 
-      // 2. Pure 24K Metallic Gold Fill Gradient
       const pure24kGoldGrad = ctx.createLinearGradient(0, cy - fontSize * 0.45, 0, cy + fontSize * 0.45);
-      pure24kGoldGrad.addColorStop(0.00, '#FFFDF0'); // Bright gold top
-      pure24kGoldGrad.addColorStop(0.20, '#FFE8A3'); // Polished highlight
-      pure24kGoldGrad.addColorStop(0.40, '#FFC837'); // 24k Gold core
-      pure24kGoldGrad.addColorStop(0.65, '#E5A00D'); // Deep amber gold
-      pure24kGoldGrad.addColorStop(0.85, '#B87B00'); // Bronze gold
-      pure24kGoldGrad.addColorStop(1.00, '#3A1F00'); // Base shadow
+      pure24kGoldGrad.addColorStop(0.00, '#FFFDF0');
+      pure24kGoldGrad.addColorStop(0.20, '#FFE8A3');
+      pure24kGoldGrad.addColorStop(0.40, '#FFC837');
+      pure24kGoldGrad.addColorStop(0.65, '#E5A00D');
+      pure24kGoldGrad.addColorStop(0.85, '#B87B00');
+      pure24kGoldGrad.addColorStop(1.00, '#3A1F00');
 
       ctx.shadowBlur = 10;
       ctx.shadowColor = `rgba(229, 160, 13, ${0.5 * intensity})`;
       ctx.fillStyle = pure24kGoldGrad;
       ctx.fillText('जय श्री राम', W / 2, cy);
 
-      // 3. Tilak Ornament
       const tilakX = W / 2 + fontSize * 0.02;
       const tilakY = cy - fontSize * 0.52;
       const tilakScale = (fontSize / 130) * 1.1;
       drawTilakOrnament(tilakX, tilakY, tilakScale, intensity);
 
-      // 4. Golden Swash Curve under 'म'
       const swashX = W / 2 + fontSize * 1.15;
       const swashY = cy + fontSize * 0.28;
       drawRamSwash(swashX, swashY, fontSize / 130, intensity);
@@ -1910,11 +1720,9 @@ function drawRamMandir(
       ctx.textAlign = 'center'; 
       ctx.textBaseline = 'middle';
 
-      // Divider Line 1
       const divY1 = cy - fontSize1 * 1.25;
       drawOrnamentalDivider(W / 2, divY1, Math.min(W * 0.38, 300), vis);
 
-      // Line 1: Dark Chocolate Stroke + Warm Cream Gold Fill
       ctx.font = `500 ${fontSize1}px "Tiro Devanagari Hindi", "Mangal", sans-serif`;
       ctx.strokeStyle = '#1d0b02';
       ctx.lineWidth = fontSize1 * 0.12;
@@ -1924,7 +1732,6 @@ function drawRamMandir(
       ctx.fillStyle = '#FFE5B4';
       ctx.fillText(line1, W / 2, cy - fontSize1 * 0.2);
 
-      // Line 2: Dark Chocolate Stroke + Metallic Gold Fill
       const y2 = cy + fontSize2 * 1.15;
       const goldGrad2 = ctx.createLinearGradient(0, y2 - fontSize2 * 0.5, 0, y2 + fontSize2 * 0.5);
       goldGrad2.addColorStop(0.00, '#FFE8A3');
@@ -1943,7 +1750,6 @@ function drawRamMandir(
       ctx.fillStyle = goldGrad2;
       ctx.fillText(line2, W / 2, y2);
 
-      // Divider Line 2
       const divY2 = y2 + fontSize2 * 0.95;
       drawOrnamentalDivider(W / 2, divY2, Math.min(W * 0.48, 380), vis);
 
@@ -2020,72 +1826,75 @@ function drawRamMandir(
       ctx.translate(-W / 2, -H / 2);
     }
 
- // ============ RENDER PIPELINE (CORRECTED) ============
+    // ============ RENDER PIPELINE (FINAL PERFECT SCENERY FLOW) ============
 
-function render(t: number, dt: number) {
-  spawnDust(t); 
-  spawnPetals(t);
-  spawnIncenseSmoke(t); 
-  spawnBirds(t); 
-  launchFireworks(t);
+    function render(t: number, dt: number) {
+      spawnDust(t); 
+      spawnPetals(t);
+      spawnIncenseSmoke(t); 
+      spawnBirds(t); 
+      launchFireworks(t);
 
-  updateFireworks(dt, t); 
-  updateParticles(dt, t); 
-  updateCamera(t);
+      updateFireworks(dt, t); 
+      updateParticles(dt, t); 
+      updateCamera(t);
 
-  rctx.clearRect(0, 0, W, H);
-  drawRamMandir(t, rctx);
+      rctx.clearRect(0, 0, W, H);
+      drawRamMandir(t, rctx);
 
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
 
-  ctx.save();
-  applyCamera();
+      ctx.save();
+      applyCamera();
 
-  // 1. BACKGROUND & SCENE 1 (0.0s -> 3.2s)
-  drawBackground(t);
-  drawSun(t);          // ✅ UNCOMMENTED
-  drawDivineLight(t);   // ✅ UNCOMMENTED
+      // 1. SCENE 1 — CINEMATIC NATURE SUNRISE (0.0s -> 3.5s)
+      drawBackground(t);
+      drawClouds(t);              // ✅ Morning Clouds
+      drawSun(t);                 // ✅ Realistic Sun
+      drawDivineLight(t);          // ✅ Divine Rays
+      drawNatureLandscape(t);     // ✅ Greenery, Trees & Hills Scenery
 
-  // 2. SCENE 2 — SARYU + RAM MANDIR + DIYAS (3.0s -> 8.5s)
-  if (t >= 3.0 && t < 8.5) {
-    drawWater(t);
-    drawRamMandir(t, ctx);
-    updateAndDrawFloatingDiyas(t);
-    drawFogAndHaze(t);
-  }
+      // 2. SCENE 2 — SARYU RIVER, RAM MANDIR & DIYAS (3.0s -> 8.5s)
+      if (t >= 3.0 && t < 8.5) {
+        drawWater(t);
+        drawRamMandir(t, ctx);
+        updateAndDrawFloatingDiyas(t);
+        drawFogAndHaze(t);
+      }
 
-  // 3. FIREWORKS (3.8s -> 6.8s)
-  if (t >= 3.8 && t < 6.8) {
-    drawFireworks();
-  }
+      // 3. FIREWORKS IN SKY (3.8s -> 6.8s)
+      if (t >= 3.8 && t < 6.8) {
+        drawFireworks();
+      }
 
-  // 4. PARTICLES
-  drawParticles();    // ✅ UNCOMMENTED
+      // 4. PARTICLES & FLYING BIRDS
+      drawParticles();
 
-  ctx.restore();
+      ctx.restore();
 
-  // 5. TEXT & GREETINGS (8.5s onwards)
-  drawTitle(t);
-  drawGreeting(t);
+      // 5. SCENE 3 — GOLDEN TITLE & GREETING (8.5s onwards)
+      drawTitle(t);
+      drawGreeting(t);
 
-  // FADE IN / FADE OUT OVERLAY
-  const fadeIn = 1 - smoothstep(0, 1.2, t);
-  const fadeOut = smoothstep(17.0, 17.5, t);
-  const fadeAmt = Math.max(fadeIn, fadeOut);
+      // FADE IN / OUT OVERLAY
+      const fadeIn = 1 - smoothstep(0, 1.2, t);
+      const fadeOut = smoothstep(17.0, 17.5, t);
+      const fadeAmt = Math.max(fadeIn, fadeOut);
 
-  if (fadeAmt > 0.001) {
-    ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
-    ctx.fillRect(0, 0, W, H);
-  }
+      if (fadeAmt > 0.001) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
+        ctx.fillRect(0, 0, W, H);
+      }
 
-  // 6. POST PROCESSING (CINEMATIC LOOK)
-  applyBloom(t);       // ✅ UNCOMMENTED
-  applyColorGrade(t);  // ✅ UNCOMMENTED
-  applyVignette(t);    // ✅ UNCOMMENTED
-  applyGrain();        // ✅ UNCOMMENTED
-}     
+      // 6. POST PROCESSING
+      applyBloom(t);
+      applyColorGrade(t);
+      applyVignette(t);
+      applyGrain();
+    }     
+    
     function loop(now: number) {
       if (!running) return;
       if (!startTime) startTime = now;
