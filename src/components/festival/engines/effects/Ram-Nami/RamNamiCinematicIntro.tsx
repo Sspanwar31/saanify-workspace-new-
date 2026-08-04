@@ -218,7 +218,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
     
-    // ============ SCENE 1: RISING SUN ============
+    // ============ SCENE 1: MODERN CINEMATIC RISING SUN ============
 
     function drawSun(t: number) {
       const reveal = smoothstep(0.2, 1.2, t);
@@ -229,36 +229,46 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       const sx = W * 0.50;
       const sy = H * 0.48 - Math.sin(smoothstep(0, 2.5, t) * Math.PI * 0.5) * 40; 
-      const sunR = Math.min(W, H) * 0.065;
+      const sunR = Math.min(W, H) * 0.045; // Modern Sharp Core
 
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
-      const glowR = Math.min(W, H) * 0.38;
+      const glowR = Math.min(W, H) * 0.45;
       const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
-      halo.addColorStop(0.00, `rgba(255, 235, 150, ${0.45 * vis})`);
-      halo.addColorStop(0.35, `rgba(255, 160, 50, ${0.22 * vis})`);
-      halo.addColorStop(0.70, `rgba(235, 90, 20, ${0.08 * vis})`);
+      halo.addColorStop(0.00, `rgba(255, 230, 140, ${0.5 * vis})`);
+      halo.addColorStop(0.2, `rgba(255, 160, 50, ${0.25 * vis})`);
+      halo.addColorStop(0.6, `rgba(235, 90, 20, ${0.08 * vis})`);
       halo.addColorStop(1.00, 'rgba(0,0,0,0)');
 
       ctx.fillStyle = halo;
       ctx.fillRect(0, 0, W, H);
 
-      const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
+      // Modern Anamorphic Lens Flare
+      ctx.globalAlpha = 0.6 * vis;
+      const flareGrad = ctx.createLinearGradient(0, sy, W, sy);
+      flareGrad.addColorStop(0, 'rgba(255,200,100,0)');
+      flareGrad.addColorStop(0.5, `rgba(255,220,150,0.4)`);
+      flareGrad.addColorStop(1, 'rgba(255,200,100,0)');
+      ctx.fillStyle = flareGrad;
+      ctx.fillRect(0, sy - 3, W, 6);
+      ctx.globalAlpha = 1;
+
+      const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(0.1, sunR));
       core.addColorStop(0.00, `rgba(255, 255, 240, ${1.0 * vis})`);
-      core.addColorStop(0.40, `rgba(255, 220, 100, ${0.9 * vis})`);
-      core.addColorStop(0.80, `rgba(255, 140, 30, ${0.4 * vis})`);
+      core.addColorStop(0.4, `rgba(255, 220, 100, ${0.95 * vis})`);
+      core.addColorStop(0.8, `rgba(255, 140, 30, ${0.6 * vis})`);
       core.addColorStop(1.00, 'rgba(255, 100, 20, 0)');
 
       ctx.fillStyle = core;
       ctx.beginPath();
-      ctx.arc(sx, sy, sunR, 0, Math.PI * 2);
+      ctx.arc(sx, sy, Math.max(0.1, sunR), 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
     } 
  
-    // ============ SCENE 1: SOFT CLOUDS ============
+    // ============ SCENE 1: MODERN SOFT CLOUDS ============
 
     function drawClouds(t: number) {
       const reveal = smoothstep(0.0, 1.5, t);
@@ -271,34 +281,35 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalCompositeOperation = 'screen';
 
       const cloudLayers = [
-        { y: H * 0.18, speed: 6, scale: 1.3, alpha: 0.25 },
-        { y: H * 0.28, speed: 10, scale: 1.0, alpha: 0.30 },
-        { y: H * 0.38, speed: 14, scale: 0.8, alpha: 0.22 }
+        { y: H * 0.20, speed: 4, length: W * 0.6, thickness: 40, alpha: 0.15 },
+        { y: H * 0.32, speed: 8, length: W * 0.4, thickness: 25, alpha: 0.25 },
+        { y: H * 0.45, speed: 12, length: W * 0.8, thickness: 60, alpha: 0.1 }
       ];
 
       cloudLayers.forEach((layer, idx) => {
-        const offset = (t * layer.speed + idx * 220) % (W + 400) - 200;
+        const offset = (t * layer.speed + idx * 300) % (W + layer.length) - layer.length / 2;
         const cy = layer.y;
 
-        const cloudGrad = ctx.createLinearGradient(0, cy - 30, 0, cy + 30);
-        cloudGrad.addColorStop(0, `rgba(255, 240, 200, ${layer.alpha * vis})`);
-        cloudGrad.addColorStop(0.6, `rgba(255, 170, 100, ${layer.alpha * 0.7 * vis})`);
+        const cloudGrad = ctx.createLinearGradient(offset, cy - layer.thickness, offset, cy + layer.thickness);
+        cloudGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        cloudGrad.addColorStop(0.5, `rgba(255, 220, 180, ${layer.alpha * vis})`);
         cloudGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
         ctx.fillStyle = cloudGrad;
-
         ctx.beginPath();
-        ctx.arc(offset, cy, 45 * layer.scale, 0, Math.PI * 2);
-        ctx.arc(offset + 35 * layer.scale, cy - 14 * layer.scale, 38 * layer.scale, 0, Math.PI * 2);
-        ctx.arc(offset + 75 * layer.scale, cy, 40 * layer.scale, 0, Math.PI * 2);
-        ctx.arc(offset + 115 * layer.scale, cy + 4, 28 * layer.scale, 0, Math.PI * 2);
+        ctx.ellipse(offset + layer.length / 2, cy, Math.max(0.1, layer.length / 2), Math.max(0.1, layer.thickness / 2), 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = `rgba(255, 240, 220, ${layer.alpha * vis * 0.5})`;
+        ctx.beginPath();
+        ctx.ellipse(offset + layer.length / 2, cy - layer.thickness * 0.2, Math.max(0.1, layer.length / 2.5), Math.max(0.1, layer.thickness / 6), 0, 0, Math.PI * 2);
         ctx.fill();
       });
 
       ctx.restore();
     }
 
-    // ============ SCENE 1: CINEMATIC REALISTIC LANDSCAPE (NO CARTOON CIRCLES) ============
+    // ============ SCENE 1: MODERN CINEMATIC LANDSCAPE & ORGANIC TREES ============
 
     function drawNatureLandscape(t: number) {
       const reveal = smoothstep(0.0, 1.2, t);
@@ -312,73 +323,107 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       const horizonY = H * 0.58;
 
-      // 1. DISTANT MISTY BLUE MOUNTAINS
-      const mtnGrad = ctx.createLinearGradient(0, horizonY - 120, 0, horizonY);
-      mtnGrad.addColorStop(0, '#1c3d4a');
-      mtnGrad.addColorStop(1, '#0f262f');
-      ctx.fillStyle = mtnGrad;
+      // 1. DISTANT MISTY MOUNTAINS (Layered for depth)
+      ctx.fillStyle = `rgba(30, 50, 70, ${0.6 * vis})`;
       ctx.beginPath();
       ctx.moveTo(0, horizonY);
-      ctx.quadraticCurveTo(W * 0.22, horizonY - 80, W * 0.45, horizonY - 30);
-      ctx.quadraticCurveTo(W * 0.70, horizonY - 100, W * 0.90, horizonY - 40);
+      ctx.quadraticCurveTo(W * 0.2, horizonY - 90, W * 0.4, horizonY - 30);
+      ctx.quadraticCurveTo(W * 0.6, horizonY - 110, W * 0.8, horizonY - 40);
+      ctx.quadraticCurveTo(W * 0.9, horizonY - 20, W, horizonY - 50);
       ctx.lineTo(W, horizonY);
-      ctx.lineTo(W, H);
-      ctx.lineTo(0, H);
       ctx.closePath();
       ctx.fill();
 
-      // 2. SARYU RIVER BEND (SUNRISE WATER REFLECTION)
-      ctx.fillStyle = 'rgba(255, 190, 110, 0.45)';
+      const mtnGrad = ctx.createLinearGradient(0, horizonY - 120, 0, horizonY + 20);
+      mtnGrad.addColorStop(0, '#1c3d4a');
+      mtnGrad.addColorStop(1, '#0a1f26');
+      ctx.fillStyle = mtnGrad;
       ctx.beginPath();
-      ctx.moveTo(W * 0.45, horizonY - 25);
-      ctx.quadraticCurveTo(W * 0.48, horizonY + 40, W * 0.28, H);
-      ctx.lineTo(W * 0.58, H);
-      ctx.quadraticCurveTo(W * 0.54, horizonY + 40, W * 0.52, horizonY - 25);
+      ctx.moveTo(0, horizonY);
+      ctx.quadraticCurveTo(W * 0.15, horizonY - 40, W * 0.35, horizonY - 10);
+      ctx.quadraticCurveTo(W * 0.55, horizonY - 60, W * 0.75, horizonY - 20);
+      ctx.quadraticCurveTo(W * 0.9, horizonY - 40, W, horizonY - 10);
+      ctx.lineTo(W, horizonY);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. SARYU RIVER BEND (Cinematic Golden Reflection)
+      const riverGrad = ctx.createLinearGradient(0, horizonY, 0, H);
+      riverGrad.addColorStop(0, `rgba(255, 200, 120, 0.7)`);
+      riverGrad.addColorStop(1, `rgba(100, 50, 20, 0.2)`);
+      ctx.fillStyle = riverGrad;
+      ctx.beginPath();
+      ctx.moveTo(W * 0.45, horizonY - 15);
+      ctx.quadraticCurveTo(W * 0.48, horizonY + 80, W * 0.20, H);
+      ctx.lineTo(W * 0.65, H);
+      ctx.quadraticCurveTo(W * 0.55, horizonY + 60, W * 0.52, horizonY - 15);
       ctx.closePath();
       ctx.fill();
 
       // 3. LUSH GREEN RIVER BANK & MEADOW
       const bankGrad = ctx.createLinearGradient(0, horizonY, 0, H);
       bankGrad.addColorStop(0.0, '#1e4f2b');
-      bankGrad.addColorStop(0.5, '#133a1e');
-      bankGrad.addColorStop(1.0, '#0b2111');
+      bankGrad.addColorStop(0.4, '#143820');
+      bankGrad.addColorStop(1.0, '#0a1b0d');
       ctx.fillStyle = bankGrad;
 
       ctx.beginPath();
-      ctx.moveTo(0, horizonY - 10);
-      ctx.quadraticCurveTo(W * 0.25, horizonY + 20, W * 0.45, horizonY - 25);
-      ctx.lineTo(W * 0.52, horizonY - 25);
-      ctx.quadraticCurveTo(W * 0.75, horizonY + 15, W, horizonY - 15);
+      ctx.moveTo(0, horizonY - 5);
+      ctx.quadraticCurveTo(W * 0.25, horizonY + 25, W * 0.45, horizonY - 15);
+      ctx.lineTo(W * 0.52, horizonY - 15);
+      ctx.quadraticCurveTo(W * 0.75, horizonY + 20, W, horizonY - 10);
       ctx.lineTo(W, H);
       ctx.lineTo(0, H);
       ctx.closePath();
       ctx.fill();
 
-      // 4. REALISTIC PINE & FOREST SILHOUETTES
-      const drawPineTree = (x: number, y: number, h: number, w: number, color: string) => {
+      // 4. MODERN ORGANIC TREES (Smoother Silhouettes)
+      const drawModernTree = (x: number, y: number, h: number, w: number, color: string, alpha: number) => {
+        ctx.save();
+        ctx.globalAlpha = vis * alpha;
         ctx.fillStyle = color;
         ctx.beginPath();
+        // Organic Bezier Curve Tree
         ctx.moveTo(x, y - h);
-        ctx.lineTo(x + w * 0.5, y - h * 0.6);
-        ctx.lineTo(x + w * 0.3, y - h * 0.6);
-        ctx.lineTo(x + w * 0.7, y - h * 0.3);
-        ctx.lineTo(x + w * 0.4, y - h * 0.3);
-        ctx.lineTo(x + w, y);
-        ctx.lineTo(x - w, y);
-        ctx.lineTo(x - w * 0.4, y - h * 0.3);
-        ctx.lineTo(x - w * 0.7, y - h * 0.3);
-        ctx.lineTo(x - w * 0.3, y - h * 0.6);
-        ctx.lineTo(x - w * 0.5, y - h * 0.6);
+        ctx.bezierCurveTo(x + w * 0.8, y - h * 0.8, x + w * 0.9, y - h * 0.3, x + w * 0.4, y);
+        ctx.bezierCurveTo(x + w * 0.2, y + h * 0.1, x - w * 0.2, y + h * 0.1, x - w * 0.4, y);
+        ctx.bezierCurveTo(x - w * 0.9, y - h * 0.3, x - w * 0.8, y - h * 0.8, x, y - h);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
       };
 
-      for (let i = 0; i < 35; i++) {
-        const tx = (i / 35) * W;
-        const th = 22 + Math.sin(i * 7.5) * 12;
-        const tw = 9 + (i % 3) * 3;
-        drawPineTree(tx, horizonY + 5, th, tw, '#0c2615');
+      // Back row of trees (hazy)
+      for (let i = 0; i < 20; i++) {
+        const tx = (i / 20) * W + Math.sin(i) * 15;
+        const th = 35 + Math.sin(i * 3.2) * 15;
+        const tw = 18 + (i % 4) * 5;
+        drawModernTree(tx, horizonY + 5, th, tw, `rgba(20, 45, 30, 1)`, 0.7);
       }
+
+      // Front row of trees (sharp, lush)
+      for (let i = 0; i < 15; i++) {
+        const tx = (i / 15) * W + Math.cos(i * 2.1) * 25;
+        const th = 45 + Math.sin(i * 5.5) * 20;
+        const tw = 25 + (i % 5) * 6;
+        drawModernTree(tx, horizonY + 15, th, tw, '#0a1f10', 1.0);
+      }
+
+      // 5. CINEMATIC FOREGROUND GRASS / WIND RIPPLE
+      ctx.save();
+      ctx.globalAlpha = vis * 0.5;
+      ctx.strokeStyle = '#162a18';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 25; i++) {
+        const gx = (i / 25) * W + Math.sin(i * 2.1) * 20;
+        const gy = H * 0.85 + (i % 4) * 12;
+        const sway = Math.sin(t * 2.5 + i) * 8;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy);
+        ctx.quadraticCurveTo(gx + sway, gy - 15, gx + sway * 1.5, gy - 30);
+        ctx.stroke();
+      }
+      ctx.restore();
 
       ctx.restore();
     }
@@ -985,7 +1030,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       else if (r < 0.7) type = 'chrysanthemum';
       else type = 'medium';
 
-      const cPair = fwColors[Math.floor(Math.random() * fwColors.length)];
+      const cPair = fwColors[Math.floor(Math.random() * fwColors.length)] || [['#ffaa00', '#ff3300']];
 
       rockets.push({
         x: startX, y: H * 0.62,
@@ -1326,15 +1371,15 @@ export default function CinematicIntro({ onComplete }: Props) {
       if (t < 0.8 || t > 2.8) return;
       if (birdsSpawned) return;
       birdsSpawned = true;
-      const count = 14;
+      const count = 16;
       for (let i = 0; i < count; i++) {
         const p = pool.spawn(); if (!p) break;
         p.type = 'bird';
-        p.x = -60 - i * 18 + Math.random() * 15;
-        p.y = H * 0.22 + Math.random() * 70 + (i % 3) * 12;
-        p.vx = 2.2 + Math.random() * 0.6; p.vy = (Math.random() - 0.5) * 0.15;
-        p.size = 7 + Math.random() * 4; p.maxLife = 25; p.life = 0;
-        p.alpha = 0.65; p.flap = Math.random() * Math.PI * 2;
+        p.x = -80 - i * 25 + Math.random() * 20;
+        p.y = H * 0.18 + Math.random() * 90 + (i % 4) * 15;
+        p.vx = 2.5 + Math.random() * 0.8; p.vy = (Math.random() - 0.5) * 0.2;
+        p.size = 6 + Math.random() * 5; p.maxLife = 25; p.life = 0;
+        p.alpha = 0.7; p.flap = Math.random() * Math.PI * 2;
       }
     }
 
@@ -1369,7 +1414,7 @@ export default function CinematicIntro({ onComplete }: Props) {
           if (p.life > p.maxLife || p.y < -30) pool.release(p);
         } else if (p.type === 'bird') {
           p.x += p.vx; p.y += p.vy; p.flap += dt * 9;
-          p.alpha = 0.65 * (1 - smoothstep(2.5, 3.2, t));
+          p.alpha = 0.7 * (1 - smoothstep(2.5, 3.2, t));
           if (p.x > W + 60 || p.alpha < 0.01) pool.release(p);
         }
       }
@@ -1412,17 +1457,28 @@ export default function CinematicIntro({ onComplete }: Props) {
         } else if (p.type === 'bird') {
           ctx.save();
           ctx.translate(p.x, p.y);
-          ctx.fillStyle = `rgba(10, 5, 2, ${p.alpha})`;
-          const flap = Math.sin(p.flap) * 0.7;
+          ctx.fillStyle = `rgba(15, 10, 5, ${p.alpha})`;
+          const flap = Math.sin(p.flap) * 0.8;
           const sz = p.size;
+          
+          // Modern graceful bird shape
           ctx.beginPath();
           ctx.moveTo(-sz, 0);
-          ctx.quadraticCurveTo(-sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), 0, 0);
-          ctx.quadraticCurveTo(sz * 0.4, -sz * 0.6 * (1 - flap * 0.5), sz, 0);
-          ctx.quadraticCurveTo(sz * 0.4, sz * 0.15, 0, sz * 0.1);
-          ctx.quadraticCurveTo(-sz * 0.4, sz * 0.15, -sz, 0);
+          ctx.quadraticCurveTo(-sz * 0.5, -sz * 0.7 * flap, 0, 0);
+          ctx.quadraticCurveTo(sz * 0.5, -sz * 0.7 * flap, sz, 0);
+          ctx.quadraticCurveTo(sz * 0.5, sz * 0.1 * flap, 0, sz * 0.15);
+          ctx.quadraticCurveTo(-sz * 0.5, sz * 0.1 * flap, -sz, 0);
           ctx.closePath();
           ctx.fill();
+          
+          // Slight trail effect for motion blur
+          ctx.globalAlpha = p.alpha * 0.3;
+          ctx.beginPath();
+          ctx.moveTo(-sz * 1.2, 0);
+          ctx.quadraticCurveTo(-sz * 0.6, -sz * 0.5 * flap, 0, 0);
+          ctx.quadraticCurveTo(sz * 0.6, -sz * 0.5 * flap, sz * 1.2, 0);
+          ctx.stroke();
+          
           ctx.restore();
         }
       }
