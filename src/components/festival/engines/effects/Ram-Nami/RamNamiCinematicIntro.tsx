@@ -183,291 +183,124 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // ============ SCENE 1: CINEMATIC NATURAL SUNRISE BACKGROUND ============
+    // ============ SCENE 1 & BACKGROUND (FIXED FULL HEIGHT GRADIENT) ============
 
-function drawBackground(t: number) {
+    function drawBackground(t: number) {
+      const reveal = smoothstep(0.0, 1.5, t);
+      const fadeOut = smoothstep(17.0, 17.5, t);
+      const vis = reveal * (1 - fadeOut);
+      const sunrise = smoothstep(0.0, 1.8, t);
 
-  const reveal = smoothstep(0.0, 1.5, t);
-  const fadeOut = smoothstep(17.0, 17.5, t);
+      // Text Scene (t >= 7.5s) ke waqt background ko dark rakhenge taaki "जय श्री राम" aur sundar dikhe
+      const textSceneDarkening = smoothstep(7.2, 8.5, t);
+      const skyBrightness = (1 - textSceneDarkening * 0.55);
 
-  const vis = reveal * (1 - fadeOut);
+      // --------------------------------------------------
+      // NATURAL DEEP SKY TO DARK GROUND GRADIENT (FULL HEIGHT H)
+      // --------------------------------------------------
+      const grad = ctx.createLinearGradient(0, 0, 0, H); // Fix: Full height H tak gradient
 
-  // Scene 1 sunrise strength
-  const sunrise = smoothstep(0.0, 1.8, t);
+      // Top Sky — Almost Black / Deep Night
+      grad.addColorStop(0.00, '#040207');
 
-  // --------------------------------------------------
-  // NATURAL SKY GRADIENT
-  // --------------------------------------------------
+      // Upper Sky — Deep Royal Violet/Maroon
+      grad.addColorStop(0.25, `rgb(
+        ${Math.floor(lerp(8, 28, sunrise) * skyBrightness)},
+        ${Math.floor(lerp(5, 12, sunrise) * skyBrightness)},
+        ${Math.floor(lerp(12, 22, sunrise) * skyBrightness)}
+      )`);
 
-  const grad = ctx.createLinearGradient(
-    0,
-    0,
-    0,
-    H * 0.68
-  );
+      // Mid Sky — Deep Warm Atmosphere
+      grad.addColorStop(0.48, `rgb(
+        ${Math.floor(lerp(20, 95, sunrise) * skyBrightness)},
+        ${Math.floor(lerp(8, 30, sunrise) * skyBrightness)},
+        ${Math.floor(lerp(10, 18, sunrise) * skyBrightness)}
+      )`);
 
-  // Top — almost black / deep maroon
-  grad.addColorStop(
-    0.00,
-    '#07050A'
-  );
+      // Horizon Sunrise Accent (Around 62% Height)
+      grad.addColorStop(0.62, `rgb(
+        ${Math.floor(lerp(40, 190, sunrise) * skyBrightness)},
+        ${Math.floor(lerp(15, 80, sunrise) * skyBrightness)},
+        ${Math.floor(lerp(10, 25, sunrise) * skyBrightness)}
+      )`);
 
-  // Upper sky
-  grad.addColorStop(
-    0.25,
-    `rgb(
-      ${Math.floor(lerp(7, 35, sunrise))},
-      ${Math.floor(lerp(5, 13, sunrise))},
-      ${Math.floor(lerp(12, 25, sunrise))}
-    )`
-  );
+      // Lower Atmosphere — Fades Back into Dark Mahogany
+      grad.addColorStop(0.78, `rgb(
+        ${Math.floor(lerp(18, 55, sunrise) * skyBrightness)},
+        ${Math.floor(lerp(8, 18, sunrise) * skyBrightness)},
+        ${Math.floor(lerp(5, 12, sunrise) * skyBrightness)}
+      )`);
 
-  // Middle warm atmosphere
-  grad.addColorStop(
-    0.52,
-    `rgb(
-      ${Math.floor(lerp(12, 95, sunrise))},
-      ${Math.floor(lerp(7, 32, sunrise))},
-      ${Math.floor(lerp(14, 18, sunrise))}
-    )`
-  );
+      // Bottom Ground — Deep Dark Night Black (Yellow/Orange gayab!)
+      grad.addColorStop(1.00, '#050201');
 
-  // Lower orange atmosphere
-  grad.addColorStop(
-    0.76,
-    `rgb(
-      ${Math.floor(lerp(18, 180, sunrise))},
-      ${Math.floor(lerp(9, 70, sunrise))},
-      ${Math.floor(lerp(12, 25, sunrise))}
-    )`
-  );
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
 
-  // Horizon — IMPORTANT: never pure white
-  grad.addColorStop(
-    1.00,
-    `rgb(
-      ${Math.floor(lerp(22, 235, sunrise))},
-      ${Math.floor(lerp(10, 105, sunrise))},
-      ${Math.floor(lerp(12, 35, sunrise))}
-    )`
-  );
+      // --------------------------------------------------
+      // CONTROLLED HORIZON GLOW (NO OVERPOWERING GLOW)
+      // --------------------------------------------------
+      if (vis > 0.001 && textSceneDarkening < 0.9) {
+        const horizonGlow = ctx.createRadialGradient(
+          W * 0.5, H * 0.62, 0,
+          W * 0.5, H * 0.62, Math.min(W, H) * 0.45
+        );
 
-  ctx.fillStyle = grad;
+        horizonGlow.addColorStop(0.00, `rgba(255, 140, 40, ${0.14 * vis * skyBrightness})`);
+        horizonGlow.addColorStop(0.35, `rgba(180, 60, 20, ${0.06 * vis * skyBrightness})`);
+        horizonGlow.addColorStop(0.70, `rgba(60, 15, 8, ${0.02 * vis * skyBrightness})`);
+        horizonGlow.addColorStop(1.00, 'rgba(0,0,0,0)');
 
-  ctx.fillRect(
-    0,
-    0,
-    W,
-    H
-  );
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = horizonGlow;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
+    }
+    
+    // ============ SCENE 1: NATURAL HALF SUN (FIXED BOUNDS) ============
 
-  // --------------------------------------------------
-  // SOFT HORIZON ATMOSPHERIC GLOW
-  // --------------------------------------------------
+    function drawSun(t: number) {
+      const reveal = smoothstep(0.35, 1.2, t);
+      const fade = smoothstep(2.15, 3.0, t);
+      const vis = reveal * (1 - fade);
 
-  if (vis > 0.001) {
+      if (vis <= 0.001) return;
 
-    const horizonGlow = ctx.createRadialGradient(
-      W * 0.5,
-      H * 0.62,
-      0,
-      W * 0.5,
-      H * 0.62,
-      Math.min(W, H) * 0.55
-    );
+      const sx = W * 0.50;
+      const sy = H * 0.62;
+      const sunR = Math.min(W, H) * 0.055;
 
-    horizonGlow.addColorStop(
-      0.00,
-      `rgba(255, 190, 80, ${0.16 * vis})`
-    );
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
 
-    horizonGlow.addColorStop(
-      0.20,
-      `rgba(255, 135, 45, ${0.10 * vis})`
-    );
+      // Soft Halo Light
+      const glowR = Math.min(W, H) * 0.32;
+      const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
+      halo.addColorStop(0.00, `rgba(255, 180, 70, ${0.18 * vis})`);
+      halo.addColorStop(0.30, `rgba(235, 90, 25, ${0.08 * vis})`);
+      halo.addColorStop(0.70, `rgba(120, 30, 10, ${0.02 * vis})`);
+      halo.addColorStop(1.00, 'rgba(0,0,0,0)');
 
-    horizonGlow.addColorStop(
-      0.45,
-      `rgba(210, 70, 25, ${0.045 * vis})`
-    );
+      ctx.fillStyle = halo;
+      ctx.fillRect(sx - glowR, sy - glowR, glowR * 2, glowR * 2);
 
-    horizonGlow.addColorStop(
-      0.75,
-      `rgba(100, 30, 15, ${0.018 * vis})`
-    );
+      // Small Sun Core
+      const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
+      core.addColorStop(0.00, `rgba(255, 248, 215, ${0.95 * vis})`);
+      core.addColorStop(0.30, `rgba(255, 200, 90, ${0.80 * vis})`);
+      core.addColorStop(0.70, `rgba(240, 120, 30, ${0.35 * vis})`);
+      core.addColorStop(1.00, 'rgba(200, 60, 10, 0)');
 
-    horizonGlow.addColorStop(
-      1.00,
-      'rgba(0,0,0,0)'
-    );
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sunR, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.save();
-
-    ctx.globalCompositeOperation = 'screen';
-
-    ctx.fillStyle = horizonGlow;
-
-    ctx.fillRect(
-      0,
-      H * 0.20,
-      W,
-      H * 0.65
-    );
-
-    ctx.restore();
-  }
-
-  // --------------------------------------------------
-  // VERY SUBTLE SCREEN FLASH
-  // --------------------------------------------------
-
-  if (screenFlash > 0.01 && t < 6.8) {
-
-    ctx.save();
-
-    ctx.globalCompositeOperation = 'screen';
-
-    ctx.fillStyle =
-      `rgba(255, 210, 140, ${screenFlash * 0.12})`;
-
-    ctx.fillRect(
-      0,
-      0,
-      W,
-      H
-    );
-
-    ctx.restore();
-  }
-}
-   // ============ SCENE 1: NATURAL HALF SUN ============
-
-function drawSun(t: number) {
-
-  const reveal = smoothstep(0.35, 1.2, t);
-  const fade = smoothstep(2.15, 3.0, t);
-
-  const vis = reveal * (1 - fade);
-
-  if (vis <= 0.001) return;
-
-  const sx = W * 0.50;
-  const sy = H * 0.62;
-
-  // IMPORTANT:
-  // Small realistic sun.
-  // Do NOT use 0.22 here.
-  const sunR =
-    Math.min(W, H) * 0.065;
-
-  ctx.save();
-
-  ctx.globalCompositeOperation = 'screen';
-
-  // --------------------------------------------------
-  // LARGE SOFT ATMOSPHERIC GLOW
-  // --------------------------------------------------
-
-  const glowR =
-    Math.min(W, H) * 0.42;
-
-  const halo =
-    ctx.createRadialGradient(
-      sx,
-      sy,
-      0,
-      sx,
-      sy,
-      glowR
-    );
-
-  halo.addColorStop(
-    0.00,
-    `rgba(255, 190, 80, ${0.20 * vis})`
-  );
-
-  halo.addColorStop(
-    0.18,
-    `rgba(255, 145, 45, ${0.12 * vis})`
-  );
-
-  halo.addColorStop(
-    0.40,
-    `rgba(235, 90, 25, ${0.055 * vis})`
-  );
-
-  halo.addColorStop(
-    0.70,
-    `rgba(150, 45, 15, ${0.018 * vis})`
-  );
-
-  halo.addColorStop(
-    1.00,
-    'rgba(0,0,0,0)'
-  );
-
-  ctx.fillStyle = halo;
-
-  ctx.fillRect(
-    0,
-    H * 0.30,
-    W,
-    H * 0.55
-  );
-
-  // --------------------------------------------------
-  // SMALL NATURAL SUN CORE
-  // --------------------------------------------------
-
-  const core =
-    ctx.createRadialGradient(
-      sx,
-      sy,
-      0,
-      sx,
-      sy,
-      sunR
-    );
-
-  core.addColorStop(
-    0.00,
-    `rgba(255, 248, 215, ${0.95 * vis})`
-  );
-
-  core.addColorStop(
-    0.30,
-    `rgba(255, 220, 120, ${0.85 * vis})`
-  );
-
-  core.addColorStop(
-    0.65,
-    `rgba(255, 160, 45, ${0.42 * vis})`
-  );
-
-  core.addColorStop(
-    1.00,
-    'rgba(255, 100, 20, 0)'
-  );
-
-  ctx.fillStyle = core;
-
-  // ONLY SMALL HALF SUN
-  ctx.beginPath();
-
-  ctx.arc(
-    sx,
-    sy,
-    sunR,
-    Math.PI,
-    0
-  );
-
-  ctx.closePath();
-
-  ctx.fill();
-
-  ctx.restore();
-}
+      ctx.restore();
+    } 
  
    // SCENE 1: CINEMATIC NATURAL SUNRISE GOD-RAYS
 // Soft atmospheric light — no hard cartoon spokes
