@@ -44,14 +44,14 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   },
   
   // ━━━ RAM_NAVAMI (🚀 18.0s Cinematic Ghat Dawn, Fireworks & Floating Diyas) ━━━
-  RAM_NAVAMI: {
-    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
-    timings: {
-      FLASH: 3000,     // 3.0s: सरयू घाट पर सूर्योदय और कोहरा
-      SHOOTING: 13000, // 13.0s: मंदिर की रिम लाइट, तैरते दीये और आतिशबाज़ी
-      HANDOVER: 2000   // 2.0s: "श्री राम" मंत्र का निर्माण और ग्रीटिंग हैंडओवर
-    }
-  },
+RAM_NAVAMI: {
+  phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+  timings: {
+    FLASH: 3000,     // 0.0s से 3.0s: सरयू घाट पर सूर्योदय, कोहरा और पक्षी
+    SHOOTING: 6000,  // 3.0s से 9.0s: मंदिर की रिम लाइट, तैरते दीये, आतिशबाज़ी (3.8s-6.8s) और सीन डार्क होना
+    HANDOVER: 9000   // 9.0s से 18.0s: "जय श्री राम" टेक्स्ट, ग्रीटिंग और फेड-आउट हैंडओवर
+  }
+},
   
   // ━━━ EID_UL_FITR & EID_AL_ADHA ━━━
   EID_UL_FITR: {
