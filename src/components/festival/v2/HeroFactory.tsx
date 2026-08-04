@@ -42,7 +42,7 @@ const ComponentMap: any = {
   'KITES_FLYING': <span className="text-[110px] drop-shadow-2xl">🪁</span>,
   'REAL_BONFIRE': <span className="text-[110px] drop-shadow-2xl">🔥</span>,
   'SHIVA_POWER': <span className="text-[110px] drop-shadow-2xl">🔱</span>,
-  'RAM_NAVAMI': <RamNavamiHero />, 
+  'RAM_DHARMA': <RamNavamiHero />,  
   'HANUMAN_GADA': <HanumanHero />, // 🚀 UPDATED: Ab emoji ki jagah custom image component render hoga
   'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
   'SUN_ARGHYA': <SunGlow />, 
