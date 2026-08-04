@@ -469,7 +469,7 @@ function drawSun(t: number) {
   ctx.restore();
 }
  
-    // SCENE 1: CINEMATIC NATURAL SUNRISE GOD-RAYS
+   // SCENE 1: CINEMATIC NATURAL SUNRISE GOD-RAYS
 // Soft atmospheric light — no hard cartoon spokes
 function drawDivineLight(t: number) {
 
@@ -722,9 +722,9 @@ function drawDivineLight(t: number) {
     ctx.fill();
   }
 
+  // Close the inner ray drawing state
   ctx.restore();
-}
-    
+
   // -----------------------------------------
   // FINAL SOFT CENTRAL HAZE
   // -----------------------------------------
@@ -762,42 +762,124 @@ function drawDivineLight(t: number) {
     H
   );
 
+  // -----------------------------------------
+  // CLOSE drawDivineLight()
+  // -----------------------------------------
+
   ctx.restore();
 }
-    // STAGE 4 & 5: TOP GOD RAYS FOR TEXT (9.0s to 17.5s ONLY)
-    function drawTopGodRays(t: number, vis: number) {
-      if (vis <= 0) return;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const rayCount = 18;
-      const sx = W / 2;
-      const sy = -20;
-      for (let i = 0; i < rayCount; i++) {
-        const angle = (Math.PI * 0.2) + (i / rayCount) * (Math.PI * 0.6) + Math.sin(t * 0.2 + i) * 0.015;
-        const len = H * 0.65;
-        const a = 0.035 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
-        const ex = sx + Math.cos(angle) * len;
-        const ey = sy + Math.sin(angle) * len;
 
-        const grad = ctx.createLinearGradient(sx, sy, ex, ey);
-        grad.addColorStop(0, `rgba(255, 225, 140, ${a * 1.8})`);
-        grad.addColorStop(0.5, `rgba(255, 170, 50, ${a})`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
 
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(sx + Math.cos(angle - 0.035) * len, sy + Math.sin(angle - 0.035) * len);
-        ctx.lineTo(sx + Math.cos(angle + 0.035) * len, sy + Math.sin(angle + 0.035) * len);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
+// STAGE 4 & 5: TOP GOD RAYS FOR TEXT
+// 9.0s to 17.5s ONLY
+function drawTopGodRays(t: number, vis: number) {
 
-    // STAGE 2: 3D RAM MANDIR (3.0s to 8.0s ONLY)
-    function drawRamMandir(t: number, targetCtx: CanvasRenderingContext2D) {
-      const reveal = smoothstep(3.0, 4.2, t);
+  if (vis <= 0) return;
+
+  ctx.save();
+
+  ctx.globalCompositeOperation = 'lighter';
+
+  const rayCount = 18;
+
+  const sx = W / 2;
+  const sy = -20;
+
+  for (let i = 0; i < rayCount; i++) {
+
+    const angle =
+      (Math.PI * 0.2) +
+      (i / rayCount) * (Math.PI * 0.6) +
+      Math.sin(t * 0.2 + i) * 0.015;
+
+    const len = H * 0.65;
+
+    const a =
+      0.035 *
+      vis *
+      (
+        0.7 +
+        0.3 *
+        Math.sin(t * 1.5 + i)
+      );
+
+    const ex =
+      sx +
+      Math.cos(angle) *
+      len;
+
+    const ey =
+      sy +
+      Math.sin(angle) *
+      len;
+
+    const grad =
+      ctx.createLinearGradient(
+        sx,
+        sy,
+        ex,
+        ey
+      );
+
+    grad.addColorStop(
+      0,
+      `rgba(255, 225, 140, ${a * 1.8})`
+    );
+
+    grad.addColorStop(
+      0.5,
+      `rgba(255, 170, 50, ${a})`
+    );
+
+    grad.addColorStop(
+      1,
+      'rgba(0,0,0,0)'
+    );
+
+    ctx.fillStyle = grad;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      sx,
+      sy
+    );
+
+    ctx.lineTo(
+      sx +
+      Math.cos(angle - 0.035) *
+      len,
+
+      sy +
+      Math.sin(angle - 0.035) *
+      len
+    );
+
+    ctx.lineTo(
+      sx +
+      Math.cos(angle + 0.035) *
+      len,
+
+      sy +
+      Math.sin(angle + 0.035) *
+      len
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+
+// STAGE 2: 3D RAM MANDIR
+// 3.0s to 8.0s ONLY
+function drawRamMandir(
+  t: number,
+  targetCtx: CanvasRenderingContext2D
+) {   const reveal = smoothstep(3.0, 4.2, t);
       const fade = smoothstep(6.8, 8.0, t);
       if (reveal <= 0) return;
       const vis = reveal * (1 - fade);
