@@ -183,111 +183,86 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // ============ SCENE 1 & BACKGROUND (FIXED FULL HEIGHT GRADIENT) ============
+    // ============ SCENE 1: NATURAL MORNING BLUE SKY ============
 
     function drawBackground(t: number) {
       const reveal = smoothstep(0.0, 1.5, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
       const vis = reveal * (1 - fadeOut);
-      const sunrise = smoothstep(0.0, 1.8, t);
+      const sunrise = smoothstep(0.0, 2.0, t);
 
       const textSceneDarkening = smoothstep(7.2, 8.5, t);
-      const skyBrightness = (1 - textSceneDarkening * 0.55);
 
-      const grad = ctx.createLinearGradient(0, 0, 0, H); 
+      ctx.save();
 
-      grad.addColorStop(0.00, '#040207');
-
-      grad.addColorStop(0.25, `rgb(
-        ${Math.floor(lerp(8, 28, sunrise) * skyBrightness)},
-        ${Math.floor(lerp(5, 12, sunrise) * skyBrightness)},
-        ${Math.floor(lerp(12, 22, sunrise) * skyBrightness)}
-      )`);
-
-      grad.addColorStop(0.48, `rgb(
-        ${Math.floor(lerp(20, 95, sunrise) * skyBrightness)},
-        ${Math.floor(lerp(8, 30, sunrise) * skyBrightness)},
-        ${Math.floor(lerp(10, 18, sunrise) * skyBrightness)}
-      )`);
-
-      grad.addColorStop(0.62, `rgb(
-        ${Math.floor(lerp(40, 190, sunrise) * skyBrightness)},
-        ${Math.floor(lerp(15, 80, sunrise) * skyBrightness)},
-        ${Math.floor(lerp(10, 25, sunrise) * skyBrightness)}
-      )`);
-
-      grad.addColorStop(0.78, `rgb(
-        ${Math.floor(lerp(18, 55, sunrise) * skyBrightness)},
-        ${Math.floor(lerp(8, 18, sunrise) * skyBrightness)},
-        ${Math.floor(lerp(5, 12, sunrise) * skyBrightness)}
-      )`);
-
-      grad.addColorStop(1.00, '#050201');
-
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
-
-      if (vis > 0.001 && textSceneDarkening < 0.9) {
-        const horizonGlow = ctx.createRadialGradient(
-          W * 0.5, H * 0.62, 0,
-          W * 0.5, H * 0.62, Math.min(W, H) * 0.45
-        );
-
-        horizonGlow.addColorStop(0.00, `rgba(255, 140, 40, ${0.14 * vis * skyBrightness})`);
-        horizonGlow.addColorStop(0.35, `rgba(180, 60, 20, ${0.06 * vis * skyBrightness})`);
-        horizonGlow.addColorStop(0.70, `rgba(60, 15, 8, ${0.02 * vis * skyBrightness})`);
-        horizonGlow.addColorStop(1.00, 'rgba(0,0,0,0)');
-
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        ctx.fillStyle = horizonGlow;
+      if (textSceneDarkening > 0.01) {
+        // Text Scene ke waqt dark regal background
+        const darkGrad = ctx.createLinearGradient(0, 0, 0, H);
+        darkGrad.addColorStop(0, '#040207');
+        darkGrad.addColorStop(0.6, '#180812');
+        darkGrad.addColorStop(1, '#050201');
+        ctx.fillStyle = darkGrad;
         ctx.fillRect(0, 0, W, H);
-        ctx.restore();
+      } else {
+        // Natural Blue & Sunrise Sky (0s - 3.5s)
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+        skyGrad.addColorStop(0.00, '#0c244d'); // Deep Morning Blue
+        skyGrad.addColorStop(0.30, '#1d4e89'); // Vibrant Sky Blue
+        skyGrad.addColorStop(0.52, '#f27a35'); // Morning Pink/Orange
+        skyGrad.addColorStop(0.68, '#ffc04d'); // Golden Horizon
+        skyGrad.addColorStop(1.00, '#2e6f40'); // Green Meadow Ground
+
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, W, H);
       }
+
+      ctx.restore();
     }
     
-    // ============ SCENE 1: NATURAL HALF SUN (FIXED BOUNDS) ============
+    // ============ SCENE 1: BRIGHT RISING MORNING SUN ============
 
     function drawSun(t: number) {
-      const reveal = smoothstep(0.35, 1.2, t);
-      const fade = smoothstep(2.15, 3.0, t);
+      const reveal = smoothstep(0.2, 1.2, t);
+      const fade = smoothstep(2.8, 3.5, t);
       const vis = reveal * (1 - fade);
 
       if (vis <= 0.001) return;
 
+      // Suraj Pahadon ke thoda upar ugega
       const sx = W * 0.50;
-      const sy = H * 0.62;
-      const sunR = Math.min(W, H) * 0.055;
+      const sy = H * 0.48 - Math.sin(smoothstep(0, 2.5, t) * Math.PI * 0.5) * 45; 
+      const sunR = Math.min(W, H) * 0.065;
 
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
-      const glowR = Math.min(W, H) * 0.32;
+      // Bright Golden Halo Glow
+      const glowR = Math.min(W, H) * 0.38;
       const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
-      halo.addColorStop(0.00, `rgba(255, 180, 70, ${0.18 * vis})`);
-      halo.addColorStop(0.30, `rgba(235, 90, 25, ${0.08 * vis})`);
-      halo.addColorStop(0.70, `rgba(120, 30, 10, ${0.02 * vis})`);
+      halo.addColorStop(0.00, `rgba(255, 235, 150, ${0.45 * vis})`);
+      halo.addColorStop(0.35, `rgba(255, 160, 50, ${0.22 * vis})`);
+      halo.addColorStop(0.70, `rgba(235, 90, 20, ${0.08 * vis})`);
       halo.addColorStop(1.00, 'rgba(0,0,0,0)');
 
       ctx.fillStyle = halo;
-      ctx.fillRect(sx - glowR, sy - glowR, glowR * 2, glowR * 2);
+      ctx.fillRect(0, 0, W, H);
 
+      // Core Bright White-Yellow Sun Disc
       const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
-      core.addColorStop(0.00, `rgba(255, 248, 215, ${0.95 * vis})`);
-      core.addColorStop(0.30, `rgba(255, 200, 90, ${0.80 * vis})`);
-      core.addColorStop(0.70, `rgba(240, 120, 30, ${0.35 * vis})`);
-      core.addColorStop(1.00, 'rgba(200, 60, 10, 0)');
+      core.addColorStop(0.00, `rgba(255, 255, 240, ${1.0 * vis})`);
+      core.addColorStop(0.40, `rgba(255, 220, 100, ${0.9 * vis})`);
+      core.addColorStop(0.80, `rgba(255, 140, 30, ${0.4 * vis})`);
+      core.addColorStop(1.00, 'rgba(255, 100, 20, 0)');
 
       ctx.fillStyle = core;
       ctx.beginPath();
-      ctx.arc(sx, sy, sunR, Math.PI, 0);
-      ctx.closePath();
+      ctx.arc(sx, sy, sunR, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
     } 
  
-    // ============ SCENE 1: MORNING SUNSET CLOUDS ============
+    // ============ SCENE 1: SOFT MORNING CLOUDS ============
 
     function drawClouds(t: number) {
       const reveal = smoothstep(0.0, 1.5, t);
@@ -300,34 +275,34 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalCompositeOperation = 'screen';
 
       const cloudLayers = [
-        { y: H * 0.22, speed: 8, scale: 1.2, alpha: 0.12 },
-        { y: H * 0.38, speed: 12, scale: 0.9, alpha: 0.18 },
-        { y: H * 0.48, speed: 15, scale: 0.7, alpha: 0.15 }
+        { y: H * 0.18, speed: 6, scale: 1.3, alpha: 0.25 },
+        { y: H * 0.28, speed: 10, scale: 1.0, alpha: 0.30 },
+        { y: H * 0.38, speed: 14, scale: 0.8, alpha: 0.22 }
       ];
 
       cloudLayers.forEach((layer, idx) => {
         const offset = (t * layer.speed + idx * 220) % (W + 400) - 200;
         const cy = layer.y;
 
-        const cloudGrad = ctx.createLinearGradient(0, cy - 30, 0, cy + 40);
-        cloudGrad.addColorStop(0, `rgba(255, 200, 130, ${layer.alpha * vis})`);
-        cloudGrad.addColorStop(0.5, `rgba(235, 120, 40, ${layer.alpha * 0.6 * vis})`);
+        const cloudGrad = ctx.createLinearGradient(0, cy - 30, 0, cy + 30);
+        cloudGrad.addColorStop(0, `rgba(255, 240, 200, ${layer.alpha * vis})`);
+        cloudGrad.addColorStop(0.6, `rgba(255, 170, 100, ${layer.alpha * 0.7 * vis})`);
         cloudGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
         ctx.fillStyle = cloudGrad;
 
         ctx.beginPath();
         ctx.arc(offset, cy, 45 * layer.scale, 0, Math.PI * 2);
-        ctx.arc(offset + 40 * layer.scale, cy - 12 * layer.scale, 35 * layer.scale, 0, Math.PI * 2);
-        ctx.arc(offset + 80 * layer.scale, cy, 40 * layer.scale, 0, Math.PI * 2);
-        ctx.arc(offset + 120 * layer.scale, cy + 5, 28 * layer.scale, 0, Math.PI * 2);
+        ctx.arc(offset + 35 * layer.scale, cy - 14 * layer.scale, 38 * layer.scale, 0, Math.PI * 2);
+        ctx.arc(offset + 75 * layer.scale, cy, 40 * layer.scale, 0, Math.PI * 2);
+        ctx.arc(offset + 115 * layer.scale, cy + 4, 28 * layer.scale, 0, Math.PI * 2);
         ctx.fill();
       });
 
       ctx.restore();
     }
 
-    // ============ SCENE 1: NATURAL SCENERY (HARIYALI, TREES & HILLS) ============
+    // ============ SCENE 1: HARA-BHARA MAIDAN, GREEN TREES & PAHAD ============
 
     function drawNatureLandscape(t: number) {
       const reveal = smoothstep(0.0, 1.2, t);
@@ -339,74 +314,85 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalAlpha = vis;
 
-      const horizonY = H * 0.62;
+      const horizonY = H * 0.58;
 
-      // 1. DISTANT MOUNTAINS / HILLS
-      ctx.fillStyle = '#14060b';
+      // 1. DISTANT BLUE/GREEN MOUNTAINS (दूर के पहाड़)
+      const mountainGrad = ctx.createLinearGradient(0, horizonY - 100, 0, horizonY);
+      mountainGrad.addColorStop(0, '#2d5a4c');
+      mountainGrad.addColorStop(1, '#1b3b32');
+
+      ctx.fillStyle = mountainGrad;
       ctx.beginPath();
       ctx.moveTo(0, horizonY);
-      ctx.quadraticCurveTo(W * 0.2, horizonY - 45, W * 0.4, horizonY - 15);
-      ctx.quadraticCurveTo(W * 0.65, horizonY - 60, W * 0.85, horizonY - 20);
-      ctx.quadraticCurveTo(W * 0.95, horizonY - 35, W, horizonY);
+      ctx.quadraticCurveTo(W * 0.22, horizonY - 70, W * 0.45, horizonY - 25);
+      ctx.quadraticCurveTo(W * 0.70, horizonY - 90, W * 0.88, horizonY - 35);
+      ctx.quadraticCurveTo(W * 0.95, horizonY - 50, W, horizonY);
       ctx.lineTo(W, H);
       ctx.lineTo(0, H);
       ctx.closePath();
       ctx.fill();
 
-      // 2. MIDGROUND DENSE FOREST / HARIYALI
-      ctx.fillStyle = '#0a0305';
+      // 2. HARA-BHARA MAIDAN / GREEN MEADOW (हरा-भरा मैदान और घास)
+      const grassGrad = ctx.createLinearGradient(0, horizonY - 15, 0, H);
+      grassGrad.addColorStop(0.0, '#387b41'); // Fresh Grass Green
+      grassGrad.addColorStop(0.4, '#245a2e'); // Deep Forest Green
+      grassGrad.addColorStop(1.0, '#13381a'); // Dark Ground Shadow
+
+      ctx.fillStyle = grassGrad;
       ctx.beginPath();
-      ctx.moveTo(0, horizonY + 10);
-      
-      const treeCount = 60;
+      ctx.moveTo(0, horizonY - 15);
+      ctx.quadraticCurveTo(W * 0.3, horizonY + 25, W * 0.6, horizonY - 10);
+      ctx.quadraticCurveTo(W * 0.85, horizonY - 30, W, horizonY - 10);
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. GREEN FOREST TREES ON HORIZON (हरे-भरे जंगल के पेड़)
+      const treeCount = 45;
       for (let i = 0; i <= treeCount; i++) {
         const x = (i / treeCount) * W;
-        const treeH = 15 + Math.sin(i * 12.5) * 12 + Math.cos(i * 4.1) * 8;
-        ctx.lineTo(x, horizonY - treeH);
-      }
-      ctx.lineTo(W, H);
-      ctx.lineTo(0, H);
-      ctx.closePath();
-      ctx.fill();
+        const treeH = 22 + Math.sin(i * 9.5) * 14 + Math.cos(i * 3.1) * 10;
+        const y = horizonY - 10 + Math.sin(i * 2.5) * 8;
 
-      // 3. FOREGROUND LUSH TREE BRANCHES / FRAMING
-      ctx.fillStyle = '#050102';
-
-      // Left Corner Big Tree Silhouette
-      ctx.beginPath();
-      ctx.moveTo(0, H * 0.1);
-      ctx.quadraticCurveTo(W * 0.12, H * 0.18, W * 0.18, H * 0.35);
-      ctx.quadraticCurveTo(W * 0.08, H * 0.42, 0, H * 0.5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Left Tree Leaves / Foliage Cluster
-      for (let i = 0; i < 7; i++) {
-        const lx = Math.sin(i * 1.5) * 40 + W * 0.08;
-        const ly = Math.cos(i * 2.1) * 35 + H * 0.22;
-        const rad = 25 + (i % 3) * 12;
+        // Tree Body Green
+        ctx.fillStyle = i % 2 === 0 ? '#1e5229' : '#2b6e38';
         ctx.beginPath();
-        ctx.arc(lx, ly, rad, 0, Math.PI * 2);
+        ctx.arc(x, y - treeH, 14 + (i % 3) * 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sunlight Highlight on Top of Trees (सोनहरी धूप)
+        ctx.fillStyle = 'rgba(255, 230, 110, 0.35)';
+        ctx.beginPath();
+        ctx.arc(x - 3, y - treeH - 4, 8 + (i % 3) * 2, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Right Corner Tree Silhouette
-      ctx.beginPath();
-      ctx.moveTo(W, H * 0.08);
-      ctx.quadraticCurveTo(W * 0.85, H * 0.22, W * 0.82, H * 0.38);
-      ctx.quadraticCurveTo(W * 0.92, H * 0.48, W, H * 0.55);
-      ctx.closePath();
-      ctx.fill();
+      // 4. LUSH GREEN FOREGROUND TREES (LEFT & RIGHT CORNERS)
+      const drawLushTree = (tx: number, ty: number, scale: number) => {
+        // Leaves Foliage (Green Layers)
+        const greens = ['#133b1c', '#1e5229', '#2d783d', '#429e57'];
+        greens.forEach((col, idx) => {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.arc(tx + (idx - 1) * 8 * scale, ty - idx * 12 * scale, (45 - idx * 6) * scale, 0, Math.PI * 2);
+          ctx.fill();
+        });
 
-      // Right Tree Leaves Cluster
-      for (let i = 0; i < 6; i++) {
-        const rx = W - (Math.sin(i * 1.8) * 35 + W * 0.07);
-        const ry = Math.cos(i * 1.9) * 30 + H * 0.20;
-        const rad = 22 + (i % 3) * 10;
+        // Sun Highlight on Foliage
+        ctx.fillStyle = 'rgba(255, 235, 130, 0.4)';
         ctx.beginPath();
-        ctx.arc(rx, ry, rad, 0, Math.PI * 2);
+        ctx.arc(tx - 10 * scale, ty - 42 * scale, 22 * scale, 0, Math.PI * 2);
         ctx.fill();
-      }
+      };
+
+      // Left Corner Green Tree
+      drawLushTree(W * 0.08, H * 0.42, 1.2);
+      drawLushTree(W * 0.02, H * 0.52, 1.0);
+
+      // Right Corner Green Tree
+      drawLushTree(W * 0.92, H * 0.40, 1.2);
+      drawLushTree(W * 0.98, H * 0.50, 1.0);
 
       ctx.restore();
     }
@@ -1217,7 +1203,7 @@ export default function CinematicIntro({ onComplete }: Props) {
         }
       }
 
-      for (let i = sparks.length - 1; i >= 0; i--) {
+      for (let i = sparks.length - 1; i >= 0; i++) {
         const s = sparks[i];
 
         if (forceCleanup) {
