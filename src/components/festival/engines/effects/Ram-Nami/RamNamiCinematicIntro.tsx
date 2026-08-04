@@ -2201,26 +2201,66 @@ function drawRamMandir(
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
 
-      ctx.save();
+     ctx.save();
 applyCamera();
+
+// =====================================================
+// SCENE 1 — DIVINE SUNRISE
+// 0.0s → 3.0s
+// =====================================================
 
 drawBackground(t);
 
-drawSun(t);                       // STAGE 1: SUNRISE (0.0s - 3.0s)
-drawDivineLight(t);               // STAGE 1: SUNLIGHT (0.0s - 3.0s)
+if (t < 3.0) {
+  drawSun(t);
+  drawDivineLight(t);
+}
 
-drawWater(t);                     // STAGE 2: SARYU WATER (3.0s - 8.0s)
-drawRamMandir(t, ctx);            // STAGE 2: RAM MANDIR (3.0s - 8.0s)
+// =====================================================
+// SCENE 2 — SARYU + RAM MANDIR + DIYAS
+// 3.0s → 8.0s
+// =====================================================
 
-updateAndDrawFloatingDiyas(t);    // STAGE 2: FLOATING DIYAS (3.0s - 8.0s)
-drawFogAndHaze(t);                // ATMOSPHERIC FOG
-drawParticles();                  // PARTICLES
-drawFireworks();                  // FIREWORKS
+if (t >= 3.0 && t < 8.0) {
+  drawWater(t);
+  drawRamMandir(t, ctx);
+  updateAndDrawFloatingDiyas(t);
+  drawFogAndHaze(t);
+}
+
+// =====================================================
+// FIREWORKS
+// 3.8s → 6.8s
+// =====================================================
+
+if (t >= 3.8 && t < 6.8) {
+  drawFireworks();
+}
+
+// =====================================================
+// PARTICLES
+// TEMPORARILY DISABLED
+// =====================================================
+
+// drawParticles();
 
 ctx.restore();
 
-drawTitle(t);                     // STAGE 4: 24K GOLD TITLE (9.0s - 17.5s)
-drawGreeting(t);                  // STAGE 5: ROYAL GREETING (10.8s - 17.5s)
+
+// =====================================================
+// SCENE 4 — GOLD TITLE
+// 9.0s → 17.5s
+// =====================================================
+
+drawTitle(t);
+
+
+// =====================================================
+// SCENE 5 — GREETING
+// 10.8s → 17.5s
+// =====================================================
+
+drawGreeting(t);
       
       const fadeIn = 1 - smoothstep(0, 1.2, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
