@@ -40,10 +40,12 @@ class ParticlePool {
     const idx = this.free.pop();
     if (idx === undefined) return null;
     const p = this.particles[idx];
+    if (!p) return null;
     p.active = true; p.life = 0; p.alpha = 0;
     return p;
   }
   release(p: Particle) {
+    if (!p) return;
     p.active = false;
     this.free.push(p.idx);
   }
@@ -183,20 +185,18 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // ============ SCENE 1: NATURAL MORNING BLUE SKY ============
+    // ============ SCENE 1: NATURAL MORNING SKY ============
 
     function drawBackground(t: number) {
       const reveal = smoothstep(0.0, 1.5, t);
       const fadeOut = smoothstep(17.0, 17.5, t);
       const vis = reveal * (1 - fadeOut);
-      const sunrise = smoothstep(0.0, 2.0, t);
 
       const textSceneDarkening = smoothstep(7.2, 8.5, t);
 
       ctx.save();
 
       if (textSceneDarkening > 0.01) {
-        // Text Scene ke waqt dark regal background
         const darkGrad = ctx.createLinearGradient(0, 0, 0, H);
         darkGrad.addColorStop(0, '#040207');
         darkGrad.addColorStop(0.6, '#180812');
@@ -204,13 +204,12 @@ export default function CinematicIntro({ onComplete }: Props) {
         ctx.fillStyle = darkGrad;
         ctx.fillRect(0, 0, W, H);
       } else {
-        // Natural Blue & Sunrise Sky (0s - 3.5s)
         const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
-        skyGrad.addColorStop(0.00, '#0c244d'); // Deep Morning Blue
-        skyGrad.addColorStop(0.30, '#1d4e89'); // Vibrant Sky Blue
-        skyGrad.addColorStop(0.52, '#f27a35'); // Morning Pink/Orange
-        skyGrad.addColorStop(0.68, '#ffc04d'); // Golden Horizon
-        skyGrad.addColorStop(1.00, '#2e6f40'); // Green Meadow Ground
+        skyGrad.addColorStop(0.00, '#0a2246'); // Morning Navy
+        skyGrad.addColorStop(0.35, '#1b4a86'); // Sky Blue
+        skyGrad.addColorStop(0.55, '#f0783a'); // Sunset Warm Pink
+        skyGrad.addColorStop(0.70, '#ffc254'); // Horizon Gold
+        skyGrad.addColorStop(1.00, '#1c4a2a'); // Meadow Blend
 
         ctx.fillStyle = skyGrad;
         ctx.fillRect(0, 0, W, H);
@@ -219,7 +218,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
     
-    // ============ SCENE 1: BRIGHT RISING MORNING SUN ============
+    // ============ SCENE 1: RISING SUN ============
 
     function drawSun(t: number) {
       const reveal = smoothstep(0.2, 1.2, t);
@@ -228,15 +227,13 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       if (vis <= 0.001) return;
 
-      // Suraj Pahadon ke thoda upar ugega
       const sx = W * 0.50;
-      const sy = H * 0.48 - Math.sin(smoothstep(0, 2.5, t) * Math.PI * 0.5) * 45; 
+      const sy = H * 0.48 - Math.sin(smoothstep(0, 2.5, t) * Math.PI * 0.5) * 40; 
       const sunR = Math.min(W, H) * 0.065;
 
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
-      // Bright Golden Halo Glow
       const glowR = Math.min(W, H) * 0.38;
       const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
       halo.addColorStop(0.00, `rgba(255, 235, 150, ${0.45 * vis})`);
@@ -247,7 +244,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = halo;
       ctx.fillRect(0, 0, W, H);
 
-      // Core Bright White-Yellow Sun Disc
       const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR);
       core.addColorStop(0.00, `rgba(255, 255, 240, ${1.0 * vis})`);
       core.addColorStop(0.40, `rgba(255, 220, 100, ${0.9 * vis})`);
@@ -262,7 +258,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     } 
  
-    // ============ SCENE 1: SOFT MORNING CLOUDS ============
+    // ============ SCENE 1: SOFT CLOUDS ============
 
     function drawClouds(t: number) {
       const reveal = smoothstep(0.0, 1.5, t);
@@ -302,7 +298,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ SCENE 1: HARA-BHARA MAIDAN, GREEN TREES & PAHAD ============
+    // ============ SCENE 1: CINEMATIC REALISTIC LANDSCAPE (NO CARTOON CIRCLES) ============
 
     function drawNatureLandscape(t: number) {
       const reveal = smoothstep(0.0, 1.2, t);
@@ -316,90 +312,79 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       const horizonY = H * 0.58;
 
-      // 1. DISTANT BLUE/GREEN MOUNTAINS (दूर के पहाड़)
-      const mountainGrad = ctx.createLinearGradient(0, horizonY - 100, 0, horizonY);
-      mountainGrad.addColorStop(0, '#2d5a4c');
-      mountainGrad.addColorStop(1, '#1b3b32');
-
-      ctx.fillStyle = mountainGrad;
+      // 1. DISTANT MISTY BLUE MOUNTAINS
+      const mtnGrad = ctx.createLinearGradient(0, horizonY - 120, 0, horizonY);
+      mtnGrad.addColorStop(0, '#1c3d4a');
+      mtnGrad.addColorStop(1, '#0f262f');
+      ctx.fillStyle = mtnGrad;
       ctx.beginPath();
       ctx.moveTo(0, horizonY);
-      ctx.quadraticCurveTo(W * 0.22, horizonY - 70, W * 0.45, horizonY - 25);
-      ctx.quadraticCurveTo(W * 0.70, horizonY - 90, W * 0.88, horizonY - 35);
-      ctx.quadraticCurveTo(W * 0.95, horizonY - 50, W, horizonY);
+      ctx.quadraticCurveTo(W * 0.22, horizonY - 80, W * 0.45, horizonY - 30);
+      ctx.quadraticCurveTo(W * 0.70, horizonY - 100, W * 0.90, horizonY - 40);
+      ctx.lineTo(W, horizonY);
       ctx.lineTo(W, H);
       ctx.lineTo(0, H);
       ctx.closePath();
       ctx.fill();
 
-      // 2. HARA-BHARA MAIDAN / GREEN MEADOW (हरा-भरा मैदान और घास)
-      const grassGrad = ctx.createLinearGradient(0, horizonY - 15, 0, H);
-      grassGrad.addColorStop(0.0, '#387b41'); // Fresh Grass Green
-      grassGrad.addColorStop(0.4, '#245a2e'); // Deep Forest Green
-      grassGrad.addColorStop(1.0, '#13381a'); // Dark Ground Shadow
-
-      ctx.fillStyle = grassGrad;
+      // 2. SARYU RIVER BEND (SUNRISE WATER REFLECTION)
+      ctx.fillStyle = 'rgba(255, 190, 110, 0.45)';
       ctx.beginPath();
-      ctx.moveTo(0, horizonY - 15);
-      ctx.quadraticCurveTo(W * 0.3, horizonY + 25, W * 0.6, horizonY - 10);
-      ctx.quadraticCurveTo(W * 0.85, horizonY - 30, W, horizonY - 10);
+      ctx.moveTo(W * 0.45, horizonY - 25);
+      ctx.quadraticCurveTo(W * 0.48, horizonY + 40, W * 0.28, H);
+      ctx.lineTo(W * 0.58, H);
+      ctx.quadraticCurveTo(W * 0.54, horizonY + 40, W * 0.52, horizonY - 25);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. LUSH GREEN RIVER BANK & MEADOW
+      const bankGrad = ctx.createLinearGradient(0, horizonY, 0, H);
+      bankGrad.addColorStop(0.0, '#1e4f2b');
+      bankGrad.addColorStop(0.5, '#133a1e');
+      bankGrad.addColorStop(1.0, '#0b2111');
+      ctx.fillStyle = bankGrad;
+
+      ctx.beginPath();
+      ctx.moveTo(0, horizonY - 10);
+      ctx.quadraticCurveTo(W * 0.25, horizonY + 20, W * 0.45, horizonY - 25);
+      ctx.lineTo(W * 0.52, horizonY - 25);
+      ctx.quadraticCurveTo(W * 0.75, horizonY + 15, W, horizonY - 15);
       ctx.lineTo(W, H);
       ctx.lineTo(0, H);
       ctx.closePath();
       ctx.fill();
 
-      // 3. GREEN FOREST TREES ON HORIZON (हरे-भरे जंगल के पेड़)
-      const treeCount = 45;
-      for (let i = 0; i <= treeCount; i++) {
-        const x = (i / treeCount) * W;
-        const treeH = 22 + Math.sin(i * 9.5) * 14 + Math.cos(i * 3.1) * 10;
-        const y = horizonY - 10 + Math.sin(i * 2.5) * 8;
-
-        // Tree Body Green
-        ctx.fillStyle = i % 2 === 0 ? '#1e5229' : '#2b6e38';
+      // 4. REALISTIC PINE & FOREST SILHOUETTES
+      const drawPineTree = (x: number, y: number, h: number, w: number, color: string) => {
+        ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(x, y - treeH, 14 + (i % 3) * 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Sunlight Highlight on Top of Trees (सोनहरी धूप)
-        ctx.fillStyle = 'rgba(255, 230, 110, 0.35)';
-        ctx.beginPath();
-        ctx.arc(x - 3, y - treeH - 4, 8 + (i % 3) * 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // 4. LUSH GREEN FOREGROUND TREES (LEFT & RIGHT CORNERS)
-      const drawLushTree = (tx: number, ty: number, scale: number) => {
-        // Leaves Foliage (Green Layers)
-        const greens = ['#133b1c', '#1e5229', '#2d783d', '#429e57'];
-        greens.forEach((col, idx) => {
-          ctx.fillStyle = col;
-          ctx.beginPath();
-          ctx.arc(tx + (idx - 1) * 8 * scale, ty - idx * 12 * scale, (45 - idx * 6) * scale, 0, Math.PI * 2);
-          ctx.fill();
-        });
-
-        // Sun Highlight on Foliage
-        ctx.fillStyle = 'rgba(255, 235, 130, 0.4)';
-        ctx.beginPath();
-        ctx.arc(tx - 10 * scale, ty - 42 * scale, 22 * scale, 0, Math.PI * 2);
+        ctx.moveTo(x, y - h);
+        ctx.lineTo(x + w * 0.5, y - h * 0.6);
+        ctx.lineTo(x + w * 0.3, y - h * 0.6);
+        ctx.lineTo(x + w * 0.7, y - h * 0.3);
+        ctx.lineTo(x + w * 0.4, y - h * 0.3);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x - w, y);
+        ctx.lineTo(x - w * 0.4, y - h * 0.3);
+        ctx.lineTo(x - w * 0.7, y - h * 0.3);
+        ctx.lineTo(x - w * 0.3, y - h * 0.6);
+        ctx.lineTo(x - w * 0.5, y - h * 0.6);
+        ctx.closePath();
         ctx.fill();
       };
 
-      // Left Corner Green Tree
-      drawLushTree(W * 0.08, H * 0.42, 1.2);
-      drawLushTree(W * 0.02, H * 0.52, 1.0);
-
-      // Right Corner Green Tree
-      drawLushTree(W * 0.92, H * 0.40, 1.2);
-      drawLushTree(W * 0.98, H * 0.50, 1.0);
+      for (let i = 0; i < 35; i++) {
+        const tx = (i / 35) * W;
+        const th = 22 + Math.sin(i * 7.5) * 12;
+        const tw = 9 + (i % 3) * 3;
+        drawPineTree(tx, horizonY + 5, th, tw, '#0c2615');
+      }
 
       ctx.restore();
     }
     
-    // SCENE 1: CINEMATIC NATURAL SUNRISE GOD-RAYS
+    // SCENE 1: CINEMATIC GOD-RAYS
     function drawDivineLight(t: number) {
-
       const reveal = smoothstep(0.0, 1.0, t);
       const fade = smoothstep(2.4, 3.2, t);
       const vis = reveal * (1 - fade);
@@ -407,7 +392,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       if (vis <= 0.001) return;
 
       const sx = W * 0.50;
-      const sy = H * 0.62;
+      const sy = H * 0.48;
 
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
@@ -422,57 +407,6 @@ export default function CinematicIntro({ onComplete }: Props) {
       glow.addColorStop(1.00, 'rgba(0,0,0,0)');
 
       ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H);
-
-      const horizonGrad = ctx.createLinearGradient(0, H * 0.48, 0, H * 0.72);
-      horizonGrad.addColorStop(0.00, 'rgba(255, 120, 35, 0)');
-      horizonGrad.addColorStop(0.40, `rgba(255, 145, 45, ${0.025 * vis})`);
-      horizonGrad.addColorStop(0.60, `rgba(255, 180, 70, ${0.045 * vis})`);
-      horizonGrad.addColorStop(0.80, `rgba(255, 120, 30, ${0.018 * vis})`);
-      horizonGrad.addColorStop(1.00, 'rgba(0,0,0,0)');
-
-      ctx.fillStyle = horizonGrad;
-      ctx.fillRect(0, H * 0.40, W, H * 0.38);
-
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-
-      const rayCount = 10;
-      for (let i = 0; i < rayCount; i++) {
-        const n = i / (rayCount - 1);
-        const angle = -Math.PI + n * Math.PI;
-        const movement = Math.sin(t * 0.45 + i * 1.7) * 0.010;
-        const finalAngle = angle + movement;
-
-        const len = H * (0.30 + 0.07 * Math.sin(t * 0.5 + i * 1.4));
-        const width = 0.012 + 0.004 * Math.sin(t * 0.6 + i);
-        const alpha = 0.010 * vis * (0.75 + 0.25 * Math.sin(t * 0.8 + i * 1.3));
-
-        const ex = sx + Math.cos(finalAngle) * len;
-        const ey = sy + Math.sin(finalAngle) * len;
-
-        const rayGrad = ctx.createLinearGradient(sx, sy, ex, ey);
-        rayGrad.addColorStop(0.00, `rgba(255, 215, 145, ${alpha * 1.5})`);
-        rayGrad.addColorStop(0.28, `rgba(255, 175, 85, ${alpha})`);
-        rayGrad.addColorStop(0.60, `rgba(255, 135, 45, ${alpha * 0.30})`);
-        rayGrad.addColorStop(1.00, 'rgba(255, 100, 30, 0)');
-
-        ctx.fillStyle = rayGrad;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(sx + Math.cos(finalAngle - width) * len, sy + Math.sin(finalAngle - width) * len);
-        ctx.lineTo(sx + Math.cos(finalAngle + width) * len, sy + Math.sin(finalAngle + width) * len);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-
-      const haze = ctx.createRadialGradient(sx, sy, 0, sx, sy, H * 0.28);
-      haze.addColorStop(0.00, `rgba(255, 205, 125, ${0.025 * vis})`);
-      haze.addColorStop(0.35, `rgba(255, 155, 65, ${0.012 * vis})`);
-      haze.addColorStop(1.00, 'rgba(0,0,0,0)');
-
-      ctx.fillStyle = haze;
       ctx.fillRect(0, 0, W, H);
 
       ctx.restore();
@@ -863,7 +797,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       targetCtx.restore();
     }
 
-    // STAGE 2: SARYU WATER REFLECTIONS (3.0s to 8.0s ONLY - ALWAYS VISIBLE FROM 0.0s)
+    // STAGE 2: SARYU WATER REFLECTIONS
     function drawWater(t: number) {
       const reveal = smoothstep(0.0, 1.5, t);
       const fade = smoothstep(6.8, 8.0, t);
@@ -913,7 +847,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
 
       activeFireworkBursts.forEach((b) => {
-        if (b.y > waterY) return;
+        if (!b || b.y > waterY) return;
         const rY = waterY + (waterY - b.y); 
         const dy = rY - waterY;
         const rfGrad = ctx.createRadialGradient(b.x, rY, 0, b.x, rY, Math.max(0.1, b.r * 1.8));
@@ -929,7 +863,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // STAGE 2: FLOATING DIYAS (3.0s to 8.0s ONLY)
+    // STAGE 2: FLOATING DIYAS
     function updateAndDrawFloatingDiyas(t: number) {
       const reveal = smoothstep(3.0, 4.2, t);
       const fade = smoothstep(6.8, 8.0, t);
@@ -942,6 +876,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = vis;
 
       diyas.forEach((d) => {
+        if (!d) return;
         d.x += (d.speed * 0.016);
         if (d.x < -40) d.x = W + 40;
         if (d.x > W + 40) d.x = -40;
@@ -1023,7 +958,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // STAGE 2: REALISTIC FIREWORKS (3.8s to 6.8s ONLY)
+    // STAGE 2: REALISTIC FIREWORKS
     function launchFireworks(t: number) {
       if (t < 3.8 || t > 6.8) return;
 
@@ -1037,7 +972,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       const targetY = lerp(H * 0.35, H * 0.1, Math.random());
 
       for (const b of activeFireworkBursts) {
-        if (b.alpha > 0.1) {
+        if (b && b.alpha > 0.1) {
           const dx = b.x - startX;
           const dy = b.y - targetY;
           if (Math.sqrt(dx * dx + dy * dy) < 100) return;
@@ -1152,6 +1087,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       for (let i = rockets.length - 1; i >= 0; i--) {
         const r = rockets[i];
+        if (!r) continue;
         
         if (forceCleanup) {
           rockets.splice(i, 1);
@@ -1169,7 +1105,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
         r.trail.push({ x: r.x, y: r.y, alpha: 1, type: 'core' });
         if (r.trail.length > 6) r.trail.shift(); 
-        r.trail.forEach(tt => tt.alpha -= 0.12); 
+        r.trail.forEach(tt => { if (tt) tt.alpha -= 0.12; }); 
 
         if (r.smokeTimer > 0.15) {
           r.smokeTimer = 0;
@@ -1203,8 +1139,9 @@ export default function CinematicIntro({ onComplete }: Props) {
         }
       }
 
-      for (let i = sparks.length - 1; i >= 0; i++) {
+      for (let i = sparks.length - 1; i >= 0; i--) {
         const s = sparks[i];
+        if (!s) continue; // CRASH FIX: Guard undefined
 
         if (forceCleanup) {
           sparks.splice(i, 1);
@@ -1249,6 +1186,7 @@ export default function CinematicIntro({ onComplete }: Props) {
 
       for (let i = activeFireworkBursts.length - 1; i >= 0; i--) {
         const b = activeFireworkBursts[i];
+        if (!b) continue;
         if (forceCleanup) {
           activeFireworkBursts.splice(i, 1);
           continue;
@@ -1264,8 +1202,9 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalCompositeOperation = 'lighter';
 
       rockets.forEach(r => {
+        if (!r) return;
         r.trail.forEach(tt => {
-          if (tt.alpha > 0) {
+          if (tt && tt.alpha > 0) {
             ctx.globalAlpha = tt.alpha * 0.8;
             ctx.fillStyle = r.color;
             ctx.beginPath();
@@ -1295,6 +1234,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       });
 
       activeFireworkBursts.forEach((b) => {
+        if (!b) return;
         const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, Math.max(0.1, b.r));
         grad.addColorStop(0, `${b.color}80`); 
         grad.addColorStop(0.4, `${b.color}20`);
@@ -1309,7 +1249,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = 1;
 
       sparks.forEach((s) => {
-        if (s.alpha <= 0 || s.type === 'smoke') return;
+        if (!s || s.alpha <= 0 || s.type === 'smoke') return;
         
         const alpha = clamp(s.alpha, 0, 1);
         const sz = Math.max(0.1, s.size);
@@ -1327,7 +1267,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalCompositeOperation = 'source-over';
       
       sparks.forEach((s) => {
-        if (s.alpha <= 0 || s.type !== 'smoke') return;
+        if (!s || s.alpha <= 0 || s.type !== 'smoke') return;
         ctx.globalAlpha = s.alpha * 0.3;
         ctx.fillStyle = s.color;
         ctx.beginPath();
@@ -1343,7 +1283,7 @@ export default function CinematicIntro({ onComplete }: Props) {
     function spawnDust(t: number) {
       const target = Math.floor(85 * smoothstep(0, 3, t));
       let count = 0;
-      for (const p of pool.particles) if (p.active && p.type === 'dust') count++;
+      for (const p of pool.particles) if (p && p.active && p.type === 'dust') count++;
       let attempts = 0;
       while (count < target && attempts < 8) {
         const p = pool.spawn(); if (!p) break;
@@ -1399,8 +1339,10 @@ export default function CinematicIntro({ onComplete }: Props) {
     }
 
     function updateParticles(dt: number, t: number) {
-      for (const p of pool.particles) {
-        if (!p.active) continue;
+      for (let i = 0; i < pool.particles.length; i++) {
+        const p = pool.particles[i];
+        if (!p || !p.active) continue; // CRASH FIX: Guard undefined
+
         p.life += dt;
 
         if (p.type === 'dust') {
@@ -1437,7 +1379,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (const p of pool.particles) {
-        if (!p.active || p.alpha <= 0.01) continue;
+        if (!p || !p.active || p.alpha <= 0.01) continue;
         if (p.type === 'dust') {
           ctx.globalAlpha = p.alpha;
           const sz = p.size * 5.2;
@@ -1447,7 +1389,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
       for (const p of pool.particles) {
-        if (!p.active || p.alpha <= 0.01) continue;
+        if (!p || !p.active || p.alpha <= 0.01) continue;
         if (p.type === 'petal') {
           ctx.save();
           ctx.translate(p.x, p.y); ctx.rotate(p.rot);
@@ -1812,7 +1754,7 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.translate(-W / 2, -H / 2);
     }
 
-    // ============ RENDER PIPELINE (FINAL PERFECT SCENERY FLOW) ============
+    // ============ RENDER PIPELINE ============
 
     function render(t: number, dt: number) {
       spawnDust(t); 
@@ -1835,12 +1777,12 @@ export default function CinematicIntro({ onComplete }: Props) {
       ctx.save();
       applyCamera();
 
-      // 1. SCENE 1 — CINEMATIC NATURE SUNRISE (0.0s -> 3.5s)
+      // 1. SCENE 1 — CINEMATIC REALISTIC NATURE SUNRISE (0.0s -> 3.5s)
       drawBackground(t);
-      drawClouds(t);              // ✅ Morning Clouds
-      drawSun(t);                 // ✅ Realistic Sun
-      drawDivineLight(t);          // ✅ Divine Rays
-      drawNatureLandscape(t);     // ✅ Greenery, Trees & Hills Scenery
+      drawClouds(t);
+      drawSun(t);
+      drawDivineLight(t);
+      drawNatureLandscape(t);
 
       // 2. SCENE 2 — SARYU RIVER, RAM MANDIR & DIYAS (3.0s -> 8.5s)
       if (t >= 3.0 && t < 8.5) {
