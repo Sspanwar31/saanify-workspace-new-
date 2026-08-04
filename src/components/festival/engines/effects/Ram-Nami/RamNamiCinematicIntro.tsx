@@ -2209,13 +2209,16 @@ applyCamera();
 // 0.0s → 3.0s
 // =====================================================
 
-drawBackground(t);
+// =====================================================
+// DEBUG TEST — SUN + GOD RAYS + BACKGROUND OFF
+// =====================================================
 
-if (t < 3.0) {
-  drawSun(t);
-  drawDivineLight(t);
-}
+// drawBackground(t);
 
+// if (t < 3.0) {
+//   drawSun(t);
+//   drawDivineLight(t);
+// }
 // =====================================================
 // SCENE 2 — SARYU + RAM MANDIR + DIYAS
 // 3.0s → 8.0s
