@@ -183,137 +183,76 @@ export default function CinematicIntro({ onComplete }: Props) {
       }
     }
 
-    // ============ REALISTIC SCENE 1: ATMOSPHERIC SUNRISE SKY ============
+    // ============ SCENE 1: CINEMATIC NATURAL SUNRISE BACKGROUND ============
 
-    function drawBackground(t: number) {
-      const reveal = smoothstep(0, 1.2, t);
-      const fadeOut = smoothstep(17.0, 17.5, t);
-      const vis = reveal * (1 - fadeOut);
+function drawBackground(t: number) {
 
-      const textSceneDarkness = smoothstep(6.8, 8.0, t);
-      const skySunriseVis = smoothstep(0.0, 1.2, t) * (1 - textSceneDarkness);
+  const reveal = smoothstep(0.0, 1.5, t);
+  const fadeOut = smoothstep(17.0, 17.5, t);
 
-      const grad = ctx.createLinearGradient(0, 0, 0, H * 0.62);
-      
-      // Multi-layer Rayleigh Scattering Sky Colors
-      grad.addColorStop(0.0, '#030208'); // Deep Night Sky Top
-      grad.addColorStop(0.3, `rgb(${Math.floor(lerp(3, 40, skySunriseVis))}, ${Math.floor(lerp(2, 12, skySunriseVis))}, ${Math.floor(lerp(8, 25, skySunriseVis))})`);
-      grad.addColorStop(0.6, `rgb(${Math.floor(lerp(3, 130, skySunriseVis))}, ${Math.floor(lerp(2, 45, skySunriseVis))}, ${Math.floor(lerp(8, 20, skySunriseVis))})`);
-      grad.addColorStop(0.85, `rgb(${Math.floor(lerp(3, 220, skySunriseVis))}, ${Math.floor(lerp(2, 110, skySunriseVis))}, ${Math.floor(lerp(8, 30, skySunriseVis))})`);
-      grad.addColorStop(1.0, `rgb(${Math.floor(lerp(3, 255, skySunriseVis))}, ${Math.floor(lerp(2, 175, skySunriseVis))}, ${Math.floor(lerp(8, 65, skySunriseVis))})`); // Warm Horizon
+  const vis = reveal * (1 - fadeOut);
 
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
-      
-      if (screenFlash > 0.01 && t < 6.8) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = `rgba(255, 240, 200, ${screenFlash * 0.4})`;
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-      }
-    }
+  // Scene 1 sunrise strength
+  const sunrise = smoothstep(0.0, 1.8, t);
 
-    // SCENE 1: NATURAL HALF-SUN ON HORIZON
-    function drawSun(t: number) {
-      const reveal = smoothstep(0.2, 1.2, t);
-      const fade = smoothstep(2.0, 3.0, t); // Completely 0% by 3.0s!
-      const vis = reveal * (1 - fade);
-      if (vis <= 0) return;
+  // --------------------------------------------------
+  // NATURAL SKY GRADIENT
+  // --------------------------------------------------
 
-      const sx = W * 0.5;
-      const sy = H * 0.62; // Horizon
-      const sunR = Math.max(0.1, Math.min(W, H) * 0.22);
-
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-
-      // 1. Soft Volumetric Atmosphere Glow
-      const haloGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(0.1, sunR * 3.5));
-      haloGrad.addColorStop(0, `rgba(255, 230, 150, ${0.85 * vis})`);
-      haloGrad.addColorStop(0.3, `rgba(255, 150, 40, ${0.45 * vis})`);
-      haloGrad.addColorStop(0.7, `rgba(180, 60, 15, ${0.12 * vis})`);
-      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = haloGrad;
-      ctx.fillRect(0, 0, W, H * 0.62);
-
-      // 2. Natural Sun Core
-      const coreGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(0.1, sunR));
-      coreGrad.addColorStop(0, `rgba(255, 255, 240, ${vis})`);
-      coreGrad.addColorStop(0.35, `rgba(255, 215, 100, ${vis * 0.95})`);
-      coreGrad.addColorStop(0.75, `rgba(255, 130, 20, ${vis * 0.4})`);
-      coreGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
-      
-      ctx.fillStyle = coreGrad;
-      ctx.beginPath();
-      ctx.arc(sx, sy, Math.max(0.1, sunR), Math.PI, 0); // Smooth half sun
-      ctx.fill();
-
-      ctx.restore();
-    }
-
-    // SCENE 1: CINEMATIC NATURAL SUNRISE GOD-RAYS
-// Soft atmospheric light — no hard cartoon spokes
-function drawDivineLight(t: number) {
-
-  const reveal = smoothstep(0.0, 1.0, t);
-  const fade = smoothstep(2.4, 3.2, t);
-  const vis = reveal * (1 - fade);
-
-  if (vis <= 0.001) return;
-
-  // -----------------------------------------
-  // HORIZON LIGHT SOURCE
-  // -----------------------------------------
-
-  const sx = W * 0.50;
-  const sy = H * 0.62;
-
-  ctx.save();
-
-  ctx.globalCompositeOperation = 'screen';
-
-  // -----------------------------------------
-  // SOFT SUNRISE ATMOSPHERIC GLOW
-  // -----------------------------------------
-
-  const glowRadius = Math.min(W, H) * 0.40;
-
-  const glow = ctx.createRadialGradient(
-    sx,
-    sy,
+  const grad = ctx.createLinearGradient(
     0,
-    sx,
-    sy,
-    glowRadius
+    0,
+    0,
+    H * 0.68
   );
 
-  glow.addColorStop(
+  // Top — almost black / deep maroon
+  grad.addColorStop(
     0.00,
-    `rgba(255, 190, 85, ${0.16 * vis})`
+    '#07050A'
   );
 
-  glow.addColorStop(
-    0.18,
-    `rgba(255, 150, 50, ${0.12 * vis})`
+  // Upper sky
+  grad.addColorStop(
+    0.25,
+    `rgb(
+      ${Math.floor(lerp(7, 35, sunrise))},
+      ${Math.floor(lerp(5, 13, sunrise))},
+      ${Math.floor(lerp(12, 25, sunrise))}
+    )`
   );
 
-  glow.addColorStop(
-    0.38,
-    `rgba(235, 100, 30, ${0.065 * vis})`
+  // Middle warm atmosphere
+  grad.addColorStop(
+    0.52,
+    `rgb(
+      ${Math.floor(lerp(12, 95, sunrise))},
+      ${Math.floor(lerp(7, 32, sunrise))},
+      ${Math.floor(lerp(14, 18, sunrise))}
+    )`
   );
 
-  glow.addColorStop(
-    0.65,
-    `rgba(150, 50, 20, ${0.025 * vis})`
+  // Lower orange atmosphere
+  grad.addColorStop(
+    0.76,
+    `rgb(
+      ${Math.floor(lerp(18, 180, sunrise))},
+      ${Math.floor(lerp(9, 70, sunrise))},
+      ${Math.floor(lerp(12, 25, sunrise))}
+    )`
   );
 
-  glow.addColorStop(
+  // Horizon — IMPORTANT: never pure white
+  grad.addColorStop(
     1.00,
-    'rgba(0,0,0,0)'
+    `rgb(
+      ${Math.floor(lerp(22, 235, sunrise))},
+      ${Math.floor(lerp(10, 105, sunrise))},
+      ${Math.floor(lerp(12, 35, sunrise))}
+    )`
   );
 
-  ctx.fillStyle = glow;
+  ctx.fillStyle = grad;
 
   ctx.fillRect(
     0,
@@ -322,75 +261,303 @@ function drawDivineLight(t: number) {
     H
   );
 
-  // -----------------------------------------
-  // SOFT HORIZON ATMOSPHERE
-  // -----------------------------------------
+  // --------------------------------------------------
+  // SOFT HORIZON ATMOSPHERIC GLOW
+  // --------------------------------------------------
 
-  const horizonGrad = ctx.createLinearGradient(
-    0,
-    H * 0.48,
-    0,
-    H * 0.72
-  );
+  if (vis > 0.001) {
 
-  horizonGrad.addColorStop(
-    0.00,
-    'rgba(255, 120, 35, 0)'
-  );
+    const horizonGlow = ctx.createRadialGradient(
+      W * 0.5,
+      H * 0.62,
+      0,
+      W * 0.5,
+      H * 0.62,
+      Math.min(W, H) * 0.55
+    );
 
-  horizonGrad.addColorStop(
-    0.40,
-    `rgba(255, 145, 45, ${0.025 * vis})`
-  );
+    horizonGlow.addColorStop(
+      0.00,
+      `rgba(255, 190, 80, ${0.16 * vis})`
+    );
 
-  horizonGrad.addColorStop(
-    0.60,
-    `rgba(255, 180, 70, ${0.045 * vis})`
-  );
+    horizonGlow.addColorStop(
+      0.20,
+      `rgba(255, 135, 45, ${0.10 * vis})`
+    );
 
-  horizonGrad.addColorStop(
-    0.80,
-    `rgba(255, 120, 30, ${0.018 * vis})`
-  );
+    horizonGlow.addColorStop(
+      0.45,
+      `rgba(210, 70, 25, ${0.045 * vis})`
+    );
 
-  horizonGrad.addColorStop(
-    1.00,
-    'rgba(0,0,0,0)'
-  );
+    horizonGlow.addColorStop(
+      0.75,
+      `rgba(100, 30, 15, ${0.018 * vis})`
+    );
 
-  ctx.fillStyle = horizonGrad;
+    horizonGlow.addColorStop(
+      1.00,
+      'rgba(0,0,0,0)'
+    );
 
-  ctx.fillRect(
-    0,
-    H * 0.40,
-    W,
-    H * 0.38
-  );
+    ctx.save();
 
-  // -----------------------------------------
-  // SOFT UPWARD GOD-RAYS
-  // -----------------------------------------
+    ctx.globalCompositeOperation = 'screen';
+
+    ctx.fillStyle = horizonGlow;
+
+    ctx.fillRect(
+      0,
+      H * 0.20,
+      W,
+      H * 0.65
+    );
+
+    ctx.restore();
+  }
+
+  // --------------------------------------------------
+  // VERY SUBTLE SCREEN FLASH
+  // --------------------------------------------------
+
+  if (screenFlash > 0.01 && t < 6.8) {
+
+    ctx.save();
+
+    ctx.globalCompositeOperation = 'screen';
+
+    ctx.fillStyle =
+      `rgba(255, 210, 140, ${screenFlash * 0.12})`;
+
+    ctx.fillRect(
+      0,
+      0,
+      W,
+      H
+    );
+
+    ctx.restore();
+  }
+}
+   // ============ SCENE 1: NATURAL HALF SUN ============
+
+function drawSun(t: number) {
+
+  const reveal = smoothstep(0.35, 1.2, t);
+  const fade = smoothstep(2.15, 3.0, t);
+
+  const vis = reveal * (1 - fade);
+
+  if (vis <= 0.001) return;
+
+  const sx = W * 0.50;
+  const sy = H * 0.62;
+
+  // IMPORTANT:
+  // Small realistic sun.
+  // Do NOT use 0.22 here.
+  const sunR =
+    Math.min(W, H) * 0.065;
 
   ctx.save();
 
   ctx.globalCompositeOperation = 'screen';
 
-  const rayCount = 10;
+  // --------------------------------------------------
+  // LARGE SOFT ATMOSPHERIC GLOW
+  // --------------------------------------------------
+
+  const glowR =
+    Math.min(W, H) * 0.42;
+
+  const halo =
+    ctx.createRadialGradient(
+      sx,
+      sy,
+      0,
+      sx,
+      sy,
+      glowR
+    );
+
+  halo.addColorStop(
+    0.00,
+    `rgba(255, 190, 80, ${0.20 * vis})`
+  );
+
+  halo.addColorStop(
+    0.18,
+    `rgba(255, 145, 45, ${0.12 * vis})`
+  );
+
+  halo.addColorStop(
+    0.40,
+    `rgba(235, 90, 25, ${0.055 * vis})`
+  );
+
+  halo.addColorStop(
+    0.70,
+    `rgba(150, 45, 15, ${0.018 * vis})`
+  );
+
+  halo.addColorStop(
+    1.00,
+    'rgba(0,0,0,0)'
+  );
+
+  ctx.fillStyle = halo;
+
+  ctx.fillRect(
+    0,
+    H * 0.30,
+    W,
+    H * 0.55
+  );
+
+  // --------------------------------------------------
+  // SMALL NATURAL SUN CORE
+  // --------------------------------------------------
+
+  const core =
+    ctx.createRadialGradient(
+      sx,
+      sy,
+      0,
+      sx,
+      sy,
+      sunR
+    );
+
+  core.addColorStop(
+    0.00,
+    `rgba(255, 248, 215, ${0.95 * vis})`
+  );
+
+  core.addColorStop(
+    0.30,
+    `rgba(255, 220, 120, ${0.85 * vis})`
+  );
+
+  core.addColorStop(
+    0.65,
+    `rgba(255, 160, 45, ${0.42 * vis})`
+  );
+
+  core.addColorStop(
+    1.00,
+    'rgba(255, 100, 20, 0)'
+  );
+
+  ctx.fillStyle = core;
+
+  // ONLY SMALL HALF SUN
+  ctx.beginPath();
+
+  ctx.arc(
+    sx,
+    sy,
+    sunR,
+    Math.PI,
+    0
+  );
+
+  ctx.closePath();
+
+  ctx.fill();
+
+  ctx.restore();
+}
+  // ============ SCENE 1: NATURAL ATMOSPHERIC GOD RAYS ============
+
+function drawDivineLight(t: number) {
+
+  const reveal =
+    smoothstep(0.35, 1.3, t);
+
+  const fade =
+    smoothstep(2.2, 3.1, t);
+
+  const vis =
+    reveal * (1 - fade);
+
+  if (vis <= 0.001) return;
+
+  const sx = W * 0.50;
+  const sy = H * 0.62;
+
+  ctx.save();
+
+  // --------------------------------------------------
+  // SCREEN BLENDING
+  // --------------------------------------------------
+
+  ctx.globalCompositeOperation = 'screen';
+
+  // --------------------------------------------------
+  // SOFT ATMOSPHERIC LIGHT
+  // --------------------------------------------------
+
+  const atmosphere =
+    ctx.createRadialGradient(
+      sx,
+      sy,
+      0,
+      sx,
+      sy,
+      Math.min(W, H) * 0.48
+    );
+
+  atmosphere.addColorStop(
+    0.00,
+    `rgba(255, 210, 125, ${0.10 * vis})`
+  );
+
+  atmosphere.addColorStop(
+    0.25,
+    `rgba(255, 160, 65, ${0.055 * vis})`
+  );
+
+  atmosphere.addColorStop(
+    0.55,
+    `rgba(255, 110, 35, ${0.022 * vis})`
+  );
+
+  atmosphere.addColorStop(
+    1.00,
+    'rgba(0,0,0,0)'
+  );
+
+  ctx.fillStyle = atmosphere;
+
+  ctx.fillRect(
+    0,
+    H * 0.20,
+    W,
+    H * 0.55
+  );
+
+  // --------------------------------------------------
+  // NATURAL UPWARD LIGHT BEAMS
+  // --------------------------------------------------
+
+  const rayCount = 9;
 
   for (let i = 0; i < rayCount; i++) {
 
-    const n = i / (rayCount - 1);
+    const n =
+      i / (rayCount - 1);
 
-    // From left horizon → center sky → right horizon
+    // LEFT → UP → RIGHT
     const angle =
-      -Math.PI +
+      Math.PI +
       n * Math.PI;
 
     const movement =
       Math.sin(
-        t * 0.45 +
-        i * 1.7
-      ) * 0.010;
+        t * 0.35 +
+        i * 1.8
+      ) * 0.008;
 
     const finalAngle =
       angle + movement;
@@ -398,33 +565,33 @@ function drawDivineLight(t: number) {
     const len =
       H *
       (
-        0.30 +
-        0.07 *
+        0.28 +
+        0.05 *
         Math.sin(
-          t * 0.5 +
-          i * 1.4
+          t * 0.45 +
+          i
         )
       );
 
-    // MUCH thinner than old rays
+    // Very thin beam
     const width =
-      0.012 +
-      0.004 *
+      0.010 +
+      0.003 *
       Math.sin(
-        t * 0.6 +
+        t * 0.5 +
         i
       );
 
-    // Very low opacity
+    // VERY LOW opacity
     const alpha =
-      0.010 *
+      0.0065 *
       vis *
       (
         0.75 +
         0.25 *
         Math.sin(
-          t * 0.8 +
-          i * 1.3
+          t * 0.7 +
+          i
         )
       );
 
@@ -438,7 +605,7 @@ function drawDivineLight(t: number) {
       Math.sin(finalAngle) *
       len;
 
-    const rayGrad =
+    const ray =
       ctx.createLinearGradient(
         sx,
         sy,
@@ -446,27 +613,27 @@ function drawDivineLight(t: number) {
         ey
       );
 
-    rayGrad.addColorStop(
+    ray.addColorStop(
       0.00,
-      `rgba(255, 215, 145, ${alpha * 1.5})`
+      `rgba(255, 220, 150, ${alpha * 1.4})`
     );
 
-    rayGrad.addColorStop(
-      0.28,
-      `rgba(255, 175, 85, ${alpha})`
+    ray.addColorStop(
+      0.30,
+      `rgba(255, 180, 90, ${alpha})`
     );
 
-    rayGrad.addColorStop(
-      0.60,
-      `rgba(255, 135, 45, ${alpha * 0.30})`
+    ray.addColorStop(
+      0.65,
+      `rgba(255, 130, 45, ${alpha * 0.25})`
     );
 
-    rayGrad.addColorStop(
+    ray.addColorStop(
       1.00,
       'rgba(255, 100, 30, 0)'
     );
 
-    ctx.fillStyle = rayGrad;
+    ctx.fillStyle = ray;
 
     ctx.beginPath();
 
@@ -509,7 +676,8 @@ function drawDivineLight(t: number) {
   }
 
   ctx.restore();
-
+}
+    
   // -----------------------------------------
   // FINAL SOFT CENTRAL HAZE
   // -----------------------------------------
@@ -1910,11 +2078,11 @@ function drawDivineLight(t: number) {
       drawSun(t);                  // STAGE 1: SUNRISE (0.0s - 3.0s STRICT)
       drawDivineLight(t);          // STAGE 1: SUNLIGHT RAYS (0.0s - 3.0s STRICT)
       drawWater(t);                // STAGE 2: SARYU WATER (3.0s - 8.0s STRICT)
-      drawRamMandir(t, ctx);       // STAGE 2: 3D SANDSTONE TEMPLE (3.0s - 8.0s STRICT)
-      drawFireworks();             // STAGE 2: FIREWORKS (3.8s - 6.8s)
+      drawRamMandir(t, ctx);       / STAGE 2: FIREWORKS (3.8s - 6.8s)
       updateAndDrawFloatingDiyas(t); // STAGE 2: FLOATING DIYAS (3.0s - 8.0s STRICT)
       drawFogAndHaze(t);
-      drawParticles();
+      drawParticles();// STAGE 2: 3D SANDSTONE TEMPLE (3.0s - 8.0s STRICT)
+      drawFireworks();             /
       ctx.restore();
 
       drawTitle(t);                // STAGE 4: 24K GOLD TITLE (9.0s - 17.5s STRICT)
