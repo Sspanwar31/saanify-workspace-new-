@@ -39,7 +39,7 @@ const DEFAULT_RAY_CONFIG: RayEngineConfig = {
   rayCount: 12,
   rayLength: 160,
   pulseSpeed: 1.5,
-  colors: ['#ffe066', '#f59e0b', '#d97706'],
+  colors: ['rgba(255,224,102,0.3)', '#f59e0b', '#d97706'],
   rotationSpeed: 0.002,
   showDust: true,
   dustColor: '#fbbf24',
@@ -47,41 +47,41 @@ const DEFAULT_RAY_CONFIG: RayEngineConfig = {
 };
 
 const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
-  // ── 1. RAM_NAVAMI (स्वर्णिम तीर और सूर्यवंशी तेज) ──
+  // ── 1. RAM_NAVAMI (स्वर्णिम तीर और सूर्यवंशी तेज - FIXED OPACITY) ──
   RAM_NAVAMI: {
     default: {
-      rayCount: 24,
-      rayLength: 260,
-      pulseSpeed: 2.0,
-      colors: ['#fffbeb', '#ff781f', '#ea580c'],
-      rotationSpeed: 0.004,
+      rayCount: 20,
+      rayLength: 280,
+      pulseSpeed: 1.5,
+      colors: ['rgba(255,251,235,0.25)', '#ff781f', '#ea580c'], // 🚀 Soft center transparency
+      rotationSpeed: 0.003,
       showDust: true,
-      dustColor: '#f97316',
-      beamIntensity: 0.45,
+      dustColor: '#ffd700',
+      beamIntensity: 0.3,
     }
   },
 
-  // ── 2. PONGAL (सौर उबाल तेज) ──
+  // ── 2. PONGAL ──
   PONGAL: {
     default: {
-      rayCount: 20,
+      rayCount: 18,
       rayLength: 240,
       pulseSpeed: 1.8,
-      colors: ['#fffbeb', '#f97316', '#dc2626'],
+      colors: ['rgba(255,251,235,0.2)', '#f97316', '#dc2626'],
       rotationSpeed: -0.003,
       showDust: true,
       dustColor: '#fbbf24',
-      beamIntensity: 0.4,
+      beamIntensity: 0.3,
     }
   },
 
-  // ── 3. EID AL-ADHA & EID_UL_FITR (पवित्र चंद्र किरणें) ──
+  // ── 3. EID AL-ADHA & EID_UL_FITR ──
   EID_UL_FITR: {
     default: {
       rayCount: 10,
       rayLength: 200,
       pulseSpeed: 1.0,
-      colors: ['#ecfdf5', '#10b981', '#047857'],
+      colors: ['rgba(236,253,245,0.2)', '#10b981', '#047857'],
       rotationSpeed: 0.001,
       showDust: true,
       dustColor: '#34d399',
@@ -93,7 +93,7 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
       rayCount: 10,
       rayLength: 200,
       pulseSpeed: 1.0,
-      colors: ['#ecfdf5', '#10b981', '#047857'],
+      colors: ['rgba(236,253,245,0.2)', '#10b981', '#047857'],
       rotationSpeed: 0.001,
       showDust: true,
       dustColor: '#34d399',
@@ -101,17 +101,17 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
     }
   },
 
-  // ── 4. REPUBLIC_DAY & INDEPENDENCE_DAY (देशभक्ति तिरंगा किरणें) ──
+  // ── 4. REPUBLIC_DAY & INDEPENDENCE_DAY ──
   REPUBLIC_DAY: {
     default: {
       rayCount: 18,
       rayLength: 250,
       pulseSpeed: 1.6,
-      colors: ['#ff9933', '#ffffff', '#128807'], // केसरिया, सफेद, हरा
+      colors: ['rgba(255,153,51,0.25)', '#ffffff', '#128807'],
       rotationSpeed: 0.002,
       showDust: true,
       dustColor: '#ffffff',
-      beamIntensity: 0.35,
+      beamIntensity: 0.25,
     }
   },
   INDEPENDENCE_DAY: {
@@ -119,25 +119,25 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
       rayCount: 18,
       rayLength: 250,
       pulseSpeed: 1.6,
-      colors: ['#ff9933', '#ffffff', '#128807'],
+      colors: ['rgba(255,153,51,0.25)', '#ffffff', '#128807'],
       rotationSpeed: 0.002,
       showDust: true,
       dustColor: '#ffffff',
-      beamIntensity: 0.35,
+      beamIntensity: 0.25,
     }
   },
 
-  // ── 5. BROADCASTS (EMERGENCY & ANNOUNCEMENT) ──
+  // ── 5. BROADCASTS ──
   EMERGENCY: {
     default: {
       rayCount: 6,
       rayLength: 300,
       pulseSpeed: 3.5,
-      colors: ['#ffffff', '#dc2626', '#991b1b'],
+      colors: ['rgba(255,255,255,0.3)', '#dc2626', '#991b1b'],
       rotationSpeed: 0.015,
       showDust: false,
       dustColor: '#ef4444',
-      beamIntensity: 0.6,
+      beamIntensity: 0.4,
     }
   },
   ANNOUNCEMENT: {
@@ -145,7 +145,7 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
       rayCount: 4,
       rayLength: 220,
       pulseSpeed: 1.5,
-      colors: ['#eff6ff', '#3b82f6', '#1d4ed8'],
+      colors: ['rgba(239,246,255,0.2)', '#3b82f6', '#1d4ed8'],
       rotationSpeed: 0.002,
       showDust: false,
       dustColor: '#60a5fa',
@@ -212,30 +212,31 @@ export default function RayEngine({
       for (let i = 0; i < config.rayCount; i++) {
         tempRays.push({
           angle: (i / config.rayCount) * Math.PI * 2,
-          width: 0.15 + Math.random() * 0.25,
+          width: 0.12 + Math.random() * 0.2,
           length: config.rayLength * (0.85 + Math.random() * 0.3),
           speed: (0.5 + Math.random() * 0.5) * 0.005,
-          opacity: 0.1 + Math.random() * 0.4,
+          opacity: 0.1 + Math.random() * 0.3,
         });
       }
       raysRef.current = tempRays;
     };
     initRays();
 
+    // 🚀 PARTICLES FIX: 35 ki jagah 80 Particles kar diye taaki screen par saaf dikhein
     const initDust = () => {
       if (!config.showDust) return;
       const tempDust: SparkleDust[] = [];
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
-      for (let i = 0; i < 35; i++) {
+      for (let i = 0; i < 80; i++) {
         tempDust.push({
           x: Math.random() * w,
           y: Math.random() * h,
-          vx: (Math.random() - 0.5) * 0.4,
-          vy: -0.15 - Math.random() * 0.3,
-          size: 1 + Math.random() * 2.5,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: -0.2 - Math.random() * 0.4,
+          size: 1.5 + Math.random() * 3.5,
           alpha: 0.2 + Math.random() * 0.8,
-          speed: 0.02 + Math.random() * 0.04,
+          speed: 0.03 + Math.random() * 0.05,
         });
       }
       dustRef.current = tempDust;
@@ -257,11 +258,12 @@ export default function RayEngine({
       const innerColor = config.colors[0];
       const midColor = config.colors[1];
 
+      // 🚀 CENTER GLOW FIX: Reduced opacity gradient (No solid white circle!)
       ctx.save();
-      const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, config.rayLength * 1.1 * pulseScale);
-      glowGrad.addColorStop(0, innerColor);
-      glowGrad.addColorStop(0.2, innerColor);
-      glowGrad.addColorStop(0.5, midColor + '40');
+      const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, config.rayLength * 1.2 * pulseScale);
+      glowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.2)'); // Soft transparent center
+      glowGrad.addColorStop(0.3, innerColor);
+      glowGrad.addColorStop(0.6, midColor + '20');
       glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
       
       ctx.fillStyle = glowGrad;
@@ -290,8 +292,8 @@ export default function RayEngine({
         ctx.closePath();
 
         const rayGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, currentLength);
-        rayGrad.addColorStop(0, innerColor + 'cc');
-        rayGrad.addColorStop(0.3, midColor + '2b');
+        rayGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
+        rayGrad.addColorStop(0.3, midColor + '22');
         rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
         ctx.fillStyle = rayGrad;
@@ -299,13 +301,14 @@ export default function RayEngine({
       }
       ctx.restore();
 
+      // 🚀 DUST / SPARKLES RENDERING FIX: Shining Golden Dust
       if (config.showDust) {
         ctx.save();
         for (const d of dustRef.current) {
           d.y += d.vy;
           d.x += d.vx;
           
-          d.alpha += Math.sin(pulseTime.current * 1.5 + d.x) * d.speed;
+          d.alpha += Math.sin(pulseTime.current * 2 + d.x) * d.speed;
           const finalAlpha = Math.max(0.1, Math.min(1, d.alpha));
 
           if (d.y < -10) {
@@ -313,8 +316,12 @@ export default function RayEngine({
             d.x = Math.random() * w;
           }
 
+          // Golden Dust Particle Glow
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = config.dustColor;
           ctx.fillStyle = config.dustColor;
-          ctx.globalAlpha = finalAlpha * 0.6;
+          ctx.globalAlpha = finalAlpha * 0.8;
+          
           ctx.beginPath();
           ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
           ctx.fill();
@@ -336,8 +343,8 @@ export default function RayEngine({
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: 4, mixBlendMode: 'screen' }}
+      className="fixed inset-0 w-full h-full pointer-events-none"
+      style={{ zIndex: 0, mixBlendMode: 'screen' }} // 🚀 FIXED: zIndex set to 0 (Background) & fixed positioning
     />
   );
 }
