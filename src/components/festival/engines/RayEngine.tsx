@@ -36,25 +36,25 @@ interface RayPresetConfig {
 }
 
 const DEFAULT_RAY_CONFIG: RayEngineConfig = {
-  rayCount: 12,
-  rayLength: 160,
+  rayCount: 16,
+  rayLength: 500,
   pulseSpeed: 1.5,
-  colors: ['rgba(255,224,102,0.3)', '#f59e0b', '#d97706'],
-  rotationSpeed: 0.002,
+  colors: ['rgba(255,224,102,0.2)', '#f59e0b', '#d97706'],
+  rotationSpeed: 0.001,
   showDust: true,
   dustColor: '#fbbf24',
   beamIntensity: 0.25,
 };
 
 const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
-  // ── 1. RAM_NAVAMI (स्वर्णिम तीर और सूर्यवंशी तेज - FIXED OPACITY) ──
+  // ── 1. RAM_NAVAMI (स्वर्णिम सूर्यवंशी दिव्य किरणें) ──
   RAM_NAVAMI: {
     default: {
-      rayCount: 20,
-      rayLength: 280,
+      rayCount: 22,
+      rayLength: 600,
       pulseSpeed: 1.5,
-      colors: ['rgba(255,251,235,0.25)', '#ff781f', '#ea580c'], // 🚀 Soft center transparency
-      rotationSpeed: 0.003,
+      colors: ['rgba(255,251,235,0.25)', '#ff781f', '#ea580c'],
+      rotationSpeed: 0.0015,
       showDust: true,
       dustColor: '#ffd700',
       beamIntensity: 0.3,
@@ -65,10 +65,10 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
   PONGAL: {
     default: {
       rayCount: 18,
-      rayLength: 240,
+      rayLength: 550,
       pulseSpeed: 1.8,
       colors: ['rgba(255,251,235,0.2)', '#f97316', '#dc2626'],
-      rotationSpeed: -0.003,
+      rotationSpeed: -0.0015,
       showDust: true,
       dustColor: '#fbbf24',
       beamIntensity: 0.3,
@@ -78,8 +78,8 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
   // ── 3. EID AL-ADHA & EID_UL_FITR ──
   EID_UL_FITR: {
     default: {
-      rayCount: 10,
-      rayLength: 200,
+      rayCount: 12,
+      rayLength: 450,
       pulseSpeed: 1.0,
       colors: ['rgba(236,253,245,0.2)', '#10b981', '#047857'],
       rotationSpeed: 0.001,
@@ -90,8 +90,8 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
   },
   EID_AL_ADHA: {
     default: {
-      rayCount: 10,
-      rayLength: 200,
+      rayCount: 12,
+      rayLength: 450,
       pulseSpeed: 1.0,
       colors: ['rgba(236,253,245,0.2)', '#10b981', '#047857'],
       rotationSpeed: 0.001,
@@ -105,10 +105,10 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
   REPUBLIC_DAY: {
     default: {
       rayCount: 18,
-      rayLength: 250,
+      rayLength: 500,
       pulseSpeed: 1.6,
       colors: ['rgba(255,153,51,0.25)', '#ffffff', '#128807'],
-      rotationSpeed: 0.002,
+      rotationSpeed: 0.001,
       showDust: true,
       dustColor: '#ffffff',
       beamIntensity: 0.25,
@@ -117,10 +117,10 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
   INDEPENDENCE_DAY: {
     default: {
       rayCount: 18,
-      rayLength: 250,
+      rayLength: 500,
       pulseSpeed: 1.6,
       colors: ['rgba(255,153,51,0.25)', '#ffffff', '#128807'],
-      rotationSpeed: 0.002,
+      rotationSpeed: 0.001,
       showDust: true,
       dustColor: '#ffffff',
       beamIntensity: 0.25,
@@ -130,11 +130,11 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
   // ── 5. BROADCASTS ──
   EMERGENCY: {
     default: {
-      rayCount: 6,
-      rayLength: 300,
+      rayCount: 8,
+      rayLength: 600,
       pulseSpeed: 3.5,
       colors: ['rgba(255,255,255,0.3)', '#dc2626', '#991b1b'],
-      rotationSpeed: 0.015,
+      rotationSpeed: 0.005,
       showDust: false,
       dustColor: '#ef4444',
       beamIntensity: 0.4,
@@ -142,11 +142,11 @@ const RAY_PRESET_MAP: Record<string, RayPresetConfig> = {
   },
   ANNOUNCEMENT: {
     default: {
-      rayCount: 4,
-      rayLength: 220,
+      rayCount: 6,
+      rayLength: 450,
       pulseSpeed: 1.5,
       colors: ['rgba(239,246,255,0.2)', '#3b82f6', '#1d4ed8'],
-      rotationSpeed: 0.002,
+      rotationSpeed: 0.001,
       showDust: false,
       dustColor: '#60a5fa',
       beamIntensity: 0.2,
@@ -207,33 +207,36 @@ export default function RayEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
+    // 🚀 Rays angle downward from the top header
     const initRays = () => {
       const tempRays: LightRay[] = [];
+      const angleSpread = Math.PI * 0.8; // Downward cone spread
+      const startAngle = Math.PI * 0.1;
+
       for (let i = 0; i < config.rayCount; i++) {
         tempRays.push({
-          angle: (i / config.rayCount) * Math.PI * 2,
-          width: 0.12 + Math.random() * 0.2,
-          length: config.rayLength * (0.85 + Math.random() * 0.3),
-          speed: (0.5 + Math.random() * 0.5) * 0.005,
-          opacity: 0.1 + Math.random() * 0.3,
+          angle: startAngle + (i / config.rayCount) * angleSpread,
+          width: 0.08 + Math.random() * 0.15,
+          length: config.rayLength * (0.8 + Math.random() * 0.4),
+          speed: (0.5 + Math.random() * 0.5) * 0.003,
+          opacity: 0.1 + Math.random() * 0.25,
         });
       }
       raysRef.current = tempRays;
     };
     initRays();
 
-    // 🚀 PARTICLES FIX: 35 ki jagah 80 Particles kar diye taaki screen par saaf dikhein
     const initDust = () => {
       if (!config.showDust) return;
       const tempDust: SparkleDust[] = [];
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
-      for (let i = 0; i < 80; i++) {
+      for (let i = 0; i < 90; i++) {
         tempDust.push({
           x: Math.random() * w,
           y: Math.random() * h,
-          vx: (Math.random() - 0.5) * 0.5,
-          vy: -0.2 - Math.random() * 0.4,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -0.2 - Math.random() * 0.3,
           size: 1.5 + Math.random() * 3.5,
           alpha: 0.2 + Math.random() * 0.8,
           speed: 0.03 + Math.random() * 0.05,
@@ -246,37 +249,41 @@ export default function RayEngine({
     const animate = () => {
       const w = canvas.getBoundingClientRect().width;
       const h = canvas.getBoundingClientRect().height;
+
+      // 🚀 TOP ORIGIN FIX: Ray origin moved to top-center of the screen!
       const cx = w / 2;
-      const cy = h / 2;
+      const cy = -30; // Just above top banner
 
       ctx.clearRect(0, 0, w, h);
 
       pulseTime.current += 0.015 * config.pulseSpeed;
-      const pulseScale = 0.94 + Math.sin(pulseTime.current) * 0.06;
+      const pulseScale = 0.95 + Math.sin(pulseTime.current) * 0.05;
       rotationOffset.current += config.rotationSpeed;
 
       const innerColor = config.colors[0];
       const midColor = config.colors[1];
 
-      // 🚀 CENTER GLOW FIX: Reduced opacity gradient (No solid white circle!)
+      // 🌟 Subtle Divine Glow from Top Header
       ctx.save();
-      const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, config.rayLength * 1.2 * pulseScale);
-      glowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.2)'); // Soft transparent center
-      glowGrad.addColorStop(0.3, innerColor);
-      glowGrad.addColorStop(0.6, midColor + '20');
+      const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 350 * pulseScale);
+      glowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+      glowGrad.addColorStop(0.4, innerColor);
       glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
       
       ctx.fillStyle = glowGrad;
       ctx.beginPath();
-      ctx.arc(cx, cy, config.rayLength * 1.2, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 400, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
+      // ☀️ Downward Divine Rays (God Rays Effect)
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       
+      const sweepOffset = Math.sin(pulseTime.current * 0.5) * 0.05;
+
       for (const ray of raysRef.current) {
-        const finalAngle = ray.angle + rotationOffset.current;
+        const finalAngle = ray.angle + sweepOffset;
         const currentLength = ray.length * pulseScale;
 
         ctx.beginPath();
@@ -291,9 +298,9 @@ export default function RayEngine({
         ctx.lineTo(p2x, p2y);
         ctx.closePath();
 
-        const rayGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, currentLength);
-        rayGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
-        rayGrad.addColorStop(0.3, midColor + '22');
+        const rayGrad = ctx.createLinearGradient(cx, cy, p1x, p1y);
+        rayGrad.addColorStop(0, 'rgba(255,255,255,0.2)');
+        rayGrad.addColorStop(0.3, midColor + '20');
         rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
 
         ctx.fillStyle = rayGrad;
@@ -301,7 +308,7 @@ export default function RayEngine({
       }
       ctx.restore();
 
-      // 🚀 DUST / SPARKLES RENDERING FIX: Shining Golden Dust
+      // ✨ Floating Sparkles
       if (config.showDust) {
         ctx.save();
         for (const d of dustRef.current) {
@@ -316,7 +323,6 @@ export default function RayEngine({
             d.x = Math.random() * w;
           }
 
-          // Golden Dust Particle Glow
           ctx.shadowBlur = 8;
           ctx.shadowColor = config.dustColor;
           ctx.fillStyle = config.dustColor;
@@ -344,7 +350,7 @@ export default function RayEngine({
     <canvas
       ref={canvasRef}
       className="fixed inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: 0, mixBlendMode: 'screen' }} // 🚀 FIXED: zIndex set to 0 (Background) & fixed positioning
+      style={{ zIndex: 0, mixBlendMode: 'screen' }}
     />
   );
 }
