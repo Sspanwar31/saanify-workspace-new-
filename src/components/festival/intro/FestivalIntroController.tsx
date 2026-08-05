@@ -20,6 +20,8 @@ import NavratriCinematicIntro from '../engines/effects/Navratri/NavratriCinemati
 import RepublicDayCinematicIntro from '../engines/effects/Republic-Day/RepublicDayCinematicIntro';
 import IndependenceDayCinematicIntro from '../engines/effects/Independence-Day/IndependenceDayCinematicIntro';
 import RamNamiCinematicIntro from '../engines/effects/Ram-Nami/RamNamiCinematicIntro';
+// 🚀 PONGAL CINEMATIC INTRO IMPORT
+import PongalCinematicIntro from '../engines/effects/Pongal/PongalCinematicIntro';
 
 
 
@@ -162,6 +164,16 @@ export default function FestivalIntroController({
   if (isActive && preset.toUpperCase() === 'RAM_NAVAMI') {
     return (
       <RamNamiCinematicIntro 
+        onComplete={onHandover} 
+        imageUrl={heroConfig?.image_url} 
+      />
+    );
+  }
+
+  // 🚀 13. PONGAL ACTIVATION (Harvest Clay Pot & Sugarcane Cinematic Intro)
+  if (isActive && preset.toUpperCase() === 'PONGAL') {
+    return (
+      <PongalCinematicIntro 
         onComplete={onHandover} 
         imageUrl={heroConfig?.image_url} 
       />
