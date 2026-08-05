@@ -206,7 +206,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       // Ground / Courtyard
       const groundGrad = ctx.createRadialGradient(W * 0.5, H * 0.7, 0, W * 0.5, H * 0.7, W * 0.8);
       groundGrad.addColorStop(0, '#3d2818');
-      groundGrad.addColorStop(1, '#0a0500';
+      groundGrad.addColorStop(1, '#0a0500'); // ✅ Bracket close kar diya gaya hai
       ctx.fillStyle = groundGrad;
       ctx.fillRect(0, H * 0.5, W, H * 0.5);
 
