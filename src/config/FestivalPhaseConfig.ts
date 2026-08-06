@@ -52,6 +52,16 @@ RAM_NAVAMI: {
     HANDOVER: 9000   // 9.0s से 18.0s: "जय श्री राम" टेक्स्ट, ग्रीटिंग और फेड-आउट हैंडओवर
   }
 },
+
+  // ━━━ PONGAL (🚀 17.5s Epic 5-Scene Cultural Sequence Sync) ━━━
+  PONGAL: {
+    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    timings: {
+      FLASH: 2500,     // 2.5s: स्वर्णिम सूर्योदय, उड़ते पक्षी और गन्ने के खेत (0s - 2.5s)
+      SHOOTING: 11000, // 11.0s: बैलगाड़ी यात्रा, रंगोली कोलम, उबलता पोंगल पॉट, केला पत्ता दावत, अलाव और पतंग (2.5s - 13.5s)
+      HANDOVER: 4000   // 4.0s: 3D स्वर्णिम "பொங்கல் வாழ்த்துக்கள் / Happy Pongal 2027" टेक्स्ट और कोमल फ़ेड-आउट (13.5s - 17.5s)
+    }
+  },
   
   // ━━━ EID_UL_FITR & EID_AL_ADHA ━━━
   EID_UL_FITR: {
