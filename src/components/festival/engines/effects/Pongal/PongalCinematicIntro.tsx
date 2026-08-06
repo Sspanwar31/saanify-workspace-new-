@@ -58,7 +58,6 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
   useEffect(() => {
     onCompleteRef.current = onComplete;
 
-    // Load Tamil and English Elegant Fonts
     if (!document.getElementById('pongal-google-font')) {
       const link = document.createElement('link');
       link.id = 'pongal-google-font';
@@ -86,7 +85,6 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
     const grain = document.createElement('canvas');
     const gctx = grain.getContext('2d')!;
 
-    // Sprites for soft particles
     function makeSprite(size: number, inner: string, mid: string): HTMLCanvasElement {
       const c = document.createElement('canvas');
       c.width = c.height = size;
@@ -137,65 +135,73 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalAlpha = vis;
 
-      // Sky Gradient
+      // Cinematic Sky Gradient
       const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
-      skyGrad.addColorStop(0.00, '#1a0a05');
-      skyGrad.addColorStop(0.4, '#4a1505');
-      skyGrad.addColorStop(0.6, '#c45a20');
-      skyGrad.addColorStop(0.8, '#e68a30');
+      skyGrad.addColorStop(0.00, '#050102');
+      skyGrad.addColorStop(0.3, '#3a0e02');
+      skyGrad.addColorStop(0.6, '#8a300a');
+      skyGrad.addColorStop(0.85, '#d65a15');
       skyGrad.addColorStop(1.00, '#2a1a05');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // Sun
+      // Sun with Lens Flare
       const sx = W * 0.5;
       const sy = H * 0.6 - smoothstep(0, 4, t) * H * 0.15;
-      const sunR = Math.min(W, H) * 0.08;
+      const sunR = Math.min(W, H) * 0.06;
       ctx.globalCompositeOperation = 'screen';
-      const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.min(W, H) * 0.5);
-      halo.addColorStop(0, `rgba(255, 200, 100, ${0.6 * vis})`);
-      halo.addColorStop(0.5, `rgba(255, 100, 20, ${0.2 * vis})`);
+      
+      const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.min(W, H) * 0.6);
+      halo.addColorStop(0, `rgba(255, 220, 120, ${0.7 * vis})`);
+      halo.addColorStop(0.3, `rgba(255, 100, 20, ${0.3 * vis})`);
       halo.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = halo;
       ctx.fillRect(0, 0, W, H);
 
       const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(0.1, sunR));
-      core.addColorStop(0, `rgba(255, 255, 220, ${1.0 * vis})`);
+      core.addColorStop(0, `rgba(255, 255, 240, ${1.0 * vis})`);
+      core.addColorStop(0.8, `rgba(255, 180, 50, ${0.8 * vis})`);
       core.addColorStop(1, 'rgba(255, 100, 0, 0)');
       ctx.fillStyle = core;
       ctx.beginPath();
       ctx.arc(sx, sy, Math.max(0.1, sunR), 0, Math.PI * 2);
       ctx.fill();
+
+      // Anamorphic Lens Flare Line
+      ctx.globalAlpha = 0.5 * vis;
+      const flareGrad = ctx.createLinearGradient(0, sy, W, sy);
+      flareGrad.addColorStop(0, 'rgba(255,200,100,0)');
+      flareGrad.addColorStop(0.5, `rgba(255,220,150,0.4)`);
+      flareGrad.addColorStop(1, 'rgba(255,200,100,0)');
+      ctx.fillStyle = flareGrad;
+      ctx.fillRect(0, sy - 2, W, 4);
+      ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
 
-      // Sugarcane Field Silhouette
-      ctx.fillStyle = '#0a0500';
-      ctx.beginPath();
-      ctx.moveTo(0, H);
-      ctx.quadraticCurveTo(W * 0.3, H * 0.7, W * 0.5, H * 0.75);
-      ctx.quadraticCurveTo(W * 0.8, H * 0.8, W, H * 0.7);
-      ctx.lineTo(W, H);
-      ctx.closePath();
-      ctx.fill();
-
-      // Sugarcane Stalks
-      const stalkCount = 30;
-      for (let i = 0; i < stalkCount; i++) {
-        const tx = (i / stalkCount) * W + Math.sin(i * 12.3) * 20;
-        const ty = H * 0.75 + (i % 4) * 15;
-        const sway = Math.sin(t * 1.5 + i) * 10;
-        ctx.strokeStyle = `rgba(20, 30, 10, ${0.8 * vis})`;
-        ctx.lineWidth = 3 + (i % 3);
-        ctx.beginPath();
-        ctx.moveTo(tx, ty);
-        ctx.quadraticCurveTo(tx + sway, ty - 80, tx + sway * 1.5, ty - 160);
-        ctx.stroke();
-      }
+      // Realistic Sugarcane Field (Layered)
+      const drawSugarcaneLayer = (yOffset: number, color: string, scale: number, count: number) => {
+        for (let i = 0; i < count; i++) {
+          const tx = (i / count) * W + Math.sin(i * 12.3) * 30 * scale;
+          const ty = H * 0.7 + yOffset + (i % 4) * 10 * scale;
+          const sway = Math.sin(t * 1.5 + i) * 15 * scale;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 4 * scale + (i % 3);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(tx, ty);
+          ctx.quadraticCurveTo(tx + sway, ty - 120 * scale, tx + sway * 1.5, ty - 240 * scale);
+          ctx.stroke();
+        }
+      };
+      
+      drawSugarcaneLayer(80, `rgba(40, 15, 5, ${0.9 * vis})`, 1.2, 20);
+      drawSugarcaneLayer(40, `rgba(25, 10, 2, ${1.0 * vis})`, 1.0, 25);
+      drawSugarcaneLayer(10, `rgba(10, 5, 0, ${1.0 * vis})`, 0.8, 30);
 
       ctx.restore();
     }
 
-    // ============ SCENE 2: COURTYARD, KOLAM & CLAY STOVE (4.0s -> 8.0s) ============
+    // ============ SCENE 2: COURTYARD, KOLAM & CLAY STOVE (4.0s -> 12.0s) ============
     function drawCourtyardAndStove(t: number) {
       const vis = smoothstep(4.0, 5.0, t) * (1 - smoothstep(11.5, 12.0, t));
       if (vis <= 0.001) return;
@@ -203,72 +209,101 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.globalAlpha = vis;
 
-      // Ground / Courtyard
-      const groundGrad = ctx.createRadialGradient(W * 0.5, H * 0.7, 0, W * 0.5, H * 0.7, W * 0.8);
+      // Dark Cinematic Courtyard Ground
+      const groundGrad = ctx.createRadialGradient(W * 0.5, H * 0.8, 0, W * 0.5, H * 0.8, W * 0.9);
       groundGrad.addColorStop(0, '#3d2818');
-      groundGrad.addColorStop(1, '#0a0500'); // ✅ Bracket close kar diya gaya hai
+      groundGrad.addColorStop(0.6, '#1a0d04');
+      groundGrad.addColorStop(1, '#0a0500'); // ✅ Fixed Syntax Error Here
       ctx.fillStyle = groundGrad;
-      ctx.fillRect(0, H * 0.5, W, H * 0.5);
+      ctx.fillRect(0, H * 0.4, W, H * 0.6);
 
-      // Kolam (Floor Drawing)
-      ctx.strokeStyle = `rgba(255, 250, 240, ${0.4 * vis})`;
-      ctx.lineWidth = 2;
-      const kx = W * 0.5, ky = H * 0.85;
+      // Glowing Kolam (Floor Drawing)
+      ctx.strokeStyle = `rgba(255, 240, 200, ${0.6 * vis})`;
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = `rgba(255, 200, 100, ${0.8 * vis})`;
+      const kx = W * 0.5, ky = H * 0.88;
       for (let i = 0; i < 8; i++) {
         ctx.beginPath();
-        ctx.ellipse(kx, ky, Math.max(0.1, 40 + i * 15), Math.max(0.1, 10 + i * 4), 0, 0, Math.PI * 2);
+        ctx.ellipse(kx, ky, Math.max(0.1, 50 + i * 20), Math.max(0.1, 12 + i * 5), 0, 0, Math.PI * 2);
         ctx.stroke();
       }
+      ctx.shadowBlur = 0;
 
-      // Clay Stove (Chulha)
+      // 3D Clay Stove (Chulha)
       const stoveX = W * 0.5;
-      const stoveY = H * 0.65;
-      const s = Math.min(W, H) * 0.002;
+      const stoveY = H * 0.68;
+      const s = Math.min(W, H) * 0.0025;
 
-      ctx.fillStyle = '#2a1208';
-      ctx.beginPath();
-      ctx.ellipse(stoveX, stoveY, Math.max(0.1, 60 * s), Math.max(0.1, 20 * s), 0, 0, Math.PI * 2);
-      ctx.fill();
-
+      // Stove Base
       const stoveGrad = ctx.createLinearGradient(stoveX - 50 * s, stoveY, stoveX + 50 * s, stoveY);
       stoveGrad.addColorStop(0, '#1a0500');
-      stoveGrad.addColorStop(0.5, '#4a2515');
+      stoveGrad.addColorStop(0.5, '#5a2515');
       stoveGrad.addColorStop(1, '#1a0500');
       ctx.fillStyle = stoveGrad;
-      ctx.fillRect(stoveX - 40 * s, stoveY, 80 * s, 50 * s);
-
-      // Earthen Pot (Pongal Pot)
-      const potX = stoveX;
-      const potY = stoveY - 10 * s;
-      
-      ctx.fillStyle = '#0a0200';
       ctx.beginPath();
-      ctx.ellipse(potX, potY - 40 * s, Math.max(0.1, 35 * s), Math.max(0.1, 10 * s), 0, 0, Math.PI * 2);
+      ctx.moveTo(stoveX - 50 * s, stoveY);
+      ctx.lineTo(stoveX - 40 * s, stoveY + 40 * s);
+      ctx.lineTo(stoveX + 40 * s, stoveY + 40 * s);
+      ctx.lineTo(stoveX + 50 * s, stoveY);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Stove Top
+      ctx.fillStyle = '#2a1208';
+      ctx.beginPath();
+      ctx.ellipse(stoveX, stoveY, Math.max(0.1, 50 * s), Math.max(0.1, 15 * s), 0, 0, Math.PI * 2);
       ctx.fill();
 
-      const potGrad = ctx.createLinearGradient(potX - 30 * s, potY, potX + 30 * s, potY);
-      potGrad.addColorStop(0, '#1a0500');
+      // 3D Earthen Pot (Pongal Pot)
+      const potX = stoveX;
+      const potY = stoveY - 20 * s;
+      
+      // Pot Shadow/Inner
+      ctx.fillStyle = '#0a0200';
+      ctx.beginPath();
+      ctx.ellipse(potX, potY - 50 * s, Math.max(0.1, 40 * s), Math.max(0.1, 12 * s), 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pot Body with 3D Gradient
+      const potGrad = ctx.createRadialGradient(potX - 20 * s, potY - 10 * s, 5 * s, potX, potY, 60 * s);
+      potGrad.addColorStop(0, '#b3622d');
       potGrad.addColorStop(0.4, '#5e2d14');
-      potGrad.addColorStop(0.6, '#8c451e');
       potGrad.addColorStop(1, '#1a0500');
       ctx.fillStyle = potGrad;
       ctx.beginPath();
-      ctx.moveTo(potX - 25 * s, potY - 40 * s);
-      ctx.bezierCurveTo(potX - 40 * s, potY, potX - 30 * s, potY + 40 * s, potX, potY + 45 * s);
-      ctx.bezierCurveTo(potX + 30 * s, potY + 40 * s, potX + 40 * s, potY, potX + 25 * s, potY - 40 * s);
+      ctx.moveTo(potX - 30 * s, potY - 50 * s);
+      ctx.bezierCurveTo(potX - 50 * s, potY, potX - 40 * s, potY + 50 * s, potX, potY + 55 * s);
+      ctx.bezierCurveTo(potX + 40 * s, potY + 50 * s, potX + 50 * s, potY, potX + 30 * s, potY - 50 * s);
       ctx.closePath();
       ctx.fill();
-
-      // Fire in Stove
-      ctx.globalCompositeOperation = 'lighter';
-      const fireFlicker = 0.8 + Math.sin(t * 15) * 0.2;
-      const fireGrad = ctx.createRadialGradient(potX, stoveY, 0, potX, stoveY, Math.max(0.1, 40 * s));
-      fireGrad.addColorStop(0, `rgba(255, 240, 100, ${0.8 * vis * fireFlicker})`);
-      fireGrad.addColorStop(0.4, `rgba(255, 100, 0, ${0.4 * vis * fireFlicker})`);
-      fireGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = fireGrad;
+      
+      // Pot Rim
+      ctx.strokeStyle = `rgba(255, 150, 50, ${0.5 * vis})`;
+      ctx.lineWidth = 4 * s;
       ctx.beginPath();
-      ctx.arc(potX, stoveY, Math.max(0.1, 40 * s), 0, Math.PI * 2);
+      ctx.ellipse(potX, potY - 50 * s, Math.max(0.1, 40 * s), Math.max(0.1, 12 * s), 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Realistic Fire in Stove
+      ctx.globalCompositeOperation = 'lighter';
+      const fireFlicker = 0.8 + Math.sin(t * 20) * 0.2;
+      
+      // Outer Fire Glow
+      const fireGlow = ctx.createRadialGradient(potX, stoveY, 0, potX, stoveY, Math.max(0.1, 80 * s));
+      fireGlow.addColorStop(0, `rgba(255, 100, 0, ${0.6 * vis * fireFlicker})`);
+      fireGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = fireGlow;
+      ctx.fillRect(potX - 100 * s, stoveY - 100 * s, 200 * s, 200 * s);
+
+      // Inner Fire Core
+      const fireCore = ctx.createRadialGradient(potX, stoveY - 10 * s, 0, potX, stoveY - 10 * s, Math.max(0.1, 30 * s));
+      fireCore.addColorStop(0, `rgba(255, 255, 200, ${1.0 * vis * fireFlicker})`);
+      fireCore.addColorStop(0.4, `rgba(255, 200, 50, ${0.8 * vis * fireFlicker})`);
+      fireCore.addColorStop(1, 'rgba(255, 50, 0, 0)');
+      ctx.fillStyle = fireCore;
+      ctx.beginPath();
+      ctx.arc(potX, stoveY - 10 * s, Math.max(0.1, 30 * s), 0, Math.PI * 2);
       ctx.fill();
       ctx.globalCompositeOperation = 'source-over';
 
@@ -280,33 +315,33 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       const vis = smoothstep(8.0, 9.0, t) * (1 - smoothstep(11.5, 12.0, t));
       if (vis <= 0.001) return;
 
-      const s = Math.min(W, H) * 0.002;
+      const s = Math.min(W, H) * 0.0025;
       const potX = W * 0.5;
-      const potTopY = H * 0.65 - 10 * s - 40 * s;
+      const potTopY = H * 0.68 - 20 * s - 50 * s;
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // Magical Overflow Glow
-      const glowR = Math.min(W, H) * 0.3 * smoothstep(8.0, 9.5, t);
+      // Magical Overflow Glow Burst
+      const glowR = Math.min(W, H) * 0.4 * smoothstep(8.0, 9.5, t);
       const glow = ctx.createRadialGradient(potX, potTopY, 0, potX, potTopY, Math.max(0.1, glowR));
-      glow.addColorStop(0, `rgba(255, 220, 150, ${0.4 * vis})`);
-      glow.addColorStop(0.5, `rgba(255, 160, 50, ${0.2 * vis})`);
+      glow.addColorStop(0, `rgba(255, 240, 180, ${0.5 * vis})`);
+      glow.addColorStop(0.3, `rgba(255, 180, 50, ${0.3 * vis})`);
       glow.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, W, H);
 
-      // Overflowing Milk Particles
-      if (t > 8.0 && t < 10.5 && Math.random() < 0.8) {
-        for (let i = 0; i < 3; i++) {
+      // Overflowing Milk & Rice Particles
+      if (t > 8.0 && t < 10.5 && Math.random() < 0.9) {
+        for (let i = 0; i < 4; i++) {
           const p = pool.spawn(); if (!p) break;
           p.type = 'overflow';
-          p.x = potX + (Math.random() - 0.5) * 20 * s;
+          p.x = potX + (Math.random() - 0.5) * 30 * s;
           p.y = potTopY;
-          p.vx = (Math.random() - 0.5) * 4;
-          p.vy = -3 - Math.random() * 4;
-          p.size = 2 + Math.random() * 4;
-          p.maxLife = 2.0; p.life = 0;
+          p.vx = (Math.random() - 0.5) * 5;
+          p.vy = -4 - Math.random() * 5;
+          p.size = 3 + Math.random() * 5;
+          p.maxLife = 2.5; p.life = 0;
           p.alpha = 1.0;
         }
       }
@@ -314,7 +349,18 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    // ============ SCENE 4: 3D GOLDEN TYPOGRAPHY (12.0s -> 18.0s) ============
+    // ============ SCENE 4: CINEMATIC DARKNESS & GOLDEN TYPOGRAPHY (11.5s -> 18.0s) ============
+    function drawTextBackgroundDarken(t: number) {
+      const vis = smoothstep(11.5, 12.5, t) * (1 - smoothstep(17.0, 18.0, t));
+      if (vis <= 0.001) return;
+      
+      // Darken everything behind the text
+      ctx.save();
+      ctx.fillStyle = `rgba(2, 1, 0, ${0.95 * vis})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
     function drawTypography(t: number) {
       const vis = smoothstep(12.0, 13.5, t) * (1 - smoothstep(17.0, 18.0, t));
       if (vis <= 0.001) return;
@@ -325,12 +371,12 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
 
       // Top God Rays for Text
       ctx.globalCompositeOperation = 'lighter';
-      const rayCount = 12;
+      const rayCount = 15;
       const sx = W / 2, sy = -20;
       for (let i = 0; i < rayCount; i++) {
         const angle = (Math.PI * 0.3) + (i / rayCount) * (Math.PI * 0.4) + Math.sin(t * 0.2 + i) * 0.02;
-        const len = H * 0.7;
-        const a = 0.04 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
+        const len = H * 0.8;
+        const a = 0.05 * vis * (0.7 + 0.3 * Math.sin(t * 1.5 + i));
         const ex = sx + Math.cos(angle) * len;
         const ey = sy + Math.sin(angle) * len;
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
@@ -346,13 +392,14 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       }
       ctx.globalCompositeOperation = 'source-over';
 
-      // Tamil Text
+      // Tamil Text (பொங்கல் திருநாள் வாழ்த்துக்கள்)
       const fontSizeTamil = Math.min(W * 0.08, 80);
-      const cy1 = H * 0.4;
+      const cy1 = H * 0.42;
       ctx.font = `900 ${fontSizeTamil}px "Noto Sans Tamil", sans-serif`;
       
+      // 3D Extrude Effect
       ctx.strokeStyle = '#1d0b02';
-      ctx.lineWidth = fontSizeTamil * 0.04;
+      ctx.lineWidth = fontSizeTamil * 0.08;
       ctx.lineJoin = 'round';
       ctx.strokeText('பொங்கல் திருநாள் வாழ்த்துக்கள்', W / 2, cy1);
 
@@ -363,18 +410,18 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       goldGradTamil.addColorStop(0.80, '#B87B00');
       goldGradTamil.addColorStop(1.00, '#3A1F00');
 
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = `rgba(229, 160, 13, ${0.6 * vis})`;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = `rgba(229, 160, 13, ${0.8 * vis})`;
       ctx.fillStyle = goldGradTamil;
       ctx.fillText('பொங்கல் திருநாள் வாழ்த்துக்கள்', W / 2, cy1);
 
-      // English Text
+      // English Text (Happy Pongal 2027)
       const fontSizeEng = Math.min(W * 0.06, 60);
-      const cy2 = H * 0.55;
+      const cy2 = H * 0.58;
       ctx.font = `700 ${fontSizeEng}px "Cinzel", serif`;
       
       ctx.strokeStyle = '#1d0b02';
-      ctx.lineWidth = fontSizeEng * 0.04;
+      ctx.lineWidth = fontSizeEng * 0.06;
       ctx.strokeText('Happy Pongal 2027', W / 2, cy2);
 
       const goldGradEng = ctx.createLinearGradient(0, cy2 - fontSizeEng * 0.5, 0, cy2 + fontSizeEng * 0.5);
@@ -383,7 +430,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       goldGradEng.addColorStop(0.70, '#B87B00');
       goldGradEng.addColorStop(1.00, '#3A1F00');
 
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 15;
       ctx.shadowColor = `rgba(229, 160, 13, ${0.6 * vis})`;
       ctx.fillStyle = goldGradEng;
       ctx.fillText('Happy Pongal 2027', W / 2, cy2);
@@ -393,30 +440,26 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
 
     // ============ PARTICLE SPAWN & UPDATES ============
     function spawnAmbientParticles(t: number) {
-      // Dust (0s - 4s)
       if (t < 4.0 && Math.random() < 0.3) {
         const p = pool.spawn(); if (!p) return;
         p.type = 'dust'; p.x = Math.random() * W; p.y = H * 0.5 + Math.random() * H * 0.5;
         p.vx = (Math.random() - 0.5) * 0.5; p.vy = -0.5 - Math.random() * 0.5;
         p.size = 1 + Math.random() * 2; p.maxLife = 5; p.life = 0; p.alpha = 0;
       }
-      // Steam (4s - 12s)
       if (t > 4.0 && t < 12.0 && Math.random() < 0.4) {
-        const s = Math.min(W, H) * 0.002;
+        const s = Math.min(W, H) * 0.0025;
         const p = pool.spawn(); if (!p) return;
-        p.type = 'steam'; p.x = W * 0.5 + (Math.random() - 0.5) * 20 * s; p.y = H * 0.65 - 50 * s;
+        p.type = 'steam'; p.x = W * 0.5 + (Math.random() - 0.5) * 20 * s; p.y = H * 0.68 - 60 * s;
         p.vx = (Math.random() - 0.5) * 0.5; p.vy = -1 - Math.random() * 1.5;
         p.size = 15 + Math.random() * 15; p.maxLife = 3.5; p.life = 0; p.alpha = 0;
       }
-      // Fire Sparks (4s - 12s)
       if (t > 4.0 && t < 12.0 && Math.random() < 0.6) {
-        const s = Math.min(W, H) * 0.002;
+        const s = Math.min(W, H) * 0.0025;
         const p = pool.spawn(); if (!p) return;
-        p.type = 'spark'; p.x = W * 0.5 + (Math.random() - 0.5) * 30 * s; p.y = H * 0.65;
+        p.type = 'spark'; p.x = W * 0.5 + (Math.random() - 0.5) * 30 * s; p.y = H * 0.68;
         p.vx = (Math.random() - 0.5) * 2; p.vy = -2 - Math.random() * 3;
         p.size = 1 + Math.random() * 2; p.maxLife = 1.5; p.life = 0; p.alpha = 1;
       }
-      // Marigold Petals (8s - 18s)
       if (t > 8.0 && t < 17.5 && Math.random() < 0.2) {
         const p = pool.spawn(); if (!p) return;
         p.type = 'petal'; p.x = Math.random() * W; p.y = -20;
@@ -435,6 +478,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
         if (!p || !p.active) continue;
 
         p.life += dt;
+        // ✅ Fixed variable scope: defined lr here so all types can use it
         const lr = p.life / p.maxLife;
 
         if (p.type === 'dust') {
@@ -456,7 +500,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
           }
         } else if (p.type === 'spark') {
           p.x += p.vx; p.y += p.vy;
-          p.vy += 0.5 * dt * 60; // Gravity
+          p.vy += 0.5 * dt * 60;
           p.alpha = 1 - lr;
           if (p.alpha > 0.01) {
             ctx.globalAlpha = p.alpha;
@@ -467,7 +511,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
           }
         } else if (p.type === 'overflow') {
           p.x += p.vx; p.y += p.vy;
-          p.vy += 0.8 * dt * 60; // Gravity for milk
+          p.vy += 0.8 * dt * 60;
           p.alpha = 1 - lr;
           if (p.alpha > 0.01) {
             ctx.globalAlpha = p.alpha * 0.8;
@@ -475,7 +519,6 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
             ctx.beginPath();
             ctx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI * 2);
             ctx.fill();
-            // Golden glow
             ctx.globalAlpha = p.alpha * 0.4;
             const sz = p.size * 4;
             ctx.drawImage(dustSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
@@ -488,14 +531,16 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
 
-      // Draw Petals (Normal blending)
+      // Draw Petals
       for (let i = 0; i < pool.particles.length; i++) {
         const p = pool.particles[i];
         if (!p || !p.active || p.type !== 'petal') continue;
 
         p.x += p.vx + Math.sin(t * 2 + p.y * 0.01) * 0.5;
         p.y += p.vy; p.rot += p.rotSpd * dt * 60;
-        p.alpha = smoothstep(0, 0.5, lr) * (1 - smoothstep(0.8, 1, lr)) * 0.9 * (t < 17 ? 1 : 1 - smoothstep(17, 18, t));
+        // ✅ Fixed variable scope: used local lr for petals
+        const lr_petal = p.life / p.maxLife;
+        p.alpha = smoothstep(0, 0.5, lr_petal) * (1 - smoothstep(0.8, 1, lr_petal)) * 0.9 * (t < 17 ? 1 : 1 - smoothstep(17, 18, t));
 
         if (p.alpha > 0.01) {
           ctx.save();
@@ -515,7 +560,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
     // ============ POST-PROCESSING ============
     function applyBloom(t: number) {
       const textSceneVis = smoothstep(12.0, 13.5, t);
-      const bloomAlpha = lerp(0.45, 0.15, textSceneVis);
+      const bloomAlpha = lerp(0.45, 0.25, textSceneVis);
 
       bctx.clearRect(0, 0, bloom.width, bloom.height);
       bctx.filter = 'blur(4px) brightness(1.2)';
@@ -548,7 +593,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       const fade = smoothstep(17.0, 18.0, t);
       const grad = ctx.createRadialGradient(W / 2, H / 2, W * 0.22, W / 2, H / 2, W * 0.85);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, `rgba(0,0,0,${0.55 + fade * 0.4})`);
+      grad.addColorStop(1, `rgba(0,0,0,${0.65 + fade * 0.35})`);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
     }
@@ -598,6 +643,9 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
 
       ctx.restore();
 
+      // Darken background specifically for text phase
+      drawTextBackgroundDarken(t);
+      
       drawTypography(t);
 
       const fadeIn = 1 - smoothstep(0, 1.2, t);
@@ -637,9 +685,12 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       rafId = requestAnimationFrame(loop);
     }
 
-    resize();
-    window.addEventListener('resize', resize);
-    rafId = requestAnimationFrame(loop);
+    // Wait for fonts to load before starting animation to prevent missing text
+    document.fonts.ready.then(() => {
+      resize();
+      window.addEventListener('resize', resize);
+      rafId = requestAnimationFrame(loop);
+    });
 
     return () => {
       running = false;
