@@ -130,7 +130,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-    // SCENE 1: CINEMATIC HARVEST & BULLOCK CART (0.0s -> 3.5s)
+    // SCENE 1: CINEMATIC HARVEST & BULLOCK CART (0.0s -> 3.5s) - [Screenshot 1]
     // =========================================================================
     function drawScene1_HarvestCart(t: number) {
       const vis = smoothstep(0.0, 0.8, t) * (1 - smoothstep(3.0, 3.5, t));
@@ -197,7 +197,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       drawSugarcaneLayer(80, `rgba(40, 15, 5, ${0.9 * vis})`, 1.2, 20);
       drawSugarcaneLayer(40, `rgba(25, 10, 2, ${1.0 * vis})`, 1.0, 25);
       
-      // Realistic Bullock Cart
+      // Realistic Bullock Cart & White Ox
       const cartX = W * 0.15 + (t * 80);
       const cartY = H * 0.78;
       const wheelR = Math.min(W, H) * 0.06;
@@ -205,12 +205,30 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.save();
       ctx.translate(cartX, cartY);
 
+      // Ox Silhouette
+      ctx.fillStyle = '#0a0301';
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 3.5, 0);
+      ctx.quadraticCurveTo(-wheelR * 4.5, -wheelR * 0.5, -wheelR * 5, -wheelR * 0.2); // Head
+      ctx.lineTo(-wheelR * 5.5, -wheelR * 0.8); // Horn
+      ctx.lineTo(-wheelR * 4.2, wheelR); // Bottom neck
+      ctx.lineTo(-wheelR * 1.5, wheelR * 0.8);
+      ctx.closePath();
+      ctx.fill();
+
       // Cart Body Shadow & 3D Shading
       const cartGrad = ctx.createLinearGradient(0, -wheelR, 0, wheelR);
       cartGrad.addColorStop(0, '#4a200a');
       cartGrad.addColorStop(1, '#1a0a02');
       ctx.fillStyle = cartGrad;
       ctx.fillRect(-wheelR * 1.5, -wheelR * 0.8, wheelR * 3, wheelR * 0.6);
+
+      // Person on Cart
+      ctx.fillStyle = '#2a1005';
+      ctx.beginPath();
+      ctx.arc(wheelR * 0.5, -wheelR * 1.5, wheelR * 0.4, 0, Math.PI * 2); // Head
+      ctx.fill();
+      ctx.fillRect(wheelR * 0.2, -wheelR * 1.2, wheelR * 0.6, wheelR * 0.8); // Body
 
       // Sugarcane Load
       ctx.fillStyle = '#c28527';
@@ -251,7 +269,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       // Spawn Dust behind cart
       if (Math.random() < 0.3) {
         const p = pool.spawn(); if (!p) return;
-        p.type = 'dust'; p.x = cartX - wheelR; p.y = cartY;
+        p.type = 'dust'; p.x = cartX - wheelR * 2; p.y = cartY;
         p.vx = -1 - Math.random(); p.vy = -0.5 - Math.random();
         p.size = 2 + Math.random() * 3; p.maxLife = 2; p.life = 0; p.alpha = 0.5;
         p.gravity = -0.2; p.drag = 0.95;
@@ -259,10 +277,10 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-    // SCENE 2: 3D POT, KOLAM & FIRE (3.2s -> 7.0s)
+    // SCENE 2: 3D POT, KOLAM & COURTYARD (3.2s -> 6.5s) - [Screenshot 2]
     // =========================================================================
     function drawScene2_CourtyardPot(t: number) {
-      const vis = smoothstep(3.2, 4.0, t) * (1 - smoothstep(6.5, 7.0, t));
+      const vis = smoothstep(3.2, 4.0, t) * (1 - smoothstep(6.0, 6.5, t));
       if (vis <= 0.001) return;
 
       ctx.save();
@@ -276,7 +294,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = groundGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // House Silhouette
+      // Traditional House with Festive Decor
       ctx.fillStyle = '#0a0301';
       ctx.beginPath();
       ctx.moveTo(W * 0.1, H * 0.45);
@@ -286,6 +304,14 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.lineTo(W * 0.15, H * 0.65);
       ctx.closePath();
       ctx.fill();
+      
+      // Mango Leaf Toran
+      ctx.strokeStyle = `rgba(46, 107, 18, ${vis})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(W * 0.15, H * 0.45);
+      ctx.quadraticCurveTo(W * 0.5, H * 0.52, W * 0.85, H * 0.45);
+      ctx.stroke();
 
       // Glowing Kolam
       ctx.strokeStyle = `rgba(255, 240, 200, ${0.6 * vis})`;
@@ -300,6 +326,15 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       }
       ctx.shadowBlur = 0;
 
+      // People Silhouettes around pot
+      ctx.fillStyle = '#050100';
+      ctx.beginPath();
+      ctx.arc(W * 0.35, H * 0.68, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(W * 0.33, H * 0.70, 20, 40);
+      ctx.beginPath();
+      ctx.arc(W * 0.65, H * 0.68, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(W * 0.63, H * 0.70, 20, 40);
+
       // 3D Clay Stove
       const potX = W * 0.5, potY = H * 0.62;
       const s = Math.min(W, H) * 0.002;
@@ -311,7 +346,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = stoveGrad;
       ctx.fillRect(potX - 40*s, potY, 80*s, 30*s);
 
-      // 3D Earthen Pot (Bezier Curves)
+      // 3D Earthen Pot
       ctx.fillStyle = '#0a0200';
       ctx.beginPath();
       ctx.ellipse(potX, potY - 30*s, Math.max(0.1, 35*s), Math.max(0.1, 10*s), 0, 0, Math.PI * 2);
@@ -347,9 +382,22 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.beginPath();
       ctx.arc(potX, potY + 5*s, Math.max(0.1, 25*s), 0, Math.PI * 2);
       ctx.fill();
+
+      // Boiling Milk Overflow
+      if (t > 4.5) {
+        const milkVis = smoothstep(4.5, 5.5, t) * vis;
+        const milkGrad = ctx.createRadialGradient(potX, potY - 30*s, 0, potX, potY - 30*s, Math.max(0.1, 40*s));
+        milkGrad.addColorStop(0, `rgba(255, 255, 250, ${0.95 * milkVis})`);
+        milkGrad.addColorStop(0.6, `rgba(255, 220, 120, ${0.7 * milkVis})`);
+        milkGrad.addColorStop(1, 'rgba(255, 120, 0, 0)');
+        ctx.fillStyle = milkGrad;
+        ctx.beginPath();
+        ctx.arc(potX, potY - 30*s, Math.max(0.1, 40*s), 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.globalCompositeOperation = 'source-over';
 
-      // Fire Embers & Steam Spawning
+      // Particles
       if (Math.random() < 0.6) {
         const p = pool.spawn(); if (!p) return;
         p.type = 'spark'; p.x = potX + (Math.random() - 0.5) * 20*s; p.y = potY + 5*s;
@@ -369,10 +417,10 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-    // SCENE 3: BANANA LEAF FEAST (6.8s -> 10.0s)
+    // SCENE 3: BANANA LEAF FEAST (6.3s -> 9.5s) - [Screenshot 3]
     // =========================================================================
     function drawScene3_Feast(t: number) {
-      const vis = smoothstep(6.8, 7.5, t) * (1 - smoothstep(9.5, 10.0, t));
+      const vis = smoothstep(6.3, 7.0, t) * (1 - smoothstep(9.0, 9.5, t));
       if (vis <= 0.001) return;
 
       ctx.save();
@@ -419,26 +467,40 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
         ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 15, 6, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#c67d0a'; ctx.beginPath(); ctx.arc(-18, -10, 10, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#0d3d0d'; ctx.beginPath(); ctx.arc(-18, -10, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e63946'; ctx.beginPath(); ctx.arc(18, -10, 8, 0, Math.PI * 2); ctx.fill();
         
-        // Steam from food
-        if (Math.random() < 0.1) {
-          const p = pool.spawn(); if (!p) return;
-          p.type = 'steam'; p.x = lx; p.y = ly + 15;
-          p.vx = (Math.random() - 0.5) * 0.5; p.vy = -1 - Math.random();
-          p.size = 8 + Math.random() * 8; p.maxLife = 2.5; p.life = 0; p.alpha = 0.4;
-          p.gravity = -0.5; p.drag = 0.99;
-        }
-
+        // People Silhouettes behind leaves
         ctx.restore();
       }
+      
+      // Draw people around the table
+      ctx.fillStyle = `rgba(10, 5, 2, ${vis})`;
+      for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const px = cx + Math.cos(angle) * (radius + 40);
+          const py = cy + Math.sin(angle) * (radius * 0.5 + 20);
+          ctx.beginPath();
+          ctx.arc(px, py - 30, 12, 0, Math.PI * 2); ctx.fill(); // Head
+          ctx.fillRect(px - 8, py - 20, 16, 30); // Body
+      }
+
+      // Steam from food
+      if (Math.random() < 0.2) {
+        const p = pool.spawn(); if (!p) return;
+        p.type = 'steam'; p.x = cx + (Math.random() - 0.5) * 40; p.y = cy;
+        p.vx = (Math.random() - 0.5) * 0.5; p.vy = -1 - Math.random();
+        p.size = 12 + Math.random() * 10; p.maxLife = 2.5; p.life = 0; p.alpha = 0.4;
+        p.gravity = -0.5; p.drag = 0.99;
+      }
+
       ctx.restore();
     }
 
     // =========================================================================
-    // SCENE 4: BONFIRE & KITES (9.8s -> 13.5s)
+    // SCENE 4: SUNSET BONFIRE (9.3s -> 12.5s) - [Screenshot 4]
     // =========================================================================
     function drawScene4_BonfireKites(t: number) {
-      const vis = smoothstep(9.8, 10.5, t) * (1 - smoothstep(13.0, 13.5, t));
+      const vis = smoothstep(9.3, 10.0, t) * (1 - smoothstep(12.0, 12.5, t));
       if (vis <= 0.001) return;
 
       ctx.save();
@@ -452,9 +514,20 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, W, H);
 
+      // River and Mountains
+      ctx.fillStyle = '#0a0301';
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.6);
+      ctx.quadraticCurveTo(W * 0.3, H * 0.4, W * 0.5, H * 0.55);
+      ctx.quadraticCurveTo(W * 0.8, H * 0.7, W, H * 0.5);
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fill();
+
       // Sun
       ctx.globalCompositeOperation = 'screen';
-      const sunGlow = ctx.createRadialGradient(W * 0.5, H * 0.65, 0, W * 0.5, H * 0.65, W * 0.4);
+      const sunGlow = ctx.createRadialGradient(W * 0.5, H * 0.55, 0, W * 0.5, H * 0.55, W * 0.4);
       sunGlow.addColorStop(0, `rgba(255, 245, 200, ${0.8 * vis})`);
       sunGlow.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = sunGlow;
@@ -463,46 +536,19 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
 
       // Ground
       ctx.fillStyle = '#050100';
-      ctx.fillRect(0, H * 0.65, W, H * 0.35);
+      ctx.fillRect(0, H * 0.7, W, H * 0.3);
 
-      // Dynamic Kites
-      const kites = [
-        { x: W * 0.2, y: H * 0.25, color: '#e63946', size: 25 },
-        { x: W * 0.75, y: H * 0.2, color: '#ffd166', size: 30 },
-        { x: W * 0.5, y: H * 0.15, color: '#06d6a0', size: 22 },
-        { x: W * 0.85, y: H * 0.35, color: '#118ab2', size: 28 }
-      ];
-
-      for (const k of kites) {
-        const kx = k.x + Math.sin(t * 1.5 + k.size) * 20;
-        const ky = k.y + Math.cos(t * 1.2 + k.size) * 15;
-        ctx.save();
-        ctx.translate(kx, ky);
-        ctx.rotate(Math.sin(t * 1.5 + k.size) * 0.2);
-
-        const kGrad = ctx.createLinearGradient(0, -k.size, 0, k.size);
-        kGrad.addColorStop(0, k.color);
-        kGrad.addColorStop(1, '#000');
-        ctx.fillStyle = kGrad;
-        ctx.beginPath();
-        ctx.moveTo(0, -k.size);
-        ctx.lineTo(k.size * 0.7, 0);
-        ctx.lineTo(0, k.size);
-        ctx.lineTo(-k.size * 0.7, 0);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(0, k.size);
-        ctx.quadraticCurveTo(15, k.size + 20, 5, k.size + 40);
-        ctx.stroke();
-        ctx.restore();
+      // People around fire
+      ctx.fillStyle = '#050100';
+      const fireX = W * 0.5, fireY = H * 0.8;
+      for(let i=0; i<5; i++) {
+        const px = fireX + (i - 2) * 60;
+        const py = fireY + 10;
+        ctx.beginPath(); ctx.arc(px, py - 20, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(px - 7, py - 10, 14, 25);
       }
 
       // Bonfire
-      const fireX = W * 0.5, fireY = H * 0.75;
       ctx.globalCompositeOperation = 'lighter';
       const fireFlicker = 0.85 + Math.sin(t * 25) * 0.15;
       
@@ -532,14 +578,151 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
         p.gravity = 1.5; p.drag = 0.97; p.color = Math.random() < 0.5 ? '#ffd700' : '#ff3300';
       }
 
+      // Kites in background
+      const kites = [
+        { x: W * 0.2, y: H * 0.25, color: '#e63946', size: 25 },
+        { x: W * 0.75, y: H * 0.2, color: '#ffd166', size: 30 }
+      ];
+      for (const k of kites) {
+        const kx = k.x + Math.sin(t * 1.5 + k.size) * 20;
+        const ky = k.y + Math.cos(t * 1.2 + k.size) * 15;
+        ctx.save();
+        ctx.translate(kx, ky);
+        ctx.rotate(Math.sin(t * 1.5 + k.size) * 0.2);
+        const kGrad = ctx.createLinearGradient(0, -k.size, 0, k.size);
+        kGrad.addColorStop(0, k.color);
+        kGrad.addColorStop(1, '#000');
+        ctx.fillStyle = kGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, -k.size);
+        ctx.lineTo(k.size * 0.7, 0);
+        ctx.lineTo(0, k.size);
+        ctx.lineTo(-k.size * 0.7, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       ctx.restore();
     }
 
     // =========================================================================
-    // SCENE 5: 3D METALLIC TYPOGRAPHY (13.2s -> 17.5s)
+    // SCENE 5: KITE FESTIVAL (12.3s -> 15.5s) - [Screenshot 5 & 6]
+    // =========================================================================
+    function drawScene5_KiteFestival(t: number) {
+      const vis = smoothstep(12.3, 13.0, t) * (1 - smoothstep(15.0, 15.5, t));
+      if (vis <= 0.001) return;
+
+      ctx.save();
+      ctx.globalAlpha = vis;
+
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+      skyGrad.addColorStop(0.0, '#2b1004');
+      skyGrad.addColorStop(0.5, '#e85d04');
+      skyGrad.addColorStop(1.0, '#faa307');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Intense Sun Rays
+      ctx.globalCompositeOperation = 'lighter';
+      const rayCount = 12;
+      for (let i = 0; i < rayCount; i++) {
+        const angle = (i / rayCount) * Math.PI * 2 + t * 0.1;
+        ctx.save();
+        ctx.translate(W/2, H*0.4);
+        ctx.rotate(angle);
+        const rayGrad = ctx.createLinearGradient(0, 0, 0, -W);
+        rayGrad.addColorStop(0, `rgba(255, 200, 100, ${0.15 * vis})`);
+        rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = rayGrad;
+        ctx.fillRect(-20, -W, 40, W);
+        ctx.restore();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+
+      // Ground & Kids Silhouettes
+      ctx.fillStyle = '#1a0500';
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.8);
+      ctx.quadraticCurveTo(W * 0.5, H * 0.75, W, H * 0.8);
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.fill();
+
+      // Kids flying kites
+      for(let i=0; i<4; i++) {
+        const px = W * 0.2 + i * (W * 0.2);
+        const py = H * 0.85;
+        ctx.fillStyle = '#0a0200';
+        ctx.beginPath(); ctx.arc(px, py - 15, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(px - 6, py - 7, 12, 20);
+        
+        // Kite string
+        const kx = px + Math.sin(t * 2 + i) * 40;
+        const ky = H * 0.3 - i * 20;
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px, py - 15);
+        ctx.quadraticCurveTo(px + 20, py - 60, kx, ky);
+        ctx.stroke();
+      }
+
+      // Dynamic Colorful Kites
+      const kites = [
+        { x: W * 0.2, y: H * 0.3, color: '#e63946', size: 35 },
+        { x: W * 0.4, y: H * 0.2, color: '#06d6a0', size: 30 },
+        { x: W * 0.6, y: H * 0.35, color: '#118ab2', size: 40 },
+        { x: W * 0.8, y: H * 0.25, color: '#ffd166', size: 32 },
+        { x: W * 0.5, y: H * 0.15, color: '#ef476f', size: 28 }
+      ];
+
+      for (const k of kites) {
+        const kx = k.x + Math.sin(t * 1.5 + k.size) * 30;
+        const ky = k.y + Math.cos(t * 1.2 + k.size) * 20;
+        ctx.save();
+        ctx.translate(kx, ky);
+        ctx.rotate(Math.sin(t * 1.5 + k.size) * 0.3);
+
+        const kGrad = ctx.createLinearGradient(0, -k.size, 0, k.size);
+        kGrad.addColorStop(0, k.color);
+        kGrad.addColorStop(0.5, k.color);
+        kGrad.addColorStop(1, '#000');
+        ctx.fillStyle = kGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, -k.size);
+        ctx.lineTo(k.size * 0.7, 0);
+        ctx.lineTo(0, k.size);
+        ctx.lineTo(-k.size * 0.7, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -k.size);
+        ctx.lineTo(0, k.size);
+        ctx.moveTo(-k.size * 0.7, 0);
+        ctx.lineTo(k.size * 0.7, 0);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, k.size);
+        ctx.quadraticCurveTo(15, k.size + 20, 5, k.size + 40);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // SCENE 6: 3D METALLIC TYPOGRAPHY (15.3s -> 18.0s)
     // =========================================================================
     function drawTextBackgroundDarken(t: number) {
-      const vis = smoothstep(13.2, 14.0, t) * (1 - smoothstep(17.0, 17.5, t));
+      const vis = smoothstep(15.3, 16.0, t) * (1 - smoothstep(17.5, 18.0, t));
       if (vis <= 0.001) return;
       ctx.save();
       ctx.fillStyle = `rgba(2, 1, 0, ${0.98 * vis})`;
@@ -547,8 +730,8 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.restore();
     }
 
-    function drawScene5_Typography(t: number) {
-      const vis = smoothstep(13.5, 14.5, t) * (1 - smoothstep(17.0, 17.5, t));
+    function drawScene6_Typography(t: number) {
+      const vis = smoothstep(15.5, 16.5, t) * (1 - smoothstep(17.5, 18.0, t));
       if (vis <= 0.001) return;
 
       ctx.save();
@@ -691,8 +874,9 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
         const p = pool.particles[i];
         if (!p || !p.active || p.type !== 'petal') continue;
 
+        const lr_petal = p.life / p.maxLife;
         p.rot += p.rotSpd * dt * 60;
-        p.alpha = smoothstep(0, 0.5, lr) * (1 - smoothstep(0.8, 1, lr)) * 0.9 * (t < 17 ? 1 : 1 - smoothstep(17, 17.5, t));
+        p.alpha = smoothstep(0, 0.5, lr_petal) * (1 - smoothstep(0.8, 1, lr_petal)) * 0.9 * (t < 18 ? 1 : 1 - smoothstep(18, 18.5, t));
 
         if (p.alpha > 0.01) {
           ctx.save();
@@ -751,14 +935,15 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       drawScene2_CourtyardPot(t);
       drawScene3_Feast(t);
       drawScene4_BonfireKites(t);
+      drawScene5_KiteFestival(t);
       
       updateAndDrawParticles(dt, t);
 
       drawTextBackgroundDarken(t);
-      drawScene5_Typography(t);
+      drawScene6_Typography(t);
 
       const fadeIn = 1 - smoothstep(0, 1.2, t);
-      const fadeOut = smoothstep(17.0, 17.5, t);
+      const fadeOut = smoothstep(17.5, 18.0, t);
       const fadeAmt = Math.max(fadeIn, fadeOut);
 
       if (fadeAmt > 0.001) {
@@ -778,12 +963,12 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
       lastTime = now;
 
-      if (t >= 17.5 && !handoverTriggered) {
+      if (t >= 18.0 && !handoverTriggered) {
         handoverTriggered = true;
         if (onCompleteRef.current) onCompleteRef.current();
       }
 
-      if (t < 18.0) {
+      if (t < 18.5) {
         render(t, dt);
       } else {
         ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
