@@ -130,7 +130,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-    // SCENE 1: CINEMATIC HARVEST & BULLOCK CART (0.0s -> 3.5s) - [Screenshot 1]
+    // SCENE 1: SUNRISE MOUNTAINS & BULLOCK CART WITH FARMER (0.0s -> 3.5s)
     // =========================================================================
     function drawScene1_HarvestCart(t: number) {
       const vis = smoothstep(0.0, 0.8, t) * (1 - smoothstep(3.0, 3.5, t));
@@ -149,9 +149,9 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // Sun with Anamorphic Lens Flare
-      const sx = W * 0.7, sy = H * 0.45;
-      const sunR = Math.min(W, H) * 0.06;
+      // Sun rising from behind mountains
+      const sx = W * 0.65, sy = H * 0.55 - smoothstep(0, 3.5, t) * 20; // Sun moves up slightly
+      const sunR = Math.min(W, H) * 0.08;
       ctx.globalCompositeOperation = 'screen';
       
       const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.min(W, H) * 0.6);
@@ -179,68 +179,93 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
 
-      // Layered Sugarcane Field
-      const drawSugarcaneLayer = (yOffset: number, color: string, scale: number, count: number) => {
-        for (let i = 0; i < count; i++) {
-          const tx = (i / count) * W + Math.sin(i * 12.3) * 30 * scale;
-          const ty = H * 0.7 + yOffset + (i % 4) * 10 * scale;
-          const sway = Math.sin(t * 1.5 + i) * 15 * scale;
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 4 * scale + (i % 3);
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(tx, ty);
-          ctx.quadraticCurveTo(tx + sway, ty - 120 * scale, tx + sway * 1.5, ty - 240 * scale);
-          ctx.stroke();
-        }
-      };
-      drawSugarcaneLayer(80, `rgba(40, 15, 5, ${0.9 * vis})`, 1.2, 20);
-      drawSugarcaneLayer(40, `rgba(25, 10, 2, ${1.0 * vis})`, 1.0, 25);
+      // Distant Mountains Silhouette (Behind Cart)
+      ctx.fillStyle = '#1a0a04';
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.6);
+      ctx.quadraticCurveTo(W * 0.2, H * 0.45, W * 0.4, H * 0.55);
+      ctx.quadraticCurveTo(W * 0.55, H * 0.65, W * 0.7, H * 0.5); // Mountain peak near sun
+      ctx.quadraticCurveTo(W * 0.85, H * 0.4, W, H * 0.6);
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fill();
       
-      // Realistic Bullock Cart & White Ox
+      // Foreground Ground where cart moves
+      ctx.fillStyle = '#0a0301';
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.75);
+      ctx.quadraticCurveTo(W * 0.5, H * 0.7, W, H * 0.75);
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fill();
+
+      // Realistic Bullock Cart & Farmer
       const cartX = W * 0.15 + (t * 80);
       const cartY = H * 0.78;
-      const wheelR = Math.min(W, H) * 0.06;
+      const wheelR = Math.min(W, H) * 0.05;
 
       ctx.save();
       ctx.translate(cartX, cartY);
 
-      // Ox Silhouette
-      ctx.fillStyle = '#0a0301';
+      // Ox (Bullock) Silhouette
+      ctx.fillStyle = '#050100';
+      // Body
       ctx.beginPath();
-      ctx.moveTo(-wheelR * 3.5, 0);
-      ctx.quadraticCurveTo(-wheelR * 4.5, -wheelR * 0.5, -wheelR * 5, -wheelR * 0.2); // Head
-      ctx.lineTo(-wheelR * 5.5, -wheelR * 0.8); // Horn
-      ctx.lineTo(-wheelR * 4.2, wheelR); // Bottom neck
-      ctx.lineTo(-wheelR * 1.5, wheelR * 0.8);
+      ctx.ellipse(-wheelR * 3, 0, wheelR * 1.5, wheelR * 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Head & Horns
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 4, -wheelR * 0.2);
+      ctx.quadraticCurveTo(-wheelR * 5, -wheelR * 0.5, -wheelR * 5.2, -wheelR * 1.2); // Horn
+      ctx.lineTo(-wheelR * 4.5, -wheelR * 0.5);
       ctx.closePath();
       ctx.fill();
+      // Legs
+      ctx.fillRect(-wheelR * 3.8, wheelR * 0.5, wheelR * 0.3, wheelR);
+      ctx.fillRect(-wheelR * 2.2, wheelR * 0.5, wheelR * 0.3, wheelR);
 
-      // Cart Body Shadow & 3D Shading
+      // Cart Body
       const cartGrad = ctx.createLinearGradient(0, -wheelR, 0, wheelR);
       cartGrad.addColorStop(0, '#4a200a');
       cartGrad.addColorStop(1, '#1a0a02');
       ctx.fillStyle = cartGrad;
-      ctx.fillRect(-wheelR * 1.5, -wheelR * 0.8, wheelR * 3, wheelR * 0.6);
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 1.5, 0);
+      ctx.lineTo(wheelR * 1.5, 0);
+      ctx.lineTo(wheelR * 1.2, -wheelR * 0.8);
+      ctx.lineTo(-wheelR * 1.2, -wheelR * 0.8);
+      ctx.closePath();
+      ctx.fill();
 
-      // Person on Cart
+      // Farmer (Kisan) on Cart
       ctx.fillStyle = '#2a1005';
+      // Head
       ctx.beginPath();
-      ctx.arc(wheelR * 0.5, -wheelR * 1.5, wheelR * 0.4, 0, Math.PI * 2); // Head
+      ctx.arc(0, -wheelR * 1.6, wheelR * 0.35, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillRect(wheelR * 0.2, -wheelR * 1.2, wheelR * 0.6, wheelR * 0.8); // Body
-
-      // Sugarcane Load
-      ctx.fillStyle = '#c28527';
+      // Turban hint
+      ctx.fillStyle = '#5a3008';
       ctx.beginPath();
-      ctx.ellipse(-wheelR * 0.8, -wheelR * 1.3, wheelR * 0.6, wheelR * 0.5, 0, 0, Math.PI * 2);
-      ctx.ellipse(0, -wheelR * 1.4, wheelR * 0.7, wheelR * 0.6, 0, 0, Math.PI * 2);
-      ctx.ellipse(wheelR * 0.8, -wheelR * 1.2, wheelR * 0.5, wheelR * 0.5, 0, 0, Math.PI * 2);
+      ctx.arc(0, -wheelR * 1.8, wheelR * 0.3, Math.PI, 0);
       ctx.fill();
+      // Body
+      ctx.fillStyle = '#2a1005';
+      ctx.fillRect(-wheelR * 0.25, -wheelR * 1.3, wheelR * 0.5, wheelR * 0.8);
+      // Arm holding reins (reaching towards ox)
+      ctx.strokeStyle = '#2a1005';
+      ctx.lineWidth = wheelR * 0.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 0.2, -wheelR * 1.1);
+      ctx.lineTo(-wheelR * 2.5, -wheelR * 0.5);
+      ctx.stroke();
 
       // 3D Wooden Wheel
       ctx.save();
-      ctx.rotate(t * 3);
+      ctx.translate(0, 0);
+      ctx.rotate(t * 3); // Wheel rotation
       const wheelGrad = ctx.createRadialGradient(0, 0, wheelR * 0.2, 0, 0, wheelR);
       wheelGrad.addColorStop(0, '#3a1805');
       wheelGrad.addColorStop(1, '#0a0301');
@@ -267,11 +292,11 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.restore();
 
       // Spawn Dust behind cart
-      if (Math.random() < 0.3) {
+      if (Math.random() < 0.4) {
         const p = pool.spawn(); if (!p) return;
         p.type = 'dust'; p.x = cartX - wheelR * 2; p.y = cartY;
-        p.vx = -1 - Math.random(); p.vy = -0.5 - Math.random();
-        p.size = 2 + Math.random() * 3; p.maxLife = 2; p.life = 0; p.alpha = 0.5;
+        p.vx = -1 - Math.random() * 1.5; p.vy = -0.5 - Math.random();
+        p.size = 3 + Math.random() * 4; p.maxLife = 2.5; p.life = 0; p.alpha = 0.6;
         p.gravity = -0.2; p.drag = 0.95;
       }
     }
