@@ -194,72 +194,117 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       // Foreground Ground where cart moves
       ctx.fillStyle = '#0a0301';
       ctx.beginPath();
-      ctx.moveTo(0, H * 0.75);
-      ctx.quadraticCurveTo(W * 0.5, H * 0.7, W, H * 0.75);
+      ctx.moveTo(0, H * 0.78);
+      ctx.quadraticCurveTo(W * 0.5, H * 0.75, W, H * 0.78);
       ctx.lineTo(W, H);
       ctx.lineTo(0, H);
       ctx.closePath();
       ctx.fill();
 
       // Realistic Bullock Cart & Farmer
-      const cartX = W * 0.15 + (t * 80);
-      const cartY = H * 0.78;
-      const wheelR = Math.min(W, H) * 0.05;
+      const cartX = W * 0.1 + (t * 90);
+      const cartY = H * 0.72;
+      const wheelR = Math.min(W, H) * 0.08; // Increased wheel size for visibility
 
       ctx.save();
       ctx.translate(cartX, cartY);
 
       // Ox (Bullock) Silhouette
-      ctx.fillStyle = '#050100';
+      ctx.fillStyle = '#100300'; // Dark body
       // Body
       ctx.beginPath();
-      ctx.ellipse(-wheelR * 3, 0, wheelR * 1.5, wheelR * 0.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(-wheelR * 3.5, -wheelR * 0.5, wheelR * 1.8, wheelR * 1, 0, 0, Math.PI * 2);
       ctx.fill();
-      // Head & Horns
+      // Hump
       ctx.beginPath();
-      ctx.moveTo(-wheelR * 4, -wheelR * 0.2);
-      ctx.quadraticCurveTo(-wheelR * 5, -wheelR * 0.5, -wheelR * 5.2, -wheelR * 1.2); // Horn
-      ctx.lineTo(-wheelR * 4.5, -wheelR * 0.5);
+      ctx.ellipse(-wheelR * 3.2, -wheelR * 1.4, wheelR * 0.6, wheelR * 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Head
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 5, -wheelR * 0.5);
+      ctx.quadraticCurveTo(-wheelR * 6, -wheelR * 1, -wheelR * 6.5, -wheelR * 1.8); // Horn up
+      ctx.lineTo(-wheelR * 5.5, -wheelR * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      // Second Horn
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 5, -wheelR * 0.7);
+      ctx.quadraticCurveTo(-wheelR * 5.5, -wheelR * 1.2, -wheelR * 5.8, -wheelR * 2); 
+      ctx.lineTo(-wheelR * 5.2, -wheelR * 0.7);
       ctx.closePath();
       ctx.fill();
       // Legs
-      ctx.fillRect(-wheelR * 3.8, wheelR * 0.5, wheelR * 0.3, wheelR);
-      ctx.fillRect(-wheelR * 2.2, wheelR * 0.5, wheelR * 0.3, wheelR);
+      ctx.fillRect(-wheelR * 4.5, wheelR * 0.3, wheelR * 0.4, wheelR * 1.2);
+      ctx.fillRect(-wheelR * 2.5, wheelR * 0.3, wheelR * 0.4, wheelR * 1.2);
+      
+      // Rim light on Ox to separate from background
+      ctx.strokeStyle = 'rgba(255, 150, 50, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(-wheelR * 3.5, -wheelR * 0.5, wheelR * 1.8, wheelR * 1, 0, Math.PI * 0.2, Math.PI * 0.8);
+      ctx.stroke();
+
+      // Yoke connecting Ox and Cart
+      ctx.strokeStyle = '#5a2a08';
+      ctx.lineWidth = wheelR * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 1.5, -wheelR * 0.2);
+      ctx.lineTo(-wheelR * 3, -wheelR * 0.5);
+      ctx.stroke();
 
       // Cart Body
       const cartGrad = ctx.createLinearGradient(0, -wheelR, 0, wheelR);
-      cartGrad.addColorStop(0, '#4a200a');
-      cartGrad.addColorStop(1, '#1a0a02');
+      cartGrad.addColorStop(0, '#8c451e'); // Warmer brown
+      cartGrad.addColorStop(1, '#3a1805');
       ctx.fillStyle = cartGrad;
       ctx.beginPath();
       ctx.moveTo(-wheelR * 1.5, 0);
       ctx.lineTo(wheelR * 1.5, 0);
-      ctx.lineTo(wheelR * 1.2, -wheelR * 0.8);
-      ctx.lineTo(-wheelR * 1.2, -wheelR * 0.8);
+      ctx.lineTo(wheelR * 1.3, -wheelR * 1.2);
+      ctx.lineTo(-wheelR * 1.3, -wheelR * 1.2);
       ctx.closePath();
       ctx.fill();
+      
+      // Wood texture lines on cart
+      ctx.strokeStyle = '#2a1005';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 1.4, -wheelR * 0.4);
+      ctx.lineTo(wheelR * 1.4, -wheelR * 0.4);
+      ctx.moveTo(-wheelR * 1.4, -wheelR * 0.8);
+      ctx.lineTo(wheelR * 1.4, -wheelR * 0.8);
+      ctx.stroke();
 
       // Farmer (Kisan) on Cart
-      ctx.fillStyle = '#2a1005';
-      // Head
-      ctx.beginPath();
-      ctx.arc(0, -wheelR * 1.6, wheelR * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-      // Turban hint
-      ctx.fillStyle = '#5a3008';
-      ctx.beginPath();
-      ctx.arc(0, -wheelR * 1.8, wheelR * 0.3, Math.PI, 0);
-      ctx.fill();
       // Body
-      ctx.fillStyle = '#2a1005';
-      ctx.fillRect(-wheelR * 0.25, -wheelR * 1.3, wheelR * 0.5, wheelR * 0.8);
+      ctx.fillStyle = '#4a200a';
+      ctx.fillRect(-wheelR * 0.3, -wheelR * 1.8, wheelR * 0.8, wheelR * 1.2);
+      // Head
+      ctx.fillStyle = '#8c451e';
+      ctx.beginPath();
+      ctx.arc(0, -wheelR * 2.2, wheelR * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // Turban (Golden for high visibility)
+      ctx.fillStyle = '#d4af37'; 
+      ctx.beginPath();
+      ctx.arc(0, -wheelR * 2.4, wheelR * 0.35, Math.PI, 0);
+      ctx.fill();
+      
       // Arm holding reins (reaching towards ox)
-      ctx.strokeStyle = '#2a1005';
-      ctx.lineWidth = wheelR * 0.2;
+      ctx.strokeStyle = '#4a200a';
+      ctx.lineWidth = wheelR * 0.3;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(-wheelR * 0.2, -wheelR * 1.1);
-      ctx.lineTo(-wheelR * 2.5, -wheelR * 0.5);
+      ctx.moveTo(-wheelR * 0.2, -wheelR * 1.6);
+      ctx.lineTo(-wheelR * 2.8, -wheelR * 0.8);
+      ctx.stroke();
+      
+      // Reins (Rope)
+      ctx.strokeStyle = '#5a3008';
+      ctx.lineWidth = wheelR * 0.1;
+      ctx.beginPath();
+      ctx.moveTo(-wheelR * 2.8, -wheelR * 0.8);
+      ctx.lineTo(-wheelR * 4.5, -wheelR * 0.5);
       ctx.stroke();
 
       // 3D Wooden Wheel
@@ -267,19 +312,21 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       ctx.translate(0, 0);
       ctx.rotate(t * 3); // Wheel rotation
       const wheelGrad = ctx.createRadialGradient(0, 0, wheelR * 0.2, 0, 0, wheelR);
-      wheelGrad.addColorStop(0, '#3a1805');
-      wheelGrad.addColorStop(1, '#0a0301');
+      wheelGrad.addColorStop(0, '#8c451e');
+      wheelGrad.addColorStop(1, '#1a0a02');
       ctx.fillStyle = wheelGrad;
       ctx.beginPath();
       ctx.arc(0, 0, wheelR, 0, Math.PI * 2);
       ctx.fill();
       
-      ctx.strokeStyle = '#240e02';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#2a1005';
+      ctx.lineWidth = wheelR * 0.2;
       ctx.beginPath();
       ctx.arc(0, 0, wheelR, 0, Math.PI * 2);
       ctx.stroke();
 
+      ctx.strokeStyle = '#3a1805';
+      ctx.lineWidth = wheelR * 0.1;
       for (let s = 0; s < 8; s++) {
         const angle = (s / 8) * Math.PI * 2;
         ctx.beginPath();
@@ -287,6 +334,13 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
         ctx.lineTo(Math.cos(angle) * wheelR, Math.sin(angle) * wheelR);
         ctx.stroke();
       }
+      
+      // Hub
+      ctx.fillStyle = '#5a2a08';
+      ctx.beginPath();
+      ctx.arc(0, 0, wheelR * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      
       ctx.restore();
       ctx.restore();
       ctx.restore();
@@ -294,7 +348,7 @@ export default function PongalCinematicIntro({ onComplete }: Props) {
       // Spawn Dust behind cart
       if (Math.random() < 0.4) {
         const p = pool.spawn(); if (!p) return;
-        p.type = 'dust'; p.x = cartX - wheelR * 2; p.y = cartY;
+        p.type = 'dust'; p.x = cartX - wheelR * 2; p.y = cartY + wheelR * 0.5;
         p.vx = -1 - Math.random() * 1.5; p.vy = -0.5 - Math.random();
         p.size = 3 + Math.random() * 4; p.maxLife = 2.5; p.life = 0; p.alpha = 0.6;
         p.gravity = -0.2; p.drag = 0.95;
