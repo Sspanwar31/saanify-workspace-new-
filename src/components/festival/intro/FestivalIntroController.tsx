@@ -84,7 +84,7 @@ export default function FestivalIntroController({
 
   // 🚀 3. LIGHT REVEAL GROUP (Christmas, Ram Navami, Eid, etc.)
    // ✅ NAYA (Ise replace karein):
-  const isLightRevealPreset = ['CHRISTMAS', 'EID_UL_FITR', 'EID_AL_ADHA'].includes(preset.toUpperCase());
+  const isLightRevealPreset = ['CHRISTMAS', ].includes(preset.toUpperCase());
 
   if (isActive && isLightRevealPreset && heroConfig) {
     return (
