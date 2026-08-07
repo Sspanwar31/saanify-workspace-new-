@@ -18,6 +18,7 @@ import Crystal2027Hero from '../heroes/Crystal2027Hero'; // 🚀
 import GlassmorphicHeartHero from '../heroes/GlassmorphicHeartHero';  
 import IndependenceDayGreeting from '../heroes/IndependenceDayGreeting'; // 🚀 नया: लाल किला और तिरंगा कंपोनेंट इम्पोर्ट किया
 import RamNavamiHero from '../heroes/RamNavamiHero'; // 🚀 NAYA: RamNavamiHero 
+import PongalHero from '../heroes/PongalHero';
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
 const ComponentMap: any = {
@@ -47,7 +48,7 @@ const ComponentMap: any = {
   'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
   'SUN_ARGHYA': <SunGlow />, 
   'SUN_GOD': <SunGlow />,
-  'HARVEST_POT': <span className="text-[110px] drop-shadow-2xl">🏺</span>,
+  'HARVEST_POT': <PongalHero />, // 
   'HOLY_KAABA': <span className="text-[110px] drop-shadow-2xl">🕋</span>,
   'NY_COUNTDOWN':  <Crystal2027Hero />, // 🚀 अब घड़ी की जगह हमारा खुद का 3D क्रिस्टल 2027 रेंडर होगा!
   'NATIONAL_PRIDE': <IndependenceDayGreeting />,
