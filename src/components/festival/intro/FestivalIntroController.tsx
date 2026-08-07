@@ -183,13 +183,10 @@ export default function FestivalIntroController({
     );
   }
 
-// 🚀 14. EID ACTIVATION (Eid Ul Fitr & Eid Al Adha Royal Cinematic Intro)
-  if (isActive && ['EID_UL_FITR', 'EID_AL_ADHA'].includes(preset.toUpperCase())) {
-    return (
-      <EidCinematicIntro onComplete={onHandover} />
-    );
-  }
-
+// 🚀 14. EID ACTIVATION (FLEXIBLE MATCH: EID_UL_FITR, EID UL_FITR, EID_AL_ADHA sabhi catch honge!)
+  if (isActive && presetKey.includes('EID')) {
+    return <EidCinematicIntro onComplete={onHandover} />;
+  } 
 
   return (
     <>
