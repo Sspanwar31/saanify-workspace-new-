@@ -76,8 +76,15 @@ export default function MoonHero({ imageUrl, heroConfig }: Props) {
             <div className="absolute inset-0 bg-amber-400/20 blur-3xl rounded-full scale-125 -z-10 animate-pulse"></div>
           </div>
 
-          {/* 5. Arabic Calligraphy (Metallic Text) */}
-          <div className="relative z-10 text-3xl sm:text-5xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-300 to-amber-700 drop-shadow-[0_4px_15px_rgba(0,0,0,0.8)]">
+          {/* 5. Arabic Calligraphy (Fixed Solid Gold 3D Text) */}
+          <div 
+            className="relative z-10 text-4xl sm:text-6xl font-black tracking-[0.2em]"
+            style={{ 
+              color: '#FFD700',
+              textShadow: '0 0 15px rgba(255, 215, 0, 0.8), 0 4px 6px rgba(0, 0, 0, 0.9)',
+              fontFamily: 'serif'
+            }}
+          >
             عيد مبارك
           </div>
 
