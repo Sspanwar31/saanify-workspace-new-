@@ -22,8 +22,8 @@ import IndependenceDayCinematicIntro from '../engines/effects/Independence-Day/I
 import RamNamiCinematicIntro from '../engines/effects/Ram-Nami/RamNamiCinematicIntro';
 // 🚀 PONGAL CINEMATIC INTRO IMPORT
 import PongalCinematicIntro from '../engines/effects/Pongal/PongalCinematicIntro';
-
-
+// 🚀 EID ROYAL CINEMATIC INTRO IMPORT
+import EidCinematicIntro from '../engines/effects/eid/EidCinematicIntro';
 
 export default function FestivalIntroController({
   isActive,
@@ -182,7 +182,15 @@ export default function FestivalIntroController({
       />
     );
   }
-  
+
+// 🚀 14. EID ACTIVATION (Eid Ul Fitr & Eid Al Adha Royal Cinematic Intro)
+  if (isActive && ['EID_UL_FITR', 'EID_AL_ADHA'].includes(preset.toUpperCase())) {
+    return (
+      <EidCinematicIntro onComplete={onHandover} />
+    );
+  }
+
+
   return (
     <>
       {children(currentPhase)}
