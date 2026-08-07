@@ -42,6 +42,10 @@ export default function FestivalIntroController({
   mediaConfig?: any; // 👈 2. TYPE DEFINE KIYA
   themeColor?: string;
 }) {
+
+  // 🚀 FIX: DEFINE presetKey AT THE VERY FIRST LINE
+  const presetKey = (preset || 'DEFAULT').toUpperCase();
+
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
 
   const sequence = FESTIVAL_PHASE_SEQUENCES[preset.toUpperCase()] || FESTIVAL_PHASE_SEQUENCES.DEFAULT;
