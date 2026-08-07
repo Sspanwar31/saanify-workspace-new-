@@ -30,7 +30,8 @@ export default function FestivalIntroController({
   onHandover,
   children,
   preset = 'DEFAULT',
-  heroConfig,      
+  heroConfig, 
+  mediaConfig, // 👈 1. NAYA PROP ADD KIYA (Supabase media_config ke liye)
   themeColor = '#fbbf24' 
 }: {
   isActive: boolean;
@@ -38,6 +39,7 @@ export default function FestivalIntroController({
   children: (phase: string) => React.ReactNode;
   preset?: string;
   heroConfig?: any;
+  mediaConfig?: any; // 👈 2. TYPE DEFINE KIYA
   themeColor?: string;
 }) {
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
@@ -170,12 +172,13 @@ export default function FestivalIntroController({
     );
   }
 
-  // 🚀 13. PONGAL ACTIVATION (Harvest Clay Pot & Sugarcane Cinematic Intro)
+  // 🚀 13. PONGAL ACTIVATION (FIXED: Ab mediaConfig & fallback video pass ho raha hai)
   if (isActive && preset.toUpperCase() === 'PONGAL') {
     return (
       <PongalCinematicIntro 
         onComplete={onHandover} 
-        imageUrl={heroConfig?.image_url} 
+        mediaConfig={mediaConfig || heroConfig?.media_config}
+        videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/pongal-intro.mp4"}
       />
     );
   }
