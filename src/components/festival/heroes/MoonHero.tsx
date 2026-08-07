@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 
 interface Props {
   imageUrl?: string;
@@ -8,20 +8,25 @@ interface Props {
 }
 
 export default function MoonHero({ imageUrl, heroConfig }: Props) {
-  const posterUrl = imageUrl || heroConfig?.image_url;
+  // Check if a valid non-empty image URL exists
+  const rawUrl = imageUrl || heroConfig?.image_url;
+  const validUrl = rawUrl && typeof rawUrl === 'string' && rawUrl.trim().length > 5 ? rawUrl : null;
+
+  const [imgError, setImgError] = useState(false);
 
   return (
-    <div className="relative w-full h-full min-h-[220px] flex items-center justify-center overflow-hidden">
+    <div className="relative w-full h-full min-h-[220px] flex items-center justify-center overflow-hidden bg-gradient-to-b from-[#021f12] via-[#073820] to-[#010d07]">
       
-      {posterUrl ? (
+      {validUrl && !imgError ? (
         <img
-          src={posterUrl}
+          src={validUrl}
           alt="Eid Mubarak"
+          onError={() => setImgError(true)}
           className="w-full h-full object-cover"
         />
       ) : (
-        /* 🌙 FULL-BLEED 3D EID ARTWORK (No Pocket/No Inner Box) */
-        <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-[#021f12] via-[#073820] to-[#010d07] flex flex-col items-center justify-center p-4 space-y-3">
+        /* 🌙 GUARANTEED 3D EID VISUAL FALLBACK */
+        <div className="relative w-full h-full min-h-[220px] flex flex-col items-center justify-center p-4 space-y-3">
           
           {/* Ambient Glow */}
           <div className="absolute inset-0 bg-emerald-500/20 blur-2xl pointer-events-none animate-pulse" />
