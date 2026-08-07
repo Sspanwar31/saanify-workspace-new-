@@ -41,17 +41,18 @@ export default function PongalCinematicIntro({ mediaConfig, videoUrl, onComplete
     }
   }, []);
 
-  // 🔊 IMPERATIVE SOUND TOGGLE FIX (Guaranteed Audio Unmute)
-  const toggleSound = (e?: React.MouseEvent) => {
+  // 🔊 GUARANTEED IMPERATIVE AUDIO UNMUTE FUNCTION
+  const unmuteAudio = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (videoRef.current) {
-      const newMuteState = !isMuted;
-      videoRef.current.muted = newMuteState;
-      if (!newMuteState) {
-        videoRef.current.volume = 1.0;
-        videoRef.current.play().catch((err) => console.log('Audio play allowed:', err));
-      }
-      setIsMuted(newMuteState);
+      videoRef.current.muted = false;
+      videoRef.current.volume = 1.0;
+      videoRef.current
+        .play()
+        .then(() => {
+          setIsMuted(false);
+        })
+        .catch((err) => console.log('Audio play allowed:', err));
     }
   };
 
@@ -84,47 +85,51 @@ export default function PongalCinematicIntro({ mediaConfig, videoUrl, onComplete
   if (stage === 'finished') return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black overflow-hidden select-none">
-      
+    <div
+      onClick={stage === 'video' && isMuted ? unmuteAudio : undefined}
+      className="fixed inset-0 z-[99999] bg-black flex items-center justify-center p-3 sm:p-6 md:p-8 overflow-hidden select-none cursor-pointer"
+    >
       {/* ========================================================= */}
-      {/* 🎬 STEP 1: FULL-SCREEN VIDEO WITH BLENDED EDGE & GOLD FRAME */}
+      {/* 🎬 STEP 1: SOLID CINEMA FRAME (No Repeating Video Leak)   */}
       {/* ========================================================= */}
       {stage === 'video' && (
-        <div className="relative w-full h-full flex items-center justify-center">
+        <div className="relative w-full max-w-6xl h-[80vh] md:h-[84vh] rounded-2xl md:rounded-3xl border-2 border-amber-500/40 shadow-[0_0_90px_rgba(251,191,36,0.2)] bg-black overflow-hidden flex items-center justify-center">
           
-          {/* VIDEO LAYER */}
+          {/* VIDEO ELEMENT (Strictly contained inside frame) */}
           <video
             ref={videoRef}
             src={videoSrc}
             autoPlay
-            muted={isMuted}
             playsInline
             onEnded={handleVideoEnded}
-            className={`w-full h-full object-cover transition-all duration-1000 ${
+            className={`w-full h-full object-cover rounded-2xl md:rounded-3xl transition-all duration-1000 ${
               videoFading ? 'opacity-0 scale-105 filter blur-md' : 'opacity-100 scale-100'
             }`}
           />
 
-          {/* 🖤 SEAMLESS EDGE BLENDING VIGNETTE (Screen se jodne ke liye) */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/40 to-black pointer-events-none z-20" />
+          {/* DARK INNER VIGNETTE OVERLAY */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 pointer-events-none" />
 
-          {/* ✨ INNER GOLDEN BORDER FRAME (Corners par shiny border) */}
-          <div className="absolute inset-3 sm:inset-6 md:inset-8 border border-amber-500/35 rounded-2xl md:rounded-3xl shadow-[inset_0_0_80px_rgba(0,0,0,0.9)] pointer-events-none z-30" />
-
-          {/* 🏷️ TOP FESTIVAL BADGE */}
-          <div className="absolute top-6 sm:top-10 left-1/2 -translate-x-1/2 z-40 px-5 py-1.5 rounded-full bg-black/70 border border-amber-500/40 backdrop-blur-md text-[10px] md:text-xs font-bold text-amber-300 tracking-widest uppercase flex items-center gap-2 shadow-2xl">
+          {/* TOP FESTIVAL BADGE */}
+          <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-40 px-5 py-1.5 rounded-full bg-black/80 border border-amber-500/50 backdrop-blur-md text-[10px] md:text-xs font-bold text-amber-300 tracking-widest uppercase flex items-center gap-2 shadow-xl pointer-events-none">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
             PONGAL FESTIVAL INTRO 2027
           </div>
 
-          {/* 🔊 FIXED WORKING SOUND BUTTON */}
-          <button
-            type="button"
-            onClick={toggleSound}
-            className="absolute top-6 sm:top-10 left-6 sm:left-10 z-50 px-4 py-2 rounded-full bg-black/80 hover:bg-amber-500 hover:text-black text-amber-200 border border-amber-500/50 backdrop-blur-md text-xs font-bold tracking-wide transition-all shadow-2xl flex items-center gap-2 active:scale-95 cursor-pointer"
-          >
-            {isMuted ? '🔇 Click to Unmute Sound' : '🔊 Sound On'}
-          </button>
+          {/* 🔊 UNMUTE BUTTON & PROMPT */}
+          {isMuted ? (
+            <button
+              type="button"
+              onClick={unmuteAudio}
+              className="absolute top-4 sm:top-6 left-4 sm:left-6 z-50 px-4 py-2 rounded-full bg-amber-500 text-black font-black text-xs sm:text-sm tracking-wide transition-all shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-bounce flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95"
+            >
+              🔊 Click Anywhere for Sound
+            </button>
+          ) : (
+            <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-50 px-3.5 py-1.5 rounded-full bg-black/70 border border-amber-500/40 backdrop-blur-md text-xs font-semibold text-amber-300 flex items-center gap-2">
+              🔊 Sound Playing
+            </div>
+          )}
         </div>
       )}
 
