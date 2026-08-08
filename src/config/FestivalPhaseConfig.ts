@@ -63,21 +63,21 @@ RAM_NAVAMI: {
     }
   },
   
-  // ━━━ EID_UL_FITR & EID_AL_ADHA ━━━
+  /// ━━━ EID_UL_FITR & EID_AL_ADHA (🚀 10.5s Hyper-Realistic Cinematic Sync) ━━━
   EID_UL_FITR: {
-    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    phases: ['MOONRISE', 'MOSQUE_REVEAL', 'TEXT'],
     timings: {
-      FLASH: 1500,     // 1.5s: चाँद का आगमन
-      SHOOTING: 3000,  // 3.0s: हरी चंद्र किरणों का विस्तार
-      HANDOVER: 1000
+      MOONRISE: 3000,      // 0.0s से 3.0s: स्क्रीन फेड-इन, तारे, 3D चांद का उदय और God Rays
+      MOSQUE_REVEAL: 3000, // 3.0s से 6.0s: मस्जिद का अवतरण, उड़ते फानूस और सुनहरी धूल
+      TEXT: 4500           // 6.0s से 10.5s: 3D गोल्डन टेक्स्ट और फेड-आउट हैंडओवर
     }
   },
   EID_AL_ADHA: {
-    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    phases: ['MOONRISE', 'MOSQUE_REVEAL', 'TEXT'],
     timings: {
-      FLASH: 1500,
-      SHOOTING: 3000,
-      HANDOVER: 1000
+      MOONRISE: 3000,      // 0.0s से 3.0s
+      MOSQUE_REVEAL: 3000, // 3.0s से 6.0s
+      TEXT: 4500           // 6.0s से 10.5s
     }
   },
 
