@@ -1592,74 +1592,194 @@ function drawGrandMosqueWithReflections(t: number) {
 
   ctx!.restore();
 }
-    // =========================================================================
-    // SCENE 3: SPECTACULAR FIREWORKS ENGINE (FIXED ROCKET PHYSICS)
-    // =========================================================================
-    function launchFirework(t: number) {
-      if (t < 3.2 || t > 8.8) return;
+// =========================================================================// SCENE 3: SPECTACULAR EID FIREWORKS ENGINE// HIGH SKY + MULTI-COLOR BURSTS + ELEGANT GOLD CORE// =========================================================================
 
-      // 🚀 Launch Frequency (Smooth Spacing)
-      if (Math.random() > 0.14) return;
+function launchFirework(t: number) {// Fireworks active windowif (t < 3.2 || t > 8.8) return;
 
-      const p = pool.spawn();
-      if (!p) return;
+// 🚀 Launch frequency// 0.18 = balanced cinematic spacingif (Math.random() > 0.18) return;
 
-      p.type = 'firework_rocket';
-      p.x = W * 0.15 + Math.random() * W * 0.70;
-      p.y = H * 0.80;
+const p = pool.spawn();if (!p) return;
 
-      p.vx = (Math.random() - 0.5) * 1.5;
-      p.vy = -8.5 - Math.random() * 3.5; // 🚀 Adjusted Upward Speed
+p.type = 'firework_rocket';
 
-      p.size = 2.5;
-      p.maxLife = 1.1 + Math.random() * 0.4;
-      p.life = 0;
-      p.alpha = 1;
+// =========================================================// 🚀 LAUNCH POSITION// Start from lower portion of screen// =========================================================
 
-      p.gravity = 5.0; // 🚀 FIXED GRAVITY: Slows rocket down at top of sky
-      p.drag = 0.98;
+p.x = W * 0.12 + Math.random() * W * 0.76;p.y = H * 0.86;
 
-      p.color = [
-        '#FFD700', // Gold
-        '#FFF4C2', // Warm White
-        '#00E5FF', // Cyan
-        '#00FF7F', // Emerald Green
-        '#FF1493', // Pink
-        '#FFFFFF'  // Pure White
-      ][Math.floor(Math.random() * 6)];
-    }
+// Slight horizontal movementp.vx = (Math.random() - 0.5) * 1.2;
 
-    // 💥 GUARANTEED BLAST EXPLOSION ENGINE
-    function explodeFirework(x: number, y: number, color: string) {
-      screenFlash = Math.min(1.0, screenFlash + 0.35); // Light flash on blast
+// =========================================================// 🚀 HIGH SKY ROCKET// Much stronger upward velocity// =========================================================
 
-      const sparkCount = 75 + Math.floor(Math.random() * 35); // 75-110 Sparks
+p.vy = -13.5 - Math.random() * 3.5;
 
-      for (let i = 0; i < sparkCount; i++) {
-        const p = pool.spawn();
-        if (!p) break; // If pool is full, break safely
+p.size = 2.2 + Math.random() * 1.0;
 
-        p.type = 'firework_spark';
-        p.x = x;
-        p.y = y;
+// Rocket remains alive longer so it can reach upper skyp.maxLife = 1.55 + Math.random() * 0.35;
 
-        const angle = (i / sparkCount) * Math.PI * 2;
-        const speed = 3.0 + Math.random() * 5.5; // 💥 Large Blast Radius
+p.life = 0;p.alpha = 1;
 
-        p.vx = Math.cos(angle) * speed;
-        p.vy = Math.sin(angle) * speed;
+// =========================================================// ⭐ IMPORTANT// 5.0 was making the rocket fall/slow too quickly.// Keep gravity small and smooth.// =========================================================
 
-        p.size = 1.5 + Math.random() * 2.2;
-        p.maxLife = 1.2 + Math.random() * 0.7;
-        p.life = 0;
-        p.alpha = 1;
+p.gravity = 0.055;p.drag = 0.992;
 
-        p.gravity = 2.5; // Sparks fall gracefully
-        p.drag = 0.96;
-        p.color = color;
-      }
-    }
+// =========================================================// 🎨 ROCKET COLOR// Elegant Eid palette// =========================================================
 
+const rocketColors = ['#FFD700', // Royal Gold'#FFF8DC', // Warm White'#00E5FF', // Cyan'#00FF9D', // Emerald'#FF4FA3', // Rose Pink'#B8F7FF'  // Ice Blue];
+
+p.color =rocketColors[Math.floor(Math.random() * rocketColors.length)];}
+
+// =========================================================================// 💥 MULTI-COLOR FIREWORK EXPLOSION// =========================================================================
+
+function explodeFirework(x: number, y: number, color: string) {
+
+// =========================================================// ✨ SOFT FLASH// Don't make it too strong or all colors become white.// =========================================================
+
+screenFlash = Math.min(1.0,screenFlash + 0.18);
+
+// =========================================================// 🎨 MULTI-COLOR PALETTE// Each explosion gets a different combination.// =========================================================
+
+const palettes = [['#FFD700','#FFF4C2','#FFFFFF','#FFB300'],
+
+[
+  '#00E5FF',
+  '#7DF9FF',
+  '#FFFFFF',
+  '#B8F7FF'
+],
+
+[
+  '#00FF9D',
+  '#00D084',
+  '#B8FFD9',
+  '#FFFFFF'
+],
+
+[
+  '#FF4FA3',
+  '#FF1493',
+  '#FFD1E6',
+  '#FFFFFF'
+],
+
+[
+  '#FFD700',
+  '#00E5FF',
+  '#FFFFFF',
+  '#00FF9D'
+]
+
+];
+
+// Pick one palette for this explosionconst selectedPalette =palettes[Math.floor(Math.random() * palettes.length)];
+
+// =========================================================// 💥 SPARK COUNT// =========================================================
+
+const sparkCount =95 + Math.floor(Math.random() * 35);
+
+for (let i = 0; i < sparkCount; i++) {
+
+const p = pool.spawn();
+if (!p) break;
+
+p.type = 'firework_spark';
+
+p.x = x;
+p.y = y;
+
+// =======================================================
+// 🌟 PERFECT 360° BURST
+// Add tiny randomness so it doesn't look mechanical.
+// =======================================================
+
+const angle =
+  (i / sparkCount) * Math.PI * 2 +
+  (Math.random() - 0.5) * 0.08;
+
+// Different spark speeds create depth
+const speed =
+  3.2 + Math.random() * 5.8;
+
+p.vx = Math.cos(angle) * speed;
+p.vy = Math.sin(angle) * speed;
+
+// =======================================================
+// ✨ SPARK SIZE
+// =======================================================
+
+p.size =
+  1.4 + Math.random() * 2.4;
+
+// Longer life = beautiful falling trails
+p.maxLife =
+  1.35 + Math.random() * 0.75;
+
+p.life = 0;
+p.alpha = 1;
+
+// =======================================================
+// 🌌 NATURAL FALLING MOTION
+// =======================================================
+
+p.gravity = 0.055;
+p.drag = 0.965;
+
+// =======================================================
+// 🎨 IMPORTANT FIX:
+// Every spark can have a different color.
+// Previously ALL sparks used `color`.
+// =======================================================
+
+p.color =
+  selectedPalette[
+    Math.floor(
+      Math.random() * selectedPalette.length
+    )
+  ];
+
+}
+
+// =========================================================// ⭐ CENTRAL GOLD/WHITE CORE// Adds premium cinematic explosion feeling.// =========================================================
+
+const coreCount = 18;
+
+for (let i = 0; i < coreCount; i++) {
+
+const p = pool.spawn();
+if (!p) break;
+
+p.type = 'firework_spark';
+
+p.x = x;
+p.y = y;
+
+const angle =
+  Math.random() * Math.PI * 2;
+
+const speed =
+  0.8 + Math.random() * 2.2;
+
+p.vx = Math.cos(angle) * speed;
+p.vy = Math.sin(angle) * speed;
+
+p.size =
+  2.0 + Math.random() * 2.0;
+
+p.maxLife =
+  0.45 + Math.random() * 0.35;
+
+p.life = 0;
+p.alpha = 1;
+
+p.gravity = 0.02;
+p.drag = 0.97;
+
+// White/gold hot core
+p.color =
+  Math.random() < 0.65
+    ? '#FFFFFF'
+    : '#FFD700';
+
+}}
     // =========================================================================
     // SCENE 4: 3D METALLIC GOLDEN TYPOGRAPHY & ARABIC CALLIGRAPHY (8.5s -> 12.0s)
     // =========================================================================
