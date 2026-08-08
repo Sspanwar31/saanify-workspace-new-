@@ -1592,48 +1592,106 @@ function drawGrandMosqueWithReflections(t: number) {
   ctx!.restore();
 }
     // =========================================================================
-    // SCENE 3: SPECTACULAR FIREWORKS ENGINE (3.5s -> 9.0s)
-    // =========================================================================
-    function launchFirework(t: number) {
-      if (t < 3.2 || t > 8.8) return;
+// SCENE 3: SPECTACULAR FIREWORKS ENGINE
+// 3.2s → 8.8s
+// =========================================================================
 
-      if (Math.random() < 0.12) {
-        const p = pool.spawn(); if (!p) return;
-        p.type = 'firework_rocket';
-        p.x = W * 0.15 + Math.random() * W * 0.7;
-        p.y = H * 0.75;
-        p.vx = (Math.random() - 0.5) * 2;
-        p.vy = -11 - Math.random() * 5;
-        p.size = 2.5;
-        p.maxLife = 1.3 + Math.random() * 0.4;
-        p.life = 0; p.alpha = 1;
-        p.gravity = 0.08; p.drag = 0.99;
-        p.color = [
-          '#FFD700', '#FF4500', '#00FF7F', '#00FFFF', '#FF1493', '#FFFFFF', '#FFA500'
-        ][Math.floor(Math.random() * 7)];
-      }
-    }
+function launchFirework(t: number) {
+  // Fireworks sirf Scene 3 mein
+  if (t < 3.2 || t > 8.8) return;
 
-    function explodeFirework(x: number, y: number, color: string) {
-      screenFlash = Math.min(1.0, screenFlash + 0.35); // Real-time lighting flash
-      const sparkCount = 65 + Math.floor(Math.random() * 35);
+  // Launch frequency
+  // 0.16 = cinematic spacing
+  if (Math.random() >= 0.16) return;
 
-      for (let i = 0; i < sparkCount; i++) {
-        const p = pool.spawn(); if (!p) break;
-        p.type = 'firework_spark';
-        p.x = x; p.y = y;
-        const angle = (i / sparkCount) * Math.PI * 2;
-        const speed = 2.5 + Math.random() * 5.5;
-        p.vx = Math.cos(angle) * speed;
-        p.vy = Math.sin(angle) * speed;
-        p.size = 1.5 + Math.random() * 2.5;
-        p.maxLife = 1.4 + Math.random() * 0.8;
-        p.life = 0; p.alpha = 1;
-        p.gravity = 0.06; p.drag = 0.96;
-        p.color = color;
-      }
-    }
+  const p = pool.spawn();
+  if (!p) return;
 
+  p.type = 'firework_rocket';
+
+  // Screen ke left/right areas se launch
+  p.x = W * 0.12 + Math.random() * W * 0.76;
+  p.y = H * 0.78;
+
+  // Slight horizontal movement
+  p.vx = (Math.random() - 0.5) * 1.4;
+
+  // Rocket height
+  p.vy = -13 - Math.random() * 4;
+
+  p.size = 2.2 + Math.random() * 0.8;
+
+  p.maxLife = 1.25 + Math.random() * 0.35;
+  p.life = 0;
+
+  p.alpha = 1;
+
+  p.gravity = 0.075;
+  p.drag = 0.99;
+
+  // Eid palette
+  p.color = [
+    '#FFD700', // Gold
+    '#FFF4C2', // Warm white
+    '#00E5FF', // Cyan
+    '#7CFFB2', // Emerald
+    '#FF4FA3', // Pink
+    '#FFFFFF'  // White
+  ][Math.floor(Math.random() * 6)];
+}
+    function explodeFirework(
+  x: number,
+  y: number,
+  color: string
+) {
+  // Soft cinematic flash
+  screenFlash = Math.min(
+    1.0,
+    screenFlash + 0.22
+  );
+
+  // Main explosion
+  const sparkCount =
+    85 + Math.floor(Math.random() * 35);
+
+  for (let i = 0; i < sparkCount; i++) {
+
+    const p = pool.spawn();
+    if (!p) break;
+
+    p.type = 'firework_spark';
+
+    p.x = x;
+    p.y = y;
+
+    const angle =
+      (i / sparkCount) * Math.PI * 2;
+
+    // Explosion radius
+    const speed =
+      3.0 + Math.random() * 5.5;
+
+    p.vx =
+      Math.cos(angle) * speed;
+
+    p.vy =
+      Math.sin(angle) * speed;
+
+    p.size =
+      1.3 + Math.random() * 2.2;
+
+    p.maxLife =
+      1.5 + Math.random() * 0.8;
+
+    p.life = 0;
+    p.alpha = 1;
+
+    p.gravity = 0.055;
+    p.drag = 0.965;
+
+    p.color = color;
+  }
+}
     // =========================================================================
     // SCENE 4: 3D METALLIC GOLDEN TYPOGRAPHY & ARABIC CALLIGRAPHY (8.5s -> 12.0s)
     // =========================================================================
