@@ -102,7 +102,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
     const goldDustSprite = makeSprite(64, 'rgba(255,215,100,1)', 'rgba(255,140,40,0.4)');
     const fireworkSprite = makeSprite(64, 'rgba(255,255,255,1)', 'rgba(255,215,100,0.5)');
 
-    const pool = new ParticlePool(3500);
+    // 🚀 FIXED: INCREASED PARTICLE POOL CAPACITY TO 6000 (Prevents pool exhaustion during blast)
+    const pool = new ParticlePool(6000);
     
     function resize() {
       DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -1592,106 +1593,73 @@ function drawGrandMosqueWithReflections(t: number) {
   ctx!.restore();
 }
     // =========================================================================
-// SCENE 3: SPECTACULAR FIREWORKS ENGINE
-// 3.2s → 8.8s
-// =========================================================================
+    // SCENE 3: SPECTACULAR FIREWORKS ENGINE (FIXED ROCKET PHYSICS)
+    // =========================================================================
+    function launchFirework(t: number) {
+      if (t < 3.2 || t > 8.8) return;
 
-function launchFirework(t: number) {
-  // Fireworks sirf Scene 3 mein
-  if (t < 3.2 || t > 8.8) return;
+      // 🚀 Launch Frequency (Smooth Spacing)
+      if (Math.random() > 0.14) return;
 
-  // Launch frequency
-  // 0.16 = cinematic spacing
-  if (Math.random() >= 0.16) return;
+      const p = pool.spawn();
+      if (!p) return;
 
-  const p = pool.spawn();
-  if (!p) return;
+      p.type = 'firework_rocket';
+      p.x = W * 0.15 + Math.random() * W * 0.70;
+      p.y = H * 0.80;
 
-  p.type = 'firework_rocket';
+      p.vx = (Math.random() - 0.5) * 1.5;
+      p.vy = -8.5 - Math.random() * 3.5; // 🚀 Adjusted Upward Speed
 
-  // Screen ke left/right areas se launch
-  p.x = W * 0.12 + Math.random() * W * 0.76;
-  p.y = H * 0.78;
+      p.size = 2.5;
+      p.maxLife = 1.1 + Math.random() * 0.4;
+      p.life = 0;
+      p.alpha = 1;
 
-  // Slight horizontal movement
-  p.vx = (Math.random() - 0.5) * 1.4;
+      p.gravity = 5.0; // 🚀 FIXED GRAVITY: Slows rocket down at top of sky
+      p.drag = 0.98;
 
-  // Rocket height
-  p.vy = -13 - Math.random() * 4;
+      p.color = [
+        '#FFD700', // Gold
+        '#FFF4C2', // Warm White
+        '#00E5FF', // Cyan
+        '#00FF7F', // Emerald Green
+        '#FF1493', // Pink
+        '#FFFFFF'  // Pure White
+      ][Math.floor(Math.random() * 6)];
+    }
 
-  p.size = 2.2 + Math.random() * 0.8;
+    // 💥 GUARANTEED BLAST EXPLOSION ENGINE
+    function explodeFirework(x: number, y: number, color: string) {
+      screenFlash = Math.min(1.0, screenFlash + 0.35); // Light flash on blast
 
-  p.maxLife = 1.25 + Math.random() * 0.35;
-  p.life = 0;
+      const sparkCount = 75 + Math.floor(Math.random() * 35); // 75-110 Sparks
 
-  p.alpha = 1;
+      for (let i = 0; i < sparkCount; i++) {
+        const p = pool.spawn();
+        if (!p) break; // If pool is full, break safely
 
-  p.gravity = 0.075;
-  p.drag = 0.99;
+        p.type = 'firework_spark';
+        p.x = x;
+        p.y = y;
 
-  // Eid palette
-  p.color = [
-    '#FFD700', // Gold
-    '#FFF4C2', // Warm white
-    '#00E5FF', // Cyan
-    '#7CFFB2', // Emerald
-    '#FF4FA3', // Pink
-    '#FFFFFF'  // White
-  ][Math.floor(Math.random() * 6)];
-}
-    function explodeFirework(
-  x: number,
-  y: number,
-  color: string
-) {
-  // Soft cinematic flash
-  screenFlash = Math.min(
-    1.0,
-    screenFlash + 0.22
-  );
+        const angle = (i / sparkCount) * Math.PI * 2;
+        const speed = 3.0 + Math.random() * 5.5; // 💥 Large Blast Radius
 
-  // Main explosion
-  const sparkCount =
-    85 + Math.floor(Math.random() * 35);
+        p.vx = Math.cos(angle) * speed;
+        p.vy = Math.sin(angle) * speed;
 
-  for (let i = 0; i < sparkCount; i++) {
+        p.size = 1.5 + Math.random() * 2.2;
+        p.maxLife = 1.2 + Math.random() * 0.7;
+        p.life = 0;
+        p.alpha = 1;
 
-    const p = pool.spawn();
-    if (!p) break;
+        p.gravity = 2.5; // Sparks fall gracefully
+        p.drag = 0.96;
+        p.color = color;
+      }
+    }
 
-    p.type = 'firework_spark';
-
-    p.x = x;
-    p.y = y;
-
-    const angle =
-      (i / sparkCount) * Math.PI * 2;
-
-    // Explosion radius
-    const speed =
-      3.0 + Math.random() * 5.5;
-
-    p.vx =
-      Math.cos(angle) * speed;
-
-    p.vy =
-      Math.sin(angle) * speed;
-
-    p.size =
-      1.3 + Math.random() * 2.2;
-
-    p.maxLife =
-      1.5 + Math.random() * 0.8;
-
-    p.life = 0;
-    p.alpha = 1;
-
-    p.gravity = 0.055;
-    p.drag = 0.965;
-
-    p.color = color;
-  }
-}
     // =========================================================================
     // SCENE 4: 3D METALLIC GOLDEN TYPOGRAPHY & ARABIC CALLIGRAPHY (8.5s -> 12.0s)
     // =========================================================================
@@ -1804,7 +1772,7 @@ function launchFirework(t: number) {
       // Real-time Explosion Screen Flash Lighting
       screenFlash = Math.max(0, screenFlash - dt * 2.0);
       if (screenFlash > 0) {
-        ctx!.fillStyle = `rgba(255, 230, 160, ${screenFlash * 0.2})`;
+        ctx!.fillStyle = `rgba(255, 230, 160, ${screenFlash * 0.22})`;
         ctx!.fillRect(0, 0, W, H);
       }
 
@@ -1841,20 +1809,23 @@ function launchFirework(t: number) {
           }
         } else if (p.type === 'firework_rocket') {
           p.alpha = 1 - lr;
-          if (p.vy >= -1.5 || p.life > p.maxLife) {
-            if (!p.hasExploded) {
-              p.hasExploded = true;
-              explodeFirework(p.x, p.y, p.color);
-              p.alpha = 0;
-            }
+
+          // 🚀 FIXED: GUARANTEED BLAST TRIGGER (Explodes when rocket slows down near top)
+          if ((p.vy >= -1.8 || lr >= 0.80) && !p.hasExploded) {
+            p.hasExploded = true;
+            explodeFirework(p.x, p.y, p.color);
+            p.alpha = 0;
+            p.life = p.maxLife; // Release rocket immediately
           }
-          if (p.alpha > 0.01) {
+
+          if (p.alpha > 0.01 && !p.hasExploded) {
             ctx!.globalAlpha = p.alpha;
             ctx!.fillStyle = p.color;
             ctx!.beginPath();
             ctx!.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI * 2);
             ctx!.fill();
-            ctx!.globalAlpha = p.alpha * 0.5;
+            // Rocket Trail
+            ctx!.globalAlpha = p.alpha * 0.6;
             ctx!.fillRect(p.x - 1, p.y, 2, 12);
           }
         } else if (p.type === 'firework_spark') {
