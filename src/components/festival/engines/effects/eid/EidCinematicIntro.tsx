@@ -179,148 +179,1418 @@ export default function EidCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-    // SCENE 2: GRAND MOSQUE ARCHITECTURE & MARBLE REFLECTION (2.5s -> 9.0s)
-    // =========================================================================
-    function drawGrandMosqueWithReflections(t: number) {
-      const vis = smoothstep(2.2, 3.5, t) * (1 - smoothstep(8.5, 9.5, t));
-      if (vis <= 0.001) return;
+// SCENE 2 — CINEMATIC GRAND MOSQUE
+// 2.5s → 9.0s
+// 2027 EID UL FITR — ROYAL EMERALD / IVORY / GOLD
+// =========================================================================
 
-      ctx!.save();
-      ctx!.globalAlpha = vis;
+function drawGrandMosqueWithReflections(t: number) {
 
-      const baseY = H * 0.72;
-      const s = Math.min(W, H) * 0.0024;
+  const vis =
+    smoothstep(2.2, 3.2, t) *
+    (1 - smoothstep(8.2, 9.2, t));
 
-      // Golden Metallic Gradients
-      const goldGrad = ctx!.createLinearGradient(0, baseY - 280 * s, 0, baseY);
-      goldGrad.addColorStop(0.0, '#FFFDF0');
-      goldGrad.addColorStop(0.2, '#FFD700');
-      goldGrad.addColorStop(0.6, '#C59B27');
-      goldGrad.addColorStop(1.0, '#3D2800');
+  if (vis <= 0.001) return;
 
-      const darkSil = '#0b0601';
+  ctx!.save();
 
-      // ── MARBLE COURTYARD REFLECTION FLOOR ──
-      const floorGrad = ctx!.createLinearGradient(0, baseY, 0, H);
-      floorGrad.addColorStop(0.0, 'rgba(10, 35, 25, 0.95)');
-      floorGrad.addColorStop(0.4, 'rgba(5, 18, 12, 0.98)');
-      floorGrad.addColorStop(1.0, '#000000');
-      ctx!.fillStyle = floorGrad;
-      ctx!.fillRect(0, baseY, W, H - baseY);
+  // ---------------------------------------------------------
+  // CINEMATIC CAMERA REVEAL
+  // ---------------------------------------------------------
 
-      // Marble Floor Reflection Water Ripples
-      ctx!.strokeStyle = 'rgba(255, 215, 100, 0.12)';
-      ctx!.lineWidth = 1;
-      for (let i = 0; i < 8; i++) {
-        const ry = baseY + i * 15 * s + Math.sin(t * 2 + i) * 2;
+  const revealProgress = smoothstep(2.2, 5.0, t);
+
+  const cinematicScale =
+    0.94 + revealProgress * 0.06;
+
+  const centerX = W * 0.5;
+  const centerY = H * 0.72;
+
+  ctx!.translate(centerX, centerY);
+  ctx!.scale(cinematicScale, cinematicScale);
+  ctx!.translate(-centerX, -centerY);
+
+  ctx!.globalAlpha = vis;
+
+  // ---------------------------------------------------------
+  // SCALE
+  // ---------------------------------------------------------
+
+  const s = Math.min(W, H) * 0.0024;
+
+  const baseY = H * 0.72;
+
+  // ---------------------------------------------------------
+  // COLOR PALETTE
+  // ---------------------------------------------------------
+
+  const deepEmerald = '#03150F';
+  const emerald = '#073B2A';
+
+  const ivory = '#FFF8E8';
+  const warmIvory = '#F5E7C4';
+
+  const gold = '#D6A928';
+  const brightGold = '#FFE39A';
+
+  // ---------------------------------------------------------
+  // ATMOSPHERIC GLOW BEHIND MOSQUE
+  // ---------------------------------------------------------
+
+  const atmosphere =
+    ctx!.createRadialGradient(
+      W * 0.5,
+      baseY - 190 * s,
+      0,
+      W * 0.5,
+      baseY - 190 * s,
+      330 * s
+    );
+
+  atmosphere.addColorStop(
+    0,
+    `rgba(255,220,130,${0.14 * vis})`
+  );
+
+  atmosphere.addColorStop(
+    0.25,
+    `rgba(90,190,145,${0.10 * vis})`
+  );
+
+  atmosphere.addColorStop(
+    0.65,
+    `rgba(20,100,70,${0.055 * vis})`
+  );
+
+  atmosphere.addColorStop(
+    1,
+    'rgba(0,0,0,0)'
+  );
+
+  ctx!.fillStyle = atmosphere;
+
+  ctx!.fillRect(
+    W * 0.15,
+    H * 0.20,
+    W * 0.70,
+    H * 0.60
+  );
+
+  // =========================================================
+  // MARBLE COURTYARD
+  // =========================================================
+
+  const floorGrad =
+    ctx!.createLinearGradient(
+      0,
+      baseY,
+      0,
+      H
+    );
+
+  floorGrad.addColorStop(
+    0,
+    '#102E25'
+  );
+
+  floorGrad.addColorStop(
+    0.25,
+    '#082119'
+  );
+
+  floorGrad.addColorStop(
+    0.65,
+    '#04140F'
+  );
+
+  floorGrad.addColorStop(
+    1,
+    '#010705'
+  );
+
+  ctx!.fillStyle = floorGrad;
+
+  ctx!.fillRect(
+    0,
+    baseY,
+    W,
+    H - baseY
+  );
+
+  // ---------------------------------------------------------
+  // MARBLE PERSPECTIVE LINES
+  // ---------------------------------------------------------
+
+  ctx!.save();
+
+  ctx!.globalAlpha = 0.18 * vis;
+
+  ctx!.strokeStyle = '#D9C89A';
+  ctx!.lineWidth = Math.max(0.5, 0.7 * s);
+
+  for (let i = -7; i <= 7; i++) {
+
+    const bottomX =
+      W * 0.5 + i * W * 0.11;
+
+    ctx!.beginPath();
+
+    ctx!.moveTo(
+      W * 0.5 + i * W * 0.025,
+      baseY
+    );
+
+    ctx!.lineTo(
+      bottomX,
+      H
+    );
+
+    ctx!.stroke();
+  }
+
+  // Horizontal marble seams
+
+  for (let i = 1; i < 7; i++) {
+
+    const p = i / 7;
+
+    const y =
+      baseY +
+      Math.pow(p, 1.65) *
+      (H - baseY);
+
+    ctx!.beginPath();
+
+    ctx!.moveTo(
+      W * 0.08 + p * W * 0.08,
+      y
+    );
+
+    ctx!.lineTo(
+      W * 0.92 - p * W * 0.08,
+      y
+    );
+
+    ctx!.stroke();
+  }
+
+  ctx!.restore();
+
+  // =========================================================
+  // MOSQUE SHADOW / FOUNDATION
+  // =========================================================
+
+  ctx!.save();
+
+  ctx!.fillStyle =
+    'rgba(0,0,0,0.55)';
+
+  ctx!.beginPath();
+
+  ctx!.ellipse(
+    W * 0.5,
+    baseY + 4 * s,
+    W * 0.38,
+    20 * s,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx!.fill();
+
+  ctx!.restore();
+
+  // =========================================================
+  // MAIN MOSQUE BODY
+  // =========================================================
+
+  const bodyTop =
+    baseY - 125 * s;
+
+  const bodyBottom =
+    baseY;
+
+  const bodyGrad =
+    ctx!.createLinearGradient(
+      0,
+      bodyTop,
+      0,
+      bodyBottom
+    );
+
+  bodyGrad.addColorStop(
+    0,
+    '#173D31'
+  );
+
+  bodyGrad.addColorStop(
+    0.35,
+    '#0B2A20'
+  );
+
+  bodyGrad.addColorStop(
+    1,
+    '#03130E'
+  );
+
+  ctx!.fillStyle = bodyGrad;
+
+  ctx!.beginPath();
+
+  ctx!.roundRect(
+    W * 0.23,
+    bodyTop,
+    W * 0.54,
+    bodyBottom - bodyTop,
+    5 * s
+  );
+
+  ctx!.fill();
+
+  // ---------------------------------------------------------
+  // MAIN BODY GOLD EDGE
+  // ---------------------------------------------------------
+
+  ctx!.strokeStyle =
+    `rgba(214,169,40,${0.55 * vis})`;
+
+  ctx!.lineWidth =
+    Math.max(1, 1.5 * s);
+
+  ctx!.stroke();
+
+  // =========================================================
+  // CENTRAL GRAND DOME
+  // =========================================================
+
+  const domeBase =
+    bodyTop + 10 * s;
+
+  const domeTop =
+    bodyTop - 145 * s;
+
+  const domeX =
+    W * 0.5;
+
+  const domeWidth =
+    W * 0.23;
+
+  const domeGrad =
+    ctx!.createLinearGradient(
+      domeX - domeWidth / 2,
+      domeTop,
+      domeX + domeWidth / 2,
+      domeBase
+    );
+
+  domeGrad.addColorStop(
+    0,
+    '#FFFDF2'
+  );
+
+  domeGrad.addColorStop(
+    0.20,
+    '#F8E9BD'
+  );
+
+  domeGrad.addColorStop(
+    0.48,
+    '#D9B94E'
+  );
+
+  domeGrad.addColorStop(
+    0.72,
+    '#9B7420'
+  );
+
+  domeGrad.addColorStop(
+    1,
+    '#4D3708'
+  );
+
+  ctx!.fillStyle = domeGrad;
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    domeX - domeWidth / 2,
+    domeBase
+  );
+
+  ctx!.bezierCurveTo(
+    domeX - domeWidth / 2,
+    domeTop + 55 * s,
+    domeX - domeWidth * 0.27,
+    domeTop,
+    domeX,
+    domeTop
+  );
+
+  ctx!.bezierCurveTo(
+    domeX + domeWidth * 0.27,
+    domeTop,
+    domeX + domeWidth / 2,
+    domeTop + 55 * s,
+    domeX + domeWidth / 2,
+    domeBase
+  );
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  // ---------------------------------------------------------
+  // DOME HIGHLIGHT
+  // ---------------------------------------------------------
+
+  const highlightX =
+    domeX - domeWidth * 0.18;
+
+  const highlight =
+    ctx!.createRadialGradient(
+      highlightX,
+      domeTop + 35 * s,
+      0,
+      highlightX,
+      domeTop + 35 * s,
+      domeWidth * 0.42
+    );
+
+  highlight.addColorStop(
+    0,
+    `rgba(255,255,240,${0.45 * vis})`
+  );
+
+  highlight.addColorStop(
+    1,
+    'rgba(255,255,255,0)'
+  );
+
+  ctx!.fillStyle = highlight;
+
+  ctx!.beginPath();
+
+  ctx!.arc(
+    domeX,
+    domeTop + 55 * s,
+    domeWidth * 0.48,
+    0,
+    Math.PI * 2
+  );
+
+  ctx!.fill();
+
+  // =========================================================
+  // DOME RIBS — ISLAMIC ARCHITECTURAL DETAIL
+  // =========================================================
+
+  ctx!.save();
+
+  ctx!.strokeStyle =
+    `rgba(120,82,15,${0.30 * vis})`;
+
+  ctx!.lineWidth =
+    Math.max(0.7, 1 * s);
+
+  for (let i = -3; i <= 3; i++) {
+
+    const x =
+      domeX +
+      i * domeWidth * 0.105;
+
+    ctx!.beginPath();
+
+    ctx!.moveTo(
+      x,
+      domeBase
+    );
+
+    ctx!.quadraticCurveTo(
+      domeX + i * domeWidth * 0.07,
+      domeTop + 35 * s,
+      domeX + i * domeWidth * 0.025,
+      domeTop + 5 * s
+    );
+
+    ctx!.stroke();
+  }
+
+  ctx!.restore();
+
+  // =========================================================
+  // DOME NECK / DRUM
+  // =========================================================
+
+  ctx!.fillStyle =
+    '#D5B45A';
+
+  ctx!.fillRect(
+    domeX - domeWidth * 0.42,
+    domeBase - 12 * s,
+    domeWidth * 0.84,
+    12 * s
+  );
+
+  // =========================================================
+  // CRESCENT FINIAL
+  // =========================================================
+
+  const crescentY =
+    domeTop - 25 * s;
+
+  ctx!.save();
+
+  ctx!.shadowBlur =
+    18 * s;
+
+  ctx!.shadowColor =
+    'rgba(255,215,90,0.75)';
+
+  ctx!.strokeStyle =
+    brightGold;
+
+  ctx!.lineWidth =
+    3 * s;
+
+  ctx!.beginPath();
+
+  ctx!.arc(
+    domeX,
+    crescentY,
+    13 * s,
+    -0.9,
+    2.2
+  );
+
+  ctx!.stroke();
+
+  // small star
+
+  ctx!.fillStyle =
+    ivory;
+
+  ctx!.beginPath();
+
+  const starX =
+    domeX + 13 * s;
+
+  const starY =
+    crescentY - 5 * s;
+
+  for (let i = 0; i < 10; i++) {
+
+    const a =
+      -Math.PI / 2 +
+      i * Math.PI / 5;
+
+    const r =
+      i % 2 === 0
+        ? 5 * s
+        : 2 * s;
+
+    const px =
+      starX + Math.cos(a) * r;
+
+    const py =
+      starY + Math.sin(a) * r;
+
+    if (i === 0) {
+      ctx!.moveTo(px, py);
+    } else {
+      ctx!.lineTo(px, py);
+    }
+  }
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  ctx!.restore();
+
+  // =========================================================
+  // SIDE DOMES
+  // =========================================================
+
+  const drawSideDome =
+    (
+      x: number,
+      width: number,
+      height: number
+    ) => {
+
+      const top =
+        bodyTop - height;
+
+      const grad =
+        ctx!.createLinearGradient(
+          x - width / 2,
+          top,
+          x + width / 2,
+          bodyTop
+        );
+
+      grad.addColorStop(
+        0,
+        '#FFF8DF'
+      );
+
+      grad.addColorStop(
+        0.45,
+        '#D7B54B'
+      );
+
+      grad.addColorStop(
+        1,
+        '#64480E'
+      );
+
+      ctx!.fillStyle = grad;
+
+      ctx!.beginPath();
+
+      ctx!.moveTo(
+        x - width / 2,
+        bodyTop
+      );
+
+      ctx!.bezierCurveTo(
+        x - width / 2,
+        top + height * 0.35,
+        x - width * 0.18,
+        top,
+        x,
+        top
+      );
+
+      ctx!.bezierCurveTo(
+        x + width * 0.18,
+        top,
+        x + width / 2,
+        top + height * 0.35,
+        x + width / 2,
+        bodyTop
+      );
+
+      ctx!.closePath();
+
+      ctx!.fill();
+    };
+
+  drawSideDome(
+    W * 0.34,
+    W * 0.105,
+    65 * s
+  );
+
+  drawSideDome(
+    W * 0.66,
+    W * 0.105,
+    65 * s
+  );
+
+  drawSideDome(
+    W * 0.27,
+    W * 0.075,
+    43 * s
+  );
+
+  drawSideDome(
+    W * 0.73,
+    W * 0.075,
+    43 * s
+  );
+
+  // =========================================================
+  // MINARETS
+  // =========================================================
+
+  const drawMinaret =
+    (
+      x: number,
+      width: number,
+      height: number
+    ) => {
+
+      const bottom =
+        baseY + 2 * s;
+
+      const top =
+        bottom - height;
+
+      // tower body
+
+      const towerGrad =
+        ctx!.createLinearGradient(
+          x - width / 2,
+          0,
+          x + width / 2,
+          0
+        );
+
+      towerGrad.addColorStop(
+        0,
+        '#03120D'
+      );
+
+      towerGrad.addColorStop(
+        0.45,
+        '#174535'
+      );
+
+      towerGrad.addColorStop(
+        0.75,
+        '#09271D'
+      );
+
+      towerGrad.addColorStop(
+        1,
+        '#010806'
+      );
+
+      ctx!.fillStyle =
+        towerGrad;
+
+      ctx!.fillRect(
+        x - width / 2,
+        top,
+        width,
+        height
+      );
+
+      // golden vertical trim
+
+      ctx!.strokeStyle =
+        `rgba(214,169,40,${0.65 * vis})`;
+
+      ctx!.lineWidth =
+        Math.max(0.7, 1 * s);
+
+      ctx!.strokeRect(
+        x - width / 2,
+        top,
+        width,
+        height
+      );
+
+      // balcony 1
+
+      ctx!.fillStyle =
+        '#B58A26';
+
+      ctx!.fillRect(
+        x - width * 0.85,
+        top + height * 0.35,
+        width * 1.7,
+        5 * s
+      );
+
+      // balcony railing
+
+      ctx!.strokeStyle =
+        '#E8CB73';
+
+      ctx!.lineWidth =
+        Math.max(0.6, 0.8 * s);
+
+      for (
+        let i = -3;
+        i <= 3;
+        i++
+      ) {
+
         ctx!.beginPath();
-        ctx!.moveTo(W * 0.1, ry);
-        ctx!.lineTo(W * 0.9, ry);
+
+        ctx!.moveTo(
+          x + i * width * 0.20,
+          top + height * 0.35
+        );
+
+        ctx!.lineTo(
+          x + i * width * 0.20,
+          top + height * 0.35 - 7 * s
+        );
+
         ctx!.stroke();
       }
 
-      // ── MOSQUE ARCHITECTURE ──
-      // Main Base Body
-      ctx!.fillStyle = darkSil;
-      ctx!.fillRect(W * 0.22, baseY - 110 * s, W * 0.56, 110 * s);
-      ctx!.strokeStyle = goldGrad;
-      ctx!.lineWidth = 3 * s;
-      ctx!.strokeRect(W * 0.22, baseY - 110 * s, W * 0.56, 110 * s);
+      // balcony 2
 
-      // Central Grand Onion Dome
-      ctx!.fillStyle = goldGrad;
+      ctx!.fillStyle =
+        '#8E6A1D';
+
+      ctx!.fillRect(
+        x - width * 0.72,
+        top + height * 0.62,
+        width * 1.44,
+        4 * s
+      );
+
+      // pointed roof
+
+      ctx!.fillStyle =
+        gold;
+
       ctx!.beginPath();
-      ctx!.moveTo(W * 0.4, baseY - 110 * s);
-      ctx!.bezierCurveTo(W * 0.4, baseY - 230 * s, W * 0.5, baseY - 260 * s, W * 0.5, baseY - 260 * s);
-      ctx!.bezierCurveTo(W * 0.5, baseY - 260 * s, W * 0.6, baseY - 230 * s, W * 0.6, baseY - 110 * s);
+
+      ctx!.moveTo(
+        x - width * 0.75,
+        top
+      );
+
+      ctx!.lineTo(
+        x,
+        top - 28 * s
+      );
+
+      ctx!.lineTo(
+        x + width * 0.75,
+        top
+      );
+
       ctx!.closePath();
+
       ctx!.fill();
 
-      // Dome Finial Crescent Peak
-      ctx!.fillStyle = '#FFFDF0';
+      // finial
+
+      ctx!.strokeStyle =
+        brightGold;
+
+      ctx!.lineWidth =
+        Math.max(0.7, 1 * s);
+
       ctx!.beginPath();
-      ctx!.arc(W * 0.5, baseY - 265 * s, 6 * s, 0, Math.PI * 2);
-      ctx!.fill();
 
-      // Secondary Side Domes
-      const drawDome = (xCenter: number, width: number, height: number) => {
-        ctx!.beginPath();
-        ctx!.moveTo(xCenter - width / 2, baseY - 110 * s);
-        ctx!.bezierCurveTo(xCenter - width / 2, baseY - 110 * s - height * 0.8, xCenter, baseY - 110 * s - height, xCenter, baseY - 110 * s - height);
-        ctx!.bezierCurveTo(xCenter, baseY - 110 * s - height, xCenter + width / 2, baseY - 110 * s - height * 0.8, xCenter + width / 2, baseY - 110 * s);
-        ctx!.closePath();
-        ctx!.fill();
-      };
+      ctx!.moveTo(
+        x,
+        top - 28 * s
+      );
 
-      ctx!.fillStyle = goldGrad;
-      drawDome(W * 0.32, 60 * s, 80 * s);
-      drawDome(W * 0.68, 60 * s, 80 * s);
-      drawDome(W * 0.25, 45 * s, 60 * s);
-      drawDome(W * 0.75, 45 * s, 60 * s);
+      ctx!.lineTo(
+        x,
+        top - 42 * s
+      );
 
-      // 4 Grand Minarets (Towers)
-      const drawMinaret = (x: number, w: number, h: number) => {
-        ctx!.fillStyle = darkSil;
-        ctx!.fillRect(x - w / 2, baseY - h, w, h);
-        ctx!.strokeStyle = goldGrad;
-        ctx!.lineWidth = 2 * s;
-        ctx!.strokeRect(x - w / 2, baseY - h, w, h);
+      ctx!.stroke();
+    };
 
-        // Minaret Balconies
-        ctx!.fillStyle = goldGrad;
-        ctx!.fillRect(x - w * 0.7, baseY - h * 0.6, w * 1.4, 6 * s);
-        ctx!.fillRect(x - w * 0.7, baseY - h * 0.85, w * 1.4, 6 * s);
+  // back towers first
 
-        // Minaret Dome Peak
-        ctx!.beginPath();
-        ctx!.moveTo(x - w * 0.6, baseY - h);
-        ctx!.lineTo(x, baseY - h - 30 * s);
-        ctx!.lineTo(x + w * 0.6, baseY - h);
-        ctx!.closePath();
-        ctx!.fill();
-      };
+  drawMinaret(
+    W * 0.18,
+    15 * s,
+    235 * s
+  );
 
-      drawMinaret(W * 0.16, 18 * s, 260 * s);
-      drawMinaret(W * 0.21, 15 * s, 220 * s);
-      drawMinaret(W * 0.79, 15 * s, 220 * s);
-      drawMinaret(W * 0.84, 18 * s, 260 * s);
+  drawMinaret(
+    W * 0.82,
+    15 * s,
+    235 * s
+  );
 
-      // Illuminated Mosque Arch Windows
-      ctx!.fillStyle = `rgba(255, 220, 120, ${0.85 * vis})`;
-      ctx!.shadowBlur = 15 * s;
-      ctx!.shadowColor = '#FFD700';
+  // foreground towers
 
-      // Center Grand Arch Entrance
+  drawMinaret(
+    W * 0.125,
+    20 * s,
+    275 * s
+  );
+
+  drawMinaret(
+    W * 0.875,
+    20 * s,
+    275 * s
+  );
+
+  // =========================================================
+  // CENTRAL FACADE ARCH
+  // =========================================================
+
+  const archX =
+    W * 0.5;
+
+  const archBottom =
+    baseY;
+
+  const archTop =
+    bodyTop + 25 * s;
+
+  // outer arch
+
+  ctx!.fillStyle =
+    '#071D16';
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    archX - 48 * s,
+    archBottom
+  );
+
+  ctx!.lineTo(
+    archX - 48 * s,
+    archTop + 38 * s
+  );
+
+  ctx!.quadraticCurveTo(
+    archX,
+    archTop - 20 * s,
+    archX + 48 * s,
+    archTop + 38 * s
+  );
+
+  ctx!.lineTo(
+    archX + 48 * s,
+    archBottom
+  );
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  // golden arch border
+
+  ctx!.strokeStyle =
+    `rgba(230,196,100,${0.75 * vis})`;
+
+  ctx!.lineWidth =
+    Math.max(1, 2 * s);
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    archX - 52 * s,
+    archBottom
+  );
+
+  ctx!.lineTo(
+    archX - 52 * s,
+    archTop + 38 * s
+  );
+
+  ctx!.quadraticCurveTo(
+    archX,
+    archTop - 27 * s,
+    archX + 52 * s,
+    archTop + 38 * s
+  );
+
+  ctx!.lineTo(
+    archX + 52 * s,
+    archBottom
+  );
+
+  ctx!.stroke();
+
+  // =========================================================
+  // GLOWING MAIN ENTRANCE
+  // =========================================================
+
+  const entranceGlow =
+    ctx!.createRadialGradient(
+      archX,
+      archTop + 45 * s,
+      0,
+      archX,
+      archTop + 45 * s,
+      85 * s
+    );
+
+  entranceGlow.addColorStop(
+    0,
+    `rgba(255,221,130,${0.55 * vis})`
+  );
+
+  entranceGlow.addColorStop(
+    0.35,
+    `rgba(255,190,70,${0.18 * vis})`
+  );
+
+  entranceGlow.addColorStop(
+    1,
+    'rgba(255,180,50,0)'
+  );
+
+  ctx!.fillStyle =
+    entranceGlow;
+
+  ctx!.fillRect(
+    archX - 90 * s,
+    archTop - 20 * s,
+    180 * s,
+    160 * s
+  );
+
+  // inner doorway
+
+  ctx!.fillStyle =
+    '#020A07';
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    archX - 28 * s,
+    archBottom
+  );
+
+  ctx!.lineTo(
+    archX - 28 * s,
+    archTop + 45 * s
+  );
+
+  ctx!.quadraticCurveTo(
+    archX,
+    archTop + 10 * s,
+    archX + 28 * s,
+    archTop + 45 * s
+  );
+
+  ctx!.lineTo(
+    archX + 28 * s,
+    archBottom
+  );
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  // warm doorway light
+
+  ctx!.fillStyle =
+    `rgba(255,214,120,${0.32 * vis})`;
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    archX - 19 * s,
+    archBottom
+  );
+
+  ctx!.lineTo(
+    archX - 19 * s,
+    archTop + 48 * s
+  );
+
+  ctx!.quadraticCurveTo(
+    archX,
+    archTop + 23 * s,
+    archX + 19 * s,
+    archTop + 48 * s
+  );
+
+  ctx!.lineTo(
+    archX + 19 * s,
+    archBottom
+  );
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  // =========================================================
+  // SIDE ARCH WINDOWS
+  // =========================================================
+
+  const drawWindow =
+    (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      phase: number
+    ) => {
+
+      const pulse =
+        0.55 +
+        Math.sin(t * 2.2 + phase) * 0.12;
+
+      ctx!.save();
+
+      ctx!.shadowBlur =
+        12 * s;
+
+      ctx!.shadowColor =
+        `rgba(255,205,90,${0.45 * vis})`;
+
+      ctx!.fillStyle =
+        `rgba(255,218,130,${pulse * vis})`;
+
       ctx!.beginPath();
-      ctx!.moveTo(W * 0.46, baseY);
-      ctx!.lineTo(W * 0.46, baseY - 65 * s);
-      ctx!.quadraticCurveTo(W * 0.5, baseY - 85 * s, W * 0.54, baseY - 65 * s);
-      ctx!.lineTo(W * 0.54, baseY);
+
+      ctx!.moveTo(
+        x - w / 2,
+        y + h
+      );
+
+      ctx!.lineTo(
+        x - w / 2,
+        y + h * 0.35
+      );
+
+      ctx!.quadraticCurveTo(
+        x,
+        y - h * 0.05,
+        x + w / 2,
+        y + h * 0.35
+      );
+
+      ctx!.lineTo(
+        x + w / 2,
+        y + h
+      );
+
+      ctx!.closePath();
+
       ctx!.fill();
 
-      // Side Windows Arches
-      for (let i = 0; i < 4; i++) {
-        const lx1 = W * 0.26 + i * 14 * s;
-        const rx1 = W * 0.74 - i * 14 * s;
-        ctx!.fillRect(lx1, baseY - 70 * s, 7 * s, 25 * s);
-        ctx!.fillRect(rx1, baseY - 70 * s, 7 * s, 25 * s);
-      }
+      // vertical mullion
+
       ctx!.shadowBlur = 0;
 
-      // ── INVERTED REFLECTION ON MARBLE FLOOR ──
-      ctx!.save();
-      ctx!.globalAlpha = 0.25 * vis;
-      ctx!.translate(0, baseY * 2);
-      ctx!.scale(1, -0.6); // Flip upside down
-      ctx!.fillStyle = goldGrad;
-      drawDome(W * 0.5, 100 * s, 120 * s);
-      drawDome(W * 0.32, 60 * s, 80 * s);
-      drawDome(W * 0.68, 60 * s, 80 * s);
-      ctx!.restore();
+      ctx!.strokeStyle =
+        `rgba(108,70,12,${0.6 * vis})`;
+
+      ctx!.lineWidth =
+        Math.max(0.5, 0.8 * s);
+
+      ctx!.beginPath();
+
+      ctx!.moveTo(
+        x,
+        y + h * 0.30
+      );
+
+      ctx!.lineTo(
+        x,
+        y + h
+      );
+
+      ctx!.stroke();
 
       ctx!.restore();
-    }
+    };
 
+  drawWindow(
+    W * 0.31,
+    bodyTop + 42 * s,
+    20 * s,
+    38 * s,
+    0
+  );
+
+  drawWindow(
+    W * 0.39,
+    bodyTop + 50 * s,
+    17 * s,
+    34 * s,
+    1.2
+  );
+
+  drawWindow(
+    W * 0.61,
+    bodyTop + 50 * s,
+    17 * s,
+    34 * s,
+    2.4
+  );
+
+  drawWindow(
+    W * 0.69,
+    bodyTop + 42 * s,
+    20 * s,
+    38 * s,
+    3.5
+  );
+
+  // =========================================================
+  // ISLAMIC GEOMETRIC FACADE DETAILS
+  // =========================================================
+
+  ctx!.save();
+
+  ctx!.strokeStyle =
+    `rgba(224,193,103,${0.28 * vis})`;
+
+  ctx!.lineWidth =
+    Math.max(0.5, 0.7 * s);
+
+  const patternY =
+    bodyTop + 92 * s;
+
+  for (let i = 0; i < 9; i++) {
+
+    const px =
+      W * 0.29 + i * W * 0.052;
+
+    ctx!.beginPath();
+
+    ctx!.moveTo(
+      px,
+      patternY
+    );
+
+    ctx!.lineTo(
+      px + 12 * s,
+      patternY + 8 * s
+    );
+
+    ctx!.lineTo(
+      px,
+      patternY + 16 * s
+    );
+
+    ctx!.lineTo(
+      px - 12 * s,
+      patternY + 8 * s
+    );
+
+    ctx!.closePath();
+
+    ctx!.stroke();
+  }
+
+  ctx!.restore();
+
+  // =========================================================
+  // MOVING DOME LIGHT
+  // =========================================================
+
+  const lightProgress =
+    (Math.sin(t * 0.8) + 1) / 2;
+
+  const movingX =
+    domeX -
+    domeWidth * 0.35 +
+    lightProgress *
+    domeWidth * 0.7;
+
+  const movingGlow =
+    ctx!.createRadialGradient(
+      movingX,
+      domeTop + 65 * s,
+      0,
+      movingX,
+      domeTop + 65 * s,
+      35 * s
+    );
+
+  movingGlow.addColorStop(
+    0,
+    `rgba(255,255,220,${0.28 * vis})`
+  );
+
+  movingGlow.addColorStop(
+    1,
+    'rgba(255,255,255,0)'
+  );
+
+  ctx!.fillStyle =
+    movingGlow;
+
+  ctx!.fillRect(
+    domeX - domeWidth,
+    domeTop,
+    domeWidth * 2,
+    100 * s
+  );
+
+  // =========================================================
+  // MARBLE REFLECTION
+  // =========================================================
+
+  ctx!.save();
+
+  ctx!.globalAlpha =
+    0.20 * vis;
+
+  ctx!.translate(
+    0,
+    baseY * 2
+  );
+
+  ctx!.scale(
+    1,
+    -0.48
+  );
+
+  // simplified reflected mosque mass
+
+  ctx!.fillStyle =
+    'rgba(218,190,100,0.55)';
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    W * 0.25,
+    baseY - 110 * s
+  );
+
+  ctx!.lineTo(
+    W * 0.25,
+    baseY
+  );
+
+  ctx!.lineTo(
+    W * 0.75,
+    baseY
+  );
+
+  ctx!.lineTo(
+    W * 0.75,
+    baseY - 110 * s
+  );
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  ctx!.restore();
+
+  // =========================================================
+  // ANIMATED WATER-LIKE MARBLE RIPPLE
+  // =========================================================
+
+  ctx!.save();
+
+  ctx!.globalAlpha =
+    0.16 * vis;
+
+  ctx!.strokeStyle =
+    '#E6CC83';
+
+  ctx!.lineWidth =
+    Math.max(0.5, 0.8 * s);
+
+  for (let i = 0; i < 11; i++) {
+
+    const phase =
+      t * 0.7 + i * 0.45;
+
+    const y =
+      baseY +
+      12 * s +
+      i * 12 * s;
+
+    const wave =
+      Math.sin(phase) * 4 * s;
+
+    ctx!.beginPath();
+
+    ctx!.moveTo(
+      W * 0.28,
+      y
+    );
+
+    ctx!.quadraticCurveTo(
+      W * 0.5,
+      y + wave,
+      W * 0.72,
+      y
+    );
+
+    ctx!.stroke();
+  }
+
+  ctx!.restore();
+
+  // =========================================================
+  // FLOATING GOLD PARTICLES
+  // =========================================================
+
+  ctx!.save();
+
+  ctx!.globalCompositeOperation =
+    'screen';
+
+  for (let i = 0; i < 22; i++) {
+
+    const seed =
+      i * 37.17;
+
+    const px =
+      W * (
+        0.12 +
+        ((seed % 71) / 100)
+      );
+
+    const py =
+      H * (
+        0.25 +
+        ((seed * 1.37) % 45) / 100
+      );
+
+    const drift =
+      Math.sin(
+        t * 0.7 + i
+      ) * 6;
+
+    const pulse =
+      0.3 +
+      0.3 *
+      Math.sin(
+        t * 2 + i
+      );
+
+    ctx!.fillStyle =
+      `rgba(255,218,130,${pulse * vis})`;
+
+    ctx!.beginPath();
+
+    ctx!.arc(
+      px + drift,
+      py,
+      (1.0 + (i % 3) * 0.6) * s,
+      0,
+      Math.PI * 2
+    );
+
+    ctx!.fill();
+  }
+
+  ctx!.restore();
+
+  // =========================================================
+  // SOFT GROUND LIGHT
+  // =========================================================
+
+  const groundGlow =
+    ctx!.createRadialGradient(
+      W * 0.5,
+      baseY,
+      0,
+      W * 0.5,
+      baseY,
+      W * 0.40
+    );
+
+  groundGlow.addColorStop(
+    0,
+    `rgba(255,205,100,${0.12 * vis})`
+  );
+
+  groundGlow.addColorStop(
+    0.45,
+    `rgba(40,130,90,${0.08 * vis})`
+  );
+
+  groundGlow.addColorStop(
+    1,
+    'rgba(0,0,0,0)'
+  );
+
+  ctx!.fillStyle =
+    groundGlow;
+
+  ctx!.fillRect(
+    W * 0.08,
+    baseY - 20 * s,
+    W * 0.84,
+    H * 0.28
+  );
+
+  ctx!.restore();
+}
     // =========================================================================
     // SCENE 3: SPECTACULAR FIREWORKS ENGINE (3.5s -> 9.0s)
     // =========================================================================
