@@ -369,6 +369,23 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ctx!.restore();
 
       // =========================================================
+      // MOSQUE SIZE CONTROL
+      // =========================================================
+
+      // 1.00 = current size
+      // 0.90 = slightly smaller
+      // 0.82 = clearly smaller
+      // 0.78 = compact cinematic size
+      const mosqueScale =
+        0.80 + smoothstep(2.2, 4.0, t) * 0.02;
+
+      // Scale ONLY the mosque around its ground/base.
+      // Floor remains completely unaffected.
+      ctx!.translate(W * 0.5, baseY);
+      ctx!.scale(mosqueScale, mosqueScale);
+      ctx!.translate(-W * 0.5, -baseY);
+
+      // =========================================================
       // MOSQUE SHADOW / FOUNDATION
       // =========================================================
 
