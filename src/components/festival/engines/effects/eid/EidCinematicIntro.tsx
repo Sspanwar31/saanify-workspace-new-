@@ -102,7 +102,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
     const goldDustSprite = makeSprite(64, 'rgba(255,215,100,1)', 'rgba(255,140,40,0.4)');
     const fireworkSprite = makeSprite(64, 'rgba(255,255,255,1)', 'rgba(255,215,100,0.5)');
 
-    // 🚀 FIXED: INCREASED PARTICLE POOL CAPACITY TO 6000 (Prevents pool exhaustion during blast)
+    // 🚀 FIXED: INCREASED PARTICLE POOL CAPACITY TO 6000
     const pool = new ParticlePool(6000);
     
     function resize() {
@@ -1605,20 +1605,22 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       if (!p) return;
 
       p.type = 'firework_rocket';
+      p.hasExploded = false; // ADDED: Explicit reset
+
       p.x = W * 0.12 + Math.random() * W * 0.76;
       p.y = H * 0.85;
 
       p.vx = (Math.random() - 0.5) * 1.5;
       
-      // 🚀 STRONG UPWARD SPEED: Shoots all the way to upper sky
-      p.vy = -18.0 - Math.random() * 4.0;
+      // 🚀 CHANGED: Natural high-sky trajectory
+      p.vy = -14.5 - Math.random() * 3.0;
 
       p.size = 2.5;
-      p.maxLife = 1.5 + Math.random() * 0.4; // Longer flight time
+      p.maxLife = 1.8 + Math.random() * 0.3; // CHANGED: Longer flight time
       p.life = 0;
       p.alpha = 1;
 
-      p.gravity = 0.08; // Gentle gravity so rocket doesn't stop mid-air
+      p.gravity = 0.08; 
       p.drag = 0.992;
 
       p.color = [
@@ -1628,16 +1630,18 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
     // 💥 MULTI-COLOR HIGH-SKY BLAST EXPLOSION
     function explodeFirework(x: number, y: number, mainColor: string) {
-      screenFlash = Math.min(1.0, screenFlash + 0.30); // Real-time light flash
+      // CHANGED: Reduced screenFlash
+      screenFlash = Math.min(1.0, screenFlash + 0.14); 
 
-      const sparkCount = 90 + Math.floor(Math.random() * 40); // 90 to 130 sparks
+      const sparkCount = 90 + Math.floor(Math.random() * 40); 
 
+      // CHANGED: Color-heavy palettes (Removed whites)
       const multiColors = [
-        ['#FFD700', '#FFF8DC', '#FFD700', '#FFFFFF'], // Gold Sparkle
-        ['#00FF9D', '#7DF9FF', '#FFFFFF', '#00E5FF'], // Emerald Cyan
-        ['#FF1493', '#FFD1E6', '#FFFFFF', '#FF4FA3'], // Hot Pink
-        ['#FFA500', '#FFD700', '#FFFFFF', '#FF4500'], // Coral Gold
-        ['#9D4EDD', '#E0AAFF', '#FFFFFF', '#00E5FF']  // Royal Violet Cyan
+        ['#FFD700', '#FFB300', '#FFC857', '#FFF1A8'],
+        ['#00E5FF', '#00B8D4', '#7DF9FF', '#00FFCC'],
+        ['#FF1493', '#FF4FA3', '#FF77B7', '#FFD1E6'],
+        ['#FF6D00', '#FFA500', '#FFCA28', '#FFD700'],
+        ['#9D4EDD', '#B66DFF', '#E0AAFF', '#C77DFF']
       ];
 
       const colorPalette = multiColors[Math.floor(Math.random() * multiColors.length)];
@@ -1651,20 +1655,21 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         p.y = y;
 
         const angle = (i / sparkCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.1;
-        const speed = 3.5 + Math.random() * 6.5; // 💥 HUGE MULTI-COLOR BLAST RADIUS
+        // CHANGED: Controlled blast radius
+        const speed = 3.2 + Math.random() * 5.8;
 
         p.vx = Math.cos(angle) * speed;
         p.vy = Math.sin(angle) * speed;
 
-        p.size = 1.5 + Math.random() * 2.5;
+        // CHANGED: Controlled spark size
+        p.size = 1.1 + Math.random() * 1.8;
         p.maxLife = 1.4 + Math.random() * 0.8;
         p.life = 0;
         p.alpha = 1;
 
-        p.gravity = 0.06; // Sparks drift down gracefully
+        p.gravity = 0.06; 
         p.drag = 0.965;
 
-        // Multi-color spark distribution
         p.color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
       }
     }
@@ -1819,8 +1824,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         } else if (p.type === 'firework_rocket') {
           p.alpha = 1 - lr;
 
-          // 🚀 GUARANTEED HIGH-SKY BLAST TRIGGER (Explodes ONLY in upper sky above Domes)
-          if ((p.y <= H * 0.22 || p.vy >= -1.0 || lr >= 0.92) && !p.hasExploded) {
+          // 🚀 CHANGED: GUARANTEED HIGH-SKY BLAST TRIGGER (Explodes ONLY in upper sky)
+          if ((p.y <= H * 0.18 || lr >= 0.96) && !p.hasExploded) {
             p.hasExploded = true;
             explodeFirework(p.x, p.y, p.color);
             p.alpha = 0;
@@ -1840,12 +1845,27 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         } else if (p.type === 'firework_spark') {
           p.alpha = 1 - lr;
           if (p.alpha > 0.01) {
-            ctx!.globalAlpha = p.alpha;
-            const sz = p.size * 4;
-            ctx!.drawImage(fireworkSprite, p.x - sz, p.y - sz, sz * 2, sz * 2);
+            const sz = p.size * 3.0;
+
+            // CHANGED: Soft colored glow
+            ctx!.globalAlpha = p.alpha * 0.28;
             ctx!.fillStyle = p.color;
             ctx!.beginPath();
-            ctx!.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI * 2);
+            ctx!.arc(p.x, p.y, Math.max(1, sz * 2.2), 0, Math.PI * 2);
+            ctx!.fill();
+
+            // CHANGED: Bright colored spark core
+            ctx!.globalAlpha = p.alpha;
+            ctx!.fillStyle = p.color;
+            ctx!.beginPath();
+            ctx!.arc(p.x, p.y, Math.max(0.8, p.size), 0, Math.PI * 2);
+            ctx!.fill();
+
+            // CHANGED: Tiny white hot center — only subtle
+            ctx!.globalAlpha = p.alpha * 0.45;
+            ctx!.fillStyle = '#FFFFFF';
+            ctx!.beginPath();
+            ctx!.arc(p.x, p.y, Math.max(0.35, p.size * 0.28), 0, Math.PI * 2);
             ctx!.fill();
           }
         }
@@ -1857,9 +1877,10 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
     // ============ POST-PROCESSING EFFECTS ============
     function applyBloom() {
-      const bloomAlpha = 0.5;
+      // CHANGED: Bloom parameters reduced heavily
+      const bloomAlpha = 0.24;
       bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(4px) brightness(1.25)';
+      bctx.filter = 'blur(3px) brightness(1.08)';
       bctx.drawImage(canvas!, 0, 0, bloom.width, bloom.height);
       bctx.filter = 'none';
       ctx!.save();
