@@ -180,1646 +180,1496 @@ export default function EidCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-// SCENE 2 — CINEMATIC GRAND MOSQUE
-// 2.5s → 9.0s
-// 2027 EID UL FITR — ROYAL EMERALD / IVORY / GOLD
-// =========================================================================
+    // SCENE 2 — CINEMATIC GRAND MOSQUE
+    // 2.5s → 9.0s
+    // 2027 EID UL FITR — ROYAL EMERALD / IVORY / GOLD
+    // =========================================================================
 
-function drawGrandMosqueWithReflections(t: number) {
+    function drawGrandMosqueWithReflections(t: number) {
 
-  const vis =
-    smoothstep(2.2, 3.2, t) *
-    (1 - smoothstep(8.2, 9.2, t));
+      const vis =
+        smoothstep(2.2, 3.2, t) *
+        (1 - smoothstep(8.2, 9.2, t));
 
-  if (vis <= 0.001) return;
+      if (vis <= 0.001) return;
 
-  ctx!.save();
+      ctx!.save();
 
-  // ---------------------------------------------------------
-  // CINEMATIC CAMERA REVEAL
-  // ---------------------------------------------------------
+      // ---------------------------------------------------------
+      // CINEMATIC CAMERA REVEAL
+      // ---------------------------------------------------------
 
-  const revealProgress = smoothstep(2.2, 5.0, t);
+      const revealProgress = smoothstep(2.2, 5.0, t);
 
-  const cinematicScale =
-    0.94 + revealProgress * 0.06;
+      const cinematicScale =
+        0.94 + revealProgress * 0.06;
 
-  const centerX = W * 0.5;
-  const centerY = H * 0.72;
+      const centerX = W * 0.5;
+      const centerY = H * 0.72;
 
-  ctx!.translate(centerX, centerY);
-  ctx!.scale(cinematicScale, cinematicScale);
-  ctx!.translate(-centerX, -centerY);
+      ctx!.translate(centerX, centerY);
+      ctx!.scale(cinematicScale, cinematicScale);
+      ctx!.translate(-centerX, -centerY);
 
-  ctx!.globalAlpha = vis;
+      ctx!.globalAlpha = vis;
 
-  // ---------------------------------------------------------
-  // SCALE
-  // ---------------------------------------------------------
+      // ---------------------------------------------------------
+      // SCALE
+      // ---------------------------------------------------------
 
-  const s = Math.min(W, H) * 0.0024;
+      const s = Math.min(W, H) * 0.0024;
 
-  const baseY = H * 0.72;
+      const baseY = H * 0.72;
 
-  // ---------------------------------------------------------
-  // COLOR PALETTE
-  // ---------------------------------------------------------
+      // ---------------------------------------------------------
+      // COLOR PALETTE
+      // ---------------------------------------------------------
 
-  const deepEmerald = '#03150F';
-  const emerald = '#073B2A';
+      const deepEmerald = '#03150F';
+      const emerald = '#073B2A';
 
-  const ivory = '#FFF8E8';
-  const warmIvory = '#F5E7C4';
+      const ivory = '#FFF8E8';
+      const warmIvory = '#F5E7C4';
 
-  const gold = '#D6A928';
-  const brightGold = '#FFE39A';
+      const gold = '#D6A928';
+      const brightGold = '#FFE39A';
 
-  // ---------------------------------------------------------
-  // ATMOSPHERIC GLOW BEHIND MOSQUE
-  // ---------------------------------------------------------
+      // ---------------------------------------------------------
+      // ATMOSPHERIC GLOW BEHIND MOSQUE
+      // ---------------------------------------------------------
 
-  const atmosphere =
-    ctx!.createRadialGradient(
-      W * 0.5,
-      baseY - 190 * s,
-      0,
-      W * 0.5,
-      baseY - 190 * s,
-      330 * s
-    );
-
-  atmosphere.addColorStop(
-    0,
-    `rgba(255,220,130,${0.14 * vis})`
-  );
-
-  atmosphere.addColorStop(
-    0.25,
-    `rgba(90,190,145,${0.10 * vis})`
-  );
-
-  atmosphere.addColorStop(
-    0.65,
-    `rgba(20,100,70,${0.055 * vis})`
-  );
-
-  atmosphere.addColorStop(
-    1,
-    'rgba(0,0,0,0)'
-  );
-
-  ctx!.fillStyle = atmosphere;
-
-  ctx!.fillRect(
-    W * 0.15,
-    H * 0.20,
-    W * 0.70,
-    H * 0.60
-  );
-
-  // =========================================================
-  // MARBLE COURTYARD
-  // =========================================================
-
-  const floorGrad =
-    ctx!.createLinearGradient(
-      0,
-      baseY,
-      0,
-      H
-    );
-
-  floorGrad.addColorStop(
-    0,
-    '#102E25'
-  );
-
-  floorGrad.addColorStop(
-    0.25,
-    '#082119'
-  );
-
-  floorGrad.addColorStop(
-    0.65,
-    '#04140F'
-  );
-
-  floorGrad.addColorStop(
-    1,
-    '#010705'
-  );
-
-  ctx!.fillStyle = floorGrad;
-
-  ctx!.fillRect(
-    0,
-    baseY,
-    W,
-    H - baseY
-  );
-
-  // ---------------------------------------------------------
-  // MARBLE PERSPECTIVE LINES
-  // ---------------------------------------------------------
-
-  ctx!.save();
-
-  ctx!.globalAlpha = 0.18 * vis;
-
-  ctx!.strokeStyle = '#D9C89A';
-  ctx!.lineWidth = Math.max(0.5, 0.7 * s);
-
-  for (let i = -7; i <= 7; i++) {
-
-    const bottomX =
-      W * 0.5 + i * W * 0.11;
-
-    ctx!.beginPath();
-
-    ctx!.moveTo(
-      W * 0.5 + i * W * 0.025,
-      baseY
-    );
-
-    ctx!.lineTo(
-      bottomX,
-      H
-    );
-
-    ctx!.stroke();
-  }
-
-  // Horizontal marble seams
-
-  for (let i = 1; i < 7; i++) {
-
-    const p = i / 7;
-
-    const y =
-      baseY +
-      Math.pow(p, 1.65) *
-      (H - baseY);
-
-    ctx!.beginPath();
-
-    ctx!.moveTo(
-      W * 0.08 + p * W * 0.08,
-      y
-    );
-
-    ctx!.lineTo(
-      W * 0.92 - p * W * 0.08,
-      y
-    );
-
-    ctx!.stroke();
-  }
-
-  ctx!.restore();
-
-  // =========================================================
-  // MOSQUE SHADOW / FOUNDATION
-  // =========================================================
-
-  ctx!.save();
-
-  ctx!.fillStyle =
-    'rgba(0,0,0,0.55)';
-
-  ctx!.beginPath();
-
-  ctx!.ellipse(
-    W * 0.5,
-    baseY + 4 * s,
-    W * 0.38,
-    20 * s,
-    0,
-    0,
-    Math.PI * 2
-  );
-
-  ctx!.fill();
-
-  ctx!.restore();
-
-  // =========================================================
-  // MAIN MOSQUE BODY
-  // =========================================================
-
-  const bodyTop =
-    baseY - 125 * s;
-
-  const bodyBottom =
-    baseY;
-
-  const bodyGrad =
-    ctx!.createLinearGradient(
-      0,
-      bodyTop,
-      0,
-      bodyBottom
-    );
-
-  bodyGrad.addColorStop(
-    0,
-    '#173D31'
-  );
-
-  bodyGrad.addColorStop(
-    0.35,
-    '#0B2A20'
-  );
-
-  bodyGrad.addColorStop(
-    1,
-    '#03130E'
-  );
-
-  ctx!.fillStyle = bodyGrad;
-
-  ctx!.beginPath();
-
-  ctx!.roundRect(
-    W * 0.23,
-    bodyTop,
-    W * 0.54,
-    bodyBottom - bodyTop,
-    5 * s
-  );
-
-  ctx!.fill();
-
-  // ---------------------------------------------------------
-  // MAIN BODY GOLD EDGE
-  // ---------------------------------------------------------
-
-  ctx!.strokeStyle =
-    `rgba(214,169,40,${0.55 * vis})`;
-
-  ctx!.lineWidth =
-    Math.max(1, 1.5 * s);
-
-  ctx!.stroke();
-
-  // =========================================================
-  // CENTRAL GRAND DOME
-  // =========================================================
-
-  const domeBase =
-    bodyTop + 10 * s;
-
-  const domeTop =
-    bodyTop - 145 * s;
-
-  const domeX =
-    W * 0.5;
-
-  const domeWidth =
-    W * 0.23;
-
-  const domeGrad =
-    ctx!.createLinearGradient(
-      domeX - domeWidth / 2,
-      domeTop,
-      domeX + domeWidth / 2,
-      domeBase
-    );
-
-  domeGrad.addColorStop(
-    0,
-    '#FFFDF2'
-  );
-
-  domeGrad.addColorStop(
-    0.20,
-    '#F8E9BD'
-  );
-
-  domeGrad.addColorStop(
-    0.48,
-    '#D9B94E'
-  );
-
-  domeGrad.addColorStop(
-    0.72,
-    '#9B7420'
-  );
-
-  domeGrad.addColorStop(
-    1,
-    '#4D3708'
-  );
-
-  ctx!.fillStyle = domeGrad;
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    domeX - domeWidth / 2,
-    domeBase
-  );
-
-  ctx!.bezierCurveTo(
-    domeX - domeWidth / 2,
-    domeTop + 55 * s,
-    domeX - domeWidth * 0.27,
-    domeTop,
-    domeX,
-    domeTop
-  );
-
-  ctx!.bezierCurveTo(
-    domeX + domeWidth * 0.27,
-    domeTop,
-    domeX + domeWidth / 2,
-    domeTop + 55 * s,
-    domeX + domeWidth / 2,
-    domeBase
-  );
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  // ---------------------------------------------------------
-  // DOME HIGHLIGHT
-  // ---------------------------------------------------------
-
-  const highlightX =
-    domeX - domeWidth * 0.18;
-
-  const highlight =
-    ctx!.createRadialGradient(
-      highlightX,
-      domeTop + 35 * s,
-      0,
-      highlightX,
-      domeTop + 35 * s,
-      domeWidth * 0.42
-    );
-
-  highlight.addColorStop(
-    0,
-    `rgba(255,255,240,${0.45 * vis})`
-  );
-
-  highlight.addColorStop(
-    1,
-    'rgba(255,255,255,0)'
-  );
-
-  ctx!.fillStyle = highlight;
-
-  ctx!.beginPath();
-
-  ctx!.arc(
-    domeX,
-    domeTop + 55 * s,
-    domeWidth * 0.48,
-    0,
-    Math.PI * 2
-  );
-
-  ctx!.fill();
-
-  // =========================================================
-  // DOME RIBS — ISLAMIC ARCHITECTURAL DETAIL
-  // =========================================================
-
-  ctx!.save();
-
-  ctx!.strokeStyle =
-    `rgba(120,82,15,${0.30 * vis})`;
-
-  ctx!.lineWidth =
-    Math.max(0.7, 1 * s);
-
-  for (let i = -3; i <= 3; i++) {
-
-    const x =
-      domeX +
-      i * domeWidth * 0.105;
-
-    ctx!.beginPath();
-
-    ctx!.moveTo(
-      x,
-      domeBase
-    );
-
-    ctx!.quadraticCurveTo(
-      domeX + i * domeWidth * 0.07,
-      domeTop + 35 * s,
-      domeX + i * domeWidth * 0.025,
-      domeTop + 5 * s
-    );
-
-    ctx!.stroke();
-  }
-
-  ctx!.restore();
-
-  // =========================================================
-  // DOME NECK / DRUM
-  // =========================================================
-
-  ctx!.fillStyle =
-    '#D5B45A';
-
-  ctx!.fillRect(
-    domeX - domeWidth * 0.42,
-    domeBase - 12 * s,
-    domeWidth * 0.84,
-    12 * s
-  );
-
-  // =========================================================
-  // CRESCENT FINIAL
-  // =========================================================
-
-  const crescentY =
-    domeTop - 25 * s;
-
-  ctx!.save();
-
-  ctx!.shadowBlur =
-    18 * s;
-
-  ctx!.shadowColor =
-    'rgba(255,215,90,0.75)';
-
-  ctx!.strokeStyle =
-    brightGold;
-
-  ctx!.lineWidth =
-    3 * s;
-
-  ctx!.beginPath();
-
-  ctx!.arc(
-    domeX,
-    crescentY,
-    13 * s,
-    -0.9,
-    2.2
-  );
-
-  ctx!.stroke();
-
-  // small star
-
-  ctx!.fillStyle =
-    ivory;
-
-  ctx!.beginPath();
-
-  const starX =
-    domeX + 13 * s;
-
-  const starY =
-    crescentY - 5 * s;
-
-  for (let i = 0; i < 10; i++) {
-
-    const a =
-      -Math.PI / 2 +
-      i * Math.PI / 5;
-
-    const r =
-      i % 2 === 0
-        ? 5 * s
-        : 2 * s;
-
-    const px =
-      starX + Math.cos(a) * r;
-
-    const py =
-      starY + Math.sin(a) * r;
-
-    if (i === 0) {
-      ctx!.moveTo(px, py);
-    } else {
-      ctx!.lineTo(px, py);
-    }
-  }
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  ctx!.restore();
-
-  // =========================================================
-  // SIDE DOMES
-  // =========================================================
-
-  const drawSideDome =
-    (
-      x: number,
-      width: number,
-      height: number
-    ) => {
-
-      const top =
-        bodyTop - height;
-
-      const grad =
-        ctx!.createLinearGradient(
-          x - width / 2,
-          top,
-          x + width / 2,
-          bodyTop
-        );
-
-      grad.addColorStop(
-        0,
-        '#FFF8DF'
-      );
-
-      grad.addColorStop(
-        0.45,
-        '#D7B54B'
-      );
-
-      grad.addColorStop(
-        1,
-        '#64480E'
-      );
-
-      ctx!.fillStyle = grad;
-
-      ctx!.beginPath();
-
-      ctx!.moveTo(
-        x - width / 2,
-        bodyTop
-      );
-
-      ctx!.bezierCurveTo(
-        x - width / 2,
-        top + height * 0.35,
-        x - width * 0.18,
-        top,
-        x,
-        top
-      );
-
-      ctx!.bezierCurveTo(
-        x + width * 0.18,
-        top,
-        x + width / 2,
-        top + height * 0.35,
-        x + width / 2,
-        bodyTop
-      );
-
-      ctx!.closePath();
-
-      ctx!.fill();
-    };
-
-  drawSideDome(
-    W * 0.34,
-    W * 0.105,
-    65 * s
-  );
-
-  drawSideDome(
-    W * 0.66,
-    W * 0.105,
-    65 * s
-  );
-
-  drawSideDome(
-    W * 0.27,
-    W * 0.075,
-    43 * s
-  );
-
-  drawSideDome(
-    W * 0.73,
-    W * 0.075,
-    43 * s
-  );
-
-  // =========================================================
-  // MINARETS
-  // =========================================================
-
-  const drawMinaret =
-    (
-      x: number,
-      width: number,
-      height: number
-    ) => {
-
-      const bottom =
-        baseY + 2 * s;
-
-      const top =
-        bottom - height;
-
-      // tower body
-
-      const towerGrad =
-        ctx!.createLinearGradient(
-          x - width / 2,
+      const atmosphere =
+        ctx!.createRadialGradient(
+          W * 0.5,
+          baseY - 190 * s,
           0,
-          x + width / 2,
-          0
+          W * 0.5,
+          baseY - 190 * s,
+          330 * s
         );
 
-      towerGrad.addColorStop(
+      atmosphere.addColorStop(
         0,
-        '#03120D'
+        `rgba(255,220,130,${0.14 * vis})`
       );
 
-      towerGrad.addColorStop(
-        0.45,
-        '#174535'
+      atmosphere.addColorStop(
+        0.25,
+        `rgba(90,190,145,${0.10 * vis})`
       );
 
-      towerGrad.addColorStop(
-        0.75,
-        '#09271D'
+      atmosphere.addColorStop(
+        0.65,
+        `rgba(20,100,70,${0.055 * vis})`
       );
 
-      towerGrad.addColorStop(
+      atmosphere.addColorStop(
         1,
-        '#010806'
+        'rgba(0,0,0,0)'
       );
 
-      ctx!.fillStyle =
-        towerGrad;
+      ctx!.fillStyle = atmosphere;
 
       ctx!.fillRect(
-        x - width / 2,
-        top,
-        width,
-        height
+        W * 0.15,
+        H * 0.20,
+        W * 0.70,
+        H * 0.60
       );
 
-      // golden vertical trim
+      // =========================================================
+      // MARBLE COURTYARD
+      // =========================================================
 
-      ctx!.strokeStyle =
-        `rgba(214,169,40,${0.65 * vis})`;
+      const floorGrad =
+        ctx!.createLinearGradient(
+          0,
+          baseY,
+          0,
+          H
+        );
 
-      ctx!.lineWidth =
-        Math.max(0.7, 1 * s);
-
-      ctx!.strokeRect(
-        x - width / 2,
-        top,
-        width,
-        height
+      floorGrad.addColorStop(
+        0,
+        '#102E25'
       );
 
-      // balcony 1
+      floorGrad.addColorStop(
+        0.25,
+        '#082119'
+      );
 
-      ctx!.fillStyle =
-        '#B58A26';
+      floorGrad.addColorStop(
+        0.65,
+        '#04140F'
+      );
+
+      floorGrad.addColorStop(
+        1,
+        '#010705'
+      );
+
+      ctx!.fillStyle = floorGrad;
 
       ctx!.fillRect(
-        x - width * 0.85,
-        top + height * 0.35,
-        width * 1.7,
-        5 * s
+        0,
+        baseY,
+        W,
+        H - baseY
       );
 
-      // balcony railing
+      // ---------------------------------------------------------
+      // MARBLE PERSPECTIVE LINES
+      // ---------------------------------------------------------
 
-      ctx!.strokeStyle =
-        '#E8CB73';
+      ctx!.save();
 
-      ctx!.lineWidth =
-        Math.max(0.6, 0.8 * s);
+      ctx!.globalAlpha = 0.18 * vis;
 
-      for (
-        let i = -3;
-        i <= 3;
-        i++
-      ) {
+      ctx!.strokeStyle = '#D9C89A';
+      ctx!.lineWidth = Math.max(0.5, 0.7 * s);
+
+      for (let i = -7; i <= 7; i++) {
+
+        const bottomX =
+          W * 0.5 + i * W * 0.11;
 
         ctx!.beginPath();
 
         ctx!.moveTo(
-          x + i * width * 0.20,
-          top + height * 0.35
+          W * 0.5 + i * W * 0.025,
+          baseY
         );
 
         ctx!.lineTo(
-          x + i * width * 0.20,
-          top + height * 0.35 - 7 * s
+          bottomX,
+          H
         );
 
         ctx!.stroke();
       }
 
-      // balcony 2
+      // Horizontal marble seams
+
+      for (let i = 1; i < 7; i++) {
+
+        const p = i / 7;
+
+        const y =
+          baseY +
+          Math.pow(p, 1.65) *
+          (H - baseY);
+
+        ctx!.beginPath();
+
+        ctx!.moveTo(
+          W * 0.08 + p * W * 0.08,
+          y
+        );
+
+        ctx!.lineTo(
+          W * 0.92 - p * W * 0.08,
+          y
+        );
+
+        ctx!.stroke();
+      }
+
+      ctx!.restore();
+
+      // =========================================================
+      // MOSQUE SHADOW / FOUNDATION
+      // =========================================================
+
+      ctx!.save();
 
       ctx!.fillStyle =
-        '#8E6A1D';
+        'rgba(0,0,0,0.55)';
 
-      ctx!.fillRect(
-        x - width * 0.72,
-        top + height * 0.62,
-        width * 1.44,
-        4 * s
+      ctx!.beginPath();
+
+      ctx!.ellipse(
+        W * 0.5,
+        baseY + 4 * s,
+        W * 0.38,
+        20 * s,
+        0,
+        0,
+        Math.PI * 2
       );
 
-      // pointed roof
+      ctx!.fill();
 
-      ctx!.fillStyle =
-        gold;
+      ctx!.restore();
+
+      // =========================================================
+      // MAIN MOSQUE BODY
+      // =========================================================
+
+      const bodyTop =
+        baseY - 125 * s;
+
+      const bodyBottom =
+        baseY;
+
+      const bodyGrad =
+        ctx!.createLinearGradient(
+          0,
+          bodyTop,
+          0,
+          bodyBottom
+        );
+
+      bodyGrad.addColorStop(
+        0,
+        '#173D31'
+      );
+
+      bodyGrad.addColorStop(
+        0.35,
+        '#0B2A20'
+      );
+
+      bodyGrad.addColorStop(
+        1,
+        '#03130E'
+      );
+
+      ctx!.fillStyle = bodyGrad;
+
+      ctx!.beginPath();
+
+      ctx!.roundRect(
+        W * 0.23,
+        bodyTop,
+        W * 0.54,
+        bodyBottom - bodyTop,
+        5 * s
+      );
+
+      ctx!.fill();
+
+      // ---------------------------------------------------------
+      // MAIN BODY GOLD EDGE
+      // ---------------------------------------------------------
+
+      ctx!.strokeStyle =
+        `rgba(214,169,40,${0.55 * vis})`;
+
+      ctx!.lineWidth =
+        Math.max(1, 1.5 * s);
+
+      ctx!.stroke();
+
+      // =========================================================
+      // CENTRAL GRAND DOME
+      // =========================================================
+
+      const domeBase =
+        bodyTop + 10 * s;
+
+      const domeTop =
+        bodyTop - 145 * s;
+
+      const domeX =
+        W * 0.5;
+
+      const domeWidth =
+        W * 0.23;
+
+      const domeGrad =
+        ctx!.createLinearGradient(
+          domeX - domeWidth / 2,
+          domeTop,
+          domeX + domeWidth / 2,
+          domeBase
+        );
+
+      domeGrad.addColorStop(
+        0,
+        '#FFFDF2'
+      );
+
+      domeGrad.addColorStop(
+        0.20,
+        '#F8E9BD'
+      );
+
+      domeGrad.addColorStop(
+        0.48,
+        '#D9B94E'
+      );
+
+      domeGrad.addColorStop(
+        0.72,
+        '#9B7420'
+      );
+
+      domeGrad.addColorStop(
+        1,
+        '#4D3708'
+      );
+
+      ctx!.fillStyle = domeGrad;
 
       ctx!.beginPath();
 
       ctx!.moveTo(
-        x - width * 0.75,
-        top
+        domeX - domeWidth / 2,
+        domeBase
       );
 
-      ctx!.lineTo(
-        x,
-        top - 28 * s
+      ctx!.bezierCurveTo(
+        domeX - domeWidth / 2,
+        domeTop + 55 * s,
+        domeX - domeWidth * 0.27,
+        domeTop,
+        domeX,
+        domeTop
       );
 
-      ctx!.lineTo(
-        x + width * 0.75,
-        top
+      ctx!.bezierCurveTo(
+        domeX + domeWidth * 0.27,
+        domeTop,
+        domeX + domeWidth / 2,
+        domeTop + 55 * s,
+        domeX + domeWidth / 2,
+        domeBase
       );
 
       ctx!.closePath();
 
       ctx!.fill();
 
-      // finial
+      // ---------------------------------------------------------
+      // DOME HIGHLIGHT
+      // ---------------------------------------------------------
+
+      const highlightX =
+        domeX - domeWidth * 0.18;
+
+      const highlight =
+        ctx!.createRadialGradient(
+          highlightX,
+          domeTop + 35 * s,
+          0,
+          highlightX,
+          domeTop + 35 * s,
+          domeWidth * 0.42
+        );
+
+      highlight.addColorStop(
+        0,
+        `rgba(255,255,240,${0.45 * vis})`
+      );
+
+      highlight.addColorStop(
+        1,
+        'rgba(255,255,255,0)'
+      );
+
+      ctx!.fillStyle = highlight;
+
+      ctx!.beginPath();
+
+      ctx!.arc(
+        domeX,
+        domeTop + 55 * s,
+        domeWidth * 0.48,
+        0,
+        Math.PI * 2
+      );
+
+      ctx!.fill();
+
+      // =========================================================
+      // DOME RIBS — ISLAMIC ARCHITECTURAL DETAIL
+      // =========================================================
+
+      ctx!.save();
+
+      ctx!.strokeStyle =
+        `rgba(120,82,15,${0.30 * vis})`;
+
+      ctx!.lineWidth =
+        Math.max(0.7, 1 * s);
+
+      for (let i = -3; i <= 3; i++) {
+
+        const x =
+          domeX +
+          i * domeWidth * 0.105;
+
+        ctx!.beginPath();
+
+        ctx!.moveTo(
+          x,
+          domeBase
+        );
+
+        ctx!.quadraticCurveTo(
+          domeX + i * domeWidth * 0.07,
+          domeTop + 35 * s,
+          domeX + i * domeWidth * 0.025,
+          domeTop + 5 * s
+        );
+
+        ctx!.stroke();
+      }
+
+      ctx!.restore();
+
+      // =========================================================
+      // DOME NECK / DRUM
+      // =========================================================
+
+      ctx!.fillStyle =
+        '#D5B45A';
+
+      ctx!.fillRect(
+        domeX - domeWidth * 0.42,
+        domeBase - 12 * s,
+        domeWidth * 0.84,
+        12 * s
+      );
+
+      // =========================================================
+      // CRESCENT FINIAL
+      // =========================================================
+
+      const crescentY =
+        domeTop - 25 * s;
+
+      ctx!.save();
+
+      ctx!.shadowBlur =
+        18 * s;
+
+      ctx!.shadowColor =
+        'rgba(255,215,90,0.75)';
 
       ctx!.strokeStyle =
         brightGold;
 
       ctx!.lineWidth =
-        Math.max(0.7, 1 * s);
+        3 * s;
 
       ctx!.beginPath();
 
-      ctx!.moveTo(
-        x,
-        top - 28 * s
-      );
-
-      ctx!.lineTo(
-        x,
-        top - 42 * s
+      ctx!.arc(
+        domeX,
+        crescentY,
+        13 * s,
+        -0.9,
+        2.2
       );
 
       ctx!.stroke();
-    };
 
-  // back towers first
-
-  drawMinaret(
-    W * 0.18,
-    15 * s,
-    235 * s
-  );
-
-  drawMinaret(
-    W * 0.82,
-    15 * s,
-    235 * s
-  );
-
-  // foreground towers
-
-  drawMinaret(
-    W * 0.125,
-    20 * s,
-    275 * s
-  );
-
-  drawMinaret(
-    W * 0.875,
-    20 * s,
-    275 * s
-  );
-
-  // =========================================================
-  // CENTRAL FACADE ARCH
-  // =========================================================
-
-  const archX =
-    W * 0.5;
-
-  const archBottom =
-    baseY;
-
-  const archTop =
-    bodyTop + 25 * s;
-
-  // outer arch
-
-  ctx!.fillStyle =
-    '#071D16';
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    archX - 48 * s,
-    archBottom
-  );
-
-  ctx!.lineTo(
-    archX - 48 * s,
-    archTop + 38 * s
-  );
-
-  ctx!.quadraticCurveTo(
-    archX,
-    archTop - 20 * s,
-    archX + 48 * s,
-    archTop + 38 * s
-  );
-
-  ctx!.lineTo(
-    archX + 48 * s,
-    archBottom
-  );
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  // golden arch border
-
-  ctx!.strokeStyle =
-    `rgba(230,196,100,${0.75 * vis})`;
-
-  ctx!.lineWidth =
-    Math.max(1, 2 * s);
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    archX - 52 * s,
-    archBottom
-  );
-
-  ctx!.lineTo(
-    archX - 52 * s,
-    archTop + 38 * s
-  );
-
-  ctx!.quadraticCurveTo(
-    archX,
-    archTop - 27 * s,
-    archX + 52 * s,
-    archTop + 38 * s
-  );
-
-  ctx!.lineTo(
-    archX + 52 * s,
-    archBottom
-  );
-
-  ctx!.stroke();
-
-  // =========================================================
-  // GLOWING MAIN ENTRANCE
-  // =========================================================
-
-  const entranceGlow =
-    ctx!.createRadialGradient(
-      archX,
-      archTop + 45 * s,
-      0,
-      archX,
-      archTop + 45 * s,
-      85 * s
-    );
-
-  entranceGlow.addColorStop(
-    0,
-    `rgba(255,221,130,${0.55 * vis})`
-  );
-
-  entranceGlow.addColorStop(
-    0.35,
-    `rgba(255,190,70,${0.18 * vis})`
-  );
-
-  entranceGlow.addColorStop(
-    1,
-    'rgba(255,180,50,0)'
-  );
-
-  ctx!.fillStyle =
-    entranceGlow;
-
-  ctx!.fillRect(
-    archX - 90 * s,
-    archTop - 20 * s,
-    180 * s,
-    160 * s
-  );
-
-  // inner doorway
-
-  ctx!.fillStyle =
-    '#020A07';
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    archX - 28 * s,
-    archBottom
-  );
-
-  ctx!.lineTo(
-    archX - 28 * s,
-    archTop + 45 * s
-  );
-
-  ctx!.quadraticCurveTo(
-    archX,
-    archTop + 10 * s,
-    archX + 28 * s,
-    archTop + 45 * s
-  );
-
-  ctx!.lineTo(
-    archX + 28 * s,
-    archBottom
-  );
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  // warm doorway light
-
-  ctx!.fillStyle =
-    `rgba(255,214,120,${0.32 * vis})`;
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    archX - 19 * s,
-    archBottom
-  );
-
-  ctx!.lineTo(
-    archX - 19 * s,
-    archTop + 48 * s
-  );
-
-  ctx!.quadraticCurveTo(
-    archX,
-    archTop + 23 * s,
-    archX + 19 * s,
-    archTop + 48 * s
-  );
-
-  ctx!.lineTo(
-    archX + 19 * s,
-    archBottom
-  );
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  // =========================================================
-  // SIDE ARCH WINDOWS
-  // =========================================================
-
-  const drawWindow =
-    (
-      x: number,
-      y: number,
-      w: number,
-      h: number,
-      phase: number
-    ) => {
-
-      const pulse =
-        0.55 +
-        Math.sin(t * 2.2 + phase) * 0.12;
-
-      ctx!.save();
-
-      ctx!.shadowBlur =
-        12 * s;
-
-      ctx!.shadowColor =
-        `rgba(255,205,90,${0.45 * vis})`;
+      // small star
 
       ctx!.fillStyle =
-        `rgba(255,218,130,${pulse * vis})`;
+        ivory;
+
+      ctx!.beginPath();
+
+      const starX =
+        domeX + 13 * s;
+
+      const starY =
+        crescentY - 5 * s;
+
+      for (let i = 0; i < 10; i++) {
+
+        const a =
+          -Math.PI / 2 +
+          i * Math.PI / 5;
+
+        const r =
+          i % 2 === 0
+            ? 5 * s
+            : 2 * s;
+
+        const px =
+          starX + Math.cos(a) * r;
+
+        const py =
+          starY + Math.sin(a) * r;
+
+        if (i === 0) {
+          ctx!.moveTo(px, py);
+        } else {
+          ctx!.lineTo(px, py);
+        }
+      }
+
+      ctx!.closePath();
+
+      ctx!.fill();
+
+      ctx!.restore();
+
+      // =========================================================
+      // SIDE DOMES
+      // =========================================================
+
+      const drawSideDome =
+        (
+          x: number,
+          width: number,
+          height: number
+        ) => {
+
+          const top =
+            bodyTop - height;
+
+          const grad =
+            ctx!.createLinearGradient(
+              x - width / 2,
+              top,
+              x + width / 2,
+              bodyTop
+            );
+
+          grad.addColorStop(
+            0,
+            '#FFF8DF'
+          );
+
+          grad.addColorStop(
+            0.45,
+            '#D7B54B'
+          );
+
+          grad.addColorStop(
+            1,
+            '#64480E'
+          );
+
+          ctx!.fillStyle = grad;
+
+          ctx!.beginPath();
+
+          ctx!.moveTo(
+            x - width / 2,
+            bodyTop
+          );
+
+          ctx!.bezierCurveTo(
+            x - width / 2,
+            top + height * 0.35,
+            x - width * 0.18,
+            top,
+            x,
+            top
+          );
+
+          ctx!.bezierCurveTo(
+            x + width * 0.18,
+            top,
+            x + width / 2,
+            top + height * 0.35,
+            x + width / 2,
+            bodyTop
+          );
+
+          ctx!.closePath();
+
+          ctx!.fill();
+        };
+
+      drawSideDome(
+        W * 0.34,
+        W * 0.105,
+        65 * s
+      );
+
+      drawSideDome(
+        W * 0.66,
+        W * 0.105,
+        65 * s
+      );
+
+      drawSideDome(
+        W * 0.27,
+        W * 0.075,
+        43 * s
+      );
+
+      drawSideDome(
+        W * 0.73,
+        W * 0.075,
+        43 * s
+      );
+
+      // =========================================================
+      // MINARETS
+      // =========================================================
+
+      const drawMinaret =
+        (
+          x: number,
+          width: number,
+          height: number
+        ) => {
+
+          const bottom =
+            baseY + 2 * s;
+
+          const top =
+            bottom - height;
+
+          // tower body
+
+          const towerGrad =
+            ctx!.createLinearGradient(
+              x - width / 2,
+              0,
+              x + width / 2,
+              0
+            );
+
+          towerGrad.addColorStop(
+            0,
+            '#03120D'
+          );
+
+          towerGrad.addColorStop(
+            0.45,
+            '#174535'
+          );
+
+          towerGrad.addColorStop(
+            0.75,
+            '#09271D'
+          );
+
+          towerGrad.addColorStop(
+            1,
+            '#010806'
+          );
+
+          ctx!.fillStyle =
+            towerGrad;
+
+          ctx!.fillRect(
+            x - width / 2,
+            top,
+            width,
+            height
+          );
+
+          // golden vertical trim
+
+          ctx!.strokeStyle =
+            `rgba(214,169,40,${0.65 * vis})`;
+
+          ctx!.lineWidth =
+            Math.max(0.7, 1 * s);
+
+          ctx!.strokeRect(
+            x - width / 2,
+            top,
+            width,
+            height
+          );
+
+          // balcony 1
+
+          ctx!.fillStyle =
+            '#B58A26';
+
+          ctx!.fillRect(
+            x - width * 0.85,
+            top + height * 0.35,
+            width * 1.7,
+            5 * s
+          );
+
+          // balcony railing
+
+          ctx!.strokeStyle =
+            '#E8CB73';
+
+          ctx!.lineWidth =
+            Math.max(0.6, 0.8 * s);
+
+          for (
+            let i = -3;
+            i <= 3;
+            i++
+          ) {
+
+            ctx!.beginPath();
+
+            ctx!.moveTo(
+              x + i * width * 0.20,
+              top + height * 0.35
+            );
+
+            ctx!.lineTo(
+              x + i * width * 0.20,
+              top + height * 0.35 - 7 * s
+            );
+
+            ctx!.stroke();
+          }
+
+          // balcony 2
+
+          ctx!.fillStyle =
+            '#8E6A1D';
+
+          ctx!.fillRect(
+            x - width * 0.72,
+            top + height * 0.62,
+            width * 1.44,
+            4 * s
+          );
+
+          // pointed roof
+
+          ctx!.fillStyle =
+            gold;
+
+          ctx!.beginPath();
+
+          ctx!.moveTo(
+            x - width * 0.75,
+            top
+          );
+
+          ctx!.lineTo(
+            x,
+            top - 28 * s
+          );
+
+          ctx!.lineTo(
+            x + width * 0.75,
+            top
+          );
+
+          ctx!.closePath();
+
+          ctx!.fill();
+
+          // finial
+
+          ctx!.strokeStyle =
+            brightGold;
+
+          ctx!.lineWidth =
+            Math.max(0.7, 1 * s);
+
+          ctx!.beginPath();
+
+          ctx!.moveTo(
+            x,
+            top - 28 * s
+          );
+
+          ctx!.lineTo(
+            x,
+            top - 42 * s
+          );
+
+          ctx!.stroke();
+        };
+
+      // back towers first
+
+      drawMinaret(
+        W * 0.18,
+        15 * s,
+        235 * s
+      );
+
+      drawMinaret(
+        W * 0.82,
+        15 * s,
+        235 * s
+      );
+
+      // foreground towers
+
+      drawMinaret(
+        W * 0.125,
+        20 * s,
+        275 * s
+      );
+
+      drawMinaret(
+        W * 0.875,
+        20 * s,
+        275 * s
+      );
+
+      // =========================================================
+      // CENTRAL FACADE ARCH
+      // =========================================================
+
+      const archX =
+        W * 0.5;
+
+      const archBottom =
+        baseY;
+
+      const archTop =
+        bodyTop + 25 * s;
+
+      // outer arch
+
+      ctx!.fillStyle =
+        '#071D16';
 
       ctx!.beginPath();
 
       ctx!.moveTo(
-        x - w / 2,
-        y + h
+        archX - 48 * s,
+        archBottom
       );
 
       ctx!.lineTo(
-        x - w / 2,
-        y + h * 0.35
+        archX - 48 * s,
+        archTop + 38 * s
       );
 
       ctx!.quadraticCurveTo(
-        x,
-        y - h * 0.05,
-        x + w / 2,
-        y + h * 0.35
+        archX,
+        archTop - 20 * s,
+        archX + 48 * s,
+        archTop + 38 * s
       );
 
       ctx!.lineTo(
-        x + w / 2,
-        y + h
+        archX + 48 * s,
+        archBottom
       );
 
       ctx!.closePath();
 
       ctx!.fill();
 
-      // vertical mullion
-
-      ctx!.shadowBlur = 0;
+      // golden arch border
 
       ctx!.strokeStyle =
-        `rgba(108,70,12,${0.6 * vis})`;
+        `rgba(230,196,100,${0.75 * vis})`;
 
       ctx!.lineWidth =
-        Math.max(0.5, 0.8 * s);
+        Math.max(1, 2 * s);
 
       ctx!.beginPath();
 
       ctx!.moveTo(
-        x,
-        y + h * 0.30
+        archX - 52 * s,
+        archBottom
       );
 
       ctx!.lineTo(
-        x,
-        y + h
+        archX - 52 * s,
+        archTop + 38 * s
+      );
+
+      ctx!.quadraticCurveTo(
+        archX,
+        archTop - 27 * s,
+        archX + 52 * s,
+        archTop + 38 * s
+      );
+
+      ctx!.lineTo(
+        archX + 52 * s,
+        archBottom
       );
 
       ctx!.stroke();
 
+      // =========================================================
+      // GLOWING MAIN ENTRANCE
+      // =========================================================
+
+      const entranceGlow =
+        ctx!.createRadialGradient(
+          archX,
+          archTop + 45 * s,
+          0,
+          archX,
+          archTop + 45 * s,
+          85 * s
+        );
+
+      entranceGlow.addColorStop(
+        0,
+        `rgba(255,221,130,${0.55 * vis})`
+      );
+
+      entranceGlow.addColorStop(
+        0.35,
+        `rgba(255,190,70,${0.18 * vis})`
+      );
+
+      entranceGlow.addColorStop(
+        1,
+        'rgba(255,180,50,0)'
+      );
+
+      ctx!.fillStyle =
+        entranceGlow;
+
+      ctx!.fillRect(
+        archX - 90 * s,
+        archTop - 20 * s,
+        180 * s,
+        160 * s
+      );
+
+      // inner doorway
+
+      ctx!.fillStyle =
+        '#020A07';
+
+      ctx!.beginPath();
+
+      ctx!.moveTo(
+        archX - 28 * s,
+        archBottom
+      );
+
+      ctx!.lineTo(
+        archX - 28 * s,
+        archTop + 45 * s
+      );
+
+      ctx!.quadraticCurveTo(
+        archX,
+        archTop + 10 * s,
+        archX + 28 * s,
+        archTop + 45 * s
+      );
+
+      ctx!.lineTo(
+        archX + 28 * s,
+        archBottom
+      );
+
+      ctx!.closePath();
+
+      ctx!.fill();
+
+      // warm doorway light
+
+      ctx!.fillStyle =
+        `rgba(255,214,120,${0.32 * vis})`;
+
+      ctx!.beginPath();
+
+      ctx!.moveTo(
+        archX - 19 * s,
+        archBottom
+      );
+
+      ctx!.lineTo(
+        archX - 19 * s,
+        archTop + 48 * s
+      );
+
+      ctx!.quadraticCurveTo(
+        archX,
+        archTop + 23 * s,
+        archX + 19 * s,
+        archTop + 48 * s
+      );
+
+      ctx!.lineTo(
+        archX + 19 * s,
+        archBottom
+      );
+
+      ctx!.closePath();
+
+      ctx!.fill();
+
+      // =========================================================
+      // SIDE ARCH WINDOWS
+      // =========================================================
+
+      const drawWindow =
+        (
+          x: number,
+          y: number,
+          w: number,
+          h: number,
+          phase: number
+        ) => {
+
+          const pulse =
+            0.55 +
+            Math.sin(t * 2.2 + phase) * 0.12;
+
+          ctx!.save();
+
+          ctx!.shadowBlur =
+            12 * s;
+
+          ctx!.shadowColor =
+            `rgba(255,205,90,${0.45 * vis})`;
+
+          ctx!.fillStyle =
+            `rgba(255,218,130,${pulse * vis})`;
+
+          ctx!.beginPath();
+
+          ctx!.moveTo(
+            x - w / 2,
+            y + h
+          );
+
+          ctx!.lineTo(
+            x - w / 2,
+            y + h * 0.35
+          );
+
+          ctx!.quadraticCurveTo(
+            x,
+            y - h * 0.05,
+            x + w / 2,
+            y + h * 0.35
+          );
+
+          ctx!.lineTo(
+            x + w / 2,
+            y + h
+          );
+
+          ctx!.closePath();
+
+          ctx!.fill();
+
+          // vertical mullion
+
+          ctx!.shadowBlur = 0;
+
+          ctx!.strokeStyle =
+            `rgba(108,70,12,${0.6 * vis})`;
+
+          ctx!.lineWidth =
+            Math.max(0.5, 0.8 * s);
+
+          ctx!.beginPath();
+
+          ctx!.moveTo(
+            x,
+            y + h * 0.30
+          );
+
+          ctx!.lineTo(
+            x,
+            y + h
+          );
+
+          ctx!.stroke();
+
+          ctx!.restore();
+        };
+
+      drawWindow(
+        W * 0.31,
+        bodyTop + 42 * s,
+        20 * s,
+        38 * s,
+        0
+      );
+
+      drawWindow(
+        W * 0.39,
+        bodyTop + 50 * s,
+        17 * s,
+        34 * s,
+        1.2
+      );
+
+      drawWindow(
+        W * 0.61,
+        bodyTop + 50 * s,
+        17 * s,
+        34 * s,
+        2.4
+      );
+
+      drawWindow(
+        W * 0.69,
+        bodyTop + 42 * s,
+        20 * s,
+        38 * s,
+        3.5
+      );
+
+      // =========================================================
+      // ISLAMIC GEOMETRIC FACADE DETAILS
+      // =========================================================
+
+      ctx!.save();
+
+      ctx!.strokeStyle =
+        `rgba(224,193,103,${0.28 * vis})`;
+
+      ctx!.lineWidth =
+        Math.max(0.5, 0.7 * s);
+
+      const patternY =
+        bodyTop + 92 * s;
+
+      for (let i = 0; i < 9; i++) {
+
+        const px =
+          W * 0.29 + i * W * 0.052;
+
+        ctx!.beginPath();
+
+        ctx!.moveTo(
+          px,
+          patternY
+        );
+
+        ctx!.lineTo(
+          px + 12 * s,
+          patternY + 8 * s
+        );
+
+        ctx!.lineTo(
+          px,
+          patternY + 16 * s
+        );
+
+        ctx!.lineTo(
+          px - 12 * s,
+          patternY + 8 * s
+        );
+
+        ctx!.closePath();
+
+        ctx!.stroke();
+      }
+
       ctx!.restore();
-    };
 
-  drawWindow(
-    W * 0.31,
-    bodyTop + 42 * s,
-    20 * s,
-    38 * s,
-    0
-  );
+      // =========================================================
+      // MOVING DOME LIGHT
+      // =========================================================
 
-  drawWindow(
-    W * 0.39,
-    bodyTop + 50 * s,
-    17 * s,
-    34 * s,
-    1.2
-  );
+      const lightProgress =
+        (Math.sin(t * 0.8) + 1) / 2;
 
-  drawWindow(
-    W * 0.61,
-    bodyTop + 50 * s,
-    17 * s,
-    34 * s,
-    2.4
-  );
+      const movingX =
+        domeX -
+        domeWidth * 0.35 +
+        lightProgress *
+        domeWidth * 0.7;
 
-  drawWindow(
-    W * 0.69,
-    bodyTop + 42 * s,
-    20 * s,
-    38 * s,
-    3.5
-  );
+      const movingGlow =
+        ctx!.createRadialGradient(
+          movingX,
+          domeTop + 65 * s,
+          0,
+          movingX,
+          domeTop + 65 * s,
+          35 * s
+        );
 
-  // =========================================================
-  // ISLAMIC GEOMETRIC FACADE DETAILS
-  // =========================================================
-
-  ctx!.save();
-
-  ctx!.strokeStyle =
-    `rgba(224,193,103,${0.28 * vis})`;
-
-  ctx!.lineWidth =
-    Math.max(0.5, 0.7 * s);
-
-  const patternY =
-    bodyTop + 92 * s;
-
-  for (let i = 0; i < 9; i++) {
-
-    const px =
-      W * 0.29 + i * W * 0.052;
-
-    ctx!.beginPath();
-
-    ctx!.moveTo(
-      px,
-      patternY
-    );
-
-    ctx!.lineTo(
-      px + 12 * s,
-      patternY + 8 * s
-    );
-
-    ctx!.lineTo(
-      px,
-      patternY + 16 * s
-    );
-
-    ctx!.lineTo(
-      px - 12 * s,
-      patternY + 8 * s
-    );
-
-    ctx!.closePath();
-
-    ctx!.stroke();
-  }
-
-  ctx!.restore();
-
-  // =========================================================
-  // MOVING DOME LIGHT
-  // =========================================================
-
-  const lightProgress =
-    (Math.sin(t * 0.8) + 1) / 2;
-
-  const movingX =
-    domeX -
-    domeWidth * 0.35 +
-    lightProgress *
-    domeWidth * 0.7;
-
-  const movingGlow =
-    ctx!.createRadialGradient(
-      movingX,
-      domeTop + 65 * s,
-      0,
-      movingX,
-      domeTop + 65 * s,
-      35 * s
-    );
-
-  movingGlow.addColorStop(
-    0,
-    `rgba(255,255,220,${0.28 * vis})`
-  );
-
-  movingGlow.addColorStop(
-    1,
-    'rgba(255,255,255,0)'
-  );
-
-  ctx!.fillStyle =
-    movingGlow;
-
-  ctx!.fillRect(
-    domeX - domeWidth,
-    domeTop,
-    domeWidth * 2,
-    100 * s
-  );
-
-  // =========================================================
-  // MARBLE REFLECTION
-  // =========================================================
-
-  ctx!.save();
-
-  ctx!.globalAlpha =
-    0.20 * vis;
-
-  ctx!.translate(
-    0,
-    baseY * 2
-  );
-
-  ctx!.scale(
-    1,
-    -0.48
-  );
-
-  // simplified reflected mosque mass
-
-  ctx!.fillStyle =
-    'rgba(218,190,100,0.55)';
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    W * 0.25,
-    baseY - 110 * s
-  );
-
-  ctx!.lineTo(
-    W * 0.25,
-    baseY
-  );
-
-  ctx!.lineTo(
-    W * 0.75,
-    baseY
-  );
-
-  ctx!.lineTo(
-    W * 0.75,
-    baseY - 110 * s
-  );
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  ctx!.restore();
-
-  // =========================================================
-  // ANIMATED WATER-LIKE MARBLE RIPPLE
-  // =========================================================
-
-  ctx!.save();
-
-  ctx!.globalAlpha =
-    0.16 * vis;
-
-  ctx!.strokeStyle =
-    '#E6CC83';
-
-  ctx!.lineWidth =
-    Math.max(0.5, 0.8 * s);
-
-  for (let i = 0; i < 11; i++) {
-
-    const phase =
-      t * 0.7 + i * 0.45;
-
-    const y =
-      baseY +
-      12 * s +
-      i * 12 * s;
-
-    const wave =
-      Math.sin(phase) * 4 * s;
-
-    ctx!.beginPath();
-
-    ctx!.moveTo(
-      W * 0.28,
-      y
-    );
-
-    ctx!.quadraticCurveTo(
-      W * 0.5,
-      y + wave,
-      W * 0.72,
-      y
-    );
-
-    ctx!.stroke();
-  }
-
-  ctx!.restore();
-
-  // =========================================================
-  // FLOATING GOLD PARTICLES
-  // =========================================================
-
-  ctx!.save();
-
-  ctx!.globalCompositeOperation =
-    'screen';
-
-  for (let i = 0; i < 22; i++) {
-
-    const seed =
-      i * 37.17;
-
-    const px =
-      W * (
-        0.12 +
-        ((seed % 71) / 100)
+      movingGlow.addColorStop(
+        0,
+        `rgba(255,255,220,${0.28 * vis})`
       );
 
-    const py =
-      H * (
-        0.25 +
-        ((seed * 1.37) % 45) / 100
+      movingGlow.addColorStop(
+        1,
+        'rgba(255,255,255,0)'
       );
 
-    const drift =
-      Math.sin(
-        t * 0.7 + i
-      ) * 6;
+      ctx!.fillStyle =
+        movingGlow;
 
-    const pulse =
-      0.3 +
-      0.3 *
-      Math.sin(
-        t * 2 + i
+      ctx!.fillRect(
+        domeX - domeWidth,
+        domeTop,
+        domeWidth * 2,
+        100 * s
       );
 
-    ctx!.fillStyle =
-      `rgba(255,218,130,${pulse * vis})`;
+      // =========================================================
+      // MARBLE REFLECTION
+      // =========================================================
 
-    ctx!.beginPath();
+      ctx!.save();
 
-    ctx!.arc(
-      px + drift,
-      py,
-      (1.0 + (i % 3) * 0.6) * s,
-      0,
-      Math.PI * 2
-    );
+      ctx!.globalAlpha =
+        0.20 * vis;
 
-    ctx!.fill();
-  }
+      ctx!.translate(
+        0,
+        baseY * 2
+      );
 
-  ctx!.restore();
+      ctx!.scale(
+        1,
+        -0.48
+      );
 
-  // =========================================================
-  // SOFT GROUND LIGHT
-  // =========================================================
+      // simplified reflected mosque mass
 
-  const groundGlow =
-    ctx!.createRadialGradient(
-      W * 0.5,
-      baseY,
-      0,
-      W * 0.5,
-      baseY,
-      W * 0.40
-    );
+      ctx!.fillStyle =
+        'rgba(218,190,100,0.55)';
 
-  groundGlow.addColorStop(
-    0,
-    `rgba(255,205,100,${0.12 * vis})`
-  );
+      ctx!.beginPath();
 
-  groundGlow.addColorStop(
-    0.45,
-    `rgba(40,130,90,${0.08 * vis})`
-  );
+      ctx!.moveTo(
+        W * 0.25,
+        baseY - 110 * s
+      );
 
-  groundGlow.addColorStop(
-    1,
-    'rgba(0,0,0,0)'
-  );
+      ctx!.lineTo(
+        W * 0.25,
+        baseY
+      );
 
-  ctx!.fillStyle =
-    groundGlow;
+      ctx!.lineTo(
+        W * 0.75,
+        baseY
+      );
 
-  ctx!.fillRect(
-    W * 0.08,
-    baseY - 20 * s,
-    W * 0.84,
-    H * 0.28
-  );
+      ctx!.lineTo(
+        W * 0.75,
+        baseY - 110 * s
+      );
 
-  ctx!.restore();
-}
-// =========================================================================
-// SCENE 3: SPECTACULAR EID FIREWORKS ENGINE
-// HIGH SKY + MULTI-COLOR BURSTS + ELEGANT GOLD CORE
-// =========================================================================
+      ctx!.closePath();
 
-function launchFirework(t: number) {
-  // Fireworks active window
-  if (t < 3.2 || t > 8.8) return;
+      ctx!.fill();
 
-  // Launch frequency
-  if (Math.random() > 0.18) return;
+      ctx!.restore();
 
-  const p = pool.spawn();
-  if (!p) return;
+      // =========================================================
+      // ANIMATED WATER-LIKE MARBLE RIPPLE
+      // =========================================================
 
-  p.type = 'firework_rocket';
+      ctx!.save();
 
-  // =========================================================
-  // ROCKET LAUNCH POSITION
-  // =========================================================
+      ctx!.globalAlpha =
+        0.16 * vis;
 
-  p.x = W * 0.12 + Math.random() * W * 0.76;
-  p.y = H * 0.86;
+      ctx!.strokeStyle =
+        '#E6CC83';
 
-  // Slight horizontal movement
-  p.vx = (Math.random() - 0.5) * 1.2;
+      ctx!.lineWidth =
+        Math.max(0.5, 0.8 * s);
 
-  // =========================================================
-  // HIGH SKY ROCKET
-  // =========================================================
+      for (let i = 0; i < 11; i++) {
 
-  p.vy = -13.5 - Math.random() * 3.5;
+        const phase =
+          t * 0.7 + i * 0.45;
 
-  p.size = 2.2 + Math.random() * 1.0;
+        const y =
+          baseY +
+          12 * s +
+          i * 12 * s;
 
-  // Longer lifetime so rocket can reach upper sky
-  p.maxLife = 1.55 + Math.random() * 0.35;
+        const wave =
+          Math.sin(phase) * 4 * s;
 
-  p.life = 0;
-  p.alpha = 1;
+        ctx!.beginPath();
 
-  // Smooth rocket physics
-  p.gravity = 0.055;
-  p.drag = 0.992;
+        ctx!.moveTo(
+          W * 0.28,
+          y
+        );
 
-  // =========================================================
-  // ROCKET COLORS
-  // =========================================================
+        ctx!.quadraticCurveTo(
+          W * 0.5,
+          y + wave,
+          W * 0.72,
+          y
+        );
 
-  const rocketColors = [
-    '#FFD700',
-    '#FFF8DC',
-    '#00E5FF',
-    '#00FF9D',
-    '#FF4FA3',
-    '#B8F7FF'
-  ];
+        ctx!.stroke();
+      }
 
-  p.color =
-    rocketColors[
-      Math.floor(Math.random() * rocketColors.length)
-    ];
-}
+      ctx!.restore();
 
+      // =========================================================
+      // FLOATING GOLD PARTICLES
+      // =========================================================
 
-// =========================================================================
-// MULTI-COLOR FIREWORK EXPLOSION
-// =========================================================================
+      ctx!.save();
 
-function explodeFirework(x: number, y: number, color: string) {
+      ctx!.globalCompositeOperation =
+        'screen';
 
-  // =========================================================
-  // SOFT SCREEN FLASH
-  // =========================================================
+      for (let i = 0; i < 22; i++) {
 
-  screenFlash = Math.min(
-    1.0,
-    screenFlash + 0.18
-  );
+        const seed =
+          i * 37.17;
 
-  // =========================================================
-  // MULTI-COLOR FIREWORK PALETTES
-  // =========================================================
+        const px =
+          W * (
+            0.12 +
+            ((seed % 71) / 100)
+          );
 
-  const palettes = [
-    [
-      '#FFD700',
-      '#FFF4C2',
-      '#FFFFFF',
-      '#FFB300'
-    ],
+        const py =
+          H * (
+            0.25 +
+            ((seed * 1.37) % 45) / 100
+          );
 
-    [
-      '#00E5FF',
-      '#7DF9FF',
-      '#FFFFFF',
-      '#B8F7FF'
-    ],
+        const drift =
+          Math.sin(
+            t * 0.7 + i
+          ) * 6;
 
-    [
-      '#00FF9D',
-      '#00D084',
-      '#B8FFD9',
-      '#FFFFFF'
-    ],
+        const pulse =
+          0.3 +
+          0.3 *
+          Math.sin(
+            t * 2 + i
+          );
 
-    [
-      '#FF4FA3',
-      '#FF1493',
-      '#FFD1E6',
-      '#FFFFFF'
-    ],
+        ctx!.fillStyle =
+          `rgba(255,218,130,${pulse * vis})`;
 
-    [
-      '#FFD700',
-      '#00E5FF',
-      '#FFFFFF',
-      '#00FF9D'
-    ]
-  ];
+        ctx!.beginPath();
 
-  // Select random palette for this explosion
-  const selectedPalette =
-    palettes[
-      Math.floor(Math.random() * palettes.length)
-    ];
+        ctx!.arc(
+          px + drift,
+          py,
+          (1.0 + (i % 3) * 0.6) * s,
+          0,
+          Math.PI * 2
+        );
 
-  // =========================================================
-  // MAIN SPARK BURST
-  // =========================================================
+        ctx!.fill();
+      }
 
-  const sparkCount =
-    95 + Math.floor(Math.random() * 35);
+      ctx!.restore();
 
-  for (let i = 0; i < sparkCount; i++) {
+      // =========================================================
+      // SOFT GROUND LIGHT
+      // =========================================================
 
-    const p = pool.spawn();
-    if (!p) break;
+      const groundGlow =
+        ctx!.createRadialGradient(
+          W * 0.5,
+          baseY,
+          0,
+          W * 0.5,
+          baseY,
+          W * 0.40
+        );
 
-    p.type = 'firework_spark';
+      groundGlow.addColorStop(
+        0,
+        `rgba(255,205,100,${0.12 * vis})`
+      );
 
-    p.x = x;
-    p.y = y;
+      groundGlow.addColorStop(
+        0.45,
+        `rgba(40,130,90,${0.08 * vis})`
+      );
 
-    // 360 degree circular burst
-    const angle =
-      (i / sparkCount) * Math.PI * 2 +
-      (Math.random() - 0.5) * 0.08;
+      groundGlow.addColorStop(
+        1,
+        'rgba(0,0,0,0)'
+      );
 
-    // Large blast radius
-    const speed =
-      3.2 + Math.random() * 5.8;
+      ctx!.fillStyle =
+        groundGlow;
 
-    p.vx = Math.cos(angle) * speed;
-    p.vy = Math.sin(angle) * speed;
+      ctx!.fillRect(
+        W * 0.08,
+        baseY - 20 * s,
+        W * 0.84,
+        H * 0.28
+      );
 
-    // Spark size
-    p.size =
-      1.4 + Math.random() * 2.4;
+      ctx!.restore();
+    }
 
-    // Spark lifetime
-    p.maxLife =
-      1.35 + Math.random() * 0.75;
+    // =========================================================================
+    // SCENE 3: SPECTACULAR EID FIREWORKS ENGINE (FIXED HIGH-SKY BLAST)
+    // =========================================================================
+    function launchFirework(t: number) {
+      if (t < 3.2 || t > 8.8) return;
 
-    p.life = 0;
-    p.alpha = 1;
+      if (Math.random() > 0.18) return;
 
-    // Natural falling motion
-    p.gravity = 0.055;
-    p.drag = 0.965;
+      const p = pool.spawn();
+      if (!p) return;
 
-    // =======================================================
-    // DIFFERENT COLOR FOR EACH SPARK
-    // =======================================================
+      p.type = 'firework_rocket';
+      p.x = W * 0.12 + Math.random() * W * 0.76;
+      p.y = H * 0.85;
 
-    p.color =
-      selectedPalette[
-        Math.floor(
-          Math.random() * selectedPalette.length
-        )
+      p.vx = (Math.random() - 0.5) * 1.5;
+      
+      // 🚀 STRONG UPWARD SPEED: Shoots all the way to upper sky
+      p.vy = -16.0 - Math.random() * 4.0;
+
+      p.size = 2.5;
+      p.maxLife = 1.5 + Math.random() * 0.4; // Longer flight time
+      p.life = 0;
+      p.alpha = 1;
+
+      p.gravity = 0.08; // Gentle gravity so rocket doesn't stop mid-air
+      p.drag = 0.992;
+
+      p.color = [
+        '#FFD700', '#00FF9D', '#00E5FF', '#FF1493', '#FFA500', '#FFFFFF', '#9D4EDD'
+      ][Math.floor(Math.random() * 7)];
+    }
+
+    // 💥 MULTI-COLOR HIGH-SKY BLAST EXPLOSION
+    function explodeFirework(x: number, y: number, mainColor: string) {
+      screenFlash = Math.min(1.0, screenFlash + 0.30); // Real-time light flash
+
+      const sparkCount = 90 + Math.floor(Math.random() * 40); // 90 to 130 sparks
+
+      const multiColors = [
+        ['#FFD700', '#FFF8DC', '#FFD700', '#FFFFFF'], // Gold Sparkle
+        ['#00FF9D', '#7DF9FF', '#FFFFFF', '#00E5FF'], // Emerald Cyan
+        ['#FF1493', '#FFD1E6', '#FFFFFF', '#FF4FA3'], // Hot Pink
+        ['#FFA500', '#FFD700', '#FFFFFF', '#FF4500'], // Coral Gold
+        ['#9D4EDD', '#E0AAFF', '#FFFFFF', '#00E5FF']  // Royal Violet Cyan
       ];
-  }
 
-  // =========================================================
-  // BRIGHT CENTRAL CORE
-  // =========================================================
+      const colorPalette = multiColors[Math.floor(Math.random() * multiColors.length)];
 
-  const coreCount = 18;
+      for (let i = 0; i < sparkCount; i++) {
+        const p = pool.spawn();
+        if (!p) break;
 
-  for (let i = 0; i < coreCount; i++) {
+        p.type = 'firework_spark';
+        p.x = x;
+        p.y = y;
 
-    const p = pool.spawn();
-    if (!p) break;
+        const angle = (i / sparkCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.1;
+        const speed = 3.5 + Math.random() * 6.5; // 💥 HUGE MULTI-COLOR BLAST RADIUS
 
-    p.type = 'firework_spark';
+        p.vx = Math.cos(angle) * speed;
+        p.vy = Math.sin(angle) * speed;
 
-    p.x = x;
-    p.y = y;
+        p.size = 1.5 + Math.random() * 2.5;
+        p.maxLife = 1.4 + Math.random() * 0.8;
+        p.life = 0;
+        p.alpha = 1;
 
-    const angle =
-      Math.random() * Math.PI * 2;
+        p.gravity = 0.06; // Sparks drift down gracefully
+        p.drag = 0.965;
 
-    const speed =
-      0.8 + Math.random() * 2.2;
+        // Multi-color spark distribution
+        p.color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+      }
+    }
 
-    p.vx = Math.cos(angle) * speed;
-    p.vy = Math.sin(angle) * speed;
-
-    p.size =
-      2.0 + Math.random() * 2.0;
-
-    p.maxLife =
-      0.45 + Math.random() * 0.35;
-
-    p.life = 0;
-    p.alpha = 1;
-
-    p.gravity = 0.02;
-    p.drag = 0.97;
-
-    // White / Gold hot core
-    p.color =
-      Math.random() < 0.65
-        ? '#FFFFFF'
-        : '#FFD700';
-  }
-}
-// =========================================================================
+    // =========================================================================
     // SCENE 4: 3D METALLIC GOLDEN TYPOGRAPHY & ARABIC CALLIGRAPHY (8.5s -> 12.0s)
     // =========================================================================
     function draw3DGoldenText(t: number) {
@@ -1969,8 +1819,8 @@ function explodeFirework(x: number, y: number, color: string) {
         } else if (p.type === 'firework_rocket') {
           p.alpha = 1 - lr;
 
-          // 🚀 FIXED: GUARANTEED BLAST TRIGGER (Explodes when rocket slows down near top)
-          if ((p.vy >= -1.8 || lr >= 0.80) && !p.hasExploded) {
+          // 🚀 GUARANTEED HIGH-SKY BLAST TRIGGER (Explodes ONLY in upper sky above Domes)
+          if ((p.y <= H * 0.38 || p.vy >= -2.0 || lr >= 0.92) && !p.hasExploded) {
             p.hasExploded = true;
             explodeFirework(p.x, p.y, p.color);
             p.alpha = 0;
@@ -1985,7 +1835,7 @@ function explodeFirework(x: number, y: number, color: string) {
             ctx!.fill();
             // Rocket Trail
             ctx!.globalAlpha = p.alpha * 0.6;
-            ctx!.fillRect(p.x - 1, p.y, 2, 12);
+            ctx!.fillRect(p.x - 1, p.y, 2, 14);
           }
         } else if (p.type === 'firework_spark') {
           p.alpha = 1 - lr;
