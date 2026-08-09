@@ -201,8 +201,9 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       const revealProgress = smoothstep(2.2, 5.0, t);
 
+      // 🚀 APPLIED CHANGE: mosqueScale = 0.92 base
       const cinematicScale =
-        0.94 + revealProgress * 0.06;
+        0.92 + revealProgress * 0.06;
 
       const centerX = W * 0.5;
       const centerY = H * 0.72;
@@ -324,10 +325,11 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       ctx!.save();
 
-      ctx!.globalAlpha = 0.18 * vis;
+      // 🚀 APPLIED CHANGE: Floor alpha and colors
+      ctx!.globalAlpha = 0.10 * vis;
 
-      ctx!.strokeStyle = '#D9C89A';
-      ctx!.lineWidth = Math.max(0.5, 0.7 * s);
+      ctx!.strokeStyle = '#8E8568';
+      ctx!.lineWidth = Math.max(0.5, 0.55 * s);
 
       for (let i = -7; i <= 7; i++) {
 
@@ -351,7 +353,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       // Horizontal marble seams
 
-      for (let i = 1; i < 7; i++) {
+      // 🚀 APPLIED CHANGE: loop limit changed to i < 6
+      for (let i = 1; i < 6; i++) {
 
         const p = i / 7;
 
@@ -468,6 +471,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       const domeBase =
         bodyTop + 10 * s;
 
+      // 🚨 UNCHANGED AS REQUESTED: domeTop stays 145
       const domeTop =
         bodyTop - 145 * s;
 
@@ -637,6 +641,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // CRESCENT FINIAL
       // =========================================================
 
+      // 🚨 UNCHANGED AS REQUESTED: crescentY stays 25
       const crescentY =
         domeTop - 25 * s;
 
@@ -1630,8 +1635,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
     // 💥 MULTI-COLOR HIGH-SKY BLAST EXPLOSION
     function explodeFirework(x: number, y: number, mainColor: string) {
-      // CHANGED: Reduced screenFlash
-      screenFlash = Math.min(1.0, screenFlash + 0.14); 
+      // 🚀 APPLIED CHANGE: screenFlash 0.16
+      screenFlash = Math.min(1.0, screenFlash + 0.16); 
 
       const sparkCount = 90 + Math.floor(Math.random() * 40); 
 
@@ -1786,7 +1791,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // Real-time Explosion Screen Flash Lighting
       screenFlash = Math.max(0, screenFlash - dt * 2.0);
       if (screenFlash > 0) {
-        ctx!.fillStyle = `rgba(255, 230, 160, ${screenFlash * 0.22})`;
+        // 🚀 APPLIED CHANGE: screenFlash opacity 0.12
+        ctx!.fillStyle = `rgba(255, 230, 160, ${screenFlash * 0.12})`;
         ctx!.fillRect(0, 0, W, H);
       }
 
