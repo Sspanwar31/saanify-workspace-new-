@@ -149,7 +149,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       // 3D Crescent Moon
       const mx = W * 0.5;
-      const my = H * 0.28 - smoothstep(0, 3.5, t) * 25;
+      // 🚀 APPLIED CHANGE: Moon higher up (0.28 -> 0.18)
+      const my = H * 0.18 - smoothstep(0, 3.5, t) * 25;
       const moonR = Math.min(W, H) * 0.075;
 
       ctx!.globalCompositeOperation = 'screen';
@@ -198,7 +199,6 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // ---------------------------------------------------------
       // CINEMATIC CAMERA REVEAL
       // ---------------------------------------------------------
-      // 🚀 APPLIED CHANGE: Camera zoom हटाओ
       ctx!.globalAlpha = vis;
 
       // ---------------------------------------------------------
@@ -207,8 +207,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       const s = Math.min(W, H) * 0.0024;
 
-      // 🚀 APPLIED CHANGE: Base नीचे
-      const baseY = H * 0.74;
+      // 🚀 APPLIED CHANGE: Base और नीचे (0.74 -> 0.78)
+      const baseY = H * 0.78;
 
       // ---------------------------------------------------------
       // COLOR PALETTE
@@ -372,12 +372,9 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // MOSQUE SIZE CONTROL
       // =========================================================
 
-      // 1.00 = current size
-      // 0.90 = slightly smaller
-      // 0.82 = clearly smaller
-      // 0.78 = compact cinematic size
+      // 🚀 APPLIED CHANGE: Scale further reduced (0.80 -> 0.65)
       const mosqueScale =
-        0.80 + smoothstep(2.2, 4.0, t) * 0.02;
+        0.65 + smoothstep(2.2, 4.0, t) * 0.02;
 
       // Scale ONLY the mosque around its ground/base.
       // Floor remains completely unaffected.
@@ -648,7 +645,6 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // CRESCENT FINIAL
       // =========================================================
 
-      // 🚨 UNCHANGED AS REQUESTED: crescentY stays 25
       const crescentY =
         domeTop - 25 * s;
 
@@ -1746,7 +1742,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ctx!.shadowBlur = 35;
       ctx!.shadowColor = 'rgba(255, 215, 0, 0.85)';
       ctx!.fillStyle = goldArabic;
-      ctx!.fillText('عيد مبارك', 0, -fontSizeArabic * 0.3);
+      ctx!.fillText('عيد مبارक', 0, -fontSizeArabic * 0.3);
 
       // ── ENGLISH METALLIC TEXT (EID MUBARAK 2027) ──
       const fontSizeEng = Math.min(W * 0.055, 52);
