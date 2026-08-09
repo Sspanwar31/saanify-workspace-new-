@@ -1611,7 +1611,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       p.vx = (Math.random() - 0.5) * 1.5;
       
       // 🚀 STRONG UPWARD SPEED: Shoots all the way to upper sky
-      p.vy = -16.0 - Math.random() * 4.0;
+      p.vy = -18.0 - Math.random() * 4.0;
 
       p.size = 2.5;
       p.maxLife = 1.5 + Math.random() * 0.4; // Longer flight time
@@ -1820,7 +1820,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
           p.alpha = 1 - lr;
 
           // 🚀 GUARANTEED HIGH-SKY BLAST TRIGGER (Explodes ONLY in upper sky above Domes)
-          if ((p.y <= H * 0.38 || p.vy >= -2.0 || lr >= 0.92) && !p.hasExploded) {
+          if ((p.y <= H * 0.22 || p.vy >= -1.0 || lr >= 0.92) && !p.hasExploded) {
             p.hasExploded = true;
             explodeFirework(p.x, p.y, p.color);
             p.alpha = 0;
