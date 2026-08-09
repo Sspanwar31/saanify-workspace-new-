@@ -147,34 +147,22 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ctx!.fillStyle = skyGrad;
       ctx!.fillRect(0, 0, W, H);
 
-      // 3D Crescent Moon
-      const mx = W * 0.5;
-      // 🚀 APPLIED CHANGE: Moon higher up (0.28 -> 0.18)
-      const my = H * 0.18 - smoothstep(0, 3.5, t) * 25;
-      const moonR = Math.min(W, H) * 0.075;
+      // --- NEW: SMALL CRESCENT MOON ---
+      const s = Math.min(W, H) * 0.0024;
+      const moonX = W * 0.87;
+      const moonY = H * 0.18;
+      const moonR = 22 * s;
 
-      ctx!.globalCompositeOperation = 'screen';
-      const halo = ctx!.createRadialGradient(mx, my, 0, mx, my, Math.min(W, H) * 0.55);
-      halo.addColorStop(0, `rgba(255, 230, 150, ${0.25 * vis})`);
-      halo.addColorStop(0.4, `rgba(16, 185, 129, ${0.15 * vis})`);
-      halo.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx!.fillStyle = halo;
-      ctx!.fillRect(0, 0, W, H);
-
-      const moonGrad = ctx!.createRadialGradient(mx - moonR * 0.3, my - moonR * 0.3, moonR * 0.1, mx, my, moonR);
-      moonGrad.addColorStop(0.0, `rgba(255, 255, 245, ${1.0 * vis})`);
-      moonGrad.addColorStop(0.5, `rgba(255, 215, 100, ${0.9 * vis})`);
-      moonGrad.addColorStop(1.0, `rgba(180, 120, 30, ${0.8 * vis})`);
-      ctx!.fillStyle = moonGrad;
+      ctx!.globalCompositeOperation = 'source-over';
+      ctx!.fillStyle = '#FFF4C7';
       ctx!.beginPath();
-      ctx!.arc(mx, my, Math.max(0.1, moonR), 0, Math.PI * 2);
+      ctx!.arc(moonX, moonY, Math.max(0.1, moonR), 0, Math.PI * 2);
       ctx!.fill();
 
-      // Crescent Moon Cutout
-      ctx!.globalCompositeOperation = 'source-over';
-      ctx!.fillStyle = `rgba(3, 18, 13, ${1.0 * vis})`;
+      // dark cut-out for crescent shape
+      ctx!.globalCompositeOperation = 'destination-out';
       ctx!.beginPath();
-      ctx!.arc(mx + moonR * 0.4, my - moonR * 0.1, Math.max(0.1, moonR * 0.95), 0, Math.PI * 2);
+      ctx!.arc(moonX + 8 * s, moonY - 4 * s, Math.max(0.1, moonR), 0, Math.PI * 2);
       ctx!.fill();
 
       ctx!.restore();
@@ -207,7 +195,6 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       const s = Math.min(W, H) * 0.0024;
 
-      // 🚀 APPLIED CHANGE: Base और नीचे (0.74 -> 0.78)
       const baseY = H * 0.78;
 
       // ---------------------------------------------------------
@@ -242,14 +229,15 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         `rgba(255,220,130,${0.14 * vis})`
       );
 
+      // 🚀 APPLIED CHANGE: Darkened Sky stops
       atmosphere.addColorStop(
         0.25,
-        `rgba(90,190,145,${0.10 * vis})`
+        `rgba(25,55,45,${0.035 * vis})`
       );
 
       atmosphere.addColorStop(
         0.65,
-        `rgba(20,100,70,${0.055 * vis})`
+        `rgba(5,25,18,${0.018 * vis})`
       );
 
       atmosphere.addColorStop(
@@ -307,17 +295,50 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         H - baseY
       );
 
+      // 🚀 APPLIED CHANGE: Glass Reflection Overlay
+      const glassReflection =
+        ctx!.createLinearGradient(
+          0,
+          baseY,
+          0,
+          H
+        );
+
+      glassReflection.addColorStop(
+        0,
+        `rgba(45,70,58,${0.20 * vis})`
+      );
+
+      glassReflection.addColorStop(
+        0.35,
+        `rgba(20,45,36,${0.10 * vis})`
+      );
+
+      glassReflection.addColorStop(
+        1,
+        `rgba(0,5,3,${0.02 * vis})`
+      );
+
+      ctx!.fillStyle = glassReflection;
+
+      ctx!.fillRect(
+        0,
+        baseY,
+        W,
+        H - baseY
+      );
+
       // ---------------------------------------------------------
       // MARBLE PERSPECTIVE LINES
       // ---------------------------------------------------------
 
       ctx!.save();
 
-      // 🚀 APPLIED CHANGE: Floor alpha and colors
-      ctx!.globalAlpha = 0.10 * vis;
+      // 🚀 APPLIED CHANGE: Subtle Grid Lines
+      ctx!.globalAlpha = 0.08 * vis;
 
-      ctx!.strokeStyle = '#8E8568';
-      ctx!.lineWidth = Math.max(0.5, 0.55 * s);
+      ctx!.strokeStyle = '#D9C89A';
+      ctx!.lineWidth = Math.max(0.4, 0.55 * s);
 
       for (let i = -7; i <= 7; i++) {
 
@@ -341,7 +362,9 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       // Horizontal marble seams
 
-      // 🚀 APPLIED CHANGE: loop limit changed to i < 6
+      // 🚀 APPLIED CHANGE: Subtle seams alpha
+      ctx!.globalAlpha = 0.055 * vis;
+
       for (let i = 1; i < 6; i++) {
 
         const p = i / 7;
@@ -372,12 +395,9 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // MOSQUE SIZE CONTROL
       // =========================================================
 
-      // 🚀 APPLIED CHANGE: Scale further reduced (0.80 -> 0.65)
       const mosqueScale =
         0.65 + smoothstep(2.2, 4.0, t) * 0.02;
 
-      // Scale ONLY the mosque around its ground/base.
-      // Floor remains completely unaffected.
       ctx!.translate(W * 0.5, baseY);
       ctx!.scale(mosqueScale, mosqueScale);
       ctx!.translate(-W * 0.5, -baseY);
@@ -411,7 +431,6 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // MAIN MOSQUE BODY
       // =========================================================
 
-      // 🚀 APPLIED CHANGE: Body छोटा
       const bodyTop =
         baseY - 112 * s;
 
@@ -474,14 +493,12 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       const domeBase =
         bodyTop + 10 * s;
 
-      // 🚀 APPLIED CHANGE: Dome छोटा
       const domeTop =
         bodyTop - 118 * s;
 
       const domeX =
         W * 0.5;
 
-      // 🚀 APPLIED CHANGE: Dome छोटा
       const domeWidth =
         W * 0.19;
 
@@ -1410,8 +1427,11 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       ctx!.save();
 
+      // 🚀 APPLIED CHANGE: Reflection alpha and blur
       ctx!.globalAlpha =
-        0.20 * vis;
+        0.12 * vis;
+
+      ctx!.filter = 'blur(2px)';
 
       ctx!.translate(
         0,
@@ -1455,6 +1475,9 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ctx!.fill();
 
       ctx!.restore();
+      
+      // Reset filter so it doesn't affect subsequent rendering
+      ctx!.filter = 'none';
 
       // =========================================================
       // ANIMATED WATER-LIKE MARBLE RIPPLE
@@ -1613,18 +1636,16 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       if (!p) return;
 
       p.type = 'firework_rocket';
-      p.hasExploded = false; // ADDED: Explicit reset
+      p.hasExploded = false;
 
       p.x = W * 0.12 + Math.random() * W * 0.76;
       p.y = H * 0.85;
 
       p.vx = (Math.random() - 0.5) * 1.5;
-      
-      // 🚀 CHANGED: Natural high-sky trajectory
       p.vy = -14.5 - Math.random() * 3.0;
 
       p.size = 2.5;
-      p.maxLife = 1.8 + Math.random() * 0.3; // CHANGED: Longer flight time
+      p.maxLife = 1.8 + Math.random() * 0.3;
       p.life = 0;
       p.alpha = 1;
 
@@ -1636,14 +1657,11 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ][Math.floor(Math.random() * 7)];
     }
 
-    // 💥 MULTI-COLOR HIGH-SKY BLAST EXPLOSION
     function explodeFirework(x: number, y: number, mainColor: string) {
-      // 🚀 APPLIED CHANGE: screenFlash 0.16
       screenFlash = Math.min(1.0, screenFlash + 0.16); 
 
       const sparkCount = 90 + Math.floor(Math.random() * 40); 
 
-      // CHANGED: Color-heavy palettes (Removed whites)
       const multiColors = [
         ['#FFD700', '#FFB300', '#FFC857', '#FFF1A8'],
         ['#00E5FF', '#00B8D4', '#7DF9FF', '#00FFCC'],
@@ -1663,13 +1681,11 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         p.y = y;
 
         const angle = (i / sparkCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.1;
-        // CHANGED: Controlled blast radius
         const speed = 3.2 + Math.random() * 5.8;
 
         p.vx = Math.cos(angle) * speed;
         p.vy = Math.sin(angle) * speed;
 
-        // CHANGED: Controlled spark size
         p.size = 1.1 + Math.random() * 1.8;
         p.maxLife = 1.4 + Math.random() * 0.8;
         p.life = 0;
@@ -1683,7 +1699,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-    // SCENE 4: 3D METALLIC GOLDEN TYPOGRAPHY & ARABIC CALLIGRAPHY (8.5s -> 12.0s)
+    // SCENE 4: 3D METALLIC GOLDEN TYPOGRAPHY & ARABIC CALLIGRAPHY
     // =========================================================================
     function draw3DGoldenText(t: number) {
       const vis = smoothstep(8.5, 9.5, t) * (1 - smoothstep(11.5, 12.0, t));
@@ -1742,7 +1758,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ctx!.shadowBlur = 35;
       ctx!.shadowColor = 'rgba(255, 215, 0, 0.85)';
       ctx!.fillStyle = goldArabic;
-      ctx!.fillText('عيد مبارक', 0, -fontSizeArabic * 0.3);
+      ctx!.fillText('عيد مبارك', 0, -fontSizeArabic * 0.3);
 
       // ── ENGLISH METALLIC TEXT (EID MUBARAK 2027) ──
       const fontSizeEng = Math.min(W * 0.055, 52);
@@ -1794,7 +1810,6 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // Real-time Explosion Screen Flash Lighting
       screenFlash = Math.max(0, screenFlash - dt * 2.0);
       if (screenFlash > 0) {
-        // 🚀 APPLIED CHANGE: screenFlash opacity 0.12
         ctx!.fillStyle = `rgba(255, 230, 160, ${screenFlash * 0.12})`;
         ctx!.fillRect(0, 0, W, H);
       }
@@ -1833,7 +1848,6 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         } else if (p.type === 'firework_rocket') {
           p.alpha = 1 - lr;
 
-          // 🚀 APPLIED CHANGE: Rocket premature explosion हटाओ
           if ((p.y <= H * 0.28 || lr >= 0.92) && !p.hasExploded) {
             p.hasExploded = true;
             explodeFirework(p.x, p.y, p.color);
@@ -1856,21 +1870,21 @@ export default function EidCinematicIntro({ onComplete }: Props) {
           if (p.alpha > 0.01) {
             const sz = p.size * 3.0;
 
-            // CHANGED: Soft colored glow
+            // Soft colored glow
             ctx!.globalAlpha = p.alpha * 0.28;
             ctx!.fillStyle = p.color;
             ctx!.beginPath();
             ctx!.arc(p.x, p.y, Math.max(1, sz * 2.2), 0, Math.PI * 2);
             ctx!.fill();
 
-            // CHANGED: Bright colored spark core
+            // Bright colored spark core
             ctx!.globalAlpha = p.alpha;
             ctx!.fillStyle = p.color;
             ctx!.beginPath();
             ctx!.arc(p.x, p.y, Math.max(0.8, p.size), 0, Math.PI * 2);
             ctx!.fill();
 
-            // CHANGED: Tiny white hot center — only subtle
+            // Tiny white hot center
             ctx!.globalAlpha = p.alpha * 0.45;
             ctx!.fillStyle = '#FFFFFF';
             ctx!.beginPath();
@@ -1886,7 +1900,6 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
     // ============ POST-PROCESSING EFFECTS ============
     function applyBloom() {
-      // CHANGED: Bloom parameters reduced heavily
       const bloomAlpha = 0.24;
       bctx.clearRect(0, 0, bloom.width, bloom.height);
       bctx.filter = 'blur(3px) brightness(1.08)';
@@ -1925,11 +1938,13 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ctx!.fillRect(0, 0, W, H);
 
       drawNightSkyAndMoon(t);
-      drawGrandMosqueWithReflections(t);
 
+      // 🚀 APPLIED CHANGE: Render Fireworks BEFORE Mosque for clean Dome
       launchFirework(t);
       spawnAmbientParticles(t);
       updateAndDrawParticles(dt, t);
+
+      drawGrandMosqueWithReflections(t);
 
       draw3DGoldenText(t);
 
