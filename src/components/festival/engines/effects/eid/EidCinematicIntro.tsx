@@ -198,20 +198,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // ---------------------------------------------------------
       // CINEMATIC CAMERA REVEAL
       // ---------------------------------------------------------
-
-      const revealProgress = smoothstep(2.2, 5.0, t);
-
-      // 🚀 APPLIED CHANGE: mosqueScale = 0.92 base
-      const cinematicScale =
-        0.92 + revealProgress * 0.06;
-
-      const centerX = W * 0.5;
-      const centerY = H * 0.72;
-
-      ctx!.translate(centerX, centerY);
-      ctx!.scale(cinematicScale, cinematicScale);
-      ctx!.translate(-centerX, -centerY);
-
+      // 🚀 APPLIED CHANGE: Camera zoom हटाओ
       ctx!.globalAlpha = vis;
 
       // ---------------------------------------------------------
@@ -220,7 +207,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       const s = Math.min(W, H) * 0.0024;
 
-      const baseY = H * 0.72;
+      // 🚀 APPLIED CHANGE: Base नीचे
+      const baseY = H * 0.74;
 
       // ---------------------------------------------------------
       // COLOR PALETTE
@@ -409,8 +397,9 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       // MAIN MOSQUE BODY
       // =========================================================
 
+      // 🚀 APPLIED CHANGE: Body छोटा
       const bodyTop =
-        baseY - 125 * s;
+        baseY - 112 * s;
 
       const bodyBottom =
         baseY;
@@ -471,15 +460,16 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       const domeBase =
         bodyTop + 10 * s;
 
-      // 🚨 UNCHANGED AS REQUESTED: domeTop stays 145
+      // 🚀 APPLIED CHANGE: Dome छोटा
       const domeTop =
-        bodyTop - 145 * s;
+        bodyTop - 118 * s;
 
       const domeX =
         W * 0.5;
 
+      // 🚀 APPLIED CHANGE: Dome छोटा
       const domeWidth =
-        W * 0.23;
+        W * 0.19;
 
       const domeGrad =
         ctx!.createLinearGradient(
@@ -1830,8 +1820,8 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         } else if (p.type === 'firework_rocket') {
           p.alpha = 1 - lr;
 
-          // 🚀 CHANGED: GUARANTEED HIGH-SKY BLAST TRIGGER (Explodes ONLY in upper sky)
-          if ((p.y <= H * 0.18 || lr >= 0.96) && !p.hasExploded) {
+          // 🚀 APPLIED CHANGE: Rocket premature explosion हटाओ
+          if ((p.y <= H * 0.28 || lr >= 0.92) && !p.hasExploded) {
             p.hasExploded = true;
             explodeFirework(p.x, p.y, p.color);
             p.alpha = 0;
