@@ -257,7 +257,7 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       );
 
       // =========================================================
-      // MARBLE COURTYARD
+      // POLISHED GLASS / MARBLE COURTYARD
       // =========================================================
 
       const floorGrad =
@@ -270,22 +270,27 @@ export default function EidCinematicIntro({ onComplete }: Props) {
 
       floorGrad.addColorStop(
         0,
-        '#102E25'
+        '#183B31'
       );
 
       floorGrad.addColorStop(
-        0.25,
-        '#082119'
+        0.12,
+        '#0C2920'
       );
 
       floorGrad.addColorStop(
-        0.65,
-        '#04140F'
+        0.38,
+        '#061B15'
+      );
+
+      floorGrad.addColorStop(
+        0.72,
+        '#03100C'
       );
 
       floorGrad.addColorStop(
         1,
-        '#010705'
+        '#000503'
       );
 
       ctx!.fillStyle = floorGrad;
@@ -297,8 +302,15 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         H - baseY
       );
 
-      // 🚀 APPLIED CHANGE: Glass Reflection Overlay
-      const glassReflection =
+      // =========================================================
+      // GLASS SURFACE — SOFT HORIZONTAL REFLECTION
+      // =========================================================
+
+      ctx!.save();
+
+      ctx!.globalAlpha = 0.75 * vis;
+
+      const glassSurface =
         ctx!.createLinearGradient(
           0,
           baseY,
@@ -306,22 +318,32 @@ export default function EidCinematicIntro({ onComplete }: Props) {
           H
         );
 
-      glassReflection.addColorStop(
+      glassSurface.addColorStop(
         0,
-        `rgba(45,70,58,${0.20 * vis})`
+        'rgba(120,155,135,0.20)'
       );
 
-      glassReflection.addColorStop(
-        0.35,
-        `rgba(20,45,36,${0.10 * vis})`
+      glassSurface.addColorStop(
+        0.08,
+        'rgba(70,110,92,0.13)'
       );
 
-      glassReflection.addColorStop(
+      glassSurface.addColorStop(
+        0.30,
+        'rgba(25,55,43,0.08)'
+      );
+
+      glassSurface.addColorStop(
+        0.65,
+        'rgba(5,20,14,0.03)'
+      );
+
+      glassSurface.addColorStop(
         1,
-        `rgba(0,5,3,${0.02 * vis})`
+        'rgba(0,0,0,0)'
       );
 
-      ctx!.fillStyle = glassReflection;
+      ctx!.fillStyle = glassSurface;
 
       ctx!.fillRect(
         0,
@@ -330,6 +352,57 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         H - baseY
       );
 
+      ctx!.restore();
+
+      // =========================================================
+      // MOSQUE LIGHT REFLECTION ON GLASS
+      // =========================================================
+
+      ctx!.save();
+
+      ctx!.globalAlpha = 0.22 * vis;
+
+      const reflectionGlow =
+        ctx!.createRadialGradient(
+          W * 0.5,
+          baseY + 5 * s,
+          0,
+          W * 0.5,
+          baseY + 95 * s,
+          W * 0.32
+        );
+
+      reflectionGlow.addColorStop(
+        0,
+        'rgba(255,220,140,0.30)'
+      );
+
+      reflectionGlow.addColorStop(
+        0.22,
+        'rgba(220,190,100,0.16)'
+      );
+
+      reflectionGlow.addColorStop(
+        0.55,
+        'rgba(90,120,100,0.06)'
+      );
+
+      reflectionGlow.addColorStop(
+        1,
+        'rgba(0,0,0,0)'
+      );
+
+      ctx!.fillStyle = reflectionGlow;
+
+      ctx!.fillRect(
+        W * 0.15,
+        baseY,
+        W * 0.70,
+        H - baseY
+      );
+
+      ctx!.restore();
+
       // ---------------------------------------------------------
       // MARBLE PERSPECTIVE LINES
       // ---------------------------------------------------------
@@ -337,10 +410,10 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ctx!.save();
 
       // 🚀 APPLIED CHANGE: Subtle Grid Lines
-      ctx!.globalAlpha = 0.08 * vis;
+      ctx!.globalAlpha = 0.045 * vis;
 
       ctx!.strokeStyle = '#D9C89A';
-      ctx!.lineWidth = Math.max(0.4, 0.55 * s);
+      ctx!.lineWidth = Math.max(0.35, 0.45 * s);
 
       for (let i = -7; i <= 7; i++) {
 
@@ -362,29 +435,33 @@ export default function EidCinematicIntro({ onComplete }: Props) {
         ctx!.stroke();
       }
 
-      // Horizontal marble seams
+      // =========================================================
+      // GLASS HORIZONTAL REFLECTION STREAKS
+      // =========================================================
 
-      // 🚀 APPLIED CHANGE: Subtle seams alpha
-      ctx!.globalAlpha = 0.055 * vis;
+      ctx!.globalAlpha = 0.045 * vis;
 
-      for (let i = 1; i < 6; i++) {
+      for (let i = 1; i < 8; i++) {
 
-        const p = i / 7;
+        const p = i / 8;
 
         const y =
           baseY +
-          Math.pow(p, 1.65) *
+          Math.pow(p, 1.75) *
           (H - baseY);
+
+        const spread =
+          W * (0.20 + p * 0.30);
 
         ctx!.beginPath();
 
         ctx!.moveTo(
-          W * 0.08 + p * W * 0.08,
+          W * 0.5 - spread,
           y
         );
 
         ctx!.lineTo(
-          W * 0.92 - p * W * 0.08,
+          W * 0.5 + spread,
           y
         );
 
