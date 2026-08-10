@@ -133,7 +133,9 @@ export default function EidCinematicIntro({ onComplete }: Props) {
     // SCENE 1: CINEMATIC NIGHT SKY & MOONRISE (0.0s -> 3.5s)
     // =========================================================================
     function drawNightSkyAndMoon(t: number) {
-      const vis = smoothstep(0.0, 1.5, t) * (1 - smoothstep(8.5, 9.5, t));
+      const vis =
+  smoothstep(0.0, 0.8, t) *
+  (1 - smoothstep(2.0, 2.8, t));
       if (vis <= 0.001) return;
 
       ctx!.save();
