@@ -161,8 +161,9 @@ export default function EidCinematicIntro({ onComplete }: Props) {
       ctx!.arc(moonX, moonY, Math.max(0.1, moonR), 0, Math.PI * 2);
       ctx!.fill();
 
-      // dark cut-out for crescent shape
-      ctx!.globalCompositeOperation = 'destination-out';
+      // dark cut-out for crescent shape (FIXED: source-over instead of destination-out)
+      ctx!.globalCompositeOperation = 'source-over';
+      ctx!.fillStyle = '#020a07';
       ctx!.beginPath();
       ctx!.arc(moonX + 8 * s, moonY - 4 * s, Math.max(0.1, moonR), 0, Math.PI * 2);
       ctx!.fill();
