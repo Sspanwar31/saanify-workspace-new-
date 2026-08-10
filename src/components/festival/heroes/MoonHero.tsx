@@ -9,25 +9,25 @@ interface Props {
 }
 
 export default function MoonHero({ heroConfig, scale }: Props) {
-  // Supabase scale control
-  const userScale = scale ?? heroConfig?.scale ?? 0.85;
+  // Scale default increased significantly (1.25x) for big prominent display
+  const userScale = scale ?? (heroConfig?.scale ? Math.max(heroConfig.scale * 1.6, 1.15) : 1.25);
 
   return (
     <div 
-      className="relative w-full min-h-[220px] sm:min-h-[250px] flex flex-col items-center justify-center p-2 bg-transparent select-none overflow-visible transition-transform duration-300"
+      className="relative w-full min-h-[280px] sm:min-h-[320px] flex flex-col items-center justify-center p-2 bg-transparent select-none overflow-visible transition-transform duration-300"
       style={{ transform: `scale(${userScale})` }}
     >
-      {/* 🟢 TRANSPARENT EMERALD & GOLD AMBIENT GLOW */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] bg-emerald-500/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[180px] bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
+      {/* 🟢 AMBIENT EMERALD & GOLD GLOW (EXPANDED) */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] bg-emerald-500/25 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] bg-amber-400/25 rounded-full blur-2xl pointer-events-none" />
 
-      {/* 🌙 3D GLOWING CRESCENT MOON */}
-      <div className="relative z-10 text-5xl sm:text-6xl filter drop-shadow-[0_0_25px_rgba(251,191,36,0.85)] transform -rotate-12 animate-hero-breathe mb-1">
+      {/* 🌙 3D GLOWING CRESCENT MOON (PROMINENT BIG SIZE) */}
+      <div className="relative z-10 text-7xl sm:text-8xl filter drop-shadow-[0_0_35px_rgba(251,191,36,0.9)] transform -rotate-12 animate-hero-breathe mb-2">
         🌙
       </div>
 
-      {/* 🕌 TRANSPARENT ILLUMINATED 3D GOLD MOSQUE (Pure Vector Art - No Box Border) */}
-      <div className="relative z-10 w-full max-w-[280px] sm:max-w-[320px] flex items-end justify-center filter drop-shadow-[0_8px_25px_rgba(16,185,129,0.4)]">
+      {/* 🕌 TRANSPARENT ILLUMINATED 3D GOLD MOSQUE (BIGGER SCALE) */}
+      <div className="relative z-10 w-full max-w-[340px] sm:max-w-[400px] flex items-end justify-center filter drop-shadow-[0_10px_30px_rgba(16,185,129,0.5)]">
         <svg viewBox="0 0 300 150" className="w-full h-auto overflow-visible">
           <defs>
             <linearGradient id="goldMosque" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -72,13 +72,13 @@ export default function MoonHero({ heroConfig, scale }: Props) {
           {/* Crescent Peak on Dome */}
           <circle cx="150" cy="12" r="3" fill="#FFFDF0" />
 
-          {/* Entrance Arch Doorway (Warm Glowing Light) */}
+          {/* Entrance Arch Doorway */}
           <path d="M 132 140 L 132 105 Q 150 85 168 105 L 168 140 Z" fill="#FFE39A" filter="url(#goldGlow)" />
         </svg>
       </div>
 
-      {/* 📜 ARABIC CALLIGRAPHY */}
-      <div className="relative z-10 text-2xl sm:text-3xl font-black text-amber-300 tracking-widest font-serif drop-shadow-[0_2px_15px_rgba(251,191,36,0.8)] mt-2">
+      {/* 📜 ARABIC CALLIGRAPHY (BIGGER SIZE) */}
+      <div className="relative z-10 text-3xl sm:text-4xl font-black text-amber-300 tracking-widest font-serif drop-shadow-[0_2px_20px_rgba(251,191,36,0.9)] mt-3">
         عيد مبارك
       </div>
 
