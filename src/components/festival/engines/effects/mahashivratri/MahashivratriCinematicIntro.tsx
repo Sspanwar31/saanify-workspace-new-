@@ -467,7 +467,7 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       // =========================================================
       // CINEMATIC SHIVA SMOKE — SOFT WISPY SMOKE
       // =========================================================
-      if (t < 11.0 && Math.random() < 0.22) {
+      if (t < 11.0 && Math.random() < 0.38) {
         const p = pool.spawn();
         if (!p) return;
 
@@ -479,22 +479,22 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
           Math.random() * W * 0.32;
 
         p.y =
-          H * 0.80 +
-          Math.random() * H * 0.10;
+          H * 0.78 +
+          Math.random() * H * 0.12;
 
         // Slow natural sideways drift
         p.vx =
-          (Math.random() - 0.5) * 0.30;
+          (Math.random() - 0.5) * 0.40;
 
         // Slowly rises upward
         p.vy =
-          -0.20 -
-          Math.random() * 0.45;
+          -0.28 -
+          Math.random() * 0.55;
 
         // Much smaller particles
         p.size =
-          28 +
-          Math.random() * 42;
+          38 +
+          Math.random() * 55;
 
         // Longer, softer life
         p.maxLife =
@@ -575,7 +575,7 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
           p.alpha =
             fadeIn *
             fadeOut *
-            0.18 *
+            0.30 *
             (t < 10.5
               ? 1
               : 1 - smoothstep(10.5, 11.0, t));
@@ -605,17 +605,17 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
             // Soft grey smoke — NO bright white center
             grad.addColorStop(
               0.0,
-              'rgba(190,200,198,0.16)'
+              'rgba(205,210,208,0.24)'
             );
 
             grad.addColorStop(
-              0.35,
-              'rgba(175,185,182,0.09)'
+              0.30,
+              'rgba(185,195,192,0.13)'
             );
 
             grad.addColorStop(
-              0.70,
-              'rgba(155,165,162,0.035)'
+              0.65,
+              'rgba(160,170,167,0.055)'
             );
 
             grad.addColorStop(
@@ -625,14 +625,22 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
 
             ctx!.fillStyle = grad;
 
+            const smokeX =
+              p.x +
+              Math.sin(t * 0.8 + p.life * 2.0) * 8;
+
+            const smokeY =
+              p.y +
+              Math.sin(t * 0.6 + p.life * 1.5) * 5;
+
             ctx!.beginPath();
 
             ctx!.ellipse(
-              p.x,
-              p.y,
-              p.size * 1.15,
-              p.size * 0.65,
-              0,
+              smokeX,
+              smokeY,
+              p.size * 1.25,
+              p.size * 0.55,
+              Math.sin(p.life) * 0.15,
               0,
               Math.PI * 2
             );
