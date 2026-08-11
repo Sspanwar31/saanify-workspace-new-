@@ -1,1286 +1,168 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 interface Props {
-  onComplete?: () => void;trishu;
+  videoUrl?: string;
+  onComplete?: () => void;
 }
 
-// ============ MATH & EASING ============
-const smoothstep = (a: number, b: number, t: number) => {
-  if (b === a) return t < a ? 0 : 1;
-  const x = Math.max(0, Math.min(1, (t - a) / (b - a)));
-  return x * x * (3 - 2 * x);
-};
+export default function MahashivratriCinematicIntro({ videoUrl, onComplete }: Props) {
+  // Video Path in public/videos folder
+  const videoSrc = videoUrl || '/videos/mahashivratri-intro.mp4';
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-// ============ HIGH-PERFORMANCE PARTICLE POOL ============
-type PType = 'smoke' | 'snow' | 'belpatra' | 'water_splash' | 'star' | 'glow';
-
-interface Particle {
-  idx: number; x: number; y: number; vx: number; vy: number;
-  size: number; life: number; maxLife: number; alpha: number;
-  type: PType; active: boolean; gravity: number; drag: number;
-  color: string; rot: number; rotSpeed: number;
-}
-
-class ParticlePool {
-  particles: Particle[] = [];
-  free: number[] = [];
-  constructor(size: number) {
-    for (let i = 0; i < size; i++) {
-      this.particles.push({
-        idx: i, x: 0, y: 0, vx: 0, vy: 0, size: 1, life: 0, maxLife: 1, alpha: 0,
-        type: 'smoke', active: false, gravity: 0, drag: 0.98,
-        color: '#fff', rot: 0, rotSpeed: 0
-      });
-      this.free.push(i);
-    }
-  }
-  spawn(): Particle | null {
-    const idx = this.free.pop();
-    if (idx === undefined) return null;
-    const p = this.particles[idx];
-    if (!p) return null;
-    p.active = true; p.life = 0; p.alpha = 0; p.rot = Math.random() * Math.PI * 2;
-    return p;
-  }
-  release(p: Particle) {
-    if (!p) return;
-    p.active = false;
-    this.free.push(p.idx);
-  }
-}
-
-export default function MahashivratriCinematicIntro({ onComplete }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stage, setStage] = useState<'video' | 'greeting' | 'finished'>('video');
+  const [videoFading, setVideoFading] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
-    if (!document.getElementById('maha-shiv-fonts-v4')) {
+  }, [onComplete]);
+
+  // Load Google Fonts dynamically
+  useEffect(() => {
+    if (!document.getElementById('maha-shiv-google-fonts')) {
       const link = document.createElement('link');
-      link.id = 'maha-shiv-fonts-v4';
-      link.href = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap';
+      link.id = 'maha-shiv-google-fonts';
+      link.href =
+        'https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap';
       link.rel = 'stylesheet';
       document.head.appendChild(link);
     }
-  }, [onComplete]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) return;
-
-    let W = 0, H = 0, DPR = 1;
-    let startTime = 0;
-    let rafId = 0;
-    let running = true;
-    let lastTime = 0;
-    let handoverTriggered = false;
-
-    const bloom = document.createElement('canvas');
-    const bctx = bloom.getContext('2d')!;
-    const grain = document.createElement('canvas');
-    const gctx = grain.getContext('2d')!;
-
-    const pool = new ParticlePool(5000);
-
-    function resize() {
-      DPR = Math.min(window.devicePixelRatio || 1, 2);
-      const rect = canvas!.getBoundingClientRect();
-      W = rect.width; H = rect.height;
-      canvas!.width = Math.floor(W * DPR);
-      canvas!.height = Math.floor(H * DPR);
-      ctx?.setTransform(DPR, 0, 0, DPR, 0, 0);
-      
-      bloom.width = Math.max(2, Math.floor(W / 2));
-      bloom.height = Math.max(2, Math.floor(H / 2));
-      grain.width = 256; grain.height = 256;
-      generateGrain();
-    }
-
-    function generateGrain() {
-      const id = gctx.createImageData(grain.width, grain.height);
-      const d = id.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const n = Math.random() * 255;
-        d[i] = n; d[i + 1] = n; d[i + 2] = n; d[i + 3] = 16;
-      }
-      gctx.putImageData(id, 0, 0);
-    }
-
-// =========================================================================
-// SCENE 1: REALISTIC 3D GOLDEN TRISHUL — RIGHT SIDE
-// 0.0s -> 11.0s
-// =========================================================================
-function draw3DGoldenTrishul(t: number) {
-
-  const vis =
-    smoothstep(0.0, 1.5, t) *
-    (1 - smoothstep(10.5, 11.5, t));
-
-  if (vis <= 0.001) return;
-
-  const s = Math.min(W, H) * 0.0024;
-
-  // ---------------------------------------------------------
-  // POSITION
-  // ---------------------------------------------------------
-  const trishulX = W * 0.78;
-
-  const entryY =
-    H * 1.15 -
-    smoothstep(0.0, 3.5, t) * (H * 0.62);
-
-  ctx!.save();
-
-  ctx!.globalAlpha = vis;
-
-  // ---------------------------------------------------------
-  // SOFT DIVINE AURA
-  // ---------------------------------------------------------
-  const aura =
-    ctx!.createRadialGradient(
-      trishulX,
-      entryY - 170 * s,
-      0,
-      trishulX,
-      entryY - 170 * s,
-      250 * s
-    );
-
-  aura.addColorStop(
-    0,
-    `rgba(255,215,90,${0.16 * vis})`
-  );
-
-  aura.addColorStop(
-    0.35,
-    `rgba(255,190,60,${0.07 * vis})`
-  );
-
-  aura.addColorStop(
-    1,
-    'rgba(0,0,0,0)'
-  );
-
-  ctx!.fillStyle = aura;
-
-  ctx!.fillRect(
-    trishulX - 300 * s,
-    entryY - 450 * s,
-    600 * s,
-    600 * s
-  );
-
-  // ---------------------------------------------------------
-  // TRISHUL LOCAL COORDINATE SYSTEM
-  // ---------------------------------------------------------
-  ctx!.translate(trishulX, entryY);
-
-  // ---------------------------------------------------------
-  // SHADOW / DEPTH BEHIND TRISHUL
-  // ---------------------------------------------------------
-  ctx!.save();
-
-  ctx!.globalAlpha = 0.28 * vis;
-
-  ctx!.filter = `blur(${4 * s}px)`;
-
-  ctx!.fillStyle = '#000000';
-
-  ctx!.fillRect(
-    -8 * s,
-    -10 * s,
-    16 * s,
-    390 * s
-  );
-
-  ctx!.restore();
-
-  // =========================================================
-  // METALLIC GOLD MATERIAL
-  // =========================================================
-
-  const goldMetal =
-    ctx!.createLinearGradient(
-      -18 * s,
-      0,
-      18 * s,
-      0
-    );
-
-  goldMetal.addColorStop(0.00, '#241400');
-  goldMetal.addColorStop(0.12, '#6F4B0A');
-  goldMetal.addColorStop(0.28, '#C89620');
-  goldMetal.addColorStop(0.43, '#FFE9A0');
-  goldMetal.addColorStop(0.50, '#FFFBE5');
-  goldMetal.addColorStop(0.58, '#E4B83E');
-  goldMetal.addColorStop(0.78, '#9A6A12');
-  goldMetal.addColorStop(0.92, '#4A2D04');
-  goldMetal.addColorStop(1.00, '#160C00');
-
-  // =========================================================
-  // MAIN SHAFT
-  // =========================================================
-
-  const shaftW = 13 * s;
-  const shaftH = 390 * s;
-
-  const shaftTop = -shaftH * 0.50;
-
-  // Dark outer shaft
-  ctx!.fillStyle = '#211300';
-
-  ctx!.beginPath();
-
-  ctx!.roundRect(
-    -shaftW * 0.72,
-    shaftTop,
-    shaftW * 1.44,
-    shaftH,
-    3 * s
-  );
-
-  ctx!.fill();
-
-  // Metallic inner shaft
-  ctx!.fillStyle = goldMetal;
-
-  ctx!.beginPath();
-
-  ctx!.roundRect(
-    -shaftW / 2,
-    shaftTop,
-    shaftW,
-    shaftH,
-    2 * s
-  );
-
-  ctx!.fill();
-
-  // Bright vertical reflection
-  const shaftHighlight =
-    ctx!.createLinearGradient(
-      -shaftW / 2,
-      0,
-      shaftW / 2,
-      0
-    );
-
-  shaftHighlight.addColorStop(
-    0,
-    'rgba(255,255,255,0)'
-  );
-
-  shaftHighlight.addColorStop(
-    0.42,
-    'rgba(255,255,255,0.08)'
-  );
-
-  shaftHighlight.addColorStop(
-    0.50,
-    'rgba(255,255,245,0.72)'
-  );
-
-  shaftHighlight.addColorStop(
-    0.60,
-    'rgba(255,255,255,0.08)'
-  );
-
-  shaftHighlight.addColorStop(
-    1,
-    'rgba(255,255,255,0)'
-  );
-
-  ctx!.fillStyle = shaftHighlight;
-
-  ctx!.fillRect(
-    -shaftW / 2,
-    shaftTop,
-    shaftW,
-    shaftH
-  );
-
-  // =========================================================
-  // ORNAMENTAL SHAFT RINGS
-  // =========================================================
-
-  const ringPositions = [
-    70,
-    150,
-    230,
-    310
-  ];
-
-  for (const ry of ringPositions) {
-
-    const ringGrad =
-      ctx!.createLinearGradient(
-        -11 * s,
-        0,
-        11 * s,
-        0
-      );
-
-    ringGrad.addColorStop(0, '#6B4708');
-    ringGrad.addColorStop(0.35, '#E8B936');
-    ringGrad.addColorStop(0.5, '#FFF0A6');
-    ringGrad.addColorStop(0.7, '#C28C1E');
-    ringGrad.addColorStop(1, '#4B2D03');
-
-    ctx!.fillStyle = ringGrad;
-
-    ctx!.fillRect(
-      -shaftW * 0.75,
-      shaftTop + ry * s,
-      shaftW * 1.5,
-      5 * s
-    );
-  }
-
-  // =========================================================
-  // TRIDENT HEAD
-  // =========================================================
-
-  const headY = shaftTop + 25 * s;
-
-  // ---------------------------------------------------------
-  // CENTER SPEAR
-  // ---------------------------------------------------------
-
-  const centerTip = headY - 115 * s;
-
-  ctx!.fillStyle = goldMetal;
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    0,
-    centerTip
-  );
-
-  ctx!.bezierCurveTo(
-    -9 * s,
-    headY - 82 * s,
-    -13 * s,
-    headY - 25 * s,
-    -9 * s,
-    headY + 18 * s
-  );
-
-  ctx!.lineTo(
-    9 * s,
-    headY + 18 * s
-  );
-
-  ctx!.bezierCurveTo(
-    13 * s,
-    headY - 25 * s,
-    9 * s,
-    headY - 82 * s,
-    0,
-    centerTip
-  );
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  // Center blade highlight
-  ctx!.strokeStyle =
-    'rgba(255,250,205,0.85)';
-
-  ctx!.lineWidth =
-    Math.max(0.7, 1.2 * s);
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    0,
-    centerTip + 5 * s
-  );
-
-  ctx!.lineTo(
-    -2 * s,
-    headY - 15 * s
-  );
-
-  ctx!.stroke();
-
-  // =========================================================
-  // LEFT CURVED PRONG
-  // =========================================================
-
-  ctx!.fillStyle = goldMetal;
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    -48 * s,
-    headY - 78 * s
-  );
-
-  ctx!.bezierCurveTo(
-    -44 * s,
-    headY - 38 * s,
-    -38 * s,
-    headY + 5 * s,
-    -20 * s,
-    headY + 25 * s
-  );
-
-  ctx!.bezierCurveTo(
-    -13 * s,
-    headY + 32 * s,
-    -8 * s,
-    headY + 22 * s,
-    -8 * s,
-    headY + 10 * s
-  );
-
-  ctx!.bezierCurveTo(
-    -25 * s,
-    headY - 5 * s,
-    -31 * s,
-    headY - 32 * s,
-    -48 * s,
-    headY - 78 * s
-  );
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  // Left blade highlight
-  ctx!.strokeStyle =
-    'rgba(255,245,190,0.72)';
-
-  ctx!.lineWidth =
-    Math.max(0.6, 1.0 * s);
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    -46 * s,
-    headY - 70 * s
-  );
-
-  ctx!.bezierCurveTo(
-    -40 * s,
-    headY - 30 * s,
-    -31 * s,
-    headY - 3 * s,
-    -18 * s,
-    headY + 18 * s
-  );
-
-  ctx!.stroke();
-
-  // =========================================================
-  // RIGHT CURVED PRONG
-  // =========================================================
-
-  ctx!.fillStyle = goldMetal;
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    48 * s,
-    headY - 78 * s
-  );
-
-  ctx!.bezierCurveTo(
-    44 * s,
-    headY - 38 * s,
-    38 * s,
-    headY + 5 * s,
-    20 * s,
-    headY + 25 * s
-  );
-
-  ctx!.bezierCurveTo(
-    13 * s,
-    headY + 32 * s,
-    8 * s,
-    headY + 22 * s,
-    8 * s,
-    headY + 10 * s
-  );
-
-  ctx!.bezierCurveTo(
-    25 * s,
-    headY - 5 * s,
-    31 * s,
-    headY - 32 * s,
-    48 * s,
-    headY - 78 * s
-  );
-
-  ctx!.closePath();
-
-  ctx!.fill();
-
-  // Right blade highlight
-  ctx!.strokeStyle =
-    'rgba(255,245,190,0.72)';
-
-  ctx!.lineWidth =
-    Math.max(0.6, 1.0 * s);
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    46 * s,
-    headY - 70 * s
-  );
-
-  ctx!.bezierCurveTo(
-    40 * s,
-    headY - 30 * s,
-    31 * s,
-    headY - 3 * s,
-    18 * s,
-    headY + 18 * s
-  );
-
-  ctx!.stroke();
-
-  // =========================================================
-  // CENTRAL COLLAR
-  // =========================================================
-
-  const collarGrad =
-    ctx!.createRadialGradient(
-      0,
-      headY + 18 * s,
-      1,
-      0,
-      headY + 18 * s,
-      20 * s
-    );
-
-  collarGrad.addColorStop(0, '#FFF2A8');
-  collarGrad.addColorStop(0.35, '#D6A72A');
-  collarGrad.addColorStop(0.75, '#704805');
-  collarGrad.addColorStop(1, '#241400');
-
-  ctx!.fillStyle = collarGrad;
-
-  ctx!.beginPath();
-
-  ctx!.ellipse(
-    0,
-    headY + 20 * s,
-    15 * s,
-    7 * s,
-    0,
-    0,
-    Math.PI * 2
-  );
-
-  ctx!.fill();
-
-  // =========================================================
-  // SMALL CRESCENT MOON ABOVE TRISHUL
-  // =========================================================
-
-  const moonY =
-    centerTip - 22 * s;
-
-  // Glow
-  ctx!.save();
-
-  ctx!.globalCompositeOperation = 'screen';
-
-  const moonGlow =
-    ctx!.createRadialGradient(
-      0,
-      moonY,
-      0,
-      0,
-      moonY,
-      38 * s
-    );
-
-  moonGlow.addColorStop(
-    0,
-    `rgba(255,240,170,${0.35 * vis})`
-  );
-
-  moonGlow.addColorStop(
-    1,
-    'rgba(255,220,100,0)'
-  );
-
-  ctx!.fillStyle = moonGlow;
-
-  ctx!.beginPath();
-
-  ctx!.arc(
-    0,
-    moonY,
-    38 * s,
-    0,
-    Math.PI * 2
-  );
-
-  ctx!.fill();
-
-  ctx!.restore();
-
-  // Crescent
-  ctx!.save();
-
-  ctx!.globalCompositeOperation = 'source-over';
-
-  ctx!.fillStyle = '#FFF4C4';
-
-  ctx!.beginPath();
-
-  ctx!.arc(
-    0,
-    moonY,
-    15 * s,
-    0,
-    Math.PI * 2
-  );
-
-  ctx!.fill();
-
-  // Dark cutout
-  ctx!.fillStyle = '#020812';
-
-  ctx!.beginPath();
-
-  ctx!.arc(
-    6 * s,
-    moonY - 3 * s,
-    13 * s,
-    0,
-    Math.PI * 2
-  );
-
-  ctx!.fill();
-
-  ctx!.restore();
-
-  // =========================================================
-  // FINAL GOLD SPECULAR EDGE
-  // =========================================================
-
-  ctx!.strokeStyle =
-    `rgba(255,245,190,${0.55 * vis})`;
-
-  ctx!.lineWidth =
-    Math.max(0.5, 0.8 * s);
-
-  ctx!.beginPath();
-
-  ctx!.moveTo(
-    -shaftW * 0.35,
-    shaftTop + 10 * s
-  );
-
-  ctx!.lineTo(
-    -shaftW * 0.35,
-    shaftTop + 330 * s
-  );
-
-  ctx!.stroke();
-
-  ctx!.restore();
-}
-    // =========================================================================
-    // SCENE 2 & 3: GRAND DECORATED SHIVALINGA & ABHISHEKAM (3.5s -> 11.0s)
-    // =========================================================================
-    function drawDecoratedShivalinga(t: number) {
-      const vis = smoothstep(3.2, 4.5, t) * (1 - smoothstep(10.5, 11.5, t));
-      if (vis <= 0.001) return;
-
-      const s = Math.min(W, H) * 0.0024;
-      const cx = W * 0.42; 
-      const baseY = H * 0.78;
-
-      ctx!.save();
-      ctx!.globalAlpha = vis;
-
-      // Divine Backlight Halo
-      const haloGrad = ctx!.createRadialGradient(cx, baseY - 60*s, 0, cx, baseY - 60*s, 200*s);
-      haloGrad.addColorStop(0, `rgba(40, 80, 120, ${0.3 * vis})`);
-      haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx!.fillStyle = haloGrad;
-      ctx!.fillRect(cx - 200*s, baseY - 250*s, 400*s, 400*s);
-
-      // --- SHIVALINGA BASE (Jaladhari Spout - Black Marble) ---
-      const baseGrad = ctx!.createLinearGradient(cx - 120 * s, baseY, cx + 120 * s, baseY);
-      baseGrad.addColorStop(0, '#05060a');
-      baseGrad.addColorStop(0.5, '#1a1d28'); // Polished Black Marble Highlight
-      baseGrad.addColorStop(1, '#020304');
-
-      // Lower Pedestal
-      ctx!.fillStyle = baseGrad;
-      ctx!.beginPath();
-      ctx!.ellipse(cx, baseY + 35 * s, 130 * s, 32 * s, 0, 0, Math.PI * 2);
-      ctx!.fill();
-      
-      // Gold Edge of Pedestal
-      ctx!.strokeStyle = `rgba(214, 169, 40, ${0.8 * vis})`;
-      ctx!.lineWidth = 2 * s;
-      ctx!.stroke();
-
-      // Jaladhari Platform
-      ctx!.beginPath();
-      ctx!.ellipse(cx, baseY + 12 * s, 105 * s, 24 * s, 0, 0, Math.PI * 2);
-      ctx!.fill();
-      ctx!.stroke();
-
-      // --- MAIN SHIVALINGA STONE (Polished Black Marble Pind) ---
-      const lingaGrad = ctx!.createRadialGradient(cx - 25 * s, baseY - 70 * s, 5 * s, cx, baseY - 50 * s, 80 * s);
-      lingaGrad.addColorStop(0, '#3a4252'); // Specular curve highlight
-      lingaGrad.addColorStop(0.3, '#11131a');
-      lingaGrad.addColorStop(0.8, '#050608');
-      lingaGrad.addColorStop(1, '#000000');
-
-      ctx!.fillStyle = lingaGrad;
-      ctx!.beginPath();
-      ctx!.moveTo(cx - 55 * s, baseY + 12 * s);
-      ctx!.lineTo(cx - 55 * s, baseY - 60 * s);
-      ctx!.bezierCurveTo(cx - 55 * s, baseY - 135 * s, cx + 55 * s, baseY - 135 * s, cx + 55 * s, baseY - 60 * s);
-      ctx!.lineTo(cx + 55 * s, baseY + 12 * s);
-      ctx!.closePath();
-      ctx!.fill();
-
-      // --- TRIPUNDRA BHASMA TILAK & KUMKUM BINDU ---
-      ctx!.fillStyle = 'rgba(240, 250, 255, 0.98)';
-      for (let i = 0; i < 3; i++) {
-        ctx!.fillRect(cx - 26 * s, baseY - 88 * s + i * 8 * s, 52 * s, 4 * s);
-      }
-      // Red Kumkum Bindu
-      ctx!.fillStyle = '#ff3300';
-      ctx!.shadowBlur = 10 * s;
-      ctx!.shadowColor = '#ff0000';
-      ctx!.beginPath();
-      ctx!.arc(cx, baseY - 80 * s, 6 * s, 0, Math.PI * 2);
-      ctx!.fill();
-      ctx!.shadowBlur = 0;
-
-      // --- MARIGOLD FLOWER GARLAND (Jaimala) ---
-      for (let a = -Math.PI * 0.85; a <= Math.PI * 0.85; a += 0.22) {
-        const gx = cx + Math.cos(a) * 57 * s;
-        const gy = baseY + 14 * s + Math.sin(a) * 16 * s;
-        
-        // Leaf Base
-        ctx!.fillStyle = '#16a34a';
-        ctx!.beginPath();
-        ctx!.arc(gx, gy, 8 * s, 0, Math.PI * 2);
-        ctx!.fill();
-        
-        // Marigold Flower
-        ctx!.fillStyle = (Math.sin(a * 12) > 0) ? '#ff9900' : '#ffcc00';
-        ctx!.beginPath();
-        ctx!.arc(gx, gy, 6.5 * s, 0, Math.PI * 2);
-        ctx!.fill();
-      }
-
-      // --- REAL FLUID GANGA JAL / MILK ABHISHEKAM (6.5s -> 11.0s) ---
-      if (t > 6.5) {
-        const streamVis = smoothstep(6.5, 7.5, t) * (1 - smoothstep(10.0, 10.5, t));
-        
-        ctx!.save();
-        ctx!.globalCompositeOperation = 'screen';
-        
-        // Fluid Stream (Wavy & Thick)
-        const gangaGrad = ctx!.createLinearGradient(cx, -10, cx, baseY - 100 * s);
-        gangaGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * streamVis})`);
-        gangaGrad.addColorStop(0.5, `rgba(180, 230, 255, ${0.85 * streamVis})`);
-        gangaGrad.addColorStop(1, `rgba(255, 255, 255, ${0.95 * streamVis})`);
-
-        ctx!.strokeStyle = gangaGrad;
-        ctx!.lineWidth = 12 * s;
-        ctx!.lineCap = 'round';
-        
-        ctx!.beginPath();
-        ctx!.moveTo(cx, -10);
-        for (let y = -10; y <= baseY - 100 * s; y += 8) {
-          const waveX = cx + Math.sin(t * 10 + y * 0.06) * 4 * s;
-          ctx!.lineTo(waveX, y);
-        }
-        ctx!.stroke();
-
-        // Milk Splash Impact Glow
-        const splashR = 35 * s * streamVis;
-        const milkGlow = ctx!.createRadialGradient(cx, baseY - 100 * s, 0, cx, baseY - 100 * s, splashR);
-        milkGlow.addColorStop(0, `rgba(255, 255, 255, ${0.95 * streamVis})`);
-        milkGlow.addColorStop(0.4, `rgba(150, 200, 255, ${0.6 * streamVis})`);
-        milkGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx!.fillStyle = milkGlow;
-        ctx!.beginPath();
-        ctx!.arc(cx, baseY - 100 * s, splashR, 0, Math.PI * 2);
-        ctx!.fill();
-
-        // Fluid Coating Flowing Down Stone
-        ctx!.fillStyle = `rgba(255, 255, 255, ${0.6 * streamVis})`;
-        ctx!.beginPath();
-        ctx!.ellipse(cx, baseY - 40 * s, 45 * s, 55 * s, 0, 0, Math.PI * 2);
-        ctx!.fill();
-
-        ctx!.restore();
-      }
-
-      ctx!.restore();
-    }
-
-    // =========================================================================
-    // SCENE 4: SNOWY MOUNT KAILASH & FROZEN ICE TEXT (10.5s -> 14.5s)
-    // =========================================================================
-    function drawSnowyKailashAndText(t: number) {
-      const vis = smoothstep(10.2, 11.5, t) * (1 - smoothstep(14.0, 14.5, t));
-      if (vis <= 0.001) return;
-
-      const s = Math.min(W, H) * 0.0022;
-      const cx = W / 2;
-      const cy = H * 0.42;
-
-      ctx!.save();
-      ctx!.globalAlpha = vis;
-
-      // --- HIMALAYAN SNOWY KAILASH BACKDROP ---
-      const skyGrad = ctx!.createLinearGradient(0, 0, 0, H);
-      skyGrad.addColorStop(0, '#01040a');
-      skyGrad.addColorStop(0.4, '#03131f');
-      skyGrad.addColorStop(0.8, '#051b29');
-      skyGrad.addColorStop(1, '#01050a');
-      ctx!.fillStyle = skyGrad;
-      ctx!.fillRect(0, 0, W, H);
-
-      // Moon Halo
-      const mX = W * 0.8;
-      const mY = H * 0.2;
-      const halo = ctx!.createRadialGradient(mX, mY, 0, mX, mY, 150 * s);
-      halo.addColorStop(0, 'rgba(150, 200, 255, 0.15)');
-      halo.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx!.fillStyle = halo;
-      ctx!.fillRect(0, 0, W, H);
-
-      // Snowy Mountain Peaks (Jagged & Realistic)
-      ctx!.fillStyle = '#051420';
-      ctx!.beginPath();
-      ctx!.moveTo(0, H * 0.9);
-      ctx!.lineTo(W * 0.15, H * 0.55);
-      ctx!.lineTo(W * 0.25, H * 0.65);
-      ctx!.lineTo(W * 0.45, H * 0.25); // Kailash Peak
-      ctx!.lineTo(W * 0.60, H * 0.45);
-      ctx!.lineTo(W * 0.75, H * 0.35);
-      ctx!.lineTo(W, H * 0.7);
-      ctx!.lineTo(W, H);
-      ctx!.lineTo(0, H);
-      ctx!.closePath();
-      ctx!.fill();
-
-      // Snow Cap Highlights (Crystalline White)
-      ctx!.fillStyle = '#e0f7ff';
-      ctx!.beginPath();
-      ctx!.moveTo(W * 0.38, H * 0.35);
-      ctx!.lineTo(W * 0.45, H * 0.25); // Peak
-      ctx!.lineTo(W * 0.52, H * 0.38);
-      ctx!.lineTo(W * 0.48, H * 0.36);
-      ctx!.lineTo(W * 0.45, H * 0.40); // Jagged snow drips
-      ctx!.lineTo(W * 0.42, H * 0.37);
-      ctx!.closePath();
-      ctx!.fill();
-
-      // --- FROZEN ICE / CRYSTALLINE SNOW STYLE TEXT ---
-      ctx!.textAlign = 'center';
-      ctx!.textBaseline = 'middle';
-
-      // 1. "ॐ नमः शिवाय"
-      const fontS1 = Math.min(W * 0.09, 80);
-      ctx!.font = `700 ${fontS1}px "Tiro Devanagari Hindi", serif`;
-
-      // Outer Frosted Glow
-      ctx!.shadowBlur = 35;
-      ctx!.shadowColor = '#00e5ff';
-      
-      // Deep Ice Shadow Stroke
-      ctx!.strokeStyle = '#021827';
-      ctx!.lineWidth = fontS1 * 0.1;
-      ctx!.strokeText('ॐ नमः शिवाय', cx, cy - 20 * s);
-
-      // Crystalline Ice Gradient Fill
-      const iceGrad1 = ctx!.createLinearGradient(0, cy - fontS1, 0, cy);
-      iceGrad1.addColorStop(0.0, '#FFFFFF');
-      iceGrad1.addColorStop(0.3, '#E0F7FF');
-      iceGrad1.addColorStop(0.7, '#A5F3FC');
-      iceGrad1.addColorStop(1.0, '#0284C7');
-
-      ctx!.fillStyle = iceGrad1;
-      ctx!.fillText('ॐ नमः शिवाय', cx, cy - 20 * s);
-
-      // 2. "HAPPY MAHA SHIVRATRI 2027"
-      const fontS2 = Math.min(W * 0.05, 48);
-      const cyEng = cy + fontS1 * 0.95;
-      ctx!.font = `900 ${fontS2}px "Cinzel", Georgia, serif`;
-
-      ctx!.shadowBlur = 20;
-      ctx!.shadowColor = '#38bdf8';
-      ctx!.strokeStyle = '#021827';
-      ctx!.lineWidth = fontS2 * 0.08;
-      ctx!.strokeText('HAPPY MAHA SHIVRATRI 2027', cx, cyEng);
-
-      const iceGrad2 = ctx!.createLinearGradient(0, cyEng - fontS2 / 2, 0, cyEng + fontS2 / 2);
-      iceGrad2.addColorStop(0.0, '#FFFFFF');
-      iceGrad2.addColorStop(0.5, '#BAE6FD');
-      iceGrad2.addColorStop(1.0, '#0369A1');
-
-      ctx!.fillStyle = iceGrad2;
-      ctx!.fillText('HAPPY MAHA SHIVRATRI 2027', cx, cyEng);
-
-      ctx!.restore();
-    }
-
-    // ============ PARTICLE SPAWN & UPDATES ============
-    function spawnParticles(t: number) {
-      // =========================================================
-      // CINEMATIC SHIVA SMOKE — SOFT WISPY SMOKE
-      // =========================================================
-      if (t < 11.0 && Math.random() < 0.38) {
-        const p = pool.spawn();
-        if (!p) return;
-
-        p.type = 'smoke';
-
-        // Smoke mainly around Shivling/base area
-        p.x =
-          W * 0.34 +
-          Math.random() * W * 0.32;
-
-        p.y =
-          H * 0.78 +
-          Math.random() * H * 0.12;
-
-        // Slow natural sideways drift
-        p.vx =
-          (Math.random() - 0.5) * 0.40;
-
-        // Slowly rises upward
-        p.vy =
-          -0.28 -
-          Math.random() * 0.55;
-
-        // Much smaller particles
-        p.size =
-          38 +
-          Math.random() * 55;
-
-        // Longer, softer life
-        p.maxLife =
-          4.5 +
-          Math.random() * 2.5;
-
-        p.life = 0;
-
-        p.alpha = 0;
-
-        // Neutral smoke instead of blue-white glow
-        p.color = '#c7ceca';
-      }
-
-      // Abhishekam Water Splashes (6.5s -> 10.5s)
-      if (t > 6.5 && t < 10.5 && Math.random() < 0.9) {
-        const p = pool.spawn(); if (!p) return;
-        p.type = 'water_splash'; 
-        p.x = W * 0.42 + (Math.random() - 0.5) * 20; 
-        p.y = H * 0.78 - 110; // Splash origin
-        p.vx = (Math.random() - 0.5) * 8; 
-        p.vy = -3 - Math.random() * 5;
-        p.size = 2 + Math.random() * 4; 
-        p.maxLife = 1.5; p.life = 0; p.alpha = 1;
-        p.gravity = 0.3; p.drag = 0.98;
-        p.color = 'rgba(200, 240, 255, 0.9)';
-      }
-
-      // Falling Bel Patra Leaves (6.8s -> 11.0s)
-      if (t > 6.8 && t < 11.0 && Math.random() < 0.4) {
-        const p = pool.spawn(); if (!p) return;
-        p.type = 'belpatra'; p.x = W * 0.2 + Math.random() * W * 0.5; p.y = -20;
-        p.vx = (Math.random() - 0.5) * 1.5; p.vy = 1.5 + Math.random() * 2.5;
-        p.size = 7 + Math.random() * 7; p.maxLife = 5; p.life = 0; p.alpha = 0;
-        p.color = '#16a34a'; p.rotSpeed = (Math.random() - 0.5) * 0.15;
-      }
-
-      // Heavy Snowfall (10.0s -> 14.5s)
-      if (t > 10.0 && t < 14.5 && Math.random() < 0.85) {
-        const p = pool.spawn(); if (!p) return;
-        p.type = 'snow'; p.x = Math.random() * W; p.y = -10;
-        p.vx = (Math.random() - 0.5) * 2.0; p.vy = 1.2 + Math.random() * 3.0;
-        p.size = 1.5 + Math.random() * 4; p.maxLife = 7; p.life = 0; p.alpha = 0;
-        p.color = '#ffffff';
-      }
-    }
-
-    function updateAndDrawParticles(dt: number, t: number) {
-      ctx!.save();
-
-      for (let i = 0; i < pool.particles.length; i++) {
-        const p = pool.particles[i];
-        if (!p || !p.active) continue;
-
-        p.life += dt;
-        const lr = p.life / p.maxLife;
-
-        // Physics
-        if (p.type === 'water_splash') {
-          p.vy += p.gravity;
-          p.vx *= p.drag;
-          p.x += p.vx;
-          p.y += p.vy;
-        } else {
-          p.x += p.vx;
-          p.y += p.vy;
-        }
-
-        if (p.type === 'smoke') {
-
-          const fadeIn =
-            smoothstep(0.0, 0.18, lr);
-
-          const fadeOut =
-            1 - smoothstep(0.55, 1.0, lr);
-
-          // Very subtle smoke opacity
-          p.alpha =
-            fadeIn *
-            fadeOut *
-            0.30 *
-            (t < 10.5
-              ? 1
-              : 1 - smoothstep(10.5, 11.0, t));
-
-          // Slow organic drifting
-          p.x +=
-            Math.sin(t * 0.45 + p.x * 0.008) * 0.18;
-
-          p.y +=
-            Math.sin(t * 0.35 + p.x * 0.004) * 0.08;
-
-          if (p.alpha > 0.003) {
-
-            ctx!.globalAlpha = p.alpha;
-
-            const grad =
-              ctx!.createRadialGradient(
-                p.x,
-                p.y,
-                0,
-
-                p.x,
-                p.y,
-                p.size
-              );
-
-            // Soft grey smoke — NO bright white center
-            grad.addColorStop(
-              0.0,
-              'rgba(205,210,208,0.24)'
-            );
-
-            grad.addColorStop(
-              0.30,
-              'rgba(185,195,192,0.13)'
-            );
-
-            grad.addColorStop(
-              0.65,
-              'rgba(160,170,167,0.055)'
-            );
-
-            grad.addColorStop(
-              1.0,
-              'rgba(130,140,138,0)'
-            );
-
-            ctx!.fillStyle = grad;
-
-            const smokeX =
-              p.x +
-              Math.sin(t * 0.8 + p.life * 2.0) * 8;
-
-            const smokeY =
-              p.y +
-              Math.sin(t * 0.6 + p.life * 1.5) * 5;
-
-            ctx!.beginPath();
-
-            ctx!.ellipse(
-              smokeX,
-              smokeY,
-              p.size * 1.25,
-              p.size * 0.55,
-              Math.sin(p.life) * 0.15,
-              0,
-              Math.PI * 2
-            );
-
-            ctx!.fill();
-          }
-        } else if (p.type === 'water_splash') {
-          p.alpha = (1 - lr) * 0.9;
-          if (p.alpha > 0.01) {
-            ctx!.globalAlpha = p.alpha;
-            ctx!.fillStyle = p.color;
-            ctx!.beginPath();
-            ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx!.fill();
-          }
-        } else if (p.type === 'belpatra') {
-          p.rot += p.rotSpeed;
-          p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.8, 1, lr));
-          if (p.alpha > 0.01) {
-            ctx!.save();
-            ctx!.globalAlpha = p.alpha;
-            ctx!.translate(p.x, p.y);
-            ctx!.rotate(p.rot);
-            ctx!.fillStyle = '#15803d';
-            ctx!.beginPath();
-            ctx!.ellipse(0, -p.size, p.size * 0.5, p.size, 0, 0, Math.PI * 2); ctx!.fill();
-            ctx!.ellipse(-p.size * 0.7, 0, p.size * 0.5, p.size, -0.6, 0, Math.PI * 2); ctx!.fill();
-            ctx!.ellipse(p.size * 0.7, 0, p.size * 0.5, p.size, 0.6, 0, Math.PI * 2); ctx!.fill();
-            ctx!.restore();
-          }
-        } else if (p.type === 'snow') {
-          p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.8, 1, lr)) * 0.85;
-          if (p.alpha > 0.01) {
-            ctx!.globalAlpha = p.alpha;
-            ctx!.fillStyle = p.color;
-            ctx!.beginPath();
-            ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx!.fill();
-          }
-        }
-
-        if (p.life > p.maxLife || p.alpha <= 0.01) pool.release(p);
-      }
-      ctx!.restore();
-    }
-
-    // ============ POST-PROCESSING ============
-    function applyBloom() {
-      const bloomAlpha = 0.4;
-      bctx.clearRect(0, 0, bloom.width, bloom.height);
-      bctx.filter = 'blur(4px) brightness(1.25)';
-      bctx.drawImage(canvas!, 0, 0, bloom.width, bloom.height);
-      bctx.filter = 'none';
-      ctx!.save();
-      ctx!.globalCompositeOperation = 'lighter';
-      ctx!.globalAlpha = bloomAlpha;
-      ctx!.drawImage(bloom, 0, 0, W, H);
-      ctx!.restore();
-    }
-
-    function applyVignette() {
-      const grad = ctx!.createRadialGradient(W / 2, H / 2, W * 0.2, W / 2, H / 2, W * 0.9);
-      grad.addColorStop(0, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.9)');
-      ctx!.fillStyle = grad;
-      ctx!.fillRect(0, 0, W, H);
-    }
-
-    function applyGrain() {
-      ctx!.save();
-      ctx!.globalCompositeOperation = 'overlay';
-      ctx!.globalAlpha = 0.2;
-      const ox = Math.floor(Math.random() * 64), oy = Math.floor(Math.random() * 64);
-      for (let x = -ox; x < W; x += grain.width) {
-        for (let y = -oy; y < H; y += grain.height) ctx!.drawImage(grain, x, y);
-      }
-      ctx!.restore();
-    }
-
-    // ============ MAIN RENDER PIPELINE ============
-    function render(t: number, dt: number) {
-      ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx!.fillStyle = '#01040a';
-      ctx!.fillRect(0, 0, W, H);
-
-      spawnParticles(t);
-
-      draw3DGoldenTrishul(t);
-      drawDecoratedShivalinga(t);
-      drawSnowyKailashAndText(t);
-
-      updateAndDrawParticles(dt, t);
-
-      const fadeIn = 1 - smoothstep(0, 0.8, t);
-      const fadeOut = smoothstep(14.0, 14.5, t);
-      const fadeAmt = Math.max(fadeIn, fadeOut);
-
-      if (fadeAmt > 0.001) {
-        ctx!.fillStyle = `rgba(0, 0, 0, ${fadeAmt})`;
-        ctx!.fillRect(0, 0, W, H);
-      }
-
-      applyBloom();
-      applyVignette();
-      applyGrain();
-    }
-
-    function loop(now: number) {
-      if (!running) return;
-      if (!startTime) startTime = now;
-      const t = (now - startTime) / 1000;
-      const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
-      lastTime = now;
-
-      if (t >= 14.3 && !handoverTriggered) {
-        handoverTriggered = true;
-        if (onCompleteRef.current) onCompleteRef.current();
-      }
-
-      if (t < 14.5) {
-        render(t, dt);
-      } else {
-        ctx!.setTransform(DPR, 0, 0, DPR, 0, 0);
-        ctx!.fillStyle = '#000000';
-        ctx!.fillRect(0, 0, W, H);
-      }
-      rafId = requestAnimationFrame(loop);
-    }
-
-    document.fonts.ready.then(() => {
-      resize();
-      window.addEventListener('resize', resize);
-      rafId = requestAnimationFrame(loop);
-    });
-
-    return () => {
-      running = false;
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('resize', resize);
-    };
   }, []);
 
+  // 🔊 Audio Unmute Fix (Click anywhere or button)
+  const unmuteAudio = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.volume = 1.0;
+      videoRef.current.play().catch((err) => console.log('Audio play error:', err));
+      setIsMuted(false);
+    }
+  };
+
+  const handleVideoEnded = () => {
+    setVideoFading(true);
+    setTimeout(() => {
+      setStage('greeting');
+    }, 800);
+  };
+
+  const handleFinish = () => {
+    setStage('finished');
+    setTimeout(() => {
+      if (onCompleteRef.current) {
+        onCompleteRef.current();
+      }
+    }, 600);
+  };
+
+  // Show 3D Ice Greeting Text for 5.5 seconds
+  useEffect(() => {
+    if (stage === 'greeting') {
+      const timer = setTimeout(() => {
+        handleFinish();
+      }, 5500);
+      return () => clearTimeout(timer);
+    }
+  }, [stage]);
+
+  if (stage === 'finished') return null;
+
   return (
-    <div className="fixed inset-0 w-full h-full bg-black z-[99999] overflow-hidden select-none">
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'block',
-          background: '#01040a',
-        }}
-      />
+    <div
+      onClick={stage === 'video' && isMuted ? unmuteAudio : undefined}
+      className="fixed inset-0 z-[99999] bg-black flex items-center justify-center p-2 sm:p-6 overflow-hidden select-none cursor-pointer"
+    >
+      {/* 🎬 STEP 1: CINEMATIC VIDEO PLAYER */}
+      {stage === 'video' && (
+        <div className="relative w-full max-w-6xl h-[82vh] md:h-[85vh] rounded-2xl md:rounded-3xl border-2 border-sky-400/40 shadow-[0_0_90px_rgba(56,189,248,0.25)] bg-black overflow-hidden flex items-center justify-center">
+          
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            autoPlay
+            playsInline
+            onEnded={handleVideoEnded}
+            className={`w-full h-full object-cover rounded-2xl md:rounded-3xl transition-all duration-1000 ${
+              videoFading ? 'opacity-0 scale-105 filter blur-md' : 'opacity-100 scale-100'
+            }`}
+          />
+
+          {/* DARK INNER VIGNETTE */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 pointer-events-none" />
+
+          {/* TOP FESTIVAL BADGE */}
+          <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-40 px-5 py-1.5 rounded-full bg-black/80 border border-sky-400/50 backdrop-blur-md text-[10px] md:text-xs font-bold text-sky-300 tracking-widest uppercase flex items-center gap-2 shadow-xl pointer-events-none">
+            <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
+            MAHA SHIVRATRI INTRO 2027
+          </div>
+
+          {/* 🔊 UNMUTE BUTTON */}
+          {isMuted ? (
+            <button
+              type="button"
+              onClick={unmuteAudio}
+              className="absolute top-4 sm:top-6 left-4 sm:left-6 z-50 px-4 py-2 rounded-full bg-sky-500 text-black font-black text-xs sm:text-sm tracking-wide transition-all shadow-[0_0_20px_rgba(56,189,248,0.6)] animate-bounce flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95"
+            >
+              🔊 Click Anywhere for Sound
+            </button>
+          ) : (
+            <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-50 px-3.5 py-1.5 rounded-full bg-black/70 border border-sky-400/40 backdrop-blur-md text-xs font-semibold text-sky-300 flex items-center gap-2">
+              🔊 Sound Playing
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 🏆 STEP 2: FROZEN ICE STYLE GREETING TEXT */}
+      <div
+        className={`absolute inset-0 flex flex-col items-center justify-center text-center p-6 md:p-12 transition-all duration-1000 ease-out bg-gradient-to-b from-[#021827] via-black to-black z-40 ${
+          stage === 'greeting'
+            ? 'opacity-100 scale-100'
+            : 'opacity-0 scale-95 pointer-events-none'
+        }`}
+      >
+        {/* Ambient Ice Blue Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[70vw] max-w-[500px] max-h-[500px] bg-sky-500/20 rounded-full blur-[110px] pointer-events-none animate-pulse" />
+
+        <div className="max-w-[90%] w-full mx-auto space-y-4 sm:space-y-6 flex flex-col items-center justify-center">
+          {/* DEVANAGARI SANSKRIT TEXT */}
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-sky-200 to-sky-500 tracking-wide leading-tight drop-shadow-[0_8px_25px_rgba(56,189,248,0.6)] break-words w-full font-['Tiro_Devanagari_Hindi']">
+            ॐ नमः शिवाय
+          </h1>
+
+          <div className="w-24 sm:w-36 md:w-48 h-[2px] bg-gradient-to-r from-transparent via-sky-400 to-transparent my-2 sm:my-4" />
+
+          {/* ENGLISH TEXT */}
+          <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-blue-200 to-sky-600 font-serif tracking-wider drop-shadow-[0_5px_20px_rgba(56,189,248,0.5)] break-words w-full font-['Cinzel']">
+            HAPPY MAHA SHIVRATRI 2027
+          </h2>
+        </div>
+
+        {/* PROGRESS BAR */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-sky-400 to-blue-600 animate-[progress_5.5s_linear_forwards]" />
+        </div>
+      </div>
+
       {/* SKIP BUTTON */}
       <button
-        onClick={() => onComplete?.()}
-        className="absolute top-5 right-5 sm:top-7 sm:right-7 z-[100] px-4 py-2 rounded-full border border-sky-400/30 bg-black/40 text-sky-200 backdrop-blur-md text-[10px] sm:text-xs font-bold tracking-[0.2em] transition-all duration-300 hover:bg-sky-400/20 hover:border-sky-300/70"
+        onClick={handleFinish}
+        className="absolute top-6 right-6 z-50 px-4 py-1.5 rounded-full bg-black/60 hover:bg-black/90 text-sky-200 border border-sky-400/30 backdrop-blur-md text-xs font-semibold tracking-wider transition-all"
       >
-        SKIP →
+        SKIP ➔
       </button>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes progress {
+          0% { width: 0%; }
+          100% { width: 100%; }
+        }
+      `}} />
     </div>
   );
 }
