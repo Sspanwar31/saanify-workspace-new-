@@ -172,18 +172,16 @@ NAVRATRI: {
     }
   },
 
-// ━━━ MAHASHIVRATRI (🚀 15.0s Divine Cosmic Timeline Sync) ━━━
+// ━━━ MAHASHIVRATRI (🚀 14.5s Epic Devotional Abhishekam Sequence) ━━━
 MAHASHIVRATRI: {
-  phases: ['OM', 'DAMARU', 'TRISHUL', 'KAILASH', 'TEXT'],
+  phases: ['SMOKE_TRISHUL', 'SHIVALINGA_REVEAL', 'ABHISHEKAM_BELPATRA', 'KAILASH_SNOW_TEXT'],
   timings: {
-    OM: 2500,       // 0.0s - 2.5s: Sacred ॐ Symbol
-    DAMARU: 2500,   // 2.5s - 5.0s: Divine Damaru
-    TRISHUL: 2500,  // 5.0s - 7.5s: Majestic Trishul
-    KAILASH: 5000,  // 7.5s - 12.5s: Kailash, Shiva & Sacred Ganga
-    TEXT: 2500      // 12.5s - 15.0s: ॐ नमः शिवाय Text Reveal
+    SMOKE_TRISHUL: 3500,        // 0.0s - 3.5s: Sardi ki dhund & Trishul Right Side Entry
+    SHIVALINGA_REVEAL: 3500,    // 3.5s - 7.0s: Smoke clears, Grand Saja Hua Shivalinga
+    ABHISHEKAM_BELPATRA: 3500,  // 7.0s - 10.5s: Bel Patra Rain & Ganga Jal Abhishekam Stream
+    KAILASH_SNOW_TEXT: 4000     // 10.5s - 14.5s: Snowy Kailash & Ice-Style Text Reveal
   }
-},
-  
+},  
   
 // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
