@@ -464,51 +464,47 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
 
     // ============ PARTICLE SPAWN & UPDATES ============
     function spawnParticles(t: number) {
-    // =========================================================
-// CINEMATIC SHIVA FOG / SMOKE — 0s → 11s
-// =========================================================
-if (t < 11.0 && Math.random() < 0.95) {
+      // =========================================================
+      // CINEMATIC SHIVA FOG / SMOKE — 0s → 11s
+      // =========================================================
+      if (t < 11.0 && Math.random() < 0.95) {
+        const p = pool.spawn();
+        if (!p) return;
 
-  const p = pool.spawn();
-  if (!p) return;
+        p.type = 'smoke';
 
-  p.type = 'smoke';
+        p.x =
+          W * 0.15 +
+          Math.random() * W * 0.70;
 
-  // Start INSIDE the lower screen instead of below canvas
-  p.x =
-    W * 0.15 +
-    Math.random() * W * 0.70;
+        p.y =
+          H * 0.82 +
+          Math.random() * H * 0.18;
 
-  p.y =
-    H * 0.82 +
-    Math.random() * H * 0.18;
+        p.vx =
+          (Math.random() - 0.5) * 0.45;
 
-  // Slow upward drifting fog
-  p.vx =
-    (Math.random() - 0.5) * 0.45;
+        p.vy =
+          -0.45 -
+          Math.random() * 0.9;
 
-  p.vy =
-    -0.45 -
-    Math.random() * 0.9;
+        p.size =
+          65 +
+          Math.random() * 95;
 
-  // Larger soft fog clouds
-  p.size =
-    65 +
-    Math.random() * 95;
+        p.maxLife =
+          5.5 +
+          Math.random() * 2.5;
 
-  p.maxLife =
-    5.5 +
-    Math.random() * 2.5;
+        p.life =
+          0.15 +
+          Math.random() * 0.35;
 
-  // Start immediately visible
-  p.life =
-    0.15 +
-    Math.random() * 0.35;
+        p.alpha = 0;
 
-  p.alpha = 0;
+        p.color = '#d0ebff';
+      }
 
-  p.color = '#d0ebff';
-}
       // Abhishekam Water Splashes (6.5s -> 10.5s)
       if (t > 6.5 && t < 10.5 && Math.random() < 0.9) {
         const p = pool.spawn(); if (!p) return;
@@ -564,79 +560,41 @@ if (t < 11.0 && Math.random() < 0.95) {
         }
 
         if (p.type === 'smoke') {
+          const fadeIn = smoothstep(0.0, 0.12, lr);
+          const fadeOut = 1 - smoothstep(0.65, 1.0, lr);
+          p.alpha = fadeIn * fadeOut * 0.55 * (t < 10.5 ? 1 : 1 - smoothstep(10.5, 11.0, t));
 
-  // Soft cinematic fade-in / fade-out
-  const fadeIn =
-    smoothstep(0.0, 0.12, lr);
+          // Gentle drifting movement
+          p.x += Math.sin(t * 0.7 + p.x * 0.01) * 0.25;
 
-  const fadeOut =
-    1 -
-    smoothstep(0.65, 1.0, lr);
+          if (p.alpha > 0.005) {
+            ctx!.globalAlpha = p.alpha;
 
-  p.alpha =
-    fadeIn *
-    fadeOut *
-    0.55 *
-    (
-      t < 10.5
-        ? 1
-        : 1 - smoothstep(10.5, 11.0, t)
-    );
+            const grad = ctx!.createRadialGradient(
+              p.x, p.y, 0,
+              p.x, p.y, p.size
+            );
 
-  // Gentle horizontal movement
-  p.x +=
-    Math.sin(
-      t * 0.7 +
-      p.x * 0.01
-    ) * 0.25;
+            grad.addColorStop(0, 'rgba(210,235,255,0.42)');
+            grad.addColorStop(0.45, 'rgba(190,220,235,0.18)');
+            grad.addColorStop(1, 'rgba(180,215,235,0)');
 
-  if (p.alpha > 0.005) {
+            ctx!.fillStyle = grad;
 
-    ctx!.globalAlpha =
-      p.alpha;
-
-    const grad =
-      ctx!.createRadialGradient(
-        p.x,
-        p.y,
-        0,
-        p.x,
-        p.y,
-        p.size
-      );
-
-    grad.addColorStop(
-      0,
-      'rgba(210,235,255,0.42)'
-    );
-
-    grad.addColorStop(
-      0.45,
-      'rgba(190,220,235,0.18)'
-    );
-
-    grad.addColorStop(
-      1,
-      'rgba(180,215,235,0)'
-    );
-
-    ctx!.fillStyle =
-      grad;
-
-    ctx!.beginPath();
-
-    ctx!.arc(
-      p.x,
-      p.y,
-      p.size,
-      0,
-      Math.PI * 2
-    );
-
-    ctx!.fill();
-  }
-}
-      } else if (p.type === 'belpatra') {
+            ctx!.beginPath();
+            ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx!.fill();
+          }
+        } else if (p.type === 'water_splash') {
+          p.alpha = (1 - lr) * 0.9;
+          if (p.alpha > 0.01) {
+            ctx!.globalAlpha = p.alpha;
+            ctx!.fillStyle = p.color;
+            ctx!.beginPath();
+            ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx!.fill();
+          }
+        } else if (p.type === 'belpatra') {
           p.rot += p.rotSpeed;
           p.alpha = smoothstep(0, 0.2, lr) * (1 - smoothstep(0.8, 1, lr));
           if (p.alpha > 0.01) {
