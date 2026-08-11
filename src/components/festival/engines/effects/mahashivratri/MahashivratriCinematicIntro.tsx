@@ -465,44 +465,48 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
     // ============ PARTICLE SPAWN & UPDATES ============
     function spawnParticles(t: number) {
       // =========================================================
-      // CINEMATIC SHIVA FOG / SMOKE — 0s → 11s
+      // CINEMATIC SHIVA SMOKE — SOFT WISPY SMOKE
       // =========================================================
-      if (t < 11.0 && Math.random() < 0.95) {
+      if (t < 11.0 && Math.random() < 0.22) {
         const p = pool.spawn();
         if (!p) return;
 
         p.type = 'smoke';
 
+        // Smoke mainly around Shivling/base area
         p.x =
-          W * 0.15 +
-          Math.random() * W * 0.70;
+          W * 0.34 +
+          Math.random() * W * 0.32;
 
         p.y =
-          H * 0.82 +
-          Math.random() * H * 0.18;
+          H * 0.80 +
+          Math.random() * H * 0.10;
 
+        // Slow natural sideways drift
         p.vx =
-          (Math.random() - 0.5) * 0.45;
+          (Math.random() - 0.5) * 0.30;
 
+        // Slowly rises upward
         p.vy =
-          -0.45 -
-          Math.random() * 0.9;
+          -0.20 -
+          Math.random() * 0.45;
 
+        // Much smaller particles
         p.size =
-          65 +
-          Math.random() * 95;
+          28 +
+          Math.random() * 42;
 
+        // Longer, softer life
         p.maxLife =
-          5.5 +
+          4.5 +
           Math.random() * 2.5;
 
-        p.life =
-          0.15 +
-          Math.random() * 0.35;
+        p.life = 0;
 
         p.alpha = 0;
 
-        p.color = '#d0ebff';
+        // Neutral smoke instead of blue-white glow
+        p.color = '#c7ceca';
       }
 
       // Abhishekam Water Splashes (6.5s -> 10.5s)
@@ -560,29 +564,79 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
         }
 
         if (p.type === 'smoke') {
-          const fadeIn = smoothstep(0.0, 0.12, lr);
-          const fadeOut = 1 - smoothstep(0.65, 1.0, lr);
-          p.alpha = fadeIn * fadeOut * 0.55 * (t < 10.5 ? 1 : 1 - smoothstep(10.5, 11.0, t));
 
-          // Gentle drifting movement
-          p.x += Math.sin(t * 0.7 + p.x * 0.01) * 0.25;
+          const fadeIn =
+            smoothstep(0.0, 0.18, lr);
 
-          if (p.alpha > 0.005) {
+          const fadeOut =
+            1 - smoothstep(0.55, 1.0, lr);
+
+          // Very subtle smoke opacity
+          p.alpha =
+            fadeIn *
+            fadeOut *
+            0.18 *
+            (t < 10.5
+              ? 1
+              : 1 - smoothstep(10.5, 11.0, t));
+
+          // Slow organic drifting
+          p.x +=
+            Math.sin(t * 0.45 + p.x * 0.008) * 0.18;
+
+          p.y +=
+            Math.sin(t * 0.35 + p.x * 0.004) * 0.08;
+
+          if (p.alpha > 0.003) {
+
             ctx!.globalAlpha = p.alpha;
 
-            const grad = ctx!.createRadialGradient(
-              p.x, p.y, 0,
-              p.x, p.y, p.size
+            const grad =
+              ctx!.createRadialGradient(
+                p.x,
+                p.y,
+                0,
+
+                p.x,
+                p.y,
+                p.size
+              );
+
+            // Soft grey smoke — NO bright white center
+            grad.addColorStop(
+              0.0,
+              'rgba(190,200,198,0.16)'
             );
 
-            grad.addColorStop(0, 'rgba(210,235,255,0.42)');
-            grad.addColorStop(0.45, 'rgba(190,220,235,0.18)');
-            grad.addColorStop(1, 'rgba(180,215,235,0)');
+            grad.addColorStop(
+              0.35,
+              'rgba(175,185,182,0.09)'
+            );
+
+            grad.addColorStop(
+              0.70,
+              'rgba(155,165,162,0.035)'
+            );
+
+            grad.addColorStop(
+              1.0,
+              'rgba(130,140,138,0)'
+            );
 
             ctx!.fillStyle = grad;
 
             ctx!.beginPath();
-            ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+
+            ctx!.ellipse(
+              p.x,
+              p.y,
+              p.size * 1.15,
+              p.size * 0.65,
+              0,
+              0,
+              Math.PI * 2
+            );
+
             ctx!.fill();
           }
         } else if (p.type === 'water_splash') {
