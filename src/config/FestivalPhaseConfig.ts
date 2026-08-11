@@ -172,7 +172,20 @@ NAVRATRI: {
     }
   },
 
-    // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
+// ━━━ MAHASHIVRATRI (🚀 15.0s Divine Cosmic Timeline Sync) ━━━
+MAHASHIVRATRI: {
+  phases: ['OM', 'DAMARU', 'TRISHUL', 'KAILASH', 'TEXT'],
+  timings: {
+    OM: 2500,       // 0.0s - 2.5s: Sacred ॐ Symbol
+    DAMARU: 2500,   // 2.5s - 5.0s: Divine Damaru
+    TRISHUL: 2500,  // 5.0s - 7.5s: Majestic Trishul
+    KAILASH: 5000,  // 7.5s - 12.5s: Kailash, Shiva & Sacred Ganga
+    TEXT: 2500      // 12.5s - 15.0s: ॐ नमः शिवाय Text Reveal
+  }
+},
+  
+  
+// ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
