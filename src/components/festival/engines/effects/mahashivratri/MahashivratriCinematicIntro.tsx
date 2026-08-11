@@ -128,6 +128,7 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       ctx!.globalAlpha = vis;
       ctx!.translate(trishulX, trishulY);
 
+      // Divine Aura behind Trishul
       const auraGrad = ctx!.createRadialGradient(0, -100*s, 0, 0, -100*s, 300*s);
       auraGrad.addColorStop(0, `rgba(20, 40, 80, ${0.5 * vis})`);
       auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
@@ -138,47 +139,57 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       const shaftH = 380 * s;
       const topY = -shaftH / 2;
 
+      // 24K Gold Metallic Gradient (Rich Highlights & Dark Shadows)
       const goldGrad = ctx!.createLinearGradient(-shaftW, 0, shaftW, 0);
       goldGrad.addColorStop(0.0, '#2d1a00');
       goldGrad.addColorStop(0.2, '#8a6d1f');
-      goldGrad.addColorStop(0.5, '#FFFDF0');
+      goldGrad.addColorStop(0.5, '#FFFDF0'); // Bright Specular Highlight
       goldGrad.addColorStop(0.8, '#C59B27');
       goldGrad.addColorStop(1.0, '#1a0f00');
 
+      // Main Shaft
       ctx!.fillStyle = goldGrad;
       ctx!.fillRect(-shaftW / 2, topY, shaftW, shaftH);
 
+      // Ornamental Gold Rings on Shaft
       ctx!.fillStyle = '#FFD700';
       for(let i=0; i<4; i++) {
         ctx!.fillRect(-shaftW/2 - 3*s, topY + 80*s + i*80*s, shaftW + 6*s, 5*s);
       }
 
+      // Center Spear Tip (Sharp & Curved)
       ctx!.beginPath();
-      ctx!.moveTo(0, topY - 120 * s);
+      ctx!.moveTo(0, topY - 120 * s); // Sharp Tip
       ctx!.lineTo(-15 * s, topY + 20 * s);
       ctx!.lineTo(15 * s, topY + 20 * s);
       ctx!.closePath();
       ctx!.fill();
 
+      // Left Outer Prong (Curved & Sharp)
       ctx!.beginPath();
-      ctx!.moveTo(-60 * s, topY - 80 * s);
+      ctx!.moveTo(-60 * s, topY - 80 * s); // Tip
       ctx!.bezierCurveTo(-50 * s, topY + 20 * s, -25 * s, topY + 70 * s, -8 * s, topY + 40 * s);
       ctx!.bezierCurveTo(-28 * s, topY + 10 * s, -42 * s, topY - 30 * s, -60 * s, topY - 80 * s);
       ctx!.closePath();
       ctx!.fill();
 
+      // Right Outer Prong (Curved & Sharp)
       ctx!.beginPath();
-      ctx!.moveTo(60 * s, topY - 80 * s);
+      ctx!.moveTo(60 * s, topY - 80 * s); // Tip
       ctx!.bezierCurveTo(50 * s, topY + 20 * s, 25 * s, topY + 70 * s, 8 * s, topY + 40 * s);
       ctx!.bezierCurveTo(28 * s, topY + 10 * s, 42 * s, topY - 30 * s, 60 * s, topY - 80 * s);
       ctx!.closePath();
       ctx!.fill();
 
+      // Sharp Edge Highlights
       ctx!.strokeStyle = 'rgba(255, 255, 240, 0.9)';
       ctx!.lineWidth = 2 * s;
       ctx!.stroke();
 
+      // Crescent Moon Finial on Center Spear
       const moonY = topY - 30 * s;
+      
+      // Moon Glow
       ctx!.globalCompositeOperation = 'screen';
       const moonGlow = ctx!.createRadialGradient(0, moonY, 0, 0, moonY, 40*s);
       moonGlow.addColorStop(0, 'rgba(150, 200, 255, 0.6)');
@@ -189,10 +200,12 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       ctx!.fill();
       ctx!.globalCompositeOperation = 'source-over';
 
+      // Moon Metal
       ctx!.fillStyle = '#E0F7FF';
       ctx!.beginPath();
       ctx!.arc(0, moonY, 16 * s, 0, Math.PI * 2);
       ctx!.fill();
+      // Moon Shadow Cutout
       ctx!.fillStyle = '#021827';
       ctx!.beginPath();
       ctx!.arc(6 * s, moonY - 4 * s, 14 * s, 0, Math.PI * 2);
@@ -215,33 +228,39 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       ctx!.save();
       ctx!.globalAlpha = vis;
 
+      // Divine Backlight Halo
       const haloGrad = ctx!.createRadialGradient(cx, baseY - 60*s, 0, cx, baseY - 60*s, 200*s);
       haloGrad.addColorStop(0, `rgba(40, 80, 120, ${0.3 * vis})`);
       haloGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx!.fillStyle = haloGrad;
       ctx!.fillRect(cx - 200*s, baseY - 250*s, 400*s, 400*s);
 
+      // --- SHIVALINGA BASE (Jaladhari Spout - Black Marble) ---
       const baseGrad = ctx!.createLinearGradient(cx - 120 * s, baseY, cx + 120 * s, baseY);
       baseGrad.addColorStop(0, '#05060a');
-      baseGrad.addColorStop(0.5, '#1a1d28');
+      baseGrad.addColorStop(0.5, '#1a1d28'); // Polished Black Marble Highlight
       baseGrad.addColorStop(1, '#020304');
 
+      // Lower Pedestal
       ctx!.fillStyle = baseGrad;
       ctx!.beginPath();
       ctx!.ellipse(cx, baseY + 35 * s, 130 * s, 32 * s, 0, 0, Math.PI * 2);
       ctx!.fill();
       
+      // Gold Edge of Pedestal
       ctx!.strokeStyle = `rgba(214, 169, 40, ${0.8 * vis})`;
       ctx!.lineWidth = 2 * s;
       ctx!.stroke();
 
+      // Jaladhari Platform
       ctx!.beginPath();
       ctx!.ellipse(cx, baseY + 12 * s, 105 * s, 24 * s, 0, 0, Math.PI * 2);
       ctx!.fill();
       ctx!.stroke();
 
+      // --- MAIN SHIVALINGA STONE (Polished Black Marble Pind) ---
       const lingaGrad = ctx!.createRadialGradient(cx - 25 * s, baseY - 70 * s, 5 * s, cx, baseY - 50 * s, 80 * s);
-      lingaGrad.addColorStop(0, '#3a4252');
+      lingaGrad.addColorStop(0, '#3a4252'); // Specular curve highlight
       lingaGrad.addColorStop(0.3, '#11131a');
       lingaGrad.addColorStop(0.8, '#050608');
       lingaGrad.addColorStop(1, '#000000');
@@ -255,10 +274,12 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       ctx!.closePath();
       ctx!.fill();
 
+      // --- TRIPUNDRA BHASMA TILAK & KUMKUM BINDU ---
       ctx!.fillStyle = 'rgba(240, 250, 255, 0.98)';
       for (let i = 0; i < 3; i++) {
         ctx!.fillRect(cx - 26 * s, baseY - 88 * s + i * 8 * s, 52 * s, 4 * s);
       }
+      // Red Kumkum Bindu
       ctx!.fillStyle = '#ff3300';
       ctx!.shadowBlur = 10 * s;
       ctx!.shadowColor = '#ff0000';
@@ -267,27 +288,32 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       ctx!.fill();
       ctx!.shadowBlur = 0;
 
+      // --- MARIGOLD FLOWER GARLAND (Jaimala) ---
       for (let a = -Math.PI * 0.85; a <= Math.PI * 0.85; a += 0.22) {
         const gx = cx + Math.cos(a) * 57 * s;
         const gy = baseY + 14 * s + Math.sin(a) * 16 * s;
         
+        // Leaf Base
         ctx!.fillStyle = '#16a34a';
         ctx!.beginPath();
         ctx!.arc(gx, gy, 8 * s, 0, Math.PI * 2);
         ctx!.fill();
         
+        // Marigold Flower
         ctx!.fillStyle = (Math.sin(a * 12) > 0) ? '#ff9900' : '#ffcc00';
         ctx!.beginPath();
         ctx!.arc(gx, gy, 6.5 * s, 0, Math.PI * 2);
         ctx!.fill();
       }
 
+      // --- REAL FLUID GANGA JAL / MILK ABHISHEKAM (6.5s -> 11.0s) ---
       if (t > 6.5) {
         const streamVis = smoothstep(6.5, 7.5, t) * (1 - smoothstep(10.0, 10.5, t));
         
         ctx!.save();
         ctx!.globalCompositeOperation = 'screen';
         
+        // Fluid Stream (Wavy & Thick)
         const gangaGrad = ctx!.createLinearGradient(cx, -10, cx, baseY - 100 * s);
         gangaGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * streamVis})`);
         gangaGrad.addColorStop(0.5, `rgba(180, 230, 255, ${0.85 * streamVis})`);
@@ -305,6 +331,7 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
         }
         ctx!.stroke();
 
+        // Milk Splash Impact Glow
         const splashR = 35 * s * streamVis;
         const milkGlow = ctx!.createRadialGradient(cx, baseY - 100 * s, 0, cx, baseY - 100 * s, splashR);
         milkGlow.addColorStop(0, `rgba(255, 255, 255, ${0.95 * streamVis})`);
@@ -315,6 +342,7 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
         ctx!.arc(cx, baseY - 100 * s, splashR, 0, Math.PI * 2);
         ctx!.fill();
 
+        // Fluid Coating Flowing Down Stone
         ctx!.fillStyle = `rgba(255, 255, 255, ${0.6 * streamVis})`;
         ctx!.beginPath();
         ctx!.ellipse(cx, baseY - 40 * s, 45 * s, 55 * s, 0, 0, Math.PI * 2);
@@ -327,7 +355,7 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-    // SCENE 4: SNOWY MOUNT KAILASH WITH ICE SHIVALINGA (10.5s -> 14.5s)
+    // SCENE 4: SNOWY MOUNT KAILASH & FROZEN ICE TEXT (10.5s -> 14.5s)
     // =========================================================================
     function drawSnowyKailashAndText(t: number) {
       const vis = smoothstep(10.2, 11.5, t) * (1 - smoothstep(14.0, 14.5, t));
@@ -335,7 +363,7 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
 
       const s = Math.min(W, H) * 0.0022;
       const cx = W / 2;
-      const cyText = H * 0.22; // Text moved up to make room for Kailash Shivling
+      const cy = H * 0.42;
 
       ctx!.save();
       ctx!.globalAlpha = vis;
@@ -351,123 +379,38 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
 
       // Moon Halo
       const mX = W * 0.8;
-      const mY = H * 0.15;
-      const halo = ctx!.createRadialGradient(mX, mY, 0, mX, mY, 180 * s);
+      const mY = H * 0.2;
+      const halo = ctx!.createRadialGradient(mX, mY, 0, mX, mY, 150 * s);
       halo.addColorStop(0, 'rgba(150, 200, 255, 0.15)');
       halo.addColorStop(1, 'rgba(0,0,0,0)');
       ctx!.fillStyle = halo;
       ctx!.fillRect(0, 0, W, H);
 
-      // Distant Snowy Peaks
-      ctx!.fillStyle = '#0a1f2e';
+      // Snowy Mountain Peaks (Jagged & Realistic)
+      ctx!.fillStyle = '#051420';
       ctx!.beginPath();
       ctx!.moveTo(0, H * 0.9);
       ctx!.lineTo(W * 0.15, H * 0.55);
       ctx!.lineTo(W * 0.25, H * 0.65);
-      ctx!.lineTo(W * 0.45, H * 0.40); // Lower distant peak behind Shivling
-      ctx!.lineTo(W * 0.60, H * 0.55);
-      ctx!.lineTo(W * 0.75, H * 0.45);
+      ctx!.lineTo(W * 0.45, H * 0.25); // Kailash Peak
+      ctx!.lineTo(W * 0.60, H * 0.45);
+      ctx!.lineTo(W * 0.75, H * 0.35);
       ctx!.lineTo(W, H * 0.7);
       ctx!.lineTo(W, H);
       ctx!.lineTo(0, H);
       ctx!.closePath();
       ctx!.fill();
 
-      // --- MAJESTIC ICE SHIVLING ON KAILASH ---
-      const lingaX = cx;
-      const baseY = H * 0.80;
-      
-      // Divine Backlight Halo for Ice Linga
-      const lingaHalo = ctx!.createRadialGradient(lingaX, baseY - 100*s, 0, lingaX, baseY - 100*s, 300*s);
-      lingaHalo.addColorStop(0, `rgba(100, 200, 255, ${0.3 * vis})`);
-      lingaHalo.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx!.fillStyle = lingaHalo;
-      ctx!.fillRect(lingaX - 300*s, baseY - 350*s, 600*s, 500*s);
-
-      // Ice Base (Jaladhari)
-      const iceBaseGrad = ctx!.createLinearGradient(lingaX - 120 * s, baseY, lingaX + 120 * s, baseY);
-      iceBaseGrad.addColorStop(0, '#0c4a6e');
-      iceBaseGrad.addColorStop(0.5, '#7dd3fc'); // Polished Ice Highlight
-      iceBaseGrad.addColorStop(1, '#082f49');
-      
-      ctx!.fillStyle = iceBaseGrad;
+      // Snow Cap Highlights (Crystalline White)
+      ctx!.fillStyle = '#e0f7ff';
       ctx!.beginPath();
-      ctx!.ellipse(lingaX, baseY + 40 * s, 140 * s, 35 * s, 0, 0, Math.PI * 2);
-      ctx!.fill();
-      
-      ctx!.strokeStyle = `rgba(255, 255, 255, ${0.8 * vis})`;
-      ctx!.lineWidth = 2 * s;
-      ctx!.stroke();
-
-      ctx!.beginPath();
-      ctx!.ellipse(lingaX, baseY + 15 * s, 110 * s, 25 * s, 0, 0, Math.PI * 2);
-      ctx!.fill();
-      ctx!.stroke();
-
-      // Main Ice Pind (Stone)
-      const iceLingaGrad = ctx!.createRadialGradient(lingaX - 30 * s, baseY - 80 * s, 10 * s, lingaX, baseY - 60 * s, 120 * s);
-      iceLingaGrad.addColorStop(0, '#ffffff');
-      iceLingaGrad.addColorStop(0.2, '#e0f2fe');
-      iceLingaGrad.addColorStop(0.6, '#0284c7');
-      iceLingaGrad.addColorStop(1, '#0c4a6e');
-
-      ctx!.fillStyle = iceLingaGrad;
-      ctx!.beginPath();
-      ctx!.moveTo(lingaX - 65 * s, baseY + 15 * s);
-      ctx!.lineTo(lingaX - 65 * s, baseY - 70 * s);
-      ctx!.bezierCurveTo(lingaX - 65 * s, baseY - 160 * s, lingaX + 65 * s, baseY - 160 * s, lingaX + 65 * s, baseY - 70 * s);
-      ctx!.lineTo(lingaX + 65 * s, baseY + 15 * s);
+      ctx!.moveTo(W * 0.38, H * 0.35);
+      ctx!.lineTo(W * 0.45, H * 0.25); // Peak
+      ctx!.lineTo(W * 0.52, H * 0.38);
+      ctx!.lineTo(W * 0.48, H * 0.36);
+      ctx!.lineTo(W * 0.45, H * 0.40); // Jagged snow drips
+      ctx!.lineTo(W * 0.42, H * 0.37);
       ctx!.closePath();
-      ctx!.fill();
-
-      // Ice Specular Highlight (Glossy Curve)
-      ctx!.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx!.beginPath();
-      ctx!.moveTo(lingaX - 30 * s, baseY - 120 * s);
-      ctx!.bezierCurveTo(lingaX - 45 * s, baseY - 80 * s, lingaX - 45 * s, baseY - 20 * s, lingaX - 30 * s, baseY + 10 * s);
-      ctx!.lineTo(lingaX - 15 * s, baseY + 10 * s);
-      ctx!.bezierCurveTo(lingaX - 25 * s, baseY - 20 * s, lingaX - 25 * s, baseY - 80 * s, lingaX - 15 * s, baseY - 120 * s);
-      ctx!.closePath();
-      ctx!.fill();
-
-      // Snow Accumulation on Ice Linga (Jagged Drips)
-      ctx!.fillStyle = '#ffffff';
-      ctx!.shadowBlur = 10;
-      ctx!.shadowColor = '#ffffff';
-      ctx!.beginPath();
-      ctx!.moveTo(lingaX - 45 * s, baseY - 130 * s);
-      ctx!.lineTo(lingaX, baseY - 155 * s); // Peak
-      ctx!.lineTo(lingaX + 45 * s, baseY - 130 * s);
-      ctx!.lineTo(lingaX + 25 * s, baseY - 120 * s);
-      ctx!.lineTo(lingaX + 10 * s, baseY - 135 * s);
-      ctx!.lineTo(lingaX - 10 * s, baseY - 120 * s);
-      ctx!.lineTo(lingaX - 25 * s, baseY - 135 * s);
-      ctx!.closePath();
-      ctx!.fill();
-      ctx!.shadowBlur = 0;
-
-      // Frozen Tripundra on Ice Linga
-      ctx!.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      for (let i = 0; i < 3; i++) {
-        ctx!.fillRect(lingaX - 35 * s, baseY - 105 * s + i * 9 * s, 70 * s, 4 * s);
-      }
-      
-      // Glowing Blue Bindu (Third Eye)
-      ctx!.fillStyle = '#00e5ff';
-      ctx!.shadowBlur = 20 * s;
-      ctx!.shadowColor = '#00e5ff';
-      ctx!.beginPath();
-      ctx!.arc(lingaX, baseY - 95 * s, 6 * s, 0, Math.PI * 2);
-      ctx!.fill();
-      ctx!.shadowBlur = 0;
-
-      // Snow drifts around the base of the linga
-      ctx!.fillStyle = '#e0f2fe';
-      ctx!.beginPath();
-      ctx!.ellipse(lingaX - 80 * s, baseY + 45 * s, 50 * s, 15 * s, 0, 0, Math.PI * 2);
-      ctx!.fill();
-      ctx!.beginPath();
-      ctx!.ellipse(lingaX + 80 * s, baseY + 50 * s, 60 * s, 18 * s, 0, 0, Math.PI * 2);
       ctx!.fill();
 
       // --- FROZEN ICE / CRYSTALLINE SNOW STYLE TEXT ---
@@ -478,25 +421,28 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       const fontS1 = Math.min(W * 0.09, 80);
       ctx!.font = `700 ${fontS1}px "Tiro Devanagari Hindi", serif`;
 
+      // Outer Frosted Glow
       ctx!.shadowBlur = 35;
       ctx!.shadowColor = '#00e5ff';
       
+      // Deep Ice Shadow Stroke
       ctx!.strokeStyle = '#021827';
       ctx!.lineWidth = fontS1 * 0.1;
-      ctx!.strokeText('ॐ नमः शिवाय', cx, cyText);
+      ctx!.strokeText('ॐ नमः शिवाय', cx, cy - 20 * s);
 
-      const iceGrad1 = ctx!.createLinearGradient(0, cyText - fontS1, 0, cyText);
+      // Crystalline Ice Gradient Fill
+      const iceGrad1 = ctx!.createLinearGradient(0, cy - fontS1, 0, cy);
       iceGrad1.addColorStop(0.0, '#FFFFFF');
       iceGrad1.addColorStop(0.3, '#E0F7FF');
       iceGrad1.addColorStop(0.7, '#A5F3FC');
       iceGrad1.addColorStop(1.0, '#0284C7');
 
       ctx!.fillStyle = iceGrad1;
-      ctx!.fillText('ॐ नमः शिवाय', cx, cyText);
+      ctx!.fillText('ॐ नमः शिवाय', cx, cy - 20 * s);
 
       // 2. "HAPPY MAHA SHIVRATRI 2027"
       const fontS2 = Math.min(W * 0.05, 48);
-      const cyEng = cyText + fontS1 * 0.95;
+      const cyEng = cy + fontS1 * 0.95;
       ctx!.font = `900 ${fontS2}px "Cinzel", Georgia, serif`;
 
       ctx!.shadowBlur = 20;
@@ -526,14 +472,40 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
         if (!p) return;
 
         p.type = 'smoke';
-        p.x = W * 0.34 + Math.random() * W * 0.32;
-        p.y = H * 0.78 + Math.random() * H * 0.12;
-        p.vx = (Math.random() - 0.5) * 0.40;
-        p.vy = -0.28 - Math.random() * 0.55;
-        p.size = 38 + Math.random() * 55;
-        p.maxLife = 4.5 + Math.random() * 2.5;
+
+        // Smoke mainly around Shivling/base area
+        p.x =
+          W * 0.34 +
+          Math.random() * W * 0.32;
+
+        p.y =
+          H * 0.78 +
+          Math.random() * H * 0.12;
+
+        // Slow natural sideways drift
+        p.vx =
+          (Math.random() - 0.5) * 0.40;
+
+        // Slowly rises upward
+        p.vy =
+          -0.28 -
+          Math.random() * 0.55;
+
+        // Much smaller particles
+        p.size =
+          38 +
+          Math.random() * 55;
+
+        // Longer, softer life
+        p.maxLife =
+          4.5 +
+          Math.random() * 2.5;
+
         p.life = 0;
+
         p.alpha = 0;
+
+        // Neutral smoke instead of blue-white glow
         p.color = '#c7ceca';
       }
 
@@ -542,7 +514,7 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
         const p = pool.spawn(); if (!p) return;
         p.type = 'water_splash'; 
         p.x = W * 0.42 + (Math.random() - 0.5) * 20; 
-        p.y = H * 0.78 - 110; 
+        p.y = H * 0.78 - 110; // Splash origin
         p.vx = (Math.random() - 0.5) * 8; 
         p.vy = -3 - Math.random() * 5;
         p.size = 2 + Math.random() * 4; 
@@ -593,36 +565,73 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
 
         if (p.type === 'smoke') {
 
-          const fadeIn = smoothstep(0.0, 0.18, lr);
-          const fadeOut = 1 - smoothstep(0.55, 1.0, lr);
+          const fadeIn =
+            smoothstep(0.0, 0.18, lr);
 
+          const fadeOut =
+            1 - smoothstep(0.55, 1.0, lr);
+
+          // Very subtle smoke opacity
           p.alpha =
             fadeIn *
             fadeOut *
             0.30 *
-            (t < 10.5 ? 1 : 1 - smoothstep(10.5, 11.0, t));
+            (t < 10.5
+              ? 1
+              : 1 - smoothstep(10.5, 11.0, t));
 
-          p.x += Math.sin(t * 0.45 + p.x * 0.008) * 0.18;
-          p.y += Math.sin(t * 0.35 + p.x * 0.004) * 0.08;
+          // Slow organic drifting
+          p.x +=
+            Math.sin(t * 0.45 + p.x * 0.008) * 0.18;
+
+          p.y +=
+            Math.sin(t * 0.35 + p.x * 0.004) * 0.08;
 
           if (p.alpha > 0.003) {
 
             ctx!.globalAlpha = p.alpha;
 
-            const grad = ctx!.createRadialGradient(
-              p.x, p.y, 0,
-              p.x, p.y, p.size
+            const grad =
+              ctx!.createRadialGradient(
+                p.x,
+                p.y,
+                0,
+
+                p.x,
+                p.y,
+                p.size
+              );
+
+            // Soft grey smoke — NO bright white center
+            grad.addColorStop(
+              0.0,
+              'rgba(205,210,208,0.24)'
             );
 
-            grad.addColorStop(0.0, 'rgba(205,210,208,0.24)');
-            grad.addColorStop(0.30, 'rgba(185,195,192,0.13)');
-            grad.addColorStop(0.65, 'rgba(160,170,167,0.055)');
-            grad.addColorStop(1.0, 'rgba(130,140,138,0)');
+            grad.addColorStop(
+              0.30,
+              'rgba(185,195,192,0.13)'
+            );
+
+            grad.addColorStop(
+              0.65,
+              'rgba(160,170,167,0.055)'
+            );
+
+            grad.addColorStop(
+              1.0,
+              'rgba(130,140,138,0)'
+            );
 
             ctx!.fillStyle = grad;
 
-            const smokeX = p.x + Math.sin(t * 0.8 + p.life * 2.0) * 8;
-            const smokeY = p.y + Math.sin(t * 0.6 + p.life * 1.5) * 5;
+            const smokeX =
+              p.x +
+              Math.sin(t * 0.8 + p.life * 2.0) * 8;
+
+            const smokeY =
+              p.y +
+              Math.sin(t * 0.6 + p.life * 1.5) * 5;
 
             ctx!.beginPath();
 
