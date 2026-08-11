@@ -24,6 +24,9 @@ import RamNamiCinematicIntro from '../engines/effects/Ram-Nami/RamNamiCinematicI
 import PongalCinematicIntro from '../engines/effects/Pongal/PongalCinematicIntro';
 // 🚀 EID ROYAL CINEMATIC INTRO IMPORT
 import EidCinematicIntro from '../engines/effects/eid/EidCinematicIntro';
+import MahashivratriCinematicIntro from '../engines/effects/mahashivratri/MahashivratriCinematicIntro';
+
+
 
 export default function FestivalIntroController({
   isActive,
@@ -191,6 +194,11 @@ export default function FestivalIntroController({
   if (isActive && presetKey.includes('EID')) {
     return <EidCinematicIntro onComplete={onHandover} />;
   } 
+
+  // 🚀 15. MAHASHIVRATRI ACTIVATION (Divine Cosmic Kailash Intro)
+if (isActive && (presetKey.includes('SHIV') || presetKey.includes('MAHASHIVRATRI'))) {
+  return <MahashivratriCinematicIntro onComplete={onHandover} />;
+}
 
   return (
     <>
