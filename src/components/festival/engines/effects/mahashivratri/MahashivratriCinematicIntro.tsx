@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 
 interface Props {
-  onComplete?: () => void;
+  onComplete?: () => void;trishu;
 }
 
 // ============ MATH & EASING ============
@@ -112,108 +112,588 @@ export default function MahashivratriCinematicIntro({ onComplete }: Props) {
       gctx.putImageData(id, 0, 0);
     }
 
-    // =========================================================================
-    // SCENE 1: 3D GOLDEN TRISHUL (Right Side) (0.0s -> 11.0s)
-    // =========================================================================
-    function draw3DGoldenTrishul(t: number) {
-      const vis = smoothstep(0.0, 1.5, t) * (1 - smoothstep(10.5, 11.5, t));
-      if (vis <= 0.001) return;
+// =========================================================================
+// SCENE 1: REALISTIC 3D GOLDEN TRISHUL — RIGHT SIDE
+// 0.0s -> 11.0s
+// =========================================================================
+function draw3DGoldenTrishul(t: number) {
 
-      const s = Math.min(W, H) * 0.0024;
-      const trishulX = W * 0.78;
-      const entryY = H * 1.2 - smoothstep(0.0, 3.5, t) * (H * 0.72);
-      const trishulY = entryY;
+  const vis =
+    smoothstep(0.0, 1.5, t) *
+    (1 - smoothstep(10.5, 11.5, t));
 
-      ctx!.save();
-      ctx!.globalAlpha = vis;
-      ctx!.translate(trishulX, trishulY);
+  if (vis <= 0.001) return;
 
-      // Divine Aura behind Trishul
-      const auraGrad = ctx!.createRadialGradient(0, -100*s, 0, 0, -100*s, 300*s);
-      auraGrad.addColorStop(0, `rgba(20, 40, 80, ${0.5 * vis})`);
-      auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx!.fillStyle = auraGrad;
-      ctx!.fillRect(-300*s, -400*s, 600*s, 600*s);
+  const s = Math.min(W, H) * 0.0024;
 
-      const shaftW = 14 * s;
-      const shaftH = 380 * s;
-      const topY = -shaftH / 2;
+  // ---------------------------------------------------------
+  // POSITION
+  // ---------------------------------------------------------
+  const trishulX = W * 0.78;
 
-      // 24K Gold Metallic Gradient (Rich Highlights & Dark Shadows)
-      const goldGrad = ctx!.createLinearGradient(-shaftW, 0, shaftW, 0);
-      goldGrad.addColorStop(0.0, '#2d1a00');
-      goldGrad.addColorStop(0.2, '#8a6d1f');
-      goldGrad.addColorStop(0.5, '#FFFDF0'); // Bright Specular Highlight
-      goldGrad.addColorStop(0.8, '#C59B27');
-      goldGrad.addColorStop(1.0, '#1a0f00');
+  const entryY =
+    H * 1.15 -
+    smoothstep(0.0, 3.5, t) * (H * 0.62);
 
-      // Main Shaft
-      ctx!.fillStyle = goldGrad;
-      ctx!.fillRect(-shaftW / 2, topY, shaftW, shaftH);
+  ctx!.save();
 
-      // Ornamental Gold Rings on Shaft
-      ctx!.fillStyle = '#FFD700';
-      for(let i=0; i<4; i++) {
-        ctx!.fillRect(-shaftW/2 - 3*s, topY + 80*s + i*80*s, shaftW + 6*s, 5*s);
-      }
+  ctx!.globalAlpha = vis;
 
-      // Center Spear Tip (Sharp & Curved)
-      ctx!.beginPath();
-      ctx!.moveTo(0, topY - 120 * s); // Sharp Tip
-      ctx!.lineTo(-15 * s, topY + 20 * s);
-      ctx!.lineTo(15 * s, topY + 20 * s);
-      ctx!.closePath();
-      ctx!.fill();
+  // ---------------------------------------------------------
+  // SOFT DIVINE AURA
+  // ---------------------------------------------------------
+  const aura =
+    ctx!.createRadialGradient(
+      trishulX,
+      entryY - 170 * s,
+      0,
+      trishulX,
+      entryY - 170 * s,
+      250 * s
+    );
 
-      // Left Outer Prong (Curved & Sharp)
-      ctx!.beginPath();
-      ctx!.moveTo(-60 * s, topY - 80 * s); // Tip
-      ctx!.bezierCurveTo(-50 * s, topY + 20 * s, -25 * s, topY + 70 * s, -8 * s, topY + 40 * s);
-      ctx!.bezierCurveTo(-28 * s, topY + 10 * s, -42 * s, topY - 30 * s, -60 * s, topY - 80 * s);
-      ctx!.closePath();
-      ctx!.fill();
+  aura.addColorStop(
+    0,
+    `rgba(255,215,90,${0.16 * vis})`
+  );
 
-      // Right Outer Prong (Curved & Sharp)
-      ctx!.beginPath();
-      ctx!.moveTo(60 * s, topY - 80 * s); // Tip
-      ctx!.bezierCurveTo(50 * s, topY + 20 * s, 25 * s, topY + 70 * s, 8 * s, topY + 40 * s);
-      ctx!.bezierCurveTo(28 * s, topY + 10 * s, 42 * s, topY - 30 * s, 60 * s, topY - 80 * s);
-      ctx!.closePath();
-      ctx!.fill();
+  aura.addColorStop(
+    0.35,
+    `rgba(255,190,60,${0.07 * vis})`
+  );
 
-      // Sharp Edge Highlights
-      ctx!.strokeStyle = 'rgba(255, 255, 240, 0.9)';
-      ctx!.lineWidth = 2 * s;
-      ctx!.stroke();
+  aura.addColorStop(
+    1,
+    'rgba(0,0,0,0)'
+  );
 
-      // Crescent Moon Finial on Center Spear
-      const moonY = topY - 30 * s;
-      
-      // Moon Glow
-      ctx!.globalCompositeOperation = 'screen';
-      const moonGlow = ctx!.createRadialGradient(0, moonY, 0, 0, moonY, 40*s);
-      moonGlow.addColorStop(0, 'rgba(150, 200, 255, 0.6)');
-      moonGlow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx!.fillStyle = moonGlow;
-      ctx!.beginPath();
-      ctx!.arc(0, moonY, 40*s, 0, Math.PI*2);
-      ctx!.fill();
-      ctx!.globalCompositeOperation = 'source-over';
+  ctx!.fillStyle = aura;
 
-      // Moon Metal
-      ctx!.fillStyle = '#E0F7FF';
-      ctx!.beginPath();
-      ctx!.arc(0, moonY, 16 * s, 0, Math.PI * 2);
-      ctx!.fill();
-      // Moon Shadow Cutout
-      ctx!.fillStyle = '#021827';
-      ctx!.beginPath();
-      ctx!.arc(6 * s, moonY - 4 * s, 14 * s, 0, Math.PI * 2);
-      ctx!.fill();
+  ctx!.fillRect(
+    trishulX - 300 * s,
+    entryY - 450 * s,
+    600 * s,
+    600 * s
+  );
 
-      ctx!.restore();
-    }
+  // ---------------------------------------------------------
+  // TRISHUL LOCAL COORDINATE SYSTEM
+  // ---------------------------------------------------------
+  ctx!.translate(trishulX, entryY);
 
+  // ---------------------------------------------------------
+  // SHADOW / DEPTH BEHIND TRISHUL
+  // ---------------------------------------------------------
+  ctx!.save();
+
+  ctx!.globalAlpha = 0.28 * vis;
+
+  ctx!.filter = `blur(${4 * s}px)`;
+
+  ctx!.fillStyle = '#000000';
+
+  ctx!.fillRect(
+    -8 * s,
+    -10 * s,
+    16 * s,
+    390 * s
+  );
+
+  ctx!.restore();
+
+  // =========================================================
+  // METALLIC GOLD MATERIAL
+  // =========================================================
+
+  const goldMetal =
+    ctx!.createLinearGradient(
+      -18 * s,
+      0,
+      18 * s,
+      0
+    );
+
+  goldMetal.addColorStop(0.00, '#241400');
+  goldMetal.addColorStop(0.12, '#6F4B0A');
+  goldMetal.addColorStop(0.28, '#C89620');
+  goldMetal.addColorStop(0.43, '#FFE9A0');
+  goldMetal.addColorStop(0.50, '#FFFBE5');
+  goldMetal.addColorStop(0.58, '#E4B83E');
+  goldMetal.addColorStop(0.78, '#9A6A12');
+  goldMetal.addColorStop(0.92, '#4A2D04');
+  goldMetal.addColorStop(1.00, '#160C00');
+
+  // =========================================================
+  // MAIN SHAFT
+  // =========================================================
+
+  const shaftW = 13 * s;
+  const shaftH = 390 * s;
+
+  const shaftTop = -shaftH * 0.50;
+
+  // Dark outer shaft
+  ctx!.fillStyle = '#211300';
+
+  ctx!.beginPath();
+
+  ctx!.roundRect(
+    -shaftW * 0.72,
+    shaftTop,
+    shaftW * 1.44,
+    shaftH,
+    3 * s
+  );
+
+  ctx!.fill();
+
+  // Metallic inner shaft
+  ctx!.fillStyle = goldMetal;
+
+  ctx!.beginPath();
+
+  ctx!.roundRect(
+    -shaftW / 2,
+    shaftTop,
+    shaftW,
+    shaftH,
+    2 * s
+  );
+
+  ctx!.fill();
+
+  // Bright vertical reflection
+  const shaftHighlight =
+    ctx!.createLinearGradient(
+      -shaftW / 2,
+      0,
+      shaftW / 2,
+      0
+    );
+
+  shaftHighlight.addColorStop(
+    0,
+    'rgba(255,255,255,0)'
+  );
+
+  shaftHighlight.addColorStop(
+    0.42,
+    'rgba(255,255,255,0.08)'
+  );
+
+  shaftHighlight.addColorStop(
+    0.50,
+    'rgba(255,255,245,0.72)'
+  );
+
+  shaftHighlight.addColorStop(
+    0.60,
+    'rgba(255,255,255,0.08)'
+  );
+
+  shaftHighlight.addColorStop(
+    1,
+    'rgba(255,255,255,0)'
+  );
+
+  ctx!.fillStyle = shaftHighlight;
+
+  ctx!.fillRect(
+    -shaftW / 2,
+    shaftTop,
+    shaftW,
+    shaftH
+  );
+
+  // =========================================================
+  // ORNAMENTAL SHAFT RINGS
+  // =========================================================
+
+  const ringPositions = [
+    70,
+    150,
+    230,
+    310
+  ];
+
+  for (const ry of ringPositions) {
+
+    const ringGrad =
+      ctx!.createLinearGradient(
+        -11 * s,
+        0,
+        11 * s,
+        0
+      );
+
+    ringGrad.addColorStop(0, '#6B4708');
+    ringGrad.addColorStop(0.35, '#E8B936');
+    ringGrad.addColorStop(0.5, '#FFF0A6');
+    ringGrad.addColorStop(0.7, '#C28C1E');
+    ringGrad.addColorStop(1, '#4B2D03');
+
+    ctx!.fillStyle = ringGrad;
+
+    ctx!.fillRect(
+      -shaftW * 0.75,
+      shaftTop + ry * s,
+      shaftW * 1.5,
+      5 * s
+    );
+  }
+
+  // =========================================================
+  // TRIDENT HEAD
+  // =========================================================
+
+  const headY = shaftTop + 25 * s;
+
+  // ---------------------------------------------------------
+  // CENTER SPEAR
+  // ---------------------------------------------------------
+
+  const centerTip = headY - 115 * s;
+
+  ctx!.fillStyle = goldMetal;
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    0,
+    centerTip
+  );
+
+  ctx!.bezierCurveTo(
+    -9 * s,
+    headY - 82 * s,
+    -13 * s,
+    headY - 25 * s,
+    -9 * s,
+    headY + 18 * s
+  );
+
+  ctx!.lineTo(
+    9 * s,
+    headY + 18 * s
+  );
+
+  ctx!.bezierCurveTo(
+    13 * s,
+    headY - 25 * s,
+    9 * s,
+    headY - 82 * s,
+    0,
+    centerTip
+  );
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  // Center blade highlight
+  ctx!.strokeStyle =
+    'rgba(255,250,205,0.85)';
+
+  ctx!.lineWidth =
+    Math.max(0.7, 1.2 * s);
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    0,
+    centerTip + 5 * s
+  );
+
+  ctx!.lineTo(
+    -2 * s,
+    headY - 15 * s
+  );
+
+  ctx!.stroke();
+
+  // =========================================================
+  // LEFT CURVED PRONG
+  // =========================================================
+
+  ctx!.fillStyle = goldMetal;
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    -48 * s,
+    headY - 78 * s
+  );
+
+  ctx!.bezierCurveTo(
+    -44 * s,
+    headY - 38 * s,
+    -38 * s,
+    headY + 5 * s,
+    -20 * s,
+    headY + 25 * s
+  );
+
+  ctx!.bezierCurveTo(
+    -13 * s,
+    headY + 32 * s,
+    -8 * s,
+    headY + 22 * s,
+    -8 * s,
+    headY + 10 * s
+  );
+
+  ctx!.bezierCurveTo(
+    -25 * s,
+    headY - 5 * s,
+    -31 * s,
+    headY - 32 * s,
+    -48 * s,
+    headY - 78 * s
+  );
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  // Left blade highlight
+  ctx!.strokeStyle =
+    'rgba(255,245,190,0.72)';
+
+  ctx!.lineWidth =
+    Math.max(0.6, 1.0 * s);
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    -46 * s,
+    headY - 70 * s
+  );
+
+  ctx!.bezierCurveTo(
+    -40 * s,
+    headY - 30 * s,
+    -31 * s,
+    headY - 3 * s,
+    -18 * s,
+    headY + 18 * s
+  );
+
+  ctx!.stroke();
+
+  // =========================================================
+  // RIGHT CURVED PRONG
+  // =========================================================
+
+  ctx!.fillStyle = goldMetal;
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    48 * s,
+    headY - 78 * s
+  );
+
+  ctx!.bezierCurveTo(
+    44 * s,
+    headY - 38 * s,
+    38 * s,
+    headY + 5 * s,
+    20 * s,
+    headY + 25 * s
+  );
+
+  ctx!.bezierCurveTo(
+    13 * s,
+    headY + 32 * s,
+    8 * s,
+    headY + 22 * s,
+    8 * s,
+    headY + 10 * s
+  );
+
+  ctx!.bezierCurveTo(
+    25 * s,
+    headY - 5 * s,
+    31 * s,
+    headY - 32 * s,
+    48 * s,
+    headY - 78 * s
+  );
+
+  ctx!.closePath();
+
+  ctx!.fill();
+
+  // Right blade highlight
+  ctx!.strokeStyle =
+    'rgba(255,245,190,0.72)';
+
+  ctx!.lineWidth =
+    Math.max(0.6, 1.0 * s);
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    46 * s,
+    headY - 70 * s
+  );
+
+  ctx!.bezierCurveTo(
+    40 * s,
+    headY - 30 * s,
+    31 * s,
+    headY - 3 * s,
+    18 * s,
+    headY + 18 * s
+  );
+
+  ctx!.stroke();
+
+  // =========================================================
+  // CENTRAL COLLAR
+  // =========================================================
+
+  const collarGrad =
+    ctx!.createRadialGradient(
+      0,
+      headY + 18 * s,
+      1,
+      0,
+      headY + 18 * s,
+      20 * s
+    );
+
+  collarGrad.addColorStop(0, '#FFF2A8');
+  collarGrad.addColorStop(0.35, '#D6A72A');
+  collarGrad.addColorStop(0.75, '#704805');
+  collarGrad.addColorStop(1, '#241400');
+
+  ctx!.fillStyle = collarGrad;
+
+  ctx!.beginPath();
+
+  ctx!.ellipse(
+    0,
+    headY + 20 * s,
+    15 * s,
+    7 * s,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx!.fill();
+
+  // =========================================================
+  // SMALL CRESCENT MOON ABOVE TRISHUL
+  // =========================================================
+
+  const moonY =
+    centerTip - 22 * s;
+
+  // Glow
+  ctx!.save();
+
+  ctx!.globalCompositeOperation = 'screen';
+
+  const moonGlow =
+    ctx!.createRadialGradient(
+      0,
+      moonY,
+      0,
+      0,
+      moonY,
+      38 * s
+    );
+
+  moonGlow.addColorStop(
+    0,
+    `rgba(255,240,170,${0.35 * vis})`
+  );
+
+  moonGlow.addColorStop(
+    1,
+    'rgba(255,220,100,0)'
+  );
+
+  ctx!.fillStyle = moonGlow;
+
+  ctx!.beginPath();
+
+  ctx!.arc(
+    0,
+    moonY,
+    38 * s,
+    0,
+    Math.PI * 2
+  );
+
+  ctx!.fill();
+
+  ctx!.restore();
+
+  // Crescent
+  ctx!.save();
+
+  ctx!.globalCompositeOperation = 'source-over';
+
+  ctx!.fillStyle = '#FFF4C4';
+
+  ctx!.beginPath();
+
+  ctx!.arc(
+    0,
+    moonY,
+    15 * s,
+    0,
+    Math.PI * 2
+  );
+
+  ctx!.fill();
+
+  // Dark cutout
+  ctx!.fillStyle = '#020812';
+
+  ctx!.beginPath();
+
+  ctx!.arc(
+    6 * s,
+    moonY - 3 * s,
+    13 * s,
+    0,
+    Math.PI * 2
+  );
+
+  ctx!.fill();
+
+  ctx!.restore();
+
+  // =========================================================
+  // FINAL GOLD SPECULAR EDGE
+  // =========================================================
+
+  ctx!.strokeStyle =
+    `rgba(255,245,190,${0.55 * vis})`;
+
+  ctx!.lineWidth =
+    Math.max(0.5, 0.8 * s);
+
+  ctx!.beginPath();
+
+  ctx!.moveTo(
+    -shaftW * 0.35,
+    shaftTop + 10 * s
+  );
+
+  ctx!.lineTo(
+    -shaftW * 0.35,
+    shaftTop + 330 * s
+  );
+
+  ctx!.stroke();
+
+  ctx!.restore();
+}
     // =========================================================================
     // SCENE 2 & 3: GRAND DECORATED SHIVALINGA & ABHISHEKAM (3.5s -> 11.0s)
     // =========================================================================
