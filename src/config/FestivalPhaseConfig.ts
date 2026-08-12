@@ -182,6 +182,37 @@ MAHASHIVRATRI: {
     KAILASH_SNOW_TEXT: 4000     // 10.5s - 14.5s: Snowy Kailash & Ice-Style Text Reveal
   }
 },  
+
+ // ━━━ DURGA PUJA / NAVRATRI (🚀 13.0s Divine Shakti Timeline Sync) ━━━
+DURGA_PUJA: {
+  phases: ['DHUNUCHI_SMOKE', 'DIVINE_EYES', 'TRISHUL_IMPACT', 'SHLOKA_TEXT'],
+  timings: {
+    DHUNUCHI_SMOKE: 3000,    // 0.0s - 3.0s: Crimson Sky, Dhunuchi Dhoop Smoke & Sparks
+    DIVINE_EYES: 3500,       // 3.0s - 6.5s: Maan Durga Trinetra, Nath & Sindoor Dust
+    TRISHUL_IMPACT: 3000,    // 6.5s - 9.5s: 10-Armed Golden Trishul Strike & Shakti Wave
+    SHLOKA_TEXT: 3500        // 9.5s - 13.0s: Sanskrit Shloka & Shubho Durga Puja 2027
+  }
+},
+  
+NAVRATRI: {
+  phases: ['DHUNUCHI_SMOKE', 'DIVINE_EYES', 'TRISHUL_IMPACT', 'SHLOKA_TEXT'],
+  timings: {
+    DHUNUCHI_SMOKE: 3000,
+    DIVINE_EYES: 3500,
+    TRISHUL_IMPACT: 3000,
+    SHLOKA_TEXT: 3500
+  }
+}, 
+NAVRATRI: {
+  phases: ['DHUNUCHI_SMOKE', 'DIVINE_EYES', 'TRISHUL_IMPACT', 'SHLOKA_TEXT'],
+  timings: {
+    DHUNUCHI_SMOKE: 3000,
+    DIVINE_EYES: 3500,
+    TRISHUL_IMPACT: 3000,
+    SHLOKA_TEXT: 3500
+  }
+},
+🚀
   
 // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
