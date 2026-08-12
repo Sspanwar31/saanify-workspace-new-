@@ -2,9 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 
-/* ═══════════════════════════════════════════════════════════════
-   TYPES & CONSTANTS
-   ═══════════════════════════════════════════════════════════════ */
 interface SmokeParticle {
   x: number;
   y: number;
@@ -17,7 +14,7 @@ interface SmokeParticle {
   rotSpeed: number;
   life: number;
   maxLife: number;
-  type: 'smoke' | 'ember';
+  type: 'sparkle' | 'petal';
 }
 
 interface PresetConfig {
@@ -26,40 +23,44 @@ interface PresetConfig {
   colors: string[];
   maxCount: number;
   wind: number;
-  expandRate: number;
+  minSize: number;
+  maxSize: number;
 }
 
-const DEFAULT_COLORS = ['#e2e8f0', '#cbd5e1', '#94a3b8'];
+const DEFAULT_COLORS = ['#ffd700', '#ff9900', '#38bdf8'];
 
 const PRESET_COLORS: Record<string, string[]> = {
-  DURGA_PUJA: ['#dc2626', '#ffd700', '#ff9900', '#ff4500', '#ffe0b2'],
-  MAHASHIVRATRI: ['#4f46e5', '#4c1d95', '#38bdf8', '#e0f7ff', '#ffffff'],
+  DURGA_PUJA: ['#ffd700', '#ff9900', '#dc2626', '#ff4500', '#fff3c4'], // Gold, Marigold, Crimson, Amber
+  MAHASHIVRATRI: ['#38bdf8', '#818cf8', '#16a34a', '#e0f7ff', '#ffffff'], // Ice Blue, Indigo, Bel Patra Green, White
 };
 
 const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   DURGA_PUJA: {
     spawnRate: 0.35,
-    riseSpeed: -1.2,
+    riseSpeed: -2.2, // 🚀 FAST UPWARD RISE: Reaches the top of screen!
     colors: PRESET_COLORS.DURGA_PUJA,
-    maxCount: 85,
+    maxCount: 90,
     wind: 0.15,
-    expandRate: 0.3,
+    minSize: 2,
+    maxSize: 6,
   },
   MAHASHIVRATRI: {
     spawnRate: 0.3,
-    riseSpeed: -0.8,
+    riseSpeed: -1.8,
     colors: PRESET_COLORS.MAHASHIVRATRI,
-    maxCount: 75,
-    wind: -0.05,
-    expandRate: 0.25,
+    maxCount: 80,
+    wind: -0.1,
+    minSize: 2,
+    maxSize: 6,
   },
   DEFAULT: {
-    spawnRate: 0.2,
-    riseSpeed: -0.8,
+    spawnRate: 0.25,
+    riseSpeed: -1.8,
     colors: DEFAULT_COLORS,
-    maxCount: 60,
+    maxCount: 70,
     wind: 0.1,
-    expandRate: 0.3,
+    minSize: 2,
+    maxSize: 6,
   },
 };
 
@@ -84,13 +85,13 @@ export default function SmokeEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 1. Preset Normalization (Same as NeonEngine)
+    // Normalize Preset Matching
     const normalizedPreset = (preset || '').toUpperCase().trim();
-    const presetConfig =
-      MASTER_PRESET_CONFIGS[normalizedPreset] || MASTER_PRESET_CONFIGS.DEFAULT;
+    const isShiv = normalizedPreset.includes('SHIV') || normalizedPreset.includes('SHIVA');
+    const activePresetKey = isShiv ? 'MAHASHIVRATRI' : 'DURGA_PUJA';
 
-    const colors =
-      customColors || PRESET_COLORS[normalizedPreset] || presetConfig.colors;
+    const presetConfig = MASTER_PRESET_CONFIGS[activePresetKey] || MASTER_PRESET_CONFIGS.DEFAULT;
+    const colors = customColors || PRESET_COLORS[activePresetKey] || presetConfig.colors;
     const maxParticles = customMaxCount ?? presetConfig.maxCount;
     const riseSpeed = customRiseSpeed ?? presetConfig.riseSpeed;
 
@@ -107,8 +108,8 @@ export default function SmokeEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
-    // Sindoori / Gold Glowing Ember Drawing (Same high quality as NeonEngine)
-    const drawEmber = (
+    // 1. Crisp Glowing Sparkle / Dust Particle Drawing
+    const drawSparkle = (
       c: CanvasRenderingContext2D,
       x: number,
       y: number,
@@ -119,39 +120,61 @@ export default function SmokeEngine({
       c.save();
       c.translate(x, y);
       c.globalAlpha = alpha;
-      c.globalCompositeOperation = 'lighter';
-      const grad = c.createRadialGradient(0, 0, 0, 0, 0, size * 1.5);
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.4, color);
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = grad;
+      c.fillStyle = color;
       c.beginPath();
-      c.arc(0, 0, size * 1.5, 0, Math.PI * 2);
+      c.arc(0, 0, size, 0, Math.PI * 2);
+      c.fill();
+
+      // Outer Glow Aura
+      c.globalAlpha = alpha * 0.4;
+      c.beginPath();
+      c.arc(0, 0, size * 2.2, 0, Math.PI * 2);
       c.fill();
       c.restore();
     };
 
-    // Smoke Cloud Drawing (Clean globalAlpha)
-    const drawSmokeCloud = (
+    // 2. Floating Marigold / Flower Petal Drawing
+    const drawPetal = (
       c: CanvasRenderingContext2D,
       x: number,
       y: number,
       size: number,
       alpha: number,
+      rot: number,
       color: string
     ) => {
       c.save();
+      c.translate(x, y);
+      c.rotate(rot);
       c.globalAlpha = alpha;
-      c.globalCompositeOperation = 'screen';
-      const grad = c.createRadialGradient(x, y, 0, x, y, size);
-      grad.addColorStop(0, color);
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = grad;
+      c.fillStyle = color;
       c.beginPath();
-      c.arc(x, y, size, 0, Math.PI * 2);
+      c.ellipse(0, 0, size, size * 0.45, 0, 0, Math.PI * 2);
       c.fill();
       c.restore();
     };
+
+    // 🚀 PRE-FILL PARTICLES ACROSS FULL SCREEN AT PAGE LOAD!
+    const wInitial = canvas.getBoundingClientRect().width;
+    const hInitial = canvas.getBoundingClientRect().height;
+
+    for (let i = 0; i < maxParticles * 0.6; i++) {
+      const isPetal = Math.random() < 0.35;
+      particles.push({
+        x: rn(0, wInitial),
+        y: rn(0, hInitial), // Spawns everywhere on screen instantly
+        vx: rn(-0.5, 0.5),
+        vy: riseSpeed * rn(0.8, 1.2),
+        size: isPetal ? rn(4, 7) : rn(1.5, 4),
+        alpha: rn(0.3, 0.8),
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: rn(0, Math.PI * 2),
+        rotSpeed: rn(-0.02, 0.02),
+        life: rn(0, 200),
+        maxLife: rn(300, 500),
+        type: isPetal ? 'petal' : 'sparkle',
+      });
+    }
 
     const animate = () => {
       const rect = canvas.getBoundingClientRect();
@@ -161,47 +184,44 @@ export default function SmokeEngine({
       ctx.clearRect(0, 0, w, h);
       timeRef.current += 0.015;
 
-      // 2. Full-Screen Spawning (Fixed single-center bug!)
+      // Continuous Spawning from bottom
       if (particles.length < maxParticles && Math.random() < presetConfig.spawnRate) {
-        const isEmber = Math.random() < 0.4;
+        const isPetal = Math.random() < 0.35;
         particles.push({
-          x: rn(-20, w + 20), // Spawns across full screen width!
-          y: h + 25,
+          x: rn(-20, w + 20),
+          y: h + 15,
           vx: rn(-0.6, 0.6),
           vy: riseSpeed * rn(0.8, 1.3),
-          size: isEmber ? rn(2, 5) : rn(22, 45),
-          alpha: rn(0.3, 0.6),
+          size: isPetal ? rn(4, 7) : rn(1.5, 4),
+          alpha: rn(0.4, 0.85),
           color: colors[Math.floor(Math.random() * colors.length)],
           rotation: rn(0, Math.PI * 2),
           rotSpeed: rn(-0.02, 0.02),
           life: 0,
-          maxLife: rn(120, 220),
-          type: isEmber ? 'ember' : 'smoke',
+          maxLife: rn(320, 550), // 🚀 Long life so it reaches top of screen!
+          type: isPetal ? 'petal' : 'sparkle',
         });
       }
 
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.life++;
-        p.x += p.vx + presetConfig.wind;
-        p.y += p.vy;
-
-        if (p.type === 'smoke') {
-          p.size += presetConfig.expandRate;
-        }
+        p.x += p.vx + Math.sin(timeRef.current + p.y * 0.01) * 0.3;
+        p.y += p.vy; // Rises up to top
+        p.rotation += p.rotSpeed;
 
         const lt = p.life / p.maxLife;
-        const currentAlpha = p.alpha * (1 - lt);
+        const currentAlpha = lt < 0.8 ? p.alpha : p.alpha * ((1 - lt) / 0.2);
 
-        if (p.life >= p.maxLife || p.y < -p.size * 2 || currentAlpha <= 0.005) {
+        if (p.life >= p.maxLife || p.y < -30) {
           particles.splice(i, 1);
           continue;
         }
 
-        if (p.type === 'ember') {
-          drawEmber(ctx, p.x, p.y, p.size, currentAlpha, p.color);
+        if (p.type === 'petal') {
+          drawPetal(ctx, p.x, p.y, p.size, currentAlpha, p.rotation, p.color);
         } else {
-          drawSmokeCloud(ctx, p.x, p.y, p.size, currentAlpha, p.color);
+          drawSparkle(ctx, p.x, p.y, p.size, currentAlpha, p.color);
         }
       }
 
@@ -220,7 +240,7 @@ export default function SmokeEngine({
     <canvas
       ref={canvasRef}
       className="fixed inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: 4 }}
+      style={{ zIndex: 5 }}
     />
   );
 }
