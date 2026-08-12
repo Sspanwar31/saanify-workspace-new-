@@ -8,7 +8,6 @@ interface Props {
 }
 
 export default function DurgaPujaCinematicIntro({ videoUrl, onComplete }: Props) {
-  // Video Path in public/videos folder
   const videoSrc = videoUrl || '/videos/durga-puja-intro.mp4';
 
   const [stage, setStage] = useState<'video' | 'greeting' | 'finished'>('video');
@@ -31,6 +30,28 @@ export default function DurgaPujaCinematicIntro({ videoUrl, onComplete }: Props)
       document.head.appendChild(link);
     }
   }, []);
+
+  // 🔊 SILENT BACKGROUND AUDIO UNMUTE (No Sound Button on Screen)
+  useEffect(() => {
+    const enableAudio = () => {
+      if (videoRef.current) {
+        videoRef.current.muted = false;
+        videoRef.current.volume = 1.0;
+        videoRef.current.play().catch(() => {});
+      }
+    };
+
+    enableAudio();
+
+    // Unlock audio seamlessly on first tap/click anywhere on screen
+    window.addEventListener('click', enableAudio, { once: true });
+    window.addEventListener('touchstart', enableAudio, { once: true });
+
+    return () => {
+      window.removeEventListener('click', enableAudio);
+      window.removeEventListener('touchstart', enableAudio);
+    };
+  }, [stage]);
 
   const handleVideoEnded = () => {
     setVideoFading(true);
@@ -61,30 +82,25 @@ export default function DurgaPujaCinematicIntro({ videoUrl, onComplete }: Props)
   if (stage === 'finished') return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black overflow-hidden select-none">
+    <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 overflow-hidden select-none">
       
-      {/* 🎬 STEP 1: CLEAN FULL-SCREEN VIDEO WITH GOLDEN BORDER FRAME */}
+      {/* 🎬 STEP 1: SOLID 3D APP PLAYER CARD FRAME (No Video Leaking Outside) */}
       {stage === 'video' && (
-        <div className="relative w-full h-full flex items-center justify-center">
+        <div className="relative w-full max-w-6xl h-[82vh] md:h-[86vh] rounded-3xl overflow-hidden border-2 border-amber-500/40 shadow-[0_0_80px_rgba(251,191,36,0.25)] bg-black flex items-center justify-center">
           
-          {/* FULL SCREEN VIDEO */}
           <video
             ref={videoRef}
             src={videoSrc}
             autoPlay
-            muted
             playsInline
             onEnded={handleVideoEnded}
-            className={`w-full h-full object-cover transition-all duration-1000 ${
+            className={`w-full h-full object-cover rounded-3xl transition-all duration-1000 ${
               videoFading ? 'opacity-0 scale-105 filter blur-md' : 'opacity-100 scale-100'
             }`}
           />
 
-          {/* 🖤 SEAMLESS EDGE BLENDING VIGNETTE */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/30 to-black pointer-events-none z-20" />
-
-          {/* ✨ FULL SCREEN GOLDEN BORDER FRAME */}
-          <div className="absolute inset-3 sm:inset-6 md:inset-8 border-2 border-amber-500/40 rounded-2xl md:rounded-3xl shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] pointer-events-none z-30" />
+          {/* DARK INNER VIGNETTE */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/50 pointer-events-none" />
 
         </div>
       )}
