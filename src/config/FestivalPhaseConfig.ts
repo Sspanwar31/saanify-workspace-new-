@@ -192,6 +192,17 @@ DURGA_PUJA: {
       SHLOKA_TEXT: 6500        // 🚀 Extended to 6.5s for comfortable Sanskrit Shloka reading!
     }
   },
+
+  // ━━━ DEV DEEPAWALI (🚀 12.0s Sacred Varanasi Ghat Sequence) ━━━
+DEV_DEEPAWALI: {
+  phases: ['GHAT_DAWN', 'FLOATING_DIYAS', 'TEXT'],
+  timings: {
+    GHAT_DAWN: 3000,      // 0.0s - 3.0s: Varanasi Ghat mist & Ganga Jal
+    FLOATING_DIYAS: 5500,  // 3.0s - 8.5s: Floating Temple Lamps & Fireflies
+    TEXT: 3500             // 8.5s - 12.0s: शुभ देव दीपावली 3D Gold Text
+  }
+},
+
   
 // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
