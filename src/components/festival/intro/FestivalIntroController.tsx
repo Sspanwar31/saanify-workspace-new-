@@ -25,7 +25,7 @@ import PongalCinematicIntro from '../engines/effects/Pongal/PongalCinematicIntro
 // 🚀 EID ROYAL CINEMATIC INTRO IMPORT
 import EidCinematicIntro from '../engines/effects/eid/EidCinematicIntro';
 import MahashivratriCinematicIntro from '../engines/effects/mahashivratri/MahashivratriCinematicIntro';
-
+import DurgaPujaCinematicIntro from '../engines/effects/durga-puja/DurgaPujaCinematicIntro';
 
 
 export default function FestivalIntroController({
@@ -198,6 +198,11 @@ export default function FestivalIntroController({
   // 🚀 15. MAHASHIVRATRI ACTIVATION (Divine Cosmic Kailash Intro)
 if (isActive && (presetKey.includes('SHIV') || presetKey.includes('MAHASHIVRATRI'))) {
   return <MahashivratriCinematicIntro onComplete={onHandover} />;
+}
+
+  // 🚀 16. DURGA PUJA / NAVRATRI ACTIVATION (Divine Shakti Trinetra Intro)
+if (isActive && (presetKey.includes('DURGA') || presetKey.includes('NAVRATRI') || presetKey.includes('PUJA'))) {
+  return <DurgaPujaCinematicIntro onComplete={onHandover} />;
 }
 
   return (
