@@ -139,7 +139,7 @@ export default function DurgaPujaCinematicIntro({ videoUrl, onComplete }: Props)
 
           {/* ENGLISH TEXT */}
           <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-200 to-yellow-600 font-serif tracking-wider drop-shadow-[0_5px_20px_rgba(255,200,0,0.5)] break-words w-full font-['Cinzel']">
-            SHUBHO DURGA PUJA 2027
+            Happy Durga Puja
           </h2>
         </div>
 
