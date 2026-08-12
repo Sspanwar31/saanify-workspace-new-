@@ -20,6 +20,8 @@ import IndependenceDayGreeting from '../heroes/IndependenceDayGreeting'; // 🚀
 import RamNavamiHero from '../heroes/RamNavamiHero'; // 🚀 NAYA: RamNavamiHero 
 import PongalHero from '../heroes/PongalHero';
 import KaabaHero from '../heroes/KaabaHero';
+import ShivaHero from '../heroes/ShivaHero';
+
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
 const ComponentMap: any = {
@@ -43,7 +45,7 @@ const ComponentMap: any = {
   'BROTHER_BOND': <RakhiHero />, // 🚀 अब गिफ्ट की जगह हमारी खुद की प्रोग्राम्ड राखी रेंडर होगी!
   'KITES_FLYING': <span className="text-[110px] drop-shadow-2xl">🪁</span>,
   'REAL_BONFIRE': <span className="text-[110px] drop-shadow-2xl">🔥</span>,
-  'SHIVA_POWER': <span className="text-[110px] drop-shadow-2xl">🔱</span>,
+  'SHIVA_POWER': <ShivaHero />,
   'RAM_DHARMA': <RamNavamiHero />,  
   'HANUMAN_GADA': <HanumanHero />, // 🚀 UPDATED: Ab emoji ki jagah custom image component render hoga
   'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
