@@ -26,6 +26,7 @@ import PongalCinematicIntro from '../engines/effects/Pongal/PongalCinematicIntro
 import EidCinematicIntro from '../engines/effects/eid/EidCinematicIntro';
 import MahashivratriCinematicIntro from '../engines/effects/mahashivratri/MahashivratriCinematicIntro';
 import DurgaPujaCinematicIntro from '../engines/effects/durga-puja/DurgaPujaCinematicIntro';
+import DevDeepawaliCinematicIntro from '../engines/effects/dev-deepawali/DevDeepawaliCinematicIntro';
 
 
 export default function FestivalIntroController({
@@ -203,6 +204,11 @@ if (isActive && (presetKey.includes('SHIV') || presetKey.includes('MAHASHIVRATRI
   // 🚀 16. DURGA PUJA / NAVRATRI ACTIVATION (Divine Shakti Trinetra Intro)
 if (isActive && (presetKey.includes('DURGA') || presetKey.includes('NAVRATRI') || presetKey.includes('PUJA'))) {
   return <DurgaPujaCinematicIntro onComplete={onHandover} />;
+}
+
+  // 🚀 17. DEV DEEPAWALI ACTIVATION (Sacred Varanasi Ghat Intro)
+if (isActive && (presetKey.includes('DEV_DEEPAWALI') || presetKey.includes('DEV_DIWALI'))) {
+  return <DevDeepawaliCinematicIntro onComplete={onHandover} />;
 }
 
   return (
