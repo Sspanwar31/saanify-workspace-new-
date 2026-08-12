@@ -186,10 +186,10 @@ MAHASHIVRATRI: {
 DURGA_PUJA: {
     phases: ['DHUNUCHI_SMOKE', 'DIVINE_EYES', 'TRISHUL_IMPACT', 'SHLOKA_TEXT'],
     timings: {
-      DHUNUCHI_SMOKE: 3000,    
-      DIVINE_EYES: 3500,       
-      TRISHUL_IMPACT: 3000,    
-      SHLOKA_TEXT: 3500        
+      DHUNUCHI_SMOKE: 3000,    // 0.0s - 3.0s
+      DIVINE_EYES: 3500,       // 3.0s - 6.5s
+      TRISHUL_IMPACT: 3000,    // 6.5s - 9.5s
+      SHLOKA_TEXT: 6500        // 🚀 Extended to 6.5s for comfortable Sanskrit Shloka reading!
     }
   },
   
