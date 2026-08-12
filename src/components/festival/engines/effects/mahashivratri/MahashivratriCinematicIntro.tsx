@@ -139,7 +139,7 @@ export default function MahashivratriCinematicIntro({ videoUrl, onComplete }: Pr
 
           {/* ENGLISH TEXT */}
           <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-blue-200 to-sky-600 font-serif tracking-wider drop-shadow-[0_5px_20px_rgba(56,189,248,0.5)] break-words w-full font-['Cinzel']">
-            HAPPY MAHA SHIVRATRI 2027
+            Happy Maha Shivratri
           </h2>
         </div>
 
