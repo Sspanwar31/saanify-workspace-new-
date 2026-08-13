@@ -21,6 +21,8 @@ interface GoldParticle {
   life: number;
   maxLife: number;
   color: string;
+  twinkle: number;
+  isSparkle: boolean;
 }
 
 export default function SpiritualEngine({
@@ -34,7 +36,6 @@ export default function SpiritualEngine({
   const particles = useRef<GoldParticle[]>([]);
   const rafId = useRef<number>(0);
 
-  // Match both DIWALI & DEV_DEEPAWALI from Supabase
   const presetKey = (preset || '').toUpperCase().trim();
   const isDiwaliOrDev =
     presetKey === 'DIWALI' ||
@@ -49,12 +50,14 @@ export default function SpiritualEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Supabase DB Controlled Values (or Default Royal Gold Palette)
+    // 🏆 24K PURE GOLD DUST COLOR PALETTE
     const colors = customColors && customColors.length > 0
       ? customColors
-      : ['#ffd700', '#ffcc00', '#ff9900', '#ffffff', '#fff3c4'];
-    const maxCount = customMaxCount || 85;
+      : ['#FFFDF0', '#FFD700', '#FFC72C', '#FFA500', '#FFE885'];
+    const maxCount = customMaxCount || 90;
     const speed = customSpeed || 1.2;
+
+    const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
     const setSize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -66,6 +69,66 @@ export default function SpiritualEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
+    // ✨ CRISP MICRO GOLD DUST DRAWING
+    const drawMicroGoldDust = (
+      c: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      size: number,
+      alpha: number,
+      color: string,
+      isSparkle: boolean
+    ) => {
+      c.save();
+      c.translate(x, y);
+      c.globalAlpha = alpha;
+
+      // Tiny Gold Point
+      c.fillStyle = color;
+      c.beginPath();
+      c.arc(0, 0, size, 0, Math.PI * 2);
+      c.fill();
+
+      // Micro Subtle Glow (Very small radius!)
+      c.globalAlpha = alpha * 0.35;
+      c.beginPath();
+      c.arc(0, 0, size * 1.8, 0, Math.PI * 2);
+      c.fill();
+
+      // Tiny 4-point cross sparkle for golden shine
+      if (isSparkle) {
+        c.globalAlpha = alpha * 0.7;
+        c.strokeStyle = '#FFFDF0';
+        c.lineWidth = 0.6;
+        c.beginPath();
+        c.moveTo(-size * 1.8, 0); c.lineTo(size * 1.8, 0);
+        c.moveTo(0, -size * 1.8); c.lineTo(0, size * 1.8);
+        c.stroke();
+      }
+
+      c.restore();
+    };
+
+    // 🚀 PRE-FILL MICRO GOLD DUST ACROSS SCREEN AT PAGE LOAD
+    const wInit = canvas.getBoundingClientRect().width;
+    const hInit = canvas.getBoundingClientRect().height;
+
+    for (let i = 0; i < maxCount * 0.65; i++) {
+      particles.current.push({
+        x: rn(0, wInit),
+        y: rn(0, hInit), // Spawns across full screen height
+        vx: rn(-0.4, 0.4),
+        vy: -rn(0.8, 1.8) * (speed / 1.2),
+        size: rn(0.8, 2.2), // 👈 TINY MICRO DUST SIZE (0.8px to 2.2px)
+        alpha: rn(0.2, 0.85),
+        life: rn(0, 200),
+        maxLife: rn(280, 450),
+        color: colors[Math.floor(Math.random() * colors.length)],
+        twinkle: rn(0, Math.PI * 2),
+        isSparkle: Math.random() < 0.25,
+      });
+    }
+
     const animate = () => {
       const rect = canvas.getBoundingClientRect();
       const w = rect.width;
@@ -73,48 +136,43 @@ export default function SpiritualEngine({
 
       ctx.clearRect(0, 0, w, h);
 
-      // 🌟 CONTINUOUS GOLD PARTICLES SPAWN FROM TOP
-      if (particles.current.length < maxCount && Math.random() < 0.35) {
+      // Continuous Spawning
+      if (particles.current.length < maxCount && Math.random() < 0.4) {
         particles.current.push({
-          x: Math.random() * w,
-          y: -10, // Floats down gracefully
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: (0.8 + Math.random() * 1.4) * (speed / 2),
-          size: 1.5 + Math.random() * 3.5,
-          alpha: 0.3 + Math.random() * 0.6,
+          x: rn(-10, w + 10),
+          y: h + 10,
+          vx: rn(-0.5, 0.5),
+          vy: -rn(0.8, 1.8) * (speed / 1.2),
+          size: rn(0.8, 2.2), // 👈 TINY MICRO DUST SIZE
+          alpha: rn(0.3, 0.9),
           life: 0,
-          maxLife: 220 + Math.random() * 160,
+          maxLife: rn(300, 500),
           color: colors[Math.floor(Math.random() * colors.length)],
+          twinkle: rn(0, Math.PI * 2),
+          isSparkle: Math.random() < 0.25,
         });
       }
 
       particles.current = particles.current.filter((p) => {
         p.life += 1;
-        p.x += p.vx + Math.sin(p.y * 0.01) * 0.3;
-        p.y += p.vy;
+        p.twinkle += 0.05;
+        p.x += p.vx + Math.sin(p.twinkle) * 0.2;
+        p.y += p.vy; // Floats up
 
-        const lifeRatio = p.life / p.maxLife;
-        const currentAlpha =
-          p.life < p.maxLife * 0.8 ? p.alpha : p.alpha * (1 - lifeRatio) * 5;
+        const lt = p.life / p.maxLife;
+        // Twinkling Opacity Pulse
+        const currentAlpha = (0.5 + Math.sin(p.twinkle) * 0.5) * (lt < 0.8 ? p.alpha : p.alpha * ((1 - lt) / 0.2));
 
-        if (p.life < p.maxLife && p.y < h + 20 && currentAlpha > 0.01) {
-          ctx.save();
-          ctx.globalAlpha = currentAlpha;
-          ctx.globalCompositeOperation = 'lighter';
-
-          // Sparkle Center
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Gold Glow Aura
-          ctx.globalAlpha = currentAlpha * 0.45;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.restore();
+        if (p.life < p.maxLife && p.y > -20 && currentAlpha > 0.01) {
+          drawMicroGoldDust(
+            ctx,
+            p.x,
+            p.y,
+            p.size,
+            currentAlpha,
+            p.color,
+            p.isSparkle
+          );
           return true;
         }
         return false;
@@ -138,7 +196,7 @@ export default function SpiritualEngine({
       {/* 1. DIWALI / DEV DEEPAWALI SCENE */}
       <DiwaliScene phase={phase} />
 
-      {/* 2. CONTINUOUS FLOATING GOLD PARTICLES (SUPABASE CONTROLLED) */}
+      {/* 2. CONTINUOUS FLOATING MICRO GOLD DUST (100% CLEAN & CRISP) */}
       <canvas
         ref={canvasRef}
         className="fixed inset-0 w-full h-full pointer-events-none z-[5]"
