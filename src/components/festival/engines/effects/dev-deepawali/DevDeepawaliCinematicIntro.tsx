@@ -2,14 +2,6 @@
 
 import React, { useEffect, useRef } from 'react';
 
-// 1. इम्पोर्ट पाथ फिक्स किए गए हैं (क्योंकि फाइल effects/dev-deepawali/ में है)
-import GoldenParticles from '../../../animations/GoldenParticles';
-import FloatingDiyas from '../FloatingDiyas';
-import FireflyTrails from '../FireflyTrails';
-import RiverReflection from '../RiverReflection';
-import MistLayer from '../MistLayer';
-import GhatLightRows from '../GhatLightRows';
-
 interface Props {
   onComplete?: () => void;
 }
@@ -20,6 +12,10 @@ const smoothstep = (a: number, b: number, t: number) => {
   return x * x * (3 - 2 * x);
 };
 
+interface Diya {
+  x: number; y: number; size: number; vy: number; vx: number; flicker: number;
+}
+
 export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onCompleteRef = useRef(onComplete);
@@ -29,8 +25,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
     if (typeof document !== 'undefined' && !document.getElementById('dev-deepawali-fonts')) {
       const link = document.createElement('link');
       link.id = 'dev-deepawali-fonts';
-      link.href =
-        'https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap';
+      link.href = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap';
       link.rel = 'stylesheet';
       document.head.appendChild(link);
     }
@@ -39,8 +34,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d', { alpha: true });
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
     let W = 0, H = 0, DPR = 1;
@@ -48,20 +42,173 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
     let rafId = 0;
     let running = true;
     let handoverTriggered = false;
+    let lastTime = 0;
+
+    const floatingDiyas: Diya[] = [];
+    const goldParticles: { x: number; y: number; vy: number; size: number; alpha: number }[] = [];
 
     function resize() {
       if (!canvas) return;
       DPR = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
-      W = rect.width; 
-      H = rect.height;
+      W = rect.width; H = rect.height;
       canvas.width = Math.floor(W * DPR);
       canvas.height = Math.floor(H * DPR);
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     }
 
+    function spawnParticles(t: number) {
+      // Floating Diyas in the air
+      if (t < 8.5 && floatingDiyas.length < 12 && Math.random() < 0.02) {
+        floatingDiyas.push({
+          x: Math.random() * W,
+          y: H * 0.7 + Math.random() * 50,
+          size: 15 + Math.random() * 20,
+          vy: -0.3 - Math.random() * 0.4,
+          vx: (Math.random() - 0.5) * 0.5,
+          flicker: Math.random() * Math.PI * 2,
+        });
+      }
+
+      // Golden Sparks
+      if (t < 9.0 && goldParticles.length < 80 && Math.random() < 0.3) {
+        goldParticles.push({
+          x: Math.random() * W,
+          y: H * 0.6 + Math.random() * H * 0.4,
+          vy: -0.5 - Math.random() * 1.5,
+          size: 1 + Math.random() * 2,
+          alpha: 0,
+        });
+      }
+    }
+
     // =========================================================================
-    // 3D GOLDEN DEVANAGARI TEXT ("शुभ देव दीपावली") (8.5s -> 12.0s)
+    // SCENE 1: VARANASI GHAT NIGHT (0.0s -> 9.0s)
+    // =========================================================================
+    function drawGhatScene(t: number) {
+      const vis = smoothstep(0.0, 1.2, t) * (1 - smoothstep(8.5, 9.5, t));
+      if (vis <= 0.001) return;
+      
+      const baseY = H * 0.70; // Water level
+
+      ctx.save();
+      ctx.globalAlpha = vis;
+
+      // 1. Deep River Night Sky
+      const skyGrad = ctx.createRadialGradient(W * 0.5, baseY * 0.6, 0, W * 0.5, baseY * 0.6, W);
+      skyGrad.addColorStop(0.0, '#4a1f06');
+      skyGrad.addColorStop(0.4, '#1a0a02');
+      skyGrad.addColorStop(1.0, '#000000');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // 2. Ganga Water Base
+      const waterGrad = ctx.createLinearGradient(0, baseY, 0, H);
+      waterGrad.addColorStop(0.0, '#1c0a02');
+      waterGrad.addColorStop(1.0, '#000000');
+      ctx.fillStyle = waterGrad;
+      ctx.fillRect(0, baseY, W, H - baseY);
+
+      // 3. Moving River Reflections (Shimmer)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 30; i++) {
+        const rx = W * 0.15 + Math.random() * W * 0.7;
+        const ry = baseY + Math.random() * (H - baseY);
+        const rw = 30 + Math.random() * 50;
+        const rAlpha = (0.05 + Math.random() * 0.1) * vis * Math.abs(Math.sin(t * 3 + i));
+        ctx.fillStyle = `rgba(255, 180, 80, ${rAlpha})`;
+        ctx.fillRect(rx, ry, rw, 2);
+      }
+      ctx.restore();
+
+      // 4. Ghat Steps with Diyas (Light Rows)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let step = 0; step < 4; step++) {
+        const stepY = baseY - step * 18;
+        const numDiyas = 15 - step * 2;
+        for (let i = 0; i < numDiyas; i++) {
+          const dx = W * 0.1 + (W * 0.8 / numDiyas) * i + Math.sin(t + i) * 4;
+          const dy = stepY;
+          const flicker = 0.8 + Math.sin(t * 10 + i + step) * 0.2;
+
+          // Diya Glow
+          const diyaGlow = ctx.createRadialGradient(dx, dy, 0, dx, dy, 25);
+          diyaGlow.addColorStop(0, `rgba(255, 200, 80, ${0.8 * vis * flicker})`);
+          diyaGlow.addColorStop(0.4, `rgba(255, 100, 0, ${0.3 * vis * flicker})`);
+          diyaGlow.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = diyaGlow;
+          ctx.beginPath();
+          ctx.arc(dx, dy, 25, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Diya Flame Core
+          ctx.fillStyle = `rgba(255, 255, 240, ${vis * flicker})`;
+          ctx.beginPath();
+          ctx.arc(dx, dy - 2, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+
+      // 5. Floating Diyas in the Air
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = floatingDiyas.length - 1; i >= 0; i--) {
+        const d = floatingDiyas[i];
+        d.x += d.vx + Math.sin(t * 2 + d.flicker) * 0.2;
+        d.y += d.vy;
+        d.flicker += 0.1;
+        
+        if (d.y < -50) {
+          floatingDiyas.splice(i, 1);
+          continue;
+        }
+
+        const flicker = 0.8 + Math.sin(d.flicker * 2) * 0.2;
+        const glow = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.size * 2);
+        glow.addColorStop(0, `rgba(255, 220, 100, ${0.4 * vis * flicker})`);
+        glow.addColorStop(0.5, `rgba(255, 140, 0, ${0.1 * vis * flicker})`);
+        glow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.size * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = `rgba(255, 255, 240, ${vis * flicker})`;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.size * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // 6. Golden Particles (Fireflies)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = goldParticles.length - 1; i >= 0; i--) {
+        const p = goldParticles[i];
+        p.y += p.vy;
+        p.alpha = Math.sin(t * 2 + i) * 0.5 + 0.5;
+        
+        if (p.y < 0) {
+          goldParticles.splice(i, 1);
+          continue;
+        }
+        ctx.globalAlpha = p.alpha * vis * 0.8;
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // SCENE 2: 3D GOLDEN DEVANAGARI TEXT ("शुभ देव दीपावली") (8.5s -> 12.0s)
     // =========================================================================
     function drawDevDeepawaliText(t: number) {
       const vis = smoothstep(8.5, 9.5, t) * (1 - smoothstep(11.5, 12.0, t));
@@ -77,10 +224,10 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
       ctx.textBaseline = 'middle';
       ctx.globalAlpha = vis;
 
-      // Dark Luxury Background for Text
+      // Dark Luxury Background for Text Focus
       const darkGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.65);
-      darkGrad.addColorStop(0, 'rgba(25, 10, 2, 0.85)');
-      darkGrad.addColorStop(1, 'rgba(5, 1, 0, 0.95)');
+      darkGrad.addColorStop(0, 'rgba(25, 10, 2, 0.88)');
+      darkGrad.addColorStop(1, 'rgba(5, 1, 0, 0.98)');
       ctx.fillStyle = darkGrad;
       ctx.fillRect(0, 0, W, H);
 
@@ -132,8 +279,12 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
 
     function render(t: number) {
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
 
+      spawnParticles(t);
+      
+      drawGhatScene(t);
       drawDevDeepawaliText(t);
 
       const fadeIn = 1 - smoothstep(0, 1.0, t);
@@ -150,6 +301,8 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
       if (!running) return;
       if (!startTime) startTime = now;
       const t = (now - startTime) / 1000;
+      const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
+      lastTime = now;
 
       if (t >= 11.5 && !handoverTriggered) {
         handoverTriggered = true;
@@ -187,29 +340,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
 
   return (
     <div className="fixed inset-0 w-full h-full bg-black z-[99999] overflow-hidden select-none">
-      
-      {/* 1. Varanasi का आसमान और पानी का बेस (ये पीछे रहेगा) */}
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 35%, #3a1805 0%, #1a0a02 50%, #050200 100%)' }}></div>
-      <div className="absolute bottom-0 left-0 w-full" style={{ height: '35%', background: 'linear-gradient(to bottom, #1c0a02, #000000)' }}></div>
-
-      {/* 2. आपके ऑरिजिनल इफ़ेक्ट्स (धुंध, पानी की लहरें, दीये आदि) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <MistLayer />
-        <RiverReflection />
-        <GhatLightRows />
-        <GoldenParticles preset="DEV_DEEPAWALI" />
-        <FloatingDiyas />
-        <FireflyTrails />
-      </div>
-
-      {/* 3. ट्रांसपेरेंट कैनवास (टेक्स्ट और सिनेमैटिक फेड के लिए) */}
-      <canvas 
-        ref={canvasRef} 
-        className="absolute inset-0 w-full h-full block pointer-events-none" 
-        style={{ zIndex: 10 }}
-      />
-
-      {/* SKIP BUTTON */}
+      <canvas ref={canvasRef} className="w-full h-full block bg-black" />
       <button
         onClick={() => onComplete?.()}
         className="absolute top-5 right-5 z-[100] px-4 py-2 rounded-full border border-amber-400/30 bg-black/40 text-amber-200 text-xs font-bold tracking-widest"
