@@ -26,7 +26,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
-    if (!document.getElementById('dev-deepawali-fonts')) {
+    if (typeof document !== 'undefined' && !document.getElementById('dev-deepawali-fonts')) {
       const link = document.createElement('link');
       link.id = 'dev-deepawali-fonts';
       link.href =
@@ -39,6 +39,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    
     // बैकग्राउंड इफ़ेक्ट्स दिखने चाहिए इसलिए alpha: true रखा है
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
@@ -50,12 +51,14 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
     let handoverTriggered = false;
 
     function resize() {
+      if (!canvas) return;
       DPR = Math.min(window.devicePixelRatio || 1, 2);
-      const rect = canvas!.getBoundingClientRect();
-      W = rect.width; H = rect.height;
-      canvas!.width = Math.floor(W * DPR);
-      canvas!.height = Math.floor(H * DPR);
-      ctx?.setTransform(DPR, 0, 0, DPR, 0, 0);
+      const rect = canvas.getBoundingClientRect();
+      W = rect.width; 
+      H = rect.height;
+      canvas.width = Math.floor(W * DPR);
+      canvas.height = Math.floor(H * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     }
 
     // =========================================================================
@@ -70,66 +73,65 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
       const cy = H * 0.44;
       const s = Math.min(W, H) * 0.0022;
 
-      ctx!.save();
-      ctx!.textAlign = 'center';
-      ctx!.textBaseline = 'middle';
-      ctx!.globalAlpha = vis;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.globalAlpha = vis;
 
       // Dark Luxury Background (ये बैकग्राउंड इफ़ेक्ट्स को थोड़ा डिम कर टेक्स्ट को हाइलाइट करेगा)
-      const darkGrad = ctx!.createRadialGradient(cx, cy, 0, cx, cy, W * 0.65);
+      const darkGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.65);
       darkGrad.addColorStop(0, 'rgba(25, 10, 2, 0.85)');
       darkGrad.addColorStop(1, 'rgba(5, 1, 0, 0.95)');
-      ctx!.fillStyle = darkGrad;
-      ctx!.fillRect(0, 0, W, H);
+      ctx.fillStyle = darkGrad;
+      ctx.fillRect(0, 0, W, H);
 
-      ctx!.translate(cx, cy);
-      ctx!.scale(scale, scale);
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
 
       // 1. "शुभ देव दीपावली"
       const fontS1 = Math.min(W * 0.07, 62);
-      ctx!.font = `700 ${fontS1}px "Tiro Devanagari Hindi", serif`;
+      ctx.font = `700 ${fontS1}px "Tiro Devanagari Hindi", serif`;
 
-      ctx!.strokeStyle = '#050200';
-      ctx!.lineWidth = fontS1 * 0.08;
-      ctx!.strokeText('शुभ देव दीपावली', 0, -25 * s);
+      ctx.strokeStyle = '#050200';
+      ctx.lineWidth = fontS1 * 0.08;
+      ctx.strokeText('शुभ देव दीपावली', 0, -25 * s);
 
-      const goldText = ctx!.createLinearGradient(0, -25 * s - fontS1, 0, -25 * s);
+      const goldText = ctx.createLinearGradient(0, -25 * s - fontS1, 0, -25 * s);
       goldText.addColorStop(0.0, '#FFFDF0');
       goldText.addColorStop(0.3, '#FFD700');
       goldText.addColorStop(0.7, '#D4AF37');
       goldText.addColorStop(1.0, '#593800');
 
-      ctx!.shadowBlur = 30;
-      ctx!.shadowColor = 'rgba(255, 215, 0, 0.85)';
-      ctx!.fillStyle = goldText;
-      ctx!.fillText('शुभ देव दीपावली', 0, -25 * s);
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = 'rgba(255, 215, 0, 0.85)';
+      ctx.fillStyle = goldText;
+      ctx.fillText('शुभ देव दीपावली', 0, -25 * s);
 
       // 2. "HAPPY DEV DEEPAWALI 2027"
       const fontS2 = Math.min(W * 0.05, 46);
       const cyEng = 45 * s;
-      ctx!.font = `900 ${fontS2}px "Cinzel", Georgia, serif`;
+      ctx.font = `900 ${fontS2}px "Cinzel", Georgia, serif`;
 
-      ctx!.shadowBlur = 0;
-      ctx!.strokeStyle = '#050200';
-      ctx!.lineWidth = fontS2 * 0.08;
-      ctx!.strokeText('HAPPY DEV DEEPAWALI 2027', 0, cyEng);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#050200';
+      ctx.lineWidth = fontS2 * 0.08;
+      ctx.strokeText('HAPPY DEV DEEPAWALI 2027', 0, cyEng);
 
-      const goldEng = ctx!.createLinearGradient(0, cyEng - fontS2 / 2, 0, cyEng + fontS2 / 2);
+      const goldEng = ctx.createLinearGradient(0, cyEng - fontS2 / 2, 0, cyEng + fontS2 / 2);
       goldEng.addColorStop(0.0, '#FFFFFF');
       goldEng.addColorStop(0.4, '#FFE680');
       goldEng.addColorStop(0.8, '#C68A00');
       goldEng.addColorStop(1.0, '#2E1A00');
 
-      ctx!.shadowBlur = 25;
-      ctx!.shadowColor = 'rgba(255, 200, 0, 0.75)';
-      ctx!.fillStyle = goldEng;
-      ctx!.fillText('HAPPY DEV DEEPAWALI 2027', 0, cyEng);
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = 'rgba(255, 200, 0, 0.75)';
+      ctx.fillStyle = goldEng;
+      ctx.fillText('HAPPY DEV DEEPAWALI 2027', 0, cyEng);
 
-      ctx!.restore();
+      ctx.restore();
     }
 
     function render(t: number) {
-      if (!ctx) return;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       // कैनवास क्लियर करेंगे ताकि पीछे चल रहे ऑरिजिनल इफ़ेक्ट्स दिख सकें
       ctx.clearRect(0, 0, W, H);
@@ -160,20 +162,25 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
       if (t < 12.0) {
         render(t);
       } else {
-        if (ctx) {
-          ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(0, 0, W, H);
-        }
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, W, H);
       }
       rafId = requestAnimationFrame(loop);
     }
 
-    document.fonts.ready.then(() => {
+    // Font load और initial resize
+    if (typeof document !== 'undefined' && document.fonts) {
+      document.fonts.ready.then(() => {
+        resize();
+        window.addEventListener('resize', resize);
+        rafId = requestAnimationFrame(loop);
+      });
+    } else {
       resize();
       window.addEventListener('resize', resize);
       rafId = requestAnimationFrame(loop);
-    });
+    }
 
     return () => {
       running = false;
