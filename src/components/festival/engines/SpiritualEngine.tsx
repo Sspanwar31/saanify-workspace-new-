@@ -25,13 +25,7 @@ export default function SpiritualEngine({
         />
       );
 
-    case 'DEV_DEEPAWALI':
-      return (
-        <DevDeepawaliScene
-          phase={phase}
-        />
-      );
-
+   
     default:
       return null;
   }
