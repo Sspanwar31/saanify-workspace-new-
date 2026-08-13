@@ -1,7 +1,6 @@
 'use client';
 
 import DiwaliScene from './presets/DiwaliScene';
-import DevDeepawaliScene from './presets/DevDeepawaliScene';
 
 // 🚀 2027 UPGRADE: Purana FestivalIntroController import HATA DO
 // import FestivalIntroController from '../intro/FestivalIntroController';
