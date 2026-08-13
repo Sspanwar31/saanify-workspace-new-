@@ -2,13 +2,13 @@
 
 import React, { useEffect, useRef } from 'react';
 
-// आपके ऑरिजिनल प्रीसेट के इफ़ेक्ट्स इम्पोर्ट किए गए हैं
-import GoldenParticles from '../../animations/GoldenParticles';
-import FloatingDiyas from '../effects/FloatingDiyas'; // आपका नया दीया वाला कोड
-import FireflyTrails from '../effects/FireflyTrails';
-import RiverReflection from '../effects/RiverReflection';
-import MistLayer from '../effects/MistLayer';
-import GhatLightRows from '../effects/GhatLightRows';
+// 1. इम्पोर्ट पाथ फिक्स किए गए हैं (क्योंकि फाइल effects/dev-deepawali/ में है)
+import GoldenParticles from '../../../animations/GoldenParticles';
+import FloatingDiyas from '../FloatingDiyas';
+import FireflyTrails from '../FireflyTrails';
+import RiverReflection from '../RiverReflection';
+import MistLayer from '../MistLayer';
+import GhatLightRows from '../GhatLightRows';
 
 interface Props {
   onComplete?: () => void;
