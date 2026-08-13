@@ -2,13 +2,13 @@
 
 import React, { useEffect, useRef } from 'react';
 
-// 1. आपके ऑरिजिनल प्रीसेट के इफ़ेक्ट्स इम्पोर्ट किए गए हैं
-import GoldenParticles from '../../animations/GoldenParticles';
-import FloatingTempleLamps from '../effects/FloatingTempleLamps';
-import FireflyTrails from '../effects/FireflyTrails';
-import RiverReflection from '../effects/RiverReflection';
-import MistLayer from '../effects/MistLayer';
-import GhatLightRows from '../effects/GhatLightRows';
+// 🚀 FIXED: Absolute Next.js `@/` paths used to prevent "Module Not Found" build crash
+import GoldenParticles from '@/components/festival/animations/GoldenParticles';
+import FloatingTempleLamps from '@/components/festival/engines/effects/FloatingTempleLamps';
+import FireflyTrails from '@/components/festival/engines/effects/FireflyTrails';
+import RiverReflection from '@/components/festival/engines/effects/RiverReflection';
+import MistLayer from '@/components/festival/engines/effects/MistLayer';
+import GhatLightRows from '@/components/festival/engines/effects/GhatLightRows';
 
 interface Props {
   onComplete?: () => void;
@@ -40,7 +40,6 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // बैकग्राउंड इफ़ेक्ट्स दिखने चाहिए इसलिए alpha: true रखा है
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
@@ -78,7 +77,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
       ctx.textBaseline = 'middle';
       ctx.globalAlpha = vis;
 
-      // Dark Luxury Background (ये बैकग्राउंड इफ़ेक्ट्स को थोड़ा डिम कर टेक्स्ट को हाइलाइट करेगा)
+      // Dark Luxury Background
       const darkGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.65);
       darkGrad.addColorStop(0, 'rgba(25, 10, 2, 0.85)');
       darkGrad.addColorStop(1, 'rgba(5, 1, 0, 0.95)');
@@ -133,10 +132,8 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
 
     function render(t: number) {
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      // कैनवास क्लियर करेंगे ताकि पीछे चल रहे ऑरिजिनल इफ़ेक्ट्स दिख सकें
       ctx.clearRect(0, 0, W, H);
 
-      // सिर्फ टेक्स्ट और फेड इफ़ेक्ट कैनवास पर ड्रा करेंगे
       drawDevDeepawaliText(t);
 
       const fadeIn = 1 - smoothstep(0, 1.0, t);
@@ -169,7 +166,6 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
       rafId = requestAnimationFrame(loop);
     }
 
-    // Font load और initial resize
     if (typeof document !== 'undefined' && document.fonts) {
       document.fonts.ready.then(() => {
         resize();
@@ -192,7 +188,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
   return (
     <div className="fixed inset-0 w-full h-full bg-black z-[99999] overflow-hidden select-none">
       
-      {/* 2. यहाँ आपके ऑरिजिनल प्रीसेट इफ़ेक्ट्स चलेंगे (ये कैनवास के बिल्कुल पीछे हैं) */}
+      {/* Background Preset Layer */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <MistLayer />
         <RiverReflection />
@@ -202,7 +198,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
         <FireflyTrails />
       </div>
 
-      {/* 3. यह कैनवास बैकग्राउंड इफ़ेक्ट्स के ऊपर टेक्स्ट और सिनेमैटिक फेड दिखाएगा */}
+      {/* Canvas Text Layer */}
       <canvas 
         ref={canvasRef} 
         className="absolute inset-0 w-full h-full block pointer-events-none" 
