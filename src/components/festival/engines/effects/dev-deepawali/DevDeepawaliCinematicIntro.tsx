@@ -2,13 +2,13 @@
 
 import React, { useEffect, useRef } from 'react';
 
-// 🚀 FIXED: Absolute Next.js `@/` paths used to prevent "Module Not Found" build crash
-import GoldenParticles from '@/components/festival/animations/GoldenParticles';
-import FloatingTempleLamps from '@/components/festival/engines/effects/FloatingTempleLamps';
-import FireflyTrails from '@/components/festival/engines/effects/FireflyTrails';
-import RiverReflection from '@/components/festival/engines/effects/RiverReflection';
-import MistLayer from '@/components/festival/engines/effects/MistLayer';
-import GhatLightRows from '@/components/festival/engines/effects/GhatLightRows';
+// आपके ऑरिजिनल प्रीसेट के इफ़ेक्ट्स इम्पोर्ट किए गए हैं
+import GoldenParticles from '../../animations/GoldenParticles';
+import FloatingDiyas from '../effects/FloatingDiyas'; // आपका नया दीया वाला कोड
+import FireflyTrails from '../effects/FireflyTrails';
+import RiverReflection from '../effects/RiverReflection';
+import MistLayer from '../effects/MistLayer';
+import GhatLightRows from '../effects/GhatLightRows';
 
 interface Props {
   onComplete?: () => void;
@@ -61,7 +61,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
     }
 
     // =========================================================================
-    // SCENE 2: 3D GOLDEN DEVANAGARI TEXT ("शुभ देव दीपावली") (8.5s -> 12.0s)
+    // 3D GOLDEN DEVANAGARI TEXT ("शुभ देव दीपावली") (8.5s -> 12.0s)
     // =========================================================================
     function drawDevDeepawaliText(t: number) {
       const vis = smoothstep(8.5, 9.5, t) * (1 - smoothstep(11.5, 12.0, t));
@@ -77,7 +77,7 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
       ctx.textBaseline = 'middle';
       ctx.globalAlpha = vis;
 
-      // Dark Luxury Background
+      // Dark Luxury Background for Text
       const darkGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.65);
       darkGrad.addColorStop(0, 'rgba(25, 10, 2, 0.85)');
       darkGrad.addColorStop(1, 'rgba(5, 1, 0, 0.95)');
@@ -188,20 +188,25 @@ export default function DevDeepawaliCinematicIntro({ onComplete }: Props) {
   return (
     <div className="fixed inset-0 w-full h-full bg-black z-[99999] overflow-hidden select-none">
       
-      {/* Background Preset Layer */}
+      {/* 1. Varanasi का आसमान और पानी का बेस (ये पीछे रहेगा) */}
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 35%, #3a1805 0%, #1a0a02 50%, #050200 100%)' }}></div>
+      <div className="absolute bottom-0 left-0 w-full" style={{ height: '35%', background: 'linear-gradient(to bottom, #1c0a02, #000000)' }}></div>
+
+      {/* 2. आपके ऑरिजिनल इफ़ेक्ट्स (धुंध, पानी की लहरें, दीये आदि) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <MistLayer />
         <RiverReflection />
         <GhatLightRows />
         <GoldenParticles preset="DEV_DEEPAWALI" />
-        <FloatingTempleLamps />
+        <FloatingDiyas />
         <FireflyTrails />
       </div>
 
-      {/* Canvas Text Layer */}
+      {/* 3. ट्रांसपेरेंट कैनवास (टेक्स्ट और सिनेमैटिक फेड के लिए) */}
       <canvas 
         ref={canvasRef} 
         className="absolute inset-0 w-full h-full block pointer-events-none" 
+        style={{ zIndex: 10 }}
       />
 
       {/* SKIP BUTTON */}
