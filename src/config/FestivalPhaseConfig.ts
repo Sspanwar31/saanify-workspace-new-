@@ -198,7 +198,7 @@ DEV_DEEPAWALI: {
   phases: ['GHAT_DAWN', 'FLOATING_DIYAS', 'TEXT'],
   timings: {
     GHAT_DAWN: 3000,      // 0.0s - 3.0s: Varanasi Ghat mist & Ganga Jal
-    FLOATING_DIYAS: 5500,  // 3.0s - 8.5s: Floating Temple Lamps & Fireflies
+    FLOATING_DIYAS: 5500,  // 3.0s - 8.0s: Floating Temple Lamps & Fireflies
     TEXT: 5500             // 🚀 5.5s 3D Gold Devanagari Text Display Time
     }
   },
