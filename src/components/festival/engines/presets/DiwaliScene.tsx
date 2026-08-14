@@ -1,43 +1,34 @@
 'use client';
 
 import GoldenParticles from '../../animations/GoldenParticles';
-import LuxuryGlow from '../effects/LuxuryGlow';
-import BloomLighting from '../effects/BloomLighting';
-import LuxuryRays from '../effects/LuxuryRays';
 import Shooting from '../effects/Shooting';
 
 export default function DiwaliScene({ phase }: { phase?: string }) {
   console.log('DIWALI SCENE PHASE =', phase);
 
-  const currentPhase = (phase || 'AMBIENT').toUpperCase().trim();
-
-  const isFlash = currentPhase === 'FLASH';
-  const isShooting = currentPhase === 'SHOOTING';
+  const showFlash = phase === 'FLASH';
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-[3]">
 
-      {/* ⚡ 1. FLASH: When entering dashboard after intro */}
-      {isFlash && (
+      {/* ⚡ 1. FLASH OVERLAY (0.5s Soft Fade Out) */}
+      {showFlash && (
         <div 
-          className="absolute inset-0 bg-white z-50 animate-[flashFade_0.6s_ease-out_forwards]"
+          className="absolute inset-0 bg-white z-50 animate-[flashFade_0.5s_ease-out_forwards]"
         />
       )}
 
-      {/* 🚀 2. ROCKETS & FIREWORKS: Bursts on dashboard after intro */}
-      {(isShooting || currentPhase === 'AMBIENT') && <Shooting />}
-      
-      {/* 🌟 3. ALWAYS ACTIVE ON DASHBOARD: Gold Particles, Luxury Rays & Glow */}
-      <LuxuryGlow />
-      <LuxuryRays />
-      <BloomLighting />
+      {/* 🚀 2. FIREWORKS & ROCKETS (Clean Explosions - No Stuck Dhabba) */}
+      <Shooting />
+
+      {/* 🌟 3. CLEAN MICRO GOLD DUST PARTICLES */}
       <GoldenParticles preset="DIWALI" />
 
-      {/* Flash Keyframes */}
+      {/* Flash animation keyframes */}
       <style jsx>{`
         @keyframes flashFade {
           0%   { opacity: 1; }
-          100% { opacity: 0; }
+          100% { opacity: 0; display: none; }
         }
       `}</style>
 
