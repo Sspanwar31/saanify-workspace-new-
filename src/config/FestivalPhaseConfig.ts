@@ -172,16 +172,16 @@ NAVRATRI: {
     }
   },
 
-// ━━━ MAHASHIVRATRI (🚀 14.5s Epic Devotional Abhishekam Sequence) ━━━
-MAHASHIVRATRI: {
+// ━━━ MAHASHIVRATRI (🚀 16.0s Extended Abhishekam Text Sync) ━━━
+  MAHASHIVRATRI: {
   phases: ['SMOKE_TRISHUL', 'SHIVALINGA_REVEAL', 'ABHISHEKAM_BELPATRA', 'KAILASH_SNOW_TEXT'],
   timings: {
     SMOKE_TRISHUL: 3500,        // 0.0s - 3.5s: Sardi ki dhund & Trishul Right Side Entry
     SHIVALINGA_REVEAL: 3500,    // 3.5s - 7.0s: Smoke clears, Grand Saja Hua Shivalinga
     ABHISHEKAM_BELPATRA: 3500,  // 7.0s - 10.5s: Bel Patra Rain & Ganga Jal Abhishekam Stream
-    KAILASH_SNOW_TEXT: 4000     // 10.5s - 14.5s: Snowy Kailash & Ice-Style Text Reveal
-  }
-},  
+    KAILASH_SNOW_TEXT: 5500     // 🚀 5.5s Ice-Style Text Display Time
+    }
+  },  
 
 DURGA_PUJA: {
     phases: ['DHUNUCHI_SMOKE', 'DIVINE_EYES', 'TRISHUL_IMPACT', 'SHLOKA_TEXT'],
@@ -199,9 +199,9 @@ DEV_DEEPAWALI: {
   timings: {
     GHAT_DAWN: 3000,      // 0.0s - 3.0s: Varanasi Ghat mist & Ganga Jal
     FLOATING_DIYAS: 5500,  // 3.0s - 8.5s: Floating Temple Lamps & Fireflies
-    TEXT: 3500             // 8.5s - 12.0s: शुभ देव दीपावली 3D Gold Text
-  }
-},
+    TEXT: 5500             // 🚀 5.5s 3D Gold Devanagari Text Display Time
+    }
+  },
 
   
 // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
