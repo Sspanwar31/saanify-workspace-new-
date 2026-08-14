@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Shooting from '../effects/Shooting'; // 👈 Firecrackers & Rockets Component
+// 🚀 FIXED: Absolute Next.js `@/` path used to prevent "Module Not Found" build crash
+import Shooting from '@/components/festival/engines/effects/Shooting';
 
 interface Props {
   videoUrl?: string;
@@ -66,7 +67,7 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
     if (stage === 'fireworks') {
       const timer = setTimeout(() => {
         setStage('greeting');
-      }, 4000); // 🚀 4.0s Firecrackers Burst BEFORE Text
+      }, 4000); // 4.0s Firecrackers Burst BEFORE Text
       return () => clearTimeout(timer);
     }
   }, [stage]);
@@ -85,7 +86,7 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
     if (stage === 'greeting') {
       const timer = setTimeout(() => {
         handleFinish();
-      }, 5500); // 🚀 5.5s Text Greeting Display
+      }, 5500); // 5.5s Text Display Time
       return () => clearTimeout(timer);
     }
   }, [stage]);
