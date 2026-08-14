@@ -11,19 +11,10 @@ export default function DiwaliScene({ phase }: { phase?: string }) {
 
   const showFlash = phase === 'FLASH';
 
-  const showShooting =
-    phase === 'SHOOTING';
-
-  const showCelebration =
-    phase === 'HANDOVER';
-
-  const showAmbient =
-    phase === 'AMBIENT';
-
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-[3]">
 
-      {/* ✅ FLASH — White flash overlay */}
+      {/* ✅ FLASH — White flash overlay at start */}
       {showFlash && (
         <div 
           className="absolute inset-0 bg-white z-50"
@@ -33,26 +24,14 @@ export default function DiwaliScene({ phase }: { phase?: string }) {
         />
       )}
 
-     {/* SHOOTING — merged rocket + explosion */}
-      {showShooting && <Shooting />}
-      
-      {/* Greeting ke piche luxury light */}
-      {showCelebration && (
-        <>
-          <LuxuryGlow />
-          <LuxuryRays />
-          <BloomLighting />
-        </>
-      )}
+      {/* 🚀 🎆 ALWAYS ACTIVE ON DASHBOARD: Rockets, Fireworks, Gold Particles & Luxury Glow */}
+      <Shooting />
+      <LuxuryGlow />
+      <LuxuryRays />
+      <BloomLighting />
+      <GoldenParticles preset="DIWALI" />
 
-      {/* Greeting close hone ke baad sirf particles */}
-      {showAmbient && (
-        <>
-          <GoldenParticles preset="DIWALI" />
-        </>
-      )}
-
-      {/* Flash animation keyframes (inline daal diyo, external CSS ki zaroorat nahi) */}
+      {/* Flash animation keyframes */}
       <style jsx>{`
         @keyframes flashFade {
           0%   { opacity: 1; }
