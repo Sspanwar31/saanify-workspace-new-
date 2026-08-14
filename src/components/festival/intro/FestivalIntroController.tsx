@@ -27,6 +27,7 @@ import EidCinematicIntro from '../engines/effects/eid/EidCinematicIntro';
 import MahashivratriCinematicIntro from '../engines/effects/mahashivratri/MahashivratriCinematicIntro';
 import DurgaPujaCinematicIntro from '../engines/effects/durga-puja/DurgaPujaCinematicIntro';
 import DevDeepawaliCinematicIntro from '../engines/effects/dev-deepawali/DevDeepawaliCinematicIntro';
+import DiwaliCinematicIntro from '../engines/effects/diwali/DiwaliCinematicIntro';
 
 
 export default function FestivalIntroController({
@@ -209,6 +210,16 @@ if (isActive && (presetKey.includes('DURGA') || presetKey.includes('NAVRATRI') |
   // 🚀 17. DEV DEEPAWALI ACTIVATION (Sacred Varanasi Ghat Intro)
 if (isActive && (presetKey.includes('DEV_DEEPAWALI') || presetKey.includes('DEV_DIWALI'))) {
   return <DevDeepawaliCinematicIntro onComplete={onHandover} />;
+}
+
+  // 🚀 18. DIWALI ACTIVATION (Royal Ayodhya Fireworks & Lakshmi Charan Intro)
+if (isActive && presetKey === 'DIWALI') {
+  return (
+    <DiwaliCinematicIntro 
+      onComplete={onHandover} 
+      videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/diwali-intro.mp4"}
+    />
+  );
 }
 
   return (
