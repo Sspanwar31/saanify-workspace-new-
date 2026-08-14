@@ -14,17 +14,9 @@ interface Props {
 }
 
 interface GoldParticle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  alpha: number;
-  life: number;
-  maxLife: number;
-  color: string;
-  twinkle: number;
-  isSparkle: boolean;
+  x: number; y: number; vx: number; vy: number;
+  size: number; alpha: number; life: number; maxLife: number;
+  color: string; twinkle: number; isSparkle: boolean;
 }
 
 export default function SpiritualEngine({
@@ -40,7 +32,6 @@ export default function SpiritualEngine({
   const particles = useRef<GoldParticle[]>([]);
   const rafId = useRef<number>(0);
 
-  // 🚀 BULLETPROOF PRESET CATCHER (Catches preset, engine_preset & festival_key from Supabase DB)
   const rawKey = preset || engine_preset || festival_key || 'DIWALI';
   const presetKey = rawKey.toUpperCase().trim();
 
@@ -57,11 +48,9 @@ export default function SpiritualEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 🏆 24K PURE GOLD DUST COLOR PALETTE
-    const colors =
-      customColors && customColors.length > 0
-        ? customColors
-        : ['#FFFDF0', '#FFD700', '#FFC72C', '#FFA500', '#FFE885'];
+    const colors = customColors && customColors.length > 0
+      ? customColors
+      : ['#FFFDF0', '#FFD700', '#FFC72C', '#FFA500', '#FFE885'];
     const maxCount = customMaxCount || 90;
     const speed = customSpeed || 1.2;
 
@@ -77,33 +66,26 @@ export default function SpiritualEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
-    // ✨ CRISP MICRO GOLD DUST DRAWING
+    // Micro Gold Dust Drawing
     const drawMicroGoldDust = (
       c: CanvasRenderingContext2D,
-      x: number,
-      y: number,
-      size: number,
-      alpha: number,
-      color: string,
-      isSparkle: boolean
+      x: number, y: number, size: number,
+      alpha: number, color: string, isSparkle: boolean
     ) => {
       c.save();
       c.translate(x, y);
       c.globalAlpha = alpha;
 
-      // Tiny Gold Point
       c.fillStyle = color;
       c.beginPath();
       c.arc(0, 0, size, 0, Math.PI * 2);
       c.fill();
 
-      // Micro Subtle Glow
       c.globalAlpha = alpha * 0.35;
       c.beginPath();
       c.arc(0, 0, size * 1.8, 0, Math.PI * 2);
       c.fill();
 
-      // Tiny 4-point cross sparkle for golden shine
       if (isSparkle) {
         c.globalAlpha = alpha * 0.7;
         c.strokeStyle = '#FFFDF0';
@@ -117,14 +99,14 @@ export default function SpiritualEngine({
       c.restore();
     };
 
-    // 🚀 PRE-FILL MICRO GOLD DUST ACROSS SCREEN AT PAGE LOAD
+    // Pre-fill screen
     const wInit = canvas.getBoundingClientRect().width;
     const hInit = canvas.getBoundingClientRect().height;
 
     for (let i = 0; i < maxCount * 0.65; i++) {
       particles.current.push({
         x: rn(0, wInit),
-        y: rn(0, hInit), // Spawns across full screen height
+        y: rn(0, hInit),
         vx: rn(-0.4, 0.4),
         vy: -rn(0.8, 1.8) * (speed / 1.2),
         size: rn(0.8, 2.2),
@@ -144,7 +126,6 @@ export default function SpiritualEngine({
 
       ctx.clearRect(0, 0, w, h);
 
-      // Continuous Spawning
       if (particles.current.length < maxCount && Math.random() < 0.4) {
         particles.current.push({
           x: rn(-10, w + 10),
@@ -165,7 +146,7 @@ export default function SpiritualEngine({
         p.life += 1;
         p.twinkle += 0.05;
         p.x += p.vx + Math.sin(p.twinkle) * 0.2;
-        p.y += p.vy; // Floats up
+        p.y += p.vy;
 
         const lt = p.life / p.maxLife;
         const currentAlpha =
@@ -202,10 +183,10 @@ export default function SpiritualEngine({
 
   return (
     <div className="fixed inset-0 w-full h-full pointer-events-none z-[3]">
-      {/* 1. DIWALI / DEV DEEPAWALI BACKGROUND SCENE (Rockets, Fireworks, Rays, Glow) */}
-      <DiwaliScene phase={phase || 'AMBIENT'} />
+      {/* 🚀 DASHBOARD PRESET LAYER (Rockets, Flash, Glow) */}
+      <DiwaliScene phase={phase} />
 
-      {/* 2. CONTINUOUS FLOATING MICRO GOLD DUST (100% CLEAN & CRISP) */}
+      {/* CONTINUOUS FLOATING MICRO GOLD DUST */}
       <canvas
         ref={canvasRef}
         className="fixed inset-0 w-full h-full pointer-events-none z-[5]"
