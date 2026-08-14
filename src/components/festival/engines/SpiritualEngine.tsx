@@ -5,6 +5,8 @@ import DiwaliScene from './presets/DiwaliScene';
 
 interface Props {
   preset?: string;
+  engine_preset?: string;
+  festival_key?: string;
   phase?: string;
   customMaxCount?: number;
   customSpeed?: number;
@@ -27,6 +29,8 @@ interface GoldParticle {
 
 export default function SpiritualEngine({
   preset,
+  engine_preset,
+  festival_key,
   phase,
   customMaxCount,
   customSpeed,
@@ -36,11 +40,14 @@ export default function SpiritualEngine({
   const particles = useRef<GoldParticle[]>([]);
   const rafId = useRef<number>(0);
 
-  const presetKey = (preset || '').toUpperCase().trim();
+  // 🚀 BULLETPROOF PRESET CATCHER (Catches preset, engine_preset & festival_key from Supabase DB)
+  const rawKey = preset || engine_preset || festival_key || 'DIWALI';
+  const presetKey = rawKey.toUpperCase().trim();
+
   const isDiwaliOrDev =
-    presetKey === 'DIWALI' ||
-    presetKey === 'DEV_DEEPAWALI' ||
-    presetKey === 'DEV_DIWALI';
+    presetKey.includes('DIWALI') ||
+    presetKey.includes('DEEPAWALI') ||
+    presetKey === 'DEFAULT';
 
   useEffect(() => {
     if (!isDiwaliOrDev) return;
@@ -51,9 +58,10 @@ export default function SpiritualEngine({
     if (!ctx) return;
 
     // 🏆 24K PURE GOLD DUST COLOR PALETTE
-    const colors = customColors && customColors.length > 0
-      ? customColors
-      : ['#FFFDF0', '#FFD700', '#FFC72C', '#FFA500', '#FFE885'];
+    const colors =
+      customColors && customColors.length > 0
+        ? customColors
+        : ['#FFFDF0', '#FFD700', '#FFC72C', '#FFA500', '#FFE885'];
     const maxCount = customMaxCount || 90;
     const speed = customSpeed || 1.2;
 
@@ -89,7 +97,7 @@ export default function SpiritualEngine({
       c.arc(0, 0, size, 0, Math.PI * 2);
       c.fill();
 
-      // Micro Subtle Glow (Very small radius!)
+      // Micro Subtle Glow
       c.globalAlpha = alpha * 0.35;
       c.beginPath();
       c.arc(0, 0, size * 1.8, 0, Math.PI * 2);
@@ -119,7 +127,7 @@ export default function SpiritualEngine({
         y: rn(0, hInit), // Spawns across full screen height
         vx: rn(-0.4, 0.4),
         vy: -rn(0.8, 1.8) * (speed / 1.2),
-        size: rn(0.8, 2.2), // 👈 TINY MICRO DUST SIZE (0.8px to 2.2px)
+        size: rn(0.8, 2.2),
         alpha: rn(0.2, 0.85),
         life: rn(0, 200),
         maxLife: rn(280, 450),
@@ -143,7 +151,7 @@ export default function SpiritualEngine({
           y: h + 10,
           vx: rn(-0.5, 0.5),
           vy: -rn(0.8, 1.8) * (speed / 1.2),
-          size: rn(0.8, 2.2), // 👈 TINY MICRO DUST SIZE
+          size: rn(0.8, 2.2),
           alpha: rn(0.3, 0.9),
           life: 0,
           maxLife: rn(300, 500),
@@ -160,8 +168,9 @@ export default function SpiritualEngine({
         p.y += p.vy; // Floats up
 
         const lt = p.life / p.maxLife;
-        // Twinkling Opacity Pulse
-        const currentAlpha = (0.5 + Math.sin(p.twinkle) * 0.5) * (lt < 0.8 ? p.alpha : p.alpha * ((1 - lt) / 0.2));
+        const currentAlpha =
+          (0.5 + Math.sin(p.twinkle) * 0.5) *
+          (lt < 0.8 ? p.alpha : p.alpha * ((1 - lt) / 0.2));
 
         if (p.life < p.maxLife && p.y > -20 && currentAlpha > 0.01) {
           drawMicroGoldDust(
@@ -192,9 +201,9 @@ export default function SpiritualEngine({
   if (!isDiwaliOrDev) return null;
 
   return (
-    <div className="relative w-full h-full pointer-events-none">
-      {/* 1. DIWALI / DEV DEEPAWALI SCENE */}
-      <DiwaliScene phase={phase} />
+    <div className="fixed inset-0 w-full h-full pointer-events-none z-[3]">
+      {/* 1. DIWALI / DEV DEEPAWALI BACKGROUND SCENE (Rockets, Fireworks, Rays, Glow) */}
+      <DiwaliScene phase={phase || 'AMBIENT'} />
 
       {/* 2. CONTINUOUS FLOATING MICRO GOLD DUST (100% CLEAN & CRISP) */}
       <canvas
