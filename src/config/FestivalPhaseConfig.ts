@@ -3,15 +3,17 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   timings: Record<string, number> 
 }> = {
   
-  // ━━━ DIWALI (DO NOT TOUCH) ━━━
+  // ━━━ DIWALI (🚀 16.0s Extended Video & 3D Gold Text Sync) ━━━
   DIWALI: {
-    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    phases: ['FLASH', 'SHOOTING', 'TEXT', 'HANDOVER'],
     timings: {
-      FLASH: 350,        
-      SHOOTING: 6000,    
-      HANDOVER: 150      
+      FLASH: 500,        // 0.5s Initial Flash
+      SHOOTING: 10000,   // 10.0s Diwali Video Playback
+      TEXT: 5500,        // 🚀 5.5s 3D Gold "शुभ दीपावली / HAPPY DIWALI 2027" Greeting
+      HANDOVER: 1000     // 1.0s Dashboard Transfer
     }
   },
+
 
   // ━━━ HOLI (DO NOT TOUCH) ━━━
   HOLI: {
