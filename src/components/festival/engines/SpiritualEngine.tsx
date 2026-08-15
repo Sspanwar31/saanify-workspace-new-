@@ -14,9 +14,17 @@ interface Props {
 }
 
 interface GoldParticle {
-  x: number; y: number; vx: number; vy: number;
-  size: number; alpha: number; life: number; maxLife: number;
-  color: string; twinkle: number; isSparkle: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  life: number;
+  maxLife: number;
+  color: string;
+  twinkle: number;
+  isSparkle: boolean;
 }
 
 export default function SpiritualEngine({
@@ -48,10 +56,12 @@ export default function SpiritualEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const colors = customColors && customColors.length > 0
-      ? customColors
-      : ['#FFFDF0', '#FFD700', '#FFC72C', '#FFA500', '#FFE885'];
-    const maxCount = customMaxCount || 90;
+    // 🏆 RICH 24K GOLD DUST COLOR PALETTE
+    const colors =
+      customColors && customColors.length > 0
+        ? customColors
+        : ['#FFFDF0', '#FFD700', '#FFC72C', '#FF9900', '#FFE885'];
+    const maxCount = customMaxCount || 160; // 🚀 INCREASED QUANTITY FOR RICH GOLD RAIN!
     const speed = customSpeed || 1.2;
 
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
@@ -66,53 +76,60 @@ export default function SpiritualEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
-    // Micro Gold Dust Drawing
+    // ✨ CRISP MICRO GOLD DUST & SHIMMER STAR DRAWING
     const drawMicroGoldDust = (
       c: CanvasRenderingContext2D,
-      x: number, y: number, size: number,
-      alpha: number, color: string, isSparkle: boolean
+      x: number,
+      y: number,
+      size: number,
+      alpha: number,
+      color: string,
+      isSparkle: boolean
     ) => {
       c.save();
       c.translate(x, y);
       c.globalAlpha = alpha;
 
+      // Tiny Gold Point
       c.fillStyle = color;
       c.beginPath();
       c.arc(0, 0, size, 0, Math.PI * 2);
       c.fill();
 
+      // Micro Subtle Glow
       c.globalAlpha = alpha * 0.35;
       c.beginPath();
       c.arc(0, 0, size * 1.8, 0, Math.PI * 2);
       c.fill();
 
+      // 4-Point Cross Sparkle
       if (isSparkle) {
-        c.globalAlpha = alpha * 0.7;
+        c.globalAlpha = alpha * 0.75;
         c.strokeStyle = '#FFFDF0';
         c.lineWidth = 0.6;
         c.beginPath();
-        c.moveTo(-size * 1.8, 0); c.lineTo(size * 1.8, 0);
-        c.moveTo(0, -size * 1.8); c.lineTo(0, size * 1.8);
+        c.moveTo(-size * 2, 0); c.lineTo(size * 2, 0);
+        c.moveTo(0, -size * 2); c.lineTo(0, size * 2);
         c.stroke();
       }
 
       c.restore();
     };
 
-    // Pre-fill screen
+    // 🚀 PRE-FILL PARTICLES ACROSS FULL SCREEN AT PAGE LOAD (Top to Bottom Flow)
     const wInit = canvas.getBoundingClientRect().width;
     const hInit = canvas.getBoundingClientRect().height;
 
-    for (let i = 0; i < maxCount * 0.65; i++) {
+    for (let i = 0; i < maxCount * 0.7; i++) {
       particles.current.push({
         x: rn(0, wInit),
-        y: rn(0, hInit),
+        y: rn(0, hInit), // Pre-fills screen
         vx: rn(-0.4, 0.4),
-        vy: -rn(0.8, 1.8) * (speed / 1.2),
-        size: rn(0.8, 2.2),
-        alpha: rn(0.2, 0.85),
+        vy: rn(0.8, 2.2) * (speed / 1.2), // 🚀 DOWNWARD DIRECTION ONLY!
+        size: rn(0.8, 2.5),
+        alpha: rn(0.25, 0.85),
         life: rn(0, 200),
-        maxLife: rn(280, 450),
+        maxLife: rn(300, 500),
         color: colors[Math.floor(Math.random() * colors.length)],
         twinkle: rn(0, Math.PI * 2),
         isSparkle: Math.random() < 0.25,
@@ -126,16 +143,17 @@ export default function SpiritualEngine({
 
       ctx.clearRect(0, 0, w, h);
 
-      if (particles.current.length < maxCount && Math.random() < 0.4) {
+      // 🚀 CONTINUOUS SPAWNING ONLY FROM TOP (0s -> End)
+      if (particles.current.length < maxCount && Math.random() < 0.5) {
         particles.current.push({
           x: rn(-10, w + 10),
-          y: h + 10,
+          y: -10, // 👈 ONLY FROM TOP!
           vx: rn(-0.5, 0.5),
-          vy: -rn(0.8, 1.8) * (speed / 1.2),
-          size: rn(0.8, 2.2),
+          vy: rn(0.8, 2.2) * (speed / 1.2), // 👈 DRIFTS DOWNWARDS
+          size: rn(0.8, 2.5),
           alpha: rn(0.3, 0.9),
           life: 0,
-          maxLife: rn(300, 500),
+          maxLife: rn(320, 550),
           color: colors[Math.floor(Math.random() * colors.length)],
           twinkle: rn(0, Math.PI * 2),
           isSparkle: Math.random() < 0.25,
@@ -146,14 +164,14 @@ export default function SpiritualEngine({
         p.life += 1;
         p.twinkle += 0.05;
         p.x += p.vx + Math.sin(p.twinkle) * 0.2;
-        p.y += p.vy;
+        p.y += p.vy; // Moves down
 
         const lt = p.life / p.maxLife;
         const currentAlpha =
           (0.5 + Math.sin(p.twinkle) * 0.5) *
-          (lt < 0.8 ? p.alpha : p.alpha * ((1 - lt) / 0.2));
+          (lt < 0.85 ? p.alpha : p.alpha * ((1 - lt) / 0.15));
 
-        if (p.life < p.maxLife && p.y > -20 && currentAlpha > 0.01) {
+        if (p.life < p.maxLife && p.y < h + 20 && currentAlpha > 0.01) {
           drawMicroGoldDust(
             ctx,
             p.x,
@@ -183,10 +201,10 @@ export default function SpiritualEngine({
 
   return (
     <div className="fixed inset-0 w-full h-full pointer-events-none z-[3]">
-      {/* 🚀 DASHBOARD PRESET LAYER (Rockets, Flash, Glow) */}
+      {/* 1. DIWALI / DEV DEEPAWALI BACKGROUND SCENE */}
       <DiwaliScene phase={phase} />
 
-      {/* CONTINUOUS FLOATING MICRO GOLD DUST */}
+      {/* 2. CONTINUOUS FLOATING TOP-TO-BOTTOM GOLD STARDUST RAIN */}
       <canvas
         ref={canvasRef}
         className="fixed inset-0 w-full h-full pointer-events-none z-[5]"
