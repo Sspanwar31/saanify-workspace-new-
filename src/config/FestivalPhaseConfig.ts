@@ -215,6 +215,17 @@ CHHATH_PUJA: {
   }
 },
 
+// 🚀 ━━━ KARWA CHAUTH (ADDED: 16.5s Full Moon, Sieve & 3D Gold Text Sync) ━━━
+  KARWA_CHAUTH: {
+    phases: ['FULL_MOON', 'SIEVE_SIGHT', 'TEXT', 'HANDOVER'],
+    timings: {
+      FULL_MOON: 3000,      // 0.0s - 3.0s
+      SIEVE_SIGHT: 7000,    // 3.0s - 10.0s Video Playback
+      TEXT: 5500,           // 🚀 5.5s 3D Gold Text Greeting Display Time
+      HANDOVER: 1000        // Dashboard Transfer
+    }
+  },
+  
 // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
