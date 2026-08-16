@@ -28,7 +28,7 @@ import MahashivratriCinematicIntro from '../engines/effects/mahashivratri/Mahash
 import DurgaPujaCinematicIntro from '../engines/effects/durga-puja/DurgaPujaCinematicIntro';
 import DevDeepawaliCinematicIntro from '../engines/effects/dev-deepawali/DevDeepawaliCinematicIntro';
 import DiwaliCinematicIntro from '../engines/effects/diwali/DiwaliCinematicIntro';
-
+import ChhathPujaCinematicIntro from '../engines/effects/chhath-puja/ChhathPujaCinematicIntro';
 
 export default function FestivalIntroController({
   isActive,
