@@ -202,10 +202,16 @@ if (isActive && (presetKey.includes('SHIV') || presetKey.includes('MAHASHIVRATRI
   return <MahashivratriCinematicIntro onComplete={onHandover} />;
 }
 
-  // 🚀 16. DURGA PUJA / NAVRATRI ACTIVATION (Divine Shakti Trinetra Intro)
-if (isActive && (presetKey.includes('DURGA') || presetKey.includes('NAVRATRI') || presetKey.includes('PUJA'))) {
-  return <DurgaPujaCinematicIntro onComplete={onHandover} />;
-}
+  // 🚀 16. DURGA PUJA / NAVRATRI ACTIVATION (FIXED: Strict match without "PUJA" conflict)
+  if (isActive && (presetKey.includes('DURGA') || presetKey === 'NAVRATRI')) {
+    return (
+      <DurgaPujaCinematicIntro 
+        onComplete={onHandover} 
+        mediaConfig={mediaConfig || heroConfig?.media_config}
+        videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/durga-puja-intro.mp4"}
+      />
+    );
+  }
 
   // 🚀 17. DEV DEEPAWALI ACTIVATION (Sacred Varanasi Ghat Intro)
 if (isActive && (presetKey.includes('DEV_DEEPAWALI') || presetKey.includes('DEV_DIWALI'))) {
@@ -222,7 +228,7 @@ if (isActive && presetKey === 'DIWALI') {
   );
 }
 
-  // 🚀 15. CHHATH PUJA ACTIVATION (Check BEFORE Durga Puja!)
+// 🚀 19. CHHATH PUJA ACTIVATION (FIXED: Placed BEFORE Durga Puja to prevent conflict!)
   if (isActive && (presetKey.includes('CHHATH') || presetKey.includes('CHATH'))) {
     return (
       <ChhathPujaCinematicIntro 
@@ -232,7 +238,6 @@ if (isActive && presetKey === 'DIWALI') {
       />
     );
   }
-
 
   return (
     <>
