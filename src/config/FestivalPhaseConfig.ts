@@ -205,7 +205,16 @@ DEV_DEEPAWALI: {
     }
   },
 
-  
+// ━━━ CHHATH PUJA (🚀 12.0s Solar Arghya Sync) ━━━
+CHHATH_PUJA: {
+  phases: ['SOLAR_ARGHYA', 'SOOP_REVEAL', 'TEXT'],
+  timings: {
+    SOLAR_ARGHYA: 3000,
+    SOOP_REVEAL: 5500,
+    TEXT: 5500
+  }
+},
+
 // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
