@@ -222,11 +222,16 @@ if (isActive && presetKey === 'DIWALI') {
   );
 }
 
-  // 🚀 19. Chhath Puja
-// Activation:
-if (isActive && (presetKey.includes('CHHATH') || presetKey.includes('CHATH'))) {
-  return <ChhathPujaCinematicIntro onComplete={onHandover} />;
-}
+  // 🚀 15. CHHATH PUJA ACTIVATION (Check BEFORE Durga Puja!)
+  if (isActive && (presetKey.includes('CHHATH') || presetKey.includes('CHATH'))) {
+    return (
+      <ChhathPujaCinematicIntro 
+        onComplete={onHandover} 
+        mediaConfig={mediaConfig || heroConfig?.media_config}
+        videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/chhath-puja-intro.mp4"}
+      />
+    );
+  }
 
 
   return (
