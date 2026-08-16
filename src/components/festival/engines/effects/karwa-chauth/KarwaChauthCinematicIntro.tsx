@@ -118,14 +118,14 @@ export default function KarwaChauthCinematicIntro({ videoUrl, onComplete }: Prop
         <div className="max-w-[90%] w-full mx-auto space-y-4 sm:space-y-6 flex flex-col items-center justify-center">
           {/* DEVANAGARI HINDI TEXT */}
           <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-yellow-300 to-amber-600 tracking-wide leading-tight drop-shadow-[0_8px_25px_rgba(255,215,0,0.6)] break-words w-full font-['Tiro_Devanagari_Hindi']">
-            करवा चौथ की हार्दिक शुभकामनाएँ
+            प्रेम, समर्पण एवं अटूट विश्वास का पावन पर्व
           </h1>
 
           <div className="w-24 sm:w-36 md:w-48 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent my-2 sm:my-4" />
 
           {/* ENGLISH TEXT */}
           <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-rose-200 to-amber-500 font-serif tracking-wider drop-shadow-[0_5px_20px_rgba(244,63,94,0.5)] break-words w-full font-['Cinzel']">
-            HAPPY KARWA CHAUTH 2027
+            Happy Karwa Chauth
           </h2>
         </div>
 
