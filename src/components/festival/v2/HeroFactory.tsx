@@ -21,6 +21,7 @@ import RamNavamiHero from '../heroes/RamNavamiHero'; // 🚀 NAYA: RamNavamiHero
 import PongalHero from '../heroes/PongalHero';
 import KaabaHero from '../heroes/KaabaHero';
 import ShivaHero from '../heroes/ShivaHero';
+import SunHero from '../heroes/SunHero';
 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
@@ -49,8 +50,8 @@ const ComponentMap: any = {
   'RAM_DHARMA': <RamNavamiHero />,  
   'HANUMAN_GADA': <HanumanHero />, // 🚀 UPDATED: Ab emoji ki jagah custom image component render hoga
   'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
-  'SUN_ARGHYA': <SunGlow />, 
-  'SUN_GOD': <SunGlow />,
+  'SUN_ARGHYA': <SunHero />,
+  'SUN_GOD': <SunHero />,
   'HARVEST_POT': <PongalHero />, // 
   'HOLY_KAABA': <KaabaHero />,
   'NY_COUNTDOWN':  <Crystal2027Hero />, // 🚀 अब घड़ी की जगह हमारा खुद का 3D क्रिस्टल 2027 रेंडर होगा!
