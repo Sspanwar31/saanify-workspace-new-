@@ -18,7 +18,8 @@ interface SolarParticle {
   alpha: number;
   life: number;
   maxLife: number;
-  color: string;
+  colorCore: string;
+  colorEdge: string;
   twinkle: number;
   isSparkle: boolean;
 }
@@ -49,12 +50,16 @@ export default function SunEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // ☀️ SOLAR GOLD STARDUST COLOR PALETTE
-    const colors = customColors && customColors.length > 0
-      ? customColors
-      : ['#FFFDF0', '#FFD700', '#FFC72C', '#FF9900', '#FFE885'];
-    const maxCount = customMaxCount || 150;
-    const speed = customSpeed || 1.2;
+    // 🏆 HIGH-CONTRAST DUAL-TONE GOLD DUST PAIRS (Visually pops on White & Dark UI)
+    const goldPairs = [
+      { core: '#FFFDF0', edge: '#D97706' }, // White-Gold + Amber Edge
+      { core: '#FFD700', edge: '#B8860B' }, // Pure Gold + Bronze Edge
+      { core: '#FFC72C', edge: '#92400E' }, // Bright Amber + Deep Gold Edge
+      { core: '#FF9900', edge: '#7C2D12' }, // Solar Orange + Deep Bronze Edge
+    ];
+
+    const maxCount = customMaxCount || 200; // 🚀 BOOSTED QUANTITY (200 Particles)
+    const speed = customSpeed || 1.4;
 
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
@@ -68,38 +73,39 @@ export default function SunEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
-    // ✨ CRISP SOLAR GOLD DUST DRAWING
-    const drawSolarGoldDust = (
+    // ✨ DUAL-TONE HIGH-CONTRAST SOLAR DUST DRAWING
+    const drawDualToneSolarDust = (
       c: CanvasRenderingContext2D,
       x: number,
       y: number,
       size: number,
       alpha: number,
-      color: string,
+      colorCore: string,
+      colorEdge: string,
       isSparkle: boolean
     ) => {
       c.save();
       c.translate(x, y);
       c.globalAlpha = alpha;
-      c.globalCompositeOperation = 'source-over';
+      c.globalCompositeOperation = 'source-over'; // 100% Reliable contrast on White UI
 
-      // Center Gold Point
-      c.fillStyle = color;
+      // 1. Dark Amber Outer Edge (Gives High-Contrast 3D Outline on White Cards)
+      c.fillStyle = colorEdge;
       c.beginPath();
-      c.arc(0, 0, size, 0, Math.PI * 2);
+      c.arc(0, 0, size * 1.4, 0, Math.PI * 2);
       c.fill();
 
-      // Outer Glow
-      c.globalAlpha = alpha * 0.35;
+      // 2. Pure Bright Gold Core
+      c.fillStyle = colorCore;
       c.beginPath();
-      c.arc(0, 0, size * 1.8, 0, Math.PI * 2);
+      c.arc(0, 0, size * 0.8, 0, Math.PI * 2);
       c.fill();
 
-      // 4-Point Star Sparkle
+      // 3. 4-Point Star Sparkle
       if (isSparkle) {
-        c.globalAlpha = alpha * 0.75;
+        c.globalAlpha = alpha * 0.85;
         c.strokeStyle = '#FFFDF0';
-        c.lineWidth = 0.6;
+        c.lineWidth = 0.8;
         c.beginPath();
         c.moveTo(-size * 2, 0); c.lineTo(size * 2, 0);
         c.moveTo(0, -size * 2); c.lineTo(0, size * 2);
@@ -109,23 +115,25 @@ export default function SunEngine({
       c.restore();
     };
 
-    // 🚀 PRE-FILL PARTICLES ACROSS SCREEN AT PAGE LOAD (Top to Bottom Flow)
+    // PRE-FILL PARTICLES ACROSS ENTIRE SCREEN HEIGHT (Top to Bottom)
     const wInit = canvas.getBoundingClientRect().width;
     const hInit = canvas.getBoundingClientRect().height;
 
-    for (let i = 0; i < maxCount * 0.7; i++) {
+    for (let i = 0; i < maxCount * 0.75; i++) {
+      const pair = goldPairs[Math.floor(Math.random() * goldPairs.length)];
       particles.current.push({
         x: rn(0, wInit),
-        y: rn(0, hInit),
+        y: rn(0, hInit), // Pre-fills entire screen height
         vx: rn(-0.4, 0.4),
-        vy: rn(0.8, 2.2) * (speed / 1.2), // Downward Gold Rain
-        size: rn(0.8, 2.5),
-        alpha: rn(0.25, 0.85),
-        life: rn(0, 200),
-        maxLife: rn(300, 500),
-        color: colors[Math.floor(Math.random() * colors.length)],
+        vy: rn(1.6, 3.2) * (speed / 1.2), // 🚀 FASTER DOWNWARD SPEED TO REACH BOTTOM
+        size: rn(1.4, 3.2), // 🚀 LARGER SIZE FOR HIGH VISIBILITY ON WHITE UI
+        alpha: rn(0.5, 0.95), // 🚀 HIGH OPACITY
+        life: rn(0, 250),
+        maxLife: rn(450, 750), // 🚀 LONGER LIFE TO TRAVEL FULL SCREEN HEIGHT
+        colorCore: pair.core,
+        colorEdge: pair.edge,
         twinkle: rn(0, Math.PI * 2),
-        isSparkle: Math.random() < 0.25,
+        isSparkle: Math.random() < 0.28,
       });
     }
 
@@ -137,19 +145,21 @@ export default function SunEngine({
       ctx.clearRect(0, 0, w, h);
 
       // Continuous Spawning from top
-      if (particles.current.length < maxCount && Math.random() < 0.5) {
+      if (particles.current.length < maxCount && Math.random() < 0.6) {
+        const pair = goldPairs[Math.floor(Math.random() * goldPairs.length)];
         particles.current.push({
           x: rn(-10, w + 10),
-          y: -10, // Only from Top
+          y: -15, // Spawns from top
           vx: rn(-0.5, 0.5),
-          vy: rn(0.8, 2.2) * (speed / 1.2),
-          size: rn(0.8, 2.5),
-          alpha: rn(0.3, 0.9),
+          vy: rn(1.6, 3.4) * (speed / 1.2), // 🚀 FASTER DOWNWARD SPEED TO REACH BOTTOM
+          size: rn(1.4, 3.2), // 🚀 VISIBLE SIZE
+          alpha: rn(0.55, 0.95), // 🚀 HIGH OPACITY
           life: 0,
-          maxLife: rn(320, 550),
-          color: colors[Math.floor(Math.random() * colors.length)],
+          maxLife: rn(450, 800), // 🚀 LONGER LIFE TO REACH BOTTOM FOOTER
+          colorCore: pair.core,
+          colorEdge: pair.edge,
           twinkle: rn(0, Math.PI * 2),
-          isSparkle: Math.random() < 0.25,
+          isSparkle: Math.random() < 0.28,
         });
       }
 
@@ -157,21 +167,22 @@ export default function SunEngine({
         p.life += 1;
         p.twinkle += 0.05;
         p.x += p.vx + Math.sin(p.twinkle) * 0.2;
-        p.y += p.vy;
+        p.y += p.vy; // Moves down all the way to bottom
 
         const lt = p.life / p.maxLife;
         const currentAlpha =
-          (0.5 + Math.sin(p.twinkle) * 0.5) *
+          (0.6 + Math.sin(p.twinkle) * 0.4) *
           (lt < 0.85 ? p.alpha : p.alpha * ((1 - lt) / 0.15));
 
-        if (p.life < p.maxLife && p.y < h + 20 && currentAlpha > 0.01) {
-          drawSolarGoldDust(
+        if (p.life < p.maxLife && p.y < h + 30 && currentAlpha > 0.01) {
+          drawDualToneSolarDust(
             ctx,
             p.x,
             p.y,
             p.size,
             currentAlpha,
-            p.color,
+            p.colorCore,
+            p.colorEdge,
             p.isSparkle
           );
           return true;
