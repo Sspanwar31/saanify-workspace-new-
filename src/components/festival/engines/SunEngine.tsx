@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 
 interface Props {
   preset?: string;
+  heroConfig?: any;
   customMaxCount?: number;
   customSpeed?: number;
   customColors?: string[];
@@ -26,6 +27,7 @@ interface SolarParticle {
 
 export default function SunEngine({
   preset,
+  heroConfig,
   customMaxCount,
   customSpeed,
   customColors,
@@ -50,16 +52,19 @@ export default function SunEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 🏆 HIGH-CONTRAST DUAL-TONE GOLD DUST PAIRS (Visually pops on White & Dark UI)
-    const goldPairs = [
-      { core: '#FFFDF0', edge: '#D97706' }, // White-Gold + Amber Edge
-      { core: '#FFD700', edge: '#B8860B' }, // Pure Gold + Bronze Edge
-      { core: '#FFC72C', edge: '#92400E' }, // Bright Amber + Deep Gold Edge
-      { core: '#FF9900', edge: '#7C2D12' }, // Solar Orange + Deep Bronze Edge
-    ];
+    // 🏆 1. BACKEND SUPABASE CONTROLLED VALUES
+    const colors =
+      customColors ||
+      heroConfig?.customColors ||
+      ['#FFFDF0', '#FFD700', '#FFC72C', '#FF9900', '#FFE885'];
 
-    const maxCount = customMaxCount || 200; // 🚀 BOOSTED QUANTITY (200 Particles)
-    const speed = customSpeed || 1.4;
+    const maxCount = customMaxCount ?? heroConfig?.customMaxCount ?? 130;
+    
+    // 🚀 2. NORMAL SMOOTH SPEED CALCULATION (0.5px to 1.2px per frame)
+    const speedFactor =
+      customSpeed ??
+      heroConfig?.customSpeed ??
+      (heroConfig?.speed ? heroConfig.speed / 3.5 : 1.0);
 
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
@@ -87,35 +92,42 @@ export default function SunEngine({
       c.save();
       c.translate(x, y);
       c.globalAlpha = alpha;
-      c.globalCompositeOperation = 'source-over'; // 100% Reliable contrast on White UI
+      c.globalCompositeOperation = 'source-over';
 
-      // 1. Dark Amber Outer Edge (Gives High-Contrast 3D Outline on White Cards)
+      // 1. Dark Amber Outer Edge (High Contrast on White UI)
       c.fillStyle = colorEdge;
       c.beginPath();
-      c.arc(0, 0, size * 1.4, 0, Math.PI * 2);
+      c.arc(0, 0, size * 1.35, 0, Math.PI * 2);
       c.fill();
 
       // 2. Pure Bright Gold Core
       c.fillStyle = colorCore;
       c.beginPath();
-      c.arc(0, 0, size * 0.8, 0, Math.PI * 2);
+      c.arc(0, 0, size * 0.78, 0, Math.PI * 2);
       c.fill();
 
       // 3. 4-Point Star Sparkle
       if (isSparkle) {
         c.globalAlpha = alpha * 0.85;
         c.strokeStyle = '#FFFDF0';
-        c.lineWidth = 0.8;
+        c.lineWidth = 0.6;
         c.beginPath();
-        c.moveTo(-size * 2, 0); c.lineTo(size * 2, 0);
-        c.moveTo(0, -size * 2); c.lineTo(0, size * 2);
+        c.moveTo(-size * 1.8, 0); c.lineTo(size * 1.8, 0);
+        c.moveTo(0, -size * 1.8); c.lineTo(0, size * 1.8);
         c.stroke();
       }
 
       c.restore();
     };
 
-    // PRE-FILL PARTICLES ACROSS ENTIRE SCREEN HEIGHT (Top to Bottom)
+    const goldPairs = [
+      { core: '#FFFDF0', edge: '#D97706' },
+      { core: '#FFD700', edge: '#B8860B' },
+      { core: '#FFC72C', edge: '#92400E' },
+      { core: '#FF9900', edge: '#7C2D12' },
+    ];
+
+    // PRE-FILL PARTICLES ACROSS ENTIRE SCREEN
     const wInit = canvas.getBoundingClientRect().width;
     const hInit = canvas.getBoundingClientRect().height;
 
@@ -123,17 +135,17 @@ export default function SunEngine({
       const pair = goldPairs[Math.floor(Math.random() * goldPairs.length)];
       particles.current.push({
         x: rn(0, wInit),
-        y: rn(0, hInit), // Pre-fills entire screen height
-        vx: rn(-0.4, 0.4),
-        vy: rn(1.6, 3.2) * (speed / 1.2), // 🚀 FASTER DOWNWARD SPEED TO REACH BOTTOM
-        size: rn(1.4, 3.2), // 🚀 LARGER SIZE FOR HIGH VISIBILITY ON WHITE UI
-        alpha: rn(0.5, 0.95), // 🚀 HIGH OPACITY
-        life: rn(0, 250),
-        maxLife: rn(450, 750), // 🚀 LONGER LIFE TO TRAVEL FULL SCREEN HEIGHT
+        y: rn(0, hInit),
+        vx: rn(-0.3, 0.3),
+        vy: rn(0.5, 1.2) * speedFactor, // 🚀 NORMAL CALM FLOAT SPEED
+        size: rn(1.2, 2.8),
+        alpha: rn(0.4, 0.9),
+        life: rn(0, 300),
+        maxLife: rn(500, 900), // 🚀 LONGER LIFE FOR SMOOTH FLOW TO BOTTOM
         colorCore: pair.core,
         colorEdge: pair.edge,
         twinkle: rn(0, Math.PI * 2),
-        isSparkle: Math.random() < 0.28,
+        isSparkle: Math.random() < 0.25,
       });
     }
 
@@ -145,29 +157,29 @@ export default function SunEngine({
       ctx.clearRect(0, 0, w, h);
 
       // Continuous Spawning from top
-      if (particles.current.length < maxCount && Math.random() < 0.6) {
+      if (particles.current.length < maxCount && Math.random() < 0.45) {
         const pair = goldPairs[Math.floor(Math.random() * goldPairs.length)];
         particles.current.push({
           x: rn(-10, w + 10),
-          y: -15, // Spawns from top
-          vx: rn(-0.5, 0.5),
-          vy: rn(1.6, 3.4) * (speed / 1.2), // 🚀 FASTER DOWNWARD SPEED TO REACH BOTTOM
-          size: rn(1.4, 3.2), // 🚀 VISIBLE SIZE
-          alpha: rn(0.55, 0.95), // 🚀 HIGH OPACITY
+          y: -15,
+          vx: rn(-0.4, 0.4),
+          vy: rn(0.5, 1.2) * speedFactor, // 🚀 NORMAL CALM FLOAT SPEED
+          size: rn(1.2, 2.8),
+          alpha: rn(0.45, 0.9),
           life: 0,
-          maxLife: rn(450, 800), // 🚀 LONGER LIFE TO REACH BOTTOM FOOTER
+          maxLife: rn(550, 950), // 🚀 REACHES BOTTOM SMOOTHLY
           colorCore: pair.core,
           colorEdge: pair.edge,
           twinkle: rn(0, Math.PI * 2),
-          isSparkle: Math.random() < 0.28,
+          isSparkle: Math.random() < 0.25,
         });
       }
 
       particles.current = particles.current.filter((p) => {
         p.life += 1;
-        p.twinkle += 0.05;
+        p.twinkle += 0.04;
         p.x += p.vx + Math.sin(p.twinkle) * 0.2;
-        p.y += p.vy; // Moves down all the way to bottom
+        p.y += p.vy;
 
         const lt = p.life / p.maxLife;
         const currentAlpha =
@@ -199,7 +211,7 @@ export default function SunEngine({
       cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
     };
-  }, [presetKey, customMaxCount, customSpeed, customColors]);
+  }, [presetKey, customMaxCount, customSpeed, customColors, heroConfig]);
 
   return (
     <canvas
