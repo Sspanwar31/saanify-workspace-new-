@@ -29,6 +29,8 @@ import DurgaPujaCinematicIntro from '../engines/effects/durga-puja/DurgaPujaCine
 import DevDeepawaliCinematicIntro from '../engines/effects/dev-deepawali/DevDeepawaliCinematicIntro';
 import DiwaliCinematicIntro from '../engines/effects/diwali/DiwaliCinematicIntro';
 import ChhathPujaCinematicIntro from '../engines/effects/chhath-puja/ChhathPujaCinematicIntro';
+import KarwaChauthCinematicIntro from '../engines/effects/karwa-chauth/KarwaChauthCinematicIntro';
+
 
 export default function FestivalIntroController({
   isActive,
@@ -235,6 +237,16 @@ if (isActive && presetKey === 'DIWALI') {
         onComplete={onHandover} 
         mediaConfig={mediaConfig || heroConfig?.media_config}
         videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/chhath-puja-intro.mp4"}
+      />
+    );
+  }
+
+  // 🚀 20. KARWA CHAUTH ACTIVATION (Full Moon & Sieve Chhanni Intro)
+  if (isActive && (presetKey.includes('KARWA') || presetKey.includes('CHAUTH'))) {
+    return (
+      <KarwaChauthCinematicIntro 
+        onComplete={onHandover} 
+        videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/karwa-chauth-intro.mp4"}
       />
     );
   }
