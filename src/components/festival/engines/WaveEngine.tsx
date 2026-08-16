@@ -2,89 +2,26 @@
 
 import { useEffect, useRef } from 'react';
 
-interface WaveConfig {
-  waveCount: number;
-  amplitude: number;
-  frequency: number;
-  speed: number;
-  colors: string[]; // [Water Color, Glow Color, Reflection Color]
-  showReflection: boolean;
-  reflectionWidth: number;
+interface WaveParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  color: string;
+  rotation: number;
+  rotSpeed: number;
+  life: number;
+  maxLife: number;
+  type: 'petal' | 'stardust';
 }
 
-const DEFAULT_WAVE: WaveConfig = {
-  waveCount: 3,
-  amplitude: 15,
-  frequency: 0.01,
-  speed: 0.03,
-  colors: ['#1e3a8a', '#3b82f6', '#60a5fa'],
-  showReflection: true,
-  reflectionWidth: 80,
-};
-
-const WAVE_PRESETS: Record<string, { default: Partial<WaveConfig> }> = {
-  KARWA_CHAUTH: {
-    default: {
-      waveCount: 2,
-      amplitude: 10,
-      frequency: 0.008,
-      speed: 0.02,
-      colors: ['#0f172a', '#1e293b', '#cbd5e1'], // Moonlight silver ripples
-      showReflection: true,
-      reflectionWidth: 60,
-    }
-  },
-  CHHATH_PUJA: {
-    default: {
-      waveCount: 4,
-      amplitude: 18,
-      frequency: 0.012,
-      speed: 0.04,
-      colors: ['#7c2d12', '#ea580c', '#fbbf24'], // Saffron/Orange sunset waves
-      showReflection: true,
-      reflectionWidth: 100,
-    }
-  },
-  DEV_DEEPAWALI: {
-    default: {
-      waveCount: 3,
-      amplitude: 14,
-      frequency: 0.01,
-      speed: 0.03,
-      colors: ['#451a03', '#b45309', '#fef08a'], // Shimmering golden ghat reflections
-      showReflection: true,
-      reflectionWidth: 120,
-    }
-  },
-  GURU_NANAK_JAYANTI: {
-    default: {
-      waveCount: 3,
-      amplitude: 12,
-      frequency: 0.009,
-      speed: 0.025,
-      colors: ['#1c1917', '#78350f', '#fef08a'],
-      showReflection: true,
-      reflectionWidth: 90,
-    }
-  }
-};
-
-export default function WaveEngine({
-  preset,
-  customAmplitude,
-  customSpeed,
-  customColors,
-  customShowReflection,
-}: {
-  preset?: string;
-  customAmplitude?: number;
-  customSpeed?: number;
-  customColors?: string[];
-  customShowReflection?: boolean;
-}) {
+export default function WaveEngine({ preset }: { preset?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafId = useRef<number>(0);
-  const offsetRef = useRef<number>(0);
+  const timeRef = useRef<number>(0);
+  const particles = useRef<WaveParticle[]>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -92,18 +29,10 @@ export default function WaveEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const activePreset = WAVE_PRESETS[preset || ''] || { default: DEFAULT_WAVE };
-    const config: WaveConfig = {
-      ...DEFAULT_WAVE,
-      ...activePreset.default,
-      ...(customAmplitude !== undefined && { amplitude: customAmplitude }),
-      ...(customSpeed !== undefined && { speed: customSpeed }),
-      ...(customColors && { colors: customColors }),
-      ...(customShowReflection !== undefined && { showReflection: customShowReflection }),
-    };
+    const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
     const setSize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
@@ -112,53 +41,113 @@ export default function WaveEngine({
     setSize();
     window.addEventListener('resize', setSize);
 
+    // Pre-fill particles on load
+    const wInit = canvas.getBoundingClientRect().width;
+    const hInit = canvas.getBoundingClientRect().height;
+    for (let i = 0; i < 55; i++) {
+      const isPetal = Math.random() < 0.4;
+      particles.current.push({
+        x: rn(0, wInit),
+        y: rn(0, hInit),
+        vx: rn(-0.4, 0.4),
+        vy: rn(0.8, 1.8),
+        size: isPetal ? rn(4, 7) : rn(1.0, 2.5),
+        alpha: rn(0.3, 0.8),
+        color: isPetal ? (Math.random() < 0.6 ? '#f43f5e' : '#fbcfe8') : '#e2e8f0',
+        rotation: rn(0, Math.PI * 2),
+        rotSpeed: rn(-0.02, 0.02),
+        life: rn(0, 200),
+        maxLife: rn(300, 500),
+        type: isPetal ? 'petal' : 'stardust',
+      });
+    }
+
     const animate = () => {
-      const w = canvas.getBoundingClientRect().width;
-      const h = canvas.getBoundingClientRect().height;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
       ctx.clearRect(0, 0, w, h);
+      timeRef.current += 0.018;
 
-      offsetRef.current += config.speed;
+      // 1. DELICATE MOONLIGHT RIPPLE LINES (NO HEAVY SOLID FILLS!)
+      const baseHeight = h * 0.84;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.18)'; // Soft Silver Lines
+      ctx.lineWidth = 1.0;
 
-      // लहरें नीचे 30% हिस्से में रेंडर होंगी
-      const baseHeight = h * 0.75;
+      for (let i = 0; i < 5; i++) {
+        const y = baseHeight + i * 12;
+        const currentOffset = timeRef.current * (1 + i * 0.2);
+        const currentAmp = 5 * (1 - i * 0.15);
 
-      // 1. पानी का बैकग्राउंड रिफ्लेक्शन बेस
-      if (config.showReflection) {
-        ctx.save();
-        const refGrad = ctx.createLinearGradient(w / 2 - config.reflectionWidth, baseHeight, w / 2 + config.reflectionWidth, baseHeight);
-        refGrad.addColorStop(0, 'rgba(0,0,0,0)');
-        refGrad.addColorStop(0.5, config.colors[2] + '33'); // 20% Opacity
-        refGrad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = refGrad;
-        ctx.fillRect(w / 2 - config.reflectionWidth * 1.5, baseHeight, config.reflectionWidth * 3, h - baseHeight);
-        ctx.restore();
-      }
-
-      // 2. लहरें बनाना (Wave Layering)
-      for (let i = 0; i < config.waveCount; i++) {
-        ctx.save();
         ctx.beginPath();
-        ctx.moveTo(0, h);
-
-        const currentOffset = offsetRef.current * (1 + i * 0.2);
-        const currentAmp = config.amplitude * (1 - i * 0.15);
-
-        for (let x = 0; x <= w; x += 5) {
-          const y = baseHeight + i * 12 + Math.sin(x * config.frequency + currentOffset) * currentAmp;
-          ctx.lineTo(x, y);
+        ctx.moveTo(0, y);
+        for (let x = 0; x <= w; x += 15) {
+          const waveY = y + Math.sin(x * 0.01 + currentOffset) * currentAmp;
+          ctx.lineTo(x, waveY);
         }
-
-        ctx.lineTo(w, h);
-        ctx.closePath();
-
-        const grad = ctx.createLinearGradient(0, baseHeight, 0, h);
-        grad.addColorStop(0, config.colors[Math.min(i, config.colors.length - 1)] + 'cc'); // Soft opacity at top
-        grad.addColorStop(1, config.colors[0]);
-
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.restore();
+        ctx.stroke();
       }
+      ctx.restore();
+
+      // 2. FLOATING ROSE PETALS & SILVER STARDUST
+      if (particles.current.length < 75 && Math.random() < 0.4) {
+        const isPetal = Math.random() < 0.4;
+        particles.current.push({
+          x: rn(-10, w + 10),
+          y: -10,
+          vx: rn(-0.5, 0.5),
+          vy: rn(0.8, 2.0),
+          size: isPetal ? rn(4, 7) : rn(1.0, 2.5),
+          alpha: rn(0.4, 0.85),
+          color: isPetal ? (Math.random() < 0.6 ? '#f43f5e' : '#fbcfe8') : '#e2e8f0',
+          rotation: rn(0, Math.PI * 2),
+          rotSpeed: rn(-0.02, 0.02),
+          life: 0,
+          maxLife: rn(300, 500),
+          type: isPetal ? 'petal' : 'stardust',
+        });
+      }
+
+      particles.current = particles.current.filter((p) => {
+        p.life++;
+        p.x += p.vx + Math.sin(timeRef.current + p.y * 0.01) * 0.2;
+        p.y += p.vy;
+        p.rotation += p.rotSpeed;
+
+        const lt = p.life / p.maxLife;
+        const currentAlpha = lt < 0.8 ? p.alpha : p.alpha * ((1 - lt) / 0.2);
+
+        if (p.life < p.maxLife && p.y < h + 20 && currentAlpha > 0.01) {
+          ctx.save();
+          ctx.globalAlpha = currentAlpha;
+
+          if (p.type === 'petal') {
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.size, p.size * 0.45, 0, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = currentAlpha * 0.35;
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+          return true;
+        }
+        return false;
+      });
 
       rafId.current = requestAnimationFrame(animate);
     };
@@ -169,7 +158,12 @@ export default function WaveEngine({
       cancelAnimationFrame(rafId.current);
       window.removeEventListener('resize', setSize);
     };
-  }, [preset, customAmplitude, customSpeed, customColors, customShowReflection]);
+  }, [preset]);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 3 }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 w-full h-full pointer-events-none z-[4]"
+    />
+  );
 }
