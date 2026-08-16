@@ -222,6 +222,13 @@ if (isActive && presetKey === 'DIWALI') {
   );
 }
 
+  // 🚀 19. Chhath Puja
+// Activation:
+if (isActive && (presetKey.includes('CHHATH') || presetKey.includes('CHATH'))) {
+  return <ChhathPujaCinematicIntro onComplete={onHandover} />;
+}
+
+
   return (
     <>
       {children(currentPhase)}
