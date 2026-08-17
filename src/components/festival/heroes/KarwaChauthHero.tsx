@@ -29,11 +29,11 @@ export default function KarwaChauthHero({ heroConfig, scale, imageUrl }: Props) 
           <img src={posterUrl} alt="Karwa Chauth" className="w-full h-full object-cover" />
         </div>
       ) : (
-        /* 🌕 2027 ULTRA-REALISTIC 3D MOON & BRASS SIEVE */
-        <div className="relative z-10 w-full max-w-[300px] sm:max-w-[360px] flex items-center justify-center filter drop-shadow-[0_15px_45px_rgba(255,255,255,0.25)]">
-          <svg viewBox="0 0 240 220" className="w-full h-auto overflow-visible">
+        /* 🌕 2027 ULTRA-REALISTIC 3D FULL MOON (ONLY MOON & ROSE PETALS - NO CHHANNI) */
+        <div className="relative z-10 w-full max-w-[300px] sm:max-w-[360px] flex items-center justify-center filter drop-shadow-[0_15px_45px_rgba(255,255,255,0.3)]">
+          <svg viewBox="0 0 240 200" className="w-full h-auto overflow-visible">
             <defs>
-              {/* 1. REALISTIC 3D MOON SILVER GRADIENT */}
+              {/* REALISTIC 3D MOON SILVER GRADIENT */}
               <radialGradient id="realMoonSilver" cx="35%" cy="30%" r="75%">
                 <stop offset="0%" stopColor="#FFFFFF" />
                 <stop offset="30%" stopColor="#F8FAFC" />
@@ -42,20 +42,12 @@ export default function KarwaChauthHero({ heroConfig, scale, imageUrl }: Props) 
                 <stop offset="100%" stopColor="#475569" />
               </radialGradient>
 
-              {/* 2. MOON ATMOSPHERIC CORONA (Silver Glow) */}
+              {/* MOON ATMOSPHERIC CORONA (Silver Glow) */}
               <radialGradient id="moonSilverCorona" cx="50%" cy="50%" r="50%">
-                <stop offset="45%" stopColor="rgba(255, 255, 255, 0.8)" />
-                <stop offset="70%" stopColor="rgba(226, 232, 240, 0.3)" />
+                <stop offset="45%" stopColor="rgba(255, 255, 255, 0.85)" />
+                <stop offset="70%" stopColor="rgba(226, 232, 240, 0.35)" />
                 <stop offset="100%" stopColor="rgba(148, 163, 184, 0)" />
               </radialGradient>
-
-              {/* 3. REALISTIC BRASS GOLD GRADIENT */}
-              <linearGradient id="realBrass2027" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#FFFDF0" />
-                <stop offset="30%" stopColor="#FFD700" />
-                <stop offset="70%" stopColor="#B8860B" />
-                <stop offset="100%" stopColor="#5B4302" />
-              </linearGradient>
 
               {/* Advanced Glow Filter */}
               <filter id="ultraMoonGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -69,67 +61,39 @@ export default function KarwaChauthHero({ heroConfig, scale, imageUrl }: Props) 
             </defs>
 
             {/* 🌕 OUTER SILVER CORONA GLOW */}
-            <circle cx="120" cy="85" r="85" fill="url(#moonSilverCorona)" className="animate-corona-pulse" />
+            <circle cx="120" cy="100" r="85" fill="url(#moonSilverCorona)" className="animate-corona-pulse" />
 
-            {/* 🌕 3D REALISTIC FULL MOON */}
-            <g style={{ transformOrigin: '120px 85px', animation: 'float-y 5s ease-in-out infinite' }}>
-              <circle cx="120" cy="85" r="46" fill="url(#realMoonSilver)" filter="url(#ultraMoonGlow)" />
+            {/* 🌕 3D REALISTIC FULL MOON (PURNIMA CHAND) */}
+            <g style={{ transformOrigin: '120px 100px', animation: 'float-y 5s ease-in-out infinite' }}>
+              <circle cx="120" cy="100" r="52" fill="url(#realMoonSilver)" filter="url(#ultraMoonGlow)" />
               
-              {/* 3D Spherical Highlight (Gives it a 3D Ball look) */}
-              <ellipse cx="105" cy="68" rx="22" ry="15" fill="rgba(255,255,255,0.9)" filter="blur(8px)" transform="rotate(-25 105 68)" />
-              <ellipse cx="105" cy="68" rx="8" ry="5" fill="rgba(255,255,255,1)" filter="blur(2px)" transform="rotate(-25 105 68)" />
+              {/* 3D Spherical Highlights */}
+              <ellipse cx="104" cy="81" rx="25" ry="17" fill="rgba(255,255,255,0.9)" filter="blur(8px)" transform="rotate(-25 104 81)" />
+              <ellipse cx="104" cy="81" rx="9" ry="5" fill="rgba(255,255,255,1)" filter="blur(2px)" transform="rotate(-25 104 81)" />
 
-              {/* REALISTIC LUNAR CRATERS (Soft Texture) */}
-              {/* Big Crater */}
-              <circle cx="135" cy="95" r="10" fill="#64748B" opacity="0.25" filter="blur(2px)" />
-              <circle cx="133" cy="93" r="7" fill="#475569" opacity="0.2" filter="blur(1px)" />
-              {/* Medium Crater */}
-              <circle cx="105" cy="100" r="7" fill="#64748B" opacity="0.22" filter="blur(1.5px)" />
-              {/* Small Craters */}
-              <circle cx="125" cy="65" r="4" fill="#64748B" opacity="0.2" filter="blur(1px)" />
-              <circle cx="95" cy="80" r="5" fill="#64748B" opacity="0.18" filter="blur(1px)" />
-              <circle cx="140" cy="75" r="3" fill="#64748B" opacity="0.2" filter="blur(0.8px)" />
-            </g>
-
-            {/* 🪔 3D TRADITIONAL BRASS CHHANNI (SIEVE) */}
-            <g transform="translate(120, 100) rotate(-8)">
-              {/* Mesh Background */}
-              <ellipse cx="0" cy="0" rx="62" ry="38" fill="rgba(20,10,0,0.4)" />
-              
-              {/* Curved Mesh Grid (Realistic Jali) */}
-              <path
-                d="M -60 0 Q 0 -25 60 0 M -60 0 Q 0 25 60 0 M -30 -35 Q -20 0 -30 35 M 0 -38 Q 10 0 0 38 M 30 -35 Q 20 0 30 35"
-                stroke="rgba(255, 230, 150, 0.5)"
-                strokeWidth="1"
-                fill="none"
-              />
-
-              {/* Outer Brass Ring Frame (3D Thickness) */}
-              <ellipse cx="0" cy="0" rx="62" ry="38" fill="none" stroke="url(#realBrass2027)" strokeWidth="8" filter="url(#ultraMoonGlow)" />
-              {/* Inner Brass Rim Highlight */}
-              <ellipse cx="0" cy="-2" rx="58" ry="34" fill="none" stroke="#FFFDF0" strokeWidth="1.5" opacity="0.8" />
-              {/* Specular Highlight on Brass Ring */}
-              <path d="M -45 -20 Q 0 -35 45 -20" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
-
-              {/* Handle of Chhanni */}
-              <path d="M 62 0 L 98 15" stroke="url(#realBrass2027)" strokeWidth="8" strokeLinecap="round" filter="url(#ultraMoonGlow)" />
-              <path d="M 62 -1 L 96 14" stroke="#FFFDF0" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+              {/* REALISTIC LUNAR CRATERS */}
+              <circle cx="137" cy="111" r="11" fill="#64748B" opacity="0.25" filter="blur(2px)" />
+              <circle cx="135" cy="109" r="8" fill="#475569" opacity="0.2" filter="blur(1px)" />
+              <circle cx="103" cy="117" r="8" fill="#64748B" opacity="0.22" filter="blur(1.5px)" />
+              <circle cx="125" cy="78" r="4.5" fill="#64748B" opacity="0.2" filter="blur(1px)" />
+              <circle cx="92" cy="95" r="5.5" fill="#64748B" opacity="0.18" filter="blur(1px)" />
+              <circle cx="143" cy="89" r="3.5" fill="#64748B" opacity="0.2" filter="blur(0.8px)" />
             </g>
 
             {/* 🌹 FLOATING CRIMSON ROSE PETALS */}
-            <path d="M 60 50 C 50 40, 40 55, 60 65 C 80 55, 70 40, 60 50 Z" fill="#F43F5E" opacity="0.85" transform="rotate(20 60 50)" />
-            <path d="M 180 130 C 170 120, 160 135, 180 145 C 200 135, 190 120, 180 130 Z" fill="#E11D48" opacity="0.9" transform="rotate(-15 180 130)" />
-            <path d="M 90 170 C 80 160, 70 175, 90 185 C 110 175, 100 160, 90 170 Z" fill="#BE123C" opacity="0.8" transform="rotate(45 90 170)" />
+            <path d="M 55 55 C 45 45, 35 60, 55 70 C 75 60, 65 45, 55 55 Z" fill="#F43F5E" opacity="0.85" transform="rotate(20 55 55)" />
+            <path d="M 185 140 C 175 130, 165 145, 185 155 C 205 145, 195 130, 185 140 Z" fill="#E11D48" opacity="0.9" transform="rotate(-15 185 140)" />
+            <path d="M 85 165 C 75 155, 65 170, 85 180 C 105 170, 95 155, 85 165 Z" fill="#BE123C" opacity="0.8" transform="rotate(45 85 165)" />
             
             {/* ✨ Twinkling Stars */}
-            <circle cx="180" cy="60" r="2" fill="#FFFFFF" className="animate-twinkle" />
-            <circle cx="50" cy="120" r="1.5" fill="#FFFFFF" className="animate-twinkle" style={{ animationDelay: '1s' }} />
-            <circle cx="190" cy="150" r="2" fill="#FFFFFF" className="animate-twinkle" style={{ animationDelay: '2s' }} />
+            <circle cx="185" cy="55" r="2.2" fill="#FFFFFF" className="animate-twinkle" />
+            <circle cx="45" cy="115" r="1.8" fill="#FFFFFF" className="animate-twinkle" style={{ animationDelay: '1s' }} />
+            <circle cx="195" cy="160" r="2.2" fill="#FFFFFF" className="animate-twinkle" style={{ animationDelay: '2s' }} />
           </svg>
         </div>
       )}
 
-      {/* Global Styles for 2027 Cinematic Animations */}
+      {/* Global Styles */}
       <style jsx global>{`
         @keyframes float-y {
           0%, 100% { transform: translateY(0px); }
