@@ -49,7 +49,7 @@ const ComponentMap: any = {
   'SHIVA_POWER': <ShivaHero />,
   'RAM_DHARMA': <RamNavamiHero />,  
   'HANUMAN_GADA': <HanumanHero />, // 🚀 UPDATED: Ab emoji ki jagah custom image component render hoga
-  'MOON_SIEVE': <span className="text-[110px] drop-shadow-2xl">🌕</span>,
+  'MOON_SIEVE': <MoonHero />,
   'SUN_ARGHYA': <SunHero />,
   'SUN_GOD': <SunHero />,
   'HARVEST_POT': <PongalHero />, // 
