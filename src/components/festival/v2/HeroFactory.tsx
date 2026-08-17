@@ -22,6 +22,7 @@ import PongalHero from '../heroes/PongalHero';
 import KaabaHero from '../heroes/KaabaHero';
 import ShivaHero from '../heroes/ShivaHero';
 import SunHero from '../heroes/SunHero';
+import KarwaChauthHero from '../heroes/KarwaChauthHero';
 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
@@ -49,7 +50,7 @@ const ComponentMap: any = {
   'SHIVA_POWER': <ShivaHero />,
   'RAM_DHARMA': <RamNavamiHero />,  
   'HANUMAN_GADA': <HanumanHero />, // 🚀 UPDATED: Ab emoji ki jagah custom image component render hoga
-  'MOON_SIEVE': <MoonHero />,
+  'MOON_SIEVE': <KarwaChauthHero />,
   'SUN_ARGHYA': <SunHero />,
   'SUN_GOD': <SunHero />,
   'HARVEST_POT': <PongalHero />, // 
