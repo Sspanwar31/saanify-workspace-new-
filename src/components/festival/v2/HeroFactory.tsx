@@ -24,6 +24,7 @@ import ShivaHero from '../heroes/ShivaHero';
 import SunHero from '../heroes/SunHero';
 import KarwaChauthHero from '../heroes/KarwaChauthHero';
 import SikhHero from '../heroes/SikhHero';
+import DussehraHero from '../heroes/DussehraHero';
 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
@@ -43,7 +44,7 @@ const ComponentMap: any = {
   'EID_MUBARAK': <MoonHero />, 
   'GANGA_GHAT_DIYA': <RoyalDiya />,
   'DANDIYA_BEAT': <NavratriHero />, // 🚀 FIXED: mapped to NavratriHero (Maa Durga frame) instead of drum emoji
-  'RAVAN_DAHAN': <span className="text-[110px] drop-shadow-2xl">🏹</span>,
+  'RAVAN_DAHAN': <DussehraHero />, // 🚀 FIXED: Flat icon ki jagah 3D Gold 
   'BABY_KRISHNA': <span className="text-[110px] drop-shadow-2xl">🪈</span>,
   'BROTHER_BOND': <RakhiHero />, // 🚀 अब गिफ्ट की जगह हमारी खुद की प्रोग्राम्ड राखी रेंडर होगी!
   'KITES_FLYING': <span className="text-[110px] drop-shadow-2xl">🪁</span>,
