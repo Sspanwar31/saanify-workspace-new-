@@ -237,6 +237,16 @@ CHHATH_PUJA: {
     }
   },
 
+  // ━━━ DUSSEHRA (🚀 16.5s Ravan Dahan & Fire Arrow Sync) ━━━
+DUSSEHRA: {
+  phases: ['RAVAN_DAHAN', 'FIRE_ARROW', 'TEXT', 'HANDOVER'],
+  timings: {
+    RAVAN_DAHAN: 3000,
+    FIRE_ARROW: 7000,
+    TEXT: 5500,
+    HANDOVER: 1000
+  }
+},
   
 // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
