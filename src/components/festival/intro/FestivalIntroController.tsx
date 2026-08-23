@@ -30,6 +30,8 @@ import DevDeepawaliCinematicIntro from '../engines/effects/dev-deepawali/DevDeep
 import DiwaliCinematicIntro from '../engines/effects/diwali/DiwaliCinematicIntro';
 import ChhathPujaCinematicIntro from '../engines/effects/chhath-puja/ChhathPujaCinematicIntro';
 import KarwaChauthCinematicIntro from '../engines/effects/karwa-chauth/KarwaChauthCinematicIntro';
+import GuruNanakJayantiCinematicIntro from '../engines/effects/guru-nanak-jayanti/GuruNanakJayantiCinematicIntro';
+
 
 
 export default function FestivalIntroController({
@@ -250,6 +252,16 @@ if (isActive && presetKey === 'DIWALI') {
       />
     );
   }
+
+   // 🚀 21. GURUNANK JAYANTI ACTIVATION 
+if (isActive && (presetKey.includes('GURU') || presetKey.includes('NANAK') || presetKey.includes('JAYANTI'))) {
+  return (
+    <GuruNanakJayantiCinematicIntro 
+      onComplete={onHandover} 
+      videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/guru-nanak-jayanti-intro.mp4"}
+    />
+  );
+}
 
   return (
     <>
