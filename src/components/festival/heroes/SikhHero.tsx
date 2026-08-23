@@ -18,8 +18,8 @@ export default function SikhHero({ heroConfig, scale, imageUrl }: Props) {
       style={{ transform: `scale(${userScale})` }}
     >
       {/* 🌟 AMBIENT SOLAR GOLD DIVINE GLOW */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] bg-amber-500/25 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220px] h-[220px] bg-yellow-400/25 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] bg-amber-500/25 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] bg-yellow-400/25 rounded-full blur-2xl pointer-events-none" />
 
       {posterUrl ? (
         /* 🖼️ POSTER IMAGE (If provided in Supabase) */
@@ -27,19 +27,19 @@ export default function SikhHero({ heroConfig, scale, imageUrl }: Props) {
           <img src={posterUrl} alt="Guru Nanak Jayanti" className="w-full h-full object-cover" />
         </div>
       ) : (
-        /* ☬ TRANSPARENT 3D ACCURATE SIKH KHANDA & IK ONKAR (Pure Vector Art - No Box) */
-        <div className="relative z-10 w-full max-w-[300px] sm:max-w-[360px] flex items-center justify-center filter drop-shadow-[0_10px_35px_rgba(251,191,36,0.6)]">
-          <svg viewBox="0 0 280 210" className="w-full h-auto overflow-visible">
+        /* ☬ ROYAL SIKH MANDALA EMBLEM LOGO (PURE VECTOR ART - NO TEXT) */
+        <div className="relative z-10 w-full max-w-[320px] sm:max-w-[380px] flex items-center justify-center filter drop-shadow-[0_12px_40px_rgba(251,191,36,0.65)]">
+          <svg viewBox="0 0 280 230" className="w-full h-auto overflow-visible">
             <defs>
               {/* 24K Gold Metallic Gradient */}
-              <linearGradient id="goldSikh2027" x1="0%" y1="0%" x2="100%" y2="100%">
+              <linearGradient id="royalGoldSikh" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#FFFDF0" />
                 <stop offset="25%" stopColor="#FFD700" />
                 <stop offset="65%" stopColor="#D4AF37" />
                 <stop offset="100%" stopColor="#5B4302" />
               </linearGradient>
 
-              <filter id="sikhGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <filter id="goldGlowEmblem" x="-30%" y="-30%" width="160%" height="160%">
                 <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                 <feMerge>
                   <feMergeNode in="coloredBlur"/>
@@ -48,73 +48,71 @@ export default function SikhHero({ heroConfig, scale, imageUrl }: Props) {
               </filter>
             </defs>
 
-            {/* ੴ IK ONKAR (Gurmukhi Sacred Symbol at Top) */}
-            <text
-              x="140"
-              y="30"
-              textAnchor="middle"
-              fill="url(#goldSikh2027)"
-              fontSize="28"
-              fontWeight="900"
-              fontFamily="'Tiro Devanagari Hindi', serif"
-              filter="url(#sikhGlow)"
-            >
-              ੴ
-            </text>
-
-            {/* ☬ AUTHENTIC ACCURATE 3D GOLDEN KHANDA */}
-            <g transform="translate(140, 90) scale(0.95)" filter="url(#sikhGlow)">
-              {/* 1. Center Double-Edged Sword (Khanda Blade) */}
-              <path
-                d="M 0 -52 L 4 -40 L 4 25 L 0 45 L -4 25 L -4 -40 Z"
-                fill="url(#goldSikh2027)"
-                stroke="#FFFDF0"
-                strokeWidth="0.8"
-              />
-              {/* Blade Center Line */}
-              <line x1="0" y1="-50" x2="0" y2="40" stroke="#FFFDF0" strokeWidth="1" opacity="0.8" />
-
-              {/* 2. Circular Ring (Chakkar) */}
-              <circle cx="0" cy="-5" r="24" fill="none" stroke="url(#goldSikh2027)" strokeWidth="5" />
-              <circle cx="0" cy="-5" r="21.5" fill="none" stroke="#FFFDF0" strokeWidth="1" opacity="0.9" />
-
-              {/* 3. Left Kirpan (Curved Sword) */}
-              <path
-                d="M -5 20 Q -28 5 -25 -32 Q -18 -32 -16 -12 Q -22 10 -5 20 Z"
-                fill="url(#goldSikh2027)"
-                stroke="#FFFDF0"
-                strokeWidth="0.8"
-              />
-
-              {/* 4. Right Kirpan (Curved Sword) */}
-              <path
-                d="M 5 20 Q 28 5 25 -32 Q 18 -32 16 -12 Q 22 10 5 20 Z"
-                fill="url(#goldSikh2027)"
-                stroke="#FFFDF0"
-                strokeWidth="0.8"
-              />
+            {/* 🌟 1. OUTER SUNBURST RAYS (36 Tapered Light Rays) */}
+            <g filter="url(#goldGlowEmblem)">
+              {[...Array(36)].map((_, i) => {
+                const angle = (i / 36) * Math.PI * 2;
+                const r1 = 65;
+                const r2 = i % 2 === 0 ? 82 : 74;
+                const x1 = 140 + Math.cos(angle) * r1;
+                const y1 = 105 + Math.sin(angle) * r1;
+                const x2 = 140 + Math.cos(angle) * r2;
+                const y2 = 105 + Math.sin(angle) * r2;
+                return (
+                  <line
+                    key={i}
+                    x1={x1} y1={y1}
+                    x2={x2} y2={y2}
+                    stroke="url(#royalGoldSikh)"
+                    strokeWidth={i % 2 === 0 ? '2' : '1.2'}
+                    strokeLinecap="round"
+                  />
+                );
+              })}
             </g>
 
-            {/* 🕌 GOLDEN TEMPLE DOME SILHOUETTE BASE */}
-            <g transform="translate(0, 15)">
-              <path d="M 60 160 L 220 160 L 210 138 Q 140 125 70 138 Z" fill="#2a1b05" stroke="url(#goldSikh2027)" strokeWidth="1.5" />
-              <path d="M 110 138 Q 110 105 140 105 Q 170 105 170 138 Z" fill="url(#goldSikh2027)" filter="url(#sikhGlow)" opacity="0.9" />
-              <circle cx="140" cy="102" r="3" fill="#FFFDF0" />
+            {/* 🏵️ 2. INTRICATE MANDALA CONCENTRIC GOLD RINGS */}
+            <circle cx="140" cy="105" r="64" fill="none" stroke="url(#royalGoldSikh)" strokeWidth="3" filter="url(#goldGlowEmblem)" />
+            <circle cx="140" cy="105" r="58" fill="none" stroke="#FFE89C" strokeWidth="1.2" opacity="0.8" />
+            <circle cx="140" cy="105" r="52" fill="none" stroke="url(#royalGoldSikh)" strokeWidth="2.5" />
+
+            {/* Beaded Dots Ring */}
+            {[...Array(24)].map((_, i) => {
+              const angle = (i / 24) * Math.PI * 2;
+              const bx = 140 + Math.cos(angle) * 55;
+              const by = 105 + Math.sin(angle) * 55;
+              return <circle key={i} cx={bx} cy={by} r="1.8" fill="#FFD700" />;
+            })}
+
+            {/* ☬ 3. CENTRAL 3D GOLDEN KHANDA */}
+            <g transform="translate(140, 105) scale(0.85)" filter="url(#goldGlowEmblem)">
+              {/* Center Double Blade */}
+              <path d="M 0 -48 L 4 -36 L 4 22 L 0 42 L -4 22 L -4 -36 Z" fill="url(#royalGoldSikh)" stroke="#FFFDF0" strokeWidth="0.8" />
+              <line x1="0" y1="-46" x2="0" y2="38" stroke="#FFFDF0" strokeWidth="1" opacity="0.8" />
+
+              {/* Circular Chakkar Ring */}
+              <circle cx="0" cy="-4" r="22" fill="none" stroke="url(#royalGoldSikh)" strokeWidth="5" />
+              <circle cx="0" cy="-4" r="19.5" fill="none" stroke="#FFFDF0" strokeWidth="1" opacity="0.9" />
+
+              {/* Left Curved Kirpan */}
+              <path d="M -5 18 Q -26 4 -23 -30 Q -16 -30 -14 -10 Q -20 10 -5 18 Z" fill="url(#royalGoldSikh)" stroke="#FFFDF0" strokeWidth="0.8" />
+
+              {/* Right Curved Kirpan */}
+              <path d="M 5 18 Q 26 4 23 -30 Q 16 -30 14 -10 Q 20 10 5 18 Z" fill="url(#royalGoldSikh)" stroke="#FFFDF0" strokeWidth="0.8" />
             </g>
 
-            {/* 📜 GURBANI TEXT */}
-            <text
-              x="140"
-              y="198"
-              textAnchor="middle"
-              fill="url(#goldSikh2027)"
-              fontSize="16"
-              fontWeight="900"
-              fontFamily="'Tiro Devanagari Hindi', serif"
-              filter="url(#sikhGlow)"
-            >
-              ੴ सतनाम श्री वाहेगुरु
-            </text>
+            {/* 🚩 4. NISHAN SAHIB GOLDEN FLAGS (Left & Right) */}
+            {/* Left Flag */}
+            <g transform="translate(55, 175) rotate(-25)" filter="url(#goldGlowEmblem)">
+              <line x1="0" y1="20" x2="0" y2="-30" stroke="url(#royalGoldSikh)" strokeWidth="2.5" />
+              <path d="M 0 -30 L 32 -18 L 0 -6 Z" fill="url(#royalGoldSikh)" />
+            </g>
+
+            {/* Right Flag */}
+            <g transform="translate(225, 175) rotate(25) scale(-1, 1)" filter="url(#goldGlowEmblem)">
+              <line x1="0" y1="20" x2="0" y2="-30" stroke="url(#royalGoldSikh)" strokeWidth="2.5" />
+              <path d="M 0 -30 L 32 -18 L 0 -6 Z" fill="url(#royalGoldSikh)" />
+            </g>
           </svg>
         </div>
       )}
