@@ -31,8 +31,7 @@ import DiwaliCinematicIntro from '../engines/effects/diwali/DiwaliCinematicIntro
 import ChhathPujaCinematicIntro from '../engines/effects/chhath-puja/ChhathPujaCinematicIntro';
 import KarwaChauthCinematicIntro from '../engines/effects/karwa-chauth/KarwaChauthCinematicIntro';
 import GuruNanakJayantiCinematicIntro from '../engines/effects/guru-nanak-jayanti/GuruNanakJayantiCinematicIntro';
-
-
+import DussehraCinematicIntro from '../engines/effects/dussehra/DussehraCinematicIntro';
 
 export default function FestivalIntroController({
   isActive,
@@ -259,6 +258,17 @@ if (isActive && (presetKey.includes('GURU') || presetKey.includes('NANAK') || pr
     <GuruNanakJayantiCinematicIntro 
       onComplete={onHandover} 
       videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/guru-nanak-jayanti-intro.mp4"}
+    />
+  );
+}
+
+
+   // 🚀 22. DUSSEHRA ACTIVATION 
+if (isActive && (presetKey.includes('DUSSEHRA') || presetKey.includes('VIJAYADASHAMI') || presetKey.includes('DASARA'))) {
+  return (
+    <DussehraCinematicIntro 
+      onComplete={onHandover} 
+      videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/dussehra-intro.mp4"}
     />
   );
 }
