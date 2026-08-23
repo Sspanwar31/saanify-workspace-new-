@@ -27,7 +27,7 @@ export default function SikhHero({ heroConfig, scale, imageUrl }: Props) {
           <img src={posterUrl} alt="Guru Nanak Jayanti" className="w-full h-full object-cover" />
         </div>
       ) : (
-        /* ☬ PINTEREST REPLICA: ROYAL PURPLE & GOLD SIKH MANDALA EMBLEM */
+        /* ☬ PINTEREST REPLICA: ROYAL PURPLE & GOLD SIKH MANDALA EMBLEM (100% RIGHT-SIDE UP) */
         <div className="relative z-10 w-full max-w-[320px] sm:max-w-[380px] flex items-center justify-center filter drop-shadow-[0_12px_40px_rgba(251,191,36,0.65)]">
           <svg viewBox="0 0 280 240" className="w-full h-auto overflow-visible">
             <defs>
@@ -94,21 +94,36 @@ export default function SikhHero({ heroConfig, scale, imageUrl }: Props) {
               return <circle key={i} cx={bx} cy={by} r="1.8" fill="#FFD700" />;
             })}
 
-            {/* ☬ 3. RIGHT-SIDE UP ACCURATE 3D GOLDEN KHANDA */}
-            <g transform="translate(140, 110) scale(0.9)" filter="url(#goldGlowEmblem)">
-              {/* Center Double Blade (Points UP) */}
-              <path d="M 0 -48 L 4 -36 L 4 22 L 0 42 L -4 22 L -4 -36 Z" fill="url(#royalGoldSikh)" stroke="#FFFDF0" strokeWidth="0.8" />
-              <line x1="0" y1="-46" x2="0" y2="38" stroke="#FFFDF0" strokeWidth="1" opacity="0.8" />
+            {/* ☬ 3. 100% ACCURATE RIGHT-SIDE UP 3D GOLDEN KHANDA */}
+            <g transform="translate(140, 110) scale(1.05)" filter="url(#goldGlowEmblem)">
+              {/* Center Double Blade (Points UPWARDS) */}
+              <path
+                d="M 0 -58 L 5 -42 L 4 25 L 0 38 L -4 25 L -5 -42 Z"
+                fill="url(#royalGoldSikh)"
+                stroke="#FFFDF0"
+                strokeWidth="0.8"
+              />
+              <line x1="0" y1="-55" x2="0" y2="35" stroke="#FFFDF0" strokeWidth="1.2" opacity="0.9" />
 
               {/* Circular Ring (Chakkar) */}
-              <circle cx="0" cy="-6" r="22" fill="none" stroke="url(#royalGoldSikh)" strokeWidth="5" />
-              <circle cx="0" cy="-6" r="19.5" fill="none" stroke="#FFFDF0" strokeWidth="1" opacity="0.9" />
+              <circle cx="0" cy="-10" r="25" fill="none" stroke="url(#royalGoldSikh)" strokeWidth="5.5" />
+              <circle cx="0" cy="-10" r="22" fill="none" stroke="#FFFDF0" strokeWidth="1" opacity="0.9" />
 
-              {/* Left Curved Kirpan (Curves UPWARDS) */}
-              <path d="M -5 18 C -22 10 -26 -12 -23 -32 C -18 -32 -16 -12 -5 18 Z" fill="url(#royalGoldSikh)" stroke="#FFFDF0" strokeWidth="0.8" />
+              {/* Left Kirpan (Curves UPWARDS) */}
+              <path
+                d="M 0 28 C -22 28 -38 10 -40 -20 C -34 -20 -28 -5 -12 12 Z"
+                fill="url(#royalGoldSikh)"
+                stroke="#FFFDF0"
+                strokeWidth="0.8"
+              />
 
-              {/* Right Curved Kirpan (Curves UPWARDS) */}
-              <path d="M 5 18 C 22 10 26 -12 23 -32 C 18 -32 16 -12 5 18 Z" fill="url(#royalGoldSikh)" stroke="#FFFDF0" strokeWidth="0.8" />
+              {/* Right Kirpan (Curves UPWARDS) */}
+              <path
+                d="M 0 28 C 22 28 38 10 40 -20 C 34 -20 28 -5 12 12 Z"
+                fill="url(#royalGoldSikh)"
+                stroke="#FFFDF0"
+                strokeWidth="0.8"
+              />
             </g>
 
             {/* 🚩 4. NISHAN SAHIB GOLDEN FLAGS (Symmetrical Outward) */}
