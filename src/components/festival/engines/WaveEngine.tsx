@@ -17,6 +17,31 @@ interface WaveParticle {
   type: 'petal' | 'stardust';
 }
 
+interface PresetConfig {
+  colors: string[];
+  waveColor: string;
+  particleType: 'petal' | 'stardust';
+}
+
+// ━━━ EXCLUSIVE PRESETS: KARWA CHAUTH & GURU NANAK JAYANTI ONLY ━━━
+const WAVE_PRESETS: Record<string, PresetConfig> = {
+  KARWA_CHAUTH: {
+    colors: ['#f43f5e', '#fbcfe8', '#e2e8f0', '#ffffff'],
+    waveColor: 'rgba(226, 232, 240, 0.18)', // Silver Moonlight Waves
+    particleType: 'petal',
+  },
+  GURU_NANAK_JAYANTI: {
+    colors: ['#FFFDF0', '#FFD700', '#FFC72C', '#FEF08A'],
+    waveColor: 'rgba(255, 215, 0, 0.22)', // Golden Amrit Sarovar Waves
+    particleType: 'stardust',
+  },
+  DEFAULT: {
+    colors: ['#FFFDF0', '#FFD700', '#FFC72C', '#e2e8f0'],
+    waveColor: 'rgba(255, 215, 0, 0.18)',
+    particleType: 'stardust',
+  },
+};
+
 export default function WaveEngine({ preset }: { preset?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafId = useRef<number>(0);
@@ -28,6 +53,16 @@ export default function WaveEngine({ preset }: { preset?: string }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Case-Insensitive Matching
+    const presetKey = (preset || '').toUpperCase().trim();
+    const isGuruNanak =
+      presetKey.includes('GURU') ||
+      presetKey.includes('NANAK') ||
+      presetKey.includes('JAYANTI');
+
+    const activeKey = isGuruNanak ? 'GURU_NANAK_JAYANTI' : 'KARWA_CHAUTH';
+    const config = WAVE_PRESETS[activeKey] || WAVE_PRESETS.DEFAULT;
 
     const rn = (min: number, max: number) => min + Math.random() * (max - min);
 
@@ -41,11 +76,56 @@ export default function WaveEngine({ preset }: { preset?: string }) {
     setSize();
     window.addEventListener('resize', setSize);
 
-    // Pre-fill particles on load
+    // Drawing Functions
+    const drawPetal = (
+      c: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      size: number,
+      alpha: number,
+      rot: number,
+      color: string
+    ) => {
+      c.save();
+      c.translate(x, y);
+      c.rotate(rot);
+      c.globalAlpha = alpha;
+      c.fillStyle = color;
+      c.beginPath();
+      c.ellipse(0, 0, size, size * 0.45, 0, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    };
+
+    const drawStardust = (
+      c: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      size: number,
+      alpha: number,
+      color: string
+    ) => {
+      c.save();
+      c.translate(x, y);
+      c.globalAlpha = alpha;
+      c.fillStyle = color;
+      c.beginPath();
+      c.arc(0, 0, size, 0, Math.PI * 2);
+      c.fill();
+
+      c.globalAlpha = alpha * 0.35;
+      c.beginPath();
+      c.arc(0, 0, size * 2, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    };
+
+    // Pre-fill particles
     const wInit = canvas.getBoundingClientRect().width;
     const hInit = canvas.getBoundingClientRect().height;
+
     for (let i = 0; i < 55; i++) {
-      const isPetal = Math.random() < 0.4;
+      const isPetal = config.particleType === 'petal' && Math.random() < 0.4;
       particles.current.push({
         x: rn(0, wInit),
         y: rn(0, hInit),
@@ -53,7 +133,11 @@ export default function WaveEngine({ preset }: { preset?: string }) {
         vy: rn(0.8, 1.8),
         size: isPetal ? rn(4, 7) : rn(1.0, 2.5),
         alpha: rn(0.3, 0.8),
-        color: isPetal ? (Math.random() < 0.6 ? '#f43f5e' : '#fbcfe8') : '#e2e8f0',
+        color: isPetal
+          ? Math.random() < 0.6
+            ? '#f43f5e'
+            : '#fbcfe8'
+          : config.colors[Math.floor(Math.random() * config.colors.length)],
         rotation: rn(0, Math.PI * 2),
         rotSpeed: rn(-0.02, 0.02),
         life: rn(0, 200),
@@ -70,10 +154,10 @@ export default function WaveEngine({ preset }: { preset?: string }) {
       ctx.clearRect(0, 0, w, h);
       timeRef.current += 0.018;
 
-      // 1. DELICATE MOONLIGHT RIPPLE LINES (NO HEAVY SOLID FILLS!)
+      // 1. DELICATE MOONLIGHT / SAROVAR WATER WAVES
       const baseHeight = h * 0.84;
       ctx.save();
-      ctx.strokeStyle = 'rgba(226, 232, 240, 0.18)'; // Soft Silver Lines
+      ctx.strokeStyle = config.waveColor;
       ctx.lineWidth = 1.0;
 
       for (let i = 0; i < 5; i++) {
@@ -84,16 +168,17 @@ export default function WaveEngine({ preset }: { preset?: string }) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         for (let x = 0; x <= w; x += 15) {
-          const waveY = y + Math.sin(x * 0.01 + currentOffset) * currentAmp;
+          const waveY =
+            y + Math.sin(x * 0.01 + currentOffset) * currentAmp;
           ctx.lineTo(x, waveY);
         }
         ctx.stroke();
       }
       ctx.restore();
 
-      // 2. FLOATING ROSE PETALS & SILVER STARDUST
+      // 2. FESTIVAL PARTICLES
       if (particles.current.length < 75 && Math.random() < 0.4) {
-        const isPetal = Math.random() < 0.4;
+        const isPetal = config.particleType === 'petal' && Math.random() < 0.4;
         particles.current.push({
           x: rn(-10, w + 10),
           y: -10,
@@ -101,7 +186,11 @@ export default function WaveEngine({ preset }: { preset?: string }) {
           vy: rn(0.8, 2.0),
           size: isPetal ? rn(4, 7) : rn(1.0, 2.5),
           alpha: rn(0.4, 0.85),
-          color: isPetal ? (Math.random() < 0.6 ? '#f43f5e' : '#fbcfe8') : '#e2e8f0',
+          color: isPetal
+            ? Math.random() < 0.6
+              ? '#f43f5e'
+              : '#fbcfe8'
+            : config.colors[Math.floor(Math.random() * config.colors.length)],
           rotation: rn(0, Math.PI * 2),
           rotSpeed: rn(-0.02, 0.02),
           life: 0,
@@ -120,30 +209,11 @@ export default function WaveEngine({ preset }: { preset?: string }) {
         const currentAlpha = lt < 0.8 ? p.alpha : p.alpha * ((1 - lt) / 0.2);
 
         if (p.life < p.maxLife && p.y < h + 20 && currentAlpha > 0.01) {
-          ctx.save();
-          ctx.globalAlpha = currentAlpha;
-
           if (p.type === 'petal') {
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.rotation);
-            ctx.fillStyle = p.color;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, p.size, p.size * 0.45, 0, 0, Math.PI * 2);
-            ctx.fill();
+            drawPetal(ctx, p.x, p.y, p.size, currentAlpha, p.rotation, p.color);
           } else {
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.globalAlpha = currentAlpha * 0.35;
-            ctx.fillStyle = '#38bdf8';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
-            ctx.fill();
+            drawStardust(ctx, p.x, p.y, p.size, currentAlpha, p.color);
           }
-
-          ctx.restore();
           return true;
         }
         return false;
