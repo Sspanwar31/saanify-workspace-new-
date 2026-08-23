@@ -225,6 +225,18 @@ CHHATH_PUJA: {
       HANDOVER: 1000        // Dashboard Transfer
     }
   },
+
+  // 🚀 ━━━ GURU NANAK JAYANTI (ADDED: 16.5s Prakash Parv & Gurbani Text Sync) ━━━
+  GURU_NANAK_JAYANTI: {
+    phases: ['SAROVAR_DAWN', 'GOLDEN_TEMPLE', 'TEXT', 'HANDOVER'],
+    timings: {
+      SAROVAR_DAWN: 3000,      // 0.0s - 3.0s
+      GOLDEN_TEMPLE: 7000,     // 3.0s - 10.0s Video Playback
+      TEXT: 5500,              // 🚀 5.5s 3D Gold Gurbani Text Display Time
+      HANDOVER: 1000           // Dashboard Transfer
+    }
+  },
+
   
 // ━━━ GENERIC FALLBACK (🚀 FIXED: 1.5s + 3.5s + 1.0s for luxurious pacing) ━━━
   DEFAULT: {
