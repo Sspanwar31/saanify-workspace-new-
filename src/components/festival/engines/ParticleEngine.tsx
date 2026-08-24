@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 
+/* ═══════════════════════════════════════════════════════════════
+   TYPES & CONSTANTS
+   ═══════════════════════════════════════════════════════════════ */
 interface Particle {
   x: number;
   y: number;
@@ -58,7 +61,26 @@ const DEFAULT: EngineConfig = {
   direction: 'radial',
 };
 
-const PRESET_MAP: Record<string, PresetConfig> = {
+const PRESET_COLORS: Record<string, string[]> = {
+  GANESH_CHATURTHI: ['#fde047', '#facc15', '#fef08a', '#f97316'],
+  HANUMAN_JAYANTI: ['#dc2626', '#f97316', '#16a34a', '#fbbf24'], 
+  NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
+  DUSSEHRA: ['#ff9900', '#ffd700', '#dc2626', '#ff4500', '#facc15', '#fffdf0'], // 🚀 Dussehra Gold & Fire
+  VIJAYADASHAMI: ['#ff9900', '#ffd700', '#dc2626', '#ff4500', '#facc15', '#fffdf0'],
+  REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
+  INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807'],
+  RAY_ENGINE: ['#ff9933', '#ffffff', '#128807']
+};
+
+const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
+  GANESH_CHATURTHI: { default: { gravity: 0.003, speed: 1.0, maxCount: 90, minSize: 5, maxSize: 11, colors: PRESET_COLORS.GANESH_CHATURTHI, direction: 'downward' } },
+  HANUMAN_JAYANTI:  { default: { gravity: 0.0012, speed: 0.65, maxCount: 130, minSize: 6, maxSize: 12, colors: PRESET_COLORS.HANUMAN_JAYANTI, direction: 'downward' } },
+  NAVRATRI:         { default: { gravity: 0.003, speed: 1.0, maxCount: 90, minSize: 5, maxSize: 11, colors: PRESET_COLORS.NAVRATRI, direction: 'downward' } },
+  
+  // 🚀 DUSSEHRA & VIJAYADASHAMI PRESET (Fire Embers & Gold Rain)
+  DUSSEHRA:         { default: { gravity: 0.018, speed: 0.8, maxCount: 260, minSize: 1.2, maxSize: 4.2, colors: PRESET_COLORS.DUSSEHRA, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  VIJAYADASHAMI:    { default: { gravity: 0.018, speed: 0.8, maxCount: 260, minSize: 1.2, maxSize: 4.2, colors: PRESET_COLORS.VIJAYADASHAMI, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+
   LIQUID_SPLASH: {
     default: {
       gravity: 0.28, spread: 1.6, speed: 2.2,
@@ -149,25 +171,21 @@ const PRESET_MAP: Record<string, PresetConfig> = {
       spawnY: -0.1,
     }
   },
-  
-// 🚀 2027 MODERN NEW YEAR PRISMATIC PRESET (स्वर्णिम इंद्रधनुषी आतिशबाज़ी)
   NEW_YEAR: {
     default: {
-      gravity: 0.016,       // 🚀 कोमल स्वर्णिम बहाव
+      gravity: 0.016,       
       spread: 1.0,          
-      speed: 0.6,           // 🚀 धीमी राजसी गति
-      // 🚀 रंग: धात्विक सफेद, प्लैटिनम गोल्ड, गहरा एमरल्ड ग्रीन और वायलेट का इंद्रधनुषी संगम
+      speed: 0.6,           
       colors: ['#ffffff', '#fef08a', '#fbbf24', '#10b981', '#8b5cf6', '#00f5d4'], 
       minSize: 1.2,         
       maxSize: 4.2,         
-      maxCount: 280,        // आदर्श सघनता
-      glow: true,           // 🚀 'lighter' ब्लेंड मोड सक्रिय करने के लिए ताकि ओवरलैप होने पर नियॉन ग्लो मिले
-      wobble: true,         // हवा में डगमगाना सक्रिय
+      maxCount: 280,        
+      glow: true,           
+      wobble: true,         
       direction: 'downward', 
       spawnY: -0.1,
     }
   },
-
   SPECIAL_OFFER: {
     default: {
       gravity: 0.08, spread: 1.2, speed: 1.4,
@@ -212,19 +230,8 @@ export default function ParticleEngine({
     // 🚀 केस-इन्सेंसिटिव नॉर्मलाइज़ेशन (केंद्रीय नियंत्रण)
     const normalizedPreset = (preset || '').toUpperCase().trim();
 
-    console.log("❄️ [ParticleEngine] PROPS RECEIVED:", {
-      preset: normalizedPreset,
-      phase,
-      customSpeed,
-      customGravity,
-      customMinSize,
-      customMaxSize,
-      customMaxCount
-    });
+    const activePresetObj = MASTER_PRESET_CONFIGS[normalizedPreset || ''] || { default: DEFAULT };
 
-    const activePresetObj = PRESET_MAP[normalizedPreset || ''] || { default: DEFAULT };
-
-    // सुरक्षित चेकिंग
     const config: EngineConfig = { 
       ...DEFAULT, 
       ...activePresetObj.default,
@@ -236,13 +243,11 @@ export default function ParticleEngine({
       ...(customMaxCount !== null && customMaxCount !== undefined && { maxCount: customMaxCount }),
     };
 
-    console.log("❄️ [ParticleEngine] FINAL CONFIG RESOLVED:", config);
-
     let w = 0;
     let h = 0;
 
     const setSize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
       w = rect.width > 0 ? rect.width : window.innerWidth;
       h = rect.height > 0 ? rect.height : window.innerHeight;
@@ -293,7 +298,6 @@ export default function ParticleEngine({
           vy = Math.sin(angle) * spd * config.spread * 2;
       }
 
-      // 🚀 सुधार 1: यहाँ 'preset' की जगह 'normalizedPreset' का उपयोग किया गया है
       const spawnX = (currentDirection === 'downward' || normalizedPreset === 'LOHRI') ? rand(0, w) : cx + rand(-20, 20);
 
       let baseMaxLife = 110;
@@ -317,7 +321,6 @@ export default function ParticleEngine({
       const progress = 1 - p.life / p.maxLife;
       const alpha = Math.max(0, 1 - (progress * progress));
 
-      // 🚀 सुधार 2: यहाँ भी 'preset' की जगह 'normalizedPreset' का उपयोग किया गया है
       const renderSize = normalizedPreset === 'LOHRI' ? p.size * (1 - progress * 0.8) : p.size;
 
       ctx.save();
@@ -327,7 +330,7 @@ export default function ParticleEngine({
         ctx.globalCompositeOperation = 'lighter';
       }
 
-      // 🚀 मकर संक्रांति विज़ुअल अपडेट (Case-Insensitive Match)
+      // 🚀 मकर संक्रांति विज़ुअल अपडेट
       if (normalizedPreset === 'MAKAR_SANKRANTI') {
         const s = renderSize * 1.5; 
         ctx.fillStyle = p.color;
@@ -354,7 +357,23 @@ export default function ParticleEngine({
         );
         ctx.stroke();
       } 
-      // 🚀 लोहड़ी विज़ुअल अपडेट (Flickering Flames with Inner Core)
+      // 🚀 दशहरा / विजयादशमी विज़ुअल अपडेट (Fire Embers & Gold Rain)
+      else if (normalizedPreset === 'DUSSEHRA' || normalizedPreset === 'VIJAYADASHAMI') {
+        const s = renderSize * 1.5;
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = s * 1.8;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = alpha * 0.4;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, s * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 🚀 लोहड़ी विज़ुअल अपडेट
       else if (normalizedPreset === 'LOHRI') {
         const s = renderSize * 1.6;
         ctx.fillStyle = p.color;
@@ -376,7 +395,7 @@ export default function ParticleEngine({
         ctx.arc(p.x, p.y + s * 0.15, s * 0.35, 0, Math.PI * 2);
         ctx.fill();
       }
-      // 🚀 रक्षाबंधन विज़ुअल अपडेट (Miniature Rakhis)
+      // 🚀 रक्षाबंधन विज़ुअल अपडेट
       else if (normalizedPreset === 'RAKSHA_BANDHAN') {
         const s = renderSize * 1.4;
         ctx.shadowColor = p.color;
@@ -431,8 +450,6 @@ export default function ParticleEngine({
 
       const rawCount = config.maxCount;
       const Math_floor = Math.floor(rawCount * pb.intensity);
-      
-      // 🚀 सुधार 3: यहाँ भी 'preset' की जगह 'normalizedPreset' का उपयोग किया गया है
       const currentSpawnRate = normalizedPreset === 'CHRISTMAS' ? 0.35 : pb.spawnRate;
 
       if (particles.current.length < Math_floor && Math.random() < currentSpawnRate) {
