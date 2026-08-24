@@ -197,7 +197,7 @@ const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
 
 export default function ParticleEngine({ 
   preset, 
-  heroConfig, // 🚀 1. ADDED heroConfig PROP FROM SUPABASE
+  heroConfig, 
   phase = 'IDLE',
   customGravity,
   customSpeed,
@@ -207,7 +207,7 @@ export default function ParticleEngine({
   customMaxCount
 }: { 
   preset?: string; 
-  heroConfig?: any; // 🚀 TYPE DEFINED
+  heroConfig?: any; 
   phase?: string; 
   customGravity?: number | null;
   customSpeed?: number | null;
@@ -234,7 +234,7 @@ export default function ParticleEngine({
 
     const activePresetObj = MASTER_PRESET_CONFIGS[normalizedPreset || ''] || { default: DEFAULT };
 
-    // 🚀 2. DYNAMIC SUPABASE DB FALLBACK RESOLUTION
+    // Dynamic Supabase DB Fallback
     const resolvedGravity = customGravity ?? heroConfig?.customGravity ?? activePresetObj.default.gravity;
     const resolvedSpeed = customSpeed ?? heroConfig?.customSpeed ?? (heroConfig?.speed ? heroConfig.speed / 3.5 : activePresetObj.default.speed);
     const resolvedColors = customColors || heroConfig?.customColors || activePresetObj.default.colors;
@@ -282,7 +282,7 @@ export default function ParticleEngine({
 
       const cx = w / 2;
       const cy = h * currentSpawnY; 
-      const spd = currentSpeed * rand(0.5, 1.1); // 🚀 Smooth speed
+      const spd = currentSpeed * rand(0.5, 1.1); 
       const size = rand(currentMinSize, currentMaxSize); 
       const angle = Math.random() * Math.PI * 2;
 
@@ -312,7 +312,7 @@ export default function ParticleEngine({
 
       let baseMaxLife = 110;
       if (currentDirection === 'downward' || currentDirection === 'upward') {
-         baseMaxLife = Math.max(300, Math.floor(h / (currentSpeed * 0.9))); 
+         baseMaxLife = Math.max(350, Math.floor(h / (currentSpeed * 0.9))); 
       }
 
       return {
@@ -499,7 +499,8 @@ export default function ParticleEngine({
 
     return () => {
       cancelAnimationFrame(rafId.current);
-      window.removeEventListener('resize", setSize);
+      // 🚀 FIXED: Line 502 Syntax Quote Error Fix ('resize')
+      window.removeEventListener('resize', setSize);
       particles.current = [];
     };
     
