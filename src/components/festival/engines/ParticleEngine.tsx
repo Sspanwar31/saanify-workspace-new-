@@ -65,8 +65,8 @@ const PRESET_COLORS: Record<string, string[]> = {
   GANESH_CHATURTHI: ['#fde047', '#facc15', '#fef08a', '#f97316'],
   HANUMAN_JAYANTI: ['#dc2626', '#f97316', '#16a34a', '#fbbf24'], 
   NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
-  DUSSEHRA: ['#ff9900', '#ffd700', '#dc2626', '#ff4500', '#facc15', '#fffdf0'], // 🚀 Dussehra Gold & Fire
-  VIJAYADASHAMI: ['#ff9900', '#ffd700', '#dc2626', '#ff4500', '#facc15', '#fffdf0'],
+  DUSSEHRA: ['#FFFDF0', '#FFD700', '#FF9900', '#FF4500', '#D97706'], // 🚀 Dussehra Gold & Fire
+  VIJAYADASHAMI: ['#FFFDF0', '#FFD700', '#FF9900', '#FF4500', '#D97706'],
   REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
   INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807'],
   RAY_ENGINE: ['#ff9933', '#ffffff', '#128807']
@@ -77,9 +77,9 @@ const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   HANUMAN_JAYANTI:  { default: { gravity: 0.0012, speed: 0.65, maxCount: 130, minSize: 6, maxSize: 12, colors: PRESET_COLORS.HANUMAN_JAYANTI, direction: 'downward' } },
   NAVRATRI:         { default: { gravity: 0.003, speed: 1.0, maxCount: 90, minSize: 5, maxSize: 11, colors: PRESET_COLORS.NAVRATRI, direction: 'downward' } },
   
-  // 🚀 DUSSEHRA & VIJAYADASHAMI PRESET (Fire Embers & Gold Rain)
-  DUSSEHRA:         { default: { gravity: 0.018, speed: 0.8, maxCount: 260, minSize: 1.2, maxSize: 4.2, colors: PRESET_COLORS.DUSSEHRA, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
-  VIJAYADASHAMI:    { default: { gravity: 0.018, speed: 0.8, maxCount: 260, minSize: 1.2, maxSize: 4.2, colors: PRESET_COLORS.VIJAYADASHAMI, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  // 🚀 FIXED: DUSSEHRA & VIJAYADASHAMI PRESET (Fast Speed + Micro Crisp Particles)
+  DUSSEHRA:         { default: { gravity: 0.045, speed: 1.8, maxCount: 220, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.DUSSEHRA, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
+  VIJAYADASHAMI:    { default: { gravity: 0.045, speed: 1.8, maxCount: 220, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.VIJAYADASHAMI, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
 
   LIQUID_SPLASH: {
     default: {
@@ -227,7 +227,6 @@ export default function ParticleEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 🚀 केस-इन्सेंसिटिव नॉर्मलाइज़ेशन (केंद्रीय नियंत्रण)
     const normalizedPreset = (preset || '').toUpperCase().trim();
 
     const activePresetObj = MASTER_PRESET_CONFIGS[normalizedPreset || ''] || { default: DEFAULT };
@@ -272,7 +271,7 @@ export default function ParticleEngine({
 
       const cx = w / 2;
       const cy = h * currentSpawnY; 
-      const spd = currentSpeed * rand(0.4, 1.3); 
+      const spd = currentSpeed * rand(0.8, 1.4); 
       const size = rand(currentMinSize, currentMaxSize); 
       const angle = Math.random() * Math.PI * 2;
 
@@ -286,7 +285,7 @@ export default function ParticleEngine({
           break;
         case 'downward': 
           vx = rand(-0.15, 0.15) * spd; 
-          vy = spd * rand(0.6, 1.2) * config.spread; 
+          vy = spd * rand(0.8, 1.6) * config.spread; 
           break;
         case 'spiral':   
           vx = Math.cos(angle + particles.current.length * 0.4) * spd * config.spread; 
@@ -302,7 +301,7 @@ export default function ParticleEngine({
 
       let baseMaxLife = 110;
       if (currentDirection === 'downward' || currentDirection === 'upward') {
-         baseMaxLife = Math.max(350, Math.floor(h / (currentSpeed * 0.7))); 
+         baseMaxLife = Math.max(300, Math.floor(h / (currentSpeed * 0.9))); 
       }
 
       return {
@@ -357,20 +356,20 @@ export default function ParticleEngine({
         );
         ctx.stroke();
       } 
-      // 🚀 दशहरा / विजयादशमी विज़ुअल अपडेट (Fire Embers & Gold Rain)
+      // 🚀 FIXED: DUSSEHRA CRISP DUAL-TONE MICRO GOLD/FIRE SPARKS (No Big Blobs)
       else if (normalizedPreset === 'DUSSEHRA' || normalizedPreset === 'VIJAYADASHAMI') {
-        const s = renderSize * 1.5;
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = s * 1.8;
+        const s = renderSize;
 
+        // Dark Amber Edge for 3D Contrast on White Cards
+        ctx.fillStyle = '#b8860b';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, s * 1.3, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.globalAlpha = alpha * 0.4;
+        // Bright Gold/Fire Core
+        ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, s * 1.5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, s * 0.8, 0, Math.PI * 2);
         ctx.fill();
       }
       // 🚀 लोहड़ी विज़ुअल अपडेट
