@@ -65,7 +65,7 @@ const PRESET_COLORS: Record<string, string[]> = {
   GANESH_CHATURTHI: ['#fde047', '#facc15', '#fef08a', '#f97316'],
   HANUMAN_JAYANTI: ['#dc2626', '#f97316', '#16a34a', '#fbbf24'], 
   NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
-  DUSSEHRA: ['#FFFDF0', '#FFD700', '#FF9900', '#FF4500', '#D97706'], // 🚀 Dussehra Gold & Fire
+  DUSSEHRA: ['#FFFDF0', '#FFD700', '#FF9900', '#FF4500', '#D97706'], // Gold & Fire
   VIJAYADASHAMI: ['#FFFDF0', '#FFD700', '#FF9900', '#FF4500', '#D97706'],
   REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
   INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807'],
@@ -77,9 +77,9 @@ const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   HANUMAN_JAYANTI:  { default: { gravity: 0.0012, speed: 0.65, maxCount: 130, minSize: 6, maxSize: 12, colors: PRESET_COLORS.HANUMAN_JAYANTI, direction: 'downward' } },
   NAVRATRI:         { default: { gravity: 0.003, speed: 1.0, maxCount: 90, minSize: 5, maxSize: 11, colors: PRESET_COLORS.NAVRATRI, direction: 'downward' } },
   
-  // 🚀 FIXED: DUSSEHRA & VIJAYADASHAMI PRESET (Fast Speed + Micro Crisp Particles)
-  DUSSEHRA:         { default: { gravity: 0.045, speed: 1.8, maxCount: 220, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.DUSSEHRA, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
-  VIJAYADASHAMI:    { default: { gravity: 0.045, speed: 1.8, maxCount: 220, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.VIJAYADASHAMI, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
+  // 🚀 FIXED: DUSSEHRA PRESET (Normal Calm Speed: 0.85)
+  DUSSEHRA:         { default: { gravity: 0.012, speed: 0.85, maxCount: 200, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.DUSSEHRA, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
+  VIJAYADASHAMI:    { default: { gravity: 0.012, speed: 0.85, maxCount: 200, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.VIJAYADASHAMI, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
 
   LIQUID_SPLASH: {
     default: {
@@ -197,6 +197,7 @@ const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
 
 export default function ParticleEngine({ 
   preset, 
+  heroConfig, // 🚀 1. ADDED heroConfig PROP FROM SUPABASE
   phase = 'IDLE',
   customGravity,
   customSpeed,
@@ -206,6 +207,7 @@ export default function ParticleEngine({
   customMaxCount
 }: { 
   preset?: string; 
+  heroConfig?: any; // 🚀 TYPE DEFINED
   phase?: string; 
   customGravity?: number | null;
   customSpeed?: number | null;
@@ -227,19 +229,28 @@ export default function ParticleEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const normalizedPreset = (preset || '').toUpperCase().trim();
+    // Normalize Preset
+    const normalizedPreset = (preset || heroConfig?.engine_preset || heroConfig?.preset || '').toUpperCase().trim();
 
     const activePresetObj = MASTER_PRESET_CONFIGS[normalizedPreset || ''] || { default: DEFAULT };
+
+    // 🚀 2. DYNAMIC SUPABASE DB FALLBACK RESOLUTION
+    const resolvedGravity = customGravity ?? heroConfig?.customGravity ?? activePresetObj.default.gravity;
+    const resolvedSpeed = customSpeed ?? heroConfig?.customSpeed ?? (heroConfig?.speed ? heroConfig.speed / 3.5 : activePresetObj.default.speed);
+    const resolvedColors = customColors || heroConfig?.customColors || activePresetObj.default.colors;
+    const resolvedMinSize = customMinSize ?? heroConfig?.customMinSize ?? activePresetObj.default.minSize;
+    const resolvedMaxSize = customMaxSize ?? heroConfig?.customMaxSize ?? activePresetObj.default.maxSize;
+    const resolvedMaxCount = customMaxCount ?? heroConfig?.customMaxCount ?? activePresetObj.default.maxCount;
 
     const config: EngineConfig = { 
       ...DEFAULT, 
       ...activePresetObj.default,
-      ...(customGravity !== null && customGravity !== undefined && { gravity: customGravity }),
-      ...(customSpeed !== null && customSpeed !== undefined && { speed: customSpeed }),
-      ...(customColors !== null && customColors !== undefined && { colors: customColors }),
-      ...(customMinSize !== null && customMinSize !== undefined && { minSize: customMinSize }),
-      ...(customMaxSize !== null && customMaxSize !== undefined && { maxSize: customMaxSize }),
-      ...(customMaxCount !== null && customMaxCount !== undefined && { maxCount: customMaxCount }),
+      ...(resolvedGravity !== null && resolvedGravity !== undefined && { gravity: resolvedGravity }),
+      ...(resolvedSpeed !== null && resolvedSpeed !== undefined && { speed: resolvedSpeed }),
+      ...(resolvedColors !== null && resolvedColors !== undefined && { colors: resolvedColors }),
+      ...(resolvedMinSize !== null && resolvedMinSize !== undefined && { minSize: resolvedMinSize }),
+      ...(resolvedMaxSize !== null && resolvedMaxSize !== undefined && { maxSize: resolvedMaxSize }),
+      ...(resolvedMaxCount !== null && resolvedMaxCount !== undefined && { maxCount: resolvedMaxCount }),
     };
 
     let w = 0;
@@ -271,7 +282,7 @@ export default function ParticleEngine({
 
       const cx = w / 2;
       const cy = h * currentSpawnY; 
-      const spd = currentSpeed * rand(0.8, 1.4); 
+      const spd = currentSpeed * rand(0.5, 1.1); // 🚀 Smooth speed
       const size = rand(currentMinSize, currentMaxSize); 
       const angle = Math.random() * Math.PI * 2;
 
@@ -356,7 +367,7 @@ export default function ParticleEngine({
         );
         ctx.stroke();
       } 
-      // 🚀 FIXED: DUSSEHRA CRISP DUAL-TONE MICRO GOLD/FIRE SPARKS (No Big Blobs)
+      // 🚀 DUSSEHRA CRISP DUAL-TONE MICRO GOLD/FIRE SPARKS
       else if (normalizedPreset === 'DUSSEHRA' || normalizedPreset === 'VIJAYADASHAMI') {
         const s = renderSize;
 
@@ -488,11 +499,11 @@ export default function ParticleEngine({
 
     return () => {
       cancelAnimationFrame(rafId.current);
-      window.removeEventListener('resize', setSize);
+      window.removeEventListener('resize", setSize);
       particles.current = [];
     };
     
-  }, [preset, phase, customGravity, customSpeed, customColors, customMinSize, customMaxSize, customMaxCount]);
+  }, [preset, heroConfig, phase, customGravity, customSpeed, customColors, customMinSize, customMaxSize, customMaxCount]);
 
   return (
     <canvas
