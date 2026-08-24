@@ -11,8 +11,7 @@ interface Props {
 export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
   const userScale = scale ?? heroConfig?.scale ?? 1.15;
 
-  // 🚫 Unsplash वाला डिफ़ॉल्ट लिंक हटा दिया गया है। 
-  // अब यह सिर्फ तब इमेज दिखाएगा जब आप Supabase से कोई असली इमेज URL भेजेंगे।
+  // यह सिर्फ तब इमेज दिखाएगा जब आप Supabase से कोई असली इमेज URL भेजेंगे।
   const rawUrl = imageUrl || heroConfig?.image_url;
   const posterUrl = rawUrl && typeof rawUrl === 'string' && rawUrl.trim().length > 5 ? rawUrl.trim() : null;
 
@@ -25,12 +24,12 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
     >
       {/* 🔥 DYNAMIC CINEMATIC FIRE & GOLD AURA */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-radial from-amber-500/20 via-orange-500/10 to-transparent rounded-full blur-3xl animate-aura-pulse" />
-        <div className="absolute inset-12 bg-gradient-radial from-red-500/15 to-transparent rounded-full blur-2xl animate-aura-pulse-2" />
+        <div className="absolute inset-0 bg-gradient-radial from-amber-500/30 via-red-500/10 to-transparent rounded-full blur-3xl animate-aura-pulse" />
+        <div className="absolute inset-16 bg-gradient-radial from-orange-500/20 to-transparent rounded-full blur-2xl animate-aura-pulse-2" />
       </div>
 
       {posterUrl && !imgError ? (
-        /* 🖼️ 2027 CINEMATIC POSTER FRAME (सिर्फ तब दिखेगा जब आपकी अपनी इमेज होगी) */
+        /* 🖼️ CINEMATIC POSTER FRAME (सिर्फ तब दिखेगा जब आपकी अपनी इमेज होगी) */
         <div className="relative z-20 w-full max-w-[270px] aspect-[3/4] rounded-2xl overflow-hidden border-2 border-amber-500/50 shadow-[0_15px_55px_rgba(239,68,68,0.45)] transition-transform duration-500 hover:scale-[1.02] animate-float-y">
           <img 
             src={posterUrl} 
@@ -42,21 +41,20 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
           <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.6)] pointer-events-none" />
         </div>
       ) : (
-        /* 🏹 DEFAULT: 2027 ULTRA-REALISTIC 3D GOLDEN BOW & BLAZING ARROW */
-        <div className="relative z-10 w-full max-w-[300px] sm:max-w-[360px] flex items-center justify-center filter drop-shadow-[0_15px_45px_rgba(255,140,0,0.75)]">
-          <svg viewBox="0 0 240 220" className="w-full h-auto overflow-visible">
+        /* 🏹 DIVINE ARCHER SCENE: LORD RAM'S BOW & 10-HEADED RAVAN */
+        <div className="relative z-10 w-full max-w-[300px] sm:max-w-[340px] flex items-center justify-center filter drop-shadow-[0_15px_45px_rgba(255,140,0,0.75)]">
+          <svg viewBox="0 0 320 320" className="w-full h-auto overflow-visible">
             <defs>
-              {/* 24K Gold Metallic 3D Gradient */}
-              <linearGradient id="goldMetal2027" x1="0%" y1="0%" x2="100%" y2="100%">
+              {/* 1. 24K Gold Metallic 3D Gradient */}
+              <linearGradient id="goldDivine2027" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#FFFDF0" />
                 <stop offset="30%" stopColor="#FFD700" />
                 <stop offset="60%" stopColor="#B8860B" />
-                <stop offset="80%" stopColor="#FFD700" />
                 <stop offset="100%" stopColor="#3B2700" />
               </linearGradient>
 
-              {/* Realistic Magical Fire Gradient */}
-              <radialGradient id="fireCore2027" cx="50%" cy="50%" r="50%">
+              {/* 2. Realistic Magical Fire Gradient */}
+              <radialGradient id="fireArrowCore2027" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#FFFFFF" />
                 <stop offset="25%" stopColor="#FFEE55" />
                 <stop offset="55%" stopColor="#FF8C00" />
@@ -64,8 +62,14 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
                 <stop offset="100%" stopColor="rgba(204, 0, 0, 0)" />
               </radialGradient>
 
-              {/* Advanced Cinematic Glow Filter */}
-              <filter id="ultraDussehraGlow" x="-50%" y="-50%" width="200%" height="200%">
+              {/* 3. Dark Silhouette Gradient */}
+              <linearGradient id="silhouetteGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#1a0500" />
+                <stop offset="100%" stopColor="#000000" />
+              </linearGradient>
+
+              {/* 4. Advanced Cinematic Glow Filter */}
+              <filter id="ultraGlow2027" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="4" result="blur"/>
                 <feMerge>
                   <feMergeNode in="blur"/>
@@ -75,73 +79,94 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
               </filter>
             </defs>
 
-            {/* 🛡️ FUTURISTIC GEOMETRIC MANDALA (Background Halo) */}
-            <g style={{ transformOrigin: '120px 105px', animation: 'spin-slow 40s linear infinite' }}>
-              <circle cx="120" cy="105" r="85" fill="none" stroke="url(#goldMetal2027)" strokeWidth="1.5" opacity="0.3" strokeDasharray="8 4" />
-              <circle cx="120" cy="105" r="70" fill="none" stroke="url(#goldMetal2027)" strokeWidth="2" opacity="0.5" strokeDasharray="4 8" />
-              {[...Array(8)].map((_, i) => {
-                const angle = (i / 8) * Math.PI * 2;
-                const x1 = 120 + Math.cos(angle) * 60;
-                const y1 = 105 + Math.sin(angle) * 60;
-                const x2 = 120 + Math.cos(angle) * 85;
-                const y2 = 105 + Math.sin(angle) * 85;
-                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="url(#goldMetal2027)" strokeWidth="1" opacity="0.4" />;
-              })}
+            {/* 🏹 1. LORD RAM'S SILHOUETTE & DIVINE BOW (Diagonal Stance) */}
+            <g transform="rotate(-15 160 160)">
+              
+              {/* A. Lord Ram's Silhouette (Archer Stance) */}
+              <g fill="url(#silhouetteGrad)">
+                {/* Head & Crown */}
+                <circle cx="110" cy="120" r="12" />
+                <path d="M 100 110 L 110 100 L 120 110 Z" fill="#FFD700" opacity="0.8" /> 
+                {/* Torso & Legs */}
+                <path d="M 110 132 L 120 180 L 110 240 L 125 240 L 130 180 L 140 130 Z" />
+                <path d="M 110 132 L 95 180 L 80 240 L 95 240 L 110 180 Z" />
+                {/* Arms pulling string */}
+                <path d="M 110 135 L 140 150 L 140 160 L 105 145 Z" />
+              </g>
+
+              {/* B. 3D Golden Bow Arc (Pulled Back) */}
+              <g filter="url(#ultraGlow2027)">
+                <path d="M 105 40 C 40 40 40 280 105 280" fill="none" stroke="url(#goldDivine2027)" strokeWidth="14" strokeLinecap="round" />
+                {/* 3D Highlight on Bow */}
+                <path d="M 100 50 C 50 50 50 270 100 270" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="3" strokeLinecap="round" />
+                
+                {/* Bow String (Taut) */}
+                <path d="M 105 40 Q 55 160 105 280" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" />
+              </g>
+
+              {/* C. BLAZING FIRE ARROW (Pointing towards Ravan) */}
+              <g filter="url(#ultraGlow2027)">
+                {/* Arrow Shaft */}
+                <line x1="55" y1="160" x2="250" y2="160" stroke="url(#goldDivine2027)" strokeWidth="6" strokeLinecap="round" />
+                {/* 3D Shaft Highlight */}
+                <line x1="56" y1="158" x2="249" y2="158" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+
+                {/* Arrowhead (Agnibaana) */}
+                <polygon points="250,160 225,145 235,160 225,175" fill="url(#goldDivine2027)" />
+                <polygon points="250,160 228,150 235,160" fill="rgba(255,255,255,0.9)" />
+
+                {/* Arrow Feathers */}
+                <polygon points="55,160 35,145 45,160 35,175" fill="#D4AF37" />
+                <polygon points="55,160 40,155 45,160" fill="#FFD700" />
+
+                {/* D. MAGICAL FIRE AURA AT ARROWHEAD */}
+                <circle cx="250" cy="160" r="25" fill="url(#fireArrowCore2027)" className="animate-fire-flicker" style={{ transformOrigin: '250px 160px' }} />
+                <path 
+                  d="M 250 140 C 240 150, 240 170, 250 180 C 260 170, 260 150, 250 140 Z" 
+                  fill="#FFFFFF" 
+                  className="animate-fire-flicker-2"
+                  style={{ transformOrigin: '250px 160px' }}
+                />
+              </g>
             </g>
 
-            {/* 🏹 3D SYMMETRICAL GOLDEN BOW & ARROW (Floating Animation) */}
-            <g style={{ transformOrigin: '120px 105px', animation: 'float-y 4s ease-in-out infinite' }} filter="url(#ultraDussehraGlow)">
-              {/* 1. CURVED GOLDEN BOW ARC (3D Thickness) */}
-              <path d="M 35 105 Q 120 195 205 105" fill="none" stroke="url(#goldMetal2027)" strokeWidth="14" strokeLinecap="round" />
-              {/* 3D Highlight on Bow */}
-              <path d="M 38 98 Q 120 188 202 98" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="3" strokeLinecap="round" />
-
-              {/* Bow String */}
-              <path d="M 35 105 Q 120 140 205 105" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
-
-              {/* 2. BLAZING FIRE ARROW */}
-              {/* Arrow Shaft */}
-              <line x1="120" y1="165" x2="120" y2="50" stroke="url(#goldMetal2027)" strokeWidth="5" strokeLinecap="round" />
-              <line x1="121" y1="165" x2="121" y2="50" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
-
-              {/* Arrowhead */}
-              <polygon points="120,25 110,55 120,45 130,55" fill="url(#goldMetal2027)" />
-              <polygon points="120,25 114,48 126,48" fill="rgba(255,255,255,0.9)" />
-
-              {/* Arrow Feathers */}
-              <polygon points="120,165 108,185 120,178 132,185" fill="#D4AF37" />
-              <polygon points="120,165 114,180 126,180" fill="#FFD700" />
-
-              {/* 3. MAGICAL FIRE AURA AT ARROWHEAD */}
-              <path 
-                d="M 120 20 C 110 35, 105 50, 120 60 C 135 50, 130 35, 120 20 Z" 
-                fill="url(#fireCore2027)" 
-                className="animate-fire-flicker" 
-                style={{ transformOrigin: '120px 40px' }}
-              />
-              <path 
-                d="M 120 30 C 115 40, 115 50, 120 55 C 125 50, 125 40, 120 30 Z" 
-                fill="#FFFFFF" 
-                className="animate-fire-flicker-2"
-                style={{ transformOrigin: '120px 40px' }}
-              />
+            {/* 👹 2. 10-HEADED RAVAN SILHOUETTE (Distant Target) */}
+            <g transform="translate(265, 130)" opacity="0.8">
+              {/* 10 Heads Cluster */}
+              <circle cx="0" cy="0" r="6" fill="url(#silhouetteGrad)" />
+              <circle cx="-8" cy="-2" r="5" fill="url(#silhouetteGrad)" />
+              <circle cx="8" cy="-2" r="5" fill="url(#silhouetteGrad)" />
+              <circle cx="-14" cy="5" r="4.5" fill="url(#silhouetteGrad)" />
+              <circle cx="14" cy="5" r="4.5" fill="url(#silhouetteGrad)" />
+              <circle cx="-5" cy="-10" r="4.5" fill="url(#silhouetteGrad)" />
+              <circle cx="5" cy="-10" r="4.5" fill="url(#silhouetteGrad)" />
+              <circle cx="-12" cy="12" r="4" fill="url(#silhouetteGrad)" />
+              <circle cx="12" cy="12" r="4" fill="url(#silhouetteGrad)" />
+              <circle cx="0" cy="-15" r="4" fill="url(#silhouetteGrad)" />
+              
+              {/* Ravan Body */}
+              <path d="M -15 10 L 15 10 L 25 60 L -25 60 Z" fill="url(#silhouetteGrad)" />
+              
+              {/* Small Flames on Ravan */}
+              <path d="M -5 -20 C -8 -15, -8 -10, -5 -5 C -2 -10, -2 -15, -5 -20 Z" fill="#FF4500" className="animate-fire-flicker" />
+              <path d="M 5 -20 C 2 -15, 2 -10, 5 -5 C 8 -10, 8 -15, 5 -20 Z" fill="#FF8C00" className="animate-fire-flicker-2" />
             </g>
 
             {/* ✨ FLOATING EMBERS & SPARKS */}
             <g className="animate-spark-rise">
-              <circle cx="90" cy="80" r="2.5" fill="#FFD700" />
-              <circle cx="150" cy="90" r="2" fill="#FF8C00" style={{ animationDelay: '1s' }} />
-              <circle cx="110" cy="60" r="1.5" fill="#FFFFFF" style={{ animationDelay: '2s' }} />
-              <circle cx="140" cy="70" r="3" fill="#FF4500" style={{ animationDelay: '0.5s' }} />
-              <circle cx="80" cy="110" r="2" fill="#FFD700" style={{ animationDelay: '1.5s' }} />
+              <circle cx="90" cy="220" r="2.5" fill="#FFD700" />
+              <circle cx="150" cy="240" r="2" fill="#FF8C00" style={{ animationDelay: '1s' }} />
+              <circle cx="110" cy="200" r="1.5" fill="#FFFFFF" style={{ animationDelay: '2s' }} />
+              <circle cx="140" cy="260" r="3" fill="#FF4500" style={{ animationDelay: '0.5s' }} />
+              <circle cx="80" cy="250" r="2" fill="#FFD700" style={{ animationDelay: '1.5s' }} />
             </g>
 
             {/* 📜 SANSKRIT VICTORY TEXT */}
             <text
-              x="120"
-              y="215"
+              x="160"
+              y="305"
               textAnchor="middle"
-              fill="url(#goldMetal2027)"
+              fill="url(#goldDivine2027)"
               fontSize="16"
               fontWeight="900"
               fontFamily="'Tiro Devanagari Hindi', serif"
@@ -158,10 +183,6 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
         @keyframes float-y {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
-        }
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
         }
         @keyframes aura-pulse {
           0%, 100% { opacity: 0.4; transform: scale(1); }
