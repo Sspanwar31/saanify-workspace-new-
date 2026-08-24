@@ -11,9 +11,10 @@ interface Props {
 export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
   const userScale = scale ?? heroConfig?.scale ?? 1.15;
 
-  // 🏆 4K HIGH-RES DUSSEHRA ARTWORK (Lord Rama + 10-Headed Ravan + Fireworks)
+  // 🚫 Unsplash वाला डिफ़ॉल्ट लिंक हटा दिया गया है। 
+  // अब यह सिर्फ तब इमेज दिखाएगा जब आप Supabase से कोई असली इमेज URL भेजेंगे।
   const rawUrl = imageUrl || heroConfig?.image_url;
-  const posterUrl = rawUrl && typeof rawUrl === 'string' && rawUrl.trim().length > 5 ? rawUrl.trim() : 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?q=80&w=1000&auto=format&fit=crop';
+  const posterUrl = rawUrl && typeof rawUrl === 'string' && rawUrl.trim().length > 5 ? rawUrl.trim() : null;
 
   const [imgError, setImgError] = useState(false);
 
@@ -29,7 +30,7 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
       </div>
 
       {posterUrl && !imgError ? (
-        /* 🖼️ 2027 CINEMATIC POSTER FRAME (If Image Loads) */
+        /* 🖼️ 2027 CINEMATIC POSTER FRAME (सिर्फ तब दिखेगा जब आपकी अपनी इमेज होगी) */
         <div className="relative z-20 w-full max-w-[270px] aspect-[3/4] rounded-2xl overflow-hidden border-2 border-amber-500/50 shadow-[0_15px_55px_rgba(239,68,68,0.45)] transition-transform duration-500 hover:scale-[1.02] animate-float-y">
           <img 
             src={posterUrl} 
@@ -37,15 +38,15 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
             onError={() => setImgError(true)}
             className="w-full h-full object-cover" 
           />
-          {/* Cinematic Inner Lighting & Vignette */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
           <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.6)] pointer-events-none" />
         </div>
       ) : (
-        /* 🏹 FALLBACK: 2027 ULTRA-REALISTIC 3D GOLDEN BOW & BLAZING ARROW */
+        /* 🏹 DEFAULT: 2027 ULTRA-REALISTIC 3D GOLDEN BOW & BLAZING ARROW */
         <div className="relative z-10 w-full max-w-[300px] sm:max-w-[360px] flex items-center justify-center filter drop-shadow-[0_15px_45px_rgba(255,140,0,0.75)]">
           <svg viewBox="0 0 240 220" className="w-full h-auto overflow-visible">
             <defs>
+              {/* 24K Gold Metallic 3D Gradient */}
               <linearGradient id="goldMetal2027" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#FFFDF0" />
                 <stop offset="30%" stopColor="#FFD700" />
@@ -53,6 +54,8 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
                 <stop offset="80%" stopColor="#FFD700" />
                 <stop offset="100%" stopColor="#3B2700" />
               </linearGradient>
+
+              {/* Realistic Magical Fire Gradient */}
               <radialGradient id="fireCore2027" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#FFFFFF" />
                 <stop offset="25%" stopColor="#FFEE55" />
@@ -60,6 +63,8 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
                 <stop offset="85%" stopColor="#FF4500" />
                 <stop offset="100%" stopColor="rgba(204, 0, 0, 0)" />
               </radialGradient>
+
+              {/* Advanced Cinematic Glow Filter */}
               <filter id="ultraDussehraGlow" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="4" result="blur"/>
                 <feMerge>
@@ -70,7 +75,7 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
               </filter>
             </defs>
 
-            {/* 🛡️ FUTURISTIC GEOMETRIC MANDALA */}
+            {/* 🛡️ FUTURISTIC GEOMETRIC MANDALA (Background Halo) */}
             <g style={{ transformOrigin: '120px 105px', animation: 'spin-slow 40s linear infinite' }}>
               <circle cx="120" cy="105" r="85" fill="none" stroke="url(#goldMetal2027)" strokeWidth="1.5" opacity="0.3" strokeDasharray="8 4" />
               <circle cx="120" cy="105" r="70" fill="none" stroke="url(#goldMetal2027)" strokeWidth="2" opacity="0.5" strokeDasharray="4 8" />
@@ -84,19 +89,30 @@ export default function DussehraHero({ heroConfig, scale, imageUrl }: Props) {
               })}
             </g>
 
-            {/* 🏹 3D SYMMETRICAL GOLDEN BOW & ARROW */}
+            {/* 🏹 3D SYMMETRICAL GOLDEN BOW & ARROW (Floating Animation) */}
             <g style={{ transformOrigin: '120px 105px', animation: 'float-y 4s ease-in-out infinite' }} filter="url(#ultraDussehraGlow)">
+              {/* 1. CURVED GOLDEN BOW ARC (3D Thickness) */}
               <path d="M 35 105 Q 120 195 205 105" fill="none" stroke="url(#goldMetal2027)" strokeWidth="14" strokeLinecap="round" />
+              {/* 3D Highlight on Bow */}
               <path d="M 38 98 Q 120 188 202 98" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="3" strokeLinecap="round" />
+
+              {/* Bow String */}
               <path d="M 35 105 Q 120 140 205 105" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2" />
+
+              {/* 2. BLAZING FIRE ARROW */}
+              {/* Arrow Shaft */}
               <line x1="120" y1="165" x2="120" y2="50" stroke="url(#goldMetal2027)" strokeWidth="5" strokeLinecap="round" />
               <line x1="121" y1="165" x2="121" y2="50" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+
+              {/* Arrowhead */}
               <polygon points="120,25 110,55 120,45 130,55" fill="url(#goldMetal2027)" />
               <polygon points="120,25 114,48 126,48" fill="rgba(255,255,255,0.9)" />
+
+              {/* Arrow Feathers */}
               <polygon points="120,165 108,185 120,178 132,185" fill="#D4AF37" />
               <polygon points="120,165 114,180 126,180" fill="#FFD700" />
 
-              {/* MAGICAL FIRE AURA AT ARROWHEAD */}
+              {/* 3. MAGICAL FIRE AURA AT ARROWHEAD */}
               <path 
                 d="M 120 20 C 110 35, 105 50, 120 60 C 135 50, 130 35, 120 20 Z" 
                 fill="url(#fireCore2027)" 
