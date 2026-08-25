@@ -25,6 +25,7 @@ import SunHero from '../heroes/SunHero';
 import KarwaChauthHero from '../heroes/KarwaChauthHero';
 import SikhHero from '../heroes/SikhHero';
 import DussehraHero from '../heroes/DussehraHero';
+import Valentine from '../heroes/Valentine';
 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
@@ -60,7 +61,7 @@ const ComponentMap: any = {
   'NY_COUNTDOWN':  <Crystal2027Hero />, // 🚀 अब घड़ी की जगह हमारा खुद का 3D क्रिस्टल 2027 रेंडर होगा!
   'NATIONAL_PRIDE': <IndependenceDayGreeting />,
   'SIKH_KHANDA': <SikhHero />, // 🚀 एक्टिवेशन कीज़: वैलेंटाइन और ग्लास हार्ट के लिए
-  'VALENTINE_HEART': <GlassmorphicHeartHero onOpenLetter={() => {}} />,
+  'VALENTINE_HEART': <Valentine />,
   'HEART_COUPLE': <GlassmorphicHeartHero onOpenLetter={() => {}} />,  
  MEGAPHONE: <span className="text-[110px]">📢</span>,
   SIREN: <span className="text-[110px]">🚨</span>,
