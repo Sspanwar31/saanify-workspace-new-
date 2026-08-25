@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 
-// 🚀 Particle Type Definition (Fixes TypeScript Build Errors)
+// Strict TypeScript Interface for Build Safety
 interface Particle {
   x: number;
   y: number;
@@ -16,36 +16,37 @@ interface Particle {
 }
 
 export default function ValentineVisual() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // 🚀 CANVAS PARTICLE ENGINE (Floating Petals & Magical Sparks)
   useEffect(() => {
-    // Check for window/browser environment (Prevents SSR errors)
-    if (typeof window === 'undefined') return;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let W = (canvas.width = canvas.parentElement?.clientWidth || 300);
-    let H = (canvas.height = canvas.parentElement?.clientHeight || 256);
-    let animationId: number;
+    let W = 0;
+    let H = 0;
+    let animationId = 0;
+
+    const resize = () => {
+      if (typeof window === 'undefined') return;
+      W = canvas.width = canvas.offsetWidth;
+      H = canvas.height = canvas.offsetHeight;
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
 
     const particles: Particle[] = [];
 
-    const resize = () => {
-      if (!canvas) return;
-      W = canvas.width = canvas.parentElement?.clientWidth || 300;
-      H = canvas.height = canvas.parentElement?.clientHeight || 256;
-    };
-    window.addEventListener('resize', resize);
-
-    // Initialize Particles
-    for (let i = 0; i < 25; i++) {
+    // Create Petals & Sparks
+    for (let i = 0; i < 30; i++) {
       particles.push({
         x: Math.random() * W,
-        y: Math.random() * H + H,
-        size: Math.random() * 4 + 1,
+        y: Math.random() * H + H, // Start from bottom
+        size: Math.random() * 5 + 2,
         speedY: Math.random() * 0.8 + 0.3,
         speedX: Math.random() * 0.4 - 0.2,
         alpha: Math.random() * 0.6 + 0.2,
@@ -56,16 +57,17 @@ export default function ValentineVisual() {
     }
 
     const drawPetal = (p: Particle) => {
+      if (!ctx) return;
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation);
       ctx.globalAlpha = p.alpha;
-
+      
       const grad = ctx.createLinearGradient(0, -p.size * 2, 0, p.size * 2);
       grad.addColorStop(0, '#ff4d8d');
       grad.addColorStop(1, '#c40e4e');
       ctx.fillStyle = grad;
-
+      
       ctx.beginPath();
       ctx.moveTo(0, -p.size * 2);
       ctx.bezierCurveTo(p.size * 1.5, -p.size, p.size * 1.5, p.size, 0, p.size * 2);
@@ -75,9 +77,10 @@ export default function ValentineVisual() {
     };
 
     const drawSpark = (p: Particle) => {
+      if (!ctx) return;
       ctx.save();
       ctx.globalAlpha = p.alpha;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 15;
       ctx.shadowColor = '#ff0080';
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
@@ -87,6 +90,7 @@ export default function ValentineVisual() {
     };
 
     const animate = () => {
+      if (!ctx) return;
       ctx.clearRect(0, 0, W, H);
 
       particles.forEach((p) => {
@@ -110,88 +114,100 @@ export default function ValentineVisual() {
 
     return () => {
       cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resize);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', resize);
+      }
     };
   }, []);
 
   return (
-    <div className="relative flex items-center justify-center w-full h-64 my-1 select-none overflow-hidden rounded-2xl">
+    <div className="relative flex items-center justify-center w-full h-72 my-1 select-none overflow-hidden">
       
-      {/* 🌌 1. CINEMATIC DEEP NEBULA BACKGROUND */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#1a0111] via-[#0a0a0a] to-[#000000] z-0" />
+      {/* 🎆 CANVAS PARTICLE LAYER (Petals & Sparks flying behind the heart) */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
 
-      {/* 🎆 2. CANVAS PARTICLE LAYER */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10 pointer-events-none" />
-
-      {/* 🪐 3. FUTURISTIC HOLOGRAPHIC ORBITING RINGS */}
-      <div
-        className="absolute z-20 w-52 h-52 rounded-full border border-pink-500/10 animate-[spin_25s_linear_infinite]"
-        style={{ boxShadow: '0 0 30px rgba(244, 63, 94, 0.15) inset' }}
-      />
-
-      <div className="absolute z-20 w-40 h-40 rounded-full border border-rose-500/20 animate-[spin_15s_linear_infinite_reverse] flex items-start justify-center">
-        <div className="w-2.5 h-2.5 bg-rose-500 rounded-full shadow-[0_0_12px_#f43f5e] -translate-y-1" />
-      </div>
-
-      {/* 💎 4. LIQUID GLASS POD & HEART */}
-      <div className="relative z-30 flex items-center justify-center">
+      {/* 💎 LARGE TRANSPARENT 3D LIQUID GLASS HEART */}
+      <div className="relative z-20 flex items-center justify-center w-full h-full">
         
-        {/* Ripple Waves */}
-        <div className="absolute w-28 h-28 rounded-full border border-pink-400/30 animate-ping opacity-30" style={{ animationDuration: '2.5s' }} />
-        <div className="absolute w-24 h-24 rounded-full border border-rose-500/20 animate-ping opacity-20" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
+        {/* Ambient Pink Glow Behind Heart */}
+        <div className="absolute w-48 h-48 bg-rose-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute w-32 h-32 bg-pink-400/30 rounded-full blur-2xl"></div>
 
-        {/* Liquid Glass Container */}
-        <div className="relative flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-b from-white/[0.08] to-pink-500/[0.02] backdrop-blur-xl border border-white/10 shadow-[0_10px_35px_0_rgba(244,63,94,0.35),inset_0_0_15px_rgba(255,255,255,0.05)]">
+        {/* Massive 3D Holographic Heart SVG */}
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          viewBox="0 0 24 24" 
+          className="w-48 h-48 relative z-20 drop-shadow-[0_0_40px_rgba(244,63,94,0.6)] animate-[heartbeat_1.2s_ease-in-out_infinite]"
+        >
+          <defs>
+            {/* Transparent Glass & Pink Neon Gradient */}
+            <linearGradient id="glassHeart2027" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255, 255, 255, 0.2)" />
+              <stop offset="30%" stopColor="rgba(244, 63, 94, 0.15)" />
+              <stop offset="70%" stopColor="rgba(190, 18, 60, 0.2)" />
+              <stop offset="100%" stopColor="rgba(255, 0, 122, 0.3)" />
+            </linearGradient>
+
+            {/* Neon Stroke Gradient */}
+            <linearGradient id="neonStroke2027" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="40%" stopColor="#ff5e88" />
+              <stop offset="80%" stopColor="#ff007a" />
+              <stop offset="100%" stopColor="#be123c" />
+            </linearGradient>
+
+            {/* Ultra Glow Filter */}
+            <filter id="ultraHeartGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#f43f5e" floodOpacity="0.9"/>
+              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#ff007a" floodOpacity="0.7"/>
+            </filter>
+          </defs>
+
+          {/* Transparent Glass Heart Body with Neon Edges */}
+          <path 
+            fill="url(#glassHeart2027)" 
+            stroke="url(#neonStroke2027)" 
+            strokeWidth="1.5" 
+            filter="url(#ultraHeartGlow)"
+            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+          />
           
-          {/* Inner Glow */}
-          <div className="absolute w-16 h-16 bg-rose-600/30 rounded-full blur-xl animate-pulse" />
+          {/* 3D Top Gloss Reflection (Light Refraction on Glass) */}
+          <path 
+            d="M7.5 5C5.5 5 4 6.5 4 8.5c0 1 .5 2 1.5 3" 
+            stroke="rgba(255,255,255,0.9)" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            fill="none" 
+          />
+          
+          {/* Bottom Inner Glass Reflection */}
+          <path 
+            d="M14 16 C 16 14, 18 12, 19 10" 
+            stroke="rgba(255, 94, 136, 0.4)" 
+            strokeWidth="1.5" 
+            strokeLinecap="round" 
+            fill="none" 
+          />
 
-          {/* 3D SVG Heart */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            className="w-14 h-14 relative z-20 animate-[heartbeat_1.5s_ease-in-out_infinite]"
-          >
-            <defs>
-              <linearGradient id="heartGradientVercel" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#ff5e88" />
-                <stop offset="40%" stopColor="#f43f5e" />
-                <stop offset="80%" stopColor="#be123c" />
-                <stop offset="100%" stopColor="#881337" />
-              </linearGradient>
-
-              <filter id="ultraHeartGlowVercel" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#f43f5e" floodOpacity="0.8" />
-              </filter>
-            </defs>
-
-            <path
-              fill="url(#heartGradientVercel)"
-              filter="url(#ultraHeartGlowVercel)"
-              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-            />
-            <path
-              d="M7.5 5C5.5 5 4 6.5 4 8.5c0 1 .5 2 1.5 3"
-              stroke="rgba(255,255,255,0.7)"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              fill="none"
-            />
-            <circle cx="8" cy="7" r="0.8" fill="rgba(255,255,255,0.9)" />
-          </svg>
-        </div>
+          {/* Highlight Dots for 3D Shine */}
+          <circle cx="8" cy="7" r="1.5" fill="rgba(255,255,255,0.8)" />
+          <circle cx="17" cy="9" r="0.8" fill="rgba(255,255,255,0.5)" />
+        </svg>
       </div>
 
-      {/* 🚀 5. HEARTBEAT CSS ANIMATION */}
-      <style jsx>{`
+      {/* 🚀 ORGANIC SMOOTH HEARTBEAT ANIMATION */}
+      <style jsx global>{`
         @keyframes heartbeat {
           0%, 100% { transform: scale(1); }
-          12% { transform: scale(1.15); }
-          24% { transform: scale(1); }
-          36% { transform: scale(1.2); }
-          55% { transform: scale(1); }
+          10% { transform: scale(1.15); }
+          20% { transform: scale(1); }
+          30% { transform: scale(1.25); }
+          50% { transform: scale(1); }
+          100% { transform: scale(1); }
         }
       `}</style>
+
     </div>
   );
 }
