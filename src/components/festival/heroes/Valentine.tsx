@@ -3,122 +3,145 @@
 import React from 'react';
 
 export default function ValentineVisual() {
+  const hearts = [
+    { x: 8, y: 25, size: 8, delay: '0s', duration: '6s', opacity: 0.45 },
+    { x: 14, y: 62, size: 6, delay: '1.5s', duration: '7s', opacity: 0.55 },
+    { x: 21, y: 38, size: 5, delay: '2.2s', duration: '6.5s', opacity: 0.4 },
+    { x: 27, y: 17, size: 7, delay: '0.8s', duration: '7.5s', opacity: 0.5 },
+    { x: 31, y: 72, size: 5, delay: '3s', duration: '6.2s', opacity: 0.45 },
+
+    { x: 68, y: 20, size: 6, delay: '1.1s', duration: '6.8s', opacity: 0.5 },
+    { x: 74, y: 70, size: 7, delay: '2.4s', duration: '7.2s', opacity: 0.45 },
+    { x: 81, y: 39, size: 5, delay: '0.4s', duration: '6.4s', opacity: 0.55 },
+    { x: 88, y: 62, size: 8, delay: '1.9s', duration: '7.8s', opacity: 0.4 },
+    { x: 93, y: 27, size: 5, delay: '2.7s', duration: '6.6s', opacity: 0.5 },
+
+    { x: 38, y: 13, size: 4, delay: '1.4s', duration: '5.8s', opacity: 0.35 },
+    { x: 62, y: 84, size: 5, delay: '2.1s', duration: '6.9s', opacity: 0.4 },
+  ];
+
   const particles = [
-    { x: 14, y: 34, s: 7, d: '0s', dur: '5.8s', o: 0.65 },
-    { x: 22, y: 18, s: 5, d: '1.2s', dur: '6.5s', o: 0.5 },
-    { x: 29, y: 72, s: 6, d: '2.1s', dur: '5.2s', o: 0.7 },
-    { x: 36, y: 24, s: 4, d: '0.8s', dur: '6.8s', o: 0.45 },
-    { x: 42, y: 82, s: 5, d: '2.8s', dur: '5.7s', o: 0.55 },
-    { x: 49, y: 14, s: 6, d: '1.7s', dur: '6.2s', o: 0.6 },
-    { x: 56, y: 80, s: 4, d: '0.4s', dur: '5.4s', o: 0.5 },
-    { x: 63, y: 20, s: 5, d: '2.3s', dur: '6.7s', o: 0.65 },
-    { x: 70, y: 74, s: 7, d: '1.1s', dur: '5.9s', o: 0.55 },
-    { x: 77, y: 30, s: 4, d: '2.7s', dur: '6.3s', o: 0.5 },
-    { x: 84, y: 62, s: 6, d: '0.9s', dur: '5.6s', o: 0.65 },
-    { x: 90, y: 40, s: 5, d: '2.0s', dur: '6.1s', o: 0.45 },
+    { x: 10, y: 45, size: 2 },
+    { x: 17, y: 18, size: 2 },
+    { x: 25, y: 81, size: 1.5 },
+    { x: 34, y: 27, size: 2 },
+    { x: 42, y: 12, size: 1.5 },
+    { x: 58, y: 15, size: 2 },
+    { x: 66, y: 31, size: 1.5 },
+    { x: 76, y: 84, size: 2 },
+    { x: 86, y: 18, size: 1.5 },
+    { x: 92, y: 47, size: 2 },
+    { x: 82, y: 77, size: 1.5 },
+    { x: 19, y: 78, size: 2 },
   ];
 
   const petals = [
-    { x: 16, y: 63, r: -25, s: 0.72, d: '0s', dur: '8s' },
-    { x: 27, y: 31, r: 35, s: 0.55, d: '2s', dur: '9s' },
-    { x: 73, y: 29, r: -40, s: 0.6, d: '1s', dur: '8.5s' },
-    { x: 84, y: 65, r: 28, s: 0.72, d: '3s', dur: '9.5s' },
-    { x: 12, y: 23, r: 55, s: 0.42, d: '2.5s', dur: '7.5s' },
-    { x: 88, y: 24, r: -20, s: 0.48, d: '1.8s', dur: '8.2s' },
+    { x: 10, y: 30, rotate: -30, scale: 0.65 },
+    { x: 19, y: 74, rotate: 35, scale: 0.5 },
+    { x: 84, y: 29, rotate: 25, scale: 0.65 },
+    { x: 91, y: 70, rotate: -35, scale: 0.55 },
+    { x: 29, y: 84, rotate: 50, scale: 0.45 },
+    { x: 76, y: 15, rotate: -20, scale: 0.45 },
   ];
 
   return (
     <div className="relative flex items-center justify-center w-full h-56 my-1 select-none overflow-hidden">
 
       {/* =========================================================
-          PREMIUM DARK ROMANTIC ATMOSPHERE
+          PREMIUM CINEMATIC BACKGROUND
       ========================================================= */}
 
       <div className="absolute inset-0 pointer-events-none">
 
-        {/* Main ambient red glow */}
+        {/* Deep central red atmosphere */}
         <div
           className="
-            absolute left-1/2 top-1/2
+            absolute
+            left-1/2 top-1/2
             -translate-x-1/2 -translate-y-1/2
-            w-64 h-64
+            w-[250px] h-[250px]
             rounded-full
-            bg-rose-700/20
-            blur-[55px]
-            animate-[ambientGlow_5s_ease-in-out_infinite]
+            bg-red-700/20
+            blur-[65px]
+            animate-[cinematicGlow_6s_ease-in-out_infinite]
           "
         />
 
-        {/* Secondary pink-red glow */}
+        {/* Soft pink halo */}
         <div
           className="
-            absolute left-1/2 top-[48%]
+            absolute
+            left-1/2 top-[48%]
             -translate-x-1/2 -translate-y-1/2
-            w-40 h-40
+            w-[150px] h-[150px]
             rounded-full
-            bg-red-500/20
-            blur-[40px]
+            bg-rose-500/20
+            blur-[45px]
           "
         />
 
-        {/* Central soft halo */}
+        {/* Tiny warm center */}
         <div
           className="
-            absolute left-1/2 top-1/2
+            absolute
+            left-1/2 top-1/2
             -translate-x-1/2 -translate-y-1/2
-            w-32 h-32
+            w-[80px] h-[80px]
             rounded-full
-            bg-rose-500/15
-            blur-2xl
+            bg-red-400/15
+            blur-[25px]
           "
         />
+
       </div>
 
 
       {/* =========================================================
-          FLOATING HEART PARTICLES
-          SVG HEARTS — NO EMOJIS
+          FLOATING MINI HEARTS
       ========================================================= */}
 
-      <div className="absolute inset-0 pointer-events-none z-10">
+      <div className="absolute inset-0 z-10 pointer-events-none">
 
-        {particles.map((p, i) => (
+        {hearts.map((heart, index) => (
           <div
-            key={i}
+            key={index}
             className="absolute"
             style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              animation: `heartFloat ${p.dur} ease-in-out ${p.d} infinite`,
-              opacity: p.o,
+              left: `${heart.x}%`,
+              top: `${heart.y}%`,
+              opacity: heart.opacity,
+              animation: `romanticFloat ${heart.duration} ease-in-out ${heart.delay} infinite`,
             }}
           >
+
             <svg
-              width={p.s}
-              height={p.s}
+              width={heart.size}
+              height={heart.size}
               viewBox="0 0 24 24"
-              fill="none"
               xmlns="http://www.w3.org/2000/svg"
               style={{
                 filter:
-                  'drop-shadow(0 0 5px rgba(244,63,94,0.7))',
+                  'drop-shadow(0 0 5px rgba(244,63,94,0.65))',
               }}
             >
+
               <path
                 d="
                   M12 21
-                  C11.7 21 11.4 20.9 11.15 20.7
-                  C5.4 16.05 2 13 2 8.7
+                  C11.7 21 11.4 20.9 11.1 20.65
+                  C5.3 16 2 12.95 2 8.7
                   C2 5.55 4.45 3 7.5 3
-                  C9.25 3 10.95 3.8 12 5.15
-                  C13.05 3.8 14.75 3 16.5 3
+                  C9.3 3 10.95 3.8 12 5.15
+                  C13.05 3.8 14.7 3 16.5 3
                   C19.55 3 22 5.55 22 8.7
-                  C22 13 18.6 16.05 12.85 20.7
+                  C22 12.95 18.7 16 12.9 20.65
                   C12.6 20.9 12.3 21 12 21Z
                 "
-                fill="#fb7185"
+                fill="#fb526f"
               />
+
             </svg>
+
           </div>
         ))}
 
@@ -126,66 +149,31 @@ export default function ValentineVisual() {
 
 
       {/* =========================================================
-          SOFT GOLDEN MICRO PARTICLES
+          PREMIUM GOLD / LIGHT PARTICLES
       ========================================================= */}
 
-      <div className="absolute inset-0 pointer-events-none z-10">
+      <div className="absolute inset-0 z-20 pointer-events-none">
 
-        <span
-          className="
-            absolute left-[18%] top-[43%]
-            w-1 h-1 rounded-full
-            bg-amber-200/80
-            blur-[0.5px]
-            animate-[sparkle_2.8s_ease-in-out_infinite]
-          "
-        />
-
-        <span
-          className="
-            absolute left-[31%] top-[19%]
-            w-1.5 h-1.5 rounded-full
-            bg-rose-200/80
-            blur-[0.5px]
-            animate-[sparkle_3.5s_ease-in-out_0.7s_infinite]
-          "
-        />
-
-        <span
-          className="
-            absolute left-[69%] top-[17%]
-            w-1 h-1 rounded-full
-            bg-amber-100/80
-            animate-[sparkle_3s_ease-in-out_1.2s_infinite]
-          "
-        />
-
-        <span
-          className="
-            absolute left-[81%] top-[45%]
-            w-1.5 h-1.5 rounded-full
-            bg-pink-200/70
-            animate-[sparkle_2.5s_ease-in-out_0.4s_infinite]
-          "
-        />
-
-        <span
-          className="
-            absolute left-[25%] top-[78%]
-            w-1 h-1 rounded-full
-            bg-amber-100/70
-            animate-[sparkle_3.2s_ease-in-out_1.8s_infinite]
-          "
-        />
-
-        <span
-          className="
-            absolute left-[76%] top-[79%]
-            w-1 h-1 rounded-full
-            bg-rose-100/80
-            animate-[sparkle_2.9s_ease-in-out_1s_infinite]
-          "
-        />
+        {particles.map((particle, index) => (
+          <span
+            key={index}
+            className="
+              absolute
+              rounded-full
+              bg-white
+              animate-[twinkle_3s_ease-in-out_infinite]
+            "
+            style={{
+              left: `${particle.x}%`,
+              top: `${particle.y}%`,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              animationDelay: `${index * 0.27}s`,
+              boxShadow:
+                '0 0 7px rgba(255,180,190,0.9)',
+            }}
+          />
+        ))}
 
       </div>
 
@@ -194,71 +182,87 @@ export default function ValentineVisual() {
           FLOATING ROSE PETALS
       ========================================================= */}
 
-      <div className="absolute inset-0 pointer-events-none z-20">
+      <div className="absolute inset-0 z-20 pointer-events-none">
 
-        {petals.map((petal, i) => (
+        {petals.map((petal, index) => (
           <div
-            key={i}
+            key={index}
             className="absolute"
             style={{
               left: `${petal.x}%`,
               top: `${petal.y}%`,
-              transform: `rotate(${petal.r}deg) scale(${petal.s})`,
-              animation: `petalFloat ${petal.dur} ease-in-out ${petal.d} infinite`,
+              transform: `
+                rotate(${petal.rotate}deg)
+                scale(${petal.scale})
+              `,
+              animation: `petalDrift ${6 + index * 0.7}s ease-in-out ${index * 0.6}s infinite`,
             }}
           >
+
             <svg
-              width="20"
-              height="13"
-              viewBox="0 0 20 13"
+              width="26"
+              height="17"
+              viewBox="0 0 26 17"
               xmlns="http://www.w3.org/2000/svg"
               style={{
                 filter:
-                  'drop-shadow(0 3px 6px rgba(127,29,29,0.45))',
+                  'drop-shadow(0 3px 7px rgba(90,0,20,0.6))',
               }}
             >
 
               <defs>
 
                 <linearGradient
-                  id={`petalGradient-${i}`}
+                  id={`petal-${index}`}
                   x1="0%"
                   y1="0%"
                   x2="100%"
                   y2="100%"
                 >
+
                   <stop
                     offset="0%"
-                    stopColor="#fb7185"
+                    stopColor="#ff9aaa"
                   />
 
                   <stop
-                    offset="45%"
-                    stopColor="#e11d48"
+                    offset="30%"
+                    stopColor="#f43f5e"
+                  />
+
+                  <stop
+                    offset="70%"
+                    stopColor="#be123c"
                   />
 
                   <stop
                     offset="100%"
-                    stopColor="#881337"
+                    stopColor="#4c0519"
                   />
+
                 </linearGradient>
 
               </defs>
 
               <path
-                d="M1 7C4 1 10 0 19 3C16 10 9 14 1 7Z"
-                fill={`url(#petalGradient-${i})`}
+                d="
+                  M1 9
+                  C5 2 14 1 25 5
+                  C21 13 11 18 1 9Z
+                "
+                fill={`url(#petal-${index})`}
               />
 
               <path
-                d="M4 6C8 4 12 3 16 4"
-                stroke="rgba(255,255,255,0.25)"
+                d="M5 8C10 6 15 5 20 6"
+                stroke="rgba(255,255,255,0.28)"
                 strokeWidth="0.8"
                 strokeLinecap="round"
                 fill="none"
               />
 
             </svg>
+
           </div>
         ))}
 
@@ -266,133 +270,152 @@ export default function ValentineVisual() {
 
 
       {/* =========================================================
-          MAIN HERO HEART
+          LARGE CRYSTAL HEART AURA
       ========================================================= */}
 
       <div className="relative z-30 flex items-center justify-center">
 
-        {/* Large soft red aura */}
+        {/* Outer heartbeat aura */}
         <div
           className="
             absolute
-            w-36 h-36
+            w-[150px] h-[150px]
             rounded-full
-            bg-red-600/25
-            blur-3xl
-            animate-[heartAura_3.2s_ease-in-out_infinite]
+            border
+            border-rose-400/10
+            animate-[auraPulse_3s_ease-in-out_infinite]
           "
         />
 
-        {/* Secondary glow */}
+        {/* Second glass halo */}
         <div
           className="
             absolute
-            w-28 h-28
+            w-[126px] h-[126px]
             rounded-full
-            bg-rose-500/25
-            blur-2xl
+            border
+            border-white/10
+            bg-white/[0.015]
+            backdrop-blur-[1px]
+          "
+        />
+
+        {/* Deep heart glow */}
+        <div
+          className="
+            absolute
+            w-[95px] h-[95px]
+            rounded-full
+            bg-rose-600/25
+            blur-[28px]
+            animate-[heartGlow_2.8s_ease-in-out_infinite]
           "
         />
 
 
         {/* =====================================================
-            PREMIUM RUBY HEART
+            MAIN 3D RUBY / CRYSTAL HEART
         ===================================================== */}
 
         <svg
-          width="138"
-          height="138"
-          viewBox="0 0 200 200"
+          width="132"
+          height="132"
+          viewBox="0 0 220 220"
           xmlns="http://www.w3.org/2000/svg"
           className="
             relative
-            z-20
+            z-40
             overflow-visible
-            animate-[heroHeartbeat_3s_ease-in-out_infinite]
+            animate-[premiumHeartbeat_3s_ease-in-out_infinite]
           "
           style={{
             filter:
-              'drop-shadow(0 14px 22px rgba(127,29,29,0.55)) drop-shadow(0 0 18px rgba(244,63,94,0.42))',
+              'drop-shadow(0 12px 20px rgba(90,0,25,0.55)) drop-shadow(0 0 15px rgba(244,63,94,0.45))',
           }}
         >
 
           <defs>
 
-            {/* Premium ruby gradient */}
+            {/* Main ruby body */}
             <linearGradient
-              id="premiumHeartGradient"
-              x1="15%"
+              id="rubyHeart"
+              x1="12%"
               y1="5%"
-              x2="90%"
+              x2="88%"
               y2="100%"
             >
 
               <stop
                 offset="0%"
-                stopColor="#ff8a9d"
+                stopColor="#ffb1bd"
               />
 
               <stop
-                offset="14%"
-                stopColor="#fb526f"
+                offset="12%"
+                stopColor="#ff6b83"
               />
 
               <stop
-                offset="38%"
-                stopColor="#e11d48"
+                offset="32%"
+                stopColor="#f43f5e"
               />
 
               <stop
-                offset="68%"
-                stopColor="#be123c"
+                offset="58%"
+                stopColor="#c91843"
+              />
+
+              <stop
+                offset="82%"
+                stopColor="#7f1233"
               />
 
               <stop
                 offset="100%"
-                stopColor="#4c0519"
+                stopColor="#350313"
               />
 
             </linearGradient>
 
 
-            {/* Inner heart depth */}
+            {/* Crystal depth */}
             <radialGradient
-              id="heartDepth"
+              id="rubyDepth"
               cx="42%"
-              cy="30%"
+              cy="27%"
               r="75%"
             >
 
               <stop
                 offset="0%"
-                stopColor="#ffb4c1"
-                stopOpacity="0.35"
+                stopColor="#ffffff"
+                stopOpacity="0.24"
               />
 
               <stop
-                offset="35%"
-                stopColor="#fb7185"
+                offset="22%"
+                stopColor="#ffb6c2"
+                stopOpacity="0.15"
+              />
+
+              <stop
+                offset="55%"
+                stopColor="#b3123d"
                 stopOpacity="0.08"
               />
 
               <stop
-                offset="75%"
-                stopColor="#7f1d1d"
-                stopOpacity="0.2"
-              />
-
-              <stop
                 offset="100%"
-                stopColor="#1f0710"
-                stopOpacity="0.45"
+                stopColor="#16030a"
+                stopOpacity="0.48"
               />
 
             </radialGradient>
 
 
-            {/* Heart glow */}
+            {/* Strong glow */}
             <filter
-              id="heartGlow"
+              id="rubyGlow"
               x="-60%"
               y="-60%"
               width="220%"
@@ -400,32 +423,21 @@ export default function ValentineVisual() {
             >
 
               <feGaussianBlur
-                stdDeviation="5"
+                stdDeviation="4"
                 result="blur"
               />
 
-              <feColorMatrix
-                in="blur"
-                type="matrix"
-                values="
-                  1 0 0 0 0
-                  0 0.15 0 0 0
-                  0 0 0.25 0 0
-                  0 0 0 0.75 0
-                "
-              />
-
               <feMerge>
-                <feMergeNode />
+                <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
 
             </filter>
 
 
-            {/* Gloss reflection */}
+            {/* White crystal shine */}
             <linearGradient
-              id="heartShine"
+              id="crystalShine"
               x1="0%"
               y1="0%"
               x2="100%"
@@ -435,19 +447,49 @@ export default function ValentineVisual() {
               <stop
                 offset="0%"
                 stopColor="#ffffff"
-                stopOpacity="0.7"
+                stopOpacity="0.85"
               />
 
               <stop
-                offset="20%"
+                offset="18%"
                 stopColor="#ffffff"
-                stopOpacity="0.18"
+                stopOpacity="0.28"
               />
 
               <stop
-                offset="45%"
+                offset="42%"
                 stopColor="#ffffff"
                 stopOpacity="0"
+              />
+
+              <stop
+                offset="100%"
+                stopColor="#ffffff"
+                stopOpacity="0"
+              />
+
+            </linearGradient>
+
+
+            {/* Bottom ruby reflection */}
+            <linearGradient
+              id="bottomReflection"
+              x1="0%"
+              y1="0%"
+              x2="0%"
+              y2="100%"
+            >
+
+              <stop
+                offset="0%"
+                stopColor="#ff8298"
+                stopOpacity="0"
+              />
+
+              <stop
+                offset="100%"
+                stopColor="#ff365f"
+                stopOpacity="0.35"
               />
 
             </linearGradient>
@@ -455,141 +497,197 @@ export default function ValentineVisual() {
           </defs>
 
 
-          {/* Main heart silhouette */}
+          {/* =================================================
+              HEART SHADOW / DEPTH
+          ================================================= */}
+
           <path
             d="
-              M100 170
-              C91 162 27 118 27 66
-              C27 36 48 19 73 19
-              C86 19 96 25 100 36
-              C104 25 114 19 127 19
-              C152 19 173 36 173 66
-              C173 118 109 162 100 170Z
+              M110 186
+              C98 176 30 130 30 76
+              C30 42 53 21 81 21
+              C95 21 105 28 110 40
+              C115 28 125 21 139 21
+              C167 21 190 42 190 76
+              C190 130 122 176 110 186Z
             "
-            fill="url(#premiumHeartGradient)"
-            filter="url(#heartGlow)"
+            fill="rgba(20,0,8,0.42)"
+            transform="translate(0 5)"
           />
 
 
-          {/* Inner depth */}
+          {/* =================================================
+              MAIN HEART
+          ================================================= */}
+
           <path
             d="
-              M100 164
-              C89 154 35 115 35 68
-              C35 43 51 29 72 29
-              C85 29 94 35 100 47
-              C106 35 115 29 128 29
-              C149 29 165 43 165 68
-              C165 115 111 154 100 164Z
+              M110 181
+              C99 172 34 128 34 76
+              C34 45 55 25 81 25
+              C95 25 105 32 110 44
+              C115 32 125 25 139 25
+              C165 25 186 45 186 76
+              C186 128 121 172 110 181Z
             "
-            fill="url(#heartDepth)"
+            fill="url(#rubyHeart)"
+            filter="url(#rubyGlow)"
           />
 
 
-          {/* Glossy reflection */}
+          {/* =================================================
+              INNER CRYSTAL DEPTH
+          ================================================= */}
+
           <path
             d="
-              M55 47
-              C43 55 40 69 45 82
-              C49 91 56 96 63 100
+              M110 174
+              C99 165 43 126 43 78
+              C43 51 60 34 82 34
+              C95 34 104 42 110 55
+              C116 42 125 34 138 34
+              C160 34 177 51 177 78
+              C177 126 121 165 110 174Z
             "
-            stroke="url(#heartShine)"
-            strokeWidth="8"
+            fill="url(#rubyDepth)"
+          />
+
+
+          {/* =================================================
+              LARGE GLASS REFLECTION
+          ================================================= */}
+
+          <path
+            d="
+              M66 53
+              C53 62 49 76 53 91
+              C56 102 64 111 75 117
+            "
+            stroke="url(#crystalShine)"
+            strokeWidth="9"
             strokeLinecap="round"
             fill="none"
-            opacity="0.85"
           />
 
 
-          {/* Small glass highlight */}
+          {/* Small bright reflection */}
           <ellipse
-            cx="67"
-            cy="43"
-            rx="11"
-            ry="5"
-            transform="rotate(-28 67 43)"
-            fill="rgba(255,255,255,0.28)"
+            cx="78"
+            cy="48"
+            rx="14"
+            ry="6"
+            transform="rotate(-27 78 48)"
+            fill="rgba(255,255,255,0.34)"
           />
 
 
-          {/* Lower subtle reflection */}
+          {/* Fine crystal highlight */}
           <path
-            d="M69 139 C83 151 94 158 100 162"
-            stroke="rgba(255,120,145,0.16)"
+            d="
+              M63 127
+              C76 143 94 156 110 166
+            "
+            stroke="rgba(255,140,160,0.18)"
             strokeWidth="3"
             strokeLinecap="round"
             fill="none"
           />
 
-        </svg>
 
-      </div>
-
-
-      {/* =========================================================
-          FOREGROUND BLURRED HEART PARTICLES
-      ========================================================= */}
-
-      <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
-
-        {/* Left foreground heart */}
-        <svg
-          className="
-            absolute
-            left-[8%]
-            top-[28%]
-            opacity-30
-            blur-[1px]
-            animate-[foregroundFloat_7s_ease-in-out_infinite]
-          "
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-        >
-
+          {/* Bottom depth */}
           <path
             d="
-              M12 21
-              C11.7 21 11.4 20.9 11.15 20.7
-              C5.4 16.05 2 13 2 8.7
-              C2 5.55 4.45 3 7.5 3
-              C9.25 3 10.95 3.8 12 5.15
-              C13.05 3.8 14.75 3 16.5 3
-              C19.55 3 22 5.55 22 8.7
-              C22 13 18.6 16.05 12.85 20.7
-              C12.6 20.9 12.3 21 12 21Z
+              M56 126
+              C76 149 98 164 110 174
+              C122 164 144 149 164 126
             "
-            fill="#fb7185"
+            fill="url(#bottomReflection)"
+            opacity="0.5"
           />
 
         </svg>
 
 
-        {/* Right foreground heart */}
-        <svg
+        {/* =====================================================
+            TINY LIGHT RING AROUND HEART
+        ===================================================== */}
+
+        <div
           className="
             absolute
-            right-[7%]
-            bottom-[24%]
-            opacity-25
-            blur-[1.5px]
-            animate-[foregroundFloat_8s_ease-in-out_1s_infinite]
+            w-[116px] h-[116px]
+            rounded-full
+            border
+            border-rose-300/15
+            animate-[ringPulse_4s_ease-in-out_infinite]
           "
-          width="24"
-          height="24"
+        />
+
+      </div>
+
+
+      {/* =========================================================
+          FOREGROUND HEARTS
+      ========================================================= */}
+
+      <div className="absolute inset-0 z-50 pointer-events-none">
+
+        <svg
+          width="15"
+          height="15"
           viewBox="0 0 24 24"
+          className="
+            absolute
+            left-[7%]
+            top-[52%]
+            opacity-40
+            blur-[0.5px]
+            animate-[foregroundHeart_7s_ease-in-out_infinite]
+          "
         >
 
           <path
             d="
               M12 21
-              C11.7 21 11.4 20.9 11.15 20.7
-              C5.4 16.05 2 13 2 8.7
+              C11.7 21 11.4 20.9 11.1 20.65
+              C5.3 16 2 12.95 2 8.7
               C2 5.55 4.45 3 7.5 3
-              C9.25 3 10.95 3.8 12 5.15
-              C13.05 3.8 14.75 3 16.5 3
+              C9.3 3 10.95 3.8 12 5.15
+              C13.05 3.8 14.7 3 16.5 3
               C19.55 3 22 5.55 22 8.7
-              C22 13 18.6 16.05 12.85 20.7
+              C22 12.95 18.7 16 12.9 20.65
+              C12.6 20.9 12.3 21 12 21Z
+            "
+            fill="#f43f5e"
+          />
+
+        </svg>
+
+
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          className="
+            absolute
+            right-[6%]
+            bottom-[30%]
+            opacity-35
+            blur-[1px]
+            animate-[foregroundHeart_8s_ease-in-out_1.5s_infinite]
+          "
+        >
+
+          <path
+            d="
+              M12 21
+              C11.7 21 11.4 20.9 11.1 20.65
+              C5.3 16 2 12.95 2 8.7
+              C2 5.55 4.45 3 7.5 3
+              C9.3 3 10.95 3.8 12 5.15
+              C13.05 3.8 14.7 3 16.5 3
+              C19.55 3 22 5.55 22 8.7
+              C22 12.95 18.7 16 12.9 20.65
               C12.6 20.9 12.3 21 12 21Z
             "
             fill="#e11d48"
@@ -606,136 +704,199 @@ export default function ValentineVisual() {
 
       <style jsx>{`
 
-        /* Main heart heartbeat */
-        @keyframes heroHeartbeat {
+        /* ---------------------------------------------
+           Cinematic background breathing
+        --------------------------------------------- */
+
+        @keyframes cinematicGlow {
+
+          0%, 100% {
+            opacity: 0.55;
+            transform:
+              translate(-50%, -50%)
+              scale(0.92);
+          }
+
+          50% {
+            opacity: 0.95;
+            transform:
+              translate(-50%, -50%)
+              scale(1.08);
+          }
+
+        }
+
+
+        /* ---------------------------------------------
+           Main heart heartbeat
+        --------------------------------------------- */
+
+        @keyframes premiumHeartbeat {
 
           0%, 100% {
             transform: scale(1);
           }
 
-          18% {
+          8% {
+            transform: scale(1.015);
+          }
+
+          15% {
+            transform: scale(1.055);
+          }
+
+          23% {
+            transform: scale(1);
+          }
+
+          35% {
             transform: scale(1.035);
           }
 
-          32% {
-            transform: scale(0.995);
-          }
-
-          46% {
-            transform: scale(1.025);
-          }
-
-          62% {
+          44% {
             transform: scale(1);
           }
 
         }
 
 
-        /* Ambient glow */
-        @keyframes ambientGlow {
+        /* ---------------------------------------------
+           Heart light
+        --------------------------------------------- */
+
+        @keyframes heartGlow {
 
           0%, 100% {
-            opacity: 0.65;
-            transform: translate(-50%, -50%) scale(0.94);
-          }
-
-          50% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.08);
-          }
-
-        }
-
-
-        /* Heart aura */
-        @keyframes heartAura {
-
-          0%, 100% {
-            opacity: 0.55;
-            transform: scale(0.92);
+            opacity: 0.45;
+            transform: scale(0.9);
           }
 
           50% {
             opacity: 0.9;
-            transform: scale(1.08);
+            transform: scale(1.1);
           }
 
         }
 
 
-        /* Small heart particles */
-        @keyframes heartFloat {
+        /* ---------------------------------------------
+           Outer aura
+        --------------------------------------------- */
+
+        @keyframes auraPulse {
 
           0%, 100% {
-            transform:
-              translate3d(0, 6px, 0)
-              scale(0.8);
-
-            opacity: 0.35;
-          }
-
-          50% {
-            transform:
-              translate3d(0, -12px, 0)
-              scale(1.08);
-
-            opacity: 0.95;
-          }
-
-        }
-
-
-        /* Golden sparkles */
-        @keyframes sparkle {
-
-          0%, 100% {
-            opacity: 0.2;
-            transform: scale(0.65);
-          }
-
-          50% {
-            opacity: 1;
-            transform: scale(1.25);
-          }
-
-        }
-
-
-        /* Rose petals */
-        @keyframes petalFloat {
-
-          0%, 100% {
-            transform:
-              translate3d(0, 0, 0)
-              rotate(0deg)
-              scale(1);
-
+            transform: scale(0.94);
             opacity: 0.25;
           }
 
-          30% {
-            opacity: 0.75;
-          }
-
           50% {
-            transform:
-              translate3d(10px, -12px, 0)
-              rotate(22deg)
-              scale(1);
-
-            opacity: 0.9;
-          }
-
-          75% {
-            opacity: 0.55;
+            transform: scale(1.08);
+            opacity: 0.65;
           }
 
         }
 
 
-        /* Foreground depth */
-        @keyframes foregroundFloat {
+        /* ---------------------------------------------
+           Ring
+        --------------------------------------------- */
+
+        @keyframes ringPulse {
+
+          0%, 100% {
+            transform: scale(0.96);
+            opacity: 0.15;
+          }
+
+          50% {
+            transform: scale(1.08);
+            opacity: 0.45;
+          }
+
+        }
+
+
+        /* ---------------------------------------------
+           Floating mini hearts
+        --------------------------------------------- */
+
+        @keyframes romanticFloat {
+
+          0%, 100% {
+            transform:
+              translate3d(0, 7px, 0)
+              scale(0.75)
+              rotate(-5deg);
+          }
+
+          50% {
+            transform:
+              translate3d(5px, -13px, 0)
+              scale(1.08)
+              rotate(7deg);
+          }
+
+        }
+
+
+        /* ---------------------------------------------
+           Tiny lights
+        --------------------------------------------- */
+
+        @keyframes twinkle {
+
+          0%, 100% {
+            opacity: 0.15;
+            transform: scale(0.6);
+          }
+
+          50% {
+            opacity: 1;
+            transform: scale(1.4);
+          }
+
+        }
+
+
+        /* ---------------------------------------------
+           Rose petals
+        --------------------------------------------- */
+
+        @keyframes petalDrift {
+
+          0%, 100% {
+            opacity: 0.18;
+            transform:
+              translate3d(0, 5px, 0)
+              rotate(0deg)
+              scale(0.9);
+          }
+
+          30% {
+            opacity: 0.65;
+          }
+
+          50% {
+            opacity: 0.9;
+            transform:
+              translate3d(10px, -14px, 0)
+              rotate(20deg)
+              scale(1);
+          }
+
+          75% {
+            opacity: 0.4;
+          }
+
+        }
+
+
+        /* ---------------------------------------------
+           Foreground hearts
+        --------------------------------------------- */
+
+        @keyframes foregroundHeart {
 
           0%, 100% {
             transform:
@@ -745,7 +906,7 @@ export default function ValentineVisual() {
 
           50% {
             transform:
-              translate3d(8px, -12px, 0)
+              translate3d(9px, -13px, 0)
               rotate(8deg);
           }
 
