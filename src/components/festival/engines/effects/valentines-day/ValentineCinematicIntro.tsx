@@ -32,16 +32,17 @@ export default function ValentineCinematicIntro({ videoUrl, onComplete }: Props)
     }
   }, []);
 
-  // 🔊 Silent Background Audio Unmute
-  useEffect(() => {
-    const enableAudio = () => {
-      if (videoRef.current) {
-        videoRef.current.muted = false;
-        videoRef.current.volume = 1.0;
-        videoRef.current.play().catch(() => {});
-      }
-    };
+  // 🔊 1. TOP-LEVEL AUDIO UNMUTE FUNCTION (Fixes ReferenceError)
+  const enableAudio = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.volume = 1.0;
+      videoRef.current.play().catch(() => {});
+    }
+  };
 
+  // 🔊 2. SILENT BACKGROUND UNMUTE EVENT LISTENERS
+  useEffect(() => {
     enableAudio();
 
     window.addEventListener('click', enableAudio, { once: true });
