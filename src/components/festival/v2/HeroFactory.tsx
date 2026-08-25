@@ -62,7 +62,7 @@ const ComponentMap: any = {
   'NATIONAL_PRIDE': <IndependenceDayGreeting />,
   'SIKH_KHANDA': <SikhHero />, // 🚀 एक्टिवेशन कीज़: वैलेंटाइन और ग्लास हार्ट के लिए
   'VALENTINE_HEART': <Valentine />,
-  'HEART_COUPLE': <GlassmorphicHeartHero onOpenLetter={() => {}} />,  
+  'HEART_COUPLE': <Valentine />,  
  MEGAPHONE: <span className="text-[110px]">📢</span>,
   SIREN: <span className="text-[110px]">🚨</span>,
   GEAR_ICON: <span className="text-[110px]">⚙️</span>,
