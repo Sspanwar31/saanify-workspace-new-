@@ -2,68 +2,89 @@
 
 export default function ValentineVisual() {
   return (
-    <div className="relative flex items-center justify-center w-full h-52 overflow-hidden my-2">
+    <div className="relative flex items-center justify-center w-full h-56 my-1 select-none">
       
-      {/* 🚀 1. BACKGROUND GLOW (Dark popup ke upar neon pink effect ke liye) */}
-      <div className="absolute w-36 h-36 bg-gradient-to-tr from-pink-600 to-rose-500 rounded-full blur-2xl opacity-40 animate-pulse" />
+      {/* 🔮 1. DEEP AMBIENT NEON GLOW (Seamless Background Blend) */}
+      <div className="absolute w-64 h-64 bg-rose-600/25 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute w-40 h-40 bg-pink-500/30 rounded-full blur-2xl" />
 
-      {/* 🚀 2. FLOATING & ROTATING PARTICLES (Sparkles/Small Hearts) */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        {/* Floating Heart 1 */}
-        <span className="absolute top-6 left-12 text-pink-400 text-sm animate-bounce opacity-70" style={{ animationDuration: '2.5s' }}>
-          ✨
-        </span>
-        {/* Floating Heart 2 */}
-        <span className="absolute bottom-8 left-16 text-rose-400 text-xs animate-ping opacity-60" style={{ animationDuration: '3s' }}>
-          💖
-        </span>
-        {/* Floating Heart 3 */}
-        <span className="absolute top-8 right-14 text-pink-300 text-base animate-bounce opacity-75" style={{ animationDuration: '2s' }}>
-          💕
-        </span>
-        {/* Floating Heart 4 */}
-        <span className="absolute bottom-6 right-12 text-rose-500 text-xs animate-pulse">
-          ✨
-        </span>
+      {/* 🪐 2. FUTURISTIC ORBITING RINGS */}
+      {/* Orbit 1 */}
+      <div className="absolute w-48 h-48 rounded-full border border-dashed border-pink-500/20 animate-[spin_20s_linear_infinite]" />
+      
+      {/* Orbit 2 (Opposite Direction with Glow Node) */}
+      <div className="absolute w-36 h-36 rounded-full border border-pink-400/25 animate-[spin_10s_linear_infinite_reverse] flex items-start justify-center">
+        <div className="w-2.5 h-2.5 bg-pink-400 rounded-full shadow-[0_0_10px_#f43f5e] -translate-y-1" />
       </div>
 
-      {/* 🚀 3. MAIN PULSING 3D-STYLE HEART (Center Visual) */}
-      <div className="relative z-10 flex items-center justify-center">
-        {/* Outer Ripple Wave */}
-        <div className="absolute w-28 h-28 border border-pink-500/40 rounded-full animate-ping opacity-25" style={{ animationDuration: '2s' }} />
+      {/* ✨ 3. FLOATING AMBIENT PARTICLES */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className="absolute top-4 left-8 text-pink-400/70 text-xs animate-bounce" style={{ animationDuration: '3s' }}>✦</span>
+        <span className="absolute top-10 right-10 text-rose-300/80 text-sm animate-pulse">✨</span>
+        <span className="absolute bottom-6 left-12 text-rose-500/60 text-xs animate-ping" style={{ animationDuration: '2.5s' }}>💖</span>
+        <span className="absolute bottom-4 right-8 text-pink-400/70 text-xs animate-bounce" style={{ animationDuration: '4s' }}>✦</span>
+      </div>
 
-        {/* Main Glowing Heart Icon */}
-        <div className="relative flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-tr from-rose-600/20 to-pink-500/20 border border-pink-500/30 backdrop-blur-sm shadow-[0_0_30px_rgba(244,63,94,0.4)] transition-all duration-300 hover:scale-110">
+      {/* 💎 4. 3D GLASS POD & DUAL GLOWING HEART */}
+      <div className="relative z-10 flex items-center justify-center">
+        
+        {/* Expanding Pulse Wave */}
+        <div className="absolute w-32 h-32 rounded-full border border-pink-500/30 animate-ping opacity-30" style={{ animationDuration: '2.4s' }} />
+
+        {/* Futuristic Glass Bubble Container */}
+        <div className="relative flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-b from-white/10 to-pink-500/5 backdrop-blur-md border border-white/20 shadow-[0_8px_32px_0_rgba(244,63,94,0.37)]">
           
+          {/* Inner Glowing Core */}
+          <div className="absolute w-16 h-16 bg-pink-500/40 rounded-full blur-md" />
+
+          {/* 3D SVG Heart with Realistic Depth */}
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             viewBox="0 0 24 24" 
-            fill="currentColor" 
-            className="w-14 h-14 text-pink-500 drop-shadow-[0_0_12px_rgba(244,63,94,0.8)] animate-[heartbeat_1.5s_ease-in-out_infinite]"
+            className="w-14 h-14 relative z-20 animate-[heartbeat_1.8s_ease-in-out_infinite]"
           >
-            <path d="m11.645 20.91-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z" />
-          </svg>
+            <defs>
+              <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#ff4b72" />
+                <stop offset="50%" stopColor="#f43f5e" />
+                <stop offset="100%" stopColor="#be123c" />
+              </linearGradient>
+              <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#f43f5e" floodOpacity="0.8"/>
+              </filter>
+            </defs>
 
+            <path 
+              fill="url(#heartGradient)" 
+              filter="url(#neonGlow)"
+              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+            />
+            {/* Top Gloss Reflection */}
+            <path 
+              d="M7.5 5C5.5 5 4 6.5 4 8.5c0 1 .5 2 1.5 3" 
+              stroke="rgba(255,255,255,0.6)" 
+              strokeWidth="1.5" 
+              strokeLinecap="round" 
+              fill="none" 
+            />
+          </svg>
         </div>
       </div>
 
-      {/* 🚀 4. CUSTOM HEARTBEAT ANIMATION */}
+      {/* 🚀 5. CUSTOM SMOOTH ANIMATION */}
       <style jsx>{`
         @keyframes heartbeat {
           0%, 100% {
             transform: scale(1);
           }
-          14% {
-            transform: scale(1.15);
+          15% {
+            transform: scale(1.18);
           }
-          28% {
+          30% {
             transform: scale(1);
           }
-          42% {
-            transform: scale(1.15);
-          }
-          70% {
-            transform: scale(1);
+          45% {
+            transform: scale(1.12);
           }
         }
       `}</style>
