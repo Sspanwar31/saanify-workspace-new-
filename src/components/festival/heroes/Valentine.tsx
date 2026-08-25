@@ -1,917 +1,188 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function ValentineVisual() {
-  const hearts = [
-    { x: 8, y: 25, size: 8, delay: '0s', duration: '6s', opacity: 0.45 },
-    { x: 14, y: 62, size: 6, delay: '1.5s', duration: '7s', opacity: 0.55 },
-    { x: 21, y: 38, size: 5, delay: '2.2s', duration: '6.5s', opacity: 0.4 },
-    { x: 27, y: 17, size: 7, delay: '0.8s', duration: '7.5s', opacity: 0.5 },
-    { x: 31, y: 72, size: 5, delay: '3s', duration: '6.2s', opacity: 0.45 },
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    { x: 68, y: 20, size: 6, delay: '1.1s', duration: '6.8s', opacity: 0.5 },
-    { x: 74, y: 70, size: 7, delay: '2.4s', duration: '7.2s', opacity: 0.45 },
-    { x: 81, y: 39, size: 5, delay: '0.4s', duration: '6.4s', opacity: 0.55 },
-    { x: 88, y: 62, size: 8, delay: '1.9s', duration: '7.8s', opacity: 0.4 },
-    { x: 93, y: 27, size: 5, delay: '2.7s', duration: '6.6s', opacity: 0.5 },
+  // 🚀 2027 CANVAS PARTICLE ENGINE (Floating Petals & Magical Sparks)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    { x: 38, y: 13, size: 4, delay: '1.4s', duration: '5.8s', opacity: 0.35 },
-    { x: 62, y: 84, size: 5, delay: '2.1s', duration: '6.9s', opacity: 0.4 },
-  ];
+    let W = (canvas.width = canvas.offsetWidth);
+    let H = (canvas.height = canvas.offsetHeight);
+    let animationId = 0;
 
-  const particles = [
-    { x: 10, y: 45, size: 2 },
-    { x: 17, y: 18, size: 2 },
-    { x: 25, y: 81, size: 1.5 },
-    { x: 34, y: 27, size: 2 },
-    { x: 42, y: 12, size: 1.5 },
-    { x: 58, y: 15, size: 2 },
-    { x: 66, y: 31, size: 1.5 },
-    { x: 76, y: 84, size: 2 },
-    { x: 86, y: 18, size: 1.5 },
-    { x: 92, y: 47, size: 2 },
-    { x: 82, y: 77, size: 1.5 },
-    { x: 19, y: 78, size: 2 },
-  ];
+    const particles: any[] = [];
 
-  const petals = [
-    { x: 10, y: 30, rotate: -30, scale: 0.65 },
-    { x: 19, y: 74, rotate: 35, scale: 0.5 },
-    { x: 84, y: 29, rotate: 25, scale: 0.65 },
-    { x: 91, y: 70, rotate: -35, scale: 0.55 },
-    { x: 29, y: 84, rotate: 50, scale: 0.45 },
-    { x: 76, y: 15, rotate: -20, scale: 0.45 },
-  ];
+    const resize = () => {
+      W = canvas.width = canvas.offsetWidth;
+      H = canvas.height = canvas.offsetHeight;
+    };
+    window.addEventListener('resize', resize);
+
+    // Create Petals & Sparks
+    for (let i = 0; i < 25; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H + H, // Start from bottom
+        size: Math.random() * 4 + 1,
+        speedY: Math.random() * 0.8 + 0.3,
+        speedX: Math.random() * 0.4 - 0.2,
+        alpha: Math.random() * 0.6 + 0.2,
+        type: Math.random() > 0.4 ? 'petal' : 'spark',
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.05,
+      });
+    }
+
+    const drawPetal = (p: any) => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.globalAlpha = p.alpha;
+      
+      // Realistic Rose Petal Shape
+      const grad = ctx.createLinearGradient(0, -p.size*2, 0, p.size*2);
+      grad.addColorStop(0, '#ff4d8d');
+      grad.addColorStop(1, '#c40e4e');
+      ctx.fillStyle = grad;
+      
+      ctx.beginPath();
+      ctx.moveTo(0, -p.size * 2);
+      ctx.bezierCurveTo(p.size * 1.5, -p.size, p.size * 1.5, p.size, 0, p.size * 2);
+      ctx.bezierCurveTo(-p.size * 1.5, p.size, -p.size * 1.5, -p.size, 0, -p.size * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const drawSpark = (p: any) => {
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff0080';
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const animate = () => {
+      ctx.clearRect(0, 0, W, H);
+
+      particles.forEach((p) => {
+        p.y -= p.speedY; // Rise upwards
+        p.x += p.speedX + Math.sin(p.y * 0.01) * 0.5; // Wavy motion
+        p.rotation += p.rotSpeed;
+
+        if (p.y < -20) {
+          p.y = H + 20;
+          p.x = Math.random() * W;
+        }
+
+        if (p.type === 'petal') drawPetal(p);
+        else drawSpark(p);
+      });
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
   return (
-    <div className="relative flex items-center justify-center w-full h-56 my-1 select-none overflow-hidden">
+    <div className="relative flex items-center justify-center w-full h-64 my-1 select-none overflow-hidden">
+      
+      {/* 🌌 1. CINEMATIC DEEP NEBULA BACKGROUND */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1a0111] via-[#0a0a0a] to-[#000000] z-0" />
 
-      {/* =========================================================
-          PREMIUM CINEMATIC BACKGROUND
-      ========================================================= */}
+      {/* 🎆 2. CANVAS PARTICLE LAYER (Petals & Sparks) */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
 
-      <div className="absolute inset-0 pointer-events-none">
-
-        {/* Deep central red atmosphere */}
-        <div
-          className="
-            absolute
-            left-1/2 top-1/2
-            -translate-x-1/2 -translate-y-1/2
-            w-[250px] h-[250px]
-            rounded-full
-            bg-red-700/20
-            blur-[65px]
-            animate-[cinematicGlow_6s_ease-in-out_infinite]
-          "
-        />
-
-        {/* Soft pink halo */}
-        <div
-          className="
-            absolute
-            left-1/2 top-[48%]
-            -translate-x-1/2 -translate-y-1/2
-            w-[150px] h-[150px]
-            rounded-full
-            bg-rose-500/20
-            blur-[45px]
-          "
-        />
-
-        {/* Tiny warm center */}
-        <div
-          className="
-            absolute
-            left-1/2 top-1/2
-            -translate-x-1/2 -translate-y-1/2
-            w-[80px] h-[80px]
-            rounded-full
-            bg-red-400/15
-            blur-[25px]
-          "
-        />
-
+      {/* 🪐 3. FUTURISTIC HOLOGRAPHIC ORBITING RINGS */}
+      <div className="absolute z-20 w-56 h-56 rounded-full border border-pink-500/10 animate-[spin_25s_linear_infinite]" 
+           style={{ boxShadow: '0 0 30px rgba(244, 63, 94, 0.15) inset' }} />
+      
+      <div className="absolute z-20 w-44 h-44 rounded-full border border-rose-500/20 animate-[spin_15s_linear_infinite_reverse] flex items-start justify-center">
+        <div className="w-3 h-3 bg-rose-500 rounded-full shadow-[0_0_15px_#f43f5e] -translate-y-1.5 mt-[-6px]" />
       </div>
 
-
-      {/* =========================================================
-          FLOATING MINI HEARTS
-      ========================================================= */}
-
-      <div className="absolute inset-0 z-10 pointer-events-none">
-
-        {hearts.map((heart, index) => (
-          <div
-            key={index}
-            className="absolute"
-            style={{
-              left: `${heart.x}%`,
-              top: `${heart.y}%`,
-              opacity: heart.opacity,
-              animation: `romanticFloat ${heart.duration} ease-in-out ${heart.delay} infinite`,
-            }}
-          >
-
-            <svg
-              width={heart.size}
-              height={heart.size}
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              style={{
-                filter:
-                  'drop-shadow(0 0 5px rgba(244,63,94,0.65))',
-              }}
-            >
-
-              <path
-                d="
-                  M12 21
-                  C11.7 21 11.4 20.9 11.1 20.65
-                  C5.3 16 2 12.95 2 8.7
-                  C2 5.55 4.45 3 7.5 3
-                  C9.3 3 10.95 3.8 12 5.15
-                  C13.05 3.8 14.7 3 16.5 3
-                  C19.55 3 22 5.55 22 8.7
-                  C22 12.95 18.7 16 12.9 20.65
-                  C12.6 20.9 12.3 21 12 21Z
-                "
-                fill="#fb526f"
-              />
-
-            </svg>
-
-          </div>
-        ))}
-
-      </div>
-
-
-      {/* =========================================================
-          PREMIUM GOLD / LIGHT PARTICLES
-      ========================================================= */}
-
-      <div className="absolute inset-0 z-20 pointer-events-none">
-
-        {particles.map((particle, index) => (
-          <span
-            key={index}
-            className="
-              absolute
-              rounded-full
-              bg-white
-              animate-[twinkle_3s_ease-in-out_infinite]
-            "
-            style={{
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-              width: `${particle.size}px`,
-              height: `${particle.size}px`,
-              animationDelay: `${index * 0.27}s`,
-              boxShadow:
-                '0 0 7px rgba(255,180,190,0.9)',
-            }}
-          />
-        ))}
-
-      </div>
-
-
-      {/* =========================================================
-          FLOATING ROSE PETALS
-      ========================================================= */}
-
-      <div className="absolute inset-0 z-20 pointer-events-none">
-
-        {petals.map((petal, index) => (
-          <div
-            key={index}
-            className="absolute"
-            style={{
-              left: `${petal.x}%`,
-              top: `${petal.y}%`,
-              transform: `
-                rotate(${petal.rotate}deg)
-                scale(${petal.scale})
-              `,
-              animation: `petalDrift ${6 + index * 0.7}s ease-in-out ${index * 0.6}s infinite`,
-            }}
-          >
-
-            <svg
-              width="26"
-              height="17"
-              viewBox="0 0 26 17"
-              xmlns="http://www.w3.org/2000/svg"
-              style={{
-                filter:
-                  'drop-shadow(0 3px 7px rgba(90,0,20,0.6))',
-              }}
-            >
-
-              <defs>
-
-                <linearGradient
-                  id={`petal-${index}`}
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="100%"
-                >
-
-                  <stop
-                    offset="0%"
-                    stopColor="#ff9aaa"
-                  />
-
-                  <stop
-                    offset="30%"
-                    stopColor="#f43f5e"
-                  />
-
-                  <stop
-                    offset="70%"
-                    stopColor="#be123c"
-                  />
-
-                  <stop
-                    offset="100%"
-                    stopColor="#4c0519"
-                  />
-
-                </linearGradient>
-
-              </defs>
-
-              <path
-                d="
-                  M1 9
-                  C5 2 14 1 25 5
-                  C21 13 11 18 1 9Z
-                "
-                fill={`url(#petal-${index})`}
-              />
-
-              <path
-                d="M5 8C10 6 15 5 20 6"
-                stroke="rgba(255,255,255,0.28)"
-                strokeWidth="0.8"
-                strokeLinecap="round"
-                fill="none"
-              />
-
-            </svg>
-
-          </div>
-        ))}
-
-      </div>
-
-
-      {/* =========================================================
-          LARGE CRYSTAL HEART AURA
-      ========================================================= */}
-
+      {/* 💎 4. LIQUID GLASS POD & DUAL GLOWING HEART */}
       <div className="relative z-30 flex items-center justify-center">
+        
+        {/* Expanding Pulse Wave (Ripple) */}
+        <div className="absolute w-32 h-32 rounded-full border border-pink-400/30 animate-ping opacity-40" style={{ animationDuration: '2.5s' }} />
+        <div className="absolute w-28 h-28 rounded-full border border-rose-500/20 animate-ping opacity-30" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
 
-        {/* Outer heartbeat aura */}
-        <div
-          className="
-            absolute
-            w-[150px] h-[150px]
-            rounded-full
-            border
-            border-rose-400/10
-            animate-[auraPulse_3s_ease-in-out_infinite]
-          "
-        />
+        {/* Futuristic Liquid Glass Bubble Container */}
+        <div className="relative flex items-center justify-center w-32 h-32 rounded-full 
+                        bg-gradient-to-b from-white/[0.08] to-pink-500/[0.02] 
+                        backdrop-blur-xl border border-white/10 
+                        shadow-[0_10px_40px_0_rgba(244,63,94,0.4),inset_0_0_20px_rgba(255,255,255,0.05)]">
+          
+          {/* Inner Glowing Neon Core */}
+          <div className="absolute w-20 h-20 bg-rose-600/30 rounded-full blur-xl animate-pulse" />
 
-        {/* Second glass halo */}
-        <div
-          className="
-            absolute
-            w-[126px] h-[126px]
-            rounded-full
-            border
-            border-white/10
-            bg-white/[0.015]
-            backdrop-blur-[1px]
-          "
-        />
+          {/* 3D Realistic Holographic Heart SVG */}
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 24 24" 
+            className="w-16 h-16 relative z-20 animate-[heartbeat_1.5s_ease-in-out_infinite]"
+          >
+            <defs>
+              {/* 3D Realistic Depth Gradient (Rose Gold to Dark Red) */}
+              <linearGradient id="heartGradient3D" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#ff5e88" />
+                <stop offset="40%" stopColor="#f43f5e" />
+                <stop offset="80%" stopColor="#be123c" />
+                <stop offset="100%" stopColor="#881337" />
+              </linearGradient>
 
-        {/* Deep heart glow */}
-        <div
-          className="
-            absolute
-            w-[95px] h-[95px]
-            rounded-full
-            bg-rose-600/25
-            blur-[28px]
-            animate-[heartGlow_2.8s_ease-in-out_infinite]
-          "
-        />
+              {/* Drop Shadow Glow Filter */}
+              <filter id="ultraHeartGlow2027" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#f43f5e" floodOpacity="0.9"/>
+                <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#ff007a" floodOpacity="0.7"/>
+              </filter>
+            </defs>
 
-
-        {/* =====================================================
-            MAIN 3D RUBY / CRYSTAL HEART
-        ===================================================== */}
-
-        <svg
-          width="132"
-          height="132"
-          viewBox="0 0 220 220"
-          xmlns="http://www.w3.org/2000/svg"
-          className="
-            relative
-            z-40
-            overflow-visible
-            animate-[premiumHeartbeat_3s_ease-in-out_infinite]
-          "
-          style={{
-            filter:
-              'drop-shadow(0 12px 20px rgba(90,0,25,0.55)) drop-shadow(0 0 15px rgba(244,63,94,0.45))',
-          }}
-        >
-
-          <defs>
-
-            {/* Main ruby body */}
-            <linearGradient
-              id="rubyHeart"
-              x1="12%"
-              y1="5%"
-              x2="88%"
-              y2="100%"
-            >
-
-              <stop
-                offset="0%"
-                stopColor="#ffb1bd"
-              />
-
-              <stop
-                offset="12%"
-                stopColor="#ff6b83"
-              />
-
-              <stop
-                offset="32%"
-                stopColor="#f43f5e"
-              />
-
-              <stop
-                offset="58%"
-                stopColor="#c91843"
-              />
-
-              <stop
-                offset="82%"
-                stopColor="#7f1233"
-              />
-
-              <stop
-                offset="100%"
-                stopColor="#350313"
-              />
-
-            </linearGradient>
-
-
-            {/* Crystal depth */}
-            <radialGradient
-              id="rubyDepth"
-              cx="42%"
-              cy="27%"
-              r="75%"
-            >
-
-              <stop
-                offset="0%"
-                stopColor="#ffffff"
-                stopOpacity="0.24"
-              />
-
-              <stop
-                offset="22%"
-                stopColor="#ffb6c2"
-                stopOpacity="0.15"
-              />
-
-              <stop
-                offset="55%"
-                stopColor="#b3123d"
-                stopOpacity="0.08"
-              />
-
-              <stop
-                offset="100%"
-                stopColor="#16030a"
-                stopOpacity="0.48"
-              />
-
-            </radialGradient>
-
-
-            {/* Strong glow */}
-            <filter
-              id="rubyGlow"
-              x="-60%"
-              y="-60%"
-              width="220%"
-              height="220%"
-            >
-
-              <feGaussianBlur
-                stdDeviation="4"
-                result="blur"
-              />
-
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-
-            </filter>
-
-
-            {/* White crystal shine */}
-            <linearGradient
-              id="crystalShine"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
-
-              <stop
-                offset="0%"
-                stopColor="#ffffff"
-                stopOpacity="0.85"
-              />
-
-              <stop
-                offset="18%"
-                stopColor="#ffffff"
-                stopOpacity="0.28"
-              />
-
-              <stop
-                offset="42%"
-                stopColor="#ffffff"
-                stopOpacity="0"
-              />
-
-              <stop
-                offset="100%"
-                stopColor="#ffffff"
-                stopOpacity="0"
-              />
-
-            </linearGradient>
-
-
-            {/* Bottom ruby reflection */}
-            <linearGradient
-              id="bottomReflection"
-              x1="0%"
-              y1="0%"
-              x2="0%"
-              y2="100%"
-            >
-
-              <stop
-                offset="0%"
-                stopColor="#ff8298"
-                stopOpacity="0"
-              />
-
-              <stop
-                offset="100%"
-                stopColor="#ff365f"
-                stopOpacity="0.35"
-              />
-
-            </linearGradient>
-
-          </defs>
-
-
-          {/* =================================================
-              HEART SHADOW / DEPTH
-          ================================================= */}
-
-          <path
-            d="
-              M110 186
-              C98 176 30 130 30 76
-              C30 42 53 21 81 21
-              C95 21 105 28 110 40
-              C115 28 125 21 139 21
-              C167 21 190 42 190 76
-              C190 130 122 176 110 186Z
-            "
-            fill="rgba(20,0,8,0.42)"
-            transform="translate(0 5)"
-          />
-
-
-          {/* =================================================
-              MAIN HEART
-          ================================================= */}
-
-          <path
-            d="
-              M110 181
-              C99 172 34 128 34 76
-              C34 45 55 25 81 25
-              C95 25 105 32 110 44
-              C115 32 125 25 139 25
-              C165 25 186 45 186 76
-              C186 128 121 172 110 181Z
-            "
-            fill="url(#rubyHeart)"
-            filter="url(#rubyGlow)"
-          />
-
-
-          {/* =================================================
-              INNER CRYSTAL DEPTH
-          ================================================= */}
-
-          <path
-            d="
-              M110 174
-              C99 165 43 126 43 78
-              C43 51 60 34 82 34
-              C95 34 104 42 110 55
-              C116 42 125 34 138 34
-              C160 34 177 51 177 78
-              C177 126 121 165 110 174Z
-            "
-            fill="url(#rubyDepth)"
-          />
-
-
-          {/* =================================================
-              LARGE GLASS REFLECTION
-          ================================================= */}
-
-          <path
-            d="
-              M66 53
-              C53 62 49 76 53 91
-              C56 102 64 111 75 117
-            "
-            stroke="url(#crystalShine)"
-            strokeWidth="9"
-            strokeLinecap="round"
-            fill="none"
-          />
-
-
-          {/* Small bright reflection */}
-          <ellipse
-            cx="78"
-            cy="48"
-            rx="14"
-            ry="6"
-            transform="rotate(-27 78 48)"
-            fill="rgba(255,255,255,0.34)"
-          />
-
-
-          {/* Fine crystal highlight */}
-          <path
-            d="
-              M63 127
-              C76 143 94 156 110 166
-            "
-            stroke="rgba(255,140,160,0.18)"
-            strokeWidth="3"
-            strokeLinecap="round"
-            fill="none"
-          />
-
-
-          {/* Bottom depth */}
-          <path
-            d="
-              M56 126
-              C76 149 98 164 110 174
-              C122 164 144 149 164 126
-            "
-            fill="url(#bottomReflection)"
-            opacity="0.5"
-          />
-
-        </svg>
-
-
-        {/* =====================================================
-            TINY LIGHT RING AROUND HEART
-        ===================================================== */}
-
-        <div
-          className="
-            absolute
-            w-[116px] h-[116px]
-            rounded-full
-            border
-            border-rose-300/15
-            animate-[ringPulse_4s_ease-in-out_infinite]
-          "
-        />
-
+            <path 
+              fill="url(#heartGradient3D)" 
+              filter="url(#ultraHeartGlow2027)"
+              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+            />
+            {/* Top Gloss Reflection (3D Shiny Effect) */}
+            <path 
+              d="M7.5 5C5.5 5 4 6.5 4 8.5c0 1 .5 2 1.5 3" 
+              stroke="rgba(255,255,255,0.8)" 
+              strokeWidth="1.5" 
+              strokeLinecap="round" 
+              fill="none" 
+            />
+            {/* Small highlight dot */}
+            <circle cx="8" cy="7" r="1" fill="rgba(255,255,255,0.9)" />
+          </svg>
+        </div>
       </div>
 
-
-      {/* =========================================================
-          FOREGROUND HEARTS
-      ========================================================= */}
-
-      <div className="absolute inset-0 z-50 pointer-events-none">
-
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          className="
-            absolute
-            left-[7%]
-            top-[52%]
-            opacity-40
-            blur-[0.5px]
-            animate-[foregroundHeart_7s_ease-in-out_infinite]
-          "
-        >
-
-          <path
-            d="
-              M12 21
-              C11.7 21 11.4 20.9 11.1 20.65
-              C5.3 16 2 12.95 2 8.7
-              C2 5.55 4.45 3 7.5 3
-              C9.3 3 10.95 3.8 12 5.15
-              C13.05 3.8 14.7 3 16.5 3
-              C19.55 3 22 5.55 22 8.7
-              C22 12.95 18.7 16 12.9 20.65
-              C12.6 20.9 12.3 21 12 21Z
-            "
-            fill="#f43f5e"
-          />
-
-        </svg>
-
-
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          className="
-            absolute
-            right-[6%]
-            bottom-[30%]
-            opacity-35
-            blur-[1px]
-            animate-[foregroundHeart_8s_ease-in-out_1.5s_infinite]
-          "
-        >
-
-          <path
-            d="
-              M12 21
-              C11.7 21 11.4 20.9 11.1 20.65
-              C5.3 16 2 12.95 2 8.7
-              C2 5.55 4.45 3 7.5 3
-              C9.3 3 10.95 3.8 12 5.15
-              C13.05 3.8 14.7 3 16.5 3
-              C19.55 3 22 5.55 22 8.7
-              C22 12.95 18.7 16 12.9 20.65
-              C12.6 20.9 12.3 21 12 21Z
-            "
-            fill="#e11d48"
-          />
-
-        </svg>
-
-      </div>
-
-
-      {/* =========================================================
-          ANIMATIONS
-      ========================================================= */}
-
+      {/* 🚀 5. ORGANIC SMOOTH HEARTBEAT ANIMATION */}
       <style jsx>{`
-
-        /* ---------------------------------------------
-           Cinematic background breathing
-        --------------------------------------------- */
-
-        @keyframes cinematicGlow {
-
-          0%, 100% {
-            opacity: 0.55;
-            transform:
-              translate(-50%, -50%)
-              scale(0.92);
-          }
-
-          50% {
-            opacity: 0.95;
-            transform:
-              translate(-50%, -50%)
-              scale(1.08);
-          }
-
+        @keyframes heartbeat {
+          0%, 100% { transform: scale(1); }
+          10% { transform: scale(1.15); }
+          20% { transform: scale(1); }
+          30% { transform: scale(1.25); }
+          50% { transform: scale(1); }
+          100% { transform: scale(1); }
         }
-
-
-        /* ---------------------------------------------
-           Main heart heartbeat
-        --------------------------------------------- */
-
-        @keyframes premiumHeartbeat {
-
-          0%, 100% {
-            transform: scale(1);
-          }
-
-          8% {
-            transform: scale(1.015);
-          }
-
-          15% {
-            transform: scale(1.055);
-          }
-
-          23% {
-            transform: scale(1);
-          }
-
-          35% {
-            transform: scale(1.035);
-          }
-
-          44% {
-            transform: scale(1);
-          }
-
-        }
-
-
-        /* ---------------------------------------------
-           Heart light
-        --------------------------------------------- */
-
-        @keyframes heartGlow {
-
-          0%, 100% {
-            opacity: 0.45;
-            transform: scale(0.9);
-          }
-
-          50% {
-            opacity: 0.9;
-            transform: scale(1.1);
-          }
-
-        }
-
-
-        /* ---------------------------------------------
-           Outer aura
-        --------------------------------------------- */
-
-        @keyframes auraPulse {
-
-          0%, 100% {
-            transform: scale(0.94);
-            opacity: 0.25;
-          }
-
-          50% {
-            transform: scale(1.08);
-            opacity: 0.65;
-          }
-
-        }
-
-
-        /* ---------------------------------------------
-           Ring
-        --------------------------------------------- */
-
-        @keyframes ringPulse {
-
-          0%, 100% {
-            transform: scale(0.96);
-            opacity: 0.15;
-          }
-
-          50% {
-            transform: scale(1.08);
-            opacity: 0.45;
-          }
-
-        }
-
-
-        /* ---------------------------------------------
-           Floating mini hearts
-        --------------------------------------------- */
-
-        @keyframes romanticFloat {
-
-          0%, 100% {
-            transform:
-              translate3d(0, 7px, 0)
-              scale(0.75)
-              rotate(-5deg);
-          }
-
-          50% {
-            transform:
-              translate3d(5px, -13px, 0)
-              scale(1.08)
-              rotate(7deg);
-          }
-
-        }
-
-
-        /* ---------------------------------------------
-           Tiny lights
-        --------------------------------------------- */
-
-        @keyframes twinkle {
-
-          0%, 100% {
-            opacity: 0.15;
-            transform: scale(0.6);
-          }
-
-          50% {
-            opacity: 1;
-            transform: scale(1.4);
-          }
-
-        }
-
-
-        /* ---------------------------------------------
-           Rose petals
-        --------------------------------------------- */
-
-        @keyframes petalDrift {
-
-          0%, 100% {
-            opacity: 0.18;
-            transform:
-              translate3d(0, 5px, 0)
-              rotate(0deg)
-              scale(0.9);
-          }
-
-          30% {
-            opacity: 0.65;
-          }
-
-          50% {
-            opacity: 0.9;
-            transform:
-              translate3d(10px, -14px, 0)
-              rotate(20deg)
-              scale(1);
-          }
-
-          75% {
-            opacity: 0.4;
-          }
-
-        }
-
-
-        /* ---------------------------------------------
-           Foreground hearts
-        --------------------------------------------- */
-
-        @keyframes foregroundHeart {
-
-          0%, 100% {
-            transform:
-              translate3d(0, 8px, 0)
-              rotate(-5deg);
-          }
-
-          50% {
-            transform:
-              translate3d(9px, -13px, 0)
-              rotate(8deg);
-          }
-
-        }
-
       `}</style>
 
     </div>
