@@ -2,27 +2,44 @@
 
 import React, { useEffect, useRef } from 'react';
 
+// Particle के लिए Strict TypeScript Interface
+interface Particle {
+  x: number;
+  y: number;
+  size: number;
+  speedY: number;
+  speedX: number;
+  alpha: number;
+  type: 'petal' | 'spark';
+  rotation: number;
+  rotSpeed: number;
+}
+
 export default function ValentineVisual() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // 🚀 2027 CANVAS PARTICLE ENGINE (Floating Petals & Magical Sparks)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let W = (canvas.width = canvas.offsetWidth);
-    let H = (canvas.height = canvas.offsetHeight);
+    let W = 0;
+    let H = 0;
     let animationId = 0;
 
-    const particles: any[] = [];
-
     const resize = () => {
+      // SSR Safety Check
+      if (typeof window === 'undefined') return;
       W = canvas.width = canvas.offsetWidth;
       H = canvas.height = canvas.offsetHeight;
     };
+
+    resize();
     window.addEventListener('resize', resize);
+
+    const particles: Particle[] = [];
 
     // Create Petals & Sparks
     for (let i = 0; i < 25; i++) {
@@ -39,14 +56,15 @@ export default function ValentineVisual() {
       });
     }
 
-    const drawPetal = (p: any) => {
+    const drawPetal = (p: Particle) => {
+      if (!ctx) return;
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation);
       ctx.globalAlpha = p.alpha;
       
       // Realistic Rose Petal Shape
-      const grad = ctx.createLinearGradient(0, -p.size*2, 0, p.size*2);
+      const grad = ctx.createLinearGradient(0, -p.size * 2, 0, p.size * 2);
       grad.addColorStop(0, '#ff4d8d');
       grad.addColorStop(1, '#c40e4e');
       ctx.fillStyle = grad;
@@ -59,7 +77,8 @@ export default function ValentineVisual() {
       ctx.restore();
     };
 
-    const drawSpark = (p: any) => {
+    const drawSpark = (p: Particle) => {
+      if (!ctx) return;
       ctx.save();
       ctx.globalAlpha = p.alpha;
       ctx.shadowBlur = 10;
@@ -72,6 +91,7 @@ export default function ValentineVisual() {
     };
 
     const animate = () => {
+      if (!ctx) return;
       ctx.clearRect(0, 0, W, H);
 
       particles.forEach((p) => {
@@ -95,51 +115,54 @@ export default function ValentineVisual() {
 
     return () => {
       cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resize);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', resize);
+      }
     };
   }, []);
 
   return (
     <div className="relative flex items-center justify-center w-full h-64 my-1 select-none overflow-hidden">
       
-      {/* 🌌 1. CINEMATIC DEEP NEBULA BACKGROUND */}
+      {/* 1. CINEMATIC DEEP NEBULA BACKGROUND */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#1a0111] via-[#0a0a0a] to-[#000000] z-0" />
 
-      {/* 🎆 2. CANVAS PARTICLE LAYER (Petals & Sparks) */}
+      {/* 2. CANVAS PARTICLE LAYER */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
 
-      {/* 🪐 3. FUTURISTIC HOLOGRAPHIC ORBITING RINGS */}
-      <div className="absolute z-20 w-56 h-56 rounded-full border border-pink-500/10 animate-[spin_25s_linear_infinite]" 
-           style={{ boxShadow: '0 0 30px rgba(244, 63, 94, 0.15) inset' }} />
+      {/* 3. FUTURISTIC HOLOGRAPHIC ORBITING RINGS */}
+      <div 
+        className="absolute z-20 w-56 h-56 rounded-full border border-pink-500/10 animate-[spin_25s_linear_infinite]" 
+        style={{ boxShadow: '0 0 30px rgba(244, 63, 94, 0.15) inset' }} 
+      />
       
       <div className="absolute z-20 w-44 h-44 rounded-full border border-rose-500/20 animate-[spin_15s_linear_infinite_reverse] flex items-start justify-center">
         <div className="w-3 h-3 bg-rose-500 rounded-full shadow-[0_0_15px_#f43f5e] -translate-y-1.5 mt-[-6px]" />
       </div>
 
-      {/* 💎 4. LIQUID GLASS POD & DUAL GLOWING HEART */}
+      {/* 4. LIQUID GLASS POD & DUAL GLOWING HEART */}
       <div className="relative z-30 flex items-center justify-center">
         
-        {/* Expanding Pulse Wave (Ripple) */}
+        {/* Expanding Pulse Wave */}
         <div className="absolute w-32 h-32 rounded-full border border-pink-400/30 animate-ping opacity-40" style={{ animationDuration: '2.5s' }} />
         <div className="absolute w-28 h-28 rounded-full border border-rose-500/20 animate-ping opacity-30" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
 
-        {/* Futuristic Liquid Glass Bubble Container */}
+        {/* Futuristic Liquid Glass Bubble */}
         <div className="relative flex items-center justify-center w-32 h-32 rounded-full 
                         bg-gradient-to-b from-white/[0.08] to-pink-500/[0.02] 
                         backdrop-blur-xl border border-white/10 
                         shadow-[0_10px_40px_0_rgba(244,63,94,0.4),inset_0_0_20px_rgba(255,255,255,0.05)]">
           
-          {/* Inner Glowing Neon Core */}
+          {/* Inner Glowing Core */}
           <div className="absolute w-20 h-20 bg-rose-600/30 rounded-full blur-xl animate-pulse" />
 
-          {/* 3D Realistic Holographic Heart SVG */}
+          {/* 3D Realistic Holographic Heart */}
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             viewBox="0 0 24 24" 
             className="w-16 h-16 relative z-20 animate-[heartbeat_1.5s_ease-in-out_infinite]"
           >
             <defs>
-              {/* 3D Realistic Depth Gradient (Rose Gold to Dark Red) */}
               <linearGradient id="heartGradient3D" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#ff5e88" />
                 <stop offset="40%" stopColor="#f43f5e" />
@@ -147,7 +170,6 @@ export default function ValentineVisual() {
                 <stop offset="100%" stopColor="#881337" />
               </linearGradient>
 
-              {/* Drop Shadow Glow Filter */}
               <filter id="ultraHeartGlow2027" x="-50%" y="-50%" width="200%" height="200%">
                 <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#f43f5e" floodOpacity="0.9"/>
                 <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#ff007a" floodOpacity="0.7"/>
@@ -159,7 +181,7 @@ export default function ValentineVisual() {
               filter="url(#ultraHeartGlow2027)"
               d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
             />
-            {/* Top Gloss Reflection (3D Shiny Effect) */}
+            {/* Top Gloss Reflection */}
             <path 
               d="M7.5 5C5.5 5 4 6.5 4 8.5c0 1 .5 2 1.5 3" 
               stroke="rgba(255,255,255,0.8)" 
@@ -167,14 +189,13 @@ export default function ValentineVisual() {
               strokeLinecap="round" 
               fill="none" 
             />
-            {/* Small highlight dot */}
             <circle cx="8" cy="7" r="1" fill="rgba(255,255,255,0.9)" />
           </svg>
         </div>
       </div>
 
-      {/* 🚀 5. ORGANIC SMOOTH HEARTBEAT ANIMATION */}
-      <style jsx>{`
+      {/* 5. ORGANIC SMOOTH HEARTBEAT ANIMATION */}
+      <style jsx global>{`
         @keyframes heartbeat {
           0%, 100% { transform: scale(1); }
           10% { transform: scale(1.15); }
