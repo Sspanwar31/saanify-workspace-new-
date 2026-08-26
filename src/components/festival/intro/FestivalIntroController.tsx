@@ -32,6 +32,7 @@ import ChhathPujaCinematicIntro from '../engines/effects/chhath-puja/ChhathPujaC
 import KarwaChauthCinematicIntro from '../engines/effects/karwa-chauth/KarwaChauthCinematicIntro';
 import GuruNanakJayantiCinematicIntro from '../engines/effects/guru-nanak-jayanti/GuruNanakJayantiCinematicIntro';
 import DussehraCinematicIntro from '../engines/effects/dussehra/DussehraCinematicIntro';
+import HoliCinematicIntro from '../engines/effects/holi/HoliCinematicIntro';
 
 export default function FestivalIntroController({
   isActive,
@@ -269,6 +270,16 @@ if (isActive && (presetKey.includes('DUSSEHRA') || presetKey.includes('VIJAYADAS
     <DussehraCinematicIntro 
       onComplete={onHandover} 
       videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/dussehra-intro.mp4"}
+    />
+  );
+}
+
+  // 🚀 23. HOLI ACTIVATION (Radha-Krishna Vrindavan Maha Holi Intro)
+if (isActive && (presetKey.includes('HOLI') || presetKey === 'HOLI')) {
+  return (
+    <HoliCinematicIntro 
+      onComplete={onHandover} 
+      videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/holi-intro.mp4"}
     />
   );
 }
