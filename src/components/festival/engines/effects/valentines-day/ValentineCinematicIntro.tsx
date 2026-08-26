@@ -129,7 +129,7 @@ export default function ValentineCinematicIntro({ videoUrl, onComplete }: Props)
 
           {/* ENGLISH TEXT */}
           <h2 className="text-xl sm:text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-rose-200 to-amber-500 font-serif tracking-wider drop-shadow-[0_5px_20px_rgba(244,63,94,0.5)] break-words w-full font-['Cinzel']">
-            HAPPY VALENTINE'S DAY 2027
+            Happy Valentine's Day   
           </h2>
         </div>
 
