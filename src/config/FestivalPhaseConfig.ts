@@ -122,12 +122,12 @@ RAM_NAVAMI: {
     }
   },
 
-  // ━━━ VALENTINES_DAY (🚀 12.0s Cinematic Sequence Sync) ━━━
+  // ━━━ VALENTINES_DAY (🚀 13.0s Cinematic Sequence Sync) ━━━
   VALENTINES_DAY: {
     phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
     timings: {
       FLASH: 1500,     // 1.5s: दो अर्ध-दिलों का आसमान में आगमन
-      SHOOTING: 9500,  // 9.5s: दिलों का मिलना, कोमल लव-वेव्स का फैलना, और "Happy Valentine's Day" टेक्स्ट रीवील
+      SHOOTING: 9500,  // 10.5s: दिलों का मिलना, कोमल लव-वेव्स का फैलना, और "Happy Valentine's Day" टेक्स्ट रीवील
       HANDOVER: 1000   // 1.0s: डैशबोर्ड पर स्मूथ फ़ेड-आउट
     }
   },
