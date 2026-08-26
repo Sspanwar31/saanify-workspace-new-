@@ -2,7 +2,11 @@
 
 import React, { useEffect, useRef } from 'react';
 
-// Strict TypeScript Interface for Vercel
+// Strict TypeScript Interface for Vercel & Dynamic Size
+interface ValentineVisualProps {
+  size?: number; // 👈 Dynamic heart size (e.g. 180, 200, 240)
+}
+
 interface Particle {
   x: number;
   y: number;
@@ -15,7 +19,7 @@ interface Particle {
   rotSpeed: number;
 }
 
-export default function ValentineVisual() {
+export default function ValentineVisual({ size = 200 }: ValentineVisualProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // 🚀 Canvas Engine (Floating Petals & Real Gold Sparks)
@@ -130,19 +134,26 @@ export default function ValentineVisual() {
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10 pointer-events-none" />
 
       {/* 🌌 2. AMBIENT GLOW */}
-      <div className="absolute w-52 h-52 bg-rose-600/20 rounded-full blur-3xl animate-[breatheGlow_4s_ease-in-out_infinite]" />
+      <div 
+        className="absolute bg-rose-600/20 rounded-full blur-3xl animate-[breatheGlow_4s_ease-in-out_infinite]" 
+        style={{ width: size * 1.1, height: size * 1.1 }}
+      />
 
-      {/* 💎 3. 3D VELVET RED HEART WITH PURE GOLD GRADIENT */}
+      {/* 💎 3. 3D VELVET RED HEART WITH AUTO-FIT TEXT */}
       <div className="relative z-20 flex items-center justify-center animate-[heartBreathe_4s_ease-in-out_infinite]">
         
         {/* Soft Depth Shadow */}
-        <div className="absolute -bottom-3 w-32 h-6 bg-black/50 blur-xl rounded-full" />
+        <div 
+          className="absolute -bottom-3 bg-black/50 blur-xl rounded-full" 
+          style={{ width: size * 0.7, height: size * 0.15 }}
+        />
 
-        {/* Main 3D Heart SVG */}
+        {/* Dynamic Scaling SVG (Size adapts automatically) */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
-          className="w-48 h-48 filter drop-shadow-[0_15px_30px_rgba(225,29,72,0.6)]"
+          style={{ width: `${size}px`, height: `${size}px` }}
+          className="filter drop-shadow-[0_15px_30px_rgba(225,29,72,0.6)]"
         >
           <defs>
             {/* 3D Velvet Red Background */}
@@ -168,8 +179,8 @@ export default function ValentineVisual() {
 
             {/* Gold Text Depth Shadow Filter */}
             <filter id="goldDepthGlow" x="-30%" y="-30%" width="160%" height="160%">
-              <feDropShadow dx="0" dy="0.4" stdDeviation="0.4" floodColor="#401000" floodOpacity="0.9" />
-              <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#DFBA6B" floodOpacity="0.7" />
+              <feDropShadow dx="0" dy="0.3" stdDeviation="0.3" floodColor="#380a00" floodOpacity="0.9" />
+              <feDropShadow dx="0" dy="0" stdDeviation="1.2" floodColor="#DFBA6B" floodOpacity="0.7" />
             </filter>
           </defs>
 
@@ -177,7 +188,7 @@ export default function ValentineVisual() {
           <path
             fill="url(#velvet3DGrad)"
             stroke="url(#pinterestGold)"
-            strokeWidth="0.55"
+            strokeWidth="0.5"
             d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
           />
 
@@ -193,24 +204,24 @@ export default function ValentineVisual() {
           {/* ✨ Top Gloss Spot */}
           <ellipse cx="7.5" cy="7" rx="2.5" ry="1.2" transform="rotate(-35 7.5 7)" fill="rgba(255,255,255,0.7)" />
 
-          {/* 💛 Little Pinterest Golden Hearts */}
-          <path d="M5.8 10.5 C5.3 9.8 4.6 10 4.6 10.5 C4.6 11.2 5.8 12 5.8 12 C5.8 12 7 11.2 7 10.5 C7 10 6.3 9.8 5.8 10.5Z" fill="url(#pinterestGold)" opacity="0.9" />
-          <path d="M17.8 9.2 C17.4 8.7 16.8 8.8 16.8 9.2 C16.8 9.7 17.8 10.4 17.8 10.4 C17.8 10.4 18.8 9.7 18.8 9.2 C18.8 8.8 18.2 8.7 17.8 9.2Z" fill="url(#pinterestGold)" opacity="0.9" />
-          <path d="M16.5 13.8 C16.1 13.4 15.7 13.5 15.7 13.8 C15.7 14.2 16.5 14.8 16.5 14.8 C16.5 14.8 17.3 14.2 17.3 13.8 C17.3 13.5 16.9 13.4 16.5 13.8Z" fill="url(#pinterestGold)" opacity="0.8" />
+          {/* 💛 Little Pinterest Golden Hearts (Inside safe area) */}
+          <path d="M6.2 10.8 C5.8 10.2 5.2 10.3 5.2 10.8 C5.2 11.4 6.2 12 6.2 12 C6.2 12 7.2 11.4 7.2 10.8 C7.2 10.3 6.6 10.2 6.2 10.8Z" fill="url(#pinterestGold)" opacity="0.9" />
+          <path d="M17.8 9.5 C17.4 9 16.8 9.1 16.8 9.5 C16.8 10 17.8 10.6 17.8 10.6 C17.8 10.6 18.8 10 18.8 9.5 C18.8 9.1 18.2 9 17.8 9.5Z" fill="url(#pinterestGold)" opacity="0.9" />
+          <path d="M16.2 13.6 C15.8 13.2 15.4 13.3 15.4 13.6 C15.4 14 16.2 14.5 16.2 14.5 C16.2 14.5 17 14 17 13.6 C17 13.3 16.6 13.2 16.2 13.6Z" fill="url(#pinterestGold)" opacity="0.8" />
 
-          {/* ✍️ PURE GOLD CURSIVE TYPOGRAPHY */}
+          {/* ✍️ COMPACT & CENTERED GOLD CURSIVE TYPOGRAPHY */}
           <g filter="url(#goldDepthGlow)">
             {/* "Happy" */}
             <text
               x="12"
-              y="9.6"
+              y="10.2"
               textAnchor="middle"
               fill="url(#pinterestGold)"
               className="cursive-gold-text"
               style={{
-                fontSize: '4.2px',
+                fontSize: '3.1px', // Compact Size
                 fontWeight: 'normal',
-                letterSpacing: '0.2px',
+                letterSpacing: '0.1px',
               }}
             >
               Happy
@@ -224,9 +235,9 @@ export default function ValentineVisual() {
               fill="url(#pinterestGold)"
               className="cursive-gold-text"
               style={{
-                fontSize: '4.4px',
+                fontSize: '3.3px', // Compact Size
                 fontWeight: 'normal',
-                letterSpacing: '0.1px',
+                letterSpacing: '0.05px',
               }}
             >
               Valentine's
@@ -235,14 +246,14 @@ export default function ValentineVisual() {
             {/* "Day" */}
             <text
               x="12"
-              y="16.6"
+              y="16.0"
               textAnchor="middle"
               fill="url(#pinterestGold)"
               className="cursive-gold-text"
               style={{
-                fontSize: '4.2px',
+                fontSize: '3.1px', // Compact Size
                 fontWeight: 'normal',
-                letterSpacing: '0.3px',
+                letterSpacing: '0.2px',
               }}
             >
               Day
