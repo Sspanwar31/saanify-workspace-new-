@@ -15,16 +15,20 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   },
 
 
-  // ━━━ HOLI (DO NOT TOUCH) ━━━
+// ━━━ HOLI (🚀 18.0s Complete Cinematic Sync: Video -> Text -> Greeting -> Rocket Blast -> Gulal Rain) ━━━
   HOLI: {
-    phases: ['ROCKET_LAUNCH', 'COLOR_DHAMAKA','GULAL_RAIN', 'HANDOVER'],
+    phases: ['VIDEO_INTRO', 'TEXT_REVEAL', 'GREETING_MODAL', 'ROCKET_LAUNCH', 'COLOR_DHAMAKA', 'GULAL_RAIN', 'HANDOVER'],
     timings: {
-      ROCKET_LAUNCH: 3500,   
-      COLOR_DHAMAKA: 1500,   
-      GULAL_RAIN: 3500,      
-      HANDOVER: 150          
+      VIDEO_INTRO: 8500,     // 1. 0.0s - 8.5s: राधा-कृष्ण वृंदावन 3D वीडियो प्लेबैक
+      TEXT_REVEAL: 3500,     // 2. 8.5s - 12.0s: 3D लिक्विड गोल्ड "बुरा न मानो होली है / Happy Holi" टेक्स्ट
+      GREETING_MODAL: 4000,  // 3. 12.0s - 16.0s: होली ग्रीटिंग कार्ड / विशेस पढ़ने का समय
+      ROCKET_LAUNCH: 2000,   // 4. 16.0s - 18.0s: 5 रंगीन रॉकेट्स का आसमान में जाना
+      COLOR_DHAMAKA: 1500,   // 5. 18.0s - 19.5s: महा-कलर ब्लास्ट (360° Powder Explosion)
+      GULAL_RAIN: 3500,      // 6. 19.5s - 23.0s: हवा में तैरते गुलाल और स्पार्कल्स पार्टिकल्स
+      HANDOVER: 1000         // 7. 23.0s - 24.0s: डैशबोर्ड पर स्मूथ ट्रांसफर
     }
   },
+
 
   CHRISTMAS: {
   phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
