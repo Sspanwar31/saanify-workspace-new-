@@ -27,7 +27,7 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
     if (!audio) return;
 
     audio.currentTime = 14.0; // 👈 Main Antra/Hook start
-    audio.volume = 0.7;
+    audio.volume = 0.65;
 
     const playAudio = () => {
       audio.play().catch(() => {});
