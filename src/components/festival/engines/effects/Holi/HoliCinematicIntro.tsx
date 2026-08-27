@@ -79,7 +79,7 @@ export default function HoliCinematicIntro({
             className="text-4xl sm:text-7xl font-black tracking-wider mt-2 drop-shadow-[0_8px_24px_rgba(0,0,0,0.95)] text-transparent bg-clip-text bg-gradient-to-b from-[#FFF6D6] via-[#F3D899] to-[#BD8D39]"
             style={{ fontFamily: "'Cinzel', serif" }}
           >
-            HAPPY HOLI
+            Happy Holi
           </h1>
 
           <p className="text-white/90 text-sm sm:text-base mt-2 font-medium tracking-widest uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
