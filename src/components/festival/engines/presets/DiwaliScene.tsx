@@ -6,6 +6,8 @@ import Shooting from '../effects/Shooting';
 export default function DiwaliScene({ phase }: { phase?: string }) {
   console.log('DIWALI SCENE PHASE =', phase);
 
+  // 🛑 ROCKET CONTROL: Rockets sirf tabhi chalenge jab Intro me 'SHOOTING' ya 'FLASH' phase ho
+  const showRockets = phase === 'SHOOTING' || phase === 'FLASH';
   const showFlash = phase === 'FLASH';
 
   return (
@@ -18,8 +20,8 @@ export default function DiwaliScene({ phase }: { phase?: string }) {
         />
       )}
 
-      {/* 🚀 2. FIREWORKS & ROCKETS (Clean Explosions - No Stuck Dhabba) */}
-      <Shooting />
+      {/* 🚀 2. FIREWORKS & ROCKETS (Greeting ke baad Dashboard par band ho jayenge) */}
+      {showRockets && <Shooting />}
 
       {/* 🌟 3. CLEAN MICRO GOLD DUST PARTICLES */}
       <GoldenParticles preset="DIWALI" />
