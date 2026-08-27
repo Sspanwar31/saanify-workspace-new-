@@ -162,16 +162,17 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
     }
   }, [internalPhase]);
 
-  // 🚀 4. SEQUENCE TIMELINE (10s Video + 6.0s Sacred Text & Petals)
+  // 🚀 4. Sequence Timeline: Video End (10s) -> 5.5s Text/Petals -> Dashboard Handover
   const handleVideoEnded = () => {
     setInternalPhase('CELEBRATION');
 
+    // 5.5 Seconds tak Text & Petals display honge
     setTimeout(() => {
       setInternalPhase('HANDOVER');
       if (onCompleteRef.current) {
-        onCompleteRef.current(); // Dashboard handover
+        onCompleteRef.current(); // Handover to Dashboard
       }
-    }, 6000);
+    }, 5500);
   };
 
   return (
