@@ -7,15 +7,16 @@ interface Props {
   onComplete?: () => void;
 }
 
-// 🎆 Canvas Sparkle Interface
-interface DiyaSpark {
+// 🎆 Fireworks Particle Type Definition
+interface Spark {
   x: number;
   y: number;
   vx: number;
   vy: number;
-  alpha: number;
   size: number;
+  alpha: number;
   color: string;
+  gravity: number;
 }
 
 export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
@@ -26,19 +27,18 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const onCompleteRef = useRef(onComplete);
 
-  const [internalPhase, setInternalPhase] = useState<'VIDEO' | 'FIREWORKS' | 'HANDOVER'>('VIDEO');
+  const [internalPhase, setInternalPhase] = useState<'VIDEO' | 'CELEBRATION' | 'HANDOVER'>('VIDEO');
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  // 🎵 1. BOLLYWOOD AUDIO SYNC (MAIN ANTRA / HOOK START)
+  // 🎵 1. BOLLYWOOD AUDIO SYNC (Hook Start + Auto-Play)
   useEffect(() => {
     const audio = bgAudioRef.current;
     if (!audio) return;
 
-    // 🚀 MAIN ANTRA / CHORUS START TIME (22 Seconds Hook)
-    audio.currentTime = 22.0; // 👈 Aapke gaane ke main drop ka exact second
+    audio.currentTime = 22.0; // 👈 Main Antra/Hook start
     audio.volume = 0.7;
 
     const playAudio = () => {
@@ -63,9 +63,9 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
     };
   }, []);
 
-  // 🎆 2. DYNAMIC FIREWORKS & GOLDEN SPARKS ENGINE (TEXT KE SATH)
+  // 🎆 2. DYNAMIC 3D FIREWORKS & PHULJHADI ENGINE (Triggered Immediately After Video)
   useEffect(() => {
-    if (internalPhase !== 'FIREWORKS') return;
+    if (internalPhase !== 'CELEBRATION') return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -76,46 +76,51 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
     let H = (canvas.height = window.innerHeight);
     let animationId: number;
 
-    const sparks: DiyaSpark[] = [];
-    const colors = ['#FFD700', '#FFA500', '#FF4500', '#FFF8DC', '#FF6347'];
+    const sparks: Spark[] = [];
+    const colors = ['#FFD700', '#FF9900', '#FF3300', '#FFF8DC', '#FFCC00', '#FF5500'];
 
-    // Spawn Fireworks Burst
-    const createBurst = (cx: number, cy: number) => {
-      for (let i = 0; i < 40; i++) {
+    const createFirework = (cx: number, cy: number) => {
+      const count = 45;
+      for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 4 + 1;
+        const speed = Math.random() * 5 + 1.5;
         sparks.push({
           x: cx,
           y: cy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
+          size: Math.random() * 3 + 1.2,
           alpha: 1,
-          size: Math.random() * 3 + 1.5,
           color: colors[Math.floor(Math.random() * colors.length)],
+          gravity: 0.04,
         });
       }
     };
 
-    // Trigger Initial 3 Bursts
-    createBurst(W * 0.25, H * 0.3);
-    createBurst(W * 0.75, H * 0.35);
-    createBurst(W * 0.5, H * 0.2);
+    // Instant Initial Blasts Around Screen
+    createFirework(W * 0.2, H * 0.3);
+    createFirework(W * 0.8, H * 0.3);
+    createFirework(W * 0.5, H * 0.2);
 
-    let timer = 0;
+    let frame = 0;
     const animate = () => {
       ctx.clearRect(0, 0, W, H);
-      timer++;
+      frame++;
 
-      if (timer % 35 === 0) {
-        createBurst(Math.random() * W, Math.random() * (H * 0.5));
+      // Periodic Rocket Bursts
+      if (frame % 28 === 0) {
+        createFirework(
+          W * 0.15 + Math.random() * (W * 0.7),
+          H * 0.15 + Math.random() * (H * 0.35)
+        );
       }
 
       for (let i = sparks.length - 1; i >= 0; i--) {
         const s = sparks[i];
         s.x += s.vx;
         s.y += s.vy;
-        s.vy += 0.04; // Gravity
-        s.alpha -= 0.015;
+        s.vy += s.gravity;
+        s.alpha -= 0.014;
 
         if (s.alpha <= 0) {
           sparks.splice(i, 1);
@@ -123,10 +128,10 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
         }
 
         ctx.save();
-        ctx.globalAlpha = s.alpha;
-        ctx.fillStyle = s.color;
-        ctx.shadowBlur = 8;
+        ctx.globalAlpha = Math.max(0, s.alpha);
+        ctx.shadowBlur = 10;
         ctx.shadowColor = s.color;
+        ctx.fillStyle = s.color;
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
         ctx.fill();
@@ -143,13 +148,12 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
     };
   }, [internalPhase]);
 
-  // 🎛️ 3. SMOOTH FADE-OUT CONTROLLER
+  // 🎛️ 3. AUDIO FADE-OUT
   useEffect(() => {
     const audio = bgAudioRef.current;
     if (!audio) return;
 
-    if (internalPhase === 'FIREWORKS') {
-      // 🚀 Aakhri 2.5s me slow graceful volume fade
+    if (internalPhase === 'CELEBRATION') {
       const fadeTimeout = setTimeout(() => {
         const fadeInterval = setInterval(() => {
           if (audio.volume > 0.04) {
@@ -165,15 +169,15 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
     }
   }, [internalPhase]);
 
-  // 🚀 4. SEQUENCE TIMELINE (10s Video + 6.0s Fireworks & Text)
+  // 🚀 4. SEQUENCE CONTROLLER
   const handleVideoEnded = () => {
-    setInternalPhase('FIREWORKS');
+    // Video end hote hi turant Fireworks + Mantra + Text shuru
+    setInternalPhase('CELEBRATION');
 
-    // 6 Seconds celebration with fireworks and mantra
     setTimeout(() => {
       setInternalPhase('HANDOVER');
       if (onCompleteRef.current) {
-        onCompleteRef.current(); // 👈 Handover to Dashboard Modal
+        onCompleteRef.current(); // Dashboard par transfer
       }
     }, 6000);
   };
@@ -202,12 +206,12 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
         playsInline
         onEnded={handleVideoEnded}
         className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 ${
-          internalPhase !== 'VIDEO' ? 'opacity-35 blur-[3px] scale-105' : 'opacity-100 scale-100'
+          internalPhase !== 'VIDEO' ? 'opacity-30 blur-[3px] scale-105' : 'opacity-100 scale-100'
         }`}
       />
 
-      {/* 🎆 2. REALTIME FIREWORKS CANVAS OVERLAY */}
-      {internalPhase === 'FIREWORKS' && (
+      {/* 🎆 2. REAL-TIME CANVAS FIREWORKS (Active during text reveal) */}
+      {internalPhase === 'CELEBRATION' && (
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full pointer-events-none z-20"
@@ -215,11 +219,11 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
       )}
 
       {/* 💎 3. 3D GOLDEN MAHALAKSHMI MANTRA & 'Happy Diwali' TEXT */}
-      {internalPhase === 'FIREWORKS' && (
+      {internalPhase === 'CELEBRATION' && (
         <div className="relative z-30 flex flex-col items-center justify-center text-center px-6 py-8 max-w-5xl mx-auto animate-[zoomFadeIn_0.8s_ease-out_forwards]">
           
           {/* Radial Warm Diya Glow */}
-          <div className="absolute w-[450px] h-56 bg-amber-500/25 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute w-[480px] h-60 bg-amber-500/25 rounded-full blur-[100px] pointer-events-none" />
 
           {/* Hindi Shloka */}
           <h2 
@@ -231,7 +235,7 @@ export default function DiwaliCinematicIntro({ videoUrl, onComplete }: Props) {
 
           <div className="w-32 sm:w-48 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent my-3" />
 
-          {/* English 3D Gold Text: 'Happy Diwali' */}
+          {/* English 3D Gold Text: 'Happy Diwali' (No Edge Cuts) */}
           <div className="overflow-visible py-2 px-6">
             <h1 
               className="text-5xl sm:text-7xl md:text-8xl font-black italic tracking-wide drop-shadow-[0_8px_25px_rgba(255,200,0,0.7)] text-transparent bg-clip-text bg-gradient-to-b from-[#FFFFFF] via-[#F3D899] to-[#BD8D39] inline-block"
