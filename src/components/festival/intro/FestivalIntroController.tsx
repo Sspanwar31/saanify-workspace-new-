@@ -284,9 +284,9 @@ if (isActive && (presetKey.includes('HOLI') || presetKey === 'HOLI')) {
   );
 }
 
-  return (
-    <>
-      {children(currentPhase)}
+return (
+  <>
+    {presetKey !== 'DIWALI' && presetKey !== 'HOLI' && children(currentPhase)}
       
       {/* 🎨 HOLI 2027 EXCLUSIVE: Liquid Drip "Happy Holi" Text */}
       {preset.toUpperCase() === 'HOLI' && currentPhase === 'TEXT_REVEAL' && (
