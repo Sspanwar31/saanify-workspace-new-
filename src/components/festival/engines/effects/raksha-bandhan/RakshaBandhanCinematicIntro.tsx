@@ -7,7 +7,6 @@ interface Props {
   onComplete?: () => void;
 }
 
-// 🌸 Floating Sacred Petals & Gold Sparks Interface
 interface SacredParticle {
   x: number;
   y: number;
@@ -28,8 +27,8 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const onCompleteRef = useRef(onComplete);
 
-  // 🔒 STRICT PHASE STATE: Video chalte waqt 'VIDEO' rahega
-  const [currentStage, setCurrentStage] = useState<'VIDEO' | 'TEXT_REVEAL' | 'HANDOVER'>('VIDEO');
+  // 🔒 Stage Control
+  const [stage, setStage] = useState<'VIDEO' | 'TEXT_REVEAL' | 'HANDOVER'>('VIDEO');
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -65,9 +64,9 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
     };
   }, []);
 
-  // 🎆 2. DYNAMIC ROSE PETALS & GOLD SPARKS (Sirf Text aane ke baad chalenge)
+  // 🎆 2. ROSE PETALS & GOLD SPARKS (Sirf Text stage me chalenge)
   useEffect(() => {
-    if (currentStage !== 'TEXT_REVEAL') return;
+    if (stage !== 'TEXT_REVEAL') return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -82,13 +81,13 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
     const petalColors = ['#E8384F', '#C41E3A', '#D4364D', '#FF6B7A'];
     const goldColors = ['#F0C75E', '#D4A843', '#FFE082', '#FFD54F'];
 
-    for (let i = 0; i < 45; i++) {
+    for (let i = 0; i < 50; i++) {
       particles.push({
         x: Math.random() * W,
         y: Math.random() * H,
         vx: (Math.random() - 0.5) * 0.8,
         vy: Math.random() * 0.8 + 0.4,
-        size: Math.random() * 4 + 2,
+        size: Math.random() * 4.5 + 2,
         alpha: Math.random() * 0.7 + 0.3,
         rot: Math.random() * Math.PI * 2,
         rotSpd: (Math.random() - 0.5) * 0.03,
@@ -138,14 +137,14 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [currentStage]);
+  }, [stage]);
 
-  // 🎛️ 3. AUDIO FADE-OUT (Text stage ke aakhri 2.5s me)
+  // 🎛️ 3. AUDIO FADE-OUT
   useEffect(() => {
     const audio = bgAudioRef.current;
     if (!audio) return;
 
-    if (currentStage === 'TEXT_REVEAL') {
+    if (stage === 'TEXT_REVEAL') {
       const fadeTimeout = setTimeout(() => {
         const fadeInterval = setInterval(() => {
           if (audio.volume > 0.04) {
@@ -159,16 +158,15 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
 
       return () => clearTimeout(fadeTimeout);
     }
-  }, [currentStage]);
+  }, [stage]);
 
-  // 🚀 4. VIDEO KHATAM HONE KA EVENT (Sirf tabhi Text dikhega)
+  // 🚀 4. VIDEO END TRANSITION
   const handleVideoEnded = () => {
-    // 1. Stage change to TEXT_REVEAL
-    setCurrentStage('TEXT_REVEAL');
+    // Video turant band, Text screen ON
+    setStage('TEXT_REVEAL');
 
-    // 2. 5.5 Seconds tak Text dikhane ke baad Dashboard Handover
     setTimeout(() => {
-      setCurrentStage('HANDOVER');
+      setStage('HANDOVER');
       if (onCompleteRef.current) {
         onCompleteRef.current();
       }
@@ -176,49 +174,49 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] w-full h-full min-h-screen flex items-center justify-center overflow-hidden bg-black select-none">
+    <div className="fixed inset-0 z-[999999] w-screen h-screen flex items-center justify-center overflow-hidden bg-[#0d0402] select-none">
       
       {/* 🔤 Google Fonts */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700;1,900&family=Rozha+One&family=Tiro+Devanagari+Hindi&display=swap');
       `}</style>
 
-      {/* 🎵 RAKSHA BANDHAN BOLLYWOOD AUDIO */}
+      {/* 🎵 BOLLYWOOD AUDIO */}
       <audio
         ref={bgAudioRef}
         src="/audio/raksha-bandhan-song.mp3"
         preload="auto"
       />
 
-      {/* 🎬 1. 3D BROTHER-SISTER VIDEO */}
-      <video
-        ref={videoRef}
-        src={videoSrc}
-        autoPlay
-        muted
-        playsInline
-        onEnded={handleVideoEnded}
-        className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 ${
-          currentStage === 'TEXT_REVEAL' ? 'opacity-25 blur-[4px] scale-105' : 'opacity-100 scale-100'
-        }`}
-      />
+      {/* 🎬 1. VIDEO LAYER (Strict unmount: Text ke time video delete ho jayegi) */}
+      {stage === 'VIDEO' && (
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          autoPlay
+          muted
+          playsInline
+          onEnded={handleVideoEnded}
+          className="absolute inset-0 w-full h-full object-cover z-50 bg-black"
+        />
+      )}
 
-      {/* 🎆 2. SACRED ROSE PETALS & GOLD DUST CANVAS (Sirf Text ke waqt) */}
-      {currentStage === 'TEXT_REVEAL' && (
+      {/* 🎆 2. SACRED ROSE PETALS & GOLD DUST CANVAS (Sirf Plain BG par chalega) */}
+      {stage === 'TEXT_REVEAL' && (
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full pointer-events-none z-20"
         />
       )}
 
-      {/* 💎 3. 3D GOLDEN TEXT (STRICT CHECK: Video ke waqt BILKUL nahi dikhega) */}
-      {currentStage === 'TEXT_REVEAL' && (
+      {/* 💎 3. 3D GOLDEN TEXT ON SOLID PLAIN DARK VELVET BG */}
+      {stage === 'TEXT_REVEAL' && (
         <div className="relative z-30 flex flex-col items-center justify-center text-center px-6 py-8 max-w-5xl mx-auto animate-[zoomFadeIn_0.8s_ease-out_forwards]">
           
           {/* Radial Warm Golden Aura */}
-          <div className="absolute w-[460px] h-60 bg-amber-500/25 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute w-[480px] h-60 bg-amber-500/25 rounded-full blur-[100px] pointer-events-none" />
 
-          {/* Hindi Text */}
+          {/* Hindi Slogan */}
           <h2 
             className="text-3xl sm:text-5xl md:text-6xl font-normal tracking-wide drop-shadow-[0_4px_18px_rgba(0,0,0,0.95)] text-transparent bg-clip-text bg-gradient-to-b from-[#FFFDF0] via-[#F3D899] to-[#DFBA6B] px-4 py-2"
             style={{ fontFamily: "'Tiro Devanagari Hindi', 'Rozha One', serif", lineHeight: '1.3' }}
@@ -228,7 +226,7 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
 
           <div className="w-32 sm:w-48 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent my-3" />
 
-          {/* English 3D Gold Text: 'Happy Raksha Bandhan' */}
+          {/* English 3D Gold Text */}
           <div className="overflow-visible py-2 px-6">
             <h1 
               className="text-4xl sm:text-6xl md:text-8xl font-black italic tracking-normal drop-shadow-[0_8px_25px_rgba(255,200,0,0.7)] text-transparent bg-clip-text bg-gradient-to-b from-[#FFFFFF] via-[#F3D899] to-[#BD8D39] inline-block"
