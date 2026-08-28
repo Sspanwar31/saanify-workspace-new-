@@ -88,12 +88,16 @@ export default function FestivalIntroController({
     );
   }
 
-  // 🚀 2. RAKSHA_BANDHAN ACTIVATION: रक्षाबंधन का स्वतंत्र सिनेमाई इंजन यहाँ चलेगा
-  if (isActive && preset.toUpperCase() === 'RAKSHA_BANDHAN') {
+  // 🚀 RAKSHA_BANDHAN ACTIVATION
+  if (isActive && presetKey === 'RAKSHA_BANDHAN') {
     return (
-      <RakshaBandhanCinematicIntro onComplete={onHandover} />
+      <RakshaBandhanCinematicIntro 
+        onComplete={onHandover} 
+        videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/raksha-bandhan-intro.mp4"}
+      />
     );
   }
+
 
   // 🚀 3. LIGHT REVEAL GROUP (Christmas, Ram Navami, Eid, etc.)
    // ✅ NAYA (Ise replace karein):
