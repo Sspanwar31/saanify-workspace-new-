@@ -39,14 +39,12 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
   }
 },
 
-// ━━━ RAKSHA_BANDHAN (🚀 16.5s Extended 3D Video & Gold Text Sync) ━━━
+// ━━━ RAKSHA_BANDHAN (🚀 16.5s Standalone Cinematic Video & Gold Text Sync) ━━━
   RAKSHA_BANDHAN: {
-    phases: ['FLASH', 'SHOOTING', 'TEXT', 'HANDOVER'],
+    phases: ['VIDEO_INTRO', 'HANDOVER'],
     timings: {
-      FLASH: 500,        // 0.5s Initial Soft Fade
-      SHOOTING: 10000,   // 10.0s 3D Brother-Sister Video Playback
-      TEXT: 5500,        // 🚀 5.5s "बंधन नहीं, शक्ति और प्रेम है / Happy Raksha Bandhan" Text Display Time
-      HANDOVER: 1000     // 1.0s Smooth Dashboard Handover
+      VIDEO_INTRO: 16500, // 👈 Pura 16.5s Video + Text + Petals intro component khud handle karega
+      HANDOVER: 1000      // 👈 Smooth 1.0s Dashboard Transfer
     }
   },
   
