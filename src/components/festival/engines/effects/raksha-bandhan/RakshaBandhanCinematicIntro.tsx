@@ -39,7 +39,7 @@ export default function RakshaBandhanCinematicIntro({ videoUrl, onComplete }: Pr
     const audio = bgAudioRef.current;
     if (!audio) return;
 
-    audio.currentTime = 0;
+    audio.currentTime = 0.40;
     audio.volume = 0.65;
 
     const playAudio = () => {
