@@ -26,6 +26,8 @@ import KarwaChauthHero from '../heroes/KarwaChauthHero';
 import SikhHero from '../heroes/SikhHero';
 import DussehraHero from '../heroes/DussehraHero';
 import Valentine from '../heroes/Valentine';
+import BabyKrishna from '../heroes/BabyKrishna';
+
 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
@@ -46,7 +48,7 @@ const ComponentMap: any = {
   'GANGA_GHAT_DIYA': <RoyalDiya />,
   'DANDIYA_BEAT': <NavratriHero />, // 🚀 FIXED: mapped to NavratriHero (Maa Durga frame) instead of drum emoji
   'RAVAN_DAHAN': <DussehraHero />, // 🚀 FIXED: Flat icon ki jagah 3D Gold 
-  'BABY_KRISHNA': <span className="text-[110px] drop-shadow-2xl">🪈</span>,
+  'BABY_KRISHNA': <BabyKrishna/>,
   'BROTHER_BOND': <RakhiHero />, // 🚀 अब गिफ्ट की जगह हमारी खुद की प्रोग्राम्ड राखी रेंडर होगी!
   'KITES_FLYING': <span className="text-[110px] drop-shadow-2xl">🪁</span>,
   'REAL_BONFIRE': <span className="text-[110px] drop-shadow-2xl">🔥</span>,
