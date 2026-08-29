@@ -47,6 +47,22 @@ export const FESTIVAL_PHASE_SEQUENCES: Record<string, {
       HANDOVER: 1000      // 👈 Smooth 1.0s Dashboard Transfer
     }
   },
+
+  // ━━━ JANMASHTAMI (🚀 16.5s Standalone 3D Matki Phod Video & Divine Gold Text Sync) ━━━
+  JANMASHTAMI: {
+    phases: ['VIDEO_INTRO', 'HANDOVER'],
+    timings: {
+      VIDEO_INTRO: 16500, // 👈 10.0s 3D Dahi Handi Video + 5.5s Peacock Feathers & Gold Text + 1.0s Fade
+      HANDOVER: 1000      // 👈 Smooth 1.0s Dashboard Transfer
+    }
+  },
+  KRISHNA_JANMASHTAMI: {
+    phases: ['VIDEO_INTRO', 'HANDOVER'],
+    timings: {
+      VIDEO_INTRO: 16500,
+      HANDOVER: 1000
+    }
+  },
   
   // ━━━ RAM_NAVAMI (🚀 18.0s Cinematic Ghat Dawn, Fireworks & Floating Diyas) ━━━
 RAM_NAVAMI: {
