@@ -35,20 +35,20 @@ interface PresetConfig {
 }
 
 const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = {
-  IDLE: { intensity: 0.35, spawnRate: 0.035 },
-  AMBIENT: { intensity: 0.85, spawnRate: 0.10 },
+  IDLE: { intensity: 0.6, spawnRate: 0.08 }, // Increased intensity for more particles
+  AMBIENT: { intensity: 0.9, spawnRate: 0.12 },
   SHOOTING: { intensity: 1.2, spawnRate: 0.24 },
-  HANDOVER: { intensity: 0.95, spawnRate: 0.14 },
+  HANDOVER: { intensity: 1.0, spawnRate: 0.16 },
 };
 
 const DEFAULT: EngineConfig = {
-  gravity: 0.015,
+  gravity: 0.008, // Reduced gravity for slow fall
   spread: 1,
-  speed: 0.8,
+  speed: 0.3, // Reduced base speed
   colors: ['#facc15', '#ffffff', '#f97316'],
-  minSize: 2,
-  maxSize: 5,
-  maxCount: 80,
+  minSize: 3,
+  maxSize: 7,
+  maxCount: 100,
   glow: true,
   wobble: true,
   direction: 'downward',
@@ -78,13 +78,26 @@ const DARK_COLORS: Record<string, string[]> = {
 };
 
 const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
-  LOHRI: { default: { gravity: -0.012, spread: 1.2, speed: 0.6, colors: DARK_COLORS.LOHRI, minSize: 1.5, maxSize: 5.5, maxCount: 220, glow: true, wobble: true, direction: 'upward', spawnY: 1.02 } },
-  RAKSHA_BANDHAN: { default: { gravity: 0.02, spread: 0.7, speed: 0.75, colors: DARK_COLORS.RAKSHA_BANDHAN, minSize: 2.5, maxSize: 6, maxCount: 220, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
-  CHRISTMAS: { default: { gravity: 0.015, spread: 0.6, speed: 0.7, colors: DARK_COLORS.CHRISTMAS, minSize: 3, maxSize: 7.5, maxCount: 180, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
-  JANMASHTAMI: { default: { gravity: 0.018, spread: 0.8, speed: 0.75, colors: DARK_COLORS.JANMASHTAMI, minSize: 1.5, maxSize: 4.5, maxCount: 220, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
-  DUSSEHRA: { default: { gravity: 0.012, spread: 0.8, speed: 0.85, maxCount: 220, minSize: 1.2, maxSize: 3.5, colors: DARK_COLORS.DUSSEHRA, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
-  MAKAR_SANKRANTI: { default: { gravity: 0.012, spread: 0.8, speed: 0.7, colors: DARK_COLORS.MAKAR_SANKRANTI, minSize: 2.5, maxSize: 5.5, maxCount: 160, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
-  NEW_YEAR: { default: { gravity: 0.018, spread: 1, speed: 0.8, colors: DARK_COLORS.NEW_YEAR, minSize: 3, maxSize: 7, maxCount: 200, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  // LOHRI: Slow upward embers
+  LOHRI: { default: { gravity: 0.008, spread: 1.2, speed: 0.35, colors: DARK_COLORS.LOHRI, minSize: 2, maxSize: 6, maxCount: 300, glow: true, wobble: true, direction: 'upward', spawnY: 1.05 } },
+  
+  // RAKSHA_BANDHAN: Very slow falling petals
+  RAKSHA_BANDHAN: { default: { gravity: 0.008, spread: 0.8, speed: 0.2, colors: DARK_COLORS.RAKSHA_BANDHAN, minSize: 4, maxSize: 8, maxCount: 300, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  
+  // CHRISTMAS: Large slow-falling snowflakes
+  CHRISTMAS: { default: { gravity: 0.005, spread: 0.8, speed: 0.15, colors: DARK_COLORS.CHRISTMAS, minSize: 6, maxSize: 14, maxCount: 250, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  
+  // JANMASHTAMI: Slow floating feathers/butter
+  JANMASHTAMI: { default: { gravity: 0.006, spread: 0.9, speed: 0.25, colors: DARK_COLORS.JANMASHTAMI, minSize: 4, maxSize: 9, maxCount: 300, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  
+  // DUSSEHRA: Slow falling fire sparks
+  DUSSEHRA: { default: { gravity: 0.006, spread: 0.9, speed: 0.3, maxCount: 350, minSize: 2, maxSize: 6, colors: DARK_COLORS.DUSSEHRA, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  
+  // MAKAR_SANKRANTI: Gentle kites gliding down
+  MAKAR_SANKRANTI: { default: { gravity: 0.003, spread: 0.9, speed: 0.1, colors: DARK_COLORS.MAKAR_SANKRANTI, minSize: 5, maxSize: 11, maxCount: 250, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  
+  // NEW_YEAR: Slow falling confetti
+  NEW_YEAR: { default: { gravity: 0.01, spread: 1.0, speed: 0.25, colors: DARK_COLORS.NEW_YEAR, minSize: 4, maxSize: 10, maxCount: 350, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
 };
 
 export default function ParticleEngine({ 
@@ -155,7 +168,7 @@ export default function ParticleEngine({
     const spawn = (): Particle => {
       const centerX = w / 2;
       const spawnY = h * (config.spawnY !== undefined ? config.spawnY : -0.05);
-      const speed = config.speed * rand(0.55, 1.15);
+      const speed = config.speed * rand(0.6, 1.1); // Reduced upper range for slower base speed
       const size = rand(config.minSize, config.maxSize);
       let spawnX: number;
 
@@ -165,20 +178,20 @@ export default function ParticleEngine({
         spawnX = centerX + rand(-40, 40);
       }
 
-      const baseLife = Math.max(280, Math.floor(h / Math.max(config.speed, 0.1)));
+      const baseLife = Math.max(350, Math.floor(h / Math.max(config.speed, 0.1)));
 
       return {
         x: spawnX,
         y: spawnY + rand(-20, 20),
         vx: (Math.random() - 0.5) * speed * config.spread,
-        vy: speed * rand(0.8, 1.5) * (config.direction === 'upward' ? -1 : 1),
+        vy: speed * rand(0.8, 1.2) * (config.direction === 'upward' ? -1 : 1),
         size,
         color: pick(getThemeColors()),
         life: rand(baseLife * 0.55, baseLife),
         maxLife: baseLife,
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: rand(-0.06, 0.06),
-        opacity: rand(0.55, 1),
+        opacity: rand(0.65, 1), // Slightly increased opacity
       };
     };
 
@@ -226,7 +239,7 @@ export default function ParticleEngine({
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rotation);
         ctx.strokeStyle = isDarkMode ? '#ffffff' : '#0369a1';
-        ctx.lineWidth = isDarkMode ? 1.5 : 1.8;
+        ctx.lineWidth = isDarkMode ? 1.5 : 2.5; // Thicker lines for larger snowflakes
         ctx.lineCap = 'round';
         for (let i = 0; i < 6; i++) {
           ctx.rotate(Math.PI / 3);
@@ -344,6 +357,12 @@ export default function ParticleEngine({
 
       particles.current = particles.current.filter((p) => {
         p.vy += config.gravity;
+        
+        // 🚀 TERMINAL VELOCITY: Prevent particles from falling infinitely fast
+        const maxVy = config.speed * 2.5;
+        if (p.vy > maxVy) p.vy = maxVy;
+        if (p.vy < -maxVy) p.vy = -maxVy;
+
         p.x += p.vx;
         p.y += p.vy;
         p.life -= 1;
