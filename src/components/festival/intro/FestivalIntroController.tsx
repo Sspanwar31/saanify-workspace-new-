@@ -33,6 +33,8 @@ import KarwaChauthCinematicIntro from '../engines/effects/karwa-chauth/KarwaChau
 import GuruNanakJayantiCinematicIntro from '../engines/effects/guru-nanak-jayanti/GuruNanakJayantiCinematicIntro';
 import DussehraCinematicIntro from '../engines/effects/dussehra/DussehraCinematicIntro';
 import HoliCinematicIntro from '../engines/effects/Holi/HoliCinematicIntro';
+import JanmashtamiCinematicIntro from '../engines/effects/janmashtami/JanmashtamiCinematicIntro';
+
 
 export default function FestivalIntroController({
   isActive,
@@ -284,6 +286,16 @@ if (isActive && (presetKey.includes('HOLI') || presetKey === 'HOLI')) {
     <HoliCinematicIntro 
       onComplete={onHandover} 
       videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/holi-intro.mp4"}
+    />
+  );
+}
+
+  // 🚀  24. JANMASHTAMI ACTIVATION
+if (isActive && (presetKey.includes('JANMASHTAMI') || presetKey.includes('KRISHNA'))) {
+  return (
+    <JanmashtamiCinematicIntro 
+      onComplete={onHandover} 
+      videoUrl={mediaConfig?.video_url || heroConfig?.video_url || "/videos/janmashtami-intro.mp4"}
     />
   );
 }
