@@ -65,11 +65,14 @@ const PRESET_COLORS: Record<string, string[]> = {
   GANESH_CHATURTHI: ['#fde047', '#facc15', '#fef08a', '#f97316'],
   HANUMAN_JAYANTI: ['#dc2626', '#f97316', '#16a34a', '#fbbf24'], 
   NAVRATRI: ['#f43f5e', '#fbcfe8', '#ffffff'],
-  DUSSEHRA: ['#FFFDF0', '#FFD700', '#FF9900', '#FF4500', '#D97706'], // Gold & Fire
+  DUSSEHRA: ['#FFFDF0', '#FFD700', '#FF9900', '#FF4500', '#D97706'],
   VIJAYADASHAMI: ['#FFFDF0', '#FFD700', '#FF9900', '#FF4500', '#D97706'],
   REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
   INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807'],
-  RAY_ENGINE: ['#ff9933', '#ffffff', '#128807']
+  RAY_ENGINE: ['#ff9933', '#ffffff', '#128807'],
+  // 🦚 JANMASHTAMI DIVINE COLORS (Cyan, Gold, Emerald, White Butter)
+  JANMASHTAMI: ['#00f5d4', '#ffd700', '#3a86ff', '#ffffff', '#06d6a0', '#fbbf24'],
+  KRISHNA_JANMASHTAMI: ['#00f5d4', '#ffd700', '#3a86ff', '#ffffff', '#06d6a0', '#fbbf24']
 };
 
 const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
@@ -77,9 +80,40 @@ const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   HANUMAN_JAYANTI:  { default: { gravity: 0.0012, speed: 0.65, maxCount: 130, minSize: 6, maxSize: 12, colors: PRESET_COLORS.HANUMAN_JAYANTI, direction: 'downward' } },
   NAVRATRI:         { default: { gravity: 0.003, speed: 1.0, maxCount: 90, minSize: 5, maxSize: 11, colors: PRESET_COLORS.NAVRATRI, direction: 'downward' } },
   
-  // 🚀 FIXED: DUSSEHRA PRESET (Normal Calm Speed: 0.85)
   DUSSEHRA:         { default: { gravity: 0.012, speed: 0.85, maxCount: 200, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.DUSSEHRA, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
   VIJAYADASHAMI:    { default: { gravity: 0.012, speed: 0.85, maxCount: 200, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.VIJAYADASHAMI, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
+
+  // 🦚 1. NAYA: JANMASHTAMI ENGINE PRESET CONFIG
+  JANMASHTAMI: {
+    default: {
+      gravity: 0.018,
+      spread: 0.8,
+      speed: 0.75,
+      colors: PRESET_COLORS.JANMASHTAMI,
+      minSize: 1.5,
+      maxSize: 4.5,
+      maxCount: 240,
+      glow: true,
+      wobble: true,
+      direction: 'downward',
+      spawnY: -0.1,
+    }
+  },
+  KRISHNA_JANMASHTAMI: {
+    default: {
+      gravity: 0.018,
+      spread: 0.8,
+      speed: 0.75,
+      colors: PRESET_COLORS.KRISHNA_JANMASHTAMI,
+      minSize: 1.5,
+      maxSize: 4.5,
+      maxCount: 240,
+      glow: true,
+      wobble: true,
+      direction: 'downward',
+      spawnY: -0.1,
+    }
+  },
 
   LIQUID_SPLASH: {
     default: {
@@ -234,7 +268,6 @@ export default function ParticleEngine({
 
     const activePresetObj = MASTER_PRESET_CONFIGS[normalizedPreset || ''] || { default: DEFAULT };
 
-    // Dynamic Supabase DB Fallback
     const resolvedGravity = customGravity ?? heroConfig?.customGravity ?? activePresetObj.default.gravity;
     const resolvedSpeed = customSpeed ?? heroConfig?.customSpeed ?? (heroConfig?.speed ? heroConfig.speed / 3.5 : activePresetObj.default.speed);
     const resolvedColors = customColors || heroConfig?.customColors || activePresetObj.default.colors;
@@ -340,8 +373,57 @@ export default function ParticleEngine({
         ctx.globalCompositeOperation = 'lighter';
       }
 
+      // 🦚 2. NAYA: JANMASHTAMI PEACOCK FEATHERS, BUTTER DROPS & GOLD SPARKS DRAWING
+      if (normalizedPreset === 'JANMASHTAMI' || normalizedPreset === 'KRISHNA_JANMASHTAMI') {
+        const s = renderSize * 1.4;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = s * 1.8;
+
+        // A. Peacock Feather Shape (Blue/Cyan/Green)
+        if (p.color === '#00f5d4' || p.color === '#3a86ff' || p.color === '#06d6a0') {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotation + Math.sin(p.life * 0.05) * 0.4);
+          
+          // Outer Teal Feather
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, s * 1.5, s * 0.7, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Inner Royal Blue Eye
+          ctx.fillStyle = '#1d4ed8';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, s * 0.8, s * 0.45, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Golden Center Dot
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        } 
+        // B. White Creamy Butter Drop
+        else if (p.color === '#ffffff') {
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = s * 1.2;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+        } 
+        // C. Golden Sparkle
+        else {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, s * 0.75, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       // 🚀 मकर संक्रांति विज़ुअल अपडेट
-      if (normalizedPreset === 'MAKAR_SANKRANTI') {
+      else if (normalizedPreset === 'MAKAR_SANKRANTI') {
         const s = renderSize * 1.5; 
         ctx.fillStyle = p.color;
         ctx.strokeStyle = p.color;
@@ -370,14 +452,11 @@ export default function ParticleEngine({
       // 🚀 DUSSEHRA CRISP DUAL-TONE MICRO GOLD/FIRE SPARKS
       else if (normalizedPreset === 'DUSSEHRA' || normalizedPreset === 'VIJAYADASHAMI') {
         const s = renderSize;
-
-        // Dark Amber Edge for 3D Contrast on White Cards
         ctx.fillStyle = '#b8860b';
         ctx.beginPath();
         ctx.arc(p.x, p.y, s * 1.3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Bright Gold/Fire Core
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, s * 0.8, 0, Math.PI * 2);
@@ -499,7 +578,6 @@ export default function ParticleEngine({
 
     return () => {
       cancelAnimationFrame(rafId.current);
-      // 🚀 FIXED: Line 502 Syntax Quote Error Fix ('resize')
       window.removeEventListener('resize', setSize);
       particles.current = [];
     };
