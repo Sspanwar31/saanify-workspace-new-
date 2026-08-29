@@ -70,7 +70,6 @@ const PRESET_COLORS: Record<string, string[]> = {
   REPUBLIC_DAY: ['#ff9933', '#ffffff', '#128807'],
   INDEPENDENCE_DAY: ['#ff9933', '#ffffff', '#128807'],
   RAY_ENGINE: ['#ff9933', '#ffffff', '#128807'],
-  // 🦚 JANMASHTAMI DIVINE COLORS (Cyan, Gold, Emerald, White Butter)
   JANMASHTAMI: ['#00f5d4', '#ffd700', '#3a86ff', '#ffffff', '#06d6a0', '#fbbf24'],
   KRISHNA_JANMASHTAMI: ['#00f5d4', '#ffd700', '#3a86ff', '#ffffff', '#06d6a0', '#fbbf24']
 };
@@ -79,39 +78,19 @@ const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   GANESH_CHATURTHI: { default: { gravity: 0.003, speed: 1.0, maxCount: 90, minSize: 5, maxSize: 11, colors: PRESET_COLORS.GANESH_CHATURTHI, direction: 'downward' } },
   HANUMAN_JAYANTI:  { default: { gravity: 0.0012, speed: 0.65, maxCount: 130, minSize: 6, maxSize: 12, colors: PRESET_COLORS.HANUMAN_JAYANTI, direction: 'downward' } },
   NAVRATRI:         { default: { gravity: 0.003, speed: 1.0, maxCount: 90, minSize: 5, maxSize: 11, colors: PRESET_COLORS.NAVRATRI, direction: 'downward' } },
-  
   DUSSEHRA:         { default: { gravity: 0.012, speed: 0.85, maxCount: 200, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.DUSSEHRA, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
   VIJAYADASHAMI:    { default: { gravity: 0.012, speed: 0.85, maxCount: 200, minSize: 0.8, maxSize: 2.2, colors: PRESET_COLORS.VIJAYADASHAMI, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
 
-  // 🦚 1. NAYA: JANMASHTAMI ENGINE PRESET CONFIG
   JANMASHTAMI: {
     default: {
-      gravity: 0.018,
-      spread: 0.8,
-      speed: 0.75,
-      colors: PRESET_COLORS.JANMASHTAMI,
-      minSize: 1.5,
-      maxSize: 4.5,
-      maxCount: 240,
-      glow: true,
-      wobble: true,
-      direction: 'downward',
-      spawnY: -0.1,
+      gravity: 0.018, spread: 0.8, speed: 0.75, colors: PRESET_COLORS.JANMASHTAMI,
+      minSize: 1.5, maxSize: 4.5, maxCount: 220, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
     }
   },
   KRISHNA_JANMASHTAMI: {
     default: {
-      gravity: 0.018,
-      spread: 0.8,
-      speed: 0.75,
-      colors: PRESET_COLORS.KRISHNA_JANMASHTAMI,
-      minSize: 1.5,
-      maxSize: 4.5,
-      maxCount: 240,
-      glow: true,
-      wobble: true,
-      direction: 'downward',
-      spawnY: -0.1,
+      gravity: 0.018, spread: 0.8, speed: 0.75, colors: PRESET_COLORS.KRISHNA_JANMASHTAMI,
+      minSize: 1.5, maxSize: 4.5, maxCount: 220, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
     }
   },
 
@@ -153,71 +132,37 @@ const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   },
   LOHRI: {
     default: {
-      gravity: -0.015,       
-      spread: 1.2,          
-      speed: 0.6,           
+      gravity: -0.015, spread: 1.2, speed: 0.6,
       colors: ['#ff6b35', '#ff4500', '#ffd700', '#ff8c00'],
       minSize: 1.5, maxSize: 5.5, maxCount: 220, glow: true, wobble: true, direction: 'upward', spawnY: 1.02,
     }
   },
   CHRISTMAS: {
     default: {
-      gravity: 0.025,       
-      spread: 0.6,          
-      speed: 0.9,           
+      gravity: 0.025, spread: 0.6, speed: 0.9,
       colors: ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0'], 
-      minSize: 0.8,         
-      maxSize: 2.5,         
-      maxCount: 450,        
-      glow: true,           
-      wobble: true,         
-      direction: 'downward', 
-      spawnY: -0.1,
+      minSize: 0.8, maxSize: 2.5, maxCount: 450, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
     }
   },
   RAKSHA_BANDHAN: {
     default: {
-      gravity: 0.025,       
-      spread: 0.7,          
-      speed: 0.8,           
+      gravity: 0.025, spread: 0.7, speed: 0.8,
       colors: ['#ffffff', '#fef08a', '#fbbf24', '#f43f5e', '#ec4899'], 
-      minSize: 1.0,         
-      maxSize: 4.0,         
-      maxCount: 280,        
-      glow: true,           
-      wobble: true,         
-      direction: 'downward',
-      spawnY: -0.1,         
+      minSize: 1.0, maxSize: 4.0, maxCount: 280, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,         
     }
   },
   MAKAR_SANKRANTI: {
     default: {
-      gravity: 0.012,       
-      spread: 0.8,          
-      speed: 0.7,           
+      gravity: 0.012, spread: 0.8, speed: 0.7,
       colors: ['#38bdf8', '#fbbf24', '#f43f5e', '#34d399', '#ffffff'], 
-      minSize: 1.2,         
-      maxSize: 3.5,         
-      maxCount: 160,        
-      glow: true,           
-      wobble: true,         
-      direction: 'downward', 
-      spawnY: -0.1,
+      minSize: 1.2, maxSize: 3.5, maxCount: 160, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
     }
   },
   NEW_YEAR: {
     default: {
-      gravity: 0.016,       
-      spread: 1.0,          
-      speed: 0.6,           
+      gravity: 0.016, spread: 1.0, speed: 0.6,
       colors: ['#ffffff', '#fef08a', '#fbbf24', '#10b981', '#8b5cf6', '#00f5d4'], 
-      minSize: 1.2,         
-      maxSize: 4.2,         
-      maxCount: 280,        
-      glow: true,           
-      wobble: true,         
-      direction: 'downward', 
-      spawnY: -0.1,
+      minSize: 1.2, maxSize: 4.2, maxCount: 280, glow: true, wobble: true, direction: 'downward', spawnY: -0.1,
     }
   },
   SPECIAL_OFFER: {
@@ -263,9 +208,7 @@ export default function ParticleEngine({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Normalize Preset
     const normalizedPreset = (preset || heroConfig?.engine_preset || heroConfig?.preset || '').toUpperCase().trim();
-
     const activePresetObj = MASTER_PRESET_CONFIGS[normalizedPreset || ''] || { default: DEFAULT };
 
     const resolvedGravity = customGravity ?? heroConfig?.customGravity ?? activePresetObj.default.gravity;
@@ -361,75 +304,110 @@ export default function ParticleEngine({
     };
 
     const draw = (p: Particle) => {
+      // 🌓 1. GLOBAL THEME CHECK (Applies to all festivals)
+      const isDarkMode = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
       const progress = 1 - p.life / p.maxLife;
       const alpha = Math.max(0, 1 - (progress * progress));
-
       const renderSize = normalizedPreset === 'LOHRI' ? p.size * (1 - progress * 0.8) : p.size;
 
       ctx.save();
-      ctx.globalAlpha = alpha * 0.85; 
       
-      if (config.glow) {
+      // 🌟 GLOBAL RULE: Light mode me +20% extra opacity for solid visibility
+      ctx.globalAlpha = isDarkMode ? alpha * 0.85 : Math.min(1, alpha * 0.98); 
+      
+      // 🌟 GLOBAL RULE: Lighter glow only in dark mode to prevent light mode wash-out
+      if (config.glow && isDarkMode) {
         ctx.globalCompositeOperation = 'lighter';
       }
 
-      // 🦚 2. NAYA: JANMASHTAMI PEACOCK FEATHERS, BUTTER DROPS & GOLD SPARKS DRAWING
+      // 🦚 A. JANMASHTAMI SPECIAL DRAWING
       if (normalizedPreset === 'JANMASHTAMI' || normalizedPreset === 'KRISHNA_JANMASHTAMI') {
         const s = renderSize * 1.4;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = s * 1.8;
 
-        // A. Peacock Feather Shape (Blue/Cyan/Green)
         if (p.color === '#00f5d4' || p.color === '#3a86ff' || p.color === '#06d6a0') {
           ctx.save();
           ctx.translate(p.x, p.y);
           ctx.rotate(p.rotation + Math.sin(p.life * 0.05) * 0.4);
-          
-          // Outer Teal Feather
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.ellipse(0, 0, s * 1.5, s * 0.7, 0, 0, Math.PI * 2);
-          ctx.fill();
 
-          // Inner Royal Blue Eye
-          ctx.fillStyle = '#1d4ed8';
-          ctx.beginPath();
-          ctx.ellipse(0, 0, s * 0.8, s * 0.45, 0, 0, Math.PI * 2);
-          ctx.fill();
+          if (!isDarkMode) {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetY = 1.5;
 
-          // Golden Center Dot
-          ctx.fillStyle = '#fbbf24';
-          ctx.beginPath();
-          ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2);
-          ctx.fill();
+            ctx.fillStyle = '#0d9488';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s * 1.5, s * 0.7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s * 0.8, s * 0.45, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#d97706';
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = s * 1.8;
+
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s * 1.5, s * 0.7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#1d4ed8';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s * 0.8, s * 0.45, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+          }
 
           ctx.restore();
         } 
-        // B. White Creamy Butter Drop
         else if (p.color === '#ffffff') {
-          ctx.fillStyle = '#ffffff';
-          ctx.shadowColor = '#ffffff';
-          ctx.shadowBlur = s * 1.2;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2);
-          ctx.fill();
+          if (!isDarkMode) {
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1;
+            ctx.shadowColor = 'rgba(0,0,0,0.12)';
+            ctx.shadowBlur = 3;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = s * 1.2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+          }
         } 
-        // C. Golden Sparkle
         else {
-          ctx.fillStyle = p.color;
+          ctx.fillStyle = !isDarkMode ? '#b45309' : p.color;
+          ctx.shadowBlur = !isDarkMode ? 2 : 6;
+          ctx.shadowColor = !isDarkMode ? 'rgba(0,0,0,0.15)' : '#ffd700';
           ctx.beginPath();
-          ctx.arc(p.x, p.y, s * 0.75, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, s * 0.7, 0, Math.PI * 2);
           ctx.fill();
         }
       }
-      // 🚀 मकर संक्रांति विज़ुअल अपडेट
+      // 🚀 B. MAKAR SANKRANTI
       else if (normalizedPreset === 'MAKAR_SANKRANTI') {
         const s = renderSize * 1.5; 
-        ctx.fillStyle = p.color;
+        ctx.fillStyle = !isDarkMode && p.color === '#ffffff' ? '#64748b' : p.color;
         ctx.strokeStyle = p.color;
         ctx.lineWidth = 0.5;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = s * 1.8;
+        ctx.shadowColor = isDarkMode ? p.color : 'rgba(0,0,0,0.18)';
+        ctx.shadowBlur = isDarkMode ? s * 1.5 : 3;
 
         ctx.beginPath();
         ctx.moveTo(p.x, p.y - s);
@@ -449,7 +427,7 @@ export default function ParticleEngine({
         );
         ctx.stroke();
       } 
-      // 🚀 DUSSEHRA CRISP DUAL-TONE MICRO GOLD/FIRE SPARKS
+      // 🚀 C. DUSSEHRA / VIJAYADASHAMI
       else if (normalizedPreset === 'DUSSEHRA' || normalizedPreset === 'VIJAYADASHAMI') {
         const s = renderSize;
         ctx.fillStyle = '#b8860b';
@@ -462,12 +440,12 @@ export default function ParticleEngine({
         ctx.arc(p.x, p.y, s * 0.8, 0, Math.PI * 2);
         ctx.fill();
       }
-      // 🚀 लोहड़ी विज़ुअल अपडेट
+      // 🚀 D. LOHRI
       else if (normalizedPreset === 'LOHRI') {
         const s = renderSize * 1.6;
         ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = s * 2;
+        ctx.shadowColor = isDarkMode ? p.color : 'rgba(0,0,0,0.18)';
+        ctx.shadowBlur = isDarkMode ? s * 1.5 : 3;
 
         ctx.beginPath();
         ctx.moveTo(p.x, p.y - s * 1.4);
@@ -478,17 +456,15 @@ export default function ParticleEngine({
         ctx.fill();
 
         ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = s * 1.2;
         ctx.beginPath();
         ctx.arc(p.x, p.y + s * 0.15, s * 0.35, 0, Math.PI * 2);
         ctx.fill();
       }
-      // 🚀 रक्षाबंधन विज़ुअल अपडेट
+      // 🚀 E. RAKSHA BANDHAN
       else if (normalizedPreset === 'RAKSHA_BANDHAN') {
         const s = renderSize * 1.4;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = s * 1.6;
+        ctx.shadowColor = isDarkMode ? p.color : 'rgba(0,0,0,0.15)';
+        ctx.shadowBlur = isDarkMode ? s * 1.2 : 2;
 
         ctx.strokeStyle = '#dc2626'; 
         ctx.lineWidth = 0.5;
@@ -508,21 +484,32 @@ export default function ParticleEngine({
         }
 
         ctx.fillStyle = '#facc15';
-        ctx.shadowColor = '#fbbf24';
         ctx.beginPath();
         ctx.arc(p.x, p.y, s * 0.25, 0, Math.PI * 2);
         ctx.fill();
       }
-      // डिफ़ॉल्ट ड्राइंग
+      // 🌐 F. UNIVERSAL FALLBACK FOR ALL OTHER FESTIVALS (Holi, Diwali, Christmas, New Year, etc.)
       else {
-        ctx.fillStyle = p.color;
+        // Universal Smart Color Adaptation for Light Mode
+        let finalColor = p.color;
+        if (!isDarkMode) {
+          if (p.color === '#ffffff') finalColor = '#94a3b8'; // Slate silver on white
+          else if (p.color === '#fef08a' || p.color === '#fde047') finalColor = '#d97706'; // Rich Amber
+          
+          // Universal Soft Contrast Drop Shadow for Light Theme
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+          ctx.shadowBlur = 3;
+          ctx.shadowOffsetY = 1;
+        }
+
+        ctx.fillStyle = finalColor;
         ctx.beginPath();
         ctx.arc(p.x, p.y, renderSize, 0, Math.PI * 2);
         ctx.fill();
 
         if (config.wobble && p.size > 5) {
-          ctx.globalAlpha = alpha * 0.4;
-          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = alpha * 0.5;
+          ctx.fillStyle = !isDarkMode ? '#e2e8f0' : '#ffffff';
           ctx.beginPath();
           ctx.arc(-renderSize * 0.25, -renderSize * 0.25, renderSize * 0.35, 0, Math.PI * 2);
           ctx.fill();
