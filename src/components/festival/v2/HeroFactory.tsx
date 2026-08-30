@@ -27,7 +27,7 @@ import SikhHero from '../heroes/SikhHero';
 import DussehraHero from '../heroes/DussehraHero';
 import Valentine from '../heroes/Valentine';
 import BabyKrishna from '../heroes/BabyKrishna';
-
+import LohriBonfireHero from '../heroes/LohriBonfireHero';
 
 
 // ━━━ MASTER COMPONENT MAP (Moved outside for Performance) ━━━
@@ -51,7 +51,7 @@ const ComponentMap: any = {
   'BABY_KRISHNA': <BabyKrishna/>,
   'BROTHER_BOND': <RakhiHero />, // 🚀 अब गिफ्ट की जगह हमारी खुद की प्रोग्राम्ड राखी रेंडर होगी!
   'KITES_FLYING': <span className="text-[110px] drop-shadow-2xl">🪁</span>,
-  'REAL_BONFIRE': <span className="text-[110px] drop-shadow-2xl">🔥</span>,
+  'REAL_BONFIRE': <LohriBonfireHero />,
   'SHIVA_POWER': <ShivaHero />,
   'RAM_DHARMA': <RamNavamiHero />,  
   'HANUMAN_GADA': <HanumanHero />, // 🚀 UPDATED: Ab emoji ki jagah custom image component render hoga
