@@ -33,6 +33,10 @@ interface EngineConfig {
   spawnY?: number;
 }
 
+interface PresetConfig {
+  default: Partial<EngineConfig>;
+}
+
 const PhaseBehavior: Record<string, { intensity: number; spawnRate: number }> = {
   IDLE:      { intensity: 0.6, spawnRate: 0.08 },
   AMBIENT:   { intensity: 0.9, spawnRate: 0.12 },
@@ -54,9 +58,10 @@ const DEFAULT: EngineConfig = {
   spawnY: -0.08,
 };
 
+// 🎨 7 FESTIVALS LIGHT THEME COLORS
 const LIGHT_COLORS: Record<string, string[]> = {
   LOHRI:           ['#ea580c', '#f97316', '#d97706', '#b45309', '#dc2626'],
-  RAKSHA_BANDHAN:  ['#be185d', '#db2777', '#e11d48', '#c2410c', '#a16207'],
+  RAKSHA_BANDHAN:  ['#dc2626', '#e11d48', '#d97706', '#db2777', '#b45309'], // Silk Crimson, Ruby & Gold
   CHRISTMAS:       ['#0369a1', '#0284c7', '#475569', '#15803d', '#dc2626'],
   JANMASHTAMI:     ['#047857', '#0369a1', '#1d4ed8', '#b45309', '#0f766e'],
   DUSSEHRA:        ['#b45309', '#c2410c', '#dc2626', '#92400e', '#a16207'],
@@ -64,9 +69,10 @@ const LIGHT_COLORS: Record<string, string[]> = {
   NEW_YEAR:        ['#6d28d9', '#7c3aed', '#be185d', '#0369a1', '#b45309'],
 };
 
+// 🌙 7 FESTIVALS DARK THEME COLORS
 const DARK_COLORS: Record<string, string[]> = {
   LOHRI:           ['#ff6b35', '#ff4500', '#ffd700', '#ff8c00', '#fff3b0'],
-  RAKSHA_BANDHAN:  ['#ec4899', '#f43f5e', '#facc15', '#ffffff', '#fb7185'],
+  RAKSHA_BANDHAN:  ['#f43f5e', '#ec4899', '#ffd700', '#facc15', '#ffffff'], // Glowing Silk Red, Pink & Gold
   CHRISTMAS:       ['#ffffff', '#e0f2fe', '#38bdf8', '#ef4444', '#22c55e'],
   JANMASHTAMI:     ['#00f5d4', '#ffd700', '#3a86ff', '#ffffff', '#06d6a0'],
   DUSSEHRA:        ['#FFD700', '#FF9900', '#FF4500', '#D97706', '#FFFDF0'],
@@ -74,7 +80,7 @@ const DARK_COLORS: Record<string, string[]> = {
   NEW_YEAR:        ['#8b5cf6', '#a855f7', '#ffd700', '#00f5d4', '#ec4899'],
 };
 
-const MASTER_PRESET_CONFIGS: Record<string, { default: Partial<EngineConfig> }> = {
+const MASTER_PRESET_CONFIGS: Record<string, PresetConfig> = {
   LOHRI: { 
     default: { 
       gravity: -0.004, 
@@ -90,7 +96,8 @@ const MASTER_PRESET_CONFIGS: Record<string, { default: Partial<EngineConfig> }> 
       spawnY: 1.05 
     } 
   },
-  RAKSHA_BANDHAN:  { default: { gravity: 0.005, spread: 0.7, speed: 0.2, colors: DARK_COLORS.RAKSHA_BANDHAN, minSize: 3.5, maxSize: 7.5, maxCount: 250, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
+  // 🧵 RAKSHA_BANDHAN: Slow Soft Floating Silk Rakhi Motifs
+  RAKSHA_BANDHAN:  { default: { gravity: 0.004, spread: 0.6, speed: 0.18, colors: DARK_COLORS.RAKSHA_BANDHAN, minSize: 3.5, maxSize: 8.0, maxCount: 220, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
   CHRISTMAS:       { default: { gravity: 0.004, spread: 0.5, speed: 0.18, colors: DARK_COLORS.CHRISTMAS, minSize: 5.5, maxSize: 12, maxCount: 220, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
   JANMASHTAMI:     { default: { gravity: 0.005, spread: 0.7, speed: 0.2, colors: DARK_COLORS.JANMASHTAMI, minSize: 3.5, maxSize: 8, maxCount: 260, glow: true, wobble: true, direction: 'downward', spawnY: -0.1 } },
   DUSSEHRA:        { default: { gravity: 0.005, spread: 0.6, speed: 0.25, maxCount: 300, minSize: 2, maxSize: 5, colors: DARK_COLORS.DUSSEHRA, glow: true, wobble: false, direction: 'downward', spawnY: -0.1 } },
@@ -126,7 +133,7 @@ export default function ParticleEngine({
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
-  // 🚀 EXTRACT RAW VALUES DIRECTLY FROM SUPABASE OBJECT
+  // 🚀 RAW VALUES EXTRACTED DIRECTLY FROM SUPABASE
   const rawDbSpeed = customSpeed !== undefined && customSpeed !== null 
     ? customSpeed 
     : heroConfig?.customSpeed !== undefined && heroConfig?.customSpeed !== null 
@@ -171,7 +178,7 @@ export default function ParticleEngine({
       return LIGHT_COLORS[normalizedPreset] || activePreset.default.colors || DEFAULT.colors;
     };
 
-    // 🚀 EXACT 1:1 REALTIME SUPABASE BINDING
+    // 🚀 EXACT SUPABASE SPEED BINDING
     const finalSpeed = rawDbSpeed !== null ? Number(rawDbSpeed) : (activePreset.default.speed ?? DEFAULT.speed);
     const finalGravity = rawDbGravity !== null ? Number(rawDbGravity) : (activePreset.default.gravity ?? DEFAULT.gravity);
     const finalCount = rawDbCount !== null ? Number(rawDbCount) : (activePreset.default.maxCount ?? DEFAULT.maxCount);
@@ -213,11 +220,10 @@ export default function ParticleEngine({
       const size = rand(config.minSize, config.maxSize);
       const spawnX = rand(0, w);
 
-      // Smooth velocity calculation based on exact Supabase speed
-      const baseVy = (isUpward ? -1 : 1) * config.speed * rand(0.8, 1.2);
-      const baseVx = (Math.random() - 0.5) * config.speed * config.spread * 0.8;
+      const baseVy = (isUpward ? -1 : 1) * config.speed * rand(0.7, 1.1);
+      const baseVx = (Math.random() - 0.5) * config.speed * config.spread * 0.6;
 
-      const baseLife = Math.max(400, Math.floor(h / Math.max(config.speed, 0.05)));
+      const baseLife = Math.max(450, Math.floor(h / Math.max(config.speed, 0.05)));
 
       return {
         x: spawnX,
@@ -286,13 +292,45 @@ export default function ParticleEngine({
           ctx.stroke();
         }
       } 
-      // 🧵 3. RAKSHA BANDHAN
+      // 🧵 3. RAKSHA BANDHAN: Pure 3D Silk Rakhi Motif & Dual Golden Threads (NO LEAVES)
       else if (normalizedPreset === 'RAKSHA_BANDHAN') {
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rotation);
+
+        if (!isDarkMode) {
+          ctx.shadowColor = 'rgba(0,0,0,0.12)';
+          ctx.shadowBlur = 3;
+        } else {
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = s * 1.4;
+        }
+
+        // A. Left & Right Flowing Silk Threads
+        ctx.strokeStyle = !isDarkMode ? '#b91c1c' : '#f43f5e';
+        ctx.lineWidth = Math.max(0.6, s * 0.15);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-s * 1.8, 0);
+        ctx.quadraticCurveTo(-s * 0.9, Math.sin(p.life * 0.05) * s * 0.4, 0, 0);
+        ctx.quadraticCurveTo(s * 0.9, -Math.sin(p.life * 0.05) * s * 0.4, s * 1.8, 0);
+        ctx.stroke();
+
+        // B. Outer Golden Zari / Pearl Ring
+        ctx.fillStyle = !isDarkMode ? '#d97706' : '#ffd700';
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+
+        // C. Inner Ruby Red / Silk Center Gem
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.ellipse(0, 0, s * 1.3, s * 0.62, 0, 0, Math.PI * 2);
+        ctx.arc(0, 0, s * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // D. Center Shining Pearl Dot
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-s * 0.12, -s * 0.12, s * 0.15, 0, Math.PI * 2);
         ctx.fill();
       } 
       // 🪁 4. MAKAR SANKRANTI
@@ -322,7 +360,7 @@ export default function ParticleEngine({
         ctx.arc(p.x, p.y, s * 0.8, 0, Math.PI * 2);
         ctx.fill();
       } 
-      // 🔥 7. LOHRI: Pure Rising Fire Flame Ember
+      // 🔥 7. LOHRI: Rising Fire Flame
       else if (normalizedPreset === 'LOHRI') {
         ctx.translate(p.x, p.y);
         ctx.fillStyle = p.color;
@@ -361,8 +399,7 @@ export default function ParticleEngine({
       }
 
       particles.current = particles.current.filter((p) => {
-        // Linear smooth velocity damping (Zero acceleration blow-up)
-        p.vy += config.gravity * 0.2;
+        p.vy += config.gravity * 0.15;
 
         p.x += p.vx;
         p.y += p.vy;
@@ -409,7 +446,7 @@ export default function ParticleEngine({
     };
   }, [
     preset, 
-    JSON.stringify(heroConfig), // 👈 Re-render instantly on Supabase changes!
+    JSON.stringify(heroConfig),
     rawDbSpeed, 
     rawDbGravity, 
     rawDbCount, 
