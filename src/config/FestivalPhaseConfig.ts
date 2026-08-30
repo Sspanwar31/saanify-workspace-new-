@@ -121,13 +121,12 @@ RAM_NAVAMI: {
     }
   },
   
-  // ━━━ LOHRI (🚀 13.0s Cinematic Sequence Sync) ━━━
+  // ━━━ LOHRI (🚀 16.5s Standalone 3D Bonfire Video & Gold Text Sync) ━━━
   LOHRI: {
-    phases: ['FLASH', 'SHOOTING', 'HANDOVER'],
+    phases: ['VIDEO_INTRO', 'HANDOVER'],
     timings: {
-      FLASH: 1500,     // 1.5s: रात का आसमान और कोहरा प्रकट होना
-      SHOOTING: 10500, // 10.5s: अलाव का जलना, अदम्य चिंगारियां, और "HAPPY LOHRI" टेक्स्ट रिवील
-      HANDOVER: 1000   // 1.0s: डैशबोर्ड पर स्मूथ फ़ेड-आउट
+      VIDEO_INTRO: 16500, // 👈 10.0s 3D Video + 5.5s Gold Text & Fire Embers
+      HANDOVER: 1000      // 👈 1.0s Smooth Dashboard Handover
     }
   },
 
